@@ -18,7 +18,14 @@ jobs:
       # ── Checkout ────────────────────────────────────────────────────────────
       - name: Checkout
         uses: actions/checkout@v4
-        # third_party/ is populated via git subtree — plain checkout suffices
+
+      # ChezScheme is embedded via git subtree but its own submodules (zuo,
+      # zlib, lz4, nanopass, stex) are not populated — initialize them here.
+      - name: Initialize ChezScheme submodules
+        run: |
+          cd third_party/ChezScheme
+          git init
+          git submodule update --init --recursive
 
       # ── LLVM / MLIR (pre-built) ──────────────────────────────────────────────
       - name: Install LLVM/MLIR from apt.llvm.org
