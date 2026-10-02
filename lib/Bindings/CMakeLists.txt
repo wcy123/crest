@@ -9,6 +9,7 @@ set(CHEZ_MACHINE_LOCAL "${CHEZ_MACHINE}")
 add_library(CrestBindings STATIC
   ${CMAKE_CURRENT_SOURCE_DIR}/../Interpreter/ChezSchemeInterpreter.cpp
   MainModule.cpp
+  LockedSchemeObject.cpp
   Core.cpp
   Core/Attribute.cpp
   Core/Operation.cpp

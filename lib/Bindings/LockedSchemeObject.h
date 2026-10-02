@@ -6,82 +6,33 @@
 #ifndef CREST_BINDINGS_LOCKED_SCHEME_OBJECT_H
 #define CREST_BINDINGS_LOCKED_SCHEME_OBJECT_H
 
-// Include Chez Scheme types via wrapper
 #include "SchemeWrapper.h"
 
 namespace crest {
 
-
-/// @brief RAII wrapper for Scheme object GC locking
+/// RAII wrapper for Scheme object GC locking.
 ///
-/// Locks a Scheme object on construction, unlocks on destruction.
-/// Prevents the garbage collector from moving or collecting the object.
-///
-/// Use this when storing Scheme objects (especially callbacks) in C++ data
-/// structures that outlive a single FFI call. The lock prevents the GC from:
-/// 1. Moving the object in memory (invalidating C pointers to it)
-/// 2. Collecting the object (causing use-after-free)
-///
-/// Example usage:
-/// @code
-///   class SchemeConversionPattern {
-///     LockedSchemeObject callback_;  // Automatically locked/unlocked
-///   public:
-///     SchemeConversionPattern(ptr cb) : callback_(cb) {}
-///     // Destructor automatically unlocks callback
-///   };
-/// @endcode
-///
-/// @note Non-copyable, non-movable (like std::lock_guard)
-/// @note Null/false pointers are safely handled (no-op)
+/// Locks a Scheme object on construction and unlocks on destruction,
+/// preventing the garbage collector from moving or collecting it.
+/// Use when storing Scheme callbacks in C++ objects that outlive a single FFI call.
 class LockedSchemeObject {
  public:
-  /// @brief Lock a Scheme object
-  /// @param obj Scheme object (ptr) to lock, can be null/Sfalse
-  explicit LockedSchemeObject(ptr obj) : obj_(obj) {
-    if (obj_ && obj_ != Sfalse) {
-      Slock_object(obj_);
-    }
-  }
+  explicit LockedSchemeObject(ptr obj);
+  ~LockedSchemeObject();
 
-  /// @brief Unlock the Scheme object
-  ~LockedSchemeObject() {
-    if (obj_ && obj_ != Sfalse) {
-      Sunlock_object(obj_);
-    }
-  }
-
-  // Non-copyable — copying would require an additional Slock_object call,
-  // which is not what a moved-from owner semantics implies.
   LockedSchemeObject(const LockedSchemeObject&) = delete;
   LockedSchemeObject& operator=(const LockedSchemeObject&) = delete;
 
-  // Movable — transfers lock ownership; moved-from becomes a no-op on destruct.
-  LockedSchemeObject(LockedSchemeObject&& other) noexcept : obj_(other.obj_) {
-    other.obj_ = nullptr;
-  }
-  LockedSchemeObject& operator=(LockedSchemeObject&& other) noexcept {
-    if (this != &other) {
-      if (obj_ && obj_ != Sfalse) Sunlock_object(obj_);
-      obj_ = other.obj_;
-      other.obj_ = nullptr;
-    }
-    return *this;
-  }
+  LockedSchemeObject(LockedSchemeObject&& other) noexcept;
+  LockedSchemeObject& operator=(LockedSchemeObject&& other) noexcept;
 
-  /// @brief Get the wrapped Scheme object
-  /// @return The locked ptr
   ptr get() const { return obj_; }
-
-  /// @brief Implicit conversion to ptr for convenience
-  /// @return The locked ptr
   operator ptr() const { return obj_; }
 
  private:
   ptr obj_;
 };
 
-
 }  // namespace crest
 
-#endif
+#endif // CREST_BINDINGS_LOCKED_SCHEME_OBJECT_H
