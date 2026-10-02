@@ -275,7 +275,7 @@ int mlir_type_converter_is_signature_legal(uint64_t converter_ptr, uint64_t func
 }
 
 // Mark ModuleOp and arith.constant legal in the conversion target.
-// These ops appear in every module and are not lowered by the ONNX→HipSR pass.
+// These ops appear in every module and are typically not subject to conversion.
 // target_ptr: ConversionTarget* as uptr
 void mlir_conversion_target_add_legal_common_ops(uint64_t target_ptr) {
   if (!target_ptr) return;

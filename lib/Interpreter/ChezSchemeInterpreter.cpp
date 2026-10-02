@@ -22,13 +22,12 @@ const size_t scheme_boot_size = sizeof(scheme_boot_data) - 1;
 // Custom init called by Sbuild_heap before loading boot files
 static void custom_init() {
   // Register all MLIR foreign functions
-  mlir::hipsr::registerMlirForeignFunctions();
+  crest::registerMlirForeignFunctions();
 }
 
 } // anonymous namespace
 
-namespace mlir {
-namespace hipsr {
+namespace crest {
 
 // Static member initialization
 bool ChezSchemeInterpreter::initialized = false;
@@ -217,5 +216,4 @@ void ChezSchemeInterpreter::callPassFunction(const char* functionName, mlir::Ope
   llvm::errs() << "[callPassFunction] Scheme function returned\n";
 }
 
-} // namespace hipsr
-} // namespace mlir
+} // namespace crest

@@ -3,8 +3,8 @@
  * Licensed under the MIT License.
  */
 
-#ifndef LIB_DIALECT_HIPSR_SCHEME_CHEZSCHEMEINTERPRETER_H
-#define LIB_DIALECT_HIPSR_SCHEME_CHEZSCHEMEINTERPRETER_H
+#ifndef CREST_INTERPRETER_CHEZSCHEMEINTERPRETER_H
+#define CREST_INTERPRETER_CHEZSCHEMEINTERPRETER_H
 
 #include <string>
 #include <vector>
@@ -14,11 +14,9 @@
 
 namespace mlir {
 class Operation;
-class Value;
-class Type;
-class Attribute;
+} // namespace mlir
 
-namespace hipsr {
+namespace crest {
 
 // Log levels for Scheme logging
 enum class SchemeLogLevel {
@@ -83,7 +81,6 @@ class ChezSchemeInterpreter {
   static SchemeLogLevel logLevel;
 };
 
-}  // namespace hipsr
-}  // namespace mlir
+}  // namespace crest
 
 #endif

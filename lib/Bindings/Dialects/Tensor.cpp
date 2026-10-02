@@ -8,7 +8,6 @@
 #include "mlir/CAPI/Wrap.h"
 #include "mlir/IR/Value.h"
 #include "llvm/Support/raw_ostream.h"
-#include "hip/Dialect/Hipsr/IR/HipsrOps.h"
 
 
 #define DEBUG_TYPE "scheme-tensor-bindings"
@@ -16,26 +15,6 @@
 // Note: scheme.h included via SchemeMlirBindings.h -> ChezSchemeInterpreter.h
 
 extern "C" {
-
-// Clone a RankedTensorType with a HipSR MemorySpaceAttr encoding.
-// type_ptr:  RankedTensorType* as opaque ptr (ptr, not uint64_t)
-// space_int: crest::MemorySpace enum value (0=Host, 1=Device)
-// Returns:   new type with the memory space set; returns type_ptr unchanged
-//            if the type is not a RankedTensorType (and logs an error)
-ptr mlir_type_set_memory_space(ptr type_ptr, int space_int) {
-  mlir::Type type = mlir::Type::getFromOpaquePointer(type_ptr);
-  auto tensorType = mlir::dyn_cast<mlir::RankedTensorType>(type);
-  if (!tensorType) {
-    mlir_log_error("mlir_type_set_memory_space: Type is not a RankedTensorType");
-    return type_ptr;
-  }
-
-  crest::MemorySpace space = static_cast<crest::MemorySpace>(space_int);
-  auto newType = tensorType.cloneWithEncoding(
-      crest::MemorySpaceAttr::get(tensorType.getContext(), space));
-
-  return const_cast<void*>(newType.getAsOpaquePointer());
-}
 
 // Return the shape of a RankedTensorType as a Scheme list of integers.
 // Uses kDynamic (very negative int64) for dynamic dimensions.
@@ -100,8 +79,7 @@ uint64_t mlir_type_get_element_type(uint64_t type_ptr) {
 
 
 // Attach any MLIR attribute as the encoding of a RankedTensorType.
-// Dialect-agnostic: works with any attribute type (HipSR MemorySpaceAttr,
-// DLTI attrs, custom attrs, etc.).
+// Dialect-agnostic: works with any attribute type (DLTI attrs, custom attrs, etc.).
 // type_ptr: RankedTensorType* as uptr; returns 0 if not a ranked tensor
 // attr_ptr: Attribute* (opaque) as uptr — the encoding to set
 // Returns:  new RankedTensorType with the encoding attached, as opaque type uptr
@@ -115,25 +93,11 @@ uint64_t mlir_tensor_type_with_encoding(uint64_t type_ptr, uint64_t attr_ptr) {
       tensorType.cloneWithEncoding(attr).getAsOpaquePointer());
 }
 
-// Clone a RankedTensorType with the HipSR Host memory space encoding.
-// Produces a host tensor type (tensor<..., #hipsr.mem<host>>).
-// type_ptr: RankedTensorType* as uptr; returns type_ptr unchanged if not ranked tensor
-// Returns:  new type with host encoding as opaque type uptr
-uint64_t mlir_tensor_type_in_host_space(uint64_t type_ptr) {
-  if (!type_ptr) return 0;
-  mlir::Type type = mlir::Type::getFromOpaquePointer(reinterpret_cast<void*>(type_ptr));
-  auto tensorType = mlir::dyn_cast<mlir::RankedTensorType>(type);
-  if (!tensorType) return type_ptr;
-  auto newType = tensorType.cloneWithEncoding(
-      crest::MemorySpaceAttr::get(tensorType.getContext(), crest::MemorySpace::Host));
-  return reinterpret_cast<uint64_t>(const_cast<void*>(newType.getAsOpaquePointer()));
-}
-
 //===----------------------------------------------------------------------===//
 // MLIR Dialect Conversion Primitives
 //===----------------------------------------------------------------------===//
 
-// Return the encoding attribute of a RankedTensorType (e.g. #hipsr.mem<device>).
+// Return the encoding attribute of a RankedTensorType.
 // type_ptr: RankedTensorType* as uptr
 // Returns:  Attribute* as opaque uptr, or 0 if the type has no encoding
 uint64_t mlir_type_get_encoding(uint64_t type_ptr) {
@@ -146,17 +110,6 @@ uint64_t mlir_type_get_encoding(uint64_t type_ptr) {
   return reinterpret_cast<uint64_t>(enc.getAsOpaquePointer());
 }
 
-// Return 1 if type_ptr is a RankedTensorType with HipSR Device memory space, 0 otherwise.
-// type_ptr: Type* as uptr
-int mlir_type_is_device_tensor(uint64_t type_ptr) {
-  if (!type_ptr) return 0;
-  auto type = mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(type_ptr));
-  auto tensorType = mlir::dyn_cast<mlir::RankedTensorType>(type);
-  if (!tensorType) return 0;
-  auto enc = mlir::dyn_cast_or_null<crest::MemorySpaceAttr>(tensorType.getEncoding());
-  return (enc && enc.getValue() == crest::MemorySpace::Device) ? 1 : 0;
-}
-
 // Returns 1 if the named attribute exists on the operation.
 
 } // extern "C"
@@ -164,16 +117,13 @@ int mlir_type_is_device_tensor(uint64_t type_ptr) {
 namespace crest {
 
 void registerTensorBindings() {
-  Sregister_symbol("mlir_type_set_memory_space", (void*)::mlir_type_set_memory_space);
-  Sregister_symbol("mlir_type_get_shape", (void*)::mlir_type_get_shape);
-  Sregister_symbol("mlir_value_get_type", (void*)::mlir_value_get_type);
-  Sregister_symbol("mlir_type_is_ranked_tensor", (void*)::mlir_type_is_ranked_tensor);
-  Sregister_symbol("mlir_type_get_rank", (void*)::mlir_type_get_rank);
-  Sregister_symbol("mlir_type_get_element_type", (void*)::mlir_type_get_element_type);
+  Sregister_symbol("mlir_type_get_shape",              (void*)::mlir_type_get_shape);
+  Sregister_symbol("mlir_value_get_type",              (void*)::mlir_value_get_type);
+  Sregister_symbol("mlir_type_is_ranked_tensor",       (void*)::mlir_type_is_ranked_tensor);
+  Sregister_symbol("mlir_type_get_rank",               (void*)::mlir_type_get_rank);
+  Sregister_symbol("mlir_type_get_element_type",       (void*)::mlir_type_get_element_type);
   Sregister_symbol("mlir_tensor_type_with_encoding",   (void*)::mlir_tensor_type_with_encoding);
-  Sregister_symbol("mlir_tensor_type_in_host_space",   (void*)::mlir_tensor_type_in_host_space);
-  Sregister_symbol("mlir_type_get_encoding", (void*)::mlir_type_get_encoding);
-  Sregister_symbol("mlir_type_is_device_tensor", (void*)::mlir_type_is_device_tensor);
+  Sregister_symbol("mlir_type_get_encoding",           (void*)::mlir_type_get_encoding);
 }
 
 } // namespace crest

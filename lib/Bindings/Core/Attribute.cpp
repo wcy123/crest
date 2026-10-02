@@ -208,8 +208,7 @@ ptr mlir_op_get_operand_segment_sizes(uint64_t op_ptr) {
 
 } // extern "C"
 
-namespace mlir {
-namespace hipsr {
+namespace crest {
 
 void registerAttributeBindings() {
   Sregister_symbol("mlir_make_attr_i64",                    (void*)::mlir_make_attr_i64);
@@ -228,5 +227,4 @@ void registerAttributeBindings() {
   Sregister_symbol("mlir_op_get_operand_segment_sizes",     (void*)::mlir_op_get_operand_segment_sizes);
 }
 
-} // namespace hipsr
-} // namespace mlir
+} // namespace crest

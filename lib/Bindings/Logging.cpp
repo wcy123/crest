@@ -13,32 +13,32 @@
 extern "C" {
 
 void mlir_log_trace(const char* msg) {
-  if (mlir::hipsr::ChezSchemeInterpreter::getLogLevel() <= mlir::hipsr::SchemeLogLevel::Trace)
+  if (crest::ChezSchemeInterpreter::getLogLevel() <= crest::SchemeLogLevel::Trace)
     llvm::errs() << "[trace] " << msg << "\n";
 }
 
 void mlir_log_debug(const char* msg) {
-  if (mlir::hipsr::ChezSchemeInterpreter::getLogLevel() <= mlir::hipsr::SchemeLogLevel::Debug)
+  if (crest::ChezSchemeInterpreter::getLogLevel() <= crest::SchemeLogLevel::Debug)
     llvm::errs() << "[debug] " << msg << "\n";
 }
 
 void mlir_log_info(const char* msg) {
-  if (mlir::hipsr::ChezSchemeInterpreter::getLogLevel() <= mlir::hipsr::SchemeLogLevel::Info)
+  if (crest::ChezSchemeInterpreter::getLogLevel() <= crest::SchemeLogLevel::Info)
     llvm::errs() << "[info] " << msg << "\n";
 }
 
 void mlir_log_warning(const char* msg) {
-  if (mlir::hipsr::ChezSchemeInterpreter::getLogLevel() <= mlir::hipsr::SchemeLogLevel::Warning)
+  if (crest::ChezSchemeInterpreter::getLogLevel() <= crest::SchemeLogLevel::Warning)
     llvm::errs() << "[warning] " << msg << "\n";
 }
 
 void mlir_log_error(const char* msg) {
-  if (mlir::hipsr::ChezSchemeInterpreter::getLogLevel() <= mlir::hipsr::SchemeLogLevel::Error)
+  if (crest::ChezSchemeInterpreter::getLogLevel() <= crest::SchemeLogLevel::Error)
     llvm::errs() << "[error] " << msg << "\n";
 }
 
 void mlir_log_fatal(const char* msg) {
-  if (mlir::hipsr::ChezSchemeInterpreter::getLogLevel() <= mlir::hipsr::SchemeLogLevel::Fatal)
+  if (crest::ChezSchemeInterpreter::getLogLevel() <= crest::SchemeLogLevel::Fatal)
     llvm::errs() << "[fatal] " << msg << "\n";
 }
 
@@ -51,8 +51,7 @@ void mlir_log_fatal(const char* msg) {
 
 } // extern "C"
 
-namespace mlir {
-namespace hipsr {
+namespace crest {
 
 void registerLoggingBindings() {
   Sregister_symbol("mlir_log_trace", (void*)::mlir_log_trace);
@@ -63,5 +62,4 @@ void registerLoggingBindings() {
   Sregister_symbol("mlir_log_fatal", (void*)::mlir_log_fatal);
 }
 
-} // namespace hipsr
-} // namespace mlir
+} // namespace crest

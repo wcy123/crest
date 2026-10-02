@@ -18,7 +18,7 @@
 
 extern "C" {
 
-// Return the registered name of an operation (e.g. "onnx.Cast", "hipsr.min").
+// Return the registered name of an operation (e.g. "func.func", "arith.constant").
 // op: Operation* as uptr
 // Returns: pointer into op's name storage; valid for the lifetime of the op.
 //          Returns "" for null op.
@@ -122,7 +122,7 @@ ptr mlir_operation_get_loc(ptr op_ptr) {
 
 // Return the block argument of the enclosing func.func at position index.
 // Walks up the parent chain to find the nearest func::FuncOp, then returns
-// its block argument. Used to locate the HipSR context argument by convention.
+// its block argument at the given index.
 // op_ptr: Operation* as ptr (any op nested inside a FuncOp)
 // index: zero-based argument index of the FuncOp
 // Returns: Value* opaque pointer of the block argument, or nullptr if not found.
@@ -145,7 +145,7 @@ ptr mlir_operation_get_block_argument(ptr op_ptr, int index) {
 void mlir_operation_walk(uint64_t op, ptr callback) {
   if (!op) return;
   mlir::Operation* cppOp = reinterpret_cast<mlir::Operation*>(op);
-  mlir::hipsr::LockedSchemeObject locked(callback);
+  crest::LockedSchemeObject locked(callback);
   cppOp->walk([&locked](mlir::Operation* walkOp) {
     ptr schemeOp = Sunsigned64(reinterpret_cast<uint64_t>(walkOp));
     Scall1(locked.get(), schemeOp);
@@ -389,8 +389,7 @@ void mlir_op_erase(uint64_t op_ptr) {
 
 } // extern "C"
 
-namespace mlir {
-namespace hipsr {
+namespace crest {
 
 void registerOperationBindings() {
   Sregister_symbol("mlir_operation_get_name",              (void*)::mlir_operation_get_name);
@@ -427,5 +426,4 @@ void registerOperationBindings() {
   Sregister_symbol("mlir_op_erase",                        (void*)::mlir_op_erase);
 }
 
-} // namespace hipsr
-} // namespace mlir
+} // namespace crest

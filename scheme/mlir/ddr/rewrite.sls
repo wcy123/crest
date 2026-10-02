@@ -234,7 +234,7 @@
       ;;
       ;; Parameters:
       ;;   result-vars   — Scheme list of result variable syntax objects
-      ;;   op-name       — string op name, e.g. "hipsr.placeholder"
+      ;;   op-name       — string op name, e.g. "arith.constant"
       ;;   operands      — Scheme list of value operand syntax objects
       ;;   result-types  — Scheme list of result-type syntax objects (may be empty)
       ;;   attr-setter-fns  — Scheme list of closures (lambda (new-op-stx) → setter-syntax)
@@ -315,7 +315,7 @@
       (define (make-binding pair)
         (with-syntax ([var (car pair)] [expr (cdr pair)]) #'(var expr)))
 
-      ;; Accept both 'hipsr.placeholder and "hipsr.placeholder" as op names.
+      ;; Accept both 'arith.constant and "arith.constant" as op names.
       (define (op-name? x)
         (let ([datum (syntax->datum x)])
           (or (string? datum) (symbol? datum))))

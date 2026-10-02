@@ -334,7 +334,7 @@
   ;;   - regions: list of ast-region-expand records
   ;;
   ;; Example DSL input:
-  ;;   (%out = "hipsr.cast" (%x) :regions (...) :attrs [("to", !t3)] -> !t3)
+  ;;   (%out = "arith.addi" (%x %y) :attrs [] -> !i32)
   ;;
   ;; Field order matches MLIR generic operation syntax:
   ;;   result = op-name (operands) :regions (...) :attrs [...] -> result-types
@@ -350,7 +350,7 @@
                                ;; Empty #'() for operations with no results
 
       (mutable op-name)        ;; Phase 1 (parse): syntax string - operation name to construct
-                               ;; Example: #'"hipsr.cast"
+                               ;; Example: #'"arith.addi"
 
       (mutable operands)       ;; Phase 1 (parse): syntax list - operand expressions
                                ;; Example: #'(%x) means pass bound variable %x

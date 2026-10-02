@@ -10,8 +10,8 @@
 ;;
 ;; Mirrors lib/Scheme/Bindings/Logging.cpp.
 ;; All functions take a single string message and return void.
-;; The HIPDNN_EP_LOG_LEVEL environment variable controls which levels
-;; are emitted at runtime; higher-severity levels are always emitted.
+;; The log level is controlled via ChezSchemeInterpreter::setLogLevel;
+;; higher-severity levels are always emitted.
 ;;
 ;;===----------------------------------------------------------------------===;;
 

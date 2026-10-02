@@ -57,13 +57,10 @@
     mlir-type-get-element-type
     mlir-type-get-shape
     mlir-type-get-rank
-    mlir-type-get-encoding
-    mlir-type-set-memory-space
     ;; Pattern application
     mlir-apply-patterns-greedy
     ;; Generic op rebuild
     mlir-op-clone-with-types
-    ;; hip fusion C++ helpers
 
   (import (rnrs)
           (only (chezscheme) foreign-procedure parameterize make-parameter void))
@@ -106,7 +103,7 @@
   ;; Build an op at the rewriter's current insertion point (set to before loc-op).
   ;; rewriter:     RewriterBase* uptr
   ;; loc-op:       Operation* uptr — source of location and insertion point
-  ;; op-name:      string, e.g. "hipsr.cast"
+  ;; op-name:      string, e.g. "func.func"
   ;; operands:     Scheme list of Value* uptrs
   ;; result-types: Scheme list of Type* uptrs
   ;; Returns: Operation* uptr of the newly created op
@@ -227,19 +224,6 @@
   (define mlir-type-get-rank
     (foreign-procedure "mlir_type_get_rank" (uptr) int))
 
-  ;; Get the encoding attribute of a tensor type, or 0 if absent.
-  ;; type: RankedTensorType opaque uptr
-  ;; Returns: Attribute opaque uptr, or 0 if no encoding is set
-  (define mlir-type-get-encoding
-    (foreign-procedure "mlir_type_get_encoding" (uptr) uptr))
-
-  ;; Clone a RankedTensorType with a new HipSR memory space (integer enum).
-  ;; type:  RankedTensorType opaque uptr
-  ;; space: int — MemorySpace enum value (1 = Device, 2 = Host, ...)
-  ;; Returns: new RankedTensorType opaque uptr with the given encoding
-  (define mlir-type-set-memory-space
-    (foreign-procedure "mlir_type_set_memory_space" (uptr int) uptr))
-
   ;;===--------------------------------------------------------------------===;;
   ;; Generic RAII
   ;;===--------------------------------------------------------------------===;;
@@ -271,7 +255,7 @@
   ;; Build an op using whichever builder context is currently active.
   ;; Dispatches to the rewriter path if current-rewriter is set, otherwise
   ;; to the block-builder path.  Raises if neither is installed.
-  ;; name:      string op name, e.g. "hipsr.cast"
+  ;; name:      string op name, e.g. "arith.constant"
   ;; operands:  Scheme list of Value* uptrs
   ;; types:     Scheme list of result Type* uptrs
   ;; nregions:  optional int — number of empty regions to pre-allocate (default 0)
@@ -341,9 +325,6 @@
 
   (define mlir-op-clone-with-types
     (foreign-procedure "mlir_op_clone_with_types" (uptr uptr scheme-object scheme-object) uptr))
-
-  ;; === hip fusion C++ helpers ===
-
 
 
 

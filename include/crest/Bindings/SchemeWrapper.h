@@ -3,8 +3,8 @@
  * Licensed under the MIT License.
  */
 
-#ifndef LIB_DIALECT_HIPSR_SCHEME_SCHEME_WRAPPER_H
-#define LIB_DIALECT_HIPSR_SCHEME_SCHEME_WRAPPER_H
+#ifndef CREST_BINDINGS_SCHEME_WRAPPER_H
+#define CREST_BINDINGS_SCHEME_WRAPPER_H
 
 // Wrapper for Chez Scheme's scheme.h
 //
@@ -16,4 +16,4 @@ extern "C" {
 #include "boot/ta6le/scheme.h"
 }
 
-#endif // LIB_DIALECT_HIPSR_SCHEME_SCHEME_WRAPPER_H
+#endif // CREST_BINDINGS_SCHEME_WRAPPER_H

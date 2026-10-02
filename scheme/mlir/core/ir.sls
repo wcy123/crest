@@ -91,8 +91,6 @@
     mlir-type-get-element-type
     mlir-type-get-shape
     mlir-type-get-rank
-    mlir-type-get-encoding
-    mlir-type-set-memory-space
     ;; Type inspection
     mlir-type-element-type        ; element type of shaped/vector type
     mlir-type-integer-width       ; bit width of IntegerType
@@ -106,7 +104,6 @@
     mlir-apply-patterns-greedy    ; applyPatternsAndFoldGreedily
     ;; Generic op rebuild
     mlir-op-clone-with-types      ; clone op with new operands and result types
-    ;; hip fusion C++ helpers
     ;; (mlir core logging)
     mlir-log-trace mlir-log-debug mlir-log-info
     mlir-log-warning mlir-log-error mlir-log-fatal

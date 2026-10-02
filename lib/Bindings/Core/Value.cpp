@@ -43,7 +43,6 @@ int mlir_value_get_result_number(uint64_t value) {
 }
 
 // Return the number of uses of a Value.
-// Useful for single-use guards (e.g. hip-op-single-use? in Scheme).
 uint64_t mlir_value_num_uses(uint64_t val_ptr) {
   if (!val_ptr) return 0;
   auto val = mlir::Value::getFromOpaquePointer(reinterpret_cast<const void*>(val_ptr));
@@ -52,8 +51,7 @@ uint64_t mlir_value_num_uses(uint64_t val_ptr) {
 
 } // extern "C"
 
-namespace mlir {
-namespace hipsr {
+namespace crest {
 
 void registerValueBindings() {
   Sregister_symbol("mlir_value_get_defining_op",   (void*)::mlir_value_get_defining_op);
@@ -62,5 +60,4 @@ void registerValueBindings() {
   Sregister_symbol("mlir_value_num_uses",          (void*)::mlir_value_num_uses);
 }
 
-} // namespace hipsr
-} // namespace mlir
+} // namespace crest

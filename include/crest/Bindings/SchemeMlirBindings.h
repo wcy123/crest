@@ -3,8 +3,8 @@
  * Licensed under the MIT License.
  */
 
-#ifndef HIP_SCHEME_BINDINGS_SCHEMEMLIR_BINDINGS_H
-#define HIP_SCHEME_BINDINGS_SCHEMEMLIR_BINDINGS_H
+#ifndef CREST_BINDINGS_SCHEMEMLIR_BINDINGS_H
+#define CREST_BINDINGS_SCHEMEMLIR_BINDINGS_H
 
 #include "crest/Interpreter/ChezSchemeInterpreter.h"
 
@@ -25,8 +25,9 @@ class Operation;
 class Value;
 class Type;
 class Attribute;
+} // namespace mlir
 
-namespace hipsr {
+namespace crest {
 
 // Register all MLIR foreign functions accessible from Scheme
 void registerMlirForeignFunctions();
@@ -34,8 +35,6 @@ void registerMlirForeignFunctions();
 // Per-module registration functions — implemented in the corresponding .cpp files
 void registerConversionBindings();
 void registerCoreBindings();
-void registerHipsrBindings();
-void registerOnnxBindings();
 void registerShapeBindings();
 void registerTensorBindings();
 void registerLoggingBindings();
@@ -46,7 +45,6 @@ ptr makeSchemeValue(mlir::Value val);
 ptr makeSchemeType(mlir::Type type);
 ptr makeSchemeAttribute(mlir::Attribute attr);
 
-} // namespace hipsr
-} // namespace mlir
+} // namespace crest
 
 #endif

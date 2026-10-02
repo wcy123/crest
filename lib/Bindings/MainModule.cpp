@@ -14,8 +14,8 @@ void registerShapeBindings();
 void registerTensorBindings();
 void registerLoggingBindings();
 
-// Hook for downstream projects (e.g. hip-ep) to register their own
-// dialect-specific FFI without modifying CREST itself.
+// Hook for downstream projects to register their own dialect-specific
+// FFI without modifying CREST itself.
 static void (*g_extra_bindings_fn)() = nullptr;
 
 extern "C" void crest_register_extra_bindings(void (*fn)()) {
