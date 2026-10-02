@@ -6,10 +6,10 @@
 #ifndef CREST_INTERPRETER_CHEZSCHEMEINTERPRETER_H
 #define CREST_INTERPRETER_CHEZSCHEMEINTERPRETER_H
 
+#include <memory>
 #include <string>
 #include <vector>
 
-// Include Chez Scheme types (ptr, iptr, uptr) via wrapper
 #include "../Bindings/SchemeWrapper.h"
 
 namespace mlir {
@@ -18,11 +18,8 @@ class Operation;
 
 namespace crest {
 
-// Register all MLIR foreign functions accessible from Scheme.
-// Called once during Scheme runtime initialization.
-void registerMlirForeignFunctions();
+template <typename T> struct WeakSingleton;
 
-// Log levels for Scheme logging
 enum class SchemeLogLevel {
   Trace = 0,
   Debug = 1,
@@ -32,59 +29,52 @@ enum class SchemeLogLevel {
   Fatal = 5
 };
 
-/// Singleton Chez Scheme runtime.
-/// All methods are static. Runtime is initialized once globally.
+// Register all MLIR foreign functions accessible from Scheme.
+// Called once during Scheme runtime initialization.
+void registerMlirForeignFunctions();
+
+/// Chez Scheme runtime managed via WeakSingleton.
+/// Use instance() to obtain the shared runtime; it is initialized on first
+/// call and destroyed when all shared_ptr holders release it.
 class ChezSchemeInterpreter {
  public:
-  // Initialize the Scheme runtime (called once)
-  static void initialize(SchemeLogLevel logLevel = SchemeLogLevel::Warning);
+  // Only public creation point. Returns the live instance, creating and
+  // initializing it if none exists. logLevel is used only on first creation.
+  static std::shared_ptr<ChezSchemeInterpreter>
+  instance(SchemeLogLevel logLevel = SchemeLogLevel::Warning);
 
-  /// Check if runtime is initialized
-  static bool isInitialized() { return initialized; }
-
-  /// Shutdown the Scheme runtime
-  static void shutdown();
-
-  // Parse log level from string
+  // Parse a log-level string ("trace", "debug", ...) to SchemeLogLevel.
   static SchemeLogLevel parseLogLevel(const std::string& level);
 
-  // Set global log level
-  static void setLogLevel(SchemeLogLevel level);
-
-  // Get current log level
-  static SchemeLogLevel getLogLevel() { return logLevel; }
-
-  /// R5RS load: Load and evaluate a Scheme script file
-  static bool load(const char* scriptPath);
-
-  /// R5RS eval: Evaluate Scheme code string
-  static bool eval(const char* code);
-
-  // Create Scheme values from C++ primitives
-  static ptr makeString(const char* str);
-  static ptr makeInteger(long value);
-
-  // Call a Scheme function with primitive arguments
-  static std::string callFunction(const char* functionName,
-                                  const std::vector<ptr>& args);
-
-  // Call a Scheme function with a single MLIR operation argument
-  static void callPassFunction(const char* functionName, mlir::Operation* op);
-
-  // Add source and binary directories to library-directories for finding .sls files
-  static void addLibraryPath(const char* src_path, const char* bin_path);
-
- private:
-  // Singleton - deleted constructors
-  ChezSchemeInterpreter() = delete;
-  ~ChezSchemeInterpreter() = delete;
+  // Non-copyable, non-movable
   ChezSchemeInterpreter(const ChezSchemeInterpreter&) = delete;
   ChezSchemeInterpreter& operator=(const ChezSchemeInterpreter&) = delete;
 
-  static bool initialized;
-  static SchemeLogLevel logLevel;
+  void setLogLevel(SchemeLogLevel level);
+  SchemeLogLevel getLogLevel() const;
+
+  bool load(const char* scriptPath);
+  bool eval(const char* code);
+
+  ptr makeString(const char* str);
+  ptr makeInteger(long value);
+
+  std::string callFunction(const char* functionName,
+                           const std::vector<ptr>& args);
+
+  void callPassFunction(const char* functionName, mlir::Operation* op);
+
+  void addLibraryPath(const char* src_path, const char* bin_path);
+
+ private:
+  friend struct WeakSingleton<ChezSchemeInterpreter>;
+
+  explicit ChezSchemeInterpreter(SchemeLogLevel logLevel);
+  ~ChezSchemeInterpreter();
+
+  SchemeLogLevel logLevel_;
 };
 
-}  // namespace crest
+} // namespace crest
 
-#endif
+#endif // CREST_INTERPRETER_CHEZSCHEMEINTERPRETER_H

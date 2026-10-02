@@ -42,12 +42,9 @@ struct SchemePass : impl::SchemePassBase<SchemePass> {
       return;
     }
 
-    if (!ChezSchemeInterpreter::isInitialized()) {
-      SchemeLogLevel level = ChezSchemeInterpreter::parseLogLevel(logLevel);
-      ChezSchemeInterpreter::initialize(level);
-    }
-    ChezSchemeInterpreter::setLogLevel(
+    auto interp = ChezSchemeInterpreter::instance(
         ChezSchemeInterpreter::parseLogLevel(logLevel));
+    interp->setLogLevel(ChezSchemeInterpreter::parseLogLevel(logLevel));
 
     // Convert slash-separated name to space-separated R6RS library name.
     // e.g. "passes/my-rewrite" → "(import (passes my-rewrite))"
@@ -55,14 +52,14 @@ struct SchemePass : impl::SchemePassBase<SchemePass> {
     std::replace(libraryName.begin(), libraryName.end(), '/', ' ');
     std::string importCode = "(import (" + libraryName + "))";
 
-    if (!ChezSchemeInterpreter::eval(importCode.c_str())) {
+    if (!interp->eval(importCode.c_str())) {
       emitError(getOperation().getLoc(), "Failed to import (")
           << moduleName << ")";
       signalPassFailure();
       return;
     }
 
-    ChezSchemeInterpreter::callPassFunction("run-pass", getOperation());
+    interp->callPassFunction("run-pass", getOperation());
   }
 };
 

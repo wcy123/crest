@@ -14,61 +14,63 @@
 #include "ChezBootPetite.h"
 #include "ChezBootScheme.h"
 
+#include <cassert>
+#include <memory>
+
 namespace {
+
 const size_t petite_boot_size = sizeof(petite_boot_data) - 1;
 const size_t scheme_boot_size = sizeof(scheme_boot_data) - 1;
 
-// Custom init called by Sbuild_heap before loading boot files
 static void custom_init() {
-  // Register all MLIR foreign functions
   crest::registerMlirForeignFunctions();
 }
+
+// WeakSingleton — private to this translation unit.
+// Holds a weak_ptr so the instance lives only as long as someone holds a shared_ptr.
+template <typename T>
+struct WeakSingleton {
+  static std::weak_ptr<T> the_instance_;
+
+  template <typename... Args>
+  static std::shared_ptr<T> create(Args&&... args) {
+    std::shared_ptr<T> ret;
+    if (the_instance_.expired()) {
+      ret = std::make_shared<T>(std::forward<Args>(args)...);
+      the_instance_ = ret;
+    }
+    ret = the_instance_.lock();
+    assert(ret != nullptr);
+    return ret;
+  }
+};
+
+template <typename T>
+std::weak_ptr<T> WeakSingleton<T>::the_instance_;
 
 } // anonymous namespace
 
 namespace crest {
 
-// Static member initialization
-bool ChezSchemeInterpreter::initialized = false;
-SchemeLogLevel ChezSchemeInterpreter::logLevel = SchemeLogLevel::Warning;
+// ─── Factory ──────────────────────────────────────────────────────────────────
 
-// Parse log level from string
-SchemeLogLevel ChezSchemeInterpreter::parseLogLevel(const std::string& level) {
-  if (level == "trace") return SchemeLogLevel::Trace;
-  if (level == "debug") return SchemeLogLevel::Debug;
-  if (level == "info") return SchemeLogLevel::Info;
-  if (level == "warning") return SchemeLogLevel::Warning;
-  if (level == "error") return SchemeLogLevel::Error;
-  if (level == "fatal") return SchemeLogLevel::Fatal;
-
-  llvm::errs() << "Warning: unknown log level '" << level
-               << "', defaulting to 'warning'\n";
-  return SchemeLogLevel::Warning;
+std::shared_ptr<ChezSchemeInterpreter>
+ChezSchemeInterpreter::instance(SchemeLogLevel logLevel) {
+  return WeakSingleton<ChezSchemeInterpreter>::create(logLevel);
 }
 
-void ChezSchemeInterpreter::setLogLevel(SchemeLogLevel level) {
-  logLevel = level;
-}
+// ─── Construction / Destruction ───────────────────────────────────────────────
 
-void ChezSchemeInterpreter::initialize(SchemeLogLevel level) {
-  if (initialized) {
-    return;  // Already initialized
-  }
+ChezSchemeInterpreter::ChezSchemeInterpreter(SchemeLogLevel logLevel)
+    : logLevel_(logLevel) {
+  if (logLevel_ <= SchemeLogLevel::Debug)
+    llvm::errs() << "[debug] ChezSchemeInterpreter: Initializing Chez Scheme runtime\n";
 
-  logLevel = level;
-
-  if (logLevel <= SchemeLogLevel::Debug) {
-    llvm::errs() << "[debug] ChezSchemeInterpreter1: Initializing Chez Scheme runtime\n";
-  }
-
-  // Initialize Scheme runtime
   Sscheme_init(nullptr);
 
-  if (logLevel <= SchemeLogLevel::Debug) {
+  if (logLevel_ <= SchemeLogLevel::Debug)
     llvm::errs() << "[debug] ChezSchemeInterpreter: Registering embedded boot files\n";
-  }
 
-  // Register embedded boot files
   Sregister_boot_file_bytes("petite.boot",
       const_cast<void*>(static_cast<const void*>(petite_boot_data)),
       petite_boot_size);
@@ -76,85 +78,80 @@ void ChezSchemeInterpreter::initialize(SchemeLogLevel level) {
       const_cast<void*>(static_cast<const void*>(scheme_boot_data)),
       scheme_boot_size);
 
-  if (logLevel <= SchemeLogLevel::Debug) {
-    llvm::errs() << "[debug] ChezSchemeInterpreter: Building heap from embedded boot files\n";
-  }
+  if (logLevel_ <= SchemeLogLevel::Debug)
+    llvm::errs() << "[debug] ChezSchemeInterpreter: Building heap\n";
 
-  // Build heap and call custom_init (which registers foreign functions)
   Sbuild_heap(nullptr, custom_init);
-  initialized = true;
 
-  // Add Scheme library paths (source and binary)
   addLibraryPath(SCHEME_LIBRARIES_DIR, SCHEME_BINARY_DIR);
   addLibraryPath(RIME_DIR, RIME_DIR);
 
-  if (logLevel <= SchemeLogLevel::Info) {
+  if (logLevel_ <= SchemeLogLevel::Info)
     llvm::errs() << "[info] ChezSchemeInterpreter: Initialization complete\n";
-  }
 }
 
-void ChezSchemeInterpreter::shutdown() {
-  if (!initialized) {
-    return;
-  }
-
-  if (logLevel <= SchemeLogLevel::Debug) {
+ChezSchemeInterpreter::~ChezSchemeInterpreter() {
+  if (logLevel_ <= SchemeLogLevel::Debug)
     llvm::errs() << "[debug] ChezSchemeInterpreter: Shutting down Scheme runtime\n";
-  }
-
-  // Chez Scheme doesn't require explicit cleanup
-  initialized = false;
+  // Chez Scheme does not require explicit cleanup
 }
+
+// ─── Configuration ────────────────────────────────────────────────────────────
+
+SchemeLogLevel ChezSchemeInterpreter::parseLogLevel(const std::string& level) {
+  if (level == "trace")   return SchemeLogLevel::Trace;
+  if (level == "debug")   return SchemeLogLevel::Debug;
+  if (level == "info")    return SchemeLogLevel::Info;
+  if (level == "warning") return SchemeLogLevel::Warning;
+  if (level == "error")   return SchemeLogLevel::Error;
+  if (level == "fatal")   return SchemeLogLevel::Fatal;
+  llvm::errs() << "Warning: unknown log level '" << level
+               << "', defaulting to 'warning'\n";
+  return SchemeLogLevel::Warning;
+}
+
+void ChezSchemeInterpreter::setLogLevel(SchemeLogLevel level) {
+  logLevel_ = level;
+}
+
+SchemeLogLevel ChezSchemeInterpreter::getLogLevel() const {
+  return logLevel_;
+}
+
+// ─── Library paths ────────────────────────────────────────────────────────────
 
 void ChezSchemeInterpreter::addLibraryPath(const char* src_path, const char* bin_path) {
-  if (!initialized) {
-    llvm::errs() << "[error] ChezSchemeInterpreter: Cannot add library path - runtime not initialized\n";
-    return;
-  }
-
   ptr lib_dirs_param = Stop_level_value(Sstring_to_symbol("library-directories"));
   ptr current_dirs = Scall0(lib_dirs_param);
   ptr pair = Scons(Sstring(src_path), Sstring(bin_path));
   Scall1(lib_dirs_param, Scons(pair, current_dirs));
 
-  if (logLevel <= SchemeLogLevel::Debug) {
+  if (logLevel_ <= SchemeLogLevel::Debug)
     llvm::errs() << "[debug] ChezSchemeInterpreter: added library path ("
                  << src_path << " . " << bin_path << ")\n";
-  }
 }
 
-bool ChezSchemeInterpreter::load(const char* scriptPath) {
-  if (!initialized) {
-    llvm::errs() << "[error] ChezSchemeInterpreter: Cannot load script - runtime not initialized\n";
-    return false;
-  }
+// ─── Script / eval ────────────────────────────────────────────────────────────
 
-  // R5RS load: (load scriptPath)
+bool ChezSchemeInterpreter::load(const char* scriptPath) {
   ptr load_sym = Stop_level_value(Sstring_to_symbol("load"));
-  ptr path_str = Sstring(scriptPath);
-  Scall1(load_sym, path_str);
+  Scall1(load_sym, Sstring(scriptPath));
   return true;
 }
 
 bool ChezSchemeInterpreter::eval(const char* code) {
-  if (!initialized) {
-    llvm::errs() << "[error] ChezSchemeInterpreter: Cannot evaluate code - runtime not initialized\n";
-    return false;
-  }
-
-  // R5RS eval: (eval (read (open-string-input-port code)))
-  ptr eval_sym = Stop_level_value(Sstring_to_symbol("eval"));
-  ptr read_sym = Stop_level_value(Sstring_to_symbol("read"));
+  ptr eval_sym     = Stop_level_value(Sstring_to_symbol("eval"));
+  ptr read_sym     = Stop_level_value(Sstring_to_symbol("read"));
   ptr open_port_sym = Stop_level_value(Sstring_to_symbol("open-string-input-port"));
 
   ptr port = Scall1(open_port_sym, Sstring(code));
   ptr expr = Scall1(read_sym, port);
   Scall1(eval_sym, expr);
-
   return true;
 }
 
-// Create Scheme values from C++ primitives
+// ─── Value helpers ────────────────────────────────────────────────────────────
+
 ptr ChezSchemeInterpreter::makeString(const char* str) {
   return Sstring(str);
 }
@@ -163,20 +160,17 @@ ptr ChezSchemeInterpreter::makeInteger(long value) {
   return Sinteger(value);
 }
 
-// Call a Scheme function with primitive arguments
+// ─── Function calls ───────────────────────────────────────────────────────────
+
 std::string ChezSchemeInterpreter::callFunction(const char* functionName,
                                                 const std::vector<ptr>& args) {
-  if (!initialized)
-    return "";
-
   ptr func = Stop_level_value(Sstring_to_symbol(functionName));
   if (func == Sfalse)
     return "";
 
   ptr args_list = Snil;
-  for (auto it = args.rbegin(); it != args.rend(); ++it) {
+  for (auto it = args.rbegin(); it != args.rend(); ++it)
     args_list = Scons(*it, args_list);
-  }
 
   ptr apply_proc = Stop_level_value(Sstring_to_symbol("apply"));
   ptr result = Scall2(apply_proc, func, args_list);
@@ -186,33 +180,23 @@ std::string ChezSchemeInterpreter::callFunction(const char* functionName,
     iptr len = Sstring_length(result);
     std::string str;
     str.reserve(len);
-    for (iptr i = 0; i < len; i++) {
+    for (iptr i = 0; i < len; i++)
       str.push_back(static_cast<char>(Sstring_ref(result, i)));
-    }
     return str;
   }
 
   return "";
 }
 
-// Call a Scheme function with a single MLIR operation argument
-void ChezSchemeInterpreter::callPassFunction(const char* functionName, mlir::Operation* op) {
-  if (!initialized)
-    return;
-
-  llvm::errs() << "[callPassFunction] Looking up function: " << functionName << "\n";
-
+void ChezSchemeInterpreter::callPassFunction(const char* functionName,
+                                            mlir::Operation* op) {
   ptr func = Stop_level_value(Sstring_to_symbol(functionName));
   if (func == Sfalse) {
     llvm::errs() << "Warning: Scheme function '" << functionName << "' not found\n";
     return;
   }
-
-  llvm::errs() << "[callPassFunction] Function found, creating scheme operation ptr\n";
   ptr schemeOp = Sunsigned64(reinterpret_cast<uint64_t>(op));
-  llvm::errs() << "[callPassFunction] Calling Scheme function with op=" << reinterpret_cast<uintptr_t>(op) << "\n";
   Scall1(func, schemeOp);
-  llvm::errs() << "[callPassFunction] Scheme function returned\n";
 }
 
 } // namespace crest
