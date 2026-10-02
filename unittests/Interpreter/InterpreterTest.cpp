@@ -5,29 +5,36 @@
 //===- InterpreterTest.cpp - Unit tests for ChezSchemeInterpreter ---------===//
 
 #include "gtest/gtest.h"
-
-// ChezSchemeInterpreter is a private header; include via relative path since
-// unittests/ is part of the same build tree.
 #include "../../lib/Interpreter/ChezSchemeInterpreter.h"
 
 using namespace crest;
 
-namespace {
+// Hold one shared_ptr for the entire test binary — Chez Scheme can only be
+// initialized once per process. WeakSingleton would try to re-init on each
+// test if the shared_ptr were released between tests.
+static std::shared_ptr<ChezSchemeInterpreter> g_interp;
 
-TEST(ChezSchemeInterpreter, InstanceIsNonNull) {
-  auto interp = ChezSchemeInterpreter::instance();
-  ASSERT_NE(interp, nullptr);
+class InterpreterTest : public ::testing::Test {
+ protected:
+  static void SetUpTestSuite() {
+    g_interp = ChezSchemeInterpreter::instance();
+  }
+  static void TearDownTestSuite() {
+    g_interp.reset();
+  }
+};
+
+TEST_F(InterpreterTest, InstanceIsNonNull) {
+  ASSERT_NE(g_interp, nullptr);
 }
 
-TEST(ChezSchemeInterpreter, SameInstanceReturned) {
-  auto a = ChezSchemeInterpreter::instance();
+TEST_F(InterpreterTest, SameInstanceReturned) {
   auto b = ChezSchemeInterpreter::instance();
-  EXPECT_EQ(a.get(), b.get());
+  EXPECT_EQ(g_interp.get(), b.get());
 }
 
-TEST(ChezSchemeInterpreter, EvalSimpleExpression) {
-  auto interp = ChezSchemeInterpreter::instance();
-  EXPECT_TRUE(interp->eval("(+ 1 2)"));
+TEST_F(InterpreterTest, EvalSimpleExpression) {
+  EXPECT_TRUE(g_interp->eval("(+ 1 2)"));
 }
 
 TEST(ParseLogLevel, KnownLevels) {
@@ -42,5 +49,3 @@ TEST(ParseLogLevel, KnownLevels) {
 TEST(ParseLogLevel, UnknownDefaultsToWarning) {
   EXPECT_EQ(parseLogLevel("bogus"), SchemeLogLevel::Warning);
 }
-
-} // namespace
