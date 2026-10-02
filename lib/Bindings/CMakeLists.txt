@@ -28,8 +28,6 @@ target_include_directories(CrestBindings
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${ChezBootHeaders_BINARY_DIR}
     ${ChezScheme_SOURCE_DIR}/boot/pb
-    ${LLVM_INCLUDE_DIRS}
-    ${MLIR_INCLUDE_DIRS}
 )
 
 target_link_libraries(CrestBindings
