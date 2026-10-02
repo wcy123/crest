@@ -58,6 +58,8 @@ jobs:
         with:
           path: ${{ env.LLVM_INSTALL }}
           key: linux-llvm-${{ env.LLVM_TAG }}
+          restore-keys: |
+            linux-llvm-
 
       - name: Build LLVM/MLIR from source
         if: steps.cache-llvm.outputs.cache-hit != 'true'
