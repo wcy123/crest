@@ -3,8 +3,8 @@
  * Licensed under the MIT License.
  */
 
-#include "crest/Bindings/Logging.h"
-#include "crest/Bindings/SchemeWrapper.h"
+#include "../Logging.h"
+#include "../SchemeWrapper.h"
 #include "mlir/CAPI/IR.h"
 #include "mlir/CAPI/Wrap.h"
 #include "mlir/IR/Value.h"

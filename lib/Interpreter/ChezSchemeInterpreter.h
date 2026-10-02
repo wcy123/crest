@@ -10,7 +10,7 @@
 #include <vector>
 
 // Include Chez Scheme types (ptr, iptr, uptr) via wrapper
-#include "crest/Bindings/SchemeWrapper.h"
+#include "../Bindings/SchemeWrapper.h"
 
 namespace mlir {
 class Operation;

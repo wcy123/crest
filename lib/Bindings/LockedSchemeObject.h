@@ -7,7 +7,7 @@
 #define CREST_BINDINGS_LOCKED_SCHEME_OBJECT_H
 
 // Include Chez Scheme types via wrapper
-#include "crest/Bindings/SchemeWrapper.h"
+#include "SchemeWrapper.h"
 
 namespace crest {
 

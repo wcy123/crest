@@ -3,8 +3,8 @@
  * Licensed under the MIT License.
  */
 
-#include "crest/Bindings/SchemeWrapper.h"
-#include "crest/Interpreter/ChezSchemeInterpreter.h"
+#include "SchemeWrapper.h"
+#include "../Interpreter/ChezSchemeInterpreter.h"
 #include "llvm/Support/raw_ostream.h"
 
 #define DEBUG_TYPE "scheme-logging-bindings"

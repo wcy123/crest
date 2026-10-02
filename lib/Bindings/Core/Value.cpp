@@ -5,7 +5,7 @@
 
 // Mirrors (mlir core value): Value and ValueArrayRef primitives.
 
-#include "crest/Bindings/SchemeWrapper.h"
+#include "../SchemeWrapper.h"
 #include "mlir/CAPI/IR.h"
 #include "mlir/CAPI/Wrap.h"
 #include "mlir/IR/Value.h"

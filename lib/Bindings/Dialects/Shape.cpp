@@ -3,7 +3,7 @@
  * Licensed under the MIT License.
  */
 
-#include "crest/Bindings/SchemeWrapper.h"
+#include "../SchemeWrapper.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/Dialect/Shape/IR/Shape.h"
 

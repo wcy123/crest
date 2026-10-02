@@ -3,7 +3,7 @@
  * Licensed under the MIT License.
  */
 
-#include "crest/Bindings/SchemeWrapper.h"
+#include "SchemeWrapper.h"
 
 namespace crest {
 

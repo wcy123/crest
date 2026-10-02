@@ -3,7 +3,7 @@
  * Licensed under the MIT License.
  */
 
-#include "crest/Interpreter/ChezSchemeInterpreter.h"
+#include "ChezSchemeInterpreter.h"
 
 #include "llvm/Support/raw_ostream.h"
 #include "mlir/IR/Operation.h"
