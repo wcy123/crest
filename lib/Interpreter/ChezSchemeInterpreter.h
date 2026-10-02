@@ -46,6 +46,12 @@ class ChezSchemeInterpreter {
   instance(SchemeLogLevel logLevel = SchemeLogLevel::Warning,
            void (*initHook)() = nullptr);
 
+  // Private-tag constructor — public so std::make_shared can call it, but
+  // PrivateTag is a private type so only WeakSingleton (a friend) can name it.
+  struct PrivateTag { explicit PrivateTag() = default; };
+  ChezSchemeInterpreter(PrivateTag, SchemeLogLevel logLevel, void (*initHook)());
+  ~ChezSchemeInterpreter();
+
   // Non-copyable, non-movable
   ChezSchemeInterpreter(const ChezSchemeInterpreter&) = delete;
   ChezSchemeInterpreter& operator=(const ChezSchemeInterpreter&) = delete;
@@ -68,9 +74,6 @@ class ChezSchemeInterpreter {
 
  private:
   friend struct WeakSingleton<ChezSchemeInterpreter>;
-
-  explicit ChezSchemeInterpreter(SchemeLogLevel logLevel, void (*initHook)());
-  ~ChezSchemeInterpreter();
 
   SchemeLogLevel logLevel_;
 };

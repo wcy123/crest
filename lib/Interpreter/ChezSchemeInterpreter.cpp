@@ -43,7 +43,8 @@ struct WeakSingleton {
   static std::shared_ptr<T> create(Args&&... args) {
     std::shared_ptr<T> ret;
     if (the_instance_.expired()) {
-      ret = std::make_shared<T>(std::forward<Args>(args)...);
+      ret = std::make_shared<T>(typename T::PrivateTag{},
+                                std::forward<Args>(args)...);
       the_instance_ = ret;
     }
     ret = the_instance_.lock();
@@ -63,12 +64,14 @@ namespace crest {
 
 std::shared_ptr<ChezSchemeInterpreter>
 ChezSchemeInterpreter::instance(SchemeLogLevel logLevel, void (*initHook)()) {
-  return WeakSingleton<ChezSchemeInterpreter>::create(logLevel, initHook);
+  return WeakSingleton<ChezSchemeInterpreter>::create(
+      PrivateTag{}, logLevel, initHook);
 }
 
 // ─── Construction / Destruction ───────────────────────────────────────────────
 
-ChezSchemeInterpreter::ChezSchemeInterpreter(SchemeLogLevel logLevel,
+ChezSchemeInterpreter::ChezSchemeInterpreter(PrivateTag,
+                                             SchemeLogLevel logLevel,
                                              void (*initHook)())
     : logLevel_(logLevel) {
   g_init_hook = initHook;
