@@ -3,12 +3,13 @@
  * Licensed under the MIT License.
  */
 
-#include "crest/Bindings/SchemeMlirBindings.h"
+#include "crest/Bindings/SchemeWrapper.h"
+#include "crest/Interpreter/ChezSchemeInterpreter.h"
 #include "llvm/Support/raw_ostream.h"
 
 #define DEBUG_TYPE "scheme-logging-bindings"
 
-// Note: scheme.h included via SchemeMlirBindings.h -> ChezSchemeInterpreter.h
+// Note: scheme.h included via SchemeWrapper.h
 
 extern "C" {
 

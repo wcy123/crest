@@ -6,7 +6,8 @@
 // Mirrors (mlir core builder): builder API, block/region primitives,
 // rewriter ops, and type constructors.
 
-#include "crest/Bindings/SchemeMlirBindings.h"
+#include "crest/Bindings/Logging.h"
+#include "crest/Bindings/SchemeWrapper.h"
 #include "mlir/CAPI/IR.h"
 #include "mlir/CAPI/Wrap.h"
 #include "mlir/IR/Builders.h"
@@ -403,7 +404,6 @@ uint64_t mlir_op_clone_with_types(uint64_t rw_ptr, uint64_t op_ptr,
 
 } // extern "C"
 
-namespace mlir {
 namespace crest {
 
 void registerBuilderBindings() {
@@ -431,4 +431,3 @@ void registerBuilderBindings() {
 }
 
 } // namespace crest
-} // namespace mlir

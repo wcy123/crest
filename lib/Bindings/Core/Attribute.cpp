@@ -8,7 +8,8 @@
 //   (uint64_t ctx_ptr, ptr value) → uint64_t
 // so Scheme can discover them dynamically via foreign-entry?.
 
-#include "crest/Bindings/SchemeMlirBindings.h"
+#include "crest/Bindings/Logging.h"
+#include "crest/Bindings/SchemeWrapper.h"
 #include "mlir/IR/Attributes.h"
 #include "mlir/IR/AsmState.h"
 #include "mlir/IR/BuiltinAttributes.h"

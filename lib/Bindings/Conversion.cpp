@@ -3,7 +3,8 @@
  * Licensed under the MIT License.
  */
 
-#include "crest/Bindings/SchemeMlirBindings.h"
+#include "crest/Bindings/Logging.h"
+#include "crest/Bindings/SchemeWrapper.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/CAPI/IR.h"
 #include "mlir/CAPI/Wrap.h"

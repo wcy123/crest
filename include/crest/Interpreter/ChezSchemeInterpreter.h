@@ -18,6 +18,10 @@ class Operation;
 
 namespace crest {
 
+// Register all MLIR foreign functions accessible from Scheme.
+// Called once during Scheme runtime initialization.
+void registerMlirForeignFunctions();
+
 // Log levels for Scheme logging
 enum class SchemeLogLevel {
   Trace = 0,

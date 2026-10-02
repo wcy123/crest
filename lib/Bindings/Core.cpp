@@ -7,9 +7,8 @@
 // Implementations live in Core/Attribute.cpp, Core/Operation.cpp,
 // Core/Value.cpp, and Core/Builder.cpp.
 
-#include "crest/Bindings/SchemeMlirBindings.h"
+#include "crest/Bindings/SchemeWrapper.h"
 
-namespace mlir {
 namespace crest {
 
 void registerAttributeBindings();
@@ -25,4 +24,3 @@ void registerCoreBindings() {
 }
 
 } // namespace crest
-} // namespace mlir

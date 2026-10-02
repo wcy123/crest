@@ -4,7 +4,6 @@
  */
 
 #include "crest/Interpreter/ChezSchemeInterpreter.h"
-#include "crest/Bindings/SchemeMlirBindings.h"
 
 #include "llvm/Support/raw_ostream.h"
 #include "mlir/IR/Operation.h"
@@ -210,7 +209,7 @@ void ChezSchemeInterpreter::callPassFunction(const char* functionName, mlir::Ope
   }
 
   llvm::errs() << "[callPassFunction] Function found, creating scheme operation ptr\n";
-  ptr schemeOp = makeSchemeOperation(op);
+  ptr schemeOp = Sunsigned64(reinterpret_cast<uint64_t>(op));
   llvm::errs() << "[callPassFunction] Calling Scheme function with op=" << reinterpret_cast<uintptr_t>(op) << "\n";
   Scall1(func, schemeOp);
   llvm::errs() << "[callPassFunction] Scheme function returned\n";

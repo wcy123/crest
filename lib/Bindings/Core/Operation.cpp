@@ -6,7 +6,8 @@
 // Mirrors (mlir core operation): operation inspection, mutation, attr access,
 // walk, and diagnostic emission.
 
-#include "crest/Bindings/SchemeMlirBindings.h"
+#include "crest/Bindings/Logging.h"
+#include "crest/Bindings/SchemeWrapper.h"
 #include "crest/Bindings/LockedSchemeObject.h"
 #include "mlir/CAPI/IR.h"
 #include "mlir/CAPI/Wrap.h"

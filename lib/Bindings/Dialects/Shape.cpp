@@ -3,13 +3,13 @@
  * Licensed under the MIT License.
  */
 
-#include "crest/Bindings/SchemeMlirBindings.h"
+#include "crest/Bindings/SchemeWrapper.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/Dialect/Shape/IR/Shape.h"
 
 #define DEBUG_TYPE "scheme-shape-bindings"
 
-// Note: scheme.h included via SchemeMlirBindings.h -> ChezSchemeInterpreter.h
+// Note: scheme.h included via SchemeWrapper.h
 
 extern "C" {
 

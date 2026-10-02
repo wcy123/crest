@@ -3,7 +3,8 @@
  * Licensed under the MIT License.
  */
 
-#include "crest/Bindings/SchemeMlirBindings.h"
+#include "crest/Bindings/Logging.h"
+#include "crest/Bindings/SchemeWrapper.h"
 #include "mlir/CAPI/IR.h"
 #include "mlir/CAPI/Wrap.h"
 #include "mlir/IR/Value.h"
@@ -12,7 +13,7 @@
 
 #define DEBUG_TYPE "scheme-tensor-bindings"
 
-// Note: scheme.h included via SchemeMlirBindings.h -> ChezSchemeInterpreter.h
+// Note: scheme.h included via SchemeWrapper.h
 
 extern "C" {
 
