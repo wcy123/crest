@@ -19,13 +19,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ChezScheme is embedded via git subtree but its own submodules (zuo,
-      # zlib, lz4, nanopass, stex) are not populated — initialize them here.
-      - name: Initialize ChezScheme submodules
+      # ChezScheme is embedded via git subtree. Its nested dependencies
+      # (zuo, zlib, lz4, nanopass, stex) are recorded in its own .gitmodules
+      # but not tracked by crest's repo — clone them explicitly.
+      - name: Populate ChezScheme dependencies
         run: |
-          cd third_party/ChezScheme
-          git init
-          git submodule update --init --recursive
+          CHEZ=third_party/ChezScheme
+          clone_if_empty() { local dir=$1 url=$2; [ -z "$(ls -A $dir)" ] && git clone --depth 1 "$url" "$dir"; }
+          clone_if_empty $CHEZ/zuo      https://github.com/racket/zuo
+          clone_if_empty $CHEZ/zlib     https://github.com/madler/zlib
+          clone_if_empty $CHEZ/lz4      https://github.com/lz4/lz4
+          clone_if_empty $CHEZ/nanopass https://github.com/nanopass/nanopass-framework-scheme
+          clone_if_empty $CHEZ/stex     https://github.com/dybvig/stex
 
       # ── LLVM / MLIR (pre-built) ──────────────────────────────────────────────
       - name: Install LLVM/MLIR from apt.llvm.org
