@@ -46,9 +46,15 @@ class ChezSchemeInterpreter {
   instance(SchemeLogLevel logLevel = SchemeLogLevel::Warning,
            void (*initHook)() = nullptr);
 
-  // Private-tag constructor — public so std::make_shared can call it, but
-  // PrivateTag is a private type so only WeakSingleton (a friend) can name it.
-  struct PrivateTag { explicit PrivateTag() = default; };
+  // Private-tag constructor — both the tag type and constructor are public so
+  // std::make_shared (stdlib internals) can reach them. Protection comes from
+  // the fact that PrivateTag's constructor is private: only friends (WeakSingleton)
+  // can construct a PrivateTag and thus call this constructor.
+  struct PrivateTag {
+   private:
+    friend struct WeakSingleton<ChezSchemeInterpreter>;
+    explicit PrivateTag() = default;
+  };
   ChezSchemeInterpreter(PrivateTag, SchemeLogLevel logLevel, void (*initHook)());
   ~ChezSchemeInterpreter();
 
