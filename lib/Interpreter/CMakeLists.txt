@@ -20,6 +20,15 @@ endif()
 
 message(STATUS "Chez Scheme machine type: ${CHEZ_MACHINE}")
 
+# Honour CMAKE_C_COMPILER_LAUNCHER (e.g. sccache) for ChezScheme's C build.
+# ChezScheme's configure accepts CC= and zuo propagates it to all sub-builds.
+if(CMAKE_C_COMPILER_LAUNCHER)
+  set(CHEZ_CC "${CMAKE_C_COMPILER_LAUNCHER} ${CMAKE_C_COMPILER}")
+else()
+  set(CHEZ_CC "${CMAKE_C_COMPILER}")
+endif()
+message(STATUS "Chez Scheme CC: ${CHEZ_CC}")
+
 ExternalProject_Add(ChezScheme
   SOURCE_DIR ${CMAKE_SOURCE_DIR}/third_party/ChezScheme
   BINARY_DIR ${CMAKE_BINARY_DIR}/ChezScheme-build
@@ -28,6 +37,7 @@ ExternalProject_Add(ChezScheme
     --threads
     --disable-x11
     --machine=${CHEZ_MACHINE}
+    CC=${CHEZ_CC}
   BUILD_COMMAND ${CMAKE_COMMAND} -E chdir <BINARY_DIR> make -j8
   INSTALL_COMMAND ""
   BUILD_BYPRODUCTS
