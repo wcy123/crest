@@ -10,7 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Passes.h"
+#include "crest/Passes/Passes.h"
 #include "../Interpreter/ChezSchemeInterpreter.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Shape/IR/Shape.h"
@@ -21,7 +21,7 @@
 namespace crest {
 
 #define GEN_PASS_DEF_SCHEMEPASS
-#include "Passes.h.inc"
+#include "crest/Passes/Passes.h.inc"
 
 namespace {
 

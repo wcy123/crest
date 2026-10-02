@@ -10,9 +10,9 @@
 namespace crest {
 
 #define GEN_PASS_DECL
-#include "Passes.h.inc"
+#include "crest/Passes/Passes.h.inc"
 
 #define GEN_PASS_REGISTRATION
-#include "Passes.h.inc"
+#include "crest/Passes/Passes.h.inc"
 
 } // namespace crest
