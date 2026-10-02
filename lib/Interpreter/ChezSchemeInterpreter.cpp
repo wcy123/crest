@@ -28,8 +28,13 @@ static void custom_init() {
   if (g_init_hook) g_init_hook();
 }
 
-// WeakSingleton — private to this translation unit.
-// Holds a weak_ptr so the instance lives only as long as someone holds a shared_ptr.
+} // anonymous namespace
+
+namespace crest {
+
+// WeakSingleton lives in namespace crest to match the friend declaration in
+// ChezSchemeInterpreter.h. Defined here (not in the header) to keep it
+// private to this translation unit.
 template <typename T>
 struct WeakSingleton {
   static std::weak_ptr<T> the_instance_;
@@ -50,7 +55,7 @@ struct WeakSingleton {
 template <typename T>
 std::weak_ptr<T> WeakSingleton<T>::the_instance_;
 
-} // anonymous namespace
+} // namespace crest
 
 namespace crest {
 
