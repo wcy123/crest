@@ -22,8 +22,10 @@ namespace {
 const size_t petite_boot_size = sizeof(petite_boot_data) - 1;
 const size_t scheme_boot_size = sizeof(scheme_boot_data) - 1;
 
+// Set by ChezSchemeInterpreter constructor; called once from Sbuild_heap.
+static void (*g_init_hook)() = nullptr;
 static void custom_init() {
-  crest::registerMlirForeignFunctions();
+  if (g_init_hook) g_init_hook();
 }
 
 // WeakSingleton — private to this translation unit.
@@ -55,14 +57,16 @@ namespace crest {
 // ─── Factory ──────────────────────────────────────────────────────────────────
 
 std::shared_ptr<ChezSchemeInterpreter>
-ChezSchemeInterpreter::instance(SchemeLogLevel logLevel) {
-  return WeakSingleton<ChezSchemeInterpreter>::create(logLevel);
+ChezSchemeInterpreter::instance(SchemeLogLevel logLevel, void (*initHook)()) {
+  return WeakSingleton<ChezSchemeInterpreter>::create(logLevel, initHook);
 }
 
 // ─── Construction / Destruction ───────────────────────────────────────────────
 
-ChezSchemeInterpreter::ChezSchemeInterpreter(SchemeLogLevel logLevel)
+ChezSchemeInterpreter::ChezSchemeInterpreter(SchemeLogLevel logLevel,
+                                             void (*initHook)())
     : logLevel_(logLevel) {
+  g_init_hook = initHook;
   if (logLevel_ <= SchemeLogLevel::Debug)
     llvm::errs() << "[debug] ChezSchemeInterpreter: Initializing Chez Scheme runtime\n";
 

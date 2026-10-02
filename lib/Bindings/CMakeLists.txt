@@ -7,7 +7,6 @@ add_subdirectory(Dialects)
 set(CHEZ_MACHINE_LOCAL "${CHEZ_MACHINE}")
 
 add_library(CrestBindings STATIC
-  ${CMAKE_CURRENT_SOURCE_DIR}/../Interpreter/ChezSchemeInterpreter.cpp
   MainModule.cpp
   LockedSchemeObject.cpp
   Core.cpp
@@ -22,16 +21,13 @@ add_library(CrestBindings STATIC
 )
 
 target_include_directories(CrestBindings
-  PUBLIC
-    ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${ChezBootHeaders_BINARY_DIR}
-    ${ChezScheme_SOURCE_DIR}/boot/pb
 )
 
 target_link_libraries(CrestBindings
   PUBLIC
+    CrestInterpreter
     MLIRIR
     MLIRFuncDialect
     MLIRTensorDialect
@@ -39,6 +35,4 @@ target_link_libraries(CrestBindings
     MLIRTransforms
     MLIRDialectUtils
     MLIRTransformUtils
-  PRIVATE
-    ChezScheme
 )

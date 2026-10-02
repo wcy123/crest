@@ -43,7 +43,7 @@ struct SchemePass : impl::SchemePassBase<SchemePass> {
     }
 
     auto interp = ChezSchemeInterpreter::instance(
-        parseLogLevel(logLevel));
+        parseLogLevel(logLevel), crest::registerMlirForeignFunctions);
     interp->setLogLevel(parseLogLevel(logLevel));
 
     // Convert slash-separated name to space-separated R6RS library name.

@@ -40,8 +40,11 @@ class ChezSchemeInterpreter {
  public:
   // Only public creation point. Returns the live instance, creating and
   // initializing it if none exists. logLevel is used only on first creation.
+  // initHook is called once during Sbuild_heap to register foreign functions;
+  // pass crest::registerMlirForeignFunctions from CrestBindings.
   static std::shared_ptr<ChezSchemeInterpreter>
-  instance(SchemeLogLevel logLevel = SchemeLogLevel::Warning);
+  instance(SchemeLogLevel logLevel = SchemeLogLevel::Warning,
+           void (*initHook)() = nullptr);
 
   // Non-copyable, non-movable
   ChezSchemeInterpreter(const ChezSchemeInterpreter&) = delete;
@@ -66,7 +69,7 @@ class ChezSchemeInterpreter {
  private:
   friend struct WeakSingleton<ChezSchemeInterpreter>;
 
-  explicit ChezSchemeInterpreter(SchemeLogLevel logLevel);
+  explicit ChezSchemeInterpreter(SchemeLogLevel logLevel, void (*initHook)());
   ~ChezSchemeInterpreter();
 
   SchemeLogLevel logLevel_;
