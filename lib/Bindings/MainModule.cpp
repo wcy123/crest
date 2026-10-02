@@ -3,16 +3,14 @@
  * Licensed under the MIT License.
  */
 
-#include "SchemeWrapper.h"
+#include "Conversion.h"
+#include "Core.h"
+#include "Dialects/Shape.h"
+#include "Dialects/Tensor.h"
+#include "Logging.h"
+#include "llvm/Support/Debug.h"
 
 namespace crest {
-
-// Forward declarations — implemented in focused sub-files.
-void registerConversionBindings();
-void registerCoreBindings();
-void registerShapeBindings();
-void registerTensorBindings();
-void registerLoggingBindings();
 
 // Hook for downstream projects to register their own dialect-specific
 // FFI without modifying CREST itself.

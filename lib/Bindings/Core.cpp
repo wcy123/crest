@@ -7,14 +7,12 @@
 // Implementations live in Core/Attribute.cpp, Core/Operation.cpp,
 // Core/Value.cpp, and Core/Builder.cpp.
 
-#include "SchemeWrapper.h"
+#include "Core/Attribute.h"
+#include "Core/Builder.h"
+#include "Core/Operation.h"
+#include "Core/Value.h"
 
 namespace crest {
-
-void registerAttributeBindings();
-void registerOperationBindings();
-void registerValueBindings();
-void registerBuilderBindings();
 
 void registerCoreBindings() {
   registerAttributeBindings();

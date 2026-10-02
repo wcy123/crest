@@ -17,4 +17,8 @@ void mlir_log_error(const char* msg);
 void mlir_log_fatal(const char* msg);
 } // extern "C"
 
+namespace crest {
+void registerLoggingBindings();
+} // namespace crest
+
 #endif // CREST_BINDINGS_LOGGING_H
