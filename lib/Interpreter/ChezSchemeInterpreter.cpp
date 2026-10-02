@@ -43,6 +43,8 @@ struct WeakSingleton {
   static std::shared_ptr<T> create(Args&&... args) {
     std::shared_ptr<T> ret;
     if (the_instance_.expired()) {
+      // PrivateTag{} is constructed here — inside WeakSingleton which is a
+      // friend of both ChezSchemeInterpreter and PrivateTag.
       ret = std::make_shared<T>(typename T::PrivateTag{},
                                 std::forward<Args>(args)...);
       the_instance_ = ret;
@@ -64,8 +66,7 @@ namespace crest {
 
 std::shared_ptr<ChezSchemeInterpreter>
 ChezSchemeInterpreter::instance(SchemeLogLevel logLevel, void (*initHook)()) {
-  return WeakSingleton<ChezSchemeInterpreter>::create(
-      PrivateTag{}, logLevel, initHook);
+  return WeakSingleton<ChezSchemeInterpreter>::create(logLevel, initHook);
 }
 
 // ─── Construction / Destruction ───────────────────────────────────────────────
