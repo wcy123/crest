@@ -43,8 +43,8 @@ struct SchemePass : impl::SchemePassBase<SchemePass> {
     }
 
     auto interp = ChezSchemeInterpreter::instance(
-        ChezSchemeInterpreter::parseLogLevel(logLevel));
-    interp->setLogLevel(ChezSchemeInterpreter::parseLogLevel(logLevel));
+        parseLogLevel(logLevel));
+    interp->setLogLevel(parseLogLevel(logLevel));
 
     // Convert slash-separated name to space-separated R6RS library name.
     // e.g. "passes/my-rewrite" → "(import (passes my-rewrite))"

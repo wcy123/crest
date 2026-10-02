@@ -98,7 +98,7 @@ ChezSchemeInterpreter::~ChezSchemeInterpreter() {
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
-SchemeLogLevel ChezSchemeInterpreter::parseLogLevel(const std::string& level) {
+SchemeLogLevel parseLogLevel(const std::string& level) {
   if (level == "trace")   return SchemeLogLevel::Trace;
   if (level == "debug")   return SchemeLogLevel::Debug;
   if (level == "info")    return SchemeLogLevel::Info;

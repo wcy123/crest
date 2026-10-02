@@ -43,9 +43,6 @@ class ChezSchemeInterpreter {
   static std::shared_ptr<ChezSchemeInterpreter>
   instance(SchemeLogLevel logLevel = SchemeLogLevel::Warning);
 
-  // Parse a log-level string ("trace", "debug", ...) to SchemeLogLevel.
-  static SchemeLogLevel parseLogLevel(const std::string& level);
-
   // Non-copyable, non-movable
   ChezSchemeInterpreter(const ChezSchemeInterpreter&) = delete;
   ChezSchemeInterpreter& operator=(const ChezSchemeInterpreter&) = delete;
@@ -74,6 +71,10 @@ class ChezSchemeInterpreter {
 
   SchemeLogLevel logLevel_;
 };
+
+// Parse a log-level string ("trace", "debug", "info", "warning", "error",
+// "fatal") to SchemeLogLevel. Defaults to Warning for unknown strings.
+SchemeLogLevel parseLogLevel(const std::string& level);
 
 } // namespace crest
 
