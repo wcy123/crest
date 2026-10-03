@@ -44,6 +44,7 @@
     mlir-attr-into
     :i32 :i64 :f32 :f64 :index
     :integer :float :string
+    :opaque     ; parse MLIR attr syntax string → attr uptr (OpaqueAttr or real if dialect loaded)
     :dense-elements :dense-elements-splat
     :splat-float :splat-integer
     :i32-array :i64-array :dense-resource)
@@ -61,6 +62,7 @@
   (define-syntax :f32            (identifier-syntax 'f32))
   (define-syntax :f64            (identifier-syntax 'f64))
   (define-syntax :index          (identifier-syntax 'index))
+  (define-syntax :opaque         (identifier-syntax 'opaque))
   (define-syntax :integer        (identifier-syntax 'integer))
   (define-syntax :float          (identifier-syntax 'float))
   (define-syntax :string         (identifier-syntax 'string))
@@ -77,8 +79,12 @@
   ;;===--------------------------------------------------------------------===;;
 
   ;; Convert type symbol to C suffix: 'dense-elements → "dense_elements"
+  ;; Also accepts legacy colon-prefixed symbols: ':i64 → "i64" (strips leading ':')
   (define (type->c-body type)
-    (let ([s (symbol->string type)])
+    (let* ([s (symbol->string type)]
+           [s (if (and (> (string-length s) 0) (char=? (string-ref s 0) #\:))
+                  (substring s 1 (string-length s))
+                  s)])
       (list->string (map (lambda (c) (if (char=? c #\-) #\_ c)) (string->list s)))))
 
   ;; Unique sentinel: "not yet looked up" vs "looked up, not found" (#f).
