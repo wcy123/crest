@@ -129,10 +129,11 @@ add_custom_command(
   OUTPUT  ${CREST_BOOT_FILE}
   COMMAND ${CHEZ_SCHEME_BIN}
           --libdirs "${CMAKE_SOURCE_DIR}/scheme:${CREST_RIME_DIR}"
-          --script  ${CMAKE_SOURCE_DIR}/cmake/compile_scheme_libs.ss
+          --script ${CMAKE_SOURCE_DIR}/cmake/compile_scheme_libs.ss
           ${CREST_BOOT_FILE}
-  # Run from the scheme source dir so compile-library finds .sls files
-  # by their library-relative paths (e.g. "mlir/core/logging.sls").
+  # Run from scheme/ so compile-library finds sources via relative paths.
+  # Compiled .so/.wpo files are written next to sources then deleted by
+  # the script after make-boot-file — source tree is clean after the step.
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/scheme
   DEPENDS ChezScheme ${CREST_SLS_FILES} ${CMAKE_SOURCE_DIR}/cmake/compile_scheme_libs.ss
   COMMENT "Compiling CREST Scheme libraries into crest.boot"
