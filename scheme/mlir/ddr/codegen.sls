@@ -13,7 +13,9 @@
           (for (mlir ddr ast) expand)
           (for (mlir ddr analyze) expand)
           (for (mlir core ir) expand)
-          (for (only (mlir ddr rewrite) with-mlir-ops) expand))
+          (for (only (mlir ddr rewrite) with-mlir-ops) expand)
+          ;; keywords needed at expand time for free-identifier=? matching in transform-where-expr
+          (for (only (mlir ddr keywords) :current-op :attr) expand))
 
   ;;=======================================================================
   ;; Call graph
@@ -158,11 +160,78 @@
   ;; Match-phase check code
   ;;=======================================================================
 
+  ;;=======================================================================
+  ;; :where expression transformation — :current-op and (:attr ...) keywords
+  ;;=======================================================================
+  ;;
+  ;; Called at macro-expansion time before emitting each :where guard.
+  ;; Walks the where-expression syntax and substitutes:
+  ;;   :current-op          → (vector-ref all-operations op-idx)
+  ;;   (:attr "name")       → check-then-get with raw uptr result
+  ;;   (:attr "name" :type) → check-then-get with typed result
+  ;;
+  ;; Absent attributes raise (error ...) which the surrounding guard catches,
+  ;; turning it into a silent match failure (#f).
+  ;;
+  ;; Uses free-identifier=? via (syntax-case s (:current-op :attr) ...) so
+  ;; the match is hygienic — only :current-op/:attr from (mlir ddr keywords)
+  ;; are substituted, not user-defined identifiers with the same name.
+
+  (define (transform-where-expr where-stx op-idx)
+    (let ([cur-op #`(vector-ref all-operations #,op-idx)])
+      (let walk ([s where-stx])
+        (syntax-case s (:current-op :attr)
+          ;; Bare :current-op identifier
+          [:current-op cur-op]
+          ;; (:attr "name") — raw attribute uptr
+          [(:attr name)
+           (string? (syntax->datum #'name))
+           #`(let ([%cur #,cur-op])
+               (if (mlir-operation-has-attr? %cur name)
+                   (mlir-operation-get-attribute %cur name)
+                   (error ':attr
+                          (string-append "attribute '" name "' absent on op: ")
+                          (mlir-operation-name %cur))))]
+          ;; (:attr "name" :type) — typed attribute access
+          [(:attr name typ)
+           (string? (syntax->datum #'name))
+           (let ([type-sym (syntax->datum #'typ)]
+                 [nm #'name])
+             (let ([getter
+                    (case type-sym
+                      [(:i64)
+                       #`(mlir-operation-get-integer-attr %cur #,nm 0)]
+                      [(:f32)
+                       #`(mlir-op-get-float-attr %cur #,nm)]
+                      [(:splat-f32)
+                       #`(mlir-attr-splat-float-value
+                           (mlir-operation-get-attribute %cur #,nm))]
+                      [(:splat-i64)
+                       #`(mlir-attr-splat-int-value
+                           (mlir-operation-get-attribute %cur #,nm) 0)]
+                      [(:attr)
+                       #`(mlir-operation-get-attribute %cur #,nm)]
+                      [else
+                       (syntax-violation ':attr "unknown :attr type keyword" #'typ)])])
+               #`(let ([%cur #,cur-op])
+                   (if (mlir-operation-has-attr? %cur #,nm)
+                       #,getter
+                       (error ':attr
+                              (string-append "attribute '" #,nm "' absent on op: ")
+                              (mlir-operation-name %cur))))))]
+          ;; Recurse into compound forms
+          [(e ...) #`(#,@(map walk (syntax->list s)))]
+          ;; Atoms pass through unchanged
+          [_ s]))))
+
   (define (generate-check-code actions match-vec operands-ref)
     (if (null? actions)
         #'#t
         (let ([checks (map (lambda (act) (action->check-code act match-vec operands-ref)) actions)])
-          #`(and #,@checks))))
+          ;; Wrap in guard so any exception (e.g. from (:attr ...) on absent attr,
+          ;; or any other runtime error during matching) becomes a silent match failure.
+          #`(guard (exn [#t #f])
+              (and #,@checks)))))
 
   (define (action->check-code action match-vec operands-ref)
     (let ([tag (car action)])
@@ -236,9 +305,12 @@
                #t))]
 
         [(:check-where)
-         ;; Emit the guard expression directly — it runs after all operands of
-         ;; the enclosing match-op are bound and returns truthy to continue.
-         (cdr (assq 'expr (cdr action)))]
+         ;; Transform the where expression to substitute :current-op and (:attr ...)
+         ;; before emitting.  op-idx is the index of the op this :where belongs to.
+         (let* ([fields  (cdr action)]
+                [op-idx  (cdr (assq 'op-idx fields))]
+                [expr    (cdr (assq 'expr   fields))])
+           (transform-where-expr expr op-idx))]
 
         [else
          (error 'action->check-code "Unknown action type" tag)])))

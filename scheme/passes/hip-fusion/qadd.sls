@@ -9,11 +9,9 @@
 ;; (passes hip-fusion qadd) — Pattern 1: QAdd  (benefit 10)
 ;; dq × 2 → hip.add → hip.quantize_linear  ⟹  hip.qadd
 ;;
-;; Scale operands are matched structurally as hip.constant ops: the pattern
-;; engine checks the op name, so :where only needs to verify the "value" attr
-;; is splat.  Note: in DDR, op always refers to the ROOT matched op
-;; (hip.quantize_linear here), so we use mlir-value-get-defining-op on the
-;; scale Value to reach the constant op for the attr check.
+;; Scale operands are matched structurally as hip.constant ops.  The :where
+;; clauses use the DDR keywords :current-op (the matched sub-op) and
+;; (:attr "value") (fetches the "value" attribute, fails the match if absent).
 ;;
 ;;===----------------------------------------------------------------------===;;
 
@@ -26,29 +24,23 @@
           (mlir ddr)
           (passes hip-fusion helpers))
 
-  (define (splat-attr? val)
-    (mlir-attr-is-splat
-      (mlir-operation-get-attribute (mlir-value-get-defining-op val) "value")))
-
   (define-rewrite-pattern (hip-qadd-fusion op rewriter)
     :if-match
         %q         = hip.quantize_linear   (%ctx %sum %out_scale)
-                       :where (and (splat-attr? %out_scale)
-                                   (hip-extractable-qdq-zeropoint? op))
+                       :where (hip-extractable-qdq-zeropoint? op)
         %out_scale = hip.constant          ()
+                       :where (mlir-attr-is-splat (:attr "value"))
         %sum       = hip.add               (%ctx %dq_lhs %dq_rhs %sum_init)
                        :where (and (hip-value-single-use? %sum)
                                    (hip-can-build-init? op %sum_init))
         %dq_lhs    = hip.dequantize_linear (%ctx %lhs %lhs_scale)
-                       :where (and (splat-attr? %lhs_scale)
-                                   (hip-extractable-qdq-zeropoint?
-                                     (mlir-value-get-defining-op %dq_lhs)))
+                       :where (hip-extractable-qdq-zeropoint? :current-op)
         %lhs_scale = hip.constant          ()
+                       :where (mlir-attr-is-splat (:attr "value"))
         %dq_rhs    = hip.dequantize_linear (%ctx %rhs %rhs_scale)
-                       :where (and (splat-attr? %rhs_scale)
-                                   (hip-extractable-qdq-zeropoint?
-                                     (mlir-value-get-defining-op %dq_rhs)))
+                       :where (hip-extractable-qdq-zeropoint? :current-op)
         %rhs_scale = hip.constant          ()
+                       :where (mlir-attr-is-splat (:attr "value"))
     :then-let
         ([!out-type  (mlir-value-get-type %q)]
          [%dq-lhs-op (mlir-value-get-defining-op %dq_lhs)]

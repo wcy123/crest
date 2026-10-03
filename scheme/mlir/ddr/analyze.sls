@@ -136,7 +136,7 @@
             ;; reference all variables.
             (let ([where-expr (ast-match-expand-where-expr match-op)])
               (when where-expr
-                (set! acc (cons (action:check-where where-expr) acc)))))))
+                (set! acc (cons (action:check-where where-expr op-idx) acc)))))))
 
       ;; Warn about unvisited operations
       (warn-unvisited-operations match-vec visited)

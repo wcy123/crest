@@ -47,8 +47,11 @@
 
   ;; :where guard — a raw Scheme expression evaluated after all operands of
   ;; the enclosing match-op are bound.  Returns truthy to continue, falsy to fail.
-  (define (action:check-where expr)
+  ;; op-idx identifies the currently matched op so the codegen can substitute
+  ;; :current-op and (:attr ...) references in the expression.
+  (define (action:check-where expr op-idx)
     (list ':check-where
+          (cons 'op-idx op-idx)
           (cons 'expr expr)))
 
   ;; Bind a non-root result variable to the Value produced by a matched op.

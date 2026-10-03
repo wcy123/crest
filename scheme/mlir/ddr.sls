@@ -6,6 +6,7 @@
           :debug-parse :debug-validate :debug-analyze :debug-codegen :debug-matching
           = : -> :region :regions
           :index :any
+          :current-op :attr
           make-unbound-value)
   (import (except (rnrs) =)
           (mlir ddr keywords)  ;; Import keywords at run time for re-export

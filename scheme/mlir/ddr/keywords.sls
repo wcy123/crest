@@ -3,7 +3,8 @@
   (export :if-match :then-let :rewrite :with :where
           :debug-parse :debug-validate :debug-analyze :debug-codegen :debug-matching
           = : -> :region :regions
-          :index :any)
+          :index :any
+          :current-op :attr)
   (import (except (rnrs) =))
 
   ;; Define keywords as syntax (for cross-library hygiene)
@@ -23,5 +24,12 @@
   (define-syntax :region (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
   (define-syntax :regions (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
   (define-syntax :index   (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
-  (define-syntax :any     (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
+  (define-syntax :any        (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
+  ;; :current-op — inside a :where clause, refers to the currently matched sub-op.
+  ;; Replaced syntactically by the DDR codegen; never evaluated as Scheme.
+  (define-syntax :current-op (lambda (x) (syntax-violation 'pattern-keyword "misplaced :current-op (only valid inside DDR :where)" x)))
+  ;; :attr — (:attr "name") or (:attr "name" :type) in a :where clause.
+  ;; Fetches the named attribute from :current-op; raises an error if absent
+  ;; (caught by the guard wrapping in generate-check-code → match failure).
+  (define-syntax :attr       (lambda (x) (syntax-violation 'pattern-keyword "misplaced :attr (only valid inside DDR :where)" x)))
 )
