@@ -13,6 +13,9 @@
 
 #include "ChezBootPetite.h"
 #include "ChezBootScheme.h"
+#ifdef CREST_BOOT_EMBEDDED
+#include "CrestBoot.h"
+#endif
 
 #include <cassert>
 #include <memory>
@@ -21,6 +24,9 @@ namespace {
 
 const size_t petite_boot_size = sizeof(petite_boot_data) - 1;
 const size_t scheme_boot_size = sizeof(scheme_boot_data) - 1;
+#ifdef CREST_BOOT_EMBEDDED
+const size_t crest_boot_size  = sizeof(crest_boot_data)  - 1;
+#endif
 
 // Set by ChezSchemeInterpreter constructor; called once from Sbuild_heap.
 static void (*g_init_hook)() = nullptr;
@@ -89,14 +95,22 @@ ChezSchemeInterpreter::ChezSchemeInterpreter(PrivateTag,
   Sregister_boot_file_bytes("scheme.boot",
       const_cast<void*>(static_cast<const void*>(scheme_boot_data)),
       scheme_boot_size);
+#ifdef CREST_BOOT_EMBEDDED
+  Sregister_boot_file_bytes("crest.boot",
+      const_cast<void*>(static_cast<const void*>(crest_boot_data)),
+      crest_boot_size);
+#endif
 
   if (logLevel_ <= SchemeLogLevel::Debug)
     llvm::errs() << "[debug] ChezSchemeInterpreter: Building heap\n";
 
   Sbuild_heap(nullptr, custom_init);
 
+#ifndef CREST_BOOT_EMBEDDED
+  // Development mode: load .sls files from the source tree at runtime.
   addLibraryPath(SCHEME_LIBRARIES_DIR, SCHEME_BINARY_DIR);
   addLibraryPath(RIME_DIR, RIME_DIR);
+#endif
 
   if (logLevel_ <= SchemeLogLevel::Info)
     llvm::errs() << "[info] ChezSchemeInterpreter: Initialization complete\n";
