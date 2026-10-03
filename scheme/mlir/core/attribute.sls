@@ -41,6 +41,14 @@
           mlir-attr-is-splat
           mlir-attr-splat-float-value
           mlir-attr-splat-int-value
+          ;; Type-check predicates on raw attr uptr
+          mlir-attr-isa-integer      ; #t if IntegerAttr
+          mlir-attr-isa-float        ; #t if FloatAttr
+          mlir-attr-isa-string       ; #t if StringAttr
+          mlir-attr-isa-dense-elements ; #t if DenseElementsAttr
+          ;; Value extractors (return sentinel on wrong type)
+          mlir-attr-as-integer       ; IntegerAttr → i64 (INT64_MIN if wrong type)
+          mlir-attr-as-float         ; FloatAttr → double (NaN if wrong type)
           mlir-op-get-operand-segment-sizes)
 
   (import (rnrs)
@@ -82,6 +90,41 @@
 
   (define mlir-attr-splat-int-value
     (foreign-procedure "mlir_attr_splat_int_value" (uptr integer-64) integer-64))
+
+  ;; Type-check predicates — work on any mlir::Attribute uptr.
+  (define mlir-attr-isa-integer
+    (let ([f (foreign-procedure "mlir_attr_isa_integer" (uptr) int)])
+      (lambda (a) (not (zero? (f a))))))
+
+  (define mlir-attr-isa-float
+    (let ([f (foreign-procedure "mlir_attr_isa_float" (uptr) int)])
+      (lambda (a) (not (zero? (f a))))))
+
+  (define mlir-attr-isa-string
+    (let ([f (foreign-procedure "mlir_attr_isa_string" (uptr) int)])
+      (lambda (a) (not (zero? (f a))))))
+
+  (define mlir-attr-isa-dense-elements
+    (let ([f (foreign-procedure "mlir_attr_isa_dense_elements" (uptr) int)])
+      (lambda (a) (not (zero? (f a))))))
+
+  ;; Value extractors — work on any mlir::Attribute uptr.
+  ;; Signal an error if the attribute is not of the expected type so callers
+  ;; never silently receive a sentinel.  In a DDR :where clause the outer
+  ;; guard catches the error and turns it into a match failure (#f).
+  (define mlir-attr-as-integer
+    (let ([get (foreign-procedure "mlir_attr_as_integer" (uptr) integer-64)])
+      (lambda (attr)
+        (if (mlir-attr-isa-integer attr)
+            (get attr)
+            (error 'mlir-attr-as-integer "attribute is not an IntegerAttr" attr)))))
+
+  (define mlir-attr-as-float
+    (let ([get (foreign-procedure "mlir_attr_as_float" (uptr) double)])
+      (lambda (attr)
+        (if (mlir-attr-isa-float attr)
+            (get attr)
+            (error 'mlir-attr-as-float "attribute is not a FloatAttr" attr)))))
 
   (define mlir-op-get-operand-segment-sizes
     (foreign-procedure "mlir_op_get_operand_segment_sizes" (uptr) scheme-object))

@@ -247,7 +247,7 @@
                                ;; Phase 3 (analyze): used to generate operand binding actions
                                ;; Contains: list of ast-operand records
                                ;;
-                               ;; Input syntax: (%x (&optional %y %z) %w (&variadic %rest))
+                               ;; Input syntax: (%x (:optional %y %z) %w (:variadic %rest))
                                ;; Parsed to flat list:
                                ;;   [ast-operand('required, #'%x),
                                ;;    ast-operand('optional, #'%y),
@@ -258,8 +258,9 @@
                                ;; Each operand is tagged with kind: 'required, 'optional, or 'variadic
                                ;; Operand vars can be result variables (from other ops) or free variables
                                ;;
-                               ;; Note: Optional/variadic require AttrSizedOperandSegments trait
-                               ;; and runtime operandSegmentSizes attribute to calculate positions
+                               ;; :optional presence detected via mlir-operation-num-operands.
+                               ;; Ops with AttrSizedOperandSegments need operandSegmentSizes
+                               ;; for correct offsets (future work).
 
       (mutable where-expr)))   ;; Phase 1 (parse): syntax object - pure Scheme guard expression
                                ;; Executes after matching this operation (early return on failure)
@@ -275,10 +276,10 @@
   ;; Used by: ast-match-expand (operands field)
   ;;
   ;; Represents a single operand in a match operation with its kind tag.
-  ;; The (&optional ...) and (&variadic ...) groups in the DSL syntax are
-  ;; flattened during parsing - each variable gets its own record.
+  ;; The (:optional ...) and (:variadic ...) groups in the DSL syntax are
+  ;; flattened during parsing — each variable gets its own record.
   ;;
-  ;; Example DSL input: (%x (&optional %y %z) %w (&variadic %rest))
+  ;; Example DSL input: (%x (:optional %y %z) %w (:variadic %rest))
   ;; Phase 1 (parse): Flattened to list of ast-operand records:
   ;;   [ast-operand('required, #'%x),
   ;;    ast-operand('optional, #'%y),
@@ -286,8 +287,9 @@
   ;;    ast-operand('required, #'%w),
   ;;    ast-operand('variadic, #'%rest)]
   ;;
-  ;; Note: Optional/variadic require AttrSizedOperandSegments trait and
-  ;; runtime operandSegmentSizes attribute to calculate access positions.
+  ;; :optional presence detected at runtime via mlir-operation-num-operands.
+  ;; Ops with AttrSizedOperandSegments need operandSegmentSizes instead
+  ;; (future enhancement; :variadic also parsed but not yet codegen'd).
   ;;
   (define-record-type (ast-operand make-ast-operand ast-operand?)
     (fields
