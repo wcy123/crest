@@ -46,15 +46,6 @@
     mlir-builder-at-block-end
     mlir-destroy-builder
     mlir-create-op
-    ;; Type context + constructors + queries (re-exported from (mlir core types))
-    mlir-type-get-context
-    mlir-get-index-type
-    mlir-get-i64-type
-    mlir-get-i1-type
-    mlir-type-is-ranked-tensor
-    mlir-type-get-element-type
-    mlir-type-get-shape
-    mlir-type-get-rank
     ;; Pattern application
     mlir-apply-patterns-greedy
     ;; Generic op rebuild
