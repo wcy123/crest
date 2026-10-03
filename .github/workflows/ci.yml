@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches: [main]       # verify post-merge on main
+  pull_request:
+    branches: [main]       # verify PRs before merge
+
+env:
+  LLVM_VERSION: 22
+
+jobs:
+  build-and-test:
+    name: Build and Test (LLVM 22)
+    runs-on: ubuntu-22.04
+
+    steps:
+      # ── Checkout ────────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+
+      # ── LLVM / MLIR (pre-built) ──────────────────────────────────────────────
+      - name: Install LLVM/MLIR from apt.llvm.org
+        run: |
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
+            | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+          echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-22 main" \
+            | sudo tee /etc/apt/sources.list.d/llvm.list
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang-22 llvm-22-dev libmlir-22-dev mlir-22-tools
+
+      # ── System packages (ChezScheme build deps) ─────────────────────────────
+      - name: Install system dependencies
+        run: |
+          sudo apt-get install -y \
+            build-essential \
+            libncurses-dev \
+            uuid-dev \
+            libgtest-dev \
+            googletest
+
+      # ── Python tools ────────────────────────────────────────────────────────
+      - name: Install Python build tools
+        run: pip install cmake ninja lit
+
+      # ── sccache (speeds up incremental crest rebuilds on re-runs) ───────────
+      - name: Set sccache environment
+        run: |
+          echo "SCCACHE_DIR=${{ runner.workspace }}/sccache-dir" >> $GITHUB_ENV
+          echo "SCCACHE_KEY_DATE=$(date -u +'%Y%m%d')" >> $GITHUB_ENV
+
+      - name: Restore sccache cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.workspace }}/sccache-dir
+          key: sccache-linux-${{ env.SCCACHE_KEY_DATE }}
+          restore-keys: sccache-linux-
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      # ── Configure ───────────────────────────────────────────────────────────
+      - name: Configure
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_C_COMPILER=clang-22 \
+            -DCMAKE_CXX_COMPILER=clang++-22 \
+            -DCMAKE_C_COMPILER_LAUNCHER=sccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
+            -DMLIR_DIR=/usr/lib/llvm-22/lib/cmake/mlir \
+            -DLLVM_DIR=/usr/lib/llvm-22/lib/cmake/llvm \
+            -DLLVM_EXTERNAL_LIT="$(which lit)"
+
+      # ── Build ────────────────────────────────────────────────────────────────
+      - name: Build
+        run: cmake --build build --parallel $(nproc)
+
+      # ── Save sccache ─────────────────────────────────────────────────────────
+      - name: Save sccache cache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: ${{ runner.workspace }}/sccache-dir
+          key: sccache-linux-${{ env.SCCACHE_KEY_DATE }}
+
+      # ── Unit tests (GoogleTest) ───────────────────────────────────────────────
+      - name: Unit tests
+        run: |
+          cmake --build build --target CrestInterpreterTests
+          ./build/unittests/Interpreter/CrestInterpreterTests \
+            --gtest_output=xml:build/test-results/unit-tests.xml
+
+      # ── Integration tests (lit + FileCheck) ───────────────────────────────────
+      - name: Lit tests
+        run: cmake --build build --target check-crest
+
+      # ── Upload test results ───────────────────────────────────────────────────
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: build/test-results/
