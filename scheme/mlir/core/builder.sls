@@ -64,7 +64,7 @@
 )
 
   (import (rnrs)
-          (only (chezscheme) foreign-procedure parameterize make-parameter void)
+          (only (chezscheme) foreign-procedure parameterize make-parameter void case-lambda)
           (only (mlir context) current-mlir-context with-mlir-context)
           (only (mlir core operation) mlir-operation-get-context))
 
@@ -202,20 +202,26 @@
   ;; Return the MLIR built-in IndexType for the given context.
   ;; ctx: MLIRContext* uptr (optional — defaults to (current-mlir-context))
   ;; Returns: IndexType opaque uptr
-  (define (mlir-get-index-type . args)
-    (%mlir-get-index-type (if (pair? args) (car args) (%require-context 'mlir-get-index-type))))
+  (define mlir-get-index-type
+    (case-lambda
+      [()    (%mlir-get-index-type (%require-context 'mlir-get-index-type))]
+      [(ctx) (%mlir-get-index-type ctx)]))
 
   ;; Return IntegerType<64> (signless) for the given context.
   ;; ctx: MLIRContext* uptr (optional — defaults to (current-mlir-context))
   ;; Returns: IntegerType<64> opaque uptr
-  (define (mlir-get-i64-type . args)
-    (%mlir-get-i64-type   (if (pair? args) (car args) (%require-context 'mlir-get-i64-type))))
+  (define mlir-get-i64-type
+    (case-lambda
+      [()    (%mlir-get-i64-type (%require-context 'mlir-get-i64-type))]
+      [(ctx) (%mlir-get-i64-type ctx)]))
 
   ;; Return IntegerType<1> (i1 / boolean) for the given context.
   ;; ctx: MLIRContext* uptr (optional — defaults to (current-mlir-context))
   ;; Returns: IntegerType<1> opaque uptr
-  (define (mlir-get-i1-type . args)
-    (%mlir-get-i1-type    (if (pair? args) (car args) (%require-context 'mlir-get-i1-type))))
+  (define mlir-get-i1-type
+    (case-lambda
+      [()    (%mlir-get-i1-type (%require-context 'mlir-get-i1-type))]
+      [(ctx) (%mlir-get-i1-type ctx)]))
 
   ;; Returns 1 if the type is a RankedTensorType, 0 otherwise.
   ;; type: Type opaque uptr
