@@ -3,11 +3,11 @@
  * Licensed under the MIT License.
  */
 
-#ifndef CREST_BINDINGS_DIALECTS_TENSOR_H
-#define CREST_BINDINGS_DIALECTS_TENSOR_H
+#ifndef CREST_BINDINGS_CORE_TYPES_H
+#define CREST_BINDINGS_CORE_TYPES_H
 
 namespace crest {
-void registerTensorBindings();
+void registerTypeBindings();
 } // namespace crest
 
-#endif // CREST_BINDINGS_DIALECTS_TENSOR_H
+#endif // CREST_BINDINGS_CORE_TYPES_H

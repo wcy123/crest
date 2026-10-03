@@ -62,6 +62,8 @@
     value-array-ref-at
     ;; (mlir core builder)
     mlir-type-get-context
+    current-mlir-context
+    with-mlir-context
     current-rewriter
     current-block-builder
     current-loc
@@ -111,7 +113,9 @@
     ;; (mlir dialects shape)
     mlir-shape.shape-type mlir-shape.size-type mlir-shape.witness-type)
 
-  (import (mlir core attribute)
+  (import (mlir core context)
+          (mlir core types)
+          (mlir core attribute)
           (mlir core operation)
           (mlir core value)
           (mlir core builder)
