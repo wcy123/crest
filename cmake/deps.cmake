@@ -106,65 +106,6 @@ add_custom_target(ChezBootHeaders DEPENDS
   ${ChezBootHeaders_BINARY_DIR}/ChezBootScheme.h
 )
 
-# ─── CREST Scheme boot file (deployment only) ────────────────────────────────
-# When CREST_EMBED_SCHEME_BOOT=ON, compile all CREST .sls libraries into a
-# single crest.boot, embed it as a C byte-array header, and define
-# CREST_BOOT_EMBEDDED so the interpreter loads it at startup.
-# When OFF (default), the interpreter searches for .sls files at runtime via
-# addLibraryPath — convenient for development.
-option(CREST_EMBED_SCHEME_BOOT "Compile and embed Scheme libraries into the binary (deployment)" OFF)
-
-if(CREST_EMBED_SCHEME_BOOT)
-
-set(CHEZ_SCHEME_BIN
-    ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/bin/${CHEZ_MACHINE}/scheme)
-
-set(CREST_BOOT_FILE   "${CMAKE_BINARY_DIR}/crest.boot")
-set(CREST_BOOT_HEADER "${ChezBootHeaders_BINARY_DIR}/CrestBoot.h")
-
-# Collect all .sls source files so CMake reruns when any of them changes.
-file(GLOB_RECURSE CREST_SLS_FILES "${CMAKE_SOURCE_DIR}/scheme/*.sls")
-
-add_custom_command(
-  OUTPUT  ${CREST_BOOT_FILE}
-  COMMAND ${CHEZ_SCHEME_BIN}
-          --libdirs "${CMAKE_SOURCE_DIR}/scheme:${CREST_RIME_DIR}"
-          --script ${CMAKE_SOURCE_DIR}/cmake/compile_scheme_libs.ss
-          ${CREST_BOOT_FILE}
-  # Run from scheme/ so compile-library finds sources via relative paths.
-  # Compiled .so/.wpo files are written next to sources then deleted by
-  # the script after make-boot-file — source tree is clean after the step.
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/scheme
-  DEPENDS ChezScheme ${CREST_SLS_FILES} ${CMAKE_SOURCE_DIR}/cmake/compile_scheme_libs.ss
-  COMMENT "Compiling CREST Scheme libraries into crest.boot"
-  VERBATIM
-)
-
-add_custom_command(
-  OUTPUT  ${CREST_BOOT_HEADER}
-  COMMAND ${Python3_EXECUTABLE}
-          ${CMAKE_SOURCE_DIR}/cmake/xxd.py
-          --var    crest_boot_data
-          --output ${CREST_BOOT_HEADER}
-          ${CREST_BOOT_FILE}
-  DEPENDS ${CREST_BOOT_FILE}
-  COMMENT "Embedding crest.boot"
-  VERBATIM
-)
-
-add_custom_target(CrestBootHeader DEPENDS ${CREST_BOOT_HEADER})
-
-# Make ChezBootHeaders also depend on CrestBootHeader so a single
-# dependency on ChezBootHeaders pulls in everything.
-add_dependencies(ChezBootHeaders CrestBootHeader)
-
-  set(CREST_BOOT_HEADER_DIR "${ChezBootHeaders_BINARY_DIR}" CACHE INTERNAL "")
-  message(STATUS "CREST: Scheme boot embedding enabled — crest.boot will be compiled")
-
-else()
-  message(STATUS "CREST: Scheme boot embedding disabled (development mode) — set CREST_EMBED_SCHEME_BOOT=ON for deployment")
-endif()
-
 # ─── rime: fetch source (pure Scheme, no build step) ─────────────────────────
 FetchContent_Declare(rime
   GIT_REPOSITORY https://github.com/wcy123/rime.git
@@ -176,3 +117,75 @@ if(NOT rime_POPULATED)
   FetchContent_Populate(rime)
 endif()
 set(CREST_RIME_DIR "${rime_SOURCE_DIR}" CACHE INTERNAL "")
+
+# ─── CREST Scheme boot file (deployment only) ────────────────────────────────
+# When CREST_EMBED_SCHEME_BOOT=ON, compile all CREST .sls libraries into a
+# single crest.boot, embed it as a C byte-array header, and define
+# CREST_BOOT_EMBEDDED so the interpreter loads it at startup.
+# When OFF (default), the interpreter searches for .sls files at runtime via
+# addLibraryPath — convenient for development.
+# NOTE: must come after rime is fetched so CREST_RIME_DIR is set.
+option(CREST_EMBED_SCHEME_BOOT "Compile and embed Scheme libraries into the binary (deployment)" OFF)
+
+if(CREST_EMBED_SCHEME_BOOT)
+  set(CHEZ_SCHEME_BIN
+      ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/bin/${CHEZ_MACHINE}/scheme)
+  set(CREST_BOOT_FILE   "${CMAKE_BINARY_DIR}/crest.boot")
+  set(CREST_BOOT_HEADER "${ChezBootHeaders_BINARY_DIR}/CrestBoot.h")
+  set(CREST_SCHEME_OBJ_DIR "${CMAKE_BINARY_DIR}/scheme-objs")
+
+  # ── Scan .sls dependency graph at configure time ────────────────────────────
+  # Generates SchemeLibTargets.cmake with one add_custom_command per library,
+  # with correct DEPENDS declared so Ninja compiles in parallel (up to -j N).
+  set(SCHEME_TARGETS_CMAKE "${CMAKE_BINARY_DIR}/SchemeLibTargets.cmake")
+  execute_process(
+    COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_SOURCE_DIR}/cmake/scan_scheme_deps.py
+            --scheme-dir ${CMAKE_SOURCE_DIR}/scheme
+            --rime-dir   ${CREST_RIME_DIR}
+            --obj-dir    ${CREST_SCHEME_OBJ_DIR}
+            --scheme-bin ${CHEZ_SCHEME_BIN}
+            --script     ${CMAKE_SOURCE_DIR}/cmake/compile_one_lib.ss
+            --output     ${SCHEME_TARGETS_CMAKE}
+    RESULT_VARIABLE _scan_result
+  )
+  if(NOT _scan_result EQUAL 0)
+    message(FATAL_ERROR "CREST: scan_scheme_deps.py failed (exit ${_scan_result})")
+  endif()
+
+  # Include the generated per-library targets.
+  # Also depends on ChezScheme so the scheme binary exists before compilation.
+  include(${SCHEME_TARGETS_CMAKE})
+  add_dependencies(CrestSchemeLibs ChezScheme)
+
+  # ── Bundle all .so files into crest.boot ───────────────────────────────────
+  add_custom_command(
+    OUTPUT  ${CREST_BOOT_FILE}
+    COMMAND ${CHEZ_SCHEME_BIN}
+            --script ${CMAKE_SOURCE_DIR}/cmake/make_boot.ss
+            ${CREST_BOOT_FILE}
+            ${CREST_SCHEME_OBJ_DIR}
+    DEPENDS CrestSchemeLibs
+    COMMENT "Bundling Scheme .so files into crest.boot"
+    VERBATIM
+  )
+
+  add_custom_command(
+    OUTPUT  ${CREST_BOOT_HEADER}
+    COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_SOURCE_DIR}/cmake/xxd.py
+            --var    crest_boot_data
+            --output ${CREST_BOOT_HEADER}
+            ${CREST_BOOT_FILE}
+    DEPENDS ${CREST_BOOT_FILE}
+    COMMENT "Embedding crest.boot"
+    VERBATIM
+  )
+
+  add_custom_target(CrestBootHeader DEPENDS ${CREST_BOOT_HEADER})
+  add_dependencies(ChezBootHeaders CrestBootHeader)
+
+  message(STATUS "CREST: Scheme boot embedding enabled — parallel compilation via Ninja -j")
+else()
+  message(STATUS "CREST: Scheme boot embedding disabled — use -DCREST_EMBED_SCHEME_BOOT=ON for deployment")
+endif()
