@@ -3,7 +3,8 @@
   (export generate-debug-ast
           generate-pattern-matchAndRewrite
           generate-debug-codegen
-          make-unbound-value)
+          make-unbound-value
+          unbound-value?)
   (import (rnrs)
           (only (chezscheme) syntax->list syntax->datum syntax-object->datum record-rtd record-type-field-names record-accessor identifier?
                 call-with-string-output-port display-condition)
@@ -13,7 +14,9 @@
           (for (mlir ddr ast) expand)
           (for (mlir ddr analyze) expand)
           (for (mlir core ir) expand)
-          (for (only (mlir ddr rewrite) with-mlir-ops) expand))
+          (for (only (mlir ddr rewrite) with-mlir-ops) expand)
+          ;; keywords needed at expand time for free-identifier=? matching in transform-where-expr
+          (for (only (mlir ddr keywords) :current-op :attr) expand))
 
   ;;=======================================================================
   ;; Call graph
@@ -76,7 +79,10 @@
                ;; declares them in its own let*.
                [match-vars       (collect-all-variables binding-mgr)]
                [then-let-vars    (map ast-then-let-binding-expand-var then-let-bindings)]
-               [all-vars         (append match-vars then-let-vars)])
+               [all-vars         (append match-vars then-let-vars)]
+               ;; Collect unique offset-var symbols from :bind-optional-operand actions.
+               ;; Each is initialized to 0 (counts optional operands actually present).
+               [offset-var-syms  (collect-offset-var-syms actions)])
 
           ;; Code generation — the two halves are independent of each other.
           (let ([check-code  (generate-check-code actions match-vec operands-ref)]
@@ -89,6 +95,7 @@
         (with-syntax ([fname    (ast-pattern-expand-function-name ast-rec)]
                       [(param ...) params]
                       [(var ...) all-vars]
+                      [(off-var ...) (map (lambda (s) (datum->syntax op s)) offset-var-syms)]
                       [num-operations num-ops]
                       [(root-result-setter ...) root-result-setters]
                       [(then-let-binding ...) (generate-then-let-bindings then-let-bindings)]
@@ -97,6 +104,7 @@
           #'(define fname
               (lambda (param ...)
                 (let ([var (make-unbound-value)] ...
+                      [off-var 0] ...
                       [all-operations (make-vector num-operations (make-unbound-value))])
                   root-result-setter ...
                   (if checks
@@ -158,11 +166,60 @@
   ;; Match-phase check code
   ;;=======================================================================
 
+  ;;=======================================================================
+  ;; :where expression transformation — :current-op and (:attr ...) keywords
+  ;;=======================================================================
+  ;;
+  ;; Called at macro-expansion time before emitting each :where guard.
+  ;; Walks the where-expression syntax and substitutes:
+  ;;   :current-op    → (vector-ref all-operations op-idx)
+  ;;                    the sub-op being matched (not the root op that `op` refers to)
+  ;;   (:attr "name") → fetch named attribute from :current-op as raw uptr;
+  ;;                    raise (error ...) if absent → guard returns #f
+  ;;
+  ;; Compose (:attr "name") with generic extractors, e.g.:
+  ;;   (mlir-attr-as-integer (:attr "axis"))
+  ;;   (mlir-attr-as-float   (:attr "epsilon"))
+  ;;   (mlir-attr-is-splat   (:attr "value"))
+  ;;
+  ;; Uses free-identifier=? via (syntax-case s (:current-op :attr) ...) so
+  ;; only :current-op/:attr from (mlir ddr keywords) are substituted.
+
+  ;; transform-where-expr — syntactic substitution for :where expressions.
+  ;;
+  ;; No (:attr "name" :type) form: clients compose (:attr "name") with generic
+  ;; attr-extraction functions — mlir-attr-as-integer, mlir-attr-as-float,
+  ;; mlir-attr-splat-float-value, mlir-attr-is-splat, etc. — instead of
+  ;; encoding the type here.  This keeps the codegen open for new attr types
+  ;; without modification.
+  (define (transform-where-expr where-stx op-idx)
+    (let ([cur-op #`(vector-ref all-operations #,op-idx)])
+      (let walk ([s where-stx])
+        (syntax-case s (:current-op :attr)
+          ;; Bare :current-op identifier → the matched sub-op
+          [:current-op cur-op]
+          ;; (:attr "name") → raw attr uptr; error if absent
+          [(:attr name)
+           (string? (syntax->datum #'name))
+           #`(let ([%cur #,cur-op])
+               (if (mlir-operation-has-attr? %cur name)
+                   (mlir-operation-get-attribute %cur name)
+                   (error ':attr
+                          (string-append "attribute '" name "' absent on op: ")
+                          (mlir-operation-name %cur))))]
+          ;; Recurse into compound forms
+          [(e ...) #`(#,@(map walk (syntax->list s)))]
+          ;; Atoms pass through unchanged
+          [_ s]))))
+
   (define (generate-check-code actions match-vec operands-ref)
     (if (null? actions)
         #'#t
         (let ([checks (map (lambda (act) (action->check-code act match-vec operands-ref)) actions)])
-          #`(and #,@checks))))
+          ;; Wrap in guard so any exception (e.g. from (:attr ...) on absent attr,
+          ;; or any other runtime error during matching) becomes a silent match failure.
+          #`(guard (exn [#t #f])
+              (and #,@checks)))))
 
   (define (action->check-code action match-vec operands-ref)
     (let ([tag (car action)])
@@ -236,9 +293,51 @@
                #t))]
 
         [(:check-where)
-         ;; Emit the guard expression directly — it runs after all operands of
-         ;; the enclosing match-op are bound and returns truthy to continue.
-         (cdr (assq 'expr (cdr action)))]
+         ;; Transform the where expression to substitute :current-op and (:attr ...)
+         ;; before emitting.  op-idx is the index of the op this :where belongs to.
+         (let* ([fields  (cdr action)]
+                [op-idx  (cdr (assq 'op-idx fields))]
+                [expr    (cdr (assq 'expr   fields))])
+           (transform-where-expr expr op-idx))]
+
+        [(:bind-optional-operand)
+         ;; Bind an optional operand if present; skip if absent.
+         ;; Presence: total operands > base-idx + n-required-after.
+         ;; Uses an offset accumulator (offset-var-sym) initialized to 0, incremented
+         ;; each time an optional before this position was actually present.
+         ;; NOTE: detect via operand count only; ops with AttrSizedOperandSegments
+         ;; would need to read operandSegmentSizes instead.
+         (let* ([fields         (cdr action)]
+                [op-idx         (cdr (assq 'op-idx          fields))]
+                [base-idx       (cdr (assq 'base-idx        fields))]
+                [var            (cdr (assq 'var             fields))]
+                [off-sym        (cdr (assq 'offset-var-sym  fields))]
+                [n-req-after    (cdr (assq 'n-required-after fields))]
+                [off-stx        (datum->syntax var off-sym)])
+           #`(begin
+               (when (> (mlir-operation-num-operands (vector-ref all-operations #,op-idx))
+                        (+ #,base-idx #,n-req-after))
+                 (set! #,var (mlir-operation-get-operand-value
+                               (vector-ref all-operations #,op-idx)
+                               (+ #,base-idx #,off-stx)))
+                 (set! #,off-stx (+ #,off-stx 1)))
+               #t))]
+
+        [(:bind-operand-with-offset)
+         ;; Bind a required operand that follows optional operands.
+         ;; actual-idx = static-idx - n-opt-before + offset-var
+         (let* ([fields       (cdr action)]
+                [op-idx       (cdr (assq 'op-idx         fields))]
+                [static-idx   (cdr (assq 'static-idx     fields))]
+                [var          (cdr (assq 'var            fields))]
+                [off-sym      (cdr (assq 'offset-var-sym fields))]
+                [n-opt-before (cdr (assq 'n-opt-before   fields))]
+                [off-stx      (datum->syntax var off-sym)])
+           #`(begin
+               (set! #,var (mlir-operation-get-operand-value
+                             (vector-ref all-operations #,op-idx)
+                             (+ (- #,static-idx #,n-opt-before) #,off-stx)))
+               #t))]
 
         [else
          (error 'action->check-code "Unknown action type" tag)])))
@@ -278,6 +377,22 @@
   ;;=======================================================================
 
   (define (make-unbound-value) (if #f #f))
+
+  ;; Returns #t when v is an unbound pattern variable (i.e. an optional operand
+  ;; that was absent at match time).  Clients use this in :then-let to check
+  ;; whether an (:optional %var) was actually bound.
+  (define (unbound-value? v) (eq? v (make-unbound-value)))
+
+  ;; Collect unique offset-var symbols from :bind-optional-operand actions.
+  (define (collect-offset-var-syms actions)
+    (let ([seen '()])
+      (for-each (lambda (action)
+                  (when (eq? (car action) ':bind-optional-operand)
+                    (let ([sym (cdr (assq 'offset-var-sym (cdr action)))])
+                      (unless (memq sym seen)
+                        (set! seen (cons sym seen))))))
+                actions)
+      seen))
 
   (define (record->alist obj)
     (let ([datum (syntax-object->datum obj)])
