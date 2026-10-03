@@ -61,6 +61,7 @@
     mlir-apply-patterns-greedy
     ;; Generic op rebuild
     mlir-op-clone-with-types
+)
 
   (import (rnrs)
           (only (chezscheme) foreign-procedure parameterize make-parameter void))
@@ -325,7 +326,5 @@
 
   (define mlir-op-clone-with-types
     (foreign-procedure "mlir_op_clone_with_types" (uptr uptr scheme-object scheme-object) uptr))
-
-
 
 ) ;; end library (mlir core builder)

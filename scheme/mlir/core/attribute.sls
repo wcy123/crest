@@ -40,6 +40,7 @@
           mlir-op-get-float-attr
           mlir-attr-is-splat
           mlir-attr-splat-float-value
+          mlir-attr-splat-int-value
           mlir-op-get-operand-segment-sizes)
 
   (import (rnrs)
@@ -78,6 +79,9 @@
 
   (define mlir-attr-splat-float-value
     (foreign-procedure "mlir_attr_splat_float_value" (uptr) double))
+
+  (define mlir-attr-splat-int-value
+    (foreign-procedure "mlir_attr_splat_int_value" (uptr integer-64) integer-64))
 
   (define mlir-op-get-operand-segment-sizes
     (foreign-procedure "mlir_op_get_operand_segment_sizes" (uptr) scheme-object))
