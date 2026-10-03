@@ -177,13 +177,25 @@
   ;; the match is hygienic — only :current-op/:attr from (mlir ddr keywords)
   ;; are substituted, not user-defined identifiers with the same name.
 
+  ;; transform-where-expr — syntactic substitution for :where expressions.
+  ;;
+  ;; Replaces DDR keywords at macro-expansion time:
+  ;;   :current-op    → (vector-ref all-operations op-idx)
+  ;;   (:attr "name") → fetch attr from :current-op; raise error if absent
+  ;;                    (the surrounding guard catches the error and returns #f)
+  ;;
+  ;; No (:attr "name" :type) form: clients compose (:attr "name") with generic
+  ;; attr-extraction functions — mlir-attr-as-integer, mlir-attr-as-float,
+  ;; mlir-attr-splat-float-value, mlir-attr-is-splat, etc. — instead of
+  ;; encoding the type here.  This keeps the codegen open for new attr types
+  ;; without modification.
   (define (transform-where-expr where-stx op-idx)
     (let ([cur-op #`(vector-ref all-operations #,op-idx)])
       (let walk ([s where-stx])
         (syntax-case s (:current-op :attr)
-          ;; Bare :current-op identifier
+          ;; Bare :current-op identifier → the matched sub-op
           [:current-op cur-op]
-          ;; (:attr "name") — raw attribute uptr
+          ;; (:attr "name") → raw attr uptr; error if absent
           [(:attr name)
            (string? (syntax->datum #'name))
            #`(let ([%cur #,cur-op])
@@ -192,33 +204,6 @@
                    (error ':attr
                           (string-append "attribute '" name "' absent on op: ")
                           (mlir-operation-name %cur))))]
-          ;; (:attr "name" :type) — typed attribute access
-          [(:attr name typ)
-           (string? (syntax->datum #'name))
-           (let ([type-sym (syntax->datum #'typ)]
-                 [nm #'name])
-             (let ([getter
-                    (case type-sym
-                      [(:i64)
-                       #`(mlir-operation-get-integer-attr %cur #,nm 0)]
-                      [(:f32)
-                       #`(mlir-op-get-float-attr %cur #,nm)]
-                      [(:splat-f32)
-                       #`(mlir-attr-splat-float-value
-                           (mlir-operation-get-attribute %cur #,nm))]
-                      [(:splat-i64)
-                       #`(mlir-attr-splat-int-value
-                           (mlir-operation-get-attribute %cur #,nm) 0)]
-                      [(:attr)
-                       #`(mlir-operation-get-attribute %cur #,nm)]
-                      [else
-                       (syntax-violation ':attr "unknown :attr type keyword" #'typ)])])
-               #`(let ([%cur #,cur-op])
-                   (if (mlir-operation-has-attr? %cur #,nm)
-                       #,getter
-                       (error ':attr
-                              (string-append "attribute '" #,nm "' absent on op: ")
-                              (mlir-operation-name %cur))))))]
           ;; Recurse into compound forms
           [(e ...) #`(#,@(map walk (syntax->list s)))]
           ;; Atoms pass through unchanged
