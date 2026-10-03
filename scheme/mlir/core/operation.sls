@@ -170,14 +170,15 @@
   ;; Dispatch typed attribute getter by type keyword.
   ;; op:   Operation* uptr
   ;; name: attribute name string
-  ;; type: ':string | ':i64 | ':i64-array
-  ;; rest: optional default for ':i64 (default 0)
+  ;; type: 'string | 'i64 | 'i64-array  (use :string :i64 :i64-array identifier-syntax)
+  ;;       also accepts legacy ':string ':i64 ':i64-array (colon-prefix symbols) for compat
+  ;; rest: optional default for 'i64 (default 0)
   ;; Raises on unknown type keyword.
   (define (mlir-operation-get-attr op name type . rest)
     (case type
-      [(:string)    (%get-string-attr op name)]
-      [(:i64)       (%get-i64-attr op name (if (null? rest) 0 (car rest)))]
-      [(:i64-array) (%get-i64-array-attr op name)]
+      [(:string string)        (%get-string-attr op name)]
+      [(:i64 i64)              (%get-i64-attr op name (if (null? rest) 0 (car rest)))]
+      [(:i64-array i64-array)  (%get-i64-array-attr op name)]
       [else (error 'mlir-operation-get-attr "unknown attr type" type)]))
 
   ;; Get a named IntegerAttr as i64. Returns default-val when absent.
