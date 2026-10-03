@@ -135,9 +135,8 @@ if(CREST_EMBED_SCHEME_BOOT)
   set(CREST_SCHEME_OBJ_DIR "${CMAKE_BINARY_DIR}/scheme-objs")
 
   # ── Scan .sls dependency graph at configure time ────────────────────────────
-  # Generates SchemeLibTargets.cmake with one add_custom_command per library,
-  # with correct DEPENDS declared so Ninja compiles in parallel (up to -j N).
-  set(SCHEME_TARGETS_CMAKE "${CMAKE_BINARY_DIR}/SchemeLibTargets.cmake")
+  # Generates a topologically-sorted library list for single-process compilation.
+  set(SCHEME_ORDER_TXT "${CMAKE_BINARY_DIR}/SchemeLibTargets_order.txt")
   execute_process(
     COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_SOURCE_DIR}/cmake/scan_scheme_deps.py
@@ -146,27 +145,31 @@ if(CREST_EMBED_SCHEME_BOOT)
             --obj-dir    ${CREST_SCHEME_OBJ_DIR}
             --scheme-bin ${CHEZ_SCHEME_BIN}
             --script     ${CMAKE_SOURCE_DIR}/cmake/compile_one_lib.ss
-            --output     ${SCHEME_TARGETS_CMAKE}
+            --output     ${CMAKE_BINARY_DIR}/SchemeLibTargets.cmake
     RESULT_VARIABLE _scan_result
   )
   if(NOT _scan_result EQUAL 0)
     message(FATAL_ERROR "CREST: scan_scheme_deps.py failed (exit ${_scan_result})")
   endif()
 
-  # Include the generated per-library targets.
-  # Also depends on ChezScheme so the scheme binary exists before compilation.
-  include(${SCHEME_TARGETS_CMAKE})
-  add_dependencies(CrestSchemeLibs ChezScheme)
+  file(GLOB_RECURSE CREST_SLS_FILES "${CMAKE_SOURCE_DIR}/scheme/*.sls")
 
-  # ── Bundle all .so files into crest.boot ───────────────────────────────────
+  # ── Compile all libraries in topological order (single process) ─────────────
+  # Single-process compilation avoids NFS/parallel race conditions with Chez.
   add_custom_command(
     OUTPUT  ${CREST_BOOT_FILE}
     COMMAND ${CHEZ_SCHEME_BIN}
-            --script ${CMAKE_SOURCE_DIR}/cmake/make_boot.ss
+            --script  ${CMAKE_SOURCE_DIR}/cmake/compile_scheme_libs.ss
+            ${SCHEME_ORDER_TXT}
+            ${CMAKE_SOURCE_DIR}/scheme   # scheme-src (NFS, read-only)
+            ${CREST_RIME_DIR}            # rime-src   (NFS, read-only)
             ${CREST_BOOT_FILE}
-            ${CREST_SCHEME_OBJ_DIR}
-    DEPENDS CrestSchemeLibs
-    COMMENT "Bundling Scheme .so files into crest.boot"
+    # Copies .sls sources to local /tmp before compiling — no NFS writes.
+    # This completely bypasses NFS attribute cache issues.
+    DEPENDS ChezScheme ${CREST_SLS_FILES}
+            ${CMAKE_SOURCE_DIR}/cmake/compile_scheme_libs.ss
+            ${SCHEME_ORDER_TXT}
+    COMMENT "Compiling CREST Scheme libraries into crest.boot (local /tmp)"
     VERBATIM
   )
 

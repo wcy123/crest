@@ -156,18 +156,26 @@ def main():
         cmake_var = "CREST_SO_" + rel.replace("/", "_").replace("-", "_")
         all_so_vars.append(cmake_var)
 
+        # CMake requires double-quotes or unquoted paths; never single-quotes.
+        def q(s):
+            return '"' + s + '"'
+
+        # --libdirs: scheme-src first (source found there), then rime, then obj-dir
+        # (so compiled imports from previous compilations are found in obj-dir)
+        libdirs = f"{scheme_dir}:{rime_dir}:{obj_dir}"
+
         lines += [
             f"# {lib_name_to_rel_path(lib_name)}",
-            f"set({cmake_var} {so_abs!r})",
+            f"set({cmake_var} {q(so_abs)})",
             f"add_custom_command(",
-            f"  OUTPUT  {so_abs!r}",
-            f"  COMMAND {scheme_bin!r}",
-            f"          --script {script!r}",
-            f"          {rel + '.sls'!r}",   # src-file (relative)
-            f"          {scheme_dir!r}",      # src-dir
-            f"          {obj_dir!r}",         # obj-dir
-            f"          {rime_dir!r}",        # rime-dir
-            f"  WORKING_DIRECTORY {scheme_dir!r}",
+            f"  OUTPUT  {q(so_abs)}",
+            f"  COMMAND {q(scheme_bin)}",
+            f"          --libdirs {q(libdirs)}",
+            f"          --script {q(script)}",
+            f"          {q(rel + '.sls')}",   # src-file (relative)
+            f"          {q(scheme_dir)}",      # src-dir
+            f"          {q(obj_dir)}",         # obj-dir
+            f"  WORKING_DIRECTORY {q(scheme_dir)}",
             f"  DEPENDS {dep_str}",
             f"  COMMENT \"Compiling Scheme library ({' '.join(lib_name)})\"",
             f"  VERBATIM",
@@ -176,7 +184,7 @@ def main():
         ]
 
     # List of all .so files for make-boot-file
-    all_so_list = "\n  ".join(f"${{{v}}}" for v in all_so_vars)
+    all_so_list = "\n  ".join(f'"${{{v}}}"' for v in all_so_vars)
     lines += [
         f"set(CREST_ALL_SCHEME_SO_FILES",
         f"  {all_so_list}",
@@ -187,6 +195,43 @@ def main():
 
     Path(args.output).write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"[scan_scheme_deps] Wrote {args.output}", file=sys.stderr)
+
+    # Also write a topologically-sorted library list for single-process compilation.
+    topo = topological_sort(sls_files, imports_of, lib_to_rel, is_external)
+    topo_out = args.output.replace(".cmake", "_order.txt")
+    Path(topo_out).write_text("\n".join(topo) + "\n", encoding="utf-8")
+    print(f"[scan_scheme_deps] Wrote {topo_out}", file=sys.stderr)
+
+
+def topological_sort(sls_files, imports_of, lib_to_rel, is_external):
+    """Return sls_files in dependency order (deps before dependents)."""
+    # Map sls path → set of sls paths it depends on
+    deps = {}
+    for sls in sls_files:
+        dep_sls = set()
+        for imp in imports_of.get(sls, []):
+            if is_external(imp):
+                continue
+            imp_rel = lib_to_rel.get(imp)
+            if imp_rel:
+                dep_sls.add(imp_rel + ".sls")
+        deps[sls] = dep_sls
+
+    order = []
+    visited = set()
+
+    def visit(sls):
+        if sls in visited:
+            return
+        visited.add(sls)
+        for dep in sorted(deps.get(sls, [])):
+            visit(dep)
+        order.append(sls)
+
+    for sls in sorted(sls_files):
+        visit(sls)
+
+    return order
 
 
 if __name__ == "__main__":
