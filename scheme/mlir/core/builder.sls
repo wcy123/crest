@@ -199,29 +199,13 @@
   (define %mlir-get-i64-type   (foreign-procedure "mlir_get_i64_type"   (uptr) uptr))
   (define %mlir-get-i1-type    (foreign-procedure "mlir_get_i1_type"    (uptr) uptr))
 
-  ;; Return the MLIR built-in IndexType for the given context.
-  ;; ctx: MLIRContext* uptr (optional — defaults to (current-mlir-context))
-  ;; Returns: IndexType opaque uptr
-  (define mlir-get-index-type
-    (case-lambda
-      [()    (%mlir-get-index-type (%require-context 'mlir-get-index-type))]
-      [(ctx) (%mlir-get-index-type ctx)]))
-
-  ;; Return IntegerType<64> (signless) for the given context.
-  ;; ctx: MLIRContext* uptr (optional — defaults to (current-mlir-context))
-  ;; Returns: IntegerType<64> opaque uptr
-  (define mlir-get-i64-type
-    (case-lambda
-      [()    (%mlir-get-i64-type (%require-context 'mlir-get-i64-type))]
-      [(ctx) (%mlir-get-i64-type ctx)]))
-
-  ;; Return IntegerType<1> (i1 / boolean) for the given context.
-  ;; ctx: MLIRContext* uptr (optional — defaults to (current-mlir-context))
-  ;; Returns: IntegerType<1> opaque uptr
-  (define mlir-get-i1-type
-    (case-lambda
-      [()    (%mlir-get-i1-type (%require-context 'mlir-get-i1-type))]
-      [(ctx) (%mlir-get-i1-type ctx)]))
+  ;; Type constructors — ctx: MLIRContext* uptr (optional, defaults to current-mlir-context)
+  ;; mlir-get-index-type → IndexType opaque uptr
+  ;; mlir-get-i64-type   → IntegerType<64> opaque uptr
+  ;; mlir-get-i1-type    → IntegerType<1> opaque uptr
+  (define-ctx-optional mlir-get-index-type %mlir-get-index-type)
+  (define-ctx-optional mlir-get-i64-type   %mlir-get-i64-type)
+  (define-ctx-optional mlir-get-i1-type    %mlir-get-i1-type)
 
   ;; Returns 1 if the type is a RankedTensorType, 0 otherwise.
   ;; type: Type opaque uptr
@@ -264,6 +248,18 @@
   (define (%require-context who)
     (or (current-mlir-context)
         (error who "no current MLIRContext — wrap with (with-mlir-context ctx ...)")))
+
+  ;; Internal macro: generate a public wrapper around a private FFI proc that
+  ;; takes a mandatory MLIRContext* uptr as its sole argument.  The wrapper
+  ;; makes ctx optional, falling back to (current-mlir-context).
+  ;; Usage: (define-ctx-optional pub-name %priv-impl)
+  (define-syntax define-ctx-optional
+    (syntax-rules ()
+      [(_ name impl)
+       (define name
+         (case-lambda
+           [()    (impl (%require-context 'name))]
+           [(ctx) (impl ctx)]))]))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Dynamic builder context
