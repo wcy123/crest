@@ -76,8 +76,8 @@
          [c-zp      (hip-extract-qdq-zeropoint-i64 %dq-c-op 0)]
          [y-zp      (hip-extract-qdq-zeropoint-i64 op 0)]
          [b-bits    (hip-qdq-value-bits-c %dq-b-op)]
-         [alpha     (mlir-op-get-float-attr %gemm-op "alpha")]
-         [beta      (mlir-op-get-float-attr %gemm-op "beta")]
+         [alpha     (op-get-f32-attr %gemm-op "alpha")]
+         [beta      (op-get-f32-attr %gemm-op "beta")]
          [trans-a   (mlir-operation-get-integer-attr %gemm-op "transA" 0)]
          [trans-b   (mlir-operation-get-integer-attr %gemm-op "transB" 0)]
          [%init     (hip-build-init rewriter !y-type %gemm_init)])
@@ -139,7 +139,7 @@
          [b-zp     (hip-extract-qdq-zeropoint-i64 %dq-b-op 0)]
          [y-zp     (hip-extract-qdq-zeropoint-i64 op 0)]
          [b-bits   (hip-qdq-value-bits-c %dq-b-op)]
-         [alpha    (mlir-op-get-float-attr %gemm-op "alpha")]
+         [alpha    (op-get-f32-attr %gemm-op "alpha")]
          [trans-a  (mlir-operation-get-integer-attr %gemm-op "transA" 0)]
          [trans-b  (mlir-operation-get-integer-attr %gemm-op "transB" 0)]
          [%init    (hip-build-init rewriter !y-type %gemm_init)])
@@ -203,8 +203,8 @@
          [c-zp     (hip-extract-qdq-zeropoint-i64 %dq-c-op 0)]
          [y-zp     (hip-extract-qdq-zeropoint-i64 op 0)]
          [b-bits   (hip-qdq-value-bits-c %dq-b-op)]
-         [alpha    (mlir-op-get-float-attr %gemm-op "alpha")]
-         [beta     (mlir-op-get-float-attr %gemm-op "beta")]
+         [alpha    (op-get-f32-attr %gemm-op "alpha")]
+         [beta     (op-get-f32-attr %gemm-op "beta")]
          [trans-a  (mlir-operation-get-integer-attr %gemm-op "transA" 0)]
          [trans-b  (mlir-operation-get-integer-attr %gemm-op "transB" 0)]
          [%init    (hip-build-init rewriter !y-type %gemm_init)])
@@ -260,7 +260,7 @@
          [a-zp     (hip-extract-qdq-zeropoint-i64 %dq-a-op 0)]
          [y-zp     (hip-extract-qdq-zeropoint-i64 op 0)]
          [b-bits   (hip-qdq-value-bits-c %dq-b-op)]
-         [alpha    (mlir-op-get-float-attr %gemm-op "alpha")]
+         [alpha    (op-get-f32-attr %gemm-op "alpha")]
          [trans-a  (mlir-operation-get-integer-attr %gemm-op "transA" 0)]
          [trans-b  (mlir-operation-get-integer-attr %gemm-op "transB" 0)]
          [%init    (hip-build-init rewriter !y-type %gemm_init)])

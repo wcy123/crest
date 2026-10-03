@@ -23,7 +23,7 @@
 (library (mlir core ir)
   (export
     ;; (mlir core attribute)
-    make-mlir-attribute
+    mlir-make-attr
     ;; (mlir core operation)
     mlir-operation-name
     mlir-operation-get-context
@@ -58,8 +58,8 @@
     mlir-value-is-block-argument?
     mlir-value-get-result-number
     mlir-value-num-uses
-    value-array-ref-size
-    value-array-ref-at
+    array-ref-size
+    array-ref-at
     ;; (mlir core builder)
     mlir-type-get-context
     current-mlir-context
@@ -97,18 +97,17 @@
     mlir-type-element-type        ; element type of shaped/vector type
     mlir-type-integer-width       ; bit width of IntegerType
     mlir-type-is-unsigned         ; 1 if unsigned IntegerType
-    ;; Attribute inspection
-    mlir-op-get-float-attr        ; FloatAttr by name (NaN if absent)
-    mlir-attr-is-splat            ; 1 if DenseElementsAttr splat
-    mlir-attr-splat-float-value   ; splat float as double (NaN if absent)
-    mlir-attr-splat-int-value     ; splat integer as i64 (absent-val if not applicable)
-    mlir-attr-isa-integer         ; #t if IntegerAttr
-    mlir-attr-isa-float           ; #t if FloatAttr
-    mlir-attr-isa-string          ; #t if StringAttr
-    mlir-attr-isa-dense-elements  ; #t if DenseElementsAttr
-    mlir-attr-as-integer          ; IntegerAttr → i64 (INT64_MIN if wrong type)
-    mlir-attr-as-float            ; FloatAttr → double (NaN if wrong type)
-    mlir-op-get-operand-segment-sizes  ; "operandSegmentSizes" as Scheme list
+    ;; Symmetric attr API — four generic functions
+    mlir-make-attr                ; ([:ctx] :type value) → attr-uptr
+    mlir-attr-isa                 ; (attr-uptr :type) → #t/#f
+    mlir-attr-as                  ; (attr-uptr :type) → scheme-val (scalars)
+    mlir-attr-into                ; (attr-uptr :type) → scheme-val (any type)
+    ;; Type keywords (identifier-syntax → quoted symbol at compile time)
+    :i32 :i64 :f32 :f64 :index
+    :integer :float :string
+    :dense-elements :dense-elements-splat
+    :splat-float :splat-integer
+    :i32-array :i64-array :dense-resource
     ;; Pattern application
     mlir-apply-patterns-greedy    ; applyPatternsAndFoldGreedily
     ;; Generic op rebuild
@@ -120,7 +119,7 @@
     mlir-shape.shape-type mlir-shape.size-type mlir-shape.witness-type)
 
   (import (mlir core context)
-          (mlir core types)
+          (mlir dialects builtin)
           (mlir core attribute)
           (mlir core operation)
           (mlir core value)
@@ -128,9 +127,10 @@
           (mlir core logging)
           (mlir dialects shape))
 
-  ;; mlir-type-element-type, mlir-type-integer-width, mlir-type-is-unsigned,
-  ;; mlir-op-get-float-attr, mlir-attr-is-splat, mlir-attr-splat-float-value,
-  ;; mlir-op-get-operand-segment-sizes are re-exported from (mlir core attribute).
+  ;; mlir-type-element-type, mlir-type-integer-width, mlir-type-is-unsigned
+  ;; are re-exported from (mlir dialects builtin).
+  ;; (mlir core attribute) re-exports: mlir-make-attr, mlir-attr-isa,
+  ;; mlir-attr-as, mlir-attr-into, and the type keywords.
   ;; mlir-apply-patterns-greedy, mlir-op-clone-with-types,
   ;; are re-exported from (mlir core builder).
 

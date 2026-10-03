@@ -3,7 +3,7 @@
   (export :if-match :then-let :rewrite :with :where
           :debug-parse :debug-validate :debug-analyze :debug-codegen :debug-matching
           = : -> :region :regions
-          :index :any
+          :any
           :current-op :attr
           :optional :variadic)
   (import (except (rnrs) =))
@@ -24,7 +24,7 @@
   (define-syntax -> (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
   (define-syntax :region (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
   (define-syntax :regions (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
-  (define-syntax :index   (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
+  ;; :index is a type keyword — defined in (mlir core attribute), not here.
   (define-syntax :any        (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
   ;; :current-op — inside a :where clause, refers to the currently matched sub-op.
   ;; Replaced syntactically by the DDR codegen; never evaluated as Scheme.
@@ -33,7 +33,7 @@
   ;; Fetches the named attribute from :current-op as a raw attr uptr.
   ;; Raises (error ...) if the attribute is absent; caught by the guard
   ;; in generate-check-code → silent match failure.
-  ;; Compose with mlir-attr-as-integer, mlir-attr-as-float,
+  ;; Compose with mlir-attr-as attr :integer, mlir-attr-as attr :float,
   ;; mlir-attr-is-splat, mlir-attr-splat-float-value, etc.
   (define-syntax :attr       (lambda (x) (syntax-violation 'pattern-keyword "misplaced :attr (only valid inside DDR :where)" x)))
   ;; :optional — (:optional %var ...) in an operand list marks optional operands.

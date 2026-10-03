@@ -6,156 +6,174 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 ;;
-;; (mlir core attribute) — MLIR attribute construction.
+;; (mlir core attribute) — MLIR attribute API.
 ;;
-;; Mirrors mlir/IR/Attribute.h. Attributes are first-class opaque uptr values
-;; (Attribute::getAsOpaquePointer / getFromOpaquePointer).
+;; Four generic functions cover all attribute operations:
 ;;
-;;   (make-mlir-attribute ctx type value)
-;;     ctx   : MLIRContext* uptr
-;;     type  : a keyword symbol, e.g. :i64, :index, :i32-array, :i64-array,
-;;             :dense-resource, or any future :foo registered as
-;;             mlir_make_attr_foo in C++.
-;;     value : Scheme value whose shape matches the C++ expectation for that type:
-;;               :i64        — Scheme integer
-;;               :index      — Scheme integer
-;;               :i32-array  — Scheme list of integers
-;;               :i64-array  — Scheme list of integers
-;;               :dense-resource — Scheme list (result-type-uptr key-string
-;;                                              data-addr-integer data-size-integer)
+;;   (mlir-make-attr [:ctx] :type value) → attr-uptr
+;;     Construct an attribute. :type is a symbol like 'i64, 'f32, etc.
+;;     Discovers mlir_make_attr_<type> dynamically — no Scheme change needed
+;;     for new types.  Optional ctx defaults to (current-mlir-context).
 ;;
-;; C++ convention: every mlir_make_attr_<type> function has the uniform
-;; signature (uptr ctx, ptr value) → uptr.  New attribute types are
-;; discoverable automatically via foreign-entry? — no Scheme change needed.
+;;   (mlir-attr-isa attr-uptr :type) → #t/#f
+;;     Type predicate. Discovers mlir_attr_isa_<type> dynamically.
+;;
+;;   (mlir-attr-as attr-uptr :type) → scheme-val
+;;     Fast scalar extraction (scalars only). Discovers mlir_attr_as_<type>.
+;;     Signals error on type mismatch — caught by DDR guard → match failure.
+;;
+;;   (mlir-attr-into attr-uptr :type) → scheme-val
+;;     General conversion (may allocate). Discovers mlir_attr_into_<type>.
+;;     For complex types: :i32-array → list, :splat-float → flonum, etc.
+;;
+;; Type keywords (identifier-syntax) expand at compile time to plain symbols:
+;;   :i64 ≡ 'i64,  :f32 ≡ 'f32,  etc.
+;;   Runtime symbols also accepted: (let ([ty 'i64]) (mlir-attr-isa attr ty))
+;;
+;; C++ convention: all *_<type> families share uniform per-family signatures
+;; so Scheme discovers them automatically via foreign-entry?.
 ;;
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir core attribute)
-  (export make-mlir-attribute
-          ;; Type inspection
-          mlir-type-element-type
-          mlir-type-integer-width
-          mlir-type-is-unsigned
-          ;; Attribute inspection
-          mlir-op-get-float-attr
-          mlir-attr-is-splat
-          mlir-attr-splat-float-value
-          mlir-attr-splat-int-value
-          ;; Type-check predicates on raw attr uptr
-          mlir-attr-isa-integer      ; #t if IntegerAttr
-          mlir-attr-isa-float        ; #t if FloatAttr
-          mlir-attr-isa-string       ; #t if StringAttr
-          mlir-attr-isa-dense-elements ; #t if DenseElementsAttr
-          ;; Value extractors (return sentinel on wrong type)
-          mlir-attr-as-integer       ; IntegerAttr → i64 (INT64_MIN if wrong type)
-          mlir-attr-as-float         ; FloatAttr → double (NaN if wrong type)
-          mlir-op-get-operand-segment-sizes)
+  (export
+    ;; Four generic functions
+    mlir-make-attr
+    mlir-attr-isa
+    mlir-attr-as
+    mlir-attr-into
+    :i32 :i64 :f32 :f64 :index
+    :integer :float :string
+    :dense-elements :dense-elements-splat
+    :splat-float :splat-integer
+    :i32-array :i64-array :dense-resource)
 
   (import (rnrs)
           (only (chezscheme) foreign-procedure foreign-entry?
-                make-eq-hashtable hashtable-ref hashtable-set!))
+                make-eq-hashtable hashtable-ref hashtable-set!)
+          (mlir core context))
 
-  ;; Derive the C symbol name from a type keyword.
-  ;; :dense-resource → "mlir_make_attr_dense_resource"
-  ;; :i64            → "mlir_make_attr_i64"
-  (define (type->sym-name type)
-    (let* ([s    (symbol->string type)]
-           [s    (substring s 1 (string-length s))]   ; strip leading ":"
-           [body (list->string
-                   (map (lambda (c) (if (char=? c #\-) #\_ c))
-                        (string->list s)))])
-      (string-append "mlir_make_attr_" body)))
+  ;;===--------------------------------------------------------------------===;;
+  ;; Type keyword identifier-syntax
+  ;;===--------------------------------------------------------------------===;;
+  (define-syntax :i32            (identifier-syntax 'i32))
+  (define-syntax :i64            (identifier-syntax 'i64))
+  (define-syntax :f32            (identifier-syntax 'f32))
+  (define-syntax :f64            (identifier-syntax 'f64))
+  (define-syntax :index          (identifier-syntax 'index))
+  (define-syntax :integer        (identifier-syntax 'integer))
+  (define-syntax :float          (identifier-syntax 'float))
+  (define-syntax :string         (identifier-syntax 'string))
+  (define-syntax :dense-elements       (identifier-syntax 'dense-elements))
+  (define-syntax :dense-elements-splat (identifier-syntax 'dense-elements-splat))
+  (define-syntax :splat-float          (identifier-syntax 'splat-float))
+  (define-syntax :splat-integer        (identifier-syntax 'splat-integer))
+  (define-syntax :i32-array      (identifier-syntax 'i32-array))
+  (define-syntax :i64-array      (identifier-syntax 'i64-array))
+  (define-syntax :dense-resource (identifier-syntax 'dense-resource))
 
-  ;; === Type inspection ===
+  ;;===--------------------------------------------------------------------===;;
+  ;; Open-ended lookup infrastructure
+  ;;===--------------------------------------------------------------------===;;
 
-  (define mlir-type-element-type
-    (foreign-procedure "mlir_type_element_type" (uptr) uptr))
+  ;; Convert type symbol to C suffix: 'dense-elements → "dense_elements"
+  (define (type->c-body type)
+    (let ([s (symbol->string type)])
+      (list->string (map (lambda (c) (if (char=? c #\-) #\_ c)) (string->list s)))))
 
-  (define mlir-type-integer-width
-    (foreign-procedure "mlir_type_integer_width" (uptr) uptr))
+  ;; Unique sentinel: "not yet looked up" vs "looked up, not found" (#f).
+  (define %uncached (list 'uncached))
 
-  (define mlir-type-is-unsigned
-    (foreign-procedure "mlir_type_is_unsigned" (uptr) boolean))
+  ;; Factory: open-ended lookup by C symbol name convention.
+  (define (make-lookup prefix make-proc)
+    (let ([cache (make-eq-hashtable)])
+      (lambda (type)
+        (let ([cached (hashtable-ref cache type %uncached)])
+          (if (eq? cached %uncached)
+              (let* ([sym  (string-append prefix (type->c-body type))]
+                     [proc (and (foreign-entry? sym) (make-proc sym))])
+                (hashtable-set! cache type proc)
+                proc)
+              cached)))))
 
-  ;; === Attribute inspection ===
+  (define %lookup-make
+    (make-lookup "mlir_make_attr_"
+                 (lambda (sym) (foreign-procedure sym (uptr scheme-object) uptr))))
+  (define %lookup-isa
+    (make-lookup "mlir_attr_isa_"
+                 (lambda (sym) (foreign-procedure sym (uptr) int))))
+  (define %lookup-as
+    (make-lookup "mlir_attr_as_"
+                 (lambda (sym) (foreign-procedure sym (uptr) scheme-object))))
+  (define %lookup-into
+    (make-lookup "mlir_attr_into_"
+                 (lambda (sym) (foreign-procedure sym (uptr) scheme-object))))
 
-  (define mlir-op-get-float-attr
-    (foreign-procedure "mlir_op_get_float_attr" (uptr string) double))
+  ;;===--------------------------------------------------------------------===;;
+  ;; mlir-make-attr
+  ;;===--------------------------------------------------------------------===;;
+  (define mlir-make-attr
+    (case-lambda
+      [(type value)
+       (mlir-make-attr (or (current-mlir-context)
+                           (error 'mlir-make-attr
+                                  "no ctx and current-mlir-context is unset"))
+                       type value)]
+      [(ctx type value)
+       (let ([proc (%lookup-make type)])
+         (if proc
+             (proc ctx value)
+             (error 'mlir-make-attr "unknown or unavailable attr type" type)))]))
 
-  (define mlir-attr-is-splat
-    (foreign-procedure "mlir_attr_is_splat" (uptr) boolean))
+  ;;===--------------------------------------------------------------------===;;
+  ;; mlir-attr-isa
+  ;;===--------------------------------------------------------------------===;;
+  (define mlir-attr-isa
+    (case-lambda
+      ;; (mlir-attr-isa :integer) → curried predicate; errors if type unknown.
+      [(type)
+       (let ([proc (%lookup-isa type)])
+         (unless proc (error 'mlir-attr-isa "unknown attr type" type))
+         (lambda (attr) (not (zero? (proc attr)))))]
+      ;; (mlir-attr-isa attr :integer) → direct predicate.
+      [(attr type)
+       ((mlir-attr-isa type) attr)]))
 
-  (define mlir-attr-splat-float-value
-    (foreign-procedure "mlir_attr_splat_float_value" (uptr) double))
+  ;;===--------------------------------------------------------------------===;;
+  ;; mlir-attr-as
+  ;;===--------------------------------------------------------------------===;;
 
-  (define mlir-attr-splat-int-value
-    (foreign-procedure "mlir_attr_splat_int_value" (uptr integer-64) integer-64))
+  (define mlir-attr-as
+    (case-lambda
+      ;; (mlir-attr-as :f32) → curried extractor.
+      ;; Lookup done once here; the returned lambda closes over the resolved procs.
+      ;; Errors immediately if the type is unknown or has no as-extractor.
+      [(type)
+       (let ([isa-proc (%lookup-isa type)]
+             [as-proc  (%lookup-as  type)])
+         (unless isa-proc (error 'mlir-attr-as "unknown attr type" type))
+         (unless as-proc  (error 'mlir-attr-as "zero-overhead access not supported for type" type))
+         (lambda (attr)
+           (if (not (zero? (isa-proc attr)))
+               (as-proc attr)
+               (error 'mlir-attr-as "attribute is not of type" type))))]
+      ;; (mlir-attr-as attr :f32) → apply the curried form immediately.
+      ;; Delegates to the 1-arg arm: lookup is done once, no code duplication.
+      [(attr type)
+       ((mlir-attr-as type) attr)]))
 
-  ;; Type-check predicates — work on any mlir::Attribute uptr.
-  (define mlir-attr-isa-integer
-    (let ([f (foreign-procedure "mlir_attr_isa_integer" (uptr) int)])
-      (lambda (a) (not (zero? (f a))))))
-
-  (define mlir-attr-isa-float
-    (let ([f (foreign-procedure "mlir_attr_isa_float" (uptr) int)])
-      (lambda (a) (not (zero? (f a))))))
-
-  (define mlir-attr-isa-string
-    (let ([f (foreign-procedure "mlir_attr_isa_string" (uptr) int)])
-      (lambda (a) (not (zero? (f a))))))
-
-  (define mlir-attr-isa-dense-elements
-    (let ([f (foreign-procedure "mlir_attr_isa_dense_elements" (uptr) int)])
-      (lambda (a) (not (zero? (f a))))))
-
-  ;; Value extractors — work on any mlir::Attribute uptr.
-  ;; Signal an error if the attribute is not of the expected type so callers
-  ;; never silently receive a sentinel.  In a DDR :where clause the outer
-  ;; guard catches the error and turns it into a match failure (#f).
-  (define mlir-attr-as-integer
-    (let ([get (foreign-procedure "mlir_attr_as_integer" (uptr) integer-64)])
-      (lambda (attr)
-        (if (mlir-attr-isa-integer attr)
-            (get attr)
-            (error 'mlir-attr-as-integer "attribute is not an IntegerAttr" attr)))))
-
-  (define mlir-attr-as-float
-    (let ([get (foreign-procedure "mlir_attr_as_float" (uptr) double)])
-      (lambda (attr)
-        (if (mlir-attr-isa-float attr)
-            (get attr)
-            (error 'mlir-attr-as-float "attribute is not a FloatAttr" attr)))))
-
-  (define mlir-op-get-operand-segment-sizes
-    (foreign-procedure "mlir_op_get_operand_segment_sizes" (uptr) scheme-object))
-
-  ;; Per-type procedure cache: type keyword → foreign-procedure wrapper.
-  ;; 'missing means the C symbol was not found via foreign-entry?.
-  (define %cache (make-eq-hashtable))
-
-  ;; Look up (or cache) the C procedure for a given type keyword.
-  ;; Returns the procedure, or #f if the type is not registered.
-  (define (lookup-proc type)
-    (or (hashtable-ref %cache type #f)
-        (let* ([sym  (type->sym-name type)]
-               [proc (and (foreign-entry? sym)
-                          (foreign-procedure sym (uptr scheme-object) uptr))])
-          (hashtable-set! %cache type (or proc 'missing))
-          proc)))
-
-  ;; Construct an MLIR attribute by type keyword.
-  ;; Dispatches dynamically to mlir_make_attr_<type> via foreign-entry?.
-  ;; ctx:   MLIRContext* uptr — provides context for attribute construction
-  ;; type:  keyword symbol like :i64, :index, :i32-array, :i64-array,
-  ;;        :dense-resource, or any :foo for which mlir_make_attr_foo is registered
-  ;; value: Scheme value appropriate for the type (see file header)
-  ;; Returns: Attribute opaque uptr (Attribute::getAsOpaquePointer())
-  ;; Raises:  error if type is unknown or C symbol not registered
-  (define (make-mlir-attribute ctx type value)
-    (let ([proc (lookup-proc type)])
-      (if (and proc (not (eq? proc 'missing)))
-          (proc ctx value)
-          (error 'make-mlir-attribute
-                 "unknown or unavailable attr type" type))))
+  ;;===--------------------------------------------------------------------===;;
+  ;; mlir-attr-into
+  ;;===--------------------------------------------------------------------===;;
+  (define mlir-attr-into
+    (case-lambda
+      ;; (mlir-attr-into :splat-float) → curried converter; errors if type unknown.
+      [(type)
+       (let ([proc (%lookup-into type)])
+         (unless proc (error 'mlir-attr-into "no into-converter registered for type" type))
+         (lambda (attr) (proc attr)))]
+      ;; (mlir-attr-into attr :splat-float) → direct conversion.
+      [(attr type)
+       ((mlir-attr-into type) attr)]))
 
 ) ;; end library (mlir core attribute)

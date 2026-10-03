@@ -19,18 +19,16 @@
     mlir-value-is-block-argument?
     mlir-value-get-result-number
     mlir-value-num-uses
-    value-array-ref-size
-    value-array-ref-at)
+    ;; Re-exported from (mlir support array-ref).
+    array-ref-size
+    array-ref-at
+    make-array-ref
+    array-ref-destroy
+    with-array-ref)
 
   (import (rnrs)
-          (only (chezscheme) foreign-procedure define-ftype ftype-ref
-                make-ftype-pointer foreign-ref))
-
-  ;; C struct layout for the ValueArrayRef passed by the C++ callback ABI.
-  ;; data: pointer to the first Value* element
-  ;; size: number of elements
-  (define-ftype ValueArrayRef
-    (struct [data uptr] [size uptr]))
+          (only (chezscheme) foreign-procedure)
+          (mlir support array-ref))
 
   ;; Return the operation that defines this value, or 0 for block arguments.
   ;; value: Value* opaque ptr uptr
@@ -67,18 +65,7 @@
   (define mlir-value-num-uses
     (foreign-procedure "mlir_value_num_uses" (uptr) uptr))
 
-  ;; Return the number of Value* elements in a ValueArrayRef.
-  ;; ref-ptr: uptr pointing to a ValueArrayRef struct in C memory
-  (define (value-array-ref-size ref-ptr)
-    (ftype-ref ValueArrayRef (size) (make-ftype-pointer ValueArrayRef ref-ptr)))
-
-  ;; Return the i-th Value* opaque ptr from a ValueArrayRef.
-  ;; ref-ptr: uptr pointing to a ValueArrayRef struct in C memory
-  ;; index:   0-based element index
-  ;; Returns: Value* opaque ptr uptr
-  (define (value-array-ref-at ref-ptr index)
-    (let* ([ptr      (make-ftype-pointer ValueArrayRef ref-ptr)]
-           [data-ptr (ftype-ref ValueArrayRef (data) ptr)])
-      (foreign-ref 'uptr data-ptr (* index 8))))
+  ;; array-ref-size and array-ref-at are imported from
+  ;; (mlir support array-ref) and re-exported above.
 
 ) ;; end library (mlir core value)

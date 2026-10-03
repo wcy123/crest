@@ -45,11 +45,11 @@
           (only (chezscheme) syntax->list syntax->datum datum->syntax parameterize)
           (rename (rime loop) (:with :rime-with))
           (for (rename (rime loop) (:with :rime-with)) expand)
-          (for (only (mlir ddr keywords) = : -> :index :region) expand)
+          (for (only (mlir ddr keywords) = : -> :region) expand)
           (mlir core ir)
           (mlir core attribute)
           (for (only (mlir core ir) mlir-build-operation with-block-builder) expand)
-          (for (only (mlir core attribute) make-mlir-attribute) expand)
+          (for (only (mlir core attribute) mlir-make-attr :index) expand)
           (for (only (mlir core operation) mlir-operation-get-context
                                            mlir-operation-set-attribute!) expand))
 
@@ -192,7 +192,7 @@
       ;; Returns a closure (lambda (new-op-stx) → setter-syntax) for one attr form.
       ;;
       ;; Two forms:
-      ;;   (name = val type)  — construct attr via (make-mlir-attribute ctx type val)
+      ;;   (name = val type)  — construct attr via (mlir-make-attr ctx type val)
       ;;   (name = val)       — val is already an attr uptr; set directly
       (define (make-attr-setter attr-stx)
         (define (name->str x)
@@ -203,7 +203,7 @@
             (with-syntax ([new-op new-op-stx] [n name-str] [v val-stx]
                           [type-q type-quoted-stx])
               #'(mlir-operation-set-attribute! new-op n
-                   (make-mlir-attribute (mlir-operation-get-context new-op) type-q v)))))
+                   (mlir-make-attr (mlir-operation-get-context new-op) type-q v)))))
         (define (make-direct-setter name-str val-stx)
           (lambda (new-op-stx)
             (with-syntax ([new-op new-op-stx] [n name-str] [v val-stx])

@@ -7,6 +7,7 @@
 #include "Core.h"
 #include "Dialects/Shape.h"
 #include "Logging.h"
+#include "Support/ArrayRef.h"
 
 namespace crest {
 
@@ -23,6 +24,7 @@ void registerMlirForeignFunctions() {
   registerCoreBindings();
   registerShapeBindings();
   registerLoggingBindings();
+  registerArrayRefBindings();
   if (g_extra_bindings_fn) {
     g_extra_bindings_fn();
   }

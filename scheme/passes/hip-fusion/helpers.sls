@@ -17,7 +17,8 @@
     set-qdq-in-out-attrs!
     mlir-operation-set-dense-i32-array!
     mlir-operation-set-dense-i64-array!
-    mlir-operation-set-i64-array-attr!)
+    mlir-operation-set-i64-array-attr!
+    op-get-f32-attr)              ; (op name) → flonum or +nan.0 if absent
 
   (import (except (rnrs) =)
           (only (chezscheme) foreign-procedure)
@@ -49,5 +50,14 @@
   ;; For ODS I64ArrayAttr (ArrayAttr of IntegerAttr) — different from DenseI64ArrayAttr
   (define mlir-operation-set-i64-array-attr!
     (foreign-procedure "mlir_operation_set_i64_array_attr" (uptr string scheme-object) void))
+
+  ;; (op-get-f32-attr op name) — FloatAttr by name as flonum; +nan.0 if absent.
+  ;; Expressed via mlir-attr-as :f32 so no separate FFI binding needed.
+  (define %get-attr
+    (foreign-procedure "mlir_operation_get_attribute" (uptr string) uptr))
+
+  (define (op-get-f32-attr op name)
+    (let ([attr (%get-attr op name)])
+      (if (zero? attr) +nan.0 (mlir-attr-as attr :f32))))
 
 ) ;; end library (passes hip-fusion helpers)
