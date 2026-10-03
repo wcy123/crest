@@ -191,26 +191,29 @@
   (define mlir-type-get-context
     (foreign-procedure "mlir_type_get_context" (uptr) uptr))
 
-  ;; Low-level FFI bindings — always require an explicit MLIRContext* uptr.
-  ;; These are private (%...) because callers should use the public wrappers
-  ;; below, which support the optional current-mlir-context default.
-  ;;
-  ;; %mlir-get-index-type ctx → IndexType opaque uptr
-  ;; %mlir-get-i64-type   ctx → IntegerType<64> opaque uptr
-  ;; %mlir-get-i1-type    ctx → IntegerType<1> opaque uptr
+  ;; Private FFI bindings — always require an explicit ctx.
+  ;; Callers should use the public wrappers below, which accept optional ctx.
+  ;;   ctx: MLIRContext* uptr
+  ;;   Returns: Type opaque uptr (IndexType / IntegerType<64> / IntegerType<1>)
   (define %mlir-get-index-type (foreign-procedure "mlir_get_index_type" (uptr) uptr))
   (define %mlir-get-i64-type   (foreign-procedure "mlir_get_i64_type"   (uptr) uptr))
   (define %mlir-get-i1-type    (foreign-procedure "mlir_get_i1_type"    (uptr) uptr))
 
-  ;; Public type constructors — ctx is optional.
-  ;; When omitted, current-mlir-context is used; raises if neither is set.
-  ;;
-  ;;   (mlir-get-index-type)      ; uses (current-mlir-context)
-  ;;   (mlir-get-index-type ctx)  ; uses explicit ctx
+  ;; Return the MLIR built-in IndexType for the given context.
+  ;; ctx: MLIRContext* uptr (optional — defaults to (current-mlir-context))
+  ;; Returns: IndexType opaque uptr
   (define (mlir-get-index-type . args)
     (%mlir-get-index-type (if (pair? args) (car args) (%require-context 'mlir-get-index-type))))
+
+  ;; Return IntegerType<64> (signless) for the given context.
+  ;; ctx: MLIRContext* uptr (optional — defaults to (current-mlir-context))
+  ;; Returns: IntegerType<64> opaque uptr
   (define (mlir-get-i64-type . args)
     (%mlir-get-i64-type   (if (pair? args) (car args) (%require-context 'mlir-get-i64-type))))
+
+  ;; Return IntegerType<1> (i1 / boolean) for the given context.
+  ;; ctx: MLIRContext* uptr (optional — defaults to (current-mlir-context))
+  ;; Returns: IntegerType<1> opaque uptr
   (define (mlir-get-i1-type . args)
     (%mlir-get-i1-type    (if (pair? args) (car args) (%require-context 'mlir-get-i1-type))))
 
@@ -249,7 +252,9 @@
            (lambda () body ...)
            (lambda () (dtor var))))]))
 
-  ;; Return the current context, raising if none is installed.
+  ;; Return (current-mlir-context), raising if it is #f.
+  ;; who: symbol — used as the error source (e.g. 'mlir-get-index-type)
+  ;; Returns: MLIRContext* uptr
   (define (%require-context who)
     (or (current-mlir-context)
         (error who "no current MLIRContext — wrap with (with-mlir-context ctx ...)")))
