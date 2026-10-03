@@ -91,6 +91,8 @@
     mlir-get-i1-type
     mlir-type-is-ranked-tensor
     mlir-type-get-element-type
+    mlir-ranked-tensor-type-get-encoding  ; encoding Attribute (0 if absent or not ranked tensor)
+    mlir-ranked-tensor-type-with-encoding ; clone ranked tensor with new encoding attr
     mlir-type-get-shape
     mlir-type-get-rank
     ;; Type inspection
@@ -104,7 +106,7 @@
     mlir-attr-into                ; (attr-uptr :type) → scheme-val (any type)
     ;; Type keywords (identifier-syntax → quoted symbol at compile time)
     :i32 :i64 :f32 :f64 :index
-    :integer :float :string
+    :integer :float :string :opaque
     :dense-elements :dense-elements-splat
     :splat-float :splat-integer
     :i32-array :i64-array :dense-resource
@@ -120,6 +122,7 @@
 
   (import (mlir core context)
           (mlir dialects builtin)
+          (mlir dialects tensor)
           (mlir core attribute)
           (mlir core operation)
           (mlir core value)

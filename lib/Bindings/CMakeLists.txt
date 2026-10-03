@@ -16,6 +16,7 @@ add_library(CrestBindings STATIC
   Logging.cpp
   Conversion.cpp
   Dialects/Shape.cpp
+  Dialects/HipSR.cpp
   Support/ArrayRef.cpp
 )
 

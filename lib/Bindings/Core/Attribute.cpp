@@ -23,6 +23,7 @@
 #include "mlir/IR/AsmState.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinTypes.h"
+#include "mlir/AsmParser/AsmParser.h"
 #include "mlir/IR/Operation.h"
 #include <limits>
 #include <string>
@@ -82,6 +83,30 @@ uint64_t mlir_make_attr_i64_array(uint64_t ctx_ptr, ptr value) {
   }
   return reinterpret_cast<uint64_t>(
       mlir::DenseI64ArrayAttr::get(ctx, vec).getAsOpaquePointer());
+}
+
+// Parse an MLIR attribute from its text representation.
+// ctx_ptr: MLIRContext* as uptr
+// value:   Scheme string — MLIR attribute syntax, e.g. "#hipsr.mem<device>"
+//   Without the dialect loaded → OpaqueAttr (same mechanism as !hip.context → OpaqueType)
+//   With the dialect loaded → real dialect-specific C++ attr object (automatic)
+// Returns: Attribute opaque uptr, or 0 if parsing fails.
+uint64_t mlir_make_attr_opaque(uint64_t ctx_ptr, ptr value) {
+  if (!Sstringp(value)) {
+    scheme_error("mlir-make-attr :opaque", "value must be a string (MLIR attribute syntax)");
+  }
+  auto *ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+  iptr len = Sstring_length(value);
+  std::string spec;
+  spec.reserve(static_cast<size_t>(len));
+  for (iptr i = 0; i < len; ++i) {
+    spec.push_back(static_cast<char>(Sstring_ref(value, i)));
+  }
+  mlir::Attribute attr = mlir::parseAttribute(spec, ctx);
+  if (!attr) {
+    scheme_error("mlir-make-attr :opaque", ("failed to parse attribute: " + spec).c_str());
+  }
+  return reinterpret_cast<uint64_t>(attr.getAsOpaquePointer());
 }
 
 static std::string schemeStringToStd(ptr s) {
@@ -393,6 +418,7 @@ void registerAttributeBindings() {
   Sregister_symbol("mlir_make_attr_index",          (void*)::mlir_make_attr_index);
   Sregister_symbol("mlir_make_attr_i32_array",      (void*)::mlir_make_attr_i32_array);
   Sregister_symbol("mlir_make_attr_i64_array",      (void*)::mlir_make_attr_i64_array);
+  Sregister_symbol("mlir_make_attr_opaque",          (void*)::mlir_make_attr_opaque);
   Sregister_symbol("mlir_make_attr_dense_resource", (void*)::mlir_make_attr_dense_resource);
   // Op-level get/set.
   Sregister_symbol("mlir_operation_get_attribute",  (void*)::mlir_operation_get_attribute);
