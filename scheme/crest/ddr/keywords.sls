@@ -1,5 +1,5 @@
 #!r6rs
-(library (mlir ddr keywords)
+(library (crest ddr keywords)
   (export :if-match :then-let :rewrite :with :where
           :debug-parse :debug-validate :debug-analyze :debug-codegen :debug-matching
           = : -> :region :regions

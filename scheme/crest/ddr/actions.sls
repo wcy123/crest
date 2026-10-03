@@ -1,5 +1,5 @@
 #!r6rs
-(library (mlir ddr actions)
+(library (crest ddr actions)
   (export action:set-current-op
           action:check-op
           action:bind-operand

@@ -27,7 +27,7 @@
           (rename (only (rnrs) =) (= num=))
           (mlir core ir)
           (mlir hip fusion)
-          (mlir ddr))
+          (crest ddr))
 
   ;; #t when a Value has exactly one use (safe to fuse without keeping the chain alive).
   (define (single-consumer? val)

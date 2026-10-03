@@ -62,12 +62,12 @@
 ;;
 ;;=======================================================================
 
-(library (mlir ddr parse)
+(library (crest ddr parse)
   (export parse-to-ast)
   (import (except (rnrs) =)
           (for (only (chezscheme) syntax->list) expand)
-          (for (mlir ddr keywords) expand)
-          (for (mlir ddr ast) expand))
+          (for (crest ddr keywords) expand)
+          (for (crest ddr ast) expand))
 
   ;;=======================================================================
   ;; SECTION 1: Entry Points
