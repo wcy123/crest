@@ -1,5 +1,5 @@
 #!r6rs
-(library (mlir ddr codegen)
+(library (crest ddr codegen)
   (export generate-debug-ast
           generate-pattern-matchAndRewrite
           generate-debug-codegen
@@ -11,14 +11,14 @@
           (rename (rime loop) (:with :rime-with))
           (for (only (chezscheme) syntax->list syntax->datum record-rtd record-type-field-names record-accessor identifier?) expand)
           (for (rename (rime loop) (:with :rime-with)) expand)
-          (for (mlir ddr ast) expand)
-          (for (mlir ddr analyze) expand)
+          (for (crest ddr ast) expand)
+          (for (crest ddr analyze) expand)
           (for (mlir core ir) expand)
           (for (only (mlir core context) current-mlir-context) expand)
           (for (only (chezscheme) parameterize) expand)
-          (for (only (mlir ddr rewrite) with-mlir-ops) expand)
+          (for (only (crest ddr rewrite) with-mlir-ops) expand)
           ;; keywords needed at expand time for free-identifier=? matching in transform-where-expr
-          (for (only (mlir ddr keywords) :current-op :attr) expand))
+          (for (only (crest ddr keywords) :current-op :attr) expand))
 
   ;;=======================================================================
   ;; Call graph
@@ -191,7 +191,7 @@
   ;;   (mlir-attr-is-splat   (:attr "value"))
   ;;
   ;; Uses free-identifier=? via (syntax-case s (:current-op :attr) ...) so
-  ;; only :current-op/:attr from (mlir ddr keywords) are substituted.
+  ;; only :current-op/:attr from (crest ddr keywords) are substituted.
 
   ;; transform-where-expr — syntactic substitution for :where expressions.
   ;;
