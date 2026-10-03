@@ -329,14 +329,43 @@
   ;;===--------------------------------------------------------------------===;;
 
   ;; Clone layout-op substituting the quantized output type from q-op.
-  ;; Works for hip.transpose and tensor.{collapse,expand}_shape.
+  ;; Works for hip.transpose (has ctx, last operand is DPS init) and
+  ;; tensor.{collapse,expand}_shape (no ctx, no init).
   ;; Returns the result Value of the cloned op.
+  ;;
+  ;; Note: hip.transpose is an unregistered op and does not implement
+  ;; DestinationStyleOpInterface, so we detect the init by position:
+  ;; for hip.* ops the operand order is [ctx, input(s)..., init] where
+  ;; the LAST operand is always the output buffer.
   (define (hip-create-requantized-layout-op rewriter dq-op layout-op q-op)
-    (let* ([q-type  (mlir-value-get-type (mlir-operation-get-result q-op 0))]
-           [in-type (mlir-value-get-type (hip-qdq-input-operand dq-op))]
-           [new-op  (mlir-op-clone-with-types layout-op q-op
-                                              (list in-type)
-                                              (list q-type))])
+    (let* ([q-type    (mlir-value-get-type (mlir-operation-get-result q-op 0))]
+           [dq-result (mlir-operation-get-result-value dq-op 0)]
+           [dq-input  (hip-qdq-input-operand dq-op)]
+           [n         (mlir-operation-num-operands layout-op)]
+           ;; For hip.* ops the last operand is the DPS init; for tensor.* ops there is none.
+           [has-ctx?  (hip-layout-op-has-ctx? layout-op)]
+           [init-idx  (if has-ctx? (- n 1) -1)]
+           ;; Build a new tensor.empty for the init when needed.
+           [new-init  (if has-ctx?
+                          (mlir-operation-get-result
+                            (mlir-build-op rewriter layout-op
+                                           "tensor.empty" '() (list q-type))
+                            0)
+                          0)]
+           ;; Rebuild operand list: replace dq-result with dq-input, and replace
+           ;; the last operand (DPS init for hip.*) with the typed init.
+           [operands  (let loop ([i 0] [acc '()])
+                        (if (= i n)
+                            (reverse acc)
+                            (let ([v (mlir-operation-get-operand-value layout-op i)])
+                              (loop (+ i 1)
+                                    (cons (cond
+                                            [(= v dq-result) dq-input]
+                                            [(= i init-idx)  new-init]
+                                            [else v])
+                                          acc)))))]
+           [new-op    (mlir-op-clone-with-types rewriter layout-op
+                                               operands (list q-type))])
       (mlir-operation-get-result new-op 0)))
 
 ) ;; end library (mlir hip fusion)

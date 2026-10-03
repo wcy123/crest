@@ -35,28 +35,27 @@ namespace crest {
 // WeakSingleton lives in namespace crest to match the friend declaration in
 // ChezSchemeInterpreter.h. Defined here (not in the header) to keep it
 // private to this translation unit.
+// ChezScheme cannot be re-initialized in the same process (Sscheme_init aborts
+// if called twice). Use a strong singleton so the interpreter persists across
+// multiple --split-input-file sections processed in a single crest-opt run.
 template <typename T>
 struct WeakSingleton {
-  static std::weak_ptr<T> the_instance_;
+  static std::shared_ptr<T> the_instance_;
 
   template <typename... Args>
   static std::shared_ptr<T> create(Args&&... args) {
-    std::shared_ptr<T> ret;
-    if (the_instance_.expired()) {
+    if (!the_instance_) {
       // PrivateTag{} is constructed here — inside WeakSingleton which is a
       // friend of both ChezSchemeInterpreter and PrivateTag.
-      ret = std::make_shared<T>(typename T::PrivateTag{},
-                                std::forward<Args>(args)...);
-      the_instance_ = ret;
+      the_instance_ = std::make_shared<T>(typename T::PrivateTag{},
+                                          std::forward<Args>(args)...);
     }
-    ret = the_instance_.lock();
-    assert(ret != nullptr);
-    return ret;
+    return the_instance_;
   }
 };
 
 template <typename T>
-std::weak_ptr<T> WeakSingleton<T>::the_instance_;
+std::shared_ptr<T> WeakSingleton<T>::the_instance_;
 
 } // namespace crest
 
