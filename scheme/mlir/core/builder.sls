@@ -191,14 +191,22 @@
   (define mlir-type-get-context
     (foreign-procedure "mlir_type_get_context" (uptr) uptr))
 
-  ;; Low-level FFI — always require explicit ctx.
+  ;; Low-level FFI bindings — always require an explicit MLIRContext* uptr.
+  ;; These are private (%...) because callers should use the public wrappers
+  ;; below, which support the optional current-mlir-context default.
+  ;;
+  ;; %mlir-get-index-type ctx → IndexType opaque uptr
+  ;; %mlir-get-i64-type   ctx → IntegerType<64> opaque uptr
+  ;; %mlir-get-i1-type    ctx → IntegerType<1> opaque uptr
   (define %mlir-get-index-type (foreign-procedure "mlir_get_index_type" (uptr) uptr))
   (define %mlir-get-i64-type   (foreign-procedure "mlir_get_i64_type"   (uptr) uptr))
   (define %mlir-get-i1-type    (foreign-procedure "mlir_get_i1_type"    (uptr) uptr))
 
-  ;; Public wrappers — ctx defaults to (current-mlir-context) when omitted.
-  ;; (mlir-get-index-type)      ; uses current-mlir-context
-  ;; (mlir-get-index-type ctx)  ; uses explicit ctx
+  ;; Public type constructors — ctx is optional.
+  ;; When omitted, current-mlir-context is used; raises if neither is set.
+  ;;
+  ;;   (mlir-get-index-type)      ; uses (current-mlir-context)
+  ;;   (mlir-get-index-type ctx)  ; uses explicit ctx
   (define (mlir-get-index-type . args)
     (%mlir-get-index-type (if (pair? args) (car args) (%require-context 'mlir-get-index-type))))
   (define (mlir-get-i64-type . args)
