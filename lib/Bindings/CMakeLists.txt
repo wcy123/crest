@@ -14,9 +14,9 @@ add_library(CrestBindings STATIC
   Core/Operation.cpp
   Core/Value.cpp
   Core/Builder.cpp
+  Core/Types.cpp
   Logging.cpp
   Conversion.cpp
-  Dialects/Tensor.cpp
   Dialects/Shape.cpp
 )
 
