@@ -1,7 +1,7 @@
 // Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 // Licensed under the MIT License.
 
-// RUN: %crest-opt -allow-unregistered-dialect --scheme-pass="module=passes/hip-fusion" --split-input-file %s | %FileCheck %s
+// RUN: %crest-opt -allow-unregistered-dialect --crest-pass="module=passes/hip-fusion" --split-input-file %s | %FileCheck %s
 
 // Tests the QLpNormalization fusion pattern: DQ → hip.rms_norm → Q → hip.qlpnormalization
 // Written in generic MLIR op format so no hip dialect registration is required.

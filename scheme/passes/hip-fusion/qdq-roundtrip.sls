@@ -25,7 +25,7 @@
           (mlir core ir)
           (mlir core conversion)
           (mlir hip fusion)
-          (mlir ddr)
+          (crest ddr)
           (passes hip-fusion helpers))
 
   ;;===--------------------------------------------------------------------===;;

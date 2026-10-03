@@ -1,12 +1,12 @@
 #!r6rs
-(library (mlir ddr analyze)
+(library (crest ddr analyze)
   (export analyze-ast
           binding-manager-bindings)
   (import (rnrs)
           (only (chezscheme) syntax->list format printf)
           (for (rename (rime loop) (:with :rime-with)) expand)
-          (mlir ddr ast)
-          (mlir ddr actions))
+          (crest ddr ast)
+          (crest ddr actions))
 
   ;;=======================================================================
   ;; Phase 3: Analysis - build bindings and actions for pattern matching

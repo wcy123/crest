@@ -20,7 +20,7 @@
           (mlir core ir)
           (mlir core conversion)
           (mlir hip fusion)
-          (mlir ddr)
+          (crest ddr)
           (passes hip-fusion helpers))
 
   (define-rewrite-pattern (hip-qmul-fusion op rewriter)

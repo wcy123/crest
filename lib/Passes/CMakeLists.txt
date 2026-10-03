@@ -1,10 +1,9 @@
 ##
-# CREST Passes — SchemePass implementation.
-# Tablegen target CrestSchemePassIncGen is defined in include/crest/Passes/.
+# CREST Passes — CrestPass implementation.
+# No tablegen — uses mlir::PassPipelineRegistration directly.
 ##
 
-add_library(CrestPasses STATIC SchemePass.cpp)
-add_dependencies(CrestPasses CrestSchemePassIncGen)
+add_library(CrestPasses STATIC CrestPass.cpp)
 
 # include/ and build/include/ are set globally; no per-target repetition needed
 
