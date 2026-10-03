@@ -6,7 +6,7 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 ;;
-;; (mlir context) — ambient MLIRContext dynamic parameter.
+;; (mlir core context) — ambient MLIRContext dynamic parameter.
 ;;
 ;; The MLIRContext is the root owner of all MLIR types, attributes, and
 ;; operations.  This module provides a dynamic parameter so that the
@@ -21,7 +21,7 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 
-(library (mlir context)
+(library (mlir core context)
   (export
     current-mlir-context
     with-mlir-context)
@@ -37,4 +37,4 @@
       [(_ ctx body ...)
        (parameterize ([current-mlir-context ctx]) body ...)]))
 
-) ;; end library (mlir context)
+) ;; end library (mlir core context)
