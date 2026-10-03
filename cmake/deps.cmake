@@ -106,6 +106,62 @@ add_custom_target(ChezBootHeaders DEPENDS
   ${ChezBootHeaders_BINARY_DIR}/ChezBootScheme.h
 )
 
+# ─── CREST Scheme boot file (deployment only) ────────────────────────────────
+# When CREST_EMBED_SCHEME_BOOT=ON, compile all CREST .sls libraries into a
+# single crest.boot, embed it as a C byte-array header, and define
+# CREST_BOOT_EMBEDDED so the interpreter loads it at startup.
+# When OFF (default), the interpreter searches for .sls files at runtime via
+# addLibraryPath — convenient for development.
+option(CREST_EMBED_SCHEME_BOOT "Compile and embed Scheme libraries into the binary (deployment)" OFF)
+
+if(CREST_EMBED_SCHEME_BOOT)
+
+set(CHEZ_SCHEME_BIN
+    ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/bin/${CHEZ_MACHINE}/scheme)
+
+set(CREST_BOOT_FILE   "${CMAKE_BINARY_DIR}/crest.boot")
+set(CREST_BOOT_HEADER "${ChezBootHeaders_BINARY_DIR}/CrestBoot.h")
+
+# Collect all .sls source files so CMake reruns when any of them changes.
+file(GLOB_RECURSE CREST_SLS_FILES "${CMAKE_SOURCE_DIR}/scheme/*.sls")
+
+add_custom_command(
+  OUTPUT  ${CREST_BOOT_FILE}
+  COMMAND ${CHEZ_SCHEME_BIN}
+          --libdirs "${CMAKE_SOURCE_DIR}/scheme:${CREST_RIME_DIR}"
+          --script  ${CMAKE_SOURCE_DIR}/cmake/compile_scheme_libs.ss
+          ${CREST_BOOT_FILE}
+  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+  DEPENDS ChezScheme ${CREST_SLS_FILES} ${CMAKE_SOURCE_DIR}/cmake/compile_scheme_libs.ss
+  COMMENT "Compiling CREST Scheme libraries into crest.boot"
+  VERBATIM
+)
+
+add_custom_command(
+  OUTPUT  ${CREST_BOOT_HEADER}
+  COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_SOURCE_DIR}/cmake/xxd.py
+          --var    crest_boot_data
+          --output ${CREST_BOOT_HEADER}
+          ${CREST_BOOT_FILE}
+  DEPENDS ${CREST_BOOT_FILE}
+  COMMENT "Embedding crest.boot"
+  VERBATIM
+)
+
+add_custom_target(CrestBootHeader DEPENDS ${CREST_BOOT_HEADER})
+
+# Make ChezBootHeaders also depend on CrestBootHeader so a single
+# dependency on ChezBootHeaders pulls in everything.
+add_dependencies(ChezBootHeaders CrestBootHeader)
+
+  set(CREST_BOOT_HEADER_DIR "${ChezBootHeaders_BINARY_DIR}" CACHE INTERNAL "")
+  message(STATUS "CREST: Scheme boot embedding enabled — crest.boot will be compiled")
+
+else()
+  message(STATUS "CREST: Scheme boot embedding disabled (development mode) — set CREST_EMBED_SCHEME_BOOT=ON for deployment")
+endif()
+
 # ─── rime: fetch source (pure Scheme, no build step) ─────────────────────────
 FetchContent_Declare(rime
   GIT_REPOSITORY https://github.com/wcy123/rime.git
