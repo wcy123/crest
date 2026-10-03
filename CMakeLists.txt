@@ -23,6 +23,9 @@ include_directories(${MLIR_INCLUDE_DIRS})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_BINARY_DIR}/include)
 
+# Compiler options and warnings
+include(cmake/build_options.cmake)
+
 # Third-party dependencies: ChezScheme (fetch + build) and rime (fetch)
 include(cmake/deps.cmake)
 
