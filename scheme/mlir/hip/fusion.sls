@@ -213,7 +213,7 @@
                       [n         (and (> rank 0) (list-ref shape (- rank 1)))])
                  (and n
                       (> n 0)
-                      (let* ([expected  (/ 1.0 (sqrt (exact->inexact n)))]
+                      (let* ([expected  (/ 1.0 (sqrt (inexact n)))]
                              [actual    (mlir-attr-splat-float-value
                                           (mlir-operation-get-attribute
                                             (mlir-value-get-defining-op scale-val)
@@ -226,10 +226,10 @@
   ;; 1x1 kernel, unit strides, unit dilations, zero pads, group=1.
   ;; Mirrors hip_is_fusable_conv_geometry in Hip.cpp.
   (define (hip-fusable-conv-geometry? op)
-    (let ([ks    (mlir-operation-get-attr op "kernel_shape" :i64-array)]
-          [st    (mlir-operation-get-attr op "strides"      :i64-array)]
-          [di    (mlir-operation-get-attr op "dilations"    :i64-array)]
-          [pd    (mlir-operation-get-attr op "pads"         :i64-array)]
+    (let ([ks    (mlir-operation-get-attr op "kernel_shape" ':i64-array)]
+          [st    (mlir-operation-get-attr op "strides"      ':i64-array)]
+          [di    (mlir-operation-get-attr op "dilations"    ':i64-array)]
+          [pd    (mlir-operation-get-attr op "pads"         ':i64-array)]
           [group (mlir-operation-get-integer-attr op "group" 0)])
       (and (equal? ks '(1 1))
            (equal? st '(1 1))
@@ -281,15 +281,17 @@
                       (mlir-attr-is-splat a)))))))
 
   ;; Extract zero-point of op as i64.  Returns absent-val when absent.
-  ;; Reads the splat integer value from the hip.constant via the generic
-  ;; integer-attr reader on the constant defining op.
+  ;; Reads the splat integer value from the DenseElementsAttr on the
+  ;; hip.constant defining the zero-point operand.
   (define (hip-extract-qdq-zeropoint-i64 op absent-val)
     (if (= (mlir-operation-num-operands op) 4)
         absent-val
         (let* ([zp-val (mlir-operation-get-operand-value op 3)]
                [def    (mlir-value-get-defining-op zp-val)])
           (if (and def (string=? (mlir-operation-name def) "hip.constant"))
-              (mlir-operation-get-integer-attr def "value" absent-val)
+              (mlir-attr-splat-int-value
+                (mlir-operation-get-attribute def "value")
+                absent-val)
               absent-val))))
 
   ;; Logical quantized bit-width — pure-Scheme alias for hip-qdq-value-bits.
@@ -312,13 +314,15 @@
   ;;===--------------------------------------------------------------------===;;
 
   ;; Build a tensor.empty whose result type is out-type.
-  ;; For static shapes no dynamic-size operands are needed.
-  ;; mlir-build-operation dispatches via current-rewriter set by DDR.
+  ;; Uses mlir-build-op directly with the provided rewriter uptr so this works
+  ;; both inside and outside the with-rewrite-builder context (e.g. :then-let).
+  ;; The loc-op anchor is the defining op of shape-source.
   ;; Returns result Value (index 0) of the new tensor.empty op.
   (define (hip-build-init rewriter out-type shape-source)
-    (mlir-operation-get-result
-      (mlir-build-operation "tensor.empty" '() (list out-type))
-      0))
+    (let ([loc-op (mlir-value-get-defining-op shape-source)])
+      (mlir-operation-get-result
+        (mlir-build-op rewriter loc-op "tensor.empty" '() (list out-type))
+        0)))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Requantized layout op — pure Scheme via mlir-op-clone-with-types

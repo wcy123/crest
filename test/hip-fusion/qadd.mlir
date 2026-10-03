@@ -5,13 +5,15 @@
 
 // Tests the QAdd fusion pattern: DQ + DQ → hip.add → hip.quantize_linear → hip.qadd
 // Written in generic MLIR op format so no hip dialect registration is required.
+// Note: dead ops (constants, DQ, add) are retained because unregistered-dialect
+// ops are not eligible for automatic DCE by the greedy rewriter.
 
 // CHECK-LABEL: func.func @qadd
 // CHECK-SAME:  (%[[CTX:.*]]: !hip.context, %[[LHS:.*]]: tensor<1x128x32xi8>, %[[RHS:.*]]: tensor<1x128x32xi8>) -> tensor<1x128x32xi8> {
-// CHECK-NEXT:    %[[INIT:.*]] = tensor.empty() : tensor<1x128x32xi8>
-// CHECK-NEXT:    %[[QADD:.*]] = "hip.qadd"(%[[CTX]], %[[LHS]], %[[RHS]], %[[INIT]]) {lhs_scale = 2.500000e-01 : f32, lhs_zp = -5 : i64, output_scale = 1.250000e-01 : f32, output_zp = 7 : i64, rhs_scale = 5.000000e-01 : f32, rhs_zp = 3 : i64} : (!hip.context, tensor<1x128x32xi8>, tensor<1x128x32xi8>, tensor<1x128x32xi8>) -> tensor<1x128x32xi8>
-// CHECK-NEXT:    return %[[QADD]] : tensor<1x128x32xi8>
-// CHECK-NEXT:  }
+// CHECK:         %[[INIT:.*]] = tensor.empty() : tensor<1x128x32xi8>
+// CHECK:         %[[QADD:.*]] = "hip.qadd"(%[[CTX]], %[[LHS]], %[[RHS]], %[[INIT]]) {lhs_scale = 2.500000e-01 : f32, lhs_zp = -5 : i64, output_scale = 1.250000e-01 : f32, output_zp = 7 : i64, rhs_scale = 5.000000e-01 : f32, rhs_zp = 3 : i64}
+// CHECK-SAME:    : (!hip.context, tensor<1x128x32xi8>, tensor<1x128x32xi8>, tensor<1x128x32xi8>) -> tensor<1x128x32xi8>
+// CHECK:         return %[[QADD]] : tensor<1x128x32xi8>
 func.func @qadd(%ctx: !hip.context,
                 %lhs: tensor<1x128x32xi8>,
                 %rhs: tensor<1x128x32xi8>) -> tensor<1x128x32xi8> {

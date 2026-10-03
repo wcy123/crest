@@ -99,6 +99,7 @@
     mlir-op-get-float-attr        ; FloatAttr by name (NaN if absent)
     mlir-attr-is-splat            ; 1 if DenseElementsAttr splat
     mlir-attr-splat-float-value   ; splat float as double (NaN if absent)
+    mlir-attr-splat-int-value     ; splat integer as i64 (absent-val if not applicable)
     mlir-op-get-operand-segment-sizes  ; "operandSegmentSizes" as Scheme list
     ;; Pattern application
     mlir-apply-patterns-greedy    ; applyPatternsAndFoldGreedily

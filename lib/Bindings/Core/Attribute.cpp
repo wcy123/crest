@@ -193,6 +193,16 @@ double mlir_attr_splat_float_value(uint64_t attr_ptr) {
   return (*dense.begin()).convertToDouble();
 }
 
+// Get the splat integer value from a DenseElementsAttr as i64.
+// Returns absent_val if the attr is not a splat integer dense attr.
+int64_t mlir_attr_splat_int_value(uint64_t attr_ptr, int64_t absent_val) {
+  if (!attr_ptr) return absent_val;
+  auto attr = mlir::Attribute::getFromOpaquePointer(reinterpret_cast<const void*>(attr_ptr));
+  auto dense = mlir::dyn_cast<mlir::DenseIntElementsAttr>(attr);
+  if (!dense || !dense.isSplat()) return absent_val;
+  return (*dense.begin()).getSExtValue();
+}
+
 // Get "operandSegmentSizes" DenseI32ArrayAttr as a Scheme list of fixnums.
 // Returns Snil when the attribute is absent.
 ptr mlir_op_get_operand_segment_sizes(uint64_t op_ptr) {
@@ -225,6 +235,7 @@ void registerAttributeBindings() {
   Sregister_symbol("mlir_op_get_float_attr",                (void*)::mlir_op_get_float_attr);
   Sregister_symbol("mlir_attr_is_splat",                    (void*)::mlir_attr_is_splat);
   Sregister_symbol("mlir_attr_splat_float_value",           (void*)::mlir_attr_splat_float_value);
+  Sregister_symbol("mlir_attr_splat_int_value",             (void*)::mlir_attr_splat_int_value);
   Sregister_symbol("mlir_op_get_operand_segment_sizes",     (void*)::mlir_op_get_operand_segment_sizes);
 }
 
