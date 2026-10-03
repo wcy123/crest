@@ -1,89 +1,112 @@
 ;;===----------------------------------------------------------------------===;;
 ;;
-;; cmake/compile_scheme_libs.ss — Compile CREST Scheme libraries into a boot file
+;; cmake/compile_scheme_libs.ss — Compile all CREST Scheme libraries (single process)
 ;;
-;; Usage (invoked by CMake):
-;;   scheme --script compile_scheme_libs.ss <object-dir> <output-boot>
+;; Usage:
+;;   scheme --script compile_scheme_libs.ss
+;;          <order-file> <scheme-src> <rime-src> <output-boot>
 ;;
-;; WORKING_DIRECTORY must be set to the scheme/ source directory by CMake.
-;; Compiled .so/.wpo files go to <object-dir>, never to the source tree.
-;; This is safe for FetchContent / read-only source mounts.
+;; Copies .sls source files to local /tmp, compiles entirely on local disk
+;; (no NFS writes), then calls make-boot-file from the local .so files.
+;; This completely bypasses NFS attribute cache issues.
 ;;
 ;;===----------------------------------------------------------------------===;;
 
 (import (chezscheme))
 
 (define args        (command-line-arguments))
-(define output-boot (list-ref args 0))
-;; --libdirs (set by CMake) already configures library search paths including rime.
-;; compile-library writes .so/.wpo next to the source file (CWD = scheme/).
-;; We delete them after make-boot-file so the source tree is clean.
+(define order-file  (list-ref args 0))
+(define scheme-src  (list-ref args 1))  ; NFS source dir (read-only)
+(define rime-src    (list-ref args 2))  ; rime NFS dir (read-only)
+(define output-boot (list-ref args 3))
 
+;; ─── Local workspace ──────────────────────────────────────────────────────────
+(define local-ws (string-append "/tmp/crest-compile-" (number->string (random 999999))))
+(define local-src (string-append local-ws "/src"))
+(define local-obj (string-append local-ws "/obj"))
+(system (string-append "mkdir -p " local-src " " local-obj))
+
+;; ─── Copy .sls sources to local disk ─────────────────────────────────────────
+;; Use rsync to exclude .git (pack files may be read-only and cause cp errors).
+(system (string-append "rsync -a --exclude='.git' " scheme-src "/ " local-src "/"))
+(system (string-append "rsync -a --exclude='.git' " rime-src "/ " local-ws "/rime/"))
+
+;; ─── Read topologically-sorted library list ───────────────────────────────────
 (define libraries
-  ;; Dependency order: leaves first, root last.
-  '(;; Foundational
-    "mlir/core/logging"
-    "mlir/core/context"
-    "mlir/core/types"
-    ;; Core IR
-    "mlir/core/attribute"
-    "mlir/core/value"
-    "mlir/core/operation"
-    "mlir/core/conversion"
-    "mlir/core/builder"
-    "mlir/core/ir"
-    ;; Dialects
-    "mlir/dialects/func"
-    "mlir/dialects/shape"
-    "mlir/dialects/tensor"
-    ;; DDR pattern DSL
-    "mlir/ddr/keywords"
-    "mlir/ddr/ast"
-    "mlir/ddr/parse"
-    "mlir/ddr/validate"
-    "mlir/ddr/actions"
-    "mlir/ddr/analyze"
-    "mlir/ddr/codegen"
-    "mlir/ddr/rewrite"
-    "mlir/ddr"
-    ;; Hip dialect helpers
-    "mlir/hip/fusion"
-    ;; Hip fusion pass (sub-libraries before top-level)
-    "passes/hip-fusion/helpers"
-    "passes/hip-fusion/qadd"
-    "passes/hip-fusion/qmul"
-    "passes/hip-fusion/qmatmul"
-    "passes/hip-fusion/qgemm"
-    "passes/hip-fusion/qconv"
-    "passes/hip-fusion/qsigmoid"
-    "passes/hip-fusion/qlpnorm"
-    "passes/hip-fusion/qdq-roundtrip"
-    "passes/hip-fusion"))
+  (let ([p (open-input-file order-file)])
+    (let loop ([libs '()])
+      (let ([line (get-line p)])
+        (if (eof-object? line)
+            (begin (close-input-port p) (reverse libs))
+            (if (or (string=? line "") (char=? (string-ref line 0) #\#))
+                (loop libs)
+                (loop (cons line libs))))))))
 
-(printf "Compiling ~a CREST Scheme libraries into ~a~n" (length libraries) output-boot)
+;; ─── Library search / output paths (set BEFORE any compilation) ─────────────
+;; Source: local-src (crest .sls), local-ws/rime (rime .sls)
+;; Object: local-obj (compiled .so — local disk, no NFS issues)
+(library-directories
+  (list (cons local-src local-obj)
+        (cons (string-append local-ws "/rime") local-obj)))
 
+(optimize-level 2)
+(generate-wpo-files #f)
+
+;; ─── Compile rime/loop (needed at expand and runtime by crest/ddr/*) ─────────
+;; compile-imported-libraries #t causes all rime sub-dependencies to be
+;; compiled automatically when rime/loop.sls is compiled.
+(compile-imported-libraries #t)
+(compile-library (string-append local-ws "/rime/rime/loop.sls"))
+(compile-imported-libraries #f)
+
+(printf "Compiling ~a CREST Scheme libraries (local /tmp)~n" (length libraries))
+
+;; ─── Compile from local source ───────────────────────────────────────────────
+;; Use absolute paths so compile-library matches against library-directories.
 (for-each
-  (lambda (lib)
-    (printf "  (~a)~n" lib)
-    (compile-library (string-append lib ".sls")))
+  (lambda (sls)
+    (let* ([base      (substring sls 0 (- (string-length sls) 4))]
+           [abs-src   (string-append local-src "/" sls)]
+           [dest-dir  (string-append local-obj "/" (let loop ([i (- (string-length base) 1)])
+                                                    (if (or (= i 0) (char=? (string-ref base i) #\/))
+                                                        (if (= i 0) base (substring base 0 i))
+                                                        (loop (- i 1)))))])
+      (printf "  (~a)~n" base)
+      (system (string-append "mkdir -p " dest-dir))
+      (compile-library abs-src)))
   libraries)
+
+;; ─── Bundle into crest.boot ───────────────────────────────────────────────────
+;; Collect all compiled .so files: rime first (they must come before crest libs
+;; that depend on them), then crest libs in topological order.
+(define (find-so-files dir)
+  (fold-left
+    (lambda (acc f)
+      (let ([path (string-append dir "/" f)])
+        (cond
+          [(file-directory? path) (append acc (find-so-files path))]
+          [(let ([n (string-length f)])
+             (and (> n 3) (string=? (substring f (- n 3) n) ".so")))
+           (append acc (list path))]
+          [else acc])))
+    '()
+    (directory-list dir)))
+
+;; Rime .so files land in TWO places:
+;;   - loop.so itself: in local-ws/rime/rime/ (compiled via absolute path, no redirect)
+;;   - all sub-libraries: in local-obj/ (compiled transitively via library-directories redirect)
+;; Crest .so files: in local-src/ (absolute path, no redirect)
+(define rime-so-files (append (find-so-files (string-append local-ws "/rime"))
+                               (find-so-files local-obj)))
+(define crest-so-files
+  (map (lambda (sls)
+         (string-append local-src "/" (substring sls 0 (- (string-length sls) 4)) ".so"))
+       libraries))
+(define so-files (append rime-so-files crest-so-files))
 
 (printf "Creating boot file: ~a~n" output-boot)
+(apply make-boot-file output-boot '("petite" "scheme") so-files)
 
-(apply make-boot-file
-  output-boot
-  '("petite" "scheme")
-  (map (lambda (lib) (string-append lib ".so")) libraries))
-
-;; Clean up compiled artifacts from the source tree.
-;; The information is now captured in the boot file.
-(for-each
-  (lambda (lib)
-    (for-each
-      (lambda (ext)
-        (let ([f (string-append lib ext)])
-          (when (file-exists? f) (delete-file f))))
-      '(".so" ".wpo")))
-  libraries)
-
+;; ─── Cleanup ──────────────────────────────────────────────────────────────────
+(system (string-append "rm -rf " local-ws))
 (printf "Done.~n")
