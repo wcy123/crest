@@ -11,5 +11,7 @@ if(CREST_WARNINGS_AS_ERRORS)
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall>
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wextra>
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Werror>
+    # -Wunused-parameter is too noisy in LLVM/MLIR template-heavy headers
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wno-unused-parameter>
   )
 endif()
