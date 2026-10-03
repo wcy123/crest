@@ -109,12 +109,22 @@
       (lambda (a) (not (zero? (f a))))))
 
   ;; Value extractors — work on any mlir::Attribute uptr.
-  ;; Compose with (:attr "name") in :where clauses instead of (:attr "name" :type).
+  ;; Signal an error if the attribute is not of the expected type so callers
+  ;; never silently receive a sentinel.  In a DDR :where clause the outer
+  ;; guard catches the error and turns it into a match failure (#f).
   (define mlir-attr-as-integer
-    (foreign-procedure "mlir_attr_as_integer" (uptr) integer-64))
+    (let ([get (foreign-procedure "mlir_attr_as_integer" (uptr) integer-64)])
+      (lambda (attr)
+        (if (mlir-attr-isa-integer attr)
+            (get attr)
+            (error 'mlir-attr-as-integer "attribute is not an IntegerAttr" attr)))))
 
   (define mlir-attr-as-float
-    (foreign-procedure "mlir_attr_as_float" (uptr) double))
+    (let ([get (foreign-procedure "mlir_attr_as_float" (uptr) double)])
+      (lambda (attr)
+        (if (mlir-attr-isa-float attr)
+            (get attr)
+            (error 'mlir-attr-as-float "attribute is not a FloatAttr" attr)))))
 
   (define mlir-op-get-operand-segment-sizes
     (foreign-procedure "mlir_op_get_operand_segment_sizes" (uptr) scheme-object))
