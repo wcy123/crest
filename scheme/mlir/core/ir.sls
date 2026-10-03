@@ -62,6 +62,8 @@
     value-array-ref-at
     ;; (mlir core builder)
     mlir-type-get-context
+    current-mlir-context
+    with-mlir-context
     current-rewriter
     current-block-builder
     current-loc

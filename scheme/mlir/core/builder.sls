@@ -20,6 +20,8 @@
 (library (mlir core builder)
   (export
     ;; Dynamic context
+    current-mlir-context
+    with-mlir-context
     current-rewriter
     current-block-builder
     current-loc
@@ -64,7 +66,8 @@
 )
 
   (import (rnrs)
-          (only (chezscheme) foreign-procedure parameterize make-parameter void))
+          (only (chezscheme) foreign-procedure parameterize make-parameter void)
+          (only (mlir core operation) mlir-operation-get-context))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Low-level rewriter FFI
@@ -189,20 +192,20 @@
   (define mlir-type-get-context
     (foreign-procedure "mlir_type_get_context" (uptr) uptr))
 
-  ;; Construct the built-in IndexType for the given context.
-  ;; ctx: MLIRContext* uptr  Returns: Type opaque uptr
-  (define mlir-get-index-type
-    (foreign-procedure "mlir_get_index_type" (uptr) uptr))
+  ;; Low-level FFI — always require explicit ctx.
+  (define %mlir-get-index-type (foreign-procedure "mlir_get_index_type" (uptr) uptr))
+  (define %mlir-get-i64-type   (foreign-procedure "mlir_get_i64_type"   (uptr) uptr))
+  (define %mlir-get-i1-type    (foreign-procedure "mlir_get_i1_type"    (uptr) uptr))
 
-  ;; Construct IntegerType<64> for the given context.
-  ;; ctx: MLIRContext* uptr  Returns: Type opaque uptr
-  (define mlir-get-i64-type
-    (foreign-procedure "mlir_get_i64_type" (uptr) uptr))
-
-  ;; Construct IntegerType<1> (i1 / bool) for the given context.
-  ;; ctx: MLIRContext* uptr  Returns: Type opaque uptr
-  (define mlir-get-i1-type
-    (foreign-procedure "mlir_get_i1_type" (uptr) uptr))
+  ;; Public wrappers — ctx defaults to (current-mlir-context) when omitted.
+  ;; (mlir-get-index-type)      ; uses current-mlir-context
+  ;; (mlir-get-index-type ctx)  ; uses explicit ctx
+  (define (mlir-get-index-type . args)
+    (%mlir-get-index-type (if (pair? args) (car args) (%require-context 'mlir-get-index-type))))
+  (define (mlir-get-i64-type . args)
+    (%mlir-get-i64-type   (if (pair? args) (car args) (%require-context 'mlir-get-i64-type))))
+  (define (mlir-get-i1-type . args)
+    (%mlir-get-i1-type    (if (pair? args) (car args) (%require-context 'mlir-get-i1-type))))
 
   ;; Returns 1 if the type is a RankedTensorType, 0 otherwise.
   ;; type: Type opaque uptr
@@ -238,6 +241,26 @@
          (dynamic-wind void
            (lambda () body ...)
            (lambda () (dtor var))))]))
+
+  ;;===--------------------------------------------------------------------===;;
+  ;; Dynamic MLIR context
+  ;;===--------------------------------------------------------------------===;;
+
+  ;; Current MLIRContext* uptr (or #f when unset).
+  ;; Install with (parameterize ([current-mlir-context ctx]) ...) or
+  ;; the with-mlir-context macro below.
+  (define current-mlir-context (make-parameter #f))
+
+  ;; RAII macro: install ctx as current-mlir-context for the duration of body.
+  (define-syntax with-mlir-context
+    (syntax-rules ()
+      [(_ ctx body ...)
+       (parameterize ([current-mlir-context ctx]) body ...)]))
+
+  ;; Return the current context, raising if none is installed.
+  (define (%require-context who)
+    (or (current-mlir-context)
+        (error who "no current MLIRContext — wrap with (with-mlir-context ctx ...)")))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Dynamic builder context
@@ -278,21 +301,28 @@
         [else (error 'mlir-build-operation "no current builder installed")])))
 
   ;; Install rw as current-rewriter and loc as current-loc for the duration of body.
-  ;; Sets current-block-builder to #f (rewriter and block-builder are mutually exclusive).
+  ;; Also installs current-mlir-context from the loc operation.
   ;; rw:  RewriterBase* uptr (passed by the pattern callback)
   ;; loc: Operation* uptr used as both the insertion-point anchor and location source
   (define-syntax with-rewrite-builder
     (syntax-rules ()
       [(_ (rw loc) body ...)
-       (parameterize ([current-rewriter rw] [current-block-builder #f] [current-loc loc])
+       (parameterize ([current-rewriter      rw]
+                      [current-block-builder #f]
+                      [current-loc           loc]
+                      [current-mlir-context  (mlir-operation-get-context loc)])
          body ...)]))
 
   ;; Install an explicit OpBuilder* as current-block-builder for the duration of body.
+  ;; Also installs current-mlir-context from the loc operation.
   ;; builder: OpBuilder* uptr, loc: Operation* uptr (location source)
   (define-syntax with-current-block-builder
     (syntax-rules ()
       [(_ (builder loc) body ...)
-       (parameterize ([current-block-builder builder] [current-rewriter #f] [current-loc loc])
+       (parameterize ([current-block-builder builder]
+                      [current-rewriter      #f]
+                      [current-loc           loc]
+                      [current-mlir-context  (mlir-operation-get-context loc)])
          body ...)]))
 
   ;; Create an OpBuilder at the end of block, install it as current-block-builder,
