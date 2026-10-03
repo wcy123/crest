@@ -19,9 +19,7 @@
 
 (library (mlir core builder)
   (export
-    ;; Dynamic context (re-exported from (mlir context))
-    current-mlir-context
-    with-mlir-context
+    ;; Dynamic builder context
     current-rewriter
     current-block-builder
     current-loc
