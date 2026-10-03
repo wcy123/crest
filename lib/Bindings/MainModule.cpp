@@ -6,7 +6,6 @@
 #include "Conversion.h"
 #include "Core.h"
 #include "Dialects/Shape.h"
-#include "Dialects/Tensor.h"
 #include "Logging.h"
 
 namespace crest {
@@ -23,7 +22,6 @@ void registerMlirForeignFunctions() {
   registerConversionBindings();
   registerCoreBindings();
   registerShapeBindings();
-  registerTensorBindings();
   registerLoggingBindings();
   if (g_extra_bindings_fn) {
     g_extra_bindings_fn();

@@ -327,43 +327,6 @@ void mlir_destroy_builder(uint64_t builder_ptr) {
   delete reinterpret_cast<mlir::OpBuilder*>(builder_ptr);
 }
 
-// Get the MLIRContext* from any MLIR Type*.
-// type_ptr:  Type opaque ptr (Type::getAsOpaquePointer())
-// Returns: MLIRContext* as uptr, or 0 if type_ptr is 0.
-uint64_t mlir_type_get_context(uint64_t type_ptr) {
-  if (!type_ptr) return 0;
-  return reinterpret_cast<uint64_t>(
-      mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(type_ptr))
-          .getContext());
-}
-
-// Get the MLIR index type for a context.
-// ctx_ptr:  MLIRContext* as uptr
-// Returns: Type opaque ptr for mlir::IndexType, or 0 if ctx is null.
-uint64_t mlir_get_index_type(uint64_t ctx_ptr) {
-  if (!ctx_ptr) return 0;
-  return reinterpret_cast<uint64_t>(
-      mlir::IndexType::get(reinterpret_cast<mlir::MLIRContext*>(ctx_ptr)).getAsOpaquePointer());
-}
-
-// Get the MLIR i64 integer type for a context.
-// ctx_ptr:  MLIRContext* as uptr
-// Returns: Type opaque ptr for mlir::IntegerType<64>, or 0 if ctx is null.
-uint64_t mlir_get_i64_type(uint64_t ctx_ptr) {
-  if (!ctx_ptr) return 0;
-  return reinterpret_cast<uint64_t>(
-      mlir::IntegerType::get(reinterpret_cast<mlir::MLIRContext*>(ctx_ptr), 64).getAsOpaquePointer());
-}
-
-// Get the MLIR i1 integer type (boolean) for a context.
-// ctx_ptr:  MLIRContext* as uptr
-// Returns: Type opaque ptr for mlir::IntegerType<1>, or 0 if ctx is null.
-uint64_t mlir_get_i1_type(uint64_t ctx_ptr) {
-  if (!ctx_ptr) return 0;
-  return reinterpret_cast<uint64_t>(
-      mlir::IntegerType::get(reinterpret_cast<mlir::MLIRContext*>(ctx_ptr), 1).getAsOpaquePointer());
-}
-
 // Apply patterns greedily to an operation (applyPatternsAndFoldGreedily).
 // patterns_ptr: RewritePatternSet* as uptr; the pattern set is MOVED (consumed).
 // Returns 1 on success (converged), 0 on failure.
@@ -422,10 +385,6 @@ void registerBuilderBindings() {
   Sregister_symbol("mlir_new_block",                         (void*)::mlir_new_block);
   Sregister_symbol("mlir_builder_at_block_end",              (void*)::mlir_builder_at_block_end);
   Sregister_symbol("mlir_destroy_builder",                   (void*)::mlir_destroy_builder);
-  Sregister_symbol("mlir_type_get_context",                   (void*)::mlir_type_get_context);
-  Sregister_symbol("mlir_get_index_type",                    (void*)::mlir_get_index_type);
-  Sregister_symbol("mlir_get_i64_type",                      (void*)::mlir_get_i64_type);
-  Sregister_symbol("mlir_get_i1_type",                       (void*)::mlir_get_i1_type);
   Sregister_symbol("mlir_apply_patterns_greedy",             (void*)::mlir_apply_patterns_greedy);
   Sregister_symbol("mlir_op_clone_with_types",               (void*)::mlir_op_clone_with_types);
 }

@@ -19,7 +19,7 @@
 
 (library (mlir core builder)
   (export
-    ;; Dynamic context
+    ;; Dynamic builder context
     current-rewriter
     current-block-builder
     current-loc
@@ -46,17 +46,6 @@
     mlir-builder-at-block-end
     mlir-destroy-builder
     mlir-create-op
-    ;; Type context
-    mlir-type-get-context
-    ;; Type constructors needed by builder callers
-    mlir-get-index-type
-    mlir-get-i64-type
-    mlir-get-i1-type
-    ;; Type queries
-    mlir-type-is-ranked-tensor
-    mlir-type-get-element-type
-    mlir-type-get-shape
-    mlir-type-get-rank
     ;; Pattern application
     mlir-apply-patterns-greedy
     ;; Generic op rebuild
@@ -64,7 +53,10 @@
 )
 
   (import (rnrs)
-          (only (chezscheme) foreign-procedure parameterize make-parameter void))
+          (only (chezscheme) foreign-procedure parameterize make-parameter void)
+          (mlir core context)
+          (mlir core types)
+          (only (mlir core operation) mlir-operation-get-context))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Low-level rewriter FFI
@@ -180,52 +172,6 @@
     (%mlir-create-op builder loc name ops types (if (pair? rest) (car rest) 0)))
 
   ;;===--------------------------------------------------------------------===;;
-  ;; Type constructors / queries
-  ;;===--------------------------------------------------------------------===;;
-
-  ;; Get the MLIRContext* from any Type* (types carry their context).
-  ;; type: Type opaque uptr (getAsOpaquePointer)
-  ;; Returns: MLIRContext* uptr, or 0 on null input
-  (define mlir-type-get-context
-    (foreign-procedure "mlir_type_get_context" (uptr) uptr))
-
-  ;; Construct the built-in IndexType for the given context.
-  ;; ctx: MLIRContext* uptr  Returns: Type opaque uptr
-  (define mlir-get-index-type
-    (foreign-procedure "mlir_get_index_type" (uptr) uptr))
-
-  ;; Construct IntegerType<64> for the given context.
-  ;; ctx: MLIRContext* uptr  Returns: Type opaque uptr
-  (define mlir-get-i64-type
-    (foreign-procedure "mlir_get_i64_type" (uptr) uptr))
-
-  ;; Construct IntegerType<1> (i1 / bool) for the given context.
-  ;; ctx: MLIRContext* uptr  Returns: Type opaque uptr
-  (define mlir-get-i1-type
-    (foreign-procedure "mlir_get_i1_type" (uptr) uptr))
-
-  ;; Returns 1 if the type is a RankedTensorType, 0 otherwise.
-  ;; type: Type opaque uptr
-  (define mlir-type-is-ranked-tensor
-    (foreign-procedure "mlir_type_is_ranked_tensor" (uptr) int))
-
-  ;; Get the element type of a shaped type (tensor, memref, vector).
-  ;; type: ShapedType opaque uptr  Returns: element Type opaque uptr
-  (define mlir-type-get-element-type
-    (foreign-procedure "mlir_type_get_element_type" (uptr) uptr))
-
-  ;; Get the shape of a ranked tensor as a Scheme list of exact integers.
-  ;; Negative values indicate dynamic dimensions (mlir::ShapedType::kDynamic).
-  ;; type: RankedTensorType opaque uptr  Returns: Scheme list of integers
-  (define mlir-type-get-shape
-    (foreign-procedure "mlir_type_get_shape" (uptr) scheme-object))
-
-  ;; Get the rank (number of dimensions) of a ranked tensor type.
-  ;; type: RankedTensorType opaque uptr  Returns: non-negative int
-  (define mlir-type-get-rank
-    (foreign-procedure "mlir_type_get_rank" (uptr) int))
-
-  ;;===--------------------------------------------------------------------===;;
   ;; Generic RAII
   ;;===--------------------------------------------------------------------===;;
 
@@ -278,21 +224,28 @@
         [else (error 'mlir-build-operation "no current builder installed")])))
 
   ;; Install rw as current-rewriter and loc as current-loc for the duration of body.
-  ;; Sets current-block-builder to #f (rewriter and block-builder are mutually exclusive).
+  ;; Also installs current-mlir-context from the loc operation.
   ;; rw:  RewriterBase* uptr (passed by the pattern callback)
   ;; loc: Operation* uptr used as both the insertion-point anchor and location source
   (define-syntax with-rewrite-builder
     (syntax-rules ()
       [(_ (rw loc) body ...)
-       (parameterize ([current-rewriter rw] [current-block-builder #f] [current-loc loc])
+       (parameterize ([current-rewriter      rw]
+                      [current-block-builder #f]
+                      [current-loc           loc]
+                      [current-mlir-context  (mlir-operation-get-context loc)])
          body ...)]))
 
   ;; Install an explicit OpBuilder* as current-block-builder for the duration of body.
+  ;; Also installs current-mlir-context from the loc operation.
   ;; builder: OpBuilder* uptr, loc: Operation* uptr (location source)
   (define-syntax with-current-block-builder
     (syntax-rules ()
       [(_ (builder loc) body ...)
-       (parameterize ([current-block-builder builder] [current-rewriter #f] [current-loc loc])
+       (parameterize ([current-block-builder builder]
+                      [current-rewriter      #f]
+                      [current-loc           loc]
+                      [current-mlir-context  (mlir-operation-get-context loc)])
          body ...)]))
 
   ;; Create an OpBuilder at the end of block, install it as current-block-builder,
