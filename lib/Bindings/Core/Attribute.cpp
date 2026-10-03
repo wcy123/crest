@@ -203,6 +203,51 @@ int64_t mlir_attr_splat_int_value(uint64_t attr_ptr, int64_t absent_val) {
   return (*dense.begin()).getSExtValue();
 }
 
+// Type-check predicates — return 1 if the attribute is of the given type, 0 otherwise.
+int mlir_attr_isa_integer(uint64_t attr_ptr) {
+  if (!attr_ptr) return 0;
+  auto attr = mlir::Attribute::getFromOpaquePointer(reinterpret_cast<const void*>(attr_ptr));
+  return mlir::isa<mlir::IntegerAttr>(attr) ? 1 : 0;
+}
+
+int mlir_attr_isa_float(uint64_t attr_ptr) {
+  if (!attr_ptr) return 0;
+  auto attr = mlir::Attribute::getFromOpaquePointer(reinterpret_cast<const void*>(attr_ptr));
+  return mlir::isa<mlir::FloatAttr>(attr) ? 1 : 0;
+}
+
+int mlir_attr_isa_string(uint64_t attr_ptr) {
+  if (!attr_ptr) return 0;
+  auto attr = mlir::Attribute::getFromOpaquePointer(reinterpret_cast<const void*>(attr_ptr));
+  return mlir::isa<mlir::StringAttr>(attr) ? 1 : 0;
+}
+
+int mlir_attr_isa_dense_elements(uint64_t attr_ptr) {
+  if (!attr_ptr) return 0;
+  auto attr = mlir::Attribute::getFromOpaquePointer(reinterpret_cast<const void*>(attr_ptr));
+  return mlir::isa<mlir::DenseElementsAttr>(attr) ? 1 : 0;
+}
+
+// Extract the integer value from an IntegerAttr (sign-extended to i64).
+// Returns INT64_MIN if the attribute is not an IntegerAttr.
+int64_t mlir_attr_as_integer(uint64_t attr_ptr) {
+  if (!attr_ptr) return INT64_MIN;
+  auto attr = mlir::Attribute::getFromOpaquePointer(reinterpret_cast<const void*>(attr_ptr));
+  auto iattr = mlir::dyn_cast<mlir::IntegerAttr>(attr);
+  if (!iattr) return INT64_MIN;
+  return iattr.getValue().getSExtValue();
+}
+
+// Extract the float value from a FloatAttr as double.
+// Returns NaN if the attribute is not a FloatAttr.
+double mlir_attr_as_float(uint64_t attr_ptr) {
+  if (!attr_ptr) return std::numeric_limits<double>::quiet_NaN();
+  auto attr = mlir::Attribute::getFromOpaquePointer(reinterpret_cast<const void*>(attr_ptr));
+  auto fattr = mlir::dyn_cast<mlir::FloatAttr>(attr);
+  if (!fattr) return std::numeric_limits<double>::quiet_NaN();
+  return fattr.getValueAsDouble();
+}
+
 // Get "operandSegmentSizes" DenseI32ArrayAttr as a Scheme list of fixnums.
 // Returns Snil when the attribute is absent.
 ptr mlir_op_get_operand_segment_sizes(uint64_t op_ptr) {
@@ -236,6 +281,12 @@ void registerAttributeBindings() {
   Sregister_symbol("mlir_attr_is_splat",                    (void*)::mlir_attr_is_splat);
   Sregister_symbol("mlir_attr_splat_float_value",           (void*)::mlir_attr_splat_float_value);
   Sregister_symbol("mlir_attr_splat_int_value",             (void*)::mlir_attr_splat_int_value);
+  Sregister_symbol("mlir_attr_isa_integer",                 (void*)::mlir_attr_isa_integer);
+  Sregister_symbol("mlir_attr_isa_float",                   (void*)::mlir_attr_isa_float);
+  Sregister_symbol("mlir_attr_isa_string",                  (void*)::mlir_attr_isa_string);
+  Sregister_symbol("mlir_attr_isa_dense_elements",          (void*)::mlir_attr_isa_dense_elements);
+  Sregister_symbol("mlir_attr_as_integer",                  (void*)::mlir_attr_as_integer);
+  Sregister_symbol("mlir_attr_as_float",                    (void*)::mlir_attr_as_float);
   Sregister_symbol("mlir_op_get_operand_segment_sizes",     (void*)::mlir_op_get_operand_segment_sizes);
 }
 

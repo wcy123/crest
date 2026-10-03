@@ -31,12 +31,14 @@
 ;;
 ;; Operand groups:
 ;;   (%x %y)                           - all required
-;;   (%x (&optional %y %z))            - x required, y,z optional
-;;   (%x (&optional %y) %z)            - x required, y optional, z required
-;;   (%x (&variadic %rest))            - x required, rest variadic
-;;   (%x (&optional %y) (&variadic %w)) - combined
+;;   (%x (:optional %y %z))            - x required, y,z optional
+;;   (%x (:optional %y) %z)            - x required, y optional, z required
+;;   (%x (:variadic %rest))            - x required, rest variadic
+;;   (%x (:optional %y) (:variadic %w)) - combined
 ;;
-;; Note: &optional/&variadic require AttrSizedOperandSegments trait
+;; Note: :optional presence detection uses mlir-operation-num-operands.
+;; Ops with AttrSizedOperandSegments must still use operandSegmentSizes
+;; for correct offset calculation (future enhancement).
 ;;
 ;; Guards (:where clause):
 ;;   :where <scheme-expr>
@@ -51,7 +53,7 @@
 ;;      :where (let ([$ks (mlir-operation-get-attribute %a "kernel_shape")])
 ;;               (and $ks (is-1x1-kernel? $ks)))
 ;;
-;;   %b = "test.op" (%x (&optional %y %z))
+;;   %b = "test.op" (%x (:optional %y %z))
 ;;      :where (mlir-operation-has-one-use %b)
 ;;
 ;; Type matching: NOT SUPPORTED
@@ -197,10 +199,10 @@
   ;; parse-operands - Parse operand list, flattening groups
   ;;-----------------------------------------------------------------------
   ;;
-  ;; Parses operand syntax and flattens (&optional ...) and (&variadic ...)
+  ;; Parses operand syntax and flattens (:optional ...) and (:variadic ...)
   ;; groups into individual ast-operand records tagged with their kind.
   ;;
-  ;; Input syntax: (%x (&optional %y %z) %w (&variadic %rest))
+  ;; Input syntax: (%x (:optional %y %z) %w (:variadic %rest))
   ;; Output: list of ast-operand records:
   ;;   [ast-operand('required, #'%x),
   ;;    ast-operand('optional, #'%y),
@@ -210,22 +212,22 @@
   ;;
   ;; Phase 1 (parse) checks:
   ;; - All operands are identifiers (syntax structure)
-  ;; - (&variadic ...) has exactly one variable
+  ;; - (:variadic ...) has exactly one variable
   ;;
   ;; Phase 2 (validate) checks:
   ;; - All identifiers start with % (semantic rule)
   ;;
   (define (parse-operands operands-stx)
     (define (parse-one operand-stx)
-      (syntax-case operand-stx (&optional &variadic)
-        ;; Optional group: (&optional %y %z) → flatten to multiple optional operands
-        [(&optional var ...)
+      (syntax-case operand-stx (:optional :variadic)
+        ;; Optional group: (:optional %y %z) → flatten to multiple optional operands
+        [(:optional var ...)
          (let ([vars (syntax->list #'(var ...))])
            (for-each check-identifier vars)
            (map (lambda (v) (make-ast-operand 'optional v)) vars))]
 
-        ;; Variadic group: (&variadic %rest) → single variadic operand
-        [(&variadic var)
+        ;; Variadic group: (:variadic %rest) → single variadic operand
+        [(:variadic var)
          (begin
            (check-identifier #'var)
            (list (make-ast-operand 'variadic #'var)))]
@@ -237,7 +239,7 @@
 
         [_
          (syntax-violation 'parse-operands
-           "Invalid operand syntax (expected: identifier, (&optional ...), or (&variadic var))"
+           "Invalid operand syntax (expected: identifier, (:optional ...), or (:variadic var))"
            operand-stx)]))
 
     ;; Helper: check syntax structure (identifier check only, no % validation)

@@ -3,7 +3,9 @@
   (export :if-match :then-let :rewrite :with :where
           :debug-parse :debug-validate :debug-analyze :debug-codegen :debug-matching
           = : -> :region :regions
-          :index :any)
+          :index :any
+          :current-op :attr
+          :optional :variadic)
   (import (except (rnrs) =))
 
   ;; Define keywords as syntax (for cross-library hygiene)
@@ -23,5 +25,22 @@
   (define-syntax :region (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
   (define-syntax :regions (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
   (define-syntax :index   (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
-  (define-syntax :any     (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
+  (define-syntax :any        (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
+  ;; :current-op — inside a :where clause, refers to the currently matched sub-op.
+  ;; Replaced syntactically by the DDR codegen; never evaluated as Scheme.
+  (define-syntax :current-op (lambda (x) (syntax-violation 'pattern-keyword "misplaced :current-op (only valid inside DDR :where)" x)))
+  ;; :attr — (:attr "name") in a :where clause.
+  ;; Fetches the named attribute from :current-op as a raw attr uptr.
+  ;; Raises (error ...) if the attribute is absent; caught by the guard
+  ;; in generate-check-code → silent match failure.
+  ;; Compose with mlir-attr-as-integer, mlir-attr-as-float,
+  ;; mlir-attr-is-splat, mlir-attr-splat-float-value, etc.
+  (define-syntax :attr       (lambda (x) (syntax-violation 'pattern-keyword "misplaced :attr (only valid inside DDR :where)" x)))
+  ;; :optional — (:optional %var ...) in an operand list marks optional operands.
+  ;; Each %var is bound to the operand value if present, left unbound if absent.
+  ;; Presence is detected via mlir-operation-num-operands at match time.
+  (define-syntax :optional   (lambda (x) (syntax-violation 'pattern-keyword "misplaced :optional (only valid inside DDR operand list)" x)))
+  ;; :variadic — (:variadic %rest) in an operand list marks a variadic tail.
+  ;; Parsed but not yet implemented in analyze/codegen.
+  (define-syntax :variadic   (lambda (x) (syntax-violation 'pattern-keyword "misplaced :variadic (only valid inside DDR operand list)" x)))
 )

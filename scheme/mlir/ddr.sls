@@ -6,7 +6,9 @@
           :debug-parse :debug-validate :debug-analyze :debug-codegen :debug-matching
           = : -> :region :regions
           :index :any
-          make-unbound-value)
+          :current-op :attr
+          :optional :variadic
+          make-unbound-value unbound-value?)
   (import (except (rnrs) =)
           (mlir ddr keywords)  ;; Import keywords at run time for re-export
           (mlir core ir)               ;; with-rewrite-builder etc. used in generated code
@@ -17,7 +19,7 @@
           (for (mlir ddr validate) expand)
           (for (mlir ddr analyze) expand)
           (for (mlir ddr codegen) expand)
-          (for (only (mlir ddr codegen) make-unbound-value) expand))
+          (for (only (mlir ddr codegen) make-unbound-value unbound-value?) expand))
 
   ;; Main macro: orchestrate 4 phases (waterfall style)
   ;; Phase 1: Parse -> AST

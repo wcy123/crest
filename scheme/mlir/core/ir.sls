@@ -102,6 +102,12 @@
     mlir-attr-is-splat            ; 1 if DenseElementsAttr splat
     mlir-attr-splat-float-value   ; splat float as double (NaN if absent)
     mlir-attr-splat-int-value     ; splat integer as i64 (absent-val if not applicable)
+    mlir-attr-isa-integer         ; #t if IntegerAttr
+    mlir-attr-isa-float           ; #t if FloatAttr
+    mlir-attr-isa-string          ; #t if StringAttr
+    mlir-attr-isa-dense-elements  ; #t if DenseElementsAttr
+    mlir-attr-as-integer          ; IntegerAttr → i64 (INT64_MIN if wrong type)
+    mlir-attr-as-float            ; FloatAttr → double (NaN if wrong type)
     mlir-op-get-operand-segment-sizes  ; "operandSegmentSizes" as Scheme list
     ;; Pattern application
     mlir-apply-patterns-greedy    ; applyPatternsAndFoldGreedily
