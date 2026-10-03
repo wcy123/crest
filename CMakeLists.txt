@@ -17,11 +17,15 @@ include(TableGen)
 include(AddLLVM)
 include(AddMLIR)
 
-# Global include paths (available to all targets without repetition)
-include_directories(${LLVM_INCLUDE_DIRS})
-include_directories(${MLIR_INCLUDE_DIRS})
+# LLVM/MLIR headers are external — use SYSTEM to suppress their warnings
+include_directories(SYSTEM ${LLVM_INCLUDE_DIRS})
+include_directories(SYSTEM ${MLIR_INCLUDE_DIRS})
+# CREST's own headers
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_BINARY_DIR}/include)
+
+# Compiler options and warnings
+include(cmake/build_options.cmake)
 
 # Third-party dependencies: ChezScheme (fetch + build) and rime (fetch)
 include(cmake/deps.cmake)

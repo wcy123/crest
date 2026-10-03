@@ -8,7 +8,6 @@
 #include "Dialects/Shape.h"
 #include "Dialects/Tensor.h"
 #include "Logging.h"
-#include "llvm/Support/Debug.h"
 
 namespace crest {
 
@@ -29,7 +28,6 @@ void registerMlirForeignFunctions() {
   if (g_extra_bindings_fn) {
     g_extra_bindings_fn();
   }
-  LLVM_DEBUG(llvm::dbgs() << "CREST: all MLIR FFI functions registered\n");
 }
 
 } // namespace crest
