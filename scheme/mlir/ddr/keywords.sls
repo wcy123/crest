@@ -29,9 +29,12 @@
   ;; :current-op — inside a :where clause, refers to the currently matched sub-op.
   ;; Replaced syntactically by the DDR codegen; never evaluated as Scheme.
   (define-syntax :current-op (lambda (x) (syntax-violation 'pattern-keyword "misplaced :current-op (only valid inside DDR :where)" x)))
-  ;; :attr — (:attr "name") or (:attr "name" :type) in a :where clause.
-  ;; Fetches the named attribute from :current-op; raises an error if absent
-  ;; (caught by the guard wrapping in generate-check-code → match failure).
+  ;; :attr — (:attr "name") in a :where clause.
+  ;; Fetches the named attribute from :current-op as a raw attr uptr.
+  ;; Raises (error ...) if the attribute is absent; caught by the guard
+  ;; in generate-check-code → silent match failure.
+  ;; Compose with mlir-attr-as-integer, mlir-attr-as-float,
+  ;; mlir-attr-is-splat, mlir-attr-splat-float-value, etc.
   (define-syntax :attr       (lambda (x) (syntax-violation 'pattern-keyword "misplaced :attr (only valid inside DDR :where)" x)))
   ;; :optional — (:optional %var ...) in an operand list marks optional operands.
   ;; Each %var is bound to the operand value if present, left unbound if absent.

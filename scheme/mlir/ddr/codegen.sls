@@ -172,23 +172,20 @@
   ;;
   ;; Called at macro-expansion time before emitting each :where guard.
   ;; Walks the where-expression syntax and substitutes:
-  ;;   :current-op          → (vector-ref all-operations op-idx)
-  ;;   (:attr "name")       → check-then-get with raw uptr result
-  ;;   (:attr "name" :type) → check-then-get with typed result
+  ;;   :current-op    → (vector-ref all-operations op-idx)
+  ;;                    the sub-op being matched (not the root op that `op` refers to)
+  ;;   (:attr "name") → fetch named attribute from :current-op as raw uptr;
+  ;;                    raise (error ...) if absent → guard returns #f
   ;;
-  ;; Absent attributes raise (error ...) which the surrounding guard catches,
-  ;; turning it into a silent match failure (#f).
+  ;; Compose (:attr "name") with generic extractors, e.g.:
+  ;;   (mlir-attr-as-integer (:attr "axis"))
+  ;;   (mlir-attr-as-float   (:attr "epsilon"))
+  ;;   (mlir-attr-is-splat   (:attr "value"))
   ;;
   ;; Uses free-identifier=? via (syntax-case s (:current-op :attr) ...) so
-  ;; the match is hygienic — only :current-op/:attr from (mlir ddr keywords)
-  ;; are substituted, not user-defined identifiers with the same name.
+  ;; only :current-op/:attr from (mlir ddr keywords) are substituted.
 
   ;; transform-where-expr — syntactic substitution for :where expressions.
-  ;;
-  ;; Replaces DDR keywords at macro-expansion time:
-  ;;   :current-op    → (vector-ref all-operations op-idx)
-  ;;   (:attr "name") → fetch attr from :current-op; raise error if absent
-  ;;                    (the surrounding guard catches the error and returns #f)
   ;;
   ;; No (:attr "name" :type) form: clients compose (:attr "name") with generic
   ;; attr-extraction functions — mlir-attr-as-integer, mlir-attr-as-float,

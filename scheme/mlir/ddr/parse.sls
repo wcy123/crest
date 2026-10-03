@@ -36,7 +36,9 @@
 ;;   (%x (:variadic %rest))            - x required, rest variadic
 ;;   (%x (:optional %y) (:variadic %w)) - combined
 ;;
-;; Note: &optional/&variadic require AttrSizedOperandSegments trait
+;; Note: :optional presence detection uses mlir-operation-num-operands.
+;; Ops with AttrSizedOperandSegments must still use operandSegmentSizes
+;; for correct offset calculation (future enhancement).
 ;;
 ;; Guards (:where clause):
 ;;   :where <scheme-expr>
@@ -51,7 +53,7 @@
 ;;      :where (let ([$ks (mlir-operation-get-attribute %a "kernel_shape")])
 ;;               (and $ks (is-1x1-kernel? $ks)))
 ;;
-;;   %b = "test.op" (%x (&optional %y %z))
+;;   %b = "test.op" (%x (:optional %y %z))
 ;;      :where (mlir-operation-has-one-use %b)
 ;;
 ;; Type matching: NOT SUPPORTED
