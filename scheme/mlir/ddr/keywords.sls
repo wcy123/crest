@@ -4,7 +4,8 @@
           :debug-parse :debug-validate :debug-analyze :debug-codegen :debug-matching
           = : -> :region :regions
           :index :any
-          :current-op :attr)
+          :current-op :attr
+          :optional :variadic)
   (import (except (rnrs) =))
 
   ;; Define keywords as syntax (for cross-library hygiene)
@@ -32,4 +33,11 @@
   ;; Fetches the named attribute from :current-op; raises an error if absent
   ;; (caught by the guard wrapping in generate-check-code → match failure).
   (define-syntax :attr       (lambda (x) (syntax-violation 'pattern-keyword "misplaced :attr (only valid inside DDR :where)" x)))
+  ;; :optional — (:optional %var ...) in an operand list marks optional operands.
+  ;; Each %var is bound to the operand value if present, left unbound if absent.
+  ;; Presence is detected via mlir-operation-num-operands at match time.
+  (define-syntax :optional   (lambda (x) (syntax-violation 'pattern-keyword "misplaced :optional (only valid inside DDR operand list)" x)))
+  ;; :variadic — (:variadic %rest) in an operand list marks a variadic tail.
+  ;; Parsed but not yet implemented in analyze/codegen.
+  (define-syntax :variadic   (lambda (x) (syntax-violation 'pattern-keyword "misplaced :variadic (only valid inside DDR operand list)" x)))
 )
