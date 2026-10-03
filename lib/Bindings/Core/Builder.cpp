@@ -372,7 +372,7 @@ int mlir_apply_patterns_greedy(uint64_t op_ptr, uint64_t patterns_ptr) {
   auto* op       = reinterpret_cast<mlir::Operation*>(op_ptr);
   auto* patterns = reinterpret_cast<mlir::RewritePatternSet*>(patterns_ptr);
   return mlir::succeeded(
-      mlir::applyPatternsAndFoldGreedily(op, std::move(*patterns))) ? 1 : 0;
+      mlir::applyPatternsGreedily(op, std::move(*patterns))) ? 1 : 0;
 }
 
 // Clone an operation with new operands and result types, copying all attributes.
