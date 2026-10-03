@@ -19,7 +19,7 @@
 
 (library (mlir core builder)
   (export
-    ;; Dynamic context
+    ;; Dynamic context (re-exported from (mlir context))
     current-mlir-context
     with-mlir-context
     current-rewriter
@@ -67,6 +67,7 @@
 
   (import (rnrs)
           (only (chezscheme) foreign-procedure parameterize make-parameter void)
+          (only (mlir context) current-mlir-context with-mlir-context)
           (only (mlir core operation) mlir-operation-get-context))
 
   ;;===--------------------------------------------------------------------===;;
@@ -241,21 +242,6 @@
          (dynamic-wind void
            (lambda () body ...)
            (lambda () (dtor var))))]))
-
-  ;;===--------------------------------------------------------------------===;;
-  ;; Dynamic MLIR context
-  ;;===--------------------------------------------------------------------===;;
-
-  ;; Current MLIRContext* uptr (or #f when unset).
-  ;; Install with (parameterize ([current-mlir-context ctx]) ...) or
-  ;; the with-mlir-context macro below.
-  (define current-mlir-context (make-parameter #f))
-
-  ;; RAII macro: install ctx as current-mlir-context for the duration of body.
-  (define-syntax with-mlir-context
-    (syntax-rules ()
-      [(_ ctx body ...)
-       (parameterize ([current-mlir-context ctx]) body ...)]))
 
   ;; Return the current context, raising if none is installed.
   (define (%require-context who)

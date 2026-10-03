@@ -113,7 +113,8 @@
     ;; (mlir dialects shape)
     mlir-shape.shape-type mlir-shape.size-type mlir-shape.witness-type)
 
-  (import (mlir core attribute)
+  (import (mlir context)
+          (mlir core attribute)
           (mlir core operation)
           (mlir core value)
           (mlir core builder)
