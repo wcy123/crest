@@ -15,10 +15,7 @@
   (export hip-qadd-fusion)
 
   (import (except (rnrs) =)
-          (only (chezscheme) nan?)
-          (rename (only (rnrs) =) (= num=))
           (mlir core ir)
-          (mlir core conversion)
           (mlir hip fusion)
           (mlir ddr)
           (passes hip-fusion helpers))
