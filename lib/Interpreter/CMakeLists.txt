@@ -14,15 +14,20 @@ target_include_directories(CrestInterpreter
     ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}  # scheme.h
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}               # ChezSchemeInterpreter.h
-    ${ChezBootHeaders_BINARY_DIR}             # ChezBootPetite.h, ChezBootScheme.h
+    ${ChezBootHeaders_BINARY_DIR}             # ChezBootPetite.h, ChezBootScheme.h, CrestBoot.h
     ${ChezScheme_SOURCE_DIR}/boot/pb          # pb/scheme.h fallback
 )
 
-target_compile_definitions(CrestInterpreter PRIVATE
-  SCHEME_LIBRARIES_DIR="${CMAKE_SOURCE_DIR}/scheme"
-  SCHEME_BINARY_DIR="${CMAKE_BINARY_DIR}/scheme"
-  RIME_DIR="${CREST_RIME_DIR}"
-)
+if(CREST_EMBED_SCHEME_BOOT)
+  target_compile_definitions(CrestInterpreter PRIVATE CREST_BOOT_EMBEDDED)
+else()
+  # Development mode: interpreter searches for .sls files at runtime.
+  target_compile_definitions(CrestInterpreter PRIVATE
+    SCHEME_LIBRARIES_DIR="${CMAKE_SOURCE_DIR}/scheme"
+    SCHEME_BINARY_DIR="${CMAKE_BINARY_DIR}/scheme"
+    RIME_DIR="${CREST_RIME_DIR}"
+  )
+endif()
 
 target_link_libraries(CrestInterpreter
   PUBLIC

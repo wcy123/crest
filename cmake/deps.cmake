@@ -117,3 +117,78 @@ if(NOT rime_POPULATED)
   FetchContent_Populate(rime)
 endif()
 set(CREST_RIME_DIR "${rime_SOURCE_DIR}" CACHE INTERNAL "")
+
+# ─── CREST Scheme boot file (deployment only) ────────────────────────────────
+# When CREST_EMBED_SCHEME_BOOT=ON, compile all CREST .sls libraries into a
+# single crest.boot, embed it as a C byte-array header, and define
+# CREST_BOOT_EMBEDDED so the interpreter loads it at startup.
+# When OFF (default), the interpreter searches for .sls files at runtime via
+# addLibraryPath — convenient for development.
+# NOTE: must come after rime is fetched so CREST_RIME_DIR is set.
+option(CREST_EMBED_SCHEME_BOOT "Compile and embed Scheme libraries into the binary (deployment)" OFF)
+
+if(CREST_EMBED_SCHEME_BOOT)
+  set(CHEZ_SCHEME_BIN
+      ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/bin/${CHEZ_MACHINE}/scheme)
+  set(CREST_BOOT_FILE   "${CMAKE_BINARY_DIR}/crest.boot")
+  set(CREST_BOOT_HEADER "${ChezBootHeaders_BINARY_DIR}/CrestBoot.h")
+  set(CREST_SCHEME_OBJ_DIR "${CMAKE_BINARY_DIR}/scheme-objs")
+
+  # ── Scan .sls dependency graph at configure time ────────────────────────────
+  # Generates a topologically-sorted library list for single-process compilation.
+  set(SCHEME_ORDER_TXT "${CMAKE_BINARY_DIR}/SchemeLibTargets_order.txt")
+  execute_process(
+    COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_SOURCE_DIR}/cmake/scan_scheme_deps.py
+            --scheme-dir ${CMAKE_SOURCE_DIR}/scheme
+            --rime-dir   ${CREST_RIME_DIR}
+            --obj-dir    ${CREST_SCHEME_OBJ_DIR}
+            --scheme-bin ${CHEZ_SCHEME_BIN}
+            --script     ${CMAKE_SOURCE_DIR}/cmake/compile_one_lib.ss
+            --output     ${CMAKE_BINARY_DIR}/SchemeLibTargets.cmake
+    RESULT_VARIABLE _scan_result
+  )
+  if(NOT _scan_result EQUAL 0)
+    message(FATAL_ERROR "CREST: scan_scheme_deps.py failed (exit ${_scan_result})")
+  endif()
+
+  file(GLOB_RECURSE CREST_SLS_FILES "${CMAKE_SOURCE_DIR}/scheme/*.sls")
+
+  # ── Compile all libraries in topological order (single process) ─────────────
+  # Single-process compilation avoids NFS/parallel race conditions with Chez.
+  add_custom_command(
+    OUTPUT  ${CREST_BOOT_FILE}
+    COMMAND ${CHEZ_SCHEME_BIN}
+            --script  ${CMAKE_SOURCE_DIR}/cmake/compile_scheme_libs.ss
+            ${SCHEME_ORDER_TXT}
+            ${CMAKE_SOURCE_DIR}/scheme   # scheme-src (NFS, read-only)
+            ${CREST_RIME_DIR}            # rime-src   (NFS, read-only)
+            ${CREST_BOOT_FILE}
+    # Copies .sls sources to local /tmp before compiling — no NFS writes.
+    # This completely bypasses NFS attribute cache issues.
+    DEPENDS ChezScheme ${CREST_SLS_FILES}
+            ${CMAKE_SOURCE_DIR}/cmake/compile_scheme_libs.ss
+            ${SCHEME_ORDER_TXT}
+    COMMENT "Compiling CREST Scheme libraries into crest.boot (local /tmp)"
+    VERBATIM
+  )
+
+  add_custom_command(
+    OUTPUT  ${CREST_BOOT_HEADER}
+    COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_SOURCE_DIR}/cmake/xxd.py
+            --var    crest_boot_data
+            --output ${CREST_BOOT_HEADER}
+            ${CREST_BOOT_FILE}
+    DEPENDS ${CREST_BOOT_FILE}
+    COMMENT "Embedding crest.boot"
+    VERBATIM
+  )
+
+  add_custom_target(CrestBootHeader DEPENDS ${CREST_BOOT_HEADER})
+  add_dependencies(ChezBootHeaders CrestBootHeader)
+
+  message(STATUS "CREST: Scheme boot embedding enabled — parallel compilation via Ninja -j")
+else()
+  message(STATUS "CREST: Scheme boot embedding disabled — use -DCREST_EMBED_SCHEME_BOOT=ON for deployment")
+endif()
