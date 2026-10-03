@@ -64,7 +64,7 @@
 )
 
   (import (rnrs)
-          (only (chezscheme) foreign-procedure parameterize make-parameter void case-lambda)
+          (only (chezscheme) foreign-procedure parameterize make-parameter void)
           (only (mlir context) current-mlir-context with-mlir-context)
           (only (mlir core operation) mlir-operation-get-context))
 
