@@ -21,7 +21,7 @@ int main(int argc, char **argv) {
   registry.insert<mlir::func::FuncDialect,
                   mlir::shape::ShapeDialect,
                   mlir::tensor::TensorDialect>();
-  crest::registerSchemePasses();
+  crest::registerCrestPass();
   return mlir::asMainReturnCode(
       mlir::MlirOptMain(argc, argv, "CREST optimizer driver\n", registry));
 }

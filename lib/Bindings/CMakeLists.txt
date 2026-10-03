@@ -2,8 +2,6 @@
 # CREST Bindings — Chez Scheme / MLIR integration
 ##
 
-add_subdirectory(Dialects)
-
 set(CHEZ_MACHINE_LOCAL "${CHEZ_MACHINE}")
 
 add_library(CrestBindings STATIC
