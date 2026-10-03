@@ -14,6 +14,8 @@
           (for (mlir ddr ast) expand)
           (for (mlir ddr analyze) expand)
           (for (mlir core ir) expand)
+          (for (only (mlir core context) current-mlir-context) expand)
+          (for (only (chezscheme) parameterize) expand)
           (for (only (mlir ddr rewrite) with-mlir-ops) expand)
           ;; keywords needed at expand time for free-identifier=? matching in transform-where-expr
           (for (only (mlir ddr keywords) :current-op :attr) expand))
@@ -101,16 +103,22 @@
                       [(then-let-binding ...) (generate-then-let-bindings then-let-bindings)]
                       [checks  check-code]
                       [rewrite rewrite-code])
-          #'(define fname
-              (lambda (param ...)
-                (let ([var (make-unbound-value)] ...
-                      [off-var 0] ...
-                      [all-operations (make-vector num-operations (make-unbound-value))])
-                  root-result-setter ...
-                  (if checks
-                      (let* (then-let-binding ...)
-                        rewrite)
-                      #f)))))))))))
+          (with-syntax ([root-op op])
+            #'(define fname
+                (lambda (param ...)
+                  ;; Install current-mlir-context from the root op so that
+                  ;; make-mlir-attribute and type constructors work in :then-let
+                  ;; without requiring an explicit ctx argument.
+                  (parameterize ([current-mlir-context
+                                  (mlir-operation-get-context root-op)])
+                    (let ([var (make-unbound-value)] ...
+                          [off-var 0] ...
+                          [all-operations (make-vector num-operations (make-unbound-value))])
+                      root-result-setter ...
+                      (if checks
+                          (let* (then-let-binding ...)
+                            rewrite)
+                          #f)))))))))))))
 
   ;;=======================================================================
   ;; Rewrite code — thin wrapper delegating to with-mlir-ops
@@ -178,8 +186,8 @@
   ;;                    raise (error ...) if absent → guard returns #f
   ;;
   ;; Compose (:attr "name") with generic extractors, e.g.:
-  ;;   (mlir-attr-as-integer (:attr "axis"))
-  ;;   (mlir-attr-as-float   (:attr "epsilon"))
+  ;;   (mlir-attr-as attr :integer (:attr "axis"))
+  ;;   (mlir-attr-as attr :float   (:attr "epsilon"))
   ;;   (mlir-attr-is-splat   (:attr "value"))
   ;;
   ;; Uses free-identifier=? via (syntax-case s (:current-op :attr) ...) so
@@ -188,7 +196,7 @@
   ;; transform-where-expr — syntactic substitution for :where expressions.
   ;;
   ;; No (:attr "name" :type) form: clients compose (:attr "name") with generic
-  ;; attr-extraction functions — mlir-attr-as-integer, mlir-attr-as-float,
+  ;; attr-extraction functions — mlir-attr-as attr :integer, mlir-attr-as attr :float,
   ;; mlir-attr-splat-float-value, mlir-attr-is-splat, etc. — instead of
   ;; encoding the type here.  This keeps the codegen open for new attr types
   ;; without modification.
@@ -260,8 +268,8 @@
          (let* ([fields      (cdr action)]
                 [var         (cdr (assq 'var fields))]
                 [operand-idx (cdr (assq 'operand-idx fields))])
-           #`(if (< #,operand-idx (value-array-ref-size #,operands-ref))
-                 (let ([val (value-array-ref-at #,operands-ref #,operand-idx)])
+           #`(if (< #,operand-idx (array-ref-size #,operands-ref))
+                 (let ([val (array-ref-at #,operands-ref #,operand-idx)])
                    (and (not (zero? val))
                         (begin (set! #,var val) #t)))
                  #f))]
