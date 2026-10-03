@@ -18,6 +18,7 @@ add_library(CrestBindings STATIC
   Logging.cpp
   Conversion.cpp
   Dialects/Shape.cpp
+  Support/ArrayRef.cpp
 )
 
 target_include_directories(CrestBindings
