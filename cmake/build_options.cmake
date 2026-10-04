@@ -1,12 +1,14 @@
 ##
 # cmake/build_options.cmake — CREST compiler options and warnings
 #
-# CREST_WARNINGS_AS_ERRORS defaults OFF so that downstream projects that
-# include crest via add_subdirectory() are not forced to compile with
-# -Werror. Set to ON explicitly when building crest standalone.
+# CREST_WARNINGS_AS_ERRORS defaults ON for standalone builds.
+# Downstream projects that include crest via add_subdirectory() can
+# override it before the subdirectory is added:
+#   set(CREST_WARNINGS_AS_ERRORS OFF)
+#   add_subdirectory(crest)
 ##
 
-option(CREST_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
+option(CREST_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" ON)
 
 if(CREST_WARNINGS_AS_ERRORS)
   add_compile_options(
