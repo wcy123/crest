@@ -1,10 +1,10 @@
 #!r6rs
-(library (crest ddr validate)
+(library (crest internal validate)
   (export validate-ast)
   (import (rnrs)
           (for (only (chezscheme) syntax->list) expand)
           (for (rename (rime loop) (:with :rime-with)) expand)
-          (for (crest ddr ast) expand))
+          (for (crest internal ast) expand))
 
   ;;=======================================================================
   ;; Phase 2: Validation - validate syntax and semantics, normalize fields

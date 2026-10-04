@@ -1,5 +1,5 @@
 #!r6rs
-(library (crest ddr)
+(library (crest)
   (export define-conversion-pattern
           define-rewrite-pattern
           :if-match :then-let :rewrite :with :where
@@ -10,16 +10,16 @@
           :optional :variadic
           make-unbound-value unbound-value?)
   (import (except (rnrs) =)
-          (crest ddr keywords)  ;; Import keywords at run time for re-export
+          (crest internal keywords)  ;; Import keywords at run time for re-export
           (mlir core ir)               ;; with-rewrite-builder etc. used in generated code
-          (crest ddr rewrite)               ;; with-mlir-ops used in generated :rewrite bodies
-          (for (crest ddr keywords) expand)  ;; Also at expand time
-          (for (crest ddr ast) expand)  ;; For AST predicates
-          (for (crest ddr parse) expand)
-          (for (crest ddr validate) expand)
-          (for (crest ddr analyze) expand)
-          (for (crest ddr codegen) expand)
-          (for (only (crest ddr codegen) make-unbound-value unbound-value?) expand))
+          (crest internal rewrite)               ;; with-mlir-ops used in generated :rewrite bodies
+          (for (crest internal keywords) expand)  ;; Also at expand time
+          (for (crest internal ast) expand)  ;; For AST predicates
+          (for (crest internal parse) expand)
+          (for (crest internal validate) expand)
+          (for (crest internal analyze) expand)
+          (for (crest internal codegen) expand)
+          (for (only (crest internal codegen) make-unbound-value unbound-value?) expand))
 
   ;; Main macro: orchestrate 4 phases (waterfall style)
   ;; Phase 1: Parse -> AST

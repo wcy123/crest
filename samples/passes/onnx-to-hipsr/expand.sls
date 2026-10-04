@@ -21,7 +21,7 @@
           (mlir core conversion)
           (mlir dialects hipsr)
           (mlir dialects tensor)
-          (crest ddr))
+          (crest))
 
   ;; Unwrap one level of builtin.unrealized_conversion_cast.
   ;; The type converter may wrap tensor<Nxi64> → device space; this removes

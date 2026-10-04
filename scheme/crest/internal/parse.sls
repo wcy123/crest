@@ -62,12 +62,12 @@
 ;;
 ;;=======================================================================
 
-(library (crest ddr parse)
+(library (crest internal parse)
   (export parse-to-ast)
   (import (except (rnrs) =)
           (for (only (chezscheme) syntax->list) expand)
-          (for (crest ddr keywords) expand)
-          (for (crest ddr ast) expand))
+          (for (crest internal keywords) expand)
+          (for (crest internal ast) expand))
 
   ;;=======================================================================
   ;; SECTION 1: Entry Points

@@ -32,7 +32,7 @@
           (rename (only (rnrs) =) (= num=))
           (mlir core ir)
           (mlir core conversion)
-          (crest ddr)
+          (crest)
           (passes hip-fusion helpers)
           (passes hip-fusion qadd)
           (passes hip-fusion qmul)

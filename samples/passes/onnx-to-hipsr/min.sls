@@ -22,8 +22,8 @@
           (mlir dialects hipsr)
           (mlir dialects tensor)
           (mlir dialects shape)
-          (crest ddr rewrite)
-          (crest ddr))
+          (crest internal rewrite)
+          (crest))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Binary case — DSL with inline broadcast shape region (identical to equal)
