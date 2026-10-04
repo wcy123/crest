@@ -13,8 +13,8 @@
 // foreign-ref (zero FFI overhead, compiles to raw load instructions).
 // Only make/destroy require C++ since they manage heap memory.
 
-#include "../SchemeWrapper.h"
 #include "ArrayRef.h"
+#include "../SchemeWrapper.h"
 
 extern "C" {
 
@@ -37,7 +37,7 @@ void mlir_array_ref_destroy(uint64_t ref_ptr) {
 namespace crest {
 
 void registerArrayRefBindings() {
-  Sregister_symbol("mlir_array_ref_make",    (void*)::mlir_array_ref_make);
+  Sregister_symbol("mlir_array_ref_make", (void*)::mlir_array_ref_make);
   Sregister_symbol("mlir_array_ref_destroy", (void*)::mlir_array_ref_destroy);
 }
 

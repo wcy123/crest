@@ -14,9 +14,10 @@ namespace crest {
 ///
 /// Locks a Scheme object on construction and unlocks on destruction,
 /// preventing the garbage collector from moving or collecting it.
-/// Use when storing Scheme callbacks in C++ objects that outlive a single FFI call.
+/// Use when storing Scheme callbacks in C++ objects that outlive a single FFI
+/// call.
 class LockedSchemeObject {
- public:
+public:
   explicit LockedSchemeObject(ptr obj);
   ~LockedSchemeObject();
 
@@ -29,10 +30,10 @@ class LockedSchemeObject {
   ptr get() const { return obj_; }
   operator ptr() const { return obj_; }
 
- private:
+private:
   ptr obj_;
 };
 
-}  // namespace crest
+} // namespace crest
 
 #endif // CREST_BINDINGS_LOCKED_SCHEME_OBJECT_H

@@ -6,6 +6,11 @@
 //   offset 0: data uptr  — pointer to first element
 //   offset 8: size uptr  — number of elements
 // Compatible with Chez Scheme's foreign-ref at offsets 0 and 8.
-struct CArrayRef { uint64_t data; uint64_t size; };
+struct CArrayRef {
+  uint64_t data;
+  uint64_t size;
+};
 
-namespace crest { void registerArrayRefBindings(); }
+namespace crest {
+void registerArrayRefBindings();
+}
