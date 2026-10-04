@@ -55,13 +55,6 @@ void mlir_log_fatal(const char* msg) {
   }
 }
 
-//===----------------------------------------------------------------------===//
-// Phase 1: Type System FFI
-//===----------------------------------------------------------------------===//
-
-// Set memory space on a RankedTensorType
-// Returns: new Type* with memory space set
-
 } // extern "C"
 
 namespace crest {
