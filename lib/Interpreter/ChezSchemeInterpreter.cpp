@@ -123,7 +123,6 @@ ChezSchemeInterpreter::ChezSchemeInterpreter(PrivateTag,
 
   // CREST_PATH: optional colon-separated (POSIX) or semicolon-separated
   // (Windows) list of additional .sls source directories, similar to PATH.
-  // Each directory is registered with SCHEME_BINARY_DIR as the object-dir.
   if (auto val = llvm::sys::Process::GetEnv("CREST_PATH")) {
     llvm::SmallVector<llvm::StringRef, 8> dirs;
     llvm::StringRef(*val).split(dirs, llvm::sys::EnvPathSeparator);
