@@ -175,7 +175,7 @@ functions in the same file, with the same edit–reload cycle as the pattern.
 | Extra toolchain | `mlir-tblgen` | `mlir-pdll` + `mlir-tblgen` | **None** |
 | Constraints without C++ (`:where`) | No | No | **Yes** |
 | Turing-complete rewrite logic | Via C++ | Via C++ | **Native Scheme** |
-| Interactive debugging | No | No | **Yes** |
+| Compile-time debug flags | No | No | **Yes** |
 | Patterns in deployed binary | Yes | Yes | **Yes (boot mode)** |
 | Filesystem deployment dependency | No | No | Yes (dev mode) |
 | FFI maintenance burden | None | None | Real |
@@ -204,7 +204,7 @@ The `:rewrite` body is compiled by a separate `with-mlir-ops` macro that
 translates named SSA op-forms into a `let*` of builder calls.
 
 Debug flags (`:debug-parse`, `:debug-validate`, `:debug-analyze`,
-`:debug-codegen`, `:debug-matching`) print each phase's output.
+`:debug-codegen`) print each phase's output at Chez expansion time.
 
 ### Layer 3 — Domain helpers
 
