@@ -38,12 +38,24 @@
   (define (array-ref-size ref)
     (foreign-ref 'uptr ref 8))
 
-  ;; Return the i-th element uptr — bounds-checked, two loads.
-  (define (array-ref-at ref index)
-    (let ([size (foreign-ref 'uptr ref 8)])
-      (when (>= index size)
-        (error 'array-ref-at "index out of range" index size))
-      (foreign-ref 'uptr (foreign-ref 'uptr ref 0) (* index 8))))
+  ;; Return the i-th element with bounds check.
+  ;; type: element type symbol — 'uptr (default, 8-byte pointer) or 'i32 (4-byte integer).
+  ;;   'uptr → foreign-ref 'uptr        at offset index*8  (Value*, Operation*, etc.)
+  ;;   'i32  → foreign-ref 'integer-32  at offset index*4  (DenseI32ArrayAttr data)
+  ;; Callers may use (:uptr :i32) identifier-syntax keywords that expand to these symbols.
+  (define array-ref-at
+    (case-lambda
+      [(ref index)
+       (array-ref-at ref index 'uptr)]
+      [(ref index type)
+       (let ([size (foreign-ref 'uptr ref 8)]
+             [data (foreign-ref 'uptr ref 0)])
+         (when (>= index size)
+           (error 'array-ref-at "index out of range" index size))
+         (case type
+           [(uptr)  (foreign-ref 'uptr       data (* index 8))]
+           [(i32)   (foreign-ref 'integer-32 data (* index 4))]
+           [else    (error 'array-ref-at "unknown type (expected uptr or i32)" type)]))]))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Lifecycle — C++ FFI (one call per array lifetime, overhead acceptable).
@@ -65,6 +77,16 @@
 
   (define-syntax with-array-ref
     (syntax-rules ()
+      ;; (with-array-ref (name existing-ref) body ...)
+      ;; Manage an existing array-ref uptr — destroyed on exit even on exception.
+      [(_ (name ref-expr) body ...)
+       (let ([name ref-expr])
+         (dynamic-wind
+           (lambda () #f)
+           (lambda () body ...)
+           (lambda () (array-ref-destroy name))))]
+      ;; (with-array-ref (name data-ptr size) body ...)
+      ;; Allocate a new CArrayRef from data pointer + element count.
       [(_ (name data-ptr size) body ...)
        (let ([name (make-array-ref data-ptr size)])
          (dynamic-wind
