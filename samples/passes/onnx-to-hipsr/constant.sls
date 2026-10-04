@@ -26,7 +26,7 @@
           (mlir core conversion)
           (mlir dialects hipsr)
           (mlir dialects tensor)
-          (crest ddr))
+          (crest))
 
   (define ort-mem-addr-tag "*/_ORT_MEM_ADDR_/*")
 

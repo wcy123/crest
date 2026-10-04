@@ -24,7 +24,7 @@
           (mlir dialects hipsr)
           (mlir dialects tensor)
           (mlir dialects shape)
-          (crest ddr))
+          (crest))
 
   ;; Build the permuted output shape inside a region block.
   ;; Uses mlir-build-operation — must be called inside with-current-block-builder.
