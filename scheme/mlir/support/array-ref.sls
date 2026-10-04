@@ -26,8 +26,8 @@
     make-array-ref      ; (data-ptr size) → ref  [C heap allocation]
     array-ref-destroy   ; (ref) → void           [C heap free]
     with-array-ref      ; (syntax) RAII: make + body + destroy
-    :uptr               ; array-ref-at element type → 'uptr (8-byte pointer, default)
-    :i32)               ; array-ref-at element type → 'i32  (4-byte integer)
+    :uptr)              ; array-ref-at element type → 'uptr (8-byte pointer, default)
+                        ; :i32 comes from (mlir core attribute) — not re-exported here
 
   (import (rnrs)
           (only (chezscheme) foreign-procedure foreign-ref)
