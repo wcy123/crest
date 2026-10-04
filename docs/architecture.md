@@ -31,20 +31,29 @@ is a Scheme-hosted engine for writing MLIR conversion and rewrite patterns.
 
 ## Overview
 
-Writing MLIR dialect conversion passes in C++ requires implementing
-`OpConversionPattern` subclasses with `matchAndRewrite` methods, wiring
-`TypeConverter` and `ConversionTarget`, and rebuilding the compiler for every
-pattern change. MLIR's established pattern DSLs —
-[PDL](https://mlir.llvm.org/docs/PDLL/) and
-[DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/) — cannot address this:
-both generate only `RewritePattern` subclasses and have no support for
-[`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/);
-[`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns)
-does not appear in the [PDLL documentation](https://mlir.llvm.org/docs/PDLL/).
+CREST is a homoiconic pattern DSL for MLIR that excels at complex
+multi-operation patterns with computational logic. While
+[PDLL](https://mlir.llvm.org/docs/PDLL/) handles simple structural rewrites
+well, CREST enables concise expression of patterns involving rank arithmetic,
+optional operands, and attribute extraction — with helper functions defined in
+the same file. The canonical demonstration is quantized fusion patterns
+(dequantize × 2 → add → quantize → fused `qadd`) that are significantly more
+painful to express in existing tools.
 
-CREST provides a Scheme-hosted pattern DSL that generates `ConversionPattern`
-subclasses and uses Chez Scheme as its extension language, eliminating C++
-requirements for constraints, type predicates, and rewrite logic.
+Two capabilities drive this: (1) the `:where` guard accepts arbitrary Chez
+Scheme expressions, so constraints are plain functions with no C++ escape
+hatch; (2) the `:optional`/`:variadic` operand syntax matches both the
+4-operand and 5-operand forms of an op in a single pattern, using
+`unbound-value?` to distinguish absent from present in the rewrite body.
+
+A third capability not available in any other MLIR pattern DSL: CREST
+generates [`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns)
+subclasses. [PDLL](https://mlir.llvm.org/docs/PDLL/) and
+[DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/) generate only
+`RewritePattern` subclasses and have no support for the
+`ConversionPatternRewriter`, type-converted operand adaptors, or
+`applyFullConversion` / `applyPartialConversion` that dialect conversion
+requires.
 
 ---
 
