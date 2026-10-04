@@ -1,8 +1,7 @@
 ##
-# cmake/build_options.cmake — CREST compiler options and warnings
+# cmake/build_options.cmake — Apply compiler warning flags.
+# Options are declared in cmake/crest-options.cmake.
 ##
-
-option(CREST_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" ON)
 
 if(CREST_WARNINGS_AS_ERRORS)
   add_compile_options(
@@ -11,7 +10,5 @@ if(CREST_WARNINGS_AS_ERRORS)
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall>
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wextra>
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Werror>
-    # -Wunused-parameter is too noisy in LLVM/MLIR template-heavy headers
-    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wno-unused-parameter>
   )
 endif()

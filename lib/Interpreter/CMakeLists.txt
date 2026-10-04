@@ -14,13 +14,22 @@ target_include_directories(CrestInterpreter
     ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}  # scheme.h
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}               # ChezSchemeInterpreter.h
-    ${ChezBootHeaders_BINARY_DIR}             # ChezBootPetite.h, ChezBootScheme.h
+    ${ChezBootHeaders_BINARY_DIR}             # ChezBootPetite.h, ChezBootScheme.h, CrestBoot.h
     ${ChezScheme_SOURCE_DIR}/boot/pb          # pb/scheme.h fallback
 )
 
+if(CREST_EMBED_SCHEME_BOOT)
+  target_compile_definitions(CrestInterpreter PRIVATE CREST_BOOT_EMBEDDED)
+endif()
+
+# SCHEME_BINARY_DIR is always defined so CREST_PATH works in both modes.
+# In dev mode it caches compiled .so files; in boot mode it is unused
+# (the boot already has everything) but must compile cleanly.
+# Note: PROJECT_SOURCE_DIR / PROJECT_BINARY_DIR refer to the crest project root,
+# not the lib/Interpreter/ subdirectory, so they correctly point to scheme/.
 target_compile_definitions(CrestInterpreter PRIVATE
-  SCHEME_LIBRARIES_DIR="${CMAKE_SOURCE_DIR}/scheme"
-  SCHEME_BINARY_DIR="${CMAKE_BINARY_DIR}/scheme"
+  SCHEME_LIBRARIES_DIR="${PROJECT_SOURCE_DIR}/scheme"
+  SCHEME_BINARY_DIR="${PROJECT_BINARY_DIR}/scheme"
   RIME_DIR="${CREST_RIME_DIR}"
 )
 
