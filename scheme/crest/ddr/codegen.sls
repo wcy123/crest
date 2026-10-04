@@ -82,9 +82,7 @@
                [match-vars       (collect-all-variables binding-mgr)]
                [then-let-vars    (map ast-then-let-binding-expand-var then-let-bindings)]
                [all-vars         (append match-vars then-let-vars)]
-               ;; Collect unique offset-var symbols from :bind-optional-operand actions.
-               ;; Each is initialized to 0 (counts optional operands actually present).
-               [offset-var-syms  (collect-offset-var-syms actions)])
+               )
 
           ;; Code generation — the two halves are independent of each other.
           (let ([check-code  (generate-check-code actions match-vec operands-ref)]
@@ -97,7 +95,6 @@
         (with-syntax ([fname    (ast-pattern-expand-function-name ast-rec)]
                       [(param ...) params]
                       [(var ...) all-vars]
-                      [(off-var ...) (map (lambda (s) (datum->syntax op s)) offset-var-syms)]
                       [num-operations num-ops]
                       [(root-result-setter ...) root-result-setters]
                       [(then-let-binding ...) (generate-then-let-bindings then-let-bindings)]
@@ -112,7 +109,6 @@
                   (parameterize ([current-mlir-context
                                   (mlir-operation-get-context root-op)])
                     (let ([var (make-unbound-value)] ...
-                          [off-var 0] ...
                           [all-operations (make-vector num-operations (make-unbound-value))])
                       root-result-setter ...
                       (if checks
@@ -308,43 +304,19 @@
                 [expr    (cdr (assq 'expr   fields))])
            (transform-where-expr expr op-idx))]
 
-        [(:bind-optional-operand)
-         ;; Bind an optional operand if present; skip if absent.
-         ;; Presence: total operands > base-idx + n-required-after.
-         ;; Uses an offset accumulator (offset-var-sym) initialized to 0, incremented
-         ;; each time an optional before this position was actually present.
-         ;; NOTE: detect via operand count only; ops with AttrSizedOperandSegments
-         ;; would need to read operandSegmentSizes instead.
-         (let* ([fields         (cdr action)]
-                [op-idx         (cdr (assq 'op-idx          fields))]
-                [base-idx       (cdr (assq 'base-idx        fields))]
-                [var            (cdr (assq 'var             fields))]
-                [off-sym        (cdr (assq 'offset-var-sym  fields))]
-                [n-req-after    (cdr (assq 'n-required-after fields))]
-                [off-stx        (datum->syntax var off-sym)])
-           #`(begin
-               (when (> (mlir-operation-num-operands (vector-ref all-operations #,op-idx))
-                        (+ #,base-idx #,n-req-after))
-                 (set! #,var (mlir-operation-get-operand-value
-                               (vector-ref all-operations #,op-idx)
-                               (+ #,base-idx #,off-stx)))
-                 (set! #,off-stx (+ #,off-stx 1)))
-               #t))]
-
-        [(:bind-operand-with-offset)
-         ;; Bind a required operand that follows optional operands.
-         ;; actual-idx = static-idx - n-opt-before + offset-var
-         (let* ([fields       (cdr action)]
-                [op-idx       (cdr (assq 'op-idx         fields))]
-                [static-idx   (cdr (assq 'static-idx     fields))]
-                [var          (cdr (assq 'var            fields))]
-                [off-sym      (cdr (assq 'offset-var-sym fields))]
-                [n-opt-before (cdr (assq 'n-opt-before   fields))]
-                [off-stx      (datum->syntax var off-sym)])
-           #`(begin
-               (set! #,var (mlir-operation-get-operand-value
-                             (vector-ref all-operations #,op-idx)
-                             (+ (- #,static-idx #,n-opt-before) #,off-stx)))
+        [(:bind-operands)
+         ;; Bind all operands of an op with optional/variadic slots via mlir-operation-get-operands.
+         ;; Returns a list; bind each variable positionally with list-ref.
+         (let* ([fields  (cdr action)]
+                [op-idx  (cdr (assq 'op-idx fields))]
+                [spec    (cdr (assq 'spec   fields))]
+                [vars    (cdr (assq 'vars   fields))])
+           #`(let ([%operands (mlir-operation-get-operands
+                                (vector-ref all-operations #,op-idx)
+                                #,@(map (lambda (s) #`'#,s) spec))])
+               #,@(loop :for var :in vars
+                        :for i   :from 0
+                        :collect #`(set! #,var (list-ref %operands #,i)))
                #t))]
 
         [else
@@ -390,17 +362,6 @@
   ;; that was absent at match time).  Clients use this in :then-let to check
   ;; whether an (:optional %var) was actually bound.
   (define (unbound-value? v) (eq? v (make-unbound-value)))
-
-  ;; Collect unique offset-var symbols from :bind-optional-operand actions.
-  (define (collect-offset-var-syms actions)
-    (let ([seen '()])
-      (for-each (lambda (action)
-                  (when (eq? (car action) ':bind-optional-operand)
-                    (let ([sym (cdr (assq 'offset-var-sym (cdr action)))])
-                      (unless (memq sym seen)
-                        (set! seen (cons sym seen))))))
-                actions)
-      seen))
 
   (define (record->alist obj)
     (let ([datum (syntax-object->datum obj)])

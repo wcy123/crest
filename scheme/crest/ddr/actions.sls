@@ -3,8 +3,7 @@
   (export action:set-current-op
           action:check-op
           action:bind-operand
-          action:bind-optional-operand
-          action:bind-operand-with-offset
+          action:bind-operands
           action:bind-argument-operand
           action:check-eq
           action:check-where
@@ -36,29 +35,16 @@
           (cons 'operand-idx operand-idx)
           (cons 'var var)))
 
-  ;; Bind an optional operand: present when total operands > base-idx + n-required-after.
-  ;; offset-var-sym: a Scheme symbol naming the per-op offset accumulator variable
-  ;; (initialized to 0 before matching; incremented each time an optional is present).
-  ;; base-idx: the static operand index assuming all optional operands before this are present.
-  ;; n-required-after: count of required operands following this optional in the same op.
-  (define (action:bind-optional-operand op-idx base-idx var offset-var-sym n-required-after)
-    (list ':bind-optional-operand
-          (cons 'op-idx          op-idx)
-          (cons 'base-idx        base-idx)
-          (cons 'var             var)
-          (cons 'offset-var-sym  offset-var-sym)
-          (cons 'n-required-after n-required-after)))
-
-  ;; Bind a required operand that follows one or more optional operands.
-  ;; The actual runtime index is: static-idx - n-opt-before + offset-var
-  ;; where offset-var is the accumulated count of optional operands actually present.
-  (define (action:bind-operand-with-offset op-idx static-idx var offset-var-sym n-opt-before)
-    (list ':bind-operand-with-offset
-          (cons 'op-idx         op-idx)
-          (cons 'static-idx     static-idx)
-          (cons 'var            var)
-          (cons 'offset-var-sym offset-var-sym)
-          (cons 'n-opt-before   n-opt-before)))
+  ;; Bind all operands of an op that has optional or variadic slots.
+  ;; Delegates entirely to mlir-operation-get-operands, which reads operandSegmentSizes
+  ;; and returns a list — one element per spec entry.
+  ;; spec: list of 'required / 'optional / 'variadic symbols (same length as vars)
+  ;; vars: list of syntax identifiers to bind (positionally matched to spec)
+  (define (action:bind-operands op-idx spec vars)
+    (list ':bind-operands
+          (cons 'op-idx op-idx)
+          (cons 'spec   spec)
+          (cons 'vars   vars)))
 
   (define (action:bind-argument-operand operand-idx var)
     (list ':bind-argument-operand

@@ -274,9 +274,8 @@
             (unless (= n-spec n-ops)
               (error 'mlir-operation-get-operands
                      "operand count mismatch: spec expects" n-spec "but op has" n-ops))
-            (apply values
-              (loop :for i :from 0 :below n-spec
-                    :collect (read-op i))))
+            (loop :for i :from 0 :below n-spec
+                  :collect (read-op i)))
           ;; Has optional or variadic: use operandSegmentSizes attribute.
           ;; operandSegmentSizes is just a named DenseI32ArrayAttr — no special binding.
           (let ([attr (mlir-operation-get-attribute op "operandSegmentSizes")])
@@ -297,8 +296,7 @@
                                (if (null? ss)
                                    (reverse acc)
                                    (loop (cdr ss) (+ off (car ss)) (cons off acc))))])
-                (apply values
-                  (loop :for kind  :in spec
+                (loop :for kind  :in spec
                         :for start :in starts
                         :for size  :in sizes
                         :collect
