@@ -108,8 +108,10 @@ ChezSchemeInterpreter::ChezSchemeInterpreter(PrivateTag,
 
 #ifndef CREST_BOOT_EMBEDDED
   // Development mode: load .sls files from the source tree at runtime.
+  // Both pairs use the same object-dir (SCHEME_BINARY_DIR) so compiled .so
+  // files always land in the build tree, never in the source trees.
   addLibraryPath(SCHEME_LIBRARIES_DIR, SCHEME_BINARY_DIR);
-  addLibraryPath(RIME_DIR, RIME_DIR);
+  addLibraryPath(RIME_DIR,             SCHEME_BINARY_DIR);
 #endif
 
   if (logLevel_ <= SchemeLogLevel::Info)

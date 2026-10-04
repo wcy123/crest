@@ -23,7 +23,7 @@ if(CREST_EMBED_SCHEME_BOOT)
 else()
   # Development mode: interpreter searches for .sls files at runtime.
   target_compile_definitions(CrestInterpreter PRIVATE
-    SCHEME_LIBRARIES_DIR="${CMAKE_SOURCE_DIR}/scheme"
+    SCHEME_LIBRARIES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/scheme"
     SCHEME_BINARY_DIR="${CMAKE_CURRENT_BINARY_DIR}/scheme"
     RIME_DIR="${CREST_RIME_DIR}"
   )

@@ -80,7 +80,7 @@ file(MAKE_DIRECTORY ${ChezBootHeaders_BINARY_DIR})
 add_custom_command(
   OUTPUT  ${ChezBootHeaders_BINARY_DIR}/ChezBootPetite.h
   COMMAND ${Python3_EXECUTABLE}
-          ${CMAKE_SOURCE_DIR}/cmake/xxd.py
+          ${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxd.py
           --var    petite_boot_data
           --output ${ChezBootHeaders_BINARY_DIR}/ChezBootPetite.h
           ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/petite.boot
@@ -92,7 +92,7 @@ add_custom_command(
 add_custom_command(
   OUTPUT  ${ChezBootHeaders_BINARY_DIR}/ChezBootScheme.h
   COMMAND ${Python3_EXECUTABLE}
-          ${CMAKE_SOURCE_DIR}/cmake/xxd.py
+          ${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxd.py
           --var    scheme_boot_data
           --output ${ChezBootHeaders_BINARY_DIR}/ChezBootScheme.h
           ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/scheme.boot
@@ -134,7 +134,7 @@ if(CREST_EMBED_SCHEME_BOOT)
   set(CREST_BOOT_HEADER "${ChezBootHeaders_BINARY_DIR}/CrestBoot.h")
   set(CREST_SCHEME_OBJ_DIR "${CMAKE_CURRENT_BINARY_DIR}/scheme-objs")
 
-  file(GLOB_RECURSE CREST_SLS_FILES "${CMAKE_SOURCE_DIR}/scheme/*.sls")
+  file(GLOB_RECURSE CREST_SLS_FILES "${CMAKE_CURRENT_SOURCE_DIR}/scheme/*.sls")
 
   # ── Extensible source dirs and root libraries ─────────────────────────────────
   # Downstream projects can extend these lists BEFORE add_subdirectory(crest):
@@ -175,7 +175,7 @@ if(CREST_EMBED_SCHEME_BOOT)
   add_custom_command(
     OUTPUT  ${CREST_BOOT_HEADER}
     COMMAND ${Python3_EXECUTABLE}
-            ${CMAKE_SOURCE_DIR}/cmake/xxd.py
+            ${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxd.py
             --var    crest_boot_data
             --output ${CREST_BOOT_HEADER}
             ${CREST_BOOT_FILE}
