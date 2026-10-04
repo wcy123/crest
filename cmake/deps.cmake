@@ -154,25 +154,21 @@ if(CREST_EMBED_SCHEME_BOOT)
 
   file(GLOB_RECURSE CREST_SLS_FILES "${CMAKE_SOURCE_DIR}/scheme/*.sls")
 
-  set(CREST_SCHEME_WS "${CMAKE_CURRENT_BINARY_DIR}/scheme-compile")
+  set(CREST_SCHEME_OBJ "${CMAKE_CURRENT_BINARY_DIR}/scheme-objs")
 
-  # ── Compile all libraries in topological order (single process) ─────────────
-  # WORKING_DIRECTORY is set to the scheme-compile workspace inside the build
-  # tree. compile-library writes .so "next to the source" — since the source
-  # is rsync'd into this workspace (not the NFS source tree), all compiled
-  # artifacts land in the build tree. The NFS source directory is NEVER
-  # written to, proactively avoiding any pollution.
+  # ── Compile all libraries (single process, no source copying) ───────────────
+  # compile-file with explicit output paths writes .so directly into
+  # scheme-objs/ (build tree). The source tree is NEVER written to.
   add_custom_command(
     OUTPUT  ${CREST_BOOT_FILE}
-    # Pre-create the workspace before the Chez script runs.
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CREST_SCHEME_WS}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CREST_SCHEME_OBJ}
     COMMAND ${CHEZ_SCHEME_BIN}
             --script  ${CMAKE_SOURCE_DIR}/cmake/compile_scheme_libs.ss
             ${SCHEME_ORDER_TXT}
             ${CMAKE_SOURCE_DIR}/scheme   # scheme-src (read-only)
             ${CREST_RIME_DIR}            # rime-src   (read-only)
+            ${CREST_SCHEME_OBJ}          # obj-dir    (build tree output)
             ${CREST_BOOT_FILE}
-    WORKING_DIRECTORY ${CREST_SCHEME_WS}
     DEPENDS ChezScheme ${CREST_SLS_FILES}
             ${CMAKE_SOURCE_DIR}/cmake/compile_scheme_libs.ss
             ${SCHEME_ORDER_TXT}
