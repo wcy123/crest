@@ -134,7 +134,9 @@ if(CREST_EMBED_SCHEME_BOOT)
   set(CREST_BOOT_HEADER "${ChezBootHeaders_BINARY_DIR}/CrestBoot.h")
   set(CREST_SCHEME_OBJ_DIR "${CMAKE_CURRENT_BINARY_DIR}/scheme-objs")
 
-  file(GLOB_RECURSE CREST_SLS_FILES "${CMAKE_CURRENT_SOURCE_DIR}/scheme/*.sls")
+  file(GLOB_RECURSE CREST_SLS_FILES
+       "${CMAKE_CURRENT_SOURCE_DIR}/scheme/*.sls"
+       "${CMAKE_CURRENT_SOURCE_DIR}/samples/*.sls")
 
   # ── Extensible source dirs and root libraries ─────────────────────────────────
   # Downstream projects can extend these lists BEFORE add_subdirectory(crest):
@@ -142,13 +144,18 @@ if(CREST_EMBED_SCHEME_BOOT)
   #   list(PREPEND CREST_BOOT_ROOTS       "${MY_SCHEME_DIR}/my-root.sls")
   #
   # CREST always appends its own entries so they're always present.
+  # CREST core libraries are in scheme/; sample passes are in samples/
   list(APPEND CREST_BOOT_SOURCE_DIRS
        "${CMAKE_CURRENT_SOURCE_DIR}/scheme"
+       "${CMAKE_CURRENT_SOURCE_DIR}/samples"
        "${CREST_RIME_DIR}")
   list(REMOVE_DUPLICATES CREST_BOOT_SOURCE_DIRS)
 
+  # Default roots: the sample passes that ship with CREST.
+  # Downstream projects add their own roots via CREST_BOOT_ROOTS.
   list(APPEND CREST_BOOT_ROOTS
-       "${CMAKE_CURRENT_SOURCE_DIR}/scheme/passes/hip-fusion.sls")
+       "${CMAKE_CURRENT_SOURCE_DIR}/samples/passes/hip-fusion.sls"
+       "${CMAKE_CURRENT_SOURCE_DIR}/samples/passes/onnx-to-hipsr.sls")
   list(REMOVE_DUPLICATES CREST_BOOT_ROOTS)
 
   list(LENGTH CREST_BOOT_SOURCE_DIRS _crest_n_src_dirs)

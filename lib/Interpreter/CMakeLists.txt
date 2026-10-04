@@ -22,6 +22,7 @@ if(CREST_EMBED_SCHEME_BOOT)
   target_compile_definitions(CrestInterpreter PRIVATE CREST_BOOT_EMBEDDED)
 else()
   # Development mode: interpreter searches for .sls files at runtime.
+  # scheme/ contains core libraries; samples/ is added via CREST_PATH env var.
   target_compile_definitions(CrestInterpreter PRIVATE
     SCHEME_LIBRARIES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/scheme"
     SCHEME_BINARY_DIR="${CMAKE_CURRENT_BINARY_DIR}/scheme"
