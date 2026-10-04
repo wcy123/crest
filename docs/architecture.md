@@ -126,31 +126,45 @@ adaptors via `OpAdaptor`, and `applyFullConversion` /
 [DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/) documentation.
 DDR is the only DSL-based option that supports `ConversionPattern` today.
 
-#### The host language as extension mechanism
+#### Match-side constraints
 
-PDL and DRR are closed DSLs. Constraints or rewrite logic outside their
-expressibility require C++ `native` blocks (PDLL) or `NativeCodeCall` string
-escapes (DRR), which require a full rebuild.
+A constraint in MLIR pattern matching is a predicate that must hold for a
+pattern to fire — for example, "this operand's type must be quantized" or
+"this axis value, after normalization, must equal the input rank minus one."
 
-CREST embeds DDR in Scheme: the `:where` guard and `:rewrite` body accept
-arbitrary Scheme. A Scheme function in the same `.sls` file serves the same
-purpose without C++ or a rebuild:
+In PDLL, constraints require a C++ `native` block embedded in the `.pdll`
+file. In DRR, they require `CPred<"...">` — a C++ expression as a TableGen
+string. Both require a rebuild for any change.
+
+In CREST, the `:where` guard accepts any Scheme expression. A constraint is a
+plain Scheme function defined in the same `.sls` file:
 
 ```scheme
-;; Constraint defined as a plain Scheme function:
-(define (quantized-tensor? v)
-  (mlir-attr-isa (mlir-value-get-type v) ':quantized))
+(define (last-axis? v axis-attr)
+  (let* ([rank (mlir-type-get-rank (mlir-value-get-type v))]
+         [axis (mlir-integer-attr-get-value axis-attr)]
+         [axis (if (< axis 0) (+ axis rank) axis)])  ; normalize negative
+    (= axis (- rank 1))))
 
-;; Used directly in a pattern guard:
-(define-conversion-pattern (lower-cast op operands-ref rw tc)
-  %cast = "onnx.Cast" (%data)
-  :where (quantized-tensor? %data)
+(define-conversion-pattern (lower-gather op operands-ref rw tc)
+  %gather = "onnx.Gather" (%data %indices) {:axis = %axis-attr}
+  :where (last-axis? %data %axis-attr)
   :rewrite ...)
 ```
 
-Complex logic — axis normalization, shape broadcasting, `operandSegmentSizes`
-construction — is expressed as Scheme functions in the same file, with the
-same edit–reload cycle as the pattern itself.
+The function can be tested independently, reused across patterns, and changed
+without rebuilding the binary.
+
+#### The host language as extension mechanism
+
+PDL and DRR are closed DSLs. Anything outside their expressibility — on both
+the match side and the rewrite side — requires a C++ escape and a full
+rebuild.
+
+CREST embeds DDR in Scheme: the `:where` guard and the `:rewrite` body both
+accept arbitrary Scheme. Complex rewrite logic — axis normalization, shape
+broadcasting, `operandSegmentSizes` construction — is expressed as Scheme
+functions in the same file, with the same edit–reload cycle as the pattern.
 
 #### Comparison with MLIR pattern DSLs
 
@@ -159,7 +173,6 @@ same edit–reload cycle as the pattern itself.
 | [`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns) support | [No](https://mlir.llvm.org/docs/DeclarativeRewrites/) | [No](https://mlir.llvm.org/docs/PDLL/) | **Yes** |
 | Edit → test cycle | Rebuild required | Rebuild required | **Reload `.sls`** |
 | Extra toolchain | `mlir-tblgen` | `mlir-pdll` + `mlir-tblgen` | **None** |
-| Constraints without C++ | No | No | **Yes** |
 | Turing-complete rewrite logic | Via C++ | Via C++ | **Native Scheme** |
 | Interactive debugging | No | No | **Yes** |
 | Patterns in deployed binary | Yes | Yes | **Yes (boot mode)** |
