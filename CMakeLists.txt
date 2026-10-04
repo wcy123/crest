@@ -43,9 +43,6 @@ include(cmake/deps.cmake)
 set(CREST_SCHEME_DIR "${CMAKE_CURRENT_SOURCE_DIR}/scheme"
     CACHE PATH "CREST Scheme library root")
 
-# Public headers and tablegen targets (must precede lib/)
-add_subdirectory(include)
-
 # C++ libraries
 add_subdirectory(lib)
 
