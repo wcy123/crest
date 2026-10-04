@@ -4,7 +4,8 @@
           generate-pattern-match-and-rewrite
           generate-debug-codegen
           make-unbound-value
-          unbound-value?)
+          unbound-value?
+          run-pipeline)
   (import (rnrs)
           (only (chezscheme) syntax->list syntax->datum syntax-object->datum record-rtd record-type-field-names record-accessor identifier?
                 call-with-string-output-port display-condition)
@@ -12,6 +13,8 @@
           (for (only (chezscheme) syntax->list syntax->datum record-rtd record-type-field-names record-accessor identifier?) expand)
           (for (rename (rime loop) (:with :rime-with)) expand)
           (for (crest internal ast) expand)
+          (for (crest internal parse) expand)
+          (for (crest internal validate) expand)
           (for (crest internal analyze) expand)
           (for (mlir core ir) expand)
           (for (only (mlir core context) current-mlir-context) expand)
@@ -391,5 +394,23 @@
         [(list? obj) (map record->alist obj)]
         [(vector? obj) (vector->list (vector-map record->alist obj))]
         [else obj])))
+
+  ;; Shared pipeline helper — runs the 4 phases, short-circuits on debug flags.
+  ;; Defined here so crest.sls can call it from define-syntax transformers
+  ;; (codegen is already imported (for ... expand) there).
+  (define (run-pipeline stx type)
+    (let ([ast-rec (parse-to-ast stx type)])
+      (if (ast-pattern-expand-debug-parse? ast-rec)
+          (generate-debug-ast ast-rec)
+          (let ([validated (validate-ast ast-rec)])
+            (if (ast-pattern-expand-debug-validate? validated)
+                (generate-debug-ast validated)
+                (let ([analyzed (analyze-ast validated)])
+                  (if (ast-pattern-expand-debug-analyze? analyzed)
+                      (generate-debug-ast analyzed)
+                      (let ([real-code (generate-pattern-match-and-rewrite analyzed)])
+                        (if (ast-pattern-expand-debug-codegen? analyzed)
+                            (generate-debug-codegen analyzed real-code)
+                            real-code)))))))))
 
 )
