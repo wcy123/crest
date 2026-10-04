@@ -30,6 +30,9 @@ include_directories(SYSTEM ${MLIR_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/include)
 
+# All user-visible options (must come before build_options and deps)
+include(cmake/crest-options.cmake)
+
 # Compiler options and warnings
 include(cmake/build_options.cmake)
 

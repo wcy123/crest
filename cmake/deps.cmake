@@ -125,7 +125,7 @@ set(CREST_RIME_DIR "${rime_SOURCE_DIR}" CACHE INTERNAL "")
 # When OFF (default), the interpreter searches for .sls files at runtime via
 # addLibraryPath — convenient for development.
 # NOTE: must come after rime is fetched so CREST_RIME_DIR is set.
-option(CREST_EMBED_SCHEME_BOOT "Compile and embed Scheme libraries into the binary (deployment)" OFF)
+# CREST_EMBED_SCHEME_BOOT is declared in cmake/crest-options.cmake
 
 if(CREST_EMBED_SCHEME_BOOT)
   set(CHEZ_SCHEME_BIN
