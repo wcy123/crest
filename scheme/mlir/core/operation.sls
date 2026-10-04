@@ -313,6 +313,6 @@
                           [else
                            (error 'mlir-operation-get-operands
                                   "unknown kind: expected required/optional/variadic"
-                                  kind)]))))))))) ; case loop apply-values with-array-ref let* let* if let
+                                  kind)]))))))))  ; case kind, loop, let* body, with-array-ref, let, if, let, define
 
 ) ;; end library (mlir core operation)
