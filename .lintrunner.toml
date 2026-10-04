@@ -1,0 +1,35 @@
+# Configuration for lintrunner https://github.com/suo/lintrunner
+#
+# To format local changes:
+#
+#   lintrunner -a
+#
+# To format all files:
+#
+#   lintrunner -a --all-files
+
+merge_base_with = 'origin/main'
+
+[[linter]]
+code = 'CLANGFORMAT'
+include_patterns = [
+    '**/*.h',
+    '**/*.cpp',
+    '**/*.cc',
+    '**/*.hpp',
+]
+exclude_patterns = [
+    'cmake/**',
+]
+command = [
+    'python',
+    '-m',
+    'lintrunner_adapters',
+    'run',
+    'clangformat_linter',
+    '--binary=clang-format',
+    '--fallback',
+    '--',
+    '@{{PATHSFILE}}'
+]
+is_formatter = true
