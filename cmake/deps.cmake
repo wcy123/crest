@@ -154,8 +154,7 @@ if(CREST_EMBED_SCHEME_BOOT)
   # Default roots: the sample passes that ship with CREST.
   # Downstream projects add their own roots via CREST_BOOT_ROOTS.
   list(APPEND CREST_BOOT_ROOTS
-       "${CMAKE_CURRENT_SOURCE_DIR}/samples/passes/hip-fusion.sls"
-       "${CMAKE_CURRENT_SOURCE_DIR}/samples/passes/onnx-to-hipsr.sls")
+       "${CMAKE_CURRENT_SOURCE_DIR}/samples/passes/hip-fusion.sls")
   list(REMOVE_DUPLICATES CREST_BOOT_ROOTS)
 
   list(LENGTH CREST_BOOT_SOURCE_DIRS _crest_n_src_dirs)

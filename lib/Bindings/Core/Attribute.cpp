@@ -18,9 +18,9 @@
 // Error policy: functions that cannot return a meaningful value signal a
 // Scheme error via Scall_error rather than returning a silent sentinel.
 
-#include "../Logging.h"
-#include "../SchemeWrapper.h"
 #include "../Support/ArrayRef.h"
+#include "../Support/Logging.h"
+#include "../Support/SchemeWrapper.h"
 #include "mlir/AsmParser/AsmParser.h"
 #include "mlir/IR/AsmState.h"
 #include "mlir/IR/Attributes.h"

@@ -6,8 +6,8 @@
 // Mirrors (mlir core builder): builder API, block/region primitives,
 // rewriter ops, and type constructors.
 
-#include "../Logging.h"
-#include "../SchemeWrapper.h"
+#include "../Support/Logging.h"
+#include "../Support/SchemeWrapper.h"
 #include "mlir/CAPI/IR.h"
 #include "mlir/CAPI/Wrap.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"

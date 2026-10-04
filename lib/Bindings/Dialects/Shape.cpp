@@ -4,7 +4,7 @@
  */
 
 #include "mlir/Dialect/Shape/IR/Shape.h"
-#include "../SchemeWrapper.h"
+#include "../Support/SchemeWrapper.h"
 #include "mlir/IR/Operation.h"
 
 #define DEBUG_TYPE "scheme-shape-bindings"

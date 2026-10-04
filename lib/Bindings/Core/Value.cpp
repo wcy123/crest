@@ -6,7 +6,7 @@
 // Mirrors (mlir core value): Value and ValueArrayRef primitives.
 
 #include "mlir/IR/Value.h"
-#include "../SchemeWrapper.h"
+#include "../Support/SchemeWrapper.h"
 #include "mlir/CAPI/IR.h"
 #include "mlir/CAPI/Wrap.h"
 #include "mlir/IR/Operation.h"

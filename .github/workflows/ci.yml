@@ -8,7 +8,7 @@ on:
 
 env:
   LLVM_VERSION: 22
-  # samples/ contains example passes (hip-fusion, onnx-to-hipsr).
+  # samples/ contains example passes (e.g. hip-fusion).
   # The interpreter finds them via CREST_PATH at runtime.
   CREST_PATH: ${{ github.workspace }}/samples
 

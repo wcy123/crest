@@ -8,7 +8,7 @@
 // pointers — no MLIR C++ types cross the FFI boundary.
 
 #include "mlir/IR/Types.h"
-#include "../SchemeWrapper.h"
+#include "../Support/SchemeWrapper.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Value.h"
 
