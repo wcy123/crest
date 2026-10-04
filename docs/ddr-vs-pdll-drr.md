@@ -26,11 +26,10 @@ patterns. The comparison is scoped to the onnx→HipSR lowering pass.
 
 ### Capability: Dialect Conversion
 
-[PDLL documents this limitation explicitly](https://mlir.llvm.org/docs/PDLL/#planned-features):
-
-> *"Planned but missing PDLL features include: Support for use in dialect conversion (no RFC yet)"*
-
-DRR has the same limitation. Neither generates
+Neither [PDLL](https://mlir.llvm.org/docs/PDLL/) nor
+[DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/) covers this use case:
+`ConversionPattern` does not appear in either DSL's documentation.
+Neither generates
 [`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns)
 subclasses.
 
@@ -108,7 +107,7 @@ operate within MLIR's type system and have no equivalent cost. The
 
 | Dimension | DRR | PDLL | DDR |
 |---|---|---|---|
-| [Dialect conversion](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns) | No | [No](https://mlir.llvm.org/docs/PDLL/#planned-features) | **Yes** |
+| [Dialect conversion](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns) | No | [No](https://mlir.llvm.org/docs/PDLL/) | **Yes** |
 | Edit→test loop | Rebuild | Rebuild | **Reload** |
 | Extra toolchain | `mlir-tblgen` | `mlir-pdll` + `mlir-tblgen` | **None** |
 | Constraints without C++ | No | No | **Yes** |

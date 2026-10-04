@@ -38,9 +38,9 @@ pattern change. MLIR's established pattern DSLs —
 [PDL](https://mlir.llvm.org/docs/PDLL/) and
 [DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/) — cannot address this:
 both generate only `RewritePattern` subclasses and have no support for
-[`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/); PDLL
-[documents this explicitly](https://mlir.llvm.org/docs/PDLL/#planned-features)
-as a planned but missing feature with no RFC.
+[`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/);
+[`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns)
+does not appear in the [PDLL documentation](https://mlir.llvm.org/docs/PDLL/).
 
 CREST provides a Scheme-hosted DSL (DDR) that generates `ConversionPattern`
 subclasses and uses Chez Scheme as its extension language, eliminating C++
@@ -121,10 +121,10 @@ entry points:
 [`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns)
 subclasses, which require `ConversionPatternRewriter`, type-converted operand
 adaptors via `OpAdaptor`, and `applyFullConversion` /
-`applyPartialConversion`. PDLL
-[documents this as a planned but missing feature](https://mlir.llvm.org/docs/PDLL/#planned-features)
-with no RFC. DDR is the only DSL-based option that supports
-`ConversionPattern` today.
+`applyPartialConversion`. Neither appears in the
+[PDLL](https://mlir.llvm.org/docs/PDLL/) or
+[DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/) documentation.
+DDR is the only DSL-based option that supports `ConversionPattern` today.
 
 #### The host language as extension mechanism
 
@@ -156,7 +156,7 @@ same edit–reload cycle as the pattern itself.
 
 | Dimension | DRR | PDLL | DDR |
 |---|---|---|---|
-| [`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns) support | [No](https://mlir.llvm.org/docs/DeclarativeRewrites/) | [No](https://mlir.llvm.org/docs/PDLL/#planned-features) | **Yes** |
+| [`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns) support | [No](https://mlir.llvm.org/docs/DeclarativeRewrites/) | [No](https://mlir.llvm.org/docs/PDLL/) | **Yes** |
 | Edit → test cycle | Rebuild required | Rebuild required | **Reload `.sls`** |
 | Extra toolchain | `mlir-tblgen` | `mlir-pdll` + `mlir-tblgen` | **None** |
 | Constraints without C++ | No | No | **Yes** |
