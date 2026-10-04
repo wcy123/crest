@@ -194,10 +194,11 @@ Debug flags (`:debug-parse`, `:debug-validate`, `:debug-analyze`,
 
 ### Layer 3 — Domain helpers
 
-Pure Scheme libraries over Layer 1. `(mlir hip fusion)` implements
-quantization-aware fusion predicates and op constructors shared across
-hip-fusion patterns. Dialect libraries (`hipsr`, `tensor`, `func`, etc.)
-provide named constructors for each op.
+Any Scheme library built on top of Layer 1. This layer has no fixed structure:
+users add whatever domain-specific predicates, op constructors, type helpers,
+or utility functions their passes need. The included `(mlir hip fusion)` and
+dialect libraries (`hipsr`, `tensor`, `func`, etc.) are examples, not the
+definition of this layer.
 
 ### Layer 4 — Pass entry points
 
