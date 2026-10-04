@@ -2,9 +2,7 @@
 (library (crest internal codegen)
   (export generate-debug-ast
           generate-pattern-matchAndRewrite
-          generate-debug-codegen
-          make-unbound-value
-          unbound-value?)
+          generate-debug-codegen)
   (import (rnrs)
           (only (chezscheme) syntax->list syntax->datum syntax-object->datum record-rtd record-type-field-names record-accessor identifier?
                 call-with-string-output-port display-condition)
@@ -357,11 +355,6 @@
   ;;=======================================================================
 
   (define (make-unbound-value) (if #f #f))
-
-  ;; Returns #t when v is an unbound pattern variable (i.e. an optional operand
-  ;; that was absent at match time).  Clients use this in :then-let to check
-  ;; whether an (:optional %var) was actually bound.
-  (define (unbound-value? v) (eq? v (make-unbound-value)))
 
   (define (record->alist obj)
     (let ([datum (syntax-object->datum obj)])

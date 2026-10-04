@@ -18,8 +18,12 @@
           (for (crest internal parse) expand)
           (for (crest internal validate) expand)
           (for (crest internal analyze) expand)
-          (for (crest internal codegen) expand)
-          (for (only (crest internal codegen) make-unbound-value unbound-value?) expand))
+          (for (crest internal codegen) expand))
+
+  ;; Runtime utilities exported for pattern callers.
+  ;; unbound-value? lets callers check whether an :optional operand was absent.
+  (define (make-unbound-value) (if #f #f))
+  (define (unbound-value? v) (eq? v (make-unbound-value)))
 
   ;; Main macro: orchestrate 4 phases (waterfall style)
   ;; Phase 1: Parse -> AST
