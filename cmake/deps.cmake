@@ -171,7 +171,7 @@ if(CREST_EMBED_SCHEME_BOOT)
   add_custom_target(CrestBootHeader DEPENDS ${CREST_BOOT_HEADER})
   add_dependencies(ChezBootHeaders CrestBootHeader)
 
-  message(STATUS "CREST: Scheme boot embedding enabled — parallel compilation via Ninja -j")
+  message(STATUS "CREST: Scheme boot embedding enabled (CREST_EMBED_SCHEME_BOOT=ON)")
 else()
   message(STATUS "CREST: Scheme boot embedding disabled — use -DCREST_EMBED_SCHEME_BOOT=ON for deployment")
 endif()
