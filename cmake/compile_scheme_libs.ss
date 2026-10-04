@@ -20,16 +20,27 @@
 (define rime-src    (list-ref args 2))  ; rime NFS dir (read-only)
 (define output-boot (list-ref args 3))
 
+;; ─── Pre-clean: remove any stale .so/.wpo from NFS source tree ───────────────
+;; Chez may write compiled files to scheme-src in some code paths.
+;; Proactively remove them before compilation so Chez never finds stale
+;; artifacts and is always forced to compile fresh from local copies.
+(system (string-append "find " scheme-src " -name '*.so' -delete 2>/dev/null; find " scheme-src " -name '*.wpo' -delete 2>/dev/null; true"))
+
 ;; ─── Local workspace ──────────────────────────────────────────────────────────
-(define local-ws (string-append "/tmp/crest-compile-" (number->string (random 999999))))
+;; Use timestamp for uniqueness — (random) has a fixed seed in Chez 10.4.1.
+(define local-ws (string-append "/tmp/crest-compile-" (number->string (time-second (current-time)))))
 (define local-src (string-append local-ws "/src"))
 (define local-obj (string-append local-ws "/obj"))
 (system (string-append "mkdir -p " local-src " " local-obj))
 
 ;; ─── Copy .sls sources to local disk ─────────────────────────────────────────
-;; Use rsync to exclude .git (pack files may be read-only and cause cp errors).
-(system (string-append "rsync -a --exclude='.git' " scheme-src "/ " local-src "/"))
-(system (string-append "rsync -a --exclude='.git' " rime-src "/ " local-ws "/rime/"))
+;; Exclude compiled artifacts (.so, .wpo) so Chez never finds stale compiled
+;; files in local-src and is always forced to compile from source.
+;; Exclude .git to avoid permission errors on read-only pack files.
+(system (string-append "rsync -a --exclude='.git' --exclude='*.so' --exclude='*.wpo' "
+                       scheme-src "/ " local-src "/"))
+(system (string-append "rsync -a --exclude='.git' --exclude='*.so' --exclude='*.wpo' "
+                       rime-src "/ " local-ws "/rime/"))
 
 ;; ─── Read topologically-sorted library list ───────────────────────────────────
 (define libraries
@@ -108,5 +119,9 @@
 (apply make-boot-file output-boot '("petite" "scheme") so-files)
 
 ;; ─── Cleanup ──────────────────────────────────────────────────────────────────
+;; Remove local scratch directory — all compiled artifacts are inside.
 (system (string-append "rm -rf " local-ws))
+;; Remove any .so/.wpo that Chez may have written to scheme-src despite
+;; our local compilation setup (belt-and-suspenders NFS cleanup).
+(system (string-append "find " scheme-src " -name '*.so' -delete 2>/dev/null; find " scheme-src " -name '*.wpo' -delete 2>/dev/null; true"))
 (printf "Done.~n")
