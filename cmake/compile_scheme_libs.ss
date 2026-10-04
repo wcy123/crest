@@ -1,61 +1,77 @@
 ;;===----------------------------------------------------------------------===;;
 ;;
-;; cmake/compile_scheme_libs.ss — Compile all CREST Scheme libraries
+;; cmake/compile_scheme_libs.ss — Compile CREST Scheme libraries into a boot file
 ;;
 ;; Usage:
 ;;   scheme --script compile_scheme_libs.ss
-;;          <scheme-src> <rime-src> <obj-dir> <output-boot>
+;;          <obj-dir> <output-boot> <n-source-dirs>
+;;          <source-dir-1> ... <source-dir-n>
+;;          <root-sls-1>  ... <root-sls-m>
 ;;
-;; library-directories (source . object) pairs are the key:
-;;   - source-dir: where Chez finds .sls source files (read-only)
-;;   - object-dir: where Chez writes compiled .so files (build tree)
+;;   obj-dir:       build-tree directory for compiled .so output
+;;   output-boot:   destination for the resulting .boot file
+;;   n-source-dirs: number of source-dir arguments that follow
+;;   source-dirs:   absolute paths to .sls source trees (read-only)
+;;   root-sls:      absolute paths to root libraries; each triggers recursive
+;;                  compilation of all transitive imports via
+;;                  compile-imported-libraries #t
 ;;
-;; With compile-imported-libraries #t, compiling the root library triggers
-;; recursive compilation of ALL transitive dependencies in topological order.
-;; No manual ordering, no scanner, no order file needed.
-;;
-;; The source tree is NEVER written to — all output goes to obj-dir.
+;; library-directories (source . object) pairs redirect compiled output
+;; to obj-dir — the source trees are NEVER written to.
 ;;
 ;;===----------------------------------------------------------------------===;;
 
 (import (chezscheme))
 
 (define args        (command-line-arguments))
-(define scheme-src  (list-ref args 0))
-(define rime-src    (list-ref args 1))
-(define obj-dir     (list-ref args 2))
-(define output-boot (list-ref args 3))
+(define obj-dir     (list-ref args 0))
+(define output-boot (list-ref args 1))
+(define n-srcs      (string->number (list-ref args 2)))
+(define source-dirs (list-head (list-tail args 3) n-srcs))
+(define root-libs   (list-tail args (+ 3 n-srcs)))
 
 ;; ─── Library search / output paths ───────────────────────────────────────────
-;; (source-dir . object-dir) pairs: Chez reads .sls from source-dir and
-;; writes compiled .so into object-dir.  This is the critical setting that
-;; keeps all compiled artifacts in the build tree.
+;; Each (source-dir . obj-dir) pair tells Chez: find .sls in source-dir,
+;; write compiled .so to obj-dir.  All sources are read-only.
 (library-directories
-  (list (cons scheme-src obj-dir)
-        (cons rime-src   obj-dir)))
+  (map (lambda (src) (cons src obj-dir)) source-dirs))
 
 ;; ─── Compilation options ──────────────────────────────────────────────────────
 (optimize-level 2)
 (generate-wpo-files #f)
 
-;; ─── Compile everything via the root library ──────────────────────────────────
-;; compile-imported-libraries #t: when compiling a library, Chez automatically
-;; compiles any uncompiled import first (topological order, handled by Chez).
+;; ─── Compile each root library ────────────────────────────────────────────────
+;; compile-imported-libraries #t: Chez automatically compiles any uncompiled
+;; import before the importing library (topological order, no manual sorting).
 ;; All transitive dependencies flow through library-directories → obj-dir.
 (compile-imported-libraries #t)
 
-;; Pre-create destination directory for the root library output.
-;; Transitive dependency directories are created by Chez via library-directories.
-;; cmake -E make_directory already created obj-dir; we only need one more level.
-(guard (e [else #f]) (mkdir (string-append obj-dir "/passes")))
+(for-each
+  (lambda (root-sls)
+    ;; Derive the output .so path: same relative structure as source, in obj-dir.
+    ;; The source dir prefix is stripped to get the relative path.
+    (let* ([rel  (let find ([srcs source-dirs])
+                   (if (null? srcs)
+                       (error 'compile-scheme-libs "root not under any source-dir" root-sls)
+                       (let* ([src (car srcs)]
+                              [prefix (string-append src "/")])
+                         (if (and (> (string-length root-sls) (string-length prefix))
+                                  (string=? (substring root-sls 0 (string-length prefix)) prefix))
+                             (substring root-sls (string-length prefix) (string-length root-sls))
+                             (find (cdr srcs))))))]
+           [dest (string-append obj-dir "/"
+                                (substring rel 0 (- (string-length rel) 4))
+                                ".so")]
+           [ddir (let loop ([i (- (string-length dest) 1)])
+                   (if (char=? (string-ref dest i) #\/)
+                       (substring dest 0 i)
+                       (loop (- i 1))))])
+      (guard (e [else #f]) (mkdir ddir))
+      (printf "Compiling root: ~a~n" rel)
+      (compile-file root-sls dest)))
+  root-libs)
 
-;; Compile the root library. Chez recursively compiles every import
-;; (mlir core ir, crest ddr, mlir hip fusion, rime loop, ...) first,
-;; each written to obj-dir via the (source . object) pair.
-(compile-file (string-append scheme-src "/passes/hip-fusion.sls")
-              (string-append obj-dir   "/passes/hip-fusion.so"))
-
-;; ─── Bundle into crest.boot ───────────────────────────────────────────────────
+;; ─── Bundle all compiled .so files into crest.boot ───────────────────────────
 (define (find-so-files dir)
   (guard (e [else '()])
     (fold-left

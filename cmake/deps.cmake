@@ -136,22 +136,38 @@ if(CREST_EMBED_SCHEME_BOOT)
 
   file(GLOB_RECURSE CREST_SLS_FILES "${CMAKE_SOURCE_DIR}/scheme/*.sls")
 
+  # ── Extensible source dirs and root libraries ─────────────────────────────────
+  # Downstream projects can extend these lists BEFORE add_subdirectory(crest):
+  #   list(PREPEND CREST_BOOT_SOURCE_DIRS "${MY_SCHEME_DIR}")
+  #   list(PREPEND CREST_BOOT_ROOTS       "${MY_SCHEME_DIR}/my-root.sls")
+  #
+  # CREST always appends its own entries so they're always present.
+  list(APPEND CREST_BOOT_SOURCE_DIRS
+       "${CMAKE_CURRENT_SOURCE_DIR}/scheme"
+       "${CREST_RIME_DIR}")
+  list(REMOVE_DUPLICATES CREST_BOOT_SOURCE_DIRS)
+
+  list(APPEND CREST_BOOT_ROOTS
+       "${CMAKE_CURRENT_SOURCE_DIR}/scheme/passes/hip-fusion.sls")
+  list(REMOVE_DUPLICATES CREST_BOOT_ROOTS)
+
+  list(LENGTH CREST_BOOT_SOURCE_DIRS _crest_n_src_dirs)
+
   # ── Compile all libraries via compile-imported-libraries ─────────────────────
-  # Chez handles topological ordering automatically when
-  # compile-imported-libraries is #t.  library-directories (source . object)
-  # pairs redirect all compiled output to scheme-objs/ (build tree).
-  # No scanner, no order file, no source copying needed.
+  # Chez handles topological ordering automatically.
+  # library-directories (source . object) pairs redirect output to obj-dir.
   add_custom_command(
     OUTPUT  ${CREST_BOOT_FILE}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CREST_SCHEME_OBJ_DIR}
     COMMAND ${CHEZ_SCHEME_BIN}
-            --script  ${CMAKE_SOURCE_DIR}/cmake/compile_scheme_libs.ss
-            ${CMAKE_SOURCE_DIR}/scheme   # scheme-src (read-only)
-            ${CREST_RIME_DIR}            # rime-src   (read-only)
-            ${CREST_SCHEME_OBJ_DIR}      # obj-dir    (build tree output)
-            ${CREST_BOOT_FILE}
-    DEPENDS ChezScheme ${CREST_SLS_FILES}
-            ${CMAKE_SOURCE_DIR}/cmake/compile_scheme_libs.ss
+            --script ${CMAKE_CURRENT_SOURCE_DIR}/cmake/compile_scheme_libs.ss
+            ${CREST_SCHEME_OBJ_DIR}       # obj-dir
+            ${CREST_BOOT_FILE}            # output-boot
+            ${_crest_n_src_dirs}          # number of source-dirs that follow
+            ${CREST_BOOT_SOURCE_DIRS}     # source-dir... (expanded list)
+            ${CREST_BOOT_ROOTS}           # root-sls...  (expanded list)
+    DEPENDS ChezScheme ${CREST_SLS_FILES} ${CREST_BOOT_ROOTS}
+            ${CMAKE_CURRENT_SOURCE_DIR}/cmake/compile_scheme_libs.ss
     COMMENT "Compiling CREST Scheme libraries into crest.boot"
     VERBATIM
   )
