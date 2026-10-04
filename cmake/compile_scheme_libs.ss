@@ -1,14 +1,13 @@
 ;;===----------------------------------------------------------------------===;;
 ;;
-;; cmake/compile_scheme_libs.ss — Compile all CREST Scheme libraries (single process)
+;; cmake/compile_scheme_libs.ss — Compile all CREST Scheme libraries
 ;;
-;; Usage:
-;;   scheme --script compile_scheme_libs.ss
-;;          <order-file> <scheme-src> <rime-src> <output-boot>
+;; Usage (WORKING_DIRECTORY must be CMAKE_CURRENT_BINARY_DIR/scheme-compile):
+;;   scheme --script compile_scheme_libs.ss <order-file> <scheme-src> <rime-src> <output-boot>
 ;;
-;; Copies .sls source files to local /tmp, compiles entirely on local disk
-;; (no NFS writes), then calls make-boot-file from the local .so files.
-;; This completely bypasses NFS attribute cache issues.
+;; WORKING_DIRECTORY is the compile workspace inside the build tree.
+;; All rsync destinations and compile-library outputs are relative to CWD,
+;; so compiled artifacts NEVER touch the source tree — no pollution, no cleanup.
 ;;
 ;;===----------------------------------------------------------------------===;;
 
@@ -16,31 +15,18 @@
 
 (define args        (command-line-arguments))
 (define order-file  (list-ref args 0))
-(define scheme-src  (list-ref args 1))  ; source dir (read-only)
-(define rime-src    (list-ref args 2))  ; rime source dir (read-only)
+(define scheme-src  (list-ref args 1))  ; absolute path, read-only
+(define rime-src    (list-ref args 2))  ; absolute path, read-only
 (define output-boot (list-ref args 3))
-(define local-ws    (list-ref args 4))  ; local workspace from CMAKE_BINARY_DIR
 
-;; ─── Pre-clean: remove any stale .so/.wpo from source tree ───────────────────
-;; Chez may write compiled files to scheme-src in some code paths.
-;; Proactively remove them so Chez always compiles fresh from local copies.
-(system (string-append "find " scheme-src " -name '*.so' -delete 2>/dev/null; find " scheme-src " -name '*.wpo' -delete 2>/dev/null; true"))
-
-;; ─── Local workspace ──────────────────────────────────────────────────────────
-;; Workspace is CMAKE_BINARY_DIR/scheme-compile — always local to the build,
-;; portable across platforms (no /tmp hardcoding).
-(define local-src (string-append local-ws "/src"))
-(define local-obj (string-append local-ws "/obj"))
-(system (string-append "mkdir -p " local-src " " local-obj))
-
-;; ─── Copy .sls sources to local disk ─────────────────────────────────────────
-;; Exclude compiled artifacts (.so, .wpo) so Chez never finds stale compiled
-;; files in local-src and is always forced to compile from source.
-;; Exclude .git to avoid permission errors on read-only pack files.
-(system (string-append "rsync -a --exclude='.git' --exclude='*.so' --exclude='*.wpo' "
-                       scheme-src "/ " local-src "/"))
-(system (string-append "rsync -a --exclude='.git' --exclude='*.so' --exclude='*.wpo' "
-                       rime-src "/ " local-ws "/rime/"))
+;; ─── Sync sources into CWD (build tree) ──────────────────────────────────────
+;; rsync into relative subdirs of CWD (= CMAKE_CURRENT_BINARY_DIR/scheme-compile).
+;; --exclude='*.so/wpo' ensures no stale compiled artifacts are brought in.
+(system (string-append "rsync -a --delete --exclude='.git' --exclude='*.so' --exclude='*.wpo' "
+                       scheme-src "/ src/"))
+(system (string-append "rsync -a --delete --exclude='.git' --exclude='*.so' --exclude='*.wpo' "
+                       rime-src "/ rime/"))
+(system "mkdir -p obj")
 
 ;; ─── Read topologically-sorted library list ───────────────────────────────────
 (define libraries
@@ -53,75 +39,55 @@
                 (loop libs)
                 (loop (cons line libs))))))))
 
-;; ─── Library search / output paths (set BEFORE any compilation) ─────────────
-;; Source: local-src (crest .sls), local-ws/rime (rime .sls)
-;; Object: local-obj (compiled .so — local disk, no NFS issues)
+;; ─── Library search / output paths ───────────────────────────────────────────
+;; Relative (source . object) pairs inside CWD:
+;;   src/ — rsync'd .sls source files (relative to CWD)
+;;   obj/ — compiled .so output (relative to CWD)
+;; compile-library writes "next to the source" (into src/) when the
+;; redirect doesn't fire, or into obj/ when it does — both are in the
+;; build tree, never in the NFS source directory.
 (library-directories
-  (list (cons local-src local-obj)
-        (cons (string-append local-ws "/rime") local-obj)))
+  (list (cons "src" "obj")
+        (cons "rime" "obj")))
 
+;; ─── Compilation options ──────────────────────────────────────────────────────
 (optimize-level 2)
 (generate-wpo-files #f)
 
-;; ─── Compile rime/loop (needed at expand and runtime by crest/ddr/*) ─────────
-;; compile-imported-libraries #t causes all rime sub-dependencies to be
-;; compiled automatically when rime/loop.sls is compiled.
+;; ─── Compile rime/loop and all its sub-dependencies ──────────────────────────
 (compile-imported-libraries #t)
-(compile-library (string-append local-ws "/rime/rime/loop.sls"))
+(compile-library "rime/rime/loop.sls")
 (compile-imported-libraries #f)
 
-(printf "Compiling ~a CREST Scheme libraries (local /tmp)~n" (length libraries))
-
-;; ─── Compile from local source ───────────────────────────────────────────────
-;; Use absolute paths so compile-library matches against library-directories.
+;; ─── Compile CREST libraries in topological order ─────────────────────────────
+(printf "Compiling ~a CREST Scheme libraries~n" (length libraries))
 (for-each
   (lambda (sls)
-    (let* ([base      (substring sls 0 (- (string-length sls) 4))]
-           [abs-src   (string-append local-src "/" sls)]
-           [dest-dir  (string-append local-obj "/" (let loop ([i (- (string-length base) 1)])
-                                                    (if (or (= i 0) (char=? (string-ref base i) #\/))
-                                                        (if (= i 0) base (substring base 0 i))
-                                                        (loop (- i 1)))))])
-      (printf "  (~a)~n" base)
-      (system (string-append "mkdir -p " dest-dir))
-      (compile-library abs-src)))
+    (printf "  (~a)~n" (substring sls 0 (- (string-length sls) 4)))
+    (compile-library (string-append "src/" sls)))
   libraries)
 
-;; ─── Bundle into crest.boot ───────────────────────────────────────────────────
-;; Collect all compiled .so files: rime first (they must come before crest libs
-;; that depend on them), then crest libs in topological order.
+;; ─── Collect all .so files from the build workspace ───────────────────────────
+;; compile-library writes to src/ (next to source) or obj/ (via redirect).
+;; Scan both to find everything.
 (define (find-so-files dir)
-  (fold-left
-    (lambda (acc f)
-      (let ([path (string-append dir "/" f)])
-        (cond
-          [(file-directory? path) (append acc (find-so-files path))]
-          [(let ([n (string-length f)])
-             (and (> n 3) (string=? (substring f (- n 3) n) ".so")))
-           (append acc (list path))]
-          [else acc])))
-    '()
-    (directory-list dir)))
+  (guard (e [else '()])
+    (fold-left
+      (lambda (acc f)
+        (let ([path (string-append dir "/" f)])
+          (cond
+            [(file-directory? path) (append acc (find-so-files path))]
+            [(let ([n (string-length f)])
+               (and (> n 3) (string=? (substring f (- n 3) n) ".so")))
+             (append acc (list path))]
+            [else acc])))
+      '()
+      (directory-list dir))))
 
-;; Rime .so files land in TWO places:
-;;   - loop.so itself: in local-ws/rime/rime/ (compiled via absolute path, no redirect)
-;;   - all sub-libraries: in local-obj/ (compiled transitively via library-directories redirect)
-;; Crest .so files: in local-src/ (absolute path, no redirect)
-(define rime-so-files (append (find-so-files (string-append local-ws "/rime"))
-                               (find-so-files local-obj)))
-(define crest-so-files
-  (map (lambda (sls)
-         (string-append local-src "/" (substring sls 0 (- (string-length sls) 4)) ".so"))
-       libraries))
-(define so-files (append rime-so-files crest-so-files))
+(define so-files (append (find-so-files "rime")
+                          (find-so-files "obj")
+                          (find-so-files "src")))
 
-(printf "Creating boot file: ~a~n" output-boot)
+(printf "Creating boot file: ~a (~a .so files)~n" output-boot (length so-files))
 (apply make-boot-file output-boot '("petite" "scheme") so-files)
-
-;; ─── Cleanup ──────────────────────────────────────────────────────────────────
-;; Remove local scratch directory — all compiled artifacts are inside.
-(system (string-append "rm -rf " local-ws))
-;; Remove any .so/.wpo that Chez may have written to scheme-src despite
-;; our local compilation setup (belt-and-suspenders NFS cleanup).
-(system (string-append "find " scheme-src " -name '*.so' -delete 2>/dev/null; find " scheme-src " -name '*.wpo' -delete 2>/dev/null; true"))
 (printf "Done.~n")

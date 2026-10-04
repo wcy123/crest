@@ -154,23 +154,29 @@ if(CREST_EMBED_SCHEME_BOOT)
 
   file(GLOB_RECURSE CREST_SLS_FILES "${CMAKE_SOURCE_DIR}/scheme/*.sls")
 
+  set(CREST_SCHEME_WS "${CMAKE_CURRENT_BINARY_DIR}/scheme-compile")
+
   # ── Compile all libraries in topological order (single process) ─────────────
-  # Single-process compilation avoids NFS/parallel race conditions with Chez.
+  # WORKING_DIRECTORY is set to the scheme-compile workspace inside the build
+  # tree. compile-library writes .so "next to the source" — since the source
+  # is rsync'd into this workspace (not the NFS source tree), all compiled
+  # artifacts land in the build tree. The NFS source directory is NEVER
+  # written to, proactively avoiding any pollution.
   add_custom_command(
     OUTPUT  ${CREST_BOOT_FILE}
+    # Pre-create the workspace before the Chez script runs.
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CREST_SCHEME_WS}
     COMMAND ${CHEZ_SCHEME_BIN}
             --script  ${CMAKE_SOURCE_DIR}/cmake/compile_scheme_libs.ss
             ${SCHEME_ORDER_TXT}
-            ${CMAKE_SOURCE_DIR}/scheme        # scheme-src (read-only)
-            ${CREST_RIME_DIR}                 # rime-src   (read-only)
+            ${CMAKE_SOURCE_DIR}/scheme   # scheme-src (read-only)
+            ${CREST_RIME_DIR}            # rime-src   (read-only)
             ${CREST_BOOT_FILE}
-            ${CMAKE_CURRENT_BINARY_DIR}/scheme-compile  # local workspace for .so files
-    # Copies .sls sources to local /tmp before compiling — no NFS writes.
-    # This completely bypasses NFS attribute cache issues.
+    WORKING_DIRECTORY ${CREST_SCHEME_WS}
     DEPENDS ChezScheme ${CREST_SLS_FILES}
             ${CMAKE_SOURCE_DIR}/cmake/compile_scheme_libs.ss
             ${SCHEME_ORDER_TXT}
-    COMMENT "Compiling CREST Scheme libraries into crest.boot (local /tmp)"
+    COMMENT "Compiling CREST Scheme libraries into crest.boot"
     VERBATIM
   )
 
