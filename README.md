@@ -1,20 +1,11 @@
 # CREST — Conversion and Rewriting Engine for Scheme Transformations
 
-CREST provides [Chez Scheme](https://cisco.github.io/ChezScheme/) bindings to
-the [MLIR C API](https://mlir.llvm.org/docs/CAPI/), allowing MLIR conversion
-and rewrite patterns to be written in Scheme rather than C++.
-
-## Why
-
-Writing MLIR dialect conversion passes in C++ requires implementing
-`OpConversionPattern` subclasses, wiring `TypeConverter` and
-`ConversionTarget`, and rebuilding the compiler for every pattern change.
-MLIR's established pattern DSLs (PDL, DRR) only generate `RewritePattern`
-subclasses — neither supports `ConversionPattern`.
-
-CREST's pattern DSL generates `ConversionPattern` subclasses and uses Chez
-Scheme as its extension language. Changing a pattern and reloading takes
-seconds with no rebuild.
+CREST is a homoiconic pattern DSL for MLIR — patterns are Scheme macros, so
+constraints and rewrite logic are plain Scheme functions with no C++ escapes
+and a seconds-level edit-reload cycle. Unlike [PDL](https://mlir.llvm.org/docs/PDLL/)
+and [DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/), CREST generates
+both `RewritePattern` and `ConversionPattern` subclasses, covering dialect
+conversion passes that neither DSL supports.
 
 See [docs/architecture.md](docs/architecture.md) for a full design overview.
 
