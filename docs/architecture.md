@@ -20,7 +20,7 @@ is a Scheme-hosted engine for writing MLIR conversion and rewrite patterns.
 - [Overview](#overview)
 - [Architecture](#architecture)
   - [Layer 1 — MLIR FFI bindings](#layer-1--mlir-ffi-bindings)
-  - [Layer 2 — DDR macro DSL](#layer-2--ddr-macro-dsl)
+  - [Layer 2 — CREST pattern DSL](#layer-2--crest-pattern-dsl)
   - [Layer 3 — Domain helpers](#layer-3--domain-helpers)
   - [Layer 4 — Pass entry points](#layer-4--pass-entry-points)
 - [Deployment](#deployment)
@@ -42,7 +42,7 @@ both generate only `RewritePattern` subclasses and have no support for
 [`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns)
 does not appear in the [PDLL documentation](https://mlir.llvm.org/docs/PDLL/).
 
-CREST provides a Scheme-hosted DSL (DDR) that generates `ConversionPattern`
+CREST provides a Scheme-hosted pattern DSL that generates `ConversionPattern`
 subclasses and uses Chez Scheme as its extension language, eliminating C++
 requirements for constraints, type predicates, and rewrite logic.
 
@@ -57,7 +57,7 @@ requirements for constraints, type predicates, and rewrite logic.
 └────────────────────────┬────────────────────────────────────┘
                          │ imports
 ┌────────────────────────▼────────────────────────────────────┐
-│  Layer 2 — DDR macro DSL  (scheme/crest/ddr/)               │
+│  Layer 2 — CREST pattern DSL  (scheme/crest/ddr/)            │
 │  define-conversion-pattern / define-rewrite-pattern          │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │  Phase 1: Parse → Phase 2: Validate →               │   │
@@ -103,17 +103,17 @@ Dynamic parameters (`current-mlir-context`, `current-rewriter`,
 `parameterize` installs the right context for a dynamic extent without
 threading it through every argument.
 
-### Layer 2 — DDR macro DSL
+### Layer 2 — CREST pattern DSL
 
-DDR (**D**eclarative **D**ialect **R**ewriting) is a Scheme macro DSL with two
-entry points:
+CREST's pattern DSL is implemented as a Scheme macro layer with two entry
+points:
 
 ```scheme
 (define-conversion-pattern ...)   ; → mlir::ConversionPattern
 (define-rewrite-pattern ...)      ; → mlir::OpRewritePattern
 ```
 
-#### Why DDR rather than PDL or DRR
+#### Why CREST rather than PDLL or DRR
 
 [PDL](https://mlir.llvm.org/docs/PDLL/) and
 [DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/) generate
@@ -124,7 +124,7 @@ adaptors via `OpAdaptor`, and `applyFullConversion` /
 `applyPartialConversion`. Neither appears in the
 [PDLL](https://mlir.llvm.org/docs/PDLL/) or
 [DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/) documentation.
-DDR is the only DSL-based option that supports `ConversionPattern` today.
+CREST is the only DSL-based option that supports `ConversionPattern` today.
 
 #### Match-side constraints
 
@@ -161,14 +161,14 @@ PDL and DRR are closed DSLs. Anything outside their expressibility — on both
 the match side and the rewrite side — requires a C++ escape and a full
 rebuild.
 
-CREST embeds DDR in Scheme: the `:where` guard and the `:rewrite` body both
+CREST's pattern DSL is open: the `:where` guard and the `:rewrite` body both
 accept arbitrary Scheme. Complex rewrite logic — axis normalization, shape
 broadcasting, `operandSegmentSizes` construction — is expressed as Scheme
 functions in the same file, with the same edit–reload cycle as the pattern.
 
 #### Comparison with MLIR pattern DSLs
 
-| Dimension | DRR | PDLL | DDR |
+| Dimension | DRR | PDLL | CREST |
 |---|---|---|---|
 | [`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns) support | [No](https://mlir.llvm.org/docs/DeclarativeRewrites/) | [No](https://mlir.llvm.org/docs/PDLL/) | **Yes** |
 | Edit → test cycle | Rebuild required | Rebuild required | **Reload `.sls`** |
@@ -217,7 +217,7 @@ definition of this layer.
 ### Layer 4 — Pass entry points
 
 Each pass is a single `.sls` file:
-1. Imports DDR patterns and domain helpers
+1. Imports CREST patterns and domain helpers
 2. Creates a `RewritePatternSet` or `ConversionTarget`
 3. Calls `mlir-apply-patterns-greedy` or `mlir-apply-full-conversion`
 
