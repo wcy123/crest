@@ -52,12 +52,12 @@ requirements for constraints, type predicates, and rewrite logic.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Layer 4 — Pass entry points  (samples/passes/*.sls)        │
+│  Layer 4 — Pass entry points                                │
 │  run-pass → register patterns → apply-full-conversion        │
 └────────────────────────┬────────────────────────────────────┘
                          │ imports
 ┌────────────────────────▼────────────────────────────────────┐
-│  Layer 2 — CREST pattern DSL  (scheme/crest/ddr/)            │
+│  Layer 2 — CREST pattern DSL                                  │
 │  define-conversion-pattern / define-rewrite-pattern          │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │  Phase 1: Parse → Phase 2: Validate →               │   │
@@ -66,12 +66,12 @@ requirements for constraints, type predicates, and rewrite logic.
 └────────────────────────┬────────────────────────────────────┘
                          │ imports
 ┌────────────────────────▼────────────────────────────────────┐
-│  Layer 3 — Domain helpers  (scheme/mlir/hip/, dialects/)    │
+│  Layer 3 — Domain helpers                                   │
 │  Quantization predicates, op constructors, dialect types     │
 └────────────────────────┬────────────────────────────────────┘
                          │ imports
 ┌────────────────────────▼────────────────────────────────────┐
-│  Layer 1 — MLIR FFI bindings  (scheme/mlir/core/)           │
+│  Layer 1 — MLIR FFI bindings                                │
 │  foreign-procedure wrappers around MLIR C API               │
 └─────────────────────────────────────────────────────────────┘
 ```
