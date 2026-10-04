@@ -92,11 +92,17 @@ cmake -B build -DCREST_EMBED_SCHEME_BOOT=ON
 cmake --build build   # compiles .sls → crest.boot → embeds in binary
 ```
 
-Downstream projects can add their own libraries to the boot:
+Downstream projects include their own `.sls` files in the boot by setting
+`CREST_BOOT_SOURCE_DIRS` (directories containing `.sls` files) and
+`CREST_BOOT_ROOTS` (root entry points whose transitive imports are compiled)
+before `add_subdirectory(crest)`. CREST compiles all roots and their
+dependencies into a single `crest.boot` at build time.
 
 ```cmake
-list(PREPEND CREST_BOOT_SOURCE_DIRS "${MY_SCHEME_DIR}")
-list(PREPEND CREST_BOOT_ROOTS       "${MY_SCHEME_DIR}/my-pass.sls")
+# In your project's CMakeLists.txt, before add_subdirectory(crest):
+set(CREST_EMBED_SCHEME_BOOT ON)
+list(PREPEND CREST_BOOT_SOURCE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/scheme")
+list(PREPEND CREST_BOOT_ROOTS       "${CMAKE_CURRENT_SOURCE_DIR}/scheme/my-pass.sls")
 add_subdirectory(crest)
 ```
 
