@@ -77,8 +77,9 @@ export CREST_PATH=/my-project/scheme:/path/to/crest/samples
 
 ## Deployment
 
-By default, `.sls` files are loaded from the filesystem at runtime.  For
-single-binary deployment with no `.sls` files required:
+During development, `.sls` files are loaded from the filesystem at runtime —
+edit a pattern and re-run, no rebuild needed. For single-binary deployment
+with no `.sls` files required:
 
 ```bash
 cmake -B build -DCREST_EMBED_SCHEME_BOOT=ON
