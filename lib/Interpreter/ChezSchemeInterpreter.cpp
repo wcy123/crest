@@ -5,6 +5,10 @@
 
 #include "ChezSchemeInterpreter.h"
 
+#include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/StringRef.h"
+#include "llvm/Support/Process.h"
+#include "llvm/Support/Program.h"
 #include "llvm/Support/raw_ostream.h"
 #include "mlir/IR/Operation.h"
 
@@ -13,6 +17,9 @@
 
 #include "ChezBootPetite.h"
 #include "ChezBootScheme.h"
+#ifdef CREST_BOOT_EMBEDDED
+#include "CrestBoot.h"
+#endif
 
 #include <cassert>
 #include <memory>
@@ -21,11 +28,14 @@ namespace {
 
 const size_t petite_boot_size = sizeof(petite_boot_data) - 1;
 const size_t scheme_boot_size = sizeof(scheme_boot_data) - 1;
+#ifdef CREST_BOOT_EMBEDDED
+const size_t crest_boot_size  = sizeof(crest_boot_data)  - 1;
+#endif
 
 // Set by ChezSchemeInterpreter constructor; called once from Sbuild_heap.
 static void (*g_init_hook)() = nullptr;
 static void custom_init() {
-  if (g_init_hook) g_init_hook();
+  if (g_init_hook) { g_init_hook(); }
 }
 
 } // anonymous namespace
@@ -75,13 +85,15 @@ ChezSchemeInterpreter::ChezSchemeInterpreter(PrivateTag,
                                              void (*initHook)())
     : logLevel_(logLevel) {
   g_init_hook = initHook;
-  if (logLevel_ <= SchemeLogLevel::Debug)
+  if (logLevel_ <= SchemeLogLevel::Debug) {
     llvm::errs() << "[debug] ChezSchemeInterpreter: Initializing Chez Scheme runtime\n";
+  }
 
   Sscheme_init(nullptr);
 
-  if (logLevel_ <= SchemeLogLevel::Debug)
+  if (logLevel_ <= SchemeLogLevel::Debug) {
     llvm::errs() << "[debug] ChezSchemeInterpreter: Registering embedded boot files\n";
+  }
 
   Sregister_boot_file_bytes("petite.boot",
       const_cast<void*>(static_cast<const void*>(petite_boot_data)),
@@ -89,34 +101,59 @@ ChezSchemeInterpreter::ChezSchemeInterpreter(PrivateTag,
   Sregister_boot_file_bytes("scheme.boot",
       const_cast<void*>(static_cast<const void*>(scheme_boot_data)),
       scheme_boot_size);
+#ifdef CREST_BOOT_EMBEDDED
+  Sregister_boot_file_bytes("crest.boot",
+      const_cast<void*>(static_cast<const void*>(crest_boot_data)),
+      crest_boot_size);
+#endif
 
-  if (logLevel_ <= SchemeLogLevel::Debug)
+  if (logLevel_ <= SchemeLogLevel::Debug) {
     llvm::errs() << "[debug] ChezSchemeInterpreter: Building heap\n";
+  }
 
   Sbuild_heap(nullptr, custom_init);
 
+#ifndef CREST_BOOT_EMBEDDED
+  // Development mode: load .sls files from the source tree at runtime.
+  // Both pairs use SCHEME_BINARY_DIR as the object-dir so compiled .so
+  // files always land in the build tree, never in the source trees.
   addLibraryPath(SCHEME_LIBRARIES_DIR, SCHEME_BINARY_DIR);
-  addLibraryPath(RIME_DIR, RIME_DIR);
+  addLibraryPath(RIME_DIR,             SCHEME_BINARY_DIR);
+#endif
 
-  if (logLevel_ <= SchemeLogLevel::Info)
+  // CREST_PATH: optional colon-separated (POSIX) or semicolon-separated
+  // (Windows) list of additional .sls source directories, similar to PATH.
+  if (auto val = llvm::sys::Process::GetEnv("CREST_PATH")) {
+    llvm::SmallVector<llvm::StringRef, 8> dirs;
+    llvm::StringRef(*val).split(dirs, llvm::sys::EnvPathSeparator);
+    for (auto dir : dirs) {
+      if (!dir.empty()) {
+        addLibraryPath(dir.str().c_str(), SCHEME_BINARY_DIR);
+      }
+    }
+  }
+
+  if (logLevel_ <= SchemeLogLevel::Info) {
     llvm::errs() << "[info] ChezSchemeInterpreter: Initialization complete\n";
+  }
 }
 
 ChezSchemeInterpreter::~ChezSchemeInterpreter() {
-  if (logLevel_ <= SchemeLogLevel::Debug)
+  if (logLevel_ <= SchemeLogLevel::Debug) {
     llvm::errs() << "[debug] ChezSchemeInterpreter: Shutting down Scheme runtime\n";
+  }
   // Chez Scheme does not require explicit cleanup
 }
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
 SchemeLogLevel parseLogLevel(const std::string& level) {
-  if (level == "trace")   return SchemeLogLevel::Trace;
-  if (level == "debug")   return SchemeLogLevel::Debug;
-  if (level == "info")    return SchemeLogLevel::Info;
-  if (level == "warning") return SchemeLogLevel::Warning;
-  if (level == "error")   return SchemeLogLevel::Error;
-  if (level == "fatal")   return SchemeLogLevel::Fatal;
+  if (level == "trace")   { return SchemeLogLevel::Trace; }
+  if (level == "debug")   { return SchemeLogLevel::Debug; }
+  if (level == "info")    { return SchemeLogLevel::Info; }
+  if (level == "warning") { return SchemeLogLevel::Warning; }
+  if (level == "error")   { return SchemeLogLevel::Error; }
+  if (level == "fatal")   { return SchemeLogLevel::Fatal; }
   llvm::errs() << "Warning: unknown log level '" << level
                << "', defaulting to 'warning'\n";
   return SchemeLogLevel::Warning;
@@ -138,9 +175,10 @@ void ChezSchemeInterpreter::addLibraryPath(const char* src_path, const char* bin
   ptr pair = Scons(Sstring(src_path), Sstring(bin_path));
   Scall1(lib_dirs_param, Scons(pair, current_dirs));
 
-  if (logLevel_ <= SchemeLogLevel::Debug)
+  if (logLevel_ <= SchemeLogLevel::Debug) {
     llvm::errs() << "[debug] ChezSchemeInterpreter: added library path ("
                  << src_path << " . " << bin_path << ")\n";
+  }
 }
 
 // ─── Script / eval ────────────────────────────────────────────────────────────
@@ -177,12 +215,12 @@ ptr ChezSchemeInterpreter::makeInteger(long value) {
 std::string ChezSchemeInterpreter::callFunction(const char* functionName,
                                                 const std::vector<ptr>& args) {
   ptr func = Stop_level_value(Sstring_to_symbol(functionName));
-  if (func == Sfalse)
-    return "";
+  if (func == Sfalse) { return ""; }
 
   ptr args_list = Snil;
-  for (auto it = args.rbegin(); it != args.rend(); ++it)
+  for (auto it = args.rbegin(); it != args.rend(); ++it) {
     args_list = Scons(*it, args_list);
+  }
 
   ptr apply_proc = Stop_level_value(Sstring_to_symbol("apply"));
   ptr result = Scall2(apply_proc, func, args_list);
@@ -192,8 +230,9 @@ std::string ChezSchemeInterpreter::callFunction(const char* functionName,
     iptr len = Sstring_length(result);
     std::string str;
     str.reserve(len);
-    for (iptr i = 0; i < len; i++)
+    for (iptr i = 0; i < len; i++) {
       str.push_back(static_cast<char>(Sstring_ref(result, i)));
+    }
     return str;
   }
 

@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.20)
-project(crest VERSION 0.1.0 LANGUAGES C CXX)
+
+# Guard project() so it only fires when crest is the root project.
+# A nested project() call resets CMAKE_PROJECT_NAME and can interfere
+# with find_package VERSION behaviour in the parent.
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+  project(crest VERSION 0.1.0 LANGUAGES C CXX)
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -17,12 +23,15 @@ include(TableGen)
 include(AddLLVM)
 include(AddMLIR)
 
-# LLVM/MLIR headers are external — use SYSTEM to suppress their warnings
+# LLVM/MLIR headers are set as SYSTEM so their warnings are suppressed.
+# These are scoped to the directory so they don't leak into the parent project.
 include_directories(SYSTEM ${LLVM_INCLUDE_DIRS})
 include_directories(SYSTEM ${MLIR_INCLUDE_DIRS})
-# CREST's own headers
-include_directories(${CMAKE_SOURCE_DIR}/include)
-include_directories(${CMAKE_BINARY_DIR}/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/include)
+
+# All user-visible options (must come before build_options and deps)
+include(cmake/crest-options.cmake)
 
 # Compiler options and warnings
 include(cmake/build_options.cmake)
@@ -40,11 +49,10 @@ add_subdirectory(include)
 # C++ libraries
 add_subdirectory(lib)
 
-# Driver tools (crest-opt, ...)
-add_subdirectory(tools)
-
-# lit / FileCheck integration tests
-add_subdirectory(test)
-
-# GoogleTest unit tests
-add_subdirectory(unittests)
+# Tools, tests, and unit tests are only built when crest is the root project.
+# When used as a subdirectory, the parent doesn't want crest-opt or test suites.
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+  add_subdirectory(tools)
+  add_subdirectory(test)
+  add_subdirectory(unittests)
+endif()
