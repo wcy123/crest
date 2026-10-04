@@ -22,7 +22,8 @@ LockedSchemeObject::LockedSchemeObject(LockedSchemeObject&& other) noexcept
   other.obj_ = nullptr;
 }
 
-LockedSchemeObject& LockedSchemeObject::operator=(LockedSchemeObject&& other) noexcept {
+LockedSchemeObject&
+LockedSchemeObject::operator=(LockedSchemeObject&& other) noexcept {
   if (this != &other) {
     if (obj_ && obj_ != Sfalse)
       Sunlock_object(obj_);

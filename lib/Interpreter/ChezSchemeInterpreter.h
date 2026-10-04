@@ -37,7 +37,7 @@ void registerMlirForeignFunctions();
 /// Use instance() to obtain the shared runtime; it is initialized on first
 /// call and destroyed when all shared_ptr holders release it.
 class ChezSchemeInterpreter {
- public:
+public:
   // Only public creation point. Returns the live instance, creating and
   // initializing it if none exists. logLevel is used only on first creation.
   // initHook is called once during Sbuild_heap to register foreign functions;
@@ -48,14 +48,15 @@ class ChezSchemeInterpreter {
 
   // Private-tag constructor — both the tag type and constructor are public so
   // std::make_shared (stdlib internals) can reach them. Protection comes from
-  // the fact that PrivateTag's constructor is private: only friends (WeakSingleton)
-  // can construct a PrivateTag and thus call this constructor.
+  // the fact that PrivateTag's constructor is private: only friends
+  // (WeakSingleton) can construct a PrivateTag and thus call this constructor.
   struct PrivateTag {
-   private:
+  private:
     friend struct WeakSingleton<ChezSchemeInterpreter>;
     explicit PrivateTag() = default;
   };
-  ChezSchemeInterpreter(PrivateTag, SchemeLogLevel logLevel, void (*initHook)());
+  ChezSchemeInterpreter(PrivateTag, SchemeLogLevel logLevel,
+                        void (*initHook)());
   ~ChezSchemeInterpreter();
 
   // Non-copyable, non-movable
@@ -78,7 +79,7 @@ class ChezSchemeInterpreter {
 
   void addLibraryPath(const char* src_path, const char* bin_path);
 
- private:
+private:
   friend struct WeakSingleton<ChezSchemeInterpreter>;
 
   SchemeLogLevel logLevel_;

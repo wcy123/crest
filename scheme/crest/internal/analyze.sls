@@ -88,7 +88,7 @@
                         (binding-entry-bound?-set! result-entry #t)
                         (when (not (= op-idx root-op-idx))
                           (set! acc (cons (action:bind-result op-idx result-idx res-var) acc)))))
-                    
+
 
             ;; Process operands.
             ;; If any operand is optional/variadic, delegate the entire op's operand

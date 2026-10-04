@@ -1,2 +1,4 @@
 #pragma once
-namespace crest { void registerHipSRDialectBindings(); }
+namespace crest {
+void registerHipSRDialectBindings();
+}

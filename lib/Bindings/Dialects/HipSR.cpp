@@ -13,9 +13,10 @@
 // tensors. A full hip-ep build provides the real implementations.
 //
 // Function families:
-//   mlir_make_attr_hipsr_*   (uptr ctx, ptr value) → uptr  [mlir_make_attr_* convention]
-//   mlir_attr_isa_hipsr_*    (uptr attr)            → int   [mlir_attr_isa_* convention]
-//   mlir_type_is_device_tensor / mlir_tensor_type_in_host_space / etc.
+//   mlir_make_attr_hipsr_*   (uptr ctx, ptr value) → uptr  [mlir_make_attr_*
+//   convention] mlir_attr_isa_hipsr_*    (uptr attr)            → int
+//   [mlir_attr_isa_* convention] mlir_type_is_device_tensor /
+//   mlir_tensor_type_in_host_space / etc.
 
 #include "../SchemeWrapper.h"
 #include "mlir/IR/Attributes.h"
@@ -74,7 +75,8 @@ uint64_t mlir_hipsr_load_file_map(uint64_t /*ctx_ptr*/, const char* /*path*/) {
 namespace crest {
 
 void registerHipSRDialectBindings() {
-  // mlir_make_attr_hipsr_* — follows mlir_make_attr_* convention, auto-discovered
+  // mlir_make_attr_hipsr_* — follows mlir_make_attr_* convention,
+  // auto-discovered
   Sregister_symbol("mlir_make_attr_hipsr_device_space",
                    (void*)::mlir_make_attr_hipsr_device_space);
   Sregister_symbol("mlir_make_attr_hipsr_barrier_type",

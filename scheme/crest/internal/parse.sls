@@ -194,7 +194,7 @@
       [_ (syntax-violation 'parse-match-ops-recursive
            "Invalid3 match operation (expected: result = \"op\" (...) [:where expr])" rest-stx)]))
 
-  
+
   ;;-----------------------------------------------------------------------
   ;; parse-operands - Parse operand list, flattening groups
   ;;-----------------------------------------------------------------------
@@ -249,7 +249,7 @@
 
     (apply append (map parse-one (syntax->list operands-stx))))
 
-  
+
 ;;-----------------------------------------------------------------------
 ;; parse-after-match - Parse optional :then-let, then :rewrite
 ;;-----------------------------------------------------------------------
@@ -303,4 +303,3 @@
            "Invalid rewrite operation syntax" rest-stx)]))
 
 )
-

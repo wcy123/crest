@@ -3,8 +3,8 @@
  * Licensed under the MIT License.
  */
 
-#include "SchemeWrapper.h"
 #include "../Interpreter/ChezSchemeInterpreter.h"
+#include "SchemeWrapper.h"
 #include "llvm/Support/raw_ostream.h"
 
 #define DEBUG_TYPE "scheme-logging-bindings"
@@ -14,32 +14,38 @@
 extern "C" {
 
 void mlir_log_trace(const char* msg) {
-  if (crest::ChezSchemeInterpreter::instance()->getLogLevel() <= crest::SchemeLogLevel::Trace)
+  if (crest::ChezSchemeInterpreter::instance()->getLogLevel() <=
+      crest::SchemeLogLevel::Trace)
     llvm::errs() << "[trace] " << msg << "\n";
 }
 
 void mlir_log_debug(const char* msg) {
-  if (crest::ChezSchemeInterpreter::instance()->getLogLevel() <= crest::SchemeLogLevel::Debug)
+  if (crest::ChezSchemeInterpreter::instance()->getLogLevel() <=
+      crest::SchemeLogLevel::Debug)
     llvm::errs() << "[debug] " << msg << "\n";
 }
 
 void mlir_log_info(const char* msg) {
-  if (crest::ChezSchemeInterpreter::instance()->getLogLevel() <= crest::SchemeLogLevel::Info)
+  if (crest::ChezSchemeInterpreter::instance()->getLogLevel() <=
+      crest::SchemeLogLevel::Info)
     llvm::errs() << "[info] " << msg << "\n";
 }
 
 void mlir_log_warning(const char* msg) {
-  if (crest::ChezSchemeInterpreter::instance()->getLogLevel() <= crest::SchemeLogLevel::Warning)
+  if (crest::ChezSchemeInterpreter::instance()->getLogLevel() <=
+      crest::SchemeLogLevel::Warning)
     llvm::errs() << "[warning] " << msg << "\n";
 }
 
 void mlir_log_error(const char* msg) {
-  if (crest::ChezSchemeInterpreter::instance()->getLogLevel() <= crest::SchemeLogLevel::Error)
+  if (crest::ChezSchemeInterpreter::instance()->getLogLevel() <=
+      crest::SchemeLogLevel::Error)
     llvm::errs() << "[error] " << msg << "\n";
 }
 
 void mlir_log_fatal(const char* msg) {
-  if (crest::ChezSchemeInterpreter::instance()->getLogLevel() <= crest::SchemeLogLevel::Fatal)
+  if (crest::ChezSchemeInterpreter::instance()->getLogLevel() <=
+      crest::SchemeLogLevel::Fatal)
     llvm::errs() << "[fatal] " << msg << "\n";
 }
 
