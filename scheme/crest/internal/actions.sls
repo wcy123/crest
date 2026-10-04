@@ -1,5 +1,5 @@
 #!r6rs
-(library (crest ddr actions)
+(library (crest internal actions)
   (export action:set-current-op
           action:check-op
           action:bind-operand

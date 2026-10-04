@@ -22,9 +22,9 @@
           (mlir core conversion)
           (mlir dialects hipsr)
           (mlir dialects shape)
-          (crest ddr rewrite)
+          (crest internal rewrite)
           (rename (rime loop) (:with :rime-with))
-          (crest ddr))
+          (crest))
 
   ;; MLIR uses kDynamic = std::numeric_limits<int64_t>::min() for unknown dims.
   (define (dynamic-dim? d) (< d 0))

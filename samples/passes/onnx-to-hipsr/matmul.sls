@@ -23,7 +23,7 @@
           (mlir dialects hipsr)
           (mlir dialects tensor)
           (mlir dialects shape)
-          (crest ddr))
+          (crest))
 
   (define-conversion-pattern (onnx-matmul->hipsr op operands-ref rewriter type-converter)
     :if-match

@@ -22,8 +22,8 @@
           (mlir dialects hipsr)
           (mlir dialects tensor)
           (mlir dialects shape)
-          (crest ddr rewrite)
-          (crest ddr))
+          (crest internal rewrite)
+          (crest))
 
   ;; Build the gather output shape inside a region block using the DSL.
   ;; Shape logic:
