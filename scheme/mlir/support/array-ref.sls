@@ -22,13 +22,16 @@
 (library (mlir support array-ref)
   (export
     array-ref-size      ; (ref) → element count, zero FFI overhead
-    array-ref-at        ; (ref index) → element uptr, bounds-checked
+    array-ref-at        ; (ref index [type]) → element, bounds-checked
     make-array-ref      ; (data-ptr size) → ref  [C heap allocation]
     array-ref-destroy   ; (ref) → void           [C heap free]
-    with-array-ref)     ; (syntax) RAII: make + body + destroy
+    with-array-ref      ; (syntax) RAII: make + body + destroy
+    :uptr               ; array-ref-at element type → 'uptr (8-byte pointer, default)
+    :i32)               ; array-ref-at element type → 'i32  (4-byte integer)
 
   (import (rnrs)
-          (only (chezscheme) foreign-procedure foreign-ref))
+          (only (chezscheme) foreign-procedure foreign-ref)
+          (only (mlir core types) :uptr :i32))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Fast path — foreign-ref compiles to raw load instructions, no FFI call.
@@ -42,7 +45,7 @@
   ;; type: element type symbol — 'uptr (default, 8-byte pointer) or 'i32 (4-byte integer).
   ;;   'uptr → foreign-ref 'uptr        at offset index*8  (Value*, Operation*, etc.)
   ;;   'i32  → foreign-ref 'integer-32  at offset index*4  (DenseI32ArrayAttr data)
-  ;; Callers may use (:uptr :i32) identifier-syntax keywords that expand to these symbols.
+  ;; Use :uptr (exported here) or :i32 (from (mlir core attribute)) as compile-time keywords.
   (define array-ref-at
     (case-lambda
       [(ref index)
@@ -52,10 +55,10 @@
              [data (foreign-ref 'uptr ref 0)])
          (when (>= index size)
            (error 'array-ref-at "index out of range" index size))
-         (case type
-           [(uptr)  (foreign-ref 'uptr       data (* index 8))]
-           [(i32)   (foreign-ref 'integer-32 data (* index 4))]
-           [else    (error 'array-ref-at "unknown type (expected uptr or i32)" type)]))]))
+         (cond
+           [(eq? type :uptr) (foreign-ref 'uptr       data (* index 8))]
+           [(eq? type :i32)  (foreign-ref 'integer-32 data (* index 4))]
+           [else             (error 'array-ref-at "unknown type (expected :uptr or :i32)" type)]))]))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Lifecycle — C++ FFI (one call per array lifetime, overhead acceptable).

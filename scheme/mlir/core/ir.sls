@@ -60,6 +60,8 @@
     mlir-value-num-uses
     array-ref-size
     array-ref-at
+    :uptr               ; array-ref-at element type → 'uptr (8-byte pointer)
+    :i32                ; array-ref-at element type → 'i32  (4-byte integer) — also from (mlir core attribute)
     ;; (mlir core builder)
     mlir-type-get-context
     current-mlir-context
