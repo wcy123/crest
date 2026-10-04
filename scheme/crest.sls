@@ -5,7 +5,7 @@
           :if-match :then-let :rewrite :with :where
           :debug-parse :debug-validate :debug-analyze :debug-codegen :debug-matching
           = : -> :region :regions
-          :index :any
+          :any
           :current-op :attr
           :optional :variadic
           make-unbound-value unbound-value?)
