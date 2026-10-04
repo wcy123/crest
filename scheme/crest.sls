@@ -21,44 +21,52 @@
           (for (crest internal codegen) expand)
           (for (only (crest internal codegen) make-unbound-value unbound-value?) expand))
 
-  ;; Main macro: orchestrate 4 phases (waterfall style)
+  ;; Main macro: orchestrate 4 phases (flattened via call/cc)
   ;; Phase 1: Parse -> AST
   ;; Phase 2: Validate -> checked AST (skipped if :debug-parse)
   ;; Phase 3: Analyze -> AST with bindings and actions (skipped if :debug-parse or :debug-validate)
   ;; Phase 4: Codegen -> final code (or debug output)
   (define-syntax define-conversion-pattern
-    (lambda (stx)
-      (let ([ast-rec (parse-to-ast stx)])
-        (if (ast-pattern-expand-debug-parse? ast-rec)
-            (generate-debug-ast ast-rec)
-            (let ([validated (validate-ast ast-rec)])
-              (if (ast-pattern-expand-debug-validate? validated)
-                  (generate-debug-ast validated)
-                  (let ([analyzed (analyze-ast validated)])
-                    (if (ast-pattern-expand-debug-analyze? analyzed)
-                        (generate-debug-ast analyzed)
-                        (let ([real-code (generate-pattern-match-and-rewrite analyzed)])
-                          (if (ast-pattern-expand-debug-codegen? analyzed)
-                              (generate-debug-codegen analyzed real-code)
-                              real-code))))))))))
+    (let ()
+      (define (run-pipeline stx)
+        (call/cc
+          (lambda (return)
+            (let* ([ast-rec   (parse-to-ast stx)]
+                   [_         (when (ast-pattern-expand-debug-parse? ast-rec)
+                                (return (generate-debug-ast ast-rec)))]
+                   [validated (validate-ast ast-rec)]
+                   [_         (when (ast-pattern-expand-debug-validate? validated)
+                                (return (generate-debug-ast validated)))]
+                   [analyzed  (analyze-ast validated)]
+                   [_         (when (ast-pattern-expand-debug-analyze? analyzed)
+                                (return (generate-debug-ast analyzed)))]
+                   [real-code (generate-pattern-match-and-rewrite analyzed)])
+              (if (ast-pattern-expand-debug-codegen? analyzed)
+                  (generate-debug-codegen analyzed real-code)
+                  real-code)))))
+      run-pipeline))
 
   ;; Like define-conversion-pattern but for OpRewritePattern:
   ;;   (define-rewrite-pattern (fname op rewriter) :if-match ... :rewrite ...)
   ;; No TypeConverter or converted-operands adaptor. All operand bindings
   ;; read from the op directly. Callback is (fname op rewriter) → #t/#f.
   (define-syntax define-rewrite-pattern
-    (lambda (stx)
-      (let ([ast-rec (parse-to-ast stx 'rewrite)])
-        (if (ast-pattern-expand-debug-parse? ast-rec)
-            (generate-debug-ast ast-rec)
-            (let ([validated (validate-ast ast-rec)])
-              (if (ast-pattern-expand-debug-validate? validated)
-                  (generate-debug-ast validated)
-                  (let ([analyzed (analyze-ast validated)])
-                    (if (ast-pattern-expand-debug-analyze? analyzed)
-                        (generate-debug-ast analyzed)
-                        (let ([real-code (generate-pattern-match-and-rewrite analyzed)])
-                          (if (ast-pattern-expand-debug-codegen? analyzed)
-                              (generate-debug-codegen analyzed real-code)
-                              real-code))))))))))
+    (let ()
+      (define (run-pipeline stx)
+        (call/cc
+          (lambda (return)
+            (let* ([ast-rec   (parse-to-ast stx 'rewrite)]
+                   [_         (when (ast-pattern-expand-debug-parse? ast-rec)
+                                (return (generate-debug-ast ast-rec)))]
+                   [validated (validate-ast ast-rec)]
+                   [_         (when (ast-pattern-expand-debug-validate? validated)
+                                (return (generate-debug-ast validated)))]
+                   [analyzed  (analyze-ast validated)]
+                   [_         (when (ast-pattern-expand-debug-analyze? analyzed)
+                                (return (generate-debug-ast analyzed)))]
+                   [real-code (generate-pattern-match-and-rewrite analyzed)])
+              (if (ast-pattern-expand-debug-codegen? analyzed)
+                  (generate-debug-codegen analyzed real-code)
+                  real-code)))))
+      run-pipeline))
 )
