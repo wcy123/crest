@@ -2,8 +2,6 @@
 # CREST Bindings — Chez Scheme / MLIR integration
 ##
 
-set(CHEZ_MACHINE_LOCAL "${CHEZ_MACHINE}")
-
 add_library(CrestBindings STATIC
   MainModule.cpp
   Conversion.cpp
