@@ -60,6 +60,7 @@
     mlir-value-num-uses
     array-ref-size
     array-ref-at
+    :uptr               ; array-ref-at element type → 'uptr (8-byte pointer)
     ;; (mlir core builder)
     mlir-type-get-context
     current-mlir-context
@@ -99,6 +100,8 @@
     mlir-type-element-type        ; element type of shaped/vector type
     mlir-type-integer-width       ; bit width of IntegerType
     mlir-type-is-unsigned         ; 1 if unsigned IntegerType
+    :array-ref-i32                    ; DenseI32ArrayAttr → array-ref uptr; use with with-array-ref
+    mlir-operation-get-operands       ; (op 'required 'optional ...) → values
     ;; Symmetric attr API — four generic functions
     mlir-make-attr                ; ([:ctx] :type value) → attr-uptr
     mlir-attr-isa                 ; (attr-uptr :type) → #t/#f

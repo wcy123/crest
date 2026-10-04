@@ -24,7 +24,8 @@
     array-ref-at
     make-array-ref
     array-ref-destroy
-    with-array-ref)
+    with-array-ref
+    :uptr)              ; array-ref-at element type → 'uptr (8-byte pointer)
 
   (import (rnrs)
           (only (chezscheme) foreign-procedure)

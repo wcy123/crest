@@ -42,6 +42,7 @@
     mlir-attr-isa
     mlir-attr-as
     mlir-attr-into
+    :array-ref-i32                ; DenseI32ArrayAttr → array-ref uptr; use with with-array-ref
     :i32 :i64 :f32 :f64 :index
     :integer :float :string
     :opaque     ; parse MLIR attr syntax string → attr uptr (OpaqueAttr or real if dialect loaded)
@@ -57,6 +58,7 @@
   ;;===--------------------------------------------------------------------===;;
   ;; Type keyword identifier-syntax
   ;;===--------------------------------------------------------------------===;;
+  (define-syntax :array-ref-i32  (identifier-syntax 'array-ref-i32))
   (define-syntax :i32            (identifier-syntax 'i32))
   (define-syntax :i64            (identifier-syntax 'i64))
   (define-syntax :f32            (identifier-syntax 'f32))
@@ -181,5 +183,6 @@
       ;; (mlir-attr-into attr :splat-float) → direct conversion.
       [(attr type)
        ((mlir-attr-into type) attr)]))
+
 
 ) ;; end library (mlir core attribute)

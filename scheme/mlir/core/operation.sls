@@ -15,6 +15,7 @@
 (library (mlir core operation)
   (export
     mlir-operation-name
+    mlir-operation-get-operands
     mlir-operation-get-context
     mlir-operation-num-operands
     mlir-operation-num-results
@@ -43,7 +44,10 @@
     mlir-operation-get-integer-attr)
 
   (import (rnrs)
-          (only (chezscheme) foreign-procedure))
+          (only (chezscheme) foreign-procedure)
+          (rename (rime loop) (:with :rime-with))
+          (mlir core attribute)
+          (mlir support array-ref))
 
   ;; Return the registered name of the operation (e.g. "onnx.Cast").
   ;; op: Operation* uptr
@@ -242,5 +246,73 @@
   ;; msg: diagnostic message string
   (define mlir-emit-remark!
     (foreign-procedure "mlir_emit_remark"  (uptr string) void))
+
+  ;;===--------------------------------------------------------------------===;;
+  ;; mlir-operation-get-operands — bind operands by spec into multiple values.
+  ;;
+  ;; (mlir-operation-get-operands op 'required 'optional 'variadic ...)
+  ;;
+  ;; Returns one value per spec entry via (values ...):
+  ;;   required → Value uptr
+  ;;   optional → Value uptr if present, (if #f #f) absent
+  ;;   variadic → list of Value uptrs if non-empty, (if #f #f) if empty
+  ;;
+  ;; If any optional/variadic in spec, op must have operandSegmentSizes.
+  ;; For all-required specs, no attribute read is needed.
+  ;;===--------------------------------------------------------------------===;;
+  (define %absent (if #f #f))  ; sentinel: absent optional/variadic slot
+
+  (define (mlir-operation-get-operands op . spec)
+    (define (read-op i) (mlir-operation-get-operand-value op i))
+    (let ([has-flex (loop :initially := #f
+                         :for s :in spec
+                         :break #t :if (memq s '(optional variadic)))])
+      (if (not has-flex)
+          ;; All required: verify count matches spec, then bind sequentially.
+          (let ([n-spec (length spec)]
+                [n-ops  (mlir-operation-num-operands op)])
+            (unless (= n-spec n-ops)
+              (error 'mlir-operation-get-operands
+                     "operand count mismatch: spec expects" n-spec "but op has" n-ops))
+            (loop :for i :from 0 :below n-spec
+                  :collect (read-op i)))
+          ;; Has optional or variadic: use operandSegmentSizes attribute.
+          ;; operandSegmentSizes is just a named DenseI32ArrayAttr — no special binding.
+          (let ([attr (mlir-operation-get-attribute op "operandSegmentSizes")])
+            (unless (and attr (not (zero? attr)))
+              (error 'mlir-operation-get-operands
+                     "op must have operandSegmentSizes for optional/variadic operands"))
+            ;; with-array-ref manages the ref lifecycle.
+            (with-array-ref (segs (mlir-attr-as attr :array-ref-i32))
+              (let* ([n     (array-ref-size segs)]
+                     [n-spec (length spec)]
+                     [_      (unless (= n n-spec)
+                               (error 'mlir-operation-get-operands
+                                      "operandSegmentSizes count mismatch: spec has"
+                                      n-spec "segments but attr has" n))]
+                     [sizes  (loop :for i :from 0 :below n
+                                   :collect (array-ref-at segs i 'i32))]
+                     [starts (let loop ([ss sizes] [off 0] [acc '()])
+                               (if (null? ss)
+                                   (reverse acc)
+                                   (loop (cdr ss) (+ off (car ss)) (cons off acc))))])
+                (loop :for kind  :in spec
+                        :for start :in starts
+                        :for size  :in sizes
+                        :collect
+                        (case kind
+                          [(:required)
+                           (read-op start)]
+                          [(:optional)
+                           (if (zero? size) %absent (read-op start))]
+                          [(:variadic)
+                           (if (zero? size)
+                               %absent
+                               (loop :for i :from start :below (+ start size)
+                                     :collect (read-op i)))]
+                          [else
+                           (error 'mlir-operation-get-operands
+                                  "unknown kind: expected :required/:optional/:variadic"
+                                  kind)]))))))))  ; case kind, loop, let* body, with-array-ref, let, if, let, define
 
 ) ;; end library (mlir core operation)

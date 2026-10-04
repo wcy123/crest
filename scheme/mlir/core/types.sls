@@ -25,7 +25,13 @@
     mlir-type-get-rank
     mlir-type-element-type
     mlir-type-integer-width
-    mlir-type-is-unsigned)
-  (import (mlir dialects builtin)))
+    mlir-type-is-unsigned
+    :uptr   ; array-ref-at element type → 'uptr (8-byte pointer / address)
+    :i32)   ; array-ref-at element type → 'i32  (4-byte signed integer)
+  (import (rnrs)
+          (mlir dialects builtin))
+
+  (define-syntax :uptr (identifier-syntax 'uptr))
+  (define-syntax :i32  (identifier-syntax 'i32)))
 
 ;; end library (mlir core types)

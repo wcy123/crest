@@ -90,112 +90,53 @@
                           (set! acc (cons (action:bind-result op-idx result-idx res-var) acc)))))
                     
 
-            ;; Compute optional-operand context for this op:
-            ;;   - offset-var-sym: per-op accumulator symbol (nil when no optionals)
-            ;;   - n-opt-before(i): count of optional operands strictly before index i
-            ;;   - n-required-after(i): count of required operands strictly after index i
-            (let* ([has-optional? (let loop ([ops operands])
-                                    (cond [(null? ops) #f]
-                                          [(eq? (ast-operand-kind (car ops)) 'optional) #t]
-                                          [else (loop (cdr ops))]))]
-                   [offset-var-sym (and has-optional?
-                                        (string->symbol
-                                          (string-append "%opt_off_"
-                                                         (number->string op-idx))))])
-
-              ;; Precompute n-opt-before and n-required-after for each position
-              (let* ([kinds (map ast-operand-kind operands)]
-                     [n (length kinds)]
-                     ;; n-opt-before: cumulative count of 'optional before each index
-                     [opt-before
-                      (let loop ([ks kinds] [cnt 0] [acc-v '()])
-                        (if (null? ks) (list->vector (reverse acc-v))
-                            (loop (cdr ks)
-                                  (if (eq? (car ks) 'optional) (+ cnt 1) cnt)
-                                  (cons cnt acc-v))))]
-                     ;; n-required-after: count of 'required strictly after each index
-                     [req-after
-                      (let* ([rev-kinds (reverse kinds)]
-                             [rev-vec
-                              (let loop ([ks rev-kinds] [cnt 0] [acc-v '()])
-                                (if (null? ks) (list->vector (reverse acc-v))
-                                    (loop (cdr ks)
-                                          (if (eq? (car ks) 'required) (+ cnt 1) cnt)
-                                          (cons cnt acc-v))))]
-                             ;; rev-vec[i] = count of 'required BEFORE position (n-1-i) in original
-                             ;; We want required-after[i] = count of required after position i
-                             ;; = rev-vec[(n-1) - i] but shifted: required strictly after i
-                             ;; = count of required in kinds[i+1..n-1]
-                             [fwd (make-vector n 0)])
-                        (do ([i 0 (+ i 1)]) ((= i n) fwd)
-                          (vector-set! fwd i
-                            (let loop ([j (+ i 1)] [c 0])
-                              (if (>= j n) c
-                                  (loop (+ j 1)
-                                        (if (eq? (list-ref kinds j) 'required) (+ c 1) c)))))))])
-
-                ;; Process operands - handle all cases including optional
-                (loop :for operand :in operands
-                      :for entry :in entries
-                      :for operand-idx :from 0
-                      :rime-with operand-var := (ast-operand-var operand)
-                      :rime-with operand-kind := (ast-operand-kind operand)
-                      :rime-with is-result := (binding-entry-is-result? entry)
-                      :rime-with is-bound := (binding-entry-bound? entry)
-                      :do (cond
-                            ;; Optional operand: bind if present at runtime, skip if absent
-                            [(eq? operand-kind 'optional)
-                             (let ([base-idx      operand-idx]
-                                   [n-req-after   (vector-ref req-after operand-idx)])
-                               (set! acc (cons (action:bind-optional-operand
-                                                 op-idx base-idx operand-var
-                                                 offset-var-sym n-req-after)
-                                               acc))
-                               (binding-entry-bound?-set! entry #t))]
-
-                            ;; Required operand, but optional operands precede it
-                            [(and (eq? operand-kind 'required)
-                                  (> (vector-ref opt-before operand-idx) 0))
-                             (cond
-                               [is-bound
-                                ;; Already bound — equality check must use runtime index
-                                ;; For simplicity emit a standard check-eq with static idx;
-                                ;; DAG diamond with optional operands is a degenerate case.
-                                (set! acc (cons (action:check-eq op-idx operand-idx operand-var) acc))]
-                               [is-result
-                                (set! acc (cons (action:bind-operand-with-offset
-                                                  op-idx operand-idx operand-var
-                                                  offset-var-sym
-                                                  (vector-ref opt-before operand-idx))
-                                                acc))
+            ;; Process operands.
+            ;; If any operand is optional/variadic, delegate the entire op's operand
+            ;; binding to mlir-operation-get-operands (reads operandSegmentSizes internally).
+            ;; For all-required ops, bind each operand individually.
+            (let ([has-flex? (loop :initially := #f
+                                   :for op :in operands
+                                   :break #t :if (memq (ast-operand-kind op) '(:optional :variadic)))])
+              (if has-flex?
+                  ;; Flex path: one action binds all operands via mlir-operation-get-operands.
+                  (begin
+                    (set! acc (cons (action:bind-operands
+                                      op-idx
+                                      (map (lambda (operand)
+                                             (datum->syntax (ast-operand-var operand)
+                                                            (ast-operand-kind operand)))
+                                           operands)
+                                      (map ast-operand-var operands))
+                                    acc))
+                    (for-each (lambda (operand entry)
                                 (binding-entry-bound?-set! entry #t)
-                                (let ([producer-op-idx (find-operation-by-result match-vec operand-var)])
-                                  (traverse producer-op-idx operand-var))]
-                               [else
-                                (set! acc (cons (action:bind-operand-with-offset
-                                                  op-idx operand-idx operand-var
-                                                  offset-var-sym
-                                                  (vector-ref opt-before operand-idx))
-                                                acc))
-                                (binding-entry-bound?-set! entry #t)])]
-
-                            ;; Standard required operand (no preceding optionals)
-                            [is-bound
-                             (set! acc (cons (action:check-eq op-idx operand-idx operand-var) acc))]
-
-                            [(and (not is-bound) is-result)
-                             (if (and is-conversion? (= op-idx root-op-idx))
-                                 (set! acc (cons (action:bind-argument-operand operand-idx operand-var) acc))
-                                 (set! acc (cons (action:bind-operand op-idx operand-idx operand-var) acc)))
-                             (binding-entry-bound?-set! entry #t)
-                             (let ([producer-op-idx (find-operation-by-result match-vec operand-var)])
-                               (traverse producer-op-idx operand-var))]
-
-                            [(and (not is-bound) (not is-result))
-                             (if (and is-conversion? (= op-idx root-op-idx))
-                                 (set! acc (cons (action:bind-argument-operand operand-idx operand-var) acc))
-                                 (set! acc (cons (action:bind-operand op-idx operand-idx operand-var) acc)))
-                             (binding-entry-bound?-set! entry #t)]))))
+                                (when (binding-entry-is-result? entry)
+                                  (let ([producer-op-idx (find-operation-by-result
+                                                           match-vec (ast-operand-var operand))])
+                                    (traverse producer-op-idx (ast-operand-var operand)))))
+                              operands entries))
+                  ;; All-required path: per-operand binding / check-eq / traversal.
+                  (loop :for operand :in operands
+                        :for entry :in entries
+                        :for operand-idx :from 0
+                        :rime-with operand-var := (ast-operand-var operand)
+                        :rime-with is-result := (binding-entry-is-result? entry)
+                        :rime-with is-bound := (binding-entry-bound? entry)
+                        :do (cond
+                              [is-bound
+                               (set! acc (cons (action:check-eq op-idx operand-idx operand-var) acc))]
+                              [(and (not is-bound) is-result)
+                               (if (and is-conversion? (= op-idx root-op-idx))
+                                   (set! acc (cons (action:bind-argument-operand operand-idx operand-var) acc))
+                                   (set! acc (cons (action:bind-operand op-idx operand-idx operand-var) acc)))
+                               (binding-entry-bound?-set! entry #t)
+                               (let ([producer-op-idx (find-operation-by-result match-vec operand-var)])
+                                 (traverse producer-op-idx operand-var))]
+                              [(and (not is-bound) (not is-result))
+                               (if (and is-conversion? (= op-idx root-op-idx))
+                                   (set! acc (cons (action:bind-argument-operand operand-idx operand-var) acc))
+                                   (set! acc (cons (action:bind-operand op-idx operand-idx operand-var) acc)))
+                               (binding-entry-bound?-set! entry #t)]))))
 
             ;; Emit :where guard AFTER this op's own operands are bound.
             ;;
