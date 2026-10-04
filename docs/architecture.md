@@ -3,160 +3,209 @@ Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 Licensed under the MIT License.
 -->
 
+**Date:** 2026-10-04
+**Document Type:** Architecture
+**Status:** Draft
+**Related:** [MLIR Dialect Conversion](https://mlir.llvm.org/docs/DialectConversion/), [MLIR PDLL](https://mlir.llvm.org/docs/PDLL/)
+
+---
+
 # CREST Architecture
 
 CREST (**C**onversion and **R**ewriting **E**ngine for **S**cheme **T**ransformations)
 is a Scheme-hosted engine for writing MLIR conversion and rewrite patterns.
-It is structured in four layers, each with a distinct role.
+
+## Contents
+
+- [Overview](#overview)
+- [Architecture](#architecture)
+  - [Layer 1 — MLIR FFI bindings](#layer-1--mlir-ffi-bindings)
+  - [Layer 2 — DDR macro DSL](#layer-2--ddr-macro-dsl)
+  - [Layer 3 — Domain helpers](#layer-3--domain-helpers)
+  - [Layer 4 — Pass entry points](#layer-4--pass-entry-points)
+- [Deployment](#deployment)
+- [Operational costs](#operational-costs)
+- [Related Documents](#related-documents)
 
 ---
 
-## Layer 1 — MLIR FFI bindings (`scheme/mlir/`)
+## Overview
 
-Thin `foreign-procedure` wrappers around the MLIR C API, organized to mirror
-MLIR's own namespace structure:
+Writing MLIR dialect conversion passes in C++ requires implementing
+`OpConversionPattern` subclasses with `matchAndRewrite` methods, wiring
+`TypeConverter` and `ConversionTarget`, and rebuilding the compiler for every
+pattern change. MLIR's established pattern DSLs —
+[PDL](https://mlir.llvm.org/docs/PDLL/) and
+[DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/) — cannot address this:
+both generate only `RewritePattern` subclasses and have no support for
+[`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/); PDLL
+[documents this explicitly](https://mlir.llvm.org/docs/PDLL/#planned-features)
+as a planned but missing feature with no RFC.
 
-| Library | Maps to |
+CREST provides a Scheme-hosted DSL (DDR) that generates `ConversionPattern`
+subclasses and uses Chez Scheme as its extension language, eliminating C++
+requirements for constraints, type predicates, and rewrite logic.
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Layer 4 — Pass entry points  (samples/passes/*.sls)        │
+│  run-pass → register patterns → apply-full-conversion        │
+└────────────────────────┬────────────────────────────────────┘
+                         │ imports
+┌────────────────────────▼────────────────────────────────────┐
+│  Layer 2 — DDR macro DSL  (scheme/crest/ddr/)               │
+│  define-conversion-pattern / define-rewrite-pattern          │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │  Phase 1: Parse → Phase 2: Validate →               │   │
+│  │  Phase 3: Analyze → Phase 4: Codegen                │   │
+│  └──────────────────────────────────────────────────────┘   │
+└────────────────────────┬────────────────────────────────────┘
+                         │ imports
+┌────────────────────────▼────────────────────────────────────┐
+│  Layer 3 — Domain helpers  (scheme/mlir/hip/, dialects/)    │
+│  Quantization predicates, op constructors, dialect types     │
+└────────────────────────┬────────────────────────────────────┘
+                         │ imports
+┌────────────────────────▼────────────────────────────────────┐
+│  Layer 1 — MLIR FFI bindings  (scheme/mlir/core/)           │
+│  foreign-procedure wrappers around MLIR C API               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Layer 1 — MLIR FFI bindings
+
+Thin `foreign-procedure` wrappers around the
+[MLIR C API](https://mlir.llvm.org/docs/CAPI/), organized to mirror MLIR's
+namespace structure:
+
+| Library | Wraps |
 |---|---|
 | `(mlir core operation)` | `mlir_operation_*` |
 | `(mlir core value)` | `mlir_value_*` |
 | `(mlir core context)` | Dynamic parameter `current-mlir-context` |
 | `(mlir core builder)` | Dynamic parameters for rewriter, block builder, insertion point |
 | `(mlir core attribute)` | Generic dispatch via runtime C-symbol lookup |
-| `(mlir core conversion)` | `TypeConverter`, `ConversionTarget`, `RewritePatternSet` |
-| `(mlir core ir)` | Re-export hub — no logic |
+| `(mlir core conversion)` | [`TypeConverter`](https://mlir.llvm.org/docs/DialectConversion/#type-converter), `ConversionTarget`, `RewritePatternSet` |
+| `(mlir core ir)` | Re-export hub |
 | `(mlir dialects/*)` | Per-dialect op constructors and type predicates |
 
-**Notable design:** `(mlir core attribute)` resolves attribute type functions
+`(mlir core attribute)` resolves attribute constructor functions
 (`mlir_make_attr_<type>`) at runtime via `foreign-entry?`. New attribute types
 registered in C++ are discoverable from Scheme without any Scheme change.
 
-**Dynamic parameters** (`current-mlir-context`, `current-rewriter`,
-`current-block-builder`, `current-loc`) are installed with `parameterize` in
-the same style MLIR uses thread-local state in C++. Deep call trees get the
-right context without it being threaded through every argument list.
+Dynamic parameters (`current-mlir-context`, `current-rewriter`,
+`current-block-builder`, `current-loc`) follow the same pattern as
+[MLIR's thread-local `OpBuilder` state](https://mlir.llvm.org/docs/Tutorials/Toy/Ch-3/).
+`parameterize` installs the right context for a dynamic extent without
+threading it through every argument.
 
----
+### Layer 2 — DDR macro DSL
 
-## Layer 2 — DDR: Declarative Dialect Rewriting (`scheme/crest/ddr/`)
-
-A Scheme macro DSL that compiles declarative pattern descriptions into MLIR
-`ConversionPattern` and `RewritePattern` lambdas at Chez expansion time. The
-two entry points are:
+DDR (**D**eclarative **D**ialect **R**ewriting) is a Scheme macro DSL with two
+entry points:
 
 ```scheme
 (define-conversion-pattern ...)   ; → mlir::ConversionPattern
 (define-rewrite-pattern ...)      ; → mlir::OpRewritePattern
 ```
 
-### Why a custom DSL rather than PDL or DRR?
+#### Why DDR rather than PDL or DRR
 
-PDL (Pattern Description Language) and DRR (TableGen-based Declarative Rewriting)
-are MLIR's established pattern DSLs. Neither can be used here for a structural
-reason: **both generate only `RewritePattern` subclasses**. They have no support
-for `ConversionPattern` / `OpConversionPattern`, which require
-`ConversionPatternRewriter`, type-converted operand adaptors, and
-`applyFullConversion` / `applyPartialConversion`. Every dialect lowering pass —
-the primary workload in the MLIR ecosystem — depends on this infrastructure.
-PDLL documents this explicitly as a planned but missing feature with no RFC yet.
+[PDL](https://mlir.llvm.org/docs/PDLL/) and
+[DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/) generate
+`RewritePattern` subclasses only. They cannot generate
+[`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns)
+subclasses, which require `ConversionPatternRewriter`, type-converted operand
+adaptors via `OpAdaptor`, and `applyFullConversion` /
+`applyPartialConversion`. PDLL
+[documents this as a planned but missing feature](https://mlir.llvm.org/docs/PDLL/#planned-features)
+with no RFC. DDR is the only DSL-based option that supports
+`ConversionPattern` today.
 
-DDR generates `ConversionPattern` subclasses. It is currently the only
-DSL-based option that does.
+#### The host language as extension mechanism
 
-### The host language is not an escape hatch — it is the design
+PDL and DRR are closed DSLs. Constraints or rewrite logic outside their
+expressibility require C++ `native` blocks (PDLL) or `NativeCodeCall` string
+escapes (DRR), which require a full rebuild.
 
-PDL and DRR are closed DSLs. Anything outside their expressibility requires
-C++ `native` blocks or `NativeCodeCall` string escapes, which means a full
-rebuild and a context switch to a different language.
-
-DDR is an open DSL: the `:where` guard and `:rewrite` body accept arbitrary
-Scheme. A named helper function in the same `.sls` file serves the same purpose
-as a PDLL `Constraint` or a DRR `NativeCodeCall` — but without leaving Scheme,
-without C++, and without a recompile:
+CREST embeds DDR in Scheme: the `:where` guard and `:rewrite` body accept
+arbitrary Scheme. A Scheme function in the same `.sls` file serves the same
+purpose without C++ or a rebuild:
 
 ```scheme
-;; A named constraint — callable from any pattern in the same library:
+;; Constraint defined as a plain Scheme function:
 (define (quantized-tensor? v)
   (mlir-attr-isa (mlir-value-get-type v) ':quantized))
 
-;; Use it in a match guard:
+;; Used directly in a pattern guard:
 (define-conversion-pattern (lower-cast op operands-ref rw tc)
   %cast = "onnx.Cast" (%data)
   :where (quantized-tensor? %data)
   :rewrite ...)
 ```
 
-The Turing-complete host is not a fallback for hard cases — it is the mechanism
-for all constraints, type predicates, and shape computations. Complex logic
-(axis normalization, shape broadcasting, `operandSegmentSizes` construction)
-lives in plain Scheme functions in the same file, with the same
-seconds-level edit–test loop as the pattern itself.
+Complex logic — axis normalization, shape broadcasting, `operandSegmentSizes`
+construction — is expressed as Scheme functions in the same file, with the
+same edit–reload cycle as the pattern itself.
 
-### Comparison
+#### Comparison with MLIR pattern DSLs
 
 | Dimension | DRR | PDLL | DDR |
 |---|---|---|---|
-| Dialect conversion (`ConversionPattern`) | No | No | **Yes** |
-| Edit → test loop | Minutes (rebuild) | Minutes (rebuild) | **Seconds (reload)** |
+| [`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns) support | [No](https://mlir.llvm.org/docs/DeclarativeRewrites/) | [No](https://mlir.llvm.org/docs/PDLL/#planned-features) | **Yes** |
+| Edit → test cycle | Rebuild required | Rebuild required | **Reload `.sls`** |
 | Extra toolchain | `mlir-tblgen` | `mlir-pdll` + `mlir-tblgen` | **None** |
-| Complex constraints without C++ | No | No | **Yes** |
-| Turing-complete rewrite logic | Via C++ | Via C++ | **Native Scheme** |
-| Interactive debugging | No | No | **Yes** (`-debug-matching`) |
-| Deployment: patterns in binary | Yes | Yes | **Yes (boot mode)** |
+| Constraints without C++ | No | No | **Yes** |
+| Extension language | C++ string escape | C++ `native` block | **Scheme** |
+| Interactive debugging | No | No | **Yes** |
+| Patterns in deployed binary | Yes | Yes | **Yes (boot mode)** |
 
-### How DDR works
+#### Four-phase macro pipeline
 
-The `define-conversion-pattern` macro runs a four-phase pipeline at Chez
-expansion time:
+`define-conversion-pattern` runs at Chez expansion time:
 
-1. **Parse** — walks the syntax and builds an `ast-pattern-expand` record tree.
-   Operand chains are flattened to `ast-operand` records tagged `required`,
-   `optional`, or `variadic`. The `:rewrite` body is kept as raw syntax.
+1. **Parse** — builds an `ast-pattern-expand` record tree. Operands become
+   `ast-operand` records tagged `required`, `optional`, or `variadic`. The
+   `:rewrite` body is kept as raw syntax.
 
-2. **Validate** — normalizes and checks semantic rules: `%`-prefixed result
-   names, no duplicate bindings, root variable present. Caches
-   `root-op-index`, `root-result-idx`, and `root-op-name` to avoid
-   re-traversal in later phases.
+2. **Validate** — checks semantic rules (`%`-prefixed names, no duplicate
+   bindings, root variable present) and caches `root-op-index`,
+   `root-result-idx`, `root-op-name`.
 
 3. **Analyze** — topological DAG traversal from the root, producing a flat
    action sequence: `:set-current-op`, `:check-op`, `:bind-operand`,
-   `:check-eq` (for DAG diamonds where a result is shared by multiple ops).
+   `:check-eq` (for DAG diamonds where a value is used by multiple ops).
 
-4. **Codegen** — translates the action list to an `(and check₀ check₁ …)`
-   expression wrapped in a `guard`, producing a Scheme lambda with the
-   signature expected by `mlir::ConversionPattern::matchAndRewrite`.
+4. **Codegen** — translates the action sequence into an
+   `(and check₀ check₁ …)` expression wrapped in a `guard`, producing a
+   lambda with the signature of `mlir::ConversionPattern::matchAndRewrite`.
 
 The `:rewrite` body is compiled by a separate `with-mlir-ops` macro that
-translates a flat sequence of named SSA op-forms into a `let*` of builder
-calls.
+translates named SSA op-forms into a `let*` of builder calls.
 
 Debug flags (`:debug-parse`, `:debug-validate`, `:debug-analyze`,
-`:debug-codegen`, `:debug-matching`) allow inspecting each phase's output
-without leaving the `.sls` file.
+`:debug-codegen`, `:debug-matching`) print each phase's output.
 
----
+### Layer 3 — Domain helpers
 
-## Layer 3 — Domain helpers (`scheme/mlir/hip/`, `scheme/mlir/dialects/`)
+Pure Scheme libraries over Layer 1. `(mlir hip fusion)` implements
+quantization-aware fusion predicates and op constructors shared across
+hip-fusion patterns. Dialect libraries (`hipsr`, `tensor`, `func`, etc.)
+provide named constructors for each op.
 
-Pure Scheme libraries built on top of Layer 1. `(mlir hip fusion)` implements
-quantization-aware fusion predicates (tolerance comparison, layout detection)
-and op constructors used by multiple hip-fusion patterns. Dialect libraries
-(`hipsr`, `tensor`, `func`, etc.) provide named constructors for each op so
-patterns read as domain logic, not raw builder calls.
+### Layer 4 — Pass entry points
 
----
-
-## Layer 4 — Pass entry points (`samples/passes/`)
-
-Each pass is a single `.sls` file that:
-1. Imports DDR pattern definitions and domain helpers
+Each pass is a single `.sls` file:
+1. Imports DDR patterns and domain helpers
 2. Creates a `RewritePatternSet` or `ConversionTarget`
-3. Registers patterns and calls `mlir-apply-patterns-greedy` or
-   `mlir-apply-full-conversion`
+3. Calls `mlir-apply-patterns-greedy` or `mlir-apply-full-conversion`
 
-Pass files are the user-facing extension point. A downstream project adds its
-own `.sls` pass files and points `CREST_PATH` at their directory — no C++
-required for a new pass.
+A downstream project adds `.sls` pass files and sets `CREST_PATH` to their
+directory — no C++ required for a new pass.
 
 ---
 
@@ -164,23 +213,23 @@ required for a new pass.
 
 ### Development mode (default)
 
-The interpreter loads `.sls` files from the source tree at runtime via
-`library-directories`. Edit a `.sls` file and re-run — no rebuild.
-`CREST_PATH` (a colon-separated env var analogous to `PATH`) adds additional
-Scheme library directories, e.g. for downstream passes not in the crest tree.
+The interpreter loads `.sls` files at runtime via
+[Chez `library-directories`](https://cisco.github.io/ChezScheme/csug9.5/use.html#./use:h1).
+`CREST_PATH` (colon-separated on POSIX, semicolon-separated on Windows, analogous
+to `PATH`) adds directories for downstream passes not in the CREST tree.
 
 ### Boot mode (`-DCREST_EMBED_SCHEME_BOOT=ON`)
 
 All `.sls` files are compiled at CMake build time into a single `crest.boot`
-and embedded in the binary as a C byte-array. The deployed binary requires no
-`.sls` files at runtime. The `CREST_PATH` env var still works in boot mode for
-libraries not included in the boot.
+and embedded as a C byte-array in the binary. The deployed binary requires no
+`.sls` files at runtime. `CREST_PATH` still works in boot mode for libraries
+not in the boot.
 
 Boot compilation uses Chez's `compile-imported-libraries` with
-`library-directories` set as `(source . obj-dir)` pairs, so compiled `.so`
-files land in the CMake build tree — never in the source tree.
+`library-directories` set as `(source . obj-dir)` pairs so compiled `.so`
+files land in the CMake build tree, not the source tree.
 
-Downstream projects can extend the boot before `add_subdirectory(crest)`:
+Downstream projects extend the boot before `add_subdirectory(crest)`:
 
 ```cmake
 list(PREPEND CREST_BOOT_SOURCE_DIRS "${MY_SCHEME_DIR}")
@@ -192,11 +241,20 @@ add_subdirectory(crest)
 
 ## Operational costs
 
-**FFI maintenance burden.** Each MLIR API function used from Scheme requires a
-C++ registration (`Sregister_symbol`) and a Scheme `foreign-procedure`
-declaration. The `foreign-entry?` dynamic dispatch mitigates this for attribute
-types; everything else is a manual pairing. This is a real but bounded cost.
+**FFI maintenance.** Each MLIR C API function used from Scheme requires a C++
+`Sregister_symbol` registration and a Scheme `foreign-procedure` declaration.
+The `foreign-entry?` dynamic dispatch eliminates this for attribute types;
+everything else requires a manual pairing per function.
 
-**Version coupling.** In development mode, `.sls` files must be
-version-matched to the binary. A mismatch produces a runtime failure. Boot
-mode eliminates this at the cost of a build step.
+**Version coupling.** In development mode, `.sls` files must match the binary.
+A mismatch produces a runtime failure rather than a build error. Boot mode
+eliminates this at the cost of a build step.
+
+---
+
+## Related Documents
+
+- [MLIR Dialect Conversion](https://mlir.llvm.org/docs/DialectConversion/) — `ConversionPattern`, `TypeConverter`, `applyFullConversion`
+- [MLIR PDLL](https://mlir.llvm.org/docs/PDLL/) — PDLL language reference and known limitations
+- [MLIR Declarative Rewrites (DRR)](https://mlir.llvm.org/docs/DeclarativeRewrites/) — TableGen-based `RewritePattern` DSL
+- [Chez Scheme User's Guide](https://cisco.github.io/ChezScheme/csug9.5/) — `library-directories`, `foreign-procedure`, `parameterize`
