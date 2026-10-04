@@ -160,9 +160,11 @@ same edit–reload cycle as the pattern itself.
 | Edit → test cycle | Rebuild required | Rebuild required | **Reload `.sls`** |
 | Extra toolchain | `mlir-tblgen` | `mlir-pdll` + `mlir-tblgen` | **None** |
 | Constraints without C++ | No | No | **Yes** |
-| Extension language | C++ string escape | C++ `native` block | **Scheme** |
+| Turing-complete rewrite logic | Via C++ | Via C++ | **Native Scheme** |
 | Interactive debugging | No | No | **Yes** |
 | Patterns in deployed binary | Yes | Yes | **Yes (boot mode)** |
+| Filesystem deployment dependency | No | No | Yes (dev mode) |
+| FFI maintenance burden | None | None | Real |
 
 #### Four-phase macro pipeline
 
@@ -218,6 +220,11 @@ The interpreter loads `.sls` files at runtime via
 `CREST_PATH` (colon-separated on POSIX, semicolon-separated on Windows, analogous
 to `PATH`) adds directories for downstream passes not in the CREST tree.
 
+First `import` of a library incurs ~100–200ms Chez compilation; subsequent
+runs use the cached `.so`. `.sls` files must be co-deployed and version-matched
+with the binary — a mismatch produces a runtime failure rather than a build
+error.
+
 ### Boot mode (`-DCREST_EMBED_SCHEME_BOOT=ON`)
 
 All `.sls` files are compiled at CMake build time into a single `crest.boot`
@@ -246,9 +253,8 @@ add_subdirectory(crest)
 The `foreign-entry?` dynamic dispatch eliminates this for attribute types;
 everything else requires a manual pairing per function.
 
-**Version coupling.** In development mode, `.sls` files must match the binary.
-A mismatch produces a runtime failure rather than a build error. Boot mode
-eliminates this at the cost of a build step.
+**Version coupling.** Boot mode eliminates filesystem coupling at the cost of
+a build step. See the Deployment section above.
 
 ---
 
