@@ -224,18 +224,18 @@
         [(:optional var ...)
          (let ([vars (syntax->list #'(var ...))])
            (for-each check-identifier vars)
-           (map (lambda (v) (make-ast-operand 'optional v)) vars))]
+           (map (lambda (v) (make-ast-operand ':optional v)) vars))]
 
         ;; Variadic group: (:variadic %rest) → single variadic operand
         [(:variadic var)
          (begin
            (check-identifier #'var)
-           (list (make-ast-operand 'variadic #'var)))]
+           (list (make-ast-operand ':variadic #'var)))]
 
         ;; Required operand: %x → single required operand
         [var
          (identifier? #'var)
-         (list (make-ast-operand 'required #'var))]
+         (list (make-ast-operand ':required #'var))]
 
         [_
          (syntax-violation 'parse-operands

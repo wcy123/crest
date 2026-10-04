@@ -313,7 +313,7 @@
                 [vars    (cdr (assq 'vars   fields))])
            #`(let ([%operands (mlir-operation-get-operands
                                 (vector-ref all-operations #,op-idx)
-                                #,@(map (lambda (s) #`'#,(datum->syntax op-idx s)) spec))])
+                                #,@(map (lambda (s) #`'#,s) spec))])
                #,@(loop :for var :in vars
                         :for i   :from 0
                         :collect #`(set! #,var (list-ref %operands #,i)))

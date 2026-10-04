@@ -96,14 +96,17 @@
             ;; For all-required ops, bind each operand individually.
             (let ([has-flex? (loop :initially := #f
                                    :for op :in operands
-                                   :break #t :if (memq (ast-operand-kind op) '(optional variadic)))])
+                                   :break #t :if (memq (ast-operand-kind op) '(:optional :variadic)))])
               (if has-flex?
                   ;; Flex path: one action binds all operands via mlir-operation-get-operands.
                   (begin
                     (set! acc (cons (action:bind-operands
                                       op-idx
-                                      (map ast-operand-kind operands)
-                                      (map ast-operand-var  operands))
+                                      (map (lambda (operand)
+                                             (datum->syntax (ast-operand-var operand)
+                                                            (ast-operand-kind operand)))
+                                           operands)
+                                      (map ast-operand-var operands))
                                     acc))
                     (for-each (lambda (operand entry)
                                 (binding-entry-bound?-set! entry #t)

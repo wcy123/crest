@@ -301,18 +301,18 @@
                         :for size  :in sizes
                         :collect
                         (case kind
-                          [(required)
+                          [(:required)
                            (read-op start)]
-                          [(optional)
+                          [(:optional)
                            (if (zero? size) %absent (read-op start))]
-                          [(variadic)
+                          [(:variadic)
                            (if (zero? size)
                                %absent
                                (loop :for i :from start :below (+ start size)
                                      :collect (read-op i)))]
                           [else
                            (error 'mlir-operation-get-operands
-                                  "unknown kind: expected required/optional/variadic"
+                                  "unknown kind: expected :required/:optional/:variadic"
                                   kind)]))))))))  ; case kind, loop, let* body, with-array-ref, let, if, let, define
 
 ) ;; end library (mlir core operation)
