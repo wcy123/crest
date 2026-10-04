@@ -16,19 +16,19 @@
 
 (define args        (command-line-arguments))
 (define order-file  (list-ref args 0))
-(define scheme-src  (list-ref args 1))  ; NFS source dir (read-only)
-(define rime-src    (list-ref args 2))  ; rime NFS dir (read-only)
+(define scheme-src  (list-ref args 1))  ; source dir (read-only)
+(define rime-src    (list-ref args 2))  ; rime source dir (read-only)
 (define output-boot (list-ref args 3))
+(define local-ws    (list-ref args 4))  ; local workspace from CMAKE_BINARY_DIR
 
-;; ─── Pre-clean: remove any stale .so/.wpo from NFS source tree ───────────────
+;; ─── Pre-clean: remove any stale .so/.wpo from source tree ───────────────────
 ;; Chez may write compiled files to scheme-src in some code paths.
-;; Proactively remove them before compilation so Chez never finds stale
-;; artifacts and is always forced to compile fresh from local copies.
+;; Proactively remove them so Chez always compiles fresh from local copies.
 (system (string-append "find " scheme-src " -name '*.so' -delete 2>/dev/null; find " scheme-src " -name '*.wpo' -delete 2>/dev/null; true"))
 
 ;; ─── Local workspace ──────────────────────────────────────────────────────────
-;; Use timestamp for uniqueness — (random) has a fixed seed in Chez 10.4.1.
-(define local-ws (string-append "/tmp/crest-compile-" (number->string (time-second (current-time)))))
+;; Workspace is CMAKE_BINARY_DIR/scheme-compile — always local to the build,
+;; portable across platforms (no /tmp hardcoding).
 (define local-src (string-append local-ws "/src"))
 (define local-obj (string-append local-ws "/obj"))
 (system (string-append "mkdir -p " local-src " " local-obj))

@@ -49,7 +49,7 @@ if(NOT chezscheme_POPULATED)
   FetchContent_Populate(ChezScheme)
 endif()
 set(ChezScheme_SOURCE_DIR "${chezscheme_SOURCE_DIR}" CACHE INTERNAL "")
-set(ChezScheme_BINARY_DIR "${CMAKE_BINARY_DIR}/ChezScheme-build" CACHE INTERNAL "")
+set(ChezScheme_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/ChezScheme-build" CACHE INTERNAL "")
 
 # ─── ChezScheme: build ────────────────────────────────────────────────────────
 ExternalProject_Add(ChezScheme
@@ -74,7 +74,7 @@ ExternalProject_Add(ChezScheme
 )
 
 # ─── ChezScheme: embed .boot files as C byte-array headers ───────────────────
-set(ChezBootHeaders_BINARY_DIR "${CMAKE_BINARY_DIR}/ChezBootHeaders" CACHE INTERNAL "")
+set(ChezBootHeaders_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/ChezBootHeaders" CACHE INTERNAL "")
 file(MAKE_DIRECTORY ${ChezBootHeaders_BINARY_DIR})
 
 add_custom_command(
@@ -130,13 +130,13 @@ option(CREST_EMBED_SCHEME_BOOT "Compile and embed Scheme libraries into the bina
 if(CREST_EMBED_SCHEME_BOOT)
   set(CHEZ_SCHEME_BIN
       ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/bin/${CHEZ_MACHINE}/scheme)
-  set(CREST_BOOT_FILE   "${CMAKE_BINARY_DIR}/crest.boot")
+  set(CREST_BOOT_FILE   "${CMAKE_CURRENT_BINARY_DIR}/crest.boot")
   set(CREST_BOOT_HEADER "${ChezBootHeaders_BINARY_DIR}/CrestBoot.h")
-  set(CREST_SCHEME_OBJ_DIR "${CMAKE_BINARY_DIR}/scheme-objs")
+  set(CREST_SCHEME_OBJ_DIR "${CMAKE_CURRENT_BINARY_DIR}/scheme-objs")
 
   # ── Scan .sls dependency graph at configure time ────────────────────────────
   # Generates a topologically-sorted library list for single-process compilation.
-  set(SCHEME_ORDER_TXT "${CMAKE_BINARY_DIR}/SchemeLibTargets_order.txt")
+  set(SCHEME_ORDER_TXT "${CMAKE_CURRENT_BINARY_DIR}/SchemeLibTargets_order.txt")
   execute_process(
     COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_SOURCE_DIR}/cmake/scan_scheme_deps.py
@@ -145,7 +145,7 @@ if(CREST_EMBED_SCHEME_BOOT)
             --obj-dir    ${CREST_SCHEME_OBJ_DIR}
             --scheme-bin ${CHEZ_SCHEME_BIN}
             --script     ${CMAKE_SOURCE_DIR}/cmake/compile_one_lib.ss
-            --output     ${CMAKE_BINARY_DIR}/SchemeLibTargets.cmake
+            --output     ${CMAKE_CURRENT_BINARY_DIR}/SchemeLibTargets.cmake
     RESULT_VARIABLE _scan_result
   )
   if(NOT _scan_result EQUAL 0)
@@ -161,9 +161,10 @@ if(CREST_EMBED_SCHEME_BOOT)
     COMMAND ${CHEZ_SCHEME_BIN}
             --script  ${CMAKE_SOURCE_DIR}/cmake/compile_scheme_libs.ss
             ${SCHEME_ORDER_TXT}
-            ${CMAKE_SOURCE_DIR}/scheme   # scheme-src (NFS, read-only)
-            ${CREST_RIME_DIR}            # rime-src   (NFS, read-only)
+            ${CMAKE_SOURCE_DIR}/scheme        # scheme-src (read-only)
+            ${CREST_RIME_DIR}                 # rime-src   (read-only)
             ${CREST_BOOT_FILE}
+            ${CMAKE_CURRENT_BINARY_DIR}/scheme-compile  # local workspace for .so files
     # Copies .sls sources to local /tmp before compiling — no NFS writes.
     # This completely bypasses NFS attribute cache issues.
     DEPENDS ChezScheme ${CREST_SLS_FILES}
