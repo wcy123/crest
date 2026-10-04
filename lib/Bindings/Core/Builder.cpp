@@ -33,8 +33,9 @@ extern "C" {
 uint64_t mlir_build_op(uint64_t rewriter_ptr, uint64_t loc_op_ptr,
                        const char* op_name, ptr operands_list,
                        ptr result_types_list) {
-  if (!rewriter_ptr || !loc_op_ptr)
+  if (!rewriter_ptr || !loc_op_ptr) {
     return 0;
+  }
   auto* rewriter = reinterpret_cast<mlir::RewriterBase*>(rewriter_ptr);
   auto* loc_op = reinterpret_cast<mlir::Operation*>(loc_op_ptr);
 
@@ -80,8 +81,9 @@ uint64_t mlir_build_op(uint64_t rewriter_ptr, uint64_t loc_op_ptr,
 uint64_t mlir_build_op_with_regions(uint64_t rewriter_ptr, uint64_t loc_op_ptr,
                                     const char* op_name, ptr operands_list,
                                     ptr result_types_list, int num_regions) {
-  if (!rewriter_ptr || !loc_op_ptr)
+  if (!rewriter_ptr || !loc_op_ptr) {
     return 0;
+  }
   auto* rewriter = reinterpret_cast<mlir::RewriterBase*>(rewriter_ptr);
   auto* loc_op = reinterpret_cast<mlir::Operation*>(loc_op_ptr);
 
@@ -111,8 +113,9 @@ uint64_t mlir_build_op_with_regions(uint64_t rewriter_ptr, uint64_t loc_op_ptr,
   mlir::OperationState state(loc_op->getLoc(), op_name);
   state.addOperands(operands);
   state.addTypes(resultTypes);
-  for (int i = 0; i < num_regions; ++i)
+  for (int i = 0; i < num_regions; ++i) {
     state.addRegion();
+  }
   return reinterpret_cast<uint64_t>(rewriter->create(state));
 }
 
@@ -128,8 +131,9 @@ uint64_t mlir_build_op_with_regions(uint64_t rewriter_ptr, uint64_t loc_op_ptr,
 uint64_t mlir_build_op_in_block(uint64_t builder_ptr, uint64_t loc_op_ptr,
                                 const char* op_name, ptr operands_list,
                                 ptr result_types_list) {
-  if (!builder_ptr || !loc_op_ptr)
+  if (!builder_ptr || !loc_op_ptr) {
     return 0;
+  }
   auto* builder = reinterpret_cast<mlir::OpBuilder*>(builder_ptr);
   auto* loc_op = reinterpret_cast<mlir::Operation*>(loc_op_ptr);
 
@@ -173,8 +177,9 @@ uint64_t
 mlir_build_op_in_block_with_regions(uint64_t builder_ptr, uint64_t loc_op_ptr,
                                     const char* op_name, ptr operands_list,
                                     ptr result_types_list, int num_regions) {
-  if (!builder_ptr || !loc_op_ptr)
+  if (!builder_ptr || !loc_op_ptr) {
     return 0;
+  }
   auto* builder = reinterpret_cast<mlir::OpBuilder*>(builder_ptr);
   auto* loc_op = reinterpret_cast<mlir::Operation*>(loc_op_ptr);
 
@@ -203,8 +208,9 @@ mlir_build_op_in_block_with_regions(uint64_t builder_ptr, uint64_t loc_op_ptr,
   mlir::OperationState state(loc_op->getLoc(), op_name);
   state.addOperands(operands);
   state.addTypes(resultTypes);
-  for (int i = 0; i < num_regions; ++i)
+  for (int i = 0; i < num_regions; ++i) {
     state.addRegion();
+  }
   return reinterpret_cast<uint64_t>(builder->create(state));
 }
 
@@ -222,8 +228,9 @@ mlir_build_op_in_block_with_regions(uint64_t builder_ptr, uint64_t loc_op_ptr,
 uint64_t mlir_create_op(uint64_t builder_ptr, uint64_t loc_op_ptr,
                         const char* op_name, ptr operands_list,
                         ptr result_types_list, int num_regions) {
-  if (!builder_ptr || !loc_op_ptr)
+  if (!builder_ptr || !loc_op_ptr) {
     return 0;
+  }
   auto* builder = reinterpret_cast<mlir::OpBuilder*>(builder_ptr);
   auto* loc_op = reinterpret_cast<mlir::Operation*>(loc_op_ptr);
 
@@ -252,8 +259,9 @@ uint64_t mlir_create_op(uint64_t builder_ptr, uint64_t loc_op_ptr,
   mlir::OperationState state(loc_op->getLoc(), op_name);
   state.addOperands(operands);
   state.addTypes(resultTypes);
-  for (int i = 0; i < num_regions; ++i)
+  for (int i = 0; i < num_regions; ++i) {
     state.addRegion();
+  }
   return reinterpret_cast<uint64_t>(builder->create(state));
 }
 
@@ -261,8 +269,9 @@ uint64_t mlir_create_op(uint64_t builder_ptr, uint64_t loc_op_ptr,
 // rewriter_ptr:  RewriterBase* as uptr
 // op_ptr:        Operation* to insert before
 void mlir_set_insertion_point_before(uint64_t rewriter_ptr, uint64_t op_ptr) {
-  if (!rewriter_ptr || !op_ptr)
+  if (!rewriter_ptr || !op_ptr) {
     return;
+  }
   reinterpret_cast<mlir::RewriterBase*>(rewriter_ptr)
       ->setInsertionPoint(reinterpret_cast<mlir::Operation*>(op_ptr));
 }
@@ -272,8 +281,9 @@ void mlir_set_insertion_point_before(uint64_t rewriter_ptr, uint64_t op_ptr) {
 // block_ptr:     Block* as uptr
 void mlir_set_insertion_point_to_block_end(uint64_t rewriter_ptr,
                                            uint64_t block_ptr) {
-  if (!rewriter_ptr || !block_ptr)
+  if (!rewriter_ptr || !block_ptr) {
     return;
+  }
   reinterpret_cast<mlir::RewriterBase*>(rewriter_ptr)
       ->setInsertionPointToEnd(reinterpret_cast<mlir::Block*>(block_ptr));
 }
@@ -283,11 +293,13 @@ void mlir_set_insertion_point_to_block_end(uint64_t rewriter_ptr,
 // region_idx:  0-based region index
 // Returns: Region* as uptr, or 0 if op is null or index out of range.
 uint64_t mlir_op_get_region(uint64_t op_ptr, int region_idx) {
-  if (!op_ptr)
+  if (!op_ptr) {
     return 0;
+  }
   auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-  if (region_idx < 0 || region_idx >= (int)op->getNumRegions())
+  if (region_idx < 0 || region_idx >= (int)op->getNumRegions()) {
     return 0;
+  }
   return reinterpret_cast<uint64_t>(&op->getRegion(region_idx));
 }
 
@@ -299,8 +311,9 @@ uint64_t mlir_op_get_region(uint64_t op_ptr, int region_idx) {
 // Returns: Block* as uptr, or 0 on null input.
 uint64_t mlir_region_create_block(uint64_t rewriter_ptr, uint64_t region_ptr,
                                   ptr arg_types_list) {
-  if (!rewriter_ptr || !region_ptr)
+  if (!rewriter_ptr || !region_ptr) {
     return 0;
+  }
   auto* rewriter = reinterpret_cast<mlir::RewriterBase*>(rewriter_ptr);
   auto* region = reinterpret_cast<mlir::Region*>(region_ptr);
   mlir::Location loc = region->getParentOp()->getLoc();
@@ -308,8 +321,9 @@ uint64_t mlir_region_create_block(uint64_t rewriter_ptr, uint64_t region_ptr,
   mlir::Block* block = rewriter->createBlock(region);
   for (ptr cur = static_cast<ptr>(arg_types_list); cur != Snil;
        cur = Scdr(cur)) {
-    if (!Spairp(cur))
+    if (!Spairp(cur)) {
       break;
+    }
     block->addArgument(
         mlir::Type::getFromOpaquePointer(
             reinterpret_cast<const void*>(Sunsigned64_value(Scar(cur)))),
@@ -324,11 +338,13 @@ uint64_t mlir_region_create_block(uint64_t rewriter_ptr, uint64_t region_ptr,
 // idx:        0-based argument index
 // Returns: Value opaque ptr, or 0 if block is null or index out of range.
 uint64_t mlir_block_get_argument(uint64_t block_ptr, int idx) {
-  if (!block_ptr)
+  if (!block_ptr) {
     return 0;
+  }
   auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
-  if (idx < 0 || idx >= (int)block->getNumArguments())
+  if (idx < 0 || idx >= (int)block->getNumArguments()) {
     return 0;
+  }
   return reinterpret_cast<uint64_t>(
       block->getArgument(idx).getAsOpaquePointer());
 }
@@ -372,16 +388,18 @@ int mlir_erase_op(uint64_t rewriter_ptr, uint64_t op_ptr) {
 // arg_types_list:  Scheme list of Type* uptrs for block arguments
 // Returns: Block* as uptr, or 0 if region is null.
 uint64_t mlir_new_block(uint64_t region_ptr, ptr arg_types_list) {
-  if (!region_ptr)
+  if (!region_ptr) {
     return 0;
+  }
   auto* region = reinterpret_cast<mlir::Region*>(region_ptr);
   auto* block = new mlir::Block();
   region->push_back(block);
   mlir::Location loc = region->getParentOp()->getLoc();
   for (ptr cur = static_cast<ptr>(arg_types_list); cur != Snil;
        cur = Scdr(cur)) {
-    if (!Spairp(cur))
+    if (!Spairp(cur)) {
       break;
+    }
     block->addArgument(
         mlir::Type::getFromOpaquePointer(
             reinterpret_cast<const void*>(Sunsigned64_value(Scar(cur)))),
@@ -395,8 +413,9 @@ uint64_t mlir_new_block(uint64_t region_ptr, ptr arg_types_list) {
 // block_ptr:  Block* as uptr
 // Returns: OpBuilder* as uptr, or 0 if block is null.
 uint64_t mlir_builder_at_block_end(uint64_t block_ptr) {
-  if (!block_ptr)
+  if (!block_ptr) {
     return 0;
+  }
   auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
   return reinterpret_cast<uint64_t>(new mlir::OpBuilder(block, block->end()));
 }
@@ -404,8 +423,9 @@ uint64_t mlir_builder_at_block_end(uint64_t block_ptr) {
 // Destroy an OpBuilder created by mlir_builder_at_block_end.
 // builder_ptr:  OpBuilder* as uptr (no-op if 0)
 void mlir_destroy_builder(uint64_t builder_ptr) {
-  if (!builder_ptr)
+  if (!builder_ptr) {
     return;
+  }
   delete reinterpret_cast<mlir::OpBuilder*>(builder_ptr);
 }
 
@@ -413,8 +433,9 @@ void mlir_destroy_builder(uint64_t builder_ptr) {
 // patterns_ptr: RewritePatternSet* as uptr; the pattern set is MOVED
 // (consumed). Returns 1 on success (converged), 0 on failure.
 int mlir_apply_patterns_greedy(uint64_t op_ptr, uint64_t patterns_ptr) {
-  if (!op_ptr || !patterns_ptr)
+  if (!op_ptr || !patterns_ptr) {
     return 0;
+  }
   auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
   auto* patterns = reinterpret_cast<mlir::RewritePatternSet*>(patterns_ptr);
   return mlir::succeeded(mlir::applyPatternsGreedily(op, std::move(*patterns)))
@@ -428,20 +449,23 @@ int mlir_apply_patterns_greedy(uint64_t op_ptr, uint64_t patterns_ptr) {
 // Sunsigned64) Returns: new Operation* as uptr, or 0 on bad input.
 uint64_t mlir_op_clone_with_types(uint64_t rw_ptr, uint64_t op_ptr,
                                   ptr operands_list, ptr result_types_list) {
-  if (!rw_ptr || !op_ptr)
+  if (!rw_ptr || !op_ptr) {
     return 0;
+  }
   auto* rw = reinterpret_cast<mlir::RewriterBase*>(rw_ptr);
   auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
 
   llvm::SmallVector<mlir::Value> operands;
   llvm::SmallVector<mlir::Type> resultTypes;
 
-  for (ptr cur = operands_list; cur != Snil; cur = Scdr(cur))
+  for (ptr cur = operands_list; cur != Snil; cur = Scdr(cur)) {
     operands.push_back(mlir::Value::getFromOpaquePointer(
         reinterpret_cast<const void*>(Sunsigned64_value(Scar(cur)))));
-  for (ptr cur = result_types_list; cur != Snil; cur = Scdr(cur))
+  }
+  for (ptr cur = result_types_list; cur != Snil; cur = Scdr(cur)) {
     resultTypes.push_back(mlir::Type::getFromOpaquePointer(
         reinterpret_cast<const void*>(Sunsigned64_value(Scar(cur)))));
+  }
 
   mlir::OperationState state(op->getLoc(), op->getName());
   state.addOperands(operands);

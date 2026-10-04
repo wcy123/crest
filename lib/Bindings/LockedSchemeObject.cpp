@@ -8,13 +8,15 @@
 namespace crest {
 
 LockedSchemeObject::LockedSchemeObject(ptr obj) : obj_(obj) {
-  if (obj_ && obj_ != Sfalse)
+  if (obj_ && obj_ != Sfalse) {
     Slock_object(obj_);
+  }
 }
 
 LockedSchemeObject::~LockedSchemeObject() {
-  if (obj_ && obj_ != Sfalse)
+  if (obj_ && obj_ != Sfalse) {
     Sunlock_object(obj_);
+  }
 }
 
 LockedSchemeObject::LockedSchemeObject(LockedSchemeObject&& other) noexcept
@@ -25,8 +27,9 @@ LockedSchemeObject::LockedSchemeObject(LockedSchemeObject&& other) noexcept
 LockedSchemeObject&
 LockedSchemeObject::operator=(LockedSchemeObject&& other) noexcept {
   if (this != &other) {
-    if (obj_ && obj_ != Sfalse)
+    if (obj_ && obj_ != Sfalse) {
       Sunlock_object(obj_);
+    }
     obj_ = other.obj_;
     other.obj_ = nullptr;
   }

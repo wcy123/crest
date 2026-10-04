@@ -86,8 +86,9 @@ public:
   mlir::LogicalResult
   matchAndRewrite(mlir::Operation* op,
                   mlir::PatternRewriter& rewriter) const override {
-    if (op->getName().getStringRef() != targetOpName)
+    if (op->getName().getStringRef() != targetOpName) {
       return mlir::failure();
+    }
 
     ptr opPtr = Sunsigned64(reinterpret_cast<uint64_t>(op));
     ptr rewriterPtr = Sunsigned64(reinterpret_cast<uint64_t>(&rewriter));
@@ -169,8 +170,9 @@ uint64_t mlir_create_type_converter() {
 
 // Destroy a TypeConverter object
 void mlir_destroy_type_converter(uint64_t converter_ptr) {
-  if (!converter_ptr)
+  if (!converter_ptr) {
     return;
+  }
   mlir_log_info(
       (std::string(
            "mlir_destroy_type_converter: destroying TypeConverter at ") +
@@ -182,24 +184,27 @@ void mlir_destroy_type_converter(uint64_t converter_ptr) {
 // Create a ConversionTarget object
 // Returns ConversionTarget* as uint64_t (opaque handle for Scheme)
 uint64_t mlir_create_conversion_target(uint64_t ctx_ptr) {
-  if (!ctx_ptr)
+  if (!ctx_ptr) {
     return 0;
+  }
   auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
   return reinterpret_cast<uint64_t>(new mlir::ConversionTarget(*ctx));
 }
 
 // Destroy a ConversionTarget object
 void mlir_destroy_conversion_target(uint64_t target_ptr) {
-  if (!target_ptr)
+  if (!target_ptr) {
     return;
+  }
   delete reinterpret_cast<mlir::ConversionTarget*>(target_ptr);
 }
 
 // Generic: mark a named dialect illegal in the conversion target
 void mlir_conversion_target_add_illegal_dialect(uint64_t target_ptr,
                                                 const char* dialect_name) {
-  if (!target_ptr || !dialect_name)
+  if (!target_ptr || !dialect_name) {
     return;
+  }
   reinterpret_cast<mlir::ConversionTarget*>(target_ptr)
       ->addIllegalDialect(dialect_name);
 }
@@ -207,8 +212,9 @@ void mlir_conversion_target_add_illegal_dialect(uint64_t target_ptr,
 // Generic: mark a named dialect legal in the conversion target
 void mlir_conversion_target_add_legal_dialect(uint64_t target_ptr,
                                               const char* dialect_name) {
-  if (!target_ptr || !dialect_name)
+  if (!target_ptr || !dialect_name) {
     return;
+  }
   reinterpret_cast<mlir::ConversionTarget*>(target_ptr)
       ->addLegalDialect(dialect_name);
 }
@@ -216,8 +222,9 @@ void mlir_conversion_target_add_legal_dialect(uint64_t target_ptr,
 // Generic: mark a named op legal in the conversion target
 void mlir_conversion_target_add_legal_op(uint64_t target_ptr, uint64_t ctx_ptr,
                                          const char* op_name) {
-  if (!target_ptr || !ctx_ptr || !op_name)
+  if (!target_ptr || !ctx_ptr || !op_name) {
     return;
+  }
   auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
   reinterpret_cast<mlir::ConversionTarget*>(target_ptr)
       ->addLegalOp(mlir::OperationName(op_name, ctx));
@@ -228,8 +235,9 @@ void mlir_conversion_target_add_dynamically_legal_op(uint64_t target_ptr,
                                                      uint64_t ctx_ptr,
                                                      const char* op_name,
                                                      ptr callback) {
-  if (!target_ptr || !ctx_ptr || !op_name)
+  if (!target_ptr || !ctx_ptr || !op_name) {
     return;
+  }
   auto* target = reinterpret_cast<mlir::ConversionTarget*>(target_ptr);
   auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
   // shared_ptr needed: std::function requires a copyable callable;
@@ -247,8 +255,9 @@ void mlir_conversion_target_add_dynamically_legal_op(uint64_t target_ptr,
 // bool)
 void mlir_conversion_target_mark_unknown_ops_dynamically_legal(
     uint64_t target_ptr, ptr callback) {
-  if (!target_ptr)
+  if (!target_ptr) {
     return;
+  }
   auto locked = std::make_shared<crest::LockedSchemeObject>(callback);
   reinterpret_cast<mlir::ConversionTarget*>(target_ptr)
       ->markUnknownOpDynamicallyLegal([locked](mlir::Operation* op) -> bool {
@@ -262,8 +271,9 @@ void mlir_conversion_target_mark_unknown_ops_dynamically_legal(
 // callback: (lambda (type-uptr) -> type-uptr-or-#f)
 // Returns #f or 0 from callback means "not handled by this conversion".
 void mlir_type_converter_add_conversion(uint64_t converter_ptr, ptr callback) {
-  if (!converter_ptr)
+  if (!converter_ptr) {
     return;
+  }
   auto* converter = reinterpret_cast<mlir::TypeConverter*>(converter_ptr);
   auto locked = std::make_shared<crest::LockedSchemeObject>(callback);
   converter->addConversion(
@@ -271,11 +281,13 @@ void mlir_type_converter_add_conversion(uint64_t converter_ptr, ptr callback) {
         ptr type_arg =
             Sunsigned64(reinterpret_cast<uint64_t>(type.getAsOpaquePointer()));
         ptr result = Scall1(locked->get(), type_arg);
-        if (result == Sfalse)
+        if (result == Sfalse) {
           return std::nullopt;
+        }
         uint64_t result_val = Sunsigned64_value(result);
-        if (result_val == 0)
+        if (result_val == 0) {
           return std::nullopt;
+        }
         return mlir::Type::getFromOpaquePointer(
             reinterpret_cast<const void*>(result_val));
       });
@@ -284,8 +296,9 @@ void mlir_type_converter_add_conversion(uint64_t converter_ptr, ptr callback) {
 // Generic: check if a type is legal according to a TypeConverter
 int mlir_type_converter_is_legal_type(uint64_t converter_ptr,
                                       uint64_t type_ptr) {
-  if (!converter_ptr || !type_ptr)
+  if (!converter_ptr || !type_ptr) {
     return 0;
+  }
   auto* converter = reinterpret_cast<mlir::TypeConverter*>(converter_ptr);
   mlir::Type type =
       mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(type_ptr));
@@ -294,8 +307,9 @@ int mlir_type_converter_is_legal_type(uint64_t converter_ptr,
 
 // Generic: check if all operand/result types of an op are legal
 int mlir_type_converter_is_legal(uint64_t converter_ptr, uint64_t op_ptr) {
-  if (!converter_ptr || !op_ptr)
+  if (!converter_ptr || !op_ptr) {
     return 0;
+  }
   auto* converter = reinterpret_cast<mlir::TypeConverter*>(converter_ptr);
   auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
   return converter->isLegal(op) ? 1 : 0;
@@ -304,13 +318,15 @@ int mlir_type_converter_is_legal(uint64_t converter_ptr, uint64_t op_ptr) {
 // Generic: check if a func op's signature is legal according to a TypeConverter
 int mlir_type_converter_is_signature_legal(uint64_t converter_ptr,
                                            uint64_t func_op_ptr) {
-  if (!converter_ptr || !func_op_ptr)
+  if (!converter_ptr || !func_op_ptr) {
     return 0;
+  }
   auto* converter = reinterpret_cast<mlir::TypeConverter*>(converter_ptr);
   auto func_op = mlir::dyn_cast<mlir::func::FuncOp>(
       reinterpret_cast<mlir::Operation*>(func_op_ptr));
-  if (!func_op)
+  if (!func_op) {
     return 0;
+  }
   return converter->isSignatureLegal(func_op.getFunctionType()) ? 1 : 0;
 }
 
@@ -318,8 +334,9 @@ int mlir_type_converter_is_signature_legal(uint64_t converter_ptr,
 // These ops appear in every module and are typically not subject to conversion.
 // target_ptr: ConversionTarget* as uptr
 void mlir_conversion_target_add_legal_common_ops(uint64_t target_ptr) {
-  if (!target_ptr)
+  if (!target_ptr) {
     return;
+  }
   auto* target = reinterpret_cast<mlir::ConversionTarget*>(target_ptr);
   target->addLegalOp<mlir::ModuleOp>();
   target->addLegalOp<mlir::arith::ConstantOp>();
@@ -328,8 +345,9 @@ void mlir_conversion_target_add_legal_common_ops(uint64_t target_ptr) {
 // Mark func.func and func.return dynamically legal based on TypeConverter
 void mlir_conversion_target_add_dynamically_legal_func(uint64_t target_ptr,
                                                        uint64_t converter_ptr) {
-  if (!target_ptr || !converter_ptr)
+  if (!target_ptr || !converter_ptr) {
     return;
+  }
   auto* target = reinterpret_cast<mlir::ConversionTarget*>(target_ptr);
   auto* converter = reinterpret_cast<mlir::TypeConverter*>(converter_ptr);
 
@@ -367,16 +385,18 @@ void mlir_conversion_target_add_dynamically_legal_func(uint64_t target_ptr,
 // Returns: RewritePatternSet* as uptr — caller must destroy via
 // mlir_destroy_rewrite_pattern_set
 uint64_t mlir_create_rewrite_pattern_set(uint64_t ctx_ptr) {
-  if (!ctx_ptr)
+  if (!ctx_ptr) {
     return 0;
+  }
   auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
   return reinterpret_cast<uint64_t>(new mlir::RewritePatternSet(ctx));
 }
 
 // Destroy a RewritePatternSet object
 void mlir_destroy_rewrite_pattern_set(uint64_t patterns_ptr) {
-  if (!patterns_ptr)
+  if (!patterns_ptr) {
     return;
+  }
   delete reinterpret_cast<mlir::RewritePatternSet*>(patterns_ptr);
 }
 
@@ -391,13 +411,15 @@ int mlir_apply_full_conversion(uint64_t module_ptr, uint64_t target_ptr,
                  " patterns=" + std::to_string(patterns_ptr))
                     .c_str());
 
-  if (!module_ptr || !target_ptr || !patterns_ptr)
+  if (!module_ptr || !target_ptr || !patterns_ptr) {
     return 0;
+  }
 
   auto module = mlir::dyn_cast<mlir::ModuleOp>(
       reinterpret_cast<mlir::Operation*>(module_ptr));
-  if (!module)
+  if (!module) {
     return 0;
+  }
 
   auto* target = reinterpret_cast<mlir::ConversionTarget*>(target_ptr);
   auto* patterns = reinterpret_cast<mlir::RewritePatternSet*>(patterns_ptr);
@@ -419,8 +441,9 @@ int mlir_apply_full_conversion(uint64_t module_ptr, uint64_t target_ptr,
 // TypeConverter* as uptr
 void mlir_populate_func_type_conversion_pattern(uint64_t patterns_ptr,
                                                 uint64_t converter_ptr) {
-  if (!patterns_ptr || !converter_ptr)
+  if (!patterns_ptr || !converter_ptr) {
     return;
+  }
   auto* patterns = reinterpret_cast<mlir::RewritePatternSet*>(patterns_ptr);
   auto* converter = reinterpret_cast<mlir::TypeConverter*>(converter_ptr);
   mlir::populateFunctionOpInterfaceTypeConversionPattern<mlir::func::FuncOp>(
@@ -442,8 +465,9 @@ void mlir_populate_func_type_conversion_pattern(uint64_t patterns_ptr,
 // differ in specificity).
 void mlir_type_converter_add_tensor_widening_materialization(
     uint64_t converter_ptr) {
-  if (!converter_ptr)
+  if (!converter_ptr) {
     return;
+  }
   auto* converter = reinterpret_cast<mlir::TypeConverter*>(converter_ptr);
   // Source materialization: when a conversion pattern replaces an op with a
   // value whose type is more specific (e.g. tensor<?x32xfloat, device>) than
@@ -456,32 +480,38 @@ void mlir_type_converter_add_tensor_widening_materialization(
   converter->addSourceMaterialization(
       [](mlir::OpBuilder& builder, mlir::Type resultType,
          mlir::ValueRange inputs, mlir::Location loc) -> mlir::Value {
-        if (inputs.size() != 1)
+        if (inputs.size() != 1) {
           return nullptr;
+        }
         mlir::Value input = inputs[0];
         auto inputType =
             mlir::dyn_cast<mlir::RankedTensorType>(input.getType());
         auto outType = mlir::dyn_cast<mlir::RankedTensorType>(resultType);
-        if (!inputType || !outType)
+        if (!inputType || !outType) {
           return nullptr;
-        if (!mlir::tensor::CastOp::areCastCompatible(inputType, outType))
+        }
+        if (!mlir::tensor::CastOp::areCastCompatible(inputType, outType)) {
           return nullptr;
+        }
         return mlir::tensor::CastOp::create(builder, loc, resultType, input);
       });
   // Target materialization: same direction for target-kind unrealized casts.
   converter->addTargetMaterialization(
       [](mlir::OpBuilder& builder, mlir::Type resultType,
          mlir::ValueRange inputs, mlir::Location loc) -> mlir::Value {
-        if (inputs.size() != 1)
+        if (inputs.size() != 1) {
           return nullptr;
+        }
         mlir::Value input = inputs[0];
         auto inputType =
             mlir::dyn_cast<mlir::RankedTensorType>(input.getType());
         auto outType = mlir::dyn_cast<mlir::RankedTensorType>(resultType);
-        if (!inputType || !outType)
+        if (!inputType || !outType) {
           return nullptr;
-        if (!mlir::tensor::CastOp::areCastCompatible(inputType, outType))
+        }
+        if (!mlir::tensor::CastOp::areCastCompatible(inputType, outType)) {
           return nullptr;
+        }
         return mlir::tensor::CastOp::create(builder, loc, resultType, input);
       });
 }

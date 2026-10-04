@@ -17,8 +17,9 @@ extern "C" {
 // is). value: Value* as uptr (via MLIR C-API opaque pointer) Returns:
 // Operation* as uptr, or 0 if the value is a block argument (no defining op).
 uint64_t mlir_value_get_defining_op(uint64_t value) {
-  if (!value)
+  if (!value) {
     return 0;
+  }
   MlirValue cVal{reinterpret_cast<const void*>(value)};
   return reinterpret_cast<uint64_t>(unwrap(cVal).getDefiningOp());
 }
@@ -27,8 +28,9 @@ uint64_t mlir_value_get_defining_op(uint64_t value) {
 // value: Value* as uptr
 // Returns: 1 if the value is a BlockArgument, 0 if it is an OpResult or null.
 int mlir_value_is_block_argument(uint64_t value) {
-  if (!value)
+  if (!value) {
     return 0;
+  }
   mlir::Value val = unwrap(MlirValue{reinterpret_cast<const void*>(value)});
   return mlir::isa<mlir::BlockArgument>(val) ? 1 : 0;
 }
@@ -37,19 +39,22 @@ int mlir_value_is_block_argument(uint64_t value) {
 // op. value: Value* as uptr; must be an OpResult (not a BlockArgument) Returns:
 // result index (>= 0), or -1 if the value is a BlockArgument or null.
 int mlir_value_get_result_number(uint64_t value) {
-  if (!value)
+  if (!value) {
     return -1;
+  }
   mlir::Value val = unwrap(MlirValue{reinterpret_cast<const void*>(value)});
   auto result = mlir::dyn_cast<mlir::OpResult>(val);
-  if (!result)
+  if (!result) {
     return -1;
+  }
   return static_cast<int>(result.getResultNumber());
 }
 
 // Return the number of uses of a Value.
 uint64_t mlir_value_num_uses(uint64_t val_ptr) {
-  if (!val_ptr)
+  if (!val_ptr) {
     return 0;
+  }
   auto val =
       mlir::Value::getFromOpaquePointer(reinterpret_cast<const void*>(val_ptr));
   return static_cast<uint64_t>(std::distance(val.use_begin(), val.use_end()));

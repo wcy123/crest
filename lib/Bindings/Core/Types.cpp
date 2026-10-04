@@ -21,8 +21,9 @@ extern "C" {
 // type_ptr: Type opaque uptr (Type::getAsOpaquePointer())
 // Returns:  MLIRContext* uptr, or 0 on null input.
 uint64_t mlir_type_get_context(uint64_t type_ptr) {
-  if (!type_ptr)
+  if (!type_ptr) {
     return 0;
+  }
   return reinterpret_cast<uint64_t>(
       mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(type_ptr))
           .getContext());
@@ -35,8 +36,9 @@ uint64_t mlir_type_get_context(uint64_t type_ptr) {
 // ctx_ptr: MLIRContext* uptr
 // Returns: IndexType opaque uptr, or 0 if ctx is null.
 uint64_t mlir_get_index_type(uint64_t ctx_ptr) {
-  if (!ctx_ptr)
+  if (!ctx_ptr) {
     return 0;
+  }
   return reinterpret_cast<uint64_t>(
       mlir::IndexType::get(reinterpret_cast<mlir::MLIRContext*>(ctx_ptr))
           .getAsOpaquePointer());
@@ -46,8 +48,9 @@ uint64_t mlir_get_index_type(uint64_t ctx_ptr) {
 // ctx_ptr: MLIRContext* uptr
 // Returns: IntegerType<64> opaque uptr, or 0 if ctx is null.
 uint64_t mlir_get_i64_type(uint64_t ctx_ptr) {
-  if (!ctx_ptr)
+  if (!ctx_ptr) {
     return 0;
+  }
   return reinterpret_cast<uint64_t>(
       mlir::IntegerType::get(reinterpret_cast<mlir::MLIRContext*>(ctx_ptr), 64)
           .getAsOpaquePointer());
@@ -57,8 +60,9 @@ uint64_t mlir_get_i64_type(uint64_t ctx_ptr) {
 // ctx_ptr: MLIRContext* uptr
 // Returns: IntegerType<1> opaque uptr, or 0 if ctx is null.
 uint64_t mlir_get_i1_type(uint64_t ctx_ptr) {
-  if (!ctx_ptr)
+  if (!ctx_ptr) {
     return 0;
+  }
   return reinterpret_cast<uint64_t>(
       mlir::IntegerType::get(reinterpret_cast<mlir::MLIRContext*>(ctx_ptr), 1)
           .getAsOpaquePointer());
@@ -71,8 +75,9 @@ uint64_t mlir_get_i1_type(uint64_t ctx_ptr) {
 // type_ptr: Type opaque uptr
 // Returns:  int (1 = true, 0 = false)
 int mlir_type_is_ranked_tensor(uint64_t type_ptr) {
-  if (!type_ptr)
+  if (!type_ptr) {
     return 0;
+  }
   return mlir::isa<mlir::RankedTensorType>(mlir::Type::getFromOpaquePointer(
              reinterpret_cast<void*>(type_ptr)))
              ? 1
@@ -83,8 +88,9 @@ int mlir_type_is_ranked_tensor(uint64_t type_ptr) {
 // type_ptr: RankedTensorType opaque uptr
 // Returns:  non-negative int64_t, or -1 if not a RankedTensorType.
 int64_t mlir_type_get_rank(uint64_t type_ptr) {
-  if (!type_ptr)
+  if (!type_ptr) {
     return -1;
+  }
   auto t = mlir::dyn_cast<mlir::RankedTensorType>(
       mlir::Type::getFromOpaquePointer(reinterpret_cast<void*>(type_ptr)));
   return t ? t.getRank() : -1;
@@ -94,12 +100,14 @@ int64_t mlir_type_get_rank(uint64_t type_ptr) {
 // type_ptr: ShapedType opaque uptr
 // Returns:  element Type opaque uptr, or 0 if not a ShapedType.
 uint64_t mlir_type_get_element_type(uint64_t type_ptr) {
-  if (!type_ptr)
+  if (!type_ptr) {
     return 0;
+  }
   auto t = mlir::dyn_cast<mlir::RankedTensorType>(
       mlir::Type::getFromOpaquePointer(reinterpret_cast<void*>(type_ptr)));
-  if (!t)
+  if (!t) {
     return 0;
+  }
   return reinterpret_cast<uint64_t>(
       const_cast<void*>(t.getElementType().getAsOpaquePointer()));
 }
@@ -109,15 +117,18 @@ uint64_t mlir_type_get_element_type(uint64_t type_ptr) {
 // type_ptr: RankedTensorType opaque ptr (raw Chez Scheme ptr, not uptr)
 // Returns:  Scheme list of exact integers, or Snil if not a RankedTensorType.
 ptr mlir_type_get_shape(ptr type_ptr) {
-  if (!type_ptr)
+  if (!type_ptr) {
     return Snil;
+  }
   auto t = llvm::dyn_cast<mlir::RankedTensorType>(
       mlir::Type::getFromOpaquePointer(type_ptr));
-  if (!t)
+  if (!t) {
     return Snil;
+  }
   ptr list = Snil;
-  for (int i = static_cast<int>(t.getShape().size()) - 1; i >= 0; --i)
+  for (int i = static_cast<int>(t.getShape().size()) - 1; i >= 0; --i) {
     list = Scons(Sinteger(t.getShape()[i]), list);
+  }
   return list;
 }
 
@@ -125,13 +136,15 @@ ptr mlir_type_get_shape(ptr type_ptr) {
 // type_ptr: RankedTensorType opaque uptr
 // Returns:  Attribute opaque uptr, or 0 if the type has no encoding.
 uint64_t mlir_type_get_encoding(uint64_t type_ptr) {
-  if (!type_ptr)
+  if (!type_ptr) {
     return 0;
+  }
   auto t =
       mlir::dyn_cast<mlir::RankedTensorType>(mlir::Type::getFromOpaquePointer(
           reinterpret_cast<const void*>(type_ptr)));
-  if (!t)
+  if (!t) {
     return 0;
+  }
   mlir::Attribute enc = t.getEncoding();
   return enc ? reinterpret_cast<uint64_t>(enc.getAsOpaquePointer()) : 0;
 }
@@ -141,13 +154,15 @@ uint64_t mlir_type_get_encoding(uint64_t type_ptr) {
 // attr_ptr: Attribute opaque uptr — the encoding to attach
 // Returns:  new RankedTensorType opaque uptr, or 0 on bad input.
 uint64_t mlir_tensor_type_with_encoding(uint64_t type_ptr, uint64_t attr_ptr) {
-  if (!type_ptr || !attr_ptr)
+  if (!type_ptr || !attr_ptr) {
     return 0;
+  }
   auto t =
       mlir::dyn_cast<mlir::RankedTensorType>(mlir::Type::getFromOpaquePointer(
           reinterpret_cast<const void*>(type_ptr)));
-  if (!t)
+  if (!t) {
     return 0;
+  }
   auto attr = mlir::Attribute::getFromOpaquePointer(
       reinterpret_cast<const void*>(attr_ptr));
   return reinterpret_cast<uint64_t>(
@@ -161,8 +176,9 @@ uint64_t mlir_tensor_type_with_encoding(uint64_t type_ptr, uint64_t attr_ptr) {
 // value_ptr: Value opaque ptr (raw Chez Scheme ptr)
 // Returns:   Type opaque ptr, or null if value_ptr is null.
 ptr mlir_value_get_type(ptr value_ptr) {
-  if (!value_ptr)
+  if (!value_ptr) {
     return nullptr;
+  }
   return const_cast<void*>(mlir::Value::getFromOpaquePointer(value_ptr)
                                .getType()
                                .getAsOpaquePointer());

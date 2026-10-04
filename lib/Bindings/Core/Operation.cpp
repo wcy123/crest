@@ -24,8 +24,9 @@ extern "C" {
 // storage; valid for the lifetime of the op.
 //          Returns "" for null op.
 const char* mlir_operation_get_name(uint64_t op) {
-  if (!op)
+  if (!op) {
     return "";
+  }
   mlir::Operation* cppOp = reinterpret_cast<mlir::Operation*>(op);
   return cppOp->getName().getStringRef().data();
 }
@@ -34,8 +35,9 @@ const char* mlir_operation_get_name(uint64_t op) {
 // op: Operation* as uptr
 // Returns: MLIRContext* as uptr, or 0 for null op.
 uint64_t mlir_operation_get_context(uint64_t op) {
-  if (!op)
+  if (!op) {
     return 0;
+  }
   mlir::Operation* cppOp = reinterpret_cast<mlir::Operation*>(op);
   return reinterpret_cast<uint64_t>(cppOp->getContext());
 }
@@ -44,8 +46,9 @@ uint64_t mlir_operation_get_context(uint64_t op) {
 // op: Operation* as uptr
 // Returns: operand count, or 0 for null op.
 int64_t mlir_operation_num_operands(uint64_t op) {
-  if (!op)
+  if (!op) {
     return 0;
+  }
   return reinterpret_cast<mlir::Operation*>(op)->getNumOperands();
 }
 
@@ -53,8 +56,9 @@ int64_t mlir_operation_num_operands(uint64_t op) {
 // op: Operation* as uptr
 // Returns: result count, or 0 for null op.
 int64_t mlir_operation_num_results(uint64_t op) {
-  if (!op)
+  if (!op) {
     return 0;
+  }
   return reinterpret_cast<mlir::Operation*>(op)->getNumResults();
 }
 
@@ -63,11 +67,13 @@ int64_t mlir_operation_num_results(uint64_t op) {
 // index: zero-based operand index
 // Returns: Value* as uptr (via MLIR C-API wrap), or 0 if out of range.
 uint64_t mlir_operation_get_operand(uint64_t op, int64_t index) {
-  if (!op)
+  if (!op) {
     return 0;
+  }
   mlir::Operation* cppOp = reinterpret_cast<mlir::Operation*>(op);
-  if (index < 0 || index >= (int64_t)cppOp->getNumOperands())
+  if (index < 0 || index >= (int64_t)cppOp->getNumOperands()) {
     return 0;
+  }
   mlir::Value val = cppOp->getOperand(index);
   MlirValue cVal = wrap(val);
   return reinterpret_cast<uint64_t>(const_cast<void*>(cVal.ptr));
@@ -78,11 +84,13 @@ uint64_t mlir_operation_get_operand(uint64_t op, int64_t index) {
 // index: zero-based result index
 // Returns: Value* as uptr (via MLIR C-API wrap), or 0 if out of range.
 uint64_t mlir_operation_get_result(uint64_t op, int64_t index) {
-  if (!op)
+  if (!op) {
     return 0;
+  }
   mlir::Operation* cppOp = reinterpret_cast<mlir::Operation*>(op);
-  if (index < 0 || index >= (int64_t)cppOp->getNumResults())
+  if (index < 0 || index >= (int64_t)cppOp->getNumResults()) {
     return 0;
+  }
   mlir::Value val = cppOp->getResult(index);
   MlirValue cVal = wrap(val);
   return reinterpret_cast<uint64_t>(const_cast<void*>(cVal.ptr));
@@ -93,8 +101,9 @@ uint64_t mlir_operation_get_result(uint64_t op, int64_t index) {
 // op_ptr: Operation* as ptr (raw Chez Scheme pointer)
 // Returns: parent Operation* as ptr, or nullptr.
 ptr mlir_operation_get_parent(ptr op_ptr) {
-  if (!op_ptr)
+  if (!op_ptr) {
     return nullptr;
+  }
   return static_cast<mlir::Operation*>(op_ptr)->getParentOp();
 }
 
@@ -104,11 +113,13 @@ ptr mlir_operation_get_parent(ptr op_ptr) {
 // index: zero-based operand index
 // Returns: Value* opaque pointer, or nullptr if out of range.
 ptr mlir_operation_get_operand_value(ptr op_ptr, int index) {
-  if (!op_ptr)
+  if (!op_ptr) {
     return nullptr;
+  }
   mlir::Operation* op = static_cast<mlir::Operation*>(op_ptr);
-  if (index < 0 || index >= (int)op->getNumOperands())
+  if (index < 0 || index >= (int)op->getNumOperands()) {
     return nullptr;
+  }
   return const_cast<void*>(op->getOperand(index).getAsOpaquePointer());
 }
 
@@ -117,11 +128,13 @@ ptr mlir_operation_get_operand_value(ptr op_ptr, int index) {
 // index: zero-based result index
 // Returns: Value* opaque pointer, or nullptr if out of range.
 ptr mlir_operation_get_result_value(ptr op_ptr, int index) {
-  if (!op_ptr)
+  if (!op_ptr) {
     return nullptr;
+  }
   mlir::Operation* op = static_cast<mlir::Operation*>(op_ptr);
-  if (index < 0 || index >= (int)op->getNumResults())
+  if (index < 0 || index >= (int)op->getNumResults()) {
     return nullptr;
+  }
   return const_cast<void*>(op->getResult(index).getAsOpaquePointer());
 }
 
@@ -130,8 +143,9 @@ ptr mlir_operation_get_result_value(ptr op_ptr, int index) {
 // op_ptr: Operation* as ptr
 // Returns: Location opaque pointer, or nullptr for null op.
 ptr mlir_operation_get_loc(ptr op_ptr) {
-  if (!op_ptr)
+  if (!op_ptr) {
     return nullptr;
+  }
   return const_cast<void*>(
       static_cast<mlir::Operation*>(op_ptr)->getLoc().getAsOpaquePointer());
 }
@@ -144,16 +158,20 @@ ptr mlir_operation_get_loc(ptr op_ptr) {
 // Returns: Value* opaque pointer of the block argument, or nullptr if not
 // found.
 ptr mlir_operation_get_block_argument(ptr op_ptr, int index) {
-  if (!op_ptr)
+  if (!op_ptr) {
     return nullptr;
+  }
   mlir::Operation* op = static_cast<mlir::Operation*>(op_ptr);
-  while (op && !llvm::isa<mlir::func::FuncOp>(op))
+  while (op && !llvm::isa<mlir::func::FuncOp>(op)) {
     op = op->getParentOp();
-  if (!op)
+  }
+  if (!op) {
     return nullptr;
+  }
   auto funcOp = llvm::cast<mlir::func::FuncOp>(op);
-  if (index < 0 || index >= (int)funcOp.getNumArguments())
+  if (index < 0 || index >= (int)funcOp.getNumArguments()) {
     return nullptr;
+  }
   return const_cast<void*>(funcOp.getArgument(index).getAsOpaquePointer());
 }
 
@@ -163,8 +181,9 @@ ptr mlir_operation_get_block_argument(ptr op_ptr, int index) {
 // op: root Operation* as uptr
 // callback: Scheme procedure ptr
 void mlir_operation_walk(uint64_t op, ptr callback) {
-  if (!op)
+  if (!op) {
     return;
+  }
   mlir::Operation* cppOp = reinterpret_cast<mlir::Operation*>(op);
   crest::LockedSchemeObject locked(callback);
   cppOp->walk([&locked](mlir::Operation* walkOp) {
@@ -177,12 +196,14 @@ void mlir_operation_walk(uint64_t op, ptr callback) {
 // DPS ops carry pre-allocated output buffers as "init" operands.
 // op_ptr: Operation* as uptr; returns 0 if op does not implement DPS interface.
 int mlir_operation_num_dps_inits(uint64_t op_ptr) {
-  if (!op_ptr)
+  if (!op_ptr) {
     return 0;
+  }
   mlir::Operation* op = reinterpret_cast<mlir::Operation*>(op_ptr);
   auto dpsOp = mlir::dyn_cast<mlir::DestinationStyleOpInterface>(op);
-  if (!dpsOp)
+  if (!dpsOp) {
     return 0;
+  }
   return static_cast<int>(dpsOp.getNumDpsInits());
 }
 
@@ -191,14 +212,17 @@ int mlir_operation_num_dps_inits(uint64_t op_ptr) {
 // index: zero-based init index
 // Returns: Value* opaque pointer, or 0 if out of range or not a DPS op.
 uint64_t mlir_operation_get_dps_init_value(uint64_t op_ptr, int index) {
-  if (!op_ptr)
+  if (!op_ptr) {
     return 0;
+  }
   mlir::Operation* op = reinterpret_cast<mlir::Operation*>(op_ptr);
   auto dpsOp = mlir::dyn_cast<mlir::DestinationStyleOpInterface>(op);
-  if (!dpsOp)
+  if (!dpsOp) {
     return 0;
-  if (index < 0 || index >= static_cast<int>(dpsOp.getNumDpsInits()))
+  }
+  if (index < 0 || index >= static_cast<int>(dpsOp.getNumDpsInits())) {
     return 0;
+  }
   return reinterpret_cast<uint64_t>(
       dpsOp.getDpsInits()[index].getAsOpaquePointer());
 }
@@ -208,8 +232,9 @@ uint64_t mlir_operation_get_dps_init_value(uint64_t op_ptr, int index) {
 // index: zero-based operand index
 // value: replacement Value* as uptr (MLIR C-API wrapped)
 void mlir_operation_set_operand(uint64_t op_ptr, int index, uint64_t value) {
-  if (!op_ptr || !value)
+  if (!op_ptr || !value) {
     return;
+  }
   mlir::Operation* op = reinterpret_cast<mlir::Operation*>(op_ptr);
   mlir::Value val = unwrap(MlirValue{reinterpret_cast<const void*>(value)});
   op->setOperand(static_cast<unsigned>(index), val);
@@ -220,8 +245,9 @@ void mlir_operation_set_operand(uint64_t op_ptr, int index, uint64_t value) {
 // Returns: 1 if use_empty() is true (op is dead), 0 otherwise.
 //          Returns 1 for null op (conservative: treat null as dead).
 int mlir_operation_use_empty(uint64_t op_ptr) {
-  if (!op_ptr)
+  if (!op_ptr) {
     return 1;
+  }
   return reinterpret_cast<mlir::Operation*>(op_ptr)->use_empty() ? 1 : 0;
 }
 
@@ -232,12 +258,14 @@ int mlir_operation_use_empty(uint64_t op_ptr) {
 // lives). op_ptr: Operation* as uptr attr_name: attribute dictionary key
 const char* mlir_operation_get_string_attr(uint64_t op_ptr,
                                            const char* attr_name) {
-  if (!op_ptr)
+  if (!op_ptr) {
     return "";
+  }
   auto attr = reinterpret_cast<mlir::Operation*>(op_ptr)
                   ->getAttrOfType<mlir::StringAttr>(attr_name);
-  if (!attr)
+  if (!attr) {
     return "";
+  }
   return attr.getValue().data();
 }
 
@@ -247,11 +275,13 @@ const char* mlir_operation_get_string_attr(uint64_t op_ptr,
 // default_val: returned when the attribute is absent or the wrong type
 int64_t mlir_operation_get_integer_attr(uint64_t op_ptr, const char* attr_name,
                                         int64_t default_val) {
-  if (!op_ptr)
+  if (!op_ptr) {
     return default_val;
+  }
   if (auto attr = reinterpret_cast<mlir::Operation*>(op_ptr)
-                      ->getAttrOfType<mlir::IntegerAttr>(attr_name))
+                      ->getAttrOfType<mlir::IntegerAttr>(attr_name)) {
     return attr.getValue().getSExtValue();
+  }
   return default_val;
 }
 
@@ -262,21 +292,24 @@ int64_t mlir_operation_get_integer_attr(uint64_t op_ptr, const char* attr_name,
 // Returns: Scheme list (ptr), or Snil if absent or elements are not integers.
 ptr mlir_operation_get_integer_array_attr(uint64_t op_ptr,
                                           const char* attr_name) {
-  if (!op_ptr)
+  if (!op_ptr) {
     return Snil;
+  }
   auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
   if (auto attr = op->getAttrOfType<mlir::DenseI64ArrayAttr>(attr_name)) {
     ptr list = Snil;
-    for (int i = (int)attr.size() - 1; i >= 0; --i)
+    for (int i = (int)attr.size() - 1; i >= 0; --i) {
       list = Scons(Sinteger(attr[i]), list);
+    }
     return list;
   }
   if (auto attr = op->getAttrOfType<mlir::ArrayAttr>(attr_name)) {
     ptr list = Snil;
     for (int i = (int)attr.size() - 1; i >= 0; --i) {
       auto intAttr = mlir::dyn_cast<mlir::IntegerAttr>(attr[i]);
-      if (!intAttr)
+      if (!intAttr) {
         return Snil;
+      }
       list = Scons(Sinteger(intAttr.getInt()), list);
     }
     return list;
@@ -291,8 +324,9 @@ ptr mlir_operation_get_integer_array_attr(uint64_t op_ptr,
 // value: integer value to encode as IndexType
 void mlir_operation_set_index_attr(uint64_t op_ptr, const char* attr_name,
                                    int64_t value) {
-  if (!op_ptr)
+  if (!op_ptr) {
     return;
+  }
   mlir::Operation* cppOp = reinterpret_cast<mlir::Operation*>(op_ptr);
   cppOp->setAttr(
       attr_name,
@@ -308,14 +342,16 @@ void mlir_operation_set_index_attr(uint64_t op_ptr, const char* attr_name,
 // Use this for ODS attributes declared as I64ArrayAttr (not DenseI64ArrayAttr).
 void mlir_operation_set_i64_array_attr(uint64_t op_ptr, const char* attr_name,
                                        ptr values_list) {
-  if (!op_ptr)
+  if (!op_ptr) {
     return;
+  }
   auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
   llvm::SmallVector<mlir::Attribute> attrs;
   auto i64Type = mlir::IntegerType::get(op->getContext(), 64);
   for (ptr cur = static_cast<ptr>(values_list); cur != Snil; cur = Scdr(cur)) {
-    if (!Spairp(cur))
+    if (!Spairp(cur)) {
       break;
+    }
     attrs.push_back(mlir::IntegerAttr::get(i64Type, Sinteger_value(Scar(cur))));
   }
   op->setAttr(attr_name, mlir::ArrayAttr::get(op->getContext(), attrs));
@@ -323,13 +359,15 @@ void mlir_operation_set_i64_array_attr(uint64_t op_ptr, const char* attr_name,
 
 void mlir_operation_set_dense_i64_array(uint64_t op_ptr, const char* attr_name,
                                         ptr values_list) {
-  if (!op_ptr)
+  if (!op_ptr) {
     return;
+  }
   auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
   llvm::SmallVector<int64_t> values;
   for (ptr cur = static_cast<ptr>(values_list); cur != Snil; cur = Scdr(cur)) {
-    if (!Spairp(cur))
+    if (!Spairp(cur)) {
       break;
+    }
     values.push_back(Sinteger_value(Scar(cur)));
   }
   op->setAttr(attr_name,
@@ -343,13 +381,15 @@ void mlir_operation_set_dense_i64_array(uint64_t op_ptr, const char* attr_name,
 // values_list: Scheme list of integer Scheme objects (truncated to i32)
 void mlir_operation_set_dense_i32_array(uint64_t op_ptr, const char* attr_name,
                                         ptr values_list) {
-  if (!op_ptr)
+  if (!op_ptr) {
     return;
+  }
   auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
   llvm::SmallVector<int32_t> values;
   for (ptr cur = static_cast<ptr>(values_list); cur != Snil; cur = Scdr(cur)) {
-    if (!Spairp(cur))
+    if (!Spairp(cur)) {
       break;
+    }
     values.push_back(static_cast<int32_t>(Sinteger_value(Scar(cur))));
   }
   op->setAttr(attr_name,
@@ -359,8 +399,9 @@ void mlir_operation_set_dense_i32_array(uint64_t op_ptr, const char* attr_name,
 // Set a named f32 FloatAttr on an operation.
 void mlir_operation_set_f32_attr(uint64_t op_ptr, const char* name,
                                  double value) {
-  if (!op_ptr)
+  if (!op_ptr) {
     return;
+  }
   auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
   op->setAttr(name,
               mlir::FloatAttr::get(mlir::Float32Type::get(op->getContext()),
@@ -370,8 +411,9 @@ void mlir_operation_set_f32_attr(uint64_t op_ptr, const char* name,
 // Set a named i64 IntegerAttr (signless) on an operation.
 void mlir_operation_set_i64_attr(uint64_t op_ptr, const char* name,
                                  int64_t value) {
-  if (!op_ptr)
+  if (!op_ptr) {
     return;
+  }
   auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
   op->setAttr(name, mlir::IntegerAttr::get(
                         mlir::IntegerType::get(op->getContext(), 64), value));
@@ -379,8 +421,9 @@ void mlir_operation_set_i64_attr(uint64_t op_ptr, const char* name,
 
 // Set a named UnitAttr on an operation (marks a boolean-style flag as present).
 void mlir_operation_set_unit_attr(uint64_t op_ptr, const char* name) {
-  if (!op_ptr)
+  if (!op_ptr) {
     return;
+  }
   auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
   op->setAttr(name, mlir::UnitAttr::get(op->getContext()));
 }
@@ -391,13 +434,15 @@ void mlir_operation_set_unit_attr(uint64_t op_ptr, const char* name) {
 // Operation* as uptr src_name: key to read from src_op
 void mlir_operation_copy_attr(uint64_t dst_op_ptr, const char* dst_name,
                               uint64_t src_op_ptr, const char* src_name) {
-  if (!dst_op_ptr || !src_op_ptr)
+  if (!dst_op_ptr || !src_op_ptr) {
     return;
+  }
   auto* dst = reinterpret_cast<mlir::Operation*>(dst_op_ptr);
   auto* src = reinterpret_cast<mlir::Operation*>(src_op_ptr);
   auto attr = src->getAttr(src_name);
-  if (attr)
+  if (attr) {
     dst->setAttr(dst_name, attr);
+  }
 }
 
 // Test whether a named attribute is present in the operation's attribute dict.
@@ -405,8 +450,9 @@ void mlir_operation_copy_attr(uint64_t dst_op_ptr, const char* dst_name,
 // attr_name: attribute dictionary key
 // Returns: 1 if present, 0 if absent or op is null.
 int mlir_operation_has_attr(uint64_t op_ptr, const char* attr_name) {
-  if (!op_ptr)
+  if (!op_ptr) {
     return 0;
+  }
   return reinterpret_cast<mlir::Operation*>(op_ptr)->hasAttr(attr_name) ? 1 : 0;
 }
 
@@ -451,8 +497,9 @@ void mlir_emit_remark(uint64_t op_ptr, const char* msg) {
 // Use only outside of active conversion patterns (e.g. post-pass cleanup).
 // op_ptr: Operation* as uptr; no-op for null.
 void mlir_op_erase(uint64_t op_ptr) {
-  if (!op_ptr)
+  if (!op_ptr) {
     return;
+  }
   reinterpret_cast<mlir::Operation*>(op_ptr)->erase();
 }
 
