@@ -5,7 +5,8 @@ Licensed under the MIT License.
 
 # CREST Architecture
 
-CREST is a Scheme-hosted engine for writing MLIR conversion and rewrite patterns.
+CREST (**C**onversion and **R**ewriting **E**ngine for **S**cheme **T**ransformations)
+is a Scheme-hosted engine for writing MLIR conversion and rewrite patterns.
 It is structured in four layers, each with a distinct role.
 
 ---
