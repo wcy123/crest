@@ -6,7 +6,7 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 ;;
-;; (mlir hip fusion) — hip dialect helpers for quantized op fusion patterns.
+;; (passes hip-fusion fusion) — hip dialect helpers for quantized op fusion patterns.
 ;;
 ;; Implements the constraint and attribute-extraction helpers needed by DDR
 ;; rewrite patterns in (passes hip-fusion).  All logic is pure Scheme built on
@@ -25,7 +25,7 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 
-(library (mlir hip fusion)
+(library (passes hip-fusion fusion)
   (export
     ;; Single-use guard
     hip-op-single-use?
@@ -382,4 +382,4 @@
                                                operands (list q-type))])
       (mlir-operation-get-result new-op 0)))
 
-) ;; end library (mlir hip fusion)
+) ;; end library (passes hip-fusion fusion)
