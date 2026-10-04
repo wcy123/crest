@@ -16,10 +16,9 @@
 #include "mlir/IR/DialectRegistry.h"
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   mlir::DialectRegistry registry;
-  registry.insert<mlir::func::FuncDialect,
-                  mlir::shape::ShapeDialect,
+  registry.insert<mlir::func::FuncDialect, mlir::shape::ShapeDialect,
                   mlir::tensor::TensorDialect>();
   crest::registerCrestPass();
   return mlir::asMainReturnCode(

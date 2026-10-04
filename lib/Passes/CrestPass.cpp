@@ -9,8 +9,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "crest/Passes/Passes.h"
 #include "../Interpreter/ChezSchemeInterpreter.h"
+#include "crest/Passes/Passes.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Shape/IR/Shape.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -27,28 +27,29 @@ namespace {
 struct CrestPassOptions : public mlir::PassPipelineOptions<CrestPassOptions> {
   Option<std::string> moduleName{
       *this, "module",
-      llvm::cl::desc("Scheme module to load (slash-separated R6RS library name, "
-                     "e.g. 'passes/my-rewrite')"),
+      llvm::cl::desc(
+          "Scheme module to load (slash-separated R6RS library name, "
+          "e.g. 'passes/my-rewrite')"),
       llvm::cl::init("")};
   Option<std::string> logLevel{
       *this, "log-level",
-      llvm::cl::desc("Logging level: trace, debug, info, warning, error, fatal"),
+      llvm::cl::desc(
+          "Logging level: trace, debug, info, warning, error, fatal"),
       llvm::cl::init("warning")};
 };
 
-// The actual pass — an OperationPass<ModuleOp> that loads and runs a Scheme library.
+// The actual pass — an OperationPass<ModuleOp> that loads and runs a Scheme
+// library.
 struct CrestPass : public mlir::OperationPass<mlir::ModuleOp> {
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(CrestPass)
 
   CrestPass(std::string moduleName, std::string logLevel)
       : mlir::OperationPass<mlir::ModuleOp>(mlir::TypeID::get<CrestPass>()),
-        moduleName_(std::move(moduleName)),
-        logLevel_(std::move(logLevel)) {}
+        moduleName_(std::move(moduleName)), logLevel_(std::move(logLevel)) {}
 
-  CrestPass(const CrestPass &other)
+  CrestPass(const CrestPass& other)
       : mlir::OperationPass<mlir::ModuleOp>(other),
-        moduleName_(other.moduleName_),
-        logLevel_(other.logLevel_) {}
+        moduleName_(other.moduleName_), logLevel_(other.logLevel_) {}
 
   llvm::StringRef getName() const override { return "crest-pass"; }
 
@@ -56,16 +57,14 @@ struct CrestPass : public mlir::OperationPass<mlir::ModuleOp> {
     return std::make_unique<CrestPass>(*this);
   }
 
-  void getDependentDialects(mlir::DialectRegistry &registry) const override {
-    registry.insert<mlir::func::FuncDialect,
-                    mlir::shape::ShapeDialect>();
+  void getDependentDialects(mlir::DialectRegistry& registry) const override {
+    registry.insert<mlir::func::FuncDialect, mlir::shape::ShapeDialect>();
   }
 
   void runOnOperation() override {
     if (moduleName_.empty()) {
-      getOperation().emitError(
-          "Scheme module name not specified. "
-          "Use --crest-pass=\"module=<name>\"");
+      getOperation().emitError("Scheme module name not specified. "
+                               "Use --crest-pass=\"module=<name>\"");
       return signalPassFailure();
     }
 
@@ -100,7 +99,7 @@ void registerCrestPass() {
       "crest-pass",
       "Run a pass implemented in Scheme via the CREST interpreter. "
       "Options: module=<slash-separated-R6RS-name>, log-level=<level>",
-      [](mlir::OpPassManager &pm, const CrestPassOptions &opts) {
+      [](mlir::OpPassManager& pm, const CrestPassOptions& opts) {
         pm.addPass(std::make_unique<CrestPass>(opts.moduleName, opts.logLevel));
       });
 }

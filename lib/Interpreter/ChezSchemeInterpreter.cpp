@@ -13,12 +13,13 @@
 #include "mlir/IR/Operation.h"
 
 // Note: scheme.h already included via ChezSchemeInterpreter.h
-// Do NOT include it again here to avoid redefinition errors with static inline functions
+// Do NOT include it again here to avoid redefinition errors with static inline
+// functions
 
 #include "ChezBootPetite.h"
 #include "ChezBootScheme.h"
 #ifdef CREST_BOOT_EMBEDDED
-#include "CrestBoot.h"
+#  include "CrestBoot.h"
 #endif
 
 #include <cassert>
@@ -29,13 +30,15 @@ namespace {
 const size_t petite_boot_size = sizeof(petite_boot_data) - 1;
 const size_t scheme_boot_size = sizeof(scheme_boot_data) - 1;
 #ifdef CREST_BOOT_EMBEDDED
-const size_t crest_boot_size  = sizeof(crest_boot_data)  - 1;
+const size_t crest_boot_size = sizeof(crest_boot_data) - 1;
 #endif
 
 // Set by ChezSchemeInterpreter constructor; called once from Sbuild_heap.
 static void (*g_init_hook)() = nullptr;
 static void custom_init() {
-  if (g_init_hook) { g_init_hook(); }
+  if (g_init_hook) {
+    g_init_hook();
+  }
 }
 
 } // anonymous namespace
@@ -48,12 +51,10 @@ namespace crest {
 // ChezScheme cannot be re-initialized in the same process (Sscheme_init aborts
 // if called twice). Use a strong singleton so the interpreter persists across
 // multiple --split-input-file sections processed in a single crest-opt run.
-template <typename T>
-struct WeakSingleton {
+template <typename T> struct WeakSingleton {
   static std::shared_ptr<T> the_instance_;
 
-  template <typename... Args>
-  static std::shared_ptr<T> create(Args&&... args) {
+  template <typename... Args> static std::shared_ptr<T> create(Args&&... args) {
     if (!the_instance_) {
       // PrivateTag{} is constructed here — inside WeakSingleton which is a
       // friend of both ChezSchemeInterpreter and PrivateTag.
@@ -64,21 +65,22 @@ struct WeakSingleton {
   }
 };
 
-template <typename T>
-std::shared_ptr<T> WeakSingleton<T>::the_instance_;
+template <typename T> std::shared_ptr<T> WeakSingleton<T>::the_instance_;
 
 } // namespace crest
 
 namespace crest {
 
-// ─── Factory ──────────────────────────────────────────────────────────────────
+// ─── Factory
+// ──────────────────────────────────────────────────────────────────
 
 std::shared_ptr<ChezSchemeInterpreter>
 ChezSchemeInterpreter::instance(SchemeLogLevel logLevel, void (*initHook)()) {
   return WeakSingleton<ChezSchemeInterpreter>::create(logLevel, initHook);
 }
 
-// ─── Construction / Destruction ───────────────────────────────────────────────
+// ─── Construction / Destruction
+// ───────────────────────────────────────────────
 
 ChezSchemeInterpreter::ChezSchemeInterpreter(PrivateTag,
                                              SchemeLogLevel logLevel,
@@ -86,23 +88,28 @@ ChezSchemeInterpreter::ChezSchemeInterpreter(PrivateTag,
     : logLevel_(logLevel) {
   g_init_hook = initHook;
   if (logLevel_ <= SchemeLogLevel::Debug) {
-    llvm::errs() << "[debug] ChezSchemeInterpreter: Initializing Chez Scheme runtime\n";
+    llvm::errs()
+        << "[debug] ChezSchemeInterpreter: Initializing Chez Scheme runtime\n";
   }
 
   Sscheme_init(nullptr);
 
   if (logLevel_ <= SchemeLogLevel::Debug) {
-    llvm::errs() << "[debug] ChezSchemeInterpreter: Registering embedded boot files\n";
+    llvm::errs()
+        << "[debug] ChezSchemeInterpreter: Registering embedded boot files\n";
   }
 
-  Sregister_boot_file_bytes("petite.boot",
+  Sregister_boot_file_bytes(
+      "petite.boot",
       const_cast<void*>(static_cast<const void*>(petite_boot_data)),
       petite_boot_size);
-  Sregister_boot_file_bytes("scheme.boot",
+  Sregister_boot_file_bytes(
+      "scheme.boot",
       const_cast<void*>(static_cast<const void*>(scheme_boot_data)),
       scheme_boot_size);
 #ifdef CREST_BOOT_EMBEDDED
-  Sregister_boot_file_bytes("crest.boot",
+  Sregister_boot_file_bytes(
+      "crest.boot",
       const_cast<void*>(static_cast<const void*>(crest_boot_data)),
       crest_boot_size);
 #endif
@@ -118,7 +125,7 @@ ChezSchemeInterpreter::ChezSchemeInterpreter(PrivateTag,
   // Both pairs use SCHEME_BINARY_DIR as the object-dir so compiled .so
   // files always land in the build tree, never in the source trees.
   addLibraryPath(SCHEME_LIBRARIES_DIR, SCHEME_BINARY_DIR);
-  addLibraryPath(RIME_DIR,             SCHEME_BINARY_DIR);
+  addLibraryPath(RIME_DIR, SCHEME_BINARY_DIR);
 #endif
 
   // CREST_PATH: optional colon-separated (POSIX) or semicolon-separated
@@ -140,20 +147,34 @@ ChezSchemeInterpreter::ChezSchemeInterpreter(PrivateTag,
 
 ChezSchemeInterpreter::~ChezSchemeInterpreter() {
   if (logLevel_ <= SchemeLogLevel::Debug) {
-    llvm::errs() << "[debug] ChezSchemeInterpreter: Shutting down Scheme runtime\n";
+    llvm::errs()
+        << "[debug] ChezSchemeInterpreter: Shutting down Scheme runtime\n";
   }
   // Chez Scheme does not require explicit cleanup
 }
 
-// ─── Configuration ────────────────────────────────────────────────────────────
+// ─── Configuration
+// ────────────────────────────────────────────────────────────
 
 SchemeLogLevel parseLogLevel(const std::string& level) {
-  if (level == "trace")   { return SchemeLogLevel::Trace; }
-  if (level == "debug")   { return SchemeLogLevel::Debug; }
-  if (level == "info")    { return SchemeLogLevel::Info; }
-  if (level == "warning") { return SchemeLogLevel::Warning; }
-  if (level == "error")   { return SchemeLogLevel::Error; }
-  if (level == "fatal")   { return SchemeLogLevel::Fatal; }
+  if (level == "trace") {
+    return SchemeLogLevel::Trace;
+  }
+  if (level == "debug") {
+    return SchemeLogLevel::Debug;
+  }
+  if (level == "info") {
+    return SchemeLogLevel::Info;
+  }
+  if (level == "warning") {
+    return SchemeLogLevel::Warning;
+  }
+  if (level == "error") {
+    return SchemeLogLevel::Error;
+  }
+  if (level == "fatal") {
+    return SchemeLogLevel::Fatal;
+  }
   llvm::errs() << "Warning: unknown log level '" << level
                << "', defaulting to 'warning'\n";
   return SchemeLogLevel::Warning;
@@ -163,14 +184,15 @@ void ChezSchemeInterpreter::setLogLevel(SchemeLogLevel level) {
   logLevel_ = level;
 }
 
-SchemeLogLevel ChezSchemeInterpreter::getLogLevel() const {
-  return logLevel_;
-}
+SchemeLogLevel ChezSchemeInterpreter::getLogLevel() const { return logLevel_; }
 
-// ─── Library paths ────────────────────────────────────────────────────────────
+// ─── Library paths
+// ────────────────────────────────────────────────────────────
 
-void ChezSchemeInterpreter::addLibraryPath(const char* src_path, const char* bin_path) {
-  ptr lib_dirs_param = Stop_level_value(Sstring_to_symbol("library-directories"));
+void ChezSchemeInterpreter::addLibraryPath(const char* src_path,
+                                           const char* bin_path) {
+  ptr lib_dirs_param =
+      Stop_level_value(Sstring_to_symbol("library-directories"));
   ptr current_dirs = Scall0(lib_dirs_param);
   ptr pair = Scons(Sstring(src_path), Sstring(bin_path));
   Scall1(lib_dirs_param, Scons(pair, current_dirs));
@@ -181,7 +203,8 @@ void ChezSchemeInterpreter::addLibraryPath(const char* src_path, const char* bin
   }
 }
 
-// ─── Script / eval ────────────────────────────────────────────────────────────
+// ─── Script / eval
+// ────────────────────────────────────────────────────────────
 
 bool ChezSchemeInterpreter::load(const char* scriptPath) {
   ptr load_sym = Stop_level_value(Sstring_to_symbol("load"));
@@ -190,9 +213,10 @@ bool ChezSchemeInterpreter::load(const char* scriptPath) {
 }
 
 bool ChezSchemeInterpreter::eval(const char* code) {
-  ptr eval_sym     = Stop_level_value(Sstring_to_symbol("eval"));
-  ptr read_sym     = Stop_level_value(Sstring_to_symbol("read"));
-  ptr open_port_sym = Stop_level_value(Sstring_to_symbol("open-string-input-port"));
+  ptr eval_sym = Stop_level_value(Sstring_to_symbol("eval"));
+  ptr read_sym = Stop_level_value(Sstring_to_symbol("read"));
+  ptr open_port_sym =
+      Stop_level_value(Sstring_to_symbol("open-string-input-port"));
 
   ptr port = Scall1(open_port_sym, Sstring(code));
   ptr expr = Scall1(read_sym, port);
@@ -200,22 +224,22 @@ bool ChezSchemeInterpreter::eval(const char* code) {
   return true;
 }
 
-// ─── Value helpers ────────────────────────────────────────────────────────────
+// ─── Value helpers
+// ────────────────────────────────────────────────────────────
 
-ptr ChezSchemeInterpreter::makeString(const char* str) {
-  return Sstring(str);
-}
+ptr ChezSchemeInterpreter::makeString(const char* str) { return Sstring(str); }
 
-ptr ChezSchemeInterpreter::makeInteger(long value) {
-  return Sinteger(value);
-}
+ptr ChezSchemeInterpreter::makeInteger(long value) { return Sinteger(value); }
 
-// ─── Function calls ───────────────────────────────────────────────────────────
+// ─── Function calls
+// ───────────────────────────────────────────────────────────
 
 std::string ChezSchemeInterpreter::callFunction(const char* functionName,
                                                 const std::vector<ptr>& args) {
   ptr func = Stop_level_value(Sstring_to_symbol(functionName));
-  if (func == Sfalse) { return ""; }
+  if (func == Sfalse) {
+    return "";
+  }
 
   ptr args_list = Snil;
   for (auto it = args.rbegin(); it != args.rend(); ++it) {
@@ -240,10 +264,11 @@ std::string ChezSchemeInterpreter::callFunction(const char* functionName,
 }
 
 void ChezSchemeInterpreter::callPassFunction(const char* functionName,
-                                            mlir::Operation* op) {
+                                             mlir::Operation* op) {
   ptr func = Stop_level_value(Sstring_to_symbol(functionName));
   if (func == Sfalse) {
-    llvm::errs() << "Warning: Scheme function '" << functionName << "' not found\n";
+    llvm::errs() << "Warning: Scheme function '" << functionName
+                 << "' not found\n";
     return;
   }
   ptr schemeOp = Sunsigned64(reinterpret_cast<uint64_t>(op));

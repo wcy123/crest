@@ -4,8 +4,8 @@
  */
 //===- InterpreterTest.cpp - Unit tests for ChezSchemeInterpreter ---------===//
 
-#include "gtest/gtest.h"
 #include "../../lib/Interpreter/ChezSchemeInterpreter.h"
+#include "gtest/gtest.h"
 
 using namespace crest;
 
@@ -15,18 +15,12 @@ using namespace crest;
 static std::shared_ptr<ChezSchemeInterpreter> g_interp;
 
 class InterpreterTest : public ::testing::Test {
- protected:
-  static void SetUpTestSuite() {
-    g_interp = ChezSchemeInterpreter::instance();
-  }
-  static void TearDownTestSuite() {
-    g_interp.reset();
-  }
+protected:
+  static void SetUpTestSuite() { g_interp = ChezSchemeInterpreter::instance(); }
+  static void TearDownTestSuite() { g_interp.reset(); }
 };
 
-TEST_F(InterpreterTest, InstanceIsNonNull) {
-  ASSERT_NE(g_interp, nullptr);
-}
+TEST_F(InterpreterTest, InstanceIsNonNull) { ASSERT_NE(g_interp, nullptr); }
 
 TEST_F(InterpreterTest, SameInstanceReturned) {
   auto b = ChezSchemeInterpreter::instance();
@@ -38,12 +32,12 @@ TEST_F(InterpreterTest, EvalSimpleExpression) {
 }
 
 TEST(ParseLogLevel, KnownLevels) {
-  EXPECT_EQ(parseLogLevel("trace"),   SchemeLogLevel::Trace);
-  EXPECT_EQ(parseLogLevel("debug"),   SchemeLogLevel::Debug);
-  EXPECT_EQ(parseLogLevel("info"),    SchemeLogLevel::Info);
+  EXPECT_EQ(parseLogLevel("trace"), SchemeLogLevel::Trace);
+  EXPECT_EQ(parseLogLevel("debug"), SchemeLogLevel::Debug);
+  EXPECT_EQ(parseLogLevel("info"), SchemeLogLevel::Info);
   EXPECT_EQ(parseLogLevel("warning"), SchemeLogLevel::Warning);
-  EXPECT_EQ(parseLogLevel("error"),   SchemeLogLevel::Error);
-  EXPECT_EQ(parseLogLevel("fatal"),   SchemeLogLevel::Fatal);
+  EXPECT_EQ(parseLogLevel("error"), SchemeLogLevel::Error);
+  EXPECT_EQ(parseLogLevel("fatal"), SchemeLogLevel::Fatal);
 }
 
 TEST(ParseLogLevel, UnknownDefaultsToWarning) {
