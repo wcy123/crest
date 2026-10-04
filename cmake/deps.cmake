@@ -134,44 +134,24 @@ if(CREST_EMBED_SCHEME_BOOT)
   set(CREST_BOOT_HEADER "${ChezBootHeaders_BINARY_DIR}/CrestBoot.h")
   set(CREST_SCHEME_OBJ_DIR "${CMAKE_CURRENT_BINARY_DIR}/scheme-objs")
 
-  # ── Scan .sls dependency graph at configure time ────────────────────────────
-  # Generates a topologically-sorted library list for single-process compilation.
-  set(SCHEME_ORDER_TXT "${CMAKE_CURRENT_BINARY_DIR}/SchemeLibTargets_order.txt")
-  execute_process(
-    COMMAND ${Python3_EXECUTABLE}
-            ${CMAKE_SOURCE_DIR}/cmake/scan_scheme_deps.py
-            --scheme-dir ${CMAKE_SOURCE_DIR}/scheme
-            --rime-dir   ${CREST_RIME_DIR}
-            --obj-dir    ${CREST_SCHEME_OBJ_DIR}
-            --scheme-bin ${CHEZ_SCHEME_BIN}
-            --script     ${CMAKE_SOURCE_DIR}/cmake/compile_one_lib.ss
-            --output     ${CMAKE_CURRENT_BINARY_DIR}/SchemeLibTargets.cmake
-    RESULT_VARIABLE _scan_result
-  )
-  if(NOT _scan_result EQUAL 0)
-    message(FATAL_ERROR "CREST: scan_scheme_deps.py failed (exit ${_scan_result})")
-  endif()
-
   file(GLOB_RECURSE CREST_SLS_FILES "${CMAKE_SOURCE_DIR}/scheme/*.sls")
 
-  set(CREST_SCHEME_OBJ "${CMAKE_CURRENT_BINARY_DIR}/scheme-objs")
-
-  # ── Compile all libraries (single process, no source copying) ───────────────
-  # compile-file with explicit output paths writes .so directly into
-  # scheme-objs/ (build tree). The source tree is NEVER written to.
+  # ── Compile all libraries via compile-imported-libraries ─────────────────────
+  # Chez handles topological ordering automatically when
+  # compile-imported-libraries is #t.  library-directories (source . object)
+  # pairs redirect all compiled output to scheme-objs/ (build tree).
+  # No scanner, no order file, no source copying needed.
   add_custom_command(
     OUTPUT  ${CREST_BOOT_FILE}
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CREST_SCHEME_OBJ}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CREST_SCHEME_OBJ_DIR}
     COMMAND ${CHEZ_SCHEME_BIN}
             --script  ${CMAKE_SOURCE_DIR}/cmake/compile_scheme_libs.ss
-            ${SCHEME_ORDER_TXT}
             ${CMAKE_SOURCE_DIR}/scheme   # scheme-src (read-only)
             ${CREST_RIME_DIR}            # rime-src   (read-only)
-            ${CREST_SCHEME_OBJ}          # obj-dir    (build tree output)
+            ${CREST_SCHEME_OBJ_DIR}      # obj-dir    (build tree output)
             ${CREST_BOOT_FILE}
     DEPENDS ChezScheme ${CREST_SLS_FILES}
             ${CMAKE_SOURCE_DIR}/cmake/compile_scheme_libs.ss
-            ${SCHEME_ORDER_TXT}
     COMMENT "Compiling CREST Scheme libraries into crest.boot"
     VERBATIM
   )
