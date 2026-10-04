@@ -293,7 +293,7 @@
   ;;
   (define-record-type (ast-operand make-ast-operand ast-operand?)
     (fields
-      (mutable kind)           ;; Phase 1 (parse): symbol - 'required, 'optional, or 'variadic
+      (mutable kind)           ;; Phase 1 (parse): symbol - ':required, ':optional, or ':variadic
                                ;; Phase 2 (validate): unchanged
                                ;; Phase 3 (analyze): used to compute operand segment positions
 

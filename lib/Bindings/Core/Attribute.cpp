@@ -24,6 +24,7 @@
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/AsmParser/AsmParser.h"
+#include "../Support/ArrayRef.h"
 #include "mlir/IR/Operation.h"
 #include <limits>
 #include <string>
@@ -267,6 +268,12 @@ int mlir_attr_isa_string(uint64_t attr_ptr) {
   return mlir::isa<mlir::StringAttr>(attr) ? 1 : 0;
 }
 
+int mlir_attr_isa_array_ref_i32(uint64_t attr_ptr) {
+  if (!attr_ptr) { return 0; }
+  auto attr = mlir::Attribute::getFromOpaquePointer(reinterpret_cast<const void*>(attr_ptr));
+  return mlir::isa<mlir::DenseI32ArrayAttr>(attr) ? 1 : 0;
+}
+
 int mlir_attr_isa_dense_elements(uint64_t attr_ptr) {
   if (!attr_ptr) { return 0; }
   auto attr = mlir::Attribute::getFromOpaquePointer(
@@ -391,20 +398,37 @@ ptr mlir_attr_as_f32(uint64_t attr_ptr) {
 }
 
 //===----------------------------------------------------------------------===//
-// Misc op-level helpers
+// mlir_attr_as_array_ref_i32 — zero-copy access to DenseI32ArrayAttr data
+//
+// Returns a uptr to a heap-allocated CArrayRef{data, size} that points
+// directly into the attr's internal int32_t buffer (no data copy).
+//
+// Lifetime of the returned uptr (the CArrayRef header):
+//   Valid until mlir_array_ref_destroy is called on it. After that it is a
+//   dangling pointer regardless of MLIRContext state.
+//   Use (with-array-ref ...) or (array-ref-destroy ref) to ensure cleanup.
+//
+// Lifetime of the data it points to (the attr's internal buffer):
+//   Valid as long as the MLIRContext is alive (attrs are context-owned,
+//   uniqued, and never relocated).
 //===----------------------------------------------------------------------===//
 
-ptr mlir_op_get_operand_segment_sizes(uint64_t op_ptr) {
-  if (!op_ptr) { return Snil; }
-  auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-  auto attr = op->getAttrOfType<mlir::DenseI32ArrayAttr>("operandSegmentSizes");
-  if (!attr) { return Snil; }
-  ptr result = Snil;
-  auto vals = attr.asArrayRef();
-  for (int i = static_cast<int>(vals.size()) - 1; i >= 0; --i) {
-    result = Scons(Sfixnum(vals[i]), result);
+uint64_t mlir_attr_as_array_ref_i32(uint64_t attr_ptr) {
+  if (!attr_ptr) {
+    scheme_error("mlir-attr-as-array-ref-i32", "null attribute pointer");
   }
-  return result;
+  auto attr = mlir::Attribute::getFromOpaquePointer(
+      reinterpret_cast<const void*>(attr_ptr));
+  auto arr = mlir::dyn_cast<mlir::DenseI32ArrayAttr>(attr);
+  if (!arr) {
+    scheme_error("mlir-attr-as-array-ref-i32",
+                 "attribute is not a DenseI32ArrayAttr");
+  }
+  // Point directly into the attr's internal storage — zero data copy.
+  auto *ref = new CArrayRef{
+      reinterpret_cast<uint64_t>(arr.asArrayRef().data()),
+      static_cast<uint64_t>(arr.size())};
+  return reinterpret_cast<uint64_t>(ref);
 }
 
 } // extern "C"
@@ -437,17 +461,17 @@ void registerAttributeBindings() {
   Sregister_symbol("mlir_attr_isa_integer",              (void*)::mlir_attr_isa_integer);
   Sregister_symbol("mlir_attr_isa_float",                (void*)::mlir_attr_isa_float);
   Sregister_symbol("mlir_attr_isa_string",               (void*)::mlir_attr_isa_string);
+  Sregister_symbol("mlir_attr_isa_array_ref_i32",         (void*)::mlir_attr_isa_array_ref_i32);
   Sregister_symbol("mlir_attr_isa_dense_elements",       (void*)::mlir_attr_isa_dense_elements);
   Sregister_symbol("mlir_attr_isa_dense_elements_splat", (void*)::mlir_attr_isa_dense_elements_splat);
   Sregister_symbol("mlir_attr_as_integer",               (void*)::mlir_attr_as_integer);
   Sregister_symbol("mlir_attr_as_float",                 (void*)::mlir_attr_as_float);
+  Sregister_symbol("mlir_attr_as_array_ref_i32",         (void*)::mlir_attr_as_array_ref_i32);
   Sregister_symbol("mlir_attr_isa_f32",                  (void*)::mlir_attr_isa_f32);
   Sregister_symbol("mlir_attr_as_f32",                   (void*)::mlir_attr_as_f32);
   Sregister_symbol("mlir_attr_into_splat_float",         (void*)::mlir_attr_into_splat_float);
   Sregister_symbol("mlir_attr_into_splat_integer",       (void*)::mlir_attr_into_splat_integer);
   Sregister_symbol("mlir_attr_into_i32_array",           (void*)::mlir_attr_into_i32_array);
-  Sregister_symbol("mlir_op_get_operand_segment_sizes",
-                   (void*)::mlir_op_get_operand_segment_sizes);
 }
 
 } // namespace crest

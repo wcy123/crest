@@ -14,14 +14,9 @@
 // Only make/destroy require C++ since they manage heap memory.
 
 #include "../SchemeWrapper.h"
-#include <cstdint>
+#include "ArrayRef.h"
 
 extern "C" {
-
-struct CArrayRef {
-  uint64_t data;
-  uint64_t size;
-};
 
 // Allocate a CArrayRef on the C heap and return its address as uptr.
 // The Scheme side passes this uptr to array-ref-at and array-ref-size
