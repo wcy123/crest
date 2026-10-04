@@ -4,11 +4,11 @@
  */
 
 #include "Conversion.h"
-#include "Core.h"
+#include "Core/Core.h"
 #include "Dialects/HipSR.h"
 #include "Dialects/Shape.h"
-#include "Logging.h"
 #include "Support/ArrayRef.h"
+#include "Support/Logging.h"
 
 namespace crest {
 

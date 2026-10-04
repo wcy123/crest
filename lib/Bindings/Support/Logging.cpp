@@ -3,7 +3,7 @@
  * Licensed under the MIT License.
  */
 
-#include "../Interpreter/ChezSchemeInterpreter.h"
+#include "../../Interpreter/ChezSchemeInterpreter.h"
 #include "SchemeWrapper.h"
 #include "llvm/Support/raw_ostream.h"
 

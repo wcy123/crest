@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include "../Bindings/SchemeWrapper.h"
+#include "../Bindings/Support/SchemeWrapper.h"
 
 namespace mlir {
 class Operation;

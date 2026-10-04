@@ -3,9 +3,9 @@
  * Licensed under the MIT License.
  */
 
-#include "LockedSchemeObject.h"
-#include "Logging.h"
-#include "SchemeWrapper.h"
+#include "Support/LockedSchemeObject.h"
+#include "Support/Logging.h"
+#include "Support/SchemeWrapper.h"
 #include "llvm/Support/raw_ostream.h"
 #include "mlir/CAPI/IR.h"
 #include "mlir/CAPI/Wrap.h"

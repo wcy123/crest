@@ -18,7 +18,7 @@
 //   [mlir_attr_isa_* convention] mlir_type_is_device_tensor /
 //   mlir_tensor_type_in_host_space / etc.
 
-#include "../SchemeWrapper.h"
+#include "../Support/SchemeWrapper.h"
 #include "mlir/IR/Attributes.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinTypes.h"

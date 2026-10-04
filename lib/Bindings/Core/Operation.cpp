@@ -7,9 +7,9 @@
 // walk, and diagnostic emission.
 
 #include "mlir/IR/Operation.h"
-#include "../LockedSchemeObject.h"
-#include "../Logging.h"
-#include "../SchemeWrapper.h"
+#include "../Support/LockedSchemeObject.h"
+#include "../Support/Logging.h"
+#include "../Support/SchemeWrapper.h"
 #include "mlir/CAPI/IR.h"
 #include "mlir/CAPI/Wrap.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
