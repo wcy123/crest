@@ -5,7 +5,6 @@
 
 #include "Conversion.h"
 #include "Core/Core.h"
-#include "Dialects/HipSR.h"
 #include "Dialects/Shape.h"
 #include "Support/ArrayRef.h"
 #include "Support/Logging.h"
@@ -26,7 +25,6 @@ void registerMlirForeignFunctions() {
   registerShapeBindings();
   registerLoggingBindings();
   registerArrayRefBindings();
-  registerHipSRDialectBindings();
   if (g_extra_bindings_fn) {
     g_extra_bindings_fn();
   }

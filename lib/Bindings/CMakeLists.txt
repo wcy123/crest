@@ -14,7 +14,6 @@ add_library(CrestBindings STATIC
   Core/Builder.cpp
   Core/Types.cpp
   Dialects/Shape.cpp
-  Dialects/HipSR.cpp
   Support/ArrayRef.cpp
   Support/Logging.cpp
   Support/LockedSchemeObject.cpp
