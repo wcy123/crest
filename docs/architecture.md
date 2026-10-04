@@ -173,6 +173,7 @@ functions in the same file, with the same edit–reload cycle as the pattern.
 | [`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns) support | [No](https://mlir.llvm.org/docs/DeclarativeRewrites/) | [No](https://mlir.llvm.org/docs/PDLL/) | **Yes** |
 | Edit → test cycle | Rebuild required | Rebuild required | **Reload `.sls`** |
 | Extra toolchain | `mlir-tblgen` | `mlir-pdll` + `mlir-tblgen` | **None** |
+| Constraints without C++ (`:where`) | No | No | **Yes** |
 | Turing-complete rewrite logic | Via C++ | Via C++ | **Native Scheme** |
 | Interactive debugging | No | No | **Yes** |
 | Patterns in deployed binary | Yes | Yes | **Yes (boot mode)** |
