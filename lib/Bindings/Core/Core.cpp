@@ -7,11 +7,11 @@
 // Implementations live in Core/Attribute.cpp, Core/Operation.cpp,
 // Core/Value.cpp, Core/Builder.cpp, and Core/Types.cpp.
 
-#include "Core/Attribute.h"
-#include "Core/Builder.h"
-#include "Core/Operation.h"
-#include "Core/Types.h"
-#include "Core/Value.h"
+#include "Attribute.h"
+#include "Builder.h"
+#include "Operation.h"
+#include "Types.h"
+#include "Value.h"
 
 namespace crest {
 

@@ -3,7 +3,7 @@
  * Licensed under the MIT License.
  */
 
-#include "../Interpreter/ChezSchemeInterpreter.h"
+#include "../../Interpreter/ChezSchemeInterpreter.h"
 #include "SchemeWrapper.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -54,13 +54,6 @@ void mlir_log_fatal(const char* msg) {
     llvm::errs() << "[fatal] " << msg << "\n";
   }
 }
-
-//===----------------------------------------------------------------------===//
-// Phase 1: Type System FFI
-//===----------------------------------------------------------------------===//
-
-// Set memory space on a RankedTensorType
-// Returns: new Type* with memory space set
 
 } // extern "C"
 

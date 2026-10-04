@@ -6,18 +6,17 @@ set(CHEZ_MACHINE_LOCAL "${CHEZ_MACHINE}")
 
 add_library(CrestBindings STATIC
   MainModule.cpp
-  LockedSchemeObject.cpp
-  Core.cpp
+  Conversion.cpp
+  Core/Core.cpp
   Core/Attribute.cpp
   Core/Operation.cpp
   Core/Value.cpp
   Core/Builder.cpp
   Core/Types.cpp
-  Logging.cpp
-  Conversion.cpp
   Dialects/Shape.cpp
-  Dialects/HipSR.cpp
   Support/ArrayRef.cpp
+  Support/Logging.cpp
+  Support/LockedSchemeObject.cpp
 )
 
 target_include_directories(CrestBindings

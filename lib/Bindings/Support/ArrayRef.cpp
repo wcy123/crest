@@ -14,7 +14,7 @@
 // Only make/destroy require C++ since they manage heap memory.
 
 #include "ArrayRef.h"
-#include "../SchemeWrapper.h"
+#include "SchemeWrapper.h"
 
 extern "C" {
 

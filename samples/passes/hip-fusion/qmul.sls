@@ -19,7 +19,7 @@
           (rename (only (rnrs) =) (= num=))
           (mlir core ir)
           (mlir core conversion)
-          (mlir hip fusion)
+          (passes hip-fusion fusion)
           (crest)
           (passes hip-fusion helpers))
 
