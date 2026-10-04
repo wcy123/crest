@@ -1,7 +1,7 @@
 #!r6rs
 (library (crest internal codegen)
   (export generate-debug-ast
-          generate-pattern-matchAndRewrite
+          generate-pattern-match-and-rewrite
           generate-debug-codegen
           make-unbound-value
           unbound-value?)
@@ -24,7 +24,7 @@
   ;; Call graph
   ;;=======================================================================
   ;;
-  ;; generate-pattern-matchAndRewrite
+  ;; generate-pattern-match-and-rewrite
   ;; ├── generate-root-result-setters  (set! %varN (mlir-operation-get-result op N)) per root result
   ;; │   └── find-root-op
   ;; ├── collect-all-variables
@@ -53,7 +53,7 @@
         (with-syntax ([code-list (datum->syntax #'fname `',code-datum)])
           #'(define fname (lambda () code-list))))))
 
-  (define (generate-pattern-matchAndRewrite ast-rec)
+  (define (generate-pattern-match-and-rewrite ast-rec)
     ;; All four are syntax identifiers from the user's call site (guaranteed by validation).
     ;; They become the lambda parameters in the generated function, so references to them
     ;; in :then-let expressions share the same binding via hygiene.
