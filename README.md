@@ -78,12 +78,18 @@ export CREST_PATH=/my-project/scheme:/path/to/crest/samples
 ## Deployment
 
 During development, `.sls` files are loaded from the filesystem at runtime —
-edit a pattern and re-run, no rebuild needed. For single-binary deployment
-with no `.sls` files required:
+edit a pattern and re-run, no rebuild needed.
+
+In production, the deployed binary must be able to find the `.sls` files at
+the same paths used at build time. If the deployment environment does not have
+the source tree, the binary will fail at startup. `CREST_EMBED_SCHEME_BOOT=ON`
+eliminates this dependency: all `.sls` libraries are compiled into a single
+`crest.boot` file and embedded as a C byte-array in the binary. The deployed
+binary requires no `.sls` files at runtime.
 
 ```bash
 cmake -B build -DCREST_EMBED_SCHEME_BOOT=ON
-cmake --build build   # compiles all .sls into crest.boot, embeds in binary
+cmake --build build   # compiles .sls → crest.boot → embeds in binary
 ```
 
 Downstream projects can add their own libraries to the boot:
