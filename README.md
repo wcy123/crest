@@ -78,7 +78,14 @@ export CREST_PATH=/my-project/scheme:/path/to/crest/samples
 ## Deployment
 
 During development, `.sls` files are loaded from the filesystem at runtime —
-edit a pattern and re-run, no rebuild needed.
+edit a pattern and re-run, no rebuild needed. Downstream developers point
+`CREST_PATH` at their own `.sls` directory; the interpreter picks up changes
+on the next run without touching the CREST build:
+
+```bash
+export CREST_PATH=/my-project/scheme
+build/tools/crest-opt/crest-opt --crest-pass="module=passes/my-pass" input.mlir
+```
 
 In production, the deployed binary must be able to find the `.sls` files at
 the same paths used at build time. If the deployment environment does not have
