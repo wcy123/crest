@@ -8,7 +8,6 @@
 
 #include <memory>
 #include <string>
-#include <vector>
 
 #include "../Bindings/Support/SchemeWrapper.h"
 
@@ -66,15 +65,7 @@ public:
   void setLogLevel(SchemeLogLevel level);
   SchemeLogLevel getLogLevel() const;
 
-  bool load(const char* scriptPath);
   bool eval(const char* code);
-
-  ptr makeString(const char* str);
-  ptr makeInteger(long value);
-
-  std::string callFunction(const char* functionName,
-                           const std::vector<ptr>& args);
-
   void callPassFunction(const char* functionName, mlir::Operation* op);
 
   void addLibraryPath(const char* src_path, const char* bin_path);
