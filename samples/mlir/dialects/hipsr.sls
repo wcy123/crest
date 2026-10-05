@@ -149,7 +149,7 @@
                  (> (mlir-ranked-tensor-type-get-rank type) 0)
                  (= 0 (mlir-mlir::RankedTensorType::getEncoding type)))
           (mlir-ranked-tensor-type-with-encoding type
-              (make-hipsr-device-space-attr (mlir-mlir::Type::getContext type)))
+              (make-hipsr-device-space-attr (mlir::Type::getContext type)))
             #f)))
     (type-converter-add-tensor-widening-materialization type-converter))
 
