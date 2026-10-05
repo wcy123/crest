@@ -6,7 +6,7 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 ;;
-;; (mlir dialects tensor ffi) — raw C bindings for tensor dialect type ops.
+;; (mlir dialect tensor ir ffi) — raw C bindings for CREST tensor utilities.
 ;;
 ;; % prefix = raw C binding. Prefer (mlir dialect tensor ir) for normal use.
 ;;
