@@ -6,11 +6,15 @@
 // Mirrors mlir/IR/Builders.h — OpBuilder bindings.
 
 #include "OpBuilder.h"
-#include "../Support/Logging.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/IR/OperationSupport.h"
+
+static void scheme_error(const char* who, const char* msg) {
+  Scall2(Stop_level_value(Sstring_to_symbol("error")), Sstring(who),
+         Sstring(msg));
+}
 
 extern "C" {
 
@@ -18,8 +22,11 @@ extern "C" {
 uint64_t mlir_ir_op_builder_create(uint64_t builder_ptr, uint64_t loc_op_ptr,
                                    const char* op_name, ptr operands_list,
                                    ptr result_types_list) {
-  if (!builder_ptr || !loc_op_ptr) {
-    return 0;
+  if (!builder_ptr) {
+    scheme_error("mlir-ir-op-builder-create", "null builder pointer");
+  }
+  if (!loc_op_ptr) {
+    scheme_error("mlir-ir-op-builder-create", "null loc_op pointer");
   }
   auto* builder = reinterpret_cast<mlir::OpBuilder*>(builder_ptr);
   auto* loc_op = reinterpret_cast<mlir::Operation*>(loc_op_ptr);
@@ -28,8 +35,7 @@ uint64_t mlir_ir_op_builder_create(uint64_t builder_ptr, uint64_t loc_op_ptr,
   for (ptr cur = static_cast<ptr>(operands_list); cur != Snil;
        cur = Scdr(cur)) {
     if (!Spairp(cur)) {
-      mlir_support_logging_error("mlir_ir_op_builder_create: bad operands");
-      return 0;
+      scheme_error("mlir-ir-op-builder-create", "malformed operands list");
     }
     operands.push_back(mlir::Value::getFromOpaquePointer(
         reinterpret_cast<void*>(Sunsigned64_value(Scar(cur)))));
@@ -37,8 +43,7 @@ uint64_t mlir_ir_op_builder_create(uint64_t builder_ptr, uint64_t loc_op_ptr,
   for (ptr cur = static_cast<ptr>(result_types_list); cur != Snil;
        cur = Scdr(cur)) {
     if (!Spairp(cur)) {
-      mlir_support_logging_error("mlir_ir_op_builder_create: bad result types");
-      return 0;
+      scheme_error("mlir-ir-op-builder-create", "malformed result types list");
     }
     resultTypes.push_back(mlir::Type::getFromOpaquePointer(
         reinterpret_cast<const void*>(Sunsigned64_value(Scar(cur)))));
@@ -53,8 +58,13 @@ uint64_t mlir_ir_op_builder_create(uint64_t builder_ptr, uint64_t loc_op_ptr,
 uint64_t mlir_ir_op_builder_create_with_regions(
     uint64_t builder_ptr, uint64_t loc_op_ptr, const char* op_name,
     ptr operands_list, ptr result_types_list, int num_regions) {
-  if (!builder_ptr || !loc_op_ptr) {
-    return 0;
+  if (!builder_ptr) {
+    scheme_error("mlir-ir-op-builder-create-with-regions",
+                 "null builder pointer");
+  }
+  if (!loc_op_ptr) {
+    scheme_error("mlir-ir-op-builder-create-with-regions",
+                 "null loc_op pointer");
   }
   auto* builder = reinterpret_cast<mlir::OpBuilder*>(builder_ptr);
   auto* loc_op = reinterpret_cast<mlir::Operation*>(loc_op_ptr);
@@ -63,7 +73,8 @@ uint64_t mlir_ir_op_builder_create_with_regions(
   for (ptr cur = static_cast<ptr>(operands_list); cur != Snil;
        cur = Scdr(cur)) {
     if (!Spairp(cur)) {
-      return 0;
+      scheme_error("mlir-ir-op-builder-create-with-regions",
+                   "malformed operands list");
     }
     operands.push_back(mlir::Value::getFromOpaquePointer(
         reinterpret_cast<void*>(Sunsigned64_value(Scar(cur)))));
@@ -71,7 +82,8 @@ uint64_t mlir_ir_op_builder_create_with_regions(
   for (ptr cur = static_cast<ptr>(result_types_list); cur != Snil;
        cur = Scdr(cur)) {
     if (!Spairp(cur)) {
-      return 0;
+      scheme_error("mlir-ir-op-builder-create-with-regions",
+                   "malformed result types list");
     }
     resultTypes.push_back(mlir::Type::getFromOpaquePointer(
         reinterpret_cast<const void*>(Sunsigned64_value(Scar(cur)))));
@@ -88,7 +100,7 @@ uint64_t mlir_ir_op_builder_create_with_regions(
 // Heap-allocate an OpBuilder positioned at the end of a block.
 uint64_t mlir_ir_op_builder_at_block_end(uint64_t block_ptr) {
   if (!block_ptr) {
-    return 0;
+    scheme_error("mlir-ir-op-builder-at-block-end", "null block pointer");
   }
   auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
   return reinterpret_cast<uint64_t>(new mlir::OpBuilder(block, block->end()));
@@ -97,7 +109,7 @@ uint64_t mlir_ir_op_builder_at_block_end(uint64_t block_ptr) {
 // Destroy an OpBuilder created by mlir_ir_op_builder_at_block_end.
 void mlir_ir_op_builder_destroy(uint64_t builder_ptr) {
   if (!builder_ptr) {
-    return;
+    scheme_error("mlir-ir-op-builder-destroy", "null builder pointer");
   }
   delete reinterpret_cast<mlir::OpBuilder*>(builder_ptr);
 }
@@ -110,8 +122,12 @@ void mlir_ir_op_builder_destroy(uint64_t builder_ptr) {
 // Returns: Operation* as uptr, or 0 on bad input.
 uint64_t mlir_ir_op_builder_create_from_state(uint64_t builder_ptr,
                                               uint64_t state_ptr) {
-  if (!builder_ptr || !state_ptr) {
-    return 0;
+  if (!builder_ptr) {
+    scheme_error("mlir-ir-op-builder-create-from-state",
+                 "null builder pointer");
+  }
+  if (!state_ptr) {
+    scheme_error("mlir-ir-op-builder-create-from-state", "null state pointer");
   }
   return reinterpret_cast<uint64_t>(
       reinterpret_cast<mlir::OpBuilder*>(builder_ptr)
