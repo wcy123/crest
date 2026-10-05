@@ -16,7 +16,7 @@
   (export populate-equal-patterns)
   (import (except (rnrs (6)) =)
           (only (mlir core operation) mlir-operation-get-context)
-          (only (mlir core value) mlir-value-get-type)
+          (rename (only (mlir ir value) get-type) (get-type mlir-value-get-type))
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)

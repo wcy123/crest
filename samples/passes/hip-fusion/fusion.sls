@@ -14,7 +14,7 @@
 ;;
 ;; The eight functions that hip-ep implements in C++ (Hip.cpp) are re-expressed
 ;; here using generic MLIR attr/type/operand APIs from (mlir core operation),
-;; (mlir core value), (mlir core attribute), and (mlir dialects builtin):
+;; (mlir ir value), (mlir core attribute), and (mlir dialects builtin):
 ;;   hip-extract-splat-scale         — mlir-attr-splat-float-value
 ;;   hip-build-init                  — mlir-build-operation "tensor.empty"
 ;;   hip-create-requantized-layout-op — mlir-op-clone-with-types
@@ -79,7 +79,10 @@
   (import (rnrs)
           (only (chezscheme) nan? foreign-procedure)
           (mlir core operation)
-          (mlir core value)
+          (rename (mlir ir value)
+            (get-defining-op   mlir-value-get-defining-op)
+            (get-type          mlir-value-get-type)
+            (num-uses          mlir-value-num-uses))
           (mlir core attribute)
           (only (mlir core builder) mlir-build-op mlir-op-clone-with-types)
           (mlir dialects builtin))
