@@ -11,8 +11,8 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir ir block ffi)
-  (export %block-get-argument-by-index
-          %block-get-num-arguments)
+  (export %mlir::Block::getArgument
+          %mlir::Block::getNumArguments)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::Block::getArgument — return the idx-th block argument.
@@ -21,15 +21,15 @@
   ;; @return       Value opaque pointer uptr; 0 if null or index out of range
   ;; @see          mlir/IR/Block.h
   ;; @note         Defined in lib/Bindings/IR/Block.cpp
-  (define %block-get-argument-by-index
-    (foreign-procedure "mlir_ir_block_get_argument_by_index" (uptr int) uptr))
+  (define %mlir::Block::getArgument
+    (foreign-procedure "mlir::Block::getArgument" (uptr int) uptr))
 
   ;; @brief mlir::Block::getNumArguments — return the number of block arguments.
   ;; @param block  Block* uptr (must be non-null)
   ;; @return       Argument count (uptr)
   ;; @see          mlir/IR/Block.h
   ;; @note         Defined in lib/Bindings/IR/Block.cpp
-  (define %block-get-num-arguments
-    (foreign-procedure "mlir_ir_block_get_num_arguments" (uptr) uptr))
+  (define %mlir::Block::getNumArguments
+    (foreign-procedure "mlir::Block::getNumArguments" (uptr) uptr))
 
 ) ;; end library (mlir ir block ffi)
