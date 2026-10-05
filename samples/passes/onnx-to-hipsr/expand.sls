@@ -23,6 +23,7 @@
           (mlir core conversion)
           (mlir dialects hipsr)
           (mlir dialects tensor)
+          (mlir support logging)
           (crest))
 
   ;; Unwrap one level of builtin.unrealized_conversion_cast.

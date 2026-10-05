@@ -23,6 +23,7 @@
           (mlir core conversion)
           (mlir dialects hipsr)
           (mlir dialects func)
+          (mlir support logging)
           (passes onnx-to-hipsr cast)
           (passes onnx-to-hipsr scatter-nd)
           (passes onnx-to-hipsr equal)

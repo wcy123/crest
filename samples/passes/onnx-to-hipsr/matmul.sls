@@ -25,6 +25,7 @@
           (mlir dialects hipsr)
           (mlir dialects tensor)
           (mlir dialects shape)
+          (mlir support logging)
           (crest))
 
   (define-conversion-pattern (onnx-matmul->hipsr op operands-ref rewriter type-converter)
