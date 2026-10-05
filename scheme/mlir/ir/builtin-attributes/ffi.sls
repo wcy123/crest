@@ -36,13 +36,7 @@
     %dense-i32-array-attr-as-array-ref
     %dense-fp-elements-attr-splat-value
     %dense-int-elements-attr-splat-value
-    %dense-i32-array-attr-to-list
-    %operation-get-attr
-    %operation-set-attr
-    %operation-get-float-attr
-    %shaped-type-get-element-type
-    %integer-type-get-width
-    %integer-type-is-unsigned)
+    %dense-i32-array-attr-to-list)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   (define %integer-attr-get-i64
@@ -104,23 +98,5 @@
   (define %dense-i32-array-attr-to-list
     (foreign-procedure "mlir_ir_builtin_attributes_dense_i32_array_attr_to_list"
                        (uptr) scheme-object))
-  (define %operation-get-attr
-    (foreign-procedure "mlir_ir_builtin_attributes_operation_get_attr"
-                       (uptr string) uptr))
-  (define %operation-set-attr
-    (foreign-procedure "mlir_ir_builtin_attributes_operation_set_attr"
-                       (uptr string uptr) void))
-  (define %operation-get-float-attr
-    (foreign-procedure "mlir_ir_builtin_attributes_operation_get_float_attr"
-                       (uptr string) double))
-  (define %shaped-type-get-element-type
-    (foreign-procedure "mlir_ir_builtin_attributes_shaped_type_get_element_type"
-                       (uptr) uptr))
-  (define %integer-type-get-width
-    (foreign-procedure "mlir_ir_builtin_attributes_integer_type_get_width"
-                       (uptr) uptr))
-  (define %integer-type-is-unsigned
-    (foreign-procedure "mlir_ir_builtin_attributes_integer_type_is_unsigned"
-                       (uptr) int))
 
 ) ;; end library (mlir ir builtin-attributes ffi)

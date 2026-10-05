@@ -46,7 +46,10 @@
     shaped-type-element-type
     integer-type-width
     integer-type-unsigned?)
-  (import (rnrs) (mlir ir builtin-attributes ffi))
+  (import (rnrs)
+          (mlir ir builtin-attributes ffi)
+          (mlir ir operation ffi)
+          (mlir ir builtin-types ffi))
 
   (define integer-attr-get-i64              %integer-attr-get-i64)
   (define integer-attr-get-index            %integer-attr-get-index)

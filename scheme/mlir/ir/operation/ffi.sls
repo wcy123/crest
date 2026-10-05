@@ -42,7 +42,10 @@
     %emit-error
     %emit-warning
     %emit-remark
-    %erase)
+    %erase
+    %operation-get-attr
+    %operation-set-attr
+    %operation-get-float-attr)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   (define %get-name
@@ -112,5 +115,14 @@
     (foreign-procedure "mlir_ir_operation_emit_remark" (uptr string) void))
   (define %erase
     (foreign-procedure "mlir_ir_operation_erase" (uptr) void))
+  (define %operation-get-attr
+    (foreign-procedure "mlir_ir_builtin_attributes_operation_get_attr"
+                       (uptr string) uptr))
+  (define %operation-set-attr
+    (foreign-procedure "mlir_ir_builtin_attributes_operation_set_attr"
+                       (uptr string uptr) void))
+  (define %operation-get-float-attr
+    (foreign-procedure "mlir_ir_builtin_attributes_operation_get_float_attr"
+                       (uptr string) double))
 
 ) ;; end library (mlir ir operation ffi)
