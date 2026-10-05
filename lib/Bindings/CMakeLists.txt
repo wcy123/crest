@@ -4,12 +4,12 @@
 
 add_library(CrestBindings STATIC
   MainModule.cpp
-  Core/Builder.cpp
   Dialect/Shape/IR/Shape.cpp
   Interfaces/DestinationStyleOp.cpp
   IR/Block.cpp
   IR/BuiltinAttributes.cpp
   IR/BuiltinTypes.cpp
+  IR/OperationState.cpp
   IR/OpBuilder.cpp
   IR/Operation.cpp
   IR/OpResult.cpp

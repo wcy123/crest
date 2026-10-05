@@ -3,11 +3,8 @@
  * Licensed under the MIT License.
  */
 
-#ifndef CREST_BINDINGS_CORE_BUILDER_H
-#define CREST_BINDINGS_CORE_BUILDER_H
+#pragma once
 
 namespace crest {
-void registerBuilderBindings();
+void registerIROperationStateBindings();
 } // namespace crest
-
-#endif // CREST_BINDINGS_CORE_BUILDER_H
