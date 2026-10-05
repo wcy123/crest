@@ -11,17 +11,21 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir ir block)
-  (export block-get-argument-by-index)
+  (export block-get-argument-by-index
+          block-get-num-arguments)
   (import (rnrs) (mlir ir block ffi))
 
-  ;; @brief block-get-argument-by-index — thin wrapper over %block-get-argument-by-index.
-  ;;        Returns the idx-th argument of a Block directly by index.
-  ;; @param block  Block* uptr — the block
+  ;; @brief mlir::Block::getArgument — return the idx-th block argument.
+  ;; @param block  Block* uptr
   ;; @param idx    0-based argument index (int)
-  ;; @return       Value opaque pointer uptr; 0 if block is null or index out of range
-  ;; @see          mlir/IR/Block.h  Block::getArgument(unsigned)
-  ;; @note         Delegates to %block-get-argument-by-index in (mlir ir block ffi);
-  ;;               C++ implementation in lib/Bindings/IR/Block.cpp
+  ;; @return       Value opaque pointer uptr; 0 if null or index out of range
+  ;; @see          mlir/IR/Block.h
   (define block-get-argument-by-index %block-get-argument-by-index)
+
+  ;; @brief mlir::Block::getNumArguments — return the number of block arguments.
+  ;; @param block  Block* uptr (must be non-null)
+  ;; @return       Argument count (uptr)
+  ;; @see          mlir/IR/Block.h
+  (define block-get-num-arguments %block-get-num-arguments)
 
 ) ;; end library (mlir ir block)
