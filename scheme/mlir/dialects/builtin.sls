@@ -82,4 +82,4 @@
   (define mlir-type-is-unsigned
     (lambda (t) (not (zero? (%type-is-unsigned t)))))
 
-) ;; end library (mlir core types)
+) ;; end library (mlir dialects builtin)
