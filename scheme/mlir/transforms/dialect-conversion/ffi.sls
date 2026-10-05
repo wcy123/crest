@@ -11,6 +11,8 @@
 ;; All names carry a % prefix to signal "raw C binding". Users import
 ;; (mlir transforms dialect-conversion) for clean names.
 ;;
+;; Mirrors mlir/Transforms/DialectConversion.h.
+;;
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir transforms dialect-conversion ffi)

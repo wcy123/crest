@@ -8,6 +8,8 @@
 ;;
 ;; (mlir support array-ref) — C ABI helpers for ArrayRef<T> structs.
 ;;
+;; CREST-specific (no direct MLIR header); mirrors lib/Bindings/Support/ArrayRef.h.
+;;
 ;; Struct layout (matching llvm::ArrayRef<T> ABI, 64-bit):
 ;;   offset 0: data uptr   — pointer to first element
 ;;   offset 8: size uptr   — number of elements

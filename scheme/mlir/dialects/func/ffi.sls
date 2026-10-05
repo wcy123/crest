@@ -10,6 +10,8 @@
 ;;
 ;; % prefix = raw C binding. Prefer (mlir dialects func) for normal use.
 ;;
+;; Mirrors mlir/Dialect/Func/IR/FuncOps.h.
+;;
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir dialects func ffi)

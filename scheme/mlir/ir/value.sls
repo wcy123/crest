@@ -8,6 +8,8 @@
 ;;
 ;; (mlir ir value) — mlir/IR/Value.h user-visible API.
 ;;
+;; Mirrors mlir/IR/Value.h.
+;;
 ;; Function names follow the C++ method names without the class prefix.
 ;; Users may add a prefix (mlir-ir-value-, value-, etc.) as desired.
 ;;

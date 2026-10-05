@@ -10,6 +10,8 @@
 ;;
 ;; % prefix = raw C binding. Prefer (mlir support array-ref) for normal use.
 ;;
+;; CREST-specific (no direct MLIR header); mirrors lib/Bindings/Support/ArrayRef.h.
+;;
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir support array-ref ffi)

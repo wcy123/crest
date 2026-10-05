@@ -11,6 +11,8 @@
 ;; Low-level %-prefixed procedures bound directly to C symbols.
 ;; Prefer importing (mlir support logging) for the clean public API.
 ;;
+;; CREST-specific (no direct MLIR header); mirrors lib/Bindings/Support/Logging.h.
+;;
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir support logging ffi)

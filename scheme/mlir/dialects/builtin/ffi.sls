@@ -10,6 +10,8 @@
 ;;
 ;; % prefix = raw C binding. Prefer (mlir dialects builtin) for normal use.
 ;;
+;; Mirrors mlir/IR/BuiltinTypes.h.
+;;
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir dialects builtin ffi)

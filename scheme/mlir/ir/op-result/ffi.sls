@@ -10,6 +10,8 @@
 ;;
 ;; % prefix = raw C binding. Prefer (mlir ir op-result) for normal use.
 ;;
+;; Mirrors mlir/IR/Value.h (OpResult is defined in Value.h).
+;;
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir ir op-result ffi)

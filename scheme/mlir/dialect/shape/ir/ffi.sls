@@ -10,6 +10,8 @@
 ;;
 ;; % prefix = raw C binding. Prefer (mlir dialect shape ir) for normal use.
 ;;
+;; Mirrors mlir/Dialect/Shape/IR/Shape.h.
+;;
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir dialect shape ir ffi)

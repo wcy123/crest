@@ -8,6 +8,8 @@
 ;;
 ;; (mlir dialects builtin) — MLIR builtin dialect: type constructors and queries.
 ;;
+;; Mirrors mlir/IR/BuiltinTypes.h (re-exports builtin type helpers).
+;;
 ;; The builtin dialect is MLIR's fundamental built-in dialect.  Its types
 ;; (IntegerType, FloatType, IndexType, RankedTensorType, etc.) are defined in
 ;; mlir/IR/BuiltinTypes.h and registered as part of mlir::BuiltinDialect.

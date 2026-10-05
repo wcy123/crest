@@ -6,6 +6,8 @@
 ;;
 ;; (mlir dialects func) — func dialect populate helpers.
 ;;
+;; Mirrors mlir/Dialect/Func/IR/FuncOps.h.
+;;
 ;; Registers conversion patterns that lower func/return ops so that
 ;; function signatures and return values are updated by the TypeConverter.
 ;;

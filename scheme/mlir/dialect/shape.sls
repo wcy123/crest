@@ -9,6 +9,10 @@
 ;; (mlir dialect shape) — backward-compat shim.
 ;; Canonical module is (mlir dialect shape ir).
 ;;
+;; This file is a backward-compatibility shim; it has no direct MLIR header
+;; of its own.  See (mlir dialect shape ir) which mirrors
+;; mlir/Dialect/Shape/IR/Shape.h.
+;;
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir dialect shape)
