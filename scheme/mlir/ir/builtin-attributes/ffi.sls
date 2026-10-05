@@ -9,8 +9,8 @@
 ;; (mlir ir builtin-attributes ffi) — raw C bindings for mlir/IR/BuiltinAttributes.h.
 ;;
 ;; % prefix = raw C binding. Prefer (mlir ir builtin-attributes) for normal use.
-;; Old generic dispatch (mlir-make-attr, mlir-attr-isa, etc.) lives in
-;; (mlir core attribute) for backward compatibility.
+;; The old generic dispatch (mlir-make-attr, mlir-attr-isa, etc.) has been
+;; removed; use (mlir ir builtin-attributes) or these raw bindings directly.
 ;;
 ;;===----------------------------------------------------------------------===;;
 

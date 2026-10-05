@@ -6,7 +6,6 @@
 // Mirrors mlir/IR/BuiltinAttributes.h — attribute construction and inspection.
 //
 // C name convention: mlir_ir_builtin_attributes_<class>_<method>
-// Old names are also registered for backward compatibility.
 
 #include "BuiltinAttributes.h"
 #include "../Support/ArrayRef.h"
@@ -132,9 +131,7 @@ uint64_t mlir_ir_builtin_attributes_dense_resource_elements_attr_get(
 }
 
 //===----------------------------------------------------------------------===//
-// mlir_attr_isa_* — kept under old prefix; these are discovered via
-// foreign-entry? dispatch in (mlir core attribute). New canonical names also
-// registered.
+// Attribute type predicates — mlir_ir_builtin_attributes_*_isa
 //===----------------------------------------------------------------------===//
 
 int mlir_ir_builtin_attributes_integer_attr_isa(uint64_t attr_ptr) {
@@ -204,7 +201,7 @@ int mlir_ir_builtin_attributes_float32_attr_isa(uint64_t attr_ptr) {
 }
 
 //===----------------------------------------------------------------------===//
-// mlir_attr_as_* — extraction
+// Scalar extraction — mlir_ir_builtin_attributes_*_get_value
 //===----------------------------------------------------------------------===//
 
 ptr mlir_ir_builtin_attributes_integer_attr_get_value(uint64_t attr_ptr) {
@@ -260,7 +257,7 @@ uint64_t mlir_ir_builtin_attributes_dense_i32_array_attr_as_array_ref(
 }
 
 //===----------------------------------------------------------------------===//
-// mlir_attr_into_* — complex extraction
+// Complex extraction — mlir_ir_builtin_attributes_dense_*_splat_value
 //===----------------------------------------------------------------------===//
 
 ptr mlir_ir_builtin_attributes_dense_fp_elements_attr_splat_value(
@@ -329,20 +326,6 @@ ptr mlir_ir_builtin_attributes_dense_i32_array_attr_to_list(uint64_t attr_ptr) {
   return result;
 }
 
-// Kept for backward compat — duplicate of dense_elements_attr_is_splat.
-int mlir_attr_splat_int_value_compat(uint64_t attr_ptr, int64_t absent_val) {
-  if (!attr_ptr) {
-    return static_cast<int>(absent_val);
-  }
-  auto dense = mlir::dyn_cast<mlir::DenseIntElementsAttr>(
-      mlir::Attribute::getFromOpaquePointer(
-          reinterpret_cast<const void*>(attr_ptr)));
-  if (!dense || !dense.isSplat()) {
-    return static_cast<int>(absent_val);
-  }
-  return static_cast<int>((*dense.begin()).getSExtValue());
-}
-
 } // extern "C"
 
 namespace crest {
@@ -400,62 +383,7 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir_ir_builtin_attributes_dense_i32_array_attr_to_list",
       (void*)::mlir_ir_builtin_attributes_dense_i32_array_attr_to_list);
-  // ── Old names (backward compat) — used by generic dispatch in Scheme ─────
-  Sregister_symbol("mlir_make_attr_i64",
-                   (void*)::mlir_ir_builtin_attributes_integer_attr_get_i64);
-  Sregister_symbol("mlir_make_attr_f32",
-                   (void*)::mlir_ir_builtin_attributes_float_attr_get_f32);
-  Sregister_symbol("mlir_make_attr_index",
-                   (void*)::mlir_ir_builtin_attributes_integer_attr_get_index);
-  Sregister_symbol(
-      "mlir_make_attr_i32_array",
-      (void*)::mlir_ir_builtin_attributes_dense_i32_array_attr_get);
-  Sregister_symbol(
-      "mlir_make_attr_i64_array",
-      (void*)::mlir_ir_builtin_attributes_dense_i64_array_attr_get);
-  Sregister_symbol("mlir_make_attr_opaque",
-                   (void*)::mlir_ir_builtin_attributes_parse);
-  Sregister_symbol(
-      "mlir_make_attr_dense_resource",
-      (void*)::mlir_ir_builtin_attributes_dense_resource_elements_attr_get);
-  Sregister_symbol("mlir_attr_isa_integer",
-                   (void*)::mlir_ir_builtin_attributes_integer_attr_isa);
-  Sregister_symbol("mlir_attr_isa_float",
-                   (void*)::mlir_ir_builtin_attributes_float_attr_isa);
-  Sregister_symbol("mlir_attr_isa_string",
-                   (void*)::mlir_ir_builtin_attributes_string_attr_isa);
-  Sregister_symbol(
-      "mlir_attr_isa_array_ref_i32",
-      (void*)::mlir_ir_builtin_attributes_dense_i32_array_attr_isa);
-  Sregister_symbol("mlir_attr_isa_dense_elements",
-                   (void*)::mlir_ir_builtin_attributes_dense_elements_attr_isa);
-  Sregister_symbol(
-      "mlir_attr_isa_dense_elements_splat",
-      (void*)::mlir_ir_builtin_attributes_dense_elements_attr_is_splat);
-  Sregister_symbol("mlir_attr_isa_f32",
-                   (void*)::mlir_ir_builtin_attributes_float32_attr_isa);
-  Sregister_symbol("mlir_attr_as_integer",
-                   (void*)::mlir_ir_builtin_attributes_integer_attr_get_value);
-  Sregister_symbol("mlir_attr_as_float",
-                   (void*)::mlir_ir_builtin_attributes_float_attr_get_value);
-  Sregister_symbol("mlir_attr_as_f32",
-                   (void*)::mlir_ir_builtin_attributes_float32_attr_get_value);
-  Sregister_symbol(
-      "mlir_attr_as_array_ref_i32",
-      (void*)::mlir_ir_builtin_attributes_dense_i32_array_attr_as_array_ref);
-  Sregister_symbol(
-      "mlir_attr_into_splat_float",
-      (void*)::mlir_ir_builtin_attributes_dense_fp_elements_attr_splat_value);
-  Sregister_symbol(
-      "mlir_attr_into_splat_integer",
-      (void*)::mlir_ir_builtin_attributes_dense_int_elements_attr_splat_value);
-  Sregister_symbol(
-      "mlir_attr_into_i32_array",
-      (void*)::mlir_ir_builtin_attributes_dense_i32_array_attr_to_list);
-  // Duplicates removed: mlir_attr_is_splat, mlir_attr_splat_float_value
-  // mlir_attr_splat_int_value kept as a differently-signatured compat entry
-  Sregister_symbol("mlir_attr_splat_int_value",
-                   (void*)::mlir_attr_splat_int_value_compat);
+  // Old-name aliases removed: (mlir core attribute) dynamic dispatch deleted.
 }
 
 } // namespace crest
