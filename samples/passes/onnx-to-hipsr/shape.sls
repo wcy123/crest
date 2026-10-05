@@ -18,7 +18,15 @@
   (export populate-shape-patterns
           onnx-shape->hipsr)
   (import (except (rnrs (6)) =)
-          (mlir core operation)
+          (rename (only (mlir ir operation)
+                       operation-get-context
+                       operation-get-integer-attr
+                       operation-get-result
+                       operation-set-attr!)
+                 (operation-get-context      mlir-operation-get-context)
+                 (operation-get-integer-attr mlir-operation-get-integer-attr)
+                 (operation-get-result       mlir-operation-get-result)
+                 (operation-set-attr!        mlir-operation-set-attribute!))
           (rename (mlir ir value)
             (get-type          mlir-value-get-type))
           (mlir core attribute)

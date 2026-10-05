@@ -35,7 +35,11 @@
 
   (import (rnrs)
           (only (chezscheme) foreign-entry? foreign-procedure)
-          (mlir core operation)
+          (rename (only (mlir ir operation)
+                            operation-get-name
+                            operation-get-parent-op)
+                      (operation-get-name mlir-operation-name)
+                      (operation-get-parent-op mlir-operation-get-parent))
           (mlir dialects builtin)
           (mlir core attribute)
           (mlir transforms dialect-conversion)

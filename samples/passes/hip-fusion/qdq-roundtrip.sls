@@ -22,7 +22,6 @@
   (import (except (rnrs) =)
           (only (chezscheme) nan?)
           (rename (only (rnrs) =) (= num=))
-          (mlir core operation)
           (rename (mlir ir value)
             (get-defining-op   mlir-value-get-defining-op))
           (mlir core attribute)

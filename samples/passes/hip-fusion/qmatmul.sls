@@ -22,7 +22,17 @@
   (import (except (rnrs) =)
           (only (chezscheme) nan?)
           (rename (only (rnrs) =) (= num=))
-          (mlir core operation)
+          (rename (only (mlir ir operation)
+                       operation-get-integer-attr
+                       operation-get-result
+                       operation-set-f32-attr!
+                       operation-set-i64-attr!
+                       operation-set-unit-attr!)
+                 (operation-get-integer-attr mlir-operation-get-integer-attr)
+                 (operation-get-result       mlir-operation-get-result)
+                 (operation-set-f32-attr!    mlir-operation-set-f32-attr!)
+                 (operation-set-i64-attr!    mlir-operation-set-i64-attr!)
+                 (operation-set-unit-attr!   mlir-operation-set-unit-attr!))
           (rename (mlir ir value)
             (get-defining-op   mlir-value-get-defining-op)
             (get-type          mlir-value-get-type))

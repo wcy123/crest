@@ -16,7 +16,9 @@
   (export populate-scatter-nd-patterns
           onnx-scatter-nd->hipsr)
   (import (except (rnrs (6)) =)
-          (only (mlir core operation) mlir-operation-get-context)
+          (rename (only (mlir ir operation)
+                            operation-get-context)
+                      (operation-get-context mlir-operation-get-context))
           (rename (only (mlir ir value) get-type) (get-type mlir-value-get-type))
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)

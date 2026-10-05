@@ -19,7 +19,15 @@
 (library (passes onnx-to-hipsr transpose)
   (export populate-transpose-patterns)
   (import (except (rnrs (6)) =)
-          (mlir core operation)
+          (rename (only (mlir ir operation)
+                       operation-get-context
+                       operation-get-result
+                       operation-get-integer-array-attr
+                       operation-set-attr!)
+                 (operation-get-context              mlir-operation-get-context)
+                 (operation-get-result               mlir-operation-get-result)
+                 (operation-get-integer-array-attr   mlir-operation-get-integer-array-attr)
+                 (operation-set-attr!                mlir-operation-set-attribute!))
           (rename (mlir ir value)
             (get-type          mlir-value-get-type))
           (mlir core attribute)
