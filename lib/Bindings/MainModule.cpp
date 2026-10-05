@@ -11,6 +11,7 @@
 #include "IR/Block.h"
 #include "IR/BuiltinAttributes.h"
 #include "IR/BuiltinTypes.h"
+#include "IR/MLIRContext.h"
 #include "IR/OpBuilder.h"
 #include "IR/OpResult.h"
 #include "IR/Operation.h"
@@ -39,6 +40,7 @@ void registerMlirForeignFunctions() {
   registerInterfacesDpsBindings();
   registerIRBlockBindings();
   registerIRBuiltinAttributesBindings();
+  registerIRMLIRContextBindings();
   registerIRBuiltinTypesBindings();
   registerIROpBuilderBindings();
   registerIROperationBindings();

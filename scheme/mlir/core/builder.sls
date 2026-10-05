@@ -80,7 +80,7 @@
 
   (import (rnrs)
           (only (chezscheme) foreign-procedure parameterize make-parameter void)
-          (mlir core context)
+          (mlir ir mlir-context)
           (mlir core types)
           (only (mlir core operation) mlir-operation-get-context mlir-operation-get-loc))
 

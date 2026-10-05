@@ -42,7 +42,7 @@
           (only (chezscheme) make-parameter parameterize void)
           (mlir ir rewriter-base ffi)
           (mlir ir op-builder ffi)
-          (only (mlir core context) current-mlir-context)
+          (only (mlir ir mlir-context) current-mlir-context)
           (only (mlir core operation) mlir-operation-get-context))
 
   (define rewriter-base-create                   %rewriter-base-create)
