@@ -18,12 +18,25 @@
           (for (crest internal analyze) expand)
           (for (only (mlir core builder)
                      with-rewrite-builder mlir-replace-op) expand)
-          (for (only (mlir core operation)
-                     mlir-emit-error! mlir-operation-get-context
-                     mlir-operation-has-attr? mlir-operation-get-attribute
-                     mlir-operation-name mlir-operation-num-results
-                     mlir-operation-get-operand-value mlir-operation-get-result
-                     mlir-operation-get-operands mlir-operation-set-attribute!) expand)
+                    (for (rename (only (mlir ir operation)
+                            operation-get-context
+                            operation-get-num-results
+                            operation-get-result
+                            op-operand-get-value
+                            operation-has-attr?
+                            operation-get-attr
+                            operation-get-name
+                            operation-emit-error!
+                            operation-get-operands)
+                      (operation-get-context    mlir-operation-get-context)
+                      (operation-get-num-results mlir-operation-num-results)
+                      (operation-get-result     mlir-operation-get-result)
+                      (op-operand-get-value     mlir-operation-get-operand-value)
+                      (operation-has-attr?      mlir-operation-has-attr?)
+                      (operation-get-attr       mlir-operation-get-attribute)
+                      (operation-get-name       mlir-operation-name)
+                      (operation-emit-error!    mlir-emit-error!)
+                      (operation-get-operands   mlir-operation-get-operands)) expand)
           (for (rename (only (mlir ir value) get-defining-op)
                      (get-defining-op mlir-value-get-defining-op)) expand)
           (for (only (mlir support array-ref) array-ref-size array-ref-at) expand)

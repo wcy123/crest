@@ -18,7 +18,9 @@
   (export populate-matmul-patterns
           onnx-matmul->hipsr)
   (import (except (rnrs (6)) =)
-          (mlir core operation)
+          (rename (only (mlir ir operation)
+                            operation-get-context)
+                      (operation-get-context mlir-operation-get-context))
           (rename (mlir ir value)
             (get-type          mlir-value-get-type))
           (mlir dialects builtin)

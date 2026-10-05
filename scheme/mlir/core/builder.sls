@@ -81,7 +81,10 @@
   (import (rnrs)
           (only (chezscheme) foreign-procedure parameterize make-parameter void)
           (mlir ir mlir-context)
-          (only (mlir core operation) mlir-operation-get-context mlir-operation-get-loc))
+          (only (mlir ir operation) operation-get-context operation-get-loc))
+
+  (define mlir-operation-get-context operation-get-context)
+  (define mlir-operation-get-loc     operation-get-loc)
 
   ;;===--------------------------------------------------------------------===;;
   ;; Canonical low-level rewriter FFI

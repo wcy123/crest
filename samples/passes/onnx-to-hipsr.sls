@@ -17,7 +17,23 @@
 (library (passes onnx-to-hipsr)
   (export run-pass)
   (import (rnrs (6))
-          (mlir core operation)
+          (rename (only (mlir ir operation)
+                            op-operand-get-value
+                            operation-emit-error!
+                            operation-get-context
+                            operation-get-name
+                            operation-get-num-operands
+                            operation-set-operand
+                            operation-use-empty?
+                            operation-walk)
+                      (op-operand-get-value mlir-operation-get-operand-value)
+                      (operation-emit-error! mlir-emit-error!)
+                      (operation-get-context mlir-operation-get-context)
+                      (operation-get-name mlir-operation-name)
+                      (operation-get-num-operands mlir-operation-num-operands)
+                      (operation-set-operand mlir-operation-set-operand)
+                      (operation-use-empty? mlir-operation-use-empty?)
+                      (operation-walk mlir-operation-walk))
           (rename (mlir ir value)
             (get-defining-op   mlir-value-get-defining-op)
             (get-type          mlir-value-get-type)

@@ -17,7 +17,13 @@
 (library (passes onnx-to-hipsr expand)
   (export populate-expand-patterns)
   (import (except (rnrs (6)) =)
-          (mlir core operation)
+          (rename (only (mlir ir operation)
+                            op-operand-get-value
+                            operation-get-context
+                            operation-get-name)
+                      (op-operand-get-value mlir-operation-get-operand-value)
+                      (operation-get-context mlir-operation-get-context)
+                      (operation-get-name mlir-operation-name))
           (rename (mlir ir value)
             (get-defining-op   mlir-value-get-defining-op)
             (get-type          mlir-value-get-type))

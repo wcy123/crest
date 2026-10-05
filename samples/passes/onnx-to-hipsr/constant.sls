@@ -21,7 +21,19 @@
 (library (passes onnx-to-hipsr constant)
   (export populate-constant-patterns)
   (import (except (rnrs (6)) =)
-          (mlir core operation)
+          (rename (only (mlir ir operation)
+                       operation-emit-error!
+                       operation-get-attr
+                       operation-get-context
+                       operation-get-integer-attr
+                       operation-get-string-attr
+                       operation-has-attr?)
+                 (operation-emit-error!   mlir-emit-error!)
+                 (operation-get-attr      mlir-operation-get-attribute)
+                 (operation-get-context   mlir-operation-get-context)
+                 (operation-get-integer-attr mlir-operation-get-integer-attr)
+                 (operation-get-string-attr  mlir-operation-get-string-attr)
+                 (operation-has-attr?     mlir-operation-has-attr?))
           (rename (mlir ir value)
             (get-type          mlir-value-get-type))
           (mlir core attribute)

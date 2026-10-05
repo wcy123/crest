@@ -78,7 +78,25 @@
 
   (import (rnrs)
           (only (chezscheme) nan? foreign-procedure)
-          (mlir core operation)
+          (rename (only (mlir ir operation)
+                       op-operand-get-value
+                       op-result-get-value
+                       operation-get-attr
+                       operation-get-integer-attr
+                       operation-get-integer-array-attr
+                       operation-get-name
+                       operation-get-num-operands
+                       operation-get-result
+                       operation-has-attr?)
+                 (op-operand-get-value              mlir-operation-get-operand-value)
+                 (op-result-get-value               mlir-operation-get-result-value)
+                 (operation-get-attr                mlir-operation-get-attribute)
+                 (operation-get-integer-attr        mlir-operation-get-integer-attr)
+                 (operation-get-integer-array-attr  mlir-operation-get-integer-array-attr)
+                 (operation-get-name                mlir-operation-name)
+                 (operation-get-num-operands        mlir-operation-num-operands)
+                 (operation-get-result              mlir-operation-get-result)
+                 (operation-has-attr?               mlir-operation-has-attr?))
           (rename (mlir ir value)
             (get-defining-op   mlir-value-get-defining-op)
             (get-type          mlir-value-get-type)
