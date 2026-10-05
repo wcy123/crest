@@ -43,7 +43,9 @@
           (mlir ir rewriter-base ffi)
           (mlir ir op-builder ffi)
           (only (mlir ir mlir-context) current-mlir-context)
-          (only (mlir core operation) mlir-operation-get-context))
+          (only (mlir ir operation) operation-get-context))
+
+  (define mlir-operation-get-context operation-get-context)
 
   ;; @brief mlir::RewriterBase::create — create an op via OperationState, setting insertion point before loc-op.
   ;; @param rewriter      RewriterBase* uptr (ConversionPatternRewriter or IRRewriter)

@@ -17,7 +17,11 @@
 (library (passes onnx-to-hipsr min)
   (export populate-min-patterns)
   (import (except (rnrs (6)) =)
-          (mlir core operation)
+          (rename (only (mlir ir operation)
+                            operation-get-context
+                            operation-get-result)
+                      (operation-get-context mlir-operation-get-context)
+                      (operation-get-result mlir-operation-get-result))
           (rename (mlir ir value)
             (get-type          mlir-value-get-type))
           (mlir support array-ref)

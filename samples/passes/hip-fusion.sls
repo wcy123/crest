@@ -30,7 +30,9 @@
 
   (import (except (rnrs) =)
           (rename (only (rnrs) =) (= num=))
-          (only (mlir core operation) mlir-operation-get-context)
+          (rename (only (mlir ir operation)
+                            operation-get-context)
+                      (operation-get-context mlir-operation-get-context))
           (only (mlir core builder) mlir-apply-patterns-greedy)
           (mlir transforms dialect-conversion)
           (crest)

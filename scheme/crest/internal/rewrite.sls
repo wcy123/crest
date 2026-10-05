@@ -51,9 +51,12 @@
           (for (only (mlir core builder) mlir-build-operation with-block-builder
                      mlir-op-get-region mlir-new-block mlir-block-get-argument) expand)
           (for (only (mlir core attribute) mlir-make-attr :index) expand)
-          (for (only (mlir core operation) mlir-operation-get-context
-                                           mlir-operation-get-result
-                                           mlir-operation-set-attribute!) expand))
+                    (for (rename (only (mlir ir operation) operation-get-context
+                                                 operation-get-result
+                                                 operation-set-attr!)
+                      (operation-get-context    mlir-operation-get-context)
+                      (operation-get-result     mlir-operation-get-result)
+                      (operation-set-attr!      mlir-operation-set-attribute!)) expand))
 
   ;;===--------------------------------------------------------------------===;;
   ;; with-mlir-ops

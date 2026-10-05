@@ -25,7 +25,9 @@
 
   (import (except (rnrs) =)
           (rename (only (rnrs) =) (= num=))
-          (mlir core operation)
+          (rename (only (mlir ir operation)
+                            operation-get-attr)
+                      (operation-get-attr mlir-operation-get-attribute))
           (rename (mlir ir value)
             (get-defining-op   mlir-value-get-defining-op)
             (get-type          mlir-value-get-type)

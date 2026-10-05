@@ -17,7 +17,17 @@
 (library (passes onnx-to-hipsr gather)
   (export populate-gather-patterns)
   (import (except (rnrs (6)) =)
-          (mlir core operation)
+          (rename (only (mlir ir operation)
+                       operation-emit-remark!
+                       operation-get-context
+                       operation-get-integer-attr
+                       operation-get-result
+                       operation-set-attr!)
+                 (operation-emit-remark!  mlir-emit-remark!)
+                 (operation-get-context   mlir-operation-get-context)
+                 (operation-get-integer-attr mlir-operation-get-integer-attr)
+                 (operation-get-result    mlir-operation-get-result)
+                 (operation-set-attr!     mlir-operation-set-attribute!))
           (rename (mlir ir value)
             (get-type          mlir-value-get-type))
           (mlir core attribute)

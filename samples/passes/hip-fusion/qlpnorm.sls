@@ -18,7 +18,11 @@
   (import (except (rnrs) =)
           (only (chezscheme) nan?)
           (rename (only (rnrs) =) (= num=))
-          (mlir core operation)
+          (rename (only (mlir ir operation)
+                            operation-get-result
+                            operation-set-i64-attr!)
+                      (operation-get-result mlir-operation-get-result)
+                      (operation-set-i64-attr! mlir-operation-set-i64-attr!))
           (rename (mlir ir value)
             (get-defining-op   mlir-value-get-defining-op)
             (get-type          mlir-value-get-type))
