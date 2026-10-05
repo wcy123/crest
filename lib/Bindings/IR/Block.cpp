@@ -27,6 +27,13 @@ uint64_t mlir_ir_block_get_argument_by_index(uint64_t block_ptr, int idx) {
       block->getArgument(idx).getAsOpaquePointer());
 }
 
+// mlir::Block::getNumArguments — return the number of block arguments.
+// block_ptr: Block* as uptr
+// Returns: argument count (unsigned → uint64_t)
+uint64_t mlir_ir_block_get_num_arguments(uint64_t block_ptr) {
+  return reinterpret_cast<mlir::Block*>(block_ptr)->getNumArguments();
+}
+
 } // extern "C"
 
 namespace crest {
@@ -34,6 +41,8 @@ namespace crest {
 void registerIRBlockBindings() {
   Sregister_symbol("mlir_ir_block_get_argument_by_index",
                    (void*)::mlir_ir_block_get_argument_by_index);
+  Sregister_symbol("mlir_ir_block_get_num_arguments",
+                   (void*)::mlir_ir_block_get_num_arguments);
 }
 
 } // namespace crest
