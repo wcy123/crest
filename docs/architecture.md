@@ -31,20 +31,29 @@ is a Scheme-hosted engine for writing MLIR conversion and rewrite patterns.
 
 ## Overview
 
-Writing MLIR dialect conversion passes in C++ requires implementing
-`OpConversionPattern` subclasses with `matchAndRewrite` methods, wiring
-`TypeConverter` and `ConversionTarget`, and rebuilding the compiler for every
-pattern change. MLIR's established pattern DSLs —
-[PDL](https://mlir.llvm.org/docs/PDLL/) and
-[DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/) — cannot address this:
-both generate only `RewritePattern` subclasses and have no support for
-[`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/);
-[`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns)
-does not appear in the [PDLL documentation](https://mlir.llvm.org/docs/PDLL/).
+CREST is a homoiconic pattern DSL for MLIR that excels at complex
+multi-operation patterns with computational logic. While
+[PDLL](https://mlir.llvm.org/docs/PDLL/) handles simple structural rewrites
+well, CREST enables concise expression of patterns involving rank arithmetic,
+optional operands, and attribute extraction — with helper functions defined in
+the same file. The canonical demonstration is quantized fusion patterns
+(dequantize × 2 → add → quantize → fused `qadd`) that are significantly more
+painful to express in existing tools.
 
-CREST provides a Scheme-hosted pattern DSL that generates `ConversionPattern`
-subclasses and uses Chez Scheme as its extension language, eliminating C++
-requirements for constraints, type predicates, and rewrite logic.
+Two capabilities drive this: (1) the `:where` guard accepts arbitrary Chez
+Scheme expressions, so constraints are plain functions with no C++ escape
+hatch; (2) the `:optional`/`:variadic` operand syntax matches both the
+4-operand and 5-operand forms of an op in a single pattern, using
+`unbound-value?` to distinguish absent from present in the rewrite body.
+
+A third capability not available in any other MLIR pattern DSL: CREST
+generates [`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns)
+subclasses. [PDLL](https://mlir.llvm.org/docs/PDLL/) and
+[DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/) generate only
+`RewritePattern` subclasses and have no support for the
+`ConversionPatternRewriter`, type-converted operand adaptors, or
+`applyFullConversion` / `applyPartialConversion` that dialect conversion
+requires.
 
 ---
 
@@ -113,6 +122,12 @@ points:
 (define-rewrite-pattern ...)      ; → mlir::OpRewritePattern
 ```
 
+#### Entry point
+
+```scheme
+(import (crest))   ; public API — define-conversion-pattern, define-rewrite-pattern, unbound-value?, …
+```
+
 #### Why CREST rather than PDLL or DRR
 
 [PDL](https://mlir.llvm.org/docs/PDLL/) and
@@ -140,20 +155,62 @@ In CREST, the `:where` guard accepts any Scheme expression. A constraint is a
 plain Scheme function defined in the same `.sls` file:
 
 ```scheme
-(define (last-axis? v axis-attr)
+(define (last-axis? v axis)
   (let* ([rank (mlir-type-get-rank (mlir-value-get-type v))]
-         [axis (mlir-integer-attr-get-value axis-attr)]
          [axis (if (< axis 0) (+ axis rank) axis)])  ; normalize negative
     (= axis (- rank 1))))
 
 (define-conversion-pattern (lower-gather op operands-ref rw tc)
-  %gather = "onnx.Gather" (%data %indices) {:axis = %axis-attr}
-  :where (last-axis? %data %axis-attr)
-  :rewrite ...)
+  :if-match
+      %gather = onnx.Gather (%data %indices)
+                  :where (last-axis? %data (mlir-attr-as (:attr "axis") :integer))
+  :rewrite %gather :with ...)
 ```
 
 The function can be tested independently, reused across patterns, and changed
 without rebuilding the binary.
+
+#### `:where` keywords: `:current-op` and `(:attr name)`
+
+Inside a `:where` guard, two special forms are available:
+
+- **`:current-op`** — the operation currently being matched in the DAG (not the
+  root `op` parameter). Required when the guard references the matched sub-op
+  rather than the root.
+
+- **`(:attr "name")`** — fetches the named attribute from `:current-op` as a
+  raw attribute pointer. Raises an error (→ silent match failure) if absent.
+  Compose with the generic attr API:
+
+```scheme
+%scale = hip.constant ()
+           :where (mlir-attr-isa (:attr "value") :dense-elements-splat)
+```
+
+#### Optional and variadic operands
+
+Operands tagged `(:optional %var)` or `(:variadic %var)` are matched via
+`mlir-operation-get-operands`, which reads `operandSegmentSizes` internally
+and returns a list — one element per spec entry.
+
+```scheme
+%dq = hip.dequantize_linear (%ctx %x %scale (:optional %zp) %init)
+```
+
+When the optional operand is absent, `%zp` is bound to the absent sentinel.
+Use `unbound-value?` in `:then-let` to distinguish present from absent:
+
+```scheme
+:then-let
+    ([zp-attr (mlir-make-attr :i64
+                (if (unbound-value? %zp) 0
+                    (mlir-attr-into
+                      (mlir-operation-get-attribute
+                        (mlir-value-get-defining-op %zp) "value")
+                      :splat-integer)))])
+```
+
+This eliminates separate patterns for 4-operand and 5-operand op forms.
 
 #### The host language as extension mechanism
 
@@ -175,6 +232,7 @@ functions in the same file, with the same edit–reload cycle as the pattern.
 | Extra toolchain | `mlir-tblgen` | `mlir-pdll` + `mlir-tblgen` | **None** |
 | Constraints without C++ (`:where`) | No | No | **Yes** |
 | Turing-complete rewrite logic | Via C++ | Via C++ | **Native Scheme** |
+| Optional / variadic operands | No | Limited | **Yes** |
 | Compile-time debug flags | No | No | **Yes** |
 | Patterns in deployed binary | Yes | Yes | **Yes (boot mode)** |
 | Filesystem deployment dependency | No | No | Yes (dev mode) |
@@ -193,8 +251,11 @@ functions in the same file, with the same edit–reload cycle as the pattern.
    `root-result-idx`, `root-op-name`.
 
 3. **Analyze** — topological DAG traversal from the root, producing a flat
-   action sequence: `:set-current-op`, `:check-op`, `:bind-operand`,
-   `:check-eq` (for DAG diamonds where a value is used by multiple ops).
+   action sequence: `:set-current-op`, `:check-op`, `:bind-operand` (all-required
+   ops), `:bind-operands` (ops with `:optional`/`:variadic` — delegates to
+   `mlir-operation-get-operands` which reads `operandSegmentSizes`),
+   `:check-eq` (DAG diamonds where a value is used by multiple ops),
+   `:bind-result`, `:check-where`.
 
 4. **Codegen** — translates the action sequence into an
    `(and check₀ check₁ …)` expression wrapped in a `guard`, producing a
