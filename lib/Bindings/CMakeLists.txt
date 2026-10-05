@@ -10,6 +10,8 @@ add_library(CrestBindings STATIC
   Core/Attribute.cpp
   Core/Operation.cpp
   IR/Value.cpp
+  IR/BuiltinTypes.cpp
+  IR/Type.cpp
   Core/Builder.cpp
   Core/Types.cpp
   Dialect/Shape/Shape.cpp
