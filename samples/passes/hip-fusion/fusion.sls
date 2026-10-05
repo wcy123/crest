@@ -265,10 +265,10 @@
   ;; 1x1 kernel, unit strides, unit dilations, zero pads, group=1.
   ;; Mirrors hip_is_fusable_conv_geometry in Hip.cpp.
   (define (hip-fusable-conv-geometry? op)
-    (let ([ks    (mlir-operation-get-attr op "kernel_shape" ':i64-array)]
-          [st    (mlir-operation-get-attr op "strides"      ':i64-array)]
-          [di    (mlir-operation-get-attr op "dilations"    ':i64-array)]
-          [pd    (mlir-operation-get-attr op "pads"         ':i64-array)]
+    (let ([ks    (mlir-operation-get-integer-array-attr op "kernel_shape")]
+          [st    (mlir-operation-get-integer-array-attr op "strides")]
+          [di    (mlir-operation-get-integer-array-attr op "dilations")]
+          [pd    (mlir-operation-get-integer-array-attr op "pads")]
           [group (mlir-operation-get-integer-attr op "group" 0)])
       (and (equal? ks '(1 1))
            (equal? st '(1 1))
