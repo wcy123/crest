@@ -17,15 +17,9 @@
 (library (mlir dialects tensor)
   (export mlir-ranked-tensor-type-with-encoding)
 
-  (import (rnrs)
-          (only (chezscheme) foreign-procedure))
+  (import (rnrs) (mlir dialects tensor ffi))
 
-  ;; Attach any MLIR attribute as the encoding of a RankedTensorType.
-  ;; !type: RankedTensorType uptr — the base tensor type to clone
-  ;; attr:  Attribute uptr (opaque) — the encoding attribute to attach
-  ;; Returns: new RankedTensorType uptr with encoding set;
-  ;;          0 if !type is not a RankedTensorType or either arg is 0.
   (define mlir-ranked-tensor-type-with-encoding
-    (foreign-procedure "mlir_tensor_type_with_encoding" (uptr uptr) uptr))
+    %ranked-tensor-type-with-encoding)
 
 ) ;; end library (mlir dialects tensor)
