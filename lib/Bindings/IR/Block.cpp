@@ -23,6 +23,7 @@ uint64_t mlir_ir_block_get_argument_by_index(uint64_t block_ptr, int idx) {
            Sstring("mlir-ir-block-get-argument-by-index"),
            Sstring("index out of range"), Sfixnum(idx),
            Sfixnum((int)block->getNumArguments()));
+    return 0; // unreachable — error performs non-local exit
   }
   return reinterpret_cast<uint64_t>(
       block->getArgument(idx).getAsOpaquePointer());
