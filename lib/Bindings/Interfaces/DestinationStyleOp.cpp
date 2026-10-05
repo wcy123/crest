@@ -26,9 +26,7 @@ int mlir_interfaces_dps_get_num_dps_inits(uint64_t op_ptr) {
   mlir::Operation* op = reinterpret_cast<mlir::Operation*>(op_ptr);
   auto dpsOp = mlir::dyn_cast<mlir::DestinationStyleOpInterface>(op);
   if (!dpsOp) {
-    scheme_error("mlir-interfaces-dps-get-num-dps-inits",
-                 "op does not implement DestinationStyleOpInterface");
-    return 0; // unreachable — error performs non-local exit
+    return 0;
   }
   return static_cast<int>(dpsOp.getNumDpsInits());
 }
