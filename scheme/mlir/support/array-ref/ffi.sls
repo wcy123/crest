@@ -16,11 +16,20 @@
   (export %make %destroy)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
-  ;; Allocate a CArrayRef on the C heap.
+  ;; @brief Allocate a CArrayRef struct on the C heap.
+  ;; @param data-ptr  uptr — pointer to the first element of the array
+  ;; @param size      uptr — number of elements in the array
+  ;; @return          uptr — address of a newly allocated CArrayRef{data, size}
+  ;; @note            Caller must pair with %destroy (or use with-array-ref) to avoid leaks
+  ;; @note            Defined in lib/Bindings/Support/ArrayRef.cpp; struct in ArrayRef.h
   (define %make
     (foreign-procedure "mlir_support_array_ref_make" (uptr uptr) uptr))
 
-  ;; Free a CArrayRef previously allocated by %make.
+  ;; @brief Free a CArrayRef previously allocated by %make.
+  ;; @param ref  uptr — address returned by %make (mlir_support_array_ref_make)
+  ;; @return     void
+  ;; @note       Must not be called twice on the same pointer (double-free is UB)
+  ;; @note       Defined in lib/Bindings/Support/ArrayRef.cpp
   (define %destroy
     (foreign-procedure "mlir_support_array_ref_destroy" (uptr) void))
 
