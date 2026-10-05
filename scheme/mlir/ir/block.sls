@@ -11,19 +11,17 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir ir block)
-  (export block-get-argument)
+  (export block-get-argument-by-index)
   (import (rnrs) (mlir ir block ffi))
 
-  ;; @brief block-get-argument — thin wrapper over %block-get-argument.
-  ;;        Walks up from op to the nearest enclosing func.func and returns
-  ;;        its index-th block argument as an opaque Value pointer.
-  ;; @param op     Operation* uptr — any op nested inside a func.func
-  ;; @param index  0-based argument index (int)
-  ;; @return       Value opaque pointer uptr; 0 if op is null, no enclosing
-  ;;               func.func is found, or index is out of range
-  ;; @see          mlir/IR/Block.h, mlir/Dialect/Func/IR/FuncOps.h
-  ;; @note         Delegates to %block-get-argument in (mlir ir block ffi);
+  ;; @brief block-get-argument-by-index — thin wrapper over %block-get-argument-by-index.
+  ;;        Returns the idx-th argument of a Block directly by index.
+  ;; @param block  Block* uptr — the block
+  ;; @param idx    0-based argument index (int)
+  ;; @return       Value opaque pointer uptr; 0 if block is null or index out of range
+  ;; @see          mlir/IR/Block.h  Block::getArgument(unsigned)
+  ;; @note         Delegates to %block-get-argument-by-index in (mlir ir block ffi);
   ;;               C++ implementation in lib/Bindings/IR/Block.cpp
-  (define block-get-argument %block-get-argument)
+  (define block-get-argument-by-index %block-get-argument-by-index)
 
 ) ;; end library (mlir ir block)

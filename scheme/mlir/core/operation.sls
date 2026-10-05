@@ -115,12 +115,30 @@
   (define mlir-operation-get-loc
     (foreign-procedure "mlir_ir_operation_get_loc" (uptr) uptr))
 
-  ;; Return the i-th argument of the enclosing func.func, walking up to find it.
+  ;; Internal helpers for the func.func argument walk.
+  (define %op-get-region
+    (foreign-procedure "mlir_ir_operation_get_region" (uptr int) uptr))
+  (define %region-get-first-block
+    (foreign-procedure "mlir_ir_region_get_first_block" (uptr) uptr))
+  (define %block-get-argument-by-index
+    (foreign-procedure "mlir_ir_block_get_argument_by_index" (uptr int) uptr))
+
+  ;; Walk up from op to the nearest enclosing func.func and return its
+  ;; index-th block argument as an opaque Value pointer.
   ;; op:    Operation* uptr — any op inside the function
   ;; index: 0-based argument index (int)
   ;; Returns: Value* opaque ptr uptr; 0 if no enclosing func.func or out of range
-  (define mlir-operation-get-block-argument
-    (foreign-procedure "mlir_ir_block_get_argument" (uptr int) uptr))
+  (define (mlir-operation-get-block-argument op index)
+    (let loop ([cur op])
+      (cond
+        [(= 0 cur) 0]
+        [(string=? (mlir-operation-name cur) "func.func")
+         (let* ([region (%op-get-region cur 0)]
+                [block  (if (= 0 region) 0 (%region-get-first-block region))])
+           (if (= 0 block)
+               0
+               (%block-get-argument-by-index block index)))]
+        [else (loop (mlir-operation-get-parent cur))])))
 
   ;; Walk the operation tree in pre-order, calling callback on each op.
   ;; op:       Operation* uptr — root of the walk
