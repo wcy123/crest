@@ -34,6 +34,22 @@ ptr mlir_ir_block_get_argument(ptr op_ptr, int index) {
   return const_cast<void*>(funcOp.getArgument(index).getAsOpaquePointer());
 }
 
+// Get the idx-th argument of a block directly by index (no func.func walk).
+// block_ptr:  Block* as uptr
+// idx:        0-based argument index
+// Returns: Value opaque ptr uptr, or 0 if block is null or index out of range.
+uint64_t mlir_ir_block_get_argument_by_index(uint64_t block_ptr, int idx) {
+  if (!block_ptr) {
+    return 0;
+  }
+  auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
+  if (idx < 0 || idx >= (int)block->getNumArguments()) {
+    return 0;
+  }
+  return reinterpret_cast<uint64_t>(
+      block->getArgument(idx).getAsOpaquePointer());
+}
+
 // Append a new Block to a region with typed arguments.
 uint64_t mlir_ir_region_append_new_block(uint64_t region_ptr,
                                          ptr arg_types_list) {
@@ -64,6 +80,8 @@ namespace crest {
 void registerIRBlockBindings() {
   Sregister_symbol("mlir_ir_block_get_argument",
                    (void*)::mlir_ir_block_get_argument);
+  Sregister_symbol("mlir_ir_block_get_argument_by_index",
+                   (void*)::mlir_ir_block_get_argument_by_index);
   Sregister_symbol("mlir_ir_region_append_new_block",
                    (void*)::mlir_ir_region_append_new_block);
 }

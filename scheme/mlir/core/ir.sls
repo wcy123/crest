@@ -70,6 +70,8 @@
     current-loc
     mlir-build-operation
     with-raii
+    with-op-builder
+    with-operation-state
     with-rewrite-builder
     with-current-block-builder
     with-block-builder
