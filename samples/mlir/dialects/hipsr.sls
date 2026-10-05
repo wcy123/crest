@@ -45,7 +45,8 @@
           (mlir transforms dialect-conversion)
           (mlir dialects tensor)
           (only (crest util)
-                type-converter-add-tensor-widening-materialization))
+                type-converter-add-tensor-widening-materialization)
+          (only (mlir core builder) mlir-block-get-argument))
 
   (define-syntax :hipsr-device-space (identifier-syntax 'hipsr-device-space))
   (define-syntax :hipsr-barrier-type (identifier-syntax 'hipsr-barrier-type))
@@ -103,7 +104,7 @@
   ;;===--------------------------------------------------------------------===;;
 
   (define (mlir-get-hipsr-context-arg op)
-    (mlir-operation-get-block-argument op 0))
+    (mlir-block-get-argument op 0))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Op ancestry predicates
@@ -133,7 +134,7 @@
         (if (and (= 1 (mlir-type-is-ranked-tensor type))
                  (> (mlir-type-get-rank type) 0)
                  (= 0 (mlir-ranked-tensor-type-get-encoding type)))
-            (mlir-ranked-tensor-type-with-encoding type
+          (mlir-ranked-tensor-type-with-encoding type
               (make-hipsr-device-space-attr (mlir-type-get-context type)))
             #f)))
     (type-converter-add-tensor-widening-materialization type-converter))

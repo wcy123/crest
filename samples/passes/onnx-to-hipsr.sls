@@ -56,7 +56,15 @@
           (passes onnx-to-hipsr expand)
           (passes onnx-to-hipsr constant)
           (passes onnx-to-hipsr shape)
+          (only (chezscheme) foreign-procedure)
           (for (rime loop) expand))
+
+  ;; DPS (DestinationPassing-Style) interface helpers.
+  ;; These were in (mlir core operation) and are now defined here directly.
+  (define mlir-operation-num-dps-inits
+    (foreign-procedure "mlir_interfaces_dps_get_num_dps_inits" (uptr) int))
+  (define mlir-operation-get-dps-init-value
+    (foreign-procedure "mlir_interfaces_dps_get_dps_init_value" (uptr int) uptr))
 
   ;; Populate return-conversion patterns in Scheme.
   ;; onnx.Return → func.return, forwarding the (already type-converted) operands.
