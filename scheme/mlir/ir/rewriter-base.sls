@@ -19,7 +19,8 @@
     ;; Clean-name re-exports from ffi
     rewriter-base-create
     rewriter-base-create-with-regions
-    rewriter-base-set-insertion-point-before
+    rewriter-base-set-insertion-point          ;; canonical: mlir::RewriterBase::setInsertionPoint(op)
+    rewriter-base-set-insertion-point-before   ;; backward-compat alias
     rewriter-base-set-insertion-point-to-end
     rewriter-base-create-block
     rewriter-base-replace-op
@@ -74,9 +75,12 @@
   ;; @param rewriter  RewriterBase* uptr
   ;; @param op        Operation* uptr — target operation
   ;; @return          void
-  ;; @see             mlir/IR/PatternMatch.h
+  ;; @see             mlir/IR/PatternMatch.h, mlir/IR/Builders.h
   ;; @note            Defined in lib/Bindings/IR/RewriterBase.cpp
-  (define rewriter-base-set-insertion-point-before %rewriter-base-set-insertion-point-before)
+  (define rewriter-base-set-insertion-point       %rewriter-base-set-insertion-point)
+
+  ;; @brief Backward-compat alias for rewriter-base-set-insertion-point.
+  (define rewriter-base-set-insertion-point-before %rewriter-base-set-insertion-point)
 
   ;; @brief mlir::RewriterBase::setInsertionPointToEnd(block) — move the rewriter's insertion point to the end of block.
   ;; @param rewriter  RewriterBase* uptr

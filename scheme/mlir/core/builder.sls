@@ -38,7 +38,8 @@
     mlir-ir-rewriter-base-create-with-regions
     mlir-ir-op-builder-create
     mlir-ir-op-builder-create-with-regions
-    mlir-ir-rewriter-base-set-insertion-point-before
+    mlir-ir-rewriter-base-set-insertion-point         ;; canonical: mlir::RewriterBase::setInsertionPoint(op)
+    mlir-ir-rewriter-base-set-insertion-point-before  ;; backward-compat alias
     mlir-ir-rewriter-base-set-insertion-point-to-end
     mlir-ir-rewriter-base-create-block
     mlir-ir-rewriter-base-replace-op
@@ -48,8 +49,10 @@
     mlir-ir-op-builder-destroy
     ;; OperationState primitives
     mlir-ir-operation-state-create
-    mlir-ir-operation-state-add-operand
-    mlir-ir-operation-state-add-result-type
+    mlir-ir-operation-state-add-operands        ;; canonical: mlir::OperationState::addOperands
+    mlir-ir-operation-state-add-operand         ;; backward-compat alias
+    mlir-ir-operation-state-add-types           ;; canonical: mlir::OperationState::addTypes
+    mlir-ir-operation-state-add-result-type     ;; backward-compat alias
     mlir-ir-operation-state-add-region
     mlir-ir-operation-state-destroy
     mlir-ir-rewriter-base-create-from-state
@@ -118,9 +121,12 @@
                        (uptr uptr string scheme-object scheme-object int) uptr))
 
   ;; mlir::RewriterBase::setInsertionPoint(op)
-  (define mlir-ir-rewriter-base-set-insertion-point-before
-    (foreign-procedure "mlir_ir_rewriter_base_set_insertion_point_before"
+  (define mlir-ir-rewriter-base-set-insertion-point
+    (foreign-procedure "mlir_ir_rewriter_base_set_insertion_point"
                        (uptr uptr) void))
+  ;; Backward-compat alias
+  (define mlir-ir-rewriter-base-set-insertion-point-before
+    mlir-ir-rewriter-base-set-insertion-point)
 
   ;; mlir::RewriterBase::setInsertionPointToEnd(block)
   (define mlir-ir-rewriter-base-set-insertion-point-to-end
@@ -170,15 +176,19 @@
   (define mlir-ir-operation-state-create
     (foreign-procedure "mlir_ir_operation_state_create" (uptr string) uptr))
 
-  ;; Add one operand Value to an OperationState.
+  ;; Add one operand Value to an OperationState — mlir::OperationState::addOperands.
   ;; state: OperationState* uptr, value: Value* opaque ptr uptr
-  (define mlir-ir-operation-state-add-operand
-    (foreign-procedure "mlir_ir_operation_state_add_operand" (uptr uptr) void))
+  (define mlir-ir-operation-state-add-operands
+    (foreign-procedure "mlir_ir_operation_state_add_operands" (uptr uptr) void))
+  ;; Backward-compat alias
+  (define mlir-ir-operation-state-add-operand mlir-ir-operation-state-add-operands)
 
-  ;; Add one result Type to an OperationState.
+  ;; Add one result Type to an OperationState — mlir::OperationState::addTypes.
   ;; state: OperationState* uptr, type: Type* opaque ptr uptr
-  (define mlir-ir-operation-state-add-result-type
-    (foreign-procedure "mlir_ir_operation_state_add_result_type" (uptr uptr) void))
+  (define mlir-ir-operation-state-add-types
+    (foreign-procedure "mlir_ir_operation_state_add_types" (uptr uptr) void))
+  ;; Backward-compat alias
+  (define mlir-ir-operation-state-add-result-type mlir-ir-operation-state-add-types)
 
   ;; Add one empty region to an OperationState.
   ;; state: OperationState* uptr
@@ -307,11 +317,11 @@
       (cond
         [(current-rewriter) =>
          (lambda (rw)
-           (mlir-ir-rewriter-base-set-insertion-point-before rw loc-op)
+           (mlir-ir-rewriter-base-set-insertion-point rw loc-op)
            (with-operation-state (state (mlir-operation-get-loc loc-op) name)
-             (for-each (lambda (v) (mlir-ir-operation-state-add-operand state v))
+             (for-each (lambda (v) (mlir-ir-operation-state-add-operands state v))
                        operands)
-             (for-each (lambda (t) (mlir-ir-operation-state-add-result-type state t))
+             (for-each (lambda (t) (mlir-ir-operation-state-add-types state t))
                        types)
              (let loop ([i 0])
                (when (< i nregions)
@@ -321,9 +331,9 @@
         [(current-block-builder) =>
          (lambda (b)
            (with-operation-state (state (mlir-operation-get-loc loc-op) name)
-             (for-each (lambda (v) (mlir-ir-operation-state-add-operand state v))
+             (for-each (lambda (v) (mlir-ir-operation-state-add-operands state v))
                        operands)
-             (for-each (lambda (t) (mlir-ir-operation-state-add-result-type state t))
+             (for-each (lambda (t) (mlir-ir-operation-state-add-types state t))
                        types)
              (let loop ([i 0])
                (when (< i nregions)
@@ -391,7 +401,7 @@
 
   ;; Set the rewriter's insertion point to immediately before op.
   (define mlir-set-insertion-point-before
-    mlir-ir-rewriter-base-set-insertion-point-before)
+    mlir-ir-rewriter-base-set-insertion-point)
 
   ;; Set the rewriter's insertion point to the end of a block.
   (define mlir-set-insertion-point-to-block-end
@@ -424,8 +434,8 @@
   (define (mlir-create-op builder loc name ops types . rest)
     (let ([nregions (if (pair? rest) (car rest) 0)])
       (with-operation-state (state (mlir-operation-get-loc loc) name)
-        (for-each (lambda (v) (mlir-ir-operation-state-add-operand state v)) ops)
-        (for-each (lambda (t) (mlir-ir-operation-state-add-result-type state t)) types)
+        (for-each (lambda (v) (mlir-ir-operation-state-add-operands state v)) ops)
+        (for-each (lambda (t) (mlir-ir-operation-state-add-types state t)) types)
         (let loop ([i 0])
           (when (< i nregions)
             (mlir-ir-operation-state-add-region state)
