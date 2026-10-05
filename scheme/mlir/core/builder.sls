@@ -93,74 +93,147 @@
   ;; Canonical low-level rewriter FFI
   ;;===--------------------------------------------------------------------===;;
 
-  ;; mlir::RewriterBase::create — set insertion point before loc_op and create.
-  ;; rewriter: RewriterBase* uptr, loc-op: Operation* uptr
-  ;; name: string, operands: Scheme list of Value* uptrs
-  ;; result-types: Scheme list of Type* uptrs
-  ;; Returns: Operation* uptr
+  ;; @brief mlir::RewriterBase::create — set insertion point before loc-op and
+  ;;        create a new op with the given name, operands, and result types.
+  ;; @param rewriter     RewriterBase* uptr
+  ;; @param loc-op       Operation* uptr — insertion-point anchor and location source
+  ;; @param name         string — fully-qualified op name, e.g. "arith.addi"
+  ;; @param operands     Scheme list of Value* uptrs
+  ;; @param result-types Scheme list of Type* uptrs
+  ;; @return             Operation* uptr of the created op
+  ;; @see   mlir/IR/Builders.h
+  ;; @note  Defined in lib/Bindings/IR/Builder.cpp
   (define mlir-ir-rewriter-base-create
     (foreign-procedure "mlir_ir_rewriter_base_create"
                        (uptr uptr string scheme-object scheme-object) uptr))
 
-  ;; Like mlir-ir-rewriter-base-create but pre-allocates num-regions empty regions.
+  ;; @brief mlir::RewriterBase::create (with regions) — same as
+  ;;        mlir-ir-rewriter-base-create but pre-allocates num-regions empty regions.
+  ;; @param rewriter     RewriterBase* uptr
+  ;; @param loc-op       Operation* uptr — insertion-point anchor and location source
+  ;; @param name         string — fully-qualified op name
+  ;; @param operands     Scheme list of Value* uptrs
+  ;; @param result-types Scheme list of Type* uptrs
+  ;; @param num-regions  int — number of empty regions to pre-allocate
+  ;; @return             Operation* uptr of the created op
+  ;; @see   mlir/IR/Builders.h
+  ;; @note  Defined in lib/Bindings/IR/Builder.cpp
   (define mlir-ir-rewriter-base-create-with-regions
     (foreign-procedure "mlir_ir_rewriter_base_create_with_regions"
                        (uptr uptr string scheme-object scheme-object int) uptr))
 
-  ;; mlir::OpBuilder::create — create via a plain OpBuilder (not a RewriterBase).
-  ;; builder: OpBuilder* uptr, loc-op: Operation* uptr
-  ;; name: string, operands: Scheme list, result-types: Scheme list
-  ;; Returns: Operation* uptr
+  ;; @brief mlir::OpBuilder::create — create a new op via a plain OpBuilder
+  ;;        (not a RewriterBase); does not move the rewriter insertion point.
+  ;; @param builder      OpBuilder* uptr
+  ;; @param loc-op       Operation* uptr — used as location source
+  ;; @param name         string — fully-qualified op name
+  ;; @param operands     Scheme list of Value* uptrs
+  ;; @param result-types Scheme list of Type* uptrs
+  ;; @return             Operation* uptr of the created op
+  ;; @see   mlir/IR/Builders.h
+  ;; @note  Defined in lib/Bindings/IR/Builder.cpp
   (define mlir-ir-op-builder-create
     (foreign-procedure "mlir_ir_op_builder_create"
                        (uptr uptr string scheme-object scheme-object) uptr))
 
-  ;; Like mlir-ir-op-builder-create but pre-allocates num-regions empty regions.
+  ;; @brief mlir::OpBuilder::create (with regions) — same as
+  ;;        mlir-ir-op-builder-create but pre-allocates num-regions empty regions.
+  ;; @param builder      OpBuilder* uptr
+  ;; @param loc-op       Operation* uptr — used as location source
+  ;; @param name         string — fully-qualified op name
+  ;; @param operands     Scheme list of Value* uptrs
+  ;; @param result-types Scheme list of Type* uptrs
+  ;; @param num-regions  int — number of empty regions to pre-allocate
+  ;; @return             Operation* uptr of the created op
+  ;; @see   mlir/IR/Builders.h
+  ;; @note  Defined in lib/Bindings/IR/Builder.cpp
   (define mlir-ir-op-builder-create-with-regions
     (foreign-procedure "mlir_ir_op_builder_create_with_regions"
                        (uptr uptr string scheme-object scheme-object int) uptr))
 
-  ;; mlir::RewriterBase::setInsertionPoint(op)
+  ;; @brief mlir::RewriterBase::setInsertionPoint(op) — move the insertion point
+  ;;        to immediately before the given op.
+  ;; @param rewriter RewriterBase* uptr
+  ;; @param op       Operation* uptr — new insertion-point anchor
+  ;; @return         void
+  ;; @see   mlir/IR/PatternMatch.h
+  ;; @note  Defined in lib/Bindings/IR/Builder.cpp
   (define mlir-ir-rewriter-base-set-insertion-point
     (foreign-procedure "mlir_ir_rewriter_base_set_insertion_point"
                        (uptr uptr) void))
-  ;; Backward-compat alias
+  ;; @brief Backward-compat alias for mlir-ir-rewriter-base-set-insertion-point.
+  ;; @see   mlir-ir-rewriter-base-set-insertion-point
   (define mlir-ir-rewriter-base-set-insertion-point-before
     mlir-ir-rewriter-base-set-insertion-point)
 
-  ;; mlir::RewriterBase::setInsertionPointToEnd(block)
+  ;; @brief mlir::RewriterBase::setInsertionPointToEnd(block) — move the
+  ;;        insertion point to the end of the given block.
+  ;; @param rewriter RewriterBase* uptr
+  ;; @param block    Block* uptr
+  ;; @return         void
+  ;; @see   mlir/IR/PatternMatch.h
+  ;; @note  Defined in lib/Bindings/IR/Builder.cpp
   (define mlir-ir-rewriter-base-set-insertion-point-to-end
     (foreign-procedure "mlir_ir_rewriter_base_set_insertion_point_to_end"
                        (uptr uptr) void))
 
-  ;; mlir::RewriterBase::createBlock(region) + add typed block arguments.
-  ;; rewriter: RewriterBase* uptr, region: Region* uptr
-  ;; arg-types: Scheme list of Type* uptrs
-  ;; Returns: Block* uptr
+  ;; @brief mlir::RewriterBase::createBlock(region) — append a new block with
+  ;;        the given argument types to a region and set IP to its end.
+  ;; @param rewriter  RewriterBase* uptr
+  ;; @param region    Region* uptr — region to append the new block to
+  ;; @param arg-types Scheme list of Type* uptrs — block argument types
+  ;; @return          Block* uptr of the newly created block
+  ;; @see   mlir/IR/PatternMatch.h
+  ;; @note  Defined in lib/Bindings/IR/Builder.cpp
   (define mlir-ir-rewriter-base-create-block
     (foreign-procedure "mlir_ir_rewriter_base_create_block"
                        (uptr uptr scheme-object) uptr))
 
-  ;; mlir::RewriterBase::replaceOp
+  ;; @brief mlir::RewriterBase::replaceOp — replace old-op's results with new-val.
+  ;; @param rewriter RewriterBase* uptr
+  ;; @param old-op   Operation* uptr — op to replace (must have no remaining uses)
+  ;; @param new-val  Value* opaque uptr — replacement value
+  ;; @return         1 on success, 0 on failure
+  ;; @see   mlir/IR/PatternMatch.h
+  ;; @note  Defined in lib/Bindings/IR/Builder.cpp
   (define mlir-ir-rewriter-base-replace-op
     (foreign-procedure "mlir_ir_rewriter_base_replace_op" (uptr uptr uptr) int))
 
-  ;; mlir::RewriterBase::eraseOp
+  ;; @brief mlir::RewriterBase::eraseOp — erase an op via the rewriter.
+  ;; @param rewriter RewriterBase* uptr
+  ;; @param op       Operation* uptr — op to erase (must have no uses)
+  ;; @return         1 on success, 0 on failure
+  ;; @see   mlir/IR/PatternMatch.h
+  ;; @note  Defined in lib/Bindings/IR/Builder.cpp
   (define mlir-ir-rewriter-base-erase-op
     (foreign-procedure "mlir_ir_rewriter_base_erase_op" (uptr uptr) int))
 
-  ;; Clone an op with new operands/types via RewriterBase, copying attributes.
+  ;; @brief Clone an op with new operands and result types via RewriterBase,
+  ;;        copying all attributes from the original op.
+  ;; @param rewriter     RewriterBase* uptr
+  ;; @param op           Operation* uptr — op to clone
+  ;; @param new-operands Scheme list of Value* uptrs — replacement operands
+  ;; @param new-types    Scheme list of Type* uptrs — replacement result types
+  ;; @return             Operation* uptr of the cloned op
+  ;; @see   mlir/IR/PatternMatch.h
+  ;; @note  Defined in lib/Bindings/IR/Builder.cpp
   (define mlir-ir-rewriter-base-clone-with-types
     (foreign-procedure "mlir_ir_rewriter_base_clone_with_types"
                        (uptr uptr scheme-object scheme-object) uptr))
 
-  ;; Heap-allocate an OpBuilder positioned at the end of a block.
-  ;; block: Block* uptr
-  ;; Returns: OpBuilder* uptr — must be destroyed with mlir-ir-op-builder-destroy
+  ;; @brief Heap-allocate an OpBuilder positioned at the end of a block.
+  ;; @param block   Block* uptr — block to position the builder at
+  ;; @return        OpBuilder* uptr — must be freed with mlir-ir-op-builder-destroy
+  ;; @see   mlir/IR/Builders.h
+  ;; @note  Defined in lib/Bindings/IR/Builder.cpp
   (define mlir-ir-op-builder-at-block-end
     (foreign-procedure "mlir_ir_op_builder_at_block_end" (uptr) uptr))
 
-  ;; Destroy an OpBuilder created by mlir-ir-op-builder-at-block-end.
+  ;; @brief Free an OpBuilder created by mlir-ir-op-builder-at-block-end.
+  ;; @param builder OpBuilder* uptr — must not be used after this call
+  ;; @return        void
+  ;; @see   mlir/IR/Builders.h
+  ;; @note  Defined in lib/Bindings/IR/Builder.cpp
   (define mlir-ir-op-builder-destroy
     (foreign-procedure "mlir_ir_op_builder_destroy" (uptr) void))
 
@@ -168,40 +241,67 @@
   ;; OperationState FFI (per-element, Scheme-side iteration)
   ;;===--------------------------------------------------------------------===;;
 
-  ;; Create a heap-allocated OperationState.
-  ;; loc: Location opaque ptr uptr (from mlir-Operation::getLoc)
-  ;; name: string op name
-  ;; Returns: OperationState* uptr — must be destroyed with
-  ;;          mlir-ir-operation-state-destroy
+  ;; @brief mlir::OperationState constructor — create a heap-allocated
+  ;;        OperationState for the named op at the given location.
+  ;; @param loc  Location opaque uptr (from mlir-Operation::getLoc)
+  ;; @param name string — fully-qualified op name, e.g. "arith.constant"
+  ;; @return     OperationState* uptr — must be freed with
+  ;;             mlir-ir-operation-state-destroy
+  ;; @see   mlir/IR/Operation.h
+  ;; @note  Defined in lib/Bindings/IR/Builder.cpp
   (define mlir-ir-operation-state-create
     (foreign-procedure "mlir_ir_operation_state_create" (uptr string) uptr))
 
-  ;; Add one operand Value to an OperationState — mlir::OperationState::addOperands.
-  ;; state: OperationState* uptr, value: Value* opaque ptr uptr
+  ;; @brief mlir::OperationState::addOperands — append one operand Value to an
+  ;;        OperationState.
+  ;; @param state OperationState* uptr
+  ;; @param value Value* opaque uptr — operand to append
+  ;; @return      void
+  ;; @see   mlir/IR/Operation.h
+  ;; @note  Defined in lib/Bindings/IR/Builder.cpp
   (define mlir-ir-operation-state-add-operands
     (foreign-procedure "mlir_ir_operation_state_add_operands" (uptr uptr) void))
-  ;; Backward-compat alias
+  ;; @brief Backward-compat alias for mlir-ir-operation-state-add-operands.
+  ;; @see   mlir-ir-operation-state-add-operands
   (define mlir-ir-operation-state-add-operand mlir-ir-operation-state-add-operands)
 
-  ;; Add one result Type to an OperationState — mlir::OperationState::addTypes.
-  ;; state: OperationState* uptr, type: Type* opaque ptr uptr
+  ;; @brief mlir::OperationState::addTypes — append one result Type to an
+  ;;        OperationState.
+  ;; @param state OperationState* uptr
+  ;; @param type  Type* opaque uptr — result type to append
+  ;; @return      void
+  ;; @see   mlir/IR/Operation.h
+  ;; @note  Defined in lib/Bindings/IR/Builder.cpp
   (define mlir-ir-operation-state-add-types
     (foreign-procedure "mlir_ir_operation_state_add_types" (uptr uptr) void))
-  ;; Backward-compat alias
+  ;; @brief Backward-compat alias for mlir-ir-operation-state-add-types.
+  ;; @see   mlir-ir-operation-state-add-types
   (define mlir-ir-operation-state-add-result-type mlir-ir-operation-state-add-types)
 
-  ;; Add one empty region to an OperationState.
-  ;; state: OperationState* uptr
+  ;; @brief mlir::OperationState::addRegion — append one empty region to an
+  ;;        OperationState.
+  ;; @param state OperationState* uptr
+  ;; @return      void
+  ;; @see   mlir/IR/Operation.h
+  ;; @note  Defined in lib/Bindings/IR/Builder.cpp
   (define mlir-ir-operation-state-add-region
     (foreign-procedure "mlir_ir_operation_state_add_region" (uptr) void))
 
-  ;; Destroy an OperationState created by mlir-ir-operation-state-create.
+  ;; @brief mlir::OperationState destructor — free an OperationState.
+  ;; @param state OperationState* uptr — must not be used after this call
+  ;; @return      void
+  ;; @see   mlir/IR/Operation.h
+  ;; @note  Defined in lib/Bindings/IR/Builder.cpp
   (define mlir-ir-operation-state-destroy
     (foreign-procedure "mlir_ir_operation_state_destroy" (uptr) void))
 
-  ;; Create an op via RewriterBase from a prepared OperationState.
-  ;; rw: RewriterBase* uptr, state: OperationState* uptr
-  ;; Returns: Operation* uptr
+  ;; @brief mlir::RewriterBase::create(OperationState) — create an op from a
+  ;;        fully-prepared OperationState.
+  ;; @param rewriter RewriterBase* uptr
+  ;; @param state    OperationState* uptr — prepared with operands/types/regions
+  ;; @return         Operation* uptr of the created op
+  ;; @see   mlir/IR/PatternMatch.h
+  ;; @note  Defined in lib/Bindings/IR/Builder.cpp
   (define mlir-ir-rewriter-base-create-from-state
     (foreign-procedure "mlir_ir_rewriter_base_create_from_state" (uptr uptr) uptr))
 

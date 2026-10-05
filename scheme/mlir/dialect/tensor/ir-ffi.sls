@@ -20,6 +20,13 @@
           %tensor-cast-create)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
+  ;; @brief crest::RankedTensorType::cloneWithEncoding — clone a RankedTensorType
+  ;;        with a new encoding attribute.
+  ;; @param tensor-type-uptr  RankedTensorType opaque uptr
+  ;; @param encoding-uptr     Attribute opaque uptr — new encoding (may be null)
+  ;; @return                  RankedTensorType opaque uptr with the new encoding
+  ;; @see   mlir/IR/BuiltinTypes.h
+  ;; @note  Defined in lib/Bindings/Dialect/Tensor/Tensor.cpp
   (define %ranked-tensor-type-with-encoding
     (foreign-procedure "crest::RankedTensorType::cloneWithEncoding" (uptr uptr) uptr))
 

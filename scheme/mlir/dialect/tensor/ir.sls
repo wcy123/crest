@@ -21,6 +21,13 @@
 
   (import (rnrs) (mlir dialect tensor ir-ffi))
 
+  ;; @brief crest::RankedTensorType::cloneWithEncoding — clone a RankedTensorType
+  ;;        with a new encoding attribute.
+  ;; @param tensor-type-uptr  RankedTensorType opaque uptr
+  ;; @param encoding-uptr     Attribute opaque uptr — new encoding (may be null)
+  ;; @return                  RankedTensorType opaque uptr with the new encoding
+  ;; @see   mlir/IR/BuiltinTypes.h
+  ;; @note  Defined in lib/Bindings/Dialect/Tensor/Tensor.cpp
   (define crest::RankedTensorType::cloneWithEncoding
     %ranked-tensor-type-with-encoding)
 

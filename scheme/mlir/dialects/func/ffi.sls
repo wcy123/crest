@@ -18,6 +18,13 @@
   (export %populate-func-type-conversion-pattern)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
+  ;; @brief mlir::populateFunctionOpInterfaceTypeConversionPattern<FuncOp> —
+  ;;        add the standard func.func / func.return type-conversion patterns.
+  ;; @param patterns  RewritePatternSet* uptr
+  ;; @param converter TypeConverter* uptr
+  ;; @return          void
+  ;; @see   mlir/Dialect/Func/Transforms/FuncConversions.h
+  ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
   (define %populate-func-type-conversion-pattern
     (foreign-procedure "mlir_transforms_dialect_conversion_populate_func_type_conversion" (uptr uptr) void))
 

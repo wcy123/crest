@@ -26,7 +26,7 @@
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
           (mlir dialect tensor ir)
-          (only (mlir dialect shape)
+          (only (mlir dialect shape ir)
                 mlir::shape::ShapeType::get
                 mlir::shape::SizeType::get
                 mlir::shape::WitnessType::get)

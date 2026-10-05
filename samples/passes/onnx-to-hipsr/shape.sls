@@ -28,7 +28,7 @@
           (only (mlir core builder) mlir-build-operation)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
-          (only (mlir dialect shape)
+          (only (mlir dialect shape ir)
                 mlir::shape::ShapeType::get
                 mlir::shape::SizeType::get
                 mlir::shape::WitnessType::get)

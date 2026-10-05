@@ -17,6 +17,13 @@
     mlir-populate-func-type-conversion-pattern)
   (import (rnrs) (mlir dialects func ffi))
 
+  ;; @brief mlir::populateFunctionOpInterfaceTypeConversionPattern<FuncOp> —
+  ;;        add the standard func.func / func.return type-conversion patterns.
+  ;; @param patterns  RewritePatternSet* uptr
+  ;; @param converter TypeConverter* uptr
+  ;; @return          void
+  ;; @see   mlir/Dialect/Func/Transforms/FuncConversions.h
+  ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
   (define mlir-populate-func-type-conversion-pattern
     %populate-func-type-conversion-pattern)
 

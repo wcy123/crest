@@ -21,10 +21,6 @@
           (mlir ir mlir-context))
 
   ;; @brief mlir::shape::ShapeType::get — get the shape dialect's Shape type.
-  ;; @return     ShapeType opaque pointer uptr
-  ;; @see        mlir/Dialect/Shape/IR/Shape.h
-  ;; @note       Uses current-mlir-context; defined in lib/Bindings/Dialect/Shape/IR/Shape.cpp
-  ;; @brief mlir::shape::ShapeType::get — get the shape dialect's Shape type.
   ;; @param ctx  MLIRContext* uptr (optional; defaults to current-mlir-context)
   ;; @return     ShapeType opaque pointer uptr
   ;; @see        mlir/Dialect/Shape/IR/Shape.h
