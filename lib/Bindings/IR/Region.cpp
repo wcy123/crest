@@ -8,6 +8,7 @@
 #include "Region.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/Block.h"
+#include "mlir/IR/Operation.h"
 #include "mlir/IR/Region.h"
 
 static void scheme_error(const char* who, const char* msg) {
@@ -22,6 +23,7 @@ uint64_t mlir_ir_region_append_new_block(uint64_t region_ptr,
                                          ptr arg_types_list) {
   if (!region_ptr) {
     scheme_error("mlir-ir-region-append-new-block", "region pointer is null");
+    return 0; // unreachable — error performs non-local exit
   }
   auto* region = reinterpret_cast<mlir::Region*>(region_ptr);
   auto* block = new mlir::Block();
@@ -45,6 +47,7 @@ uint64_t mlir_ir_region_append_new_block(uint64_t region_ptr,
 uint64_t mlir_ir_region_get_first_block(uint64_t region_ptr) {
   if (!region_ptr) {
     scheme_error("mlir-ir-region-get-first-block", "region pointer is null");
+    return 0; // unreachable — error performs non-local exit
   }
   auto* region = reinterpret_cast<mlir::Region*>(region_ptr);
   if (region->empty()) {

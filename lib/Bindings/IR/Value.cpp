@@ -22,6 +22,7 @@ extern "C" {
 uint64_t mlir_ir_value_get_defining_op(uint64_t value) {
   if (!value) {
     scheme_error("mlir-ir-value-get-defining-op", "value pointer is null");
+    return 0; // unreachable — error performs non-local exit
   }
   MlirValue cVal{reinterpret_cast<const void*>(value)};
   return reinterpret_cast<uint64_t>(unwrap(cVal).getDefiningOp());
@@ -31,6 +32,7 @@ uint64_t mlir_ir_value_get_defining_op(uint64_t value) {
 int mlir_ir_value_is_block_argument(uint64_t value) {
   if (!value) {
     scheme_error("mlir-ir-value-is-block-argument", "value pointer is null");
+    return 0; // unreachable — error performs non-local exit
   }
   mlir::Value val = unwrap(MlirValue{reinterpret_cast<const void*>(value)});
   return mlir::isa<mlir::BlockArgument>(val) ? 1 : 0;
@@ -53,6 +55,7 @@ int mlir_ir_value_get_result_number(uint64_t value) {
 uint64_t mlir_ir_value_num_uses(uint64_t val_ptr) {
   if (!val_ptr) {
     scheme_error("mlir-ir-value-num-uses", "value pointer is null");
+    return 0; // unreachable — error performs non-local exit
   }
   auto val =
       mlir::Value::getFromOpaquePointer(reinterpret_cast<const void*>(val_ptr));
@@ -63,6 +66,7 @@ uint64_t mlir_ir_value_num_uses(uint64_t val_ptr) {
 uint64_t mlir_ir_value_get_type(uint64_t value_ptr) {
   if (!value_ptr) {
     scheme_error("mlir-ir-value-get-type", "value pointer is null");
+    return 0; // unreachable — error performs non-local exit
   }
   auto val = mlir::Value::getFromOpaquePointer(
       reinterpret_cast<const void*>(value_ptr));

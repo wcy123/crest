@@ -20,6 +20,7 @@ extern "C" {
 uint64_t mlir_ir_type_get_context(uint64_t type_ptr) {
   if (!type_ptr) {
     scheme_error("mlir-ir-type-get-context", "type pointer is null");
+    return 0; // unreachable — error performs non-local exit
   }
   return reinterpret_cast<uint64_t>(
       mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(type_ptr))
