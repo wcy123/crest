@@ -40,7 +40,6 @@
           (for (rename (only (mlir ir value) get-defining-op)
                      (get-defining-op mlir-value-get-defining-op)) expand)
           (for (only (mlir support array-ref) array-ref-size array-ref-at) expand)
-          (for (only (mlir core attribute) mlir-make-attr) expand)
           (for (only (mlir ir mlir-context) current-mlir-context) expand)
           (for (only (chezscheme) parameterize) expand)
           (for (only (crest internal rewrite) with-mlir-ops) expand)
@@ -208,21 +207,18 @@
   ;;   (:attr "name") → fetch named attribute from :current-op as raw uptr;
   ;;                    raise (error ...) if absent → guard returns #f
   ;;
-  ;; Compose (:attr "name") with generic extractors, e.g.:
-  ;;   (mlir-attr-as attr :integer (:attr "axis"))
-  ;;   (mlir-attr-as attr :float   (:attr "epsilon"))
-  ;;   (mlir-attr-is-splat   (:attr "value"))
+  ;; Compose (:attr "name") with explicit builtin-attributes extractors, e.g.:
+  ;;   (integer-attr-value  (:attr "axis"))
+  ;;   (float32-attr-value  (:attr "epsilon"))
+  ;;   (dense-elements-attr-splat? (:attr "value"))
   ;;
   ;; Uses free-identifier=? via (syntax-case s (:current-op :attr) ...) so
   ;; only :current-op/:attr from (crest internal keywords) are substituted.
 
   ;; transform-where-expr — syntactic substitution for :where expressions.
   ;;
-  ;; No (:attr "name" :type) form: clients compose (:attr "name") with generic
-  ;; attr-extraction functions — mlir-attr-as attr :integer, mlir-attr-as attr :float,
-  ;; mlir-attr-splat-float-value, mlir-attr-is-splat, etc. — instead of
-  ;; encoding the type here.  This keeps the codegen open for new attr types
-  ;; without modification.
+  ;; No (:attr "name" :type) form: clients compose (:attr "name") with
+  ;; explicit attr-extraction functions from (mlir ir builtin-attributes).
   (define (transform-where-expr where-stx op-idx)
     (let ([cur-op #`(vector-ref all-operations #,op-idx)])
       (let walk ([s where-stx])
