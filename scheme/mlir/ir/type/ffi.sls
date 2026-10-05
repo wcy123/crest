@@ -16,6 +16,11 @@
   (export %type-get-context)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
+  ;; @brief mlir::Type::getContext() — return the MLIRContext that owns this type.
+  ;; @param type  Type opaque pointer uptr
+  ;; @return      MLIRContext opaque pointer uptr, or 0 if type is null
+  ;; @see         mlir/IR/Types.h
+  ;; @note        Defined in lib/Bindings/IR/Type.cpp
   (define %type-get-context
     (foreign-procedure "mlir_ir_type_get_context" (uptr) uptr))
 
