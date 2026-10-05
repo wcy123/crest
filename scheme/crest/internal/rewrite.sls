@@ -52,6 +52,7 @@
                      mlir-op-get-region mlir-new-block mlir-block-get-argument) expand)
           (for (only (mlir core attribute) mlir-make-attr :index) expand)
           (for (only (mlir core operation) mlir-operation-get-context
+                                           mlir-operation-get-result
                                            mlir-operation-set-attribute!) expand))
 
   ;;===--------------------------------------------------------------------===;;
