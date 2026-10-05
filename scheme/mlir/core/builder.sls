@@ -77,7 +77,7 @@
   ;; Erase an op directly without a rewriter (for post-pass cleanup).
   ;; op: Operation* uptr — must have no uses
   (define mlir-op-erase
-    (foreign-procedure "mlir_op_erase" (uptr) void))
+    (foreign-procedure "mlir_ir_operation_erase" (uptr) void))
 
   ;; Set the rewriter's insertion point to immediately before op.
   ;; rewriter: RewriterBase* uptr, op: Operation* uptr
