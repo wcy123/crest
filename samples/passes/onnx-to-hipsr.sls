@@ -19,7 +19,7 @@
   (import (rnrs (6))
           (mlir core operation)
           (mlir core value)
-          (only (mlir core builder) mlir-build-op mlir-set-insertion-point-before)
+          (only (mlir core builder) mlir-build-op mlir-set-insertion-point-before mlir-erase-op)
           (mlir core conversion)
           (mlir dialects hipsr)
           (mlir dialects func)
