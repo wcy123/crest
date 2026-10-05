@@ -43,9 +43,9 @@
     %emit-warning
     %emit-remark
     %erase
-    %operation-get-attr
-    %operation-set-attr
-    %operation-get-float-attr)
+    %get-attr
+    %set-attr
+    %get-float-attr)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::Operation::getName — return the registered op name (e.g. "arith.addi").
@@ -320,34 +320,34 @@
   (define %erase
     (foreign-procedure "mlir_ir_operation_erase" (uptr) void))
 
-  ;; @brief mlir_ir_operation_get_attr — get an attribute as opaque Attribute*.
+  ;; @brief mlir::Operation::getAttr — get an attribute as opaque Attribute*.
   ;; @param op         Operation* uptr
   ;; @param attr-name  Attribute name (string)
   ;; @return           Attribute* as uptr; 0 if absent or op is null
   ;; @see              mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note             Defined in lib/Bindings/IR/Operation.cpp
-  (define %operation-get-attr
+  (define %get-attr
     (foreign-procedure "mlir_ir_operation_get_attr"
                        (uptr string) uptr))
 
-  ;; @brief mlir_ir_operation_set_attr — set an attribute from an opaque Attribute*.
+  ;; @brief mlir::Operation::setAttr — set an attribute from an opaque Attribute*.
   ;; @param op         Operation* uptr
   ;; @param attr-name  Attribute name (string)
   ;; @param attr       Attribute* as uptr
   ;; @return           void
   ;; @see              mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note             Defined in lib/Bindings/IR/Operation.cpp
-  (define %operation-set-attr
+  (define %set-attr
     (foreign-procedure "mlir_ir_operation_set_attr"
                        (uptr string uptr) void))
 
-  ;; @brief mlir_ir_operation_get_float_attr — get a float attribute value.
+  ;; @brief mlir::FloatAttr::getValueAsDouble — get a float attribute value.
   ;; @param op         Operation* uptr
   ;; @param attr-name  Attribute name (string)
   ;; @return           double value; NaN if absent or op is null
   ;; @see              mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note             Defined in lib/Bindings/IR/Operation.cpp
-  (define %operation-get-float-attr
+  (define %get-float-attr
     (foreign-procedure "mlir_ir_operation_get_float_attr"
                        (uptr string) double))
 

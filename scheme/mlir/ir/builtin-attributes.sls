@@ -214,8 +214,8 @@
   ;; @param name   C string attribute name
   ;; @return       mlir::Attribute opaque pointer uptr; 0 if attribute not found
   ;; @see          mlir/IR/Operation.h
-  ;; @note         Direct alias for %operation-get-attr (from mlir ir operation ffi)
-  (define operation-get-attr                %operation-get-attr)
+  ;; @note         Direct alias for %get-attr (from mlir ir operation ffi)
+  (define operation-get-attr                %get-attr)
 
   ;; @brief mlir::Operation::setAttr — set a named attribute on an operation.
   ;; @param op     mlir::Operation* uptr
@@ -223,16 +223,16 @@
   ;; @param attr   mlir::Attribute opaque pointer uptr
   ;; @return       unspecified
   ;; @see          mlir/IR/Operation.h
-  ;; @note         Wraps %operation-set-attr (from mlir ir operation ffi)
-  (define (operation-set-attr! op name attr) (%operation-set-attr op name attr))
+  ;; @note         Wraps %set-attr (from mlir ir operation ffi)
+  (define (operation-set-attr! op name attr) (%set-attr op name attr))
 
   ;; @brief mlir::Operation::getAttrOfType<FloatAttr> — retrieve a named FloatAttr as a double.
   ;; @param op     mlir::Operation* uptr (0 returns NaN)
   ;; @param name   C string attribute name (NULL returns NaN)
   ;; @return       double: the float attribute's value, or NaN if not found
   ;; @see          mlir/IR/Operation.h
-  ;; @note         Direct alias for %operation-get-float-attr (from mlir ir operation ffi)
-  (define operation-get-float-attr          %operation-get-float-attr)
+  ;; @note         Direct alias for %get-float-attr (from mlir ir operation ffi)
+  (define operation-get-float-attr          %get-float-attr)
 
   ;; @brief mlir::ShapedType::getElementType — return the element type of a ShapedType.
   ;; @param type   mlir::Type opaque pointer uptr (0 returns 0)
