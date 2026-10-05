@@ -18,7 +18,9 @@
   (export populate-matmul-patterns
           onnx-matmul->hipsr)
   (import (except (rnrs (6)) =)
-          (mlir core ir)
+          (mlir core operation)
+          (mlir core value)
+          (mlir dialects builtin)
           (mlir core conversion)
           (mlir dialects hipsr)
           (mlir dialects tensor)

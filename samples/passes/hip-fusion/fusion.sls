@@ -10,10 +10,11 @@
 ;;
 ;; Implements the constraint and attribute-extraction helpers needed by DDR
 ;; rewrite patterns in (passes hip-fusion).  All logic is pure Scheme built on
-;; general (mlir core ir) primitives — no hip-specific C++ is required.
+;; generic MLIR primitives — no hip-specific C++ is required.
 ;;
 ;; The eight functions that hip-ep implements in C++ (Hip.cpp) are re-expressed
-;; here using generic MLIR attr/type/operand APIs available in (mlir core ir):
+;; here using generic MLIR attr/type/operand APIs from (mlir core operation),
+;; (mlir core value), (mlir core attribute), and (mlir dialects builtin):
 ;;   hip-extract-splat-scale         — mlir-attr-splat-float-value
 ;;   hip-build-init                  — mlir-build-operation "tensor.empty"
 ;;   hip-create-requantized-layout-op — mlir-op-clone-with-types
@@ -77,7 +78,11 @@
 
   (import (rnrs)
           (only (chezscheme) nan? foreign-procedure)
-          (mlir core ir))
+          (mlir core operation)
+          (mlir core value)
+          (mlir core attribute)
+          (only (mlir core builder) mlir-build-op mlir-op-clone-with-types)
+          (mlir dialects builtin))
 
   ;; Local helpers — expressed via the 4 generic attr functions.
   ;; These were previously in (mlir core attribute) but belong here since

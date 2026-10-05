@@ -18,7 +18,11 @@
   (export populate-shape-patterns
           onnx-shape->hipsr)
   (import (except (rnrs (6)) =)
-          (mlir core ir)
+          (mlir core operation)
+          (mlir core value)
+          (mlir core attribute)
+          (only (mlir core builder) mlir-build-operation)
+          (mlir dialects builtin)
           (mlir core conversion)
           (mlir dialects hipsr)
           (mlir dialects shape)

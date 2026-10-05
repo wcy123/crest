@@ -11,7 +11,6 @@
           make-unbound-value unbound-value?)
   (import (except (rnrs) =)
           (crest internal keywords)  ;; Import keywords at run time for re-export
-          (mlir core ir)               ;; with-rewrite-builder etc. used in generated code
           (crest internal rewrite)               ;; with-mlir-ops used in generated :rewrite bodies
           (for (crest internal keywords) expand)  ;; Also at expand time
           (for (crest internal ast) expand)  ;; For AST predicates

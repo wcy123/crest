@@ -41,7 +41,7 @@
 
   (import (rnrs)
           (mlir transforms dialect-conversion)
-          (mlir core ir))  ; for with-raii
+          (only (mlir core builder) with-raii))
 
   (define mlir-create-type-converter           type-converter-create)
   (define mlir-destroy-type-converter          type-converter-destroy)
