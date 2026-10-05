@@ -15,7 +15,8 @@
     %op-builder-create
     %op-builder-create-with-regions
     %op-builder-at-block-end
-    %op-builder-destroy)
+    %op-builder-destroy
+    %op-builder-create-from-state)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::OpBuilder::create — create an op via OperationState using a standalone OpBuilder.
@@ -60,5 +61,14 @@
   ;; @note           Defined in lib/Bindings/IR/OpBuilder.cpp; no-op if builder is 0
   (define %op-builder-destroy
     (foreign-procedure "mlir_ir_op_builder_destroy" (uptr) void))
+
+  ;; @brief Create an op from a prepared OperationState via a plain OpBuilder.
+  ;; @param builder     OpBuilder* uptr — standalone builder
+  ;; @param state       OperationState* uptr — ownership NOT transferred; caller must destroy
+  ;; @return            Operation* uptr of the created op, or 0 on bad input
+  ;; @see               mlir/IR/Builders.h, mlir/IR/OperationSupport.h
+  ;; @note              Defined in lib/Bindings/IR/OpBuilder.cpp
+  (define %op-builder-create-from-state
+    (foreign-procedure "mlir_ir_op_builder_create_from_state" (uptr uptr) uptr))
 
 ) ;; end library (mlir ir op-builder ffi)

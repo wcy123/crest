@@ -11,10 +11,8 @@
 
 #include "OperationState.h"
 #include "../Support/SchemeWrapper.h"
-#include "mlir/IR/Builders.h"
 #include "mlir/IR/Location.h"
 #include "mlir/IR/OperationSupport.h"
-#include "mlir/IR/PatternMatch.h"
 
 extern "C" {
 
@@ -64,38 +62,6 @@ void mlir_ir_operation_state_destroy(uint64_t state_ptr) {
   delete reinterpret_cast<mlir::OperationState*>(state_ptr);
 }
 
-// Create an op from a prepared OperationState via a RewriterBase.
-// Ownership of the OperationState is NOT transferred — caller must still
-// destroy it with mlir_ir_operation_state_destroy.
-// rw_ptr:     RewriterBase* as uptr
-// state_ptr:  OperationState* as uptr
-// Returns: Operation* as uptr, or 0 on bad input.
-uint64_t mlir_ir_rewriter_base_create_from_state(uint64_t rw_ptr,
-                                                 uint64_t state_ptr) {
-  if (!rw_ptr || !state_ptr) {
-    return 0;
-  }
-  return reinterpret_cast<uint64_t>(
-      reinterpret_cast<mlir::RewriterBase*>(rw_ptr)->create(
-          *reinterpret_cast<mlir::OperationState*>(state_ptr)));
-}
-
-// Create an op from a prepared OperationState via a plain OpBuilder.
-// Ownership of the OperationState is NOT transferred — caller must still
-// destroy it with mlir_ir_operation_state_destroy.
-// builder_ptr: OpBuilder* as uptr
-// state_ptr:   OperationState* as uptr
-// Returns: Operation* as uptr, or 0 on bad input.
-uint64_t mlir_ir_op_builder_create_from_state(uint64_t builder_ptr,
-                                              uint64_t state_ptr) {
-  if (!builder_ptr || !state_ptr) {
-    return 0;
-  }
-  return reinterpret_cast<uint64_t>(
-      reinterpret_cast<mlir::OpBuilder*>(builder_ptr)
-          ->create(*reinterpret_cast<mlir::OperationState*>(state_ptr)));
-}
-
 } // extern "C"
 
 namespace crest {
@@ -111,10 +77,6 @@ void registerIROperationStateBindings() {
                    (void*)::mlir_ir_operation_state_add_region);
   Sregister_symbol("mlir_ir_operation_state_destroy",
                    (void*)::mlir_ir_operation_state_destroy);
-  Sregister_symbol("mlir_ir_rewriter_base_create_from_state",
-                   (void*)::mlir_ir_rewriter_base_create_from_state);
-  Sregister_symbol("mlir_ir_op_builder_create_from_state",
-                   (void*)::mlir_ir_op_builder_create_from_state);
 }
 
 } // namespace crest
