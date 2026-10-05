@@ -22,7 +22,10 @@
     %ranked-tensor-type-get-element-type
     %ranked-tensor-type-get-shape
     %ranked-tensor-type-get-encoding
-    %ranked-tensor-type-clone-with-encoding)
+    %ranked-tensor-type-clone-with-encoding
+    %shaped-type-get-element-type
+    %integer-type-get-width
+    %integer-type-is-unsigned)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   (define %index-type-get
@@ -57,5 +60,15 @@
     (foreign-procedure
      "mlir_ir_builtin_types_ranked_tensor_type_clone_with_encoding"
      (uptr uptr) uptr))
+
+  (define %shaped-type-get-element-type
+    (foreign-procedure "mlir_ir_builtin_attributes_shaped_type_get_element_type"
+                       (uptr) uptr))
+  (define %integer-type-get-width
+    (foreign-procedure "mlir_ir_builtin_attributes_integer_type_get_width"
+                       (uptr) uptr))
+  (define %integer-type-is-unsigned
+    (foreign-procedure "mlir_ir_builtin_attributes_integer_type_is_unsigned"
+                       (uptr) int))
 
 ) ;; end library (mlir ir builtin-types ffi)

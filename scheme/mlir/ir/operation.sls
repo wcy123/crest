@@ -43,7 +43,10 @@
     operation-emit-error!
     operation-emit-warning!
     operation-emit-remark!
-    operation-erase!)
+    operation-erase!
+    operation-get-attr
+    operation-set-attr!
+    operation-get-float-attr)
   (import (rnrs) (mlir ir operation ffi))
 
   (define operation-get-name          %get-name)
@@ -75,5 +78,8 @@
   (define operation-emit-warning!     %emit-warning)
   (define operation-emit-remark!      %emit-remark)
   (define operation-erase!            %erase)
+  (define operation-get-attr          %operation-get-attr)
+  (define (operation-set-attr! op name attr) (%operation-set-attr op name attr))
+  (define operation-get-float-attr    %operation-get-float-attr)
 
 ) ;; end library (mlir ir operation)

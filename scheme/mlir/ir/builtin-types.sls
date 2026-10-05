@@ -24,7 +24,10 @@
     ranked-tensor-type-get-element-type
     ranked-tensor-type-get-shape
     ranked-tensor-type-get-encoding
-    ranked-tensor-type-clone-with-encoding)
+    ranked-tensor-type-clone-with-encoding
+    shaped-type-element-type
+    integer-type-width
+    integer-type-unsigned?)
   (import (rnrs) (mlir ir builtin-types ffi))
 
   (define index-type-get                    %index-type-get)
@@ -40,5 +43,9 @@
   ;; Predicate wrapper: returns #t/#f instead of 1/0
   (define (ranked-tensor-type? type)
     (not (zero? (%ranked-tensor-type-isa type))))
+
+  (define shaped-type-element-type    %shaped-type-get-element-type)
+  (define integer-type-width          %integer-type-get-width)
+  (define (integer-type-unsigned? t)  (not (zero? (%integer-type-is-unsigned t))))
 
 ) ;; end library (mlir ir builtin-types)
