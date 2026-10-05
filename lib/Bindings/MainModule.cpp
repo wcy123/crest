@@ -16,6 +16,7 @@
 #include "IR/OpResult.h"
 #include "IR/Operation.h"
 #include "IR/OperationState.h"
+#include "IR/Region.h"
 #include "IR/RewriterBase.h"
 #include "IR/Type.h"
 #include "IR/Value.h"
@@ -39,6 +40,7 @@ void registerMlirForeignFunctions() {
   registerDialectShapeBindings();
   registerInterfacesDpsBindings();
   registerIRBlockBindings();
+  registerIRRegionBindings();
   registerIRBuiltinAttributesBindings();
   registerIRMLIRContextBindings();
   registerIRBuiltinTypesBindings();
