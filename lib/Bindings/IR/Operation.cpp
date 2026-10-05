@@ -15,6 +15,7 @@
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Operation.h"
+#include <limits>
 
 extern "C" {
 
@@ -339,6 +340,35 @@ void mlir_ir_operation_erase(uint64_t op_ptr) {
   reinterpret_cast<mlir::Operation*>(op_ptr)->erase();
 }
 
+uint64_t mlir_ir_operation_get_attr(uint64_t op_ptr, const char* name) {
+  if (!op_ptr || !name) {
+    return 0;
+  }
+  auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
+  auto attr = op->getAttr(name);
+  return attr ? reinterpret_cast<uint64_t>(attr.getAsOpaquePointer()) : 0;
+}
+
+void mlir_ir_operation_set_attr(uint64_t op_ptr, const char* name,
+                                uint64_t attr_ptr) {
+  if (!op_ptr || !attr_ptr) {
+    return;
+  }
+  reinterpret_cast<mlir::Operation*>(op_ptr)->setAttr(
+      name, mlir::Attribute::getFromOpaquePointer(
+                reinterpret_cast<const void*>(attr_ptr)));
+}
+
+double mlir_ir_operation_get_float_attr(uint64_t op_ptr, const char* name) {
+  if (!op_ptr || !name) {
+    return std::numeric_limits<double>::quiet_NaN();
+  }
+  auto attr = reinterpret_cast<mlir::Operation*>(op_ptr)
+                  ->getAttrOfType<mlir::FloatAttr>(name);
+  return attr ? attr.getValueAsDouble()
+              : std::numeric_limits<double>::quiet_NaN();
+}
+
 // Get the i-th region of an operation.
 // op_ptr:      Operation* as uptr
 // region_idx:  0-based region index
@@ -417,6 +447,26 @@ void registerIROperationBindings() {
   Sregister_symbol("mlir_ir_operation_erase", (void*)::mlir_ir_operation_erase);
   Sregister_symbol("mlir_ir_operation_get_region",
                    (void*)::mlir_ir_operation_get_region);
+  Sregister_symbol("mlir_ir_operation_get_attr",
+                   (void*)::mlir_ir_operation_get_attr);
+  Sregister_symbol("mlir_ir_operation_set_attr",
+                   (void*)::mlir_ir_operation_set_attr);
+  Sregister_symbol("mlir_ir_operation_get_float_attr",
+                   (void*)::mlir_ir_operation_get_float_attr);
+  // Backward-compat aliases for old mlir_ir_builtin_attributes_* names
+  Sregister_symbol("mlir_ir_builtin_attributes_operation_get_attr",
+                   (void*)::mlir_ir_operation_get_attr);
+  Sregister_symbol("mlir_ir_builtin_attributes_operation_set_attr",
+                   (void*)::mlir_ir_operation_set_attr);
+  Sregister_symbol("mlir_ir_builtin_attributes_operation_get_float_attr",
+                   (void*)::mlir_ir_operation_get_float_attr);
+  // Backward-compat aliases for even older short names
+  Sregister_symbol("mlir_operation_get_attribute",
+                   (void*)::mlir_ir_operation_get_attr);
+  Sregister_symbol("mlir_operation_set_attribute",
+                   (void*)::mlir_ir_operation_set_attr);
+  Sregister_symbol("mlir_op_get_float_attr",
+                   (void*)::mlir_ir_operation_get_float_attr);
 }
 
 } // namespace crest
