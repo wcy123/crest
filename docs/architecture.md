@@ -246,9 +246,12 @@ functions in the same file, with the same edit–reload cycle as the pattern.
    `ast-operand` records tagged `required`, `optional`, or `variadic`. The
    `:rewrite` body is kept as raw syntax.
 
-2. **Validate** — checks semantic rules (`%`-prefixed names, no duplicate
-   bindings, root variable present) and caches `root-op-index`,
-   `root-result-idx`, `root-op-name`.
+2. **Validate** — normalizes the AST into canonical form (op-names from
+   symbol to string, single result-vars from identifier to one-element list)
+   and checks semantic rules (`%`-prefixed names, no duplicate bindings, root
+   variable present). Caches `root-op-index`, `root-result-idx`,
+   `root-op-name`. Normalization here means Analyze and Codegen can assume
+   uniform forms and never handle raw vs. normalized representation.
 
 3. **Analyze** — topological DAG traversal from the root, producing a flat
    action sequence: `:set-current-op`, `:check-op`, `:bind-operand` (all-required
