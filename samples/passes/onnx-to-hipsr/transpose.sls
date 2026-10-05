@@ -24,7 +24,7 @@
           (mlir core attribute)
           (only (mlir core builder) mlir-build-operation)
           (mlir dialects builtin)
-          (mlir core conversion)
+          (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
           (mlir dialects tensor)
           (mlir dialects shape)
@@ -79,7 +79,7 @@
                      (mlir-operation-get-result new-op 0))))
 
   (define (populate-transpose-patterns type-converter patterns ctx)
-    (mlir-register-conversion-pattern patterns "onnx.Transpose"
+    (add-conversion-pattern patterns "onnx.Transpose"
                                       onnx-transpose->hipsr type-converter 1))
 
 ) ;; end library (onnx-to-hipsr transpose)

@@ -25,7 +25,7 @@
           (mlir core value)
           (mlir core attribute)
           (mlir dialects builtin)
-          (mlir core conversion)
+          (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
           (mlir dialects tensor)
           (crest))
@@ -90,9 +90,9 @@
         (%result = hipsr.constant () ("value" = $value-attr) -> !out-dev))
 
   (define (populate-constant-patterns type-converter patterns ctx)
-    (mlir-register-conversion-pattern patterns "onnx.Constant"
+    (add-conversion-pattern patterns "onnx.Constant"
                                       onnx-constant-scalar->arith type-converter 1)
-    (mlir-register-conversion-pattern patterns "onnx.Constant"
+    (add-conversion-pattern patterns "onnx.Constant"
                                       onnx-constant-tensor->hipsr type-converter 1))
 
 ) ;; end library (onnx-to-hipsr constant)

@@ -29,7 +29,7 @@
           (mlir core attribute)
           (only (mlir core builder) mlir-build-operation)
           (mlir dialects builtin)
-          (mlir core conversion)
+          (mlir transforms dialect-conversion)
           (passes hip-fusion fusion)
           (crest)
           (passes hip-fusion helpers))
