@@ -4,7 +4,7 @@
  */
 
 #include "Core/Core.h"
-#include "Dialects/Shape.h"
+#include "Dialect/Shape/Shape.h"
 #include "Support/ArrayRef.h"
 #include "Support/Logging.h"
 
@@ -20,7 +20,7 @@ extern "C" void crest_register_extra_bindings(void (*fn)()) {
 
 void registerMlirForeignFunctions() {
   registerCoreBindings();
-  registerShapeBindings();
+  registerDialectShapeBindings();
   registerLoggingBindings();
   registerArrayRefBindings();
   if (g_extra_bindings_fn) {

@@ -6,9 +6,10 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 ;;
-;; (mlir dialects shape) — Shape dialect type accessors.
+;; (mlir dialects shape) — backward-compatibility shim.
 ;;
-;; Mirrors lib/Scheme/Bindings/Dialects/Shape.cpp.
+;; Canonical library is (mlir dialect shape). This shim re-exports the old
+;; dot-namespaced names so existing code continues to work.
 ;;
 ;;===----------------------------------------------------------------------===;;
 
@@ -17,24 +18,10 @@
     mlir-shape.shape-type
     mlir-shape.size-type
     mlir-shape.witness-type)
-  (import (chezscheme))
+  (import (rnrs) (mlir dialect shape))
 
-  ;; Return the !shape.shape type for the given MLIRContext.
-  ;; ctx: MLIRContext* uptr
-  ;; Returns: shape::ShapeType uptr (opaque type pointer)
-  (define mlir-shape.shape-type
-    (foreign-procedure "mlir_get_shape_shape_type" (uptr) uptr))
-
-  ;; Return the !shape.size type for the given MLIRContext.
-  ;; ctx: MLIRContext* uptr
-  ;; Returns: shape::SizeType uptr (opaque type pointer)
-  (define mlir-shape.size-type
-    (foreign-procedure "mlir_get_shape_size_type" (uptr) uptr))
-
-  ;; Return the !shape.witness type for the given MLIRContext.
-  ;; ctx: MLIRContext* uptr
-  ;; Returns: shape::WitnessType uptr (opaque type pointer)
-  (define mlir-shape.witness-type
-    (foreign-procedure "mlir_get_shape_witness_type" (uptr) uptr))
+  (define mlir-shape.shape-type   shape-type-get)
+  (define mlir-shape.size-type    size-type-get)
+  (define mlir-shape.witness-type witness-type-get)
 
 ) ;; end library (mlir dialects shape)
