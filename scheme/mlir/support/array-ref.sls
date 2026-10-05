@@ -33,6 +33,8 @@
           (only (chezscheme) foreign-ref)
           (mlir support array-ref ffi))
 
+  ;; :uptr — exported compile-time keyword: array-ref element type 'uptr (8-byte pointer).
+  ;; :i32  — internal only; use (mlir core attribute)'s :i32 in callers.
   (define-syntax :uptr (identifier-syntax 'uptr))
   (define-syntax :i32  (identifier-syntax 'i32))
 
