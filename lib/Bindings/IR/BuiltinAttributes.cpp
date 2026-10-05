@@ -17,7 +17,6 @@
 #include "mlir/IR/Attributes.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinTypes.h"
-#include "mlir/IR/Operation.h"
 #include <limits>
 #include <string>
 
@@ -330,35 +329,6 @@ ptr mlir_ir_builtin_attributes_dense_i32_array_attr_to_list(uint64_t attr_ptr) {
   return result;
 }
 
-//===----------------------------------------------------------------------===//
-// Misplaced (TODO: move to IR/Operation and IR/BuiltinTypes in later PRs)
-//===----------------------------------------------------------------------===//
-
-uint64_t mlir_ir_builtin_attributes_operation_get_attr(uint64_t op_ptr,
-                                                       const char* name) {
-  auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-  auto attr = op->getAttr(name);
-  return attr ? reinterpret_cast<uint64_t>(attr.getAsOpaquePointer()) : 0;
-}
-
-void mlir_ir_builtin_attributes_operation_set_attr(uint64_t op_ptr,
-                                                   const char* name,
-                                                   uint64_t attr_ptr) {
-  reinterpret_cast<mlir::Operation*>(op_ptr)->setAttr(
-      name, mlir::Attribute::getFromOpaquePointer(
-                reinterpret_cast<const void*>(attr_ptr)));
-}
-
-double mlir_ir_builtin_attributes_operation_get_float_attr(uint64_t op_ptr,
-                                                           const char* name) {
-  if (!op_ptr || !name) {
-    return std::numeric_limits<double>::quiet_NaN();
-  }
-  auto attr = reinterpret_cast<mlir::Operation*>(op_ptr)
-                  ->getAttrOfType<mlir::FloatAttr>(name);
-  return attr ? attr.getValueAsDouble()
-              : std::numeric_limits<double>::quiet_NaN();
-}
 
 // Kept for backward compat — duplicate of dense_elements_attr_is_splat.
 int mlir_attr_splat_int_value_compat(uint64_t attr_ptr, int64_t absent_val) {
@@ -431,13 +401,6 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir_ir_builtin_attributes_dense_i32_array_attr_to_list",
       (void*)::mlir_ir_builtin_attributes_dense_i32_array_attr_to_list);
-  Sregister_symbol("mlir_ir_builtin_attributes_operation_get_attr",
-                   (void*)::mlir_ir_builtin_attributes_operation_get_attr);
-  Sregister_symbol("mlir_ir_builtin_attributes_operation_set_attr",
-                   (void*)::mlir_ir_builtin_attributes_operation_set_attr);
-  Sregister_symbol(
-      "mlir_ir_builtin_attributes_operation_get_float_attr",
-      (void*)::mlir_ir_builtin_attributes_operation_get_float_attr);
   // ── Old names (backward compat) — used by generic dispatch in Scheme ─────
   Sregister_symbol("mlir_make_attr_i64",
                    (void*)::mlir_ir_builtin_attributes_integer_attr_get_i64);
@@ -456,13 +419,6 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir_make_attr_dense_resource",
       (void*)::mlir_ir_builtin_attributes_dense_resource_elements_attr_get);
-  Sregister_symbol("mlir_operation_get_attribute",
-                   (void*)::mlir_ir_builtin_attributes_operation_get_attr);
-  Sregister_symbol("mlir_operation_set_attribute",
-                   (void*)::mlir_ir_builtin_attributes_operation_set_attr);
-  Sregister_symbol(
-      "mlir_op_get_float_attr",
-      (void*)::mlir_ir_builtin_attributes_operation_get_float_attr);
   Sregister_symbol("mlir_attr_isa_integer",
                    (void*)::mlir_ir_builtin_attributes_integer_attr_isa);
   Sregister_symbol("mlir_attr_isa_float",
