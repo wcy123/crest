@@ -18,27 +18,27 @@
 
 (library (mlir ir builtin-attributes ffi)
   (export
-    %IntegerAttr:get/i64
-    %IntegerAttr:get/index
-    %FloatAttr:get/f32
-    %DenseI32ArrayAttr:get
-    %DenseI64ArrayAttr:get
-    %parseAttribute
-    %DenseResourceElementsAttr:get
-    %isa/IntegerAttr
-    %isa/FloatAttr
-    %isa/StringAttr
-    %isa/DenseI32ArrayAttr
-    %isa/DenseElementsAttr
-    %DenseElementsAttr:isSplat
-    %isa/FloatAttr.f32
-    %IntegerAttr:getValue
-    %FloatAttr:getValueAsDouble
-    %FloatAttr:getValueAsDouble.f32
-    %DenseI32ArrayAttr:asArrayRef
-    %DenseElementsAttr:getSplatValue/APFloat
-    %DenseElementsAttr:getSplatValue/APInt
-    %DenseI32ArrayAttr:asArrayRef->list)
+    %mlir::IntegerAttr::get<i64>
+    %mlir::IntegerAttr::get<index>
+    %mlir::FloatAttr::get<f32>
+    %mlir::DenseI32ArrayAttr::get
+    %mlir::DenseI64ArrayAttr::get
+    %mlir::parseAttribute
+    %mlir::DenseResourceElementsAttr::get
+    %mlir::isa<IntegerAttr>
+    %mlir::isa<FloatAttr>
+    %mlir::isa<StringAttr>
+    %mlir::isa<DenseI32ArrayAttr>
+    %mlir::isa<DenseElementsAttr>
+    %mlir::DenseElementsAttr::isSplat
+    %mlir::isa<FloatAttr.f32>
+    %mlir::IntegerAttr::getValue
+    %mlir::FloatAttr::getValueAsDouble
+    %mlir::FloatAttr::getValueAsDouble.f32
+    %mlir::DenseI32ArrayAttr::asArrayRef
+    %mlir::DenseElementsAttr::getSplatValue<APFloat>
+    %mlir::DenseElementsAttr::getSplatValue<APInt>
+    %mlir::DenseI32ArrayAttr::asArrayRef->list)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::IntegerAttr::get — construct an IntegerAttr with i64 (integer<64>) type.
@@ -47,7 +47,7 @@
   ;; @return       IntegerAttr opaque pointer uptr
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
-  (define %IntegerAttr:get/i64
+  (define %mlir::IntegerAttr::get<i64>
     (foreign-procedure "mlir::IntegerAttr::get<i64>"
                        (uptr scheme-object) uptr))
 
@@ -57,7 +57,7 @@
   ;; @return       IntegerAttr opaque pointer uptr
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
-  (define %IntegerAttr:get/index
+  (define %mlir::IntegerAttr::get<index>
     (foreign-procedure "mlir::IntegerAttr::get<index>"
                        (uptr scheme-object) uptr))
 
@@ -67,7 +67,7 @@
   ;; @return       FloatAttr opaque pointer uptr
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
-  (define %FloatAttr:get/f32
+  (define %mlir::FloatAttr::get<f32>
     (foreign-procedure "mlir::FloatAttr::get<f32>"
                        (uptr scheme-object) uptr))
 
@@ -77,7 +77,7 @@
   ;; @return       DenseI32ArrayAttr opaque pointer uptr
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
-  (define %DenseI32ArrayAttr:get
+  (define %mlir::DenseI32ArrayAttr::get
     (foreign-procedure "mlir::DenseI32ArrayAttr::get"
                        (uptr scheme-object) uptr))
 
@@ -87,7 +87,7 @@
   ;; @return       DenseI64ArrayAttr opaque pointer uptr
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
-  (define %DenseI64ArrayAttr:get
+  (define %mlir::DenseI64ArrayAttr::get
     (foreign-procedure "mlir::DenseI64ArrayAttr::get"
                        (uptr scheme-object) uptr))
 
@@ -97,7 +97,7 @@
   ;; @return       mlir::Attribute opaque pointer uptr; raises error if parse fails
   ;; @see          mlir/AsmParser/AsmParser.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
-  (define %parseAttribute
+  (define %mlir::parseAttribute
     (foreign-procedure "mlir::parseAttribute"
                        (uptr scheme-object) uptr))
 
@@ -110,7 +110,7 @@
   ;; @return       DenseResourceElementsAttr opaque pointer uptr
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
-  (define %DenseResourceElementsAttr:get
+  (define %mlir::DenseResourceElementsAttr::get
     (foreign-procedure "mlir::DenseResourceElementsAttr::get"
                        (uptr scheme-object) uptr))
 
@@ -119,7 +119,7 @@
   ;; @return       int: 1 if attr is mlir::IntegerAttr, 0 otherwise
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
-  (define %isa/IntegerAttr
+  (define %mlir::isa<IntegerAttr>
     (foreign-procedure "mlir::isa<IntegerAttr>" (uptr) int))
 
   ;; @brief mlir::isa<FloatAttr> — test whether an opaque attribute pointer is a FloatAttr.
@@ -127,7 +127,7 @@
   ;; @return       int: 1 if attr is mlir::FloatAttr, 0 otherwise
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
-  (define %isa/FloatAttr
+  (define %mlir::isa<FloatAttr>
     (foreign-procedure "mlir::isa<FloatAttr>" (uptr) int))
 
   ;; @brief mlir::isa<StringAttr> — test whether an opaque attribute pointer is a StringAttr.
@@ -135,7 +135,7 @@
   ;; @return       int: 1 if attr is mlir::StringAttr, 0 otherwise
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
-  (define %isa/StringAttr
+  (define %mlir::isa<StringAttr>
     (foreign-procedure "mlir::isa<StringAttr>" (uptr) int))
 
   ;; @brief mlir::isa<DenseI32ArrayAttr> — test whether an opaque attribute pointer is a DenseI32ArrayAttr.
@@ -143,7 +143,7 @@
   ;; @return       int: 1 if attr is mlir::DenseI32ArrayAttr, 0 otherwise
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
-  (define %isa/DenseI32ArrayAttr
+  (define %mlir::isa<DenseI32ArrayAttr>
     (foreign-procedure "mlir::isa<DenseI32ArrayAttr>"
                        (uptr) int))
 
@@ -152,7 +152,7 @@
   ;; @return       int: 1 if attr is mlir::DenseElementsAttr (or subclass), 0 otherwise
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
-  (define %isa/DenseElementsAttr
+  (define %mlir::isa<DenseElementsAttr>
     (foreign-procedure "mlir::isa<DenseElementsAttr>"
                        (uptr) int))
 
@@ -161,16 +161,16 @@
   ;; @return       int: 1 if attr is a DenseElementsAttr and isSplat() is true, 0 otherwise
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
-  (define %DenseElementsAttr:isSplat
+  (define %mlir::DenseElementsAttr::isSplat
     (foreign-procedure "mlir::DenseElementsAttr::isSplat"
                        (uptr) int))
 
-  ;; @brief mlir::isa<FloatAttr> (f32 alias) — alias for %isa/FloatAttr, tests mlir::FloatAttr.
+  ;; @brief mlir::isa<FloatAttr> (f32 alias) — alias for %mlir::isa<FloatAttr>, tests mlir::FloatAttr.
   ;; @param attr   mlir::Attribute opaque pointer uptr (0 treated as false)
   ;; @return       int: 1 if attr is mlir::FloatAttr, 0 otherwise
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp; delegates to float_attr_isa
-  (define %isa/FloatAttr.f32
+  (define %mlir::isa<FloatAttr.f32>
     (foreign-procedure "mlir::isa<FloatAttr>.f32" (uptr) int))
 
   ;; @brief mlir::IntegerAttr::getValue — extract the integer value of an IntegerAttr.
@@ -178,7 +178,7 @@
   ;; @return       Scheme exact integer (sign-extended via Sinteger64 / getSExtValue)
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
-  (define %IntegerAttr:getValue
+  (define %mlir::IntegerAttr::getValue
     (foreign-procedure "mlir::IntegerAttr::getValue"
                        (uptr) scheme-object))
 
@@ -187,16 +187,16 @@
   ;; @return       Scheme flonum (double precision via Sflonum / getValueAsDouble)
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
-  (define %FloatAttr:getValueAsDouble
+  (define %mlir::FloatAttr::getValueAsDouble
     (foreign-procedure "mlir::FloatAttr::getValueAsDouble"
                        (uptr) scheme-object))
 
-  ;; @brief mlir::FloatAttr::getValueAsDouble (f32 alias) — alias for %FloatAttr:getValueAsDouble.
+  ;; @brief mlir::FloatAttr::getValueAsDouble (f32 alias) — alias for %mlir::FloatAttr::getValueAsDouble.
   ;; @param attr   mlir::FloatAttr opaque pointer uptr; raises error if null or wrong type
   ;; @return       Scheme flonum (double precision via Sflonum / getValueAsDouble)
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp; delegates to float_attr_get_value
-  (define %FloatAttr:getValueAsDouble.f32
+  (define %mlir::FloatAttr::getValueAsDouble.f32
     (foreign-procedure "mlir::FloatAttr::getValueAsDouble.f32"
                        (uptr) scheme-object))
 
@@ -205,7 +205,7 @@
   ;; @return       CArrayRef* uptr — heap-allocated {data-ptr uptr, size uint64} pair
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp; caller owns the CArrayRef
-  (define %DenseI32ArrayAttr:asArrayRef
+  (define %mlir::DenseI32ArrayAttr::asArrayRef
     (foreign-procedure "mlir::DenseI32ArrayAttr::asArrayRef"
                        (uptr) uptr))
 
@@ -214,7 +214,7 @@
   ;; @return       Scheme flonum (double precision via convertToDouble on the splat APFloat)
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
-  (define %DenseElementsAttr:getSplatValue/APFloat
+  (define %mlir::DenseElementsAttr::getSplatValue<APFloat>
     (foreign-procedure "mlir::DenseElementsAttr::getSplatValue<APFloat>"
                        (uptr) scheme-object))
 
@@ -223,7 +223,7 @@
   ;; @return       Scheme exact integer (sign-extended via Sinteger64 / getSExtValue on the splat APInt)
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
-  (define %DenseElementsAttr:getSplatValue/APInt
+  (define %mlir::DenseElementsAttr::getSplatValue<APInt>
     (foreign-procedure "mlir::DenseElementsAttr::getSplatValue<APInt>"
                        (uptr) scheme-object))
 
@@ -232,7 +232,7 @@
   ;; @return       Scheme list of fixnums, one per element (built in reverse then reversed)
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
-  (define %DenseI32ArrayAttr:asArrayRef->list
+  (define %mlir::DenseI32ArrayAttr::asArrayRef->list
     (foreign-procedure "mlir::DenseI32ArrayAttr::asArrayRef->list"
                        (uptr) scheme-object))
 

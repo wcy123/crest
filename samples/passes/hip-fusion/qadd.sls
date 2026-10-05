@@ -33,11 +33,11 @@
             (get-type          mlir-value-get-type)
             (num-uses          mlir-value-num-uses))
           (only (mlir ir builtin-attributes)
-                FloatAttr:get/f32
-                IntegerAttr:get/i64
-                DenseElementsAttr:isSplat
-                DenseElementsAttr:getSplatValue/APFloat
-                DenseElementsAttr:getSplatValue/APInt)
+                mlir::FloatAttr::get<f32>
+                mlir::IntegerAttr::get<i64>
+                mlir::DenseElementsAttr::isSplat
+                mlir::DenseElementsAttr::getSplatValue<APFloat>
+                mlir::DenseElementsAttr::getSplatValue<APInt>)
           (mlir dialects builtin)
           (passes hip-fusion fusion)
           (crest))
@@ -54,8 +54,8 @@
   ;; Build a FloatAttr<f32> from the splat value of a hip.constant scale.
   ;; Uses current-mlir-context — no explicit ctx needed.
   (define (scale-attr scale-val)
-    (FloatAttr:get/f32
-      (DenseElementsAttr:getSplatValue/APFloat
+    (mlir::FloatAttr::get<f32>
+      (mlir::DenseElementsAttr::getSplatValue<APFloat>
         (mlir-operation-get-attribute (mlir-value-get-defining-op scale-val) "value"))))
 
   ;; Build an IntegerAttr<i64> for the zero-point.
@@ -63,22 +63,22 @@
   ;; Absent:  zero (default zero-point).
   ;; Uses current-mlir-context — no explicit ctx needed.
   (define (zp-attr zp-val)
-    (IntegerAttr:get/i64
+    (mlir::IntegerAttr::get<i64>
       (if (unbound-value? zp-val)
           0
-          (DenseElementsAttr:getSplatValue/APInt
+          (mlir::DenseElementsAttr::getSplatValue<APInt>
             (mlir-operation-get-attribute (mlir-value-get-defining-op zp-val) "value")))))
 
   (define-rewrite-pattern (hip-qadd-fusion op rewriter)
     :if-match
         %lhs_scale = hip.constant          ()
-                       :where (DenseElementsAttr:isSplat (:attr "value"))
+                       :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
         %dq_lhs    = hip.dequantize_linear (%ctx %lhs %lhs_scale (:optional %lhs_zp) %dq_lhs_init)
         %rhs_scale = hip.constant          ()
-                       :where (DenseElementsAttr:isSplat (:attr "value"))
+                       :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
         %dq_rhs    = hip.dequantize_linear (%ctx %rhs %rhs_scale (:optional %rhs_zp) %dq_rhs_init)
         %out_scale = hip.constant          ()
-                       :where (DenseElementsAttr:isSplat (:attr "value"))
+                       :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
         %sum       = hip.add               (%ctx %dq_lhs %dq_rhs %sum_init)
                        :where (and (single-consumer? %sum)
                                    (same-rank? %q %sum_init))

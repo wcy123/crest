@@ -15,10 +15,10 @@
 ;; The eight functions that hip-ep implements in C++ (Hip.cpp) are re-expressed
 ;; here using generic MLIR attr/type/operand APIs from (mlir core operation),
 ;; (mlir ir value), (mlir ir builtin-attributes), and (mlir dialects builtin):
-;;   hip-extract-splat-scale         — DenseElementsAttr:getSplatValue/APFloat
+;;   hip-extract-splat-scale         — mlir::DenseElementsAttr::getSplatValue<APFloat>
 ;;   hip-build-init                  — mlir-build-operation "tensor.empty"
 ;;   hip-create-requantized-layout-op — mlir-op-clone-with-types
-;;   hip-extractable-qdq-zeropoint?  — operand count + DenseElementsAttr:isSplat
+;;   hip-extractable-qdq-zeropoint?  — operand count + mlir::DenseElementsAttr::isSplat
 ;;   hip-extract-qdq-zeropoint-i64   — mlir-operation-get-integer-attr on zp op
 ;;   hip-qdq-value-bits-c            — alias for pure-Scheme hip-qdq-value-bits
 ;;   hip-fusable-conv-geometry?      — integer-array attr reads
@@ -102,10 +102,10 @@
             (get-type          mlir-value-get-type)
             (num-uses          mlir-value-num-uses))
           (only (mlir ir builtin-attributes)
-                DenseElementsAttr:isSplat
-                FloatAttr:getValueAsDouble.f32
-                DenseElementsAttr:getSplatValue/APFloat
-                DenseElementsAttr:getSplatValue/APInt)
+                mlir::DenseElementsAttr::isSplat
+                mlir::FloatAttr::getValueAsDouble.f32
+                mlir::DenseElementsAttr::getSplatValue<APFloat>
+                mlir::DenseElementsAttr::getSplatValue<APInt>)
           (only (mlir core builder) mlir-build-op mlir-op-clone-with-types)
           (mlir dialects builtin))
 
@@ -160,7 +160,7 @@
            (string=? (mlir-operation-name def) "hip.constant")
            (let ([a (mlir-operation-get-attribute def "value")])
              (and (not (zero? a))
-                  (DenseElementsAttr:isSplat a))))))
+                  (mlir::DenseElementsAttr::isSplat a))))))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Type / width checks
@@ -235,7 +235,7 @@
   ;; Mirrors hip_is_l2_equiv_rms_norm in Hip.cpp.
   (define (hip-l2-equiv-rms-norm? op)
     (let ([eps  (let ([a (%op-get-attr op "epsilon")])
-                  (if (zero? a) +nan.0 (FloatAttr:getValueAsDouble.f32 a)))]
+                  (if (zero? a) +nan.0 (mlir::FloatAttr::getValueAsDouble.f32 a)))]
           [axis (mlir-operation-get-integer-attr op "axis" -999)])
       (and
         ;; epsilon must be 0.0
@@ -254,7 +254,7 @@
                  (and n
                       (> n 0)
                       (let* ([expected  (/ 1.0 (sqrt (inexact n)))]
-                             [actual    (DenseElementsAttr:getSplatValue/APFloat
+                             [actual    (mlir::DenseElementsAttr::getSplatValue<APFloat>
                                           (mlir-operation-get-attribute
                                             (mlir-value-get-defining-op scale-val)
                                             "value"))]
@@ -318,7 +318,7 @@
                (string=? (mlir-operation-name def) "hip.constant")
                (let ([a (mlir-operation-get-attribute def "value")])
                  (and (not (zero? a))
-                      (DenseElementsAttr:isSplat a)))))))
+                      (mlir::DenseElementsAttr::isSplat a)))))))
 
   ;; Extract zero-point of op as i64.  Returns absent-val when absent.
   ;; Reads the splat integer value from the DenseElementsAttr on the
@@ -329,8 +329,8 @@
         (let* ([zp-val (mlir-operation-get-operand-value op 3)]
                [def    (mlir-value-get-defining-op zp-val)])
           (if (and def (string=? (mlir-operation-name def) "hip.constant"))
-              (if (DenseElementsAttr:isSplat (mlir-operation-get-attribute def "value"))
-                  (DenseElementsAttr:getSplatValue/APInt
+              (if (mlir::DenseElementsAttr::isSplat (mlir-operation-get-attribute def "value"))
+                  (mlir::DenseElementsAttr::getSplatValue<APInt>
                     (mlir-operation-get-attribute def "value"))
                   absent-val)
               absent-val))))
@@ -340,12 +340,12 @@
     (hip-qdq-value-bits op))
 
   ;;===--------------------------------------------------------------------===;;
-  ;; Scale extraction — pure Scheme via DenseElementsAttr:getSplatValue/APFloat
+  ;; Scale extraction — pure Scheme via mlir::DenseElementsAttr::getSplatValue<APFloat>
   ;;===--------------------------------------------------------------------===;;
 
   ;; Extract the splat float64 value from a hip.constant scale Value.
   (define (hip-extract-splat-scale val)
-    (DenseElementsAttr:getSplatValue/APFloat
+    (mlir::DenseElementsAttr::getSplatValue<APFloat>
       (mlir-operation-get-attribute (mlir-value-get-defining-op val) "value")))
 
   ;;===--------------------------------------------------------------------===;;

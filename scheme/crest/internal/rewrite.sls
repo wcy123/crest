@@ -68,11 +68,11 @@
   ;;===--------------------------------------------------------------------===;;
   (define (%make-attr-by-type _ctx type val)
     (case type
-      [(index :index)           (IntegerAttr:get/index val)]
-      [(i32-array :i32-array)   (DenseI32ArrayAttr:get val)]
-      [(i64-array :i64-array)   (DenseI64ArrayAttr:get val)]
-      [(i64 :i64)               (IntegerAttr:get/i64 val)]
-      [(f32 :f32)               (FloatAttr:get/f32 val)]
+      [(index :index)           (mlir::IntegerAttr::get<index> val)]
+      [(i32-array :i32-array)   (mlir::DenseI32ArrayAttr::get val)]
+      [(i64-array :i64-array)   (mlir::DenseI64ArrayAttr::get val)]
+      [(i64 :i64)               (mlir::IntegerAttr::get<i64> val)]
+      [(f32 :f32)               (mlir::FloatAttr::get<f32> val)]
       [else (error '%make-attr-by-type "unknown attr type in rewrite DSL" type)]))
 
   ;;===--------------------------------------------------------------------===;;

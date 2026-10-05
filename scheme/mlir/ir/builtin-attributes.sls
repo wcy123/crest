@@ -24,27 +24,27 @@
 
 (library (mlir ir builtin-attributes)
   (export
-    IntegerAttr:get/i64
-    IntegerAttr:get/index
-    FloatAttr:get/f32
-    DenseI32ArrayAttr:get
-    DenseI64ArrayAttr:get
-    parseAttribute
-    DenseResourceElementsAttr:get
-    isa/IntegerAttr
-    isa/FloatAttr
-    isa/StringAttr
-    isa/DenseI32ArrayAttr
-    isa/DenseElementsAttr
-    DenseElementsAttr:isSplat
-    isa/FloatAttr.f32
-    IntegerAttr:getValue
-    FloatAttr:getValueAsDouble
-    FloatAttr:getValueAsDouble.f32
-    DenseI32ArrayAttr:asArrayRef
-    DenseElementsAttr:getSplatValue/APFloat
-    DenseElementsAttr:getSplatValue/APInt
-    DenseI32ArrayAttr:asArrayRef->list
+    mlir::IntegerAttr::get<i64>
+    mlir::IntegerAttr::get<index>
+    mlir::FloatAttr::get<f32>
+    mlir::DenseI32ArrayAttr::get
+    mlir::DenseI64ArrayAttr::get
+    mlir::parseAttribute
+    mlir::DenseResourceElementsAttr::get
+    mlir::isa<IntegerAttr>
+    mlir::isa<FloatAttr>
+    mlir::isa<StringAttr>
+    mlir::isa<DenseI32ArrayAttr>
+    mlir::isa<DenseElementsAttr>
+    mlir::DenseElementsAttr::isSplat
+    mlir::isa<FloatAttr.f32>
+    mlir::IntegerAttr::getValue
+    mlir::FloatAttr::getValueAsDouble
+    mlir::FloatAttr::getValueAsDouble.f32
+    mlir::DenseI32ArrayAttr::asArrayRef
+    mlir::DenseElementsAttr::getSplatValue<APFloat>
+    mlir::DenseElementsAttr::getSplatValue<APInt>
+    mlir::DenseI32ArrayAttr::asArrayRef->list
     operation-get-attr
     operation-set-attr!
     operation-get-float-attr
@@ -63,156 +63,156 @@
   ;; @param value  Scheme exact integer (coerced to int64_t)
   ;; @return       IntegerAttr opaque pointer uptr
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Wraps %IntegerAttr:get/i64; context supplied by current-mlir-context
-  (define (IntegerAttr:get/i64 value)
-    (%IntegerAttr:get/i64 (current-mlir-context) value))
+  ;; @note         Wraps %mlir::IntegerAttr::get<i64>; context supplied by current-mlir-context
+  (define (mlir::IntegerAttr::get<i64> value)
+    (%mlir::IntegerAttr::get<i64> (current-mlir-context) value))
 
   ;; @brief mlir::IntegerAttr::get — construct an IntegerAttr with IndexType.
   ;; @param value  Scheme exact integer (coerced to int64_t)
   ;; @return       IntegerAttr opaque pointer uptr
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Wraps %IntegerAttr:get/index; context supplied by current-mlir-context
-  (define (IntegerAttr:get/index value)
-    (%IntegerAttr:get/index (current-mlir-context) value))
+  ;; @note         Wraps %mlir::IntegerAttr::get<index>; context supplied by current-mlir-context
+  (define (mlir::IntegerAttr::get<index> value)
+    (%mlir::IntegerAttr::get<index> (current-mlir-context) value))
 
   ;; @brief mlir::FloatAttr::get — construct a FloatAttr with f32 (Float32) type.
   ;; @param value  Scheme flonum (cast to float)
   ;; @return       FloatAttr opaque pointer uptr
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Wraps %FloatAttr:get/f32; context supplied by current-mlir-context
-  (define (FloatAttr:get/f32 value)
-    (%FloatAttr:get/f32 (current-mlir-context) value))
+  ;; @note         Wraps %mlir::FloatAttr::get<f32>; context supplied by current-mlir-context
+  (define (mlir::FloatAttr::get<f32> value)
+    (%mlir::FloatAttr::get<f32> (current-mlir-context) value))
 
   ;; @brief mlir::DenseI32ArrayAttr::get — construct a DenseI32ArrayAttr from a Scheme list.
   ;; @param value  Scheme list of fixnums (each cast to int32_t)
   ;; @return       DenseI32ArrayAttr opaque pointer uptr
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Wraps %DenseI32ArrayAttr:get; context supplied by current-mlir-context
-  (define (DenseI32ArrayAttr:get value)
-    (%DenseI32ArrayAttr:get (current-mlir-context) value))
+  ;; @note         Wraps %mlir::DenseI32ArrayAttr::get; context supplied by current-mlir-context
+  (define (mlir::DenseI32ArrayAttr::get value)
+    (%mlir::DenseI32ArrayAttr::get (current-mlir-context) value))
 
   ;; @brief mlir::DenseI64ArrayAttr::get — construct a DenseI64ArrayAttr from a Scheme list.
   ;; @param value  Scheme list of exact integers (each coerced to int64_t)
   ;; @return       DenseI64ArrayAttr opaque pointer uptr
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Wraps %DenseI64ArrayAttr:get; context supplied by current-mlir-context
-  (define (DenseI64ArrayAttr:get value)
-    (%DenseI64ArrayAttr:get (current-mlir-context) value))
+  ;; @note         Wraps %mlir::DenseI64ArrayAttr::get; context supplied by current-mlir-context
+  (define (mlir::DenseI64ArrayAttr::get value)
+    (%mlir::DenseI64ArrayAttr::get (current-mlir-context) value))
 
   ;; @brief mlir::parseAttribute — parse an attribute from MLIR textual syntax.
   ;; @param value  Scheme string containing MLIR attribute syntax (e.g. "#some.attr<...>")
   ;; @return       mlir::Attribute opaque pointer uptr; raises error if parse fails
   ;; @see          mlir/AsmParser/AsmParser.h
-  ;; @note         Wraps %parseAttribute; context supplied by current-mlir-context
-  (define (parseAttribute value)
-    (%parseAttribute (current-mlir-context) value))
+  ;; @note         Wraps %mlir::parseAttribute; context supplied by current-mlir-context
+  (define (mlir::parseAttribute value)
+    (%mlir::parseAttribute (current-mlir-context) value))
 
   ;; @brief mlir::DenseResourceElementsAttr::get — construct a DenseResourceElementsAttr.
   ;; @param value  Scheme list of (result-type-uptr key-string data-addr-integer data-size-integer)
   ;;               where result-type-uptr is a RankedTensorType opaque pointer
   ;; @return       DenseResourceElementsAttr opaque pointer uptr
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Wraps %DenseResourceElementsAttr:get; context supplied by current-mlir-context
-  (define (DenseResourceElementsAttr:get value)
-    (%DenseResourceElementsAttr:get (current-mlir-context) value))
+  ;; @note         Wraps %mlir::DenseResourceElementsAttr::get; context supplied by current-mlir-context
+  (define (mlir::DenseResourceElementsAttr::get value)
+    (%mlir::DenseResourceElementsAttr::get (current-mlir-context) value))
 
   ;; @brief mlir::isa<IntegerAttr> — test whether an opaque attribute pointer is an IntegerAttr.
   ;; @param a      mlir::Attribute opaque pointer uptr (0 treated as false)
   ;; @return       boolean: #t if a is mlir::IntegerAttr, #f otherwise
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Wraps %isa/IntegerAttr
-  (define (isa/IntegerAttr a)        (not (zero? (%isa/IntegerAttr a))))
+  ;; @note         Wraps %mlir::isa<IntegerAttr>
+  (define (mlir::isa<IntegerAttr> a)        (not (zero? (%mlir::isa<IntegerAttr> a))))
 
   ;; @brief mlir::isa<FloatAttr> — test whether an opaque attribute pointer is a FloatAttr.
   ;; @param a      mlir::Attribute opaque pointer uptr (0 treated as false)
   ;; @return       boolean: #t if a is mlir::FloatAttr, #f otherwise
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Wraps %isa/FloatAttr
-  (define (isa/FloatAttr a)          (not (zero? (%isa/FloatAttr a))))
+  ;; @note         Wraps %mlir::isa<FloatAttr>
+  (define (mlir::isa<FloatAttr> a)          (not (zero? (%mlir::isa<FloatAttr> a))))
 
   ;; @brief mlir::isa<StringAttr> — test whether an opaque attribute pointer is a StringAttr.
   ;; @param a      mlir::Attribute opaque pointer uptr (0 treated as false)
   ;; @return       boolean: #t if a is mlir::StringAttr, #f otherwise
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Wraps %isa/StringAttr
-  (define (isa/StringAttr a)         (not (zero? (%isa/StringAttr a))))
+  ;; @note         Wraps %mlir::isa<StringAttr>
+  (define (mlir::isa<StringAttr> a)         (not (zero? (%mlir::isa<StringAttr> a))))
 
   ;; @brief mlir::isa<DenseI32ArrayAttr> — test whether an opaque attribute pointer is a DenseI32ArrayAttr.
   ;; @param a      mlir::Attribute opaque pointer uptr (0 treated as false)
   ;; @return       boolean: #t if a is mlir::DenseI32ArrayAttr, #f otherwise
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Wraps %isa/DenseI32ArrayAttr
-  (define (isa/DenseI32ArrayAttr a) (not (zero? (%isa/DenseI32ArrayAttr a))))
+  ;; @note         Wraps %mlir::isa<DenseI32ArrayAttr>
+  (define (mlir::isa<DenseI32ArrayAttr> a) (not (zero? (%mlir::isa<DenseI32ArrayAttr> a))))
 
   ;; @brief mlir::isa<DenseElementsAttr> — test whether an opaque attribute pointer is a DenseElementsAttr.
   ;; @param a      mlir::Attribute opaque pointer uptr (0 treated as false)
   ;; @return       boolean: #t if a is mlir::DenseElementsAttr (or subclass), #f otherwise
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Wraps %isa/DenseElementsAttr
-  (define (isa/DenseElementsAttr a)  (not (zero? (%isa/DenseElementsAttr a))))
+  ;; @note         Wraps %mlir::isa<DenseElementsAttr>
+  (define (mlir::isa<DenseElementsAttr> a)  (not (zero? (%mlir::isa<DenseElementsAttr> a))))
 
   ;; @brief mlir::DenseElementsAttr::isSplat — test whether a DenseElementsAttr is a splat.
   ;; @param a      mlir::Attribute opaque pointer uptr (0 treated as false)
   ;; @return       boolean: #t if a is DenseElementsAttr and isSplat() is true, #f otherwise
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Wraps %DenseElementsAttr:isSplat
-  (define (DenseElementsAttr:isSplat a) (not (zero? (%DenseElementsAttr:isSplat a))))
+  ;; @note         Wraps %mlir::DenseElementsAttr::isSplat
+  (define (mlir::DenseElementsAttr::isSplat a) (not (zero? (%mlir::DenseElementsAttr::isSplat a))))
 
-  ;; @brief mlir::isa<FloatAttr> (f32 alias) — alias for isa/FloatAttr, tests mlir::FloatAttr.
+  ;; @brief mlir::isa<FloatAttr> (f32 alias) — alias for mlir::isa<FloatAttr>, tests mlir::FloatAttr.
   ;; @param a      mlir::Attribute opaque pointer uptr (0 treated as false)
   ;; @return       boolean: #t if a is mlir::FloatAttr, #f otherwise
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Wraps %isa/FloatAttr.f32 (which delegates to float_attr_isa in C++)
-  (define (isa/FloatAttr.f32 a)        (not (zero? (%isa/FloatAttr.f32 a))))
+  ;; @note         Wraps %mlir::isa<FloatAttr.f32> (which delegates to float_attr_isa in C++)
+  (define (mlir::isa<FloatAttr.f32> a)        (not (zero? (%mlir::isa<FloatAttr.f32> a))))
 
   ;; @brief mlir::IntegerAttr::getValue — extract the integer value of an IntegerAttr.
   ;; @param attr   mlir::IntegerAttr opaque pointer uptr; raises error if null or wrong type
   ;; @return       Scheme exact integer (sign-extended from APInt via getSExtValue)
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Direct alias for %IntegerAttr:getValue
-  (define IntegerAttr:getValue                %IntegerAttr:getValue)
+  ;; @note         Direct alias for %mlir::IntegerAttr::getValue
+  (define mlir::IntegerAttr::getValue                %mlir::IntegerAttr::getValue)
 
   ;; @brief mlir::FloatAttr::getValueAsDouble — extract the float value of a FloatAttr.
   ;; @param attr   mlir::FloatAttr opaque pointer uptr; raises error if null or wrong type
   ;; @return       Scheme flonum (double precision via getValueAsDouble)
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Direct alias for %FloatAttr:getValueAsDouble
-  (define FloatAttr:getValueAsDouble          %FloatAttr:getValueAsDouble)
+  ;; @note         Direct alias for %mlir::FloatAttr::getValueAsDouble
+  (define mlir::FloatAttr::getValueAsDouble          %mlir::FloatAttr::getValueAsDouble)
 
-  ;; @brief mlir::FloatAttr::getValueAsDouble (f32 alias) — alias for FloatAttr:getValueAsDouble.
+  ;; @brief mlir::FloatAttr::getValueAsDouble (f32 alias) — alias for mlir::FloatAttr::getValueAsDouble.
   ;; @param attr   mlir::FloatAttr opaque pointer uptr; raises error if null or wrong type
   ;; @return       Scheme flonum (double precision via getValueAsDouble)
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Direct alias for %FloatAttr:getValueAsDouble.f32 (which delegates to float_attr_get_value)
-  (define FloatAttr:getValueAsDouble.f32      %FloatAttr:getValueAsDouble.f32)
+  ;; @note         Direct alias for %mlir::FloatAttr::getValueAsDouble.f32 (which delegates to float_attr_get_value)
+  (define mlir::FloatAttr::getValueAsDouble.f32      %mlir::FloatAttr::getValueAsDouble.f32)
 
   ;; @brief mlir::DenseI32ArrayAttr::asArrayRef — return a CArrayRef* for a DenseI32ArrayAttr.
   ;; @param attr   mlir::DenseI32ArrayAttr opaque pointer uptr; raises error if null or wrong type
   ;; @return       CArrayRef* uptr — heap-allocated {data-ptr uptr, size uint64} pair
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Direct alias for %DenseI32ArrayAttr:asArrayRef; caller owns the CArrayRef
-  (define DenseI32ArrayAttr:asArrayRef        %DenseI32ArrayAttr:asArrayRef)
+  ;; @note         Direct alias for %mlir::DenseI32ArrayAttr::asArrayRef; caller owns the CArrayRef
+  (define mlir::DenseI32ArrayAttr::asArrayRef        %mlir::DenseI32ArrayAttr::asArrayRef)
 
   ;; @brief mlir::DenseElementsAttr::getSplatValue<APFloat> — extract the splat float value.
   ;; @param attr   mlir::DenseFPElementsAttr opaque pointer uptr; raises error if null, wrong type, or not splat
   ;; @return       Scheme flonum (double precision via convertToDouble on the splat APFloat)
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Direct alias for %DenseElementsAttr:getSplatValue/APFloat
-  (define DenseElementsAttr:getSplatValue/APFloat  %DenseElementsAttr:getSplatValue/APFloat)
+  ;; @note         Direct alias for %mlir::DenseElementsAttr::getSplatValue<APFloat>
+  (define mlir::DenseElementsAttr::getSplatValue<APFloat>  %mlir::DenseElementsAttr::getSplatValue<APFloat>)
 
   ;; @brief mlir::DenseElementsAttr::getSplatValue<APInt> — extract the splat integer value.
   ;; @param attr   mlir::DenseIntElementsAttr opaque pointer uptr; raises error if null, wrong type, or not splat
   ;; @return       Scheme exact integer (sign-extended via getSExtValue on the splat APInt)
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Direct alias for %DenseElementsAttr:getSplatValue/APInt
-  (define DenseElementsAttr:getSplatValue/APInt    %DenseElementsAttr:getSplatValue/APInt)
+  ;; @note         Direct alias for %mlir::DenseElementsAttr::getSplatValue<APInt>
+  (define mlir::DenseElementsAttr::getSplatValue<APInt>    %mlir::DenseElementsAttr::getSplatValue<APInt>)
 
   ;; @brief mlir::DenseI32ArrayAttr::asArrayRef->list — convert a DenseI32ArrayAttr to a Scheme list.
   ;; @param attr   mlir::DenseI32ArrayAttr opaque pointer uptr; raises error if null or wrong type
   ;; @return       Scheme list of fixnums, one per element
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Direct alias for %DenseI32ArrayAttr:asArrayRef->list
-  (define DenseI32ArrayAttr:asArrayRef->list  %DenseI32ArrayAttr:asArrayRef->list)
+  ;; @note         Direct alias for %mlir::DenseI32ArrayAttr::asArrayRef->list
+  (define mlir::DenseI32ArrayAttr::asArrayRef->list  %mlir::DenseI32ArrayAttr::asArrayRef->list)
 
   ;; @brief mlir::Operation::getAttr — retrieve a named attribute from an operation.
   ;; @param op     mlir::Operation* uptr
