@@ -3,9 +3,13 @@
  * Licensed under the MIT License.
  */
 
-// Registration hub — delegates to the focused sub-files in Core/ and IR/.
+// Registration hub — delegates to focused sub-files in Core/, IR/, Transforms/.
 
+#include "../IR/Block.h"
+#include "../IR/OpBuilder.h"
+#include "../IR/RewriterBase.h"
 #include "../IR/Value.h"
+#include "../Transforms/GreedyPatternRewriteDriver.h"
 #include "Attribute.h"
 #include "Builder.h"
 #include "Conversion.h"
@@ -18,10 +22,13 @@ void registerCoreBindings() {
   registerAttributeBindings();
   registerBuilderBindings();
   registerConversionBindings();
+  registerIRBlockBindings();
+  registerIROpBuilderBindings();
+  registerIRRewriterBaseBindings();
   registerIRValueBindings();
   registerOperationBindings();
-  registerTypeBindings(); // delegates to registerIRBuiltinTypesBindings +
-                          // registerIRTypeBindings
+  registerTransformsGreedyPatternRewriteDriverBindings();
+  registerTypeBindings();
 }
 
 } // namespace crest

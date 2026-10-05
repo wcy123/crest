@@ -1,0 +1,38 @@
+/*
+ * Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
+// Mirrors mlir/Transforms/GreedyPatternRewriteDriver.h
+
+#include "GreedyPatternRewriteDriver.h"
+#include "../Support/SchemeWrapper.h"
+#include "mlir/IR/PatternMatch.h"
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+
+extern "C" {
+
+// mlir::applyPatternsGreedily — consumes the pattern set.
+int mlir_transforms_greedy_pattern_rewrite_driver_apply(uint64_t op_ptr,
+                                                        uint64_t patterns_ptr) {
+  if (!op_ptr || !patterns_ptr) {
+    return 0;
+  }
+  auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
+  auto* patterns = reinterpret_cast<mlir::RewritePatternSet*>(patterns_ptr);
+  return mlir::succeeded(mlir::applyPatternsGreedily(op, std::move(*patterns)))
+             ? 1
+             : 0;
+}
+
+} // extern "C"
+
+namespace crest {
+
+void registerTransformsGreedyPatternRewriteDriverBindings() {
+  Sregister_symbol(
+      "mlir_transforms_greedy_pattern_rewrite_driver_apply",
+      (void*)::mlir_transforms_greedy_pattern_rewrite_driver_apply);
+}
+
+} // namespace crest

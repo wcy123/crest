@@ -18,6 +18,10 @@ add_library(CrestBindings STATIC
   Interfaces/DestinationStyleOp.cpp
   Core/Builder.cpp
   Core/Types.cpp
+  IR/Block.cpp
+  IR/OpBuilder.cpp
+  IR/RewriterBase.cpp
+  Transforms/GreedyPatternRewriteDriver.cpp
   Dialect/Shape/Shape.cpp
   Support/ArrayRef.cpp
   Support/Logging.cpp
