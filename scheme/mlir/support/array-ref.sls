@@ -31,8 +31,12 @@
 
   (import (rnrs)
           (only (chezscheme) foreign-ref)
-          (only (mlir core types) :uptr :i32)
           (mlir support array-ref ffi))
+
+  ;; :uptr — exported compile-time keyword: array-ref element type 'uptr (8-byte pointer).
+  ;; :i32  — internal only; use (mlir core attribute)'s :i32 in callers.
+  (define-syntax :uptr (identifier-syntax 'uptr))
+  (define-syntax :i32  (identifier-syntax 'i32))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Fast path — foreign-ref compiles to raw load instructions, no FFI call.
@@ -46,7 +50,7 @@
   ;; type: element type symbol — 'uptr (default, 8-byte pointer) or 'i32 (4-byte integer).
   ;;   'uptr → foreign-ref 'uptr        at offset index*8  (Value*, Operation*, etc.)
   ;;   'i32  → foreign-ref 'integer-32  at offset index*4  (DenseI32ArrayAttr data)
-  ;; Use :uptr (exported here) or :i32 (from (mlir core attribute)) as compile-time keywords.
+  ;; Use :uptr or :i32 (both exported here) as compile-time keywords.
   (define array-ref-at
     (case-lambda
       [(ref index)
