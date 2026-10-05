@@ -9,13 +9,13 @@
 ;;         mlir/IR/Builders.h (setInsertionPoint, createBlock — inherited from OpBuilder).
 ;;===----------------------------------------------------------------------===;;
 ;;
-;; (mlir ir rewriter-base ffi) — raw C bindings for mlir/IR/PatternMatch.h RewriterBase.
+;; (mlir ir pattern-match ffi) — raw C bindings for mlir/IR/PatternMatch.h RewriterBase.
 ;;
-;; % prefix = raw C binding. Prefer (mlir ir rewriter-base) for normal use.
+;; % prefix = raw C binding. Prefer (mlir ir pattern-match) for normal use.
 ;;
 ;;===----------------------------------------------------------------------===;;
 
-(library (mlir ir rewriter-base ffi)
+(library (mlir ir pattern-match ffi)
   (export
     %mlir::RewriterBase::create
     %mlir::RewriterBase::create-with-regions
@@ -133,4 +133,4 @@
   (define %mlir::RewriterBase::create<OperationState>
     (foreign-procedure "mlir_ir_rewriter_base_create_from_state" (uptr uptr) uptr))
 
-) ;; end library (mlir ir rewriter-base ffi)
+) ;; end library (mlir ir pattern-match ffi)

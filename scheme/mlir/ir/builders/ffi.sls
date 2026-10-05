@@ -4,13 +4,15 @@
 ;; Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 ;; Licensed under the MIT License.
 ;;
+;;
+;; Mirrors mlir/IR/Builders.h.
 ;;===----------------------------------------------------------------------===;;
 ;;
-;; (mlir ir op-builder ffi) — raw C bindings for mlir/IR/Builders.h OpBuilder.
+;; (mlir ir builders ffi) — raw C bindings for mlir/IR/Builders.h OpBuilder.
 ;;
 ;;===----------------------------------------------------------------------===;;
 
-(library (mlir ir op-builder ffi)
+(library (mlir ir builders ffi)
   (export
     %mlir::OpBuilder::create
     %mlir::OpBuilder::create-with-regions
@@ -71,4 +73,4 @@
   (define %mlir::OpBuilder::create-from-state
     (foreign-procedure "mlir_ir_op_builder_create_from_state" (uptr uptr) uptr))
 
-) ;; end library (mlir ir op-builder ffi)
+) ;; end library (mlir ir builders ffi)

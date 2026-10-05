@@ -28,7 +28,7 @@
           (only (mlir ir builtin-attributes ffi) %mlir::DenseResourceElementsAttr::get)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
-          (mlir dialects tensor)
+          (mlir dialect tensor ir)
           (crest)
           (only (mlir ir operation)
                 mlir::Operation::emitError mlir::Operation::getAttr mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getAttrOfType<StringAttr> mlir::Operation::getContext mlir::Operation::hasAttr?)
@@ -90,7 +90,7 @@
     :then-let
         ([ctx         (mlir::Operation::getContext op)]
          [!out-type   (mlir::Value::getType %output)]
-         [!out-dev    (mlir-ranked-tensor-type-with-encoding !out-type (make-hipsr-device-space-attr ctx))]
+         [!out-dev    (crest::RankedTensorType::cloneWithEncoding !out-type (make-hipsr-device-space-attr ctx))]
          [$value-attr (constant-value-attr op ctx !out-dev)])
     :rewrite %output :with
         (%result = hipsr.constant () ("value" = $value-attr) -> !out-dev))

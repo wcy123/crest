@@ -4,6 +4,8 @@
 ;; Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 ;; Licensed under the MIT License.
 ;;
+;;
+;; Mirrors mlir/IR/Value.h.
 ;;===----------------------------------------------------------------------===;;
 ;;
 ;; (mlir ir value ffi) — raw foreign-procedure bindings for mlir/IR/Value.h.
@@ -18,7 +20,8 @@
     %mlir::Value::getDefiningOp
     %mlir::isa<BlockArgument>?
     %mlir::Value::getUses
-    %mlir::Value::getType)
+    %mlir::Value::getType
+    %mlir::OpResult::getResultNumber)
 
   (import (rnrs)
           (only (chezscheme) foreign-procedure))
@@ -54,5 +57,14 @@
   ;; @note         Defined in lib/Bindings/IR/Value.cpp
   (define %mlir::Value::getType
     (foreign-procedure "mlir::Value::getType" (uptr) uptr))
+
+  ;; @brief mlir::OpResult::getResultNumber — return the result index within the defining op.
+  ;; @param value  Opaque Value* (mlir::OpResult) as uptr
+  ;; @return       0-based result index as uptr; 0 if value is null or not an OpResult
+  ;; @see          mlir/IR/Value.h
+  ;; @note         Defined in lib/Bindings/IR/OpResult.cpp; also registered as
+  ;;               mlir_ir_value_get_result_number for backward compatibility
+  (define %mlir::OpResult::getResultNumber
+    (foreign-procedure "mlir::OpResult::getResultNumber" (uptr) uptr))
 
 ) ;; end library (mlir ir value ffi)

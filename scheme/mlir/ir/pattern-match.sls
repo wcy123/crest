@@ -6,15 +6,15 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 ;;
-;; (mlir ir rewriter-base) — RewriterBase user-visible API.
+;; (mlir ir pattern-match) — RewriterBase user-visible API.
 ;;
 ;; Mirrors mlir/IR/PatternMatch.h RewriterBase.
-;; Re-exports clean names from (mlir ir rewriter-base ffi).
+;; Re-exports clean names from (mlir ir pattern-match ffi).
 ;; Also provides dynamic parameters and RAII macros for builder context.
 ;;
 ;;===----------------------------------------------------------------------===;;
 
-(library (mlir ir rewriter-base)
+(library (mlir ir pattern-match)
   (export
     ;; Clean-name re-exports from ffi
     mlir::RewriterBase::create
@@ -41,8 +41,8 @@
 
   (import (rnrs)
           (only (chezscheme) make-parameter parameterize void)
-          (mlir ir rewriter-base ffi)
-          (mlir ir op-builder ffi)
+          (mlir ir pattern-match ffi)
+          (mlir ir builders ffi)
           (only (mlir ir mlir-context) current-mlir-context)
           (only (mlir ir operation) mlir::Operation::getContext))
 
@@ -237,4 +237,4 @@
       [(_ loc body ...)
        (parameterize ([current-loc loc]) body ...)]))
 
-) ;; end library (mlir ir rewriter-base)
+) ;; end library (mlir ir pattern-match)

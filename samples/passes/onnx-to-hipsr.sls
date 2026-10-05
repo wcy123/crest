@@ -31,8 +31,7 @@
                 mlir::Value::getDefiningOp
                 mlir::Value::getType
                 mlir::isa<BlockArgument>?
-                mlir::Value::getUses)
-          (only (mlir ir op-result)
+                mlir::Value::getUses
                 mlir::OpResult::getResultNumber)
           (mlir support array-ref)
           (only (mlir core builder)

@@ -25,7 +25,7 @@
           (only (mlir core builder) mlir-build-operation)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
-          (mlir dialects tensor)
+          (mlir dialect tensor ir)
           (only (mlir dialect shape)
                 mlir::shape::ShapeType::get
                 mlir::shape::SizeType::get
@@ -83,7 +83,7 @@
         ([%ctx        (mlir-get-hipsr-context-arg op)]
          [!data-type  (mlir::Value::getType %data)]
          [!out-type   (mlir::Value::getType %output)]
-         [!out-device (mlir-ranked-tensor-type-with-encoding !out-type (make-hipsr-device-space-attr (mlir::Type::getContext !out-type)))]
+         [!out-device (crest::RankedTensorType::cloneWithEncoding !out-type (make-hipsr-device-space-attr (mlir::Type::getContext !out-type)))]
          [!shape-type (mlir::shape::ShapeType::get)]
          [!size-type  (mlir::shape::SizeType::get)]
          [axis        (let ([a (mlir::Operation::getAttrOfType<IntegerAttr> op "axis" 0)])

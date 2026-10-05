@@ -25,7 +25,7 @@
           (only (mlir core builder) mlir-replace-op mlir-set-insertion-point-before with-rewrite-builder)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
-          (mlir dialects tensor)
+          (mlir dialect tensor ir)
           (only (mlir dialect shape)
                 mlir::shape::ShapeType::get
                 mlir::shape::SizeType::get
@@ -48,7 +48,7 @@
     :then-let
         ([%ctx        (mlir-get-hipsr-context-arg op)]
          [!out-type   (mlir::Value::getType %output)]
-         [!out-device (mlir-ranked-tensor-type-with-encoding !out-type (make-hipsr-device-space-attr (mlir::Type::getContext !out-type)))]
+         [!out-device (crest::RankedTensorType::cloneWithEncoding !out-type (make-hipsr-device-space-attr (mlir::Type::getContext !out-type)))]
          [!shape-type (mlir::shape::ShapeType::get)])
     :rewrite %output :with
         (%placeholder = hipsr.placeholder (%ctx %lhs %rhs !out-device)
@@ -83,7 +83,7 @@
         [(> n 2)
          (let* ([ctx      (mlir-get-hipsr-context-arg op)]
                 [!base    (mlir::Value::getType (mlir::Operation::getResult op 0))]
-                [out-type (mlir-ranked-tensor-type-with-encoding !base
+                [out-type (crest::RankedTensorType::cloneWithEncoding !base
                             (make-hipsr-device-space-attr (mlir::Type::getContext !base)))])
            (let loop ([i 2]
                       [acc (make-binary-min! rewriter op ctx

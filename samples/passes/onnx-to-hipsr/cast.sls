@@ -17,7 +17,7 @@
 
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
-          (mlir dialects tensor)
+          (mlir dialect tensor ir)
           (only (mlir dialect shape)
                 mlir::shape::ShapeType::get
                 mlir::shape::SizeType::get
@@ -36,7 +36,7 @@
         ([ctx            (mlir::Operation::getContext op)]
          [%ctx           (mlir-get-hipsr-context-arg op)]
          [!output-type   (mlir::Value::getType %output)]
-         [!output-device (mlir-ranked-tensor-type-with-encoding !output-type
+         [!output-device (crest::RankedTensorType::cloneWithEncoding !output-type
                             (make-hipsr-device-space-attr ctx))]
          [!shape-type    (mlir::shape::ShapeType::get)])
     :rewrite %output :with

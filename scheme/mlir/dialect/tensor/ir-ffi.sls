@@ -8,13 +8,13 @@
 ;;
 ;; (mlir dialects tensor ffi) — raw C bindings for tensor dialect type ops.
 ;;
-;; % prefix = raw C binding. Prefer (mlir dialects tensor) for normal use.
+;; % prefix = raw C binding. Prefer (mlir dialect tensor ir) for normal use.
 ;;
 ;; Mirrors mlir/Dialect/Tensor/IR/Tensor.h.
 ;;
 ;;===----------------------------------------------------------------------===;;
 
-(library (mlir dialects tensor ffi)
+(library (mlir dialect tensor ir-ffi)
   (export %ranked-tensor-type-with-encoding
           %tensor-cast-are-cast-compatible
           %tensor-cast-create)

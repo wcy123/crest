@@ -22,7 +22,8 @@
     mlir::Value::getDefiningOp
     mlir::isa<BlockArgument>?
     mlir::Value::getUses
-    mlir::Value::getType)
+    mlir::Value::getType
+    mlir::OpResult::getResultNumber)
 
   (import (rnrs)
           (mlir ir value ffi))
@@ -55,5 +56,12 @@
   ;; @see          mlir/IR/Value.h
   ;; @note         Defined in lib/Bindings/IR/Value.cpp
   (define mlir::Value::getType %mlir::Value::getType)
+
+  ;; @brief mlir::OpResult::getResultNumber — return the result index within the defining op.
+  ;; @param value  Opaque Value* (mlir::OpResult) as uptr
+  ;; @return       0-based result index; 0 if value is null or not an OpResult
+  ;; @see          mlir/IR/Value.h
+  ;; @note         Defined in lib/Bindings/IR/OpResult.cpp
+  (define mlir::OpResult::getResultNumber %mlir::OpResult::getResultNumber)
 
 ) ;; end library (mlir ir value)

@@ -4,6 +4,8 @@
 ;; Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 ;; Licensed under the MIT License.
 ;;
+;;
+;; Mirrors mlir/IR/Block.h.
 ;;===----------------------------------------------------------------------===;;
 ;;
 ;; (mlir ir block ffi) — raw C bindings for mlir/IR/Block.h.

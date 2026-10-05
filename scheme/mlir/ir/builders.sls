@@ -6,19 +6,19 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 ;;
-;; (mlir ir op-builder) — OpBuilder user-visible API.
+;; (mlir ir builders) — OpBuilder user-visible API.
 ;;
 ;; Mirrors mlir/IR/Builders.h OpBuilder.
 ;;
 ;;===----------------------------------------------------------------------===;;
 
-(library (mlir ir op-builder)
+(library (mlir ir builders)
   (export
     mlir::OpBuilder::create
     mlir::OpBuilder::create-with-regions
     mlir::OpBuilder::atBlockEnd
     mlir::OpBuilder::~OpBuilder)
-  (import (rnrs) (mlir ir op-builder ffi))
+  (import (rnrs) (mlir ir builders ffi))
 
   ;; @brief mlir::OpBuilder::create — create an op via OperationState using a standalone OpBuilder.
   ;; @param builder       OpBuilder* uptr — builder positioned at the desired insertion point
@@ -57,4 +57,4 @@
   ;; @note           Defined in lib/Bindings/IR/OpBuilder.cpp; no-op if builder is 0
   (define mlir::OpBuilder::~OpBuilder             %mlir::OpBuilder::~OpBuilder)
 
-) ;; end library (mlir ir op-builder)
+) ;; end library (mlir ir builders)

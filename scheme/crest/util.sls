@@ -26,9 +26,9 @@
           (only (mlir ir builtin-types)
                 mlir::isa<RankedTensorType>?)
           (only (mlir ir value) mlir::Value::getType)
-          (only (mlir dialects tensor)
-                mlir-tensor-cast-are-cast-compatible
-                mlir-tensor-cast-create)
+          (only (mlir dialect tensor ir)
+                mlir::tensor::CastOp::areCastCompatible
+                mlir::tensor::CastOp::create)
           (mlir transforms dialect-conversion))
 
   ;; @brief Mark builtin.module and arith.constant as unconditionally legal.
@@ -83,10 +83,10 @@
                  (input-type  (mlir::Value::getType input)))
             (if (not (and (mlir::isa<RankedTensorType>? input-type)
                           (mlir::isa<RankedTensorType>? result-type)
-                          (= 1 (mlir-tensor-cast-are-cast-compatible
+                          (= 1 (mlir::tensor::CastOp::areCastCompatible
                                 input-type result-type))))
                 #f
-                (mlir-tensor-cast-create builder loc result-type input)))))
+                (mlir::tensor::CastOp::create builder loc result-type input)))))
     (type-converter-add-source-materialization converter widen-materialize)
     (type-converter-add-target-materialization converter widen-materialize))
 

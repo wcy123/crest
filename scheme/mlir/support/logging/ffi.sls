@@ -4,6 +4,7 @@
 ;; Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 ;; Licensed under the MIT License.
 ;;
+;;  (CREST-specific — no direct MLIR header mirror.)
 ;;===----------------------------------------------------------------------===;;
 ;;
 ;; (mlir support logging ffi) — Raw FFI bindings for the MLIR logging system.

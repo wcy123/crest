@@ -41,7 +41,7 @@
           (only (mlir ir region) mlir::Region::front)
           (only (mlir ir builtin-attributes ffi) %mlir::parseAttribute)
           (mlir transforms dialect-conversion)
-          (mlir dialects tensor)
+          (mlir dialect tensor ir)
           (only (crest util)
                 type-converter-add-tensor-widening-materialization)
           (only (mlir core builder) mlir-op-get-region mlir-block-get-argument)
@@ -149,7 +149,7 @@
         (if (and (mlir::isa<RankedTensorType>? type)
                  (> (mlir::RankedTensorType::getRank type) 0)
                  (= 0 (mlir::RankedTensorType::getEncoding type)))
-          (mlir-ranked-tensor-type-with-encoding type
+          (crest::RankedTensorType::cloneWithEncoding type
               (make-hipsr-device-space-attr (mlir::Type::getContext type)))
             #f)))
     (type-converter-add-tensor-widening-materialization type-converter))
