@@ -29,7 +29,10 @@
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
-          (mlir dialects shape)
+          (only (mlir dialect shape)
+                mlir::shape::ShapeType::get
+                mlir::shape::SizeType::get
+                mlir::shape::WitnessType::get)
           (crest internal rewrite)
           (rename (rime loop) (:with :rime-with))
           (crest)
@@ -102,7 +105,7 @@
          [start       (normalize-bound start-raw input-rank #f 0)]
          [end         (normalize-bound end-raw   input-rank #t  input-rank)]
          [num-dims    (- end start)]
-         [!shape-type (mlir-shape.shape-type ctx)]
+         [!shape-type (mlir::shape::ShapeType::get ctx)]
          [!index-type (mlir-get-index-type       ctx)]
          [!i64-type   (mlir-get-i64-type         ctx)]
          [!ctx-type   (mlir-get-hipsr-context-type ctx)])

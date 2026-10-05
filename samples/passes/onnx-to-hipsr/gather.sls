@@ -27,7 +27,10 @@
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
           (mlir dialects tensor)
-          (mlir dialects shape)
+          (only (mlir dialect shape)
+                mlir::shape::ShapeType::get
+                mlir::shape::SizeType::get
+                mlir::shape::WitnessType::get)
           (crest internal rewrite)
           (crest)
           (only (mlir ir operation)
@@ -80,8 +83,8 @@
          [!data-type  (mlir::Value::getType %data)]
          [!out-type   (mlir::Value::getType %output)]
          [!out-device (mlir-ranked-tensor-type-with-encoding !out-type (make-hipsr-device-space-attr (mlir-mlir::Type::getContext !out-type)))]
-         [!shape-type (mlir-shape.shape-type (mlir::Operation::getContext op))]
-         [!size-type  (mlir-shape.size-type  (mlir::Operation::getContext op))]
+         [!shape-type (mlir::shape::ShapeType::get (mlir::Operation::getContext op))]
+         [!size-type  (mlir::shape::SizeType::get  (mlir::Operation::getContext op))]
          [axis        (let ([a (mlir::Operation::getAttrOfType<IntegerAttr> op "axis" 0)])
                         (if (< a 0) (+ a (mlir-ranked-tensor-type-get-rank !data-type)) a))]
          ;; guard: only handle device data (eqv? avoids shadowed = keyword)

@@ -26,7 +26,10 @@
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
           (mlir dialects tensor)
-          (mlir dialects shape)
+          (only (mlir dialect shape)
+                mlir::shape::ShapeType::get
+                mlir::shape::SizeType::get
+                mlir::shape::WitnessType::get)
           (mlir support logging)
           (crest)
           (only (mlir ir operation)
@@ -45,9 +48,9 @@
         ([%ctx           (mlir-get-hipsr-context-arg op)]
          [!output-type   (mlir::Value::getType %output)]
          [!output-device (mlir-ranked-tensor-type-with-encoding !output-type (make-hipsr-device-space-attr (mlir-mlir::Type::getContext !output-type)))]
-         [!shape-type    (mlir-shape.shape-type   (mlir::Operation::getContext op))]
-         [!size-type     (mlir-shape.size-type    (mlir::Operation::getContext op))]
-         [!witness-type  (mlir-shape.witness-type (mlir::Operation::getContext op))]
+         [!shape-type    (mlir::shape::ShapeType::get   (mlir::Operation::getContext op))]
+         [!size-type     (mlir::shape::SizeType::get    (mlir::Operation::getContext op))]
+         [!witness-type  (mlir::shape::WitnessType::get (mlir::Operation::getContext op))]
          ;; Rank info from operand types (runtime)
          [a-rank         (mlir-ranked-tensor-type-get-rank (mlir::Value::getType %a))]
          [b-rank         (mlir-ranked-tensor-type-get-rank (mlir::Value::getType %b))]
