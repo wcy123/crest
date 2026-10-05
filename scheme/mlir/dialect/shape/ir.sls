@@ -18,8 +18,25 @@
   (export shape-type-get size-type-get witness-type-get)
   (import (rnrs) (mlir dialect shape ir ffi))
 
+  ;; @brief mlir::shape::ShapeType::get — get the shape dialect's Shape type.
+  ;; @param ctx  MLIRContext* uptr
+  ;; @return     ShapeType opaque pointer uptr
+  ;; @see        mlir/Dialect/Shape/IR/Shape.h
+  ;; @note       Defined in lib/Bindings/Dialect/Shape/IR/Shape.cpp
   (define shape-type-get   %shape-type-get)
+
+  ;; @brief mlir::shape::SizeType::get — get the shape dialect's Size type.
+  ;; @param ctx  MLIRContext* uptr
+  ;; @return     SizeType opaque pointer uptr
+  ;; @see        mlir/Dialect/Shape/IR/Shape.h
+  ;; @note       Defined in lib/Bindings/Dialect/Shape/IR/Shape.cpp
   (define size-type-get    %size-type-get)
+
+  ;; @brief mlir::shape::WitnessType::get — get the shape dialect's Witness type.
+  ;; @param ctx  MLIRContext* uptr
+  ;; @return     WitnessType opaque pointer uptr
+  ;; @see        mlir/Dialect/Shape/IR/Shape.h
+  ;; @note       Defined in lib/Bindings/Dialect/Shape/IR/Shape.cpp
   (define witness-type-get %witness-type-get)
 
 ) ;; end library (mlir dialect shape ir)
