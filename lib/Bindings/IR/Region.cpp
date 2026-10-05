@@ -8,6 +8,7 @@
 #include "Region.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/Block.h"
+#include "mlir/IR/Operation.h"
 #include "mlir/IR/Region.h"
 
 extern "C" {
