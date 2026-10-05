@@ -14,10 +14,10 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 
-(library (mlir dialect tensor ir-ffi)
-  (export %ranked-tensor-type-with-encoding
-          %tensor-cast-are-cast-compatible
-          %tensor-cast-create)
+(library (mlir dialect tensor ir ffi)
+  (export %crest::RankedTensorType::cloneWithEncoding
+          %mlir::tensor::CastOp::areCastCompatible
+          %mlir::tensor::CastOp::create)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief crest::RankedTensorType::cloneWithEncoding — clone a RankedTensorType
@@ -27,7 +27,7 @@
   ;; @return                  RankedTensorType opaque uptr with the new encoding
   ;; @see   mlir/IR/BuiltinTypes.h
   ;; @note  Defined in lib/Bindings/Dialect/Tensor/Tensor.cpp
-  (define %ranked-tensor-type-with-encoding
+  (define %crest::RankedTensorType::cloneWithEncoding
     (foreign-procedure "crest::RankedTensorType::cloneWithEncoding" (uptr uptr) uptr))
 
   ;; @brief tensor::CastOp::areCastCompatible — test whether a tensor.cast
@@ -36,8 +36,8 @@
   ;; @param to-type-uptr   Type opaque uptr
   ;; @return               1 if compatible, 0 otherwise
   ;; @note  Defined in lib/Bindings/Dialect/Tensor/Tensor.cpp
-  (define %tensor-cast-are-cast-compatible
-    (foreign-procedure "mlir_dialect_tensor_cast_are_cast_compatible"
+  (define %mlir::tensor::CastOp::areCastCompatible
+    (foreign-procedure "mlir::tensor::CastOp::areCastCompatible"
                        (uptr uptr) int))
 
   ;; @brief tensor::CastOp::create — insert a tensor.cast op.
@@ -47,8 +47,8 @@
   ;; @param input-value-uptr  Value opaque uptr
   ;; @return                  Value opaque uptr of the cast result, or 0
   ;; @note  Defined in lib/Bindings/Dialect/Tensor/Tensor.cpp
-  (define %tensor-cast-create
-    (foreign-procedure "mlir_dialect_tensor_cast_create"
+  (define %mlir::tensor::CastOp::create
+    (foreign-procedure "mlir::tensor::CastOp::create"
                        (uptr uptr uptr uptr) uptr))
 
 ) ;; end library (mlir dialects tensor ffi)

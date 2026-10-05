@@ -19,7 +19,7 @@
           mlir::tensor::CastOp::areCastCompatible
           mlir::tensor::CastOp::create)
 
-  (import (rnrs) (mlir dialect tensor ir-ffi))
+  (import (rnrs) (mlir dialect tensor ir ffi))
 
   ;; @brief crest::RankedTensorType::cloneWithEncoding — clone a RankedTensorType
   ;;        with a new encoding attribute.
@@ -29,7 +29,7 @@
   ;; @see   mlir/IR/BuiltinTypes.h
   ;; @note  Defined in lib/Bindings/Dialect/Tensor/Tensor.cpp
   (define crest::RankedTensorType::cloneWithEncoding
-    %ranked-tensor-type-with-encoding)
+    %crest::RankedTensorType::cloneWithEncoding)
 
   ;; @brief tensor::CastOp::areCastCompatible — test whether a tensor.cast
   ;;        between two types is valid.
@@ -37,7 +37,7 @@
   ;; @param to-type-uptr   Type opaque uptr
   ;; @return               1 if compatible, 0 otherwise
   (define mlir::tensor::CastOp::areCastCompatible
-    %tensor-cast-are-cast-compatible)
+    %mlir::tensor::CastOp::areCastCompatible)
 
   ;; @brief tensor::CastOp::create — insert a tensor.cast op and return its
   ;;        result value.
@@ -47,6 +47,6 @@
   ;; @param input-value-uptr Value opaque uptr
   ;; @return                 Value opaque uptr of the cast result, or 0
   (define mlir::tensor::CastOp::create
-    %tensor-cast-create)
+    %mlir::tensor::CastOp::create)
 
 ) ;; end library (mlir dialects tensor)

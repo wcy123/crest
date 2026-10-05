@@ -59,9 +59,9 @@ uint64_t mlir_dialect_tensor_cast_create(uint64_t builder_ptr, uint64_t loc_ptr,
 namespace crest {
 
 void registerDialectTensorBindings() {
-  Sregister_symbol("mlir_dialect_tensor_cast_are_cast_compatible",
+  Sregister_symbol("mlir::tensor::CastOp::areCastCompatible",
                    (void*)::mlir_dialect_tensor_cast_are_cast_compatible);
-  Sregister_symbol("mlir_dialect_tensor_cast_create",
+  Sregister_symbol("mlir::tensor::CastOp::create",
                    (void*)::mlir_dialect_tensor_cast_create);
 }
 
