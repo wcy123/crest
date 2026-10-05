@@ -53,7 +53,7 @@
   (import (rnrs)
           (only (chezscheme) foreign-procedure foreign-entry?
                 make-eq-hashtable hashtable-ref hashtable-set!)
-          (mlir core context))
+          (mlir ir mlir-context))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Type keyword identifier-syntax

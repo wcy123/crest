@@ -13,7 +13,7 @@
 ;; mlir/IR/BuiltinTypes.h and registered as part of mlir::BuiltinDialect.
 ;;
 ;; Type constructors accept an optional ctx argument; when omitted they
-;; use (current-mlir-context) from (mlir core context).
+;; use (current-mlir-context) from (mlir ir mlir-context).
 ;;
 ;;===----------------------------------------------------------------------===;;
 
@@ -36,7 +36,7 @@
     mlir-type-integer-width   ; bit width of IntegerType (uptr → uptr)
     mlir-type-is-unsigned)    ; #t if unsigned IntegerType (uptr → boolean)
   (import (rnrs)
-          (mlir core context)
+          (mlir ir mlir-context)
           (mlir dialects builtin ffi))
 
   ;; Get the MLIRContext* from any Type* (types carry their context).
