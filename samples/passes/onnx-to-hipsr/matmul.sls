@@ -31,9 +31,6 @@
                 mlir::shape::WitnessType::get)
           (mlir support logging)
           (crest)
-          (only (mlir ir operation)
-                mlir::Operation::getContext)
-
           (only (mlir support logging)
                 crest::logging::info)
 
@@ -49,9 +46,9 @@
         ([%ctx           (mlir-get-hipsr-context-arg op)]
          [!output-type   (mlir::Value::getType %output)]
          [!output-device (mlir-ranked-tensor-type-with-encoding !output-type (make-hipsr-device-space-attr (mlir::Type::getContext !output-type)))]
-         [!shape-type    (mlir::shape::ShapeType::get   (mlir::Operation::getContext op))]
-         [!size-type     (mlir::shape::SizeType::get    (mlir::Operation::getContext op))]
-         [!witness-type  (mlir::shape::WitnessType::get (mlir::Operation::getContext op))]
+         [!shape-type    (mlir::shape::ShapeType::get)]
+         [!size-type     (mlir::shape::SizeType::get)]
+         [!witness-type  (mlir::shape::WitnessType::get)]
          ;; Rank info from operand types (runtime)
          [a-rank         (mlir::RankedTensorType::getRank (mlir::Value::getType %a))]
          [b-rank         (mlir::RankedTensorType::getRank (mlir::Value::getType %b))]

@@ -17,6 +17,7 @@
 (library (passes onnx-to-hipsr)
   (export run-pass)
   (import (rnrs (6))
+          (only (mlir ir mlir-context) with-mlir-context)
           (only (mlir ir operation)
                 mlir::OpOperand::get
                 mlir::Operation::emitError
@@ -142,6 +143,7 @@
   (define (run-pass module-op . args)
     (crest::logging::info "Starting ONNX to HipSR Conversion (Scheme)")
     (let ((ctx (mlir::Operation::getContext module-op)))
+      (with-mlir-context ctx
       (with-type-converter (type-converter)
         (hipsr-type-converter-add-device-memory-conversions! type-converter)
         (with-conversion-target (target ctx)
@@ -161,6 +163,6 @@
             ;; Infrastructure patterns
             (populate-return-patterns type-converter patterns ctx)
             (mlir-populate-func-type-conversion-pattern patterns type-converter)
-            (do-conversion module-op target patterns))))))
+            (do-conversion module-op target patterns)))))))
 
 ) ;; end library (passes onnx-to-hipsr)

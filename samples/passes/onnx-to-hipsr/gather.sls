@@ -21,7 +21,7 @@
           (only (mlir ir value)
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
-          (only (mlir ir builtin-attributes ffi) %mlir::IntegerAttr::get<index>)
+          (only (mlir ir builtin-attributes) mlir::IntegerAttr::get<index>)
           (only (mlir core builder) mlir-build-operation)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
@@ -33,7 +33,7 @@
           (crest internal rewrite)
           (crest)
           (only (mlir ir operation)
-                mlir::Operation::emitRemark mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getContext mlir::Operation::getResult mlir::Operation::setAttr!)
+                mlir::Operation::emitRemark mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getResult mlir::Operation::setAttr!)
 
           (only (mlir ir type) mlir::Type::getContext)
 
@@ -58,7 +58,7 @@
   (define (build-gather-shape! axis data-shape idx-shape shape-type size-type)
     (define (mk-sz n)
       (let ([op (mlir-build-operation "shape.const_size" '() (list size-type))])
-        (mlir::Operation::setAttr! op "value" (%mlir::IntegerAttr::get<index> (mlir::Operation::getContext op) n))
+        (mlir::Operation::setAttr! op "value" (mlir::IntegerAttr::get<index> n))
         (mlir::Operation::getResult op 0)))
     (let* ([sz1      (mk-sz axis)]
            [sp1      (mlir-build-operation "shape.split_at"
@@ -84,8 +84,8 @@
          [!data-type  (mlir::Value::getType %data)]
          [!out-type   (mlir::Value::getType %output)]
          [!out-device (mlir-ranked-tensor-type-with-encoding !out-type (make-hipsr-device-space-attr (mlir::Type::getContext !out-type)))]
-         [!shape-type (mlir::shape::ShapeType::get (mlir::Operation::getContext op))]
-         [!size-type  (mlir::shape::SizeType::get  (mlir::Operation::getContext op))]
+         [!shape-type (mlir::shape::ShapeType::get)]
+         [!size-type  (mlir::shape::SizeType::get)]
          [axis        (let ([a (mlir::Operation::getAttrOfType<IntegerAttr> op "axis" 0)])
                         (if (< a 0) (+ a (mlir::RankedTensorType::getRank !data-type)) a))]
          ;; guard: only handle device data (eqv? avoids shadowed = keyword)

@@ -33,7 +33,7 @@
           (crest internal rewrite)
           (crest)
           (only (mlir ir operation)
-                mlir::Operation::getContext mlir::Operation::getResult)
+                mlir::Operation::getResult)
 
           (only (mlir ir type) mlir::Type::getContext)
   )
@@ -49,7 +49,7 @@
         ([%ctx        (mlir-get-hipsr-context-arg op)]
          [!out-type   (mlir::Value::getType %output)]
          [!out-device (mlir-ranked-tensor-type-with-encoding !out-type (make-hipsr-device-space-attr (mlir::Type::getContext !out-type)))]
-         [!shape-type (mlir::shape::ShapeType::get (mlir::Operation::getContext op))])
+         [!shape-type (mlir::shape::ShapeType::get)])
     :rewrite %output :with
         (%placeholder = hipsr.placeholder (%ctx %lhs %rhs !out-device)
                         (^bb0 ((%ls : !shape-type) (%rs : !shape-type))
@@ -63,7 +63,7 @@
   ;;===--------------------------------------------------------------------===;;
 
   (define (make-binary-min! rewriter loc-op ctx lhs rhs out-type)
-    (let ([!shape-type (mlir::shape::ShapeType::get (mlir::Operation::getContext loc-op))])
+    (let ([!shape-type (mlir::shape::ShapeType::get)])
       (mlir-set-insertion-point-before rewriter loc-op)
       (with-rewrite-builder (rewriter loc-op)
         (with-mlir-ops

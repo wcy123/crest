@@ -45,10 +45,13 @@
           (passes hip-fusion qdq-roundtrip)
           (only (mlir ir operation)
                 mlir::Operation::getContext)
+          (only (mlir ir mlir-context)
+                with-mlir-context)
   )
 
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
+      (with-mlir-context ctx
       (with-pattern-set (patterns ctx)
         (add-rewrite-pattern patterns "hip.quantize_linear"
                                        hip-qadd-fusion 10)
@@ -80,6 +83,6 @@
                                        hip-qdq-roundtrip-tensor 10)
         (add-rewrite-pattern patterns "hip.quantize_linear"
                                        hip-qdq-roundtrip-pair 10)
-        (mlir-apply-patterns-greedy module-op patterns))))
+        (mlir-apply-patterns-greedy module-op patterns)))))
 
 ) ;; end library (passes hip-fusion)

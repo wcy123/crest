@@ -26,9 +26,6 @@
                 mlir::shape::SizeType::get
                 mlir::shape::WitnessType::get)
           (crest)
-          (only (mlir ir operation)
-                mlir::Operation::getContext)
-
           (only (mlir ir value)
                 mlir::Value::getType)
 
@@ -42,7 +39,7 @@
         ([%ctx           (mlir-get-hipsr-context-arg op)]
          [!output-type   (mlir::Value::getType %output)]
          [!output-device (mlir-ranked-tensor-type-with-encoding !output-type (make-hipsr-device-space-attr (mlir::Type::getContext !output-type)))]
-         [!shape-type    (mlir::shape::ShapeType::get (mlir::Operation::getContext op))])
+         [!shape-type    (mlir::shape::ShapeType::get)])
     :rewrite %output :with
         ;; placeholder ins = (%data) only: scatter output has data's shape
         (%placeholder = hipsr.placeholder (%ctx %data !output-device)

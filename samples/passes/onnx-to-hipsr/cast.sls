@@ -25,7 +25,6 @@
           (crest)
           (only (mlir ir operation)
                 mlir::Operation::getContext)
-
           (only (mlir ir value)
                 mlir::Value::getType)
   )
@@ -39,7 +38,7 @@
          [!output-type   (mlir::Value::getType %output)]
          [!output-device (mlir-ranked-tensor-type-with-encoding !output-type
                             (make-hipsr-device-space-attr ctx))]
-         [!shape-type    (mlir::shape::ShapeType::get ctx)])
+         [!shape-type    (mlir::shape::ShapeType::get)])
     :rewrite %output :with
         (%placeholder = hipsr.placeholder (%ctx %input)
                         (^bb0 ((%shape-in : !shape-type))

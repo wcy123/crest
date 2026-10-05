@@ -41,7 +41,7 @@
          [!output-type   (mlir::Value::getType %output)]
          [!output-device (mlir-ranked-tensor-type-with-encoding !output-type
                             (make-hipsr-device-space-attr ctx))]
-         [!shape-type    (mlir::shape::ShapeType::get ctx)])
+         [!shape-type    (mlir::shape::ShapeType::get)])
     :rewrite %output :with
         (%placeholder = hipsr.placeholder (%ctx %lhs %rhs)
                         (^bb0 ((%lhs-shape : !shape-type) (%rhs-shape : !shape-type))

@@ -22,9 +22,9 @@
           (only (mlir ir value)
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
-          (only (mlir ir builtin-attributes ffi)
-                %mlir::IntegerAttr::get<index>
-                %mlir::IntegerAttr::get<i64>)
+          (only (mlir ir builtin-attributes)
+                mlir::IntegerAttr::get<index>
+                mlir::IntegerAttr::get<i64>)
           (only (mlir core builder) mlir-build-operation)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
@@ -68,7 +68,7 @@
                  [ext (if (dynamic-dim? dim)
                           (let* ([ci-op (mlir-build-operation "arith.constant"
                                           '() (list index-type))]
-                                 [_     (mlir::Operation::setAttr! ci-op "value" (%mlir::IntegerAttr::get<index> (mlir::Operation::getContext ci-op) axis))]
+                                 [_     (mlir::Operation::setAttr! ci-op "value" (mlir::IntegerAttr::get<index> axis))]
                                  [ci    (mlir::Operation::getResult ci-op 0)]
                                  [d-op  (mlir-build-operation "tensor.dim"
                                           (list in-val ci) (list index-type))]
@@ -78,12 +78,12 @@
                             (mlir::Operation::getResult e-op 0))
                           (let* ([e-op (mlir-build-operation "arith.constant"
                                          '() (list i64-type))]
-                                 [_    (mlir::Operation::setAttr! e-op "value" (%mlir::IntegerAttr::get<i64> (mlir::Operation::getContext e-op) dim))])
+                                 [_    (mlir::Operation::setAttr! e-op "value" (mlir::IntegerAttr::get<i64> dim))])
                             (mlir::Operation::getResult e-op 0)))]
                  ;; slot constant (= axis - start within the output tensor)
                  [slot-op (mlir-build-operation "arith.constant"
                              '() (list index-type))]
-                 [_       (mlir::Operation::setAttr! slot-op "value" (%mlir::IntegerAttr::get<index> (mlir::Operation::getContext slot-op) slot))]
+                 [_       (mlir::Operation::setAttr! slot-op "value" (mlir::IntegerAttr::get<index> slot))]
                  [slot-c  (mlir::Operation::getResult slot-op 0)]
                  ;; tensor.insert %ext into %acc[%slot-c]
                  [ins-op  (mlir-build-operation "tensor.insert"
@@ -109,7 +109,7 @@
          [start       (normalize-bound start-raw input-rank #f 0)]
          [end         (normalize-bound end-raw   input-rank #t  input-rank)]
          [num-dims    (- end start)]
-         [!shape-type (mlir::shape::ShapeType::get ctx)]
+         [!shape-type (mlir::shape::ShapeType::get)]
          [!index-type (mlir::IndexType::get       ctx)]
          [!i64-type   (mlir::IntegerType::get<i64>         ctx)]
          [!ctx-type   (mlir-get-hipsr-context-type ctx)])
