@@ -3,14 +3,14 @@
  * Licensed under the MIT License.
  */
 
-// Registration hub — delegates to the focused sub-files in Core/.
+// Registration hub — delegates to the focused sub-files in Core/ and IR/.
 
+#include "../IR/Value.h"
 #include "Attribute.h"
 #include "Builder.h"
 #include "Conversion.h"
 #include "Operation.h"
 #include "Types.h"
-#include "Value.h"
 
 namespace crest {
 
@@ -18,9 +18,9 @@ void registerCoreBindings() {
   registerAttributeBindings();
   registerBuilderBindings();
   registerConversionBindings();
+  registerIRValueBindings();
   registerOperationBindings();
   registerTypeBindings();
-  registerValueBindings();
 }
 
 } // namespace crest

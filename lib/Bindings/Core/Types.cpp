@@ -10,7 +10,6 @@
 #include "mlir/IR/Types.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/BuiltinTypes.h"
-#include "mlir/IR/Value.h"
 
 extern "C" {
 
@@ -169,21 +168,6 @@ uint64_t mlir_tensor_type_with_encoding(uint64_t type_ptr, uint64_t attr_ptr) {
       t.cloneWithEncoding(attr).getAsOpaquePointer());
 }
 
-// ─── Value type
-// ───────────────────────────────────────────────────────────────
-
-// Get the MLIR type of a Value.
-// value_ptr: Value opaque ptr (raw Chez Scheme ptr)
-// Returns:   Type opaque ptr, or null if value_ptr is null.
-ptr mlir_value_get_type(ptr value_ptr) {
-  if (!value_ptr) {
-    return nullptr;
-  }
-  return const_cast<void*>(mlir::Value::getFromOpaquePointer(value_ptr)
-                               .getType()
-                               .getAsOpaquePointer());
-}
-
 } // extern "C"
 
 namespace crest {
@@ -202,7 +186,6 @@ void registerTypeBindings() {
   Sregister_symbol("mlir_type_get_encoding", (void*)::mlir_type_get_encoding);
   Sregister_symbol("mlir_tensor_type_with_encoding",
                    (void*)::mlir_tensor_type_with_encoding);
-  Sregister_symbol("mlir_value_get_type", (void*)::mlir_value_get_type);
 }
 
 } // namespace crest

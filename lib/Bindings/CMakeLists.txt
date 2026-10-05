@@ -8,7 +8,7 @@ add_library(CrestBindings STATIC
   Core/Core.cpp
   Core/Attribute.cpp
   Core/Operation.cpp
-  Core/Value.cpp
+  IR/Value.cpp
   Core/Builder.cpp
   Core/Types.cpp
   Dialect/Shape/Shape.cpp
