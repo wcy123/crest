@@ -7,6 +7,7 @@
 #include "Dialect/Shape/Shape.h"
 #include "Support/ArrayRef.h"
 #include "Support/Logging.h"
+#include "Transforms/DialectConversion.h"
 
 namespace crest {
 
@@ -21,6 +22,7 @@ extern "C" void crest_register_extra_bindings(void (*fn)()) {
 void registerMlirForeignFunctions() {
   registerCoreBindings();
   registerDialectShapeBindings();
+  registerTransformsDialectConversionBindings();
   registerLoggingBindings();
   registerArrayRefBindings();
   if (g_extra_bindings_fn) {
