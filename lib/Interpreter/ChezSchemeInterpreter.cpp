@@ -206,12 +206,6 @@ void ChezSchemeInterpreter::addLibraryPath(const char* src_path,
 // ─── Script / eval
 // ────────────────────────────────────────────────────────────
 
-bool ChezSchemeInterpreter::load(const char* scriptPath) {
-  ptr load_sym = Stop_level_value(Sstring_to_symbol("load"));
-  Scall1(load_sym, Sstring(scriptPath));
-  return true;
-}
-
 bool ChezSchemeInterpreter::eval(const char* code) {
   ptr eval_sym = Stop_level_value(Sstring_to_symbol("eval"));
   ptr read_sym = Stop_level_value(Sstring_to_symbol("read"));
@@ -224,44 +218,8 @@ bool ChezSchemeInterpreter::eval(const char* code) {
   return true;
 }
 
-// ─── Value helpers
-// ────────────────────────────────────────────────────────────
-
-ptr ChezSchemeInterpreter::makeString(const char* str) { return Sstring(str); }
-
-ptr ChezSchemeInterpreter::makeInteger(long value) { return Sinteger(value); }
-
 // ─── Function calls
 // ───────────────────────────────────────────────────────────
-
-std::string ChezSchemeInterpreter::callFunction(const char* functionName,
-                                                const std::vector<ptr>& args) {
-  ptr func = Stop_level_value(Sstring_to_symbol(functionName));
-  if (func == Sfalse) {
-    return "";
-  }
-
-  ptr args_list = Snil;
-  for (auto it = args.rbegin(); it != args.rend(); ++it) {
-    args_list = Scons(*it, args_list);
-  }
-
-  ptr apply_proc = Stop_level_value(Sstring_to_symbol("apply"));
-  ptr result = Scall2(apply_proc, func, args_list);
-
-  ptr string_p = Stop_level_value(Sstring_to_symbol("string?"));
-  if (Scall1(string_p, result) != Sfalse) {
-    iptr len = Sstring_length(result);
-    std::string str;
-    str.reserve(len);
-    for (iptr i = 0; i < len; i++) {
-      str.push_back(static_cast<char>(Sstring_ref(result, i)));
-    }
-    return str;
-  }
-
-  return "";
-}
 
 void ChezSchemeInterpreter::callPassFunction(const char* functionName,
                                              mlir::Operation* op) {
