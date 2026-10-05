@@ -3,6 +3,8 @@
  * Licensed under the MIT License.
  */
 
+// Mirrors mlir/IR/OperationSupport.h
+
 // Thin C wrappers around mlir::OperationState (heap-allocated for FFI
 // stability). Exposes per-element operand/result/region addition so that
 // Scheme side can iterate lists and call through for each element.
