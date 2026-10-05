@@ -228,20 +228,20 @@
     (foreign-procedure "mlir_interfaces_dps_get_dps_init_value" (uptr int) uptr))
 
   ;; Emit an error diagnostic attached to op through MLIR's diagnostic engine.
-  ;; Falls back to mlir_log_error when op is 0.
+  ;; Falls back to mlir_support_logging_error when op is 0.
   ;; Does not raise a Scheme exception — callers propagate failure explicitly.
   ;; op:  Operation* uptr (or 0 for unattached diagnostic)
   ;; msg: diagnostic message string
   (define mlir-emit-error!
     (foreign-procedure "mlir_ir_operation_emit_error" (uptr string) void))
 
-  ;; Emit a warning diagnostic attached to op. Falls back to mlir_log_warning.
+  ;; Emit a warning diagnostic attached to op. Falls back to mlir_support_logging_warning.
   ;; op:  Operation* uptr (or 0)
   ;; msg: diagnostic message string
   (define mlir-emit-warning!
     (foreign-procedure "mlir_ir_operation_emit_warning" (uptr string) void))
 
-  ;; Emit a remark diagnostic attached to op. Falls back to mlir_log_info.
+  ;; Emit a remark diagnostic attached to op. Falls back to mlir_support_logging_info.
   ;; op:  Operation* uptr (or 0)
   ;; msg: diagnostic message string
   (define mlir-emit-remark!

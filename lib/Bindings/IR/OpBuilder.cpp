@@ -27,7 +27,7 @@ uint64_t mlir_ir_op_builder_create(uint64_t builder_ptr, uint64_t loc_op_ptr,
   for (ptr cur = static_cast<ptr>(operands_list); cur != Snil;
        cur = Scdr(cur)) {
     if (!Spairp(cur)) {
-      mlir_log_error("mlir_ir_op_builder_create: bad operands");
+      mlir_support_logging_error("mlir_ir_op_builder_create: bad operands");
       return 0;
     }
     operands.push_back(mlir::Value::getFromOpaquePointer(
@@ -36,7 +36,7 @@ uint64_t mlir_ir_op_builder_create(uint64_t builder_ptr, uint64_t loc_op_ptr,
   for (ptr cur = static_cast<ptr>(result_types_list); cur != Snil;
        cur = Scdr(cur)) {
     if (!Spairp(cur)) {
-      mlir_log_error("mlir_ir_op_builder_create: bad result types");
+      mlir_support_logging_error("mlir_ir_op_builder_create: bad result types");
       return 0;
     }
     resultTypes.push_back(mlir::Type::getFromOpaquePointer(

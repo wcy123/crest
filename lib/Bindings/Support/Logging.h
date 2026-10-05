@@ -6,15 +6,16 @@
 #ifndef CREST_BINDINGS_LOGGING_H
 #define CREST_BINDINGS_LOGGING_H
 
-// Logging functions defined in lib/Bindings/Logging.cpp.
-// Include this header in any Bindings .cpp file that calls mlir_log_*.
+// Logging functions defined in lib/Bindings/Support/Logging.cpp.
+// Include this header in any Bindings .cpp file that calls
+// mlir_support_logging_*.
 extern "C" {
-void mlir_log_trace(const char* msg);
-void mlir_log_debug(const char* msg);
-void mlir_log_info(const char* msg);
-void mlir_log_warning(const char* msg);
-void mlir_log_error(const char* msg);
-void mlir_log_fatal(const char* msg);
+void mlir_support_logging_trace(const char* msg);
+void mlir_support_logging_debug(const char* msg);
+void mlir_support_logging_info(const char* msg);
+void mlir_support_logging_warning(const char* msg);
+void mlir_support_logging_error(const char* msg);
+void mlir_support_logging_fatal(const char* msg);
 } // extern "C"
 
 namespace crest {

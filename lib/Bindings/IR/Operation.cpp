@@ -310,7 +310,7 @@ int mlir_ir_operation_has_attr(uint64_t op_ptr, const char* attr_name) {
 
 void mlir_ir_operation_emit_error(uint64_t op_ptr, const char* msg) {
   if (!op_ptr) {
-    mlir_log_error(msg);
+    mlir_support_logging_error(msg);
     return;
   }
   reinterpret_cast<mlir::Operation*>(op_ptr)->emitError(msg);
@@ -318,7 +318,7 @@ void mlir_ir_operation_emit_error(uint64_t op_ptr, const char* msg) {
 
 void mlir_ir_operation_emit_warning(uint64_t op_ptr, const char* msg) {
   if (!op_ptr) {
-    mlir_log_warning(msg);
+    mlir_support_logging_warning(msg);
     return;
   }
   reinterpret_cast<mlir::Operation*>(op_ptr)->emitWarning(msg);
@@ -326,7 +326,7 @@ void mlir_ir_operation_emit_warning(uint64_t op_ptr, const char* msg) {
 
 void mlir_ir_operation_emit_remark(uint64_t op_ptr, const char* msg) {
   if (!op_ptr) {
-    mlir_log_info(msg);
+    mlir_support_logging_info(msg);
     return;
   }
   reinterpret_cast<mlir::Operation*>(op_ptr)->emitRemark(msg);

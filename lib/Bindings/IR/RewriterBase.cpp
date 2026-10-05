@@ -30,7 +30,8 @@ uint64_t mlir_ir_rewriter_base_create(uint64_t rewriter_ptr,
   for (ptr cur = static_cast<ptr>(operands_list); cur != Snil;
        cur = Scdr(cur)) {
     if (!Spairp(cur)) {
-      mlir_log_error("mlir_ir_rewriter_base_create: bad operands list");
+      mlir_support_logging_error(
+          "mlir_ir_rewriter_base_create: bad operands list");
       return 0;
     }
     operands.push_back(mlir::Value::getFromOpaquePointer(
@@ -39,7 +40,8 @@ uint64_t mlir_ir_rewriter_base_create(uint64_t rewriter_ptr,
   for (ptr cur = static_cast<ptr>(result_types_list); cur != Snil;
        cur = Scdr(cur)) {
     if (!Spairp(cur)) {
-      mlir_log_error("mlir_ir_rewriter_base_create: bad result types list");
+      mlir_support_logging_error(
+          "mlir_ir_rewriter_base_create: bad result types list");
       return 0;
     }
     resultTypes.push_back(mlir::Type::getFromOpaquePointer(
