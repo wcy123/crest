@@ -33,8 +33,9 @@
           (only (chezscheme) foreign-ref)
           (mlir support array-ref ffi))
 
-  ;; :uptr — exported compile-time keyword: array-ref element type 'uptr (8-byte pointer).
-  ;; :i32  — internal only; use (mlir core attribute)'s :i32 in callers.
+  ;; @brief Compile-time keyword: element type 'uptr — 8-byte pointer (Value*, Operation*, etc.).
+  ;; @note  Pass as the optional third argument to array-ref-at
+  ;; @note  :i32 is internal only; use (mlir core attribute)'s :i32 in callers
   (define-syntax :uptr (identifier-syntax 'uptr))
   (define-syntax :i32  (identifier-syntax 'i32))
 
@@ -42,15 +43,24 @@
   ;; Fast path — foreign-ref compiles to raw load instructions, no FFI call.
   ;;===--------------------------------------------------------------------===;;
 
-  ;; Return the number of elements — reads size field at offset 8.
+  ;; @brief Read element count from a CArrayRef struct.
+  ;; @param ref    uptr — pointer to CArrayRef{uint64_t data; uint64_t size}
+  ;; @return       Number of elements (uptr, reads size field at offset 8)
+  ;; @note         Zero FFI overhead — compiles to a raw memory load via foreign-ref
+  ;; @note         Struct layout defined in lib/Bindings/Support/ArrayRef.h
   (define (array-ref-size ref)
     (foreign-ref 'uptr ref 8))
 
-  ;; Return the i-th element with bounds check.
-  ;; type: element type symbol — 'uptr (default, 8-byte pointer) or 'i32 (4-byte integer).
-  ;;   'uptr → foreign-ref 'uptr        at offset index*8  (Value*, Operation*, etc.)
-  ;;   'i32  → foreign-ref 'integer-32  at offset index*4  (DenseI32ArrayAttr data)
-  ;; Use :uptr or :i32 (both exported here) as compile-time keywords.
+  ;; @brief Read the i-th element from a CArrayRef with bounds checking.
+  ;; @param ref    uptr — pointer to CArrayRef{data; size}
+  ;; @param index  Exact non-negative integer — zero-based element index
+  ;; @param type   (optional) Element type symbol; default is 'uptr
+  ;;               :uptr → foreign-ref 'uptr       at offset index*8  (Value*, Operation*, etc.)
+  ;;               :i32  → foreign-ref 'integer-32  at offset index*4  (DenseI32ArrayAttr data)
+  ;; @return       Element value as uptr or integer-32 depending on type
+  ;; @note         Raises error 'array-ref-at if index >= size
+  ;; @note         Zero FFI overhead — compiles to raw memory loads via foreign-ref
+  ;; @note         Use :uptr or :i32 compile-time keywords as the type argument
   (define array-ref-at
     (case-lambda
       [(ref index)
@@ -69,11 +79,19 @@
   ;; Lifecycle — C++ FFI (one call per array lifetime, overhead acceptable).
   ;;===--------------------------------------------------------------------===;;
 
-  ;; Allocate a CArrayRef on the C heap. Returns a uptr (raw C address).
-  ;; Must be paired with array-ref-destroy, or use with-array-ref.
+  ;; @brief Allocate a CArrayRef on the C heap.
+  ;; @param data-ptr  uptr — pointer to the first element of the backing array
+  ;; @param size      uptr — number of elements
+  ;; @return          uptr — address of the newly allocated CArrayRef
+  ;; @note            Must be paired with array-ref-destroy, or use with-array-ref (RAII)
+  ;; @note            Defined in lib/Bindings/Support/ArrayRef.cpp
   (define make-array-ref %make)
 
-  ;; Free a CArrayRef previously created by make-array-ref.
+  ;; @brief Free a CArrayRef previously created by make-array-ref.
+  ;; @param ref  uptr — address returned by make-array-ref
+  ;; @return     void
+  ;; @note       Do not call twice on the same pointer (double-free is UB)
+  ;; @note       Defined in lib/Bindings/Support/ArrayRef.cpp
   (define array-ref-destroy %destroy)
 
   ;;===--------------------------------------------------------------------===;;
@@ -81,6 +99,26 @@
   ;; Guarantees array-ref-destroy is called even on exception (dynamic-wind).
   ;;===--------------------------------------------------------------------===;;
 
+  ;; @brief RAII macro — create or adopt a CArrayRef and guarantee its destruction.
+  ;;
+  ;; Two forms:
+  ;;
+  ;;   (with-array-ref (name existing-ref) body ...)
+  ;;     Adopt an existing CArrayRef uptr.  name is bound to existing-ref inside body.
+  ;;     array-ref-destroy is called on name when body exits (normally or via exception).
+  ;;
+  ;;   (with-array-ref (name data-ptr size) body ...)
+  ;;     Allocate a new CArrayRef via make-array-ref.  name is bound to the new uptr.
+  ;;     array-ref-destroy is called on name when body exits (normally or via exception).
+  ;;
+  ;; @param name      Identifier to bind the CArrayRef uptr inside body
+  ;; @param ref-expr  (1-arg form) uptr — address of an existing CArrayRef
+  ;; @param data-ptr  (2-arg form) uptr — pointer to backing array data
+  ;; @param size      (2-arg form) uptr — element count
+  ;; @param body      One or more expressions evaluated with name in scope
+  ;; @return          Value of the last body expression
+  ;; @note            Implemented via dynamic-wind; destruction runs even on exceptions
+  ;; @note            Do not let name escape body — it is freed on exit
   (define-syntax with-array-ref
     (syntax-rules ()
       ;; (with-array-ref (name existing-ref) body ...)
