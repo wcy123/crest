@@ -3,7 +3,7 @@
  * Licensed under the MIT License.
  */
 
-// Registration hub — delegates to focused sub-files in Core/, IR/, Transforms/.
+// Registration hub — delegates to IR/, Transforms/, and Core/ shims.
 
 #include "../IR/Block.h"
 #include "../IR/OpBuilder.h"
@@ -20,16 +20,19 @@
 namespace crest {
 
 void registerCoreBindings() {
-  registerAttributeBindings();
-  registerBuilderBindings();
-  registerConversionBindings();
+  // Canonical registrations (new C names)
   registerIRBlockBindings();
   registerIROpBuilderBindings();
   registerIROpResultBindings();
   registerIRRewriterBaseBindings();
   registerIRValueBindings();
-  registerOperationBindings();
   registerTransformsGreedyPatternRewriteDriverBindings();
+  // Backward-compat shims (register old C names still used by
+  // scheme/mlir/core/*.sls)
+  registerAttributeBindings();
+  registerBuilderBindings();
+  registerConversionBindings();
+  registerOperationBindings();
   registerTypeBindings();
 }
 
