@@ -26,20 +26,40 @@
   (import (rnrs)
           (mlir ir value ffi))
 
-  ;; mlir::Value::getDefiningOp() — returns Operation* or 0 for block args.
+  ;; @brief mlir::Value::getDefiningOp() — return the operation that defines this value.
+  ;; @param value  Value opaque pointer uptr
+  ;; @return       Operation* opaque pointer uptr, or 0 if value is a block argument or null
+  ;; @see          mlir/IR/Value.h
+  ;; @note         Defined in lib/Bindings/IR/Value.cpp
   (define get-defining-op %get-defining-op)
 
-  ;; mlir::isa<BlockArgument>(val) — returns #t/#f.
+  ;; @brief mlir::isa<BlockArgument>(val) — predicate: is the value a block argument?
+  ;; @param value  Value opaque pointer uptr
+  ;; @return       #t if BlockArgument, #f otherwise
+  ;; @see          mlir/IR/Value.h
+  ;; @note         Wraps %block-argument?; returns boolean instead of 1/0
   (define (block-argument? val)
     (= 1 (%block-argument? val)))
 
-  ;; mlir::OpResult::getResultNumber() — returns -1 for block arguments.
+  ;; @brief mlir::OpResult::getResultNumber() — return the result index of an op result value.
+  ;; @param value  Value opaque pointer uptr
+  ;; @return       Result index as int, or -1 if value is a block argument or null
+  ;; @see          mlir/IR/Value.h
+  ;; @note         Defined in lib/Bindings/IR/Value.cpp
   (define get-result-number %get-result-number)
 
-  ;; Use count.
+  ;; @brief mlir::Value::use_begin/use_end — count the number of uses of this value.
+  ;; @param value  Value opaque pointer uptr
+  ;; @return       Number of uses as uptr; 0 if value is null
+  ;; @see          mlir/IR/Value.h
+  ;; @note         Defined in lib/Bindings/IR/Value.cpp
   (define num-uses %num-uses)
 
-  ;; mlir::Value::getType()
+  ;; @brief mlir::Value::getType() — return the type of this value.
+  ;; @param value  Value opaque pointer uptr
+  ;; @return       Type opaque pointer uptr, or 0 if value is null
+  ;; @see          mlir/IR/Value.h
+  ;; @note         Defined in lib/Bindings/IR/Value.cpp
   (define get-type %get-type)
 
 ) ;; end library (mlir ir value)
