@@ -36,17 +36,17 @@ A conversion pattern in Scheme:
 
 ```scheme
 (define-conversion-pattern (lower-cast op operands-ref rw tc)
-  %cast = "onnx.Cast" (%data)
-  :where (quantized-tensor? %data)
-  :rewrite
-    (%out = "hipsr.cast" (%data) -> (mlir-value-get-type %cast))
-    (mlir-replace-op rw op %out)
-  #t)
+  :if-match
+      %cast = onnx.Cast (%data)
+                :where (quantized-tensor? %data)
+  :rewrite %cast :with
+      (%result = hipsr.cast (%data) -> (mlir-value-get-type %cast)))
 ```
 
 The match side names operands structurally. The `:where` guard is plain
-Scheme — any predicate, no C++ required. The `:rewrite` body builds new ops
-and returns `#t` on success.
+Scheme — any predicate, no C++ required. `:rewrite %cast :with` names the
+root op to replace and lists the builder calls; CREST emits the
+`replaceOp` call automatically.
 
 A pass entry point:
 
