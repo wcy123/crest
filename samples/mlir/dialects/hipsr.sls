@@ -35,7 +35,8 @@
 
   (import (rnrs)
           (only (chezscheme) foreign-entry? foreign-procedure)
-          (mlir core ir)
+          (mlir core operation)
+          (mlir dialects builtin)
           (mlir core attribute)
           (mlir core conversion)
           (mlir dialects tensor))

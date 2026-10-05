@@ -46,9 +46,10 @@
           (rename (rime loop) (:with :rime-with))
           (for (rename (rime loop) (:with :rime-with)) expand)
           (for (only (crest internal keywords) = : -> :region) expand)
-          (mlir core ir)
+          (only (mlir core builder) with-block-builder)
           (mlir core attribute)
-          (for (only (mlir core ir) mlir-build-operation with-block-builder) expand)
+          (for (only (mlir core builder) mlir-build-operation with-block-builder
+                     mlir-op-get-region mlir-new-block mlir-block-get-argument) expand)
           (for (only (mlir core attribute) mlir-make-attr :index) expand)
           (for (only (mlir core operation) mlir-operation-get-context
                                            mlir-operation-set-attribute!) expand))
