@@ -19,9 +19,9 @@
           (only (chezscheme) nan?)
           (rename (only (rnrs) =) (= num=))
 
-          (rename (mlir ir value)
-            (mlir::Value::getDefiningOp   mlir::Value::getDefiningOp)
-            (mlir::Value::getType          mlir::Value::getType))
+          (only (mlir ir value)
+                mlir::Value::getDefiningOp
+                mlir::Value::getType)
           (only (mlir core builder) mlir-build-operation)
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)

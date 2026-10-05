@@ -18,9 +18,9 @@
   (export populate-expand-patterns)
   (import (except (rnrs (6)) =)
 
-          (rename (mlir ir value)
-            (mlir::Value::getDefiningOp   mlir::Value::getDefiningOp)
-            (mlir::Value::getType          mlir::Value::getType))
+          (only (mlir ir value)
+                mlir::Value::getDefiningOp
+                mlir::Value::getType)
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)

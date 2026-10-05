@@ -22,8 +22,9 @@
   (export populate-constant-patterns)
   (import (except (rnrs (6)) =)
 
-          (rename (mlir ir value)
-            (mlir::Value::getType          mlir::Value::getType))
+          (only (mlir ir value)
+                mlir::Value::getDefiningOp
+                mlir::Value::getType)
           (only (mlir ir builtin-attributes ffi) %mlir::DenseResourceElementsAttr::get)
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)

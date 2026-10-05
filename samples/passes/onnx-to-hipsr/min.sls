@@ -18,8 +18,9 @@
   (export populate-min-patterns)
   (import (except (rnrs (6)) =)
 
-          (rename (mlir ir value)
-            (mlir::Value::getType          mlir::Value::getType))
+          (only (mlir ir value)
+                mlir::Value::getDefiningOp
+                mlir::Value::getType)
           (mlir support array-ref)
           (only (mlir core builder) mlir-replace-op mlir-set-insertion-point-before with-rewrite-builder)
           (mlir dialects builtin)

@@ -20,8 +20,9 @@
   (export populate-transpose-patterns)
   (import (except (rnrs (6)) =)
 
-          (rename (mlir ir value)
-            (mlir::Value::getType          mlir::Value::getType))
+          (only (mlir ir value)
+                mlir::Value::getDefiningOp
+                mlir::Value::getType)
           (only (mlir ir builtin-attributes ffi)
                 %mlir::IntegerAttr::get<index>
                 %mlir::DenseI64ArrayAttr::get)

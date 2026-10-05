@@ -79,10 +79,10 @@
   (import (rnrs)
           (only (chezscheme) nan? foreign-procedure)
 
-          (rename (mlir ir value)
-            (mlir::Value::getDefiningOp   mlir::Value::getDefiningOp)
-            (mlir::Value::getType          mlir::Value::getType)
-            (mlir::Value::getUses          mlir::Value::getUses))
+          (only (mlir ir value)
+                mlir::Value::getDefiningOp
+                mlir::Value::getType
+                mlir::Value::getUses)
           (only (mlir ir builtin-attributes)
                 mlir::DenseElementsAttr::isSplat
                 mlir::FloatAttr::getValueAsDouble.f32

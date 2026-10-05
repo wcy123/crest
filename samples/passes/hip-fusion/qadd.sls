@@ -26,10 +26,10 @@
   (import (except (rnrs) =)
           (rename (only (rnrs) =) (= num=))
 
-          (rename (mlir ir value)
-            (mlir::Value::getDefiningOp   mlir::Value::getDefiningOp)
-            (mlir::Value::getType          mlir::Value::getType)
-            (mlir::Value::getUses          mlir::Value::getUses))
+          (only (mlir ir value)
+                mlir::Value::getDefiningOp
+                mlir::Value::getType
+                mlir::Value::getUses)
           (only (mlir ir builtin-attributes)
                 mlir::FloatAttr::get<f32>
                 mlir::IntegerAttr::get<i64>
