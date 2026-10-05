@@ -313,19 +313,17 @@
   ;; @note             Defined in lib/Bindings/IR/Operation.cpp
   (define mlir::Operation::getAttrOfType<FloatAttr>    %get-float-attr)
 
-  ;;===--------------------------------------------------------------------===;;
-  ;; operation-get-operands — bind operands by spec into a list of values.
-  ;;
-  ;; (operation-get-operands op 'required 'optional 'variadic ...)
-  ;;
-  ;; Returns a list with one element per spec entry:
-  ;;   required → Value uptr
-  ;;   optional → Value uptr if present, (if #f #f) if absent
-  ;;   variadic → list of Value uptrs if non-empty, (if #f #f) if empty
-  ;;
-  ;; If any optional/variadic in spec, op must have operandSegmentSizes.
-  ;; For all-required specs, no attribute read is needed.
-  ;;===--------------------------------------------------------------------===;;
+  ;; @brief operation-get-operands — bind operands by kind spec into a list of values.
+  ;; @param op    Operation* uptr (root operation)
+  ;; @param spec  Zero or more kind symbols: :required, :optional, or :variadic
+  ;; @return      List with one element per spec entry:
+  ;;              :required → Value uptr;
+  ;;              :optional → Value uptr if present, #<void> if absent;
+  ;;              :variadic → list of Value uptrs if non-empty, #<void> if empty
+  ;; @see         mlir/IR/Operation.h, mlir::OpOperand
+  ;; @note        When spec contains :optional or :variadic, op must carry
+  ;;              an operandSegmentSizes DenseI32ArrayAttr.  For all-:required
+  ;;              specs no attribute read is needed.
   (define %absent (if #f #f))  ; sentinel: absent optional/variadic slot
 
   (define (operation-get-operands op . spec)
