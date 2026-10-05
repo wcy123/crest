@@ -20,7 +20,8 @@ void registerCoreBindings() {
   registerConversionBindings();
   registerIRValueBindings();
   registerOperationBindings();
-  registerTypeBindings();
+  registerTypeBindings(); // delegates to registerIRBuiltinTypesBindings +
+                          // registerIRTypeBindings
 }
 
 } // namespace crest
