@@ -20,7 +20,7 @@
           (mlir core operation)
           (mlir core value)
           (only (mlir core builder) mlir-build-op mlir-set-insertion-point-before mlir-erase-op mlir-op-erase)
-          (mlir core conversion)
+          (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
           (mlir dialects func)
           (mlir support logging)
@@ -47,7 +47,7 @@
       #t))
 
   (define (populate-return-patterns type-converter patterns ctx)
-    (mlir-register-conversion-pattern patterns "onnx.Return"
+    (add-conversion-pattern patterns "onnx.Return"
                                       onnx-return->func-return type-converter 1))
 
   ;;===--------------------------------------------------------------------===;;
@@ -97,7 +97,7 @@
   ;;===--------------------------------------------------------------------===;;
   (define (do-conversion module-op target patterns)
     (mlir-log-debug "Applying full conversion...")
-    (let ((success (mlir-apply-full-conversion module-op target patterns)))
+    (let ((success (apply-full-conversion module-op target patterns)))
       (if (= success 1)
           (begin
             (mlir-log-debug "Erasing dead NoValue ops...")
@@ -116,7 +116,7 @@
         (hipsr-type-converter-add-device-memory-conversions! type-converter)
         (with-conversion-target (target ctx)
           (hipsr-configure-conversion-target! target ctx type-converter)
-          (with-rewrite-pattern-set (patterns ctx)
+          (with-pattern-set (patterns ctx)
             ;; Scheme DSL patterns
             (populate-cast-patterns       type-converter patterns ctx)
             (populate-scatter-nd-patterns type-converter patterns ctx)

@@ -21,7 +21,7 @@
           (mlir core operation)
           (mlir core value)
           (mlir dialects builtin)
-          (mlir core conversion)
+          (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
           (mlir dialects tensor)
           (mlir dialects shape)
@@ -88,7 +88,7 @@
 
   (define (populate-matmul-patterns type-converter patterns ctx)
     (mlir-log-info "Registering onnx.MatMul pattern (inline shape region)")
-    (mlir-register-conversion-pattern patterns "onnx.MatMul"
+    (add-conversion-pattern patterns "onnx.MatMul"
                                       onnx-matmul->hipsr type-converter 1))
 
 ) ;; end library (onnx-to-hipsr matmul)

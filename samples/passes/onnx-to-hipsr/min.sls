@@ -21,7 +21,7 @@
           (mlir core value)
           (only (mlir core builder) mlir-replace-op mlir-set-insertion-point-before with-rewrite-builder)
           (mlir dialects builtin)
-          (mlir core conversion)
+          (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
           (mlir dialects tensor)
           (mlir dialects shape)
@@ -89,8 +89,8 @@
 
   (define (populate-min-patterns type-converter patterns ctx)
     ;; DSL pattern for the common binary case (N=2) — inline shape region
-    (mlir-register-conversion-pattern patterns "onnx.Min" onnx-min-2->hipsr    type-converter 1)
+    (add-conversion-pattern patterns "onnx.Min" onnx-min-2->hipsr    type-converter 1)
     ;; Scheme fallback for N=1 (identity) and N>2 (chain)
-    (mlir-register-conversion-pattern patterns "onnx.Min" onnx-min-general->hipsr type-converter 1))
+    (add-conversion-pattern patterns "onnx.Min" onnx-min-general->hipsr type-converter 1))
 
 ) ;; end library (onnx-to-hipsr min)

@@ -38,7 +38,7 @@
           (mlir core operation)
           (mlir dialects builtin)
           (mlir core attribute)
-          (mlir core conversion)
+          (mlir transforms dialect-conversion)
           (mlir dialects tensor))
 
   (define-syntax :hipsr-device-space (identifier-syntax 'hipsr-device-space))
@@ -121,8 +121,8 @@
   ;;===--------------------------------------------------------------------===;;
 
   (define (hipsr-type-converter-add-device-memory-conversions! type-converter)
-    (mlir-type-converter-add-conversion type-converter (lambda (t) t))
-    (mlir-type-converter-add-conversion type-converter
+    (type-converter-add-conversion type-converter (lambda (t) t))
+    (type-converter-add-conversion type-converter
       (lambda (type)
         (if (and (= 1 (mlir-type-is-ranked-tensor type))
                  (> (mlir-type-get-rank type) 0)
@@ -130,26 +130,26 @@
             (mlir-ranked-tensor-type-with-encoding type
               (make-hipsr-device-space-attr (mlir-type-get-context type)))
             #f)))
-    (mlir-type-converter-add-tensor-widening-materialization type-converter))
+    (type-converter-add-tensor-widening-materialization type-converter))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Conversion target configuration
   ;;===--------------------------------------------------------------------===;;
 
   (define (hipsr-configure-conversion-target! target ctx type-converter)
-    (mlir-conversion-target-add-illegal-dialect target "onnx")
-    (mlir-conversion-target-add-legal-op target ctx "onnx.NoValue")
-    (mlir-conversion-target-add-legal-dialect target "hipsr")
-    (mlir-conversion-target-add-legal-op target ctx "builtin.module")
-    (mlir-conversion-target-add-legal-op target ctx "arith.constant")
-    (mlir-conversion-target-add-legal-op target ctx "tensor.cast")
-    (mlir-conversion-target-add-dynamically-legal-op target ctx "func.func"
+    (target-add-illegal-dialect target "onnx")
+    (target-add-legal-op target ctx "onnx.NoValue")
+    (target-add-legal-dialect target "hipsr")
+    (target-add-legal-op target ctx "builtin.module")
+    (target-add-legal-op target ctx "arith.constant")
+    (target-add-legal-op target ctx "tensor.cast")
+    (target-add-dynamically-legal-op target ctx "func.func"
       (lambda (op)
-        (= 1 (mlir-type-converter-is-signature-legal type-converter op))))
-    (mlir-conversion-target-add-dynamically-legal-op target ctx "func.return"
+        (= 1 (type-converter-is-signature-legal type-converter op))))
+    (target-add-dynamically-legal-op target ctx "func.return"
       (lambda (op)
-        (= 1 (mlir-type-converter-is-legal type-converter op))))
-    (mlir-conversion-target-mark-unknown-ops-dynamically-legal target
+        (= 1 (type-converter-is-legal type-converter op))))
+    (target-mark-unknown-ops-dynamically-legal target
       (lambda (op)
         (or (hipsr-has-compute-ancestor? op)
             (hipsr-has-placeholder-ancestor? op)))))

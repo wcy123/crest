@@ -19,7 +19,7 @@
           (only (mlir core operation) mlir-operation-get-context)
           (only (mlir core value) mlir-value-get-type)
           (mlir dialects builtin)
-          (mlir core conversion)
+          (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
           (mlir dialects tensor)
           (mlir dialects shape)
@@ -43,7 +43,7 @@
                    -> !output-device))
 
   (define (populate-scatter-nd-patterns type-converter patterns ctx)
-    (mlir-register-conversion-pattern patterns "onnx.ScatterND"
+    (add-conversion-pattern patterns "onnx.ScatterND"
                                       onnx-scatter-nd->hipsr type-converter 1))
 
 ) ;; end library (onnx-to-hipsr scatter-nd)
