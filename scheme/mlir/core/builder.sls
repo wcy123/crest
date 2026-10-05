@@ -28,6 +28,7 @@
     ;; RAII macros
     with-raii
     with-op-builder
+    with-operation-state
     with-rewrite-builder
     with-current-block-builder
     with-block-builder
@@ -45,6 +46,14 @@
     mlir-ir-rewriter-base-clone-with-types
     mlir-ir-op-builder-at-block-end
     mlir-ir-op-builder-destroy
+    ;; OperationState primitives
+    mlir-ir-operation-state-create
+    mlir-ir-operation-state-add-operand
+    mlir-ir-operation-state-add-result-type
+    mlir-ir-operation-state-add-region
+    mlir-ir-operation-state-destroy
+    mlir-ir-rewriter-base-create-from-state
+    mlir-ir-op-builder-create-from-state
     ;; Block / region primitives (canonical names)
     mlir-ir-operation-get-region
     mlir-ir-block-get-argument-by-index
@@ -73,7 +82,7 @@
           (only (chezscheme) foreign-procedure parameterize make-parameter void)
           (mlir core context)
           (mlir core types)
-          (only (mlir core operation) mlir-operation-get-context))
+          (only (mlir core operation) mlir-operation-get-context mlir-operation-get-loc))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Canonical low-level rewriter FFI
@@ -148,6 +157,49 @@
     (foreign-procedure "mlir_ir_op_builder_destroy" (uptr) void))
 
   ;;===--------------------------------------------------------------------===;;
+  ;; OperationState FFI (per-element, Scheme-side iteration)
+  ;;===--------------------------------------------------------------------===;;
+
+  ;; Create a heap-allocated OperationState.
+  ;; loc: Location opaque ptr uptr (from mlir-operation-get-loc)
+  ;; name: string op name
+  ;; Returns: OperationState* uptr — must be destroyed with
+  ;;          mlir-ir-operation-state-destroy
+  (define mlir-ir-operation-state-create
+    (foreign-procedure "mlir_ir_operation_state_create" (uptr string) uptr))
+
+  ;; Add one operand Value to an OperationState.
+  ;; state: OperationState* uptr, value: Value* opaque ptr uptr
+  (define mlir-ir-operation-state-add-operand
+    (foreign-procedure "mlir_ir_operation_state_add_operand" (uptr uptr) void))
+
+  ;; Add one result Type to an OperationState.
+  ;; state: OperationState* uptr, type: Type* opaque ptr uptr
+  (define mlir-ir-operation-state-add-result-type
+    (foreign-procedure "mlir_ir_operation_state_add_result_type" (uptr uptr) void))
+
+  ;; Add one empty region to an OperationState.
+  ;; state: OperationState* uptr
+  (define mlir-ir-operation-state-add-region
+    (foreign-procedure "mlir_ir_operation_state_add_region" (uptr) void))
+
+  ;; Destroy an OperationState created by mlir-ir-operation-state-create.
+  (define mlir-ir-operation-state-destroy
+    (foreign-procedure "mlir_ir_operation_state_destroy" (uptr) void))
+
+  ;; Create an op via RewriterBase from a prepared OperationState.
+  ;; rw: RewriterBase* uptr, state: OperationState* uptr
+  ;; Returns: Operation* uptr
+  (define mlir-ir-rewriter-base-create-from-state
+    (foreign-procedure "mlir_ir_rewriter_base_create_from_state" (uptr uptr) uptr))
+
+  ;; Create an op via OpBuilder from a prepared OperationState.
+  ;; builder: OpBuilder* uptr, state: OperationState* uptr
+  ;; Returns: Operation* uptr
+  (define mlir-ir-op-builder-create-from-state
+    (foreign-procedure "mlir_ir_op_builder_create_from_state" (uptr uptr) uptr))
+
+  ;;===--------------------------------------------------------------------===;;
   ;; Block / region FFI (canonical names)
   ;;===--------------------------------------------------------------------===;;
 
@@ -209,6 +261,19 @@
            (lambda () body ...)
            (lambda () (mlir-ir-op-builder-destroy builder))))]))
 
+  ;; RAII wrapper for a heap-allocated OperationState.
+  ;; Creates state via mlir-ir-operation-state-create, runs body, destroys on exit.
+  ;; state is bound to the OperationState* uptr for the duration of body.
+  ;; loc: Location opaque ptr uptr, name: string op name
+  (define-syntax with-operation-state
+    (syntax-rules ()
+      [(_ (state loc name) body ...)
+       (let ([state (mlir-ir-operation-state-create loc name)])
+         (dynamic-wind
+           (lambda () #f)
+           (lambda () body ...)
+           (lambda () (mlir-ir-operation-state-destroy state))))]))
+
   ;;===--------------------------------------------------------------------===;;
   ;; Dynamic builder context
   ;;===--------------------------------------------------------------------===;;
@@ -231,20 +296,38 @@
   ;; types:     Scheme list of result Type* uptrs
   ;; nregions:  optional int — number of empty regions to pre-allocate (default 0)
   ;; Returns: Operation* uptr of the created op
+  ;;
+  ;; Uses with-operation-state so that list iteration happens in Scheme and
+  ;; each C call is a thin per-element wrapper.
   (define (mlir-build-operation name operands types . rest)
     (let ([nregions (if (pair? rest) (car rest) 0)]
-          [loc      (current-loc)])
+          [loc-op   (current-loc)])
       (cond
         [(current-rewriter) =>
          (lambda (rw)
-           (if (zero? nregions)
-               (mlir-ir-rewriter-base-create rw loc name operands types)
-               (mlir-ir-rewriter-base-create-with-regions rw loc name operands types nregions)))]
+           (mlir-ir-rewriter-base-set-insertion-point-before rw loc-op)
+           (with-operation-state (state (mlir-operation-get-loc loc-op) name)
+             (for-each (lambda (v) (mlir-ir-operation-state-add-operand state v))
+                       operands)
+             (for-each (lambda (t) (mlir-ir-operation-state-add-result-type state t))
+                       types)
+             (let loop ([i 0])
+               (when (< i nregions)
+                 (mlir-ir-operation-state-add-region state)
+                 (loop (+ i 1))))
+             (mlir-ir-rewriter-base-create-from-state rw state)))]
         [(current-block-builder) =>
          (lambda (b)
-           (if (zero? nregions)
-               (mlir-ir-op-builder-create b loc name operands types)
-               (mlir-ir-op-builder-create-with-regions b loc name operands types nregions)))]
+           (with-operation-state (state (mlir-operation-get-loc loc-op) name)
+             (for-each (lambda (v) (mlir-ir-operation-state-add-operand state v))
+                       operands)
+             (for-each (lambda (t) (mlir-ir-operation-state-add-result-type state t))
+                       types)
+             (let loop ([i 0])
+               (when (< i nregions)
+                 (mlir-ir-operation-state-add-region state)
+                 (loop (+ i 1))))
+             (mlir-ir-op-builder-create-from-state b state)))]
         [else (error 'mlir-build-operation "no current builder installed")])))
 
   ;; Install rw as current-rewriter and loc as current-loc for the duration of body.
@@ -337,8 +420,15 @@
   ;; types: Scheme list of Type* uptrs, num-regions: int (default 0)
   ;; Returns: Operation* uptr
   (define (mlir-create-op builder loc name ops types . rest)
-    (mlir-ir-op-builder-create-with-regions
-      builder loc name ops types (if (pair? rest) (car rest) 0)))
+    (let ([nregions (if (pair? rest) (car rest) 0)])
+      (with-operation-state (state (mlir-operation-get-loc loc) name)
+        (for-each (lambda (v) (mlir-ir-operation-state-add-operand state v)) ops)
+        (for-each (lambda (t) (mlir-ir-operation-state-add-result-type state t)) types)
+        (let loop ([i 0])
+          (when (< i nregions)
+            (mlir-ir-operation-state-add-region state)
+            (loop (+ i 1))))
+        (mlir-ir-op-builder-create-from-state builder state))))
 
   ;; Apply patterns greedily (legacy alias for canonical name).
   (define mlir-apply-patterns-greedy

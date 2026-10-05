@@ -9,6 +9,7 @@ add_library(CrestBindings STATIC
   IR/Block.cpp
   IR/BuiltinAttributes.cpp
   IR/BuiltinTypes.cpp
+  IR/OperationState.cpp
   IR/OpBuilder.cpp
   IR/Operation.cpp
   IR/OpResult.cpp
