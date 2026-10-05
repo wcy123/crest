@@ -40,9 +40,6 @@ namespace crest {
 void registerIROpResultBindings() {
   Sregister_symbol("mlir_ir_op_result_get_result_number",
                    (void*)::mlir_ir_op_result_get_result_number);
-  // Backward-compat alias for the misnamed mlir_ir_value_get_result_number
-  Sregister_symbol("mlir_ir_value_get_result_number",
-                   (void*)::mlir_ir_op_result_get_result_number);
 }
 
 } // namespace crest
