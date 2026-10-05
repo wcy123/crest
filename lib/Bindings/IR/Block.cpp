@@ -18,9 +18,11 @@ extern "C" {
 uint64_t mlir_ir_block_get_argument_by_index(uint64_t block_ptr, int idx) {
   auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
   if (idx < 0 || idx >= (int)block->getNumArguments()) {
-    Scall2(Stop_level_value(Sstring_to_symbol("error")),
-           Sstring("mlir_ir_block_get_argument_by_index"),
-           Sstring("index out of range"));
+    // (error who message index num-args)
+    Scall4(Stop_level_value(Sstring_to_symbol("error")),
+           Sstring("mlir-ir-block-get-argument-by-index"),
+           Sstring("index out of range"), Sfixnum(idx),
+           Sfixnum((int)block->getNumArguments()));
   }
   return reinterpret_cast<uint64_t>(
       block->getArgument(idx).getAsOpaquePointer());
