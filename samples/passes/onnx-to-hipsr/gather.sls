@@ -30,7 +30,7 @@
                  (operation-set-attr!     mlir-operation-set-attribute!))
           (rename (mlir ir value)
             (get-type          mlir-value-get-type))
-          (only (mlir ir builtin-attributes ffi) %integer-attr-get-index)
+          (only (mlir ir builtin-attributes ffi) %IntegerAttr:get/index)
           (only (mlir core builder) mlir-build-operation)
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)
@@ -58,7 +58,7 @@
   (define (build-gather-shape! axis data-shape idx-shape shape-type size-type)
     (define (mk-sz n)
       (let ([op (mlir-build-operation "shape.const_size" '() (list size-type))])
-        (mlir-operation-set-attribute! op "value" (%integer-attr-get-index (mlir-operation-get-context op) n))
+        (mlir-operation-set-attribute! op "value" (%IntegerAttr:get/index (mlir-operation-get-context op) n))
         (mlir-operation-get-result op 0)))
     (let* ([sz1      (mk-sz axis)]
            [sp1      (mlir-build-operation "shape.split_at"

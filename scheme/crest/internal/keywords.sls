@@ -33,8 +33,8 @@
   ;; Fetches the named attribute from :current-op as a raw attr uptr.
   ;; Raises (error ...) if the attribute is absent; caught by the guard
   ;; in generate-check-code → silent match failure.
-  ;; Compose with builtin-attributes functions: integer-attr-value, float32-attr-value,
-  ;; dense-elements-attr-splat?, dense-fp-elements-attr-splat-value, etc.
+  ;; Compose with builtin-attributes functions: IntegerAttr:getValue, FloatAttr:getValueAsDouble.f32,
+  ;; DenseElementsAttr:isSplat, DenseElementsAttr:getSplatValue/APFloat, etc.
   (define-syntax :attr       (lambda (x) (syntax-violation 'pattern-keyword "misplaced :attr (only valid inside DDR :where)" x)))
   ;; :optional — (:optional %var ...) in an operand list marks optional operands.
   ;; Each %var is bound to the operand value if present, left unbound if absent.
