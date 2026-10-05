@@ -8,6 +8,7 @@
 // Dialect/, or Interfaces/ sub-tree.
 
 #include "Dialect/Shape/Shape.h"
+#include "Dialect/Tensor/Tensor.h"
 #include "IR/Block.h"
 #include "IR/BuiltinAttributes.h"
 #include "IR/BuiltinTypes.h"
@@ -38,6 +39,7 @@ extern "C" void crest_register_extra_bindings(void (*fn)()) {
 
 void registerMlirForeignFunctions() {
   registerDialectShapeBindings();
+  registerDialectTensorBindings();
   registerInterfacesDpsBindings();
   registerIRBlockBindings();
   registerIRRegionBindings();

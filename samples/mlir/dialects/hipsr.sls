@@ -39,7 +39,9 @@
           (mlir dialects builtin)
           (mlir core attribute)
           (mlir transforms dialect-conversion)
-          (mlir dialects tensor))
+          (mlir dialects tensor)
+          (only (crest util)
+                type-converter-add-tensor-widening-materialization))
 
   (define-syntax :hipsr-device-space (identifier-syntax 'hipsr-device-space))
   (define-syntax :hipsr-barrier-type (identifier-syntax 'hipsr-barrier-type))
