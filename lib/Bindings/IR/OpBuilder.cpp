@@ -24,9 +24,11 @@ uint64_t mlir_ir_op_builder_create(uint64_t builder_ptr, uint64_t loc_op_ptr,
                                    ptr result_types_list) {
   if (!builder_ptr) {
     scheme_error("mlir-ir-op-builder-create", "null builder pointer");
+    return 0; // unreachable — error performs non-local exit
   }
   if (!loc_op_ptr) {
     scheme_error("mlir-ir-op-builder-create", "null loc_op pointer");
+    return 0; // unreachable — error performs non-local exit
   }
   auto* builder = reinterpret_cast<mlir::OpBuilder*>(builder_ptr);
   auto* loc_op = reinterpret_cast<mlir::Operation*>(loc_op_ptr);
@@ -36,6 +38,7 @@ uint64_t mlir_ir_op_builder_create(uint64_t builder_ptr, uint64_t loc_op_ptr,
        cur = Scdr(cur)) {
     if (!Spairp(cur)) {
       scheme_error("mlir-ir-op-builder-create", "malformed operands list");
+      return 0; // unreachable — error performs non-local exit
     }
     operands.push_back(mlir::Value::getFromOpaquePointer(
         reinterpret_cast<void*>(Sunsigned64_value(Scar(cur)))));
@@ -44,6 +47,7 @@ uint64_t mlir_ir_op_builder_create(uint64_t builder_ptr, uint64_t loc_op_ptr,
        cur = Scdr(cur)) {
     if (!Spairp(cur)) {
       scheme_error("mlir-ir-op-builder-create", "malformed result types list");
+      return 0; // unreachable — error performs non-local exit
     }
     resultTypes.push_back(mlir::Type::getFromOpaquePointer(
         reinterpret_cast<const void*>(Sunsigned64_value(Scar(cur)))));
@@ -61,10 +65,12 @@ uint64_t mlir_ir_op_builder_create_with_regions(
   if (!builder_ptr) {
     scheme_error("mlir-ir-op-builder-create-with-regions",
                  "null builder pointer");
+    return 0; // unreachable — error performs non-local exit
   }
   if (!loc_op_ptr) {
     scheme_error("mlir-ir-op-builder-create-with-regions",
                  "null loc_op pointer");
+    return 0; // unreachable — error performs non-local exit
   }
   auto* builder = reinterpret_cast<mlir::OpBuilder*>(builder_ptr);
   auto* loc_op = reinterpret_cast<mlir::Operation*>(loc_op_ptr);
@@ -75,6 +81,7 @@ uint64_t mlir_ir_op_builder_create_with_regions(
     if (!Spairp(cur)) {
       scheme_error("mlir-ir-op-builder-create-with-regions",
                    "malformed operands list");
+      return 0; // unreachable — error performs non-local exit
     }
     operands.push_back(mlir::Value::getFromOpaquePointer(
         reinterpret_cast<void*>(Sunsigned64_value(Scar(cur)))));
@@ -84,6 +91,7 @@ uint64_t mlir_ir_op_builder_create_with_regions(
     if (!Spairp(cur)) {
       scheme_error("mlir-ir-op-builder-create-with-regions",
                    "malformed result types list");
+      return 0; // unreachable — error performs non-local exit
     }
     resultTypes.push_back(mlir::Type::getFromOpaquePointer(
         reinterpret_cast<const void*>(Sunsigned64_value(Scar(cur)))));
@@ -101,6 +109,7 @@ uint64_t mlir_ir_op_builder_create_with_regions(
 uint64_t mlir_ir_op_builder_at_block_end(uint64_t block_ptr) {
   if (!block_ptr) {
     scheme_error("mlir-ir-op-builder-at-block-end", "null block pointer");
+    return 0; // unreachable — error performs non-local exit
   }
   auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
   return reinterpret_cast<uint64_t>(new mlir::OpBuilder(block, block->end()));
@@ -110,6 +119,7 @@ uint64_t mlir_ir_op_builder_at_block_end(uint64_t block_ptr) {
 void mlir_ir_op_builder_destroy(uint64_t builder_ptr) {
   if (!builder_ptr) {
     scheme_error("mlir-ir-op-builder-destroy", "null builder pointer");
+    return; // unreachable — error performs non-local exit
   }
   delete reinterpret_cast<mlir::OpBuilder*>(builder_ptr);
 }
@@ -125,9 +135,11 @@ uint64_t mlir_ir_op_builder_create_from_state(uint64_t builder_ptr,
   if (!builder_ptr) {
     scheme_error("mlir-ir-op-builder-create-from-state",
                  "null builder pointer");
+    return 0; // unreachable — error performs non-local exit
   }
   if (!state_ptr) {
     scheme_error("mlir-ir-op-builder-create-from-state", "null state pointer");
+    return 0; // unreachable — error performs non-local exit
   }
   return reinterpret_cast<uint64_t>(
       reinterpret_cast<mlir::OpBuilder*>(builder_ptr)
