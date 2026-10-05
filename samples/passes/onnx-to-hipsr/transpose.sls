@@ -31,8 +31,8 @@
           (rename (mlir ir value)
             (get-type          mlir-value-get-type))
           (only (mlir ir builtin-attributes ffi)
-                %integer-attr-get-index
-                %dense-i64-array-attr-get)
+                %IntegerAttr:get/index
+                %DenseI64ArrayAttr:get)
           (only (mlir core builder) mlir-build-operation)
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)
@@ -48,7 +48,7 @@
     (let* ([extents
             (map (lambda (p)
                    (let* ([sz-op (mlir-build-operation "shape.const_size" '() (list size-type))])
-                     (mlir-operation-set-attribute! sz-op "value" (%integer-attr-get-index (mlir-operation-get-context sz-op) p))
+                     (mlir-operation-set-attribute! sz-op "value" (%IntegerAttr:get/index (mlir-operation-get-context sz-op) p))
                      (let* ([ext-op (mlir-build-operation "shape.get_extent"
                                       (list input-shape
                                             (mlir-operation-get-result sz-op 0))
@@ -86,7 +86,7 @@
         (%result = (let* ([new-op (mlir-build-operation "hipsr.transpose"
                                     (list %ctx %input %placeholder !out-device)
                                     (list !out-device))])
-                     (mlir-operation-set-attribute! new-op "perm" (%dense-i64-array-attr-get (mlir-operation-get-context new-op) perm))
+                     (mlir-operation-set-attribute! new-op "perm" (%DenseI64ArrayAttr:get (mlir-operation-get-context new-op) perm))
                      (mlir-operation-get-result new-op 0))))
 
   (define (populate-transpose-patterns type-converter patterns ctx)

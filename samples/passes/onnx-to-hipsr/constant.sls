@@ -14,7 +14,7 @@
 ;; Both handle inline value and external data (location/offset/size).
 ;;
 ;; External data (location/offset/size) is handled via DenseResourceElementsAttr
-;; constructed through %dense-resource-elements-attr-get.
+;; constructed through %DenseResourceElementsAttr:get.
 ;;
 ;;===----------------------------------------------------------------------===;;
 
@@ -36,7 +36,7 @@
                  (operation-has-attr?     mlir-operation-has-attr?))
           (rename (mlir ir value)
             (get-type          mlir-value-get-type))
-          (only (mlir ir builtin-attributes ffi) %dense-resource-elements-attr-get)
+          (only (mlir ir builtin-attributes ffi) %DenseResourceElementsAttr:get)
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
@@ -61,14 +61,14 @@
               [offset   (mlir-operation-get-integer-attr op "offset" 0)]
               [size     (mlir-operation-get-integer-attr op "size" 0)]
               [r (if (string=? location ort-mem-addr-tag)
-                     (%dense-resource-elements-attr-get ctx
+                     (%DenseResourceElementsAttr:get ctx
                        (list !result-type
                              (string-append "mem|0x" (number->string offset 16))
                              offset size))
                      (let ([buf (mlir-hipsr-load-file-map ctx location)])
                        (if (zero? buf)
                            (fail (string-append "cannot memory-map: " location))
-                           (%dense-resource-elements-attr-get ctx
+                           (%DenseResourceElementsAttr:get ctx
                              (list !result-type
                                    (string-append "file|" location "|"
                                                   (number->string offset))

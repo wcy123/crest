@@ -41,7 +41,7 @@
                       (operation-get-name mlir-operation-name)
                       (operation-get-parent-op mlir-operation-get-parent))
           (mlir dialects builtin)
-          (only (mlir ir builtin-attributes ffi) %parse)
+          (only (mlir ir builtin-attributes ffi) %parseAttribute)
           (mlir transforms dialect-conversion)
           (mlir dialects tensor)
           (only (crest util)
@@ -96,10 +96,10 @@
   ;;===--------------------------------------------------------------------===;;
 
   (define (make-hipsr-device-space-attr ctx)
-    (%parse ctx "#hipsr.mem<device>"))
+    (%parseAttribute ctx "#hipsr.mem<device>"))
 
   (define (make-hipsr-barrier-type-attr ctx)
-    (%parse ctx "#hipsr.placeholder<barrier>"))
+    (%parseAttribute ctx "#hipsr.placeholder<barrier>"))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Context convention — HipSR passes argument 0 of func.func as context.

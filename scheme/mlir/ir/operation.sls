@@ -51,7 +51,7 @@
   (import (rnrs)
           (mlir ir operation ffi)
           (rename (rime loop) (:with :rime-with))
-          (only (mlir ir builtin-attributes) dense-i32-array-attr-as-array-ref)
+          (only (mlir ir builtin-attributes) DenseI32ArrayAttr:asArrayRef)
           (mlir support array-ref))
 
   ;; @brief mlir::Operation::getName — return the registered op name (e.g. "arith.addi").
@@ -348,7 +348,7 @@
               (error 'operation-get-operands
                      "op must have operandSegmentSizes for optional/variadic operands"))
             ;; with-array-ref manages the ref lifecycle.
-            (with-array-ref (segs (dense-i32-array-attr-as-array-ref attr))
+            (with-array-ref (segs (DenseI32ArrayAttr:asArrayRef attr))
               (let* ([n     (array-ref-size segs)]
                      [n-spec (length spec)]
                      [_      (unless (= n n-spec)
