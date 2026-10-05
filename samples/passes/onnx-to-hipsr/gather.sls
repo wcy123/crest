@@ -23,7 +23,6 @@
                 mlir::Value::getType)
           (only (mlir ir builtin-attributes ffi) %mlir::IntegerAttr::get<index>)
           (only (mlir core builder) mlir-build-operation)
-          (mlir dialects builtin)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
           (mlir dialects tensor)
@@ -37,7 +36,9 @@
                 mlir::Operation::emitRemark mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getContext mlir::Operation::getResult mlir::Operation::setAttr!)
 
           (only (mlir ir type) mlir::Type::getContext)
-  )
+
+          (only (mlir ir builtin-types)
+                mlir::RankedTensorType::getRank))
 
   ;; Build the gather output shape inside a region block using the DSL.
   ;; Shape logic:
@@ -82,11 +83,11 @@
         ([%ctx        (mlir-get-hipsr-context-arg op)]
          [!data-type  (mlir::Value::getType %data)]
          [!out-type   (mlir::Value::getType %output)]
-         [!out-device (mlir-ranked-tensor-type-with-encoding !out-type (make-hipsr-device-space-attr (mlir-mlir::Type::getContext !out-type)))]
+         [!out-device (mlir-ranked-tensor-type-with-encoding !out-type (make-hipsr-device-space-attr (mlir::Type::getContext !out-type)))]
          [!shape-type (mlir::shape::ShapeType::get (mlir::Operation::getContext op))]
          [!size-type  (mlir::shape::SizeType::get  (mlir::Operation::getContext op))]
          [axis        (let ([a (mlir::Operation::getAttrOfType<IntegerAttr> op "axis" 0)])
-                        (if (< a 0) (+ a (mlir-ranked-tensor-type-get-rank !data-type)) a))]
+                        (if (< a 0) (+ a (mlir::RankedTensorType::getRank !data-type)) a))]
          ;; guard: only handle device data (eqv? avoids shadowed = keyword)
          [ok?         (eqv? 1 (mlir-type-is-device-tensor !data-type))])
     :rewrite %output :with

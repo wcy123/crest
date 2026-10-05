@@ -26,7 +26,6 @@
                 %mlir::IntegerAttr::get<index>
                 %mlir::IntegerAttr::get<i64>)
           (only (mlir core builder) mlir-build-operation)
-          (mlir dialects builtin)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
           (only (mlir dialect shape)
@@ -38,7 +37,12 @@
           (crest)
           (only (mlir ir operation)
                 mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getContext mlir::Operation::getResult mlir::Operation::setAttr!)
-  )
+
+          (only (mlir ir builtin-types)
+                mlir::IndexType::get
+                mlir::IntegerType::get<i64>
+                mlir::RankedTensorType::getRank
+                mlir::RankedTensorType::getShape))
 
   ;; MLIR uses kDynamic = std::numeric_limits<int64_t>::min() for unknown dims.
   (define (dynamic-dim? d) (< d 0))
@@ -95,8 +99,8 @@
          [!input-type (mlir::Value::getType %input)]
          [!out-type   (mlir::Value::getType %output)]
          [!out-host   (make-mlir-tensor-in-host-space !out-type)]
-         [input-rank  (mlir-ranked-tensor-type-get-rank !input-type)]
-         [input-shape (mlir-type-get-shape !input-type)]
+         [input-rank  (mlir::RankedTensorType::getRank !input-type)]
+         [input-shape (mlir::RankedTensorType::getShape !input-type)]
          [%ctx        (mlir-get-hipsr-context-arg op)]
          [start-raw   (mlir::Operation::getAttrOfType<IntegerAttr> op "start" 0)]
          [end-raw     (mlir::Operation::getAttrOfType<IntegerAttr> op "end" 0)]
@@ -106,8 +110,8 @@
          [end         (normalize-bound end-raw   input-rank #t  input-rank)]
          [num-dims    (- end start)]
          [!shape-type (mlir::shape::ShapeType::get ctx)]
-         [!index-type (mlir-get-index-type       ctx)]
-         [!i64-type   (mlir-get-i64-type         ctx)]
+         [!index-type (mlir::IndexType::get       ctx)]
+         [!i64-type   (mlir::IntegerType::get<i64>         ctx)]
          [!ctx-type   (mlir-get-hipsr-context-type ctx)])
     :rewrite %output :with
         ;; Placeholder: shape region yields const shape [num-dims].

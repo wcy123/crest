@@ -24,7 +24,6 @@
           (rename (only (rnrs) =) (= num=))
           (only (mlir ir value)
                 mlir::Value::getDefiningOp)
-          (mlir dialects builtin)
           (mlir transforms dialect-conversion)
           (passes hip-fusion fusion)
           (crest)

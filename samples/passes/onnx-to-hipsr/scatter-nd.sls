@@ -18,7 +18,6 @@
   (import (except (rnrs (6)) =)
 
 
-          (mlir dialects builtin)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
           (mlir dialects tensor)
@@ -42,7 +41,7 @@
     :then-let
         ([%ctx           (mlir-get-hipsr-context-arg op)]
          [!output-type   (mlir::Value::getType %output)]
-         [!output-device (mlir-ranked-tensor-type-with-encoding !output-type (make-hipsr-device-space-attr (mlir-mlir::Type::getContext !output-type)))]
+         [!output-device (mlir-ranked-tensor-type-with-encoding !output-type (make-hipsr-device-space-attr (mlir::Type::getContext !output-type)))]
          [!shape-type    (mlir::shape::ShapeType::get (mlir::Operation::getContext op))])
     :rewrite %output :with
         ;; placeholder ins = (%data) only: scatter output has data's shape

@@ -36,12 +36,13 @@
                 mlir::DenseElementsAttr::isSplat
                 mlir::DenseElementsAttr::getSplatValue<APFloat>
                 mlir::DenseElementsAttr::getSplatValue<APInt>)
-          (mlir dialects builtin)
           (passes hip-fusion fusion)
           (crest)
           (only (mlir ir operation)
                 mlir::Operation::getAttr)
-  )
+
+          (only (mlir ir builtin-types)
+                mlir::RankedTensorType::getRank))
 
   ;; #t when a Value has exactly one use (safe to fuse without keeping the chain alive).
   (define (single-consumer? val)
@@ -49,7 +50,7 @@
 
   ;; #t when two Value* have the same tensor rank.
   (define (same-rank? a b)
-    (define (rank x) (mlir-ranked-tensor-type-get-rank (mlir::Value::getType x)))
+    (define (rank x) (mlir::RankedTensorType::getRank (mlir::Value::getType x)))
     (num= (rank a) (rank b)))
 
   ;; Build a FloatAttr<f32> from the splat value of a hip.constant scale.

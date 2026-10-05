@@ -26,14 +26,15 @@
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
           (only (mlir ir builtin-attributes ffi) %mlir::DenseResourceElementsAttr::get)
-          (mlir dialects builtin)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
           (mlir dialects tensor)
           (crest)
           (only (mlir ir operation)
                 mlir::Operation::emitError mlir::Operation::getAttr mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getAttrOfType<StringAttr> mlir::Operation::getContext mlir::Operation::hasAttr?)
-  )
+
+          (only (mlir ir builtin-types)
+                mlir::RankedTensorType::getRank))
 
   (define ort-mem-addr-tag "*/_ORT_MEM_ADDR_/*")
 
@@ -73,7 +74,7 @@
   (define-conversion-pattern (onnx-constant-scalar->arith op operands-ref rewriter type-converter)
     :if-match
         %output = onnx.Constant ()
-            :where (zero? (mlir-ranked-tensor-type-get-rank (mlir::Value::getType %output)))
+            :where (zero? (mlir::RankedTensorType::getRank (mlir::Value::getType %output)))
     :then-let
         ([ctx         (mlir::Operation::getContext op)]
          [!out-type   (mlir::Value::getType %output)]
@@ -85,7 +86,7 @@
   (define-conversion-pattern (onnx-constant-tensor->hipsr op operands-ref rewriter type-converter)
     :if-match
         %output = onnx.Constant ()
-            :where (positive? (mlir-ranked-tensor-type-get-rank (mlir::Value::getType %output)))
+            :where (positive? (mlir::RankedTensorType::getRank (mlir::Value::getType %output)))
     :then-let
         ([ctx         (mlir::Operation::getContext op)]
          [!out-type   (mlir::Value::getType %output)]

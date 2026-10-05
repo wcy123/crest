@@ -27,7 +27,6 @@
                 %mlir::IntegerAttr::get<index>
                 %mlir::DenseI64ArrayAttr::get)
           (only (mlir core builder) mlir-build-operation)
-          (mlir dialects builtin)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
           (mlir dialects tensor)
@@ -40,7 +39,9 @@
                 crest::Operation::getIntegerArrayAttr mlir::Operation::getContext mlir::Operation::getResult mlir::Operation::setAttr!)
 
           (only (mlir ir type) mlir::Type::getContext)
-  )
+
+          (only (mlir ir builtin-types)
+                mlir::RankedTensorType::getRank))
 
   ;; Build the permuted output shape inside a region block.
   ;; Uses mlir-build-operation — must be called inside with-current-block-builder.
@@ -66,13 +67,13 @@
         ([%ctx        (mlir-get-hipsr-context-arg op)]
          [!in-type    (mlir::Value::getType %input)]
          [!out-type   (mlir::Value::getType %output)]
-         [!out-device (mlir-ranked-tensor-type-with-encoding !out-type (make-hipsr-device-space-attr (mlir-mlir::Type::getContext !out-type)))]
+         [!out-device (mlir-ranked-tensor-type-with-encoding !out-type (make-hipsr-device-space-attr (mlir::Type::getContext !out-type)))]
          [!shape-type (mlir::shape::ShapeType::get (mlir::Operation::getContext op))]
          [!size-type  (mlir::shape::SizeType::get  (mlir::Operation::getContext op))]
          [perm        (let ([raw (crest::Operation::getIntegerArrayAttr op "perm")])
                         (if (null? raw)
                             ;; absent perm → reverse permutation
-                            (let ([rank (mlir-ranked-tensor-type-get-rank !in-type)])
+                            (let ([rank (mlir::RankedTensorType::getRank !in-type)])
                               (let loop ([i 0] [acc '()])
                                 (if (eqv? i rank) acc (loop (+ i 1) (cons i acc)))))
                             raw))])

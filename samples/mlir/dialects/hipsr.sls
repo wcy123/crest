@@ -39,7 +39,6 @@
                 mlir::Operation::getName
                 mlir::Operation::getParentOp)
           (only (mlir ir region) mlir::Region::front)
-          (mlir dialects builtin)
           (only (mlir ir builtin-attributes ffi) %mlir::parseAttribute)
           (mlir transforms dialect-conversion)
           (mlir dialects tensor)
@@ -48,7 +47,9 @@
           (only (mlir core builder) mlir-op-get-region mlir-block-get-argument)
 
           (only (mlir ir builtin-types)
-                mlir::RankedTensorType::getEncoding)
+                mlir::RankedTensorType::getEncoding
+                mlir::RankedTensorType::getRank
+                mlir::isa<RankedTensorType>?)
 
           (only (mlir ir type) mlir::Type::getContext)
   )
@@ -145,9 +146,9 @@
     (type-converter-add-conversion type-converter (lambda (t) t))
     (type-converter-add-conversion type-converter
       (lambda (type)
-        (if (and (= 1 (mlir-type-is-ranked-tensor type))
-                 (> (mlir-ranked-tensor-type-get-rank type) 0)
-                 (= 0 (mlir-mlir::RankedTensorType::getEncoding type)))
+        (if (and (mlir::isa<RankedTensorType>? type)
+                 (> (mlir::RankedTensorType::getRank type) 0)
+                 (= 0 (mlir::RankedTensorType::getEncoding type)))
           (mlir-ranked-tensor-type-with-encoding type
               (make-hipsr-device-space-attr (mlir::Type::getContext type)))
             #f)))

@@ -22,7 +22,6 @@
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
           (only (mlir core builder) mlir-build-operation)
-          (mlir dialects builtin)
           (mlir transforms dialect-conversion)
           (passes hip-fusion fusion)
           (crest)

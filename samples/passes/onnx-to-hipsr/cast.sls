@@ -15,7 +15,6 @@
   (import (except (rnrs (6)) =)
 
 
-          (mlir dialects builtin)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
           (mlir dialects tensor)

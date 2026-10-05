@@ -22,7 +22,6 @@
           (only (mlir ir value)
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
-          (mlir dialects builtin)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
           (mlir dialects tensor)
@@ -39,7 +38,9 @@
                 crest::logging::info)
 
           (only (mlir ir type) mlir::Type::getContext)
-  )
+
+          (only (mlir ir builtin-types)
+                mlir::RankedTensorType::getRank))
 
   (define-conversion-pattern (onnx-matmul->hipsr op operands-ref rewriter type-converter)
     :if-match
@@ -47,13 +48,13 @@
     :then-let
         ([%ctx           (mlir-get-hipsr-context-arg op)]
          [!output-type   (mlir::Value::getType %output)]
-         [!output-device (mlir-ranked-tensor-type-with-encoding !output-type (make-hipsr-device-space-attr (mlir-mlir::Type::getContext !output-type)))]
+         [!output-device (mlir-ranked-tensor-type-with-encoding !output-type (make-hipsr-device-space-attr (mlir::Type::getContext !output-type)))]
          [!shape-type    (mlir::shape::ShapeType::get   (mlir::Operation::getContext op))]
          [!size-type     (mlir::shape::SizeType::get    (mlir::Operation::getContext op))]
          [!witness-type  (mlir::shape::WitnessType::get (mlir::Operation::getContext op))]
          ;; Rank info from operand types (runtime)
-         [a-rank         (mlir-ranked-tensor-type-get-rank (mlir::Value::getType %a))]
-         [b-rank         (mlir-ranked-tensor-type-get-rank (mlir::Value::getType %b))]
+         [a-rank         (mlir::RankedTensorType::getRank (mlir::Value::getType %a))]
+         [b-rank         (mlir::RankedTensorType::getRank (mlir::Value::getType %b))]
          ;; K indices: A's last dim; B's second-to-last (or last if 1-D)
          [k-a-idx        (- a-rank 1)]
          [k-b-idx        (if (eqv? b-rank 1) (- b-rank 1) (- b-rank 2))]

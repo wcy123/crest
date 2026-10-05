@@ -14,7 +14,7 @@
 ;;
 ;; The eight functions that hip-ep implements in C++ (Hip.cpp) are re-expressed
 ;; here using generic MLIR attr/type/operand APIs from (mlir core operation),
-;; (mlir ir value), (mlir ir builtin-attributes), and (mlir dialects builtin):
+;; (mlir ir value), (mlir ir builtin-attributes), and (mlir ir builtin-types):
 ;;   hip-extract-splat-scale         — mlir::DenseElementsAttr::getSplatValue<APFloat>
 ;;   hip-build-init                  — mlir-build-operation "tensor.empty"
 ;;   hip-create-requantized-layout-op — mlir-op-clone-with-types
@@ -89,7 +89,12 @@
                 mlir::DenseElementsAttr::getSplatValue<APFloat>
                 mlir::DenseElementsAttr::getSplatValue<APInt>)
           (only (mlir core builder) mlir-build-op mlir-op-clone-with-types)
-          (mlir dialects builtin)
+          (only (mlir ir builtin-types)
+                mlir::ShapedType::getElementType
+                mlir::IntegerType::getWidth
+                mlir::IntegerType::isUnsigned?
+                mlir::RankedTensorType::getRank
+                mlir::RankedTensorType::getShape)
           (only (mlir ir operation)
                 crest::Operation::getIntegerArrayAttr mlir::OpOperand::get mlir::OpResult::getOwner mlir::Operation::getAttr mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getName mlir::Operation::getNumOperands mlir::Operation::getResult mlir::Operation::hasAttr?)
   )
@@ -155,19 +160,19 @@
     ;; Q: result 0 is the integer tensor.
     ;; DQ: operand 1 (input) is the integer tensor; result 0 is float.
     (if (string=? (mlir::Operation::getName op) "hip.quantize_linear")
-        (mlir-type-element-type
+        (mlir::ShapedType::getElementType
           (mlir::Value::getType (mlir::Operation::getResult op 0)))
-        (mlir-type-element-type
+        (mlir::ShapedType::getElementType
           (mlir::Value::getType (hip-qdq-input-operand op)))))
 
   (define (hip-qdq-value-bits op)
     ;; packed_int4 is a UnitAttr — test with has-attr?, not get-integer-attr.
     (if (mlir::Operation::hasAttr? op "packed_int4")
         4
-        (mlir-type-integer-width (hip-qdq-element-type op))))
+        (mlir::IntegerType::getWidth (hip-qdq-element-type op))))
 
   (define (hip-qdq-unsigned? op)
-    (mlir-type-is-unsigned (hip-qdq-element-type op)))
+    (mlir::IntegerType::isUnsigned? (hip-qdq-element-type op)))
 
   (define (hip-qdq-quantized-width? op allowed-widths)
     (let ([w (hip-qdq-value-bits op)])
@@ -233,8 +238,8 @@
                ;; scale value must equal 1/sqrt(N) where N is the last dim
                (let* ([in-type   (mlir::Value::getType
                                    (mlir::OpOperand::get op 1))]
-                      [rank      (mlir-ranked-tensor-type-get-rank in-type)]
-                      [shape     (mlir-type-get-shape in-type)]
+                      [rank      (mlir::RankedTensorType::getRank in-type)]
+                      [shape     (mlir::RankedTensorType::getShape in-type)]
                       [n         (and (> rank 0) (list-ref shape (- rank 1)))])
                  (and n
                       (> n 0)
@@ -265,21 +270,21 @@
   (define (hip-per-axis-weight? dq-op rank axis packed-int4?)
     ;; Scale must be rank-1 and packed_int4 must match.
     (let* ([scale-val  (hip-qdq-scale-operand dq-op)]
-           [scale-rank (mlir-ranked-tensor-type-get-rank (mlir::Value::getType scale-val))]
+           [scale-rank (mlir::RankedTensorType::getRank (mlir::Value::getType scale-val))]
            [bits       (hip-qdq-value-bits dq-op)])
       (and (= scale-rank 1)
            (= bits (if packed-int4? 4 8)))))
 
   (define (hip-per-channel-weight? dq-op q-op)
-    (= (mlir-ranked-tensor-type-get-rank (mlir::Value::getType (hip-qdq-scale-operand dq-op))) 1))
+    (= (mlir::RankedTensorType::getRank (mlir::Value::getType (hip-qdq-scale-operand dq-op))) 1))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Init guard
   ;;===--------------------------------------------------------------------===;;
 
   (define (hip-can-build-init? q-op shape-source)
-    (= (mlir-ranked-tensor-type-get-rank (mlir::Value::getType (mlir::Operation::getResult q-op 0)))
-       (mlir-ranked-tensor-type-get-rank (mlir::Value::getType shape-source))))
+    (= (mlir::RankedTensorType::getRank (mlir::Value::getType (mlir::Operation::getResult q-op 0)))
+       (mlir::RankedTensorType::getRank (mlir::Value::getType shape-source))))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Value-level single-use helper
