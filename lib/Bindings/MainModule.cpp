@@ -3,7 +3,6 @@
  * Licensed under the MIT License.
  */
 
-#include "Conversion.h"
 #include "Core/Core.h"
 #include "Dialects/Shape.h"
 #include "Support/ArrayRef.h"
@@ -20,7 +19,6 @@ extern "C" void crest_register_extra_bindings(void (*fn)()) {
 }
 
 void registerMlirForeignFunctions() {
-  registerConversionBindings();
   registerCoreBindings();
   registerShapeBindings();
   registerLoggingBindings();
