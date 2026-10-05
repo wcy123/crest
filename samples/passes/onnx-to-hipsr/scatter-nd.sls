@@ -16,25 +16,31 @@
   (export populate-scatter-nd-patterns
           onnx-scatter-nd->hipsr)
   (import (except (rnrs (6)) =)
-          (rename (only (mlir ir operation)
-                            mlir::Operation::getContext)
-                      (mlir::Operation::getContext mlir-Operation::getContext))
-          (rename (only (mlir ir value) mlir::Value::getType) (mlir::Value::getType mlir-value-get-type))
+
+
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
           (mlir dialects tensor)
           (mlir dialects shape)
-          (crest))
+          (crest)
+          (only (mlir ir operation)
+                mlir::Operation::getContext)
+
+          (only (mlir ir value)
+                mlir::Value::getType)
+
+          (only (mlir ir type) mlir::Type::getContext)
+  )
 
   (define-conversion-pattern (onnx-scatter-nd->hipsr op operands-ref rewriter type-converter)
     :if-match
         %output = onnx.ScatterND (%data %indices %updates)
     :then-let
         ([%ctx           (mlir-get-hipsr-context-arg op)]
-         [!output-type   (mlir-value-get-type %output)]
+         [!output-type   (mlir::Value::getType %output)]
          [!output-device (mlir-ranked-tensor-type-with-encoding !output-type (make-hipsr-device-space-attr (mlir-mlir::Type::getContext !output-type)))]
-         [!shape-type    (mlir-shape.shape-type (mlir-Operation::getContext op))])
+         [!shape-type    (mlir-shape.shape-type (mlir::Operation::getContext op))])
     :rewrite %output :with
         ;; placeholder ins = (%data) only: scatter output has data's shape
         (%placeholder = hipsr.placeholder (%ctx %data !output-device)

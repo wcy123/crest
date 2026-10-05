@@ -15,24 +15,28 @@
 (library (passes onnx-to-hipsr equal)
   (export populate-equal-patterns)
   (import (except (rnrs (6)) =)
-          (rename (only (mlir ir operation)
-                            mlir::Operation::getContext)
-                      (mlir::Operation::getContext mlir-Operation::getContext))
-          (rename (only (mlir ir value) mlir::Value::getType) (mlir::Value::getType mlir-value-get-type))
+
+
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
           (mlir dialects tensor)
           (mlir dialects shape)
-          (crest))
+          (crest)
+          (only (mlir ir operation)
+                mlir::Operation::getContext)
+
+          (only (mlir ir value)
+                mlir::Value::getType)
+  )
 
   (define-conversion-pattern (onnx-equal->hipsr op operands-ref rewriter type-converter)
     :if-match
         %output = onnx.Equal (%lhs %rhs)
     :then-let
-        ([ctx            (mlir-Operation::getContext op)]
+        ([ctx            (mlir::Operation::getContext op)]
          [%ctx           (mlir-get-hipsr-context-arg op)]
-         [!output-type   (mlir-value-get-type %output)]
+         [!output-type   (mlir::Value::getType %output)]
          [!output-device (mlir-ranked-tensor-type-with-encoding !output-type
                             (make-hipsr-device-space-attr ctx))]
          [!shape-type    (mlir-shape.shape-type ctx)])

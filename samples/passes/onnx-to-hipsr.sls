@@ -54,7 +54,10 @@
           (passes onnx-to-hipsr constant)
           (passes onnx-to-hipsr shape)
           (only (chezscheme) foreign-procedure)
-          (for (rime loop) expand))
+          (for (rime loop) expand)
+          (only (mlir support logging)
+                crest::logging::debug crest::logging::info)
+  )
 
   ;; DPS (DestinationPassing-Style) interface helpers.
   ;; These were in (mlir core operation) and are now defined here directly.

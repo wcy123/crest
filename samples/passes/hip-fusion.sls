@@ -30,9 +30,7 @@
 
   (import (except (rnrs) =)
           (rename (only (rnrs) =) (= num=))
-          (rename (only (mlir ir operation)
-                            mlir::Operation::getContext)
-                      (mlir::Operation::getContext mlir-Operation::getContext))
+
           (only (mlir core builder) mlir-apply-patterns-greedy)
           (mlir transforms dialect-conversion)
           (crest)
@@ -44,10 +42,13 @@
           (passes hip-fusion qconv)
           (passes hip-fusion qsigmoid)
           (passes hip-fusion qlpnorm)
-          (passes hip-fusion qdq-roundtrip))
+          (passes hip-fusion qdq-roundtrip)
+          (only (mlir ir operation)
+                mlir::Operation::getContext)
+  )
 
   (define (run-pass module-op)
-    (let ([ctx (mlir-Operation::getContext module-op)])
+    (let ([ctx (mlir::Operation::getContext module-op)])
       (with-pattern-set (patterns ctx)
         (add-rewrite-pattern patterns "hip.quantize_linear"
                                        hip-qadd-fusion 10)

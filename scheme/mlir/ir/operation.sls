@@ -34,10 +34,10 @@
     crest::Operation::setF32Attr
     crest::Operation::setI64Attr
     crest::Operation::setUnitAttr
-    operation-set-index-attr!
-    operation-set-dense-i64-array!
-    operation-set-i64-array-attr!
-    operation-set-dense-i32-array!
+    crest::Operation::setIndexAttr
+    crest::Operation::setDenseI64Array
+    crest::Operation::setI64ArrayAttr
+    crest::Operation::setDenseI32Array
     crest::Operation::copyAttr
     mlir::Operation::hasAttr?
     mlir::Operation::emitError
@@ -210,7 +210,7 @@
   ;; @return      void
   ;; @see         mlir/IR/Operation.h, mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/Operation.cpp
-  (define operation-set-index-attr!   %set-index-attr)
+  (define crest::Operation::setIndexAttr   %set-index-attr)
 
   ;; @brief mlir::Operation::setAttr! — set a DenseI64ArrayAttr from a Scheme list.
   ;; @param op          Operation* uptr
@@ -219,7 +219,7 @@
   ;; @return            void
   ;; @see               mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note              Defined in lib/Bindings/IR/Operation.cpp
-  (define operation-set-dense-i64-array! %set-dense-i64-array)
+  (define crest::Operation::setDenseI64Array %set-dense-i64-array)
 
   ;; @brief mlir::Operation::setAttr! — set an ArrayAttr of i64 IntegerAttrs from a Scheme list.
   ;; @param op          Operation* uptr
@@ -227,8 +227,8 @@
   ;; @param values-list Scheme list of integers
   ;; @return            void
   ;; @see               mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
-  ;; @note              Defined in lib/Bindings/IR/Operation.cpp; use operation-set-dense-i64-array! for dense form
-  (define operation-set-i64-array-attr!  %set-i64-array-attr)
+  ;; @note              Defined in lib/Bindings/IR/Operation.cpp; use crest::Operation::setDenseI64Array for dense form
+  (define crest::Operation::setI64ArrayAttr  %set-i64-array-attr)
 
   ;; @brief mlir::Operation::setAttr! — set a DenseI32ArrayAttr from a Scheme list.
   ;; @param op          Operation* uptr
@@ -237,7 +237,7 @@
   ;; @return            void
   ;; @see               mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note              Defined in lib/Bindings/IR/Operation.cpp
-  (define operation-set-dense-i32-array! %set-dense-i32-array)
+  (define crest::Operation::setDenseI32Array %set-dense-i32-array)
 
   ;; @brief mlir::Operation::setAttr! — copy an attribute from src-op to dst-op.
   ;; @param dst-op    Destination Operation* uptr

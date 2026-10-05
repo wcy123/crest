@@ -22,29 +22,30 @@
 
   (import (except (rnrs) =)
           (only (chezscheme) foreign-procedure)
-          (rename (only (mlir ir operation)
-                       crest::Operation::setF32Attr
-                       crest::Operation::setI64Attr)
-                 (crest::Operation::setF32Attr mlir-operation-set-f32-attr!)
-                 (crest::Operation::setI64Attr mlir-operation-set-i64-attr!))
+          (only (mlir ir operation)
+                crest::Operation::setF32Attr
+                crest::Operation::setI64Attr
+                crest::Operation::setDenseI32Array
+                crest::Operation::setDenseI64Array
+                crest::Operation::setI64ArrayAttr)
           (only (mlir ir builtin-attributes) mlir::FloatAttr::getValueAsDouble.f32))
 
   (define (set-qdq-scale-zp-attrs! new-op
                                    lhs-scale lhs-zp
                                    rhs-scale rhs-zp
                                    out-scale out-zp)
-    (mlir-operation-set-f32-attr! new-op "lhs_scale"    lhs-scale)
-    (mlir-operation-set-f32-attr! new-op "rhs_scale"    rhs-scale)
-    (mlir-operation-set-f32-attr! new-op "output_scale" out-scale)
-    (mlir-operation-set-i64-attr! new-op "lhs_zp"       lhs-zp)
-    (mlir-operation-set-i64-attr! new-op "rhs_zp"       rhs-zp)
-    (mlir-operation-set-i64-attr! new-op "output_zp"    out-zp))
+    (crest::Operation::setF32Attr new-op "lhs_scale"    lhs-scale)
+    (crest::Operation::setF32Attr new-op "rhs_scale"    rhs-scale)
+    (crest::Operation::setF32Attr new-op "output_scale" out-scale)
+    (crest::Operation::setI64Attr new-op "lhs_zp"       lhs-zp)
+    (crest::Operation::setI64Attr new-op "rhs_zp"       rhs-zp)
+    (crest::Operation::setI64Attr new-op "output_zp"    out-zp))
 
   (define (set-qdq-in-out-attrs! new-op in-scale in-zp out-scale out-zp)
-    (mlir-operation-set-f32-attr! new-op "input_scale"  in-scale)
-    (mlir-operation-set-i64-attr! new-op "input_zp"     in-zp)
-    (mlir-operation-set-f32-attr! new-op "output_scale" out-scale)
-    (mlir-operation-set-i64-attr! new-op "output_zp"    out-zp))
+    (crest::Operation::setF32Attr new-op "input_scale"  in-scale)
+    (crest::Operation::setI64Attr new-op "input_zp"     in-zp)
+    (crest::Operation::setF32Attr new-op "output_scale" out-scale)
+    (crest::Operation::setI64Attr new-op "output_zp"    out-zp))
 
   (define mlir-operation-set-dense-i32-array!
     (foreign-procedure "crest::Operation::setDenseI32Array" (uptr string scheme-object) void))

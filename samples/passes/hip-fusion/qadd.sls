@@ -25,13 +25,11 @@
 
   (import (except (rnrs) =)
           (rename (only (rnrs) =) (= num=))
-          (rename (only (mlir ir operation)
-                            mlir::Operation::getAttr)
-                      (mlir::Operation::getAttr mlir-operation-get-attr))
+
           (rename (mlir ir value)
-            (mlir::Value::getDefiningOp   mlir-value-get-defining-op)
-            (mlir::Value::getType          mlir-value-get-type)
-            (mlir::Value::getUses          mlir-value-num-uses))
+            (mlir::Value::getDefiningOp   mlir::Value::getDefiningOp)
+            (mlir::Value::getType          mlir::Value::getType)
+            (mlir::Value::getUses          mlir::Value::getUses))
           (only (mlir ir builtin-attributes)
                 mlir::FloatAttr::get<f32>
                 mlir::IntegerAttr::get<i64>
@@ -40,15 +38,18 @@
                 mlir::DenseElementsAttr::getSplatValue<APInt>)
           (mlir dialects builtin)
           (passes hip-fusion fusion)
-          (crest))
+          (crest)
+          (only (mlir ir operation)
+                mlir::Operation::getAttr)
+  )
 
   ;; #t when a Value has exactly one use (safe to fuse without keeping the chain alive).
   (define (single-consumer? val)
-    (num= (mlir-value-num-uses val) 1))
+    (num= (mlir::Value::getUses val) 1))
 
   ;; #t when two Value* have the same tensor rank.
   (define (same-rank? a b)
-    (define (rank x) (mlir-ranked-tensor-type-get-rank (mlir-value-get-type x)))
+    (define (rank x) (mlir-ranked-tensor-type-get-rank (mlir::Value::getType x)))
     (num= (rank a) (rank b)))
 
   ;; Build a FloatAttr<f32> from the splat value of a hip.constant scale.
@@ -56,7 +57,7 @@
   (define (scale-attr scale-val)
     (mlir::FloatAttr::get<f32>
       (mlir::DenseElementsAttr::getSplatValue<APFloat>
-        (mlir-operation-get-attr (mlir-value-get-defining-op scale-val) "value"))))
+        (mlir::Operation::getAttr (mlir::Value::getDefiningOp scale-val) "value"))))
 
   ;; Build an IntegerAttr<i64> for the zero-point.
   ;; Present: extract the splat integer from the hip.constant.
@@ -67,7 +68,7 @@
       (if (unbound-value? zp-val)
           0
           (mlir::DenseElementsAttr::getSplatValue<APInt>
-            (mlir-operation-get-attr (mlir-value-get-defining-op zp-val) "value")))))
+            (mlir::Operation::getAttr (mlir::Value::getDefiningOp zp-val) "value")))))
 
   (define-rewrite-pattern (hip-qadd-fusion op rewriter)
     :if-match
@@ -84,7 +85,7 @@
                                    (same-rank? %q %sum_init))
         %q         = hip.quantize_linear   (%ctx %sum %out_scale (:optional %out_zp) %q_init)
     :then-let
-        ([!out-type  (mlir-value-get-type %q)]
+        ([!out-type  (mlir::Value::getType %q)]
          [lhs-scale  (scale-attr %lhs_scale)]
          [rhs-scale  (scale-attr %rhs_scale)]
          [out-scale  (scale-attr %out_scale)]

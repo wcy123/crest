@@ -17,42 +17,42 @@
 (library (passes onnx-to-hipsr expand)
   (export populate-expand-patterns)
   (import (except (rnrs (6)) =)
-          (rename (only (mlir ir operation)
-                            mlir::OpOperand::get
-                            mlir::Operation::getContext
-                            mlir::Operation::getName)
-                      (mlir::OpOperand::get mlir-operation-get-operand-value)
-                      (mlir::Operation::getContext mlir-Operation::getContext)
-                      (mlir::Operation::getName mlir-operation-name))
+
           (rename (mlir ir value)
-            (mlir::Value::getDefiningOp   mlir-value-get-defining-op)
-            (mlir::Value::getType          mlir-value-get-type))
+            (mlir::Value::getDefiningOp   mlir::Value::getDefiningOp)
+            (mlir::Value::getType          mlir::Value::getType))
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
           (mlir dialects tensor)
           (mlir support logging)
-          (crest))
+          (crest)
+          (only (mlir ir operation)
+                mlir::OpOperand::get mlir::Operation::getContext mlir::Operation::getName)
+
+          (only (mlir support logging)
+                crest::logging::info)
+  )
 
   ;; Unwrap one level of builtin.unrealized_conversion_cast.
   ;; The type converter may wrap tensor<Nxi64> → device space; this removes
   ;; that wrapper to recover the host-space value that hipsr.placeholder requires.
   ;; Assumption: at most one cast is inserted. Nested casts are not handled.
   (define (unwrap-cast v)
-    (let ([def (mlir-value-get-defining-op v)])
+    (let ([def (mlir::Value::getDefiningOp v)])
       (if (and (not (zero? def))
-               (string=? (mlir-operation-name def)
+               (string=? (mlir::Operation::getName def)
                           "builtin.unrealized_conversion_cast"))
-          (mlir-operation-get-operand-value def 0)
+          (mlir::OpOperand::get def 0)
           v)))
 
   (define-conversion-pattern (onnx-expand->hipsr op operands-ref rewriter type-converter)
     :if-match
         %output = onnx.Expand (%input %shape-operand)
     :then-let
-        ([ctx         (mlir-Operation::getContext op)]
+        ([ctx         (mlir::Operation::getContext op)]
          [%ctx        (mlir-get-hipsr-context-arg op)]
-         [!out-type   (mlir-value-get-type %output)]
+         [!out-type   (mlir::Value::getType %output)]
          [!out-device (mlir-ranked-tensor-type-with-encoding !out-type
                         (make-hipsr-device-space-attr ctx))]
          [%shape-host (unwrap-cast %shape-operand)])

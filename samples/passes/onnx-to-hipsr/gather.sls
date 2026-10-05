@@ -17,19 +17,9 @@
 (library (passes onnx-to-hipsr gather)
   (export populate-gather-patterns)
   (import (except (rnrs (6)) =)
-          (rename (only (mlir ir operation)
-                       mlir::Operation::emitRemark
-                       mlir::Operation::getContext
-                       mlir::Operation::getAttrOfType<IntegerAttr>
-                       mlir::Operation::getResult
-                       mlir::Operation::setAttr!)
-                 (mlir::Operation::emitRemark  mlir-emit-remark!)
-                 (mlir::Operation::getContext   mlir-Operation::getContext)
-                 (mlir::Operation::getAttrOfType<IntegerAttr> mlir-Operation::getAttrOfType<IntegerAttr>)
-                 (mlir::Operation::getResult    mlir-Operation::getResult)
-                 (mlir::Operation::setAttr!     mlir-operation-set-attribute!))
+
           (rename (mlir ir value)
-            (mlir::Value::getType          mlir-value-get-type))
+            (mlir::Value::getType          mlir::Value::getType))
           (only (mlir ir builtin-attributes ffi) %mlir::IntegerAttr::get<index>)
           (only (mlir core builder) mlir-build-operation)
           (mlir dialects builtin)
@@ -38,7 +28,12 @@
           (mlir dialects tensor)
           (mlir dialects shape)
           (crest internal rewrite)
-          (crest))
+          (crest)
+          (only (mlir ir operation)
+                mlir::Operation::emitRemark mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getContext mlir::Operation::getResult mlir::Operation::setAttr!)
+
+          (only (mlir ir type) mlir::Type::getContext)
+  )
 
   ;; Build the gather output shape inside a region block using the DSL.
   ;; Shape logic:
@@ -58,20 +53,20 @@
   (define (build-gather-shape! axis data-shape idx-shape shape-type size-type)
     (define (mk-sz n)
       (let ([op (mlir-build-operation "shape.const_size" '() (list size-type))])
-        (mlir-operation-set-attribute! op "value" (%mlir::IntegerAttr::get<index> (mlir-Operation::getContext op) n))
-        (mlir-Operation::getResult op 0)))
+        (mlir::Operation::setAttr! op "value" (%mlir::IntegerAttr::get<index> (mlir::Operation::getContext op) n))
+        (mlir::Operation::getResult op 0)))
     (let* ([sz1      (mk-sz axis)]
            [sp1      (mlir-build-operation "shape.split_at"
                        (list data-shape sz1) (list shape-type shape-type))]
-           [leading  (mlir-Operation::getResult sp1 0)]
+           [leading  (mlir::Operation::getResult sp1 0)]
            [sz2      (mk-sz (+ axis 1))]
            [sp2      (mlir-build-operation "shape.split_at"
                        (list data-shape sz2) (list shape-type shape-type))]
-           [trailing (mlir-Operation::getResult sp2 1)]
+           [trailing (mlir::Operation::getResult sp2 1)]
            [gathered-op (mlir-build-operation "shape.concat"
                           (list leading idx-shape) (list shape-type))]
-           [gathered    (mlir-Operation::getResult gathered-op 0)])
-      (mlir-Operation::getResult
+           [gathered    (mlir::Operation::getResult gathered-op 0)])
+      (mlir::Operation::getResult
         (mlir-build-operation "shape.concat"
           (list gathered trailing) (list shape-type))
         0)))
@@ -81,12 +76,12 @@
         %output = onnx.Gather (%data %indices)
     :then-let
         ([%ctx        (mlir-get-hipsr-context-arg op)]
-         [!data-type  (mlir-value-get-type %data)]
-         [!out-type   (mlir-value-get-type %output)]
+         [!data-type  (mlir::Value::getType %data)]
+         [!out-type   (mlir::Value::getType %output)]
          [!out-device (mlir-ranked-tensor-type-with-encoding !out-type (make-hipsr-device-space-attr (mlir-mlir::Type::getContext !out-type)))]
-         [!shape-type (mlir-shape.shape-type (mlir-Operation::getContext op))]
-         [!size-type  (mlir-shape.size-type  (mlir-Operation::getContext op))]
-         [axis        (let ([a (mlir-Operation::getAttrOfType<IntegerAttr> op "axis" 0)])
+         [!shape-type (mlir-shape.shape-type (mlir::Operation::getContext op))]
+         [!size-type  (mlir-shape.size-type  (mlir::Operation::getContext op))]
+         [axis        (let ([a (mlir::Operation::getAttrOfType<IntegerAttr> op "axis" 0)])
                         (if (< a 0) (+ a (mlir-ranked-tensor-type-get-rank !data-type)) a))]
          ;; guard: only handle device data (eqv? avoids shadowed = keyword)
          [ok?         (eqv? 1 (mlir-type-is-device-tensor !data-type))])
@@ -95,7 +90,7 @@
         ;; then return #f so the conversion framework falls through to the
         ;; fallback pattern (mlir-populate-gather-conversion-patterns).
         (_ = (if (not ok?)
-                 (begin (mlir-emit-remark! op "onnx-gather->hipsr: skipping host data")
+                 (begin (mlir::Operation::emitRemark op "onnx-gather->hipsr: skipping host data")
                         #f)
                  #t))
         (%placeholder = "hipsr.placeholder" (%ctx %data %indices !out-device)

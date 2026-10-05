@@ -21,27 +21,18 @@
 (library (passes onnx-to-hipsr constant)
   (export populate-constant-patterns)
   (import (except (rnrs (6)) =)
-          (rename (only (mlir ir operation)
-                       mlir::Operation::emitError
-                       mlir::Operation::getAttr
-                       mlir::Operation::getContext
-                       mlir::Operation::getAttrOfType<IntegerAttr>
-                       mlir::Operation::getAttrOfType<StringAttr>
-                       mlir::Operation::hasAttr?)
-                 (mlir::Operation::emitError   mlir-emit-error!)
-                 (mlir::Operation::getAttr      mlir-operation-get-attr)
-                 (mlir::Operation::getContext   mlir-Operation::getContext)
-                 (mlir::Operation::getAttrOfType<IntegerAttr> mlir-Operation::getAttrOfType<IntegerAttr>)
-                 (mlir::Operation::getAttrOfType<StringAttr>  mlir-Operation::getAttrOfType<StringAttr>)
-                 (mlir::Operation::hasAttr?     mlir-Operation::hasAttr?))
+
           (rename (mlir ir value)
-            (mlir::Value::getType          mlir-value-get-type))
+            (mlir::Value::getType          mlir::Value::getType))
           (only (mlir ir builtin-attributes ffi) %mlir::DenseResourceElementsAttr::get)
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
           (mlir dialects tensor)
-          (crest))
+          (crest)
+          (only (mlir ir operation)
+                mlir::Operation::emitError mlir::Operation::getAttr mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getAttrOfType<StringAttr> mlir::Operation::getContext mlir::Operation::hasAttr?)
+  )
 
   (define ort-mem-addr-tag "*/_ORT_MEM_ADDR_/*")
 
@@ -51,15 +42,15 @@
   ;; Emits an MLIR diagnostic and raises on error — never returns #f.
   (define (constant-value-attr op ctx !result-type)
     (define (fail msg)
-      (mlir-emit-error! op msg)
+      (mlir::Operation::emitError op msg)
       (error 'onnx-constant msg))
     (cond
-      [(mlir-Operation::hasAttr? op "value")
-       (mlir-operation-get-attr op "value")]
-      [(mlir-Operation::hasAttr? op "location")
-       (let* ([location (mlir-Operation::getAttrOfType<StringAttr> op "location")]
-              [offset   (mlir-Operation::getAttrOfType<IntegerAttr> op "offset" 0)]
-              [size     (mlir-Operation::getAttrOfType<IntegerAttr> op "size" 0)]
+      [(mlir::Operation::hasAttr? op "value")
+       (mlir::Operation::getAttr op "value")]
+      [(mlir::Operation::hasAttr? op "location")
+       (let* ([location (mlir::Operation::getAttrOfType<StringAttr> op "location")]
+              [offset   (mlir::Operation::getAttrOfType<IntegerAttr> op "offset" 0)]
+              [size     (mlir::Operation::getAttrOfType<IntegerAttr> op "size" 0)]
               [r (if (string=? location ort-mem-addr-tag)
                      (%mlir::DenseResourceElementsAttr::get ctx
                        (list !result-type
@@ -81,10 +72,10 @@
   (define-conversion-pattern (onnx-constant-scalar->arith op operands-ref rewriter type-converter)
     :if-match
         %output = onnx.Constant ()
-            :where (zero? (mlir-ranked-tensor-type-get-rank (mlir-value-get-type %output)))
+            :where (zero? (mlir-ranked-tensor-type-get-rank (mlir::Value::getType %output)))
     :then-let
-        ([ctx         (mlir-Operation::getContext op)]
-         [!out-type   (mlir-value-get-type %output)]
+        ([ctx         (mlir::Operation::getContext op)]
+         [!out-type   (mlir::Value::getType %output)]
          [$value-attr (constant-value-attr op ctx !out-type)])
     :rewrite %output :with
         (%result = arith.constant () ("value" = $value-attr) -> !out-type))
@@ -93,10 +84,10 @@
   (define-conversion-pattern (onnx-constant-tensor->hipsr op operands-ref rewriter type-converter)
     :if-match
         %output = onnx.Constant ()
-            :where (positive? (mlir-ranked-tensor-type-get-rank (mlir-value-get-type %output)))
+            :where (positive? (mlir-ranked-tensor-type-get-rank (mlir::Value::getType %output)))
     :then-let
-        ([ctx         (mlir-Operation::getContext op)]
-         [!out-type   (mlir-value-get-type %output)]
+        ([ctx         (mlir::Operation::getContext op)]
+         [!out-type   (mlir::Value::getType %output)]
          [!out-dev    (mlir-ranked-tensor-type-with-encoding !out-type (make-hipsr-device-space-attr ctx))]
          [$value-attr (constant-value-attr op ctx !out-dev)])
     :rewrite %output :with

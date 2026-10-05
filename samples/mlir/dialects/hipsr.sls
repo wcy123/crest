@@ -35,11 +35,10 @@
 
   (import (rnrs)
           (only (chezscheme) foreign-entry? foreign-procedure)
-          (rename (only (mlir ir operation)
-                            mlir::Operation::getName
-                            mlir::Operation::getParentOp)
-                      (mlir::Operation::getName mlir-operation-name)
-                      (mlir::Operation::getParentOp mlir-operation-get-parent))
+          (only (mlir ir operation)
+                mlir::Operation::getName
+                mlir::Operation::getParentOp)
+          (only (mlir ir region) mlir::Region::front)
           (mlir dialects builtin)
           (only (mlir ir builtin-attributes ffi) %mlir::parseAttribute)
           (mlir transforms dialect-conversion)
@@ -47,8 +46,12 @@
           (only (crest util)
                 type-converter-add-tensor-widening-materialization)
           (only (mlir core builder) mlir-op-get-region mlir-block-get-argument)
-          (rename (only (mlir ir region) mlir::Region::front)
-                  (mlir::Region::front mlir-region-get-first-block)))
+
+          (only (mlir ir builtin-types)
+                mlir::RankedTensorType::getEncoding)
+
+          (only (mlir ir type) mlir::Type::getContext)
+  )
 
   (define-syntax :hipsr-device-space (identifier-syntax 'hipsr-device-space))
   (define-syntax :hipsr-barrier-type (identifier-syntax 'hipsr-barrier-type))
@@ -111,22 +114,22 @@
     (let loop ((cur op))
       (cond
         ((= 0 cur) 0)
-        ((string=? (mlir-operation-name cur) "func.func")
+        ((string=? (mlir::Operation::getName cur) "func.func")
          (let* ((region (mlir-op-get-region cur 0))
-                (block  (if (= 0 region) 0 (mlir-region-get-first-block region))))
+                (block  (if (= 0 region) 0 (mlir::Region::front region))))
            (if (= 0 block) 0 (mlir-block-get-argument block 0))))
-        (else (loop (mlir-operation-get-parent cur))))))
+        (else (loop (mlir::Operation::getParentOp cur))))))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Op ancestry predicates
   ;;===--------------------------------------------------------------------===;;
 
   (define (has-ancestor-named? op name)
-    (let loop ((parent (mlir-operation-get-parent op)))
+    (let loop ((parent (mlir::Operation::getParentOp op)))
       (cond
         ((= 0 parent) #f)
-        ((string=? (mlir-operation-name parent) name) #t)
-        (else (loop (mlir-operation-get-parent parent))))))
+        ((string=? (mlir::Operation::getName parent) name) #t)
+        (else (loop (mlir::Operation::getParentOp parent))))))
 
   (define (hipsr-has-compute-ancestor? op)
     (has-ancestor-named? op "hipsr.compute"))
