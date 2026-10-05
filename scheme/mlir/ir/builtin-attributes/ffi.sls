@@ -4,6 +4,9 @@
 ;; Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 ;; Licensed under the MIT License.
 ;;
+;;
+;; Mirrors mlir/IR/BuiltinAttributes.h,
+;;         mlir/AsmParser/AsmParser.h (mlir::parseAttribute).
 ;;===----------------------------------------------------------------------===;;
 ;;
 ;; (mlir ir builtin-attributes ffi) — raw C bindings for mlir/IR/BuiltinAttributes.h.

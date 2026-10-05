@@ -4,6 +4,9 @@
 ;; Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 ;; Licensed under the MIT License.
 ;;
+;;
+;; Mirrors mlir/IR/PatternMatch.h (RewriterBase),
+;;         mlir/IR/Builders.h (setInsertionPoint, createBlock — inherited from OpBuilder).
 ;;===----------------------------------------------------------------------===;;
 ;;
 ;; (mlir ir rewriter-base ffi) — raw C bindings for mlir/IR/PatternMatch.h RewriterBase.
