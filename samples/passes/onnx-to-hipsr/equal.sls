@@ -18,7 +18,7 @@
           (only (mlir core operation) mlir-operation-get-context)
           (only (mlir core value) mlir-value-get-type)
           (mlir dialects builtin)
-          (mlir core conversion)
+          (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
           (mlir dialects tensor)
           (mlir dialects shape)
@@ -44,7 +44,7 @@
                    -> !output-device))
 
   (define (populate-equal-patterns type-converter patterns ctx)
-    (mlir-register-conversion-pattern patterns "onnx.Equal"
+    (add-conversion-pattern patterns "onnx.Equal"
                                       onnx-equal->hipsr type-converter 1))
 
 ) ;; end library (onnx-to-hipsr equal)
