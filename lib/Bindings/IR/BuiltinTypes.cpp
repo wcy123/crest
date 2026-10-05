@@ -228,7 +228,7 @@ void registerIRBuiltinTypesBindings() {
       "mlir::RankedTensorType::getEncoding",
       (void*)::mlir_ir_builtin_types_ranked_tensor_type_get_encoding);
   Sregister_symbol(
-      "crest::RankedTensorType::cloneWithEncoding",
+      "mlir::RankedTensorType::cloneWithEncoding",
       (void*)::mlir_ir_builtin_types_ranked_tensor_type_clone_with_encoding);
   // ── Type query functions (moved from BuiltinAttributes.cpp) ─────────────
   Sregister_symbol("mlir::ShapedType::getElementType",
@@ -255,7 +255,7 @@ void registerIRBuiltinTypesBindings() {
       "mlir::RankedTensorType::getElementType",
       (void*)::mlir_ir_builtin_types_ranked_tensor_type_get_element_type);
   Sregister_symbol(
-      "crest::RankedTensorType::cloneWithEncoding",
+      "mlir::RankedTensorType::cloneWithEncoding",
       (void*)::mlir_ir_builtin_types_ranked_tensor_type_clone_with_encoding);
   Sregister_symbol(
       "mlir::RankedTensorType::getEncoding",

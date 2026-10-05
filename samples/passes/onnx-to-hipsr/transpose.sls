@@ -67,7 +67,7 @@
         ([%ctx        (mlir-get-hipsr-context-arg op)]
          [!in-type    (mlir::Value::getType %input)]
          [!out-type   (mlir::Value::getType %output)]
-         [!out-device (crest::RankedTensorType::cloneWithEncoding !out-type (make-hipsr-device-space-attr (mlir::Type::getContext !out-type)))]
+         [!out-device (mlir::RankedTensorType::cloneWithEncoding !out-type (make-hipsr-device-space-attr (mlir::Type::getContext !out-type)))]
          [!shape-type (mlir::shape::ShapeType::get)]
          [!size-type  (mlir::shape::SizeType::get)]
          [perm        (let ([raw (crest::Operation::getIntegerArrayAttr op "perm")])

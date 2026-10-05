@@ -39,7 +39,7 @@
         ([ctx            (mlir::Operation::getContext op)]
          [%ctx           (mlir-get-hipsr-context-arg op)]
          [!output-type   (mlir::Value::getType %output)]
-         [!output-device (crest::RankedTensorType::cloneWithEncoding !output-type
+         [!output-device (mlir::RankedTensorType::cloneWithEncoding !output-type
                             (make-hipsr-device-space-attr ctx))]
          [!shape-type    (mlir::shape::ShapeType::get)])
     :rewrite %output :with

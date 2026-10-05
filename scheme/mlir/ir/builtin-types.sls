@@ -24,7 +24,7 @@
     mlir::RankedTensorType::getElementType
     mlir::RankedTensorType::getShape
     mlir::RankedTensorType::getEncoding
-    crest::RankedTensorType::cloneWithEncoding
+    mlir::RankedTensorType::cloneWithEncoding
     mlir::ShapedType::getElementType
     mlir::IntegerType::getWidth
     mlir::IntegerType::isUnsigned?)
@@ -85,8 +85,8 @@
   ;; @return      New RankedTensorType opaque pointer uptr, or 0 on failure
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
-  (define crest::RankedTensorType::cloneWithEncoding
-    %crest::RankedTensorType::cloneWithEncoding)
+  (define mlir::RankedTensorType::cloneWithEncoding
+    %mlir::RankedTensorType::cloneWithEncoding)
 
   ;; @brief mlir::isa<mlir::RankedTensorType>(type) — predicate: is the type a ranked tensor?
   ;; @param type  Type opaque pointer uptr

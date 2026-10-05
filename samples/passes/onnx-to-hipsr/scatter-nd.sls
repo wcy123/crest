@@ -38,7 +38,7 @@
     :then-let
         ([%ctx           (mlir-get-hipsr-context-arg op)]
          [!output-type   (mlir::Value::getType %output)]
-         [!output-device (crest::RankedTensorType::cloneWithEncoding !output-type (make-hipsr-device-space-attr (mlir::Type::getContext !output-type)))]
+         [!output-device (mlir::RankedTensorType::cloneWithEncoding !output-type (make-hipsr-device-space-attr (mlir::Type::getContext !output-type)))]
          [!shape-type    (mlir::shape::ShapeType::get)])
     :rewrite %output :with
         ;; placeholder ins = (%data) only: scatter output has data's shape

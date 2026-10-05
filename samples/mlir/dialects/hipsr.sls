@@ -149,7 +149,7 @@
         (if (and (mlir::isa<RankedTensorType>? type)
                  (> (mlir::RankedTensorType::getRank type) 0)
                  (= 0 (mlir::RankedTensorType::getEncoding type)))
-          (crest::RankedTensorType::cloneWithEncoding type
+          (mlir::RankedTensorType::cloneWithEncoding type
               (make-hipsr-device-space-attr (mlir::Type::getContext type)))
             #f)))
     (type-converter-add-tensor-widening-materialization type-converter))

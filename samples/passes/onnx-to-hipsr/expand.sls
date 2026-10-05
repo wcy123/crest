@@ -52,7 +52,7 @@
         ([ctx         (mlir::Operation::getContext op)]
          [%ctx        (mlir-get-hipsr-context-arg op)]
          [!out-type   (mlir::Value::getType %output)]
-         [!out-device (crest::RankedTensorType::cloneWithEncoding !out-type
+         [!out-device (mlir::RankedTensorType::cloneWithEncoding !out-type
                         (make-hipsr-device-space-attr ctx))]
          [%shape-host (unwrap-cast %shape-operand)])
          ;; TODO: validate that %shape-host is host-space after unwrapping.

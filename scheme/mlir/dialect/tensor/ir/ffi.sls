@@ -11,27 +11,27 @@
 ;; % prefix = raw C binding. Prefer (mlir dialect tensor ir) for normal use.
 ;;
 ;; CREST-specific tensor utilities:
-;; - crest::RankedTensorType::cloneWithEncoding — from mlir/IR/BuiltinTypes.h
+;; - mlir::RankedTensorType::cloneWithEncoding — from mlir/IR/BuiltinTypes.h
 ;; - mlir::tensor::CastOp::areCastCompatible   — from mlir/Interfaces/CastInterfaces.h
 ;; - mlir::tensor::CastOp::create               — from mlir/Dialect/Tensor/IR/Tensor.h
 ;;
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir dialect tensor ir ffi)
-  (export %crest::RankedTensorType::cloneWithEncoding
+  (export %mlir::RankedTensorType::cloneWithEncoding
           %mlir::tensor::CastOp::areCastCompatible
           %mlir::tensor::CastOp::create)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
-  ;; @brief crest::RankedTensorType::cloneWithEncoding — clone a RankedTensorType
+  ;; @brief mlir::RankedTensorType::cloneWithEncoding — clone a RankedTensorType
   ;;        with a new encoding attribute.
   ;; @param tensor-type-uptr  RankedTensorType opaque uptr
   ;; @param encoding-uptr     Attribute opaque uptr — new encoding (may be null)
   ;; @return                  RankedTensorType opaque uptr with the new encoding
   ;; @see   mlir/IR/BuiltinTypes.h
   ;; @note  Defined in lib/Bindings/Dialect/Tensor/Tensor.cpp
-  (define %crest::RankedTensorType::cloneWithEncoding
-    (foreign-procedure "crest::RankedTensorType::cloneWithEncoding" (uptr uptr) uptr))
+  (define %mlir::RankedTensorType::cloneWithEncoding
+    (foreign-procedure "mlir::RankedTensorType::cloneWithEncoding" (uptr uptr) uptr))
 
   ;; @brief tensor::CastOp::areCastCompatible — test whether a tensor.cast
   ;;        between two types is valid.

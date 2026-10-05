@@ -24,7 +24,7 @@
     %mlir::RankedTensorType::getElementType
     %mlir::RankedTensorType::getShape
     %mlir::RankedTensorType::getEncoding
-    %crest::RankedTensorType::cloneWithEncoding
+    %mlir::RankedTensorType::cloneWithEncoding
     %shaped-type-get-element-type
     %integer-type-get-width
     %integer-type-is-unsigned)
@@ -104,9 +104,9 @@
   ;; @return      New RankedTensorType opaque pointer uptr, or 0 on failure
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
-  (define %crest::RankedTensorType::cloneWithEncoding
+  (define %mlir::RankedTensorType::cloneWithEncoding
     (foreign-procedure
-     "crest::RankedTensorType::cloneWithEncoding"
+     "mlir::RankedTensorType::cloneWithEncoding"
      (uptr uptr) uptr))
 
   ;; @brief ShapedType::getElementType() — return the element type of a shaped type.
