@@ -15,6 +15,7 @@ add_library(CrestBindings STATIC
   IR/Operation.cpp
   IR/Type.cpp
   IR/Value.cpp
+  IR/OpResult.cpp
   Interfaces/DestinationStyleOp.cpp
   Core/Builder.cpp
   Core/Types.cpp
@@ -22,7 +23,7 @@ add_library(CrestBindings STATIC
   IR/OpBuilder.cpp
   IR/RewriterBase.cpp
   Transforms/GreedyPatternRewriteDriver.cpp
-  Dialect/Shape/Shape.cpp
+  Dialect/Shape/IR/Shape.cpp
   Support/ArrayRef.cpp
   Support/Logging.cpp
   Support/LockedSchemeObject.cpp
