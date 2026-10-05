@@ -87,7 +87,7 @@ void mlir_transforms_dialect_conversion_add_conversion_pattern(
   auto* patterns = reinterpret_cast<mlir::RewritePatternSet*>(patterns_ptr);
   auto* typeConverter =
       reinterpret_cast<mlir::TypeConverter*>(type_converter_ptr);
-  mlir_log_info(
+  mlir_support_logging_info(
       (std::string("Registering Scheme pattern for ") + op_name).c_str());
   patterns->add<SchemeConversionPattern>(typeConverter, patterns->getContext(),
                                          static_cast<ptr>(callback),
@@ -100,7 +100,7 @@ void mlir_transforms_dialect_conversion_add_rewrite_pattern(ptr patterns_ptr,
                                                             int benefit) {
   auto* patterns = reinterpret_cast<mlir::RewritePatternSet*>(patterns_ptr);
   crest::LockedSchemeObject lockedCallback(callback);
-  mlir_log_info(
+  mlir_support_logging_info(
       (std::string("Registering Scheme rewrite pattern for ") + op_name)
           .c_str());
   patterns->add<SchemeRewritePattern>(patterns->getContext(),
