@@ -38,19 +38,6 @@ int mlir_ir_value_is_block_argument(uint64_t value) {
   return mlir::isa<mlir::BlockArgument>(val) ? 1 : 0;
 }
 
-// mlir::OpResult::getResultNumber()
-int mlir_ir_value_get_result_number(uint64_t value) {
-  if (!value) {
-    return -1;
-  }
-  mlir::Value val = unwrap(MlirValue{reinterpret_cast<const void*>(value)});
-  auto result = mlir::dyn_cast<mlir::OpResult>(val);
-  if (!result) {
-    return -1;
-  }
-  return static_cast<int>(result.getResultNumber());
-}
-
 // mlir::Value::use_begin/use_end (count)
 uint64_t mlir_ir_value_num_uses(uint64_t val_ptr) {
   if (!val_ptr) {
@@ -82,8 +69,6 @@ void registerIRValueBindings() {
                    (void*)::mlir_ir_value_get_defining_op);
   Sregister_symbol("mlir_ir_value_is_block_argument",
                    (void*)::mlir_ir_value_is_block_argument);
-  Sregister_symbol("mlir_ir_value_get_result_number",
-                   (void*)::mlir_ir_value_get_result_number);
   Sregister_symbol("mlir_ir_value_num_uses", (void*)::mlir_ir_value_num_uses);
   Sregister_symbol("mlir_ir_value_get_type", (void*)::mlir_ir_value_get_type);
 }

@@ -19,7 +19,6 @@
   (export
     get-defining-op
     block-argument?
-    get-result-number
     num-uses
     get-type)
 
@@ -40,13 +39,6 @@
   ;; @note         Wraps %block-argument?; returns boolean instead of 1/0
   (define (block-argument? val)
     (= 1 (%block-argument? val)))
-
-  ;; @brief mlir::OpResult::getResultNumber() — return the result index of an op result value.
-  ;; @param value  Value opaque pointer uptr
-  ;; @return       Result index as int, or -1 if value is a block argument or null
-  ;; @see          mlir/IR/Value.h
-  ;; @note         Defined in lib/Bindings/IR/Value.cpp
-  (define get-result-number %get-result-number)
 
   ;; @brief mlir::Value::use_begin/use_end — count the number of uses of this value.
   ;; @param value  Value opaque pointer uptr
