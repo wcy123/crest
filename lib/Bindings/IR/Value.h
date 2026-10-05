@@ -3,11 +3,11 @@
  * Licensed under the MIT License.
  */
 
-#ifndef CREST_BINDINGS_CORE_VALUE_H
-#define CREST_BINDINGS_CORE_VALUE_H
+#ifndef CREST_BINDINGS_IR_VALUE_H
+#define CREST_BINDINGS_IR_VALUE_H
 
 namespace crest {
-void registerValueBindings();
+void registerIRValueBindings();
 } // namespace crest
 
-#endif // CREST_BINDINGS_CORE_VALUE_H
+#endif // CREST_BINDINGS_IR_VALUE_H
