@@ -208,9 +208,9 @@
   ;;                    raise (error ...) if absent → guard returns #f
   ;;
   ;; Compose (:attr "name") with explicit builtin-attributes extractors, e.g.:
-  ;;   (integer-attr-value  (:attr "axis"))
-  ;;   (float32-attr-value  (:attr "epsilon"))
-  ;;   (dense-elements-attr-splat? (:attr "value"))
+  ;;   (IntegerAttr:getValue  (:attr "axis"))
+  ;;   (FloatAttr:getValueAsDouble.f32  (:attr "epsilon"))
+  ;;   (DenseElementsAttr:isSplat (:attr "value"))
   ;;
   ;; Uses free-identifier=? via (syntax-case s (:current-op :attr) ...) so
   ;; only :current-op/:attr from (crest internal keywords) are substituted.
