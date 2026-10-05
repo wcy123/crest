@@ -24,8 +24,9 @@
                      mlir-operation-name mlir-operation-num-results
                      mlir-operation-get-operand-value mlir-operation-get-result
                      mlir-operation-get-operands mlir-operation-set-attribute!) expand)
-          (for (only (mlir core value)
-                     mlir-value-get-defining-op array-ref-size array-ref-at) expand)
+          (for (rename (only (mlir ir value) get-defining-op)
+                     (get-defining-op mlir-value-get-defining-op)) expand)
+          (for (only (mlir support array-ref) array-ref-size array-ref-at) expand)
           (for (only (mlir core attribute) mlir-make-attr) expand)
           (for (only (mlir ir mlir-context) current-mlir-context) expand)
           (for (only (chezscheme) parameterize) expand)
