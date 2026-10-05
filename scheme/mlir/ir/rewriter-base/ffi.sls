@@ -21,7 +21,8 @@
     %rewriter-base-create-block
     %rewriter-base-replace-op
     %rewriter-base-erase-op
-    %rewriter-base-clone-with-types)
+    %rewriter-base-clone-with-types
+    %rewriter-base-create-from-state)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::RewriterBase::create — create an op via OperationState, setting insertion point before loc-op.
@@ -114,5 +115,14 @@
   (define %rewriter-base-clone-with-types
     (foreign-procedure "mlir_ir_rewriter_base_clone_with_types"
                        (uptr uptr scheme-object scheme-object) uptr))
+
+  ;; @brief Create an op from a prepared OperationState via a RewriterBase.
+  ;; @param rewriter    RewriterBase* uptr
+  ;; @param state       OperationState* uptr — ownership NOT transferred; caller must destroy
+  ;; @return            Operation* uptr of the created op, or 0 on bad input
+  ;; @see               mlir/IR/PatternMatch.h, mlir/IR/OperationSupport.h
+  ;; @note              Defined in lib/Bindings/IR/RewriterBase.cpp
+  (define %rewriter-base-create-from-state
+    (foreign-procedure "mlir_ir_rewriter_base_create_from_state" (uptr uptr) uptr))
 
 ) ;; end library (mlir ir rewriter-base ffi)
