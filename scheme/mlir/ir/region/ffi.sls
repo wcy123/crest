@@ -11,26 +11,26 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir ir region ffi)
-  (export %region-append-new-block
-          %region-get-first-block)
+  (export %mlir::Region::push_back<Block>
+          %mlir::Region::front)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
-  ;; @brief mlir_ir_region_append_new_block — append a new Block to a region
+  ;; @brief mlir::Region::push_back<Block> — append a new Block to a region
   ;;        with typed arguments.
   ;; @param region     Region* uptr — the target region
   ;; @param arg-types  Scheme list of Type* uptrs — types for the new block's arguments
   ;; @return           Block* uptr of the newly appended block; 0 if region is null
   ;; @see              mlir/IR/Region.h  Region::push_back
   ;; @note             Defined in lib/Bindings/IR/Region.cpp ::mlir_ir_region_append_new_block
-  (define %region-append-new-block
-    (foreign-procedure "mlir_ir_region_append_new_block" (uptr scheme-object) uptr))
+  (define %mlir::Region::push_back<Block>
+    (foreign-procedure "mlir::Region::push_back<Block>" (uptr scheme-object) uptr))
 
-  ;; @brief mlir_ir_region_get_first_block — return the first Block of a region.
+  ;; @brief mlir::Region::front — return the first Block of a region.
   ;; @param region  Region* uptr — the target region
   ;; @return        Block* uptr; 0 if region is null or empty
   ;; @see           mlir/IR/Region.h  Region::front()
   ;; @note          Defined in lib/Bindings/IR/Region.cpp ::mlir_ir_region_get_first_block
-  (define %region-get-first-block
-    (foreign-procedure "mlir_ir_region_get_first_block" (uptr) uptr))
+  (define %mlir::Region::front
+    (foreign-procedure "mlir::Region::front" (uptr) uptr))
 
 ) ;; end library (mlir ir region ffi)

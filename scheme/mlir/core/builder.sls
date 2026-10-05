@@ -56,8 +56,8 @@
     mlir-ir-op-builder-create-from-state
     ;; Block / region primitives (canonical names)
     mlir-ir-operation-get-region
-    mlir-ir-block-get-argument-by-index
-    mlir-ir-region-append-new-block
+    mlir::Block::getArgument
+    mlir::Region::push_back<Block>
     ;; Pattern application (canonical name)
     mlir-transforms-greedy-pattern-rewrite-driver-apply
     ;; Legacy public aliases (backward compatibility)
@@ -214,14 +214,14 @@
   ;; Get the idx-th argument of a Block directly by index.
   ;; block: Block* uptr, idx: 0-based argument index
   ;; Returns: Value* opaque ptr uptr
-  (define mlir-ir-block-get-argument-by-index
-    (foreign-procedure "mlir_ir_block_get_argument_by_index" (uptr int) uptr))
+  (define mlir::Block::getArgument
+    (foreign-procedure "mlir::Block::getArgument" (uptr int) uptr))
 
   ;; Append a new Block to a region with given argument types.
   ;; region: Region* uptr, arg-types: Scheme list of Type* uptrs
   ;; Returns: Block* uptr
-  (define mlir-ir-region-append-new-block
-    (foreign-procedure "mlir_ir_region_append_new_block" (uptr scheme-object) uptr))
+  (define mlir::Region::push_back<Block>
+    (foreign-procedure "mlir::Region::push_back<Block>" (uptr scheme-object) uptr))
 
   ;; Erase an op directly without a rewriter (for post-pass cleanup).
   ;; op: Operation* uptr — must have no uses
@@ -405,10 +405,10 @@
 
   ;; Get the i-th block argument as a Value* uptr.
   ;; block: Block* uptr, i: 0-based argument index
-  (define mlir-block-get-argument mlir-ir-block-get-argument-by-index)
+  (define mlir-block-get-argument mlir::Block::getArgument)
 
   ;; Create a new Block in a region with the given argument types.
-  (define mlir-new-block mlir-ir-region-append-new-block)
+  (define mlir-new-block mlir::Region::push_back<Block>)
 
   ;; Create a heap-allocated OpBuilder positioned at the end of a block.
   (define mlir-builder-at-block-end mlir-ir-op-builder-at-block-end)

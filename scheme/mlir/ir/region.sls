@@ -11,27 +11,27 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir ir region)
-  (export region-append-new-block
-          region-get-first-block)
+  (export mlir::Region::push_back<Block>
+          mlir::Region::front)
   (import (rnrs) (mlir ir region ffi))
 
-  ;; @brief region-append-new-block — thin wrapper over %region-append-new-block.
+  ;; @brief mlir::Region::push_back<Block> — thin wrapper over %mlir::Region::push_back<Block>.
   ;;        Appends a new Block to a region with typed arguments.
   ;; @param region     Region* uptr — the target region
   ;; @param arg-types  Scheme list of Type* uptrs — types for the new block's arguments
   ;; @return           Block* uptr of the newly appended block; 0 if region is null
   ;; @see              mlir/IR/Region.h  Region::push_back
-  ;; @note             Delegates to %region-append-new-block in (mlir ir region ffi);
+  ;; @note             Delegates to %mlir::Region::push_back<Block> in (mlir ir region ffi);
   ;;                   C++ implementation in lib/Bindings/IR/Region.cpp
-  (define region-append-new-block %region-append-new-block)
+  (define mlir::Region::push_back<Block> %mlir::Region::push_back<Block>)
 
-  ;; @brief region-get-first-block — thin wrapper over %region-get-first-block.
+  ;; @brief mlir::Region::front — thin wrapper over %mlir::Region::front.
   ;;        Returns the first Block of a region.
   ;; @param region  Region* uptr — the target region
   ;; @return        Block* uptr; 0 if region is null or empty
   ;; @see           mlir/IR/Region.h  Region::front()
-  ;; @note          Delegates to %region-get-first-block in (mlir ir region ffi);
+  ;; @note          Delegates to %mlir::Region::front in (mlir ir region ffi);
   ;;                C++ implementation in lib/Bindings/IR/Region.cpp
-  (define region-get-first-block %region-get-first-block)
+  (define mlir::Region::front %mlir::Region::front)
 
 ) ;; end library (mlir ir region)

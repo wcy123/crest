@@ -47,8 +47,8 @@
           (only (crest util)
                 type-converter-add-tensor-widening-materialization)
           (only (mlir core builder) mlir-op-get-region mlir-block-get-argument)
-          (rename (only (mlir ir region) region-get-first-block)
-                  (region-get-first-block mlir-region-get-first-block)))
+          (rename (only (mlir ir region) mlir::Region::front)
+                  (mlir::Region::front mlir-region-get-first-block)))
 
   (define-syntax :hipsr-device-space (identifier-syntax 'hipsr-device-space))
   (define-syntax :hipsr-barrier-type (identifier-syntax 'hipsr-barrier-type))
