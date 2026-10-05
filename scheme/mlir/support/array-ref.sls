@@ -26,13 +26,15 @@
     make-array-ref      ; (data-ptr size) → ref  [C heap allocation]
     array-ref-destroy   ; (ref) → void           [C heap free]
     with-array-ref      ; (syntax) RAII: make + body + destroy
-    :uptr)              ; array-ref-at element type → 'uptr (8-byte pointer, default)
-                        ; :i32 comes from (mlir core attribute) — not re-exported here
+    :uptr               ; array-ref-at element type → 'uptr (8-byte pointer, default)
+    :i32)              ; array-ref-at element type → 'i32  (4-byte signed integer)
 
   (import (rnrs)
           (only (chezscheme) foreign-ref)
-          (only (mlir core types) :uptr :i32)
           (mlir support array-ref ffi))
+
+  (define-syntax :uptr (identifier-syntax 'uptr))
+  (define-syntax :i32  (identifier-syntax 'i32))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Fast path — foreign-ref compiles to raw load instructions, no FFI call.
@@ -46,7 +48,7 @@
   ;; type: element type symbol — 'uptr (default, 8-byte pointer) or 'i32 (4-byte integer).
   ;;   'uptr → foreign-ref 'uptr        at offset index*8  (Value*, Operation*, etc.)
   ;;   'i32  → foreign-ref 'integer-32  at offset index*4  (DenseI32ArrayAttr data)
-  ;; Use :uptr (exported here) or :i32 (from (mlir core attribute)) as compile-time keywords.
+  ;; Use :uptr or :i32 (both exported here) as compile-time keywords.
   (define array-ref-at
     (case-lambda
       [(ref index)
