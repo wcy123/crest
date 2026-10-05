@@ -4,11 +4,8 @@
 
 add_library(CrestBindings STATIC
   MainModule.cpp
-  Core/Conversion.cpp
   Transforms/DialectConversion.cpp
   Core/Core.cpp
-  Core/Attribute.cpp
-  Core/Operation.cpp
   IR/Block.cpp
   IR/BuiltinAttributes.cpp
   IR/BuiltinTypes.cpp
@@ -18,8 +15,6 @@ add_library(CrestBindings STATIC
   IR/OpResult.cpp
   Interfaces/DestinationStyleOp.cpp
   Core/Builder.cpp
-  Core/Types.cpp
-  IR/Block.cpp
   IR/OpBuilder.cpp
   IR/RewriterBase.cpp
   Transforms/GreedyPatternRewriteDriver.cpp

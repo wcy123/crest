@@ -3,34 +3,38 @@
  * Licensed under the MIT License.
  */
 
-// Registration hub — delegates to focused sub-files in Core/, IR/, Transforms/.
+// Registration hub for all MLIR C API → Scheme bindings.
 
 #include "../IR/Block.h"
+#include "../IR/BuiltinAttributes.h"
+#include "../IR/BuiltinTypes.h"
 #include "../IR/OpBuilder.h"
 #include "../IR/OpResult.h"
+#include "../IR/Operation.h"
 #include "../IR/RewriterBase.h"
+#include "../IR/Type.h"
 #include "../IR/Value.h"
+#include "../Interfaces/DestinationStyleOp.h"
+#include "../Transforms/DialectConversion.h"
 #include "../Transforms/GreedyPatternRewriteDriver.h"
-#include "Attribute.h"
 #include "Builder.h"
-#include "Conversion.h"
-#include "Operation.h"
-#include "Types.h"
 
 namespace crest {
 
 void registerCoreBindings() {
-  registerAttributeBindings();
+  registerIRBuiltinAttributesBindings();
   registerBuilderBindings();
-  registerConversionBindings();
+  registerTransformsDialectConversionBindings();
   registerIRBlockBindings();
   registerIROpBuilderBindings();
   registerIROpResultBindings();
+  registerIROperationBindings();
   registerIRRewriterBaseBindings();
-  registerIRValueBindings();
-  registerOperationBindings();
+  registerInterfacesDpsBindings();
   registerTransformsGreedyPatternRewriteDriverBindings();
-  registerTypeBindings();
+  registerIRBuiltinTypesBindings();
+  registerIRTypeBindings();
+  registerIRValueBindings();
 }
 
 } // namespace crest
