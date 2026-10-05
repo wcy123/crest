@@ -12,11 +12,11 @@
 
 (library (mlir ir op-builder ffi)
   (export
-    %op-builder-create
-    %op-builder-create-with-regions
-    %op-builder-at-block-end
-    %op-builder-destroy
-    %op-builder-create-from-state)
+    %mlir::OpBuilder::create
+    %mlir::OpBuilder::create-with-regions
+    %mlir::OpBuilder::atBlockEnd
+    %mlir::OpBuilder::~OpBuilder
+    %mlir::OpBuilder::create-from-state)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::OpBuilder::create — create an op via OperationState using a standalone OpBuilder.
@@ -28,7 +28,7 @@
   ;; @return              Operation* uptr of the created op, or 0 on bad input
   ;; @see                 mlir/IR/Builders.h
   ;; @note                Defined in lib/Bindings/IR/OpBuilder.cpp
-  (define %op-builder-create
+  (define %mlir::OpBuilder::create
     (foreign-procedure "mlir_ir_op_builder_create"
                        (uptr uptr string scheme-object scheme-object) uptr))
 
@@ -42,7 +42,7 @@
   ;; @return              Operation* uptr of the created op, or 0 on bad input
   ;; @see                 mlir/IR/Builders.h
   ;; @note                Defined in lib/Bindings/IR/OpBuilder.cpp
-  (define %op-builder-create-with-regions
+  (define %mlir::OpBuilder::create-with-regions
     (foreign-procedure "mlir_ir_op_builder_create_with_regions"
                        (uptr uptr string scheme-object scheme-object int) uptr))
 
@@ -50,16 +50,16 @@
   ;; @param block   Block* uptr — target block; builder is positioned at block->end()
   ;; @return        OpBuilder* uptr (heap-allocated), or 0 if block is null
   ;; @see           mlir/IR/Builders.h
-  ;; @note          Defined in lib/Bindings/IR/OpBuilder.cpp; caller must free via %op-builder-destroy
-  (define %op-builder-at-block-end
+  ;; @note          Defined in lib/Bindings/IR/OpBuilder.cpp; caller must free via %mlir::OpBuilder::~OpBuilder
+  (define %mlir::OpBuilder::atBlockEnd
     (foreign-procedure "mlir_ir_op_builder_at_block_end" (uptr) uptr))
 
-  ;; @brief Destroy an mlir::OpBuilder created by %op-builder-at-block-end.
+  ;; @brief Destroy an mlir::OpBuilder created by %mlir::OpBuilder::atBlockEnd.
   ;; @param builder  OpBuilder* uptr — heap-allocated builder to delete
   ;; @return         void
   ;; @see            mlir/IR/Builders.h
   ;; @note           Defined in lib/Bindings/IR/OpBuilder.cpp; no-op if builder is 0
-  (define %op-builder-destroy
+  (define %mlir::OpBuilder::~OpBuilder
     (foreign-procedure "mlir_ir_op_builder_destroy" (uptr) void))
 
   ;; @brief Create an op from a prepared OperationState via a plain OpBuilder.
@@ -68,7 +68,7 @@
   ;; @return            Operation* uptr of the created op, or 0 on bad input
   ;; @see               mlir/IR/Builders.h, mlir/IR/OperationSupport.h
   ;; @note              Defined in lib/Bindings/IR/OpBuilder.cpp
-  (define %op-builder-create-from-state
+  (define %mlir::OpBuilder::create-from-state
     (foreign-procedure "mlir_ir_op_builder_create_from_state" (uptr uptr) uptr))
 
 ) ;; end library (mlir ir op-builder ffi)

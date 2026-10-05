@@ -14,7 +14,7 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir ir type)
-  (export type-get-context)
+  (export mlir::Type::getContext)
   (import (rnrs) (mlir ir type ffi))
 
   ;; @brief mlir::Type::getContext() — return the MLIRContext that owns this type.
@@ -22,6 +22,6 @@
   ;; @return      MLIRContext opaque pointer uptr, or 0 if type is null
   ;; @see         mlir/IR/Types.h
   ;; @note        Defined in lib/Bindings/IR/Type.cpp
-  (define type-get-context %type-get-context)
+  (define mlir::Type::getContext %mlir::Type::getContext)
 
 ) ;; end library (mlir ir type)

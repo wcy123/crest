@@ -25,7 +25,7 @@
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::OperationState constructor — heap-allocate an OperationState for loc and op name.
-  ;; @param loc-ptr   Location opaque ptr as uptr (from %operation-get-loc)
+  ;; @param loc-ptr   Location opaque ptr as uptr (from %mlir::Operation::getLoc)
   ;; @param name      Registered MLIR op name string (e.g. "arith.constant")
   ;; @return          OperationState* as uptr — caller must destroy with %operation-state-destroy
   ;; @see             mlir/IR/OperationSupport.h

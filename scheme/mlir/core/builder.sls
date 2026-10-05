@@ -84,10 +84,10 @@
   (import (rnrs)
           (only (chezscheme) foreign-procedure parameterize make-parameter void)
           (mlir ir mlir-context)
-          (only (mlir ir operation) operation-get-context operation-get-loc))
+          (only (mlir ir operation) mlir::Operation::getContext mlir::Operation::getLoc))
 
-  (define mlir-operation-get-context operation-get-context)
-  (define mlir-operation-get-loc     operation-get-loc)
+  (define mlir-mlir::Operation::getContext mlir::Operation::getContext)
+  (define mlir-mlir::Operation::getLoc     mlir::Operation::getLoc)
 
   ;;===--------------------------------------------------------------------===;;
   ;; Canonical low-level rewriter FFI
@@ -169,7 +169,7 @@
   ;;===--------------------------------------------------------------------===;;
 
   ;; Create a heap-allocated OperationState.
-  ;; loc: Location opaque ptr uptr (from mlir-operation-get-loc)
+  ;; loc: Location opaque ptr uptr (from mlir-mlir::Operation::getLoc)
   ;; name: string op name
   ;; Returns: OperationState* uptr — must be destroyed with
   ;;          mlir-ir-operation-state-destroy
@@ -318,7 +318,7 @@
         [(current-rewriter) =>
          (lambda (rw)
            (mlir-ir-rewriter-base-set-insertion-point rw loc-op)
-           (with-operation-state (state (mlir-operation-get-loc loc-op) name)
+           (with-operation-state (state (mlir-mlir::Operation::getLoc loc-op) name)
              (for-each (lambda (v) (mlir-ir-operation-state-add-operands state v))
                        operands)
              (for-each (lambda (t) (mlir-ir-operation-state-add-types state t))
@@ -330,7 +330,7 @@
              (mlir-ir-rewriter-base-create-from-state rw state)))]
         [(current-block-builder) =>
          (lambda (b)
-           (with-operation-state (state (mlir-operation-get-loc loc-op) name)
+           (with-operation-state (state (mlir-mlir::Operation::getLoc loc-op) name)
              (for-each (lambda (v) (mlir-ir-operation-state-add-operands state v))
                        operands)
              (for-each (lambda (t) (mlir-ir-operation-state-add-types state t))
@@ -352,7 +352,7 @@
        (parameterize ([current-rewriter      rw]
                       [current-block-builder #f]
                       [current-loc           loc]
-                      [current-mlir-context  (mlir-operation-get-context loc)])
+                      [current-mlir-context  (mlir-mlir::Operation::getContext loc)])
          body ...)]))
 
   ;; Install an explicit OpBuilder* as current-block-builder for the duration of body.
@@ -364,7 +364,7 @@
        (parameterize ([current-block-builder builder]
                       [current-rewriter      #f]
                       [current-loc           loc]
-                      [current-mlir-context  (mlir-operation-get-context loc)])
+                      [current-mlir-context  (mlir-mlir::Operation::getContext loc)])
          body ...)]))
 
   ;; Create an OpBuilder at the end of block, install it as current-block-builder,
@@ -433,7 +433,7 @@
   ;; Returns: Operation* uptr
   (define (mlir-create-op builder loc name ops types . rest)
     (let ([nregions (if (pair? rest) (car rest) 0)])
-      (with-operation-state (state (mlir-operation-get-loc loc) name)
+      (with-operation-state (state (mlir-mlir::Operation::getLoc loc) name)
         (for-each (lambda (v) (mlir-ir-operation-state-add-operands state v)) ops)
         (for-each (lambda (t) (mlir-ir-operation-state-add-types state t)) types)
         (let loop ([i 0])

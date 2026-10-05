@@ -13,7 +13,7 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir dialect shape ir ffi)
-  (export %shape-type-get %size-type-get %witness-type-get)
+  (export %mlir::shape::ShapeType::get %mlir::shape::SizeType::get %mlir::shape::WitnessType::get)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::shape::ShapeType::get — get the shape dialect's Shape type.
@@ -21,7 +21,7 @@
   ;; @return     ShapeType opaque pointer uptr
   ;; @see        mlir/Dialect/Shape/IR/Shape.h
   ;; @note       Defined in lib/Bindings/Dialect/Shape/IR/Shape.cpp
-  (define %shape-type-get
+  (define %mlir::shape::ShapeType::get
     (foreign-procedure "mlir_dialect_shape_ir_shape_type_get" (uptr) uptr))
 
   ;; @brief mlir::shape::SizeType::get — get the shape dialect's Size type.
@@ -29,7 +29,7 @@
   ;; @return     SizeType opaque pointer uptr
   ;; @see        mlir/Dialect/Shape/IR/Shape.h
   ;; @note       Defined in lib/Bindings/Dialect/Shape/IR/Shape.cpp
-  (define %size-type-get
+  (define %mlir::shape::SizeType::get
     (foreign-procedure "mlir_dialect_shape_ir_size_type_get" (uptr) uptr))
 
   ;; @brief mlir::shape::WitnessType::get — get the shape dialect's Witness type.
@@ -37,7 +37,7 @@
   ;; @return     WitnessType opaque pointer uptr
   ;; @see        mlir/Dialect/Shape/IR/Shape.h
   ;; @note       Defined in lib/Bindings/Dialect/Shape/IR/Shape.cpp
-  (define %witness-type-get
+  (define %mlir::shape::WitnessType::get
     (foreign-procedure "mlir_dialect_shape_ir_witness_type_get" (uptr) uptr))
 
 ) ;; end library (mlir dialect shape ir ffi)

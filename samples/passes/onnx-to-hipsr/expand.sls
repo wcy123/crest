@@ -18,15 +18,15 @@
   (export populate-expand-patterns)
   (import (except (rnrs (6)) =)
           (rename (only (mlir ir operation)
-                            op-operand-get-value
-                            operation-get-context
-                            operation-get-name)
-                      (op-operand-get-value mlir-operation-get-operand-value)
-                      (operation-get-context mlir-operation-get-context)
-                      (operation-get-name mlir-operation-name))
+                            mlir::OpOperand::get
+                            mlir::Operation::getContext
+                            mlir::Operation::getName)
+                      (mlir::OpOperand::get mlir-operation-get-operand-value)
+                      (mlir::Operation::getContext mlir-mlir::Operation::getContext)
+                      (mlir::Operation::getName mlir-operation-name))
           (rename (mlir ir value)
-            (get-defining-op   mlir-value-get-defining-op)
-            (get-type          mlir-value-get-type))
+            (get-defining-op   mlir-mlir::Value::getDefiningOp)
+            (get-type          mlir-mlir::Value::getType))
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
@@ -39,7 +39,7 @@
   ;; that wrapper to recover the host-space value that hipsr.placeholder requires.
   ;; Assumption: at most one cast is inserted. Nested casts are not handled.
   (define (unwrap-cast v)
-    (let ([def (mlir-value-get-defining-op v)])
+    (let ([def (mlir-mlir::Value::getDefiningOp v)])
       (if (and (not (zero? def))
                (string=? (mlir-operation-name def)
                           "builtin.unrealized_conversion_cast"))
@@ -50,9 +50,9 @@
     :if-match
         %output = onnx.Expand (%input %shape-operand)
     :then-let
-        ([ctx         (mlir-operation-get-context op)]
+        ([ctx         (mlir-mlir::Operation::getContext op)]
          [%ctx        (mlir-get-hipsr-context-arg op)]
-         [!out-type   (mlir-value-get-type %output)]
+         [!out-type   (mlir-mlir::Value::getType %output)]
          [!out-device (mlir-ranked-tensor-type-with-encoding !out-type
                         (make-hipsr-device-space-attr ctx))]
          [%shape-host (unwrap-cast %shape-operand)])

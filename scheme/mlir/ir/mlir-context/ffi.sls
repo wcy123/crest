@@ -15,16 +15,16 @@
 
 (library (mlir ir mlir-context ffi)
   (export
-    %mlir-context-allow-unregistered-dialects
-    %mlir-context-allows-unregistered-dialects
-    %mlir-context-enable-multithreading
-    %mlir-context-disable-multithreading
+    %mlir::MLIRContext::allowUnregisteredDialects
+    %mlir::MLIRContext::allowsUnregisteredDialects
+    %mlir::MLIRContext::enableMultithreading
+    %mlir::MLIRContext::disableMultithreading
     %mlir-context-is-multithreading-enabled
-    %mlir-context-get-or-load-dialect
-    %mlir-context-load-all-available-dialects
-    %mlir-context-print-op-on-diagnostic
-    %mlir-context-should-print-op-on-diagnostic
-    %mlir-context-print-stack-trace-on-diagnostic)
+    %mlir::MLIRContext::getOrLoadDialect
+    %mlir::MLIRContext::loadAllAvailableDialects
+    %mlir::MLIRContext::printOpOnDiagnostic
+    %mlir::MLIRContext::shouldPrintOpOnDiagnostic
+    %mlir::MLIRContext::printStackTraceOnDiagnostic)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::MLIRContext::allowUnregisteredDialects — enable or disable unregistered dialects.
@@ -33,7 +33,7 @@
   ;; @return       void
   ;; @see          mlir/IR/MLIRContext.h
   ;; @note         Defined in lib/Bindings/IR/MLIRContext.cpp
-  (define %mlir-context-allow-unregistered-dialects
+  (define %mlir::MLIRContext::allowUnregisteredDialects
     (foreign-procedure "mlir_ir_mlir_context_allow_unregistered_dialects" (uptr int) void))
 
   ;; @brief mlir::MLIRContext::allowsUnregisteredDialects — query whether unregistered dialects are allowed.
@@ -41,7 +41,7 @@
   ;; @return     int; 1 = allowed, 0 = disallowed
   ;; @see        mlir/IR/MLIRContext.h
   ;; @note       Defined in lib/Bindings/IR/MLIRContext.cpp
-  (define %mlir-context-allows-unregistered-dialects
+  (define %mlir::MLIRContext::allowsUnregisteredDialects
     (foreign-procedure "mlir_ir_mlir_context_allows_unregistered_dialects" (uptr) int))
 
   ;; @brief mlir::MLIRContext::enableMultithreading — enable multithreaded compilation.
@@ -50,7 +50,7 @@
   ;; @return       void
   ;; @see          mlir/IR/MLIRContext.h
   ;; @note         Defined in lib/Bindings/IR/MLIRContext.cpp
-  (define %mlir-context-enable-multithreading
+  (define %mlir::MLIRContext::enableMultithreading
     (foreign-procedure "mlir_ir_mlir_context_enable_multithreading" (uptr int) void))
 
   ;; @brief mlir::MLIRContext::disableMultithreading — disable multithreaded compilation.
@@ -59,7 +59,7 @@
   ;; @return        void
   ;; @see           mlir/IR/MLIRContext.h
   ;; @note          Defined in lib/Bindings/IR/MLIRContext.cpp
-  (define %mlir-context-disable-multithreading
+  (define %mlir::MLIRContext::disableMultithreading
     (foreign-procedure "mlir_ir_mlir_context_disable_multithreading" (uptr int) void))
 
   ;; @brief mlir::MLIRContext::isMultithreadingEnabled — query whether multithreading is enabled.
@@ -76,7 +76,7 @@
   ;; @return     Dialect* as uptr; 0 if namespace is not registered
   ;; @see        mlir/IR/MLIRContext.h, mlir/IR/Dialect.h
   ;; @note       Defined in lib/Bindings/IR/MLIRContext.cpp
-  (define %mlir-context-get-or-load-dialect
+  (define %mlir::MLIRContext::getOrLoadDialect
     (foreign-procedure "mlir_ir_mlir_context_get_or_load_dialect" (uptr string) uptr))
 
   ;; @brief mlir::MLIRContext::loadAllAvailableDialects — load every statically linked dialect.
@@ -84,7 +84,7 @@
   ;; @return     void
   ;; @see        mlir/IR/MLIRContext.h
   ;; @note       Defined in lib/Bindings/IR/MLIRContext.cpp
-  (define %mlir-context-load-all-available-dialects
+  (define %mlir::MLIRContext::loadAllAvailableDialects
     (foreign-procedure "mlir_ir_mlir_context_load_all_available_dialects" (uptr) void))
 
   ;; @brief mlir::MLIRContext::printOpOnDiagnostic — control whether ops are printed on diagnostics.
@@ -93,7 +93,7 @@
   ;; @return       void
   ;; @see          mlir/IR/MLIRContext.h, mlir/IR/Diagnostics.h
   ;; @note         Defined in lib/Bindings/IR/MLIRContext.cpp
-  (define %mlir-context-print-op-on-diagnostic
+  (define %mlir::MLIRContext::printOpOnDiagnostic
     (foreign-procedure "mlir_ir_mlir_context_print_op_on_diagnostic" (uptr int) void))
 
   ;; @brief mlir::MLIRContext::shouldPrintOpOnDiagnostic — query the print-op-on-diagnostic flag.
@@ -101,7 +101,7 @@
   ;; @return     int; 1 = will print, 0 = suppressed
   ;; @see        mlir/IR/MLIRContext.h, mlir/IR/Diagnostics.h
   ;; @note       Defined in lib/Bindings/IR/MLIRContext.cpp
-  (define %mlir-context-should-print-op-on-diagnostic
+  (define %mlir::MLIRContext::shouldPrintOpOnDiagnostic
     (foreign-procedure "mlir_ir_mlir_context_should_print_op_on_diagnostic" (uptr) int))
 
   ;; @brief mlir::MLIRContext::printStackTraceOnDiagnostic — control stack-trace printing on diagnostics.
@@ -110,7 +110,7 @@
   ;; @return       void
   ;; @see          mlir/IR/MLIRContext.h, mlir/IR/Diagnostics.h
   ;; @note         Defined in lib/Bindings/IR/MLIRContext.cpp
-  (define %mlir-context-print-stack-trace-on-diagnostic
+  (define %mlir::MLIRContext::printStackTraceOnDiagnostic
     (foreign-procedure "mlir_ir_mlir_context_print_stack_trace_on_diagnostic" (uptr int) void))
 
 ) ;; end library (mlir ir mlir-context ffi)

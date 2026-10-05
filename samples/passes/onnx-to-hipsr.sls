@@ -18,39 +18,39 @@
   (export run-pass)
   (import (rnrs (6))
           (rename (only (mlir ir operation)
-                            op-operand-get-value
+                            mlir::OpOperand::get
                             operation-emit-error!
-                            operation-get-context
-                            operation-get-name
-                            operation-get-num-operands
-                            operation-set-operand
+                            mlir::Operation::getContext
+                            mlir::Operation::getName
+                            mlir::Operation::getNumOperands
+                            mlir::Operation::setOperand
                             operation-use-empty?
-                            operation-walk)
-                      (op-operand-get-value mlir-operation-get-operand-value)
+                            mlir::Operation::walk)
+                      (mlir::OpOperand::get mlir-operation-get-operand-value)
                       (operation-emit-error! mlir-emit-error!)
-                      (operation-get-context mlir-operation-get-context)
-                      (operation-get-name mlir-operation-name)
-                      (operation-get-num-operands mlir-operation-num-operands)
-                      (operation-set-operand mlir-operation-set-operand)
+                      (mlir::Operation::getContext mlir-mlir::Operation::getContext)
+                      (mlir::Operation::getName mlir-operation-name)
+                      (mlir::Operation::getNumOperands mlir-operation-num-operands)
+                      (mlir::Operation::setOperand mlir-mlir::Operation::setOperand)
                       (operation-use-empty? mlir-operation-use-empty?)
-                      (operation-walk mlir-operation-walk))
+                      (mlir::Operation::walk mlir-mlir::Operation::walk))
           (rename (mlir ir value)
-            (get-defining-op   mlir-value-get-defining-op)
-            (get-type          mlir-value-get-type)
+            (get-defining-op   mlir-mlir::Value::getDefiningOp)
+            (get-type          mlir-mlir::Value::getType)
             (block-argument?   mlir-value-is-block-argument?)
-            (num-uses          mlir-value-num-uses))
+            (num-uses          mlir-mlir::Value::getUses))
           (rename (mlir ir op-result)
-            (get-result-number mlir-value-get-result-number))
+            (mlir::OpResult::getResultNumber mlir-value-mlir::OpResult::getResultNumber))
           (mlir support array-ref)
           (only (mlir core builder) mlir-build-op mlir-set-insertion-point-before mlir-erase-op mlir-op-erase)
           (mlir transforms dialect-conversion)
           (rename (mlir ir value)
-            (get-defining-op   mlir-value-get-defining-op)
-            (get-type          mlir-value-get-type)
+            (get-defining-op   mlir-mlir::Value::getDefiningOp)
+            (get-type          mlir-mlir::Value::getType)
             (block-argument?   mlir-value-is-block-argument?)
-            (num-uses          mlir-value-num-uses))
+            (num-uses          mlir-mlir::Value::getUses))
           (rename (mlir ir op-result)
-            (get-result-number mlir-value-get-result-number))
+            (mlir::OpResult::getResultNumber mlir-value-mlir::OpResult::getResultNumber))
           (mlir dialects hipsr)
           (mlir dialects func)
           (mlir support logging)
@@ -93,7 +93,7 @@
   ;;===--------------------------------------------------------------------===;;
   (define (erase-dead-novalue! module-op)
     (let ((dead '()))
-      (mlir-operation-walk module-op
+      (mlir-mlir::Operation::walk module-op
         (lambda (op)
           (when (and (string=? (mlir-operation-name op) "onnx.NoValue")
                      (mlir-operation-use-empty? op))
@@ -106,20 +106,20 @@
   (define (shape-graph-counterpart value)
     (if (mlir-value-is-block-argument? value)
         value
-        (let* ((def-op  (mlir-value-get-defining-op value))
+        (let* ((def-op  (mlir-mlir::Value::getDefiningOp value))
                (op-name (if (zero? def-op) "" (mlir-operation-name def-op))))
           (if (or (string=? op-name "hipsr.placeholder")
                   (string=? op-name "hipsr.constant")
                   (string=? op-name "arith.constant"))
               value
-              (let* ((result-idx (mlir-value-get-result-number value))
+              (let* ((result-idx (mlir-value-mlir::OpResult::getResultNumber value))
                      (num-inits  (mlir-operation-num-dps-inits def-op)))
                 (if (>= result-idx num-inits)
                     value
                     (mlir-operation-get-dps-init-operand def-op result-idx)))))))
 
   (define (rewire-placeholder-inputs! module-op)
-    (mlir-operation-walk module-op
+    (mlir-mlir::Operation::walk module-op
       (lambda (op)
         (when (string=? (mlir-operation-name op) "hipsr.placeholder")
           (let loop ((i 1))
@@ -127,7 +127,7 @@
               (let* ((old-val (mlir-operation-get-operand-value op i))
                      (new-val (shape-graph-counterpart old-val)))
                 (unless (eqv? old-val new-val)
-                  (mlir-operation-set-operand op i new-val)))
+                  (mlir-mlir::Operation::setOperand op i new-val)))
               (loop (+ i 1))))))))
 
   ;;===--------------------------------------------------------------------===;;
@@ -149,7 +149,7 @@
 
   (define (run-pass module-op . args)
     (mlir-log-info "Starting ONNX to HipSR Conversion (Scheme)")
-    (let ((ctx (mlir-operation-get-context module-op)))
+    (let ((ctx (mlir-mlir::Operation::getContext module-op)))
       (with-type-converter (type-converter)
         (hipsr-type-converter-add-device-memory-conversions! type-converter)
         (with-conversion-target (target ctx)

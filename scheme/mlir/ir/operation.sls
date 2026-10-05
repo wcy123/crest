@@ -15,22 +15,22 @@
 
 (library (mlir ir operation)
   (export
-    operation-get-name
-    operation-get-context
-    operation-get-num-operands
-    operation-get-num-results
-    operation-get-op-operand
-    operation-get-result
-    operation-get-parent-op
-    op-operand-get-value
-    op-result-get-value
-    operation-get-loc
-    operation-walk
-    operation-set-operand
-    operation-use-empty?
-    operation-get-string-attr
-    operation-get-integer-attr
-    operation-get-integer-array-attr
+    mlir::Operation::getName
+    mlir::Operation::getContext
+    mlir::Operation::getNumOperands
+    mlir::Operation::getNumResults
+    mlir::Operation::getOpOperand
+    mlir::Operation::getResult
+    mlir::Operation::getParentOp
+    mlir::OpOperand::get
+    mlir::OpResult::getOwner
+    mlir::Operation::getLoc
+    mlir::Operation::walk
+    mlir::Operation::setOperand
+    mlir::Operation::use_empty?
+    mlir::Operation::getAttrOfType<StringAttr>
+    mlir::Operation::getAttrOfType<IntegerAttr>
+    crest::Operation::getIntegerArrayAttr
     operation-set-f32-attr!
     operation-set-i64-attr!
     operation-set-unit-attr!
@@ -39,14 +39,14 @@
     operation-set-i64-array-attr!
     operation-set-dense-i32-array!
     operation-copy-attr!
-    operation-has-attr?
+    mlir::Operation::hasAttr?
     operation-emit-error!
     operation-emit-warning!
     operation-emit-remark!
     operation-erase!
-    operation-get-attr
-    operation-set-attr!
-    operation-get-float-attr
+    mlir::Operation::getAttr
+    mlir::Operation::setAttr!
+    mlir::Operation::getAttrOfType<FloatAttr>
     operation-get-operands)
   (import (rnrs)
           (mlir ir operation ffi)
@@ -59,28 +59,28 @@
   ;; @return    Interned string; valid for the lifetime of the MLIRContext
   ;; @see       mlir/IR/Operation.h
   ;; @note      Defined in lib/Bindings/IR/Operation.cpp
-  (define operation-get-name          %get-name)
+  (define mlir::Operation::getName          %get-name)
 
   ;; @brief mlir::Operation::getContext — return the MLIRContext that owns this op.
   ;; @param op  Operation* uptr
   ;; @return    MLIRContext* as uptr; 0 if op is null
   ;; @see       mlir/IR/Operation.h
   ;; @note      Defined in lib/Bindings/IR/Operation.cpp
-  (define operation-get-context       %get-context)
+  (define mlir::Operation::getContext       %get-context)
 
   ;; @brief mlir::Operation::getNumOperands — return the number of operands.
   ;; @param op  Operation* uptr
   ;; @return    Operand count; 0 if op is null
   ;; @see       mlir/IR/Operation.h
   ;; @note      Defined in lib/Bindings/IR/Operation.cpp
-  (define operation-get-num-operands  %get-num-operands)
+  (define mlir::Operation::getNumOperands  %get-num-operands)
 
   ;; @brief mlir::Operation::getNumResults — return the number of results.
   ;; @param op  Operation* uptr
   ;; @return    Result count; 0 if op is null
   ;; @see       mlir/IR/Operation.h
   ;; @note      Defined in lib/Bindings/IR/Operation.cpp
-  (define operation-get-num-results   %get-num-results)
+  (define mlir::Operation::getNumResults   %get-num-results)
 
   ;; @brief mlir::Operation::getOperand — return the i-th operand as an opaque Value*.
   ;; @param op     Operation* uptr
@@ -88,7 +88,7 @@
   ;; @return       Opaque Value* as uptr; 0 if null or out of range
   ;; @see          mlir/IR/Operation.h
   ;; @note         Defined in lib/Bindings/IR/Operation.cpp
-  (define operation-get-op-operand    %get-op-operand)
+  (define mlir::Operation::getOpOperand    %get-op-operand)
 
   ;; @brief mlir::Operation::getResult — return the i-th result as an opaque Value*.
   ;; @param op     Operation* uptr
@@ -96,14 +96,14 @@
   ;; @return       Opaque Value* as uptr; 0 if null or out of range
   ;; @see          mlir/IR/Operation.h
   ;; @note         Defined in lib/Bindings/IR/Operation.cpp
-  (define operation-get-result        %get-result)
+  (define mlir::Operation::getResult        %get-result)
 
   ;; @brief mlir::Operation::getParentOp — return the enclosing operation, or null.
   ;; @param op  Operation* uptr
   ;; @return    Operation* as uptr; 0 if op is null or has no parent op
   ;; @see       mlir/IR/Operation.h
   ;; @note      Defined in lib/Bindings/IR/Operation.cpp
-  (define operation-get-parent-op     %get-parent-op)
+  (define mlir::Operation::getParentOp     %get-parent-op)
 
   ;; @brief mlir_ir_op_operand_get_value — return the i-th operand Value* of an op.
   ;; @param op     Operation* uptr
@@ -111,7 +111,7 @@
   ;; @return       Opaque Value* as uptr; 0 if null or out of range
   ;; @see          mlir/IR/Operation.h
   ;; @note         Defined in lib/Bindings/IR/Operation.cpp
-  (define op-operand-get-value        %op-operand-get-value)
+  (define mlir::OpOperand::get        %mlir::OpOperand::get)
 
   ;; @brief mlir_ir_op_result_get_value — return the i-th result Value* of an op.
   ;; @param op     Operation* uptr
@@ -119,14 +119,14 @@
   ;; @return       Opaque Value* as uptr; 0 if null or out of range
   ;; @see          mlir/IR/Operation.h
   ;; @note         Defined in lib/Bindings/IR/Operation.cpp
-  (define op-result-get-value         %op-result-get-value)
+  (define mlir::OpResult::getOwner         %mlir::OpResult::getOwner)
 
   ;; @brief mlir::Operation::getLoc — return the source location attached to this op.
   ;; @param op  Operation* uptr
   ;; @return    Opaque Location* as uptr; 0 if op is null
   ;; @see       mlir/IR/Operation.h
   ;; @note      Defined in lib/Bindings/IR/Operation.cpp
-  (define operation-get-loc           %get-loc)
+  (define mlir::Operation::getLoc           %get-loc)
 
   ;; @brief mlir::Operation::walk — walk all nested ops, calling callback for each.
   ;; @param op        Operation* uptr (root of walk)
@@ -134,7 +134,7 @@
   ;; @return          void
   ;; @see             mlir/IR/Operation.h
   ;; @note            Defined in lib/Bindings/IR/Operation.cpp; callback is GC-rooted internally
-  (define operation-walk              %walk)
+  (define mlir::Operation::walk              %walk)
 
   ;; @brief mlir::Operation::setOperand — replace the i-th operand with a new value.
   ;; @param op     Operation* uptr
@@ -143,14 +143,14 @@
   ;; @return       void
   ;; @see          mlir/IR/Operation.h
   ;; @note         Defined in lib/Bindings/IR/Operation.cpp
-  (define operation-set-operand       %set-operand)
+  (define mlir::Operation::setOperand       %set-operand)
 
   ;; @brief mlir::Operation::use_empty — return #t if this op has no uses.
   ;; @param op  Operation* uptr
   ;; @return    boolean; #t = no uses, #f = has uses (or op is null)
   ;; @see       mlir/IR/Operation.h
   ;; @note      Defined in lib/Bindings/IR/Operation.cpp
-  (define (operation-use-empty? op)   (= 1 (%use-empty op)))
+  (define (mlir::Operation::use_empty? op)   (= 1 (%use-empty op)))
 
   ;; @brief mlir::Operation::getAttrOfType<StringAttr> — return a string attribute value.
   ;; @param op         Operation* uptr
@@ -158,7 +158,7 @@
   ;; @return           Attribute value string; empty string if absent or op is null
   ;; @see              mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note             Defined in lib/Bindings/IR/Operation.cpp
-  (define operation-get-string-attr   %get-string-attr)
+  (define mlir::Operation::getAttrOfType<StringAttr>   %get-string-attr)
 
   ;; @brief mlir::Operation::getAttrOfType<IntegerAttr> — return an integer attribute value.
   ;; @param op           Operation* uptr
@@ -167,7 +167,7 @@
   ;; @return             Attribute value as integer-64, or default-val
   ;; @see                mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note               Defined in lib/Bindings/IR/Operation.cpp
-  (define operation-get-integer-attr  %get-integer-attr)
+  (define mlir::Operation::getAttrOfType<IntegerAttr>  %get-integer-attr)
 
   ;; @brief mlir::Operation — return a DenseI64ArrayAttr or ArrayAttr as a Scheme list.
   ;; @param op         Operation* uptr
@@ -175,7 +175,7 @@
   ;; @return           Scheme list of integers; '() if absent, wrong type, or op is null
   ;; @see              mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note             Defined in lib/Bindings/IR/Operation.cpp; tries DenseI64ArrayAttr first
-  (define operation-get-integer-array-attr %get-integer-array-attr)
+  (define crest::Operation::getIntegerArrayAttr %get-integer-array-attr)
 
   ;; @brief mlir::Operation::setAttr — set a Float32 attribute.
   ;; @param op    Operation* uptr
@@ -255,7 +255,7 @@
   ;; @return      boolean; #t = attribute present, #f = absent or op is null
   ;; @see         mlir/IR/Operation.h
   ;; @note        Defined in lib/Bindings/IR/Operation.cpp
-  (define (operation-has-attr? op name) (= 1 (%has-attr op name)))
+  (define (mlir::Operation::hasAttr? op name) (= 1 (%has-attr op name)))
 
   ;; @brief mlir::Operation::emitError — emit a compiler error diagnostic.
   ;; @param op   Operation* uptr (may be null; falls back to logging)
@@ -294,7 +294,7 @@
   ;; @return           Attribute* as uptr; 0 if absent or op is null
   ;; @see              mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note             Defined in lib/Bindings/IR/Operation.cpp
-  (define operation-get-attr          %get-attr)
+  (define mlir::Operation::getAttr          %get-attr)
 
   ;; @brief mlir::Operation::setAttr — set an attribute from an opaque Attribute*.
   ;; @param op         Operation* uptr
@@ -303,7 +303,7 @@
   ;; @return           void
   ;; @see              mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note             Defined in lib/Bindings/IR/Operation.cpp
-  (define (operation-set-attr! op name attr) (%set-attr op name attr))
+  (define (mlir::Operation::setAttr! op name attr) (%set-attr op name attr))
 
   ;; @brief mlir::FloatAttr::getValueAsDouble — get a float attribute value.
   ;; @param op         Operation* uptr
@@ -311,7 +311,7 @@
   ;; @return           double value; NaN if absent or op is null
   ;; @see              mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note             Defined in lib/Bindings/IR/Operation.cpp
-  (define operation-get-float-attr    %get-float-attr)
+  (define mlir::Operation::getAttrOfType<FloatAttr>    %get-float-attr)
 
   ;;===--------------------------------------------------------------------===;;
   ;; operation-get-operands — bind operands by spec into a list of values.
@@ -329,21 +329,21 @@
   (define %absent (if #f #f))  ; sentinel: absent optional/variadic slot
 
   (define (operation-get-operands op . spec)
-    (define (read-op i) (op-operand-get-value op i))
+    (define (read-op i) (mlir::OpOperand::get op i))
     (let ([has-flex (loop :initially := #f
                          :for s :in spec
                          :break #t :if (memq s '(optional variadic)))])
       (if (not has-flex)
           ;; All required: verify count matches spec, then bind sequentially.
           (let ([n-spec (length spec)]
-                [n-ops  (operation-get-num-operands op)])
+                [n-ops  (mlir::Operation::getNumOperands op)])
             (unless (= n-spec n-ops)
               (error 'operation-get-operands
                      "operand count mismatch: spec expects" n-spec "but op has" n-ops))
             (loop :for i :from 0 :below n-spec
                   :collect (read-op i)))
           ;; Has optional or variadic: use operandSegmentSizes attribute.
-          (let ([attr (operation-get-attr op "operandSegmentSizes")])
+          (let ([attr (mlir::Operation::getAttr op "operandSegmentSizes")])
             (unless (and attr (not (zero? attr)))
               (error 'operation-get-operands
                      "op must have operandSegmentSizes for optional/variadic operands"))

@@ -18,12 +18,12 @@
   (export populate-min-patterns)
   (import (except (rnrs (6)) =)
           (rename (only (mlir ir operation)
-                            operation-get-context
-                            operation-get-result)
-                      (operation-get-context mlir-operation-get-context)
-                      (operation-get-result mlir-operation-get-result))
+                            mlir::Operation::getContext
+                            mlir::Operation::getResult)
+                      (mlir::Operation::getContext mlir-mlir::Operation::getContext)
+                      (mlir::Operation::getResult mlir-mlir::Operation::getResult))
           (rename (mlir ir value)
-            (get-type          mlir-value-get-type))
+            (get-type          mlir-mlir::Value::getType))
           (mlir support array-ref)
           (only (mlir core builder) mlir-replace-op mlir-set-insertion-point-before with-rewrite-builder)
           (mlir dialects builtin)
@@ -43,9 +43,9 @@
         %output = onnx.Min (%lhs %rhs)
     :then-let
         ([%ctx        (mlir-get-hipsr-context-arg op)]
-         [!out-type   (mlir-value-get-type %output)]
-         [!out-device (mlir-ranked-tensor-type-with-encoding !out-type (make-hipsr-device-space-attr (mlir-type-get-context !out-type)))]
-         [!shape-type (mlir-shape.shape-type (mlir-operation-get-context op))])
+         [!out-type   (mlir-mlir::Value::getType %output)]
+         [!out-device (mlir-ranked-tensor-type-with-encoding !out-type (make-hipsr-device-space-attr (mlir-mlir::Type::getContext !out-type)))]
+         [!shape-type (mlir-shape.shape-type (mlir-mlir::Operation::getContext op))])
     :rewrite %output :with
         (%placeholder = hipsr.placeholder (%ctx %lhs %rhs !out-device)
                         (^bb0 ((%ls : !shape-type) (%rs : !shape-type))
@@ -59,7 +59,7 @@
   ;;===--------------------------------------------------------------------===;;
 
   (define (make-binary-min! rewriter loc-op ctx lhs rhs out-type)
-    (let ([!shape-type (mlir-shape.shape-type (mlir-operation-get-context loc-op))])
+    (let ([!shape-type (mlir-shape.shape-type (mlir-mlir::Operation::getContext loc-op))])
       (mlir-set-insertion-point-before rewriter loc-op)
       (with-rewrite-builder (rewriter loc-op)
         (with-mlir-ops
@@ -78,9 +78,9 @@
          #t]
         [(> n 2)
          (let* ([ctx      (mlir-get-hipsr-context-arg op)]
-                [!base    (mlir-value-get-type (mlir-operation-get-result op 0))]
+                [!base    (mlir-mlir::Value::getType (mlir-mlir::Operation::getResult op 0))]
                 [out-type (mlir-ranked-tensor-type-with-encoding !base
-                            (make-hipsr-device-space-attr (mlir-type-get-context !base)))])
+                            (make-hipsr-device-space-attr (mlir-mlir::Type::getContext !base)))])
            (let loop ([i 2]
                       [acc (make-binary-min! rewriter op ctx
                              (array-ref-at operands-ref 0)

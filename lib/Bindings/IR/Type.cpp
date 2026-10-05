@@ -32,8 +32,7 @@ uint64_t mlir_ir_type_get_context(uint64_t type_ptr) {
 namespace crest {
 
 void registerIRTypeBindings() {
-  Sregister_symbol("mlir_ir_type_get_context",
-                   (void*)::mlir_ir_type_get_context);
+  Sregister_symbol("mlir::Type::getContext", (void*)::mlir_ir_type_get_context);
 }
 
 } // namespace crest

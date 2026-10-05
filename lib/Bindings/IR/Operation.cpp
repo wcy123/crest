@@ -435,67 +435,67 @@ uint64_t mlir_ir_operation_get_region(uint64_t op_ptr, int region_idx) {
 namespace crest {
 
 void registerIROperationBindings() {
-  Sregister_symbol("mlir_ir_operation_get_name",
+  Sregister_symbol("mlir::Operation::getName",
                    (void*)::mlir_ir_operation_get_name);
-  Sregister_symbol("mlir_ir_operation_get_context",
+  Sregister_symbol("mlir::Operation::getContext",
                    (void*)::mlir_ir_operation_get_context);
-  Sregister_symbol("mlir_ir_operation_get_num_operands",
+  Sregister_symbol("mlir::Operation::getNumOperands",
                    (void*)::mlir_ir_operation_get_num_operands);
-  Sregister_symbol("mlir_ir_operation_get_num_results",
+  Sregister_symbol("mlir::Operation::getNumResults",
                    (void*)::mlir_ir_operation_get_num_results);
-  Sregister_symbol("mlir_ir_operation_get_op_operand",
+  Sregister_symbol("mlir::Operation::getOpOperand",
                    (void*)::mlir_ir_operation_get_op_operand);
-  Sregister_symbol("mlir_ir_operation_get_result",
+  Sregister_symbol("mlir::Operation::getResult",
                    (void*)::mlir_ir_operation_get_result);
-  Sregister_symbol("mlir_ir_operation_get_parent_op",
+  Sregister_symbol("mlir::Operation::getParentOp",
                    (void*)::mlir_ir_operation_get_parent_op);
-  Sregister_symbol("mlir_ir_op_operand_get_value",
+  Sregister_symbol("mlir::OpOperand::get",
                    (void*)::mlir_ir_op_operand_get_value);
-  Sregister_symbol("mlir_ir_op_result_get_value",
+  Sregister_symbol("mlir::OpResult::getOwner",
                    (void*)::mlir_ir_op_result_get_value);
-  Sregister_symbol("mlir_ir_operation_get_loc",
+  Sregister_symbol("mlir::Operation::getLoc",
                    (void*)::mlir_ir_operation_get_loc);
-  Sregister_symbol("mlir_ir_operation_walk", (void*)::mlir_ir_operation_walk);
-  Sregister_symbol("mlir_ir_operation_set_operand",
+  Sregister_symbol("mlir::Operation::walk", (void*)::mlir_ir_operation_walk);
+  Sregister_symbol("mlir::Operation::setOperand",
                    (void*)::mlir_ir_operation_set_operand);
-  Sregister_symbol("mlir_ir_operation_use_empty",
+  Sregister_symbol("mlir::Operation::use_empty",
                    (void*)::mlir_ir_operation_use_empty);
-  Sregister_symbol("mlir_ir_operation_get_string_attr",
+  Sregister_symbol("mlir::Operation::getAttrOfType<StringAttr>",
                    (void*)::mlir_ir_operation_get_string_attr);
-  Sregister_symbol("mlir_ir_operation_get_integer_attr",
+  Sregister_symbol("mlir::Operation::getAttrOfType<IntegerAttr>",
                    (void*)::mlir_ir_operation_get_integer_attr);
-  Sregister_symbol("mlir_ir_operation_get_integer_array_attr",
+  Sregister_symbol("crest::Operation::getIntegerArrayAttr",
                    (void*)::mlir_ir_operation_get_integer_array_attr);
-  Sregister_symbol("mlir_ir_operation_set_f32_attr",
+  Sregister_symbol("crest::Operation::setF32Attr",
                    (void*)::mlir_ir_operation_set_f32_attr);
-  Sregister_symbol("mlir_ir_operation_set_i64_attr",
+  Sregister_symbol("crest::Operation::setI64Attr",
                    (void*)::mlir_ir_operation_set_i64_attr);
-  Sregister_symbol("mlir_ir_operation_set_unit_attr",
+  Sregister_symbol("crest::Operation::setUnitAttr",
                    (void*)::mlir_ir_operation_set_unit_attr);
-  Sregister_symbol("mlir_ir_operation_set_index_attr",
+  Sregister_symbol("crest::Operation::setIndexAttr",
                    (void*)::mlir_ir_operation_set_index_attr);
-  Sregister_symbol("mlir_ir_operation_set_dense_i64_array",
+  Sregister_symbol("crest::Operation::setDenseI64Array",
                    (void*)::mlir_ir_operation_set_dense_i64_array);
-  Sregister_symbol("mlir_ir_operation_set_i64_array_attr",
+  Sregister_symbol("crest::Operation::setI64ArrayAttr",
                    (void*)::mlir_ir_operation_set_i64_array_attr);
-  Sregister_symbol("mlir_ir_operation_set_dense_i32_array",
+  Sregister_symbol("crest::Operation::setDenseI32Array",
                    (void*)::mlir_ir_operation_set_dense_i32_array);
-  Sregister_symbol("mlir_ir_operation_copy_attr",
+  Sregister_symbol("crest::Operation::copyAttr",
                    (void*)::mlir_ir_operation_copy_attr);
-  Sregister_symbol("mlir_ir_operation_has_attr",
+  Sregister_symbol("mlir::Operation::hasAttr",
                    (void*)::mlir_ir_operation_has_attr);
-  Sregister_symbol("mlir_ir_operation_emit_error",
+  Sregister_symbol("mlir::Operation::emitError",
                    (void*)::mlir_ir_operation_emit_error);
-  Sregister_symbol("mlir_ir_operation_emit_warning",
+  Sregister_symbol("mlir::Operation::emitWarning",
                    (void*)::mlir_ir_operation_emit_warning);
-  Sregister_symbol("mlir_ir_operation_emit_remark",
+  Sregister_symbol("mlir::Operation::emitRemark",
                    (void*)::mlir_ir_operation_emit_remark);
-  Sregister_symbol("mlir_ir_operation_erase", (void*)::mlir_ir_operation_erase);
-  Sregister_symbol("mlir_ir_operation_get_region",
+  Sregister_symbol("mlir::Operation::erase", (void*)::mlir_ir_operation_erase);
+  Sregister_symbol("mlir::Operation::getRegion",
                    (void*)::mlir_ir_operation_get_region);
-  Sregister_symbol("mlir_ir_operation_get_attr",
+  Sregister_symbol("mlir::Operation::getAttr",
                    (void*)::mlir_ir_operation_get_attr);
-  Sregister_symbol("mlir_ir_operation_set_attr",
+  Sregister_symbol("mlir::Operation::setAttr",
                    (void*)::mlir_ir_operation_set_attr);
   Sregister_symbol("mlir_ir_operation_get_float_attr",
                    (void*)::mlir_ir_operation_get_float_attr);

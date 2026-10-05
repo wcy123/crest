@@ -20,7 +20,7 @@
 (library (mlir dialects builtin)
   (export
     ;; Context extraction
-    mlir-type-get-context
+    mlir-mlir::Type::getContext
     ;; Type constructors (ctx optional — defaults to current-mlir-context)
     mlir-get-index-type
     mlir-get-i64-type
@@ -40,7 +40,7 @@
           (mlir dialects builtin ffi))
 
   ;; Get the MLIRContext* from any Type* (types carry their context).
-  (define mlir-type-get-context %type-get-context)
+  (define mlir-mlir::Type::getContext %mlir::Type::getContext)
 
   ;; Private FFI bindings — always require an explicit ctx.
   (define %mlir-get-index-type %get-index-type)

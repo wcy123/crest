@@ -13,7 +13,7 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir ir op-result ffi)
-  (export %get-result-number)
+  (export %mlir::OpResult::getResultNumber)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::OpResult::getResultNumber — return the result index within the defining op.
@@ -22,7 +22,7 @@
   ;; @see          mlir/IR/Value.h
   ;; @note         Defined in lib/Bindings/IR/OpResult.cpp; also registered as
   ;;               mlir_ir_value_get_result_number for backward compatibility
-  (define %get-result-number
+  (define %mlir::OpResult::getResultNumber
     (foreign-procedure "mlir_ir_op_result_get_result_number" (uptr) uptr))
 
 ) ;; end library (mlir ir op-result ffi)

@@ -209,33 +209,33 @@ int mlir_ir_builtin_types_integer_type_is_unsigned(uint64_t type_ptr) {
 namespace crest {
 
 void registerIRBuiltinTypesBindings() {
-  Sregister_symbol("mlir_ir_builtin_types_index_type_get",
+  Sregister_symbol("mlir::IndexType::get",
                    (void*)::mlir_ir_builtin_types_index_type_get);
-  Sregister_symbol("mlir_ir_builtin_types_integer_type_get_i64",
+  Sregister_symbol("mlir::IntegerType::get<i64>",
                    (void*)::mlir_ir_builtin_types_integer_type_get_i64);
-  Sregister_symbol("mlir_ir_builtin_types_integer_type_get_i1",
+  Sregister_symbol("mlir::IntegerType::get<i1>",
                    (void*)::mlir_ir_builtin_types_integer_type_get_i1);
-  Sregister_symbol("mlir_ir_builtin_types_ranked_tensor_type_isa",
+  Sregister_symbol("mlir::isa<RankedTensorType>",
                    (void*)::mlir_ir_builtin_types_ranked_tensor_type_isa);
-  Sregister_symbol("mlir_ir_builtin_types_ranked_tensor_type_get_rank",
+  Sregister_symbol("mlir::RankedTensorType::getRank",
                    (void*)::mlir_ir_builtin_types_ranked_tensor_type_get_rank);
   Sregister_symbol(
-      "mlir_ir_builtin_types_ranked_tensor_type_get_element_type",
+      "mlir::RankedTensorType::getElementType",
       (void*)::mlir_ir_builtin_types_ranked_tensor_type_get_element_type);
-  Sregister_symbol("mlir_ir_builtin_types_ranked_tensor_type_get_shape",
+  Sregister_symbol("mlir::RankedTensorType::getShape",
                    (void*)::mlir_ir_builtin_types_ranked_tensor_type_get_shape);
   Sregister_symbol(
-      "mlir_ir_builtin_types_ranked_tensor_type_get_encoding",
+      "mlir::RankedTensorType::getEncoding",
       (void*)::mlir_ir_builtin_types_ranked_tensor_type_get_encoding);
   Sregister_symbol(
-      "mlir_ir_builtin_types_ranked_tensor_type_clone_with_encoding",
+      "crest::RankedTensorType::cloneWithEncoding",
       (void*)::mlir_ir_builtin_types_ranked_tensor_type_clone_with_encoding);
   // ── Type query functions (moved from BuiltinAttributes.cpp) ─────────────
-  Sregister_symbol("mlir_ir_builtin_types_shaped_type_get_element_type",
+  Sregister_symbol("mlir::ShapedType::getElementType",
                    (void*)::mlir_ir_builtin_types_shaped_type_get_element_type);
-  Sregister_symbol("mlir_ir_builtin_types_integer_type_get_width",
+  Sregister_symbol("mlir::IntegerType::getWidth",
                    (void*)::mlir_ir_builtin_types_integer_type_get_width);
-  Sregister_symbol("mlir_ir_builtin_types_integer_type_is_unsigned",
+  Sregister_symbol("mlir::IntegerType::isUnsigned",
                    (void*)::mlir_ir_builtin_types_integer_type_is_unsigned);
   // ── Old names (backward compat) ──────────────────────────────────────────
   Sregister_symbol("mlir_ir_builtin_attributes_shaped_type_get_element_type",

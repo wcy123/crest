@@ -14,16 +14,16 @@
 
 (library (mlir ir rewriter-base ffi)
   (export
-    %rewriter-base-create
-    %rewriter-base-create-with-regions
-    %rewriter-base-set-insertion-point          ;; canonical: mlir::RewriterBase::setInsertionPoint(op)
-    %rewriter-base-set-insertion-point-before   ;; backward-compat alias
-    %rewriter-base-set-insertion-point-to-end
-    %rewriter-base-create-block
-    %rewriter-base-replace-op
-    %rewriter-base-erase-op
-    %rewriter-base-clone-with-types
-    %rewriter-base-create-from-state)
+    %mlir::RewriterBase::create
+    %mlir::RewriterBase::create-with-regions
+    %mlir::RewriterBase::setInsertionPoint          ;; canonical: mlir::RewriterBase::setInsertionPoint(op)
+    %mlir::RewriterBase::setInsertionPoint-before   ;; backward-compat alias
+    %mlir::RewriterBase::setInsertionPoint-to-end
+    %mlir::RewriterBase::createBlock
+    %mlir::RewriterBase::replaceOp
+    %mlir::RewriterBase::eraseOp
+    %crest::RewriterBase::cloneWithTypes
+    %mlir::RewriterBase::create<OperationState>)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::RewriterBase::create — create an op via OperationState, setting insertion point before loc-op.
@@ -35,7 +35,7 @@
   ;; @return              Operation* uptr of the created op, or 0 on bad input
   ;; @see                 mlir/IR/PatternMatch.h
   ;; @note                Defined in lib/Bindings/IR/RewriterBase.cpp
-  (define %rewriter-base-create
+  (define %mlir::RewriterBase::create
     (foreign-procedure "mlir_ir_rewriter_base_create"
                        (uptr uptr string scheme-object scheme-object) uptr))
 
@@ -49,7 +49,7 @@
   ;; @return              Operation* uptr of the created op, or 0 on bad input
   ;; @see                 mlir/IR/PatternMatch.h
   ;; @note                Defined in lib/Bindings/IR/RewriterBase.cpp
-  (define %rewriter-base-create-with-regions
+  (define %mlir::RewriterBase::create-with-regions
     (foreign-procedure "mlir_ir_rewriter_base_create_with_regions"
                        (uptr uptr string scheme-object scheme-object int) uptr))
 
@@ -59,13 +59,13 @@
   ;; @return          void
   ;; @see             mlir/IR/PatternMatch.h, mlir/IR/Builders.h
   ;; @note            Defined in lib/Bindings/IR/RewriterBase.cpp
-  (define %rewriter-base-set-insertion-point
+  (define %mlir::RewriterBase::setInsertionPoint
     (foreign-procedure "mlir_ir_rewriter_base_set_insertion_point"
                        (uptr uptr) void))
 
-  ;; @brief Backward-compat alias for %rewriter-base-set-insertion-point.
-  (define %rewriter-base-set-insertion-point-before
-    %rewriter-base-set-insertion-point)
+  ;; @brief Backward-compat alias for %mlir::RewriterBase::setInsertionPoint.
+  (define %mlir::RewriterBase::setInsertionPoint-before
+    %mlir::RewriterBase::setInsertionPoint)
 
   ;; @brief mlir::RewriterBase::setInsertionPointToEnd(block) — move the rewriter's insertion point to the end of block.
   ;; @param rewriter  RewriterBase* uptr
@@ -73,7 +73,7 @@
   ;; @return          void
   ;; @see             mlir/IR/PatternMatch.h
   ;; @note            Defined in lib/Bindings/IR/RewriterBase.cpp
-  (define %rewriter-base-set-insertion-point-to-end
+  (define %mlir::RewriterBase::setInsertionPoint-to-end
     (foreign-procedure "mlir_ir_rewriter_base_set_insertion_point_to_end"
                        (uptr uptr) void))
 
@@ -84,7 +84,7 @@
   ;; @return               Block* uptr of the newly created block, or 0 on bad input
   ;; @see                  mlir/IR/PatternMatch.h
   ;; @note                 Defined in lib/Bindings/IR/RewriterBase.cpp; sets insertion point to end of new block
-  (define %rewriter-base-create-block
+  (define %mlir::RewriterBase::createBlock
     (foreign-procedure "mlir_ir_rewriter_base_create_block"
                        (uptr uptr scheme-object) uptr))
 
@@ -95,7 +95,7 @@
   ;; @return           1 on success, 0 if rewriter is null
   ;; @see              mlir/IR/PatternMatch.h
   ;; @note             Defined in lib/Bindings/IR/RewriterBase.cpp
-  (define %rewriter-base-replace-op
+  (define %mlir::RewriterBase::replaceOp
     (foreign-procedure "mlir_ir_rewriter_base_replace_op"
                        (uptr uptr uptr) int))
 
@@ -105,7 +105,7 @@
   ;; @return          1 on success, 0 if rewriter is null
   ;; @see             mlir/IR/PatternMatch.h
   ;; @note            Defined in lib/Bindings/IR/RewriterBase.cpp
-  (define %rewriter-base-erase-op
+  (define %mlir::RewriterBase::eraseOp
     (foreign-procedure "mlir_ir_rewriter_base_erase_op"
                        (uptr uptr) int))
 
@@ -117,7 +117,7 @@
   ;; @return              Operation* uptr of the cloned op, or 0 on bad input
   ;; @see                 mlir/IR/PatternMatch.h
   ;; @note                Defined in lib/Bindings/IR/RewriterBase.cpp; uses op location for the new OperationState
-  (define %rewriter-base-clone-with-types
+  (define %crest::RewriterBase::cloneWithTypes
     (foreign-procedure "mlir_ir_rewriter_base_clone_with_types"
                        (uptr uptr scheme-object scheme-object) uptr))
 
@@ -127,7 +127,7 @@
   ;; @return            Operation* uptr of the created op, or 0 on bad input
   ;; @see               mlir/IR/PatternMatch.h, mlir/IR/OperationSupport.h
   ;; @note              Defined in lib/Bindings/IR/RewriterBase.cpp
-  (define %rewriter-base-create-from-state
+  (define %mlir::RewriterBase::create<OperationState>
     (foreign-procedure "mlir_ir_rewriter_base_create_from_state" (uptr uptr) uptr))
 
 ) ;; end library (mlir ir rewriter-base ffi)

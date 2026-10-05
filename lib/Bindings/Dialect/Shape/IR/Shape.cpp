@@ -58,11 +58,11 @@ uint64_t mlir_dialect_shape_ir_witness_type_get(uint64_t ctx_ptr) {
 namespace crest {
 
 void registerDialectShapeBindings() {
-  Sregister_symbol("mlir_dialect_shape_ir_shape_type_get",
+  Sregister_symbol("mlir::shape::ShapeType::get",
                    (void*)::mlir_dialect_shape_ir_shape_type_get);
-  Sregister_symbol("mlir_dialect_shape_ir_size_type_get",
+  Sregister_symbol("mlir::shape::SizeType::get",
                    (void*)::mlir_dialect_shape_ir_size_type_get);
-  Sregister_symbol("mlir_dialect_shape_ir_witness_type_get",
+  Sregister_symbol("mlir::shape::WitnessType::get",
                    (void*)::mlir_dialect_shape_ir_witness_type_get);
 }
 

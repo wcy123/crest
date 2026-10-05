@@ -17,12 +17,12 @@
 
 (library (mlir support logging)
   (export
-    mlir-log-trace
-    mlir-log-debug
-    mlir-log-info
-    mlir-log-warning
-    mlir-log-error
-    mlir-log-fatal)
+    crest::logging::trace
+    crest::logging::debug
+    crest::logging::info
+    crest::logging::warning
+    crest::logging::error
+    crest::logging::fatal)
   (import (rnrs) (mlir support logging ffi))
 
   ;; @brief Emit a TRACE-level log message (most verbose; off by default).
@@ -30,41 +30,41 @@
   ;; @return     void
   ;; @note       Log level controlled by ChezSchemeInterpreter::setLogLevel
   ;; @note       Defined in lib/Bindings/Support/Logging.cpp
-  (define mlir-log-trace   %logging-trace)
+  (define crest::logging::trace   %logging-trace)
 
   ;; @brief Emit a DEBUG-level log message via CREST's logging system.
   ;; @param msg  Message string
   ;; @return     void
   ;; @note       Log level controlled by ChezSchemeInterpreter::setLogLevel
   ;; @note       Defined in lib/Bindings/Support/Logging.cpp
-  (define mlir-log-debug   %logging-debug)
+  (define crest::logging::debug   %logging-debug)
 
   ;; @brief Emit an INFO-level log message (normal operational events).
   ;; @param msg  Message string
   ;; @return     void
   ;; @note       Log level controlled by ChezSchemeInterpreter::setLogLevel
   ;; @note       Defined in lib/Bindings/Support/Logging.cpp
-  (define mlir-log-info    %logging-info)
+  (define crest::logging::info    %logging-info)
 
   ;; @brief Emit a WARNING-level log message (unexpected but recoverable condition).
   ;; @param msg  Message string
   ;; @return     void
   ;; @note       Log level controlled by ChezSchemeInterpreter::setLogLevel
   ;; @note       Defined in lib/Bindings/Support/Logging.cpp
-  (define mlir-log-warning %logging-warning)
+  (define crest::logging::warning %logging-warning)
 
   ;; @brief Emit an ERROR-level log message (non-fatal error).
   ;; @param msg  Message string
   ;; @return     void
   ;; @note       Log level controlled by ChezSchemeInterpreter::setLogLevel
   ;; @note       Defined in lib/Bindings/Support/Logging.cpp
-  (define mlir-log-error   %logging-error)
+  (define crest::logging::error   %logging-error)
 
   ;; @brief Emit a FATAL-level log message (unrecoverable; may abort the process).
   ;; @param msg  Message string
   ;; @return     void
   ;; @note       Log level controlled by ChezSchemeInterpreter::setLogLevel
   ;; @note       Defined in lib/Bindings/Support/Logging.cpp
-  (define mlir-log-fatal   %logging-fatal)
+  (define crest::logging::fatal   %logging-fatal)
 
 ) ;; end library (mlir support logging)

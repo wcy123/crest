@@ -21,8 +21,8 @@
     %get-op-operand
     %get-result
     %get-parent-op
-    %op-operand-get-value
-    %op-result-get-value
+    %mlir::OpOperand::get
+    %mlir::OpResult::getOwner
     %get-loc
     %walk
     %set-operand
@@ -112,7 +112,7 @@
   ;; @return       Opaque Value* as uptr; 0 if op is null or index out of range
   ;; @see          mlir/IR/Operation.h
   ;; @note         Defined in lib/Bindings/IR/Operation.cpp
-  (define %op-operand-get-value
+  (define %mlir::OpOperand::get
     (foreign-procedure "mlir_ir_op_operand_get_value" (uptr int) uptr))
 
   ;; @brief mlir_ir_op_result_get_value — return the i-th result value of an op.
@@ -121,7 +121,7 @@
   ;; @return       Opaque Value* as uptr; 0 if op is null or index out of range
   ;; @see          mlir/IR/Operation.h
   ;; @note         Defined in lib/Bindings/IR/Operation.cpp
-  (define %op-result-get-value
+  (define %mlir::OpResult::getOwner
     (foreign-procedure "mlir_ir_op_result_get_value" (uptr int) uptr))
 
   ;; @brief mlir::Operation::getLoc — return the source location attached to this op.

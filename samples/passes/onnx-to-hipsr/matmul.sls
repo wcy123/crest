@@ -19,10 +19,10 @@
           onnx-matmul->hipsr)
   (import (except (rnrs (6)) =)
           (rename (only (mlir ir operation)
-                            operation-get-context)
-                      (operation-get-context mlir-operation-get-context))
+                            mlir::Operation::getContext)
+                      (mlir::Operation::getContext mlir-mlir::Operation::getContext))
           (rename (mlir ir value)
-            (get-type          mlir-value-get-type))
+            (get-type          mlir-mlir::Value::getType))
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
@@ -36,14 +36,14 @@
         %output = onnx.MatMul (%a %b)
     :then-let
         ([%ctx           (mlir-get-hipsr-context-arg op)]
-         [!output-type   (mlir-value-get-type %output)]
-         [!output-device (mlir-ranked-tensor-type-with-encoding !output-type (make-hipsr-device-space-attr (mlir-type-get-context !output-type)))]
-         [!shape-type    (mlir-shape.shape-type   (mlir-operation-get-context op))]
-         [!size-type     (mlir-shape.size-type    (mlir-operation-get-context op))]
-         [!witness-type  (mlir-shape.witness-type (mlir-operation-get-context op))]
+         [!output-type   (mlir-mlir::Value::getType %output)]
+         [!output-device (mlir-ranked-tensor-type-with-encoding !output-type (make-hipsr-device-space-attr (mlir-mlir::Type::getContext !output-type)))]
+         [!shape-type    (mlir-shape.shape-type   (mlir-mlir::Operation::getContext op))]
+         [!size-type     (mlir-shape.size-type    (mlir-mlir::Operation::getContext op))]
+         [!witness-type  (mlir-shape.witness-type (mlir-mlir::Operation::getContext op))]
          ;; Rank info from operand types (runtime)
-         [a-rank         (mlir-type-get-rank (mlir-value-get-type %a))]
-         [b-rank         (mlir-type-get-rank (mlir-value-get-type %b))]
+         [a-rank         (mlir-type-get-rank (mlir-mlir::Value::getType %a))]
+         [b-rank         (mlir-type-get-rank (mlir-mlir::Value::getType %b))]
          ;; K indices: A's last dim; B's second-to-last (or last if 1-D)
          [k-a-idx        (- a-rank 1)]
          [k-b-idx        (if (eqv? b-rank 1) (- b-rank 1) (- b-rank 2))]

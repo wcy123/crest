@@ -18,11 +18,11 @@
           (only (chezscheme) nan?)
           (rename (only (rnrs) =) (= num=))
           (rename (only (mlir ir operation)
-                            operation-get-result)
-                      (operation-get-result mlir-operation-get-result))
+                            mlir::Operation::getResult)
+                      (mlir::Operation::getResult mlir-mlir::Operation::getResult))
           (rename (mlir ir value)
-            (get-defining-op   mlir-value-get-defining-op)
-            (get-type          mlir-value-get-type))
+            (get-defining-op   mlir-mlir::Value::getDefiningOp)
+            (get-type          mlir-mlir::Value::getType))
           (only (mlir core builder) mlir-build-operation)
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)
@@ -42,14 +42,14 @@
                                  (hip-can-build-init? op %sigmoid_init))
         %dq_in   = hip.dequantize_linear (%ctx %input %in_scale)
                      :where (and (hip-qdq-quantized-width?
-                                   (mlir-value-get-defining-op %dq_in) '(16))
-                                 (hip-qdq-unsigned? (mlir-value-get-defining-op %dq_in))
+                                   (mlir-mlir::Value::getDefiningOp %dq_in) '(16))
+                                 (hip-qdq-unsigned? (mlir-mlir::Value::getDefiningOp %dq_in))
                                  (hip-splat-scale? %in_scale)
                                  (hip-extractable-qdq-zeropoint?
-                                   (mlir-value-get-defining-op %dq_in)))
+                                   (mlir-mlir::Value::getDefiningOp %dq_in)))
     :then-let
-        ([!out-type (mlir-value-get-type %q)]
-         [%dq-in-op (mlir-value-get-defining-op %dq_in)]
+        ([!out-type (mlir-mlir::Value::getType %q)]
+         [%dq-in-op (mlir-mlir::Value::getDefiningOp %dq_in)]
          [in-scale  (hip-extract-splat-scale %in_scale)]
          [out-scale (hip-extract-splat-scale %out_scale)]
          [in-zp     (hip-extract-qdq-zeropoint-i64 %dq-in-op 0)]
@@ -60,6 +60,6 @@
                                    (list %ctx %input %init)
                                    (list !out-type))])
                      (set-qdq-in-out-attrs! new-op in-scale in-zp out-scale out-zp)
-                     (mlir-operation-get-result new-op 0))))
+                     (mlir-mlir::Operation::getResult new-op 0))))
 
 ) ;; end library (passes hip-fusion qsigmoid)

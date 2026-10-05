@@ -36,10 +36,10 @@
   (import (rnrs)
           (only (chezscheme) foreign-entry? foreign-procedure)
           (rename (only (mlir ir operation)
-                            operation-get-name
-                            operation-get-parent-op)
-                      (operation-get-name mlir-operation-name)
-                      (operation-get-parent-op mlir-operation-get-parent))
+                            mlir::Operation::getName
+                            mlir::Operation::getParentOp)
+                      (mlir::Operation::getName mlir-operation-name)
+                      (mlir::Operation::getParentOp mlir-operation-get-parent))
           (mlir dialects builtin)
           (only (mlir ir builtin-attributes ffi) %parseAttribute)
           (mlir transforms dialect-conversion)
@@ -146,7 +146,7 @@
                  (> (mlir-type-get-rank type) 0)
                  (= 0 (mlir-ranked-tensor-type-get-encoding type)))
           (mlir-ranked-tensor-type-with-encoding type
-              (make-hipsr-device-space-attr (mlir-type-get-context type)))
+              (make-hipsr-device-space-attr (mlir-mlir::Type::getContext type)))
             #f)))
     (type-converter-add-tensor-widening-materialization type-converter))
 

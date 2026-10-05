@@ -51,11 +51,11 @@
           (for (mlir ir builtin-attributes) expand)
           (for (only (mlir core builder) mlir-build-operation with-block-builder
                      mlir-op-get-region mlir-new-block mlir-block-get-argument) expand)
-          (for (rename (only (mlir ir operation) operation-get-context
-                                       operation-get-result
+          (for (rename (only (mlir ir operation) mlir::Operation::getContext
+                                       mlir::Operation::getResult
                                        operation-set-attr!)
-                (operation-get-context    mlir-operation-get-context)
-                (operation-get-result     mlir-operation-get-result)
+                (mlir::Operation::getContext    mlir-mlir::Operation::getContext)
+                (mlir::Operation::getResult     mlir-mlir::Operation::getResult)
                 (operation-set-attr!      mlir-operation-set-attribute!)) expand))
 
   ;;===--------------------------------------------------------------------===;;
@@ -225,7 +225,7 @@
             (with-syntax ([new-op new-op-stx] [n name-str] [v val-stx]
                           [type-q type-quoted-stx])
               #'(mlir-operation-set-attribute! new-op n
-                   (%make-attr-by-type (mlir-operation-get-context new-op) type-q v)))))
+                   (%make-attr-by-type (mlir-mlir::Operation::getContext new-op) type-q v)))))
         (define (make-direct-setter name-str val-stx)
           (lambda (new-op-stx)
             (with-syntax ([new-op new-op-stx] [n name-str] [v val-stx])
@@ -251,7 +251,7 @@
       ;;                  new-op))
       ;;
       ;; Then appends one binding per result variable:
-      ;;   — non-empty result-types: (%var . (mlir-operation-get-result %op-tmp-N i))
+      ;;   — non-empty result-types: (%var . (mlir-mlir::Operation::getResult %op-tmp-N i))
       ;;   — empty result-types:     (%var . %op-tmp-N)  (var bound to op itself)
       ;;
       ;; Parameters:
@@ -288,7 +288,7 @@
                             (reverse acc)
                             (loop (cdr vars) (+ i 1)
                                   (cons (cons (car vars)
-                                              #`(mlir-operation-get-result tmp-var #,i))
+                                              #`(mlir-mlir::Operation::getResult tmp-var #,i))
                                         acc)))))))))
 
       ;; Returns a closure (lambda (new-op-stx) → fill-stmt-syntax) for one region.

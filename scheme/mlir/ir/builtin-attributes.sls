@@ -45,9 +45,9 @@
     mlir::DenseElementsAttr::getSplatValue<APFloat>
     mlir::DenseElementsAttr::getSplatValue<APInt>
     mlir::DenseI32ArrayAttr::asArrayRef->list
-    operation-get-attr
+    mlir::Operation::getAttr
     operation-set-attr!
-    operation-get-float-attr
+    mlir::Operation::getAttrOfType<FloatAttr>
     shaped-type-element-type
     integer-type-width
     integer-type-unsigned?)
@@ -220,7 +220,7 @@
   ;; @return       mlir::Attribute opaque pointer uptr; 0 if attribute not found
   ;; @see          mlir/IR/Operation.h
   ;; @note         Direct alias for %get-attr (from mlir ir operation ffi)
-  (define operation-get-attr                %get-attr)
+  (define mlir::Operation::getAttr                %get-attr)
 
   ;; @brief mlir::Operation::setAttr — set a named attribute on an operation.
   ;; @param op     mlir::Operation* uptr
@@ -237,7 +237,7 @@
   ;; @return       double: the float attribute's value, or NaN if not found
   ;; @see          mlir/IR/Operation.h
   ;; @note         Direct alias for %get-float-attr (from mlir ir operation ffi)
-  (define operation-get-float-attr          %get-float-attr)
+  (define mlir::Operation::getAttrOfType<FloatAttr>          %get-float-attr)
 
   ;; @brief mlir::ShapedType::getElementType — return the element type of a ShapedType.
   ;; @param type   mlir::Type opaque pointer uptr (0 returns 0)

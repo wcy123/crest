@@ -18,7 +18,7 @@
 (library (mlir ir value)
   (export
     get-defining-op
-    block-argument?
+    mlir::isa<BlockArgument>?
     num-uses
     get-type)
 
@@ -36,9 +36,9 @@
   ;; @param value  Value opaque pointer uptr
   ;; @return       #t if BlockArgument, #f otherwise
   ;; @see          mlir/IR/Value.h
-  ;; @note         Wraps %block-argument?; returns boolean instead of 1/0
-  (define (block-argument? val)
-    (= 1 (%block-argument? val)))
+  ;; @note         Wraps %mlir::isa<BlockArgument>?; returns boolean instead of 1/0
+  (define (mlir::isa<BlockArgument>? val)
+    (= 1 (%mlir::isa<BlockArgument>? val)))
 
   ;; @brief mlir::Value::use_begin/use_end — count the number of uses of this value.
   ;; @param value  Value opaque pointer uptr

@@ -38,7 +38,7 @@ uint64_t mlir_ir_op_result_get_result_number(uint64_t value) {
 namespace crest {
 
 void registerIROpResultBindings() {
-  Sregister_symbol("mlir_ir_op_result_get_result_number",
+  Sregister_symbol("mlir::OpResult::getResultNumber",
                    (void*)::mlir_ir_op_result_get_result_number);
 }
 

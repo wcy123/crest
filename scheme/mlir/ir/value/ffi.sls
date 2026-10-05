@@ -16,7 +16,7 @@
 (library (mlir ir value ffi)
   (export
     %get-defining-op
-    %block-argument?
+    %mlir::isa<BlockArgument>?
     %num-uses
     %get-type)
 
@@ -36,7 +36,7 @@
   ;; @return       1 if BlockArgument, 0 otherwise
   ;; @see          mlir/IR/Value.h
   ;; @note         Defined in lib/Bindings/IR/Value.cpp
-  (define %block-argument?
+  (define %mlir::isa<BlockArgument>?
     (foreign-procedure "mlir_ir_value_is_block_argument" (uptr) int))
 
   ;; @brief mlir::Value::use_begin/use_end — count the number of uses of this value.

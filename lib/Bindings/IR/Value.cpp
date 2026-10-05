@@ -65,12 +65,12 @@ uint64_t mlir_ir_value_get_type(uint64_t value_ptr) {
 namespace crest {
 
 void registerIRValueBindings() {
-  Sregister_symbol("mlir_ir_value_get_defining_op",
+  Sregister_symbol("mlir::Value::getDefiningOp",
                    (void*)::mlir_ir_value_get_defining_op);
-  Sregister_symbol("mlir_ir_value_is_block_argument",
+  Sregister_symbol("mlir::isa<BlockArgument>",
                    (void*)::mlir_ir_value_is_block_argument);
-  Sregister_symbol("mlir_ir_value_num_uses", (void*)::mlir_ir_value_num_uses);
-  Sregister_symbol("mlir_ir_value_get_type", (void*)::mlir_ir_value_get_type);
+  Sregister_symbol("mlir::Value::getUses", (void*)::mlir_ir_value_num_uses);
+  Sregister_symbol("mlir::Value::getType", (void*)::mlir_ir_value_get_type);
 }
 
 } // namespace crest

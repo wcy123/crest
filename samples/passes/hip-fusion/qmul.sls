@@ -18,11 +18,11 @@
           (only (chezscheme) nan?)
           (rename (only (rnrs) =) (= num=))
           (rename (only (mlir ir operation)
-                            operation-get-result)
-                      (operation-get-result mlir-operation-get-result))
+                            mlir::Operation::getResult)
+                      (mlir::Operation::getResult mlir-mlir::Operation::getResult))
           (rename (mlir ir value)
-            (get-defining-op   mlir-value-get-defining-op)
-            (get-type          mlir-value-get-type))
+            (get-defining-op   mlir-mlir::Value::getDefiningOp)
+            (get-type          mlir-mlir::Value::getType))
           (only (mlir core builder) mlir-build-operation)
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)
@@ -41,15 +41,15 @@
         %dq_lhs = hip.dequantize_linear (%ctx %lhs %lhs_scale)
                  :where (and (hip-splat-scale? %lhs_scale)
                              (hip-extractable-qdq-zeropoint?
-                               (mlir-value-get-defining-op %dq_lhs)))
+                               (mlir-mlir::Value::getDefiningOp %dq_lhs)))
         %dq_rhs = hip.dequantize_linear (%ctx %rhs %rhs_scale)
                  :where (and (hip-splat-scale? %rhs_scale)
                              (hip-extractable-qdq-zeropoint?
-                               (mlir-value-get-defining-op %dq_rhs)))
+                               (mlir-mlir::Value::getDefiningOp %dq_rhs)))
     :then-let
-        ([!out-type  (mlir-value-get-type %q)]
-         [%dq-lhs-op (mlir-value-get-defining-op %dq_lhs)]
-         [%dq-rhs-op (mlir-value-get-defining-op %dq_rhs)]
+        ([!out-type  (mlir-mlir::Value::getType %q)]
+         [%dq-lhs-op (mlir-mlir::Value::getDefiningOp %dq_lhs)]
+         [%dq-rhs-op (mlir-mlir::Value::getDefiningOp %dq_rhs)]
          [lhs-scale  (hip-extract-splat-scale %lhs_scale)]
          [rhs-scale  (hip-extract-splat-scale %rhs_scale)]
          [out-scale  (hip-extract-splat-scale %out_scale)]
@@ -64,6 +64,6 @@
                      (set-qdq-scale-zp-attrs! new-op lhs-scale lhs-zp
                                                      rhs-scale rhs-zp
                                                      out-scale out-zp)
-                     (mlir-operation-get-result new-op 0))))
+                     (mlir-mlir::Operation::getResult new-op 0))))
 
 ) ;; end library (passes hip-fusion qmul)

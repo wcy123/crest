@@ -13,7 +13,7 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir ir op-result)
-  (export get-result-number)
+  (export mlir::OpResult::getResultNumber)
   (import (rnrs) (mlir ir op-result ffi))
 
   ;; @brief mlir::OpResult::getResultNumber — return the result index within the defining op.
@@ -21,6 +21,6 @@
   ;; @return       0-based result index; 0 if value is null or not an OpResult
   ;; @see          mlir/IR/Value.h
   ;; @note         Defined in lib/Bindings/IR/OpResult.cpp
-  (define get-result-number %get-result-number)
+  (define mlir::OpResult::getResultNumber %mlir::OpResult::getResultNumber)
 
 ) ;; end library (mlir ir op-result)

@@ -14,7 +14,7 @@
 
 (library (mlir dialects builtin ffi)
   (export
-    %type-get-context
+    %mlir::Type::getContext
     %get-index-type
     %get-i64-type
     %get-i1-type
@@ -28,7 +28,7 @@
     %type-is-unsigned)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
-  (define %type-get-context
+  (define %mlir::Type::getContext
     (foreign-procedure "mlir_ir_type_get_context" (uptr) uptr))
   (define %get-index-type
     (foreign-procedure "mlir_ir_builtin_types_index_type_get" (uptr) uptr))

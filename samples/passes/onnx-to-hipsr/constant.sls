@@ -23,19 +23,19 @@
   (import (except (rnrs (6)) =)
           (rename (only (mlir ir operation)
                        operation-emit-error!
-                       operation-get-attr
-                       operation-get-context
-                       operation-get-integer-attr
-                       operation-get-string-attr
+                       mlir::Operation::getAttr
+                       mlir::Operation::getContext
+                       mlir::Operation::getAttrOfType<IntegerAttr>
+                       mlir::Operation::getAttrOfType<StringAttr>
                        operation-has-attr?)
                  (operation-emit-error!   mlir-emit-error!)
-                 (operation-get-attr      mlir-operation-get-attribute)
-                 (operation-get-context   mlir-operation-get-context)
-                 (operation-get-integer-attr mlir-operation-get-integer-attr)
-                 (operation-get-string-attr  mlir-operation-get-string-attr)
+                 (mlir::Operation::getAttr      mlir-operation-get-attribute)
+                 (mlir::Operation::getContext   mlir-mlir::Operation::getContext)
+                 (mlir::Operation::getAttrOfType<IntegerAttr> mlir-mlir::Operation::getAttrOfType<IntegerAttr>)
+                 (mlir::Operation::getAttrOfType<StringAttr>  mlir-mlir::Operation::getAttrOfType<StringAttr>)
                  (operation-has-attr?     mlir-operation-has-attr?))
           (rename (mlir ir value)
-            (get-type          mlir-value-get-type))
+            (get-type          mlir-mlir::Value::getType))
           (only (mlir ir builtin-attributes ffi) %DenseResourceElementsAttr:get)
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)
@@ -57,9 +57,9 @@
       [(mlir-operation-has-attr? op "value")
        (mlir-operation-get-attribute op "value")]
       [(mlir-operation-has-attr? op "location")
-       (let* ([location (mlir-operation-get-string-attr op "location")]
-              [offset   (mlir-operation-get-integer-attr op "offset" 0)]
-              [size     (mlir-operation-get-integer-attr op "size" 0)]
+       (let* ([location (mlir-mlir::Operation::getAttrOfType<StringAttr> op "location")]
+              [offset   (mlir-mlir::Operation::getAttrOfType<IntegerAttr> op "offset" 0)]
+              [size     (mlir-mlir::Operation::getAttrOfType<IntegerAttr> op "size" 0)]
               [r (if (string=? location ort-mem-addr-tag)
                      (%DenseResourceElementsAttr:get ctx
                        (list !result-type
@@ -81,10 +81,10 @@
   (define-conversion-pattern (onnx-constant-scalar->arith op operands-ref rewriter type-converter)
     :if-match
         %output = onnx.Constant ()
-            :where (zero? (mlir-type-get-rank (mlir-value-get-type %output)))
+            :where (zero? (mlir-type-get-rank (mlir-mlir::Value::getType %output)))
     :then-let
-        ([ctx         (mlir-operation-get-context op)]
-         [!out-type   (mlir-value-get-type %output)]
+        ([ctx         (mlir-mlir::Operation::getContext op)]
+         [!out-type   (mlir-mlir::Value::getType %output)]
          [$value-attr (constant-value-attr op ctx !out-type)])
     :rewrite %output :with
         (%result = arith.constant () ("value" = $value-attr) -> !out-type))
@@ -93,10 +93,10 @@
   (define-conversion-pattern (onnx-constant-tensor->hipsr op operands-ref rewriter type-converter)
     :if-match
         %output = onnx.Constant ()
-            :where (positive? (mlir-type-get-rank (mlir-value-get-type %output)))
+            :where (positive? (mlir-type-get-rank (mlir-mlir::Value::getType %output)))
     :then-let
-        ([ctx         (mlir-operation-get-context op)]
-         [!out-type   (mlir-value-get-type %output)]
+        ([ctx         (mlir-mlir::Operation::getContext op)]
+         [!out-type   (mlir-mlir::Value::getType %output)]
          [!out-dev    (mlir-ranked-tensor-type-with-encoding !out-type (make-hipsr-device-space-attr ctx))]
          [$value-attr (constant-value-attr op ctx !out-dev)])
     :rewrite %output :with

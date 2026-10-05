@@ -17,15 +17,15 @@
 (library (mlir ir rewriter-base)
   (export
     ;; Clean-name re-exports from ffi
-    rewriter-base-create
-    rewriter-base-create-with-regions
-    rewriter-base-set-insertion-point          ;; canonical: mlir::RewriterBase::setInsertionPoint(op)
-    rewriter-base-set-insertion-point-before   ;; backward-compat alias
-    rewriter-base-set-insertion-point-to-end
-    rewriter-base-create-block
-    rewriter-base-replace-op
-    rewriter-base-erase-op
-    rewriter-base-clone-with-types
+    mlir::RewriterBase::create
+    mlir::RewriterBase::create-with-regions
+    mlir::RewriterBase::setInsertionPoint          ;; canonical: mlir::RewriterBase::setInsertionPoint(op)
+    mlir::RewriterBase::setInsertionPoint-before   ;; backward-compat alias
+    mlir::RewriterBase::setInsertionPoint-to-end
+    mlir::RewriterBase::createBlock
+    mlir::RewriterBase::replaceOp
+    mlir::RewriterBase::eraseOp
+    crest::RewriterBase::cloneWithTypes
     ;; Dynamic builder context
     current-rewriter
     current-block-builder
@@ -44,9 +44,9 @@
           (mlir ir rewriter-base ffi)
           (mlir ir op-builder ffi)
           (only (mlir ir mlir-context) current-mlir-context)
-          (only (mlir ir operation) operation-get-context))
+          (only (mlir ir operation) mlir::Operation::getContext))
 
-  (define mlir-operation-get-context operation-get-context)
+  (define mlir-mlir::Operation::getContext mlir::Operation::getContext)
 
   ;; @brief mlir::RewriterBase::create — create an op via OperationState, setting insertion point before loc-op.
   ;; @param rewriter      RewriterBase* uptr (ConversionPatternRewriter or IRRewriter)
@@ -57,7 +57,7 @@
   ;; @return              Operation* uptr of the created op, or 0 on bad input
   ;; @see                 mlir/IR/PatternMatch.h
   ;; @note                Defined in lib/Bindings/IR/RewriterBase.cpp
-  (define rewriter-base-create                   %rewriter-base-create)
+  (define mlir::RewriterBase::create                   %mlir::RewriterBase::create)
 
   ;; @brief mlir::RewriterBase::create — create an op with pre-allocated empty regions, setting insertion point before loc-op.
   ;; @param rewriter      RewriterBase* uptr
@@ -69,7 +69,7 @@
   ;; @return              Operation* uptr of the created op, or 0 on bad input
   ;; @see                 mlir/IR/PatternMatch.h
   ;; @note                Defined in lib/Bindings/IR/RewriterBase.cpp
-  (define rewriter-base-create-with-regions      %rewriter-base-create-with-regions)
+  (define mlir::RewriterBase::create-with-regions      %mlir::RewriterBase::create-with-regions)
 
   ;; @brief mlir::RewriterBase::setInsertionPoint(op) — move the rewriter's insertion point to before op.
   ;; @param rewriter  RewriterBase* uptr
@@ -77,10 +77,10 @@
   ;; @return          void
   ;; @see             mlir/IR/PatternMatch.h, mlir/IR/Builders.h
   ;; @note            Defined in lib/Bindings/IR/RewriterBase.cpp
-  (define rewriter-base-set-insertion-point       %rewriter-base-set-insertion-point)
+  (define mlir::RewriterBase::setInsertionPoint       %mlir::RewriterBase::setInsertionPoint)
 
-  ;; @brief Backward-compat alias for rewriter-base-set-insertion-point.
-  (define rewriter-base-set-insertion-point-before %rewriter-base-set-insertion-point)
+  ;; @brief Backward-compat alias for mlir::RewriterBase::setInsertionPoint.
+  (define mlir::RewriterBase::setInsertionPoint-before %mlir::RewriterBase::setInsertionPoint)
 
   ;; @brief mlir::RewriterBase::setInsertionPointToEnd(block) — move the rewriter's insertion point to the end of block.
   ;; @param rewriter  RewriterBase* uptr
@@ -88,7 +88,7 @@
   ;; @return          void
   ;; @see             mlir/IR/PatternMatch.h
   ;; @note            Defined in lib/Bindings/IR/RewriterBase.cpp
-  (define rewriter-base-set-insertion-point-to-end %rewriter-base-set-insertion-point-to-end)
+  (define mlir::RewriterBase::setInsertionPoint-to-end %mlir::RewriterBase::setInsertionPoint-to-end)
 
   ;; @brief mlir::RewriterBase::createBlock(region) — create a new block in region, add typed arguments, set insertion point to end.
   ;; @param rewriter       RewriterBase* uptr
@@ -97,7 +97,7 @@
   ;; @return               Block* uptr of the newly created block, or 0 on bad input
   ;; @see                  mlir/IR/PatternMatch.h
   ;; @note                 Defined in lib/Bindings/IR/RewriterBase.cpp; sets insertion point to end of new block
-  (define rewriter-base-create-block             %rewriter-base-create-block)
+  (define mlir::RewriterBase::createBlock             %mlir::RewriterBase::createBlock)
 
   ;; @brief mlir::RewriterBase::replaceOp — replace old-op with a single new Value.
   ;; @param rewriter   RewriterBase* uptr
@@ -106,7 +106,7 @@
   ;; @return           1 on success, 0 if rewriter is null
   ;; @see              mlir/IR/PatternMatch.h
   ;; @note             Defined in lib/Bindings/IR/RewriterBase.cpp
-  (define rewriter-base-replace-op               %rewriter-base-replace-op)
+  (define mlir::RewriterBase::replaceOp               %mlir::RewriterBase::replaceOp)
 
   ;; @brief mlir::RewriterBase::eraseOp — erase op from its parent block (op must have no uses).
   ;; @param rewriter  RewriterBase* uptr
@@ -114,7 +114,7 @@
   ;; @return          1 on success, 0 if rewriter is null
   ;; @see             mlir/IR/PatternMatch.h
   ;; @note            Defined in lib/Bindings/IR/RewriterBase.cpp
-  (define rewriter-base-erase-op                 %rewriter-base-erase-op)
+  (define mlir::RewriterBase::eraseOp                 %mlir::RewriterBase::eraseOp)
 
   ;; @brief Clone op with new operands and result types, copying all attributes, then create via the rewriter.
   ;; @param rewriter      RewriterBase* uptr
@@ -124,7 +124,7 @@
   ;; @return              Operation* uptr of the cloned op, or 0 on bad input
   ;; @see                 mlir/IR/PatternMatch.h
   ;; @note                Defined in lib/Bindings/IR/RewriterBase.cpp; uses op location for the new OperationState
-  (define rewriter-base-clone-with-types         %rewriter-base-clone-with-types)
+  (define crest::RewriterBase::cloneWithTypes         %crest::RewriterBase::cloneWithTypes)
 
   ;; Dynamic builder context
   ;; @brief Dynamic parameter holding the active RewriterBase* uptr, or #f when none is installed.
@@ -154,8 +154,8 @@
         [(current-rewriter) =>
          (lambda (rw)
            (if (zero? nregions)
-               (%rewriter-base-create rw loc name operands types)
-               (%rewriter-base-create-with-regions rw loc name operands types nregions)))]
+               (%mlir::RewriterBase::create rw loc name operands types)
+               (%mlir::RewriterBase::create-with-regions rw loc name operands types nregions)))]
         [(current-block-builder) =>
          (lambda (b)
            (if (zero? nregions)
@@ -182,7 +182,7 @@
   ;; @param loc   Operation* uptr — location source; also used to derive current-mlir-context
   ;; @return      Value of the last body expression
   ;; @note        Sets current-rewriter to rw and clears current-block-builder to #f.
-  ;;              current-mlir-context is derived from loc via mlir-operation-get-context.
+  ;;              current-mlir-context is derived from loc via mlir-mlir::Operation::getContext.
   ;;              Nested with-rewrite-builder or with-current-block-builder forms shadow these bindings.
   (define-syntax with-rewrite-builder
     (syntax-rules ()
@@ -190,7 +190,7 @@
        (parameterize ([current-rewriter      rw]
                       [current-block-builder #f]
                       [current-loc           loc]
-                      [current-mlir-context  (mlir-operation-get-context loc)])
+                      [current-mlir-context  (mlir-mlir::Operation::getContext loc)])
          body ...)]))
 
   ;; @brief Install an existing OpBuilder* as the active block builder for the dynamic extent of body.
@@ -205,7 +205,7 @@
        (parameterize ([current-block-builder builder]
                       [current-rewriter      #f]
                       [current-loc           loc]
-                      [current-mlir-context  (mlir-operation-get-context loc)])
+                      [current-mlir-context  (mlir-mlir::Operation::getContext loc)])
          body ...)]))
 
   ;; @brief RAII macro — heap-allocate an OpBuilder at the end of block, run body, then destroy the builder.

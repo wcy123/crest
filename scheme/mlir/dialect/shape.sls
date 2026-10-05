@@ -29,7 +29,7 @@
   ;; @return     WitnessType opaque pointer uptr
   ;; @see        mlir/Dialect/Shape/IR/Shape.h
   ;; @note       Re-exported from (mlir dialect shape ir) for backward compatibility.
-  (export shape-type-get size-type-get witness-type-get)
+  (export mlir::shape::ShapeType::get mlir::shape::SizeType::get mlir::shape::WitnessType::get)
   (import (rnrs) (mlir dialect shape ir))
 
 ) ;; end library (mlir dialect shape)

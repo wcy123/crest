@@ -13,7 +13,7 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir ir type ffi)
-  (export %type-get-context)
+  (export %mlir::Type::getContext)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::Type::getContext() — return the MLIRContext that owns this type.
@@ -21,7 +21,7 @@
   ;; @return      MLIRContext opaque pointer uptr, or 0 if type is null
   ;; @see         mlir/IR/Types.h
   ;; @note        Defined in lib/Bindings/IR/Type.cpp
-  (define %type-get-context
+  (define %mlir::Type::getContext
     (foreign-procedure "mlir_ir_type_get_context" (uptr) uptr))
 
 ) ;; end library (mlir ir type ffi)
