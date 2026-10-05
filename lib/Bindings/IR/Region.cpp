@@ -61,9 +61,9 @@ uint64_t mlir_ir_region_get_first_block(uint64_t region_ptr) {
 namespace crest {
 
 void registerIRRegionBindings() {
-  Sregister_symbol("mlir_ir_region_append_new_block",
+  Sregister_symbol("mlir::Region::push_back<Block>",
                    (void*)::mlir_ir_region_append_new_block);
-  Sregister_symbol("mlir_ir_region_get_first_block",
+  Sregister_symbol("mlir::Region::front",
                    (void*)::mlir_ir_region_get_first_block);
 }
 

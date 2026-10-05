@@ -49,9 +49,9 @@ uint64_t mlir_ir_block_get_num_arguments(uint64_t block_ptr) {
 namespace crest {
 
 void registerIRBlockBindings() {
-  Sregister_symbol("mlir_ir_block_get_argument_by_index",
+  Sregister_symbol("mlir::Block::getArgument",
                    (void*)::mlir_ir_block_get_argument_by_index);
-  Sregister_symbol("mlir_ir_block_get_num_arguments",
+  Sregister_symbol("mlir::Block::getNumArguments",
                    (void*)::mlir_ir_block_get_num_arguments);
 }
 
