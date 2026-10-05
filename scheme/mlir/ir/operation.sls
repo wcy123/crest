@@ -288,30 +288,30 @@
   ;; @note      Defined in lib/Bindings/IR/Operation.cpp; op pointer is invalid after this call
   (define operation-erase!            %erase)
 
-  ;; @brief mlir_ir_builtin_attributes_operation_get_attr — get an attribute as opaque Attribute*.
+  ;; @brief mlir::Operation::getAttr — get an attribute as opaque Attribute*.
   ;; @param op         Operation* uptr
   ;; @param attr-name  Attribute name (string)
   ;; @return           Attribute* as uptr; 0 if absent or op is null
   ;; @see              mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
-  ;; @note             Defined in lib/Bindings/IR/BuiltinAttributes.cpp
-  (define operation-get-attr          %operation-get-attr)
+  ;; @note             Defined in lib/Bindings/IR/Operation.cpp
+  (define operation-get-attr          %get-attr)
 
-  ;; @brief mlir_ir_builtin_attributes_operation_set_attr — set an attribute from an opaque Attribute*.
+  ;; @brief mlir::Operation::setAttr — set an attribute from an opaque Attribute*.
   ;; @param op         Operation* uptr
   ;; @param attr-name  Attribute name (string)
   ;; @param attr       Attribute* as uptr
   ;; @return           void
   ;; @see              mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
-  ;; @note             Defined in lib/Bindings/IR/BuiltinAttributes.cpp
-  (define (operation-set-attr! op name attr) (%operation-set-attr op name attr))
+  ;; @note             Defined in lib/Bindings/IR/Operation.cpp
+  (define (operation-set-attr! op name attr) (%set-attr op name attr))
 
-  ;; @brief mlir_ir_builtin_attributes_operation_get_float_attr — get a float attribute value.
+  ;; @brief mlir::FloatAttr::getValueAsDouble — get a float attribute value.
   ;; @param op         Operation* uptr
   ;; @param attr-name  Attribute name (string)
-  ;; @return           double value; 0.0 if absent or op is null
+  ;; @return           double value; NaN if absent or op is null
   ;; @see              mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
-  ;; @note             Defined in lib/Bindings/IR/BuiltinAttributes.cpp
-  (define operation-get-float-attr    %operation-get-float-attr)
+  ;; @note             Defined in lib/Bindings/IR/Operation.cpp
+  (define operation-get-float-attr    %get-float-attr)
 
   ;;===--------------------------------------------------------------------===;;
   ;; operation-get-operands — bind operands by spec into a list of values.
