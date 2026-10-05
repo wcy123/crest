@@ -69,8 +69,8 @@
   ;; These were in (mlir core operation) and are now defined here directly.
   (define mlir-operation-num-dps-inits
     (foreign-procedure "mlir_interfaces_dps_get_num_dps_inits" (uptr) int))
-  (define mlir-operation-get-dps-init-value
-    (foreign-procedure "mlir_interfaces_dps_get_dps_init_value" (uptr int) uptr))
+  (define mlir-operation-get-dps-init-operand
+    (foreign-procedure "mlir_interfaces_dps_get_dps_init_operand" (uptr int) uptr))
 
   ;; Populate return-conversion patterns in Scheme.
   ;; onnx.Return → func.return, forwarding the (already type-converted) operands.
@@ -114,7 +114,7 @@
                      (num-inits  (mlir-operation-num-dps-inits def-op)))
                 (if (>= result-idx num-inits)
                     value
-                    (mlir-operation-get-dps-init-value def-op result-idx)))))))
+                    (mlir-operation-get-dps-init-operand def-op result-idx)))))))
 
   (define (rewire-placeholder-inputs! module-op)
     (mlir-operation-walk module-op

@@ -17,6 +17,6 @@
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   (define %populate-func-type-conversion-pattern
-    (foreign-procedure "mlir_populate_func_type_conversion_pattern" (uptr uptr) void))
+    (foreign-procedure "mlir_transforms_dialect_conversion_populate_func_type_conversion" (uptr uptr) void))
 
 ) ;; end library (mlir dialects func ffi)
