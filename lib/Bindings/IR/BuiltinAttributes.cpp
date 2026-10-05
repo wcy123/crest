@@ -329,7 +329,6 @@ ptr mlir_ir_builtin_attributes_dense_i32_array_attr_to_list(uint64_t attr_ptr) {
   return result;
 }
 
-
 // Kept for backward compat — duplicate of dense_elements_attr_is_splat.
 int mlir_attr_splat_int_value_compat(uint64_t attr_ptr, int64_t absent_val) {
   if (!attr_ptr) {
