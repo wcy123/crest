@@ -10,7 +10,10 @@
 ;;
 ;; % prefix = raw C binding. Prefer (mlir dialect tensor ir) for normal use.
 ;;
-;; Mirrors mlir/Dialect/Tensor/IR/Tensor.h.
+;; CREST-specific tensor utilities:
+;; - crest::RankedTensorType::cloneWithEncoding — from mlir/IR/BuiltinTypes.h
+;; - mlir::tensor::CastOp::areCastCompatible   — from mlir/Interfaces/CastInterfaces.h
+;; - mlir::tensor::CastOp::create               — from mlir/Dialect/Tensor/IR/Tensor.h
 ;;
 ;;===----------------------------------------------------------------------===;;
 
