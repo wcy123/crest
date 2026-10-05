@@ -27,18 +27,37 @@
     mlir-build-operation
     ;; RAII macros
     with-raii
+    with-op-builder
     with-rewrite-builder
     with-current-block-builder
     with-block-builder
     with-op-location
-    ;; Low-level rewriter ops
+    ;; Canonical low-level rewriter ops
+    mlir-ir-rewriter-base-create
+    mlir-ir-rewriter-base-create-with-regions
+    mlir-ir-op-builder-create
+    mlir-ir-op-builder-create-with-regions
+    mlir-ir-rewriter-base-set-insertion-point-before
+    mlir-ir-rewriter-base-set-insertion-point-to-end
+    mlir-ir-rewriter-base-create-block
+    mlir-ir-rewriter-base-replace-op
+    mlir-ir-rewriter-base-erase-op
+    mlir-ir-rewriter-base-clone-with-types
+    mlir-ir-op-builder-at-block-end
+    mlir-ir-op-builder-destroy
+    ;; Block / region primitives (canonical names)
+    mlir-ir-operation-get-region
+    mlir-ir-block-get-argument-by-index
+    mlir-ir-region-append-new-block
+    ;; Pattern application (canonical name)
+    mlir-transforms-greedy-pattern-rewrite-driver-apply
+    ;; Legacy public aliases (backward compatibility)
     mlir-build-op
     mlir-replace-op
     mlir-erase-op
     mlir-op-erase
     mlir-set-insertion-point-before
     mlir-set-insertion-point-to-block-end
-    ;; Block / region primitives
     mlir-op-get-region
     mlir-region-create-block
     mlir-block-get-argument
@@ -46,9 +65,7 @@
     mlir-builder-at-block-end
     mlir-destroy-builder
     mlir-create-op
-    ;; Pattern application
     mlir-apply-patterns-greedy
-    ;; Generic op rebuild
     mlir-op-clone-with-types
 )
 
@@ -59,117 +76,111 @@
           (only (mlir core operation) mlir-operation-get-context))
 
   ;;===--------------------------------------------------------------------===;;
-  ;; Low-level rewriter FFI
+  ;; Canonical low-level rewriter FFI
   ;;===--------------------------------------------------------------------===;;
 
-  ;; Replace old-op's results with new-val via the rewriter.
-  ;; rewriter: RewriterBase* uptr, old-op: Operation* uptr, new-val: Value* uptr
-  ;; Returns 1 on success, 0 on null input.
-  (define mlir-replace-op
-    (foreign-procedure "mlir_replace_op" (uptr uptr uptr) int))
+  ;; mlir::RewriterBase::create — set insertion point before loc_op and create.
+  ;; rewriter: RewriterBase* uptr, loc-op: Operation* uptr
+  ;; name: string, operands: Scheme list of Value* uptrs
+  ;; result-types: Scheme list of Type* uptrs
+  ;; Returns: Operation* uptr
+  (define mlir-ir-rewriter-base-create
+    (foreign-procedure "mlir_ir_rewriter_base_create"
+                       (uptr uptr string scheme-object scheme-object) uptr))
 
-  ;; Erase old-op via the rewriter (notifies listeners).
-  ;; rewriter: RewriterBase* uptr, op: Operation* uptr
-  ;; Returns 1 on success, 0 on null input.
-  (define mlir-erase-op
-    (foreign-procedure "mlir_erase_op" (uptr uptr) int))
+  ;; Like mlir-ir-rewriter-base-create but pre-allocates num-regions empty regions.
+  (define mlir-ir-rewriter-base-create-with-regions
+    (foreign-procedure "mlir_ir_rewriter_base_create_with_regions"
+                       (uptr uptr string scheme-object scheme-object int) uptr))
+
+  ;; mlir::OpBuilder::create — create via a plain OpBuilder (not a RewriterBase).
+  ;; builder: OpBuilder* uptr, loc-op: Operation* uptr
+  ;; name: string, operands: Scheme list, result-types: Scheme list
+  ;; Returns: Operation* uptr
+  (define mlir-ir-op-builder-create
+    (foreign-procedure "mlir_ir_op_builder_create"
+                       (uptr uptr string scheme-object scheme-object) uptr))
+
+  ;; Like mlir-ir-op-builder-create but pre-allocates num-regions empty regions.
+  (define mlir-ir-op-builder-create-with-regions
+    (foreign-procedure "mlir_ir_op_builder_create_with_regions"
+                       (uptr uptr string scheme-object scheme-object int) uptr))
+
+  ;; mlir::RewriterBase::setInsertionPoint(op)
+  (define mlir-ir-rewriter-base-set-insertion-point-before
+    (foreign-procedure "mlir_ir_rewriter_base_set_insertion_point_before"
+                       (uptr uptr) void))
+
+  ;; mlir::RewriterBase::setInsertionPointToEnd(block)
+  (define mlir-ir-rewriter-base-set-insertion-point-to-end
+    (foreign-procedure "mlir_ir_rewriter_base_set_insertion_point_to_end"
+                       (uptr uptr) void))
+
+  ;; mlir::RewriterBase::createBlock(region) + add typed block arguments.
+  ;; rewriter: RewriterBase* uptr, region: Region* uptr
+  ;; arg-types: Scheme list of Type* uptrs
+  ;; Returns: Block* uptr
+  (define mlir-ir-rewriter-base-create-block
+    (foreign-procedure "mlir_ir_rewriter_base_create_block"
+                       (uptr uptr scheme-object) uptr))
+
+  ;; mlir::RewriterBase::replaceOp
+  (define mlir-ir-rewriter-base-replace-op
+    (foreign-procedure "mlir_ir_rewriter_base_replace_op" (uptr uptr uptr) int))
+
+  ;; mlir::RewriterBase::eraseOp
+  (define mlir-ir-rewriter-base-erase-op
+    (foreign-procedure "mlir_ir_rewriter_base_erase_op" (uptr uptr) int))
+
+  ;; Clone an op with new operands/types via RewriterBase, copying attributes.
+  (define mlir-ir-rewriter-base-clone-with-types
+    (foreign-procedure "mlir_ir_rewriter_base_clone_with_types"
+                       (uptr uptr scheme-object scheme-object) uptr))
+
+  ;; Heap-allocate an OpBuilder positioned at the end of a block.
+  ;; block: Block* uptr
+  ;; Returns: OpBuilder* uptr — must be destroyed with mlir-ir-op-builder-destroy
+  (define mlir-ir-op-builder-at-block-end
+    (foreign-procedure "mlir_ir_op_builder_at_block_end" (uptr) uptr))
+
+  ;; Destroy an OpBuilder created by mlir-ir-op-builder-at-block-end.
+  (define mlir-ir-op-builder-destroy
+    (foreign-procedure "mlir_ir_op_builder_destroy" (uptr) void))
+
+  ;;===--------------------------------------------------------------------===;;
+  ;; Block / region FFI (canonical names)
+  ;;===--------------------------------------------------------------------===;;
+
+  ;; Get the i-th region of an operation.
+  ;; op: Operation* uptr, i: 0-based region index
+  ;; Returns: Region* uptr
+  (define mlir-ir-operation-get-region
+    (foreign-procedure "mlir_ir_operation_get_region" (uptr int) uptr))
+
+  ;; Get the idx-th argument of a Block directly by index.
+  ;; block: Block* uptr, idx: 0-based argument index
+  ;; Returns: Value* opaque ptr uptr
+  (define mlir-ir-block-get-argument-by-index
+    (foreign-procedure "mlir_ir_block_get_argument_by_index" (uptr int) uptr))
+
+  ;; Append a new Block to a region with given argument types.
+  ;; region: Region* uptr, arg-types: Scheme list of Type* uptrs
+  ;; Returns: Block* uptr
+  (define mlir-ir-region-append-new-block
+    (foreign-procedure "mlir_ir_region_append_new_block" (uptr scheme-object) uptr))
 
   ;; Erase an op directly without a rewriter (for post-pass cleanup).
   ;; op: Operation* uptr — must have no uses
   (define mlir-op-erase
     (foreign-procedure "mlir_ir_operation_erase" (uptr) void))
 
-  ;; Set the rewriter's insertion point to immediately before op.
-  ;; rewriter: RewriterBase* uptr, op: Operation* uptr
-  (define mlir-set-insertion-point-before
-    (foreign-procedure "mlir_set_insertion_point_before" (uptr uptr) void))
-
-  ;; Set the rewriter's insertion point to the end of a block.
-  ;; rewriter: RewriterBase* uptr, block: Block* uptr
-  (define mlir-set-insertion-point-to-block-end
-    (foreign-procedure "mlir_set_insertion_point_to_block_end" (uptr uptr) void))
-
   ;;===--------------------------------------------------------------------===;;
-  ;; Block / region / builder FFI
+  ;; Pattern application (canonical name)
   ;;===--------------------------------------------------------------------===;;
 
-  ;; Build an op at the rewriter's current insertion point (set to before loc-op).
-  ;; rewriter:     RewriterBase* uptr
-  ;; loc-op:       Operation* uptr — source of location and insertion point
-  ;; op-name:      string, e.g. "func.func"
-  ;; operands:     Scheme list of Value* uptrs
-  ;; result-types: Scheme list of Type* uptrs
-  ;; Returns: Operation* uptr of the newly created op
-  (define %build-op
-    (foreign-procedure "mlir_build_op"
-                       (uptr uptr string scheme-object scheme-object) uptr))
-  ;; Public alias — mirrors the C symbol name mlir_build_op.
-  (define mlir-build-op %build-op)
-
-  ;; Like %build-op but pre-allocates num-regions empty regions.
-  ;; Required for ops that verify they have exactly N regions at creation time.
-  (define %build-op-regions
-    (foreign-procedure "mlir_build_op_with_regions"
-                       (uptr uptr string scheme-object scheme-object int) uptr))
-
-  ;; Like %build-op but uses a plain OpBuilder* (from mlir-builder-at-block-end).
-  ;; builder: OpBuilder* uptr (not a RewriterBase)
-  (define %build-op-in-block
-    (foreign-procedure "mlir_build_op_in_block"
-                       (uptr uptr string scheme-object scheme-object) uptr))
-
-  ;; Like %build-op-in-block but pre-allocates num-regions empty regions.
-  (define %build-op-in-block-regions
-    (foreign-procedure "mlir_build_op_in_block_with_regions"
-                       (uptr uptr string scheme-object scheme-object int) uptr))
-
-  ;; Get the i-th region of an operation.
-  ;; op: Operation* uptr, i: 0-based region index
-  ;; Returns: Region* uptr
-  (define mlir-op-get-region
-    (foreign-procedure "mlir_op_get_region" (uptr int) uptr))
-
-  ;; Create a block inside a region with given argument types; sets IP to its end.
-  ;; rewriter:   RewriterBase* uptr
-  ;; region:     Region* uptr
-  ;; arg-types:  Scheme list of Type* uptrs for the new block's arguments
-  ;; Returns: Block* uptr
-  (define mlir-region-create-block
-    (foreign-procedure "mlir_region_create_block" (uptr uptr scheme-object) uptr))
-
-  ;; Get the i-th block argument as a Value* uptr.
-  ;; block: Block* uptr, i: 0-based argument index
-  (define mlir-block-get-argument
-    (foreign-procedure "mlir_block_get_argument" (uptr int) uptr))
-
-  ;; Create a new Block in a region with the given argument types.
-  ;; region:    Region* uptr
-  ;; arg-types: Scheme list of Type* uptrs
-  ;; Returns: Block* uptr
-  (define mlir-new-block
-    (foreign-procedure "mlir_new_block" (uptr scheme-object) uptr))
-
-  ;; Create a heap-allocated OpBuilder positioned at the end of a block.
-  ;; block: Block* uptr
-  ;; Returns: OpBuilder* uptr — must be destroyed with mlir-destroy-builder
-  (define mlir-builder-at-block-end
-    (foreign-procedure "mlir_builder_at_block_end" (uptr) uptr))
-
-  ;; Destroy an OpBuilder created by mlir-builder-at-block-end.
-  ;; builder: OpBuilder* uptr
-  (define mlir-destroy-builder
-    (foreign-procedure "mlir_destroy_builder" (uptr) void))
-
-  ;; Low-level op creation via an explicit OpBuilder* (not a rewriter).
-  ;; builder: OpBuilder* uptr, loc: Operation* uptr (source of location)
-  ;; name: string, ops: Scheme list of Value* uptrs
-  ;; types: Scheme list of Type* uptrs, num-regions: int (default 0)
-  ;; Returns: Operation* uptr
-  (define %mlir-create-op
-    (foreign-procedure "mlir_create_op"
-                       (uptr uptr string scheme-object scheme-object int) uptr))
-  (define (mlir-create-op builder loc name ops types . rest)
-    (%mlir-create-op builder loc name ops types (if (pair? rest) (car rest) 0)))
+  (define mlir-transforms-greedy-pattern-rewrite-driver-apply
+    (foreign-procedure "mlir_transforms_greedy_pattern_rewrite_driver_apply"
+                       (uptr uptr) boolean))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Generic RAII
@@ -184,6 +195,19 @@
          (dynamic-wind void
            (lambda () body ...)
            (lambda () (dtor var))))]))
+
+  ;; RAII wrapper for a heap-allocated OpBuilder positioned at the end of a block.
+  ;; Calls mlir-ir-op-builder-at-block-end on entry,
+  ;; mlir-ir-op-builder-destroy on exit.
+  ;; builder is bound to the OpBuilder* uptr for the duration of body.
+  (define-syntax with-op-builder
+    (syntax-rules ()
+      [(_ (builder block) body ...)
+       (let ([builder (mlir-ir-op-builder-at-block-end block)])
+         (dynamic-wind
+           (lambda () #f)
+           (lambda () body ...)
+           (lambda () (mlir-ir-op-builder-destroy builder))))]))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Dynamic builder context
@@ -214,13 +238,13 @@
         [(current-rewriter) =>
          (lambda (rw)
            (if (zero? nregions)
-               (%build-op rw loc name operands types)
-               (%build-op-regions rw loc name operands types nregions)))]
+               (mlir-ir-rewriter-base-create rw loc name operands types)
+               (mlir-ir-rewriter-base-create-with-regions rw loc name operands types nregions)))]
         [(current-block-builder) =>
          (lambda (b)
            (if (zero? nregions)
-               (%build-op-in-block b loc name operands types)
-               (%build-op-in-block-regions b loc name operands types nregions)))]
+               (mlir-ir-op-builder-create b loc name operands types)
+               (mlir-ir-op-builder-create-with-regions b loc name operands types nregions)))]
         [else (error 'mlir-build-operation "no current builder installed")])))
 
   ;; Install rw as current-rewriter and loc as current-loc for the duration of body.
@@ -254,14 +278,10 @@
   (define-syntax with-block-builder
     (syntax-rules ()
       [(_ block body ...)
-       (let ([%builder (mlir-builder-at-block-end block)])
-         (dynamic-wind
-           (lambda () #f)
-           (lambda ()
-             (parameterize ([current-block-builder %builder]
-                            [current-rewriter #f])
-               body ...))
-           (lambda () (mlir-destroy-builder %builder))))]))
+       (with-op-builder (%builder block)
+         (parameterize ([current-block-builder %builder]
+                        [current-rewriter #f])
+           body ...))]))
 
   ;; Temporarily override current-loc with loc for the duration of body.
   ;; loc: Operation* uptr used as the location/insertion-point source
@@ -270,14 +290,61 @@
       [(_ loc body ...)
        (parameterize ([current-loc loc]) body ...)]))
 
-  ;; === Pattern application ===
+  ;;===--------------------------------------------------------------------===;;
+  ;; Legacy public aliases (backward compatibility)
+  ;;===--------------------------------------------------------------------===;;
 
+  ;; Build an op via RewriterBase (sets insertion point to before loc-op).
+  ;; Kept for backward compatibility; prefer mlir-ir-rewriter-base-create.
+  (define mlir-build-op mlir-ir-rewriter-base-create)
+
+  ;; Replace old-op's results with new-val via the rewriter.
+  (define mlir-replace-op mlir-ir-rewriter-base-replace-op)
+
+  ;; Erase old-op via the rewriter.
+  (define mlir-erase-op mlir-ir-rewriter-base-erase-op)
+
+  ;; Set the rewriter's insertion point to immediately before op.
+  (define mlir-set-insertion-point-before
+    mlir-ir-rewriter-base-set-insertion-point-before)
+
+  ;; Set the rewriter's insertion point to the end of a block.
+  (define mlir-set-insertion-point-to-block-end
+    mlir-ir-rewriter-base-set-insertion-point-to-end)
+
+  ;; Get the i-th region of an operation.
+  (define mlir-op-get-region mlir-ir-operation-get-region)
+
+  ;; Create a block inside a region with given argument types; sets IP to its end.
+  (define mlir-region-create-block mlir-ir-rewriter-base-create-block)
+
+  ;; Get the i-th block argument as a Value* uptr.
+  ;; block: Block* uptr, i: 0-based argument index
+  (define mlir-block-get-argument mlir-ir-block-get-argument-by-index)
+
+  ;; Create a new Block in a region with the given argument types.
+  (define mlir-new-block mlir-ir-region-append-new-block)
+
+  ;; Create a heap-allocated OpBuilder positioned at the end of a block.
+  (define mlir-builder-at-block-end mlir-ir-op-builder-at-block-end)
+
+  ;; Destroy an OpBuilder created by mlir-builder-at-block-end.
+  (define mlir-destroy-builder mlir-ir-op-builder-destroy)
+
+  ;; Low-level op creation via an explicit OpBuilder* (not a rewriter).
+  ;; builder: OpBuilder* uptr, loc: Operation* uptr (source of location)
+  ;; name: string, ops: Scheme list of Value* uptrs
+  ;; types: Scheme list of Type* uptrs, num-regions: int (default 0)
+  ;; Returns: Operation* uptr
+  (define (mlir-create-op builder loc name ops types . rest)
+    (mlir-ir-op-builder-create-with-regions
+      builder loc name ops types (if (pair? rest) (car rest) 0)))
+
+  ;; Apply patterns greedily (legacy alias for canonical name).
   (define mlir-apply-patterns-greedy
-    (foreign-procedure "mlir_apply_patterns_greedy" (uptr uptr) boolean))
+    mlir-transforms-greedy-pattern-rewrite-driver-apply)
 
-  ;; === Generic op rebuild ===
-
-  (define mlir-op-clone-with-types
-    (foreign-procedure "mlir_op_clone_with_types" (uptr uptr scheme-object scheme-object) uptr))
+  ;; Clone an operation with new operands and result types, copying all attributes.
+  (define mlir-op-clone-with-types mlir-ir-rewriter-base-clone-with-types)
 
 ) ;; end library (mlir core builder)

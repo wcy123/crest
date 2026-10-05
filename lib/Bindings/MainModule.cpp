@@ -7,7 +7,6 @@
 // No Core/ shim layer; each header belongs to its canonical IR/, Transforms/,
 // Dialect/, or Interfaces/ sub-tree.
 
-#include "Core/Builder.h"
 #include "Dialect/Shape/Shape.h"
 #include "IR/Block.h"
 #include "IR/BuiltinAttributes.h"
@@ -35,7 +34,6 @@ extern "C" void crest_register_extra_bindings(void (*fn)()) {
 }
 
 void registerMlirForeignFunctions() {
-  registerBuilderBindings();
   registerDialectShapeBindings();
   registerInterfacesDpsBindings();
   registerIRBlockBindings();

@@ -339,6 +339,21 @@ void mlir_ir_operation_erase(uint64_t op_ptr) {
   reinterpret_cast<mlir::Operation*>(op_ptr)->erase();
 }
 
+// Get the i-th region of an operation.
+// op_ptr:      Operation* as uptr
+// region_idx:  0-based region index
+// Returns: Region* as uptr, or 0 if op is null or index out of range.
+uint64_t mlir_ir_operation_get_region(uint64_t op_ptr, int region_idx) {
+  if (!op_ptr) {
+    return 0;
+  }
+  auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
+  if (region_idx < 0 || region_idx >= (int)op->getNumRegions()) {
+    return 0;
+  }
+  return reinterpret_cast<uint64_t>(&op->getRegion(region_idx));
+}
+
 } // extern "C"
 
 namespace crest {
@@ -400,6 +415,8 @@ void registerIROperationBindings() {
   Sregister_symbol("mlir_ir_operation_emit_remark",
                    (void*)::mlir_ir_operation_emit_remark);
   Sregister_symbol("mlir_ir_operation_erase", (void*)::mlir_ir_operation_erase);
+  Sregister_symbol("mlir_ir_operation_get_region",
+                   (void*)::mlir_ir_operation_get_region);
 }
 
 } // namespace crest
