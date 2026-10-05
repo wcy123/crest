@@ -41,7 +41,7 @@
                       (operation-get-name mlir-operation-name)
                       (operation-get-parent-op mlir-operation-get-parent))
           (mlir dialects builtin)
-          (only (mlir ir builtin-attributes ffi) %parseAttributeAttribute)
+          (only (mlir ir builtin-attributes ffi) %parseAttribute)
           (mlir transforms dialect-conversion)
           (mlir dialects tensor)
           (only (crest util)
