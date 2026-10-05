@@ -15,6 +15,7 @@
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Operation.h"
+#include <cstdio>
 #include <limits>
 
 static void scheme_error(const char* who, const char* msg) {
@@ -23,8 +24,11 @@ static void scheme_error(const char* who, const char* msg) {
 }
 
 static void scheme_error_oob(const char* who, int64_t idx, int64_t size) {
-  Scall4(Stop_level_value(Sstring_to_symbol("error")), Sstring(who),
-         Sstring("index out of range"), Sfixnum(idx), Sfixnum(size));
+  char buf[128];
+  snprintf(buf, sizeof(buf), "index out of range: %lld (size %lld)",
+           (long long)idx, (long long)size);
+  Scall2(Stop_level_value(Sstring_to_symbol("error")), Sstring(who),
+         Sstring(buf));
 }
 
 extern "C" {
