@@ -19,7 +19,8 @@
     %type-converter-create
     %type-converter-destroy
     %type-converter-add-conversion
-    %type-converter-add-tensor-widening-materialization
+    %type-converter-add-source-materialization
+    %type-converter-add-target-materialization
     %type-converter-is-legal-type
     %type-converter-is-legal
     %type-converter-is-signature-legal
@@ -30,8 +31,6 @@
     %target-add-legal-op
     %target-add-dynamically-legal-op
     %target-mark-unknown-ops-dynamically-legal
-    %target-add-legal-common-ops
-    %target-add-dynamically-legal-func
     %pattern-set-create
     %pattern-set-destroy
     %apply-full-conversion
@@ -69,17 +68,35 @@
     (foreign-procedure "mlir_transforms_dialect_conversion_type_converter_add_conversion"
                        (uptr scheme-object) void))
 
-  ;; @brief Register source and target tensor-widening materializations —
-  ;;        inserts tensor.cast to bridge unrealized_conversion_cast between
-  ;;        compatible ranked tensor types (e.g. tensor<?x32xf16> →
-  ;;        tensor<?x?xf16>).
+  ;; @brief TypeConverter::addSourceMaterialization — register a Scheme callback
+  ;;        to materialize a value of the source (pre-conversion) type.
   ;; @param converter TypeConverter* uptr
+  ;; @param callback  Scheme procedure
+  ;;                  (lambda (builder-uptr result-type-uptr inputs-list loc-uptr)
+  ;;                    -> value-uptr | #f);
+  ;;                  inputs-list is a Scheme list of value uptrs;
+  ;;                  #f means not handled
   ;; @see   mlir/Transforms/DialectConversion.h
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
-  (define %type-converter-add-tensor-widening-materialization
+  (define %type-converter-add-source-materialization
     (foreign-procedure
-     "mlir_transforms_dialect_conversion_type_converter_add_tensor_widening_materialization"
-     (uptr) void))
+     "mlir_transforms_dialect_conversion_type_converter_add_source_materialization"
+     (uptr scheme-object) void))
+
+  ;; @brief TypeConverter::addTargetMaterialization — register a Scheme callback
+  ;;        to materialize a value of the target (post-conversion) type.
+  ;; @param converter TypeConverter* uptr
+  ;; @param callback  Scheme procedure
+  ;;                  (lambda (builder-uptr result-type-uptr inputs-list loc-uptr)
+  ;;                    -> value-uptr | #f);
+  ;;                  inputs-list is a Scheme list of value uptrs;
+  ;;                  #f means not handled
+  ;; @see   mlir/Transforms/DialectConversion.h
+  ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
+  (define %type-converter-add-target-materialization
+    (foreign-procedure
+     "mlir_transforms_dialect_conversion_type_converter_add_target_materialization"
+     (uptr scheme-object) void))
 
   ;; @brief TypeConverter::isLegal(Type) — test whether a single MLIR type is
   ;;        legal under this converter.
@@ -185,26 +202,6 @@
     (foreign-procedure
      "mlir_transforms_dialect_conversion_target_mark_unknown_ops_dynamically_legal"
      (uptr scheme-object) void))
-
-  ;; @brief Convenience — mark ModuleOp and arith.constant as unconditionally
-  ;;        legal.  These are present in every module and are typically not
-  ;;        subject to conversion.
-  ;; @param target ConversionTarget* uptr
-  ;; @see   mlir/Transforms/DialectConversion.h
-  ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
-  (define %target-add-legal-common-ops
-    (foreign-procedure "mlir_transforms_dialect_conversion_target_add_legal_common_ops"
-                       (uptr) void))
-
-  ;; @brief Mark func.func and func.return as dynamically legal according to
-  ;;        the TypeConverter's isSignatureLegal / isLegal predicates.
-  ;; @param target    ConversionTarget* uptr
-  ;; @param converter TypeConverter* uptr
-  ;; @see   mlir/Transforms/DialectConversion.h
-  ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
-  (define %target-add-dynamically-legal-func
-    (foreign-procedure "mlir_transforms_dialect_conversion_target_add_dynamically_legal_func"
-                       (uptr uptr) void))
 
   ;; @brief mlir::RewritePatternSet constructor — allocate a new pattern set
   ;;        bound to the given MLIRContext.

@@ -9,12 +9,10 @@
 #include "../Support/LockedSchemeObject.h"
 #include "../Support/Logging.h"
 #include "../Support/SchemeWrapper.h"
-#include "llvm/Support/raw_ostream.h"
-#include "mlir/CAPI/IR.h"
-#include "mlir/CAPI/Wrap.h"
-#include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
-#include "mlir/Dialect/Tensor/IR/Tensor.h"
+#include "mlir/IR/Builders.h"
+#include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/Location.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/IR/Value.h"
 
@@ -257,34 +255,6 @@ int mlir_transforms_dialect_conversion_type_converter_is_signature_legal(
   return converter->isSignatureLegal(func_op.getFunctionType()) ? 1 : 0;
 }
 
-// Mark ModuleOp and arith.constant legal — present in every module and
-// typically not subject to conversion.
-void mlir_transforms_dialect_conversion_target_add_legal_common_ops(
-    uint64_t target_ptr) {
-  if (!target_ptr) {
-    return;
-  }
-  auto* target = reinterpret_cast<mlir::ConversionTarget*>(target_ptr);
-  target->addLegalOp<mlir::ModuleOp>();
-  target->addLegalOp<mlir::arith::ConstantOp>();
-}
-
-// Mark func.func and func.return dynamically legal per the TypeConverter.
-void mlir_transforms_dialect_conversion_target_add_dynamically_legal_func(
-    uint64_t target_ptr, uint64_t converter_ptr) {
-  if (!target_ptr || !converter_ptr) {
-    return;
-  }
-  auto* target = reinterpret_cast<mlir::ConversionTarget*>(target_ptr);
-  auto* converter = reinterpret_cast<mlir::TypeConverter*>(converter_ptr);
-  target->addDynamicallyLegalOp<mlir::func::FuncOp>(
-      [converter](mlir::func::FuncOp op) {
-        return converter->isSignatureLegal(op.getFunctionType());
-      });
-  target->addDynamicallyLegalOp<mlir::func::ReturnOp>(
-      [converter](mlir::func::ReturnOp op) { return converter->isLegal(op); });
-}
-
 uint64_t
 mlir_transforms_dialect_conversion_pattern_set_create(uint64_t ctx_ptr) {
   if (!ctx_ptr) {
@@ -330,33 +300,84 @@ void mlir_transforms_dialect_conversion_populate_func_type_conversion(
       *patterns, *converter);
 }
 
-// Insert tensor.cast to resolve unrealized_conversion_cast between compatible
-// ranked tensor types (e.g. tensor<?x32xf16,dev> → tensor<?x?xf16,dev>).
-// Required when a conversion pattern produces a more specific type than the
-// TypeConverter declares for the result.
-void mlir_transforms_dialect_conversion_type_converter_add_tensor_widening_materialization(
-    uint64_t converter_ptr) {
+// callback: (lambda (builder-uptr result-type-uptr inputs-list loc-uptr) ->
+//            value-uptr | #f/#0); #f/0 means not handled (return nullptr).
+// inputs-list is a Scheme list of value uptrs.
+void mlir_transforms_dialect_conversion_type_converter_add_source_materialization(
+    uint64_t converter_ptr, ptr callback) {
   if (!converter_ptr) {
     return;
   }
   auto* converter = reinterpret_cast<mlir::TypeConverter*>(converter_ptr);
-  auto materialize = [](mlir::OpBuilder& builder, mlir::Type resultType,
-                        mlir::ValueRange inputs,
-                        mlir::Location loc) -> mlir::Value {
-    if (inputs.size() != 1) {
-      return nullptr;
-    }
-    auto inputType =
-        mlir::dyn_cast<mlir::RankedTensorType>(inputs[0].getType());
-    auto outType = mlir::dyn_cast<mlir::RankedTensorType>(resultType);
-    if (!inputType || !outType ||
-        !mlir::tensor::CastOp::areCastCompatible(inputType, outType)) {
-      return nullptr;
-    }
-    return mlir::tensor::CastOp::create(builder, loc, resultType, inputs[0]);
-  };
-  converter->addSourceMaterialization(materialize);
-  converter->addTargetMaterialization(materialize);
+  auto locked = std::make_shared<crest::LockedSchemeObject>(callback);
+  converter->addSourceMaterialization(
+      [locked](mlir::OpBuilder& builder, mlir::Type resultType,
+               mlir::ValueRange inputs, mlir::Location loc) -> mlir::Value {
+        ptr builder_arg = Sunsigned64(reinterpret_cast<uint64_t>(&builder));
+        ptr result_type_arg = Sunsigned64(
+            reinterpret_cast<uint64_t>(resultType.getAsOpaquePointer()));
+        ptr inputs_list = Snil;
+        for (int i = static_cast<int>(inputs.size()) - 1; i >= 0; --i) {
+          inputs_list = Scons(Sunsigned64(reinterpret_cast<uint64_t>(
+                                  inputs[i].getAsOpaquePointer())),
+                              inputs_list);
+        }
+        ptr loc_arg =
+            Sunsigned64(reinterpret_cast<uint64_t>(loc.getAsOpaquePointer()));
+        ptr args =
+            Scons(builder_arg, Scons(result_type_arg,
+                                     Scons(inputs_list, Scons(loc_arg, Snil))));
+        ptr apply_proc = Stop_level_value(Sstring_to_symbol("apply"));
+        ptr result = Scall2(apply_proc, locked->get(), args);
+        if (result == Sfalse || result == Sfixnum(0)) {
+          return nullptr;
+        }
+        uint64_t val = Sunsigned64_value(result);
+        if (!val) {
+          return nullptr;
+        }
+        return mlir::Value::getFromOpaquePointer(
+            reinterpret_cast<const void*>(val));
+      });
+}
+
+// Same as add_source_materialization but registers a target materialization.
+void mlir_transforms_dialect_conversion_type_converter_add_target_materialization(
+    uint64_t converter_ptr, ptr callback) {
+  if (!converter_ptr) {
+    return;
+  }
+  auto* converter = reinterpret_cast<mlir::TypeConverter*>(converter_ptr);
+  auto locked = std::make_shared<crest::LockedSchemeObject>(callback);
+  converter->addTargetMaterialization(
+      [locked](mlir::OpBuilder& builder, mlir::Type resultType,
+               mlir::ValueRange inputs, mlir::Location loc) -> mlir::Value {
+        ptr builder_arg = Sunsigned64(reinterpret_cast<uint64_t>(&builder));
+        ptr result_type_arg = Sunsigned64(
+            reinterpret_cast<uint64_t>(resultType.getAsOpaquePointer()));
+        ptr inputs_list = Snil;
+        for (int i = static_cast<int>(inputs.size()) - 1; i >= 0; --i) {
+          inputs_list = Scons(Sunsigned64(reinterpret_cast<uint64_t>(
+                                  inputs[i].getAsOpaquePointer())),
+                              inputs_list);
+        }
+        ptr loc_arg =
+            Sunsigned64(reinterpret_cast<uint64_t>(loc.getAsOpaquePointer()));
+        ptr args =
+            Scons(builder_arg, Scons(result_type_arg,
+                                     Scons(inputs_list, Scons(loc_arg, Snil))));
+        ptr apply_proc = Stop_level_value(Sstring_to_symbol("apply"));
+        ptr result = Scall2(apply_proc, locked->get(), args);
+        if (result == Sfalse || result == Sfixnum(0)) {
+          return nullptr;
+        }
+        uint64_t val = Sunsigned64_value(result);
+        if (!val) {
+          return nullptr;
+        }
+        return mlir::Value::getFromOpaquePointer(
+            reinterpret_cast<const void*>(val));
+      });
 }
 
 } // extern "C"
@@ -427,17 +448,15 @@ void registerTransformsDialectConversionBindings() {
       (void*)::
           mlir_transforms_dialect_conversion_populate_func_type_conversion);
   Sregister_symbol(
-      "mlir_transforms_dialect_conversion_type_converter_add_tensor_widening_"
+      "mlir_transforms_dialect_conversion_type_converter_add_source_"
       "materialization",
       (void*)::
-          mlir_transforms_dialect_conversion_type_converter_add_tensor_widening_materialization);
+          mlir_transforms_dialect_conversion_type_converter_add_source_materialization);
   Sregister_symbol(
-      "mlir_transforms_dialect_conversion_target_add_legal_common_ops",
-      (void*)::mlir_transforms_dialect_conversion_target_add_legal_common_ops);
-  Sregister_symbol(
-      "mlir_transforms_dialect_conversion_target_add_dynamically_legal_func",
+      "mlir_transforms_dialect_conversion_type_converter_add_target_"
+      "materialization",
       (void*)::
-          mlir_transforms_dialect_conversion_target_add_dynamically_legal_func);
+          mlir_transforms_dialect_conversion_type_converter_add_target_materialization);
 
   // ── Backward-compat aliases (old names) ──────────────────────────────────
   Sregister_symbol(
@@ -500,17 +519,6 @@ void registerTransformsDialectConversionBindings() {
       "mlir_populate_func_type_conversion_pattern",
       (void*)::
           mlir_transforms_dialect_conversion_populate_func_type_conversion);
-  Sregister_symbol(
-      "mlir_type_converter_add_tensor_widening_materialization",
-      (void*)::
-          mlir_transforms_dialect_conversion_type_converter_add_tensor_widening_materialization);
-  Sregister_symbol(
-      "mlir_conversion_target_add_legal_common_ops",
-      (void*)::mlir_transforms_dialect_conversion_target_add_legal_common_ops);
-  Sregister_symbol(
-      "mlir_conversion_target_add_dynamically_legal_func",
-      (void*)::
-          mlir_transforms_dialect_conversion_target_add_dynamically_legal_func);
 }
 
 } // namespace crest
