@@ -3,11 +3,26 @@
  * Licensed under the MIT License.
  */
 
-#include "Core/Core.h"
+// Registration hub — calls every canonical register*Bindings() directly.
+// No Core/ shim layer; each header belongs to its canonical IR/, Transforms/,
+// Dialect/, or Interfaces/ sub-tree.
+
+#include "Core/Builder.h"
 #include "Dialect/Shape/Shape.h"
+#include "IR/Block.h"
+#include "IR/BuiltinAttributes.h"
+#include "IR/BuiltinTypes.h"
+#include "IR/OpBuilder.h"
+#include "IR/OpResult.h"
+#include "IR/Operation.h"
+#include "IR/RewriterBase.h"
+#include "IR/Type.h"
+#include "IR/Value.h"
+#include "Interfaces/DestinationStyleOp.h"
 #include "Support/ArrayRef.h"
 #include "Support/Logging.h"
 #include "Transforms/DialectConversion.h"
+#include "Transforms/GreedyPatternRewriteDriver.h"
 
 namespace crest {
 
@@ -20,11 +35,22 @@ extern "C" void crest_register_extra_bindings(void (*fn)()) {
 }
 
 void registerMlirForeignFunctions() {
-  registerCoreBindings();
+  registerBuilderBindings();
   registerDialectShapeBindings();
-  registerTransformsDialectConversionBindings();
-  registerLoggingBindings();
+  registerInterfacesDpsBindings();
+  registerIRBlockBindings();
+  registerIRBuiltinAttributesBindings();
+  registerIRBuiltinTypesBindings();
+  registerIROpBuilderBindings();
+  registerIROperationBindings();
+  registerIROpResultBindings();
+  registerIRRewriterBaseBindings();
+  registerIRTypeBindings();
+  registerIRValueBindings();
   registerArrayRefBindings();
+  registerLoggingBindings();
+  registerTransformsDialectConversionBindings();
+  registerTransformsGreedyPatternRewriteDriverBindings();
   if (g_extra_bindings_fn) {
     g_extra_bindings_fn();
   }

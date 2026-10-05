@@ -29,23 +29,23 @@
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   (define %type-get-context
-    (foreign-procedure "mlir_type_get_context" (uptr) uptr))
+    (foreign-procedure "mlir_ir_type_get_context" (uptr) uptr))
   (define %get-index-type
-    (foreign-procedure "mlir_get_index_type" (uptr) uptr))
+    (foreign-procedure "mlir_ir_builtin_types_index_type_get" (uptr) uptr))
   (define %get-i64-type
-    (foreign-procedure "mlir_get_i64_type" (uptr) uptr))
+    (foreign-procedure "mlir_ir_builtin_types_integer_type_get_i64" (uptr) uptr))
   (define %get-i1-type
-    (foreign-procedure "mlir_get_i1_type" (uptr) uptr))
+    (foreign-procedure "mlir_ir_builtin_types_integer_type_get_i1" (uptr) uptr))
   (define %type-is-ranked-tensor
-    (foreign-procedure "mlir_type_is_ranked_tensor" (uptr) int))
+    (foreign-procedure "mlir_ir_builtin_types_ranked_tensor_type_isa" (uptr) int))
   (define %type-get-element-type
-    (foreign-procedure "mlir_type_get_element_type" (uptr) uptr))
+    (foreign-procedure "mlir_ir_builtin_types_ranked_tensor_type_get_element_type" (uptr) uptr))
   (define %type-get-shape
-    (foreign-procedure "mlir_type_get_shape" (uptr) scheme-object))
+    (foreign-procedure "mlir_ir_builtin_types_ranked_tensor_type_get_shape" (uptr) scheme-object))
   (define %type-get-rank
-    (foreign-procedure "mlir_type_get_rank" (uptr) int))
+    (foreign-procedure "mlir_ir_builtin_types_ranked_tensor_type_get_rank" (uptr) int))
   (define %ranked-tensor-type-get-encoding
-    (foreign-procedure "mlir_type_get_encoding" (uptr) uptr))
+    (foreign-procedure "mlir_ir_builtin_types_ranked_tensor_type_get_encoding" (uptr) uptr))
   (define %type-element-type
     (foreign-procedure "mlir_type_element_type" (uptr) uptr))
   (define %type-integer-width

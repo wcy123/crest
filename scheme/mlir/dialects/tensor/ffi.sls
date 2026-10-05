@@ -17,6 +17,6 @@
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   (define %ranked-tensor-type-with-encoding
-    (foreign-procedure "mlir_tensor_type_with_encoding" (uptr uptr) uptr))
+    (foreign-procedure "mlir_ir_builtin_types_ranked_tensor_type_clone_with_encoding" (uptr uptr) uptr))
 
 ) ;; end library (mlir dialects tensor ffi)
