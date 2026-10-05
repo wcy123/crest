@@ -27,7 +27,7 @@
           (for (only (mlir core value)
                      mlir-value-get-defining-op array-ref-size array-ref-at) expand)
           (for (only (mlir core attribute) mlir-make-attr) expand)
-          (for (only (mlir core context) current-mlir-context) expand)
+          (for (only (mlir ir mlir-context) current-mlir-context) expand)
           (for (only (chezscheme) parameterize) expand)
           (for (only (crest internal rewrite) with-mlir-ops) expand)
           ;; keywords needed at expand time for free-identifier=? matching in transform-where-expr

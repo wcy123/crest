@@ -8,6 +8,7 @@ add_library(CrestBindings STATIC
   Interfaces/DestinationStyleOp.cpp
   IR/Block.cpp
   IR/BuiltinAttributes.cpp
+  IR/MLIRContext.cpp
   IR/BuiltinTypes.cpp
   IR/OperationState.cpp
   IR/OpBuilder.cpp
