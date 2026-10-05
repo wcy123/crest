@@ -66,7 +66,7 @@
          [!out-device (mlir-ranked-tensor-type-with-encoding !out-type (make-hipsr-device-space-attr (mlir-type-get-context !out-type)))]
          [!shape-type (mlir-shape.shape-type (mlir-operation-get-context op))]
          [!size-type  (mlir-shape.size-type  (mlir-operation-get-context op))]
-         [perm        (let ([raw (mlir-operation-get-attr op "perm" :i64-array)])
+         [perm        (let ([raw (mlir-operation-get-integer-array-attr op "perm")])
                         (if (null? raw)
                             ;; absent perm → reverse permutation
                             (let ([rank (mlir-type-get-rank !in-type)])

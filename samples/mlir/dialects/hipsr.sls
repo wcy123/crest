@@ -46,7 +46,9 @@
           (mlir dialects tensor)
           (only (crest util)
                 type-converter-add-tensor-widening-materialization)
-          (only (mlir core builder) mlir-block-get-argument))
+          (only (mlir core builder) mlir-op-get-region mlir-block-get-argument)
+          (rename (only (mlir ir region) region-get-first-block)
+                  (region-get-first-block mlir-region-get-first-block)))
 
   (define-syntax :hipsr-device-space (identifier-syntax 'hipsr-device-space))
   (define-syntax :hipsr-barrier-type (identifier-syntax 'hipsr-barrier-type))
@@ -103,8 +105,17 @@
   ;; Context convention — HipSR passes argument 0 of func.func as context.
   ;;===--------------------------------------------------------------------===;;
 
+  ;; Walk up the operation tree to find the enclosing func.func, then return
+  ;; block argument 0 (the !hipsr.context argument by convention).
   (define (mlir-get-hipsr-context-arg op)
-    (mlir-block-get-argument op 0))
+    (let loop ((cur op))
+      (cond
+        ((= 0 cur) 0)
+        ((string=? (mlir-operation-name cur) "func.func")
+         (let* ((region (mlir-op-get-region cur 0))
+                (block  (if (= 0 region) 0 (mlir-region-get-first-block region))))
+           (if (= 0 block) 0 (mlir-block-get-argument block 0))))
+        (else (loop (mlir-operation-get-parent cur))))))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Op ancestry predicates
