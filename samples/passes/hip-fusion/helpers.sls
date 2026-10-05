@@ -22,7 +22,8 @@
 
   (import (except (rnrs) =)
           (only (chezscheme) foreign-procedure)
-          (mlir core ir))
+          (only (mlir core operation) mlir-operation-set-f32-attr! mlir-operation-set-i64-attr!)
+          (only (mlir core attribute) mlir-attr-as))
 
   (define (set-qdq-scale-zp-attrs! new-op
                                    lhs-scale lhs-zp

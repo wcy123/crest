@@ -30,7 +30,8 @@
 
   (import (except (rnrs) =)
           (rename (only (rnrs) =) (= num=))
-          (mlir core ir)
+          (only (mlir core operation) mlir-operation-get-context)
+          (only (mlir core builder) mlir-apply-patterns-greedy)
           (mlir core conversion)
           (crest)
           (passes hip-fusion helpers)

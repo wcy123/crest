@@ -25,7 +25,10 @@
 
   (import (except (rnrs) =)
           (rename (only (rnrs) =) (= num=))
-          (mlir core ir)
+          (mlir core operation)
+          (mlir core value)
+          (mlir core attribute)
+          (mlir dialects builtin)
           (passes hip-fusion fusion)
           (crest))
 

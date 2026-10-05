@@ -16,7 +16,17 @@
           (for (crest internal parse) expand)
           (for (crest internal validate) expand)
           (for (crest internal analyze) expand)
-          (for (mlir core ir) expand)
+          (for (only (mlir core builder)
+                     with-rewrite-builder mlir-replace-op) expand)
+          (for (only (mlir core operation)
+                     mlir-emit-error! mlir-operation-get-context
+                     mlir-operation-has-attr? mlir-operation-get-attribute
+                     mlir-operation-name mlir-operation-num-results
+                     mlir-operation-get-operand-value mlir-operation-get-result
+                     mlir-operation-get-operands mlir-operation-set-attribute!) expand)
+          (for (only (mlir core value)
+                     mlir-value-get-defining-op array-ref-size array-ref-at) expand)
+          (for (only (mlir core attribute) mlir-make-attr) expand)
           (for (only (mlir core context) current-mlir-context) expand)
           (for (only (chezscheme) parameterize) expand)
           (for (only (crest internal rewrite) with-mlir-ops) expand)
