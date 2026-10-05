@@ -113,15 +113,15 @@ uint64_t mlir_ir_rewriter_base_create_with_regions(
 }
 
 // mlir::RewriterBase::setInsertionPoint(op)
-void mlir_ir_rewriter_base_set_insertion_point_before(uint64_t rewriter_ptr,
-                                                      uint64_t op_ptr) {
+void mlir_ir_rewriter_base_set_insertion_point(uint64_t rewriter_ptr,
+                                               uint64_t op_ptr) {
   if (!rewriter_ptr) {
-    scheme_error("mlir-ir-rewriter-base-set-insertion-point-before",
+    scheme_error("mlir-ir-rewriter-base-set-insertion-point",
                  "null rewriter pointer");
     return; // unreachable — error performs non-local exit
   }
   if (!op_ptr) {
-    scheme_error("mlir-ir-rewriter-base-set-insertion-point-before",
+    scheme_error("mlir-ir-rewriter-base-set-insertion-point",
                  "null op pointer");
     return; // unreachable — error performs non-local exit
   }
@@ -268,8 +268,12 @@ void registerIRRewriterBaseBindings() {
                    (void*)::mlir_ir_rewriter_base_create);
   Sregister_symbol("mlir_ir_rewriter_base_create_with_regions",
                    (void*)::mlir_ir_rewriter_base_create_with_regions);
+  // Canonical name (matching C++ setInsertionPoint(op))
+  Sregister_symbol("mlir_ir_rewriter_base_set_insertion_point",
+                   (void*)::mlir_ir_rewriter_base_set_insertion_point);
+  // Backward-compat alias
   Sregister_symbol("mlir_ir_rewriter_base_set_insertion_point_before",
-                   (void*)::mlir_ir_rewriter_base_set_insertion_point_before);
+                   (void*)::mlir_ir_rewriter_base_set_insertion_point);
   Sregister_symbol("mlir_ir_rewriter_base_set_insertion_point_to_end",
                    (void*)::mlir_ir_rewriter_base_set_insertion_point_to_end);
   Sregister_symbol("mlir_ir_rewriter_base_create_block",
