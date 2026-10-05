@@ -22,11 +22,11 @@
                             mlir::Operation::getContext
                             mlir::Operation::getName)
                       (mlir::OpOperand::get mlir-operation-get-operand-value)
-                      (mlir::Operation::getContext mlir-mlir::Operation::getContext)
+                      (mlir::Operation::getContext mlir-Operation::getContext)
                       (mlir::Operation::getName mlir-operation-name))
           (rename (mlir ir value)
-            (get-defining-op   mlir-mlir::Value::getDefiningOp)
-            (get-type          mlir-mlir::Value::getType))
+            (mlir::Value::getDefiningOp   mlir-value-get-defining-op)
+            (mlir::Value::getType          mlir-value-get-type))
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
@@ -39,7 +39,7 @@
   ;; that wrapper to recover the host-space value that hipsr.placeholder requires.
   ;; Assumption: at most one cast is inserted. Nested casts are not handled.
   (define (unwrap-cast v)
-    (let ([def (mlir-mlir::Value::getDefiningOp v)])
+    (let ([def (mlir-value-get-defining-op v)])
       (if (and (not (zero? def))
                (string=? (mlir-operation-name def)
                           "builtin.unrealized_conversion_cast"))
@@ -50,9 +50,9 @@
     :if-match
         %output = onnx.Expand (%input %shape-operand)
     :then-let
-        ([ctx         (mlir-mlir::Operation::getContext op)]
+        ([ctx         (mlir-Operation::getContext op)]
          [%ctx        (mlir-get-hipsr-context-arg op)]
-         [!out-type   (mlir-mlir::Value::getType %output)]
+         [!out-type   (mlir-value-get-type %output)]
          [!out-device (mlir-ranked-tensor-type-with-encoding !out-type
                         (make-hipsr-device-space-attr ctx))]
          [%shape-host (unwrap-cast %shape-operand)])
@@ -69,7 +69,7 @@
                    -> !out-device))
 
   (define (populate-expand-patterns type-converter patterns ctx)
-    (mlir-log-info "Registering onnx.Expand pattern")
+    (crest::logging::info "Registering onnx.Expand pattern")
     (add-conversion-pattern patterns "onnx.Expand"
                                       onnx-expand->hipsr type-converter 1))
 

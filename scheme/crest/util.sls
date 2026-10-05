@@ -24,8 +24,8 @@
   (import (rnrs)
           (only (mlir ir mlir-context) current-mlir-context)
           (only (mlir ir builtin-types)
-                ranked-tensor-type?)
-          (only (mlir ir value) get-type)
+                mlir::isa<RankedTensorType>?)
+          (only (mlir ir value) mlir::Value::getType)
           (only (mlir dialects tensor)
                 mlir-tensor-cast-are-cast-compatible
                 mlir-tensor-cast-create)
@@ -80,9 +80,9 @@
       (if (not (and (pair? inputs) (null? (cdr inputs))))
           #f
           (let* ((input       (car inputs))
-                 (input-type  (get-type input)))
-            (if (not (and (ranked-tensor-type? input-type)
-                          (ranked-tensor-type? result-type)
+                 (input-type  (mlir::Value::getType input)))
+            (if (not (and (mlir::isa<RankedTensorType>? input-type)
+                          (mlir::isa<RankedTensorType>? result-type)
                           (= 1 (mlir-tensor-cast-are-cast-compatible
                                 input-type result-type))))
                 #f

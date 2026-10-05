@@ -71,6 +71,9 @@ void registerIRValueBindings() {
                    (void*)::mlir_ir_value_is_block_argument);
   Sregister_symbol("mlir::Value::getUses", (void*)::mlir_ir_value_num_uses);
   Sregister_symbol("mlir::Value::getType", (void*)::mlir_ir_value_get_type);
+  // Alias with ? suffix (Scheme predicate convention)
+  Sregister_symbol("mlir::isa<BlockArgument>?",
+                   (void*)::mlir_ir_value_is_block_argument);
 }
 
 } // namespace crest

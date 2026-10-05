@@ -46,11 +46,11 @@
     mlir::DenseElementsAttr::getSplatValue<APInt>
     mlir::DenseI32ArrayAttr::asArrayRef->list
     mlir::Operation::getAttr
-    operation-set-attr!
+    mlir::Operation::setAttr!
     mlir::Operation::getAttrOfType<FloatAttr>
-    shaped-type-element-type
-    integer-type-width
-    integer-type-unsigned?)
+    mlir::ShapedType::getElementType
+    mlir::IntegerType::getWidth
+    mlir::IntegerType::isUnsigned?)
   (import (rnrs)
           (mlir ir builtin-attributes ffi)
           (mlir ir operation ffi)
@@ -222,14 +222,14 @@
   ;; @note         Direct alias for %get-attr (from mlir ir operation ffi)
   (define mlir::Operation::getAttr                %get-attr)
 
-  ;; @brief mlir::Operation::setAttr — set a named attribute on an operation.
+  ;; @brief mlir::Operation::setAttr! — set a named attribute on an operation.
   ;; @param op     mlir::Operation* uptr
   ;; @param name   C string attribute name
   ;; @param attr   mlir::Attribute opaque pointer uptr
   ;; @return       unspecified
   ;; @see          mlir/IR/Operation.h
   ;; @note         Wraps %set-attr (from mlir ir operation ffi)
-  (define (operation-set-attr! op name attr) (%set-attr op name attr))
+  (define (mlir::Operation::setAttr! op name attr) (%set-attr op name attr))
 
   ;; @brief mlir::Operation::getAttrOfType<FloatAttr> — retrieve a named FloatAttr as a double.
   ;; @param op     mlir::Operation* uptr (0 returns NaN)
@@ -244,20 +244,20 @@
   ;; @return       mlir::Type opaque pointer uptr for the element type; 0 if not a ShapedType
   ;; @see          mlir/IR/BuiltinTypes.h
   ;; @note         Direct alias for %shaped-type-get-element-type (from mlir ir builtin-types ffi)
-  (define shaped-type-element-type          %shaped-type-get-element-type)
+  (define mlir::ShapedType::getElementType          %shaped-type-get-element-type)
 
   ;; @brief mlir::IntegerType::getWidth — return the bit width of an IntegerType.
   ;; @param type   mlir::Type opaque pointer uptr (0 returns 0)
   ;; @return       uint64 bit width; 0 if not an IntegerType
   ;; @see          mlir/IR/BuiltinTypes.h
   ;; @note         Direct alias for %integer-type-get-width (from mlir ir builtin-types ffi)
-  (define integer-type-width                %integer-type-get-width)
+  (define mlir::IntegerType::getWidth                %integer-type-get-width)
 
   ;; @brief mlir::IntegerType::isUnsigned — test whether an IntegerType has unsigned signedness.
   ;; @param t      mlir::Type opaque pointer uptr (0 returns #f)
   ;; @return       boolean: #t if the IntegerType is unsigned, #f otherwise
   ;; @see          mlir/IR/BuiltinTypes.h
   ;; @note         Wraps %integer-type-is-unsigned (from mlir ir builtin-types ffi)
-  (define (integer-type-unsigned? t) (not (zero? (%integer-type-is-unsigned t))))
+  (define (mlir::IntegerType::isUnsigned? t) (not (zero? (%integer-type-is-unsigned t))))
 
 ) ;; end library (mlir ir builtin-attributes)

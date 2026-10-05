@@ -17,10 +17,10 @@
 
 (library (mlir ir value)
   (export
-    get-defining-op
+    mlir::Value::getDefiningOp
     mlir::isa<BlockArgument>?
-    num-uses
-    get-type)
+    mlir::Value::getUses
+    mlir::Value::getType)
 
   (import (rnrs)
           (mlir ir value ffi))
@@ -30,7 +30,7 @@
   ;; @return       Operation* opaque pointer uptr, or 0 if value is a block argument or null
   ;; @see          mlir/IR/Value.h
   ;; @note         Defined in lib/Bindings/IR/Value.cpp
-  (define get-defining-op %get-defining-op)
+  (define mlir::Value::getDefiningOp %mlir::Value::getDefiningOp)
 
   ;; @brief mlir::isa<BlockArgument>(val) — predicate: is the value a block argument?
   ;; @param value  Value opaque pointer uptr
@@ -45,13 +45,13 @@
   ;; @return       Number of uses as uptr; 0 if value is null
   ;; @see          mlir/IR/Value.h
   ;; @note         Defined in lib/Bindings/IR/Value.cpp
-  (define num-uses %num-uses)
+  (define mlir::Value::getUses %mlir::Value::getUses)
 
   ;; @brief mlir::Value::getType() — return the type of this value.
   ;; @param value  Value opaque pointer uptr
   ;; @return       Type opaque pointer uptr, or 0 if value is null
   ;; @see          mlir/IR/Value.h
   ;; @note         Defined in lib/Bindings/IR/Value.cpp
-  (define get-type %get-type)
+  (define mlir::Value::getType %mlir::Value::getType)
 
 ) ;; end library (mlir ir value)

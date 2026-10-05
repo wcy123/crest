@@ -50,7 +50,7 @@
 ;;   %a = "onnx.Conv" (%x %w)
 ;;
 ;;   %a = "onnx.Conv" (%x %w)
-;;      :where (let ([$ks (mlir-operation-get-attribute %a "kernel_shape")])
+;;      :where (let ([$ks (mlir-operation-get-attr %a "kernel_shape")])
 ;;               (and $ks (is-1x1-kernel? $ks)))
 ;;
 ;;   %b = "test.op" (%x (:optional %y %z))

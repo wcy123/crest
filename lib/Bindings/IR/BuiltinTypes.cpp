@@ -250,6 +250,24 @@ void registerIRBuiltinTypesBindings() {
                    (void*)::mlir_ir_builtin_types_integer_type_get_width);
   Sregister_symbol("mlir_type_is_unsigned",
                    (void*)::mlir_ir_builtin_types_integer_type_is_unsigned);
+  // Aliases for names used in builtin-types.sls wrapper
+  Sregister_symbol(
+      "mlir::RankedTensorType::getElementType",
+      (void*)::mlir_ir_builtin_types_ranked_tensor_type_get_element_type);
+  Sregister_symbol(
+      "crest::RankedTensorType::cloneWithEncoding",
+      (void*)::mlir_ir_builtin_types_ranked_tensor_type_clone_with_encoding);
+  Sregister_symbol(
+      "mlir::RankedTensorType::getEncoding",
+      (void*)::mlir_ir_builtin_types_ranked_tensor_type_get_encoding);
+  Sregister_symbol("mlir::isa<RankedTensorType>?",
+                   (void*)::mlir_ir_builtin_types_ranked_tensor_type_isa);
+  Sregister_symbol("mlir::IntegerType::isUnsigned?",
+                   (void*)::mlir_ir_builtin_types_integer_type_is_unsigned);
+  Sregister_symbol("mlir::IntegerType::get<i64>",
+                   (void*)::mlir_ir_builtin_types_integer_type_get_i64);
+  Sregister_symbol("mlir::IntegerType::get<i1>",
+                   (void*)::mlir_ir_builtin_types_integer_type_get_i1);
 }
 
 } // namespace crest

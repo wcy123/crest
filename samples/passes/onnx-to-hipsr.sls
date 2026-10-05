@@ -17,40 +17,29 @@
 (library (passes onnx-to-hipsr)
   (export run-pass)
   (import (rnrs (6))
-          (rename (only (mlir ir operation)
-                            mlir::OpOperand::get
-                            operation-emit-error!
-                            mlir::Operation::getContext
-                            mlir::Operation::getName
-                            mlir::Operation::getNumOperands
-                            mlir::Operation::setOperand
-                            operation-use-empty?
-                            mlir::Operation::walk)
-                      (mlir::OpOperand::get mlir-operation-get-operand-value)
-                      (operation-emit-error! mlir-emit-error!)
-                      (mlir::Operation::getContext mlir-mlir::Operation::getContext)
-                      (mlir::Operation::getName mlir-operation-name)
-                      (mlir::Operation::getNumOperands mlir-operation-num-operands)
-                      (mlir::Operation::setOperand mlir-mlir::Operation::setOperand)
-                      (operation-use-empty? mlir-operation-use-empty?)
-                      (mlir::Operation::walk mlir-mlir::Operation::walk))
-          (rename (mlir ir value)
-            (get-defining-op   mlir-mlir::Value::getDefiningOp)
-            (get-type          mlir-mlir::Value::getType)
-            (block-argument?   mlir-value-is-block-argument?)
-            (num-uses          mlir-mlir::Value::getUses))
-          (rename (mlir ir op-result)
-            (mlir::OpResult::getResultNumber mlir-value-mlir::OpResult::getResultNumber))
+          (only (mlir ir operation)
+                mlir::OpOperand::get
+                mlir::Operation::emitError
+                mlir::Operation::getContext
+                mlir::Operation::getName
+                mlir::Operation::getNumOperands
+                mlir::Operation::setOperand
+                mlir::Operation::use_empty?
+                mlir::Operation::walk)
+          (only (mlir ir value)
+                mlir::Value::getDefiningOp
+                mlir::Value::getType
+                mlir::isa<BlockArgument>?
+                mlir::Value::getUses)
+          (only (mlir ir op-result)
+                mlir::OpResult::getResultNumber)
           (mlir support array-ref)
-          (only (mlir core builder) mlir-build-op mlir-set-insertion-point-before mlir-erase-op mlir-op-erase)
+          (only (mlir core builder)
+                mlir-build-op
+                mlir-set-insertion-point-before
+                mlir-erase-op
+                mlir-op-erase)
           (mlir transforms dialect-conversion)
-          (rename (mlir ir value)
-            (get-defining-op   mlir-mlir::Value::getDefiningOp)
-            (get-type          mlir-mlir::Value::getType)
-            (block-argument?   mlir-value-is-block-argument?)
-            (num-uses          mlir-mlir::Value::getUses))
-          (rename (mlir ir op-result)
-            (mlir::OpResult::getResultNumber mlir-value-mlir::OpResult::getResultNumber))
           (mlir dialects hipsr)
           (mlir dialects func)
           (mlir support logging)
@@ -93,10 +82,10 @@
   ;;===--------------------------------------------------------------------===;;
   (define (erase-dead-novalue! module-op)
     (let ((dead '()))
-      (mlir-mlir::Operation::walk module-op
+      (mlir::Operation::walk module-op
         (lambda (op)
-          (when (and (string=? (mlir-operation-name op) "onnx.NoValue")
-                     (mlir-operation-use-empty? op))
+          (when (and (string=? (mlir::Operation::getName op) "onnx.NoValue")
+                     (mlir::Operation::use_empty? op))
             (set! dead (cons op dead)))))
       (for-each mlir-op-erase dead)))
 
@@ -104,52 +93,52 @@
   ;; Post-processing: rewire placeholder inputs to follow the shape graph
   ;;===--------------------------------------------------------------------===;;
   (define (shape-graph-counterpart value)
-    (if (mlir-value-is-block-argument? value)
+    (if (mlir::isa<BlockArgument>? value)
         value
-        (let* ((def-op  (mlir-mlir::Value::getDefiningOp value))
-               (op-name (if (zero? def-op) "" (mlir-operation-name def-op))))
+        (let* ((def-op  (mlir::Value::getDefiningOp value))
+               (op-name (if (zero? def-op) "" (mlir::Operation::getName def-op))))
           (if (or (string=? op-name "hipsr.placeholder")
                   (string=? op-name "hipsr.constant")
                   (string=? op-name "arith.constant"))
               value
-              (let* ((result-idx (mlir-value-mlir::OpResult::getResultNumber value))
+              (let* ((result-idx (mlir::OpResult::getResultNumber value))
                      (num-inits  (mlir-operation-num-dps-inits def-op)))
                 (if (>= result-idx num-inits)
                     value
                     (mlir-operation-get-dps-init-operand def-op result-idx)))))))
 
   (define (rewire-placeholder-inputs! module-op)
-    (mlir-mlir::Operation::walk module-op
+    (mlir::Operation::walk module-op
       (lambda (op)
-        (when (string=? (mlir-operation-name op) "hipsr.placeholder")
+        (when (string=? (mlir::Operation::getName op) "hipsr.placeholder")
           (let loop ((i 1))
-            (when (< i (mlir-operation-num-operands op))
-              (let* ((old-val (mlir-operation-get-operand-value op i))
+            (when (< i (mlir::Operation::getNumOperands op))
+              (let* ((old-val (mlir::OpOperand::get op i))
                      (new-val (shape-graph-counterpart old-val)))
                 (unless (eqv? old-val new-val)
-                  (mlir-mlir::Operation::setOperand op i new-val)))
+                  (mlir::Operation::setOperand op i new-val)))
               (loop (+ i 1))))))))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Helper: apply conversion then run post-processing
   ;;===--------------------------------------------------------------------===;;
   (define (do-conversion module-op target patterns)
-    (mlir-log-debug "Applying full conversion...")
+    (crest::logging::debug "Applying full conversion...")
     (let ((success (apply-full-conversion module-op target patterns)))
       (if (= success 1)
           (begin
-            (mlir-log-debug "Erasing dead NoValue ops...")
+            (crest::logging::debug "Erasing dead NoValue ops...")
             (erase-dead-novalue! module-op)
-            (mlir-log-debug "Rewiring placeholder inputs...")
+            (crest::logging::debug "Rewiring placeholder inputs...")
             (rewire-placeholder-inputs! module-op)
-            (mlir-log-info "ONNX to HipSR Conversion (Scheme): Success"))
+            (crest::logging::info "ONNX to HipSR Conversion (Scheme): Success"))
           (begin
-            (mlir-emit-error! module-op "onnx-to-hipsr: dialect conversion failed")
+            (mlir::Operation::emitError module-op "onnx-to-hipsr: dialect conversion failed")
             #f))))
 
   (define (run-pass module-op . args)
-    (mlir-log-info "Starting ONNX to HipSR Conversion (Scheme)")
-    (let ((ctx (mlir-mlir::Operation::getContext module-op)))
+    (crest::logging::info "Starting ONNX to HipSR Conversion (Scheme)")
+    (let ((ctx (mlir::Operation::getContext module-op)))
       (with-type-converter (type-converter)
         (hipsr-type-converter-add-device-memory-conversions! type-converter)
         (with-conversion-target (target ctx)

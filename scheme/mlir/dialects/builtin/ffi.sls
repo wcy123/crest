@@ -22,30 +22,30 @@
     %type-get-element-type
     %type-get-shape
     %type-get-rank
-    %ranked-tensor-type-get-encoding
+    %mlir::RankedTensorType::getEncoding
     %type-element-type
     %type-integer-width
     %type-is-unsigned)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   (define %mlir::Type::getContext
-    (foreign-procedure "mlir_ir_type_get_context" (uptr) uptr))
+    (foreign-procedure "mlir::Type::getContext" (uptr) uptr))
   (define %get-index-type
-    (foreign-procedure "mlir_ir_builtin_types_index_type_get" (uptr) uptr))
+    (foreign-procedure "mlir::IndexType::get" (uptr) uptr))
   (define %get-i64-type
-    (foreign-procedure "mlir_ir_builtin_types_integer_type_get_i64" (uptr) uptr))
+    (foreign-procedure "mlir::IntegerType::get<i64>" (uptr) uptr))
   (define %get-i1-type
-    (foreign-procedure "mlir_ir_builtin_types_integer_type_get_i1" (uptr) uptr))
+    (foreign-procedure "mlir::IntegerType::get<i1>" (uptr) uptr))
   (define %type-is-ranked-tensor
-    (foreign-procedure "mlir_ir_builtin_types_ranked_tensor_type_isa" (uptr) int))
+    (foreign-procedure "mlir::isa<RankedTensorType>" (uptr) int))
   (define %type-get-element-type
-    (foreign-procedure "mlir_ir_builtin_types_ranked_tensor_type_get_element_type" (uptr) uptr))
+    (foreign-procedure "mlir::RankedTensorType::getElementType" (uptr) uptr))
   (define %type-get-shape
-    (foreign-procedure "mlir_ir_builtin_types_ranked_tensor_type_get_shape" (uptr) scheme-object))
+    (foreign-procedure "mlir::RankedTensorType::getShape" (uptr) scheme-object))
   (define %type-get-rank
-    (foreign-procedure "mlir_ir_builtin_types_ranked_tensor_type_get_rank" (uptr) int))
-  (define %ranked-tensor-type-get-encoding
-    (foreign-procedure "mlir_ir_builtin_types_ranked_tensor_type_get_encoding" (uptr) uptr))
+    (foreign-procedure "mlir::RankedTensorType::getRank" (uptr) int))
+  (define %mlir::RankedTensorType::getEncoding
+    (foreign-procedure "mlir::RankedTensorType::getEncoding" (uptr) uptr))
   (define %type-element-type
     (foreign-procedure "mlir_type_element_type" (uptr) uptr))
   (define %type-integer-width

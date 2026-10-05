@@ -23,6 +23,6 @@
   ;; @note         Defined in lib/Bindings/IR/OpResult.cpp; also registered as
   ;;               mlir_ir_value_get_result_number for backward compatibility
   (define %mlir::OpResult::getResultNumber
-    (foreign-procedure "mlir_ir_op_result_get_result_number" (uptr) uptr))
+    (foreign-procedure "mlir::OpResult::getResultNumber" (uptr) uptr))
 
 ) ;; end library (mlir ir op-result ffi)

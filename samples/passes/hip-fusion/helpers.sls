@@ -23,11 +23,11 @@
   (import (except (rnrs) =)
           (only (chezscheme) foreign-procedure)
           (rename (only (mlir ir operation)
-                       operation-set-f32-attr!
-                       operation-set-i64-attr!)
-                 (operation-set-f32-attr! mlir-operation-set-f32-attr!)
-                 (operation-set-i64-attr! mlir-operation-set-i64-attr!))
-          (only (mlir ir builtin-attributes) FloatAttr:getValueAsDouble.f32))
+                       crest::Operation::setF32Attr
+                       crest::Operation::setI64Attr)
+                 (crest::Operation::setF32Attr mlir-operation-set-f32-attr!)
+                 (crest::Operation::setI64Attr mlir-operation-set-i64-attr!))
+          (only (mlir ir builtin-attributes) mlir::FloatAttr::getValueAsDouble.f32))
 
   (define (set-qdq-scale-zp-attrs! new-op
                                    lhs-scale lhs-zp
@@ -47,22 +47,22 @@
     (mlir-operation-set-i64-attr! new-op "output_zp"    out-zp))
 
   (define mlir-operation-set-dense-i32-array!
-    (foreign-procedure "mlir_ir_operation_set_dense_i32_array" (uptr string scheme-object) void))
+    (foreign-procedure "crest::Operation::setDenseI32Array" (uptr string scheme-object) void))
 
   (define mlir-operation-set-dense-i64-array!
-    (foreign-procedure "mlir_ir_operation_set_dense_i64_array" (uptr string scheme-object) void))
+    (foreign-procedure "crest::Operation::setDenseI64Array" (uptr string scheme-object) void))
 
   ;; For ODS I64ArrayAttr (ArrayAttr of IntegerAttr) — different from DenseI64ArrayAttr
   (define mlir-operation-set-i64-array-attr!
-    (foreign-procedure "mlir_ir_operation_set_i64_array_attr" (uptr string scheme-object) void))
+    (foreign-procedure "crest::Operation::setI64ArrayAttr" (uptr string scheme-object) void))
 
   ;; (op-get-f32-attr op name) — FloatAttr by name as flonum; +nan.0 if absent.
-  ;; Expressed via FloatAttr:getValueAsDouble.f32 so no separate FFI binding needed.
+  ;; Expressed via mlir::FloatAttr::getValueAsDouble.f32 so no separate FFI binding needed.
   (define %get-attr
     (foreign-procedure "mlir_operation_get_attribute" (uptr string) uptr))
 
   (define (op-get-f32-attr op name)
     (let ([attr (%get-attr op name)])
-      (if (zero? attr) +nan.0 (FloatAttr:getValueAsDouble.f32 attr))))
+      (if (zero? attr) +nan.0 (mlir::FloatAttr::getValueAsDouble.f32 attr))))
 
 ) ;; end library (passes hip-fusion helpers)

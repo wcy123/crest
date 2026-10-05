@@ -19,7 +19,7 @@
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   (define %ranked-tensor-type-with-encoding
-    (foreign-procedure "mlir_ir_builtin_types_ranked_tensor_type_clone_with_encoding" (uptr uptr) uptr))
+    (foreign-procedure "crest::RankedTensorType::cloneWithEncoding" (uptr uptr) uptr))
 
   ;; @brief tensor::CastOp::areCastCompatible — test whether a tensor.cast
   ;;        between two types is valid.

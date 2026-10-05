@@ -22,6 +22,6 @@
   ;; @see         mlir/IR/Types.h
   ;; @note        Defined in lib/Bindings/IR/Type.cpp
   (define %mlir::Type::getContext
-    (foreign-procedure "mlir_ir_type_get_context" (uptr) uptr))
+    (foreign-procedure "mlir::Type::getContext" (uptr) uptr))
 
 ) ;; end library (mlir ir type ffi)

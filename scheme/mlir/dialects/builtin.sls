@@ -29,8 +29,8 @@
     mlir-type-is-ranked-tensor
     mlir-type-get-element-type
     mlir-type-get-shape
-    mlir-type-get-rank
-    mlir-ranked-tensor-type-get-encoding  ; encoding Attribute of a RankedTensorType (0 if absent)
+    mlir-ranked-tensor-type-get-rank
+    mlir-mlir::RankedTensorType::getEncoding  ; encoding Attribute of a RankedTensorType (0 if absent)
     ;; Integer type queries
     mlir-type-element-type    ; element type of ShapedType (uptr → uptr)
     mlir-type-integer-width   ; bit width of IntegerType (uptr → uptr)
@@ -75,8 +75,8 @@
   (define mlir-type-is-ranked-tensor       %type-is-ranked-tensor)
   (define mlir-type-get-element-type       %type-get-element-type)
   (define mlir-type-get-shape              %type-get-shape)
-  (define mlir-type-get-rank               %type-get-rank)
-  (define mlir-ranked-tensor-type-get-encoding %ranked-tensor-type-get-encoding)
+  (define mlir-ranked-tensor-type-get-rank               %type-get-rank)
+  (define mlir-mlir::RankedTensorType::getEncoding %mlir::RankedTensorType::getEncoding)
   (define mlir-type-element-type           %type-element-type)
   (define mlir-type-integer-width          %type-integer-width)
   (define mlir-type-is-unsigned

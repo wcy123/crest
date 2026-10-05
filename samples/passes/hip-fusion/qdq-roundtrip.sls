@@ -23,7 +23,7 @@
           (only (chezscheme) nan?)
           (rename (only (rnrs) =) (= num=))
           (rename (mlir ir value)
-            (get-defining-op   mlir-mlir::Value::getDefiningOp))
+            (mlir::Value::getDefiningOp   mlir-value-get-defining-op))
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)
           (passes hip-fusion fusion)
@@ -43,12 +43,12 @@
         %dq     = hip.dequantize_linear (%ctx %input %in_scale)
                     :where (and (hip-value-single-use? %layout)
                                 (hip-matching-qdq-params?
-                                  (mlir-mlir::Value::getDefiningOp %dq) op)
+                                  (mlir-value-get-defining-op %dq) op)
                                 (hip-can-requantize-layout-op?
-                                  (mlir-mlir::Value::getDefiningOp %layout) op))
+                                  (mlir-value-get-defining-op %layout) op))
     :then-let
-        ([%dq-op     (mlir-mlir::Value::getDefiningOp %dq)]
-         [%layout-op (mlir-mlir::Value::getDefiningOp %layout)])
+        ([%dq-op     (mlir-value-get-defining-op %dq)]
+         [%layout-op (mlir-value-get-defining-op %layout)])
     :rewrite %q :with
         (%result = (hip-create-requantized-layout-op rewriter %dq-op %layout-op op)))
 
@@ -63,14 +63,14 @@
         %dq     = hip.dequantize_linear (%ctx %input %in_scale)
                     :where (and (hip-value-single-use? %layout)
                                 (not (hip-layout-op-has-ctx?
-                                       (mlir-mlir::Value::getDefiningOp %layout)))
+                                       (mlir-value-get-defining-op %layout)))
                                 (hip-matching-qdq-params?
-                                  (mlir-mlir::Value::getDefiningOp %dq) op)
+                                  (mlir-value-get-defining-op %dq) op)
                                 (hip-can-requantize-layout-op?
-                                  (mlir-mlir::Value::getDefiningOp %layout) op))
+                                  (mlir-value-get-defining-op %layout) op))
     :then-let
-        ([%dq-op     (mlir-mlir::Value::getDefiningOp %dq)]
-         [%layout-op (mlir-mlir::Value::getDefiningOp %layout)])
+        ([%dq-op     (mlir-value-get-defining-op %dq)]
+         [%layout-op (mlir-value-get-defining-op %layout)])
     :rewrite %q :with
         (%result = (hip-create-requantized-layout-op rewriter %dq-op %layout-op op)))
 
@@ -84,9 +84,9 @@
         %q  = hip.quantize_linear   (%ctx %dq %out_scale)
         %dq = hip.dequantize_linear (%ctx %input %in_scale)
                 :where (and (hip-matching-qdq-params?
-                              (mlir-mlir::Value::getDefiningOp %dq) op)
+                              (mlir-value-get-defining-op %dq) op)
                             (hip-identity-roundtrip?
-                              (mlir-mlir::Value::getDefiningOp %dq) op))
+                              (mlir-value-get-defining-op %dq) op))
     :rewrite %q :with
         (%result = (begin %input)))
 

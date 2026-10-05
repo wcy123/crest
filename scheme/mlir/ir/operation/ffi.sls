@@ -54,7 +54,7 @@
   ;; @see       mlir/IR/Operation.h
   ;; @note      Defined in lib/Bindings/IR/Operation.cpp
   (define %get-name
-    (foreign-procedure "mlir_ir_operation_get_name" (uptr) string))
+    (foreign-procedure "mlir::Operation::getName" (uptr) string))
 
   ;; @brief mlir::Operation::getContext — return the MLIRContext that owns this op.
   ;; @param op  Operation* uptr
@@ -62,7 +62,7 @@
   ;; @see       mlir/IR/Operation.h
   ;; @note      Defined in lib/Bindings/IR/Operation.cpp
   (define %get-context
-    (foreign-procedure "mlir_ir_operation_get_context" (uptr) uptr))
+    (foreign-procedure "mlir::Operation::getContext" (uptr) uptr))
 
   ;; @brief mlir::Operation::getNumOperands — return the number of operands.
   ;; @param op  Operation* uptr
@@ -70,7 +70,7 @@
   ;; @see       mlir/IR/Operation.h
   ;; @note      Defined in lib/Bindings/IR/Operation.cpp
   (define %get-num-operands
-    (foreign-procedure "mlir_ir_operation_get_num_operands" (uptr) iptr))
+    (foreign-procedure "mlir::Operation::getNumOperands" (uptr) iptr))
 
   ;; @brief mlir::Operation::getNumResults — return the number of results.
   ;; @param op  Operation* uptr
@@ -78,7 +78,7 @@
   ;; @see       mlir/IR/Operation.h
   ;; @note      Defined in lib/Bindings/IR/Operation.cpp
   (define %get-num-results
-    (foreign-procedure "mlir_ir_operation_get_num_results" (uptr) iptr))
+    (foreign-procedure "mlir::Operation::getNumResults" (uptr) iptr))
 
   ;; @brief mlir::Operation::getOperand — return the i-th operand as an opaque Value*.
   ;; @param op     Operation* uptr
@@ -87,7 +87,7 @@
   ;; @see          mlir/IR/Operation.h
   ;; @note         Defined in lib/Bindings/IR/Operation.cpp
   (define %get-op-operand
-    (foreign-procedure "mlir_ir_operation_get_op_operand" (uptr iptr) uptr))
+    (foreign-procedure "mlir::Operation::getOpOperand" (uptr iptr) uptr))
 
   ;; @brief mlir::Operation::getResult — return the i-th result as an opaque Value*.
   ;; @param op     Operation* uptr
@@ -96,7 +96,7 @@
   ;; @see          mlir/IR/Operation.h
   ;; @note         Defined in lib/Bindings/IR/Operation.cpp
   (define %get-result
-    (foreign-procedure "mlir_ir_operation_get_result" (uptr iptr) uptr))
+    (foreign-procedure "mlir::Operation::getResult" (uptr iptr) uptr))
 
   ;; @brief mlir::Operation::getParentOp — return the enclosing operation, or null.
   ;; @param op  Operation* uptr
@@ -104,7 +104,7 @@
   ;; @see       mlir/IR/Operation.h
   ;; @note      Defined in lib/Bindings/IR/Operation.cpp
   (define %get-parent-op
-    (foreign-procedure "mlir_ir_operation_get_parent_op" (uptr) uptr))
+    (foreign-procedure "mlir::Operation::getParentOp" (uptr) uptr))
 
   ;; @brief mlir_ir_op_operand_get_value — return the i-th operand value of an op.
   ;; @param op     Operation* uptr
@@ -113,7 +113,7 @@
   ;; @see          mlir/IR/Operation.h
   ;; @note         Defined in lib/Bindings/IR/Operation.cpp
   (define %mlir::OpOperand::get
-    (foreign-procedure "mlir_ir_op_operand_get_value" (uptr int) uptr))
+    (foreign-procedure "mlir::OpOperand::get" (uptr int) uptr))
 
   ;; @brief mlir_ir_op_result_get_value — return the i-th result value of an op.
   ;; @param op     Operation* uptr
@@ -122,7 +122,7 @@
   ;; @see          mlir/IR/Operation.h
   ;; @note         Defined in lib/Bindings/IR/Operation.cpp
   (define %mlir::OpResult::getOwner
-    (foreign-procedure "mlir_ir_op_result_get_value" (uptr int) uptr))
+    (foreign-procedure "mlir::OpResult::getOwner" (uptr int) uptr))
 
   ;; @brief mlir::Operation::getLoc — return the source location attached to this op.
   ;; @param op  Operation* uptr
@@ -130,7 +130,7 @@
   ;; @see       mlir/IR/Operation.h
   ;; @note      Defined in lib/Bindings/IR/Operation.cpp
   (define %get-loc
-    (foreign-procedure "mlir_ir_operation_get_loc" (uptr) uptr))
+    (foreign-procedure "mlir::Operation::getLoc" (uptr) uptr))
 
   ;; @brief mlir::Operation::walk — walk all nested ops, calling callback for each.
   ;; @param op        Operation* uptr (root of walk)
@@ -139,7 +139,7 @@
   ;; @see             mlir/IR/Operation.h
   ;; @note            Defined in lib/Bindings/IR/Operation.cpp; callback is GC-rooted internally
   (define %walk
-    (foreign-procedure "mlir_ir_operation_walk" (uptr scheme-object) void))
+    (foreign-procedure "mlir::Operation::walk" (uptr scheme-object) void))
 
   ;; @brief mlir::Operation::setOperand — replace the i-th operand with a new value.
   ;; @param op     Operation* uptr
@@ -149,7 +149,7 @@
   ;; @see          mlir/IR/Operation.h
   ;; @note         Defined in lib/Bindings/IR/Operation.cpp
   (define %set-operand
-    (foreign-procedure "mlir_ir_operation_set_operand" (uptr int uptr) void))
+    (foreign-procedure "mlir::Operation::setOperand" (uptr int uptr) void))
 
   ;; @brief mlir::Operation::use_empty — return 1 if this op has no uses, 0 otherwise.
   ;; @param op  Operation* uptr
@@ -157,7 +157,7 @@
   ;; @see       mlir/IR/Operation.h
   ;; @note      Defined in lib/Bindings/IR/Operation.cpp
   (define %use-empty
-    (foreign-procedure "mlir_ir_operation_use_empty" (uptr) int))
+    (foreign-procedure "mlir::Operation::use_empty" (uptr) int))
 
   ;; @brief mlir::Operation::getAttrOfType<StringAttr> — return a string attribute value.
   ;; @param op         Operation* uptr
@@ -166,7 +166,7 @@
   ;; @see              mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note             Defined in lib/Bindings/IR/Operation.cpp
   (define %get-string-attr
-    (foreign-procedure "mlir_ir_operation_get_string_attr" (uptr string) string))
+    (foreign-procedure "mlir::Operation::getAttrOfType<StringAttr>" (uptr string) string))
 
   ;; @brief mlir::Operation::getAttrOfType<IntegerAttr> — return an integer attribute value.
   ;; @param op           Operation* uptr
@@ -176,7 +176,7 @@
   ;; @see                mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note               Defined in lib/Bindings/IR/Operation.cpp
   (define %get-integer-attr
-    (foreign-procedure "mlir_ir_operation_get_integer_attr"
+    (foreign-procedure "mlir::Operation::getAttrOfType<IntegerAttr>"
                        (uptr string integer-64) integer-64))
 
   ;; @brief mlir::Operation — return a DenseI64ArrayAttr or ArrayAttr as a Scheme list.
@@ -186,10 +186,10 @@
   ;; @see              mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note             Defined in lib/Bindings/IR/Operation.cpp; tries DenseI64ArrayAttr first, then ArrayAttr
   (define %get-integer-array-attr
-    (foreign-procedure "mlir_ir_operation_get_integer_array_attr"
+    (foreign-procedure "crest::Operation::getIntegerArrayAttr"
                        (uptr string) scheme-object))
 
-  ;; @brief mlir::Operation::setAttr — set a Float32 attribute.
+  ;; @brief mlir::Operation::setAttr! — set a Float32 attribute.
   ;; @param op    Operation* uptr
   ;; @param name  Attribute name (string)
   ;; @param value Float value (double, truncated to f32 internally)
@@ -197,10 +197,10 @@
   ;; @see         mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note        Defined in lib/Bindings/IR/Operation.cpp
   (define %set-f32-attr
-    (foreign-procedure "mlir_ir_operation_set_f32_attr"
+    (foreign-procedure "crest::Operation::setF32Attr"
                        (uptr string double) void))
 
-  ;; @brief mlir::Operation::setAttr — set an i64 IntegerAttr.
+  ;; @brief mlir::Operation::setAttr! — set an i64 IntegerAttr.
   ;; @param op    Operation* uptr
   ;; @param name  Attribute name (string)
   ;; @param value Integer value (integer-64)
@@ -208,19 +208,19 @@
   ;; @see         mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note        Defined in lib/Bindings/IR/Operation.cpp
   (define %set-i64-attr
-    (foreign-procedure "mlir_ir_operation_set_i64_attr"
+    (foreign-procedure "crest::Operation::setI64Attr"
                        (uptr string integer-64) void))
 
-  ;; @brief mlir::Operation::setAttr — set a UnitAttr (presence-only flag).
+  ;; @brief mlir::Operation::setAttr! — set a UnitAttr (presence-only flag).
   ;; @param op    Operation* uptr
   ;; @param name  Attribute name (string)
   ;; @return      void
   ;; @see         mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note        Defined in lib/Bindings/IR/Operation.cpp
   (define %set-unit-attr
-    (foreign-procedure "mlir_ir_operation_set_unit_attr" (uptr string) void))
+    (foreign-procedure "crest::Operation::setUnitAttr" (uptr string) void))
 
-  ;; @brief mlir::Operation::setAttr — set an IndexType IntegerAttr.
+  ;; @brief mlir::Operation::setAttr! — set an IndexType IntegerAttr.
   ;; @param op    Operation* uptr
   ;; @param name  Attribute name (string)
   ;; @param value Index value (integer-64)
@@ -228,10 +228,10 @@
   ;; @see         mlir/IR/Operation.h, mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/Operation.cpp
   (define %set-index-attr
-    (foreign-procedure "mlir_ir_operation_set_index_attr"
+    (foreign-procedure "crest::Operation::setIndexAttr"
                        (uptr string integer-64) void))
 
-  ;; @brief mlir::Operation::setAttr — set a DenseI64ArrayAttr from a Scheme list.
+  ;; @brief mlir::Operation::setAttr! — set a DenseI64ArrayAttr from a Scheme list.
   ;; @param op          Operation* uptr
   ;; @param name        Attribute name (string)
   ;; @param values-list Scheme list of integers
@@ -239,10 +239,10 @@
   ;; @see               mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note              Defined in lib/Bindings/IR/Operation.cpp
   (define %set-dense-i64-array
-    (foreign-procedure "mlir_ir_operation_set_dense_i64_array"
+    (foreign-procedure "crest::Operation::setDenseI64Array"
                        (uptr string scheme-object) void))
 
-  ;; @brief mlir::Operation::setAttr — set an ArrayAttr of i64 IntegerAttrs from a Scheme list.
+  ;; @brief mlir::Operation::setAttr! — set an ArrayAttr of i64 IntegerAttrs from a Scheme list.
   ;; @param op          Operation* uptr
   ;; @param name        Attribute name (string)
   ;; @param values-list Scheme list of integers
@@ -250,10 +250,10 @@
   ;; @see               mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note              Defined in lib/Bindings/IR/Operation.cpp; use %set-dense-i64-array for dense form
   (define %set-i64-array-attr
-    (foreign-procedure "mlir_ir_operation_set_i64_array_attr"
+    (foreign-procedure "crest::Operation::setI64ArrayAttr"
                        (uptr string scheme-object) void))
 
-  ;; @brief mlir::Operation::setAttr — set a DenseI32ArrayAttr from a Scheme list.
+  ;; @brief mlir::Operation::setAttr! — set a DenseI32ArrayAttr from a Scheme list.
   ;; @param op          Operation* uptr
   ;; @param name        Attribute name (string)
   ;; @param values-list Scheme list of integers (truncated to i32)
@@ -261,10 +261,10 @@
   ;; @see               mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note              Defined in lib/Bindings/IR/Operation.cpp
   (define %set-dense-i32-array
-    (foreign-procedure "mlir_ir_operation_set_dense_i32_array"
+    (foreign-procedure "crest::Operation::setDenseI32Array"
                        (uptr string scheme-object) void))
 
-  ;; @brief mlir::Operation::setAttr — copy an attribute from src-op to dst-op.
+  ;; @brief mlir::Operation::setAttr! — copy an attribute from src-op to dst-op.
   ;; @param dst-op    Destination Operation* uptr
   ;; @param dst-name  Attribute name on the destination (string)
   ;; @param src-op    Source Operation* uptr
@@ -273,7 +273,7 @@
   ;; @see             mlir/IR/Operation.h
   ;; @note            Defined in lib/Bindings/IR/Operation.cpp
   (define %copy-attr
-    (foreign-procedure "mlir_ir_operation_copy_attr"
+    (foreign-procedure "crest::Operation::copyAttr"
                        (uptr string uptr string) void))
 
   ;; @brief mlir::Operation::hasAttr — test whether an attribute is present.
@@ -283,7 +283,7 @@
   ;; @see              mlir/IR/Operation.h
   ;; @note             Defined in lib/Bindings/IR/Operation.cpp
   (define %has-attr
-    (foreign-procedure "mlir_ir_operation_has_attr" (uptr string) int))
+    (foreign-procedure "mlir::Operation::hasAttr" (uptr string) int))
 
   ;; @brief mlir::Operation::emitError — emit a compiler error diagnostic.
   ;; @param op   Operation* uptr (may be null; falls back to logging)
@@ -292,7 +292,7 @@
   ;; @see        mlir/IR/Operation.h, mlir/IR/Diagnostics.h
   ;; @note       Defined in lib/Bindings/IR/Operation.cpp
   (define %emit-error
-    (foreign-procedure "mlir_ir_operation_emit_error" (uptr string) void))
+    (foreign-procedure "mlir::Operation::emitError" (uptr string) void))
 
   ;; @brief mlir::Operation::emitWarning — emit a compiler warning diagnostic.
   ;; @param op   Operation* uptr (may be null; falls back to logging)
@@ -301,7 +301,7 @@
   ;; @see        mlir/IR/Operation.h, mlir/IR/Diagnostics.h
   ;; @note       Defined in lib/Bindings/IR/Operation.cpp
   (define %emit-warning
-    (foreign-procedure "mlir_ir_operation_emit_warning" (uptr string) void))
+    (foreign-procedure "mlir::Operation::emitWarning" (uptr string) void))
 
   ;; @brief mlir::Operation::emitRemark — emit a compiler remark diagnostic.
   ;; @param op   Operation* uptr (may be null; falls back to logging)
@@ -310,7 +310,7 @@
   ;; @see        mlir/IR/Operation.h, mlir/IR/Diagnostics.h
   ;; @note       Defined in lib/Bindings/IR/Operation.cpp
   (define %emit-remark
-    (foreign-procedure "mlir_ir_operation_emit_remark" (uptr string) void))
+    (foreign-procedure "mlir::Operation::emitRemark" (uptr string) void))
 
   ;; @brief mlir::Operation::erase — remove and deallocate this operation.
   ;; @param op  Operation* uptr
@@ -318,7 +318,7 @@
   ;; @see       mlir/IR/Operation.h
   ;; @note      Defined in lib/Bindings/IR/Operation.cpp; op pointer is invalid after this call
   (define %erase
-    (foreign-procedure "mlir_ir_operation_erase" (uptr) void))
+    (foreign-procedure "mlir::Operation::erase" (uptr) void))
 
   ;; @brief mlir::Operation::getAttr — get an attribute as opaque Attribute*.
   ;; @param op         Operation* uptr
@@ -327,10 +327,10 @@
   ;; @see              mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note             Defined in lib/Bindings/IR/Operation.cpp
   (define %get-attr
-    (foreign-procedure "mlir_ir_operation_get_attr"
+    (foreign-procedure "mlir::Operation::getAttr"
                        (uptr string) uptr))
 
-  ;; @brief mlir::Operation::setAttr — set an attribute from an opaque Attribute*.
+  ;; @brief mlir::Operation::setAttr! — set an attribute from an opaque Attribute*.
   ;; @param op         Operation* uptr
   ;; @param attr-name  Attribute name (string)
   ;; @param attr       Attribute* as uptr
@@ -338,7 +338,7 @@
   ;; @see              mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note             Defined in lib/Bindings/IR/Operation.cpp
   (define %set-attr
-    (foreign-procedure "mlir_ir_operation_set_attr"
+    (foreign-procedure "mlir::Operation::setAttr"
                        (uptr string uptr) void))
 
   ;; @brief mlir::FloatAttr::getValueAsDouble — get a float attribute value.
@@ -348,7 +348,7 @@
   ;; @see              mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note             Defined in lib/Bindings/IR/Operation.cpp
   (define %get-float-attr
-    (foreign-procedure "mlir_ir_operation_get_float_attr"
+    (foreign-procedure "mlir::Operation::getAttrOfType<FloatAttr>"
                        (uptr string) double))
 
 ) ;; end library (mlir ir operation ffi)

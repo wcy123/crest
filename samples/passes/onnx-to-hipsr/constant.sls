@@ -14,7 +14,7 @@
 ;; Both handle inline value and external data (location/offset/size).
 ;;
 ;; External data (location/offset/size) is handled via DenseResourceElementsAttr
-;; constructed through %DenseResourceElementsAttr:get.
+;; constructed through %mlir::DenseResourceElementsAttr::get.
 ;;
 ;;===----------------------------------------------------------------------===;;
 
@@ -22,21 +22,21 @@
   (export populate-constant-patterns)
   (import (except (rnrs (6)) =)
           (rename (only (mlir ir operation)
-                       operation-emit-error!
+                       mlir::Operation::emitError
                        mlir::Operation::getAttr
                        mlir::Operation::getContext
                        mlir::Operation::getAttrOfType<IntegerAttr>
                        mlir::Operation::getAttrOfType<StringAttr>
-                       operation-has-attr?)
-                 (operation-emit-error!   mlir-emit-error!)
-                 (mlir::Operation::getAttr      mlir-operation-get-attribute)
-                 (mlir::Operation::getContext   mlir-mlir::Operation::getContext)
-                 (mlir::Operation::getAttrOfType<IntegerAttr> mlir-mlir::Operation::getAttrOfType<IntegerAttr>)
-                 (mlir::Operation::getAttrOfType<StringAttr>  mlir-mlir::Operation::getAttrOfType<StringAttr>)
-                 (operation-has-attr?     mlir-operation-has-attr?))
+                       mlir::Operation::hasAttr?)
+                 (mlir::Operation::emitError   mlir-emit-error!)
+                 (mlir::Operation::getAttr      mlir-operation-get-attr)
+                 (mlir::Operation::getContext   mlir-Operation::getContext)
+                 (mlir::Operation::getAttrOfType<IntegerAttr> mlir-Operation::getAttrOfType<IntegerAttr>)
+                 (mlir::Operation::getAttrOfType<StringAttr>  mlir-Operation::getAttrOfType<StringAttr>)
+                 (mlir::Operation::hasAttr?     mlir-Operation::hasAttr?))
           (rename (mlir ir value)
-            (get-type          mlir-mlir::Value::getType))
-          (only (mlir ir builtin-attributes ffi) %DenseResourceElementsAttr:get)
+            (mlir::Value::getType          mlir-value-get-type))
+          (only (mlir ir builtin-attributes ffi) %mlir::DenseResourceElementsAttr::get)
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
@@ -54,21 +54,21 @@
       (mlir-emit-error! op msg)
       (error 'onnx-constant msg))
     (cond
-      [(mlir-operation-has-attr? op "value")
-       (mlir-operation-get-attribute op "value")]
-      [(mlir-operation-has-attr? op "location")
-       (let* ([location (mlir-mlir::Operation::getAttrOfType<StringAttr> op "location")]
-              [offset   (mlir-mlir::Operation::getAttrOfType<IntegerAttr> op "offset" 0)]
-              [size     (mlir-mlir::Operation::getAttrOfType<IntegerAttr> op "size" 0)]
+      [(mlir-Operation::hasAttr? op "value")
+       (mlir-operation-get-attr op "value")]
+      [(mlir-Operation::hasAttr? op "location")
+       (let* ([location (mlir-Operation::getAttrOfType<StringAttr> op "location")]
+              [offset   (mlir-Operation::getAttrOfType<IntegerAttr> op "offset" 0)]
+              [size     (mlir-Operation::getAttrOfType<IntegerAttr> op "size" 0)]
               [r (if (string=? location ort-mem-addr-tag)
-                     (%DenseResourceElementsAttr:get ctx
+                     (%mlir::DenseResourceElementsAttr::get ctx
                        (list !result-type
                              (string-append "mem|0x" (number->string offset 16))
                              offset size))
                      (let ([buf (mlir-hipsr-load-file-map ctx location)])
                        (if (zero? buf)
                            (fail (string-append "cannot memory-map: " location))
-                           (%DenseResourceElementsAttr:get ctx
+                           (%mlir::DenseResourceElementsAttr::get ctx
                              (list !result-type
                                    (string-append "file|" location "|"
                                                   (number->string offset))
@@ -81,10 +81,10 @@
   (define-conversion-pattern (onnx-constant-scalar->arith op operands-ref rewriter type-converter)
     :if-match
         %output = onnx.Constant ()
-            :where (zero? (mlir-type-get-rank (mlir-mlir::Value::getType %output)))
+            :where (zero? (mlir-ranked-tensor-type-get-rank (mlir-value-get-type %output)))
     :then-let
-        ([ctx         (mlir-mlir::Operation::getContext op)]
-         [!out-type   (mlir-mlir::Value::getType %output)]
+        ([ctx         (mlir-Operation::getContext op)]
+         [!out-type   (mlir-value-get-type %output)]
          [$value-attr (constant-value-attr op ctx !out-type)])
     :rewrite %output :with
         (%result = arith.constant () ("value" = $value-attr) -> !out-type))
@@ -93,10 +93,10 @@
   (define-conversion-pattern (onnx-constant-tensor->hipsr op operands-ref rewriter type-converter)
     :if-match
         %output = onnx.Constant ()
-            :where (positive? (mlir-type-get-rank (mlir-mlir::Value::getType %output)))
+            :where (positive? (mlir-ranked-tensor-type-get-rank (mlir-value-get-type %output)))
     :then-let
-        ([ctx         (mlir-mlir::Operation::getContext op)]
-         [!out-type   (mlir-mlir::Value::getType %output)]
+        ([ctx         (mlir-Operation::getContext op)]
+         [!out-type   (mlir-value-get-type %output)]
          [!out-dev    (mlir-ranked-tensor-type-with-encoding !out-type (make-hipsr-device-space-attr ctx))]
          [$value-attr (constant-value-attr op ctx !out-dev)])
     :rewrite %output :with

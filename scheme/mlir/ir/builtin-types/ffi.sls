@@ -34,7 +34,7 @@
   ;; @see        mlir/IR/BuiltinTypes.h
   ;; @note       Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %mlir::IndexType::get
-    (foreign-procedure "mlir_ir_builtin_types_index_type_get" (uptr) uptr))
+    (foreign-procedure "mlir::IndexType::get" (uptr) uptr))
 
   ;; @brief mlir::IntegerType::get(ctx, 64) — construct a 64-bit integer type.
   ;; @param ctx  MLIRContext opaque pointer uptr
@@ -42,7 +42,7 @@
   ;; @see        mlir/IR/BuiltinTypes.h
   ;; @note       Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %mlir::IntegerType::get<i64>
-    (foreign-procedure "mlir_ir_builtin_types_integer_type_get_i64" (uptr) uptr))
+    (foreign-procedure "mlir::IntegerType::get<i64>" (uptr) uptr))
 
   ;; @brief mlir::IntegerType::get(ctx, 1) — construct a 1-bit integer type.
   ;; @param ctx  MLIRContext opaque pointer uptr
@@ -50,7 +50,7 @@
   ;; @see        mlir/IR/BuiltinTypes.h
   ;; @note       Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %mlir::IntegerType::get<i1>
-    (foreign-procedure "mlir_ir_builtin_types_integer_type_get_i1" (uptr) uptr))
+    (foreign-procedure "mlir::IntegerType::get<i1>" (uptr) uptr))
 
   ;; @brief mlir::isa<mlir::RankedTensorType>(type) — check if type is a ranked tensor.
   ;; @param type  Type opaque pointer uptr
@@ -58,7 +58,7 @@
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %mlir::isa<RankedTensorType>-isa
-    (foreign-procedure "mlir_ir_builtin_types_ranked_tensor_type_isa" (uptr) int))
+    (foreign-procedure "mlir::isa<RankedTensorType>" (uptr) int))
 
   ;; @brief mlir::RankedTensorType::getRank() — return the rank of a ranked tensor type.
   ;; @param type  RankedTensorType opaque pointer uptr
@@ -66,7 +66,7 @@
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %mlir::RankedTensorType::getRank
-    (foreign-procedure "mlir_ir_builtin_types_ranked_tensor_type_get_rank"
+    (foreign-procedure "mlir::RankedTensorType::getRank"
                        (uptr) integer-64))
 
   ;; @brief mlir::RankedTensorType::getElementType() — return the element type of a ranked tensor.
@@ -76,7 +76,7 @@
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %mlir::RankedTensorType::getElementType
     (foreign-procedure
-     "mlir_ir_builtin_types_ranked_tensor_type_get_element_type" (uptr) uptr))
+     "mlir::RankedTensorType::getElementType" (uptr) uptr))
 
   ;; @brief mlir::RankedTensorType::getShape() — return the shape of a ranked tensor as a Scheme list.
   ;; @param type  RankedTensorType opaque pointer (scheme-object)
@@ -84,7 +84,7 @@
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %mlir::RankedTensorType::getShape
-    (foreign-procedure "mlir_ir_builtin_types_ranked_tensor_type_get_shape"
+    (foreign-procedure "mlir::RankedTensorType::getShape"
                        (uptr) scheme-object))
 
   ;; @brief mlir::RankedTensorType::getEncoding() — return the encoding attribute of a ranked tensor.
@@ -93,7 +93,7 @@
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %mlir::RankedTensorType::getEncoding
-    (foreign-procedure "mlir_ir_builtin_types_ranked_tensor_type_get_encoding"
+    (foreign-procedure "mlir::RankedTensorType::getEncoding"
                        (uptr) uptr))
 
   ;; @brief mlir::RankedTensorType::cloneWithEncoding(attr) — clone a ranked tensor type with a new encoding.
@@ -104,7 +104,7 @@
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %crest::RankedTensorType::cloneWithEncoding
     (foreign-procedure
-     "mlir_ir_builtin_types_ranked_tensor_type_clone_with_encoding"
+     "crest::RankedTensorType::cloneWithEncoding"
      (uptr uptr) uptr))
 
   ;; @brief ShapedType::getElementType() — return the element type of a shaped type.
@@ -113,7 +113,7 @@
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %shaped-type-get-element-type
-    (foreign-procedure "mlir_ir_builtin_types_shaped_type_get_element_type"
+    (foreign-procedure "mlir::ShapedType::getElementType"
                        (uptr) uptr))
 
   ;; @brief mlir::IntegerType::getWidth() — return the bit width of an integer type.
@@ -122,7 +122,7 @@
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %integer-type-get-width
-    (foreign-procedure "mlir_ir_builtin_types_integer_type_get_width"
+    (foreign-procedure "mlir::IntegerType::getWidth"
                        (uptr) uptr))
 
   ;; @brief mlir::IntegerType::isUnsigned() — check if an integer type is unsigned.
@@ -131,7 +131,7 @@
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %integer-type-is-unsigned
-    (foreign-procedure "mlir_ir_builtin_types_integer_type_is_unsigned"
+    (foreign-procedure "mlir::IntegerType::isUnsigned"
                        (uptr) int))
 
 ) ;; end library (mlir ir builtin-types ffi)

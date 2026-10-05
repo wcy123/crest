@@ -46,7 +46,7 @@
           (only (mlir ir mlir-context) current-mlir-context)
           (only (mlir ir operation) mlir::Operation::getContext))
 
-  (define mlir-mlir::Operation::getContext mlir::Operation::getContext)
+  (define mlir-Operation::getContext mlir::Operation::getContext)
 
   ;; @brief mlir::RewriterBase::create — create an op via OperationState, setting insertion point before loc-op.
   ;; @param rewriter      RewriterBase* uptr (ConversionPatternRewriter or IRRewriter)
@@ -182,7 +182,7 @@
   ;; @param loc   Operation* uptr — location source; also used to derive current-mlir-context
   ;; @return      Value of the last body expression
   ;; @note        Sets current-rewriter to rw and clears current-block-builder to #f.
-  ;;              current-mlir-context is derived from loc via mlir-mlir::Operation::getContext.
+  ;;              current-mlir-context is derived from loc via mlir-Operation::getContext.
   ;;              Nested with-rewrite-builder or with-current-block-builder forms shadow these bindings.
   (define-syntax with-rewrite-builder
     (syntax-rules ()
@@ -190,7 +190,7 @@
        (parameterize ([current-rewriter      rw]
                       [current-block-builder #f]
                       [current-loc           loc]
-                      [current-mlir-context  (mlir-mlir::Operation::getContext loc)])
+                      [current-mlir-context  (mlir-Operation::getContext loc)])
          body ...)]))
 
   ;; @brief Install an existing OpBuilder* as the active block builder for the dynamic extent of body.
@@ -205,7 +205,7 @@
        (parameterize ([current-block-builder builder]
                       [current-rewriter      #f]
                       [current-loc           loc]
-                      [current-mlir-context  (mlir-mlir::Operation::getContext loc)])
+                      [current-mlir-context  (mlir-Operation::getContext loc)])
          body ...)]))
 
   ;; @brief RAII macro — heap-allocate an OpBuilder at the end of block, run body, then destroy the builder.

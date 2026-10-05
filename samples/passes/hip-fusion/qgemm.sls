@@ -27,15 +27,15 @@
           (rename (only (mlir ir operation)
                        mlir::Operation::getAttrOfType<IntegerAttr>
                        mlir::Operation::getResult
-                       operation-set-f32-attr!
-                       operation-set-i64-attr!)
-                 (mlir::Operation::getAttrOfType<IntegerAttr> mlir-mlir::Operation::getAttrOfType<IntegerAttr>)
-                 (mlir::Operation::getResult       mlir-mlir::Operation::getResult)
-                 (operation-set-f32-attr!    mlir-operation-set-f32-attr!)
-                 (operation-set-i64-attr!    mlir-operation-set-i64-attr!))
+                       crest::Operation::setF32Attr
+                       crest::Operation::setI64Attr)
+                 (mlir::Operation::getAttrOfType<IntegerAttr> mlir-Operation::getAttrOfType<IntegerAttr>)
+                 (mlir::Operation::getResult       mlir-Operation::getResult)
+                 (crest::Operation::setF32Attr    mlir-operation-set-f32-attr!)
+                 (crest::Operation::setI64Attr    mlir-operation-set-i64-attr!))
           (rename (mlir ir value)
-            (get-defining-op   mlir-mlir::Value::getDefiningOp)
-            (get-type          mlir-mlir::Value::getType))
+            (mlir::Value::getDefiningOp   mlir-value-get-defining-op)
+            (mlir::Value::getType          mlir-value-get-type))
           (only (mlir core builder) mlir-build-operation)
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)
@@ -58,28 +58,28 @@
                               (hip-can-build-init? op %gemm_init))
         %dq_a = hip.dequantize_linear (%ctx %a %a_scale)
                   :where (and (hip-qdq-quantized-width?
-                                (mlir-mlir::Value::getDefiningOp %dq_a) '(8 16))
+                                (mlir-value-get-defining-op %dq_a) '(8 16))
                               (hip-splat-scale? %a_scale)
                               (hip-extractable-qdq-zeropoint?
-                                (mlir-mlir::Value::getDefiningOp %dq_a)))
+                                (mlir-value-get-defining-op %dq_a)))
         %dq_b = hip.dequantize_linear (%ctx %b %b_scale)
                   :where (and (hip-qdq-quantized-width?
-                                (mlir-mlir::Value::getDefiningOp %dq_b) '(8))
+                                (mlir-value-get-defining-op %dq_b) '(8))
                               (hip-splat-scale? %b_scale)
                               (hip-extractable-qdq-zeropoint?
-                                (mlir-mlir::Value::getDefiningOp %dq_b)))
+                                (mlir-value-get-defining-op %dq_b)))
         %dq_c = hip.dequantize_linear (%ctx %c %c_scale)
                   :where (and (hip-qdq-quantized-width?
-                                (mlir-mlir::Value::getDefiningOp %dq_c) '(8 16 32))
+                                (mlir-value-get-defining-op %dq_c) '(8 16 32))
                               (hip-splat-scale? %c_scale)
                               (hip-extractable-qdq-zeropoint?
-                                (mlir-mlir::Value::getDefiningOp %dq_c)))
+                                (mlir-value-get-defining-op %dq_c)))
     :then-let
-        ([!y-type   (mlir-mlir::Value::getType %q)]
-         [%dq-a-op  (mlir-mlir::Value::getDefiningOp %dq_a)]
-         [%dq-b-op  (mlir-mlir::Value::getDefiningOp %dq_b)]
-         [%dq-c-op  (mlir-mlir::Value::getDefiningOp %dq_c)]
-         [%gemm-op  (mlir-mlir::Value::getDefiningOp %gemm)]
+        ([!y-type   (mlir-value-get-type %q)]
+         [%dq-a-op  (mlir-value-get-defining-op %dq_a)]
+         [%dq-b-op  (mlir-value-get-defining-op %dq_b)]
+         [%dq-c-op  (mlir-value-get-defining-op %dq_c)]
+         [%gemm-op  (mlir-value-get-defining-op %gemm)]
          [a-scale   (hip-extract-splat-scale %a_scale)]
          [b-scale   (hip-extract-splat-scale %b_scale)]
          [c-scale   (hip-extract-splat-scale %c_scale)]
@@ -91,8 +91,8 @@
          [b-bits    (hip-qdq-value-bits-c %dq-b-op)]
          [alpha     (op-get-f32-attr %gemm-op "alpha")]
          [beta      (op-get-f32-attr %gemm-op "beta")]
-         [trans-a   (mlir-mlir::Operation::getAttrOfType<IntegerAttr> %gemm-op "transA" 0)]
-         [trans-b   (mlir-mlir::Operation::getAttrOfType<IntegerAttr> %gemm-op "transB" 0)]
+         [trans-a   (mlir-Operation::getAttrOfType<IntegerAttr> %gemm-op "transA" 0)]
+         [trans-b   (mlir-Operation::getAttrOfType<IntegerAttr> %gemm-op "transB" 0)]
          [%init     (hip-build-init rewriter !y-type %gemm_init)])
     :rewrite %q :with
         (%result = (let ([new-op (mlir-build-operation "hip.qgemm"
@@ -113,7 +113,7 @@
                      (unless (nan? beta)  (mlir-operation-set-f32-attr! new-op "beta"  beta))
                      (mlir-operation-set-i64-attr! new-op "transA"       trans-a)
                      (mlir-operation-set-i64-attr! new-op "transB"       trans-b)
-                     (mlir-mlir::Operation::getResult new-op 0))))
+                     (mlir-Operation::getResult new-op 0))))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Pattern 7: QGemm per-tensor no bias  (benefit 10)
@@ -130,21 +130,21 @@
                               (hip-can-build-init? op %gemm_init))
         %dq_a = hip.dequantize_linear (%ctx %a %a_scale)
                   :where (and (hip-qdq-quantized-width?
-                                (mlir-mlir::Value::getDefiningOp %dq_a) '(8 16))
+                                (mlir-value-get-defining-op %dq_a) '(8 16))
                               (hip-splat-scale? %a_scale)
                               (hip-extractable-qdq-zeropoint?
-                                (mlir-mlir::Value::getDefiningOp %dq_a)))
+                                (mlir-value-get-defining-op %dq_a)))
         %dq_b = hip.dequantize_linear (%ctx %b %b_scale)
                   :where (and (hip-qdq-quantized-width?
-                                (mlir-mlir::Value::getDefiningOp %dq_b) '(8))
+                                (mlir-value-get-defining-op %dq_b) '(8))
                               (hip-splat-scale? %b_scale)
                               (hip-extractable-qdq-zeropoint?
-                                (mlir-mlir::Value::getDefiningOp %dq_b)))
+                                (mlir-value-get-defining-op %dq_b)))
     :then-let
-        ([!y-type  (mlir-mlir::Value::getType %q)]
-         [%dq-a-op (mlir-mlir::Value::getDefiningOp %dq_a)]
-         [%dq-b-op (mlir-mlir::Value::getDefiningOp %dq_b)]
-         [%gemm-op (mlir-mlir::Value::getDefiningOp %gemm)]
+        ([!y-type  (mlir-value-get-type %q)]
+         [%dq-a-op (mlir-value-get-defining-op %dq_a)]
+         [%dq-b-op (mlir-value-get-defining-op %dq_b)]
+         [%gemm-op (mlir-value-get-defining-op %gemm)]
          [a-scale  (hip-extract-splat-scale %a_scale)]
          [b-scale  (hip-extract-splat-scale %b_scale)]
          [y-scale  (hip-extract-splat-scale %y_scale)]
@@ -153,8 +153,8 @@
          [y-zp     (hip-extract-qdq-zeropoint-i64 op 0)]
          [b-bits   (hip-qdq-value-bits-c %dq-b-op)]
          [alpha    (op-get-f32-attr %gemm-op "alpha")]
-         [trans-a  (mlir-mlir::Operation::getAttrOfType<IntegerAttr> %gemm-op "transA" 0)]
-         [trans-b  (mlir-mlir::Operation::getAttrOfType<IntegerAttr> %gemm-op "transB" 0)]
+         [trans-a  (mlir-Operation::getAttrOfType<IntegerAttr> %gemm-op "transA" 0)]
+         [trans-b  (mlir-Operation::getAttrOfType<IntegerAttr> %gemm-op "transB" 0)]
          [%init    (hip-build-init rewriter !y-type %gemm_init)])
     :rewrite %q :with
         (%result = (let ([new-op (mlir-build-operation "hip.qgemm"
@@ -172,7 +172,7 @@
                      (unless (nan? alpha) (mlir-operation-set-f32-attr! new-op "alpha" alpha))
                      (mlir-operation-set-i64-attr! new-op "transA"       trans-a)
                      (mlir-operation-set-i64-attr! new-op "transB"       trans-b)
-                     (mlir-mlir::Operation::getResult new-op 0))))
+                     (mlir-Operation::getResult new-op 0))))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Pattern 8: QGemm per-channel weight with bias  (benefit 9)
@@ -189,26 +189,26 @@
                               (hip-can-build-init? op %gemm_init))
         %dq_a = hip.dequantize_linear (%ctx %a %a_scale)
                   :where (and (hip-qdq-quantized-width?
-                                (mlir-mlir::Value::getDefiningOp %dq_a) '(8 16))
+                                (mlir-value-get-defining-op %dq_a) '(8 16))
                               (hip-splat-scale? %a_scale)
                               (hip-extractable-qdq-zeropoint?
-                                (mlir-mlir::Value::getDefiningOp %dq_a)))
+                                (mlir-value-get-defining-op %dq_a)))
         %dq_b = hip.dequantize_linear (%ctx %b %b_scales %b_zps %b_init)
                   :where (hip-per-channel-weight?
-                            (mlir-mlir::Value::getDefiningOp %dq_b)
-                            (mlir-mlir::Value::getDefiningOp %gemm))
+                            (mlir-value-get-defining-op %dq_b)
+                            (mlir-value-get-defining-op %gemm))
         %dq_c = hip.dequantize_linear (%ctx %c %c_scale)
                   :where (and (hip-qdq-quantized-width?
-                                (mlir-mlir::Value::getDefiningOp %dq_c) '(8 16 32))
+                                (mlir-value-get-defining-op %dq_c) '(8 16 32))
                               (hip-splat-scale? %c_scale)
                               (hip-extractable-qdq-zeropoint?
-                                (mlir-mlir::Value::getDefiningOp %dq_c)))
+                                (mlir-value-get-defining-op %dq_c)))
     :then-let
-        ([!y-type  (mlir-mlir::Value::getType %q)]
-         [%dq-a-op (mlir-mlir::Value::getDefiningOp %dq_a)]
-         [%dq-b-op (mlir-mlir::Value::getDefiningOp %dq_b)]
-         [%dq-c-op (mlir-mlir::Value::getDefiningOp %dq_c)]
-         [%gemm-op (mlir-mlir::Value::getDefiningOp %gemm)]
+        ([!y-type  (mlir-value-get-type %q)]
+         [%dq-a-op (mlir-value-get-defining-op %dq_a)]
+         [%dq-b-op (mlir-value-get-defining-op %dq_b)]
+         [%dq-c-op (mlir-value-get-defining-op %dq_c)]
+         [%gemm-op (mlir-value-get-defining-op %gemm)]
          [a-scale  (hip-extract-splat-scale %a_scale)]
          [c-scale  (hip-extract-splat-scale %c_scale)]
          [y-scale  (hip-extract-splat-scale %y_scale)]
@@ -218,8 +218,8 @@
          [b-bits   (hip-qdq-value-bits-c %dq-b-op)]
          [alpha    (op-get-f32-attr %gemm-op "alpha")]
          [beta     (op-get-f32-attr %gemm-op "beta")]
-         [trans-a  (mlir-mlir::Operation::getAttrOfType<IntegerAttr> %gemm-op "transA" 0)]
-         [trans-b  (mlir-mlir::Operation::getAttrOfType<IntegerAttr> %gemm-op "transB" 0)]
+         [trans-a  (mlir-Operation::getAttrOfType<IntegerAttr> %gemm-op "transA" 0)]
+         [trans-b  (mlir-Operation::getAttrOfType<IntegerAttr> %gemm-op "transB" 0)]
          [%init    (hip-build-init rewriter !y-type %gemm_init)])
     :rewrite %q :with
         (%result = (let ([new-op (mlir-build-operation "hip.qgemm"
@@ -238,7 +238,7 @@
                      (unless (nan? beta)  (mlir-operation-set-f32-attr! new-op "beta"  beta))
                      (mlir-operation-set-i64-attr! new-op "transA"       trans-a)
                      (mlir-operation-set-i64-attr! new-op "transB"       trans-b)
-                     (mlir-mlir::Operation::getResult new-op 0))))
+                     (mlir-Operation::getResult new-op 0))))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Pattern 9: QGemm per-channel no bias  (benefit 9)
@@ -255,27 +255,27 @@
                               (hip-can-build-init? op %gemm_init))
         %dq_a = hip.dequantize_linear (%ctx %a %a_scale)
                   :where (and (hip-qdq-quantized-width?
-                                (mlir-mlir::Value::getDefiningOp %dq_a) '(8 16))
+                                (mlir-value-get-defining-op %dq_a) '(8 16))
                               (hip-splat-scale? %a_scale)
                               (hip-extractable-qdq-zeropoint?
-                                (mlir-mlir::Value::getDefiningOp %dq_a)))
+                                (mlir-value-get-defining-op %dq_a)))
         %dq_b = hip.dequantize_linear (%ctx %b %b_scales %b_zps %b_init)
                   :where (hip-per-channel-weight?
-                            (mlir-mlir::Value::getDefiningOp %dq_b)
-                            (mlir-mlir::Value::getDefiningOp %gemm))
+                            (mlir-value-get-defining-op %dq_b)
+                            (mlir-value-get-defining-op %gemm))
     :then-let
-        ([!y-type  (mlir-mlir::Value::getType %q)]
-         [%dq-a-op (mlir-mlir::Value::getDefiningOp %dq_a)]
-         [%dq-b-op (mlir-mlir::Value::getDefiningOp %dq_b)]
-         [%gemm-op (mlir-mlir::Value::getDefiningOp %gemm)]
+        ([!y-type  (mlir-value-get-type %q)]
+         [%dq-a-op (mlir-value-get-defining-op %dq_a)]
+         [%dq-b-op (mlir-value-get-defining-op %dq_b)]
+         [%gemm-op (mlir-value-get-defining-op %gemm)]
          [a-scale  (hip-extract-splat-scale %a_scale)]
          [y-scale  (hip-extract-splat-scale %y_scale)]
          [a-zp     (hip-extract-qdq-zeropoint-i64 %dq-a-op 0)]
          [y-zp     (hip-extract-qdq-zeropoint-i64 op 0)]
          [b-bits   (hip-qdq-value-bits-c %dq-b-op)]
          [alpha    (op-get-f32-attr %gemm-op "alpha")]
-         [trans-a  (mlir-mlir::Operation::getAttrOfType<IntegerAttr> %gemm-op "transA" 0)]
-         [trans-b  (mlir-mlir::Operation::getAttrOfType<IntegerAttr> %gemm-op "transB" 0)]
+         [trans-a  (mlir-Operation::getAttrOfType<IntegerAttr> %gemm-op "transA" 0)]
+         [trans-b  (mlir-Operation::getAttrOfType<IntegerAttr> %gemm-op "transB" 0)]
          [%init    (hip-build-init rewriter !y-type %gemm_init)])
     :rewrite %q :with
         (%result = (let ([new-op (mlir-build-operation "hip.qgemm"
@@ -291,6 +291,6 @@
                      (unless (nan? alpha) (mlir-operation-set-f32-attr! new-op "alpha" alpha))
                      (mlir-operation-set-i64-attr! new-op "transA"       trans-a)
                      (mlir-operation-set-i64-attr! new-op "transB"       trans-b)
-                     (mlir-mlir::Operation::getResult new-op 0))))
+                     (mlir-Operation::getResult new-op 0))))
 
 ) ;; end library (passes hip-fusion qgemm)

@@ -22,13 +22,13 @@
                        mlir::Operation::getContext
                        mlir::Operation::getAttrOfType<IntegerAttr>
                        mlir::Operation::getResult
-                       operation-set-attr!)
-                 (mlir::Operation::getContext      mlir-mlir::Operation::getContext)
-                 (mlir::Operation::getAttrOfType<IntegerAttr> mlir-mlir::Operation::getAttrOfType<IntegerAttr>)
-                 (mlir::Operation::getResult       mlir-mlir::Operation::getResult)
-                 (operation-set-attr!        mlir-operation-set-attribute!))
+                       mlir::Operation::setAttr!)
+                 (mlir::Operation::getContext      mlir-Operation::getContext)
+                 (mlir::Operation::getAttrOfType<IntegerAttr> mlir-Operation::getAttrOfType<IntegerAttr>)
+                 (mlir::Operation::getResult       mlir-Operation::getResult)
+                 (mlir::Operation::setAttr!        mlir-operation-set-attribute!))
           (rename (mlir ir value)
-            (get-type          mlir-mlir::Value::getType))
+            (mlir::Value::getType          mlir-value-get-type))
           (only (mlir ir builtin-attributes ffi)
                 %mlir::IntegerAttr::get<index>
                 %mlir::IntegerAttr::get<i64>)
@@ -65,42 +65,42 @@
                  [ext (if (dynamic-dim? dim)
                           (let* ([ci-op (mlir-build-operation "arith.constant"
                                           '() (list index-type))]
-                                 [_     (mlir-operation-set-attribute! ci-op "value" (%mlir::IntegerAttr::get<index> (mlir-mlir::Operation::getContext ci-op) axis))]
-                                 [ci    (mlir-mlir::Operation::getResult ci-op 0)]
+                                 [_     (mlir-operation-set-attribute! ci-op "value" (%mlir::IntegerAttr::get<index> (mlir-Operation::getContext ci-op) axis))]
+                                 [ci    (mlir-Operation::getResult ci-op 0)]
                                  [d-op  (mlir-build-operation "tensor.dim"
                                           (list in-val ci) (list index-type))]
-                                 [d     (mlir-mlir::Operation::getResult d-op 0)]
+                                 [d     (mlir-Operation::getResult d-op 0)]
                                  [e-op  (mlir-build-operation "arith.index_cast"
                                           (list d) (list i64-type))])
-                            (mlir-mlir::Operation::getResult e-op 0))
+                            (mlir-Operation::getResult e-op 0))
                           (let* ([e-op (mlir-build-operation "arith.constant"
                                          '() (list i64-type))]
-                                 [_    (mlir-operation-set-attribute! e-op "value" (%mlir::IntegerAttr::get<i64> (mlir-mlir::Operation::getContext e-op) dim))])
-                            (mlir-mlir::Operation::getResult e-op 0)))]
+                                 [_    (mlir-operation-set-attribute! e-op "value" (%mlir::IntegerAttr::get<i64> (mlir-Operation::getContext e-op) dim))])
+                            (mlir-Operation::getResult e-op 0)))]
                  ;; slot constant (= axis - start within the output tensor)
                  [slot-op (mlir-build-operation "arith.constant"
                              '() (list index-type))]
-                 [_       (mlir-operation-set-attribute! slot-op "value" (%mlir::IntegerAttr::get<index> (mlir-mlir::Operation::getContext slot-op) slot))]
-                 [slot-c  (mlir-mlir::Operation::getResult slot-op 0)]
+                 [_       (mlir-operation-set-attribute! slot-op "value" (%mlir::IntegerAttr::get<index> (mlir-Operation::getContext slot-op) slot))]
+                 [slot-c  (mlir-Operation::getResult slot-op 0)]
                  ;; tensor.insert %ext into %acc[%slot-c]
                  [ins-op  (mlir-build-operation "tensor.insert"
                              (list ext acc slot-c) (list out-host-type))]
-                 [ins     (mlir-mlir::Operation::getResult ins-op 0)])
+                 [ins     (mlir-Operation::getResult ins-op 0)])
             (loop (+ axis 1) (+ slot 1) ins)))))
 
   (define-conversion-pattern (onnx-shape->hipsr op operands-ref rewriter type-converter)
     :if-match
         %output = onnx.Shape (%input)
     :then-let
-        ([ctx         (mlir-mlir::Operation::getContext op)]
-         [!input-type (mlir-mlir::Value::getType %input)]
-         [!out-type   (mlir-mlir::Value::getType %output)]
+        ([ctx         (mlir-Operation::getContext op)]
+         [!input-type (mlir-value-get-type %input)]
+         [!out-type   (mlir-value-get-type %output)]
          [!out-host   (make-mlir-tensor-in-host-space !out-type)]
-         [input-rank  (mlir-type-get-rank !input-type)]
+         [input-rank  (mlir-ranked-tensor-type-get-rank !input-type)]
          [input-shape (mlir-type-get-shape !input-type)]
          [%ctx        (mlir-get-hipsr-context-arg op)]
-         [start-raw   (mlir-mlir::Operation::getAttrOfType<IntegerAttr> op "start" 0)]
-         [end-raw     (mlir-mlir::Operation::getAttrOfType<IntegerAttr> op "end" 0)]
+         [start-raw   (mlir-Operation::getAttrOfType<IntegerAttr> op "start" 0)]
+         [end-raw     (mlir-Operation::getAttrOfType<IntegerAttr> op "end" 0)]
          ;; ONNX normalizes negative bounds by adding rank, then clamps to [0, rank].
          ;; A zero end means "absent" and defaults to the rank.
          [start       (normalize-bound start-raw input-rank #f 0)]

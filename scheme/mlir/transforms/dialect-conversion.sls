@@ -85,7 +85,7 @@
     %type-converter-add-source-materialization)
 
   ;; @brief TypeConverter::addTargetMaterialization — register a Scheme callback
-  ;;        to produce a target-type value from an unconverted one.
+  ;;        to produce a tarmlir::Value::getType value from an unconverted one.
   ;; @param converter TypeConverter* uptr
   ;; @param callback  Scheme procedure
   ;;                  (lambda (builder-uptr result-type-uptr inputs-list loc-uptr)

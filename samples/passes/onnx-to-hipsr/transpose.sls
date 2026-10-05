@@ -23,16 +23,16 @@
                        mlir::Operation::getContext
                        mlir::Operation::getResult
                        crest::Operation::getIntegerArrayAttr
-                       operation-set-attr!)
-                 (mlir::Operation::getContext              mlir-mlir::Operation::getContext)
-                 (mlir::Operation::getResult               mlir-mlir::Operation::getResult)
+                       mlir::Operation::setAttr!)
+                 (mlir::Operation::getContext              mlir-Operation::getContext)
+                 (mlir::Operation::getResult               mlir-Operation::getResult)
                  (crest::Operation::getIntegerArrayAttr   mlir-crest::Operation::getIntegerArrayAttr)
-                 (operation-set-attr!                mlir-operation-set-attribute!))
+                 (mlir::Operation::setAttr!                mlir-operation-set-attribute!))
           (rename (mlir ir value)
-            (get-type          mlir-mlir::Value::getType))
+            (mlir::Value::getType          mlir-value-get-type))
           (only (mlir ir builtin-attributes ffi)
-                %IntegerAttr:get/index
-                %DenseI64ArrayAttr:get)
+                %mlir::IntegerAttr::get<index>
+                %mlir::DenseI64ArrayAttr::get)
           (only (mlir core builder) mlir-build-operation)
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)
@@ -48,30 +48,30 @@
     (let* ([extents
             (map (lambda (p)
                    (let* ([sz-op (mlir-build-operation "shape.const_size" '() (list size-type))])
-                     (mlir-operation-set-attribute! sz-op "value" (%IntegerAttr:get/index (mlir-mlir::Operation::getContext sz-op) p))
+                     (mlir-operation-set-attribute! sz-op "value" (%mlir::IntegerAttr::get<index> (mlir-Operation::getContext sz-op) p))
                      (let* ([ext-op (mlir-build-operation "shape.get_extent"
                                       (list input-shape
-                                            (mlir-mlir::Operation::getResult sz-op 0))
+                                            (mlir-Operation::getResult sz-op 0))
                                       (list size-type))])
-                       (mlir-mlir::Operation::getResult ext-op 0))))
+                       (mlir-Operation::getResult ext-op 0))))
                  perm)]
            [out-op (mlir-build-operation "shape.from_extents" extents (list shape-type))])
-      (mlir-mlir::Operation::getResult out-op 0)))
+      (mlir-Operation::getResult out-op 0)))
 
   (define-conversion-pattern (onnx-transpose->hipsr op operands-ref rewriter type-converter)
     :if-match
         %output = onnx.Transpose (%input)
     :then-let
         ([%ctx        (mlir-get-hipsr-context-arg op)]
-         [!in-type    (mlir-mlir::Value::getType %input)]
-         [!out-type   (mlir-mlir::Value::getType %output)]
+         [!in-type    (mlir-value-get-type %input)]
+         [!out-type   (mlir-value-get-type %output)]
          [!out-device (mlir-ranked-tensor-type-with-encoding !out-type (make-hipsr-device-space-attr (mlir-mlir::Type::getContext !out-type)))]
-         [!shape-type (mlir-shape.shape-type (mlir-mlir::Operation::getContext op))]
-         [!size-type  (mlir-shape.size-type  (mlir-mlir::Operation::getContext op))]
+         [!shape-type (mlir-shape.shape-type (mlir-Operation::getContext op))]
+         [!size-type  (mlir-shape.size-type  (mlir-Operation::getContext op))]
          [perm        (let ([raw (mlir-crest::Operation::getIntegerArrayAttr op "perm")])
                         (if (null? raw)
                             ;; absent perm → reverse permutation
-                            (let ([rank (mlir-type-get-rank !in-type)])
+                            (let ([rank (mlir-ranked-tensor-type-get-rank !in-type)])
                               (let loop ([i 0] [acc '()])
                                 (if (eqv? i rank) acc (loop (+ i 1) (cons i acc)))))
                             raw))])
@@ -86,8 +86,8 @@
         (%result = (let* ([new-op (mlir-build-operation "hipsr.transpose"
                                     (list %ctx %input %placeholder !out-device)
                                     (list !out-device))])
-                     (mlir-operation-set-attribute! new-op "perm" (%DenseI64ArrayAttr:get (mlir-mlir::Operation::getContext new-op) perm))
-                     (mlir-mlir::Operation::getResult new-op 0))))
+                     (mlir-operation-set-attribute! new-op "perm" (%mlir::DenseI64ArrayAttr::get (mlir-Operation::getContext new-op) perm))
+                     (mlir-Operation::getResult new-op 0))))
 
   (define (populate-transpose-patterns type-converter patterns ctx)
     (add-conversion-pattern patterns "onnx.Transpose"

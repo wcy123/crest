@@ -15,10 +15,10 @@
 
 (library (mlir ir value ffi)
   (export
-    %get-defining-op
+    %mlir::Value::getDefiningOp
     %mlir::isa<BlockArgument>?
-    %num-uses
-    %get-type)
+    %mlir::Value::getUses
+    %mlir::Value::getType)
 
   (import (rnrs)
           (only (chezscheme) foreign-procedure))
@@ -28,8 +28,8 @@
   ;; @return       Operation* opaque pointer uptr, or 0 if value is a block argument or null
   ;; @see          mlir/IR/Value.h
   ;; @note         Defined in lib/Bindings/IR/Value.cpp
-  (define %get-defining-op
-    (foreign-procedure "mlir_ir_value_get_defining_op" (uptr) uptr))
+  (define %mlir::Value::getDefiningOp
+    (foreign-procedure "mlir::Value::getDefiningOp" (uptr) uptr))
 
   ;; @brief mlir::isa<BlockArgument>(val) — check if value is a block argument.
   ;; @param value  Value opaque pointer uptr
@@ -37,22 +37,22 @@
   ;; @see          mlir/IR/Value.h
   ;; @note         Defined in lib/Bindings/IR/Value.cpp
   (define %mlir::isa<BlockArgument>?
-    (foreign-procedure "mlir_ir_value_is_block_argument" (uptr) int))
+    (foreign-procedure "mlir::isa<BlockArgument>" (uptr) int))
 
   ;; @brief mlir::Value::use_begin/use_end — count the number of uses of this value.
   ;; @param value  Value opaque pointer uptr
   ;; @return       Number of uses as uptr; 0 if value is null
   ;; @see          mlir/IR/Value.h
   ;; @note         Defined in lib/Bindings/IR/Value.cpp
-  (define %num-uses
-    (foreign-procedure "mlir_ir_value_num_uses" (uptr) uptr))
+  (define %mlir::Value::getUses
+    (foreign-procedure "mlir::Value::getUses" (uptr) uptr))
 
   ;; @brief mlir::Value::getType() — return the type of this value.
   ;; @param value  Value opaque pointer uptr
   ;; @return       Type opaque pointer uptr, or 0 if value is null
   ;; @see          mlir/IR/Value.h
   ;; @note         Defined in lib/Bindings/IR/Value.cpp
-  (define %get-type
-    (foreign-procedure "mlir_ir_value_get_type" (uptr) uptr))
+  (define %mlir::Value::getType
+    (foreign-procedure "mlir::Value::getType" (uptr) uptr))
 
 ) ;; end library (mlir ir value ffi)

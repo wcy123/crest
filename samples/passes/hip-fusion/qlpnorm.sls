@@ -20,12 +20,12 @@
           (rename (only (rnrs) =) (= num=))
           (rename (only (mlir ir operation)
                             mlir::Operation::getResult
-                            operation-set-i64-attr!)
-                      (mlir::Operation::getResult mlir-mlir::Operation::getResult)
-                      (operation-set-i64-attr! mlir-operation-set-i64-attr!))
+                            crest::Operation::setI64Attr)
+                      (mlir::Operation::getResult mlir-Operation::getResult)
+                      (crest::Operation::setI64Attr mlir-operation-set-i64-attr!))
           (rename (mlir ir value)
-            (get-defining-op   mlir-mlir::Value::getDefiningOp)
-            (get-type          mlir-mlir::Value::getType))
+            (mlir::Value::getDefiningOp   mlir-value-get-defining-op)
+            (mlir::Value::getType          mlir-value-get-type))
           (only (mlir core builder) mlir-build-operation)
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)
@@ -42,18 +42,18 @@
                                (hip-extractable-qdq-zeropoint? op))
         %rms   = hip.rms_norm          (%ctx %dq_in %rms_scale %rms_init)
                    :where (and (hip-value-single-use? %rms)
-                               (hip-l2-equiv-rms-norm? (mlir-mlir::Value::getDefiningOp %rms))
+                               (hip-l2-equiv-rms-norm? (mlir-value-get-defining-op %rms))
                                (hip-can-build-init? op %rms_init))
         %dq_in = hip.dequantize_linear (%ctx %input %in_scale)
                    :where (and (hip-qdq-quantized-width?
-                                 (mlir-mlir::Value::getDefiningOp %dq_in) '(16))
-                               (hip-qdq-unsigned? (mlir-mlir::Value::getDefiningOp %dq_in))
+                                 (mlir-value-get-defining-op %dq_in) '(16))
+                               (hip-qdq-unsigned? (mlir-value-get-defining-op %dq_in))
                                (hip-splat-scale? %in_scale)
                                (hip-extractable-qdq-zeropoint?
-                                 (mlir-mlir::Value::getDefiningOp %dq_in)))
+                                 (mlir-value-get-defining-op %dq_in)))
     :then-let
-        ([!out-type (mlir-mlir::Value::getType %q)]
-         [%dq-in-op (mlir-mlir::Value::getDefiningOp %dq_in)]
+        ([!out-type (mlir-value-get-type %q)]
+         [%dq-in-op (mlir-value-get-defining-op %dq_in)]
          [in-scale  (hip-extract-splat-scale %in_scale)]
          [out-scale (hip-extract-splat-scale %out_scale)]
          [in-zp     (hip-extract-qdq-zeropoint-i64 %dq-in-op 0)]
@@ -66,6 +66,6 @@
                      (set-qdq-in-out-attrs! new-op in-scale in-zp out-scale out-zp)
                      (mlir-operation-set-i64-attr! new-op "axis" -1)
                      (mlir-operation-set-i64-attr! new-op "p"    2)
-                     (mlir-mlir::Operation::getResult new-op 0))))
+                     (mlir-Operation::getResult new-op 0))))
 
 ) ;; end library (passes hip-fusion qlpnorm)

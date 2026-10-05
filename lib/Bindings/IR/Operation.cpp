@@ -513,6 +513,17 @@ void registerIROperationBindings() {
                    (void*)::mlir_ir_operation_set_attr);
   Sregister_symbol("mlir_op_get_float_attr",
                    (void*)::mlir_ir_operation_get_float_attr);
+  // Aliases with ? and ! suffix (Scheme predicate/mutator convention)
+  Sregister_symbol("mlir::Operation::use_empty?",
+                   (void*)::mlir_ir_operation_use_empty);
+  Sregister_symbol("mlir::Operation::hasAttr?",
+                   (void*)::mlir_ir_operation_has_attr);
+  Sregister_symbol("mlir::Operation::setAttr!",
+                   (void*)::mlir_ir_operation_set_attr);
+  Sregister_symbol("mlir::Operation::emitError!",
+                   (void*)::mlir_ir_operation_emit_error);
+  Sregister_symbol("mlir::Operation::getAttrOfType<FloatAttr>",
+                   (void*)::mlir_ir_operation_get_float_attr);
 }
 
 } // namespace crest

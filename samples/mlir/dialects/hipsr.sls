@@ -41,7 +41,7 @@
                       (mlir::Operation::getName mlir-operation-name)
                       (mlir::Operation::getParentOp mlir-operation-get-parent))
           (mlir dialects builtin)
-          (only (mlir ir builtin-attributes ffi) %parseAttribute)
+          (only (mlir ir builtin-attributes ffi) %mlir::parseAttribute)
           (mlir transforms dialect-conversion)
           (mlir dialects tensor)
           (only (crest util)
@@ -96,10 +96,10 @@
   ;;===--------------------------------------------------------------------===;;
 
   (define (make-hipsr-device-space-attr ctx)
-    (%parseAttribute ctx "#hipsr.mem<device>"))
+    (%mlir::parseAttribute ctx "#hipsr.mem<device>"))
 
   (define (make-hipsr-barrier-type-attr ctx)
-    (%parseAttribute ctx "#hipsr.placeholder<barrier>"))
+    (%mlir::parseAttribute ctx "#hipsr.placeholder<barrier>"))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Context convention — HipSR passes argument 0 of func.func as context.
@@ -143,8 +143,8 @@
     (type-converter-add-conversion type-converter
       (lambda (type)
         (if (and (= 1 (mlir-type-is-ranked-tensor type))
-                 (> (mlir-type-get-rank type) 0)
-                 (= 0 (mlir-ranked-tensor-type-get-encoding type)))
+                 (> (mlir-ranked-tensor-type-get-rank type) 0)
+                 (= 0 (mlir-mlir::RankedTensorType::getEncoding type)))
           (mlir-ranked-tensor-type-with-encoding type
               (make-hipsr-device-space-attr (mlir-mlir::Type::getContext type)))
             #f)))

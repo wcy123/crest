@@ -15,8 +15,8 @@
   (import (except (rnrs (6)) =)
           (rename (only (mlir ir operation)
                             mlir::Operation::getContext)
-                      (mlir::Operation::getContext mlir-mlir::Operation::getContext))
-          (rename (only (mlir ir value) get-type) (get-type mlir-mlir::Value::getType))
+                      (mlir::Operation::getContext mlir-Operation::getContext))
+          (rename (only (mlir ir value) mlir::Value::getType) (mlir::Value::getType mlir-value-get-type))
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
@@ -28,9 +28,9 @@
     :if-match
         %output = onnx.Cast (%input)
     :then-let
-        ([ctx            (mlir-mlir::Operation::getContext op)]
+        ([ctx            (mlir-Operation::getContext op)]
          [%ctx           (mlir-get-hipsr-context-arg op)]
-         [!output-type   (mlir-mlir::Value::getType %output)]
+         [!output-type   (mlir-value-get-type %output)]
          [!output-device (mlir-ranked-tensor-type-with-encoding !output-type
                             (make-hipsr-device-space-attr ctx))]
          [!shape-type    (mlir-shape.shape-type ctx)])

@@ -86,8 +86,8 @@
           (mlir ir mlir-context)
           (only (mlir ir operation) mlir::Operation::getContext mlir::Operation::getLoc))
 
-  (define mlir-mlir::Operation::getContext mlir::Operation::getContext)
-  (define mlir-mlir::Operation::getLoc     mlir::Operation::getLoc)
+  (define mlir-Operation::getContext mlir::Operation::getContext)
+  (define mlir-Operation::getLoc     mlir::Operation::getLoc)
 
   ;;===--------------------------------------------------------------------===;;
   ;; Canonical low-level rewriter FFI
@@ -169,7 +169,7 @@
   ;;===--------------------------------------------------------------------===;;
 
   ;; Create a heap-allocated OperationState.
-  ;; loc: Location opaque ptr uptr (from mlir-mlir::Operation::getLoc)
+  ;; loc: Location opaque ptr uptr (from mlir-Operation::getLoc)
   ;; name: string op name
   ;; Returns: OperationState* uptr — must be destroyed with
   ;;          mlir-ir-operation-state-destroy
@@ -219,7 +219,7 @@
   ;; op: Operation* uptr, i: 0-based region index
   ;; Returns: Region* uptr
   (define mlir-ir-operation-get-region
-    (foreign-procedure "mlir_ir_operation_get_region" (uptr int) uptr))
+    (foreign-procedure "mlir::Operation::getRegion" (uptr int) uptr))
 
   ;; Get the idx-th argument of a Block directly by index.
   ;; block: Block* uptr, idx: 0-based argument index
@@ -236,7 +236,7 @@
   ;; Erase an op directly without a rewriter (for post-pass cleanup).
   ;; op: Operation* uptr — must have no uses
   (define mlir-op-erase
-    (foreign-procedure "mlir_ir_operation_erase" (uptr) void))
+    (foreign-procedure "mlir::Operation::erase" (uptr) void))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Pattern application (canonical name)
@@ -318,7 +318,7 @@
         [(current-rewriter) =>
          (lambda (rw)
            (mlir-ir-rewriter-base-set-insertion-point rw loc-op)
-           (with-operation-state (state (mlir-mlir::Operation::getLoc loc-op) name)
+           (with-operation-state (state (mlir-Operation::getLoc loc-op) name)
              (for-each (lambda (v) (mlir-ir-operation-state-add-operands state v))
                        operands)
              (for-each (lambda (t) (mlir-ir-operation-state-add-types state t))
@@ -330,7 +330,7 @@
              (mlir-ir-rewriter-base-create-from-state rw state)))]
         [(current-block-builder) =>
          (lambda (b)
-           (with-operation-state (state (mlir-mlir::Operation::getLoc loc-op) name)
+           (with-operation-state (state (mlir-Operation::getLoc loc-op) name)
              (for-each (lambda (v) (mlir-ir-operation-state-add-operands state v))
                        operands)
              (for-each (lambda (t) (mlir-ir-operation-state-add-types state t))
@@ -352,7 +352,7 @@
        (parameterize ([current-rewriter      rw]
                       [current-block-builder #f]
                       [current-loc           loc]
-                      [current-mlir-context  (mlir-mlir::Operation::getContext loc)])
+                      [current-mlir-context  (mlir-Operation::getContext loc)])
          body ...)]))
 
   ;; Install an explicit OpBuilder* as current-block-builder for the duration of body.
@@ -364,7 +364,7 @@
        (parameterize ([current-block-builder builder]
                       [current-rewriter      #f]
                       [current-loc           loc]
-                      [current-mlir-context  (mlir-mlir::Operation::getContext loc)])
+                      [current-mlir-context  (mlir-Operation::getContext loc)])
          body ...)]))
 
   ;; Create an OpBuilder at the end of block, install it as current-block-builder,
@@ -433,7 +433,7 @@
   ;; Returns: Operation* uptr
   (define (mlir-create-op builder loc name ops types . rest)
     (let ([nregions (if (pair? rest) (car rest) 0)])
-      (with-operation-state (state (mlir-mlir::Operation::getLoc loc) name)
+      (with-operation-state (state (mlir-Operation::getLoc loc) name)
         (for-each (lambda (v) (mlir-ir-operation-state-add-operands state v)) ops)
         (for-each (lambda (t) (mlir-ir-operation-state-add-types state t)) types)
         (let loop ([i 0])

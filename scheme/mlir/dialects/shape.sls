@@ -20,8 +20,8 @@
     mlir-shape.witness-type)
   (import (rnrs) (mlir dialect shape))
 
-  (define mlir-shape.shape-type   shape-type-get)
-  (define mlir-shape.size-type    size-type-get)
-  (define mlir-shape.witness-type witness-type-get)
+  (define mlir-shape.shape-type   mlir::shape::ShapeType::get)
+  (define mlir-shape.size-type    mlir::shape::SizeType::get)
+  (define mlir-shape.witness-type mlir::shape::WitnessType::get)
 
 ) ;; end library (mlir dialects shape)
