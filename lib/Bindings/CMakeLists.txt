@@ -5,6 +5,7 @@
 add_library(CrestBindings STATIC
   MainModule.cpp
   Core/Conversion.cpp
+  Transforms/DialectConversion.cpp
   Core/Core.cpp
   Core/Attribute.cpp
   Core/Operation.cpp
