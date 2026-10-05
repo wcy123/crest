@@ -42,14 +42,14 @@
     (mlir-operation-set-i64-attr! new-op "output_zp"    out-zp))
 
   (define mlir-operation-set-dense-i32-array!
-    (foreign-procedure "mlir_operation_set_dense_i32_array" (uptr string scheme-object) void))
+    (foreign-procedure "mlir_ir_operation_set_dense_i32_array" (uptr string scheme-object) void))
 
   (define mlir-operation-set-dense-i64-array!
-    (foreign-procedure "mlir_operation_set_dense_i64_array" (uptr string scheme-object) void))
+    (foreign-procedure "mlir_ir_operation_set_dense_i64_array" (uptr string scheme-object) void))
 
   ;; For ODS I64ArrayAttr (ArrayAttr of IntegerAttr) — different from DenseI64ArrayAttr
   (define mlir-operation-set-i64-array-attr!
-    (foreign-procedure "mlir_operation_set_i64_array_attr" (uptr string scheme-object) void))
+    (foreign-procedure "mlir_ir_operation_set_i64_array_attr" (uptr string scheme-object) void))
 
   ;; (op-get-f32-attr op name) — FloatAttr by name as flonum; +nan.0 if absent.
   ;; Expressed via mlir-attr-as :f32 so no separate FFI binding needed.
