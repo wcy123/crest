@@ -9,12 +9,18 @@
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/Types.h"
 
+static void scheme_error(const char* who, const char* msg) {
+  Scall2(Stop_level_value(Sstring_to_symbol("error")), Sstring(who),
+         Sstring(msg));
+}
+
 extern "C" {
 
 // mlir::Type::getContext() → MLIRContext*
 uint64_t mlir_ir_type_get_context(uint64_t type_ptr) {
   if (!type_ptr) {
-    return 0;
+    scheme_error("mlir-ir-type-get-context", "type pointer is null");
+    return 0; // unreachable — error performs non-local exit
   }
   return reinterpret_cast<uint64_t>(
       mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(type_ptr))
