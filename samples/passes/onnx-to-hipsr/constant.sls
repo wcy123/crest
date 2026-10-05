@@ -57,9 +57,9 @@
       [(mlir-operation-has-attr? op "value")
        (mlir-operation-get-attribute op "value")]
       [(mlir-operation-has-attr? op "location")
-       (let* ([location (mlir-operation-get-attr op "location" ':string)]
-              [offset   (mlir-operation-get-attr op "offset"   :i64 0)]
-              [size     (mlir-operation-get-attr op "size"     :i64 0)]
+       (let* ([location (mlir-operation-get-string-attr op "location")]
+              [offset   (mlir-operation-get-integer-attr op "offset" 0)]
+              [size     (mlir-operation-get-integer-attr op "size" 0)]
               [r (if (string=? location ort-mem-addr-tag)
                      (mlir-make-attr ctx :dense-resource
                        (list !result-type

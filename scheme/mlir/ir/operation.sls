@@ -46,8 +46,13 @@
     operation-erase!
     operation-get-attr
     operation-set-attr!
-    operation-get-float-attr)
-  (import (rnrs) (mlir ir operation ffi))
+    operation-get-float-attr
+    operation-get-operands)
+  (import (rnrs)
+          (mlir ir operation ffi)
+          (rename (rime loop) (:with :rime-with))
+          (mlir core attribute)
+          (mlir support array-ref))
 
   ;; @brief mlir::Operation::getName — return the registered op name (e.g. "arith.addi").
   ;; @param op  Operation* uptr
@@ -307,5 +312,72 @@
   ;; @see              mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note             Defined in lib/Bindings/IR/BuiltinAttributes.cpp
   (define operation-get-float-attr    %operation-get-float-attr)
+
+  ;;===--------------------------------------------------------------------===;;
+  ;; operation-get-operands — bind operands by spec into a list of values.
+  ;;
+  ;; (operation-get-operands op 'required 'optional 'variadic ...)
+  ;;
+  ;; Returns a list with one element per spec entry:
+  ;;   required → Value uptr
+  ;;   optional → Value uptr if present, (if #f #f) if absent
+  ;;   variadic → list of Value uptrs if non-empty, (if #f #f) if empty
+  ;;
+  ;; If any optional/variadic in spec, op must have operandSegmentSizes.
+  ;; For all-required specs, no attribute read is needed.
+  ;;===--------------------------------------------------------------------===;;
+  (define %absent (if #f #f))  ; sentinel: absent optional/variadic slot
+
+  (define (operation-get-operands op . spec)
+    (define (read-op i) (op-operand-get-value op i))
+    (let ([has-flex (loop :initially := #f
+                         :for s :in spec
+                         :break #t :if (memq s '(optional variadic)))])
+      (if (not has-flex)
+          ;; All required: verify count matches spec, then bind sequentially.
+          (let ([n-spec (length spec)]
+                [n-ops  (operation-get-num-operands op)])
+            (unless (= n-spec n-ops)
+              (error 'operation-get-operands
+                     "operand count mismatch: spec expects" n-spec "but op has" n-ops))
+            (loop :for i :from 0 :below n-spec
+                  :collect (read-op i)))
+          ;; Has optional or variadic: use operandSegmentSizes attribute.
+          (let ([attr (operation-get-attr op "operandSegmentSizes")])
+            (unless (and attr (not (zero? attr)))
+              (error 'operation-get-operands
+                     "op must have operandSegmentSizes for optional/variadic operands"))
+            ;; with-array-ref manages the ref lifecycle.
+            (with-array-ref (segs (mlir-attr-as attr :array-ref-i32))
+              (let* ([n     (array-ref-size segs)]
+                     [n-spec (length spec)]
+                     [_      (unless (= n n-spec)
+                               (error 'operation-get-operands
+                                      "operandSegmentSizes count mismatch: spec has"
+                                      n-spec "segments but attr has" n))]
+                     [sizes  (loop :for i :from 0 :below n
+                                   :collect (array-ref-at segs i 'i32))]
+                     [starts (let lp ([ss sizes] [off 0] [acc '()])
+                               (if (null? ss)
+                                   (reverse acc)
+                                   (lp (cdr ss) (+ off (car ss)) (cons off acc))))])
+                (loop :for kind  :in spec
+                        :for start :in starts
+                        :for size  :in sizes
+                        :collect
+                        (case kind
+                          [(:required)
+                           (read-op start)]
+                          [(:optional)
+                           (if (zero? size) %absent (read-op start))]
+                          [(:variadic)
+                           (if (zero? size)
+                               %absent
+                               (loop :for i :from start :below (+ start size)
+                                     :collect (read-op i)))]
+                          [else
+                           (error 'operation-get-operands
+                                  "unknown kind: expected :required/:optional/:variadic"
+                                  kind)]))))))))
 
 ) ;; end library (mlir ir operation)
