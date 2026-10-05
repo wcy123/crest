@@ -360,43 +360,6 @@ double mlir_ir_builtin_attributes_operation_get_float_attr(uint64_t op_ptr,
               : std::numeric_limits<double>::quiet_NaN();
 }
 
-uint64_t
-mlir_ir_builtin_attributes_shaped_type_get_element_type(uint64_t type_ptr) {
-  if (!type_ptr) {
-    return 0;
-  }
-  auto type =
-      mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(type_ptr));
-  if (auto st = mlir::dyn_cast<mlir::ShapedType>(type)) {
-    return reinterpret_cast<uint64_t>(st.getElementType().getAsOpaquePointer());
-  }
-  return 0;
-}
-
-uint64_t mlir_ir_builtin_attributes_integer_type_get_width(uint64_t type_ptr) {
-  if (!type_ptr) {
-    return 0;
-  }
-  auto type =
-      mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(type_ptr));
-  if (auto it = mlir::dyn_cast<mlir::IntegerType>(type)) {
-    return static_cast<uint64_t>(it.getWidth());
-  }
-  return 0;
-}
-
-int mlir_ir_builtin_attributes_integer_type_is_unsigned(uint64_t type_ptr) {
-  if (!type_ptr) {
-    return 0;
-  }
-  auto type =
-      mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(type_ptr));
-  if (auto it = mlir::dyn_cast<mlir::IntegerType>(type)) {
-    return it.isUnsigned() ? 1 : 0;
-  }
-  return 0;
-}
-
 // Kept for backward compat — duplicate of dense_elements_attr_is_splat.
 int mlir_attr_splat_int_value_compat(uint64_t attr_ptr, int64_t absent_val) {
   if (!attr_ptr) {
@@ -475,15 +438,6 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir_ir_builtin_attributes_operation_get_float_attr",
       (void*)::mlir_ir_builtin_attributes_operation_get_float_attr);
-  Sregister_symbol(
-      "mlir_ir_builtin_attributes_shaped_type_get_element_type",
-      (void*)::mlir_ir_builtin_attributes_shaped_type_get_element_type);
-  Sregister_symbol("mlir_ir_builtin_attributes_integer_type_get_width",
-                   (void*)::mlir_ir_builtin_attributes_integer_type_get_width);
-  Sregister_symbol(
-      "mlir_ir_builtin_attributes_integer_type_is_unsigned",
-      (void*)::mlir_ir_builtin_attributes_integer_type_is_unsigned);
-
   // ── Old names (backward compat) — used by generic dispatch in Scheme ─────
   Sregister_symbol("mlir_make_attr_i64",
                    (void*)::mlir_ir_builtin_attributes_integer_attr_get_i64);
@@ -506,14 +460,6 @@ void registerIRBuiltinAttributesBindings() {
                    (void*)::mlir_ir_builtin_attributes_operation_get_attr);
   Sregister_symbol("mlir_operation_set_attribute",
                    (void*)::mlir_ir_builtin_attributes_operation_set_attr);
-  Sregister_symbol(
-      "mlir_type_element_type",
-      (void*)::mlir_ir_builtin_attributes_shaped_type_get_element_type);
-  Sregister_symbol("mlir_type_integer_width",
-                   (void*)::mlir_ir_builtin_attributes_integer_type_get_width);
-  Sregister_symbol(
-      "mlir_type_is_unsigned",
-      (void*)::mlir_ir_builtin_attributes_integer_type_is_unsigned);
   Sregister_symbol(
       "mlir_op_get_float_attr",
       (void*)::mlir_ir_builtin_attributes_operation_get_float_attr);

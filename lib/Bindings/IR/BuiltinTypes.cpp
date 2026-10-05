@@ -131,6 +131,45 @@ uint64_t mlir_ir_builtin_types_ranked_tensor_type_clone_with_encoding(
       t.cloneWithEncoding(attr).getAsOpaquePointer());
 }
 
+// mlir::ShapedType::getElementType()
+uint64_t mlir_ir_builtin_types_shaped_type_get_element_type(uint64_t type_ptr) {
+  if (!type_ptr) {
+    return 0;
+  }
+  auto type =
+      mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(type_ptr));
+  if (auto st = mlir::dyn_cast<mlir::ShapedType>(type)) {
+    return reinterpret_cast<uint64_t>(st.getElementType().getAsOpaquePointer());
+  }
+  return 0;
+}
+
+// mlir::IntegerType::getWidth()
+uint64_t mlir_ir_builtin_types_integer_type_get_width(uint64_t type_ptr) {
+  if (!type_ptr) {
+    return 0;
+  }
+  auto type =
+      mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(type_ptr));
+  if (auto it = mlir::dyn_cast<mlir::IntegerType>(type)) {
+    return static_cast<uint64_t>(it.getWidth());
+  }
+  return 0;
+}
+
+// mlir::IntegerType::isUnsigned()
+int mlir_ir_builtin_types_integer_type_is_unsigned(uint64_t type_ptr) {
+  if (!type_ptr) {
+    return 0;
+  }
+  auto type =
+      mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(type_ptr));
+  if (auto it = mlir::dyn_cast<mlir::IntegerType>(type)) {
+    return it.isUnsigned() ? 1 : 0;
+  }
+  return 0;
+}
+
 } // extern "C"
 
 namespace crest {
@@ -157,6 +196,26 @@ void registerIRBuiltinTypesBindings() {
   Sregister_symbol(
       "mlir_ir_builtin_types_ranked_tensor_type_clone_with_encoding",
       (void*)::mlir_ir_builtin_types_ranked_tensor_type_clone_with_encoding);
+  // ── Type query functions (moved from BuiltinAttributes.cpp) ─────────────
+  Sregister_symbol("mlir_ir_builtin_types_shaped_type_get_element_type",
+                   (void*)::mlir_ir_builtin_types_shaped_type_get_element_type);
+  Sregister_symbol("mlir_ir_builtin_types_integer_type_get_width",
+                   (void*)::mlir_ir_builtin_types_integer_type_get_width);
+  Sregister_symbol("mlir_ir_builtin_types_integer_type_is_unsigned",
+                   (void*)::mlir_ir_builtin_types_integer_type_is_unsigned);
+  // ── Old names (backward compat) ──────────────────────────────────────────
+  Sregister_symbol("mlir_ir_builtin_attributes_shaped_type_get_element_type",
+                   (void*)::mlir_ir_builtin_types_shaped_type_get_element_type);
+  Sregister_symbol("mlir_ir_builtin_attributes_integer_type_get_width",
+                   (void*)::mlir_ir_builtin_types_integer_type_get_width);
+  Sregister_symbol("mlir_ir_builtin_attributes_integer_type_is_unsigned",
+                   (void*)::mlir_ir_builtin_types_integer_type_is_unsigned);
+  Sregister_symbol("mlir_type_element_type",
+                   (void*)::mlir_ir_builtin_types_shaped_type_get_element_type);
+  Sregister_symbol("mlir_type_integer_width",
+                   (void*)::mlir_ir_builtin_types_integer_type_get_width);
+  Sregister_symbol("mlir_type_is_unsigned",
+                   (void*)::mlir_ir_builtin_types_integer_type_is_unsigned);
 }
 
 } // namespace crest

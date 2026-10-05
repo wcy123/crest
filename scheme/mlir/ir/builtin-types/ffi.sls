@@ -113,7 +113,7 @@
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %shaped-type-get-element-type
-    (foreign-procedure "mlir_ir_builtin_attributes_shaped_type_get_element_type"
+    (foreign-procedure "mlir_ir_builtin_types_shaped_type_get_element_type"
                        (uptr) uptr))
 
   ;; @brief mlir::IntegerType::getWidth() — return the bit width of an integer type.
@@ -122,7 +122,7 @@
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %integer-type-get-width
-    (foreign-procedure "mlir_ir_builtin_attributes_integer_type_get_width"
+    (foreign-procedure "mlir_ir_builtin_types_integer_type_get_width"
                        (uptr) uptr))
 
   ;; @brief mlir::IntegerType::isUnsigned() — check if an integer type is unsigned.
@@ -131,7 +131,7 @@
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %integer-type-is-unsigned
-    (foreign-procedure "mlir_ir_builtin_attributes_integer_type_is_unsigned"
+    (foreign-procedure "mlir_ir_builtin_types_integer_type_is_unsigned"
                        (uptr) int))
 
 ) ;; end library (mlir ir builtin-types ffi)
