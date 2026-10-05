@@ -11,19 +11,17 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir ir block ffi)
-  (export %block-get-argument)
+  (export %block-get-argument-by-index)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
-  ;; @brief mlir_ir_block_get_argument — walk up from an Operation* to the
-  ;;        nearest enclosing func.func and return its index-th block argument
-  ;;        as an opaque Value pointer.
-  ;; @param op     Operation* uptr — any op nested inside a func.func
-  ;; @param index  0-based argument index (int)
-  ;; @return       Value opaque pointer uptr; 0 if op is null, no enclosing
-  ;;               func.func is found, or index is out of range
-  ;; @see          mlir/IR/Block.h, mlir/Dialect/Func/IR/FuncOps.h
-  ;; @note         Defined in lib/Bindings/IR/Block.cpp ::mlir_ir_block_get_argument
-  (define %block-get-argument
-    (foreign-procedure "mlir_ir_block_get_argument" (uptr int) uptr))
+  ;; @brief mlir_ir_block_get_argument_by_index — get the idx-th argument of a
+  ;;        block directly by index (no func.func walk).
+  ;; @param block  Block* uptr — the block
+  ;; @param idx    0-based argument index (int)
+  ;; @return       Value opaque pointer uptr; 0 if block is null or index out of range
+  ;; @see          mlir/IR/Block.h  Block::getArgument(unsigned)
+  ;; @note         Defined in lib/Bindings/IR/Block.cpp ::mlir_ir_block_get_argument_by_index
+  (define %block-get-argument-by-index
+    (foreign-procedure "mlir_ir_block_get_argument_by_index" (uptr int) uptr))
 
 ) ;; end library (mlir ir block ffi)
