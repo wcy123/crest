@@ -20,6 +20,7 @@
           (mlir core operation)
           (rename (mlir ir value)
             (get-type          mlir-value-get-type))
+          (mlir support array-ref)
           (only (mlir core builder) mlir-replace-op mlir-set-insertion-point-before with-rewrite-builder)
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)
