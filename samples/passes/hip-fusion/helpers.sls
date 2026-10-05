@@ -27,7 +27,7 @@
                        operation-set-i64-attr!)
                  (operation-set-f32-attr! mlir-operation-set-f32-attr!)
                  (operation-set-i64-attr! mlir-operation-set-i64-attr!))
-          (only (mlir core attribute) mlir-attr-as :f32))
+          (only (mlir ir builtin-attributes) float32-attr-value))
 
   (define (set-qdq-scale-zp-attrs! new-op
                                    lhs-scale lhs-zp
@@ -57,12 +57,12 @@
     (foreign-procedure "mlir_ir_operation_set_i64_array_attr" (uptr string scheme-object) void))
 
   ;; (op-get-f32-attr op name) — FloatAttr by name as flonum; +nan.0 if absent.
-  ;; Expressed via mlir-attr-as :f32 so no separate FFI binding needed.
+  ;; Expressed via float32-attr-value so no separate FFI binding needed.
   (define %get-attr
     (foreign-procedure "mlir_operation_get_attribute" (uptr string) uptr))
 
   (define (op-get-f32-attr op name)
     (let ([attr (%get-attr op name)])
-      (if (zero? attr) +nan.0 (mlir-attr-as attr :f32))))
+      (if (zero? attr) +nan.0 (float32-attr-value attr))))
 
 ) ;; end library (passes hip-fusion helpers)

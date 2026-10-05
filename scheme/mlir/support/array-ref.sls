@@ -27,7 +27,7 @@
     array-ref-destroy   ; (ref) → void           [C heap free]
     with-array-ref      ; (syntax) RAII: make + body + destroy
     :uptr)              ; array-ref-at element type → 'uptr (8-byte pointer, default)
-                        ; :i32 comes from (mlir core attribute) — not re-exported here
+                        ; :i32 is a local keyword synonym — 'i32
 
   (import (rnrs)
           (only (chezscheme) foreign-ref)
@@ -35,7 +35,7 @@
 
   ;; @brief Compile-time keyword: element type 'uptr — 8-byte pointer (Value*, Operation*, etc.).
   ;; @note  Pass as the optional third argument to array-ref-at
-  ;; @note  :i32 is internal only; use (mlir core attribute)'s :i32 in callers
+  ;; @note  :i32 is internal — the symbol 'i32 used as the element type tag
   (define-syntax :uptr (identifier-syntax 'uptr))
   (define-syntax :i32  (identifier-syntax 'i32))
 

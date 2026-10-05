@@ -47,16 +47,33 @@
           (for (rename (rime loop) (:with :rime-with)) expand)
           (for (only (crest internal keywords) = : -> :region) expand)
           (only (mlir core builder) with-block-builder)
-          (mlir core attribute)
+          (mlir ir builtin-attributes)
+          (for (mlir ir builtin-attributes) expand)
           (for (only (mlir core builder) mlir-build-operation with-block-builder
                      mlir-op-get-region mlir-new-block mlir-block-get-argument) expand)
-          (for (only (mlir core attribute) mlir-make-attr :index) expand)
-                    (for (rename (only (mlir ir operation) operation-get-context
-                                                 operation-get-result
-                                                 operation-set-attr!)
-                      (operation-get-context    mlir-operation-get-context)
-                      (operation-get-result     mlir-operation-get-result)
-                      (operation-set-attr!      mlir-operation-set-attribute!)) expand))
+          (for (rename (only (mlir ir operation) operation-get-context
+                                       operation-get-result
+                                       operation-set-attr!)
+                (operation-get-context    mlir-operation-get-context)
+                (operation-get-result     mlir-operation-get-result)
+                (operation-set-attr!      mlir-operation-set-attribute!)) expand))
+
+  ;;===--------------------------------------------------------------------===;;
+  ;; Attr-constructor dispatch — used by the (name = val :type) modifier
+  ;; form to build an MLIR attribute at runtime.  Replaces the old generic
+  ;; generic mlir-make-attr dispatcher (removed with (mlir core attribute)).
+  ;;
+  ;; ctx is passed but unused here — the explicit constructors from
+  ;; (mlir ir builtin-attributes) read current-mlir-context internally.
+  ;;===--------------------------------------------------------------------===;;
+  (define (%make-attr-by-type _ctx type val)
+    (case type
+      [(index)     (integer-attr-get-index val)]
+      [(i32-array) (dense-i32-array-attr-get val)]
+      [(i64-array) (dense-i64-array-attr-get val)]
+      [(i64)       (integer-attr-get-i64 val)]
+      [(f32)       (float-attr-get-f32 val)]
+      [else (error '%make-attr-by-type "unknown attr type in rewrite DSL" type)]))
 
   ;;===--------------------------------------------------------------------===;;
   ;; with-mlir-ops
@@ -197,7 +214,7 @@
       ;; Returns a closure (lambda (new-op-stx) → setter-syntax) for one attr form.
       ;;
       ;; Two forms:
-      ;;   (name = val type)  — construct attr via (mlir-make-attr ctx type val)
+      ;;   (name = val type)  — construct attr via (%make-attr-by-type ctx type val)
       ;;   (name = val)       — val is already an attr uptr; set directly
       (define (make-attr-setter attr-stx)
         (define (name->str x)
@@ -208,7 +225,7 @@
             (with-syntax ([new-op new-op-stx] [n name-str] [v val-stx]
                           [type-q type-quoted-stx])
               #'(mlir-operation-set-attribute! new-op n
-                   (mlir-make-attr (mlir-operation-get-context new-op) type-q v)))))
+                   (%make-attr-by-type (mlir-operation-get-context new-op) type-q v)))))
         (define (make-direct-setter name-str val-stx)
           (lambda (new-op-stx)
             (with-syntax ([new-op new-op-stx] [n name-str] [v val-stx])

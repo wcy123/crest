@@ -12,8 +12,8 @@
 ;; Imports raw C bindings from (mlir ir builtin-attributes ffi) and re-exports
 ;; under clean names.
 ;;
-;; For the generic dispatch API (mlir-make-attr, mlir-attr-isa, etc.),
-;; use (mlir core attribute) — that layer is preserved for backward compat.
+;; This is the canonical attribute API.  The old generic dispatch
+;; (mlir-make-attr, mlir-attr-isa, etc.) in (mlir core attribute) has been removed.
 ;;
 ;;===----------------------------------------------------------------------===;;
 

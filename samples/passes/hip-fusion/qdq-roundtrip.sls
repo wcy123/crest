@@ -24,7 +24,6 @@
           (rename (only (rnrs) =) (= num=))
           (rename (mlir ir value)
             (get-defining-op   mlir-value-get-defining-op))
-          (mlir core attribute)
           (mlir dialects builtin)
           (mlir transforms dialect-conversion)
           (passes hip-fusion fusion)
