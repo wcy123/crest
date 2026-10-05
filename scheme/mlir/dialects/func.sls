@@ -13,13 +13,9 @@
 (library (mlir dialects func)
   (export
     mlir-populate-func-type-conversion-pattern)
-  (import (chezscheme))
+  (import (rnrs) (mlir dialects func ffi))
 
-  ;; Register the pattern that rewrites func.func signatures via the TypeConverter.
-  ;; patterns:       RewritePatternSet* uptr — pattern added in-place
-  ;; type-converter: TypeConverter* uptr
-  ;; (2 args — no ctx needed; the TypeConverter carries sufficient context.)
   (define mlir-populate-func-type-conversion-pattern
-    (foreign-procedure "mlir_populate_func_type_conversion_pattern" (uptr uptr) void))
+    %populate-func-type-conversion-pattern)
 
 ) ;; end library (mlir dialects func)

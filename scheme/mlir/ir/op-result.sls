@@ -6,13 +6,16 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 ;;
-;; (mlir dialect shape) — backward-compat shim.
-;; Canonical module is (mlir dialect shape ir).
+;; (mlir ir op-result) — mlir::OpResult bindings.
+;;
+;; Mirrors mlir/IR/Value.h (OpResult is defined there alongside Value).
 ;;
 ;;===----------------------------------------------------------------------===;;
 
-(library (mlir dialect shape)
-  (export shape-type-get size-type-get witness-type-get)
-  (import (rnrs) (mlir dialect shape ir))
+(library (mlir ir op-result)
+  (export get-result-number)
+  (import (rnrs) (mlir ir op-result ffi))
 
-) ;; end library (mlir dialect shape)
+  (define get-result-number %get-result-number)
+
+) ;; end library (mlir ir op-result)

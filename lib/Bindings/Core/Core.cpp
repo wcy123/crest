@@ -7,6 +7,7 @@
 
 #include "../IR/Block.h"
 #include "../IR/OpBuilder.h"
+#include "../IR/OpResult.h"
 #include "../IR/RewriterBase.h"
 #include "../IR/Value.h"
 #include "../Transforms/GreedyPatternRewriteDriver.h"
@@ -24,6 +25,7 @@ void registerCoreBindings() {
   registerConversionBindings();
   registerIRBlockBindings();
   registerIROpBuilderBindings();
+  registerIROpResultBindings();
   registerIRRewriterBaseBindings();
   registerIRValueBindings();
   registerOperationBindings();

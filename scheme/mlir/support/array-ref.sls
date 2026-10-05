@@ -30,8 +30,9 @@
                         ; :i32 comes from (mlir core attribute) — not re-exported here
 
   (import (rnrs)
-          (only (chezscheme) foreign-procedure foreign-ref)
-          (only (mlir core types) :uptr :i32))
+          (only (chezscheme) foreign-ref)
+          (only (mlir core types) :uptr :i32)
+          (mlir support array-ref ffi))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Fast path — foreign-ref compiles to raw load instructions, no FFI call.
@@ -66,12 +67,10 @@
 
   ;; Allocate a CArrayRef on the C heap. Returns a uptr (raw C address).
   ;; Must be paired with array-ref-destroy, or use with-array-ref.
-  (define make-array-ref
-    (foreign-procedure "mlir_array_ref_make" (uptr uptr) uptr))
+  (define make-array-ref %make)
 
   ;; Free a CArrayRef previously created by make-array-ref.
-  (define array-ref-destroy
-    (foreign-procedure "mlir_array_ref_destroy" (uptr) void))
+  (define array-ref-destroy %destroy)
 
   ;;===--------------------------------------------------------------------===;;
   ;; with-array-ref — RAII macro.
