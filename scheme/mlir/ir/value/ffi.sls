@@ -63,7 +63,7 @@
   ;; @return       0-based result index as uptr; 0 if value is null or not an OpResult
   ;; @see          mlir/IR/Value.h
   ;; @note         Defined in lib/Bindings/IR/OpResult.cpp; also registered as
-  ;;               mlir_ir_value_get_result_number for backward compatibility
+  ;;               mlir_ir_value_get_result_number (C symbol alias)
   (define %mlir::OpResult::getResultNumber
     (foreign-procedure "mlir::OpResult::getResultNumber" (uptr) uptr))
 

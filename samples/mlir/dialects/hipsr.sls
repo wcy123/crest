@@ -44,7 +44,7 @@
           (mlir dialect tensor ir)
           (only (crest util)
                 type-converter-add-tensor-widening-materialization)
-          (only (mlir core builder) mlir-op-get-region mlir-block-get-argument)
+          (only (mlir core builder) mlir-ir-operation-get-region mlir::Block::getArgument)
 
           (only (mlir ir builtin-types)
                 mlir::RankedTensorType::getEncoding
@@ -116,9 +116,9 @@
       (cond
         ((= 0 cur) 0)
         ((string=? (mlir::Operation::getName cur) "func.func")
-         (let* ((region (mlir-op-get-region cur 0))
+         (let* ((region (mlir-ir-operation-get-region cur 0))
                 (block  (if (= 0 region) 0 (mlir::Region::front region))))
-           (if (= 0 block) 0 (mlir-block-get-argument block 0))))
+           (if (= 0 block) 0 (mlir::Block::getArgument block 0))))
         (else (loop (mlir::Operation::getParentOp cur))))))
 
   ;;===--------------------------------------------------------------------===;;

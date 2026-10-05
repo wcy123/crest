@@ -21,6 +21,7 @@
           (only (mlir ir operation)
                 mlir::OpOperand::get
                 mlir::Operation::emitError
+                mlir::Operation::erase
                 mlir::Operation::getContext
                 mlir::Operation::getName
                 mlir::Operation::getNumOperands
@@ -35,10 +36,9 @@
                 mlir::OpResult::getResultNumber)
           (mlir support array-ref)
           (only (mlir core builder)
-                mlir-build-op
-                mlir-set-insertion-point-before
-                mlir-erase-op
-                mlir-op-erase)
+                mlir-ir-rewriter-base-create
+                mlir-ir-rewriter-base-set-insertion-point
+                mlir-ir-rewriter-base-erase-op)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
           (mlir dialects func)
@@ -71,9 +71,9 @@
   (define (onnx-return->func-return op operands-ref rewriter type-converter)
     (let ((operands (loop :for i :from 0 :below (array-ref-size operands-ref)
                          :collect (array-ref-at operands-ref i))))
-      (mlir-set-insertion-point-before rewriter op)
-      (mlir-build-op rewriter op "func.return" operands '())
-      (mlir-erase-op rewriter op)
+      (mlir-ir-rewriter-base-set-insertion-point rewriter op)
+      (mlir-ir-rewriter-base-create rewriter op "func.return" operands '())
+      (mlir-ir-rewriter-base-erase-op rewriter op)
       #t))
 
   (define (populate-return-patterns type-converter patterns ctx)
@@ -90,7 +90,7 @@
           (when (and (string=? (mlir::Operation::getName op) "onnx.NoValue")
                      (mlir::Operation::use_empty? op))
             (set! dead (cons op dead)))))
-      (for-each mlir-op-erase dead)))
+      (for-each mlir::Operation::erase dead)))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Post-processing: rewire placeholder inputs to follow the shape graph

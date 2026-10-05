@@ -25,7 +25,7 @@
           (only (mlir ir builtin-attributes)
                 mlir::IntegerAttr::get<index>
                 mlir::IntegerAttr::get<i64>)
-          (only (mlir core builder) mlir-build-operation)
+          (only (mlir core builder) crest::RewriterBase::build)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
           (only (mlir dialect shape ir)
@@ -66,27 +66,27 @@
           (let* ([dim (list-ref input-shape axis)]
                  ;; extent: arith.constant (static) or tensor.dim + index_cast (dynamic)
                  [ext (if (dynamic-dim? dim)
-                          (let* ([ci-op (mlir-build-operation "arith.constant"
+                          (let* ([ci-op (crest::RewriterBase::build "arith.constant"
                                           '() (list index-type))]
                                  [_     (mlir::Operation::setAttr! ci-op "value" (mlir::IntegerAttr::get<index> axis))]
                                  [ci    (mlir::Operation::getResult ci-op 0)]
-                                 [d-op  (mlir-build-operation "tensor.dim"
+                                 [d-op  (crest::RewriterBase::build "tensor.dim"
                                           (list in-val ci) (list index-type))]
                                  [d     (mlir::Operation::getResult d-op 0)]
-                                 [e-op  (mlir-build-operation "arith.index_cast"
+                                 [e-op  (crest::RewriterBase::build "arith.index_cast"
                                           (list d) (list i64-type))])
                             (mlir::Operation::getResult e-op 0))
-                          (let* ([e-op (mlir-build-operation "arith.constant"
+                          (let* ([e-op (crest::RewriterBase::build "arith.constant"
                                          '() (list i64-type))]
                                  [_    (mlir::Operation::setAttr! e-op "value" (mlir::IntegerAttr::get<i64> dim))])
                             (mlir::Operation::getResult e-op 0)))]
                  ;; slot constant (= axis - start within the output tensor)
-                 [slot-op (mlir-build-operation "arith.constant"
+                 [slot-op (crest::RewriterBase::build "arith.constant"
                              '() (list index-type))]
                  [_       (mlir::Operation::setAttr! slot-op "value" (mlir::IntegerAttr::get<index> slot))]
                  [slot-c  (mlir::Operation::getResult slot-op 0)]
                  ;; tensor.insert %ext into %acc[%slot-c]
-                 [ins-op  (mlir-build-operation "tensor.insert"
+                 [ins-op  (crest::RewriterBase::build "tensor.insert"
                              (list ext acc slot-c) (list out-host-type))]
                  [ins     (mlir::Operation::getResult ins-op 0)])
             (loop (+ axis 1) (+ slot 1) ins)))))
@@ -124,7 +124,7 @@
                               (hipsr.shape_yield (%r)))
                         -> !out-host)
         ;; Compute body: inserts extents one by one via tensor.insert.
-        ;; build-compute-body! uses mlir-build-operation directly to mix
+        ;; build-compute-body! uses crest::RewriterBase::build directly to mix
         ;; Scheme control flow with MLIR op creation.
         (%result = hipsr.compute (%ctx %input %placeholder !out-host)
                    (operandSegmentSizes = (list 1 1 1) :i32-array)

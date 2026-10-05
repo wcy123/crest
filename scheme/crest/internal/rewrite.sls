@@ -49,8 +49,8 @@
           (only (mlir core builder) with-block-builder)
           (mlir ir builtin-attributes)
           (for (mlir ir builtin-attributes) expand)
-          (for (only (mlir core builder) mlir-build-operation with-block-builder
-                     mlir-op-get-region mlir-new-block mlir-block-get-argument) expand)
+          (for (only (mlir core builder) crest::RewriterBase::build with-block-builder
+                     mlir-ir-operation-get-region mlir::Region::push_back<Block> mlir::Block::getArgument) expand)
           (for (rename (only (mlir ir operation) mlir::Operation::getContext
                                        mlir::Operation::getResult
                                        mlir::Operation::setAttr!)
@@ -274,7 +274,7 @@
                         [(region-fill-stmt ...) (map (lambda (fn) (fn new-op-id)) region-fill-fns)]
                         [nregions nregions])
             (cons (cons #'tmp-var
-                        #'(let ([new-op (mlir-build-operation name
+                        #'(let ([new-op (crest::RewriterBase::build name
                                          operands-expr (list result-type ...) nregions)])
                             setter ...
                             region-fill-stmt ...
@@ -302,7 +302,7 @@
                           [region-idx  region-index]
                           [(block-fill-stmt ...)
                            (map (lambda (fn) (fn new-op-stx region-id)) block-fill-fns)])
-              #'(let ([region (mlir-op-get-region new-op region-idx)])
+              #'(let ([region (mlir-ir-operation-get-region new-op region-idx)])
                   block-fill-stmt ...)))))
 
       ;; Returns a closure (lambda (new-op-stx region-stx) → block-fill-syntax).
@@ -315,7 +315,7 @@
                                  #'(with-mlir-ops body ...))]
                [arg-bind-pairs (loop :for var :in arg-vars
                                     :for i :from 0
-                                    :collect (cons var #`(mlir-block-get-argument block #,i)))])
+                                    :collect (cons var #`(mlir::Block::getArgument block #,i)))])
           (lambda (new-op-stx region-stx)
             (with-syntax ([(arg-type ...) arg-types]
                           [(arg-binding ...) (loop :for pair :in arg-bind-pairs
@@ -323,7 +323,7 @@
                           [body    body-stx]
                           [new-op  new-op-stx]
                           [region  region-stx])
-              #'(let* ([block (mlir-new-block region (list arg-type ...))]
+              #'(let* ([block (mlir::Region::push_back<Block> region (list arg-type ...))]
                        arg-binding ...)
                   (with-block-builder block
                     body))))))

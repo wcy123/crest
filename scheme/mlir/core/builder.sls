@@ -11,7 +11,7 @@
 ;; Mirrors mlir/IR/Builders.h. Provides:
 ;;   - Dynamic context parameters (current-rewriter, current-block-builder,
 ;;     current-loc) and their RAII macros.
-;;   - mlir-build-operation: context-dispatching op constructor.
+;;   - crest::RewriterBase::build: context-dispatching op constructor.
 ;;   - Low-level builder FFI (block/region management).
 ;;   - Generic with-raii.
 ;;
@@ -24,7 +24,7 @@
     current-block-builder
     current-loc
     ;; Context-dispatching constructor
-    mlir-build-operation
+    crest::RewriterBase::build
     ;; RAII macros
     with-raii
     with-op-builder
@@ -39,7 +39,6 @@
     mlir-ir-op-builder-create
     mlir-ir-op-builder-create-with-regions
     mlir-ir-rewriter-base-set-insertion-point         ;; canonical: mlir::RewriterBase::setInsertionPoint(op)
-    mlir-ir-rewriter-base-set-insertion-point-before  ;; backward-compat alias
     mlir-ir-rewriter-base-set-insertion-point-to-end
     mlir-ir-rewriter-base-create-block
     mlir-ir-rewriter-base-replace-op
@@ -50,9 +49,7 @@
     ;; OperationState primitives
     mlir-ir-operation-state-create
     mlir-ir-operation-state-add-operands        ;; canonical: mlir::OperationState::addOperands
-    mlir-ir-operation-state-add-operand         ;; backward-compat alias
     mlir-ir-operation-state-add-types           ;; canonical: mlir::OperationState::addTypes
-    mlir-ir-operation-state-add-result-type     ;; backward-compat alias
     mlir-ir-operation-state-add-region
     mlir-ir-operation-state-destroy
     mlir-ir-rewriter-base-create-from-state
@@ -63,28 +60,14 @@
     mlir::Region::push_back<Block>
     ;; Pattern application (canonical name)
     mlir-transforms-greedy-pattern-rewrite-driver-apply
-    ;; Legacy public aliases (backward compatibility)
-    mlir-build-op
-    mlir-replace-op
-    mlir-erase-op
-    mlir-op-erase
-    mlir-set-insertion-point-before
-    mlir-set-insertion-point-to-block-end
-    mlir-op-get-region
-    mlir-region-create-block
-    mlir-block-get-argument
-    mlir-new-block
-    mlir-builder-at-block-end
-    mlir-destroy-builder
-    mlir-create-op
-    mlir-apply-patterns-greedy
-    mlir-op-clone-with-types
 )
 
   (import (rnrs)
-          (only (chezscheme) foreign-procedure parameterize make-parameter void)
+          (only (chezscheme) foreign-procedure parameterize void)
           (mlir ir mlir-context)
-          (only (mlir ir operation) mlir::Operation::getContext mlir::Operation::getLoc))
+          (only (mlir ir operation) mlir::Operation::getContext mlir::Operation::getLoc)
+          (only (mlir ir pattern-match)
+                current-rewriter current-block-builder current-loc))
 
   (define mlir-Operation::getContext mlir::Operation::getContext)
   (define mlir-Operation::getLoc     mlir::Operation::getLoc)
@@ -161,11 +144,6 @@
   (define mlir-ir-rewriter-base-set-insertion-point
     (foreign-procedure "mlir_ir_rewriter_base_set_insertion_point"
                        (uptr uptr) void))
-  ;; @brief Backward-compat alias for mlir-ir-rewriter-base-set-insertion-point.
-  ;; @see   mlir-ir-rewriter-base-set-insertion-point
-  (define mlir-ir-rewriter-base-set-insertion-point-before
-    mlir-ir-rewriter-base-set-insertion-point)
-
   ;; @brief mlir::RewriterBase::setInsertionPointToEnd(block) — move the
   ;;        insertion point to the end of the given block.
   ;; @param rewriter RewriterBase* uptr
@@ -261,10 +239,6 @@
   ;; @note  Defined in lib/Bindings/IR/Builder.cpp
   (define mlir-ir-operation-state-add-operands
     (foreign-procedure "mlir_ir_operation_state_add_operands" (uptr uptr) void))
-  ;; @brief Backward-compat alias for mlir-ir-operation-state-add-operands.
-  ;; @see   mlir-ir-operation-state-add-operands
-  (define mlir-ir-operation-state-add-operand mlir-ir-operation-state-add-operands)
-
   ;; @brief mlir::OperationState::addTypes — append one result Type to an
   ;;        OperationState.
   ;; @param state OperationState* uptr
@@ -274,10 +248,6 @@
   ;; @note  Defined in lib/Bindings/IR/Builder.cpp
   (define mlir-ir-operation-state-add-types
     (foreign-procedure "mlir_ir_operation_state_add_types" (uptr uptr) void))
-  ;; @brief Backward-compat alias for mlir-ir-operation-state-add-types.
-  ;; @see   mlir-ir-operation-state-add-types
-  (define mlir-ir-operation-state-add-result-type mlir-ir-operation-state-add-types)
-
   ;; @brief mlir::OperationState::addRegion — append one empty region to an
   ;;        OperationState.
   ;; @param state OperationState* uptr
@@ -347,15 +317,6 @@
   (define mlir::Region::push_back<Block>
     (foreign-procedure "mlir::Region::push_back<Block>" (uptr scheme-object) uptr))
 
-  ;; @brief mlir::Operation::erase — erase an op directly without a rewriter
-  ;;        (for post-pass cleanup).
-  ;; @param op Operation* uptr — must have no uses before calling erase
-  ;; @return   void
-  ;; @see   mlir/IR/Operation.h
-  ;; @note  Defined in MLIR core; no dedicated CREST binding wrapper
-  (define mlir-op-erase
-    (foreign-procedure "mlir::Operation::erase" (uptr) void))
-
   ;;===--------------------------------------------------------------------===;;
   ;; Pattern application (canonical name)
   ;;===--------------------------------------------------------------------===;;
@@ -424,21 +385,11 @@
   ;; Dynamic builder context
   ;;===--------------------------------------------------------------------===;;
 
-  ;; @brief Dynamic parameter — current ConversionPatternRewriter* uptr, or #f
-  ;;        when not in a pattern callback.  Set by with-rewrite-builder.
-  (define current-rewriter      (make-parameter #f))
+  ;; current-rewriter, current-block-builder, current-loc are imported from
+  ;; (mlir ir pattern-match) to share a single set of parameter objects across
+  ;; both libraries.
 
-  ;; @brief Dynamic parameter — current OpBuilder* uptr for region/block filling,
-  ;;        or #f when a rewriter is active.  Set by with-current-block-builder /
-  ;;        with-block-builder.
-  (define current-block-builder (make-parameter #f))
-
-  ;; @brief Dynamic parameter — current location source Operation* uptr, or #f
-  ;;        when unset.  Used by mlir-build-operation as the loc anchor.
-  ;;        Override temporarily with with-op-location.
-  (define current-loc           (make-parameter #f))
-
-  ;; @brief mlir-build-operation — context-dispatching op constructor.
+  ;; @brief crest::RewriterBase::build — context-dispatching op constructor.
   ;;        Dispatches to current-rewriter if installed, else to
   ;;        current-block-builder; raises if neither is active.
   ;; @param name     string — fully-qualified op name, e.g. "arith.constant"
@@ -447,7 +398,7 @@
   ;; @param nregions int (optional) — empty regions to pre-allocate (default 0)
   ;; @return         Operation* uptr of the created op
   ;; @note  Iteration over operands/types is done in Scheme for thin C-call overhead.
-  (define (mlir-build-operation name operands types . rest)
+  (define (crest::RewriterBase::build name operands types . rest)
     (let ([nregions (if (pair? rest) (car rest) 0)]
           [loc-op   (current-loc)])
       (cond
@@ -476,7 +427,7 @@
                  (mlir-ir-operation-state-add-region state)
                  (loop (+ i 1))))
              (mlir-ir-op-builder-create-from-state b state)))]
-        [else (error 'mlir-build-operation "no current builder installed")])))
+        [else (error 'crest::RewriterBase::build "no current builder installed")])))
 
   ;; @brief macro: with-rewrite-builder — install a RewriterBase as the active
   ;;        builder context for BODY.  Sets current-rewriter, current-loc, and
@@ -530,85 +481,5 @@
     (syntax-rules ()
       [(_ loc body ...)
        (parameterize ([current-loc loc]) body ...)]))
-
-  ;;===--------------------------------------------------------------------===;;
-  ;; Legacy public aliases (backward compatibility)
-  ;;===--------------------------------------------------------------------===;;
-
-  ;; @brief Legacy alias for mlir-ir-rewriter-base-create.
-  ;; @see   mlir-ir-rewriter-base-create
-  (define mlir-build-op mlir-ir-rewriter-base-create)
-
-  ;; @brief Legacy alias for mlir-ir-rewriter-base-replace-op.
-  ;; @see   mlir-ir-rewriter-base-replace-op
-  (define mlir-replace-op mlir-ir-rewriter-base-replace-op)
-
-  ;; @brief Legacy alias for mlir-ir-rewriter-base-erase-op.
-  ;; @see   mlir-ir-rewriter-base-erase-op
-  (define mlir-erase-op mlir-ir-rewriter-base-erase-op)
-
-  ;; @brief Legacy alias for mlir-ir-rewriter-base-set-insertion-point.
-  ;; @see   mlir-ir-rewriter-base-set-insertion-point
-  (define mlir-set-insertion-point-before
-    mlir-ir-rewriter-base-set-insertion-point)
-
-  ;; @brief Legacy alias for mlir-ir-rewriter-base-set-insertion-point-to-end.
-  ;; @see   mlir-ir-rewriter-base-set-insertion-point-to-end
-  (define mlir-set-insertion-point-to-block-end
-    mlir-ir-rewriter-base-set-insertion-point-to-end)
-
-  ;; @brief Legacy alias for mlir-ir-operation-get-region.
-  ;; @see   mlir-ir-operation-get-region
-  (define mlir-op-get-region mlir-ir-operation-get-region)
-
-  ;; @brief Legacy alias for mlir-ir-rewriter-base-create-block.
-  ;; @see   mlir-ir-rewriter-base-create-block
-  (define mlir-region-create-block mlir-ir-rewriter-base-create-block)
-
-  ;; @brief Legacy alias for mlir::Block::getArgument.
-  ;; @see   mlir::Block::getArgument
-  (define mlir-block-get-argument mlir::Block::getArgument)
-
-  ;; @brief Legacy alias for mlir::Region::push_back<Block>.
-  ;; @see   mlir::Region::push_back<Block>
-  (define mlir-new-block mlir::Region::push_back<Block>)
-
-  ;; @brief Legacy alias for mlir-ir-op-builder-at-block-end.
-  ;; @see   mlir-ir-op-builder-at-block-end
-  (define mlir-builder-at-block-end mlir-ir-op-builder-at-block-end)
-
-  ;; @brief Legacy alias for mlir-ir-op-builder-destroy.
-  ;; @see   mlir-ir-op-builder-destroy
-  (define mlir-destroy-builder mlir-ir-op-builder-destroy)
-
-  ;; @brief mlir-create-op — low-level op creation via an explicit OpBuilder*
-  ;;        (not a rewriter); functional version of mlir-ir-op-builder-create
-  ;;        that handles OperationState lifecycle.
-  ;; @param builder    OpBuilder* uptr
-  ;; @param loc        Operation* uptr — location source
-  ;; @param name       string — fully-qualified op name
-  ;; @param ops        Scheme list of Value* uptrs — operands
-  ;; @param types      Scheme list of Type* uptrs — result types
-  ;; @param num-regions int (optional) — empty regions to pre-allocate (default 0)
-  ;; @return           Operation* uptr of the created op
-  (define (mlir-create-op builder loc name ops types . rest)
-    (let ([nregions (if (pair? rest) (car rest) 0)])
-      (with-operation-state (state (mlir-Operation::getLoc loc) name)
-        (for-each (lambda (v) (mlir-ir-operation-state-add-operands state v)) ops)
-        (for-each (lambda (t) (mlir-ir-operation-state-add-types state t)) types)
-        (let loop ([i 0])
-          (when (< i nregions)
-            (mlir-ir-operation-state-add-region state)
-            (loop (+ i 1))))
-        (mlir-ir-op-builder-create-from-state builder state))))
-
-  ;; @brief Legacy alias for mlir-transforms-greedy-pattern-rewrite-driver-apply.
-  ;; @see   mlir-transforms-greedy-pattern-rewrite-driver-apply
-  (define mlir-apply-patterns-greedy
-    mlir-transforms-greedy-pattern-rewrite-driver-apply)
-
-  ;; @brief Legacy alias for mlir-ir-rewriter-base-clone-with-types.
-  ;; @see   mlir-ir-rewriter-base-clone-with-types
-  (define mlir-op-clone-with-types mlir-ir-rewriter-base-clone-with-types)
 
 ) ;; end library (mlir core builder)

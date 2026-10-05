@@ -159,8 +159,8 @@
         [(current-block-builder) =>
          (lambda (b)
            (if (zero? nregions)
-               (%op-builder-create b loc name operands types)
-               (%op-builder-create-with-regions b loc name operands types nregions)))]
+               (%mlir::OpBuilder::create b loc name operands types)
+               (%mlir::OpBuilder::create-with-regions b loc name operands types nregions)))]
         [else (error 'mlir-build-operation "no current builder installed")])))
 
   ;; @brief RAII macro — acquire a resource, run body forms, then unconditionally release it.

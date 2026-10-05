@@ -26,7 +26,7 @@
           (only (mlir ir value)
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
-          (only (mlir core builder) mlir-build-operation)
+          (only (mlir core builder) crest::RewriterBase::build)
           (mlir transforms dialect-conversion)
           (passes hip-fusion fusion)
           (crest)
@@ -75,7 +75,7 @@
          [trans-b    (mlir::Operation::getAttrOfType<IntegerAttr> %mm-op "transB" 0)]
          [%init      (hip-build-init rewriter !y-type %matmul_init)])
     :rewrite %q :with
-        (%result = (let ([new-op (mlir-build-operation "hip.qmatmul"
+        (%result = (let ([new-op (crest::RewriterBase::build "hip.qmatmul"
                                    (list %ctx %a %b %init)
                                    (list !y-type))])
                      (crest::Operation::setF32Attr new-op "A_scale"       a-scale)
@@ -124,7 +124,7 @@
          [trans-a    (mlir::Operation::getAttrOfType<IntegerAttr> %mm-op "transA" 0)]
          [%init      (hip-build-init rewriter !y-type %matmul_init)])
     :rewrite %q :with
-        (%result = (let ([new-op (mlir-build-operation "hip.qmatmul"
+        (%result = (let ([new-op (crest::RewriterBase::build "hip.qmatmul"
                                    (list %ctx %a %b %b_scales %b_zps %init)
                                    (list !y-type))])
                      (crest::Operation::setF32Attr new-op "A_scale"       a-scale)
@@ -173,7 +173,7 @@
          [trans-a    (mlir::Operation::getAttrOfType<IntegerAttr> %mm-op "transA" 0)]
          [%init      (hip-build-init rewriter !y-type %matmul_init)])
     :rewrite %q :with
-        (%result = (let ([new-op (mlir-build-operation "hip.qmatmul"
+        (%result = (let ([new-op (crest::RewriterBase::build "hip.qmatmul"
                                    (list %ctx %a %b %b_scales %b_zps %init)
                                    (list !y-type))])
                      (crest::Operation::setF32Attr new-op "A_scale"       a-scale)

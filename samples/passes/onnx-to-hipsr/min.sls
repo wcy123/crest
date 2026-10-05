@@ -22,7 +22,7 @@
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
           (mlir support array-ref)
-          (only (mlir core builder) mlir-replace-op mlir-set-insertion-point-before with-rewrite-builder)
+          (only (mlir ir pattern-match) mlir::RewriterBase::replaceOp mlir::RewriterBase::setInsertionPoint with-rewrite-builder)
           (mlir transforms dialect-conversion)
           (mlir dialects hipsr)
           (mlir dialect tensor ir)
@@ -64,7 +64,7 @@
 
   (define (make-binary-min! rewriter loc-op ctx lhs rhs out-type)
     (let ([!shape-type (mlir::shape::ShapeType::get)])
-      (mlir-set-insertion-point-before rewriter loc-op)
+      (mlir::RewriterBase::setInsertionPoint rewriter loc-op)
       (with-rewrite-builder (rewriter loc-op)
         (with-mlir-ops
           (%ph = hipsr.placeholder (ctx lhs rhs)
@@ -78,7 +78,7 @@
     (let ([n (array-ref-size operands-ref)])
       (cond
         [(eqv? n 1)
-         (mlir-replace-op rewriter op (array-ref-at operands-ref 0))
+         (mlir::RewriterBase::replaceOp rewriter op (array-ref-at operands-ref 0))
          #t]
         [(> n 2)
          (let* ([ctx      (mlir-get-hipsr-context-arg op)]
@@ -91,7 +91,7 @@
                              (array-ref-at operands-ref 1)
                              out-type)])
              (if (eqv? i n)
-                 (begin (mlir-replace-op rewriter op acc) #t)
+                 (begin (mlir::RewriterBase::replaceOp rewriter op acc) #t)
                  (loop (+ i 1)
                        (make-binary-min! rewriter op ctx acc
                          (array-ref-at operands-ref i) out-type)))))]

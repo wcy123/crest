@@ -16,8 +16,8 @@
 ;; here using generic MLIR attr/type/operand APIs from (mlir core operation),
 ;; (mlir ir value), (mlir ir builtin-attributes), and (mlir ir builtin-types):
 ;;   hip-extract-splat-scale         — mlir::DenseElementsAttr::getSplatValue<APFloat>
-;;   hip-build-init                  — mlir-build-operation "tensor.empty"
-;;   hip-create-requantized-layout-op — mlir-op-clone-with-types
+;;   hip-build-init                  — crest::RewriterBase::build "tensor.empty"
+;;   hip-create-requantized-layout-op — mlir-ir-rewriter-base-clone-with-types
 ;;   hip-extractable-qdq-zeropoint?  — operand count + mlir::DenseElementsAttr::isSplat
 ;;   hip-extract-qdq-zeropoint-i64   — mlir::Operation::getAttrOfType<IntegerAttr> on zp op
 ;;   hip-qdq-value-bits-c            — alias for pure-Scheme hip-qdq-value-bits
@@ -88,7 +88,7 @@
                 mlir::FloatAttr::getValueAsDouble.f32
                 mlir::DenseElementsAttr::getSplatValue<APFloat>
                 mlir::DenseElementsAttr::getSplatValue<APInt>)
-          (only (mlir core builder) mlir-build-op mlir-op-clone-with-types)
+          (only (mlir core builder) mlir-ir-rewriter-base-create mlir-ir-rewriter-base-clone-with-types)
           (only (mlir ir builtin-types)
                 mlir::ShapedType::getElementType
                 mlir::IntegerType::getWidth
@@ -339,22 +339,22 @@
       (mlir::Operation::getAttr (mlir::Value::getDefiningOp val) "value")))
 
   ;;===--------------------------------------------------------------------===;;
-  ;; Init builder — pure Scheme using mlir-build-operation
+  ;; Init builder — pure Scheme using crest::RewriterBase::build
   ;;===--------------------------------------------------------------------===;;
 
   ;; Build a tensor.empty whose result type is out-type.
-  ;; Uses mlir-build-op directly with the provided rewriter uptr so this works
+  ;; Uses mlir-ir-rewriter-base-create directly with the provided rewriter uptr so this works
   ;; both inside and outside the with-rewrite-builder context (e.g. :then-let).
   ;; The loc-op anchor is the defining op of shape-source.
   ;; Returns result Value (index 0) of the new tensor.empty op.
   (define (hip-build-init rewriter out-type shape-source)
     (let ([loc-op (mlir::Value::getDefiningOp shape-source)])
       (mlir::Operation::getResult
-        (mlir-build-op rewriter loc-op "tensor.empty" '() (list out-type))
+        (mlir-ir-rewriter-base-create rewriter loc-op "tensor.empty" '() (list out-type))
         0)))
 
   ;;===--------------------------------------------------------------------===;;
-  ;; Requantized layout op — pure Scheme via mlir-op-clone-with-types
+  ;; Requantized layout op — pure Scheme via mlir-ir-rewriter-base-clone-with-types
   ;;===--------------------------------------------------------------------===;;
 
   ;; Clone layout-op substituting the quantized output type from q-op.
@@ -377,7 +377,7 @@
            ;; Build a new tensor.empty for the init when needed.
            [new-init  (if has-ctx?
                           (mlir::Operation::getResult
-                            (mlir-build-op rewriter layout-op
+                            (mlir-ir-rewriter-base-create rewriter layout-op
                                            "tensor.empty" '() (list q-type))
                             0)
                           0)]
@@ -393,7 +393,7 @@
                                             [(= i init-idx)  new-init]
                                             [else v])
                                           acc)))))]
-           [new-op    (mlir-op-clone-with-types rewriter layout-op
+           [new-op    (mlir-ir-rewriter-base-clone-with-types rewriter layout-op
                                                operands (list q-type))])
       (mlir::Operation::getResult new-op 0)))
 

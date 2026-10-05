@@ -31,7 +31,7 @@
   (import (except (rnrs) =)
           (rename (only (rnrs) =) (= num=))
 
-          (only (mlir core builder) mlir-apply-patterns-greedy)
+          (only (mlir core builder) mlir-transforms-greedy-pattern-rewrite-driver-apply)
           (mlir transforms dialect-conversion)
           (crest)
           (passes hip-fusion helpers)
@@ -83,6 +83,6 @@
                                        hip-qdq-roundtrip-tensor 10)
         (add-rewrite-pattern patterns "hip.quantize_linear"
                                        hip-qdq-roundtrip-pair 10)
-        (mlir-apply-patterns-greedy module-op patterns)))))
+        (mlir-transforms-greedy-pattern-rewrite-driver-apply module-op patterns)))))
 
 ) ;; end library (passes hip-fusion)

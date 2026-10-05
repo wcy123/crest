@@ -16,8 +16,8 @@
           (for (crest internal parse) expand)
           (for (crest internal validate) expand)
           (for (crest internal analyze) expand)
-          (for (only (mlir core builder)
-                     with-rewrite-builder mlir-replace-op) expand)
+          (for (only (mlir ir pattern-match)
+                     with-rewrite-builder mlir::RewriterBase::replaceOp) expand)
                     (for (rename (only (mlir ir operation)
                             mlir::Operation::getContext
                             mlir::Operation::getNumResults
@@ -155,12 +155,12 @@
   ;; Generated shape ('conversion):
   ;;   (with-rewrite-builder (rw op)
   ;;     (let ([result (with-mlir-ops form ...)])
-  ;;       (mlir-replace-op rw op result)
+  ;;       (mlir::RewriterBase::replaceOp rw op result)
   ;;       #t))
   ;;
   ;; with-mlir-ops handles op-forms, :attrs, :regions, and :scheme escapes.
-  ;; with-rewrite-builder installs current-rewriter and current-loc so mlir-build-operation
-  ;; dispatches through mlir-build-operation-op / mlir-build-operation-op-in-block.
+  ;; with-rewrite-builder installs current-rewriter and current-loc so crest::RewriterBase::build
+  ;; dispatches through the active rewriter or block-builder.
   (define (generate-rewrite-code raw-body pattern-type rw op)
     (if (null? raw-body)
         #'#t
@@ -179,7 +179,7 @@
                    (let ([result (with-mlir-ops form ...)])
                      ;; result is a Value* uptr on success, or #f to signal failure.
                      (if result
-                         (begin (mlir-replace-op #,rw #,op result) #t)
+                         (begin (mlir::RewriterBase::replaceOp #,rw #,op result) #t)
                          #f))))]))))
 
     ;;=======================================================================
