@@ -7,6 +7,7 @@
 #include "Dialect/Shape/Shape.h"
 #include "Support/ArrayRef.h"
 #include "Support/Logging.h"
+#include "Transforms/DialectConversion.h"
 
 namespace crest {
 
