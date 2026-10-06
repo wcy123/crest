@@ -44,7 +44,7 @@
           (only (chezscheme) make-parameter parameterize void)
           (mlir IR PatternMatch ffi)
           (mlir IR Builders ffi)
-          (only (mlir IR MLIRContext) current-mlir-context)
+          (only (mlir IR MLIRContext) current-MLIRContext)
           (only (mlir IR Operation) mlir::Operation::getContext))
 
   (define mlir-Operation::getContext mlir::Operation::getContext)
@@ -166,10 +166,10 @@
 
   ;; @brief RAII macro — install a RewriterBase as the active builder for the dynamic extent of body.
   ;; @param rw    RewriterBase* uptr (ConversionPatternRewriter or IRRewriter)
-  ;; @param loc   Operation* uptr — location source; also used to derive current-mlir-context
+  ;; @param loc   Operation* uptr — location source; also used to derive current-MLIRContext
   ;; @return      Value of the last body expression
   ;; @note        Sets current-rewriter to rw and clears current-block-builder to #f.
-  ;;              current-mlir-context is derived from loc via mlir-Operation::getContext.
+  ;;              current-MLIRContext is derived from loc via mlir-Operation::getContext.
   ;;              Nested with-rewrite-builder or with-current-block-builder forms shadow these bindings.
   (define-syntax with-rewrite-builder
     (syntax-rules ()
@@ -177,12 +177,12 @@
        (parameterize ([current-rewriter      rw]
                       [current-block-builder #f]
                       [current-loc           loc]
-                      [current-mlir-context  (mlir-Operation::getContext loc)])
+                      [current-MLIRContext  (mlir-Operation::getContext loc)])
          body ...)]))
 
   ;; @brief Install an existing OpBuilder* as the active block builder for the dynamic extent of body.
   ;; @param builder  OpBuilder* uptr — already-positioned builder (caller owns lifetime)
-  ;; @param loc      Operation* uptr — location source; also used to derive current-mlir-context
+  ;; @param loc      Operation* uptr — location source; also used to derive current-MLIRContext
   ;; @return         Value of the last body expression
   ;; @note           Sets current-block-builder to builder and clears current-rewriter to #f.
   ;;                 Prefer with-block-builder when you want automatic builder lifetime management.
@@ -192,7 +192,7 @@
        (parameterize ([current-block-builder builder]
                       [current-rewriter      #f]
                       [current-loc           loc]
-                      [current-mlir-context  (mlir-Operation::getContext loc)])
+                      [current-MLIRContext  (mlir-Operation::getContext loc)])
          body ...)]))
 
   ;; @brief RAII macro — heap-allocate an OpBuilder at the end of block, run body, then destroy the builder.
@@ -201,7 +201,7 @@
   ;; @note         Allocates an OpBuilder via %op-builder-at-block-end and frees it with
   ;;               %op-builder-destroy on exit (even via non-local exit).
   ;;               Sets current-block-builder and clears current-rewriter to #f.
-  ;;               Does NOT update current-loc or current-mlir-context; use with-op-location if needed.
+  ;;               Does NOT update current-loc or current-MLIRContext; use with-op-location if needed.
   (define-syntax with-block-builder
     (syntax-rules ()
       [(_ block body ...)

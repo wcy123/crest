@@ -64,7 +64,7 @@
   ;; generic mlir-make-attr dispatcher (removed with (mlir core attribute)).
   ;;
   ;; ctx is passed but unused here — the explicit constructors from
-  ;; (mlir IR BuiltinAttributes) read current-mlir-context internally.
+  ;; (mlir IR BuiltinAttributes) read current-MLIRContext internally.
   ;;===--------------------------------------------------------------------===;;
   (define (%make-attr-by-type _ctx type val)
     (case type

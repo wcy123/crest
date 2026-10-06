@@ -54,7 +54,7 @@
     (num= (rank a) (rank b)))
 
   ;; Build a FloatAttr<f32> from the splat value of a hip.constant scale.
-  ;; Uses current-mlir-context — no explicit ctx needed.
+  ;; Uses current-MLIRContext — no explicit ctx needed.
   (define (scale-attr scale-val)
     (mlir::FloatAttr::get<f32>
      (mlir::DenseElementsAttr::getSplatValue<APFloat>
@@ -63,7 +63,7 @@
   ;; Build an IntegerAttr<i64> for the zero-point.
   ;; Present: extract the splat integer from the hip.constant.
   ;; Absent:  zero (default zero-point).
-  ;; Uses current-mlir-context — no explicit ctx needed.
+  ;; Uses current-MLIRContext — no explicit ctx needed.
   (define (zp-attr zp-val)
     (mlir::IntegerAttr::get<i64>
      (if (unbound-value? zp-val)

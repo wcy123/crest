@@ -48,7 +48,7 @@
                 mlir::isa<RankedTensorType>?)
 
           (only (mlir IR Types) mlir::Type::getContext)
-          (only (mlir IR MLIRContext) current-mlir-context)
+          (only (mlir IR MLIRContext) current-MLIRContext)
           )
 
 

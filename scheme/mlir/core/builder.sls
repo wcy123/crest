@@ -431,7 +431,7 @@
 
   ;; @brief macro: with-rewrite-builder — install a RewriterBase as the active
   ;;        builder context for BODY.  Sets current-rewriter, current-loc, and
-  ;;        current-mlir-context; clears current-block-builder.
+  ;;        current-MLIRContext; clears current-block-builder.
   ;; @param rw   RewriterBase* uptr — passed by the pattern callback
   ;; @param loc  Operation* uptr — insertion-point anchor and location source
   ;; @param body forms to evaluate with the rewriter active
@@ -441,12 +441,12 @@
        (parameterize ([current-rewriter      rw]
                       [current-block-builder #f]
                       [current-loc           loc]
-                      [current-mlir-context  (mlir-Operation::getContext loc)])
+                      [current-MLIRContext  (mlir-Operation::getContext loc)])
          body ...)]))
 
   ;; @brief macro: with-current-block-builder — install an explicit OpBuilder*
   ;;        as the active block-builder context for BODY.  Sets
-  ;;        current-block-builder, current-loc, and current-mlir-context;
+  ;;        current-block-builder, current-loc, and current-MLIRContext;
   ;;        clears current-rewriter.
   ;; @param builder OpBuilder* uptr
   ;; @param loc     Operation* uptr — location source for ops created in BODY
@@ -457,7 +457,7 @@
        (parameterize ([current-block-builder builder]
                       [current-rewriter      #f]
                       [current-loc           loc]
-                      [current-mlir-context  (mlir-Operation::getContext loc)])
+                      [current-MLIRContext  (mlir-Operation::getContext loc)])
          body ...)]))
 
   ;; @brief macro: with-block-builder — create an OpBuilder at the end of BLOCK,

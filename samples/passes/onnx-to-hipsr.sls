@@ -17,7 +17,7 @@
 (library (passes onnx-to-hipsr)
   (export run-pass)
   (import (rnrs (6))
-          (only (mlir IR MLIRContext) with-mlir-context)
+          (only (mlir IR MLIRContext) with-MLIRContext)
           (only (mlir IR Operation)
                 mlir::OpOperand::get
                 mlir::Operation::emitError
@@ -142,26 +142,26 @@
   (define (run-pass module-op . args)
     (crest::logging::info "Starting ONNX to HipSR Conversion (Scheme)")
     (let ((ctx (mlir::Operation::getContext module-op)))
-      (with-mlir-context ctx
-        (with-type-converter (type-converter)
-          (hipsr-type-converter-add-device-memory-conversions! type-converter)
-          (with-conversion-target (target ctx)
-            (hipsr-configure-conversion-target! target ctx type-converter)
-            (with-pattern-set (patterns ctx)
-              ;; Scheme DSL patterns
-              (populate-cast-patterns       type-converter patterns ctx)
-              (populate-scatter-nd-patterns type-converter patterns ctx)
-              (populate-equal-patterns      type-converter patterns ctx)
-              (populate-matmul-patterns     type-converter patterns ctx)
-              (populate-min-patterns        type-converter patterns ctx)
-              (populate-transpose-patterns  type-converter patterns ctx)
-              (populate-gather-patterns     type-converter patterns ctx)
-              (populate-expand-patterns     type-converter patterns ctx)
-              (populate-constant-patterns   type-converter patterns ctx)
-              (populate-shape-patterns      type-converter patterns ctx)
-              ;; Infrastructure patterns
-              (populate-return-patterns type-converter patterns ctx)
-              (mlir-populate-func-type-conversion-pattern patterns type-converter)
-              (do-conversion module-op target patterns)))))))
+      (with-MLIRContext ctx
+                        (with-type-converter (type-converter)
+                          (hipsr-type-converter-add-device-memory-conversions! type-converter)
+                          (with-conversion-target (target ctx)
+                            (hipsr-configure-conversion-target! target ctx type-converter)
+                            (with-pattern-set (patterns ctx)
+                              ;; Scheme DSL patterns
+                              (populate-cast-patterns       type-converter patterns ctx)
+                              (populate-scatter-nd-patterns type-converter patterns ctx)
+                              (populate-equal-patterns      type-converter patterns ctx)
+                              (populate-matmul-patterns     type-converter patterns ctx)
+                              (populate-min-patterns        type-converter patterns ctx)
+                              (populate-transpose-patterns  type-converter patterns ctx)
+                              (populate-gather-patterns     type-converter patterns ctx)
+                              (populate-expand-patterns     type-converter patterns ctx)
+                              (populate-constant-patterns   type-converter patterns ctx)
+                              (populate-shape-patterns      type-converter patterns ctx)
+                              ;; Infrastructure patterns
+                              (populate-return-patterns type-converter patterns ctx)
+                              (mlir-populate-func-type-conversion-pattern patterns type-converter)
+                              (do-conversion module-op target patterns)))))))
 
   ) ;; end library (passes onnx-to-hipsr)
