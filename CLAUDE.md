@@ -114,6 +114,32 @@ Do not create wrapper libraries that alias old names to new ones.
 Callers must use the canonical C++ names directly. When a function
 moves to a new module, update all callers — do not leave an alias.
 
+### Rule 8 — All C binding functions must be `static`
+
+Every C function in a binding file must be declared `static` to minimize
+visibility and avoid polluting the global symbol namespace:
+
+```cpp
+// WRONG — external linkage, visible outside the TU
+uint64_t mlir_ir_builtin_types_index_type_get(uint64_t ctx_ptr) { ... }
+
+// CORRECT — internal linkage, only referenced via Sregister_symbol
+static uint64_t mlir_ir_builtin_types_index_type_get(uint64_t ctx_ptr) { ... }
+```
+
+The function is never called directly from other TUs — it is only passed to
+`Sregister_symbol` as a function pointer. `static` prevents link-time symbol
+conflicts and allows the compiler to inline or optimize freely.
+
+The `Sregister_symbol` call passes the address of the static function:
+```cpp
+Sregister_symbol("mlir::IndexType::get",
+                 (void*)::mlir_ir_builtin_types_index_type_get);
+```
+
+Exception: helper functions used across multiple `.cpp` files (e.g.
+`scheme_error`) may be `static` in each file or defined in a shared header.
+
 ## Summary checklist for a new binding
 
 - [ ] One `.cpp` file in `lib/Bindings/<Path>/` matching the header path
@@ -123,3 +149,4 @@ moves to a new module, update all callers — do not leave an alias.
 - [ ] `scheme/mlir/<Path>/<Name>.sls` re-exporting without `%`
 - [ ] Both `.sls` files have `;; Mirrors mlir/<Path>/<Header>.h` in docstring
 - [ ] Module name `(mlir Path Name)` matches header path exactly
+- [ ] All C binding functions are declared `static`
