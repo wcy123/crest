@@ -43,20 +43,20 @@
   ;;===--------------------------------------------------------------------===;;
 
   (define-conversion-pattern (onnx-min-2->hipsr op operands-ref rewriter type-converter)
-    :if-match
-    %output = onnx.Min (%lhs %rhs)
-    :then-let
-    ([%ctx        (mlir-get-hipsr-context-arg op)]
-     [!out-type   (mlir::Value::getType %output)]
-     [!out-device (mlir::RankedTensorType::cloneWithEncoding !out-type (make-hipsr-device-space-attr))]
-     [!shape-type (mlir::shape::ShapeType::get)])
-    :rewrite %output :with
-    (%placeholder = hipsr.placeholder (%ctx %lhs %rhs !out-device)
-                  (^bb0 ((%ls : !shape-type) (%rs : !shape-type))
-                        (%broadcast = shape.broadcast (%ls %rs) -> !shape-type)
-                        (hipsr.shape_yield (%broadcast)))
-                  -> !out-device)
-    (%result = hipsr.min (%ctx %lhs %rhs %placeholder) -> !out-device))
+  :if-match
+  %output = onnx.Min (%lhs %rhs)
+  :then-let
+  ([%ctx        (mlir-get-hipsr-context-arg op)]
+   [!out-type   (mlir::Value::getType %output)]
+   [!out-device (mlir::RankedTensorType::cloneWithEncoding !out-type (make-hipsr-device-space-attr))]
+   [!shape-type (mlir::shape::ShapeType::get)])
+  :rewrite %output :with
+  (%placeholder = hipsr.placeholder (%ctx %lhs %rhs !out-device)
+                (^bb0 ((%ls : !shape-type) (%rs : !shape-type))
+                      (%broadcast = shape.broadcast (%ls %rs) -> !shape-type)
+                      (hipsr.shape_yield (%broadcast)))
+                -> !out-device)
+  (%result = hipsr.min (%ctx %lhs %rhs %placeholder) -> !out-device))
 
   ;;===--------------------------------------------------------------------===;;
   ;; General case — N=1 identity; N>2 chain (binary DSL pattern handles N=2)

@@ -48,12 +48,6 @@
     (let-values . 1)
     (let*-values . 1)
     (guard . 1)
-    ;; CREST DDR pattern macros —
-    ;; the first arg is the (name args...) header; body starts at 2.
-    ;; Keywords :if-match, :then-let, :rewrite, :where, :with, :as
-    ;; appear as atoms in the body and are indented by lisp-body-indent.
-    (define-rewrite-pattern . 1)
-    (define-conversion-pattern . 1)
     ;; CREST RAII macros — first arg is the resource binding
     (with-mlir-context . 1)
     (with-type-converter . 1)
@@ -65,10 +59,35 @@
   :type '(alist :key-type symbol :value-type integer)
   :group 'pp)
 
+;; Custom indent function for CREST DDR pattern macros.
+;; The header (name args...) is on the same line as the macro; the body
+;; forms — :if-match, pattern lines, :then-let, :rewrite — should be
+;; indented at the same column as the opening paren of the macro, not
+;; 2 spaces further.  This keeps the body flush with the form start so
+;; the keywords read as section markers rather than nested sub-forms.
+;;
+;; Example (define-conversion-pattern at column 2 inside library):
+;;
+;;   (define-conversion-pattern (onnx-matmul->hipsr op ...)
+;;   :if-match               ; ← column 2  (same as the opening '(')
+;;   %output = onnx.MatMul (%a %b)
+;;   :then-let
+;;   ([%ctx ...])
+;;   :rewrite %output :with
+;;   (%result = ...))
+(defun pp--ddr-indent (state _indent-point _normal-indent)
+  "Indent DDR body forms at the column of the macro's opening paren."
+  (save-excursion
+    (goto-char (cadr state))   ; opening paren of define-*-pattern
+    (current-column)))
+
 (defun pp--apply-indent-spec ()
-  "Apply pp/indent-spec to current Emacs session."
+  "Apply pp/indent-spec and DDR-specific rules to current Emacs session."
   (dolist (pair pp/indent-spec)
-    (put (car pair) 'scheme-indent-function (cdr pair))))
+    (put (car pair) 'scheme-indent-function (cdr pair)))
+  ;; DDR macros: body at the same column as the opening paren.
+  (put 'define-rewrite-pattern   'scheme-indent-function #'pp--ddr-indent)
+  (put 'define-conversion-pattern 'scheme-indent-function #'pp--ddr-indent))
 
 (defun pp--scheme-buffer-p ()
   "Return non-nil if current buffer should be treated as Scheme."

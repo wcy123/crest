@@ -347,35 +347,35 @@
                      "op must have operandSegmentSizes for optional/variadic operands"))
             ;; with-array-ref manages the ref lifecycle.
             (with-array-ref (segs (mlir::DenseI32ArrayAttr::asArrayRef attr))
-			    (let* ([n     (array-ref-size segs)]
-				   [n-spec (length spec)]
-				   [_      (unless (= n n-spec)
-					     (error 'operation-get-operands
-						    "operandSegmentSizes count mismatch: spec has"
-						    n-spec "segments but attr has" n))]
-				   [sizes  (loop :for i :from 0 :below n
-						 :collect (array-ref-at segs i 'i32))]
-				   [starts (let lp ([ss sizes] [off 0] [acc '()])
-					     (if (null? ss)
-						 (reverse acc)
-						 (lp (cdr ss) (+ off (car ss)) (cons off acc))))])
-			      (loop :for kind  :in spec
-				    :for start :in starts
-				    :for size  :in sizes
-				    :collect
-				    (case kind
-				      [(:required)
-				       (read-op start)]
-				      [(:optional)
-				       (if (zero? size) %absent (read-op start))]
-				      [(:variadic)
-				       (if (zero? size)
-					   %absent
-					   (loop :for i :from start :below (+ start size)
-						 :collect (read-op i)))]
-				      [else
-				       (error 'operation-get-operands
-					      "unknown kind: expected :required/:optional/:variadic"
-					      kind)]))))))))
+	      (let* ([n     (array-ref-size segs)]
+		     [n-spec (length spec)]
+		     [_      (unless (= n n-spec)
+			       (error 'operation-get-operands
+				      "operandSegmentSizes count mismatch: spec has"
+				      n-spec "segments but attr has" n))]
+		     [sizes  (loop :for i :from 0 :below n
+				   :collect (array-ref-at segs i 'i32))]
+		     [starts (let lp ([ss sizes] [off 0] [acc '()])
+			       (if (null? ss)
+				   (reverse acc)
+				   (lp (cdr ss) (+ off (car ss)) (cons off acc))))])
+		(loop :for kind  :in spec
+		      :for start :in starts
+		      :for size  :in sizes
+		      :collect
+		      (case kind
+			[(:required)
+			 (read-op start)]
+			[(:optional)
+			 (if (zero? size) %absent (read-op start))]
+			[(:variadic)
+			 (if (zero? size)
+			     %absent
+			     (loop :for i :from start :below (+ start size)
+				   :collect (read-op i)))]
+			[else
+			 (error 'operation-get-operands
+				"unknown kind: expected :required/:optional/:variadic"
+				kind)]))))))))
 
   ) ;; end library (mlir IR Operation)
