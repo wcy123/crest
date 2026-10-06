@@ -91,7 +91,7 @@
     :then-let
         ([ctx         (mlir::Operation::getContext op)]
          [!out-type   (mlir::Value::getType %output)]
-         [!out-dev    (mlir::RankedTensorType::cloneWithEncoding !out-type (make-hipsr-device-space-attr ctx))]
+         [!out-dev    (mlir::RankedTensorType::cloneWithEncoding !out-type (make-hipsr-device-space-attr))]
          [$value-attr (constant-value-attr op ctx !out-dev)])
     :rewrite %output :with
         (%result = hipsr.constant () ("value" = $value-attr) -> !out-dev))

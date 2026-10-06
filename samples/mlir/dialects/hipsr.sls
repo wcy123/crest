@@ -53,6 +53,7 @@
                 mlir::isa<RankedTensorType>?)
 
           (only (mlir IR Types) mlir::Type::getContext)
+          (only (mlir IR MLIRContext) current-mlir-context)
   )
 
   (define-syntax :hipsr-device-space (identifier-syntax 'hipsr-device-space))
@@ -100,11 +101,15 @@
   ;; Attr construction — uses the generic :opaque API; no C++ required.
   ;;===--------------------------------------------------------------------===;;
 
-  (define (make-hipsr-device-space-attr ctx)
-    (%mlir::parseAttribute ctx "#hipsr.mem<device>"))
+  (define make-hipsr-device-space-attr
+    (case-lambda
+      [()    (%mlir::parseAttribute (current-mlir-context) "#hipsr.mem<device>")]
+      [(ctx) (%mlir::parseAttribute ctx "#hipsr.mem<device>")]))
 
-  (define (make-hipsr-barrier-type-attr ctx)
-    (%mlir::parseAttribute ctx "#hipsr.placeholder<barrier>"))
+  (define make-hipsr-barrier-type-attr
+    (case-lambda
+      [()    (%mlir::parseAttribute (current-mlir-context) "#hipsr.placeholder<barrier>")]
+      [(ctx) (%mlir::parseAttribute ctx "#hipsr.placeholder<barrier>")]))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Context convention — HipSR passes argument 0 of func.func as context.
@@ -152,7 +157,7 @@
                  (= 0 (mlir::RankedTensorType::getEncoding type)))
           (mlir::RankedTensorType::cloneWithEncoding type
               (make-hipsr-device-space-attr (mlir::Type::getContext type)))
-            #f)))
+          #f)))
     (type-converter-add-tensor-widening-materialization type-converter))
 
   ;;===--------------------------------------------------------------------===;;

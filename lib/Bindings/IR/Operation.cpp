@@ -18,11 +18,6 @@
 #include <cstdio>
 #include <limits>
 
-static void scheme_error(const char* who, const char* msg) {
-  Scall2(Stop_level_value(Sstring_to_symbol("error")), Sstring(who),
-         Sstring(msg));
-}
-
 static void scheme_error_oob(const char* who, int64_t idx, int64_t size) {
   char buf[128];
   snprintf(buf, sizeof(buf), "index out of range: %lld (size %lld)",

@@ -19,11 +19,6 @@
 #include <limits>
 #include <string>
 
-static void scheme_error(const char* who, const char* msg) {
-  Scall2(Stop_level_value(Sstring_to_symbol("error")), Sstring(who),
-         Sstring(msg));
-}
-
 extern "C" {
 
 //===----------------------------------------------------------------------===//
