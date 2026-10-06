@@ -23,6 +23,7 @@
   (export
     current-mlir-context
     with-mlir-context
+    define-ctx-optional
     mlir::MLIRContext::allowUnregisteredDialects
     mlir::MLIRContext::allowsUnregisteredDialects?
     mlir::MLIRContext::enableMultithreading
@@ -137,5 +138,20 @@
   ;; @note          Defined in lib/Bindings/IR/MLIRContext.cpp
   (define (mlir::MLIRContext::printStackTraceOnDiagnostic ctx enable?)
     (%mlir::MLIRContext::printStackTraceOnDiagnostic ctx (if enable? 1 0)))
+
+  ;; @brief define-ctx-optional — define a function whose first argument is an
+  ;; optional MLIRContext*.  The zero-extra-arg form uses current-mlir-context;
+  ;; the one-or-more-arg form forwards the first argument as the context.
+  ;;
+  ;; Usage:
+  ;;   (define-ctx-optional mlir::IndexType::get %mlir::IndexType::get)
+  ;;   (define-ctx-optional mlir::IntegerAttr::get<i64> %mlir::IntegerAttr::get<i64> value)
+  (define-syntax define-ctx-optional
+    (syntax-rules ()
+      [(_ name raw arg ...)
+       (define name
+         (case-lambda
+          [(arg ...)     (raw (current-mlir-context) arg ...)]
+          [(ctx arg ...) (raw ctx arg ...)]))]))
 
   ) ;; end library (mlir IR MLIRContext)

@@ -28,28 +28,30 @@
     mlir::ShapedType::getElementType
     mlir::IntegerType::getWidth
     mlir::IntegerType::isUnsigned?)
-  (import (rnrs) (mlir IR BuiltinTypes ffi))
+  (import (rnrs)
+          (only (mlir IR MLIRContext) current-mlir-context define-ctx-optional)
+          (mlir IR BuiltinTypes ffi))
 
   ;; @brief mlir::IndexType::get — construct an index type in the given context.
-  ;; @param ctx  MLIRContext opaque pointer uptr
+  ;; @param ctx  MLIRContext* uptr (optional; defaults to current-mlir-context)
   ;; @return     IndexType opaque pointer uptr, or 0 on failure
   ;; @see        mlir/IR/BuiltinTypes.h
   ;; @note       Defined in lib/Bindings/IR/BuiltinTypes.cpp
-  (define mlir::IndexType::get                    %mlir::IndexType::get)
+  (define-ctx-optional mlir::IndexType::get %mlir::IndexType::get)
 
   ;; @brief mlir::IntegerType::get(ctx, 64) — construct a 64-bit integer type.
-  ;; @param ctx  MLIRContext opaque pointer uptr
+  ;; @param ctx  MLIRContext* uptr (optional; defaults to current-mlir-context)
   ;; @return     IntegerType (i64) opaque pointer uptr, or 0 on failure
   ;; @see        mlir/IR/BuiltinTypes.h
   ;; @note       Defined in lib/Bindings/IR/BuiltinTypes.cpp
-  (define mlir::IntegerType::get<i64>             %mlir::IntegerType::get<i64>)
+  (define-ctx-optional mlir::IntegerType::get<i64> %mlir::IntegerType::get<i64>)
 
   ;; @brief mlir::IntegerType::get(ctx, 1) — construct a 1-bit integer type.
-  ;; @param ctx  MLIRContext opaque pointer uptr
+  ;; @param ctx  MLIRContext* uptr (optional; defaults to current-mlir-context)
   ;; @return     IntegerType (i1) opaque pointer uptr, or 0 on failure
   ;; @see        mlir/IR/BuiltinTypes.h
   ;; @note       Defined in lib/Bindings/IR/BuiltinTypes.cpp
-  (define mlir::IntegerType::get<i1>              %mlir::IntegerType::get<i1>)
+  (define-ctx-optional mlir::IntegerType::get<i1> %mlir::IntegerType::get<i1>)
 
   ;; @brief mlir::RankedTensorType::getRank() — return the rank of a ranked tensor type.
   ;; @param type  RankedTensorType opaque pointer uptr
@@ -101,20 +103,20 @@
   ;; @return      Element type opaque pointer uptr, or 0 on failure
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
-  (define mlir::ShapedType::getElementType    %shaped-type-get-element-type)
+  (define mlir::ShapedType::getElementType    %mlir::ShapedType::getElementType)
 
   ;; @brief mlir::IntegerType::getWidth() — return the bit width of an integer type.
   ;; @param type  IntegerType opaque pointer uptr
   ;; @return      Bit width as uptr
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
-  (define mlir::IntegerType::getWidth          %integer-type-get-width)
+  (define mlir::IntegerType::getWidth          %mlir::IntegerType::getWidth)
 
   ;; @brief mlir::IntegerType::isUnsigned() — predicate: is the integer type unsigned?
   ;; @param type  IntegerType opaque pointer uptr
   ;; @return      #t if unsigned, #f otherwise
   ;; @see         mlir/IR/BuiltinTypes.h
-  ;; @note        Wraps %integer-type-is-unsigned; returns boolean instead of 1/0
-  (define (mlir::IntegerType::isUnsigned? t)  (not (zero? (%integer-type-is-unsigned t))))
+  ;; @note        Wraps %mlir::IntegerType::isUnsigned; returns boolean instead of 1/0
+  (define (mlir::IntegerType::isUnsigned? t)  (not (zero? (%mlir::IntegerType::isUnsigned t))))
 
   ) ;; end library (mlir IR BuiltinTypes)

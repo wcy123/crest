@@ -25,29 +25,20 @@
   ;; @return     ShapeType opaque pointer uptr
   ;; @see        mlir/Dialect/Shape/IR/Shape.h
   ;; @note       Defined in lib/Bindings/Dialect/Shape/IR/Shape.cpp
-  (define mlir::shape::ShapeType::get
-    (case-lambda
-     [()    (%mlir::shape::ShapeType::get (current-mlir-context))]
-     [(ctx) (%mlir::shape::ShapeType::get ctx)]))
+  (define-ctx-optional mlir::shape::ShapeType::get %mlir::shape::ShapeType::get)
 
   ;; @brief mlir::shape::SizeType::get — get the shape dialect's Size type.
   ;; @param ctx  MLIRContext* uptr (optional; defaults to current-mlir-context)
   ;; @return     SizeType opaque pointer uptr
   ;; @see        mlir/Dialect/Shape/IR/Shape.h
   ;; @note       Defined in lib/Bindings/Dialect/Shape/IR/Shape.cpp
-  (define mlir::shape::SizeType::get
-    (case-lambda
-     [()    (%mlir::shape::SizeType::get (current-mlir-context))]
-     [(ctx) (%mlir::shape::SizeType::get ctx)]))
+  (define-ctx-optional mlir::shape::SizeType::get %mlir::shape::SizeType::get)
 
   ;; @brief mlir::shape::WitnessType::get — get the shape dialect's Witness type.
   ;; @param ctx  MLIRContext* uptr (optional; defaults to current-mlir-context)
   ;; @return     WitnessType opaque pointer uptr
   ;; @see        mlir/Dialect/Shape/IR/Shape.h
   ;; @note       Defined in lib/Bindings/Dialect/Shape/IR/Shape.cpp
-  (define mlir::shape::WitnessType::get
-    (case-lambda
-     [()    (%mlir::shape::WitnessType::get (current-mlir-context))]
-     [(ctx) (%mlir::shape::WitnessType::get ctx)]))
+  (define-ctx-optional mlir::shape::WitnessType::get %mlir::shape::WitnessType::get)
 
   ) ;; end library (mlir Dialect Shape IR Shape)
