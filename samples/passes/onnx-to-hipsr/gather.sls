@@ -35,8 +35,6 @@
           (only (mlir IR Operation)
                 mlir::Operation::emitRemark mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getResult mlir::Operation::setAttr!)
 
-          (only (mlir IR Types) mlir::Type::getContext)
-
           (only (mlir IR BuiltinTypes)
                 mlir::RankedTensorType::cloneWithEncoding
                 mlir::RankedTensorType::getRank))
@@ -84,7 +82,7 @@
         ([%ctx        (mlir-get-hipsr-context-arg op)]
          [!data-type  (mlir::Value::getType %data)]
          [!out-type   (mlir::Value::getType %output)]
-         [!out-device (mlir::RankedTensorType::cloneWithEncoding !out-type (make-hipsr-device-space-attr (mlir::Type::getContext !out-type)))]
+         [!out-device (mlir::RankedTensorType::cloneWithEncoding !out-type (make-hipsr-device-space-attr))]
          [!shape-type (mlir::shape::ShapeType::get)]
          [!size-type  (mlir::shape::SizeType::get)]
          [axis        (let ([a (mlir::Operation::getAttrOfType<IntegerAttr> op "axis" 0)])

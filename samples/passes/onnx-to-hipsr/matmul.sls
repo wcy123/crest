@@ -34,8 +34,6 @@
           (only (mlir support logging)
                 crest::logging::info)
 
-          (only (mlir IR Types) mlir::Type::getContext)
-
           (only (mlir IR BuiltinTypes)
                 mlir::RankedTensorType::cloneWithEncoding
                 mlir::RankedTensorType::getRank))
@@ -46,7 +44,7 @@
     :then-let
         ([%ctx           (mlir-get-hipsr-context-arg op)]
          [!output-type   (mlir::Value::getType %output)]
-         [!output-device (mlir::RankedTensorType::cloneWithEncoding !output-type (make-hipsr-device-space-attr (mlir::Type::getContext !output-type)))]
+         [!output-device (mlir::RankedTensorType::cloneWithEncoding !output-type (make-hipsr-device-space-attr))]
          [!shape-type    (mlir::shape::ShapeType::get)]
          [!size-type     (mlir::shape::SizeType::get)]
          [!witness-type  (mlir::shape::WitnessType::get)]

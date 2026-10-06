@@ -36,8 +36,6 @@
           (crest)
           (only (mlir IR Operation)
                 mlir::Operation::getResult)
-
-          (only (mlir IR Types) mlir::Type::getContext)
   )
 
   ;;===--------------------------------------------------------------------===;;
@@ -50,7 +48,7 @@
     :then-let
         ([%ctx        (mlir-get-hipsr-context-arg op)]
          [!out-type   (mlir::Value::getType %output)]
-         [!out-device (mlir::RankedTensorType::cloneWithEncoding !out-type (make-hipsr-device-space-attr (mlir::Type::getContext !out-type)))]
+         [!out-device (mlir::RankedTensorType::cloneWithEncoding !out-type (make-hipsr-device-space-attr))]
          [!shape-type (mlir::shape::ShapeType::get)])
     :rewrite %output :with
         (%placeholder = hipsr.placeholder (%ctx %lhs %rhs !out-device)
@@ -86,7 +84,7 @@
          (let* ([ctx      (mlir-get-hipsr-context-arg op)]
                 [!base    (mlir::Value::getType (mlir::Operation::getResult op 0))]
                 [out-type (mlir::RankedTensorType::cloneWithEncoding !base
-                            (make-hipsr-device-space-attr (mlir::Type::getContext !base)))])
+                            (make-hipsr-device-space-attr))])
            (let loop ([i 2]
                       [acc (make-binary-min! rewriter op ctx
                              (array-ref-at operands-ref 0)
