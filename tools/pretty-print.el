@@ -38,7 +38,8 @@
   :group 'pp)
 
 (defcustom pp/indent-spec
-  '((library . 1)
+  '(;; R6RS / standard forms
+    (library . 1)
     (define-record-type . 1)
     (syntax-rules . 1)
     (syntax-case . 1)
@@ -46,7 +47,20 @@
     (letrec-syntax . 1)
     (let-values . 1)
     (let*-values . 1)
-    (guard . 1))
+    (guard . 1)
+    ;; CREST DDR pattern macros —
+    ;; the first arg is the (name args...) header; body starts at 2.
+    ;; Keywords :if-match, :then-let, :rewrite, :where, :with, :as
+    ;; appear as atoms in the body and are indented by lisp-body-indent.
+    (define-rewrite-pattern . 1)
+    (define-conversion-pattern . 1)
+    ;; CREST RAII macros — first arg is the resource binding
+    (with-mlir-context . 1)
+    (with-type-converter . 1)
+    (with-conversion-target . 1)
+    (with-pattern-set . 1)
+    (with-array-ref . 1)
+    (parameterize . 1))
   "Alist of (symbol . indent-level) to teach scheme-mode indentation."
   :type '(alist :key-type symbol :value-type integer)
   :group 'pp)
