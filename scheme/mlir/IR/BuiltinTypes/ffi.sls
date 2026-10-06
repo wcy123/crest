@@ -25,9 +25,9 @@
     %mlir::RankedTensorType::getShape
     %mlir::RankedTensorType::getEncoding
     %mlir::RankedTensorType::cloneWithEncoding
-    %shaped-type-get-element-type
-    %integer-type-get-width
-    %integer-type-is-unsigned)
+    %mlir::ShapedType::getElementType
+    %mlir::IntegerType::getWidth
+    %mlir::IntegerType::isUnsigned)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::IndexType::get — construct an index type in the given context.
@@ -114,7 +114,7 @@
   ;; @return      Element type opaque pointer uptr, or 0 on failure
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
-  (define %shaped-type-get-element-type
+  (define %mlir::ShapedType::getElementType
     (foreign-procedure "mlir::ShapedType::getElementType"
                        (uptr) uptr))
 
@@ -123,7 +123,7 @@
   ;; @return      Bit width as uptr
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
-  (define %integer-type-get-width
+  (define %mlir::IntegerType::getWidth
     (foreign-procedure "mlir::IntegerType::getWidth"
                        (uptr) uptr))
 
@@ -132,7 +132,7 @@
   ;; @return      1 if unsigned, 0 otherwise
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
-  (define %integer-type-is-unsigned
+  (define %mlir::IntegerType::isUnsigned
     (foreign-procedure "mlir::IntegerType::isUnsigned"
                        (uptr) int))
 
