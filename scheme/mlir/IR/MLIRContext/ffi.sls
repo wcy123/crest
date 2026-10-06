@@ -15,16 +15,16 @@
 
 (library (mlir IR MLIRContext ffi)
   (export
-    %mlir::MLIRContext::allowUnregisteredDialects
-    %mlir::MLIRContext::allowsUnregisteredDialects
-    %mlir::MLIRContext::enableMultithreading
-    %mlir::MLIRContext::disableMultithreading
-    %mlir-context-is-multithreading-enabled
-    %mlir::MLIRContext::getOrLoadDialect
-    %mlir::MLIRContext::loadAllAvailableDialects
-    %mlir::MLIRContext::printOpOnDiagnostic
-    %mlir::MLIRContext::shouldPrintOpOnDiagnostic
-    %mlir::MLIRContext::printStackTraceOnDiagnostic)
+   %mlir::MLIRContext::allowUnregisteredDialects
+   %mlir::MLIRContext::allowsUnregisteredDialects
+   %mlir::MLIRContext::enableMultithreading
+   %mlir::MLIRContext::disableMultithreading
+   %mlir-context-is-multithreading-enabled
+   %mlir::MLIRContext::getOrLoadDialect
+   %mlir::MLIRContext::loadAllAvailableDialects
+   %mlir::MLIRContext::printOpOnDiagnostic
+   %mlir::MLIRContext::shouldPrintOpOnDiagnostic
+   %mlir::MLIRContext::printStackTraceOnDiagnostic)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::MLIRContext::allowUnregisteredDialects — enable or disable unregistered dialects.
@@ -113,4 +113,4 @@
   (define %mlir::MLIRContext::printStackTraceOnDiagnostic
     (foreign-procedure "mlir_ir_mlir_context_print_stack_trace_on_diagnostic" (uptr int) void))
 
-) ;; end library (mlir IR MLIRContext ffi)
+  ) ;; end library (mlir IR MLIRContext ffi)

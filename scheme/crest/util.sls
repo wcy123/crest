@@ -17,9 +17,9 @@
 (library (crest util)
 
   (export
-    conversion-target-add-common-legal-ops
-    conversion-target-add-dynamically-legal-func
-    type-converter-add-tensor-widening-materialization)
+   conversion-target-add-common-legal-ops
+   conversion-target-add-dynamically-legal-func
+   type-converter-add-tensor-widening-materialization)
 
   (import (rnrs)
           (only (mlir IR MLIRContext) current-mlir-context)
@@ -57,11 +57,11 @@
   (define (conversion-target-add-dynamically-legal-func target converter)
     (let ((ctx (current-mlir-context)))
       (target-add-dynamically-legal-op target ctx "func.func"
-        (lambda (op)
-          (= 1 (type-converter-is-signature-legal converter op))))
+				       (lambda (op)
+					 (= 1 (type-converter-is-signature-legal converter op))))
       (target-add-dynamically-legal-op target ctx "func.return"
-        (lambda (op)
-          (= 1 (type-converter-is-legal converter op))))))
+				       (lambda (op)
+					 (= 1 (type-converter-is-legal converter op))))))
 
   ;; @brief Register source and target tensor-widening materializations.
   ;;
@@ -90,4 +90,4 @@
     (type-converter-add-source-materialization converter widen-materialize)
     (type-converter-add-target-materialization converter widen-materialize))
 
-) ;; end library (crest util)
+  ) ;; end library (crest util)

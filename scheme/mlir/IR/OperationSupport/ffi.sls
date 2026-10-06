@@ -15,13 +15,13 @@
 
 (library (mlir IR OperationSupport ffi)
   (export
-    %operation-state-create
-    %operation-state-add-operands          ;; canonical: mlir::OperationState::addOperands
-    %operation-state-add-operand           ;; backward-compat alias
-    %operation-state-add-types             ;; canonical: mlir::OperationState::addTypes
-    %operation-state-add-result-type       ;; backward-compat alias
-    %operation-state-add-region
-    %operation-state-destroy)
+   %operation-state-create
+   %operation-state-add-operands          ;; canonical: mlir::OperationState::addOperands
+   %operation-state-add-operand           ;; backward-compat alias
+   %operation-state-add-types             ;; canonical: mlir::OperationState::addTypes
+   %operation-state-add-result-type       ;; backward-compat alias
+   %operation-state-add-region
+   %operation-state-destroy)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::OperationState constructor — heap-allocate an OperationState for loc and op name.
@@ -74,4 +74,4 @@
   (define %operation-state-destroy
     (foreign-procedure "mlir_ir_operation_state_destroy" (uptr) void))
 
-) ;; end library (mlir IR OperationSupport ffi)
+  ) ;; end library (mlir IR OperationSupport ffi)

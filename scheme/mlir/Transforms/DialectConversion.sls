@@ -18,30 +18,30 @@
 (library (mlir Transforms DialectConversion)
 
   (export
-    type-converter-create
-    type-converter-destroy
-    type-converter-add-conversion
-    type-converter-add-source-materialization
-    type-converter-add-target-materialization
-    type-converter-is-legal-type
-    type-converter-is-legal
-    type-converter-is-signature-legal
-    target-create
-    target-destroy
-    target-add-illegal-dialect
-    target-add-legal-dialect
-    target-add-legal-op
-    target-add-dynamically-legal-op
-    target-mark-unknown-ops-dynamically-legal
-    pattern-set-create
-    pattern-set-destroy
-    apply-full-conversion
-    add-conversion-pattern
-    add-rewrite-pattern
-    populate-func-type-conversion
-    with-type-converter
-    with-conversion-target
-    with-pattern-set)
+   type-converter-create
+   type-converter-destroy
+   type-converter-add-conversion
+   type-converter-add-source-materialization
+   type-converter-add-target-materialization
+   type-converter-is-legal-type
+   type-converter-is-legal
+   type-converter-is-signature-legal
+   target-create
+   target-destroy
+   target-add-illegal-dialect
+   target-add-legal-dialect
+   target-add-legal-op
+   target-add-dynamically-legal-op
+   target-mark-unknown-ops-dynamically-legal
+   pattern-set-create
+   pattern-set-destroy
+   apply-full-conversion
+   add-conversion-pattern
+   add-rewrite-pattern
+   populate-func-type-conversion
+   with-type-converter
+   with-conversion-target
+   with-pattern-set)
 
   (import (rnrs)
           (mlir Transforms DialectConversion ffi)
@@ -264,7 +264,7 @@
     (syntax-rules ()
       [(_ (var) body ...)
        (with-raii (var (type-converter-create) type-converter-destroy)
-         body ...)]))
+		  body ...)]))
 
   ;; @brief RAII macro — create a ConversionTarget for CTX, bind it to VAR,
   ;;        execute BODY, then unconditionally destroy the target on exit.
@@ -282,10 +282,10 @@
     (syntax-rules ()
       [(_ (var) body ...)
        (with-raii (var (target-create (current-mlir-context)) target-destroy)
-         body ...)]
+		  body ...)]
       [(_ (var ctx) body ...)
        (with-raii (var (target-create ctx) target-destroy)
-         body ...)]))
+		  body ...)]))
 
   ;; @brief RAII macro — create a RewritePatternSet for CTX, bind it to VAR,
   ;;        execute BODY, then unconditionally destroy the pattern set on exit.
@@ -306,9 +306,9 @@
     (syntax-rules ()
       [(_ (var) body ...)
        (with-raii (var (pattern-set-create (current-mlir-context)) pattern-set-destroy)
-         body ...)]
+		  body ...)]
       [(_ (var ctx) body ...)
        (with-raii (var (pattern-set-create ctx) pattern-set-destroy)
-         body ...)]))
+		  body ...)]))
 
-) ;; end library (mlir Transforms DialectConversion)
+  ) ;; end library (mlir Transforms DialectConversion)

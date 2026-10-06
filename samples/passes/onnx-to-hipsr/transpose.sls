@@ -51,9 +51,9 @@
                    (let* ([sz-op (crest::RewriterBase::build "shape.const_size" '() (list size-type))])
                      (mlir::Operation::setAttr! sz-op "value" (mlir::IntegerAttr::get<index> p))
                      (let* ([ext-op (crest::RewriterBase::build "shape.get_extent"
-                                      (list input-shape
-                                            (mlir::Operation::getResult sz-op 0))
-                                      (list size-type))])
+								(list input-shape
+								      (mlir::Operation::getResult sz-op 0))
+								(list size-type))])
                        (mlir::Operation::getResult ext-op 0))))
                  perm)]
            [out-op (crest::RewriterBase::build "shape.from_extents" extents (list shape-type))])
@@ -61,37 +61,37 @@
 
   (define-conversion-pattern (onnx-transpose->hipsr op operands-ref rewriter type-converter)
     :if-match
-        %output = onnx.Transpose (%input)
+    %output = onnx.Transpose (%input)
     :then-let
-        ([%ctx        (mlir-get-hipsr-context-arg op)]
-         [!in-type    (mlir::Value::getType %input)]
-         [!out-type   (mlir::Value::getType %output)]
-         [!out-device (mlir::RankedTensorType::cloneWithEncoding !out-type (make-hipsr-device-space-attr))]
-         [!shape-type (mlir::shape::ShapeType::get)]
-         [!size-type  (mlir::shape::SizeType::get)]
-         [perm        (let ([raw (crest::Operation::getIntegerArrayAttr op "perm")])
-                        (if (null? raw)
-                            ;; absent perm → reverse permutation
-                            (let ([rank (mlir::RankedTensorType::getRank !in-type)])
-                              (let loop ([i 0] [acc '()])
-                                (if (eqv? i rank) acc (loop (+ i 1) (cons i acc)))))
-                            raw))])
+    ([%ctx        (mlir-get-hipsr-context-arg op)]
+     [!in-type    (mlir::Value::getType %input)]
+     [!out-type   (mlir::Value::getType %output)]
+     [!out-device (mlir::RankedTensorType::cloneWithEncoding !out-type (make-hipsr-device-space-attr))]
+     [!shape-type (mlir::shape::ShapeType::get)]
+     [!size-type  (mlir::shape::SizeType::get)]
+     [perm        (let ([raw (crest::Operation::getIntegerArrayAttr op "perm")])
+                    (if (null? raw)
+                        ;; absent perm → reverse permutation
+                        (let ([rank (mlir::RankedTensorType::getRank !in-type)])
+                          (let loop ([i 0] [acc '()])
+                            (if (eqv? i rank) acc (loop (+ i 1) (cons i acc)))))
+                        raw))])
     :rewrite %output :with
-        (%placeholder = "hipsr.placeholder" (%ctx %input !out-device)
-                        (^bb0 ((%is : !shape-type))
-                              (%out-shape = (build-permuted-shape!
-                                              op perm %is !shape-type !size-type))
-                              ("hipsr.shape_yield" (%out-shape)))
-                        -> !out-device)
-        ;; :scheme — create transpose op and set perm attribute via crest::RewriterBase::build
-        (%result = (let* ([new-op (crest::RewriterBase::build "hipsr.transpose"
-                                    (list %ctx %input %placeholder !out-device)
-                                    (list !out-device))])
-                     (mlir::Operation::setAttr! new-op "perm" (mlir::DenseI64ArrayAttr::get perm))
-                     (mlir::Operation::getResult new-op 0))))
+    (%placeholder = "hipsr.placeholder" (%ctx %input !out-device)
+                  (^bb0 ((%is : !shape-type))
+                        (%out-shape = (build-permuted-shape!
+                                       op perm %is !shape-type !size-type))
+                        ("hipsr.shape_yield" (%out-shape)))
+                  -> !out-device)
+    ;; :scheme — create transpose op and set perm attribute via crest::RewriterBase::build
+    (%result = (let* ([new-op (crest::RewriterBase::build "hipsr.transpose"
+							  (list %ctx %input %placeholder !out-device)
+							  (list !out-device))])
+                 (mlir::Operation::setAttr! new-op "perm" (mlir::DenseI64ArrayAttr::get perm))
+                 (mlir::Operation::getResult new-op 0))))
 
   (define (populate-transpose-patterns type-converter patterns ctx)
     (add-conversion-pattern patterns "onnx.Transpose"
-                                      onnx-transpose->hipsr type-converter 1))
+                            onnx-transpose->hipsr type-converter 1))
 
-) ;; end library (onnx-to-hipsr transpose)
+  ) ;; end library (onnx-to-hipsr transpose)

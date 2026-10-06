@@ -16,38 +16,38 @@
 
 (library (mlir IR Operation ffi)
   (export
-    %get-name
-    %get-context
-    %get-num-operands
-    %get-num-results
-    %get-op-operand
-    %get-result
-    %get-parent-op
-    %mlir::OpOperand::get
-    %mlir::OpResult::getOwner
-    %get-loc
-    %walk
-    %set-operand
-    %use-empty
-    %get-string-attr
-    %get-integer-attr
-    %get-integer-array-attr
-    %set-f32-attr
-    %set-i64-attr
-    %set-unit-attr
-    %set-index-attr
-    %set-dense-i64-array
-    %set-i64-array-attr
-    %set-dense-i32-array
-    %copy-attr
-    %has-attr
-    %emit-error
-    %emit-warning
-    %emit-remark
-    %erase
-    %get-attr
-    %set-attr
-    %get-float-attr)
+   %get-name
+   %get-context
+   %get-num-operands
+   %get-num-results
+   %get-op-operand
+   %get-result
+   %get-parent-op
+   %mlir::OpOperand::get
+   %mlir::OpResult::getOwner
+   %get-loc
+   %walk
+   %set-operand
+   %use-empty
+   %get-string-attr
+   %get-integer-attr
+   %get-integer-array-attr
+   %set-f32-attr
+   %set-i64-attr
+   %set-unit-attr
+   %set-index-attr
+   %set-dense-i64-array
+   %set-i64-array-attr
+   %set-dense-i32-array
+   %copy-attr
+   %has-attr
+   %emit-error
+   %emit-warning
+   %emit-remark
+   %erase
+   %get-attr
+   %set-attr
+   %get-float-attr)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::Operation::getName — return the registered op name (e.g. "arith.addi").
@@ -353,4 +353,4 @@
     (foreign-procedure "mlir::Operation::getAttrOfType<FloatAttr>"
                        (uptr string) double))
 
-) ;; end library (mlir IR Operation ffi)
+  ) ;; end library (mlir IR Operation ffi)

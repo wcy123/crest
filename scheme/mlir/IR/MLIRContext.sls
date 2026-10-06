@@ -21,18 +21,18 @@
 
 (library (mlir IR MLIRContext)
   (export
-    current-mlir-context
-    with-mlir-context
-    mlir::MLIRContext::allowUnregisteredDialects
-    mlir::MLIRContext::allowsUnregisteredDialects?
-    mlir::MLIRContext::enableMultithreading
-    mlir::MLIRContext::disableMultithreading
-    mlir::MLIRContext::isMultithreadingEnabled?
-    mlir::MLIRContext::getOrLoadDialect
-    mlir::MLIRContext::loadAllAvailableDialects
-    mlir::MLIRContext::printOpOnDiagnostic
-    mlir::MLIRContext::shouldPrintOpOnDiagnostic?
-    mlir::MLIRContext::printStackTraceOnDiagnostic)
+   current-mlir-context
+   with-mlir-context
+   mlir::MLIRContext::allowUnregisteredDialects
+   mlir::MLIRContext::allowsUnregisteredDialects?
+   mlir::MLIRContext::enableMultithreading
+   mlir::MLIRContext::disableMultithreading
+   mlir::MLIRContext::isMultithreadingEnabled?
+   mlir::MLIRContext::getOrLoadDialect
+   mlir::MLIRContext::loadAllAvailableDialects
+   mlir::MLIRContext::printOpOnDiagnostic
+   mlir::MLIRContext::shouldPrintOpOnDiagnostic?
+   mlir::MLIRContext::printStackTraceOnDiagnostic)
   (import (rnrs)
           (only (chezscheme) make-parameter parameterize)
           (mlir IR MLIRContext ffi))
@@ -138,4 +138,4 @@
   (define (mlir::MLIRContext::printStackTraceOnDiagnostic ctx enable?)
     (%mlir::MLIRContext::printStackTraceOnDiagnostic ctx (if enable? 1 0)))
 
-) ;; end library (mlir IR MLIRContext)
+  ) ;; end library (mlir IR MLIRContext)

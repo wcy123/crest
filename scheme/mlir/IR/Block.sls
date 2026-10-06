@@ -30,4 +30,4 @@
   ;; @see          mlir/IR/Block.h
   (define mlir::Block::getNumArguments %mlir::Block::getNumArguments)
 
-) ;; end library (mlir IR Block)
+  ) ;; end library (mlir IR Block)

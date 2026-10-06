@@ -28,53 +28,53 @@
 
 (library (passes hip-fusion fusion)
   (export
-    ;; Single-use guard
-    hip-op-single-use?
+   ;; Single-use guard
+   hip-op-single-use?
 
-    ;; Q/DQ operand access (respects AttrSizedOperandSegments)
-    hip-qdq-input-operand      ; Value: tensor being quantized/dequantized
-    hip-qdq-scale-operand      ; Value: scale
-    hip-qdq-zeropoint          ; int64 zero-point or absent-val when absent
+   ;; Q/DQ operand access (respects AttrSizedOperandSegments)
+   hip-qdq-input-operand      ; Value: tensor being quantized/dequantized
+   hip-qdq-scale-operand      ; Value: scale
+   hip-qdq-zeropoint          ; int64 zero-point or absent-val when absent
 
-    ;; Scale checks
-    hip-splat-scale?           ; guard: scale Value is a splat float constant
+   ;; Scale checks
+   hip-splat-scale?           ; guard: scale Value is a splat float constant
 
-    ;; Type / width checks
-    hip-qdq-element-type       ; element IntegerType of the quantized result
-    hip-qdq-value-bits         ; logical bit width (4 when packed_int4, else storage width)
-    hip-qdq-unsigned?          ; element type is unsigned
-    hip-qdq-quantized-width?   ; bit width is in an allowed set
+   ;; Type / width checks
+   hip-qdq-element-type       ; element IntegerType of the quantized result
+   hip-qdq-value-bits         ; logical bit width (4 when packed_int4, else storage width)
+   hip-qdq-unsigned?          ; element type is unsigned
+   hip-qdq-quantized-width?   ; bit width is in an allowed set
 
-    ;; Matching helpers
-    hip-matching-qdq-params?   ; Q and DQ carry identical scale + zero-point
-    hip-identity-roundtrip?    ; Q output type equals DQ input type
+   ;; Matching helpers
+   hip-matching-qdq-params?   ; Q and DQ carry identical scale + zero-point
+   hip-identity-roundtrip?    ; Q output type equals DQ input type
 
-    ;; Layout op helpers (for QdqRoundTrip patterns)
-    hip-can-requantize-layout-op?  ; op name is in the allowed layout-op list
-    hip-layout-op-has-ctx?         ; layout op is a DPS hip op (takes ctx arg)
+   ;; Layout op helpers (for QdqRoundTrip patterns)
+   hip-can-requantize-layout-op?  ; op name is in the allowed layout-op list
+   hip-layout-op-has-ctx?         ; layout op is a DPS hip op (takes ctx arg)
 
-    ;; Attribute helpers
-    hip-int-attr-equal?            ; op's named int attr equals expected value
-    hip-l2-equiv-rms-norm?         ; rms_norm is equivalent to L2 normalization
-    hip-fusable-conv-geometry?     ; 1x1, unit stride/dilation, no pad, no group
-    hip-per-axis-weight?           ; dq is per-axis weight at given rank/axis
-    hip-per-channel-weight?        ; dq is per-channel weight for gemm consumer
+   ;; Attribute helpers
+   hip-int-attr-equal?            ; op's named int attr equals expected value
+   hip-l2-equiv-rms-norm?         ; rms_norm is equivalent to L2 normalization
+   hip-fusable-conv-geometry?     ; 1x1, unit stride/dilation, no pad, no group
+   hip-per-axis-weight?           ; dq is per-axis weight at given rank/axis
+   hip-per-channel-weight?        ; dq is per-channel weight for gemm consumer
 
-    ;; Init guard
-    hip-can-build-init?        ; result type rank matches shape-source rank
+   ;; Init guard
+   hip-can-build-init?        ; result type rank matches shape-source rank
 
-    ;; Value-level single-use check
-    hip-value-single-use?
+   ;; Value-level single-use check
+   hip-value-single-use?
 
-    ;; Zero-point extraction (pure Scheme)
-    hip-extractable-qdq-zeropoint?
-    hip-extract-qdq-zeropoint-i64
-    hip-qdq-value-bits-c
+   ;; Zero-point extraction (pure Scheme)
+   hip-extractable-qdq-zeropoint?
+   hip-extract-qdq-zeropoint-i64
+   hip-qdq-value-bits-c
 
-    ;; Scale / builder helpers (pure Scheme)
-    hip-extract-splat-scale
-    hip-build-init
-    hip-create-requantized-layout-op)
+   ;; Scale / builder helpers (pure Scheme)
+   hip-extract-splat-scale
+   hip-build-init
+   hip-create-requantized-layout-op)
 
   (import (rnrs)
           (only (chezscheme) nan? foreign-procedure)
@@ -97,7 +97,7 @@
                 mlir::RankedTensorType::getShape)
           (only (mlir IR Operation)
                 crest::Operation::getIntegerArrayAttr mlir::OpOperand::get mlir::OpResult::getOwner mlir::Operation::getAttr mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getName mlir::Operation::getNumOperands mlir::Operation::getResult mlir::Operation::hasAttr?)
-  )
+	  )
 
   ;; Local helpers — expressed via explicit builtin-attributes functions.
 
@@ -161,9 +161,9 @@
     ;; DQ: operand 1 (input) is the integer tensor; result 0 is float.
     (if (string=? (mlir::Operation::getName op) "hip.quantize_linear")
         (mlir::ShapedType::getElementType
-          (mlir::Value::getType (mlir::Operation::getResult op 0)))
+         (mlir::Value::getType (mlir::Operation::getResult op 0)))
         (mlir::ShapedType::getElementType
-          (mlir::Value::getType (hip-qdq-input-operand op)))))
+         (mlir::Value::getType (hip-qdq-input-operand op)))))
 
   (define (hip-qdq-value-bits op)
     ;; packed_int4 is a UnitAttr — test with has-attr?, not get-integer-attr.
@@ -228,29 +228,29 @@
                   (if (zero? a) +nan.0 (mlir::FloatAttr::getValueAsDouble.f32 a)))]
           [axis (mlir::Operation::getAttrOfType<IntegerAttr> op "axis" -999)])
       (and
-        ;; epsilon must be 0.0
-        (= eps 0.0)
-        ;; axis must be -1 (trailing)
-        (= axis -1)
-        ;; scale operand must be a splat float hip.constant
-        (let ([scale-val (mlir::OpOperand::get op 2)])
-          (and (hip-splat-scale? scale-val)
-               ;; scale value must equal 1/sqrt(N) where N is the last dim
-               (let* ([in-type   (mlir::Value::getType
-                                   (mlir::OpOperand::get op 1))]
-                      [rank      (mlir::RankedTensorType::getRank in-type)]
-                      [shape     (mlir::RankedTensorType::getShape in-type)]
-                      [n         (and (> rank 0) (list-ref shape (- rank 1)))])
-                 (and n
-                      (> n 0)
-                      (let* ([expected  (/ 1.0 (sqrt (inexact n)))]
-                             [actual    (mlir::DenseElementsAttr::getSplatValue<APFloat>
-                                          (mlir::Operation::getAttr
-                                            (mlir::Value::getDefiningOp scale-val)
-                                            "value"))]
-                             ;; Use relative tolerance to match float rounding.
-                             [rel-err   (abs (- actual expected))])
-                        (< rel-err (* 2.0 (expt 2.0 -23) (abs expected)))))))))))
+       ;; epsilon must be 0.0
+       (= eps 0.0)
+       ;; axis must be -1 (trailing)
+       (= axis -1)
+       ;; scale operand must be a splat float hip.constant
+       (let ([scale-val (mlir::OpOperand::get op 2)])
+         (and (hip-splat-scale? scale-val)
+              ;; scale value must equal 1/sqrt(N) where N is the last dim
+              (let* ([in-type   (mlir::Value::getType
+                                 (mlir::OpOperand::get op 1))]
+                     [rank      (mlir::RankedTensorType::getRank in-type)]
+                     [shape     (mlir::RankedTensorType::getShape in-type)]
+                     [n         (and (> rank 0) (list-ref shape (- rank 1)))])
+                (and n
+                     (> n 0)
+                     (let* ([expected  (/ 1.0 (sqrt (inexact n)))]
+                            [actual    (mlir::DenseElementsAttr::getSplatValue<APFloat>
+                                        (mlir::Operation::getAttr
+                                         (mlir::Value::getDefiningOp scale-val)
+                                         "value"))]
+                            ;; Use relative tolerance to match float rounding.
+                            [rel-err   (abs (- actual expected))])
+                       (< rel-err (* 2.0 (expt 2.0 -23) (abs expected)))))))))))
 
   ;; Check whether a hip.conv op has fusable geometry:
   ;; 1x1 kernel, unit strides, unit dilations, zero pads, group=1.
@@ -321,7 +321,7 @@
           (if (and def (string=? (mlir::Operation::getName def) "hip.constant"))
               (if (mlir::DenseElementsAttr::isSplat (mlir::Operation::getAttr def "value"))
                   (mlir::DenseElementsAttr::getSplatValue<APInt>
-                    (mlir::Operation::getAttr def "value"))
+                   (mlir::Operation::getAttr def "value"))
                   absent-val)
               absent-val))))
 
@@ -336,7 +336,7 @@
   ;; Extract the splat float64 value from a hip.constant scale Value.
   (define (hip-extract-splat-scale val)
     (mlir::DenseElementsAttr::getSplatValue<APFloat>
-      (mlir::Operation::getAttr (mlir::Value::getDefiningOp val) "value")))
+     (mlir::Operation::getAttr (mlir::Value::getDefiningOp val) "value")))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Init builder — pure Scheme using crest::RewriterBase::build
@@ -350,8 +350,8 @@
   (define (hip-build-init rewriter out-type shape-source)
     (let ([loc-op (mlir::Value::getDefiningOp shape-source)])
       (mlir::Operation::getResult
-        (mlir-ir-rewriter-base-create rewriter loc-op "tensor.empty" '() (list out-type))
-        0)))
+       (mlir-ir-rewriter-base-create rewriter loc-op "tensor.empty" '() (list out-type))
+       0)))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Requantized layout op — pure Scheme via mlir-ir-rewriter-base-clone-with-types
@@ -377,9 +377,9 @@
            ;; Build a new tensor.empty for the init when needed.
            [new-init  (if has-ctx?
                           (mlir::Operation::getResult
-                            (mlir-ir-rewriter-base-create rewriter layout-op
-                                           "tensor.empty" '() (list q-type))
-                            0)
+                           (mlir-ir-rewriter-base-create rewriter layout-op
+							 "tensor.empty" '() (list q-type))
+                           0)
                           0)]
            ;; Rebuild operand list: replace dq-result with dq-input, and replace
            ;; the last operand (DPS init for hip.*) with the typed init.
@@ -389,12 +389,12 @@
                             (let ([v (mlir::OpOperand::get layout-op i)])
                               (loop (+ i 1)
                                     (cons (cond
-                                            [(= v dq-result) dq-input]
-                                            [(= i init-idx)  new-init]
-                                            [else v])
+                                           [(= v dq-result) dq-input]
+                                           [(= i init-idx)  new-init]
+                                           [else v])
                                           acc)))))]
            [new-op    (mlir-ir-rewriter-base-clone-with-types rewriter layout-op
-                                               operands (list q-type))])
+							      operands (list q-type))])
       (mlir::Operation::getResult new-op 0)))
 
-) ;; end library (passes hip-fusion fusion)
+  ) ;; end library (passes hip-fusion fusion)

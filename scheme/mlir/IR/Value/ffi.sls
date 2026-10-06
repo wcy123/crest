@@ -17,11 +17,11 @@
 
 (library (mlir IR Value ffi)
   (export
-    %mlir::Value::getDefiningOp
-    %mlir::isa<BlockArgument>?
-    %mlir::Value::getUses
-    %mlir::Value::getType
-    %mlir::OpResult::getResultNumber)
+   %mlir::Value::getDefiningOp
+   %mlir::isa<BlockArgument>?
+   %mlir::Value::getUses
+   %mlir::Value::getType
+   %mlir::OpResult::getResultNumber)
 
   (import (rnrs)
           (only (chezscheme) foreign-procedure))
@@ -67,4 +67,4 @@
   (define %mlir::OpResult::getResultNumber
     (foreign-procedure "mlir::OpResult::getResultNumber" (uptr) uptr))
 
-) ;; end library (mlir IR Value ffi)
+  ) ;; end library (mlir IR Value ffi)

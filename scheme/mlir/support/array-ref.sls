@@ -24,13 +24,13 @@
 
 (library (mlir support array-ref)
   (export
-    array-ref-size      ; (ref) → element count, zero FFI overhead
-    array-ref-at        ; (ref index [type]) → element, bounds-checked
-    make-array-ref      ; (data-ptr size) → ref  [C heap allocation]
-    array-ref-destroy   ; (ref) → void           [C heap free]
-    with-array-ref      ; (syntax) RAII: make + body + destroy
-    :uptr)              ; array-ref-at element type → 'uptr (8-byte pointer, default)
-                        ; :i32 is a local keyword synonym — 'i32
+   array-ref-size      ; (ref) → element count, zero FFI overhead
+   array-ref-at        ; (ref index [type]) → element, bounds-checked
+   make-array-ref      ; (data-ptr size) → ref  [C heap allocation]
+   array-ref-destroy   ; (ref) → void           [C heap free]
+   with-array-ref      ; (syntax) RAII: make + body + destroy
+   :uptr)              ; array-ref-at element type → 'uptr (8-byte pointer, default)
+					; :i32 is a local keyword synonym — 'i32
 
   (import (rnrs)
           (only (chezscheme) foreign-ref)
@@ -66,17 +66,17 @@
   ;; @note         Use :uptr or :i32 compile-time keywords as the type argument
   (define array-ref-at
     (case-lambda
-      [(ref index)
-       (array-ref-at ref index 'uptr)]
-      [(ref index type)
-       (let ([size (foreign-ref 'uptr ref 8)]
-             [data (foreign-ref 'uptr ref 0)])
-         (when (>= index size)
-           (error 'array-ref-at "index out of range" index size))
-         (cond
-           [(eq? type :uptr) (foreign-ref 'uptr       data (* index 8))]
-           [(eq? type :i32)  (foreign-ref 'integer-32 data (* index 4))]
-           [else             (error 'array-ref-at "unknown type (expected :uptr or :i32)" type)]))]))
+     [(ref index)
+      (array-ref-at ref index 'uptr)]
+     [(ref index type)
+      (let ([size (foreign-ref 'uptr ref 8)]
+            [data (foreign-ref 'uptr ref 0)])
+        (when (>= index size)
+          (error 'array-ref-at "index out of range" index size))
+        (cond
+         [(eq? type :uptr) (foreign-ref 'uptr       data (* index 8))]
+         [(eq? type :i32)  (foreign-ref 'integer-32 data (* index 4))]
+         [else             (error 'array-ref-at "unknown type (expected :uptr or :i32)" type)]))]))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Lifecycle — C++ FFI (one call per array lifetime, overhead acceptable).
@@ -129,16 +129,16 @@
       [(_ (name ref-expr) body ...)
        (let ([name ref-expr])
          (dynamic-wind
-           (lambda () #f)
-           (lambda () body ...)
-           (lambda () (array-ref-destroy name))))]
+             (lambda () #f)
+             (lambda () body ...)
+             (lambda () (array-ref-destroy name))))]
       ;; (with-array-ref (name data-ptr size) body ...)
       ;; Allocate a new CArrayRef from data pointer + element count.
       [(_ (name data-ptr size) body ...)
        (let ([name (make-array-ref data-ptr size)])
          (dynamic-wind
-           (lambda () #f)
-           (lambda () body ...)
-           (lambda () (array-ref-destroy name))))]))
+             (lambda () #f)
+             (lambda () body ...)
+             (lambda () (array-ref-destroy name))))]))
 
-) ;; end library (mlir support array-ref)
+  ) ;; end library (mlir support array-ref)

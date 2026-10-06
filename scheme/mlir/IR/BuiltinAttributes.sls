@@ -24,33 +24,33 @@
 
 (library (mlir IR BuiltinAttributes)
   (export
-    mlir::IntegerAttr::get<i64>
-    mlir::IntegerAttr::get<index>
-    mlir::FloatAttr::get<f32>
-    mlir::DenseI32ArrayAttr::get
-    mlir::DenseI64ArrayAttr::get
-    mlir::parseAttribute
-    mlir::DenseResourceElementsAttr::get
-    mlir::isa<IntegerAttr>
-    mlir::isa<FloatAttr>
-    mlir::isa<StringAttr>
-    mlir::isa<DenseI32ArrayAttr>
-    mlir::isa<DenseElementsAttr>
-    mlir::DenseElementsAttr::isSplat
-    mlir::isa<FloatAttr.f32>
-    mlir::IntegerAttr::getValue
-    mlir::FloatAttr::getValueAsDouble
-    mlir::FloatAttr::getValueAsDouble.f32
-    mlir::DenseI32ArrayAttr::asArrayRef
-    mlir::DenseElementsAttr::getSplatValue<APFloat>
-    mlir::DenseElementsAttr::getSplatValue<APInt>
-    mlir::DenseI32ArrayAttr::asArrayRef->list
-    mlir::Operation::getAttr
-    mlir::Operation::setAttr!
-    mlir::Operation::getAttrOfType<FloatAttr>
-    mlir::ShapedType::getElementType
-    mlir::IntegerType::getWidth
-    mlir::IntegerType::isUnsigned?)
+   mlir::IntegerAttr::get<i64>
+   mlir::IntegerAttr::get<index>
+   mlir::FloatAttr::get<f32>
+   mlir::DenseI32ArrayAttr::get
+   mlir::DenseI64ArrayAttr::get
+   mlir::parseAttribute
+   mlir::DenseResourceElementsAttr::get
+   mlir::isa<IntegerAttr>
+   mlir::isa<FloatAttr>
+   mlir::isa<StringAttr>
+   mlir::isa<DenseI32ArrayAttr>
+   mlir::isa<DenseElementsAttr>
+   mlir::DenseElementsAttr::isSplat
+   mlir::isa<FloatAttr.f32>
+   mlir::IntegerAttr::getValue
+   mlir::FloatAttr::getValueAsDouble
+   mlir::FloatAttr::getValueAsDouble.f32
+   mlir::DenseI32ArrayAttr::asArrayRef
+   mlir::DenseElementsAttr::getSplatValue<APFloat>
+   mlir::DenseElementsAttr::getSplatValue<APInt>
+   mlir::DenseI32ArrayAttr::asArrayRef->list
+   mlir::Operation::getAttr
+   mlir::Operation::setAttr!
+   mlir::Operation::getAttrOfType<FloatAttr>
+   mlir::ShapedType::getElementType
+   mlir::IntegerType::getWidth
+   mlir::IntegerType::isUnsigned?)
   (import (rnrs)
           (mlir IR BuiltinAttributes ffi)
           (mlir IR Operation ffi)
@@ -66,8 +66,8 @@
   ;; @note         Wraps %mlir::IntegerAttr::get<i64>; context supplied by current-mlir-context
   (define mlir::IntegerAttr::get<i64>
     (case-lambda
-      [(value)      (%mlir::IntegerAttr::get<i64> (current-mlir-context) value)]
-      [(ctx value)  (%mlir::IntegerAttr::get<i64> ctx value)]))
+     [(value)      (%mlir::IntegerAttr::get<i64> (current-mlir-context) value)]
+     [(ctx value)  (%mlir::IntegerAttr::get<i64> ctx value)]))
 
   ;; @brief mlir::IntegerAttr::get — construct an IntegerAttr with IndexType.
   ;; @param value  Scheme exact integer (coerced to int64_t)
@@ -76,8 +76,8 @@
   ;; @note         Wraps %mlir::IntegerAttr::get<index>; context supplied by current-mlir-context
   (define mlir::IntegerAttr::get<index>
     (case-lambda
-      [(value)      (%mlir::IntegerAttr::get<index> (current-mlir-context) value)]
-      [(ctx value)  (%mlir::IntegerAttr::get<index> ctx value)]))
+     [(value)      (%mlir::IntegerAttr::get<index> (current-mlir-context) value)]
+     [(ctx value)  (%mlir::IntegerAttr::get<index> ctx value)]))
 
   ;; @brief mlir::FloatAttr::get — construct a FloatAttr with f32 (Float32) type.
   ;; @param value  Scheme flonum (cast to float)
@@ -86,8 +86,8 @@
   ;; @note         Wraps %mlir::FloatAttr::get<f32>; context supplied by current-mlir-context
   (define mlir::FloatAttr::get<f32>
     (case-lambda
-      [(value)      (%mlir::FloatAttr::get<f32> (current-mlir-context) value)]
-      [(ctx value)  (%mlir::FloatAttr::get<f32> ctx value)]))
+     [(value)      (%mlir::FloatAttr::get<f32> (current-mlir-context) value)]
+     [(ctx value)  (%mlir::FloatAttr::get<f32> ctx value)]))
 
   ;; @brief mlir::DenseI32ArrayAttr::get — construct a DenseI32ArrayAttr from a Scheme list.
   ;; @param value  Scheme list of fixnums (each cast to int32_t)
@@ -96,8 +96,8 @@
   ;; @note         Wraps %mlir::DenseI32ArrayAttr::get; context supplied by current-mlir-context
   (define mlir::DenseI32ArrayAttr::get
     (case-lambda
-      [(value)      (%mlir::DenseI32ArrayAttr::get (current-mlir-context) value)]
-      [(ctx value)  (%mlir::DenseI32ArrayAttr::get ctx value)]))
+     [(value)      (%mlir::DenseI32ArrayAttr::get (current-mlir-context) value)]
+     [(ctx value)  (%mlir::DenseI32ArrayAttr::get ctx value)]))
 
   ;; @brief mlir::DenseI64ArrayAttr::get — construct a DenseI64ArrayAttr from a Scheme list.
   ;; @param value  Scheme list of exact integers (each coerced to int64_t)
@@ -106,8 +106,8 @@
   ;; @note         Wraps %mlir::DenseI64ArrayAttr::get; context supplied by current-mlir-context
   (define mlir::DenseI64ArrayAttr::get
     (case-lambda
-      [(value)      (%mlir::DenseI64ArrayAttr::get (current-mlir-context) value)]
-      [(ctx value)  (%mlir::DenseI64ArrayAttr::get ctx value)]))
+     [(value)      (%mlir::DenseI64ArrayAttr::get (current-mlir-context) value)]
+     [(ctx value)  (%mlir::DenseI64ArrayAttr::get ctx value)]))
 
   ;; @brief mlir::parseAttribute — parse an attribute from MLIR textual syntax.
   ;; @param value  Scheme string containing MLIR attribute syntax (e.g. "#some.attr<...>")
@@ -116,8 +116,8 @@
   ;; @note         Wraps %mlir::parseAttribute; context supplied by current-mlir-context
   (define mlir::parseAttribute
     (case-lambda
-      [(value)      (%mlir::parseAttribute (current-mlir-context) value)]
-      [(ctx value)  (%mlir::parseAttribute ctx value)]))
+     [(value)      (%mlir::parseAttribute (current-mlir-context) value)]
+     [(ctx value)  (%mlir::parseAttribute ctx value)]))
 
   ;; @brief mlir::DenseResourceElementsAttr::get — construct a DenseResourceElementsAttr.
   ;; @param value  Scheme list of (result-type-uptr key-string data-addr-integer data-size-integer)
@@ -127,8 +127,8 @@
   ;; @note         Wraps %mlir::DenseResourceElementsAttr::get; context supplied by current-mlir-context
   (define mlir::DenseResourceElementsAttr::get
     (case-lambda
-      [(value)      (%mlir::DenseResourceElementsAttr::get (current-mlir-context) value)]
-      [(ctx value)  (%mlir::DenseResourceElementsAttr::get ctx value)]))
+     [(value)      (%mlir::DenseResourceElementsAttr::get (current-mlir-context) value)]
+     [(ctx value)  (%mlir::DenseResourceElementsAttr::get ctx value)]))
 
   ;; @brief mlir::isa<IntegerAttr> — test whether an opaque attribute pointer is an IntegerAttr.
   ;; @param a      mlir::Attribute opaque pointer uptr (0 treated as false)
@@ -274,4 +274,4 @@
   ;; @note         Wraps %integer-type-is-unsigned (from mlir ir builtin-types ffi)
   (define (mlir::IntegerType::isUnsigned? t) (not (zero? (%integer-type-is-unsigned t))))
 
-) ;; end library (mlir IR BuiltinAttributes)
+  ) ;; end library (mlir IR BuiltinAttributes)

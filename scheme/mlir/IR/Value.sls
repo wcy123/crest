@@ -19,11 +19,11 @@
 
 (library (mlir IR Value)
   (export
-    mlir::Value::getDefiningOp
-    mlir::isa<BlockArgument>?
-    mlir::Value::getUses
-    mlir::Value::getType
-    mlir::OpResult::getResultNumber)
+   mlir::Value::getDefiningOp
+   mlir::isa<BlockArgument>?
+   mlir::Value::getUses
+   mlir::Value::getType
+   mlir::OpResult::getResultNumber)
 
   (import (rnrs)
           (mlir IR Value ffi))
@@ -64,4 +64,4 @@
   ;; @note         Defined in lib/Bindings/IR/OpResult.cpp
   (define mlir::OpResult::getResultNumber %mlir::OpResult::getResultNumber)
 
-) ;; end library (mlir IR Value)
+  ) ;; end library (mlir IR Value)

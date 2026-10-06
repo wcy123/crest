@@ -17,16 +17,16 @@
 
 (library (mlir IR PatternMatch ffi)
   (export
-    %mlir::RewriterBase::create
-    %mlir::RewriterBase::create-with-regions
-    %mlir::RewriterBase::setInsertionPoint          ;; canonical: mlir::RewriterBase::setInsertionPoint(op)
-    %mlir::RewriterBase::setInsertionPoint-before   ;; backward-compat alias
-    %mlir::RewriterBase::setInsertionPoint-to-end
-    %mlir::RewriterBase::createBlock
-    %mlir::RewriterBase::replaceOp
-    %mlir::RewriterBase::eraseOp
-    %crest::RewriterBase::cloneWithTypes
-    %mlir::RewriterBase::create<OperationState>)
+   %mlir::RewriterBase::create
+   %mlir::RewriterBase::create-with-regions
+   %mlir::RewriterBase::setInsertionPoint          ;; canonical: mlir::RewriterBase::setInsertionPoint(op)
+   %mlir::RewriterBase::setInsertionPoint-before   ;; backward-compat alias
+   %mlir::RewriterBase::setInsertionPoint-to-end
+   %mlir::RewriterBase::createBlock
+   %mlir::RewriterBase::replaceOp
+   %mlir::RewriterBase::eraseOp
+   %crest::RewriterBase::cloneWithTypes
+   %mlir::RewriterBase::create<OperationState>)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::RewriterBase::create — create an op via OperationState, setting insertion point before loc-op.
@@ -133,4 +133,4 @@
   (define %mlir::RewriterBase::create<OperationState>
     (foreign-procedure "mlir_ir_rewriter_base_create_from_state" (uptr uptr) uptr))
 
-) ;; end library (mlir IR PatternMatch ffi)
+  ) ;; end library (mlir IR PatternMatch ffi)

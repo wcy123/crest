@@ -18,12 +18,12 @@
 
 (library (mlir support logging ffi)
   (export
-    %logging-trace
-    %logging-debug
-    %logging-info
-    %logging-warning
-    %logging-error
-    %logging-fatal)
+   %logging-trace
+   %logging-debug
+   %logging-info
+   %logging-warning
+   %logging-error
+   %logging-fatal)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief Emit a TRACE-level log message (most verbose; off by default).
@@ -68,4 +68,4 @@
   ;; @note       Defined in lib/Bindings/Support/Logging.cpp
   (define %logging-fatal   (foreign-procedure "crest::logging::fatal"   (string) void))
 
-) ;; end library (mlir support logging ffi)
+  ) ;; end library (mlir support logging ffi)

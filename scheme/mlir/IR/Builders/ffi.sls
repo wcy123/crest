@@ -14,11 +14,11 @@
 
 (library (mlir IR Builders ffi)
   (export
-    %mlir::OpBuilder::create
-    %mlir::OpBuilder::create-with-regions
-    %mlir::OpBuilder::atBlockEnd
-    %mlir::OpBuilder::~OpBuilder
-    %mlir::OpBuilder::create-from-state)
+   %mlir::OpBuilder::create
+   %mlir::OpBuilder::create-with-regions
+   %mlir::OpBuilder::atBlockEnd
+   %mlir::OpBuilder::~OpBuilder
+   %mlir::OpBuilder::create-from-state)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::OpBuilder::create — create an op via OperationState using a standalone OpBuilder.
@@ -73,4 +73,4 @@
   (define %mlir::OpBuilder::create-from-state
     (foreign-procedure "mlir_ir_op_builder_create_from_state" (uptr uptr) uptr))
 
-) ;; end library (mlir IR Builders ffi)
+  ) ;; end library (mlir IR Builders ffi)

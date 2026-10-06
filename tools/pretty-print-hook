@@ -1,0 +1,13 @@
+#!/bin/sh
+# Pre-commit hook wrapper for pretty-print.el.
+# Silently skips if emacs is not found.
+# Exits 0 (success) whether or not files were reformatted — pre-commit
+# re-stages any modified files automatically.
+if ! command -v emacs >/dev/null 2>&1; then
+  exit 0
+fi
+SCRIPT="$(dirname "$0")/pretty-print.el"
+emacs --batch -l "$SCRIPT" -f pp:main "$@"
+# Exit 0 even if emacs exited 2 (meaning files were changed) — that is
+# the normal "formatted" case; pre-commit will re-stage the modified files.
+exit 0

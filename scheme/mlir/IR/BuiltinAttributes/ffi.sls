@@ -21,27 +21,27 @@
 
 (library (mlir IR BuiltinAttributes ffi)
   (export
-    %mlir::IntegerAttr::get<i64>
-    %mlir::IntegerAttr::get<index>
-    %mlir::FloatAttr::get<f32>
-    %mlir::DenseI32ArrayAttr::get
-    %mlir::DenseI64ArrayAttr::get
-    %mlir::parseAttribute
-    %mlir::DenseResourceElementsAttr::get
-    %mlir::isa<IntegerAttr>
-    %mlir::isa<FloatAttr>
-    %mlir::isa<StringAttr>
-    %mlir::isa<DenseI32ArrayAttr>
-    %mlir::isa<DenseElementsAttr>
-    %mlir::DenseElementsAttr::isSplat
-    %mlir::isa<FloatAttr.f32>
-    %mlir::IntegerAttr::getValue
-    %mlir::FloatAttr::getValueAsDouble
-    %mlir::FloatAttr::getValueAsDouble.f32
-    %mlir::DenseI32ArrayAttr::asArrayRef
-    %mlir::DenseElementsAttr::getSplatValue<APFloat>
-    %mlir::DenseElementsAttr::getSplatValue<APInt>
-    %mlir::DenseI32ArrayAttr::asArrayRef->list)
+   %mlir::IntegerAttr::get<i64>
+   %mlir::IntegerAttr::get<index>
+   %mlir::FloatAttr::get<f32>
+   %mlir::DenseI32ArrayAttr::get
+   %mlir::DenseI64ArrayAttr::get
+   %mlir::parseAttribute
+   %mlir::DenseResourceElementsAttr::get
+   %mlir::isa<IntegerAttr>
+   %mlir::isa<FloatAttr>
+   %mlir::isa<StringAttr>
+   %mlir::isa<DenseI32ArrayAttr>
+   %mlir::isa<DenseElementsAttr>
+   %mlir::DenseElementsAttr::isSplat
+   %mlir::isa<FloatAttr.f32>
+   %mlir::IntegerAttr::getValue
+   %mlir::FloatAttr::getValueAsDouble
+   %mlir::FloatAttr::getValueAsDouble.f32
+   %mlir::DenseI32ArrayAttr::asArrayRef
+   %mlir::DenseElementsAttr::getSplatValue<APFloat>
+   %mlir::DenseElementsAttr::getSplatValue<APInt>
+   %mlir::DenseI32ArrayAttr::asArrayRef->list)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::IntegerAttr::get — construct an IntegerAttr with i64 (integer<64>) type.
@@ -239,4 +239,4 @@
     (foreign-procedure "mlir::DenseI32ArrayAttr::asArrayRef->list"
                        (uptr) scheme-object))
 
-) ;; end library (mlir IR BuiltinAttributes ffi)
+  ) ;; end library (mlir IR BuiltinAttributes ffi)

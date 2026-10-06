@@ -17,21 +17,21 @@
 
 (library (mlir dialects hipsr)
   (export
-    :hipsr-device-space
-    :hipsr-barrier-type
-    hipsr-device-memory-space
-    make-hipsr-device-space-attr
-    make-hipsr-barrier-type-attr
-    mlir-get-hipsr-context-arg
-    hipsr-type-converter-add-device-memory-conversions!
-    hipsr-configure-conversion-target!
-    hipsr-has-compute-ancestor?
-    hipsr-has-placeholder-ancestor?
-    mlir-type-is-device-tensor
-    make-mlir-tensor-in-host-space
-    mlir-get-hipsr-context-type
-    mlir-placeholder-set-barrier-type!
-    mlir-hipsr-load-file-map)
+   :hipsr-device-space
+   :hipsr-barrier-type
+   hipsr-device-memory-space
+   make-hipsr-device-space-attr
+   make-hipsr-barrier-type-attr
+   mlir-get-hipsr-context-arg
+   hipsr-type-converter-add-device-memory-conversions!
+   hipsr-configure-conversion-target!
+   hipsr-has-compute-ancestor?
+   hipsr-has-placeholder-ancestor?
+   mlir-type-is-device-tensor
+   make-mlir-tensor-in-host-space
+   mlir-get-hipsr-context-type
+   mlir-placeholder-set-barrier-type!
+   mlir-hipsr-load-file-map)
 
   (import (rnrs)
           (only (chezscheme) foreign-entry? foreign-procedure)
@@ -54,7 +54,7 @@
 
           (only (mlir IR Types) mlir::Type::getContext)
           (only (mlir IR MLIRContext) current-mlir-context)
-  )
+	  )
 
   (define-syntax :hipsr-device-space (identifier-syntax 'hipsr-device-space))
   (define-syntax :hipsr-barrier-type (identifier-syntax 'hipsr-barrier-type))
@@ -103,13 +103,13 @@
 
   (define make-hipsr-device-space-attr
     (case-lambda
-      [()    (%mlir::parseAttribute (current-mlir-context) "#hipsr.mem<device>")]
-      [(ctx) (%mlir::parseAttribute ctx "#hipsr.mem<device>")]))
+     [()    (%mlir::parseAttribute (current-mlir-context) "#hipsr.mem<device>")]
+     [(ctx) (%mlir::parseAttribute ctx "#hipsr.mem<device>")]))
 
   (define make-hipsr-barrier-type-attr
     (case-lambda
-      [()    (%mlir::parseAttribute (current-mlir-context) "#hipsr.placeholder<barrier>")]
-      [(ctx) (%mlir::parseAttribute ctx "#hipsr.placeholder<barrier>")]))
+     [()    (%mlir::parseAttribute (current-mlir-context) "#hipsr.placeholder<barrier>")]
+     [(ctx) (%mlir::parseAttribute ctx "#hipsr.placeholder<barrier>")]))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Context convention — HipSR passes argument 0 of func.func as context.
@@ -120,12 +120,12 @@
   (define (mlir-get-hipsr-context-arg op)
     (let loop ((cur op))
       (cond
-        ((= 0 cur) 0)
-        ((string=? (mlir::Operation::getName cur) "func.func")
-         (let* ((region (mlir-ir-operation-get-region cur 0))
-                (block  (if (= 0 region) 0 (mlir::Region::front region))))
-           (if (= 0 block) 0 (mlir::Block::getArgument block 0))))
-        (else (loop (mlir::Operation::getParentOp cur))))))
+       ((= 0 cur) 0)
+       ((string=? (mlir::Operation::getName cur) "func.func")
+        (let* ((region (mlir-ir-operation-get-region cur 0))
+               (block  (if (= 0 region) 0 (mlir::Region::front region))))
+          (if (= 0 block) 0 (mlir::Block::getArgument block 0))))
+       (else (loop (mlir::Operation::getParentOp cur))))))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Op ancestry predicates
@@ -134,9 +134,9 @@
   (define (has-ancestor-named? op name)
     (let loop ((parent (mlir::Operation::getParentOp op)))
       (cond
-        ((= 0 parent) #f)
-        ((string=? (mlir::Operation::getName parent) name) #t)
-        (else (loop (mlir::Operation::getParentOp parent))))))
+       ((= 0 parent) #f)
+       ((string=? (mlir::Operation::getName parent) name) #t)
+       (else (loop (mlir::Operation::getParentOp parent))))))
 
   (define (hipsr-has-compute-ancestor? op)
     (has-ancestor-named? op "hipsr.compute"))
@@ -151,13 +151,13 @@
   (define (hipsr-type-converter-add-device-memory-conversions! type-converter)
     (type-converter-add-conversion type-converter (lambda (t) t))
     (type-converter-add-conversion type-converter
-      (lambda (type)
-        (if (and (mlir::isa<RankedTensorType>? type)
-                 (> (mlir::RankedTensorType::getRank type) 0)
-                 (= 0 (mlir::RankedTensorType::getEncoding type)))
-          (mlir::RankedTensorType::cloneWithEncoding type
-              (make-hipsr-device-space-attr (mlir::Type::getContext type)))
-          #f)))
+				   (lambda (type)
+				     (if (and (mlir::isa<RankedTensorType>? type)
+					      (> (mlir::RankedTensorType::getRank type) 0)
+					      (= 0 (mlir::RankedTensorType::getEncoding type)))
+					 (mlir::RankedTensorType::cloneWithEncoding type
+										    (make-hipsr-device-space-attr (mlir::Type::getContext type)))
+					 #f)))
     (type-converter-add-tensor-widening-materialization type-converter))
 
   ;;===--------------------------------------------------------------------===;;
@@ -172,14 +172,14 @@
     (target-add-legal-op target ctx "arith.constant")
     (target-add-legal-op target ctx "tensor.cast")
     (target-add-dynamically-legal-op target ctx "func.func"
-      (lambda (op)
-        (= 1 (type-converter-is-signature-legal type-converter op))))
+				     (lambda (op)
+				       (= 1 (type-converter-is-signature-legal type-converter op))))
     (target-add-dynamically-legal-op target ctx "func.return"
-      (lambda (op)
-        (= 1 (type-converter-is-legal type-converter op))))
+				     (lambda (op)
+				       (= 1 (type-converter-is-legal type-converter op))))
     (target-mark-unknown-ops-dynamically-legal target
-      (lambda (op)
-        (or (hipsr-has-compute-ancestor? op)
-            (hipsr-has-placeholder-ancestor? op)))))
+					       (lambda (op)
+						 (or (hipsr-has-compute-ancestor? op)
+						     (hipsr-has-placeholder-ancestor? op)))))
 
-) ;; end library (mlir dialects hipsr)
+  ) ;; end library (mlir dialects hipsr)

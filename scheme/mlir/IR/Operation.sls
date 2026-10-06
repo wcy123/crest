@@ -15,39 +15,39 @@
 
 (library (mlir IR Operation)
   (export
-    mlir::Operation::getName
-    mlir::Operation::getContext
-    mlir::Operation::getNumOperands
-    mlir::Operation::getNumResults
-    mlir::Operation::getOpOperand
-    mlir::Operation::getResult
-    mlir::Operation::getParentOp
-    mlir::OpOperand::get
-    mlir::OpResult::getOwner
-    mlir::Operation::getLoc
-    mlir::Operation::walk
-    mlir::Operation::setOperand
-    mlir::Operation::use_empty?
-    mlir::Operation::getAttrOfType<StringAttr>
-    mlir::Operation::getAttrOfType<IntegerAttr>
-    crest::Operation::getIntegerArrayAttr
-    crest::Operation::setF32Attr
-    crest::Operation::setI64Attr
-    crest::Operation::setUnitAttr
-    crest::Operation::setIndexAttr
-    crest::Operation::setDenseI64Array
-    crest::Operation::setI64ArrayAttr
-    crest::Operation::setDenseI32Array
-    crest::Operation::copyAttr
-    mlir::Operation::hasAttr?
-    mlir::Operation::emitError
-    mlir::Operation::emitWarning
-    mlir::Operation::emitRemark
-    mlir::Operation::erase
-    mlir::Operation::getAttr
-    mlir::Operation::setAttr!
-    mlir::Operation::getAttrOfType<FloatAttr>
-    operation-get-operands)
+   mlir::Operation::getName
+   mlir::Operation::getContext
+   mlir::Operation::getNumOperands
+   mlir::Operation::getNumResults
+   mlir::Operation::getOpOperand
+   mlir::Operation::getResult
+   mlir::Operation::getParentOp
+   mlir::OpOperand::get
+   mlir::OpResult::getOwner
+   mlir::Operation::getLoc
+   mlir::Operation::walk
+   mlir::Operation::setOperand
+   mlir::Operation::use_empty?
+   mlir::Operation::getAttrOfType<StringAttr>
+   mlir::Operation::getAttrOfType<IntegerAttr>
+   crest::Operation::getIntegerArrayAttr
+   crest::Operation::setF32Attr
+   crest::Operation::setI64Attr
+   crest::Operation::setUnitAttr
+   crest::Operation::setIndexAttr
+   crest::Operation::setDenseI64Array
+   crest::Operation::setI64ArrayAttr
+   crest::Operation::setDenseI32Array
+   crest::Operation::copyAttr
+   mlir::Operation::hasAttr?
+   mlir::Operation::emitError
+   mlir::Operation::emitWarning
+   mlir::Operation::emitRemark
+   mlir::Operation::erase
+   mlir::Operation::getAttr
+   mlir::Operation::setAttr!
+   mlir::Operation::getAttrOfType<FloatAttr>
+   operation-get-operands)
   (import (rnrs)
           (mlir IR Operation ffi)
           (rename (rime loop) (:with :rime-with))
@@ -329,8 +329,8 @@
   (define (operation-get-operands op . spec)
     (define (read-op i) (mlir::OpOperand::get op i))
     (let ([has-flex (loop :initially := #f
-                         :for s :in spec
-                         :break #t :if (memq s '(optional variadic)))])
+                          :for s :in spec
+                          :break #t :if (memq s '(optional variadic)))])
       (if (not has-flex)
           ;; All required: verify count matches spec, then bind sequentially.
           (let ([n-spec (length spec)]
@@ -347,35 +347,35 @@
                      "op must have operandSegmentSizes for optional/variadic operands"))
             ;; with-array-ref manages the ref lifecycle.
             (with-array-ref (segs (mlir::DenseI32ArrayAttr::asArrayRef attr))
-              (let* ([n     (array-ref-size segs)]
-                     [n-spec (length spec)]
-                     [_      (unless (= n n-spec)
-                               (error 'operation-get-operands
-                                      "operandSegmentSizes count mismatch: spec has"
-                                      n-spec "segments but attr has" n))]
-                     [sizes  (loop :for i :from 0 :below n
-                                   :collect (array-ref-at segs i 'i32))]
-                     [starts (let lp ([ss sizes] [off 0] [acc '()])
-                               (if (null? ss)
-                                   (reverse acc)
-                                   (lp (cdr ss) (+ off (car ss)) (cons off acc))))])
-                (loop :for kind  :in spec
-                        :for start :in starts
-                        :for size  :in sizes
-                        :collect
-                        (case kind
-                          [(:required)
-                           (read-op start)]
-                          [(:optional)
-                           (if (zero? size) %absent (read-op start))]
-                          [(:variadic)
-                           (if (zero? size)
-                               %absent
-                               (loop :for i :from start :below (+ start size)
-                                     :collect (read-op i)))]
-                          [else
-                           (error 'operation-get-operands
-                                  "unknown kind: expected :required/:optional/:variadic"
-                                  kind)]))))))))
+			    (let* ([n     (array-ref-size segs)]
+				   [n-spec (length spec)]
+				   [_      (unless (= n n-spec)
+					     (error 'operation-get-operands
+						    "operandSegmentSizes count mismatch: spec has"
+						    n-spec "segments but attr has" n))]
+				   [sizes  (loop :for i :from 0 :below n
+						 :collect (array-ref-at segs i 'i32))]
+				   [starts (let lp ([ss sizes] [off 0] [acc '()])
+					     (if (null? ss)
+						 (reverse acc)
+						 (lp (cdr ss) (+ off (car ss)) (cons off acc))))])
+			      (loop :for kind  :in spec
+				    :for start :in starts
+				    :for size  :in sizes
+				    :collect
+				    (case kind
+				      [(:required)
+				       (read-op start)]
+				      [(:optional)
+				       (if (zero? size) %absent (read-op start))]
+				      [(:variadic)
+				       (if (zero? size)
+					   %absent
+					   (loop :for i :from start :below (+ start size)
+						 :collect (read-op i)))]
+				      [else
+				       (error 'operation-get-operands
+					      "unknown kind: expected :required/:optional/:variadic"
+					      kind)]))))))))
 
-) ;; end library (mlir IR Operation)
+  ) ;; end library (mlir IR Operation)

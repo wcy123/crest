@@ -16,28 +16,28 @@
 
 (library (mlir IR PatternMatch)
   (export
-    ;; Clean-name re-exports from ffi
-    mlir::RewriterBase::create
-    mlir::RewriterBase::create-with-regions
-    mlir::RewriterBase::setInsertionPoint          ;; canonical: mlir::RewriterBase::setInsertionPoint(op)
-    mlir::RewriterBase::setInsertionPoint-before   ;; backward-compat alias
-    mlir::RewriterBase::setInsertionPoint-to-end
-    mlir::RewriterBase::createBlock
-    mlir::RewriterBase::replaceOp
-    mlir::RewriterBase::eraseOp
-    crest::RewriterBase::cloneWithTypes
-    ;; Dynamic builder context
-    current-rewriter
-    current-block-builder
-    current-loc
-    ;; Context-dispatching constructor
-    mlir-build-operation
-    ;; RAII macros
-    with-raii
-    with-rewrite-builder
-    with-current-block-builder
-    with-block-builder
-    with-op-location)
+   ;; Clean-name re-exports from ffi
+   mlir::RewriterBase::create
+   mlir::RewriterBase::create-with-regions
+   mlir::RewriterBase::setInsertionPoint          ;; canonical: mlir::RewriterBase::setInsertionPoint(op)
+   mlir::RewriterBase::setInsertionPoint-before   ;; backward-compat alias
+   mlir::RewriterBase::setInsertionPoint-to-end
+   mlir::RewriterBase::createBlock
+   mlir::RewriterBase::replaceOp
+   mlir::RewriterBase::eraseOp
+   crest::RewriterBase::cloneWithTypes
+   ;; Dynamic builder context
+   current-rewriter
+   current-block-builder
+   current-loc
+   ;; Context-dispatching constructor
+   mlir-build-operation
+   ;; RAII macros
+   with-raii
+   with-rewrite-builder
+   with-current-block-builder
+   with-block-builder
+   with-op-location)
 
   (import (rnrs)
           (only (chezscheme) make-parameter parameterize void)
@@ -151,17 +151,17 @@
     (let ([nregions (if (pair? rest) (car rest) 0)]
           [loc      (current-loc)])
       (cond
-        [(current-rewriter) =>
-         (lambda (rw)
-           (if (zero? nregions)
-               (%mlir::RewriterBase::create rw loc name operands types)
-               (%mlir::RewriterBase::create-with-regions rw loc name operands types nregions)))]
-        [(current-block-builder) =>
-         (lambda (b)
-           (if (zero? nregions)
-               (%mlir::OpBuilder::create b loc name operands types)
-               (%mlir::OpBuilder::create-with-regions b loc name operands types nregions)))]
-        [else (error 'mlir-build-operation "no current builder installed")])))
+       [(current-rewriter) =>
+        (lambda (rw)
+          (if (zero? nregions)
+              (%mlir::RewriterBase::create rw loc name operands types)
+              (%mlir::RewriterBase::create-with-regions rw loc name operands types nregions)))]
+       [(current-block-builder) =>
+        (lambda (b)
+          (if (zero? nregions)
+              (%mlir::OpBuilder::create b loc name operands types)
+              (%mlir::OpBuilder::create-with-regions b loc name operands types nregions)))]
+       [else (error 'mlir-build-operation "no current builder installed")])))
 
   ;; @brief RAII macro — acquire a resource, run body forms, then unconditionally release it.
   ;; @param var   Binding name for the acquired resource
@@ -174,8 +174,8 @@
       [(_ (var ctor dtor) body ...)
        (let ([var ctor])
          (dynamic-wind void
-           (lambda () body ...)
-           (lambda () (dtor var))))]))
+             (lambda () body ...)
+             (lambda () (dtor var))))]))
 
   ;; @brief RAII macro — install a RewriterBase as the active builder for the dynamic extent of body.
   ;; @param rw    RewriterBase* uptr (ConversionPatternRewriter or IRRewriter)
@@ -220,12 +220,12 @@
       [(_ block body ...)
        (let ([%builder (%op-builder-at-block-end block)])
          (dynamic-wind
-           (lambda () #f)
-           (lambda ()
-             (parameterize ([current-block-builder %builder]
-                            [current-rewriter #f])
-               body ...))
-           (lambda () (%op-builder-destroy %builder))))]))
+             (lambda () #f)
+             (lambda ()
+               (parameterize ([current-block-builder %builder]
+                              [current-rewriter #f])
+		 body ...))
+             (lambda () (%op-builder-destroy %builder))))]))
 
   ;; @brief Override current-loc for the dynamic extent of body without changing the active builder.
   ;; @param loc   Operation* uptr — new location source for mlir-build-operation
@@ -237,4 +237,4 @@
       [(_ loc body ...)
        (parameterize ([current-loc loc]) body ...)]))
 
-) ;; end library (mlir IR PatternMatch)
+  ) ;; end library (mlir IR PatternMatch)

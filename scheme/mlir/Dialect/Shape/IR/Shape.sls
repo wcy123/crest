@@ -27,8 +27,8 @@
   ;; @note       Defined in lib/Bindings/Dialect/Shape/IR/Shape.cpp
   (define mlir::shape::ShapeType::get
     (case-lambda
-      [()    (%mlir::shape::ShapeType::get (current-mlir-context))]
-      [(ctx) (%mlir::shape::ShapeType::get ctx)]))
+     [()    (%mlir::shape::ShapeType::get (current-mlir-context))]
+     [(ctx) (%mlir::shape::ShapeType::get ctx)]))
 
   ;; @brief mlir::shape::SizeType::get — get the shape dialect's Size type.
   ;; @param ctx  MLIRContext* uptr (optional; defaults to current-mlir-context)
@@ -37,8 +37,8 @@
   ;; @note       Defined in lib/Bindings/Dialect/Shape/IR/Shape.cpp
   (define mlir::shape::SizeType::get
     (case-lambda
-      [()    (%mlir::shape::SizeType::get (current-mlir-context))]
-      [(ctx) (%mlir::shape::SizeType::get ctx)]))
+     [()    (%mlir::shape::SizeType::get (current-mlir-context))]
+     [(ctx) (%mlir::shape::SizeType::get ctx)]))
 
   ;; @brief mlir::shape::WitnessType::get — get the shape dialect's Witness type.
   ;; @param ctx  MLIRContext* uptr (optional; defaults to current-mlir-context)
@@ -47,7 +47,7 @@
   ;; @note       Defined in lib/Bindings/Dialect/Shape/IR/Shape.cpp
   (define mlir::shape::WitnessType::get
     (case-lambda
-      [()    (%mlir::shape::WitnessType::get (current-mlir-context))]
-      [(ctx) (%mlir::shape::WitnessType::get ctx)]))
+     [()    (%mlir::shape::WitnessType::get (current-mlir-context))]
+     [(ctx) (%mlir::shape::WitnessType::get ctx)]))
 
-) ;; end library (mlir Dialect Shape IR Shape)
+  ) ;; end library (mlir Dialect Shape IR Shape)
