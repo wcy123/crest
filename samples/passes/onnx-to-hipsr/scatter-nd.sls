@@ -30,8 +30,6 @@
           (crest)
           (only (mlir IR Value)
                 mlir::Value::getType)
-
-          (only (mlir IR Types) mlir::Type::getContext)
   )
 
   (define-conversion-pattern (onnx-scatter-nd->hipsr op operands-ref rewriter type-converter)
@@ -40,7 +38,7 @@
     :then-let
         ([%ctx           (mlir-get-hipsr-context-arg op)]
          [!output-type   (mlir::Value::getType %output)]
-         [!output-device (mlir::RankedTensorType::cloneWithEncoding !output-type (make-hipsr-device-space-attr (mlir::Type::getContext !output-type)))]
+         [!output-device (mlir::RankedTensorType::cloneWithEncoding !output-type (make-hipsr-device-space-attr))]
          [!shape-type    (mlir::shape::ShapeType::get)])
     :rewrite %output :with
         ;; placeholder ins = (%data) only: scatter output has data's shape

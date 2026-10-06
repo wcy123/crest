@@ -55,7 +55,7 @@
          [%ctx        (mlir-get-hipsr-context-arg op)]
          [!out-type   (mlir::Value::getType %output)]
          [!out-device (mlir::RankedTensorType::cloneWithEncoding !out-type
-                        (make-hipsr-device-space-attr ctx))]
+                        (make-hipsr-device-space-attr))]
          [%shape-host (unwrap-cast %shape-operand)])
          ;; TODO: validate that %shape-host is host-space after unwrapping.
          ;; If unwrap-cast returns the original value unchanged and it is already
@@ -64,7 +64,7 @@
          ;; element type, and static shape length — these checks are missing here.
     :rewrite %output :with
         (%placeholder = hipsr.placeholder (%ctx %input %shape-host)
-                        ("placeholder_type" = (make-hipsr-barrier-type-attr ctx))
+                        ("placeholder_type" = (make-hipsr-barrier-type-attr))
                         -> !out-device)
         (%result = hipsr.expand (%ctx %input %shape-host %placeholder)
                    -> !out-device))

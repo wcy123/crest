@@ -38,8 +38,6 @@
           (only (mlir IR Operation)
                 crest::Operation::getIntegerArrayAttr mlir::Operation::getResult mlir::Operation::setAttr!)
 
-          (only (mlir IR Types) mlir::Type::getContext)
-
           (only (mlir IR BuiltinTypes)
                 mlir::RankedTensorType::cloneWithEncoding
                 mlir::RankedTensorType::getRank))
@@ -68,7 +66,7 @@
         ([%ctx        (mlir-get-hipsr-context-arg op)]
          [!in-type    (mlir::Value::getType %input)]
          [!out-type   (mlir::Value::getType %output)]
-         [!out-device (mlir::RankedTensorType::cloneWithEncoding !out-type (make-hipsr-device-space-attr (mlir::Type::getContext !out-type)))]
+         [!out-device (mlir::RankedTensorType::cloneWithEncoding !out-type (make-hipsr-device-space-attr))]
          [!shape-type (mlir::shape::ShapeType::get)]
          [!size-type  (mlir::shape::SizeType::get)]
          [perm        (let ([raw (crest::Operation::getIntegerArrayAttr op "perm")])

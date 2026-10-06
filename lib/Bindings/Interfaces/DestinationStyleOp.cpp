@@ -10,11 +10,6 @@
 #include "mlir/IR/Operation.h"
 #include "mlir/Interfaces/DestinationStyleOpInterface.h"
 
-static void scheme_error(const char* who, const char* msg) {
-  Scall2(Stop_level_value(Sstring_to_symbol("error")), Sstring(who),
-         Sstring(msg));
-}
-
 extern "C" {
 
 static int mlir_interfaces_dps_get_num_dps_inits(uint64_t op_ptr) {

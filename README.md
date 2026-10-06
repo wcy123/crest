@@ -9,16 +9,84 @@ conversion passes that neither DSL supports.
 
 See [docs/architecture.md](docs/architecture.md) for a full design overview.
 
-## Quick start
+## Setup
 
-**Prerequisites:** CMake ≥ 3.20, Ninja, Python 3, LLVM/MLIR dev package.
+### Ubuntu 22.04 (recommended, matches CI)
 
+```bash
+# LLVM 22 + MLIR
+wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
+  | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-22 main" \
+  | sudo tee /etc/apt/sources.list.d/llvm.list
+sudo apt-get update
+sudo apt-get install -y clang-22 llvm-22-dev libmlir-22-dev mlir-22-tools
+
+# Other build dependencies
+sudo apt-get install -y \
+  build-essential ninja-build \
+  libncurses-dev uuid-dev \
+  libgtest-dev googletest
+pip install lit
+
+# Build CREST
+cmake -B build -G Ninja \
+  -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+  -DCMAKE_C_COMPILER=clang-22 \
+  -DCMAKE_CXX_COMPILER=clang++-22 \
+  -DMLIR_DIR=/usr/lib/llvm-22/lib/cmake/mlir \
+  -DLLVM_DIR=/usr/lib/llvm-22/lib/cmake/llvm
+cmake --build build -j$(nproc)
+```
+
+### Ubuntu 20.04
+
+The `apt.llvm.org` packages require `libc6 ≥ 2.34`, which is not available
+on focal. Build LLVM 22 from source instead (~30 min, ~20 GB disk):
+
+`pip install cmake` does not work for building LLVM — it loses `CMAKE_ROOT`.
+Use the Kitware PPA:
+```bash
+wget -qO- https://apt.kitware.com/keys/kitware-archive-latest.asc \
+  | sudo apt-key add -
+sudo apt-add-repository 'deb https://apt.kitware.com/ubuntu/ focal main'
+sudo apt-get update && sudo apt-get install cmake
+```
+
+Build and install LLVM:
+```bash
+git clone --depth=1 --branch llvmorg-22.1.8 https://github.com/llvm/llvm-project.git
+cmake -B llvm-project/build -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DLLVM_ENABLE_PROJECTS="mlir" \
+  -DLLVM_TARGETS_TO_BUILD="X86" \
+  -DLLVM_INSTALL_UTILS=ON \
+  llvm-project/llvm
+cmake --build llvm-project/build -j$(nproc)
+sudo cmake --install llvm-project/build --prefix /usr/local
+```
+
+`-DLLVM_INSTALL_UTILS=ON` is required — it installs `FileCheck` and exports
+it as a CMake target. Without it the test suite fails.
+
+Then build CREST:
 ```bash
 cmake -B build -G Ninja \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-  -DMLIR_DIR=/path/to/mlir/lib/cmake/mlir \
-  -DLLVM_DIR=/path/to/llvm/lib/cmake/llvm
-cmake --build build
+  -DMLIR_DIR=/usr/local/lib/cmake/mlir \
+  -DLLVM_DIR=/usr/local/lib/cmake/llvm
+cmake --build build -j$(nproc)
+```
+
+## Quick start
+
+After setup, run tests:
+```bash
+# Unit tests
+./build/unittests/Interpreter/CrestInterpreterTests
+
+# Integration tests (lit + FileCheck)
+CREST_PATH=$(pwd)/samples cmake --build build --target check-crest
 ```
 
 Run the sample hip-fusion pass:
@@ -53,15 +121,17 @@ A pass entry point:
 ```scheme
 (library (passes my-pass)
   (export run-pass)
-  (import (rnrs) (crest) (mlir core ir) (mlir core conversion))
+  (import (rnrs) (crest)
+          (mlir IR MLIRContext)
+          (mlir IR Operation)
+          (mlir Transforms DialectConversion))
 
   (define (run-pass module-op)
-    (let* ([ctx     (mlir-operation-get-context module-op)]
-           [tc      (mlir-create-type-converter)]
-           [target  (mlir-create-conversion-target ctx)]
-           [patterns (mlir-create-rewrite-pattern-set ctx)])
-      (mlir-register-conversion-pattern patterns "onnx.Cast" lower-cast tc 1)
-      (mlir-apply-full-conversion module-op target patterns))))
+    (with-mlir-context (mlir::Operation::getContext module-op)
+      (with-type-converter (tc)
+        (with-conversion-target (target (current-mlir-context))
+          (with-pattern-set (patterns (current-mlir-context))
+            (mlir::applyFullConversion module-op target patterns)))))))
 ```
 
 ## CREST_PATH
@@ -122,7 +192,7 @@ extern "C" void crest_register_extra_bindings(void (*fn)());
 
 // In your initialization:
 crest_register_extra_bindings([]() {
-  Sregister_symbol("my_dialect_op", (void*)my_dialect_op);
+  Sregister_symbol("myDialect::MyOp::create", (void*)my_dialect_op_create);
 });
 ```
 

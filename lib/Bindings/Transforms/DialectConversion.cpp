@@ -40,8 +40,7 @@ public:
     ptr args_list =
         Scons(opPtr, Scons(operandsRefPtr,
                            Scons(rewriterPtr, Scons(typeConverterPtr, Snil))));
-    ptr apply_proc = Stop_level_value(Sstring_to_symbol("apply"));
-    ptr result = Scall2(apply_proc, callback_.get(), args_list);
+    ptr result = scheme_apply(callback_.get(), args_list);
     return result == Strue ? mlir::success() : mlir::failure();
   }
 
@@ -69,8 +68,7 @@ public:
     ptr opPtr = Sunsigned64(reinterpret_cast<uint64_t>(op));
     ptr rewriterPtr = Sunsigned64(reinterpret_cast<uint64_t>(&rewriter));
     ptr args_list = Scons(opPtr, Scons(rewriterPtr, Snil));
-    ptr apply_proc = Stop_level_value(Sstring_to_symbol("apply"));
-    ptr result = Scall2(apply_proc, callback_.get(), args_list);
+    ptr result = scheme_apply(callback_.get(), args_list);
     return result == Strue ? mlir::success() : mlir::failure();
   }
 
@@ -78,11 +76,6 @@ private:
   crest::LockedSchemeObject callback_;
   std::string targetOpName;
 };
-
-static void scheme_error(const char* who, const char* msg) {
-  Scall2(Stop_level_value(Sstring_to_symbol("error")), Sstring(who),
-         Sstring(msg));
-}
 
 extern "C" {
 
@@ -353,8 +346,7 @@ mlir_transforms_dialect_conversion_type_converter_add_source_materialization(
         ptr args =
             Scons(builder_arg, Scons(result_type_arg,
                                      Scons(inputs_list, Scons(loc_arg, Snil))));
-        ptr apply_proc = Stop_level_value(Sstring_to_symbol("apply"));
-        ptr result = Scall2(apply_proc, locked->get(), args);
+        ptr result = scheme_apply(locked->get(), args);
         if (result == Sfalse || result == Sfixnum(0)) {
           return nullptr;
         }
@@ -393,8 +385,7 @@ mlir_transforms_dialect_conversion_type_converter_add_target_materialization(
         ptr args =
             Scons(builder_arg, Scons(result_type_arg,
                                      Scons(inputs_list, Scons(loc_arg, Snil))));
-        ptr apply_proc = Stop_level_value(Sstring_to_symbol("apply"));
-        ptr result = Scall2(apply_proc, locked->get(), args);
+        ptr result = scheme_apply(locked->get(), args);
         if (result == Sfalse || result == Sfixnum(0)) {
           return nullptr;
         }
