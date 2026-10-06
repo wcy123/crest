@@ -76,37 +76,37 @@
        0)))
 
   (define-conversion-pattern (onnx-gather->hipsr op operands-ref rewriter type-converter)
-  :if-match
-    %output = onnx.Gather (%data %indices)
-  :then-let
-    ([%ctx        (mlir-get-hipsr-context-arg op)]
-     [!data-type  (mlir::Value::getType %data)]
-     [!out-type   (mlir::Value::getType %output)]
-     [!out-device (mlir::RankedTensorType::cloneWithEncoding !out-type (make-hipsr-device-space-attr))]
-     [!shape-type (mlir::shape::ShapeType::get)]
-     [!size-type  (mlir::shape::SizeType::get)]
-     [axis        (let ([a (mlir::Operation::getAttrOfType<IntegerAttr> op "axis" 0)])
-                    (if (< a 0) (+ a (mlir::RankedTensorType::getRank !data-type)) a))]
-     ;; guard: only handle device data (eqv? avoids shadowed = keyword)
-     [ok?         (eqv? 1 (mlir-type-is-device-tensor !data-type))])
-  :rewrite %output :with
-    ;; Guard: device data only. Emit a remark so diagnostics are visible,
-    ;; then return #f so the conversion framework falls through to the
-    ;; fallback pattern (mlir-populate-gather-conversion-patterns).
-    (_ = (if (not ok?)
-             (begin (mlir::Operation::emitRemark op "onnx-gather->hipsr: skipping host data")
-                    #f)
-             #t))
-    (%placeholder = "hipsr.placeholder" (%ctx %data %indices !out-device)
-                  (^bb0 ((%ds : !shape-type) (%is : !shape-type))
-			(%result-shape = (build-gather-shape!
-                                          axis %ds %is !shape-type !size-type))
-			("hipsr.shape_yield" (%result-shape)))
-                  -> !out-device)
-    (%result = hipsr.gather (%ctx %data %indices %placeholder)
-             (operandSegmentSizes = (list 1 1 1 1) :i32-array)
-             ("axis" = axis :i64)
-             -> !out-device))
+    :if-match
+      %output = onnx.Gather (%data %indices)
+    :then-let
+      ([%ctx        (mlir-get-hipsr-context-arg op)]
+       [!data-type  (mlir::Value::getType %data)]
+       [!out-type   (mlir::Value::getType %output)]
+       [!out-device (mlir::RankedTensorType::cloneWithEncoding !out-type (make-hipsr-device-space-attr))]
+       [!shape-type (mlir::shape::ShapeType::get)]
+       [!size-type  (mlir::shape::SizeType::get)]
+       [axis        (let ([a (mlir::Operation::getAttrOfType<IntegerAttr> op "axis" 0)])
+                      (if (< a 0) (+ a (mlir::RankedTensorType::getRank !data-type)) a))]
+       ;; guard: only handle device data (eqv? avoids shadowed = keyword)
+       [ok?         (eqv? 1 (mlir-type-is-device-tensor !data-type))])
+    :rewrite %output :with
+      ;; Guard: device data only. Emit a remark so diagnostics are visible,
+      ;; then return #f so the conversion framework falls through to the
+      ;; fallback pattern (mlir-populate-gather-conversion-patterns).
+      (_ = (if (not ok?)
+               (begin (mlir::Operation::emitRemark op "onnx-gather->hipsr: skipping host data")
+                      #f)
+               #t))
+      (%placeholder = "hipsr.placeholder" (%ctx %data %indices !out-device)
+                    (^bb0 ((%ds : !shape-type) (%is : !shape-type))
+			  (%result-shape = (build-gather-shape!
+                                            axis %ds %is !shape-type !size-type))
+			  ("hipsr.shape_yield" (%result-shape)))
+                    -> !out-device)
+      (%result = hipsr.gather (%ctx %data %indices %placeholder)
+               (operandSegmentSizes = (list 1 1 1 1) :i32-array)
+               ("axis" = axis :i64)
+               -> !out-device))
 
   (define (populate-gather-patterns type-converter patterns ctx)
     (add-conversion-pattern patterns "onnx.Gather"

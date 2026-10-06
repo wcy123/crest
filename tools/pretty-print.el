@@ -65,15 +65,15 @@
 ;; starts with a DDR keyword the line sits at the form's opening-paren
 ;; column; otherwise it is indented 2 further.
 (defun pp--ddr-indent (state indent-point _normal-indent)
-  "Indent DDR body: keywords at form-col, content at form-col+2."
+  "Indent DDR body: keywords at form-col+2, content at form-col+4."
   (let ((form-col (save-excursion
                     (goto-char (cadr state))
                     (current-column))))
     (save-excursion
       (goto-char indent-point)
       (if (looking-at (rx (* blank) ":" (+ (not blank))))
-          form-col
-        (+ form-col 2)))))
+          (+ form-col 2)    ; :if-match, :then-let, :rewrite → +2 from (define-*-pattern
+        (+ form-col 4)))))
 
 (defun pp--apply-indent-spec ()
   "Apply pp/indent-spec and DDR-specific rules to current Emacs session."

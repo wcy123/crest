@@ -36,42 +36,42 @@
   ;;===--------------------------------------------------------------------===;;
 
   (define-rewrite-pattern (hip-qdq-roundtrip-dps op rewriter)
-  :if-match
-    %q      = hip.quantize_linear   (%ctx %layout %out_scale)
-    %layout = :any                  (%ctx %dq)
-    %dq     = hip.dequantize_linear (%ctx %input %in_scale)
-  :where (and (hip-value-single-use? %layout)
-              (hip-matching-qdq-params?
-               (mlir::Value::getDefiningOp %dq) op)
-              (hip-can-requantize-layout-op?
-               (mlir::Value::getDefiningOp %layout) op))
-  :then-let
-    ([%dq-op     (mlir::Value::getDefiningOp %dq)]
-     [%layout-op (mlir::Value::getDefiningOp %layout)])
-  :rewrite %q :with
-    (%result = (hip-create-requantized-layout-op rewriter %dq-op %layout-op op)))
+    :if-match
+      %q      = hip.quantize_linear   (%ctx %layout %out_scale)
+      %layout = :any                  (%ctx %dq)
+      %dq     = hip.dequantize_linear (%ctx %input %in_scale)
+    :where (and (hip-value-single-use? %layout)
+		(hip-matching-qdq-params?
+		 (mlir::Value::getDefiningOp %dq) op)
+		(hip-can-requantize-layout-op?
+		 (mlir::Value::getDefiningOp %layout) op))
+    :then-let
+      ([%dq-op     (mlir::Value::getDefiningOp %dq)]
+       [%layout-op (mlir::Value::getDefiningOp %layout)])
+    :rewrite %q :with
+      (%result = (hip-create-requantized-layout-op rewriter %dq-op %layout-op op)))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Pattern 14: QdqRoundTrip — tensor layout op (no ctx)  (benefit 10)
   ;;===--------------------------------------------------------------------===;;
 
   (define-rewrite-pattern (hip-qdq-roundtrip-tensor op rewriter)
-  :if-match
-    %q      = hip.quantize_linear   (%ctx %layout %out_scale)
-    %layout = :any                  (%dq)
-    %dq     = hip.dequantize_linear (%ctx %input %in_scale)
-  :where (and (hip-value-single-use? %layout)
-              (not (hip-layout-op-has-ctx?
-                    (mlir::Value::getDefiningOp %layout)))
-              (hip-matching-qdq-params?
-               (mlir::Value::getDefiningOp %dq) op)
-              (hip-can-requantize-layout-op?
-               (mlir::Value::getDefiningOp %layout) op))
-  :then-let
-    ([%dq-op     (mlir::Value::getDefiningOp %dq)]
-     [%layout-op (mlir::Value::getDefiningOp %layout)])
-  :rewrite %q :with
-    (%result = (hip-create-requantized-layout-op rewriter %dq-op %layout-op op)))
+    :if-match
+      %q      = hip.quantize_linear   (%ctx %layout %out_scale)
+      %layout = :any                  (%dq)
+      %dq     = hip.dequantize_linear (%ctx %input %in_scale)
+    :where (and (hip-value-single-use? %layout)
+		(not (hip-layout-op-has-ctx?
+                      (mlir::Value::getDefiningOp %layout)))
+		(hip-matching-qdq-params?
+		 (mlir::Value::getDefiningOp %dq) op)
+		(hip-can-requantize-layout-op?
+		 (mlir::Value::getDefiningOp %layout) op))
+    :then-let
+      ([%dq-op     (mlir::Value::getDefiningOp %dq)]
+       [%layout-op (mlir::Value::getDefiningOp %layout)])
+    :rewrite %q :with
+      (%result = (hip-create-requantized-layout-op rewriter %dq-op %layout-op op)))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Pattern 15: QdqRoundTrip — adjacent pair  (benefit 10)
@@ -79,14 +79,14 @@
   ;;===--------------------------------------------------------------------===;;
 
   (define-rewrite-pattern (hip-qdq-roundtrip-pair op rewriter)
-  :if-match
-    %q  = hip.quantize_linear   (%ctx %dq %out_scale)
-    %dq = hip.dequantize_linear (%ctx %input %in_scale)
-  :where (and (hip-matching-qdq-params?
-               (mlir::Value::getDefiningOp %dq) op)
-              (hip-identity-roundtrip?
-               (mlir::Value::getDefiningOp %dq) op))
-  :rewrite %q :with
-    (%result = (begin %input)))
+    :if-match
+      %q  = hip.quantize_linear   (%ctx %dq %out_scale)
+      %dq = hip.dequantize_linear (%ctx %input %in_scale)
+    :where (and (hip-matching-qdq-params?
+		 (mlir::Value::getDefiningOp %dq) op)
+		(hip-identity-roundtrip?
+		 (mlir::Value::getDefiningOp %dq) op))
+    :rewrite %q :with
+      (%result = (begin %input)))
 
   ) ;; end library (passes hip-fusion qdq-roundtrip)
