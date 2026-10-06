@@ -19,13 +19,13 @@
           onnx-matmul->hipsr)
   (import (except (rnrs (6)) =)
 
-          (only (mlir ir value)
+          (only (mlir IR Value)
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
-          (mlir transforms dialect-conversion)
+          (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
-          (mlir dialect tensor ir)
-          (only (mlir dialect shape ir)
+          (mlir Dialect Tensor IR)
+          (only (mlir Dialect Shape IR Shape)
                 mlir::shape::ShapeType::get
                 mlir::shape::SizeType::get
                 mlir::shape::WitnessType::get)
@@ -34,9 +34,9 @@
           (only (mlir support logging)
                 crest::logging::info)
 
-          (only (mlir ir type) mlir::Type::getContext)
+          (only (mlir IR Types) mlir::Type::getContext)
 
-          (only (mlir ir builtin-types)
+          (only (mlir IR BuiltinTypes)
                 mlir::RankedTensorType::getRank))
 
   (define-conversion-pattern (onnx-matmul->hipsr op operands-ref rewriter type-converter)

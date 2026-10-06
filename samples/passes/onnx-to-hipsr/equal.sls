@@ -17,18 +17,18 @@
   (import (except (rnrs (6)) =)
 
 
-          (mlir transforms dialect-conversion)
+          (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
-          (mlir dialect tensor ir)
-          (only (mlir dialect shape ir)
+          (mlir Dialect Tensor IR)
+          (only (mlir Dialect Shape IR Shape)
                 mlir::shape::ShapeType::get
                 mlir::shape::SizeType::get
                 mlir::shape::WitnessType::get)
           (crest)
-          (only (mlir ir operation)
+          (only (mlir IR Operation)
                 mlir::Operation::getContext)
 
-          (only (mlir ir value)
+          (only (mlir IR Value)
                 mlir::Value::getType)
   )
 

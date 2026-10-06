@@ -32,7 +32,7 @@
           (rename (only (rnrs) =) (= num=))
 
           (only (mlir core builder) mlir-transforms-greedy-pattern-rewrite-driver-apply)
-          (mlir transforms dialect-conversion)
+          (mlir Transforms DialectConversion)
           (crest)
           (passes hip-fusion helpers)
           (passes hip-fusion qadd)
@@ -43,9 +43,9 @@
           (passes hip-fusion qsigmoid)
           (passes hip-fusion qlpnorm)
           (passes hip-fusion qdq-roundtrip)
-          (only (mlir ir operation)
+          (only (mlir IR Operation)
                 mlir::Operation::getContext)
-          (only (mlir ir mlir-context)
+          (only (mlir IR MLIRContext)
                 with-mlir-context)
   )
 

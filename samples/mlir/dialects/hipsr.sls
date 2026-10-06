@@ -35,23 +35,23 @@
 
   (import (rnrs)
           (only (chezscheme) foreign-entry? foreign-procedure)
-          (only (mlir ir operation)
+          (only (mlir IR Operation)
                 mlir::Operation::getName
                 mlir::Operation::getParentOp)
-          (only (mlir ir region) mlir::Region::front)
-          (only (mlir ir builtin-attributes ffi) %mlir::parseAttribute)
-          (mlir transforms dialect-conversion)
-          (mlir dialect tensor ir)
+          (only (mlir IR Region) mlir::Region::front)
+          (only (mlir IR BuiltinAttributes ffi) %mlir::parseAttribute)
+          (mlir Transforms DialectConversion)
+          (mlir Dialect Tensor IR)
           (only (crest util)
                 type-converter-add-tensor-widening-materialization)
           (only (mlir core builder) mlir-ir-operation-get-region mlir::Block::getArgument)
 
-          (only (mlir ir builtin-types)
+          (only (mlir IR BuiltinTypes)
                 mlir::RankedTensorType::getEncoding
                 mlir::RankedTensorType::getRank
                 mlir::isa<RankedTensorType>?)
 
-          (only (mlir ir type) mlir::Type::getContext)
+          (only (mlir IR Types) mlir::Type::getContext)
   )
 
   (define-syntax :hipsr-device-space (identifier-syntax 'hipsr-device-space))

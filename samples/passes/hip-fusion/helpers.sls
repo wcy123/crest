@@ -22,13 +22,13 @@
 
   (import (except (rnrs) =)
           (only (chezscheme) foreign-procedure)
-          (only (mlir ir operation)
+          (only (mlir IR Operation)
                 crest::Operation::setF32Attr
                 crest::Operation::setI64Attr
                 crest::Operation::setDenseI32Array
                 crest::Operation::setDenseI64Array
                 crest::Operation::setI64ArrayAttr)
-          (only (mlir ir builtin-attributes) mlir::FloatAttr::getValueAsDouble.f32))
+          (only (mlir IR BuiltinAttributes) mlir::FloatAttr::getValueAsDouble.f32))
 
   (define (set-qdq-scale-zp-attrs! new-op
                                    lhs-scale lhs-zp

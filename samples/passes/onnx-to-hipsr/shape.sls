@@ -19,26 +19,26 @@
           onnx-shape->hipsr)
   (import (except (rnrs (6)) =)
 
-          (only (mlir ir value)
+          (only (mlir IR Value)
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
-          (only (mlir ir builtin-attributes)
+          (only (mlir IR BuiltinAttributes)
                 mlir::IntegerAttr::get<index>
                 mlir::IntegerAttr::get<i64>)
           (only (mlir core builder) crest::RewriterBase::build)
-          (mlir transforms dialect-conversion)
+          (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
-          (only (mlir dialect shape ir)
+          (only (mlir Dialect Shape IR Shape)
                 mlir::shape::ShapeType::get
                 mlir::shape::SizeType::get
                 mlir::shape::WitnessType::get)
           (crest internal rewrite)
           (rename (rime loop) (:with :rime-with))
           (crest)
-          (only (mlir ir operation)
+          (only (mlir IR Operation)
                 mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getContext mlir::Operation::getResult mlir::Operation::setAttr!)
 
-          (only (mlir ir builtin-types)
+          (only (mlir IR BuiltinTypes)
                 mlir::IndexType::get
                 mlir::IntegerType::get<i64>
                 mlir::RankedTensorType::getRank

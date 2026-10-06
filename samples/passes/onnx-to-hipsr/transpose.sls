@@ -20,27 +20,27 @@
   (export populate-transpose-patterns)
   (import (except (rnrs (6)) =)
 
-          (only (mlir ir value)
+          (only (mlir IR Value)
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
-          (only (mlir ir builtin-attributes)
+          (only (mlir IR BuiltinAttributes)
                 mlir::IntegerAttr::get<index>
                 mlir::DenseI64ArrayAttr::get)
           (only (mlir core builder) crest::RewriterBase::build)
-          (mlir transforms dialect-conversion)
+          (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
-          (mlir dialect tensor ir)
-          (only (mlir dialect shape ir)
+          (mlir Dialect Tensor IR)
+          (only (mlir Dialect Shape IR Shape)
                 mlir::shape::ShapeType::get
                 mlir::shape::SizeType::get
                 mlir::shape::WitnessType::get)
           (crest)
-          (only (mlir ir operation)
+          (only (mlir IR Operation)
                 crest::Operation::getIntegerArrayAttr mlir::Operation::getResult mlir::Operation::setAttr!)
 
-          (only (mlir ir type) mlir::Type::getContext)
+          (only (mlir IR Types) mlir::Type::getContext)
 
-          (only (mlir ir builtin-types)
+          (only (mlir IR BuiltinTypes)
                 mlir::RankedTensorType::getRank))
 
   ;; Build the permuted output shape inside a region block.

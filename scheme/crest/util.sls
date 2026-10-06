@@ -22,14 +22,14 @@
     type-converter-add-tensor-widening-materialization)
 
   (import (rnrs)
-          (only (mlir ir mlir-context) current-mlir-context)
-          (only (mlir ir builtin-types)
+          (only (mlir IR MLIRContext) current-mlir-context)
+          (only (mlir IR BuiltinTypes)
                 mlir::isa<RankedTensorType>?)
-          (only (mlir ir value) mlir::Value::getType)
-          (only (mlir dialect tensor ir)
+          (only (mlir IR Value) mlir::Value::getType)
+          (only (mlir Dialect Tensor IR)
                 mlir::tensor::CastOp::areCastCompatible
                 mlir::tensor::CastOp::create)
-          (mlir transforms dialect-conversion))
+          (mlir Transforms DialectConversion))
 
   ;; @brief Mark builtin.module and arith.constant as unconditionally legal.
   ;;

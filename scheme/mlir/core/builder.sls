@@ -64,9 +64,9 @@
 
   (import (rnrs)
           (only (chezscheme) foreign-procedure parameterize void)
-          (mlir ir mlir-context)
-          (only (mlir ir operation) mlir::Operation::getContext mlir::Operation::getLoc)
-          (only (mlir ir pattern-match)
+          (mlir IR MLIRContext)
+          (only (mlir IR Operation) mlir::Operation::getContext mlir::Operation::getLoc)
+          (only (mlir IR PatternMatch)
                 current-rewriter current-block-builder current-loc))
 
   (define mlir-Operation::getContext mlir::Operation::getContext)
@@ -386,7 +386,7 @@
   ;;===--------------------------------------------------------------------===;;
 
   ;; current-rewriter, current-block-builder, current-loc are imported from
-  ;; (mlir ir pattern-match) to share a single set of parameter objects across
+  ;; (mlir IR PatternMatch) to share a single set of parameter objects across
   ;; both libraries.
 
   ;; @brief crest::RewriterBase::build — context-dispatching op constructor.

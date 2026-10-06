@@ -18,26 +18,26 @@
   (export populate-gather-patterns)
   (import (except (rnrs (6)) =)
 
-          (only (mlir ir value)
+          (only (mlir IR Value)
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
-          (only (mlir ir builtin-attributes) mlir::IntegerAttr::get<index>)
+          (only (mlir IR BuiltinAttributes) mlir::IntegerAttr::get<index>)
           (only (mlir core builder) crest::RewriterBase::build)
-          (mlir transforms dialect-conversion)
+          (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
-          (mlir dialect tensor ir)
-          (only (mlir dialect shape ir)
+          (mlir Dialect Tensor IR)
+          (only (mlir Dialect Shape IR Shape)
                 mlir::shape::ShapeType::get
                 mlir::shape::SizeType::get
                 mlir::shape::WitnessType::get)
           (crest internal rewrite)
           (crest)
-          (only (mlir ir operation)
+          (only (mlir IR Operation)
                 mlir::Operation::emitRemark mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getResult mlir::Operation::setAttr!)
 
-          (only (mlir ir type) mlir::Type::getContext)
+          (only (mlir IR Types) mlir::Type::getContext)
 
-          (only (mlir ir builtin-types)
+          (only (mlir IR BuiltinTypes)
                 mlir::RankedTensorType::getRank))
 
   ;; Build the gather output shape inside a region block using the DSL.

@@ -14,7 +14,7 @@
 ;;
 ;; The eight functions that hip-ep implements in C++ (Hip.cpp) are re-expressed
 ;; here using generic MLIR attr/type/operand APIs from (mlir core operation),
-;; (mlir ir value), (mlir ir builtin-attributes), and (mlir ir builtin-types):
+;; (mlir IR Value), (mlir IR BuiltinAttributes), and (mlir IR BuiltinTypes):
 ;;   hip-extract-splat-scale         — mlir::DenseElementsAttr::getSplatValue<APFloat>
 ;;   hip-build-init                  — crest::RewriterBase::build "tensor.empty"
 ;;   hip-create-requantized-layout-op — mlir-ir-rewriter-base-clone-with-types
@@ -79,23 +79,23 @@
   (import (rnrs)
           (only (chezscheme) nan? foreign-procedure)
 
-          (only (mlir ir value)
+          (only (mlir IR Value)
                 mlir::Value::getDefiningOp
                 mlir::Value::getType
                 mlir::Value::getUses)
-          (only (mlir ir builtin-attributes)
+          (only (mlir IR BuiltinAttributes)
                 mlir::DenseElementsAttr::isSplat
                 mlir::FloatAttr::getValueAsDouble.f32
                 mlir::DenseElementsAttr::getSplatValue<APFloat>
                 mlir::DenseElementsAttr::getSplatValue<APInt>)
           (only (mlir core builder) mlir-ir-rewriter-base-create mlir-ir-rewriter-base-clone-with-types)
-          (only (mlir ir builtin-types)
+          (only (mlir IR BuiltinTypes)
                 mlir::ShapedType::getElementType
                 mlir::IntegerType::getWidth
                 mlir::IntegerType::isUnsigned?
                 mlir::RankedTensorType::getRank
                 mlir::RankedTensorType::getShape)
-          (only (mlir ir operation)
+          (only (mlir IR Operation)
                 crest::Operation::getIntegerArrayAttr mlir::OpOperand::get mlir::OpResult::getOwner mlir::Operation::getAttr mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getName mlir::Operation::getNumOperands mlir::Operation::getResult mlir::Operation::hasAttr?)
   )
 

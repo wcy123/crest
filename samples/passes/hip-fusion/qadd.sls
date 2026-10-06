@@ -26,11 +26,11 @@
   (import (except (rnrs) =)
           (rename (only (rnrs) =) (= num=))
 
-          (only (mlir ir value)
+          (only (mlir IR Value)
                 mlir::Value::getDefiningOp
                 mlir::Value::getType
                 mlir::Value::getUses)
-          (only (mlir ir builtin-attributes)
+          (only (mlir IR BuiltinAttributes)
                 mlir::FloatAttr::get<f32>
                 mlir::IntegerAttr::get<i64>
                 mlir::DenseElementsAttr::isSplat
@@ -38,10 +38,10 @@
                 mlir::DenseElementsAttr::getSplatValue<APInt>)
           (passes hip-fusion fusion)
           (crest)
-          (only (mlir ir operation)
+          (only (mlir IR Operation)
                 mlir::Operation::getAttr)
 
-          (only (mlir ir builtin-types)
+          (only (mlir IR BuiltinTypes)
                 mlir::RankedTensorType::getRank))
 
   ;; #t when a Value has exactly one use (safe to fuse without keeping the chain alive).

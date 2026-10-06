@@ -18,15 +18,15 @@
   (export populate-expand-patterns)
   (import (except (rnrs (6)) =)
 
-          (only (mlir ir value)
+          (only (mlir IR Value)
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
-          (mlir transforms dialect-conversion)
+          (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
-          (mlir dialect tensor ir)
+          (mlir Dialect Tensor IR)
           (mlir support logging)
           (crest)
-          (only (mlir ir operation)
+          (only (mlir IR Operation)
                 mlir::OpOperand::get mlir::Operation::getContext mlir::Operation::getName)
 
           (only (mlir support logging)

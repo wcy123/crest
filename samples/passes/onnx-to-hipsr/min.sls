@@ -18,24 +18,24 @@
   (export populate-min-patterns)
   (import (except (rnrs (6)) =)
 
-          (only (mlir ir value)
+          (only (mlir IR Value)
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
           (mlir support array-ref)
-          (only (mlir ir pattern-match) mlir::RewriterBase::replaceOp mlir::RewriterBase::setInsertionPoint with-rewrite-builder)
-          (mlir transforms dialect-conversion)
+          (only (mlir IR PatternMatch) mlir::RewriterBase::replaceOp mlir::RewriterBase::setInsertionPoint with-rewrite-builder)
+          (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
-          (mlir dialect tensor ir)
-          (only (mlir dialect shape ir)
+          (mlir Dialect Tensor IR)
+          (only (mlir Dialect Shape IR Shape)
                 mlir::shape::ShapeType::get
                 mlir::shape::SizeType::get
                 mlir::shape::WitnessType::get)
           (crest internal rewrite)
           (crest)
-          (only (mlir ir operation)
+          (only (mlir IR Operation)
                 mlir::Operation::getResult)
 
-          (only (mlir ir type) mlir::Type::getContext)
+          (only (mlir IR Types) mlir::Type::getContext)
   )
 
   ;;===--------------------------------------------------------------------===;;

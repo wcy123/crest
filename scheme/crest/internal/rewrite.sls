@@ -47,11 +47,11 @@
           (for (rename (rime loop) (:with :rime-with)) expand)
           (for (only (crest internal keywords) = : -> :region) expand)
           (only (mlir core builder) with-block-builder)
-          (mlir ir builtin-attributes)
-          (for (mlir ir builtin-attributes) expand)
+          (mlir IR BuiltinAttributes)
+          (for (mlir IR BuiltinAttributes) expand)
           (for (only (mlir core builder) crest::RewriterBase::build with-block-builder
                      mlir-ir-operation-get-region mlir::Region::push_back<Block> mlir::Block::getArgument) expand)
-          (for (rename (only (mlir ir operation) mlir::Operation::getContext
+          (for (rename (only (mlir IR Operation) mlir::Operation::getContext
                                        mlir::Operation::getResult
                                        mlir::Operation::setAttr!)
                 (mlir::Operation::getContext    mlir-Operation::getContext)
@@ -64,7 +64,7 @@
   ;; generic mlir-make-attr dispatcher (removed with (mlir core attribute)).
   ;;
   ;; ctx is passed but unused here — the explicit constructors from
-  ;; (mlir ir builtin-attributes) read current-mlir-context internally.
+  ;; (mlir IR BuiltinAttributes) read current-mlir-context internally.
   ;;===--------------------------------------------------------------------===;;
   (define (%make-attr-by-type _ctx type val)
     (case type

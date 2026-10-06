@@ -16,9 +16,9 @@
           (for (crest internal parse) expand)
           (for (crest internal validate) expand)
           (for (crest internal analyze) expand)
-          (for (only (mlir ir pattern-match)
+          (for (only (mlir IR PatternMatch)
                      with-rewrite-builder mlir::RewriterBase::replaceOp) expand)
-                    (for (rename (only (mlir ir operation)
+                    (for (rename (only (mlir IR Operation)
                             mlir::Operation::getContext
                             mlir::Operation::getNumResults
                             mlir::Operation::getResult
@@ -37,10 +37,10 @@
                       (mlir::Operation::getName       mlir-operation-name)
                       (mlir::Operation::emitError    mlir-emit-error!)
                       (operation-get-operands   mlir-operation-get-operands)) expand)
-          (for (rename (only (mlir ir value) mlir::Value::getDefiningOp)
+          (for (rename (only (mlir IR Value) mlir::Value::getDefiningOp)
                      (mlir::Value::getDefiningOp mlir-value-get-defining-op)) expand)
           (for (only (mlir support array-ref) array-ref-size array-ref-at) expand)
-          (for (only (mlir ir mlir-context) current-mlir-context) expand)
+          (for (only (mlir IR MLIRContext) current-mlir-context) expand)
           (for (only (chezscheme) parameterize) expand)
           (for (only (crest internal rewrite) with-mlir-ops) expand)
           ;; keywords needed at expand time for free-identifier=? matching in transform-where-expr
@@ -218,7 +218,7 @@
   ;; transform-where-expr — syntactic substitution for :where expressions.
   ;;
   ;; No (:attr "name" :type) form: clients compose (:attr "name") with
-  ;; explicit attr-extraction functions from (mlir ir builtin-attributes).
+  ;; explicit attr-extraction functions from (mlir IR BuiltinAttributes).
   (define (transform-where-expr where-stx op-idx)
     (let ([cur-op #`(vector-ref all-operations #,op-idx)])
       (let walk ([s where-stx])

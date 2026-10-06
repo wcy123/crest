@@ -18,15 +18,15 @@
           (only (chezscheme) nan?)
           (rename (only (rnrs) =) (= num=))
 
-          (only (mlir ir value)
+          (only (mlir IR Value)
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
           (only (mlir core builder) crest::RewriterBase::build)
-          (mlir transforms dialect-conversion)
+          (mlir Transforms DialectConversion)
           (passes hip-fusion fusion)
           (crest)
           (passes hip-fusion helpers)
-          (only (mlir ir operation)
+          (only (mlir IR Operation)
                 mlir::Operation::getResult)
   )
 

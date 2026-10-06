@@ -22,18 +22,18 @@
   (export populate-constant-patterns)
   (import (except (rnrs (6)) =)
 
-          (only (mlir ir value)
+          (only (mlir IR Value)
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
-          (only (mlir ir builtin-attributes ffi) %mlir::DenseResourceElementsAttr::get)
-          (mlir transforms dialect-conversion)
+          (only (mlir IR BuiltinAttributes ffi) %mlir::DenseResourceElementsAttr::get)
+          (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
-          (mlir dialect tensor ir)
+          (mlir Dialect Tensor IR)
           (crest)
-          (only (mlir ir operation)
+          (only (mlir IR Operation)
                 mlir::Operation::emitError mlir::Operation::getAttr mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getAttrOfType<StringAttr> mlir::Operation::getContext mlir::Operation::hasAttr?)
 
-          (only (mlir ir builtin-types)
+          (only (mlir IR BuiltinTypes)
                 mlir::RankedTensorType::getRank))
 
   (define ort-mem-addr-tag "*/_ORT_MEM_ADDR_/*")

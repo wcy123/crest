@@ -17,8 +17,8 @@
 (library (passes onnx-to-hipsr)
   (export run-pass)
   (import (rnrs (6))
-          (only (mlir ir mlir-context) with-mlir-context)
-          (only (mlir ir operation)
+          (only (mlir IR MLIRContext) with-mlir-context)
+          (only (mlir IR Operation)
                 mlir::OpOperand::get
                 mlir::Operation::emitError
                 mlir::Operation::erase
@@ -28,7 +28,7 @@
                 mlir::Operation::setOperand
                 mlir::Operation::use_empty?
                 mlir::Operation::walk)
-          (only (mlir ir value)
+          (only (mlir IR Value)
                 mlir::Value::getDefiningOp
                 mlir::Value::getType
                 mlir::isa<BlockArgument>?
@@ -39,9 +39,9 @@
                 mlir-ir-rewriter-base-create
                 mlir-ir-rewriter-base-set-insertion-point
                 mlir-ir-rewriter-base-erase-op)
-          (mlir transforms dialect-conversion)
+          (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
-          (mlir dialects func)
+          (mlir Dialect Func IR FuncOps)
           (mlir support logging)
           (passes onnx-to-hipsr cast)
           (passes onnx-to-hipsr scatter-nd)

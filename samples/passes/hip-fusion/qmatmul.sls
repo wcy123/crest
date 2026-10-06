@@ -23,15 +23,15 @@
           (only (chezscheme) nan?)
           (rename (only (rnrs) =) (= num=))
 
-          (only (mlir ir value)
+          (only (mlir IR Value)
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
           (only (mlir core builder) crest::RewriterBase::build)
-          (mlir transforms dialect-conversion)
+          (mlir Transforms DialectConversion)
           (passes hip-fusion fusion)
           (crest)
           (passes hip-fusion helpers)
-          (only (mlir ir operation)
+          (only (mlir IR Operation)
                 crest::Operation::setF32Attr crest::Operation::setI64Attr crest::Operation::setUnitAttr mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getResult)
   )
 
