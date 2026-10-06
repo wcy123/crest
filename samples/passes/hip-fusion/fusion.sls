@@ -97,7 +97,7 @@
                 mlir::RankedTensorType::getShape)
           (only (mlir IR Operation)
                 crest::Operation::getIntegerArrayAttr mlir::OpOperand::get mlir::OpResult::getOwner mlir::Operation::getAttr mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getName mlir::Operation::getNumOperands mlir::Operation::getResult mlir::Operation::hasAttr?)
-	  )
+          )
 
   ;; Local helpers — expressed via explicit builtin-attributes functions.
 
@@ -378,7 +378,7 @@
            [new-init  (if has-ctx?
                           (mlir::Operation::getResult
                            (mlir-ir-rewriter-base-create rewriter layout-op
-							 "tensor.empty" '() (list q-type))
+                                                         "tensor.empty" '() (list q-type))
                            0)
                           0)]
            ;; Rebuild operand list: replace dq-result with dq-input, and replace
@@ -394,7 +394,7 @@
                                            [else v])
                                           acc)))))]
            [new-op    (mlir-ir-rewriter-base-clone-with-types rewriter layout-op
-							      operands (list q-type))])
+                                                              operands (list q-type))])
       (mlir::Operation::getResult new-op 0)))
 
   ) ;; end library (passes hip-fusion fusion)

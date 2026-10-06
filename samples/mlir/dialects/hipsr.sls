@@ -49,7 +49,7 @@
 
           (only (mlir IR Types) mlir::Type::getContext)
           (only (mlir IR MLIRContext) current-mlir-context)
-	  )
+          )
 
 
   ;;===--------------------------------------------------------------------===;;
@@ -133,13 +133,13 @@
   (define (hipsr-type-converter-add-device-memory-conversions! type-converter)
     (type-converter-add-conversion type-converter (lambda (t) t))
     (type-converter-add-conversion type-converter
-				   (lambda (type)
-				     (if (and (mlir::isa<RankedTensorType>? type)
-					      (> (mlir::RankedTensorType::getRank type) 0)
-					      (= 0 (mlir::RankedTensorType::getEncoding type)))
-					 (mlir::RankedTensorType::cloneWithEncoding type
-										    (mlir::parseAttribute (mlir::Type::getContext type) "#hipsr.mem<device>"))
-					 #f)))
+                                   (lambda (type)
+                                     (if (and (mlir::isa<RankedTensorType>? type)
+                                              (> (mlir::RankedTensorType::getRank type) 0)
+                                              (= 0 (mlir::RankedTensorType::getEncoding type)))
+                                         (mlir::RankedTensorType::cloneWithEncoding type
+                                                                                    (mlir::parseAttribute (mlir::Type::getContext type) "#hipsr.mem<device>"))
+                                         #f)))
     (type-converter-add-tensor-widening-materialization type-converter))
 
   ;;===--------------------------------------------------------------------===;;
@@ -154,14 +154,14 @@
     (target-add-legal-op target ctx "arith.constant")
     (target-add-legal-op target ctx "tensor.cast")
     (target-add-dynamically-legal-op target ctx "func.func"
-				     (lambda (op)
-				       (= 1 (type-converter-is-signature-legal type-converter op))))
+                                     (lambda (op)
+                                       (= 1 (type-converter-is-signature-legal type-converter op))))
     (target-add-dynamically-legal-op target ctx "func.return"
-				     (lambda (op)
-				       (= 1 (type-converter-is-legal type-converter op))))
+                                     (lambda (op)
+                                       (= 1 (type-converter-is-legal type-converter op))))
     (target-mark-unknown-ops-dynamically-legal target
-					       (lambda (op)
-						 (or (hipsr-has-compute-ancestor? op)
-						     (hipsr-has-placeholder-ancestor? op)))))
+                                               (lambda (op)
+                                                 (or (hipsr-has-compute-ancestor? op)
+                                                     (hipsr-has-placeholder-ancestor? op)))))
 
   ) ;; end library (mlir dialects hipsr)

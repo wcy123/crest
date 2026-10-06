@@ -28,25 +28,25 @@
           (passes hip-fusion helpers)
           (only (mlir IR Operation)
                 mlir::Operation::getResult)
-	  )
+          )
 
   (define-rewrite-pattern (hip-qsigmoid-fusion op rewriter)
     :if-match
       %q       = hip.quantize_linear   (%ctx %sigmoid %out_scale)
-    :where (and (hip-splat-scale? %out_scale)
-		(hip-qdq-quantized-width? op '(16))
-		(hip-qdq-unsigned? op)
-		(hip-extractable-qdq-zeropoint? op))
+        :where (and (hip-splat-scale? %out_scale)
+                    (hip-qdq-quantized-width? op '(16))
+                    (hip-qdq-unsigned? op)
+                    (hip-extractable-qdq-zeropoint? op))
       %sigmoid = hip.sigmoid           (%ctx %dq_in %sigmoid_init)
-    :where (and (hip-value-single-use? %sigmoid)
-		(hip-can-build-init? op %sigmoid_init))
+        :where (and (hip-value-single-use? %sigmoid)
+                    (hip-can-build-init? op %sigmoid_init))
       %dq_in   = hip.dequantize_linear (%ctx %input %in_scale)
-    :where (and (hip-qdq-quantized-width?
-		 (mlir::Value::getDefiningOp %dq_in) '(16))
-		(hip-qdq-unsigned? (mlir::Value::getDefiningOp %dq_in))
-		(hip-splat-scale? %in_scale)
-		(hip-extractable-qdq-zeropoint?
-		 (mlir::Value::getDefiningOp %dq_in)))
+        :where (and (hip-qdq-quantized-width?
+                     (mlir::Value::getDefiningOp %dq_in) '(16))
+                    (hip-qdq-unsigned? (mlir::Value::getDefiningOp %dq_in))
+                    (hip-splat-scale? %in_scale)
+                    (hip-extractable-qdq-zeropoint?
+                     (mlir::Value::getDefiningOp %dq_in)))
     :then-let
       ([!out-type (mlir::Value::getType %q)]
        [%dq-in-op (mlir::Value::getDefiningOp %dq_in)]
@@ -57,9 +57,9 @@
        [%init     (hip-build-init rewriter !out-type %sigmoid_init)])
     :rewrite %q :with
       (%result = (let ([new-op (crest::RewriterBase::build "hip.qsigmoid"
-							   (list %ctx %input %init)
-							   (list !out-type))])
-		   (set-qdq-in-out-attrs! new-op in-scale in-zp out-scale out-zp)
-		   (mlir::Operation::getResult new-op 0))))
+                                                           (list %ctx %input %init)
+                                                           (list !out-type))])
+                   (set-qdq-in-out-attrs! new-op in-scale in-zp out-scale out-zp)
+                   (mlir::Operation::getResult new-op 0))))
 
   ) ;; end library (passes hip-fusion qsigmoid)

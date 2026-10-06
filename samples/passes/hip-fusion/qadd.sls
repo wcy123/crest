@@ -74,16 +74,16 @@
   (define-rewrite-pattern (hip-qadd-fusion op rewriter)
     :if-match
       %lhs_scale = hip.constant          ()
-    :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
+        :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
       %dq_lhs    = hip.dequantize_linear (%ctx %lhs %lhs_scale (:optional %lhs_zp) %dq_lhs_init)
       %rhs_scale = hip.constant          ()
-    :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
+        :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
       %dq_rhs    = hip.dequantize_linear (%ctx %rhs %rhs_scale (:optional %rhs_zp) %dq_rhs_init)
       %out_scale = hip.constant          ()
-    :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
+        :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
       %sum       = hip.add               (%ctx %dq_lhs %dq_rhs %sum_init)
-    :where (and (single-consumer? %sum)
-		(same-rank? %q %sum_init))
+        :where (and (single-consumer? %sum)
+                    (same-rank? %q %sum_init))
       %q         = hip.quantize_linear   (%ctx %sum %out_scale (:optional %out_zp) %q_init)
     :then-let
       ([!out-type  (mlir::Value::getType %q)]

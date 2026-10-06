@@ -40,11 +40,11 @@
       %q      = hip.quantize_linear   (%ctx %layout %out_scale)
       %layout = :any                  (%ctx %dq)
       %dq     = hip.dequantize_linear (%ctx %input %in_scale)
-    :where (and (hip-value-single-use? %layout)
-		(hip-matching-qdq-params?
-		 (mlir::Value::getDefiningOp %dq) op)
-		(hip-can-requantize-layout-op?
-		 (mlir::Value::getDefiningOp %layout) op))
+        :where (and (hip-value-single-use? %layout)
+                    (hip-matching-qdq-params?
+                     (mlir::Value::getDefiningOp %dq) op)
+                    (hip-can-requantize-layout-op?
+                     (mlir::Value::getDefiningOp %layout) op))
     :then-let
       ([%dq-op     (mlir::Value::getDefiningOp %dq)]
        [%layout-op (mlir::Value::getDefiningOp %layout)])
@@ -60,13 +60,13 @@
       %q      = hip.quantize_linear   (%ctx %layout %out_scale)
       %layout = :any                  (%dq)
       %dq     = hip.dequantize_linear (%ctx %input %in_scale)
-    :where (and (hip-value-single-use? %layout)
-		(not (hip-layout-op-has-ctx?
-                      (mlir::Value::getDefiningOp %layout)))
-		(hip-matching-qdq-params?
-		 (mlir::Value::getDefiningOp %dq) op)
-		(hip-can-requantize-layout-op?
-		 (mlir::Value::getDefiningOp %layout) op))
+        :where (and (hip-value-single-use? %layout)
+                    (not (hip-layout-op-has-ctx?
+                          (mlir::Value::getDefiningOp %layout)))
+                    (hip-matching-qdq-params?
+                     (mlir::Value::getDefiningOp %dq) op)
+                    (hip-can-requantize-layout-op?
+                     (mlir::Value::getDefiningOp %layout) op))
     :then-let
       ([%dq-op     (mlir::Value::getDefiningOp %dq)]
        [%layout-op (mlir::Value::getDefiningOp %layout)])
@@ -82,10 +82,10 @@
     :if-match
       %q  = hip.quantize_linear   (%ctx %dq %out_scale)
       %dq = hip.dequantize_linear (%ctx %input %in_scale)
-    :where (and (hip-matching-qdq-params?
-		 (mlir::Value::getDefiningOp %dq) op)
-		(hip-identity-roundtrip?
-		 (mlir::Value::getDefiningOp %dq) op))
+        :where (and (hip-matching-qdq-params?
+                     (mlir::Value::getDefiningOp %dq) op)
+                    (hip-identity-roundtrip?
+                     (mlir::Value::getDefiningOp %dq) op))
     :rewrite %q :with
       (%result = (begin %input)))
 

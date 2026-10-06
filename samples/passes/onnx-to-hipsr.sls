@@ -57,7 +57,7 @@
           (for (rime loop) expand)
           (only (mlir support logging)
                 crest::logging::debug crest::logging::info)
-	  )
+          )
 
   ;; DPS (DestinationPassing-Style) interface helpers.
   ;; These were in (mlir core operation) and are now defined here directly.
@@ -86,10 +86,10 @@
   (define (erase-dead-novalue! module-op)
     (let ((dead '()))
       (mlir::Operation::walk module-op
-			     (lambda (op)
-			       (when (and (string=? (mlir::Operation::getName op) "onnx.NoValue")
-					  (mlir::Operation::use_empty? op))
-				 (set! dead (cons op dead)))))
+                             (lambda (op)
+                               (when (and (string=? (mlir::Operation::getName op) "onnx.NoValue")
+                                          (mlir::Operation::use_empty? op))
+                                 (set! dead (cons op dead)))))
       (for-each mlir::Operation::erase dead)))
 
   ;;===--------------------------------------------------------------------===;;
@@ -112,15 +112,15 @@
 
   (define (rewire-placeholder-inputs! module-op)
     (mlir::Operation::walk module-op
-			   (lambda (op)
-			     (when (string=? (mlir::Operation::getName op) "hipsr.placeholder")
-			       (let loop ((i 1))
-				 (when (< i (mlir::Operation::getNumOperands op))
-				   (let* ((old-val (mlir::OpOperand::get op i))
-					  (new-val (shape-graph-counterpart old-val)))
-				     (unless (eqv? old-val new-val)
-				       (mlir::Operation::setOperand op i new-val)))
-				   (loop (+ i 1))))))))
+                           (lambda (op)
+                             (when (string=? (mlir::Operation::getName op) "hipsr.placeholder")
+                               (let loop ((i 1))
+                                 (when (< i (mlir::Operation::getNumOperands op))
+                                   (let* ((old-val (mlir::OpOperand::get op i))
+                                          (new-val (shape-graph-counterpart old-val)))
+                                     (unless (eqv? old-val new-val)
+                                       (mlir::Operation::setOperand op i new-val)))
+                                   (loop (+ i 1))))))))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Helper: apply conversion then run post-processing
@@ -143,25 +143,25 @@
     (crest::logging::info "Starting ONNX to HipSR Conversion (Scheme)")
     (let ((ctx (mlir::Operation::getContext module-op)))
       (with-mlir-context ctx
-	(with-type-converter (type-converter)
-	  (hipsr-type-converter-add-device-memory-conversions! type-converter)
-	  (with-conversion-target (target ctx)
-	    (hipsr-configure-conversion-target! target ctx type-converter)
-	    (with-pattern-set (patterns ctx)
-	      ;; Scheme DSL patterns
-	      (populate-cast-patterns       type-converter patterns ctx)
-	      (populate-scatter-nd-patterns type-converter patterns ctx)
-	      (populate-equal-patterns      type-converter patterns ctx)
-	      (populate-matmul-patterns     type-converter patterns ctx)
-	      (populate-min-patterns        type-converter patterns ctx)
-	      (populate-transpose-patterns  type-converter patterns ctx)
-	      (populate-gather-patterns     type-converter patterns ctx)
-	      (populate-expand-patterns     type-converter patterns ctx)
-	      (populate-constant-patterns   type-converter patterns ctx)
-	      (populate-shape-patterns      type-converter patterns ctx)
-	      ;; Infrastructure patterns
-	      (populate-return-patterns type-converter patterns ctx)
-	      (mlir-populate-func-type-conversion-pattern patterns type-converter)
-	      (do-conversion module-op target patterns)))))))
+        (with-type-converter (type-converter)
+          (hipsr-type-converter-add-device-memory-conversions! type-converter)
+          (with-conversion-target (target ctx)
+            (hipsr-configure-conversion-target! target ctx type-converter)
+            (with-pattern-set (patterns ctx)
+              ;; Scheme DSL patterns
+              (populate-cast-patterns       type-converter patterns ctx)
+              (populate-scatter-nd-patterns type-converter patterns ctx)
+              (populate-equal-patterns      type-converter patterns ctx)
+              (populate-matmul-patterns     type-converter patterns ctx)
+              (populate-min-patterns        type-converter patterns ctx)
+              (populate-transpose-patterns  type-converter patterns ctx)
+              (populate-gather-patterns     type-converter patterns ctx)
+              (populate-expand-patterns     type-converter patterns ctx)
+              (populate-constant-patterns   type-converter patterns ctx)
+              (populate-shape-patterns      type-converter patterns ctx)
+              ;; Infrastructure patterns
+              (populate-return-patterns type-converter patterns ctx)
+              (mlir-populate-func-type-conversion-pattern patterns type-converter)
+              (do-conversion module-op target patterns)))))))
 
   ) ;; end library (passes onnx-to-hipsr)

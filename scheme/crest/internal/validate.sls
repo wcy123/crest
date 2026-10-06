@@ -61,9 +61,9 @@
     (define (check-param field-val name)
       (unless (identifier? field-val)
         (syntax-violation 'validate-ast
-			  (string-append "Pattern parameter '" name
-					 "' must be an identifier — write (fname op operands-ref rewriter type-converter)")
-			  (ast-pattern-expand-function-name ast-rec))))
+                          (string-append "Pattern parameter '" name
+                                         "' must be an identifier — write (fname op operands-ref rewriter type-converter)")
+                          (ast-pattern-expand-function-name ast-rec))))
     ;; operands-ref and type-converter are #f for rewrite patterns (3-param form).
     (let ([is-rewrite? (eq? (ast-pattern-expand-pattern-type ast-rec) 'rewrite)])
       (check-param (ast-pattern-expand-param-op      ast-rec) "op")
@@ -76,12 +76,12 @@
   (define (validate-ast-match-function-name ast-rec)
     (unless (identifier? (ast-pattern-expand-function-name ast-rec))
       (syntax-violation 'validate-ast "Function name must be an identifier"
-			(ast-pattern-expand-function-name ast-rec))))
+                        (ast-pattern-expand-function-name ast-rec))))
 
   (define (validate-root-var-is-identifier ast-rec)
     (unless (identifier? (ast-pattern-expand-root-var ast-rec))
       (syntax-violation 'validate-ast "Root variable must be an identifier"
-			(ast-pattern-expand-root-var ast-rec))))
+                        (ast-pattern-expand-root-var ast-rec))))
 
   ;;-----------------------------------------------------------------------
   ;; Normalization
@@ -89,7 +89,7 @@
 
   (define (normalize-ast-match-to-vector ast-rec)
     (ast-pattern-expand-match-set! ast-rec
-				   (list->vector (ast-pattern-expand-match ast-rec))))
+                                   (list->vector (ast-pattern-expand-match ast-rec))))
 
   (define (normalize-match-result-vars ast-rec)
     (let ([match-vec (ast-pattern-expand-match ast-rec)])
@@ -142,7 +142,7 @@
                       :do (begin
                             (when (hashtable-contains? seen-results var)
                               (syntax-violation 'validate-no-duplicate-result-variables
-						"Duplicate result variable" var))
+                                                "Duplicate result variable" var))
                             (hashtable-set! seen-results var #t))))))
 
   (define (validate-and-cache-root-var ast-rec)
@@ -170,9 +170,9 @@
               ;; Also cache root-op-name for convenience
               (let ([root-op (vector-ref match-vec (car found))])
                 (ast-pattern-expand-root-op-name-set! ast-rec
-						      (ast-match-expand-op-name root-op))))
+                                                      (ast-match-expand-op-name root-op))))
             (syntax-violation 'validate-and-cache-root-var
-			      "Root variable not found in any match operation result" root-var)))))
+                              "Root variable not found in any match operation result" root-var)))))
 
   ;;-----------------------------------------------------------------------
   ;; Rewrite operation validation
@@ -203,7 +203,7 @@
       ;; Normalize: convert symbol to string in-place
       (unless (string? op-name-datum)
         (ast-operation-expand-op-name-set! op
-					   (datum->syntax op-name-stx (symbol->string op-name-datum))))))
+                                           (datum->syntax op-name-stx (symbol->string op-name-datum))))))
 
   (define (validate-operation-regions op)
     (let ([regions (ast-operation-expand-regions op)])
@@ -240,18 +240,18 @@
   (define (validate-%-identifier var context-msg)
     (unless (identifier? var)
       (syntax-violation 'validate-match-operations
-			(string-append context-msg " must be identifier") var))
+                        (string-append context-msg " must be identifier") var))
     (let ([var-name (symbol->string (syntax->datum var))])
       (unless (char=? (string-ref var-name 0) #\%)
         (syntax-violation 'validate-match-operations
-			  (string-append context-msg " must start with %") var))))
+                          (string-append context-msg " must start with %") var))))
 
   (define (normalize-op-name match-op)
     (let* ([op-name-stx (ast-match-expand-op-name match-op)]
            [op-name-datum (syntax->datum op-name-stx)])
       (unless (or (string? op-name-datum) (symbol? op-name-datum))
         (syntax-violation 'validate-match-operations
-			  "Operation name must be string or symbol" op-name-stx))
+                          "Operation name must be string or symbol" op-name-stx))
       (when (symbol? op-name-datum)
         (ast-match-expand-op-name-set! match-op
-				       (datum->syntax op-name-stx (symbol->string op-name-datum)))))))
+                                       (datum->syntax op-name-stx (symbol->string op-name-datum)))))))

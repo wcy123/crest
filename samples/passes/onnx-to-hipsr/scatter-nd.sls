@@ -30,7 +30,7 @@
           (crest)
           (only (mlir IR Value)
                 mlir::Value::getType)
-	  )
+          )
 
   (define-conversion-pattern (onnx-scatter-nd->hipsr op operands-ref rewriter type-converter)
     :if-match
@@ -44,7 +44,7 @@
       ;; placeholder ins = (%data) only: scatter output has data's shape
       (%placeholder = hipsr.placeholder (%ctx %data !output-device)
                     (^bb0 ((%data-shape : !shape-type))
-			  (hipsr.shape_yield (%data-shape)))
+                          (hipsr.shape_yield (%data-shape)))
                     -> !output-device)
       (%result = hipsr.scatter_nd (%ctx %data %indices %updates %placeholder)
                -> !output-device))

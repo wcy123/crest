@@ -61,18 +61,18 @@
         (mlir::Operation::getResult op 0)))
     (let* ([sz1      (mk-sz axis)]
            [sp1      (crest::RewriterBase::build "shape.split_at"
-						 (list data-shape sz1) (list shape-type shape-type))]
+                                                 (list data-shape sz1) (list shape-type shape-type))]
            [leading  (mlir::Operation::getResult sp1 0)]
            [sz2      (mk-sz (+ axis 1))]
            [sp2      (crest::RewriterBase::build "shape.split_at"
-						 (list data-shape sz2) (list shape-type shape-type))]
+                                                 (list data-shape sz2) (list shape-type shape-type))]
            [trailing (mlir::Operation::getResult sp2 1)]
            [gathered-op (crest::RewriterBase::build "shape.concat"
-						    (list leading idx-shape) (list shape-type))]
+                                                    (list leading idx-shape) (list shape-type))]
            [gathered    (mlir::Operation::getResult gathered-op 0)])
       (mlir::Operation::getResult
        (crest::RewriterBase::build "shape.concat"
-				   (list gathered trailing) (list shape-type))
+                                   (list gathered trailing) (list shape-type))
        0)))
 
   (define-conversion-pattern (onnx-gather->hipsr op operands-ref rewriter type-converter)
@@ -99,9 +99,9 @@
                #t))
       (%placeholder = "hipsr.placeholder" (%ctx %data %indices !out-device)
                     (^bb0 ((%ds : !shape-type) (%is : !shape-type))
-			  (%result-shape = (build-gather-shape!
+                          (%result-shape = (build-gather-shape!
                                             axis %ds %is !shape-type !size-type))
-			  ("hipsr.shape_yield" (%result-shape)))
+                          ("hipsr.shape_yield" (%result-shape)))
                     -> !out-device)
       (%result = hipsr.gather (%ctx %data %indices %placeholder)
                (operandSegmentSizes = (list 1 1 1 1) :i32-array)

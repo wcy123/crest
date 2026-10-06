@@ -30,7 +30,7 @@
    array-ref-destroy   ; (ref) → void           [C heap free]
    with-array-ref      ; (syntax) RAII: make + body + destroy
    :uptr)              ; array-ref-at element type → 'uptr (8-byte pointer, default)
-					; :i32 is a local keyword synonym — 'i32
+                                        ; :i32 is a local keyword synonym — 'i32
 
   (import (rnrs)
           (only (chezscheme) foreign-ref)

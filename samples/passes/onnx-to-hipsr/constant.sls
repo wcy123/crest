@@ -57,17 +57,17 @@
              [size     (mlir::Operation::getAttrOfType<IntegerAttr> op "size" 0)]
              [r (if (string=? location ort-mem-addr-tag)
                     (mlir::DenseResourceElementsAttr::get ctx
-							  (list !result-type
-								(string-append "mem|0x" (number->string offset 16))
-								offset size))
+                                                          (list !result-type
+                                                                (string-append "mem|0x" (number->string offset 16))
+                                                                offset size))
                     (let ([buf (mlir-hipsr-load-file-map ctx location)])
                       (if (zero? buf)
                           (fail (string-append "cannot memory-map: " location))
                           (mlir::DenseResourceElementsAttr::get ctx
-								(list !result-type
-								      (string-append "file|" location "|"
-										     (number->string offset))
-								      (+ buf offset) size)))))])
+                                                                (list !result-type
+                                                                      (string-append "file|" location "|"
+                                                                                     (number->string offset))
+                                                                      (+ buf offset) size)))))])
         (if (zero? r) (fail "cannot build dense resource attr") r))]
      [else
       (fail "onnx.Constant has neither value nor location")]))
@@ -76,7 +76,7 @@
   (define-conversion-pattern (onnx-constant-scalar->arith op operands-ref rewriter type-converter)
     :if-match
       %output = onnx.Constant ()
-    :where (zero? (mlir::RankedTensorType::getRank (mlir::Value::getType %output)))
+        :where (zero? (mlir::RankedTensorType::getRank (mlir::Value::getType %output)))
     :then-let
       ([ctx         (mlir::Operation::getContext op)]
        [!out-type   (mlir::Value::getType %output)]
@@ -88,7 +88,7 @@
   (define-conversion-pattern (onnx-constant-tensor->hipsr op operands-ref rewriter type-converter)
     :if-match
       %output = onnx.Constant ()
-    :where (positive? (mlir::RankedTensorType::getRank (mlir::Value::getType %output)))
+        :where (positive? (mlir::RankedTensorType::getRank (mlir::Value::getType %output)))
     :then-let
       ([ctx         (mlir::Operation::getContext op)]
        [!out-type   (mlir::Value::getType %output)]

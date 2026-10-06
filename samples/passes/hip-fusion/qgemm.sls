@@ -35,7 +35,7 @@
           (passes hip-fusion helpers)
           (only (mlir IR Operation)
                 crest::Operation::setF32Attr crest::Operation::setI64Attr mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getResult)
-	  )
+          )
 
   ;;===--------------------------------------------------------------------===;;
   ;; Pattern 6: QGemm per-tensor with bias  (benefit 10)
@@ -44,30 +44,30 @@
   (define-rewrite-pattern (hip-qgemm-fusion op rewriter)
     :if-match
       %q    = hip.quantize_linear   (%ctx %gemm %y_scale)
-    :where (and (hip-splat-scale? %y_scale)
-		(hip-qdq-quantized-width? op '(8 16))
-		(hip-extractable-qdq-zeropoint? op))
+        :where (and (hip-splat-scale? %y_scale)
+                    (hip-qdq-quantized-width? op '(8 16))
+                    (hip-extractable-qdq-zeropoint? op))
       %gemm = hip.gemm              (%ctx %dq_a %dq_b %dq_c %gemm_init)
-    :where (and (hip-value-single-use? %gemm)
-		(hip-can-build-init? op %gemm_init))
+        :where (and (hip-value-single-use? %gemm)
+                    (hip-can-build-init? op %gemm_init))
       %dq_a = hip.dequantize_linear (%ctx %a %a_scale)
-    :where (and (hip-qdq-quantized-width?
-		 (mlir::Value::getDefiningOp %dq_a) '(8 16))
-		(hip-splat-scale? %a_scale)
-		(hip-extractable-qdq-zeropoint?
-		 (mlir::Value::getDefiningOp %dq_a)))
+        :where (and (hip-qdq-quantized-width?
+                     (mlir::Value::getDefiningOp %dq_a) '(8 16))
+                    (hip-splat-scale? %a_scale)
+                    (hip-extractable-qdq-zeropoint?
+                     (mlir::Value::getDefiningOp %dq_a)))
       %dq_b = hip.dequantize_linear (%ctx %b %b_scale)
-    :where (and (hip-qdq-quantized-width?
-		 (mlir::Value::getDefiningOp %dq_b) '(8))
-		(hip-splat-scale? %b_scale)
-		(hip-extractable-qdq-zeropoint?
-		 (mlir::Value::getDefiningOp %dq_b)))
+        :where (and (hip-qdq-quantized-width?
+                     (mlir::Value::getDefiningOp %dq_b) '(8))
+                    (hip-splat-scale? %b_scale)
+                    (hip-extractable-qdq-zeropoint?
+                     (mlir::Value::getDefiningOp %dq_b)))
       %dq_c = hip.dequantize_linear (%ctx %c %c_scale)
-    :where (and (hip-qdq-quantized-width?
-		 (mlir::Value::getDefiningOp %dq_c) '(8 16 32))
-		(hip-splat-scale? %c_scale)
-		(hip-extractable-qdq-zeropoint?
-		 (mlir::Value::getDefiningOp %dq_c)))
+        :where (and (hip-qdq-quantized-width?
+                     (mlir::Value::getDefiningOp %dq_c) '(8 16 32))
+                    (hip-splat-scale? %c_scale)
+                    (hip-extractable-qdq-zeropoint?
+                     (mlir::Value::getDefiningOp %dq_c)))
     :then-let
       ([!y-type   (mlir::Value::getType %q)]
        [%dq-a-op  (mlir::Value::getDefiningOp %dq_a)]
@@ -90,24 +90,24 @@
        [%init     (hip-build-init rewriter !y-type %gemm_init)])
     :rewrite %q :with
       (%result = (let ([new-op (crest::RewriterBase::build "hip.qgemm"
-							   (list %ctx %a %b %c %init)
-							   (list !y-type))])
-		   (mlir-operation-set-dense-i32-array! new-op "operandSegmentSizes"
-							'(1 1 1 0 0 1 1))
-		   (crest::Operation::setF32Attr new-op "A_scale"      a-scale)
-		   (crest::Operation::setI64Attr new-op "A_zero_point" a-zp)
-		   (crest::Operation::setF32Attr new-op "B_scale"      b-scale)
-		   (crest::Operation::setI64Attr new-op "B_zero_point" b-zp)
-		   (crest::Operation::setI64Attr new-op "B_bits"       b-bits)
-		   (crest::Operation::setF32Attr new-op "C_scale"      c-scale)
-		   (crest::Operation::setI64Attr new-op "C_zero_point" c-zp)
-		   (crest::Operation::setF32Attr new-op "Y_scale"      y-scale)
-		   (crest::Operation::setI64Attr new-op "Y_zero_point" y-zp)
-		   (unless (nan? alpha) (crest::Operation::setF32Attr new-op "alpha" alpha))
-		   (unless (nan? beta)  (crest::Operation::setF32Attr new-op "beta"  beta))
-		   (crest::Operation::setI64Attr new-op "transA"       trans-a)
-		   (crest::Operation::setI64Attr new-op "transB"       trans-b)
-		   (mlir::Operation::getResult new-op 0))))
+                                                           (list %ctx %a %b %c %init)
+                                                           (list !y-type))])
+                   (mlir-operation-set-dense-i32-array! new-op "operandSegmentSizes"
+                                                        '(1 1 1 0 0 1 1))
+                   (crest::Operation::setF32Attr new-op "A_scale"      a-scale)
+                   (crest::Operation::setI64Attr new-op "A_zero_point" a-zp)
+                   (crest::Operation::setF32Attr new-op "B_scale"      b-scale)
+                   (crest::Operation::setI64Attr new-op "B_zero_point" b-zp)
+                   (crest::Operation::setI64Attr new-op "B_bits"       b-bits)
+                   (crest::Operation::setF32Attr new-op "C_scale"      c-scale)
+                   (crest::Operation::setI64Attr new-op "C_zero_point" c-zp)
+                   (crest::Operation::setF32Attr new-op "Y_scale"      y-scale)
+                   (crest::Operation::setI64Attr new-op "Y_zero_point" y-zp)
+                   (unless (nan? alpha) (crest::Operation::setF32Attr new-op "alpha" alpha))
+                   (unless (nan? beta)  (crest::Operation::setF32Attr new-op "beta"  beta))
+                   (crest::Operation::setI64Attr new-op "transA"       trans-a)
+                   (crest::Operation::setI64Attr new-op "transB"       trans-b)
+                   (mlir::Operation::getResult new-op 0))))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Pattern 7: QGemm per-tensor no bias  (benefit 10)
@@ -116,24 +116,24 @@
   (define-rewrite-pattern (hip-qgemm-no-bias op rewriter)
     :if-match
       %q    = hip.quantize_linear   (%ctx %gemm %y_scale)
-    :where (and (hip-splat-scale? %y_scale)
-		(hip-qdq-quantized-width? op '(8 16))
-		(hip-extractable-qdq-zeropoint? op))
+        :where (and (hip-splat-scale? %y_scale)
+                    (hip-qdq-quantized-width? op '(8 16))
+                    (hip-extractable-qdq-zeropoint? op))
       %gemm = hip.gemm              (%ctx %dq_a %dq_b %gemm_init)
-    :where (and (hip-value-single-use? %gemm)
-		(hip-can-build-init? op %gemm_init))
+        :where (and (hip-value-single-use? %gemm)
+                    (hip-can-build-init? op %gemm_init))
       %dq_a = hip.dequantize_linear (%ctx %a %a_scale)
-    :where (and (hip-qdq-quantized-width?
-		 (mlir::Value::getDefiningOp %dq_a) '(8 16))
-		(hip-splat-scale? %a_scale)
-		(hip-extractable-qdq-zeropoint?
-		 (mlir::Value::getDefiningOp %dq_a)))
+        :where (and (hip-qdq-quantized-width?
+                     (mlir::Value::getDefiningOp %dq_a) '(8 16))
+                    (hip-splat-scale? %a_scale)
+                    (hip-extractable-qdq-zeropoint?
+                     (mlir::Value::getDefiningOp %dq_a)))
       %dq_b = hip.dequantize_linear (%ctx %b %b_scale)
-    :where (and (hip-qdq-quantized-width?
-		 (mlir::Value::getDefiningOp %dq_b) '(8))
-		(hip-splat-scale? %b_scale)
-		(hip-extractable-qdq-zeropoint?
-		 (mlir::Value::getDefiningOp %dq_b)))
+        :where (and (hip-qdq-quantized-width?
+                     (mlir::Value::getDefiningOp %dq_b) '(8))
+                    (hip-splat-scale? %b_scale)
+                    (hip-extractable-qdq-zeropoint?
+                     (mlir::Value::getDefiningOp %dq_b)))
     :then-let
       ([!y-type  (mlir::Value::getType %q)]
        [%dq-a-op (mlir::Value::getDefiningOp %dq_a)]
@@ -152,21 +152,21 @@
        [%init    (hip-build-init rewriter !y-type %gemm_init)])
     :rewrite %q :with
       (%result = (let ([new-op (crest::RewriterBase::build "hip.qgemm"
-							   (list %ctx %a %b %init)
-							   (list !y-type))])
-		   (mlir-operation-set-dense-i32-array! new-op "operandSegmentSizes"
-							'(1 1 1 0 0 0 1))
-		   (crest::Operation::setF32Attr new-op "A_scale"      a-scale)
-		   (crest::Operation::setI64Attr new-op "A_zero_point" a-zp)
-		   (crest::Operation::setF32Attr new-op "B_scale"      b-scale)
-		   (crest::Operation::setI64Attr new-op "B_zero_point" b-zp)
-		   (crest::Operation::setI64Attr new-op "B_bits"       b-bits)
-		   (crest::Operation::setF32Attr new-op "Y_scale"      y-scale)
-		   (crest::Operation::setI64Attr new-op "Y_zero_point" y-zp)
-		   (unless (nan? alpha) (crest::Operation::setF32Attr new-op "alpha" alpha))
-		   (crest::Operation::setI64Attr new-op "transA"       trans-a)
-		   (crest::Operation::setI64Attr new-op "transB"       trans-b)
-		   (mlir::Operation::getResult new-op 0))))
+                                                           (list %ctx %a %b %init)
+                                                           (list !y-type))])
+                   (mlir-operation-set-dense-i32-array! new-op "operandSegmentSizes"
+                                                        '(1 1 1 0 0 0 1))
+                   (crest::Operation::setF32Attr new-op "A_scale"      a-scale)
+                   (crest::Operation::setI64Attr new-op "A_zero_point" a-zp)
+                   (crest::Operation::setF32Attr new-op "B_scale"      b-scale)
+                   (crest::Operation::setI64Attr new-op "B_zero_point" b-zp)
+                   (crest::Operation::setI64Attr new-op "B_bits"       b-bits)
+                   (crest::Operation::setF32Attr new-op "Y_scale"      y-scale)
+                   (crest::Operation::setI64Attr new-op "Y_zero_point" y-zp)
+                   (unless (nan? alpha) (crest::Operation::setF32Attr new-op "alpha" alpha))
+                   (crest::Operation::setI64Attr new-op "transA"       trans-a)
+                   (crest::Operation::setI64Attr new-op "transB"       trans-b)
+                   (mlir::Operation::getResult new-op 0))))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Pattern 8: QGemm per-channel weight with bias  (benefit 9)
@@ -175,28 +175,28 @@
   (define-rewrite-pattern (hip-qgemm-per-channel op rewriter)
     :if-match
       %q    = hip.quantize_linear   (%ctx %gemm %y_scale)
-    :where (and (hip-splat-scale? %y_scale)
-		(hip-qdq-quantized-width? op '(8 16))
-		(hip-extractable-qdq-zeropoint? op))
+        :where (and (hip-splat-scale? %y_scale)
+                    (hip-qdq-quantized-width? op '(8 16))
+                    (hip-extractable-qdq-zeropoint? op))
       %gemm = hip.gemm              (%ctx %dq_a %dq_b %dq_c %gemm_init)
-    :where (and (hip-value-single-use? %gemm)
-		(hip-can-build-init? op %gemm_init))
+        :where (and (hip-value-single-use? %gemm)
+                    (hip-can-build-init? op %gemm_init))
       %dq_a = hip.dequantize_linear (%ctx %a %a_scale)
-    :where (and (hip-qdq-quantized-width?
-		 (mlir::Value::getDefiningOp %dq_a) '(8 16))
-		(hip-splat-scale? %a_scale)
-		(hip-extractable-qdq-zeropoint?
-		 (mlir::Value::getDefiningOp %dq_a)))
+        :where (and (hip-qdq-quantized-width?
+                     (mlir::Value::getDefiningOp %dq_a) '(8 16))
+                    (hip-splat-scale? %a_scale)
+                    (hip-extractable-qdq-zeropoint?
+                     (mlir::Value::getDefiningOp %dq_a)))
       %dq_b = hip.dequantize_linear (%ctx %b %b_scales %b_zps %b_init)
-    :where (hip-per-channel-weight?
-            (mlir::Value::getDefiningOp %dq_b)
-            (mlir::Value::getDefiningOp %gemm))
+        :where (hip-per-channel-weight?
+                (mlir::Value::getDefiningOp %dq_b)
+                (mlir::Value::getDefiningOp %gemm))
       %dq_c = hip.dequantize_linear (%ctx %c %c_scale)
-    :where (and (hip-qdq-quantized-width?
-		 (mlir::Value::getDefiningOp %dq_c) '(8 16 32))
-		(hip-splat-scale? %c_scale)
-		(hip-extractable-qdq-zeropoint?
-		 (mlir::Value::getDefiningOp %dq_c)))
+        :where (and (hip-qdq-quantized-width?
+                     (mlir::Value::getDefiningOp %dq_c) '(8 16 32))
+                    (hip-splat-scale? %c_scale)
+                    (hip-extractable-qdq-zeropoint?
+                     (mlir::Value::getDefiningOp %dq_c)))
     :then-let
       ([!y-type  (mlir::Value::getType %q)]
        [%dq-a-op (mlir::Value::getDefiningOp %dq_a)]
@@ -217,22 +217,22 @@
        [%init    (hip-build-init rewriter !y-type %gemm_init)])
     :rewrite %q :with
       (%result = (let ([new-op (crest::RewriterBase::build "hip.qgemm"
-							   (list %ctx %a %b %b_scales %b_zps %c %init)
-							   (list !y-type))])
-		   (mlir-operation-set-dense-i32-array! new-op "operandSegmentSizes"
-							'(1 1 1 1 1 1 1))
-		   (crest::Operation::setF32Attr new-op "A_scale"      a-scale)
-		   (crest::Operation::setI64Attr new-op "A_zero_point" a-zp)
-		   (crest::Operation::setI64Attr new-op "B_bits"       b-bits)
-		   (crest::Operation::setF32Attr new-op "C_scale"      c-scale)
-		   (crest::Operation::setI64Attr new-op "C_zero_point" c-zp)
-		   (crest::Operation::setF32Attr new-op "Y_scale"      y-scale)
-		   (crest::Operation::setI64Attr new-op "Y_zero_point" y-zp)
-		   (unless (nan? alpha) (crest::Operation::setF32Attr new-op "alpha" alpha))
-		   (unless (nan? beta)  (crest::Operation::setF32Attr new-op "beta"  beta))
-		   (crest::Operation::setI64Attr new-op "transA"       trans-a)
-		   (crest::Operation::setI64Attr new-op "transB"       trans-b)
-		   (mlir::Operation::getResult new-op 0))))
+                                                           (list %ctx %a %b %b_scales %b_zps %c %init)
+                                                           (list !y-type))])
+                   (mlir-operation-set-dense-i32-array! new-op "operandSegmentSizes"
+                                                        '(1 1 1 1 1 1 1))
+                   (crest::Operation::setF32Attr new-op "A_scale"      a-scale)
+                   (crest::Operation::setI64Attr new-op "A_zero_point" a-zp)
+                   (crest::Operation::setI64Attr new-op "B_bits"       b-bits)
+                   (crest::Operation::setF32Attr new-op "C_scale"      c-scale)
+                   (crest::Operation::setI64Attr new-op "C_zero_point" c-zp)
+                   (crest::Operation::setF32Attr new-op "Y_scale"      y-scale)
+                   (crest::Operation::setI64Attr new-op "Y_zero_point" y-zp)
+                   (unless (nan? alpha) (crest::Operation::setF32Attr new-op "alpha" alpha))
+                   (unless (nan? beta)  (crest::Operation::setF32Attr new-op "beta"  beta))
+                   (crest::Operation::setI64Attr new-op "transA"       trans-a)
+                   (crest::Operation::setI64Attr new-op "transB"       trans-b)
+                   (mlir::Operation::getResult new-op 0))))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Pattern 9: QGemm per-channel no bias  (benefit 9)
@@ -241,22 +241,22 @@
   (define-rewrite-pattern (hip-qgemm-no-bias-per-channel op rewriter)
     :if-match
       %q    = hip.quantize_linear   (%ctx %gemm %y_scale)
-    :where (and (hip-splat-scale? %y_scale)
-		(hip-qdq-quantized-width? op '(8 16))
-		(hip-extractable-qdq-zeropoint? op))
+        :where (and (hip-splat-scale? %y_scale)
+                    (hip-qdq-quantized-width? op '(8 16))
+                    (hip-extractable-qdq-zeropoint? op))
       %gemm = hip.gemm              (%ctx %dq_a %dq_b %gemm_init)
-    :where (and (hip-value-single-use? %gemm)
-		(hip-can-build-init? op %gemm_init))
+        :where (and (hip-value-single-use? %gemm)
+                    (hip-can-build-init? op %gemm_init))
       %dq_a = hip.dequantize_linear (%ctx %a %a_scale)
-    :where (and (hip-qdq-quantized-width?
-		 (mlir::Value::getDefiningOp %dq_a) '(8 16))
-		(hip-splat-scale? %a_scale)
-		(hip-extractable-qdq-zeropoint?
-		 (mlir::Value::getDefiningOp %dq_a)))
+        :where (and (hip-qdq-quantized-width?
+                     (mlir::Value::getDefiningOp %dq_a) '(8 16))
+                    (hip-splat-scale? %a_scale)
+                    (hip-extractable-qdq-zeropoint?
+                     (mlir::Value::getDefiningOp %dq_a)))
       %dq_b = hip.dequantize_linear (%ctx %b %b_scales %b_zps %b_init)
-    :where (hip-per-channel-weight?
-            (mlir::Value::getDefiningOp %dq_b)
-            (mlir::Value::getDefiningOp %gemm))
+        :where (hip-per-channel-weight?
+                (mlir::Value::getDefiningOp %dq_b)
+                (mlir::Value::getDefiningOp %gemm))
     :then-let
       ([!y-type  (mlir::Value::getType %q)]
        [%dq-a-op (mlir::Value::getDefiningOp %dq_a)]
@@ -273,18 +273,18 @@
        [%init    (hip-build-init rewriter !y-type %gemm_init)])
     :rewrite %q :with
       (%result = (let ([new-op (crest::RewriterBase::build "hip.qgemm"
-							   (list %ctx %a %b %b_scales %b_zps %init)
-							   (list !y-type))])
-		   (mlir-operation-set-dense-i32-array! new-op "operandSegmentSizes"
-							'(1 1 1 1 1 0 1))
-		   (crest::Operation::setF32Attr new-op "A_scale"      a-scale)
-		   (crest::Operation::setI64Attr new-op "A_zero_point" a-zp)
-		   (crest::Operation::setI64Attr new-op "B_bits"       b-bits)
-		   (crest::Operation::setF32Attr new-op "Y_scale"      y-scale)
-		   (crest::Operation::setI64Attr new-op "Y_zero_point" y-zp)
-		   (unless (nan? alpha) (crest::Operation::setF32Attr new-op "alpha" alpha))
-		   (crest::Operation::setI64Attr new-op "transA"       trans-a)
-		   (crest::Operation::setI64Attr new-op "transB"       trans-b)
-		   (mlir::Operation::getResult new-op 0))))
+                                                           (list %ctx %a %b %b_scales %b_zps %init)
+                                                           (list !y-type))])
+                   (mlir-operation-set-dense-i32-array! new-op "operandSegmentSizes"
+                                                        '(1 1 1 1 1 0 1))
+                   (crest::Operation::setF32Attr new-op "A_scale"      a-scale)
+                   (crest::Operation::setI64Attr new-op "A_zero_point" a-zp)
+                   (crest::Operation::setI64Attr new-op "B_bits"       b-bits)
+                   (crest::Operation::setF32Attr new-op "Y_scale"      y-scale)
+                   (crest::Operation::setI64Attr new-op "Y_zero_point" y-zp)
+                   (unless (nan? alpha) (crest::Operation::setF32Attr new-op "alpha" alpha))
+                   (crest::Operation::setI64Attr new-op "transA"       trans-a)
+                   (crest::Operation::setI64Attr new-op "transB"       trans-b)
+                   (mlir::Operation::getResult new-op 0))))
 
   ) ;; end library (passes hip-fusion qgemm)

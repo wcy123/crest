@@ -57,11 +57,11 @@
   (define (conversion-target-add-dynamically-legal-func target converter)
     (let ((ctx (current-mlir-context)))
       (target-add-dynamically-legal-op target ctx "func.func"
-				       (lambda (op)
-					 (= 1 (type-converter-is-signature-legal converter op))))
+                                       (lambda (op)
+                                         (= 1 (type-converter-is-signature-legal converter op))))
       (target-add-dynamically-legal-op target ctx "func.return"
-				       (lambda (op)
-					 (= 1 (type-converter-is-legal converter op))))))
+                                       (lambda (op)
+                                         (= 1 (type-converter-is-legal converter op))))))
 
   ;; @brief Register source and target tensor-widening materializations.
   ;;

@@ -65,15 +65,22 @@
 ;; starts with a DDR keyword the line sits at the form's opening-paren
 ;; column; otherwise it is indented 2 further.
 (defun pp--ddr-indent (state indent-point _normal-indent)
-  "Indent DDR body: keywords at form-col+2, content at form-col+4."
+  "Indent DDR body.
+- Section keywords (:if-match :then-let :rewrite): form-col+2
+- :where (subordinate to the pattern line above it): form-col+6
+- Everything else (pattern lines, bindings, builders): form-col+4"
   (let ((form-col (save-excursion
                     (goto-char (cadr state))
                     (current-column))))
     (save-excursion
       (goto-char indent-point)
-      (if (looking-at (rx (* blank) ":" (+ (not blank))))
-          (+ form-col 2)    ; :if-match, :then-let, :rewrite → +2 from (define-*-pattern
-        (+ form-col 4)))))
+      (cond
+       ((looking-at (rx (* blank) ":where" (or blank eol)))
+        (+ form-col 6))
+       ((looking-at (rx (* blank) ":" (+ (not blank))))
+        (+ form-col 2))
+       (t
+        (+ form-col 4))))))
 
 (defun pp--apply-indent-spec ()
   "Apply pp/indent-spec and DDR-specific rules to current Emacs session."
@@ -103,10 +110,13 @@ Return values: (modified-p . saved-p)."
         ;; Preserve file’s EOL/coding; don’t alter it on save:
         (coding-system-for-write buffer-file-coding-system)
         ;; Prefer predictable indentation width:
-        (lisp-body-indent pp/indent-width))
+        (lisp-body-indent pp/indent-width)
+        ;; Always use spaces, never tabs:
+        (indent-tabs-mode nil))
     (pp--apply-indent-spec)
-    ;; Indent whole buffer
+    ;; Indent whole buffer, then convert any tabs to spaces
     (indent-region (point-min) (point-max))
+    (untabify (point-min) (point-max))
     (let ((needs-save (buffer-modified-p)))
       (cond
        ((and needs-save (not check))

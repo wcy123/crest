@@ -28,24 +28,24 @@
           (passes hip-fusion helpers)
           (only (mlir IR Operation)
                 mlir::Operation::getResult)
-	  )
+          )
 
   (define-rewrite-pattern (hip-qmul-fusion op rewriter)
     :if-match
       %q   = hip.quantize_linear   (%ctx %prod %out_scale)
-    :where (and (hip-splat-scale? %out_scale)
-		(hip-extractable-qdq-zeropoint? op))
+        :where (and (hip-splat-scale? %out_scale)
+                    (hip-extractable-qdq-zeropoint? op))
       %prod = hip.mul              (%ctx %dq_lhs %dq_rhs %prod_init)
-    :where (and (hip-value-single-use? %prod)
-		(hip-can-build-init? op %prod_init))
+        :where (and (hip-value-single-use? %prod)
+                    (hip-can-build-init? op %prod_init))
       %dq_lhs = hip.dequantize_linear (%ctx %lhs %lhs_scale)
-    :where (and (hip-splat-scale? %lhs_scale)
-		(hip-extractable-qdq-zeropoint?
-		 (mlir::Value::getDefiningOp %dq_lhs)))
+        :where (and (hip-splat-scale? %lhs_scale)
+                    (hip-extractable-qdq-zeropoint?
+                     (mlir::Value::getDefiningOp %dq_lhs)))
       %dq_rhs = hip.dequantize_linear (%ctx %rhs %rhs_scale)
-    :where (and (hip-splat-scale? %rhs_scale)
-		(hip-extractable-qdq-zeropoint?
-		 (mlir::Value::getDefiningOp %dq_rhs)))
+        :where (and (hip-splat-scale? %rhs_scale)
+                    (hip-extractable-qdq-zeropoint?
+                     (mlir::Value::getDefiningOp %dq_rhs)))
     :then-let
       ([!out-type  (mlir::Value::getType %q)]
        [%dq-lhs-op (mlir::Value::getDefiningOp %dq_lhs)]
@@ -59,11 +59,11 @@
        [%init      (hip-build-init rewriter !out-type %prod_init)])
     :rewrite %q :with
       (%result = (let ([new-op (crest::RewriterBase::build "hip.qmul"
-							   (list %ctx %lhs %rhs %init)
-							   (list !out-type))])
-		   (set-qdq-scale-zp-attrs! new-op lhs-scale lhs-zp
+                                                           (list %ctx %lhs %rhs %init)
+                                                           (list !out-type))])
+                   (set-qdq-scale-zp-attrs! new-op lhs-scale lhs-zp
                                             rhs-scale rhs-zp
                                             out-scale out-zp)
-		   (mlir::Operation::getResult new-op 0))))
+                   (mlir::Operation::getResult new-op 0))))
 
   ) ;; end library (passes hip-fusion qmul)

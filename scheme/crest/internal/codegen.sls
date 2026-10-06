@@ -69,15 +69,15 @@
 
   (define (generate-debug-ast ast-rec)
     (with-syntax ([fname (ast-pattern-expand-function-name ast-rec)])
-		 (let ([alist-data (record->alist ast-rec)])
-		   (with-syntax ([ast-list (datum->syntax #'fname `',alist-data)])
-				#'(define fname (lambda () ast-list))))))
+                 (let ([alist-data (record->alist ast-rec)])
+                   (with-syntax ([ast-list (datum->syntax #'fname `',alist-data)])
+                                #'(define fname (lambda () ast-list))))))
 
   (define (generate-debug-codegen ast-rec generated-code)
     (with-syntax ([fname (ast-pattern-expand-function-name ast-rec)])
-		 (let ([code-datum (syntax-object->datum generated-code)])
-		   (with-syntax ([code-list (datum->syntax #'fname `',code-datum)])
-				#'(define fname (lambda () code-list))))))
+                 (let ([code-datum (syntax-object->datum generated-code)])
+                   (with-syntax ([code-list (datum->syntax #'fname `',code-datum)])
+                                #'(define fname (lambda () code-list))))))
 
   (define (generate-pattern-match-and-rewrite ast-rec)
     ;; All four are syntax identifiers from the user's call site (guaranteed by validation).
@@ -119,28 +119,28 @@
                               (list op operands-ref rewriter type-converter)
                               (list op rewriter))])
               (with-syntax ([fname    (ast-pattern-expand-function-name ast-rec)]
-			    [(param ...) params]
-			    [(var ...) all-vars]
-			    [num-operations num-ops]
-			    [(root-result-setter ...) root-result-setters]
-			    [(then-let-binding ...) (generate-then-let-bindings then-let-bindings)]
-			    [checks  check-code]
-			    [rewrite rewrite-code])
-			   (with-syntax ([root-op op])
-					#'(define fname
-					    (lambda (param ...)
-					      ;; Install current-mlir-context from the root op so that
-					      ;; make-mlir-attribute and type constructors work in :then-let
-					      ;; without requiring an explicit ctx argument.
-					      (parameterize ([current-mlir-context
-							      (mlir-Operation::getContext root-op)])
-						(let ([var (make-unbound-value)] ...
-						      [all-operations (make-vector num-operations (make-unbound-value))])
-						  root-result-setter ...
-						  (if checks
-						      (let* (then-let-binding ...)
-							rewrite)
-						      #f)))))))))))))
+                            [(param ...) params]
+                            [(var ...) all-vars]
+                            [num-operations num-ops]
+                            [(root-result-setter ...) root-result-setters]
+                            [(then-let-binding ...) (generate-then-let-bindings then-let-bindings)]
+                            [checks  check-code]
+                            [rewrite rewrite-code])
+                           (with-syntax ([root-op op])
+                                        #'(define fname
+                                            (lambda (param ...)
+                                              ;; Install current-mlir-context from the root op so that
+                                              ;; make-mlir-attribute and type constructors work in :then-let
+                                              ;; without requiring an explicit ctx argument.
+                                              (parameterize ([current-mlir-context
+                                                              (mlir-Operation::getContext root-op)])
+                                                (let ([var (make-unbound-value)] ...
+                                                      [all-operations (make-vector num-operations (make-unbound-value))])
+                                                  root-result-setter ...
+                                                  (if checks
+                                                      (let* (then-let-binding ...)
+                                                        rewrite)
+                                                      #f)))))))))))))
 
   ;;=======================================================================
   ;; Rewrite code — thin wrapper delegating to with-mlir-ops
@@ -165,22 +165,22 @@
     (if (null? raw-body)
         #'#t
         (with-syntax ([(form ...) raw-body])
-		     (case pattern-type
-		       [(conversion rewrite)
-			#`(guard (exn [#t
-				       ;; A Scheme exception in the rewrite body is a pattern
-				       ;; failure. Emit the full condition text as an MLIR
-				       ;; diagnostic so it appears in ORT's error output.
-				       (mlir-emit-error! #,op
-							 (call-with-string-output-port
-							  (lambda (p) (display-condition exn p))))
-				       #f])
-			    (with-rewrite-builder (#,rw #,op)
-						  (let ([result (with-mlir-ops form ...)])
-						    ;; result is a Value* uptr on success, or #f to signal failure.
-						    (if result
-							(begin (mlir::RewriterBase::replaceOp #,rw #,op result) #t)
-							#f))))]))))
+                     (case pattern-type
+                       [(conversion rewrite)
+                        #`(guard (exn [#t
+                                       ;; A Scheme exception in the rewrite body is a pattern
+                                       ;; failure. Emit the full condition text as an MLIR
+                                       ;; diagnostic so it appears in ORT's error output.
+                                       (mlir-emit-error! #,op
+                                                         (call-with-string-output-port
+                                                          (lambda (p) (display-condition exn p))))
+                                       #f])
+                            (with-rewrite-builder (#,rw #,op)
+                                                  (let ([result (with-mlir-ops form ...)])
+                                                    ;; result is a Value* uptr on success, or #f to signal failure.
+                                                    (if result
+                                                        (begin (mlir::RewriterBase::replaceOp #,rw #,op result) #t)
+                                                        #f))))]))))
 
   ;;=======================================================================
   ;; :then-let bindings
@@ -223,21 +223,21 @@
     (let ([cur-op #`(vector-ref all-operations #,op-idx)])
       (let walk ([s where-stx])
         (syntax-case s (:current-op :attr)
-		     ;; Bare :current-op identifier → the matched sub-op
-		     [:current-op cur-op]
-		     ;; (:attr "name") → raw attr uptr; error if absent
-		     [(:attr name)
-		      (string? (syntax->datum #'name))
-		      #`(let ([%cur #,cur-op])
-			  (if (mlir-Operation::hasAttr? %cur name)
-			      (mlir-operation-get-attr %cur name)
-			      (error ':attr
-				     (string-append "attribute '" name "' absent on op: ")
-				     (mlir-operation-name %cur))))]
-		     ;; Recurse into compound forms
-		     [(e ...) #`(#,@(map walk (syntax->list s)))]
-		     ;; Atoms pass through unchanged
-		     [_ s]))))
+                     ;; Bare :current-op identifier → the matched sub-op
+                     [:current-op cur-op]
+                     ;; (:attr "name") → raw attr uptr; error if absent
+                     [(:attr name)
+                      (string? (syntax->datum #'name))
+                      #`(let ([%cur #,cur-op])
+                          (if (mlir-Operation::hasAttr? %cur name)
+                              (mlir-operation-get-attr %cur name)
+                              (error ':attr
+                                     (string-append "attribute '" name "' absent on op: ")
+                                     (mlir-operation-name %cur))))]
+                     ;; Recurse into compound forms
+                     [(e ...) #`(#,@(map walk (syntax->list s)))]
+                     ;; Atoms pass through unchanged
+                     [_ s]))))
 
   (define (generate-check-code actions match-vec operands-ref)
     (if (null? actions)

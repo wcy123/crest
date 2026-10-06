@@ -181,7 +181,7 @@
                       :for operand-idx :from 0
                       :rime-with operand-var := (ast-operand-var operand)
                       :do (hashtable-set! ht operand-var
-					  (make-binding-entry operand-var #f #f #f op-idx operand-idx #f))))
+                                          (make-binding-entry operand-var #f #f #f op-idx operand-idx #f))))
 
       ;; Pass 2: Results overwrite (duplicate results validated earlier)
       (loop :for op-idx :from 0 :below (vector-length match-vec)
@@ -189,7 +189,7 @@
             :do (loop :for result-var :in (ast-match-expand-result-var match-op)
                       :for result-idx :from 0
                       :do (hashtable-set! ht result-var
-					  (make-binding-entry result-var #t op-idx result-idx #f #f #f))))
+                                          (make-binding-entry result-var #t op-idx result-idx #f #f #f))))
 
       ;; Return binding manager
       (make-binding-manager ht)))

@@ -33,7 +33,7 @@
 
           (only (mlir support logging)
                 crest::logging::info)
-	  )
+          )
 
   ;; Unwrap one level of builtin.unrealized_conversion_cast.
   ;; The type converter may wrap tensor<Nxi64> → device space; this removes
@@ -55,7 +55,7 @@
        [%ctx        (mlir-get-hipsr-context-arg op)]
        [!out-type   (mlir::Value::getType %output)]
        [!out-device (mlir::RankedTensorType::cloneWithEncoding !out-type
-							       (make-hipsr-device-space-attr))]
+                                                               (make-hipsr-device-space-attr))]
        [%shape-host (unwrap-cast %shape-operand)])
       ;; TODO: validate that %shape-host is host-space after unwrapping.
       ;; If unwrap-cast returns the original value unchanged and it is already

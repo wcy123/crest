@@ -224,7 +224,7 @@
              (lambda ()
                (parameterize ([current-block-builder %builder]
                               [current-rewriter #f])
-		 body ...))
+                 body ...))
              (lambda () (%op-builder-destroy %builder))))]))
 
   ;; @brief Override current-loc for the dynamic extent of body without changing the active builder.

@@ -29,7 +29,7 @@
                 mlir::Operation::getContext)
           (only (mlir IR Value)
                 mlir::Value::getType)
-	  )
+          )
 
   (define-conversion-pattern (onnx-cast->hipsr op operands-ref rewriter type-converter)
     :if-match
@@ -39,12 +39,12 @@
        [%ctx           (mlir-get-hipsr-context-arg op)]
        [!output-type   (mlir::Value::getType %output)]
        [!output-device (mlir::RankedTensorType::cloneWithEncoding !output-type
-								  (make-hipsr-device-space-attr))]
+                                                                  (make-hipsr-device-space-attr))]
        [!shape-type    (mlir::shape::ShapeType::get)])
     :rewrite %output :with
       (%placeholder = hipsr.placeholder (%ctx %input)
                     (^bb0 ((%shape-in : !shape-type))
-			  (hipsr.shape_yield (%shape-in)))
+                          (hipsr.shape_yield (%shape-in)))
                     -> !output-device)
       (%cast = hipsr.cast (%ctx %input %placeholder)
              -> !output-device))
