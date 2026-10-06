@@ -26,4 +26,4 @@
   (define greedy-pattern-rewrite-driver-apply
     %greedy-pattern-rewrite-driver-apply)
 
-) ;; end library (mlir Transforms GreedyPatternRewriteDriver)
+  ) ;; end library (mlir Transforms GreedyPatternRewriteDriver)

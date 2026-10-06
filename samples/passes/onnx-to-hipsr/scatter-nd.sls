@@ -30,27 +30,27 @@
           (crest)
           (only (mlir IR Value)
                 mlir::Value::getType)
-  )
+          )
 
   (define-conversion-pattern (onnx-scatter-nd->hipsr op operands-ref rewriter type-converter)
     :if-match
-        %output = onnx.ScatterND (%data %indices %updates)
+      %output = onnx.ScatterND (%data %indices %updates)
     :then-let
-        ([%ctx           (mlir-get-hipsr-context-arg op)]
-         [!output-type   (mlir::Value::getType %output)]
-         [!output-device (mlir::RankedTensorType::cloneWithEncoding !output-type (make-hipsr-device-space-attr))]
-         [!shape-type    (mlir::shape::ShapeType::get)])
+      ([%ctx           (mlir-get-hipsr-context-arg op)]
+       [!output-type   (mlir::Value::getType %output)]
+       [!output-device (mlir::RankedTensorType::cloneWithEncoding !output-type (make-hipsr-device-space-attr))]
+       [!shape-type    (mlir::shape::ShapeType::get)])
     :rewrite %output :with
-        ;; placeholder ins = (%data) only: scatter output has data's shape
-        (%placeholder = hipsr.placeholder (%ctx %data !output-device)
-                        (^bb0 ((%data-shape : !shape-type))
-                              (hipsr.shape_yield (%data-shape)))
-                        -> !output-device)
-        (%result = hipsr.scatter_nd (%ctx %data %indices %updates %placeholder)
-                   -> !output-device))
+      ;; placeholder ins = (%data) only: scatter output has data's shape
+      (%placeholder = hipsr.placeholder (%ctx %data !output-device)
+                    (^bb0 ((%data-shape : !shape-type))
+                          (hipsr.shape_yield (%data-shape)))
+                    -> !output-device)
+      (%result = hipsr.scatter_nd (%ctx %data %indices %updates %placeholder)
+               -> !output-device))
 
   (define (populate-scatter-nd-patterns type-converter patterns ctx)
     (add-conversion-pattern patterns "onnx.ScatterND"
-                                      onnx-scatter-nd->hipsr type-converter 1))
+                            onnx-scatter-nd->hipsr type-converter 1))
 
-) ;; end library (onnx-to-hipsr scatter-nd)
+  ) ;; end library (onnx-to-hipsr scatter-nd)

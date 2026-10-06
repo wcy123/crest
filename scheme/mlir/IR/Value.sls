@@ -64,4 +64,4 @@
   ;; @note         Defined in lib/Bindings/IR/OpResult.cpp
   (define mlir::OpResult::getResultNumber %mlir::OpResult::getResultNumber)
 
-) ;; end library (mlir IR Value)
+  ) ;; end library (mlir IR Value)

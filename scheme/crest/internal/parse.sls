@@ -140,8 +140,8 @@
        (parse-match-ops-recursive #'match-rest '() ast)]
 
       [_ (syntax-violation 'parse-rest
-           "Expected function name and :if-match clause"
-           rest)]))
+                           "Expected function name and :if-match clause"
+                           rest)]))
 
   ;;=======================================================================
   ;; SECTION 2: Recursive Collectors (High-Level Parsing)
@@ -192,7 +192,7 @@
          (parse-match-ops-recursive #'rest (cons match-op acc-ops) ast))]
 
       [_ (syntax-violation 'parse-match-ops-recursive
-           "Invalid3 match operation (expected: result = \"op\" (...) [:where expr])" rest-stx)]))
+                           "Invalid3 match operation (expected: result = \"op\" (...) [:where expr])" rest-stx)]))
 
 
   ;;-----------------------------------------------------------------------
@@ -239,8 +239,8 @@
 
         [_
          (syntax-violation 'parse-operands
-           "Invalid operand syntax (expected: identifier, (:optional ...), or (:variadic var))"
-           operand-stx)]))
+                           "Invalid operand syntax (expected: identifier, (:optional ...), or (:variadic var))"
+                           operand-stx)]))
 
     ;; Helper: check syntax structure (identifier check only, no % validation)
     (define (check-identifier var)
@@ -250,9 +250,9 @@
     (apply append (map parse-one (syntax->list operands-stx))))
 
 
-;;-----------------------------------------------------------------------
-;; parse-after-match - Parse optional :then-let, then :rewrite
-;;-----------------------------------------------------------------------
+  ;;-----------------------------------------------------------------------
+  ;; parse-after-match - Parse optional :then-let, then :rewrite
+  ;;-----------------------------------------------------------------------
   (define (parse-after-match rest-stx ast)
     (syntax-case rest-stx (:then-let :rewrite :with)
       ;; Pattern 1: :then-let followed by :rewrite
@@ -261,13 +261,13 @@
        (begin
          (ast-pattern-expand-root-var-set! ast #'root)
          (ast-pattern-expand-then-let-set! ast
-           (map (lambda (binding)
-                  (syntax-case binding ()
-                    [(v e)
-                     (identifier? #'v)
-                     (make-ast-then-let-binding-expand #'v #'e)]
-                    [_ (syntax-violation 'parse-after-match "Invalid :then-let binding (expected: (var expr))" binding)]))
-                (syntax->list #'((var expr) ...))))
+                                           (map (lambda (binding)
+                                                  (syntax-case binding ()
+                                                    [(v e)
+                                                     (identifier? #'v)
+                                                     (make-ast-then-let-binding-expand #'v #'e)]
+                                                    [_ (syntax-violation 'parse-after-match "Invalid :then-let binding (expected: (var expr))" binding)]))
+                                                (syntax->list #'((var expr) ...))))
          (parse-rewrite-ops-recursive #'rewrite-rest '() ast))]
 
       ;; Pattern 2: :rewrite without :then-let
@@ -278,7 +278,7 @@
          (parse-rewrite-ops-recursive #'rewrite-rest '() ast))]
 
       [_ (syntax-violation 'define-conversion-pattern
-           "Expected [:then-let (...)] :rewrite root :with rewrite-ops..." rest-stx)]))
+                           "Expected [:then-let (...)] :rewrite root :with rewrite-ops..." rest-stx)]))
 
   ;;-----------------------------------------------------------------------
   ;; parse-rewrite-ops-recursive - Collect rewrite operations as raw syntax
@@ -300,6 +300,6 @@
        (parse-rewrite-ops-recursive #'rest (cons #'op-syntax acc-ops) ast)]
 
       [_ (syntax-violation 'parse-rewrite-ops-recursive
-           "Invalid rewrite operation syntax" rest-stx)]))
+                           "Invalid rewrite operation syntax" rest-stx)]))
 
-)
+  )

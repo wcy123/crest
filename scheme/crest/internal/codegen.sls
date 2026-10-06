@@ -18,27 +18,27 @@
           (for (crest internal analyze) expand)
           (for (only (mlir IR PatternMatch)
                      with-rewrite-builder mlir::RewriterBase::replaceOp) expand)
-                    (for (rename (only (mlir IR Operation)
-                            mlir::Operation::getContext
-                            mlir::Operation::getNumResults
-                            mlir::Operation::getResult
-                            mlir::OpOperand::get
-                            mlir::Operation::hasAttr?
-                            mlir::Operation::getAttr
-                            mlir::Operation::getName
-                            mlir::Operation::emitError
-                            operation-get-operands)
-                      (mlir::Operation::getContext    mlir-Operation::getContext)
-                      (mlir::Operation::getNumResults mlir-operation-num-results)
-                      (mlir::Operation::getResult     mlir-Operation::getResult)
-                      (mlir::OpOperand::get     mlir-operation-get-operand-value)
-                      (mlir::Operation::hasAttr?      mlir-Operation::hasAttr?)
-                      (mlir::Operation::getAttr       mlir-operation-get-attr)
-                      (mlir::Operation::getName       mlir-operation-name)
-                      (mlir::Operation::emitError    mlir-emit-error!)
-                      (operation-get-operands   mlir-operation-get-operands)) expand)
+          (for (rename (only (mlir IR Operation)
+                             mlir::Operation::getContext
+                             mlir::Operation::getNumResults
+                             mlir::Operation::getResult
+                             mlir::OpOperand::get
+                             mlir::Operation::hasAttr?
+                             mlir::Operation::getAttr
+                             mlir::Operation::getName
+                             mlir::Operation::emitError
+                             operation-get-operands)
+                       (mlir::Operation::getContext    mlir-Operation::getContext)
+                       (mlir::Operation::getNumResults mlir-operation-num-results)
+                       (mlir::Operation::getResult     mlir-Operation::getResult)
+                       (mlir::OpOperand::get     mlir-operation-get-operand-value)
+                       (mlir::Operation::hasAttr?      mlir-Operation::hasAttr?)
+                       (mlir::Operation::getAttr       mlir-operation-get-attr)
+                       (mlir::Operation::getName       mlir-operation-name)
+                       (mlir::Operation::emitError    mlir-emit-error!)
+                       (operation-get-operands   mlir-operation-get-operands)) expand)
           (for (rename (only (mlir IR Value) mlir::Value::getDefiningOp)
-                     (mlir::Value::getDefiningOp mlir-value-get-defining-op)) expand)
+                       (mlir::Value::getDefiningOp mlir-value-get-defining-op)) expand)
           (for (only (mlir support array-ref) array-ref-size array-ref-at) expand)
           (for (only (mlir IR MLIRContext) current-mlir-context) expand)
           (for (only (chezscheme) parameterize) expand)
@@ -114,33 +114,33 @@
           (let ([check-code  (generate-check-code actions match-vec operands-ref)]
                 [rewrite-code (generate-rewrite-code raw-rewrite pattern-type rewriter op)])
 
-        ;; Build param list: 4 params for conversion, 2 for rewrite (no operands-ref/type-converter)
-        (let ([params (if operands-ref
-                          (list op operands-ref rewriter type-converter)
-                          (list op rewriter))])
-        (with-syntax ([fname    (ast-pattern-expand-function-name ast-rec)]
-                      [(param ...) params]
-                      [(var ...) all-vars]
-                      [num-operations num-ops]
-                      [(root-result-setter ...) root-result-setters]
-                      [(then-let-binding ...) (generate-then-let-bindings then-let-bindings)]
-                      [checks  check-code]
-                      [rewrite rewrite-code])
-          (with-syntax ([root-op op])
-            #'(define fname
-                (lambda (param ...)
-                  ;; Install current-mlir-context from the root op so that
-                  ;; make-mlir-attribute and type constructors work in :then-let
-                  ;; without requiring an explicit ctx argument.
-                  (parameterize ([current-mlir-context
-                                  (mlir-Operation::getContext root-op)])
-                    (let ([var (make-unbound-value)] ...
-                          [all-operations (make-vector num-operations (make-unbound-value))])
-                      root-result-setter ...
-                      (if checks
-                          (let* (then-let-binding ...)
-                            rewrite)
-                          #f)))))))))))))
+            ;; Build param list: 4 params for conversion, 2 for rewrite (no operands-ref/type-converter)
+            (let ([params (if operands-ref
+                              (list op operands-ref rewriter type-converter)
+                              (list op rewriter))])
+              (with-syntax ([fname    (ast-pattern-expand-function-name ast-rec)]
+                            [(param ...) params]
+                            [(var ...) all-vars]
+                            [num-operations num-ops]
+                            [(root-result-setter ...) root-result-setters]
+                            [(then-let-binding ...) (generate-then-let-bindings then-let-bindings)]
+                            [checks  check-code]
+                            [rewrite rewrite-code])
+                (with-syntax ([root-op op])
+                  #'(define fname
+                      (lambda (param ...)
+                        ;; Install current-mlir-context from the root op so that
+                        ;; make-mlir-attribute and type constructors work in :then-let
+                        ;; without requiring an explicit ctx argument.
+                        (parameterize ([current-mlir-context
+                                        (mlir-Operation::getContext root-op)])
+                          (let ([var (make-unbound-value)] ...
+                                [all-operations (make-vector num-operations (make-unbound-value))])
+                            root-result-setter ...
+                            (if checks
+                                (let* (then-let-binding ...)
+                                  rewrite)
+                                #f)))))))))))))
 
   ;;=======================================================================
   ;; Rewrite code — thin wrapper delegating to with-mlir-ops
@@ -172,17 +172,17 @@
                             ;; failure. Emit the full condition text as an MLIR
                             ;; diagnostic so it appears in ORT's error output.
                             (mlir-emit-error! #,op
-                              (call-with-string-output-port
-                                (lambda (p) (display-condition exn p))))
+                                              (call-with-string-output-port
+                                               (lambda (p) (display-condition exn p))))
                             #f])
                  (with-rewrite-builder (#,rw #,op)
-                   (let ([result (with-mlir-ops form ...)])
-                     ;; result is a Value* uptr on success, or #f to signal failure.
-                     (if result
-                         (begin (mlir::RewriterBase::replaceOp #,rw #,op result) #t)
-                         #f))))]))))
+                                       (let ([result (with-mlir-ops form ...)])
+                                         ;; result is a Value* uptr on success, or #f to signal failure.
+                                         (if result
+                                             (begin (mlir::RewriterBase::replaceOp #,rw #,op result) #t)
+                                             #f))))]))))
 
-    ;;=======================================================================
+  ;;=======================================================================
   ;; :then-let bindings
   ;;=======================================================================
 
@@ -302,8 +302,8 @@
                 [operand-idx (cdr (assq 'operand-idx fields))]
                 [var         (cdr (assq 'var fields))])
            #`(eqv? (mlir-operation-get-operand-value
-                      (vector-ref all-operations #,op-idx)
-                      #,operand-idx)
+                    (vector-ref all-operations #,op-idx)
+                    #,operand-idx)
                    #,var))]
 
         [(:bind-result)
@@ -315,8 +315,8 @@
                 [var        (cdr (assq 'var        fields))])
            #`(begin
                (set! #,var (mlir-Operation::getResult
-                             (vector-ref all-operations #,op-idx)
-                             #,result-idx))
+                            (vector-ref all-operations #,op-idx)
+                            #,result-idx))
                #t))]
 
         [(:check-where)
@@ -335,8 +335,8 @@
                 [spec    (cdr (assq 'spec   fields))]
                 [vars    (cdr (assq 'vars   fields))])
            #`(let ([%operands (mlir-operation-get-operands
-                                (vector-ref all-operations #,op-idx)
-                                #,@(map (lambda (s) #`'#,s) spec))])
+                               (vector-ref all-operations #,op-idx)
+                               #,@(map (lambda (s) #`'#,s) spec))])
                #,@(loop :for var :in vars
                         :for i   :from 0
                         :collect #`(set! #,var (list-ref %operands #,i)))
@@ -389,31 +389,31 @@
   (define (record->alist obj)
     (let ([datum (syntax-object->datum obj)])
       (cond
-        [(not (eq? datum obj)) datum]
-        [(hashtable? obj)
-         (let* ([keys (vector->list (hashtable-keys obj))]
-                [sorted-keys (list-sort (lambda (a b)
-                                          (string<? (if (identifier? a)
-                                                        (symbol->string (syntax->datum a))
-                                                        (symbol->string a))
-                                                    (if (identifier? b)
-                                                        (symbol->string (syntax->datum b))
-                                                        (symbol->string b))))
-                                        keys)])
-           (loop :for key :in sorted-keys
-                 :collect (cons (record->alist key)
+       [(not (eq? datum obj)) datum]
+       [(hashtable? obj)
+        (let* ([keys (vector->list (hashtable-keys obj))]
+               [sorted-keys (list-sort (lambda (a b)
+                                         (string<? (if (identifier? a)
+                                                       (symbol->string (syntax->datum a))
+                                                       (symbol->string a))
+                                                   (if (identifier? b)
+                                                       (symbol->string (syntax->datum b))
+                                                       (symbol->string b))))
+                                       keys)])
+          (loop :for key :in sorted-keys
+                :collect (cons (record->alist key)
                                (record->alist (hashtable-ref obj key #f)))))]
-        [(record? obj)
-         (let* ([rtd (record-rtd obj)]
-                [field-names (vector->list (record-type-field-names rtd))])
-           (loop :for name :in field-names
-                 :for i :from 0
-                 :collect (let* ([accessor (record-accessor rtd i)]
-                                 [value (accessor obj)])
-                            (cons name (record->alist value)))))]
-        [(list? obj) (map record->alist obj)]
-        [(vector? obj) (vector->list (vector-map record->alist obj))]
-        [else obj])))
+       [(record? obj)
+        (let* ([rtd (record-rtd obj)]
+               [field-names (vector->list (record-type-field-names rtd))])
+          (loop :for name :in field-names
+                :for i :from 0
+                :collect (let* ([accessor (record-accessor rtd i)]
+                                [value (accessor obj)])
+                           (cons name (record->alist value)))))]
+       [(list? obj) (map record->alist obj)]
+       [(vector? obj) (vector->list (vector-map record->alist obj))]
+       [else obj])))
 
   ;; Shared pipeline helper — runs the 4 phases, short-circuits on debug flags.
   ;; Defined here so crest.sls can call it from define-syntax transformers
@@ -433,4 +433,4 @@
                             (generate-debug-codegen analyzed real-code)
                             real-code)))))))))
 
-)
+  )

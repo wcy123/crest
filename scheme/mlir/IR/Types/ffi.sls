@@ -26,4 +26,4 @@
   (define %mlir::Type::getContext
     (foreign-procedure "mlir::Type::getContext" (uptr) uptr))
 
-) ;; end library (mlir IR Types ffi)
+  ) ;; end library (mlir IR Types ffi)

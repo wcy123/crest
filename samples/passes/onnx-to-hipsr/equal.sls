@@ -32,29 +32,29 @@
 
           (only (mlir IR Value)
                 mlir::Value::getType)
-  )
+          )
 
   (define-conversion-pattern (onnx-equal->hipsr op operands-ref rewriter type-converter)
     :if-match
-        %output = onnx.Equal (%lhs %rhs)
+      %output = onnx.Equal (%lhs %rhs)
     :then-let
-        ([ctx            (mlir::Operation::getContext op)]
-         [%ctx           (mlir-get-hipsr-context-arg op)]
-         [!output-type   (mlir::Value::getType %output)]
-         [!output-device (mlir::RankedTensorType::cloneWithEncoding !output-type
-                            (make-hipsr-device-space-attr))]
-         [!shape-type    (mlir::shape::ShapeType::get)])
+      ([ctx            (mlir::Operation::getContext op)]
+       [%ctx           (mlir-get-hipsr-context-arg op)]
+       [!output-type   (mlir::Value::getType %output)]
+       [!output-device (mlir::RankedTensorType::cloneWithEncoding !output-type
+                                                                  (make-hipsr-device-space-attr))]
+       [!shape-type    (mlir::shape::ShapeType::get)])
     :rewrite %output :with
-        (%placeholder = hipsr.placeholder (%ctx %lhs %rhs)
-                        (^bb0 ((%lhs-shape : !shape-type) (%rhs-shape : !shape-type))
-                              (%bcast = shape.broadcast (%lhs-shape %rhs-shape) -> !shape-type)
-                              (hipsr.shape_yield (%bcast)))
-                        -> !output-device)
-        (%result = hipsr.equal (%ctx %lhs %rhs %placeholder)
-                   -> !output-device))
+      (%placeholder = hipsr.placeholder (%ctx %lhs %rhs)
+                    (^bb0 ((%lhs-shape : !shape-type) (%rhs-shape : !shape-type))
+                          (%bcast = shape.broadcast (%lhs-shape %rhs-shape) -> !shape-type)
+                          (hipsr.shape_yield (%bcast)))
+                    -> !output-device)
+      (%result = hipsr.equal (%ctx %lhs %rhs %placeholder)
+               -> !output-device))
 
   (define (populate-equal-patterns type-converter patterns ctx)
     (add-conversion-pattern patterns "onnx.Equal"
-                                      onnx-equal->hipsr type-converter 1))
+                            onnx-equal->hipsr type-converter 1))
 
-) ;; end library (onnx-to-hipsr equal)
+  ) ;; end library (onnx-to-hipsr equal)

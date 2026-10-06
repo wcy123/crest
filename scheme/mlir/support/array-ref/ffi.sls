@@ -36,4 +36,4 @@
   (define %destroy
     (foreign-procedure "mlir_support_array_ref_destroy" (uptr) void))
 
-) ;; end library (mlir support array-ref ffi)
+  ) ;; end library (mlir support array-ref ffi)

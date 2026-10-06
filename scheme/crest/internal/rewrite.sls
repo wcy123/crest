@@ -52,11 +52,11 @@
           (for (only (mlir core builder) crest::RewriterBase::build with-block-builder
                      mlir-ir-operation-get-region mlir::Region::push_back<Block> mlir::Block::getArgument) expand)
           (for (rename (only (mlir IR Operation) mlir::Operation::getContext
-                                       mlir::Operation::getResult
-                                       mlir::Operation::setAttr!)
-                (mlir::Operation::getContext    mlir-Operation::getContext)
-                (mlir::Operation::getResult     mlir-Operation::getResult)
-                (mlir::Operation::setAttr!      mlir-operation-set-attribute!)) expand))
+                             mlir::Operation::getResult
+                             mlir::Operation::setAttr!)
+                       (mlir::Operation::getContext    mlir-Operation::getContext)
+                       (mlir::Operation::getResult     mlir-Operation::getResult)
+                       (mlir::Operation::setAttr!      mlir-operation-set-attribute!)) expand))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Attr-constructor dispatch — used by the (name = val :type) modifier
@@ -186,9 +186,9 @@
              (block-label? #'label)
              (let* ([region-index (length region-fill-fns)]
                     [fill-fn      (make-block-fill-fn
-                                    (syntax->list #'(arg ...))
-                                    (syntax->list #'(type ...))
-                                    (syntax->list #'body))])
+                                   (syntax->list #'(arg ...))
+                                   (syntax->list #'(type ...))
+                                   (syntax->list #'body))])
                (loop #'remaining attr-setter-fns
                      (append region-fill-fns (list (make-region-fill-fn region-index (list fill-fn))))))]
             ;; Full form: pattern matches all block structures directly via nested ellipsis
@@ -198,9 +198,9 @@
                            (apply append (map syntax->list (syntax->list #'((arg ...) ...))))))
              (let* ([region-index  (length region-fill-fns)]
                     [block-fill-fns (map make-block-fill-fn
-                                        (map syntax->list (syntax->list #'((arg ...) ...)))
-                                        (map syntax->list (syntax->list #'((type ...) ...)))
-                                        (map syntax->list (syntax->list #'(body ...))))])
+                                         (map syntax->list (syntax->list #'((arg ...) ...)))
+                                         (map syntax->list (syntax->list #'((type ...) ...)))
+                                         (map syntax->list (syntax->list #'(body ...))))])
                (loop #'remaining attr-setter-fns
                      (append region-fill-fns (list (make-region-fill-fn region-index block-fill-fns)))))]
             [_ (syntax-violation 'with-mlir-ops "invalid modifier entry" rest)])))
@@ -225,7 +225,7 @@
             (with-syntax ([new-op new-op-stx] [n name-str] [v val-stx]
                           [type-q type-quoted-stx])
               #'(mlir-operation-set-attribute! new-op n
-                   (%make-attr-by-type (mlir-Operation::getContext new-op) type-q v)))))
+                                               (%make-attr-by-type (mlir-Operation::getContext new-op) type-q v)))))
         (define (make-direct-setter name-str val-stx)
           (lambda (new-op-stx)
             (with-syntax ([new-op new-op-stx] [n name-str] [v val-stx])
@@ -234,8 +234,8 @@
           [(name = val type)  (make-typed-setter  (name->str #'name) #'val #''type)]
           [(name = val)       (make-direct-setter (name->str #'name) #'val)]
           [_ (syntax-violation 'with-mlir-ops
-               "attr modifier: (name = val :type) or (name = val) for pre-built attr"
-               attr-stx)]))
+                               "attr modifier: (name = val :type) or (name = val) for pre-built attr"
+                               attr-stx)]))
 
       ;;-------------------------------------------------------------------
       ;; Code emitters
@@ -266,7 +266,7 @@
         (let* ([nregions  (length region-fill-fns)]
                [new-op-id (car (generate-temporaries '(new-op)))]
                [tmp       (car (generate-temporaries
-                                 (list (string->symbol (string-append "%op-tmp-" (number->string index))))))])
+                                (list (string->symbol (string-append "%op-tmp-" (number->string index))))))])
           (with-syntax ([operands-expr operands] [name op-name]
                         [(result-type ...) result-types] [tmp-var tmp]
                         [new-op new-op-id]
@@ -275,7 +275,7 @@
                         [nregions nregions])
             (cons (cons #'tmp-var
                         #'(let ([new-op (crest::RewriterBase::build name
-                                         operands-expr (list result-type ...) nregions)])
+                                                                    operands-expr (list result-type ...) nregions)])
                             setter ...
                             region-fill-stmt ...
                             new-op))
@@ -314,8 +314,8 @@
         (let* ([body-stx       (with-syntax ([(body ...) body-ops])
                                  #'(with-mlir-ops body ...))]
                [arg-bind-pairs (loop :for var :in arg-vars
-                                    :for i :from 0
-                                    :collect (cons var #`(mlir::Block::getArgument block #,i)))])
+                                     :for i :from 0
+                                     :collect (cons var #`(mlir::Block::getArgument block #,i)))])
           (lambda (new-op-stx region-stx)
             (with-syntax ([(arg-type ...) arg-types]
                           [(arg-binding ...) (loop :for pair :in arg-bind-pairs
@@ -326,7 +326,7 @@
               #'(let* ([block (mlir::Region::push_back<Block> region (list arg-type ...))]
                        arg-binding ...)
                   (with-block-builder block
-                    body))))))
+                                      body))))))
 
 
       ;;-------------------------------------------------------------------
@@ -362,26 +362,26 @@
               ;; Mixed — build with append, grouping static runs
               (let loop ([rest items] [static-run '()] [chunks '()])
                 (cond
-                  [(null? rest)
-                   (let ([final-chunks
-                          (if (null? static-run)
-                              (reverse chunks)
-                              (reverse (cons (with-syntax ([(v ...) (reverse static-run)])
+                 [(null? rest)
+                  (let ([final-chunks
+                         (if (null? static-run)
+                             (reverse chunks)
+                             (reverse (cons (with-syntax ([(v ...) (reverse static-run)])
                                               #'(list v ...))
                                             chunks)))])
-                     (with-syntax ([(chunk ...) final-chunks])
-                       #'(append chunk ...)))]
-                  [(splice? (car rest))
-                   (let* ([splice-expr (cadr (syntax->list (car rest)))]
-                          [chunks+     (if (null? static-run)
+                    (with-syntax ([(chunk ...) final-chunks])
+                      #'(append chunk ...)))]
+                 [(splice? (car rest))
+                  (let* ([splice-expr (cadr (syntax->list (car rest)))]
+                         [chunks+     (if (null? static-run)
                                           (cons splice-expr chunks)
                                           (cons splice-expr
                                                 (cons (with-syntax ([(v ...) (reverse static-run)])
                                                         #'(list v ...))
                                                       chunks)))])
-                     (loop (cdr rest) '() chunks+))]
-                  [else
-                   (loop (cdr rest) (cons (car rest) static-run) chunks)])))))
+                    (loop (cdr rest) '() chunks+))]
+                 [else
+                  (loop (cdr rest) (cons (car rest) static-run) chunks)])))))
 
       ;; True when identifier starts with ! (type convention, not a value).
       (define (type-id? x)
@@ -394,4 +394,4 @@
       (main)))
 
 
-) ;; end library (crest internal rewrite)
+  ) ;; end library (crest internal rewrite)

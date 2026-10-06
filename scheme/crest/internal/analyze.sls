@@ -101,18 +101,18 @@
                   ;; Flex path: one action binds all operands via mlir-operation-get-operands.
                   (begin
                     (set! acc (cons (action:bind-operands
-                                      op-idx
-                                      (map (lambda (operand)
-                                             (datum->syntax (ast-operand-var operand)
-                                                            (ast-operand-kind operand)))
-                                           operands)
-                                      (map ast-operand-var operands))
+                                     op-idx
+                                     (map (lambda (operand)
+                                            (datum->syntax (ast-operand-var operand)
+                                                           (ast-operand-kind operand)))
+                                          operands)
+                                     (map ast-operand-var operands))
                                     acc))
                     (for-each (lambda (operand entry)
                                 (binding-entry-bound?-set! entry #t)
                                 (when (binding-entry-is-result? entry)
                                   (let ([producer-op-idx (find-operation-by-result
-                                                           match-vec (ast-operand-var operand))])
+                                                          match-vec (ast-operand-var operand))])
                                     (traverse producer-op-idx (ast-operand-var operand)))))
                               operands entries))
                   ;; All-required path: per-operand binding / check-eq / traversal.
@@ -123,20 +123,20 @@
                         :rime-with is-result := (binding-entry-is-result? entry)
                         :rime-with is-bound := (binding-entry-bound? entry)
                         :do (cond
-                              [is-bound
-                               (set! acc (cons (action:check-eq op-idx operand-idx operand-var) acc))]
-                              [(and (not is-bound) is-result)
-                               (if (and is-conversion? (= op-idx root-op-idx))
-                                   (set! acc (cons (action:bind-argument-operand operand-idx operand-var) acc))
-                                   (set! acc (cons (action:bind-operand op-idx operand-idx operand-var) acc)))
-                               (binding-entry-bound?-set! entry #t)
-                               (let ([producer-op-idx (find-operation-by-result match-vec operand-var)])
-                                 (traverse producer-op-idx operand-var))]
-                              [(and (not is-bound) (not is-result))
-                               (if (and is-conversion? (= op-idx root-op-idx))
-                                   (set! acc (cons (action:bind-argument-operand operand-idx operand-var) acc))
-                                   (set! acc (cons (action:bind-operand op-idx operand-idx operand-var) acc)))
-                               (binding-entry-bound?-set! entry #t)]))))
+                             [is-bound
+                              (set! acc (cons (action:check-eq op-idx operand-idx operand-var) acc))]
+                             [(and (not is-bound) is-result)
+                              (if (and is-conversion? (= op-idx root-op-idx))
+                                  (set! acc (cons (action:bind-argument-operand operand-idx operand-var) acc))
+                                  (set! acc (cons (action:bind-operand op-idx operand-idx operand-var) acc)))
+                              (binding-entry-bound?-set! entry #t)
+                              (let ([producer-op-idx (find-operation-by-result match-vec operand-var)])
+                                (traverse producer-op-idx operand-var))]
+                             [(and (not is-bound) (not is-result))
+                              (if (and is-conversion? (= op-idx root-op-idx))
+                                  (set! acc (cons (action:bind-argument-operand operand-idx operand-var) acc))
+                                  (set! acc (cons (action:bind-operand op-idx operand-idx operand-var) acc)))
+                              (binding-entry-bound?-set! entry #t)]))))
 
             ;; Emit :where guard AFTER this op's own operands are bound.
             ;;
@@ -181,7 +181,7 @@
                       :for operand-idx :from 0
                       :rime-with operand-var := (ast-operand-var operand)
                       :do (hashtable-set! ht operand-var
-                            (make-binding-entry operand-var #f #f #f op-idx operand-idx #f))))
+                                          (make-binding-entry operand-var #f #f #f op-idx operand-idx #f))))
 
       ;; Pass 2: Results overwrite (duplicate results validated earlier)
       (loop :for op-idx :from 0 :below (vector-length match-vec)
@@ -189,7 +189,7 @@
             :do (loop :for result-var :in (ast-match-expand-result-var match-op)
                       :for result-idx :from 0
                       :do (hashtable-set! ht result-var
-                            (make-binding-entry result-var #t op-idx result-idx #f #f #f))))
+                                          (make-binding-entry result-var #t op-idx result-idx #f #f #f))))
 
       ;; Return binding manager
       (make-binding-manager ht)))

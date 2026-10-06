@@ -34,4 +34,4 @@
   (define %mlir::Block::getNumArguments
     (foreign-procedure "mlir::Block::getNumArguments" (uptr) uptr))
 
-) ;; end library (mlir IR Block ffi)
+  ) ;; end library (mlir IR Block ffi)

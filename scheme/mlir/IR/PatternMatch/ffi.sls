@@ -133,4 +133,4 @@
   (define %mlir::RewriterBase::create<OperationState>
     (foreign-procedure "mlir_ir_rewriter_base_create_from_state" (uptr uptr) uptr))
 
-) ;; end library (mlir IR PatternMatch ffi)
+  ) ;; end library (mlir IR PatternMatch ffi)

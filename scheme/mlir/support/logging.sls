@@ -67,4 +67,4 @@
   ;; @note       Defined in lib/Bindings/Support/Logging.cpp
   (define crest::logging::fatal   %logging-fatal)
 
-) ;; end library (mlir support logging)
+  ) ;; end library (mlir support logging)

@@ -329,8 +329,8 @@
   (define (operation-get-operands op . spec)
     (define (read-op i) (mlir::OpOperand::get op i))
     (let ([has-flex (loop :initially := #f
-                         :for s :in spec
-                         :break #t :if (memq s '(optional variadic)))])
+                          :for s :in spec
+                          :break #t :if (memq s '(optional variadic)))])
       (if (not has-flex)
           ;; All required: verify count matches spec, then bind sequentially.
           (let ([n-spec (length spec)]
@@ -360,22 +360,22 @@
                                    (reverse acc)
                                    (lp (cdr ss) (+ off (car ss)) (cons off acc))))])
                 (loop :for kind  :in spec
-                        :for start :in starts
-                        :for size  :in sizes
-                        :collect
-                        (case kind
-                          [(:required)
-                           (read-op start)]
-                          [(:optional)
-                           (if (zero? size) %absent (read-op start))]
-                          [(:variadic)
-                           (if (zero? size)
-                               %absent
-                               (loop :for i :from start :below (+ start size)
-                                     :collect (read-op i)))]
-                          [else
-                           (error 'operation-get-operands
-                                  "unknown kind: expected :required/:optional/:variadic"
-                                  kind)]))))))))
+                      :for start :in starts
+                      :for size  :in sizes
+                      :collect
+                      (case kind
+                        [(:required)
+                         (read-op start)]
+                        [(:optional)
+                         (if (zero? size) %absent (read-op start))]
+                        [(:variadic)
+                         (if (zero? size)
+                             %absent
+                             (loop :for i :from start :below (+ start size)
+                                   :collect (read-op i)))]
+                        [else
+                         (error 'operation-get-operands
+                                "unknown kind: expected :required/:optional/:variadic"
+                                kind)]))))))))
 
-) ;; end library (mlir IR Operation)
+  ) ;; end library (mlir IR Operation)

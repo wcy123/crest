@@ -138,4 +138,4 @@
   (define (mlir::MLIRContext::printStackTraceOnDiagnostic ctx enable?)
     (%mlir::MLIRContext::printStackTraceOnDiagnostic ctx (if enable? 1 0)))
 
-) ;; end library (mlir IR MLIRContext)
+  ) ;; end library (mlir IR MLIRContext)

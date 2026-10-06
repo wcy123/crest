@@ -42,4 +42,4 @@
   (define %mlir::shape::WitnessType::get
     (foreign-procedure "mlir::shape::WitnessType::get" (uptr) uptr))
 
-) ;; end library (mlir Dialect Shape IR Shape ffi)
+  ) ;; end library (mlir Dialect Shape IR Shape ffi)

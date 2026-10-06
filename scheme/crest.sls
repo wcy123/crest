@@ -26,4 +26,4 @@
   ;; read from the op directly. Callback is (fname op rewriter) → #t/#f.
   (define-syntax define-rewrite-pattern
     (lambda (stx) (run-pipeline stx 'rewrite)))
-)
+  )

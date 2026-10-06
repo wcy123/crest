@@ -74,4 +74,4 @@
   (define %operation-state-destroy
     (foreign-procedure "mlir_ir_operation_state_destroy" (uptr) void))
 
-) ;; end library (mlir IR OperationSupport ffi)
+  ) ;; end library (mlir IR OperationSupport ffi)
