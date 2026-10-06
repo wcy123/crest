@@ -40,6 +40,7 @@
     with-op-location)
 
   (import (rnrs)
+          (only (mlir support RAII) with-raii)
           (only (chezscheme) make-parameter parameterize void)
           (mlir IR PatternMatch ffi)
           (mlir IR Builders ffi)
@@ -162,20 +163,6 @@
               (%mlir::OpBuilder::create b loc name operands types)
               (%mlir::OpBuilder::create-with-regions b loc name operands types nregions)))]
        [else (error 'mlir-build-operation "no current builder installed")])))
-
-  ;; @brief RAII macro — acquire a resource, run body forms, then unconditionally release it.
-  ;; @param var   Binding name for the acquired resource
-  ;; @param ctor  Expression that produces the resource (called once before body)
-  ;; @param dtor  Procedure of one argument called with var after body, even on non-local exit
-  ;; @return      Value of the last body expression
-  ;; @note        Implemented with dynamic-wind so the destructor runs on continuations and exceptions.
-  (define-syntax with-raii
-    (syntax-rules ()
-      [(_ (var ctor dtor) body ...)
-       (let ([var ctor])
-         (dynamic-wind void
-             (lambda () body ...)
-             (lambda () (dtor var))))]))
 
   ;; @brief RAII macro — install a RewriterBase as the active builder for the dynamic extent of body.
   ;; @param rw    RewriterBase* uptr (ConversionPatternRewriter or IRRewriter)
