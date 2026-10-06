@@ -199,21 +199,21 @@
   ;; @brief RAII macro — heap-allocate an OpBuilder at the end of block, run body, then destroy the builder.
   ;; @param block  Block* uptr — target block; the builder is positioned at block->end()
   ;; @return       Value of the last body expression
-  ;; @note         Allocates an OpBuilder via %op-builder-at-block-end and frees it with
-  ;;               %op-builder-destroy on exit (even via non-local exit).
+  ;; @note         Allocates an OpBuilder via %mlir::OpBuilder::atBlockEnd and frees it with
+  ;;               %mlir::OpBuilder::~OpBuilder on exit (even via non-local exit).
   ;;               Sets current-OpBuilder and clears current-RewriterBase to #f.
   ;;               Does NOT update current-Location or current-MLIRContext; use with-Location if needed.
   (define-syntax with-OpBuilder
     (syntax-rules ()
       [(_ block body ...)
-       (let ([%builder (%op-builder-at-block-end block)])
+       (let ([%builder (%mlir::OpBuilder::atBlockEnd block)])
          (dynamic-wind
              (lambda () #f)
              (lambda ()
                (parameterize ([current-OpBuilder %builder]
                               [current-RewriterBase #f])
                  body ...))
-             (lambda () (%op-builder-destroy %builder))))]))
+             (lambda () (%mlir::OpBuilder::~OpBuilder %builder))))]))
 
   ;; @brief Override current-Location for the dynamic extent of body without changing the active builder.
   ;; @param loc   Operation* uptr — new location source for mlir-build-operation

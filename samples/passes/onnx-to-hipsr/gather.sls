@@ -22,7 +22,7 @@
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
           (only (mlir IR BuiltinAttributes) mlir::IntegerAttr::get<index>)
-          (only (mlir core builder) crest::RewriterBase::build)
+          (only (mlir IR PatternMatch) mlir-build-operation)
           (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
           (mlir Dialect Tensor IR)
@@ -56,23 +56,23 @@
   ;;   result = concat(concat(leading, indices_shape), trailing)
   (define (build-gather-shape! axis data-shape idx-shape shape-type size-type)
     (define (mk-sz n)
-      (let ([op (crest::RewriterBase::build "shape.const_size" '() (list size-type))])
+      (let ([op (mlir-build-operation "shape.const_size" '() (list size-type))])
         (mlir::Operation::setAttr! op "value" (mlir::IntegerAttr::get<index> n))
         (mlir::Operation::getResult op 0)))
     (let* ([sz1      (mk-sz axis)]
-           [sp1      (crest::RewriterBase::build "shape.split_at"
-                                                 (list data-shape sz1) (list shape-type shape-type))]
+           [sp1      (mlir-build-operation "shape.split_at"
+                                           (list data-shape sz1) (list shape-type shape-type))]
            [leading  (mlir::Operation::getResult sp1 0)]
            [sz2      (mk-sz (+ axis 1))]
-           [sp2      (crest::RewriterBase::build "shape.split_at"
-                                                 (list data-shape sz2) (list shape-type shape-type))]
+           [sp2      (mlir-build-operation "shape.split_at"
+                                           (list data-shape sz2) (list shape-type shape-type))]
            [trailing (mlir::Operation::getResult sp2 1)]
-           [gathered-op (crest::RewriterBase::build "shape.concat"
-                                                    (list leading idx-shape) (list shape-type))]
+           [gathered-op (mlir-build-operation "shape.concat"
+                                              (list leading idx-shape) (list shape-type))]
            [gathered    (mlir::Operation::getResult gathered-op 0)])
       (mlir::Operation::getResult
-       (crest::RewriterBase::build "shape.concat"
-                                   (list gathered trailing) (list shape-type))
+       (mlir-build-operation "shape.concat"
+                             (list gathered trailing) (list shape-type))
        0)))
 
   (define-conversion-pattern (onnx-gather->hipsr op operands-ref rewriter type-converter)

@@ -35,10 +35,10 @@
                 mlir::Value::getUses
                 mlir::OpResult::getResultNumber)
           (mlir support array-ref)
-          (only (mlir core builder)
-                mlir-ir-rewriter-base-create
-                mlir-ir-rewriter-base-set-insertion-point
-                mlir-ir-rewriter-base-erase-op)
+          (only (mlir IR PatternMatch)
+                mlir::RewriterBase::create
+                mlir::RewriterBase::setInsertionPoint
+                mlir::RewriterBase::eraseOp)
           (mlir Transforms DialectConversion)
           (only (mlir IR PatternMatch) with-RewritePatternSet)
           (mlir dialects hipsr)
@@ -72,9 +72,9 @@
   (define (onnx-return->func-return op operands-ref rewriter type-converter)
     (let ((operands (loop :for i :from 0 :below (array-ref-size operands-ref)
                           :collect (array-ref-at operands-ref i))))
-      (mlir-ir-rewriter-base-set-insertion-point rewriter op)
-      (mlir-ir-rewriter-base-create rewriter op "func.return" operands '())
-      (mlir-ir-rewriter-base-erase-op rewriter op)
+      (mlir::RewriterBase::setInsertionPoint rewriter op)
+      (mlir::RewriterBase::create rewriter op "func.return" operands '())
+      (mlir::RewriterBase::eraseOp rewriter op)
       #t))
 
   (define (populate-return-patterns type-converter patterns ctx)

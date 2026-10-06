@@ -46,11 +46,13 @@
           (rename (rime loop) (:with :rime-with))
           (for (rename (rime loop) (:with :rime-with)) expand)
           (for (only (crest internal keywords) = : -> :region) expand)
-          (only (mlir core builder) with-OpBuilder)
+          (only (mlir IR PatternMatch) with-OpBuilder)
           (mlir IR BuiltinAttributes)
           (for (mlir IR BuiltinAttributes) expand)
-          (for (only (mlir core builder) crest::RewriterBase::build with-OpBuilder
-                     mlir-ir-operation-get-region mlir::Region::push_back<Block> mlir::Block::getArgument) expand)
+          (for (only (mlir IR PatternMatch) mlir-build-operation with-OpBuilder) expand)
+          (for (only (mlir IR Operation) mlir::Operation::getRegion) expand)
+          (for (only (mlir IR Region) mlir::Region::push_back<Block>) expand)
+          (for (only (mlir IR Block) mlir::Block::getArgument) expand)
           (for (rename (only (mlir IR Operation) mlir::Operation::getContext
                              mlir::Operation::getResult
                              mlir::Operation::setAttr!)
@@ -274,8 +276,8 @@
                         [(region-fill-stmt ...) (map (lambda (fn) (fn new-op-id)) region-fill-fns)]
                         [nregions nregions])
             (cons (cons #'tmp-var
-                        #'(let ([new-op (crest::RewriterBase::build name
-                                                                    operands-expr (list result-type ...) nregions)])
+                        #'(let ([new-op (mlir-build-operation name
+                                                              operands-expr (list result-type ...) nregions)])
                             setter ...
                             region-fill-stmt ...
                             new-op))
@@ -302,7 +304,7 @@
                           [region-idx  region-index]
                           [(block-fill-stmt ...)
                            (map (lambda (fn) (fn new-op-stx region-id)) block-fill-fns)])
-              #'(let ([region (mlir-ir-operation-get-region new-op region-idx)])
+              #'(let ([region (mlir::Operation::getRegion new-op region-idx)])
                   block-fill-stmt ...)))))
 
       ;; Returns a closure (lambda (new-op-stx region-stx) → block-fill-syntax).

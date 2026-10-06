@@ -25,6 +25,7 @@
     mlir::OpOperand::get
     mlir::OpResult::getOwner
     mlir::Operation::getLoc
+    mlir::Operation::getRegion
     mlir::Operation::walk
     mlir::Operation::setOperand
     mlir::Operation::use_empty?
@@ -126,7 +127,8 @@
   ;; @return    Opaque Location* as uptr; 0 if op is null
   ;; @see       mlir/IR/Operation.h
   ;; @note      Defined in lib/Bindings/IR/Operation.cpp
-  (define mlir::Operation::getLoc           %get-loc)
+  (define mlir::Operation::getLoc           %mlir::Operation::getLoc)
+  (define mlir::Operation::getRegion        %mlir::Operation::getRegion)
 
   ;; @brief mlir::Operation::walk — walk all nested ops, calling callback for each.
   ;; @param op        Operation* uptr (root of walk)
