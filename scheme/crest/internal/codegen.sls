@@ -159,7 +159,7 @@
   ;;       #t))
   ;;
   ;; with-mlir-ops handles op-forms, :attrs, :regions, and :scheme escapes.
-  ;; with-rewrite-builder installs current-rewriter and current-loc so crest::RewriterBase::build
+  ;; with-rewrite-builder installs current-RewriterBase and current-Location so crest::RewriterBase::build
   ;; dispatches through the active rewriter or block-builder.
   (define (generate-rewrite-code raw-body pattern-type rw op)
     (if (null? raw-body)

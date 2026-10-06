@@ -9,8 +9,8 @@
 ;; (mlir core builder) — MLIR builder API and dynamic builder context.
 ;;
 ;; Mirrors mlir/IR/Builders.h. Provides:
-;;   - Dynamic context parameters (current-rewriter, current-block-builder,
-;;     current-loc) and their RAII macros.
+;;   - Dynamic context parameters (current-RewriterBase, current-OpBuilder,
+;;     current-Location) and their RAII macros.
 ;;   - crest::RewriterBase::build: context-dispatching op constructor.
 ;;   - Low-level builder FFI (block/region management).
 ;;   - Generic with-raii.
@@ -20,9 +20,9 @@
 (library (mlir core builder)
   (export
     ;; Dynamic builder context
-    current-rewriter
-    current-block-builder
-    current-loc
+    current-RewriterBase
+    current-OpBuilder
+    current-Location
     ;; Context-dispatching constructor
     crest::RewriterBase::build
     ;; RAII macros
@@ -30,7 +30,7 @@
     with-op-builder
     with-operation-state
     with-rewrite-builder
-    with-current-block-builder
+    with-current-OpBuilder
     with-block-builder
     with-op-location
     ;; Canonical low-level rewriter ops
@@ -67,7 +67,7 @@
           (mlir IR MLIRContext)
           (only (mlir IR Operation) mlir::Operation::getContext mlir::Operation::getLoc)
           (only (mlir IR PatternMatch)
-                current-rewriter current-block-builder current-loc))
+                current-RewriterBase current-OpBuilder current-Location))
 
   (define mlir-Operation::getContext mlir::Operation::getContext)
   (define mlir-Operation::getLoc     mlir::Operation::getLoc)
@@ -385,13 +385,13 @@
   ;; Dynamic builder context
   ;;===--------------------------------------------------------------------===;;
 
-  ;; current-rewriter, current-block-builder, current-loc are imported from
+  ;; current-RewriterBase, current-OpBuilder, current-Location are imported from
   ;; (mlir IR PatternMatch) to share a single set of parameter objects across
   ;; both libraries.
 
   ;; @brief crest::RewriterBase::build — context-dispatching op constructor.
-  ;;        Dispatches to current-rewriter if installed, else to
-  ;;        current-block-builder; raises if neither is active.
+  ;;        Dispatches to current-RewriterBase if installed, else to
+  ;;        current-OpBuilder; raises if neither is active.
   ;; @param name     string — fully-qualified op name, e.g. "arith.constant"
   ;; @param operands Scheme list of Value* uptrs
   ;; @param types    Scheme list of result Type* uptrs
@@ -400,9 +400,9 @@
   ;; @note  Iteration over operands/types is done in Scheme for thin C-call overhead.
   (define (crest::RewriterBase::build name operands types . rest)
     (let ([nregions (if (pair? rest) (car rest) 0)]
-          [loc-op   (current-loc)])
+          [loc-op   (current-Location)])
       (cond
-       [(current-rewriter) =>
+       [(current-RewriterBase) =>
         (lambda (rw)
           (mlir-ir-rewriter-base-set-insertion-point rw loc-op)
           (with-operation-state (state (mlir-Operation::getLoc loc-op) name)
@@ -415,7 +415,7 @@
                                     (mlir-ir-operation-state-add-region state)
                                     (loop (+ i 1))))
                                 (mlir-ir-rewriter-base-create-from-state rw state)))]
-       [(current-block-builder) =>
+       [(current-OpBuilder) =>
         (lambda (b)
           (with-operation-state (state (mlir-Operation::getLoc loc-op) name)
                                 (for-each (lambda (v) (mlir-ir-operation-state-add-operands state v))
@@ -430,56 +430,56 @@
        [else (error 'crest::RewriterBase::build "no current builder installed")])))
 
   ;; @brief macro: with-rewrite-builder — install a RewriterBase as the active
-  ;;        builder context for BODY.  Sets current-rewriter, current-loc, and
-  ;;        current-MLIRContext; clears current-block-builder.
+  ;;        builder context for BODY.  Sets current-RewriterBase, current-Location, and
+  ;;        current-MLIRContext; clears current-OpBuilder.
   ;; @param rw   RewriterBase* uptr — passed by the pattern callback
   ;; @param loc  Operation* uptr — insertion-point anchor and location source
   ;; @param body forms to evaluate with the rewriter active
   (define-syntax with-rewrite-builder
     (syntax-rules ()
       [(_ (rw loc) body ...)
-       (parameterize ([current-rewriter      rw]
-                      [current-block-builder #f]
-                      [current-loc           loc]
+       (parameterize ([current-RewriterBase      rw]
+                      [current-OpBuilder #f]
+                      [current-Location           loc]
                       [current-MLIRContext  (mlir-Operation::getContext loc)])
          body ...)]))
 
-  ;; @brief macro: with-current-block-builder — install an explicit OpBuilder*
+  ;; @brief macro: with-current-OpBuilder — install an explicit OpBuilder*
   ;;        as the active block-builder context for BODY.  Sets
-  ;;        current-block-builder, current-loc, and current-MLIRContext;
-  ;;        clears current-rewriter.
+  ;;        current-OpBuilder, current-Location, and current-MLIRContext;
+  ;;        clears current-RewriterBase.
   ;; @param builder OpBuilder* uptr
   ;; @param loc     Operation* uptr — location source for ops created in BODY
   ;; @param body    forms to evaluate with the block builder active
-  (define-syntax with-current-block-builder
+  (define-syntax with-current-OpBuilder
     (syntax-rules ()
       [(_ (builder loc) body ...)
-       (parameterize ([current-block-builder builder]
-                      [current-rewriter      #f]
-                      [current-loc           loc]
+       (parameterize ([current-OpBuilder builder]
+                      [current-RewriterBase      #f]
+                      [current-Location           loc]
                       [current-MLIRContext  (mlir-Operation::getContext loc)])
          body ...)]))
 
   ;; @brief macro: with-block-builder — create an OpBuilder at the end of BLOCK,
-  ;;        install it as current-block-builder, run BODY, then destroy the builder.
-  ;;        Inherits current-loc from the enclosing scope.
+  ;;        install it as current-OpBuilder, run BODY, then destroy the builder.
+  ;;        Inherits current-Location from the enclosing scope.
   ;; @param block Block* uptr — block to position the builder at
   ;; @param body  forms to evaluate with the new block builder installed
   (define-syntax with-block-builder
     (syntax-rules ()
       [(_ block body ...)
        (with-op-builder (%builder block)
-                        (parameterize ([current-block-builder %builder]
-                                       [current-rewriter #f])
+                        (parameterize ([current-OpBuilder %builder]
+                                       [current-RewriterBase #f])
                           body ...))]))
 
-  ;; @brief macro: with-op-location — temporarily override current-loc with LOC
+  ;; @brief macro: with-op-location — temporarily override current-Location with LOC
   ;;        for the duration of BODY.
   ;; @param loc  Operation* uptr — new location/insertion-point source
   ;; @param body forms to evaluate with the overridden location
   (define-syntax with-op-location
     (syntax-rules ()
       [(_ loc body ...)
-       (parameterize ([current-loc loc]) body ...)]))
+       (parameterize ([current-Location loc]) body ...)]))
 
   ) ;; end library (mlir core builder)

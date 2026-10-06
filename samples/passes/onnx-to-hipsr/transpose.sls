@@ -43,7 +43,7 @@
                 mlir::RankedTensorType::getRank))
 
   ;; Build the permuted output shape inside a region block.
-  ;; Uses crest::RewriterBase::build — must be called inside with-current-block-builder.
+  ;; Uses crest::RewriterBase::build — must be called inside with-current-OpBuilder.
   ;; Returns the output !shape.shape value.
   (define (build-permuted-shape! loc perm input-shape shape-type size-type)
     (let* ([extents
