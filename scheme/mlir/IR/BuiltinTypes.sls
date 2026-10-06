@@ -33,21 +33,21 @@
           (mlir IR BuiltinTypes ffi))
 
   ;; @brief mlir::IndexType::get — construct an index type in the given context.
-  ;; @param ctx  MLIRContext opaque pointer uptr
+  ;; @param ctx  MLIRContext* uptr (optional; defaults to current-mlir-context)
   ;; @return     IndexType opaque pointer uptr, or 0 on failure
   ;; @see        mlir/IR/BuiltinTypes.h
   ;; @note       Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define-ctx-optional mlir::IndexType::get %mlir::IndexType::get)
 
   ;; @brief mlir::IntegerType::get(ctx, 64) — construct a 64-bit integer type.
-  ;; @param ctx  MLIRContext opaque pointer uptr
+  ;; @param ctx  MLIRContext* uptr (optional; defaults to current-mlir-context)
   ;; @return     IntegerType (i64) opaque pointer uptr, or 0 on failure
   ;; @see        mlir/IR/BuiltinTypes.h
   ;; @note       Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define-ctx-optional mlir::IntegerType::get<i64> %mlir::IntegerType::get<i64>)
 
   ;; @brief mlir::IntegerType::get(ctx, 1) — construct a 1-bit integer type.
-  ;; @param ctx  MLIRContext opaque pointer uptr
+  ;; @param ctx  MLIRContext* uptr (optional; defaults to current-mlir-context)
   ;; @return     IntegerType (i1) opaque pointer uptr, or 0 on failure
   ;; @see        mlir/IR/BuiltinTypes.h
   ;; @note       Defined in lib/Bindings/IR/BuiltinTypes.cpp
@@ -116,7 +116,7 @@
   ;; @param type  IntegerType opaque pointer uptr
   ;; @return      #t if unsigned, #f otherwise
   ;; @see         mlir/IR/BuiltinTypes.h
-  ;; @note        Wraps %integer-type-is-unsigned; returns boolean instead of 1/0
+  ;; @note        Wraps %mlir::IntegerType::isUnsigned; returns boolean instead of 1/0
   (define (mlir::IntegerType::isUnsigned? t)  (not (zero? (%mlir::IntegerType::isUnsigned t))))
 
   ) ;; end library (mlir IR BuiltinTypes)

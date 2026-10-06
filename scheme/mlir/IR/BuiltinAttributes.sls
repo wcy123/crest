@@ -63,42 +63,42 @@
   ;; @param value  Scheme exact integer (coerced to int64_t)
   ;; @return       IntegerAttr opaque pointer uptr
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Wraps %mlir::IntegerAttr::get<i64>; context supplied by current-mlir-context
+  ;; @note         Wraps %mlir::IntegerAttr::get<i64>; ctx optional, defaults to current-mlir-context
   (define-ctx-optional mlir::IntegerAttr::get<i64> %mlir::IntegerAttr::get<i64> value)
 
   ;; @brief mlir::IntegerAttr::get — construct an IntegerAttr with IndexType.
   ;; @param value  Scheme exact integer (coerced to int64_t)
   ;; @return       IntegerAttr opaque pointer uptr
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Wraps %mlir::IntegerAttr::get<index>; context supplied by current-mlir-context
+  ;; @note         Wraps %mlir::IntegerAttr::get<index>; ctx optional, defaults to current-mlir-context
   (define-ctx-optional mlir::IntegerAttr::get<index> %mlir::IntegerAttr::get<index> value)
 
   ;; @brief mlir::FloatAttr::get — construct a FloatAttr with f32 (Float32) type.
   ;; @param value  Scheme flonum (cast to float)
   ;; @return       FloatAttr opaque pointer uptr
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Wraps %mlir::FloatAttr::get<f32>; context supplied by current-mlir-context
+  ;; @note         Wraps %mlir::FloatAttr::get<f32>; ctx optional, defaults to current-mlir-context
   (define-ctx-optional mlir::FloatAttr::get<f32> %mlir::FloatAttr::get<f32> value)
 
   ;; @brief mlir::DenseI32ArrayAttr::get — construct a DenseI32ArrayAttr from a Scheme list.
   ;; @param value  Scheme list of fixnums (each cast to int32_t)
   ;; @return       DenseI32ArrayAttr opaque pointer uptr
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Wraps %mlir::DenseI32ArrayAttr::get; context supplied by current-mlir-context
+  ;; @note         Wraps %mlir::DenseI32ArrayAttr::get; ctx optional, defaults to current-mlir-context
   (define-ctx-optional mlir::DenseI32ArrayAttr::get %mlir::DenseI32ArrayAttr::get value)
 
   ;; @brief mlir::DenseI64ArrayAttr::get — construct a DenseI64ArrayAttr from a Scheme list.
   ;; @param value  Scheme list of exact integers (each coerced to int64_t)
   ;; @return       DenseI64ArrayAttr opaque pointer uptr
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Wraps %mlir::DenseI64ArrayAttr::get; context supplied by current-mlir-context
+  ;; @note         Wraps %mlir::DenseI64ArrayAttr::get; ctx optional, defaults to current-mlir-context
   (define-ctx-optional mlir::DenseI64ArrayAttr::get %mlir::DenseI64ArrayAttr::get value)
 
   ;; @brief mlir::parseAttribute — parse an attribute from MLIR textual syntax.
   ;; @param value  Scheme string containing MLIR attribute syntax (e.g. "#some.attr<...>")
   ;; @return       mlir::Attribute opaque pointer uptr; raises error if parse fails
   ;; @see          mlir/AsmParser/AsmParser.h
-  ;; @note         Wraps %mlir::parseAttribute; context supplied by current-mlir-context
+  ;; @note         Wraps %mlir::parseAttribute; ctx optional, defaults to current-mlir-context
   (define-ctx-optional mlir::parseAttribute %mlir::parseAttribute value)
 
   ;; @brief mlir::DenseResourceElementsAttr::get — construct a DenseResourceElementsAttr.
@@ -106,7 +106,7 @@
   ;;               where result-type-uptr is a RankedTensorType opaque pointer
   ;; @return       DenseResourceElementsAttr opaque pointer uptr
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Wraps %mlir::DenseResourceElementsAttr::get; context supplied by current-mlir-context
+  ;; @note         Wraps %mlir::DenseResourceElementsAttr::get; ctx optional, defaults to current-mlir-context
   (define-ctx-optional mlir::DenseResourceElementsAttr::get %mlir::DenseResourceElementsAttr::get value)
 
   ;; @brief mlir::isa<IntegerAttr> — test whether an opaque attribute pointer is an IntegerAttr.
