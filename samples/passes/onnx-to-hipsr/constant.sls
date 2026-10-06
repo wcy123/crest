@@ -14,7 +14,7 @@
 ;; Both handle inline value and external data (location/offset/size).
 ;;
 ;; External data (location/offset/size) is handled via DenseResourceElementsAttr
-;; constructed through %mlir::DenseResourceElementsAttr::get.
+;; constructed through mlir::DenseResourceElementsAttr::get.
 ;;
 ;;===----------------------------------------------------------------------===;;
 
@@ -25,7 +25,6 @@
           (only (mlir IR Value)
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
-          (only (mlir IR BuiltinAttributes ffi) %mlir::DenseResourceElementsAttr::get)
           (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
           (mlir Dialect Tensor IR)
@@ -33,6 +32,8 @@
           (only (mlir IR Operation)
                 mlir::Operation::emitError mlir::Operation::getAttr mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getAttrOfType<StringAttr> mlir::Operation::getContext mlir::Operation::hasAttr?)
 
+          (only (mlir IR BuiltinAttributes)
+                mlir::DenseResourceElementsAttr::get)
           (only (mlir IR BuiltinTypes)
                 mlir::RankedTensorType::cloneWithEncoding
                 mlir::RankedTensorType::getRank))
@@ -55,18 +56,18 @@
              [offset   (mlir::Operation::getAttrOfType<IntegerAttr> op "offset" 0)]
              [size     (mlir::Operation::getAttrOfType<IntegerAttr> op "size" 0)]
              [r (if (string=? location ort-mem-addr-tag)
-                    (%mlir::DenseResourceElementsAttr::get ctx
-							   (list !result-type
-								 (string-append "mem|0x" (number->string offset 16))
-								 offset size))
+                    (mlir::DenseResourceElementsAttr::get ctx
+							  (list !result-type
+								(string-append "mem|0x" (number->string offset 16))
+								offset size))
                     (let ([buf (mlir-hipsr-load-file-map ctx location)])
                       (if (zero? buf)
                           (fail (string-append "cannot memory-map: " location))
-                          (%mlir::DenseResourceElementsAttr::get ctx
-								 (list !result-type
-								       (string-append "file|" location "|"
-										      (number->string offset))
-								       (+ buf offset) size)))))])
+                          (mlir::DenseResourceElementsAttr::get ctx
+								(list !result-type
+								      (string-append "file|" location "|"
+										     (number->string offset))
+								      (+ buf offset) size)))))])
         (if (zero? r) (fail "cannot build dense resource attr") r))]
      [else
       (fail "onnx.Constant has neither value nor location")]))

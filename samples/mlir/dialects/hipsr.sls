@@ -39,13 +39,14 @@
                 mlir::Operation::getName
                 mlir::Operation::getParentOp)
           (only (mlir IR Region) mlir::Region::front)
-          (only (mlir IR BuiltinAttributes ffi) %mlir::parseAttribute)
           (mlir Transforms DialectConversion)
           (mlir Dialect Tensor IR)
           (only (crest util)
                 type-converter-add-tensor-widening-materialization)
           (only (mlir core builder) mlir-ir-operation-get-region mlir::Block::getArgument)
 
+          (only (mlir IR BuiltinAttributes)
+                mlir::parseAttribute)
           (only (mlir IR BuiltinTypes)
                 mlir::RankedTensorType::cloneWithEncoding
                 mlir::RankedTensorType::getEncoding
@@ -103,13 +104,13 @@
 
   (define make-hipsr-device-space-attr
     (case-lambda
-     [()    (%mlir::parseAttribute (current-mlir-context) "#hipsr.mem<device>")]
-     [(ctx) (%mlir::parseAttribute ctx "#hipsr.mem<device>")]))
+     [()    (mlir::parseAttribute "#hipsr.mem<device>")]
+     [(ctx) (mlir::parseAttribute ctx "#hipsr.mem<device>")]))
 
   (define make-hipsr-barrier-type-attr
     (case-lambda
-     [()    (%mlir::parseAttribute (current-mlir-context) "#hipsr.placeholder<barrier>")]
-     [(ctx) (%mlir::parseAttribute ctx "#hipsr.placeholder<barrier>")]))
+     [()    (mlir::parseAttribute "#hipsr.placeholder<barrier>")]
+     [(ctx) (mlir::parseAttribute ctx "#hipsr.placeholder<barrier>")]))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Context convention — HipSR passes argument 0 of func.func as context.
