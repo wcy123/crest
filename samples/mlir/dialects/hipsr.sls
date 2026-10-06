@@ -30,7 +30,6 @@
    mlir-type-is-device-tensor
    make-mlir-tensor-in-host-space
    mlir-get-hipsr-context-type
-   mlir-placeholder-set-barrier-type!
    mlir-hipsr-load-file-map)
 
   (import (rnrs)
@@ -87,10 +86,6 @@
         ((foreign-procedure "mlir_get_hipsr_context_type" (uptr) uptr) ctx)
         0))
 
-  ;; Set placeholder_type attr to Barrier. No-op when HipSR dialect not loaded.
-  (define (mlir-placeholder-set-barrier-type! op)
-    (when (foreign-entry? "mlir_placeholder_set_barrier_type")
-      ((foreign-procedure "mlir_placeholder_set_barrier_type" (uptr) void) op)))
 
   ;; Memory-map a file. Returns 0 when HipSR dialect not loaded.
   (define (mlir-hipsr-load-file-map ctx path)
@@ -102,15 +97,11 @@
   ;; Attr construction — uses the generic :opaque API; no C++ required.
   ;;===--------------------------------------------------------------------===;;
 
-  (define make-hipsr-device-space-attr
-    (case-lambda
-     [()    (mlir::parseAttribute "#hipsr.mem<device>")]
-     [(ctx) (mlir::parseAttribute ctx "#hipsr.mem<device>")]))
+  (define (make-hipsr-device-space-attr)
+    (mlir::parseAttribute "#hipsr.mem<device>"))
 
-  (define make-hipsr-barrier-type-attr
-    (case-lambda
-     [()    (mlir::parseAttribute "#hipsr.placeholder<barrier>")]
-     [(ctx) (mlir::parseAttribute ctx "#hipsr.placeholder<barrier>")]))
+  (define (make-hipsr-barrier-type-attr)
+    (mlir::parseAttribute "#hipsr.placeholder<barrier>"))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Context convention — HipSR passes argument 0 of func.func as context.
@@ -157,7 +148,7 @@
 					      (> (mlir::RankedTensorType::getRank type) 0)
 					      (= 0 (mlir::RankedTensorType::getEncoding type)))
 					 (mlir::RankedTensorType::cloneWithEncoding type
-										    (make-hipsr-device-space-attr (mlir::Type::getContext type)))
+										    (mlir::parseAttribute (mlir::Type::getContext type) "#hipsr.mem<device>"))
 					 #f)))
     (type-converter-add-tensor-widening-materialization type-converter))
 
