@@ -17,16 +17,11 @@
 
 (library (mlir dialects hipsr)
   (export
-   :hipsr-device-space
-   :hipsr-barrier-type
-   hipsr-device-memory-space
    make-hipsr-device-space-attr
    make-hipsr-barrier-type-attr
    mlir-get-hipsr-context-arg
    hipsr-type-converter-add-device-memory-conversions!
    hipsr-configure-conversion-target!
-   hipsr-has-compute-ancestor?
-   hipsr-has-placeholder-ancestor?
    mlir-type-is-device-tensor
    make-mlir-tensor-in-host-space
    mlir-get-hipsr-context-type
@@ -56,11 +51,6 @@
           (only (mlir IR MLIRContext) current-mlir-context)
 	  )
 
-  (define-syntax :hipsr-device-space (identifier-syntax 'hipsr-device-space))
-  (define-syntax :hipsr-barrier-type (identifier-syntax 'hipsr-barrier-type))
-
-  ;; MemorySpace::Device = 1 (from HipsrEnums.td)
-  (define hipsr-device-memory-space 1)
 
   ;;===--------------------------------------------------------------------===;;
   ;; C++ functions — called via foreign-entry? when HipSR dialect is loaded,
