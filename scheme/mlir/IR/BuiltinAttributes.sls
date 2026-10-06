@@ -24,33 +24,33 @@
 
 (library (mlir IR BuiltinAttributes)
   (export
-   mlir::IntegerAttr::get<i64>
-   mlir::IntegerAttr::get<index>
-   mlir::FloatAttr::get<f32>
-   mlir::DenseI32ArrayAttr::get
-   mlir::DenseI64ArrayAttr::get
-   mlir::parseAttribute
-   mlir::DenseResourceElementsAttr::get
-   mlir::isa<IntegerAttr>
-   mlir::isa<FloatAttr>
-   mlir::isa<StringAttr>
-   mlir::isa<DenseI32ArrayAttr>
-   mlir::isa<DenseElementsAttr>
-   mlir::DenseElementsAttr::isSplat
-   mlir::isa<FloatAttr.f32>
-   mlir::IntegerAttr::getValue
-   mlir::FloatAttr::getValueAsDouble
-   mlir::FloatAttr::getValueAsDouble.f32
-   mlir::DenseI32ArrayAttr::asArrayRef
-   mlir::DenseElementsAttr::getSplatValue<APFloat>
-   mlir::DenseElementsAttr::getSplatValue<APInt>
-   mlir::DenseI32ArrayAttr::asArrayRef->list
-   mlir::Operation::getAttr
-   mlir::Operation::setAttr!
-   mlir::Operation::getAttrOfType<FloatAttr>
-   mlir::ShapedType::getElementType
-   mlir::IntegerType::getWidth
-   mlir::IntegerType::isUnsigned?)
+    mlir::IntegerAttr::get<i64>
+    mlir::IntegerAttr::get<index>
+    mlir::FloatAttr::get<f32>
+    mlir::DenseI32ArrayAttr::get
+    mlir::DenseI64ArrayAttr::get
+    mlir::parseAttribute
+    mlir::DenseResourceElementsAttr::get
+    mlir::isa<IntegerAttr>
+    mlir::isa<FloatAttr>
+    mlir::isa<StringAttr>
+    mlir::isa<DenseI32ArrayAttr>
+    mlir::isa<DenseElementsAttr>
+    mlir::DenseElementsAttr::isSplat
+    mlir::isa<FloatAttr.f32>
+    mlir::IntegerAttr::getValue
+    mlir::FloatAttr::getValueAsDouble
+    mlir::FloatAttr::getValueAsDouble.f32
+    mlir::DenseI32ArrayAttr::asArrayRef
+    mlir::DenseElementsAttr::getSplatValue<APFloat>
+    mlir::DenseElementsAttr::getSplatValue<APInt>
+    mlir::DenseI32ArrayAttr::asArrayRef->list
+    mlir::Operation::getAttr
+    mlir::Operation::setAttr!
+    mlir::Operation::getAttrOfType<FloatAttr>
+    mlir::ShapedType::getElementType
+    mlir::IntegerType::getWidth
+    mlir::IntegerType::isUnsigned?)
   (import (rnrs)
           (mlir IR BuiltinAttributes ffi)
           (mlir IR Operation ffi)

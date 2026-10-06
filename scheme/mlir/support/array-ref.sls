@@ -24,12 +24,12 @@
 
 (library (mlir support array-ref)
   (export
-   array-ref-size      ; (ref) → element count, zero FFI overhead
-   array-ref-at        ; (ref index [type]) → element, bounds-checked
-   make-array-ref      ; (data-ptr size) → ref  [C heap allocation]
-   array-ref-destroy   ; (ref) → void           [C heap free]
-   with-array-ref      ; (syntax) RAII: make + body + destroy
-   :uptr)              ; array-ref-at element type → 'uptr (8-byte pointer, default)
+    array-ref-size      ; (ref) → element count, zero FFI overhead
+    array-ref-at        ; (ref index [type]) → element, bounds-checked
+    make-array-ref      ; (data-ptr size) → ref  [C heap allocation]
+    array-ref-destroy   ; (ref) → void           [C heap free]
+    with-array-ref      ; (syntax) RAII: make + body + destroy
+    :uptr)              ; array-ref-at element type → 'uptr (8-byte pointer, default)
                                         ; :i32 is a local keyword synonym — 'i32
 
   (import (rnrs)

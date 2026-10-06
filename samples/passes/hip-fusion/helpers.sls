@@ -13,12 +13,12 @@
 
 (library (passes hip-fusion helpers)
   (export
-   set-qdq-scale-zp-attrs!
-   set-qdq-in-out-attrs!
-   mlir-operation-set-dense-i32-array!
-   mlir-operation-set-dense-i64-array!
-   mlir-operation-set-i64-array-attr!
-   op-get-f32-attr)              ; (op name) → flonum or +nan.0 if absent
+    set-qdq-scale-zp-attrs!
+    set-qdq-in-out-attrs!
+    mlir-operation-set-dense-i32-array!
+    mlir-operation-set-dense-i64-array!
+    mlir-operation-set-i64-array-attr!
+    op-get-f32-attr)              ; (op name) → flonum or +nan.0 if absent
 
   (import (except (rnrs) =)
           (only (chezscheme) foreign-procedure)

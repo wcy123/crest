@@ -16,18 +16,18 @@
 
 (library (mlir IR BuiltinTypes ffi)
   (export
-   %mlir::IndexType::get
-   %mlir::IntegerType::get<i64>
-   %mlir::IntegerType::get<i1>
-   %mlir::isa<RankedTensorType>-isa
-   %mlir::RankedTensorType::getRank
-   %mlir::RankedTensorType::getElementType
-   %mlir::RankedTensorType::getShape
-   %mlir::RankedTensorType::getEncoding
-   %mlir::RankedTensorType::cloneWithEncoding
-   %shaped-type-get-element-type
-   %integer-type-get-width
-   %integer-type-is-unsigned)
+    %mlir::IndexType::get
+    %mlir::IntegerType::get<i64>
+    %mlir::IntegerType::get<i1>
+    %mlir::isa<RankedTensorType>-isa
+    %mlir::RankedTensorType::getRank
+    %mlir::RankedTensorType::getElementType
+    %mlir::RankedTensorType::getShape
+    %mlir::RankedTensorType::getEncoding
+    %mlir::RankedTensorType::cloneWithEncoding
+    %shaped-type-get-element-type
+    %integer-type-get-width
+    %integer-type-is-unsigned)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::IndexType::get — construct an index type in the given context.

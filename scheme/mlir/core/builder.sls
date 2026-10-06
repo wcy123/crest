@@ -19,48 +19,48 @@
 
 (library (mlir core builder)
   (export
-   ;; Dynamic builder context
-   current-rewriter
-   current-block-builder
-   current-loc
-   ;; Context-dispatching constructor
-   crest::RewriterBase::build
-   ;; RAII macros
-   with-raii
-   with-op-builder
-   with-operation-state
-   with-rewrite-builder
-   with-current-block-builder
-   with-block-builder
-   with-op-location
-   ;; Canonical low-level rewriter ops
-   mlir-ir-rewriter-base-create
-   mlir-ir-rewriter-base-create-with-regions
-   mlir-ir-op-builder-create
-   mlir-ir-op-builder-create-with-regions
-   mlir-ir-rewriter-base-set-insertion-point         ;; canonical: mlir::RewriterBase::setInsertionPoint(op)
-   mlir-ir-rewriter-base-set-insertion-point-to-end
-   mlir-ir-rewriter-base-create-block
-   mlir-ir-rewriter-base-replace-op
-   mlir-ir-rewriter-base-erase-op
-   mlir-ir-rewriter-base-clone-with-types
-   mlir-ir-op-builder-at-block-end
-   mlir-ir-op-builder-destroy
-   ;; OperationState primitives
-   mlir-ir-operation-state-create
-   mlir-ir-operation-state-add-operands        ;; canonical: mlir::OperationState::addOperands
-   mlir-ir-operation-state-add-types           ;; canonical: mlir::OperationState::addTypes
-   mlir-ir-operation-state-add-region
-   mlir-ir-operation-state-destroy
-   mlir-ir-rewriter-base-create-from-state
-   mlir-ir-op-builder-create-from-state
-   ;; Block / region primitives (canonical names)
-   mlir-ir-operation-get-region
-   mlir::Block::getArgument
-   mlir::Region::push_back<Block>
-   ;; Pattern application (canonical name)
-   mlir-transforms-greedy-pattern-rewrite-driver-apply
-   )
+    ;; Dynamic builder context
+    current-rewriter
+    current-block-builder
+    current-loc
+    ;; Context-dispatching constructor
+    crest::RewriterBase::build
+    ;; RAII macros
+    with-raii
+    with-op-builder
+    with-operation-state
+    with-rewrite-builder
+    with-current-block-builder
+    with-block-builder
+    with-op-location
+    ;; Canonical low-level rewriter ops
+    mlir-ir-rewriter-base-create
+    mlir-ir-rewriter-base-create-with-regions
+    mlir-ir-op-builder-create
+    mlir-ir-op-builder-create-with-regions
+    mlir-ir-rewriter-base-set-insertion-point         ;; canonical: mlir::RewriterBase::setInsertionPoint(op)
+    mlir-ir-rewriter-base-set-insertion-point-to-end
+    mlir-ir-rewriter-base-create-block
+    mlir-ir-rewriter-base-replace-op
+    mlir-ir-rewriter-base-erase-op
+    mlir-ir-rewriter-base-clone-with-types
+    mlir-ir-op-builder-at-block-end
+    mlir-ir-op-builder-destroy
+    ;; OperationState primitives
+    mlir-ir-operation-state-create
+    mlir-ir-operation-state-add-operands        ;; canonical: mlir::OperationState::addOperands
+    mlir-ir-operation-state-add-types           ;; canonical: mlir::OperationState::addTypes
+    mlir-ir-operation-state-add-region
+    mlir-ir-operation-state-destroy
+    mlir-ir-rewriter-base-create-from-state
+    mlir-ir-op-builder-create-from-state
+    ;; Block / region primitives (canonical names)
+    mlir-ir-operation-get-region
+    mlir::Block::getArgument
+    mlir::Region::push_back<Block>
+    ;; Pattern application (canonical name)
+    mlir-transforms-greedy-pattern-rewrite-driver-apply
+    )
 
   (import (rnrs)
           (only (chezscheme) foreign-procedure parameterize void)

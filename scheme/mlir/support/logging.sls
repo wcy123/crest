@@ -17,12 +17,12 @@
 
 (library (mlir support logging)
   (export
-   crest::logging::trace
-   crest::logging::debug
-   crest::logging::info
-   crest::logging::warning
-   crest::logging::error
-   crest::logging::fatal)
+    crest::logging::trace
+    crest::logging::debug
+    crest::logging::info
+    crest::logging::warning
+    crest::logging::error
+    crest::logging::fatal)
   (import (rnrs) (mlir support logging ffi))
 
   ;; @brief Emit a TRACE-level log message (most verbose; off by default).

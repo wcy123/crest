@@ -40,6 +40,7 @@
 (defcustom pp/indent-spec
   '(;; R6RS / standard forms
     (library . 1)
+    (export . 0)
     (define-record-type . 1)
     (syntax-rules . 1)
     (syntax-case . 2)

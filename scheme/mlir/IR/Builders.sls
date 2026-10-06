@@ -14,10 +14,10 @@
 
 (library (mlir IR Builders)
   (export
-   mlir::OpBuilder::create
-   mlir::OpBuilder::create-with-regions
-   mlir::OpBuilder::atBlockEnd
-   mlir::OpBuilder::~OpBuilder)
+    mlir::OpBuilder::create
+    mlir::OpBuilder::create-with-regions
+    mlir::OpBuilder::atBlockEnd
+    mlir::OpBuilder::~OpBuilder)
   (import (rnrs) (mlir IR Builders ffi))
 
   ;; @brief mlir::OpBuilder::create — create an op via OperationState using a standalone OpBuilder.

@@ -14,7 +14,7 @@
 ;;===----------------------------------------------------------------------===;;
 (library (mlir Dialect Func IR FuncOps)
   (export
-   mlir-populate-func-type-conversion-pattern)
+    mlir-populate-func-type-conversion-pattern)
   (import (rnrs) (mlir Dialect Func IR FuncOps ffi))
 
   ;; @brief mlir::populateFunctionOpInterfaceTypeConversionPattern<FuncOp> —

@@ -17,15 +17,15 @@
 
 (library (mlir dialects hipsr)
   (export
-   make-hipsr-device-space-attr
-   make-hipsr-barrier-type-attr
-   mlir-get-hipsr-context-arg
-   hipsr-type-converter-add-device-memory-conversions!
-   hipsr-configure-conversion-target!
-   mlir-type-is-device-tensor
-   make-mlir-tensor-in-host-space
-   mlir-get-hipsr-context-type
-   mlir-hipsr-load-file-map)
+    make-hipsr-device-space-attr
+    make-hipsr-barrier-type-attr
+    mlir-get-hipsr-context-arg
+    hipsr-type-converter-add-device-memory-conversions!
+    hipsr-configure-conversion-target!
+    mlir-type-is-device-tensor
+    make-mlir-tensor-in-host-space
+    mlir-get-hipsr-context-type
+    mlir-hipsr-load-file-map)
 
   (import (rnrs)
           (only (chezscheme) foreign-entry? foreign-procedure)

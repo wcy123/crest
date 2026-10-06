@@ -16,18 +16,18 @@
 
 (library (mlir IR BuiltinTypes)
   (export
-   mlir::IndexType::get
-   mlir::IntegerType::get<i64>
-   mlir::IntegerType::get<i1>
-   mlir::isa<RankedTensorType>?
-   mlir::RankedTensorType::getRank
-   mlir::RankedTensorType::getElementType
-   mlir::RankedTensorType::getShape
-   mlir::RankedTensorType::getEncoding
-   mlir::RankedTensorType::cloneWithEncoding
-   mlir::ShapedType::getElementType
-   mlir::IntegerType::getWidth
-   mlir::IntegerType::isUnsigned?)
+    mlir::IndexType::get
+    mlir::IntegerType::get<i64>
+    mlir::IntegerType::get<i1>
+    mlir::isa<RankedTensorType>?
+    mlir::RankedTensorType::getRank
+    mlir::RankedTensorType::getElementType
+    mlir::RankedTensorType::getShape
+    mlir::RankedTensorType::getEncoding
+    mlir::RankedTensorType::cloneWithEncoding
+    mlir::ShapedType::getElementType
+    mlir::IntegerType::getWidth
+    mlir::IntegerType::isUnsigned?)
   (import (rnrs) (mlir IR BuiltinTypes ffi))
 
   ;; @brief mlir::IndexType::get — construct an index type in the given context.

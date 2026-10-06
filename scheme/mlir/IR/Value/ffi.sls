@@ -17,11 +17,11 @@
 
 (library (mlir IR Value ffi)
   (export
-   %mlir::Value::getDefiningOp
-   %mlir::isa<BlockArgument>?
-   %mlir::Value::getUses
-   %mlir::Value::getType
-   %mlir::OpResult::getResultNumber)
+    %mlir::Value::getDefiningOp
+    %mlir::isa<BlockArgument>?
+    %mlir::Value::getUses
+    %mlir::Value::getType
+    %mlir::OpResult::getResultNumber)
 
   (import (rnrs)
           (only (chezscheme) foreign-procedure))

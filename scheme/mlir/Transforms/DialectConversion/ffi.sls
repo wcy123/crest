@@ -18,27 +18,27 @@
 (library (mlir Transforms DialectConversion ffi)
 
   (export
-   %type-converter-create
-   %type-converter-destroy
-   %type-converter-add-conversion
-   %type-converter-add-source-materialization
-   %type-converter-add-target-materialization
-   %type-converter-is-legal-type
-   %type-converter-is-legal
-   %type-converter-is-signature-legal
-   %target-create
-   %target-destroy
-   %target-add-illegal-dialect
-   %target-add-legal-dialect
-   %target-add-legal-op
-   %target-add-dynamically-legal-op
-   %target-mark-unknown-ops-dynamically-legal
-   %pattern-set-create
-   %pattern-set-destroy
-   %apply-full-conversion
-   %add-conversion-pattern
-   %add-rewrite-pattern
-   %populate-func-type-conversion)
+    %type-converter-create
+    %type-converter-destroy
+    %type-converter-add-conversion
+    %type-converter-add-source-materialization
+    %type-converter-add-target-materialization
+    %type-converter-is-legal-type
+    %type-converter-is-legal
+    %type-converter-is-signature-legal
+    %target-create
+    %target-destroy
+    %target-add-illegal-dialect
+    %target-add-legal-dialect
+    %target-add-legal-op
+    %target-add-dynamically-legal-op
+    %target-mark-unknown-ops-dynamically-legal
+    %pattern-set-create
+    %pattern-set-destroy
+    %apply-full-conversion
+    %add-conversion-pattern
+    %add-rewrite-pattern
+    %populate-func-type-conversion)
 
   (import (chezscheme))
 

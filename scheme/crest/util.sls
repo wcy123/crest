@@ -17,9 +17,9 @@
 (library (crest util)
 
   (export
-   conversion-target-add-common-legal-ops
-   conversion-target-add-dynamically-legal-func
-   type-converter-add-tensor-widening-materialization)
+    conversion-target-add-common-legal-ops
+    conversion-target-add-dynamically-legal-func
+    type-converter-add-tensor-widening-materialization)
 
   (import (rnrs)
           (only (mlir IR MLIRContext) current-mlir-context)

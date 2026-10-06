@@ -28,53 +28,53 @@
 
 (library (passes hip-fusion fusion)
   (export
-   ;; Single-use guard
-   hip-op-single-use?
+    ;; Single-use guard
+    hip-op-single-use?
 
-   ;; Q/DQ operand access (respects AttrSizedOperandSegments)
-   hip-qdq-input-operand      ; Value: tensor being quantized/dequantized
-   hip-qdq-scale-operand      ; Value: scale
-   hip-qdq-zeropoint          ; int64 zero-point or absent-val when absent
+    ;; Q/DQ operand access (respects AttrSizedOperandSegments)
+    hip-qdq-input-operand      ; Value: tensor being quantized/dequantized
+    hip-qdq-scale-operand      ; Value: scale
+    hip-qdq-zeropoint          ; int64 zero-point or absent-val when absent
 
-   ;; Scale checks
-   hip-splat-scale?           ; guard: scale Value is a splat float constant
+    ;; Scale checks
+    hip-splat-scale?           ; guard: scale Value is a splat float constant
 
-   ;; Type / width checks
-   hip-qdq-element-type       ; element IntegerType of the quantized result
-   hip-qdq-value-bits         ; logical bit width (4 when packed_int4, else storage width)
-   hip-qdq-unsigned?          ; element type is unsigned
-   hip-qdq-quantized-width?   ; bit width is in an allowed set
+    ;; Type / width checks
+    hip-qdq-element-type       ; element IntegerType of the quantized result
+    hip-qdq-value-bits         ; logical bit width (4 when packed_int4, else storage width)
+    hip-qdq-unsigned?          ; element type is unsigned
+    hip-qdq-quantized-width?   ; bit width is in an allowed set
 
-   ;; Matching helpers
-   hip-matching-qdq-params?   ; Q and DQ carry identical scale + zero-point
-   hip-identity-roundtrip?    ; Q output type equals DQ input type
+    ;; Matching helpers
+    hip-matching-qdq-params?   ; Q and DQ carry identical scale + zero-point
+    hip-identity-roundtrip?    ; Q output type equals DQ input type
 
-   ;; Layout op helpers (for QdqRoundTrip patterns)
-   hip-can-requantize-layout-op?  ; op name is in the allowed layout-op list
-   hip-layout-op-has-ctx?         ; layout op is a DPS hip op (takes ctx arg)
+    ;; Layout op helpers (for QdqRoundTrip patterns)
+    hip-can-requantize-layout-op?  ; op name is in the allowed layout-op list
+    hip-layout-op-has-ctx?         ; layout op is a DPS hip op (takes ctx arg)
 
-   ;; Attribute helpers
-   hip-int-attr-equal?            ; op's named int attr equals expected value
-   hip-l2-equiv-rms-norm?         ; rms_norm is equivalent to L2 normalization
-   hip-fusable-conv-geometry?     ; 1x1, unit stride/dilation, no pad, no group
-   hip-per-axis-weight?           ; dq is per-axis weight at given rank/axis
-   hip-per-channel-weight?        ; dq is per-channel weight for gemm consumer
+    ;; Attribute helpers
+    hip-int-attr-equal?            ; op's named int attr equals expected value
+    hip-l2-equiv-rms-norm?         ; rms_norm is equivalent to L2 normalization
+    hip-fusable-conv-geometry?     ; 1x1, unit stride/dilation, no pad, no group
+    hip-per-axis-weight?           ; dq is per-axis weight at given rank/axis
+    hip-per-channel-weight?        ; dq is per-channel weight for gemm consumer
 
-   ;; Init guard
-   hip-can-build-init?        ; result type rank matches shape-source rank
+    ;; Init guard
+    hip-can-build-init?        ; result type rank matches shape-source rank
 
-   ;; Value-level single-use check
-   hip-value-single-use?
+    ;; Value-level single-use check
+    hip-value-single-use?
 
-   ;; Zero-point extraction (pure Scheme)
-   hip-extractable-qdq-zeropoint?
-   hip-extract-qdq-zeropoint-i64
-   hip-qdq-value-bits-c
+    ;; Zero-point extraction (pure Scheme)
+    hip-extractable-qdq-zeropoint?
+    hip-extract-qdq-zeropoint-i64
+    hip-qdq-value-bits-c
 
-   ;; Scale / builder helpers (pure Scheme)
-   hip-extract-splat-scale
-   hip-build-init
-   hip-create-requantized-layout-op)
+    ;; Scale / builder helpers (pure Scheme)
+    hip-extract-splat-scale
+    hip-build-init
+    hip-create-requantized-layout-op)
 
   (import (rnrs)
           (only (chezscheme) nan? foreign-procedure)

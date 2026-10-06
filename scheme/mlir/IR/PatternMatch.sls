@@ -16,28 +16,28 @@
 
 (library (mlir IR PatternMatch)
   (export
-   ;; Clean-name re-exports from ffi
-   mlir::RewriterBase::create
-   mlir::RewriterBase::create-with-regions
-   mlir::RewriterBase::setInsertionPoint          ;; canonical: mlir::RewriterBase::setInsertionPoint(op)
-   mlir::RewriterBase::setInsertionPoint-before   ;; backward-compat alias
-   mlir::RewriterBase::setInsertionPoint-to-end
-   mlir::RewriterBase::createBlock
-   mlir::RewriterBase::replaceOp
-   mlir::RewriterBase::eraseOp
-   crest::RewriterBase::cloneWithTypes
-   ;; Dynamic builder context
-   current-rewriter
-   current-block-builder
-   current-loc
-   ;; Context-dispatching constructor
-   mlir-build-operation
-   ;; RAII macros
-   with-raii
-   with-rewrite-builder
-   with-current-block-builder
-   with-block-builder
-   with-op-location)
+    ;; Clean-name re-exports from ffi
+    mlir::RewriterBase::create
+    mlir::RewriterBase::create-with-regions
+    mlir::RewriterBase::setInsertionPoint          ;; canonical: mlir::RewriterBase::setInsertionPoint(op)
+    mlir::RewriterBase::setInsertionPoint-before   ;; backward-compat alias
+    mlir::RewriterBase::setInsertionPoint-to-end
+    mlir::RewriterBase::createBlock
+    mlir::RewriterBase::replaceOp
+    mlir::RewriterBase::eraseOp
+    crest::RewriterBase::cloneWithTypes
+    ;; Dynamic builder context
+    current-rewriter
+    current-block-builder
+    current-loc
+    ;; Context-dispatching constructor
+    mlir-build-operation
+    ;; RAII macros
+    with-raii
+    with-rewrite-builder
+    with-current-block-builder
+    with-block-builder
+    with-op-location)
 
   (import (rnrs)
           (only (chezscheme) make-parameter parameterize void)
