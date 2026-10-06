@@ -93,16 +93,16 @@
       ;; let* returning the last bound variable.
       (define (main)
         (syntax-case stx ()
-                     [(_ op ...)
-                      (let ([pairs (loop :for op-stx :in (syntax->list #'(op ...))
-                                         :for index :from 0
-                                         :append (process-op op-stx index))])
-                        (if (null? pairs)
-                            #'(if #f #f)
-                            (with-syntax ([(binding ...) (loop :for pair :in pairs
-                                                               :collect (make-binding pair))]
-                                          [result        (car (car (reverse pairs)))])
-                                         #'(let* (binding ...) result))))]))
+          [(_ op ...)
+           (let ([pairs (loop :for op-stx :in (syntax->list #'(op ...))
+                              :for index :from 0
+                              :append (process-op op-stx index))])
+             (if (null? pairs)
+                 #'(if #f #f)
+                 (with-syntax ([(binding ...) (loop :for pair :in pairs
+                                                    :collect (make-binding pair))]
+                               [result        (car (car (reverse pairs)))])
+                   #'(let* (binding ...) result))))]))
 
       ;;-------------------------------------------------------------------
       ;; Op form parser
@@ -111,31 +111,31 @@
       ;; Parse one op-form; return a flat list of (var . expr) pairs.
       (define (process-op op-stx index)
         (syntax-case op-stx (= ->)
-                     ;; Scheme escape
-                     [(var = expr)
-                      (and (identifier? #'var) (not (op-name? #'expr)))
-                      (list (cons #'var #'expr))]
-                     ;; Single-result: normalize (var) to ((var)) and result-type to (result-type)
-                     ;; then recurse. identifier? guard prevents re-matching after normalization.
-                     [(var = op (operands ...) modifiers ... -> result-type)
-                      (and (identifier? #'var) (op-name? #'op))
-                      (process-op #'((var) = op (operands ...) modifiers ... -> (result-type)) index)]
-                     ;; Multi-result (and normalized single): result vars and result types are lists
-                     [((var ...) = op (operands ...) modifiers ... -> (result-type ...))
-                      (and (op-name? #'op)
-                           (for-all identifier? (syntax->list #'(var ...)))
-                           (eqv? (length (syntax->list #'(var ...)))
-                                 (length (syntax->list #'(result-type ...)))))
-                      (let-values ([(attr-setter-fns region-fill-fns) (parse-modifiers #'(modifiers ...))])
-                        (emit-multi (syntax->list #'(var ...)) (op-name->str #'op)
-                                    (value-operands #'(operands ...))
-                                    (syntax->list #'(result-type ...)) attr-setter-fns
-                                    region-fill-fns index))]
-                     ;; Statement: no var, no ->. Normalize to (() = op ...) then recurse.
-                     [(op (operands ...) modifiers ...)
-                      (op-name? #'op)
-                      (process-op #'(() = op (operands ...) modifiers ... -> ()) index)]
-                     [_ (syntax-violation 'with-mlir-ops "invalid op form" op-stx)]))
+          ;; Scheme escape
+          [(var = expr)
+           (and (identifier? #'var) (not (op-name? #'expr)))
+           (list (cons #'var #'expr))]
+          ;; Single-result: normalize (var) to ((var)) and result-type to (result-type)
+          ;; then recurse. identifier? guard prevents re-matching after normalization.
+          [(var = op (operands ...) modifiers ... -> result-type)
+           (and (identifier? #'var) (op-name? #'op))
+           (process-op #'((var) = op (operands ...) modifiers ... -> (result-type)) index)]
+          ;; Multi-result (and normalized single): result vars and result types are lists
+          [((var ...) = op (operands ...) modifiers ... -> (result-type ...))
+           (and (op-name? #'op)
+                (for-all identifier? (syntax->list #'(var ...)))
+                (eqv? (length (syntax->list #'(var ...)))
+                      (length (syntax->list #'(result-type ...)))))
+           (let-values ([(attr-setter-fns region-fill-fns) (parse-modifiers #'(modifiers ...))])
+             (emit-multi (syntax->list #'(var ...)) (op-name->str #'op)
+                         (value-operands #'(operands ...))
+                         (syntax->list #'(result-type ...)) attr-setter-fns
+                         region-fill-fns index))]
+          ;; Statement: no var, no ->. Normalize to (() = op ...) then recurse.
+          [(op (operands ...) modifiers ...)
+           (op-name? #'op)
+           (process-op #'(() = op (operands ...) modifiers ... -> ()) index)]
+          [_ (syntax-violation 'with-mlir-ops "invalid op form" op-stx)]))
 
       ;;-------------------------------------------------------------------
       ;; Modifier parser
@@ -174,36 +174,36 @@
       (define (parse-modifiers modifiers-stx)
         (let loop ([rest modifiers-stx] [attr-setter-fns '()] [region-fill-fns '()])
           (syntax-case rest (= : :region)
-                       [()
-                        (values attr-setter-fns region-fill-fns)]
-                       ;; Attr entry
-                       [((name = val . qualifier) . remaining)
-                        (loop #'remaining
-                              (append attr-setter-fns (list (make-attr-setter #'(name = val . qualifier))))
-                              region-fill-fns)]
-                       ;; Shorthand: bare block — extract components from pattern vars directly
-                       [((label ((arg : type) ...) . body) . remaining)
-                        (block-label? #'label)
-                        (let* ([region-index (length region-fill-fns)]
-                               [fill-fn      (make-block-fill-fn
-                                              (syntax->list #'(arg ...))
-                                              (syntax->list #'(type ...))
-                                              (syntax->list #'body))])
-                          (loop #'remaining attr-setter-fns
-                                (append region-fill-fns (list (make-region-fill-fn region-index (list fill-fn))))))]
-                       ;; Full form: pattern matches all block structures directly via nested ellipsis
-                       [((:region (label ((arg : type) ...) . body) ...) . remaining)
-                        (and (for-all block-label? (syntax->list #'(label ...)))
-                             (for-all identifier?
-                                      (apply append (map syntax->list (syntax->list #'((arg ...) ...))))))
-                        (let* ([region-index  (length region-fill-fns)]
-                               [block-fill-fns (map make-block-fill-fn
-                                                    (map syntax->list (syntax->list #'((arg ...) ...)))
-                                                    (map syntax->list (syntax->list #'((type ...) ...)))
-                                                    (map syntax->list (syntax->list #'(body ...))))])
-                          (loop #'remaining attr-setter-fns
-                                (append region-fill-fns (list (make-region-fill-fn region-index block-fill-fns)))))]
-                       [_ (syntax-violation 'with-mlir-ops "invalid modifier entry" rest)])))
+            [()
+             (values attr-setter-fns region-fill-fns)]
+            ;; Attr entry
+            [((name = val . qualifier) . remaining)
+             (loop #'remaining
+                   (append attr-setter-fns (list (make-attr-setter #'(name = val . qualifier))))
+                   region-fill-fns)]
+            ;; Shorthand: bare block — extract components from pattern vars directly
+            [((label ((arg : type) ...) . body) . remaining)
+             (block-label? #'label)
+             (let* ([region-index (length region-fill-fns)]
+                    [fill-fn      (make-block-fill-fn
+                                   (syntax->list #'(arg ...))
+                                   (syntax->list #'(type ...))
+                                   (syntax->list #'body))])
+               (loop #'remaining attr-setter-fns
+                     (append region-fill-fns (list (make-region-fill-fn region-index (list fill-fn))))))]
+            ;; Full form: pattern matches all block structures directly via nested ellipsis
+            [((:region (label ((arg : type) ...) . body) ...) . remaining)
+             (and (for-all block-label? (syntax->list #'(label ...)))
+                  (for-all identifier?
+                           (apply append (map syntax->list (syntax->list #'((arg ...) ...))))))
+             (let* ([region-index  (length region-fill-fns)]
+                    [block-fill-fns (map make-block-fill-fn
+                                         (map syntax->list (syntax->list #'((arg ...) ...)))
+                                         (map syntax->list (syntax->list #'((type ...) ...)))
+                                         (map syntax->list (syntax->list #'(body ...))))])
+               (loop #'remaining attr-setter-fns
+                     (append region-fill-fns (list (make-region-fill-fn region-index block-fill-fns)))))]
+            [_ (syntax-violation 'with-mlir-ops "invalid modifier entry" rest)])))
 
       ;; True when x is a block label identifier starting with ^.
       (define (block-label? x)
@@ -224,18 +224,18 @@
           (lambda (new-op-stx)
             (with-syntax ([new-op new-op-stx] [n name-str] [v val-stx]
                           [type-q type-quoted-stx])
-                         #'(mlir-operation-set-attribute! new-op n
-                                                          (%make-attr-by-type (mlir-Operation::getContext new-op) type-q v)))))
+              #'(mlir-operation-set-attribute! new-op n
+                                               (%make-attr-by-type (mlir-Operation::getContext new-op) type-q v)))))
         (define (make-direct-setter name-str val-stx)
           (lambda (new-op-stx)
             (with-syntax ([new-op new-op-stx] [n name-str] [v val-stx])
-                         #'(mlir-operation-set-attribute! new-op n v))))
+              #'(mlir-operation-set-attribute! new-op n v))))
         (syntax-case attr-stx (=)
-                     [(name = val type)  (make-typed-setter  (name->str #'name) #'val #''type)]
-                     [(name = val)       (make-direct-setter (name->str #'name) #'val)]
-                     [_ (syntax-violation 'with-mlir-ops
-                                          "attr modifier: (name = val :type) or (name = val) for pre-built attr"
-                                          attr-stx)]))
+          [(name = val type)  (make-typed-setter  (name->str #'name) #'val #''type)]
+          [(name = val)       (make-direct-setter (name->str #'name) #'val)]
+          [_ (syntax-violation 'with-mlir-ops
+                               "attr modifier: (name = val :type) or (name = val) for pre-built attr"
+                               attr-stx)]))
 
       ;;-------------------------------------------------------------------
       ;; Code emitters
@@ -273,23 +273,23 @@
                         [(setter ...) (map (lambda (fn) (fn new-op-id)) attr-setter-fns)]
                         [(region-fill-stmt ...) (map (lambda (fn) (fn new-op-id)) region-fill-fns)]
                         [nregions nregions])
-                       (cons (cons #'tmp-var
-                                   #'(let ([new-op (crest::RewriterBase::build name
-                                                                               operands-expr (list result-type ...) nregions)])
-                                       setter ...
-                                       region-fill-stmt ...
-                                       new-op))
-                             (if (null? result-types)
-                                 ;; zero-result: bind each var directly to new-op
-                                 (map (lambda (var) (cons var #'tmp-var)) result-vars)
-                                 ;; extract each result by index
-                                 (let loop ([vars result-vars] [i 0] [acc '()])
-                                   (if (null? vars)
-                                       (reverse acc)
-                                       (loop (cdr vars) (+ i 1)
-                                             (cons (cons (car vars)
-                                                         #`(mlir-Operation::getResult tmp-var #,i))
-                                                   acc)))))))))
+            (cons (cons #'tmp-var
+                        #'(let ([new-op (crest::RewriterBase::build name
+                                                                    operands-expr (list result-type ...) nregions)])
+                            setter ...
+                            region-fill-stmt ...
+                            new-op))
+                  (if (null? result-types)
+                      ;; zero-result: bind each var directly to new-op
+                      (map (lambda (var) (cons var #'tmp-var)) result-vars)
+                      ;; extract each result by index
+                      (let loop ([vars result-vars] [i 0] [acc '()])
+                        (if (null? vars)
+                            (reverse acc)
+                            (loop (cdr vars) (+ i 1)
+                                  (cons (cons (car vars)
+                                              #`(mlir-Operation::getResult tmp-var #,i))
+                                        acc)))))))))
 
       ;; Returns a closure (lambda (new-op-stx) → fill-stmt-syntax) for one region.
       ;; region-index    — 0-based index of this region within the op.
@@ -302,8 +302,8 @@
                           [region-idx  region-index]
                           [(block-fill-stmt ...)
                            (map (lambda (fn) (fn new-op-stx region-id)) block-fill-fns)])
-                         #'(let ([region (mlir-ir-operation-get-region new-op region-idx)])
-                             block-fill-stmt ...)))))
+              #'(let ([region (mlir-ir-operation-get-region new-op region-idx)])
+                  block-fill-stmt ...)))))
 
       ;; Returns a closure (lambda (new-op-stx region-stx) → block-fill-syntax).
       ;; Takes pre-extracted components — no re-parsing of syntax.
@@ -312,7 +312,7 @@
       ;;   body-ops  — Scheme list of body op syntax objects
       (define (make-block-fill-fn arg-vars arg-types body-ops)
         (let* ([body-stx       (with-syntax ([(body ...) body-ops])
-                                            #'(with-mlir-ops body ...))]
+                                 #'(with-mlir-ops body ...))]
                [arg-bind-pairs (loop :for var :in arg-vars
                                      :for i :from 0
                                      :collect (cons var #`(mlir::Block::getArgument block #,i)))])
@@ -323,10 +323,10 @@
                           [body    body-stx]
                           [new-op  new-op-stx]
                           [region  region-stx])
-                         #'(let* ([block (mlir::Region::push_back<Block> region (list arg-type ...))]
-                                  arg-binding ...)
-                             (with-block-builder block
-                                                 body))))))
+              #'(let* ([block (mlir::Region::push_back<Block> region (list arg-type ...))]
+                       arg-binding ...)
+                  (with-block-builder block
+                                      body))))))
 
 
       ;;-------------------------------------------------------------------
@@ -367,17 +367,17 @@
                          (if (null? static-run)
                              (reverse chunks)
                              (reverse (cons (with-syntax ([(v ...) (reverse static-run)])
-                                                         #'(list v ...))
+                                              #'(list v ...))
                                             chunks)))])
                     (with-syntax ([(chunk ...) final-chunks])
-                                 #'(append chunk ...)))]
+                      #'(append chunk ...)))]
                  [(splice? (car rest))
                   (let* ([splice-expr (cadr (syntax->list (car rest)))]
                          [chunks+     (if (null? static-run)
                                           (cons splice-expr chunks)
                                           (cons splice-expr
                                                 (cons (with-syntax ([(v ...) (reverse static-run)])
-                                                                   #'(list v ...))
+                                                        #'(list v ...))
                                                       chunks)))])
                     (loop (cdr rest) '() chunks+))]
                  [else
