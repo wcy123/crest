@@ -344,7 +344,7 @@
 
   ;; Build a tensor.empty whose result type is out-type.
   ;; Uses mlir-ir-rewriter-base-create directly with the provided rewriter uptr so this works
-  ;; both inside and outside the with-rewrite-builder context (e.g. :then-let).
+  ;; both inside and outside the with-RewriterBase context (e.g. :then-let).
   ;; The loc-op anchor is the defining op of shape-source.
   ;; Returns result Value (index 0) of the new tensor.empty op.
   (define (hip-build-init rewriter out-type shape-source)

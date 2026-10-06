@@ -39,9 +39,9 @@
     add-conversion-pattern
     add-rewrite-pattern
     populate-func-type-conversion
-    with-type-converter
-    with-conversion-target
-    with-pattern-set)
+    with-TypeConverter
+    with-ConversionTarget
+    with-RewritePatternSet)
 
   (import (rnrs)
           (mlir Transforms DialectConversion ffi)
@@ -257,10 +257,10 @@
   ;; @param var  identifier bound to the TypeConverter* uptr for BODY
   ;; @param body forms to evaluate with var in scope
   ;; @example
-  ;;   (with-type-converter (tc)
+  ;;   (with-TypeConverter (tc)
   ;;     (type-converter-add-conversion tc my-fn)
   ;;     ...)
-  (define-syntax with-type-converter
+  (define-syntax with-TypeConverter
     (syntax-rules ()
       [(_ (var) body ...)
        (with-raii (var (type-converter-create) type-converter-destroy)
@@ -272,13 +272,13 @@
   ;; @param ctx MLIRContext* uptr (optional; defaults to current-MLIRContext)
   ;; @param body forms to evaluate with var in scope
   ;; @example
-  ;;   (with-conversion-target (tgt)
+  ;;   (with-ConversionTarget (tgt)
   ;;     (target-add-illegal-dialect tgt "onnx")
   ;;     ...)
-  ;;   (with-conversion-target (tgt ctx)
+  ;;   (with-ConversionTarget (tgt ctx)
   ;;     (target-add-illegal-dialect tgt "onnx")
   ;;     ...)
-  (define-syntax with-conversion-target
+  (define-syntax with-ConversionTarget
     (syntax-rules ()
       [(_ (var) body ...)
        (with-raii (var (target-create (current-MLIRContext)) target-destroy)
@@ -296,13 +296,13 @@
   ;;        (moved); the subsequent destroy is then a no-op (the C++ side checks
   ;;        the pointer).
   ;; @example
-  ;;   (with-pattern-set (ps)
+  ;;   (with-RewritePatternSet (ps)
   ;;     (add-conversion-pattern ps "onnx.MatMul" my-pattern tc 1)
   ;;     (apply-full-conversion op tgt ps))
-  ;;   (with-pattern-set (ps ctx)
+  ;;   (with-RewritePatternSet (ps ctx)
   ;;     (add-conversion-pattern ps "onnx.MatMul" my-pattern tc 1)
   ;;     (apply-full-conversion op tgt ps))
-  (define-syntax with-pattern-set
+  (define-syntax with-RewritePatternSet
     (syntax-rules ()
       [(_ (var) body ...)
        (with-raii (var (pattern-set-create (current-MLIRContext)) pattern-set-destroy)

@@ -34,10 +34,10 @@
     mlir-build-operation
     ;; RAII macros
     with-raii
-    with-rewrite-builder
+    with-RewriterBase
     with-current-OpBuilder
-    with-block-builder
-    with-op-location)
+    with-OpBuilder
+    with-Location)
 
   (import (rnrs)
           (only (mlir support RAII) with-raii)
@@ -129,15 +129,15 @@
 
   ;; Dynamic builder context
   ;; @brief Dynamic parameter holding the active RewriterBase* uptr, or #f when none is installed.
-  ;; @note  Set by with-rewrite-builder; cleared to #f by with-current-OpBuilder.
+  ;; @note  Set by with-RewriterBase; cleared to #f by with-current-OpBuilder.
   (define current-RewriterBase      (make-parameter #f))
 
   ;; @brief Dynamic parameter holding the active OpBuilder* uptr, or #f when none is installed.
-  ;; @note  Set by with-current-OpBuilder / with-block-builder; cleared to #f by with-rewrite-builder.
+  ;; @note  Set by with-current-OpBuilder / with-OpBuilder; cleared to #f by with-RewriterBase.
   (define current-OpBuilder (make-parameter #f))
 
   ;; @brief Dynamic parameter holding the current location Operation* uptr used by mlir-build-operation.
-  ;; @note  Set by with-rewrite-builder, with-current-OpBuilder, and with-op-location.
+  ;; @note  Set by with-RewriterBase, with-current-OpBuilder, and with-Location.
   (define current-Location           (make-parameter #f))
 
   ;; @brief Context-dispatching op constructor — build an op using whichever builder is currently active.
@@ -170,8 +170,8 @@
   ;; @return      Value of the last body expression
   ;; @note        Sets current-RewriterBase to rw and clears current-OpBuilder to #f.
   ;;              current-MLIRContext is derived from loc via mlir-Operation::getContext.
-  ;;              Nested with-rewrite-builder or with-current-OpBuilder forms shadow these bindings.
-  (define-syntax with-rewrite-builder
+  ;;              Nested with-RewriterBase or with-current-OpBuilder forms shadow these bindings.
+  (define-syntax with-RewriterBase
     (syntax-rules ()
       [(_ (rw loc) body ...)
        (parameterize ([current-RewriterBase      rw]
@@ -185,7 +185,7 @@
   ;; @param loc      Operation* uptr — location source; also used to derive current-MLIRContext
   ;; @return         Value of the last body expression
   ;; @note           Sets current-OpBuilder to builder and clears current-RewriterBase to #f.
-  ;;                 Prefer with-block-builder when you want automatic builder lifetime management.
+  ;;                 Prefer with-OpBuilder when you want automatic builder lifetime management.
   (define-syntax with-current-OpBuilder
     (syntax-rules ()
       [(_ (builder loc) body ...)
@@ -201,8 +201,8 @@
   ;; @note         Allocates an OpBuilder via %op-builder-at-block-end and frees it with
   ;;               %op-builder-destroy on exit (even via non-local exit).
   ;;               Sets current-OpBuilder and clears current-RewriterBase to #f.
-  ;;               Does NOT update current-Location or current-MLIRContext; use with-op-location if needed.
-  (define-syntax with-block-builder
+  ;;               Does NOT update current-Location or current-MLIRContext; use with-Location if needed.
+  (define-syntax with-OpBuilder
     (syntax-rules ()
       [(_ block body ...)
        (let ([%builder (%op-builder-at-block-end block)])
@@ -219,7 +219,7 @@
   ;; @return      Value of the last body expression
   ;; @note        Only rebinds current-Location; current-RewriterBase and current-OpBuilder are unchanged.
   ;;              Useful when emitting ops that should carry a location different from the builder's default.
-  (define-syntax with-op-location
+  (define-syntax with-Location
     (syntax-rules ()
       [(_ loc body ...)
        (parameterize ([current-Location loc]) body ...)]))

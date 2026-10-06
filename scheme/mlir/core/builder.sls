@@ -29,10 +29,10 @@
     with-raii
     with-op-builder
     with-operation-state
-    with-rewrite-builder
+    with-RewriterBase
     with-current-OpBuilder
-    with-block-builder
-    with-op-location
+    with-OpBuilder
+    with-Location
     ;; Canonical low-level rewriter ops
     mlir-ir-rewriter-base-create
     mlir-ir-rewriter-base-create-with-regions
@@ -350,7 +350,7 @@
              (lambda () body ...)
              (lambda () (dtor var))))]))
 
-  ;; @brief macro: with-op-builder — RAII for a heap-allocated OpBuilder.
+  ;; @brief macro: with-OpBuilder — RAII for a heap-allocated OpBuilder.
   ;;        Calls mlir-ir-op-builder-at-block-end on BLOCK, binds the result to
   ;;        BUILDER, runs BODY, then calls mlir-ir-op-builder-destroy on exit.
   ;; @param builder identifier bound to the OpBuilder* uptr for BODY
@@ -429,13 +429,13 @@
                                 (mlir-ir-op-builder-create-from-state b state)))]
        [else (error 'crest::RewriterBase::build "no current builder installed")])))
 
-  ;; @brief macro: with-rewrite-builder — install a RewriterBase as the active
+  ;; @brief macro: with-RewriterBase — install a RewriterBase as the active
   ;;        builder context for BODY.  Sets current-RewriterBase, current-Location, and
   ;;        current-MLIRContext; clears current-OpBuilder.
   ;; @param rw   RewriterBase* uptr — passed by the pattern callback
   ;; @param loc  Operation* uptr — insertion-point anchor and location source
   ;; @param body forms to evaluate with the rewriter active
-  (define-syntax with-rewrite-builder
+  (define-syntax with-RewriterBase
     (syntax-rules ()
       [(_ (rw loc) body ...)
        (parameterize ([current-RewriterBase      rw]
@@ -460,12 +460,12 @@
                       [current-MLIRContext  (mlir-Operation::getContext loc)])
          body ...)]))
 
-  ;; @brief macro: with-block-builder — create an OpBuilder at the end of BLOCK,
+  ;; @brief macro: with-OpBuilder — create an OpBuilder at the end of BLOCK,
   ;;        install it as current-OpBuilder, run BODY, then destroy the builder.
   ;;        Inherits current-Location from the enclosing scope.
   ;; @param block Block* uptr — block to position the builder at
   ;; @param body  forms to evaluate with the new block builder installed
-  (define-syntax with-block-builder
+  (define-syntax with-OpBuilder
     (syntax-rules ()
       [(_ block body ...)
        (with-op-builder (%builder block)
@@ -473,11 +473,11 @@
                                        [current-RewriterBase #f])
                           body ...))]))
 
-  ;; @brief macro: with-op-location — temporarily override current-Location with LOC
+  ;; @brief macro: with-Location — temporarily override current-Location with LOC
   ;;        for the duration of BODY.
   ;; @param loc  Operation* uptr — new location/insertion-point source
   ;; @param body forms to evaluate with the overridden location
-  (define-syntax with-op-location
+  (define-syntax with-Location
     (syntax-rules ()
       [(_ loc body ...)
        (parameterize ([current-Location loc]) body ...)]))
