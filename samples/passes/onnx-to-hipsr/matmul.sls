@@ -37,6 +37,7 @@
           (only (mlir IR Types) mlir::Type::getContext)
 
           (only (mlir IR BuiltinTypes)
+                mlir::RankedTensorType::cloneWithEncoding
                 mlir::RankedTensorType::getRank))
 
   (define-conversion-pattern (onnx-matmul->hipsr op operands-ref rewriter type-converter)

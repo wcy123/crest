@@ -47,6 +47,7 @@
           (only (mlir core builder) mlir-ir-operation-get-region mlir::Block::getArgument)
 
           (only (mlir IR BuiltinTypes)
+                mlir::RankedTensorType::cloneWithEncoding
                 mlir::RankedTensorType::getEncoding
                 mlir::RankedTensorType::getRank
                 mlir::isa<RankedTensorType>?)

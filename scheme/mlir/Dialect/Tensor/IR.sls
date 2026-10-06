@@ -15,21 +15,10 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir Dialect Tensor IR)
-  (export mlir::RankedTensorType::cloneWithEncoding
-          mlir::tensor::CastOp::areCastCompatible
+  (export mlir::tensor::CastOp::areCastCompatible
           mlir::tensor::CastOp::create)
 
   (import (rnrs) (mlir Dialect Tensor IR ffi))
-
-  ;; @brief mlir::RankedTensorType::cloneWithEncoding — clone a RankedTensorType
-  ;;        with a new encoding attribute.
-  ;; @param tensor-type-uptr  RankedTensorType opaque uptr
-  ;; @param encoding-uptr     Attribute opaque uptr — new encoding (may be null)
-  ;; @return                  RankedTensorType opaque uptr with the new encoding
-  ;; @see   mlir/IR/BuiltinTypes.h
-  ;; @note  Defined in lib/Bindings/Dialect/Tensor/Tensor.cpp
-  (define mlir::RankedTensorType::cloneWithEncoding
-    %mlir::RankedTensorType::cloneWithEncoding)
 
   ;; @brief tensor::CastOp::areCastCompatible — test whether a tensor.cast
   ;;        between two types is valid.

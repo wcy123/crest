@@ -21,6 +21,8 @@
           (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
           (mlir Dialect Tensor IR)
+          (only (mlir IR BuiltinTypes)
+                mlir::RankedTensorType::cloneWithEncoding)
           (only (mlir Dialect Shape IR Shape)
                 mlir::shape::ShapeType::get
                 mlir::shape::SizeType::get

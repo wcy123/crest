@@ -41,6 +41,7 @@
           (only (mlir IR Types) mlir::Type::getContext)
 
           (only (mlir IR BuiltinTypes)
+                mlir::RankedTensorType::cloneWithEncoding
                 mlir::RankedTensorType::getRank))
 
   ;; Build the permuted output shape inside a region block.

@@ -34,6 +34,7 @@
                 mlir::Operation::emitError mlir::Operation::getAttr mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getAttrOfType<StringAttr> mlir::Operation::getContext mlir::Operation::hasAttr?)
 
           (only (mlir IR BuiltinTypes)
+                mlir::RankedTensorType::cloneWithEncoding
                 mlir::RankedTensorType::getRank))
 
   (define ort-mem-addr-tag "*/_ORT_MEM_ADDR_/*")

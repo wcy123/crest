@@ -24,6 +24,8 @@
           (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
           (mlir Dialect Tensor IR)
+          (only (mlir IR BuiltinTypes)
+                mlir::RankedTensorType::cloneWithEncoding)
           (mlir support logging)
           (crest)
           (only (mlir IR Operation)
