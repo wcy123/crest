@@ -49,25 +49,25 @@
 
   (define-conversion-pattern (onnx-expand->hipsr op operands-ref rewriter type-converter)
   :if-match
-  %output = onnx.Expand (%input %shape-operand)
+    %output = onnx.Expand (%input %shape-operand)
   :then-let
-  ([ctx         (mlir::Operation::getContext op)]
-   [%ctx        (mlir-get-hipsr-context-arg op)]
-   [!out-type   (mlir::Value::getType %output)]
-   [!out-device (mlir::RankedTensorType::cloneWithEncoding !out-type
-							   (make-hipsr-device-space-attr))]
-   [%shape-host (unwrap-cast %shape-operand)])
-  ;; TODO: validate that %shape-host is host-space after unwrapping.
-  ;; If unwrap-cast returns the original value unchanged and it is already
-  ;; device-space, hipsr.placeholder (barrier) will receive a device tensor
-  ;; which may fault at runtime. The C++ ExpandConversion.cpp validates rank,
-  ;; element type, and static shape length — these checks are missing here.
+    ([ctx         (mlir::Operation::getContext op)]
+     [%ctx        (mlir-get-hipsr-context-arg op)]
+     [!out-type   (mlir::Value::getType %output)]
+     [!out-device (mlir::RankedTensorType::cloneWithEncoding !out-type
+							     (make-hipsr-device-space-attr))]
+     [%shape-host (unwrap-cast %shape-operand)])
+    ;; TODO: validate that %shape-host is host-space after unwrapping.
+    ;; If unwrap-cast returns the original value unchanged and it is already
+    ;; device-space, hipsr.placeholder (barrier) will receive a device tensor
+    ;; which may fault at runtime. The C++ ExpandConversion.cpp validates rank,
+    ;; element type, and static shape length — these checks are missing here.
   :rewrite %output :with
-  (%placeholder = hipsr.placeholder (%ctx %input %shape-host)
-                ("placeholder_type" = (make-hipsr-barrier-type-attr))
-                -> !out-device)
-  (%result = hipsr.expand (%ctx %input %shape-host %placeholder)
-           -> !out-device))
+    (%placeholder = hipsr.placeholder (%ctx %input %shape-host)
+                  ("placeholder_type" = (make-hipsr-barrier-type-attr))
+                  -> !out-device)
+    (%result = hipsr.expand (%ctx %input %shape-host %placeholder)
+             -> !out-device))
 
   (define (populate-expand-patterns type-converter patterns ctx)
     (crest::logging::info "Registering onnx.Expand pattern")

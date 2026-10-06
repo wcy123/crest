@@ -59,27 +59,21 @@
   :type '(alist :key-type symbol :value-type integer)
   :group 'pp)
 
-;; Custom indent function for CREST DDR pattern macros.
-;; The header (name args...) is on the same line as the macro; the body
-;; forms — :if-match, pattern lines, :then-let, :rewrite — should be
-;; indented at the same column as the opening paren of the macro, not
-;; 2 spaces further.  This keeps the body flush with the form start so
-;; the keywords read as section markers rather than nested sub-forms.
-;;
-;; Example (define-conversion-pattern at column 2 inside library):
-;;
-;;   (define-conversion-pattern (onnx-matmul->hipsr op ...)
-;;   :if-match               ; ← column 2  (same as the opening '(')
-;;   %output = onnx.MatMul (%a %b)
-;;   :then-let
-;;   ([%ctx ...])
-;;   :rewrite %output :with
-;;   (%result = ...))
-(defun pp--ddr-indent (state _indent-point _normal-indent)
-  "Indent DDR body forms at the column of the macro's opening paren."
-  (save-excursion
-    (goto-char (cadr state))   ; opening paren of define-*-pattern
-    (current-column)))
+;; DDR keywords appear as bare atoms (not as car of a list), so
+;; scheme-indent-function is never consulted for them.  Instead, the
+;; indent function for define-*-pattern checks the current line: if it
+;; starts with a DDR keyword the line sits at the form's opening-paren
+;; column; otherwise it is indented 2 further.
+(defun pp--ddr-indent (state indent-point _normal-indent)
+  "Indent DDR body: keywords at form-col, content at form-col+2."
+  (let ((form-col (save-excursion
+                    (goto-char (cadr state))
+                    (current-column))))
+    (save-excursion
+      (goto-char indent-point)
+      (if (looking-at (rx (* blank) ":" (+ (not blank))))
+          form-col
+        (+ form-col 2)))))
 
 (defun pp--apply-indent-spec ()
   "Apply pp/indent-spec and DDR-specific rules to current Emacs session."

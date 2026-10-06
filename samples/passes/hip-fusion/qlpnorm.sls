@@ -33,16 +33,16 @@
 
   (define-rewrite-pattern (hip-qlpnorm-fusion op rewriter)
   :if-match
-  %q     = hip.quantize_linear   (%ctx %rms %out_scale)
+    %q     = hip.quantize_linear   (%ctx %rms %out_scale)
   :where (and (hip-splat-scale? %out_scale)
               (hip-qdq-quantized-width? op '(16))
               (hip-qdq-unsigned? op)
               (hip-extractable-qdq-zeropoint? op))
-  %rms   = hip.rms_norm          (%ctx %dq_in %rms_scale %rms_init)
+    %rms   = hip.rms_norm          (%ctx %dq_in %rms_scale %rms_init)
   :where (and (hip-value-single-use? %rms)
               (hip-l2-equiv-rms-norm? (mlir::Value::getDefiningOp %rms))
               (hip-can-build-init? op %rms_init))
-  %dq_in = hip.dequantize_linear (%ctx %input %in_scale)
+    %dq_in = hip.dequantize_linear (%ctx %input %in_scale)
   :where (and (hip-qdq-quantized-width?
                (mlir::Value::getDefiningOp %dq_in) '(16))
               (hip-qdq-unsigned? (mlir::Value::getDefiningOp %dq_in))
@@ -50,20 +50,20 @@
               (hip-extractable-qdq-zeropoint?
                (mlir::Value::getDefiningOp %dq_in)))
   :then-let
-  ([!out-type (mlir::Value::getType %q)]
-   [%dq-in-op (mlir::Value::getDefiningOp %dq_in)]
-   [in-scale  (hip-extract-splat-scale %in_scale)]
-   [out-scale (hip-extract-splat-scale %out_scale)]
-   [in-zp     (hip-extract-qdq-zeropoint-i64 %dq-in-op 0)]
-   [out-zp    (hip-extract-qdq-zeropoint-i64 op 0)]
-   [%init     (hip-build-init rewriter !out-type %rms_init)])
+    ([!out-type (mlir::Value::getType %q)]
+     [%dq-in-op (mlir::Value::getDefiningOp %dq_in)]
+     [in-scale  (hip-extract-splat-scale %in_scale)]
+     [out-scale (hip-extract-splat-scale %out_scale)]
+     [in-zp     (hip-extract-qdq-zeropoint-i64 %dq-in-op 0)]
+     [out-zp    (hip-extract-qdq-zeropoint-i64 op 0)]
+     [%init     (hip-build-init rewriter !out-type %rms_init)])
   :rewrite %q :with
-  (%result = (let ([new-op (crest::RewriterBase::build "hip.qlpnormalization"
-						       (list %ctx %input %init)
-						       (list !out-type))])
-               (set-qdq-in-out-attrs! new-op in-scale in-zp out-scale out-zp)
-               (crest::Operation::setI64Attr new-op "axis" -1)
-               (crest::Operation::setI64Attr new-op "p"    2)
-               (mlir::Operation::getResult new-op 0))))
+    (%result = (let ([new-op (crest::RewriterBase::build "hip.qlpnormalization"
+							 (list %ctx %input %init)
+							 (list !out-type))])
+		 (set-qdq-in-out-attrs! new-op in-scale in-zp out-scale out-zp)
+		 (crest::Operation::setI64Attr new-op "axis" -1)
+		 (crest::Operation::setI64Attr new-op "p"    2)
+		 (mlir::Operation::getResult new-op 0))))
 
   ) ;; end library (passes hip-fusion qlpnorm)

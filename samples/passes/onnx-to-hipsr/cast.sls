@@ -33,21 +33,21 @@
 
   (define-conversion-pattern (onnx-cast->hipsr op operands-ref rewriter type-converter)
   :if-match
-  %output = onnx.Cast (%input)
+    %output = onnx.Cast (%input)
   :then-let
-  ([ctx            (mlir::Operation::getContext op)]
-   [%ctx           (mlir-get-hipsr-context-arg op)]
-   [!output-type   (mlir::Value::getType %output)]
-   [!output-device (mlir::RankedTensorType::cloneWithEncoding !output-type
-							      (make-hipsr-device-space-attr))]
-   [!shape-type    (mlir::shape::ShapeType::get)])
+    ([ctx            (mlir::Operation::getContext op)]
+     [%ctx           (mlir-get-hipsr-context-arg op)]
+     [!output-type   (mlir::Value::getType %output)]
+     [!output-device (mlir::RankedTensorType::cloneWithEncoding !output-type
+								(make-hipsr-device-space-attr))]
+     [!shape-type    (mlir::shape::ShapeType::get)])
   :rewrite %output :with
-  (%placeholder = hipsr.placeholder (%ctx %input)
-                (^bb0 ((%shape-in : !shape-type))
-                      (hipsr.shape_yield (%shape-in)))
-                -> !output-device)
-  (%cast = hipsr.cast (%ctx %input %placeholder)
-         -> !output-device))
+    (%placeholder = hipsr.placeholder (%ctx %input)
+                  (^bb0 ((%shape-in : !shape-type))
+			(hipsr.shape_yield (%shape-in)))
+                  -> !output-device)
+    (%cast = hipsr.cast (%ctx %input %placeholder)
+           -> !output-device))
 
   (define (populate-cast-patterns type-converter patterns ctx)
     (add-conversion-pattern patterns "onnx.Cast" onnx-cast->hipsr type-converter 1))

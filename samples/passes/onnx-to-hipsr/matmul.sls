@@ -40,61 +40,61 @@
 
   (define-conversion-pattern (onnx-matmul->hipsr op operands-ref rewriter type-converter)
   :if-match
-  %output = onnx.MatMul (%a %b)
+    %output = onnx.MatMul (%a %b)
   :then-let
-  ([%ctx           (mlir-get-hipsr-context-arg op)]
-   [!output-type   (mlir::Value::getType %output)]
-   [!output-device (mlir::RankedTensorType::cloneWithEncoding !output-type (make-hipsr-device-space-attr))]
-   [!shape-type    (mlir::shape::ShapeType::get)]
-   [!size-type     (mlir::shape::SizeType::get)]
-   [!witness-type  (mlir::shape::WitnessType::get)]
-   ;; Rank info from operand types (runtime)
-   [a-rank         (mlir::RankedTensorType::getRank (mlir::Value::getType %a))]
-   [b-rank         (mlir::RankedTensorType::getRank (mlir::Value::getType %b))]
-   ;; K indices: A's last dim; B's second-to-last (or last if 1-D)
-   [k-a-idx        (- a-rank 1)]
-   [k-b-idx        (if (eqv? b-rank 1) (- b-rank 1) (- b-rank 2))]
-   ;; Batch rank = max(rank-2, 0)
-   [a-batch-rank   (max 0 (- a-rank 2))]
-   [b-batch-rank   (max 0 (- b-rank 2))]
-   ;; M/N dim indices (valid only when rank≥2)
-   [m-idx          (- a-rank 2)]
-   [n-idx          (- b-rank 1)])
+    ([%ctx           (mlir-get-hipsr-context-arg op)]
+     [!output-type   (mlir::Value::getType %output)]
+     [!output-device (mlir::RankedTensorType::cloneWithEncoding !output-type (make-hipsr-device-space-attr))]
+     [!shape-type    (mlir::shape::ShapeType::get)]
+     [!size-type     (mlir::shape::SizeType::get)]
+     [!witness-type  (mlir::shape::WitnessType::get)]
+     ;; Rank info from operand types (runtime)
+     [a-rank         (mlir::RankedTensorType::getRank (mlir::Value::getType %a))]
+     [b-rank         (mlir::RankedTensorType::getRank (mlir::Value::getType %b))]
+     ;; K indices: A's last dim; B's second-to-last (or last if 1-D)
+     [k-a-idx        (- a-rank 1)]
+     [k-b-idx        (if (eqv? b-rank 1) (- b-rank 1) (- b-rank 2))]
+     ;; Batch rank = max(rank-2, 0)
+     [a-batch-rank   (max 0 (- a-rank 2))]
+     [b-batch-rank   (max 0 (- b-rank 2))]
+     ;; M/N dim indices (valid only when rank≥2)
+     [m-idx          (- a-rank 2)]
+     [n-idx          (- b-rank 1)])
   :rewrite %output :with
-  (%placeholder = hipsr.placeholder (%ctx %a %b !output-device)
-                (^bb0 ((%a-shape : !shape-type) (%b-shape : !shape-type))
-                      ;; K equality: compare single-element shape of K dims
-                      (%cka   = shape.const_size () (value = k-a-idx :index) -> !size-type)
-                      (%ckb   = shape.const_size () (value = k-b-idx :index) -> !size-type)
-                      (%eka   = shape.get_extent (%a-shape %cka) -> !size-type)
-                      (%ekb   = shape.get_extent (%b-shape %ckb) -> !size-type)
-                      (%aksh  = shape.from_extents (%eka) -> !shape-type)
-                      (%bksh  = shape.from_extents (%ekb) -> !shape-type)
-                      (%wk    = shape.cstr_eq (%aksh %bksh) -> !witness-type)
-                      ;; Batch shapes via split_at (head = batch dims)
-                      (%cab   = shape.const_size () (value = a-batch-rank :index) -> !size-type)
-                      (%cbb   = shape.const_size () (value = b-batch-rank :index) -> !size-type)
-                      ((%ab %at) = shape.split_at (%a-shape %cab) -> (!shape-type !shape-type))
-                      ((%bb %bt) = shape.split_at (%b-shape %cbb) -> (!shape-type !shape-type))
-                      (%wbc   = shape.cstr_broadcastable (%ab %bb) -> !witness-type)
-                      (%wall  = shape.assuming_all (%wk %wbc) -> !witness-type)
-                      ;; M and N extents (used inside assuming — not IsolatedFromAbove)
-                      (%cm    = shape.const_size () (value = m-idx :index) -> !size-type)
-                      (%cn    = shape.const_size () (value = n-idx :index) -> !size-type)
-                      (%em    = shape.get_extent (%a-shape %cm) -> !size-type)
-                      (%en    = shape.get_extent (%b-shape %cn) -> !size-type)
-                      ;; Result shape inside shape.assuming (non-isolated, sees %ab %bb %em %en)
-                      (%res   = shape.assuming (%wall)
-                              (^bb0 ()
-                                    (%batch  = shape.broadcast    (%ab %bb)    -> !shape-type)
-                                    (%matrix = shape.from_extents (%em %en)   -> !shape-type)
-                                    (%cat   = shape.concat        (%batch %matrix) -> !shape-type)
-                                    (shape.assuming_yield (%cat)))
-                              -> !shape-type)
-                      (hipsr.shape_yield (%res)))
-                -> !output-device)
-  (%result = hipsr.matmul (%ctx %a %b %placeholder)
-           -> !output-device))
+    (%placeholder = hipsr.placeholder (%ctx %a %b !output-device)
+                  (^bb0 ((%a-shape : !shape-type) (%b-shape : !shape-type))
+			;; K equality: compare single-element shape of K dims
+			(%cka   = shape.const_size () (value = k-a-idx :index) -> !size-type)
+			(%ckb   = shape.const_size () (value = k-b-idx :index) -> !size-type)
+			(%eka   = shape.get_extent (%a-shape %cka) -> !size-type)
+			(%ekb   = shape.get_extent (%b-shape %ckb) -> !size-type)
+			(%aksh  = shape.from_extents (%eka) -> !shape-type)
+			(%bksh  = shape.from_extents (%ekb) -> !shape-type)
+			(%wk    = shape.cstr_eq (%aksh %bksh) -> !witness-type)
+			;; Batch shapes via split_at (head = batch dims)
+			(%cab   = shape.const_size () (value = a-batch-rank :index) -> !size-type)
+			(%cbb   = shape.const_size () (value = b-batch-rank :index) -> !size-type)
+			((%ab %at) = shape.split_at (%a-shape %cab) -> (!shape-type !shape-type))
+			((%bb %bt) = shape.split_at (%b-shape %cbb) -> (!shape-type !shape-type))
+			(%wbc   = shape.cstr_broadcastable (%ab %bb) -> !witness-type)
+			(%wall  = shape.assuming_all (%wk %wbc) -> !witness-type)
+			;; M and N extents (used inside assuming — not IsolatedFromAbove)
+			(%cm    = shape.const_size () (value = m-idx :index) -> !size-type)
+			(%cn    = shape.const_size () (value = n-idx :index) -> !size-type)
+			(%em    = shape.get_extent (%a-shape %cm) -> !size-type)
+			(%en    = shape.get_extent (%b-shape %cn) -> !size-type)
+			;; Result shape inside shape.assuming (non-isolated, sees %ab %bb %em %en)
+			(%res   = shape.assuming (%wall)
+				(^bb0 ()
+                                      (%batch  = shape.broadcast    (%ab %bb)    -> !shape-type)
+                                      (%matrix = shape.from_extents (%em %en)   -> !shape-type)
+                                      (%cat   = shape.concat        (%batch %matrix) -> !shape-type)
+                                      (shape.assuming_yield (%cat)))
+				-> !shape-type)
+			(hipsr.shape_yield (%res)))
+                  -> !output-device)
+    (%result = hipsr.matmul (%ctx %a %b %placeholder)
+             -> !output-device))
 
   (define (populate-matmul-patterns type-converter patterns ctx)
     (crest::logging::info "Registering onnx.MatMul pattern (inline shape region)")
