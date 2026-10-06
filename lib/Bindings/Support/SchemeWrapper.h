@@ -130,20 +130,11 @@ template <typename... Ts> inline SValue make_scheme_list(Ts&&... args) {
 }
 
 // ---- scheme_apply with explicit return type ----
-
-// Call a named top-level Scheme procedure: (apply func_name args...)
 template <typename... Ts>
 inline SValue scheme_apply(const char* func_name, Ts&&... args) {
   SValue apply = Stop_level_value(Sstring_to_symbol("apply"));
   SValue func = Stop_level_value(Sstring_to_symbol(func_name));
   SValue scheme_args = make_scheme_list(std::forward<Ts>(args)...);
   return Scall2(apply, func, scheme_args);
-}
-
-// Call an already-resolved Scheme procedure ptr: (apply proc args...)
-// Use this when the callback is stored as a ptr (e.g. LockedSchemeObject).
-inline SValue scheme_apply(SValue proc, SValue args_list) {
-  SValue apply = Stop_level_value(Sstring_to_symbol("apply"));
-  return Scall2(apply, proc, args_list);
 }
 #endif // CREST_BINDINGS_SCHEME_WRAPPER_H
