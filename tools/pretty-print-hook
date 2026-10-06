@@ -5,6 +5,11 @@
 # formatted and CI will catch the diff.  Still exits 0 so the commit
 # is not blocked on machines without emacs.
 if ! command -v emacs >/dev/null 2>&1; then
+  if [ "${CI:-}" = "true" ]; then
+    echo "ERROR: emacs not found in CI — Scheme formatting cannot run." >&2
+    echo "       Add emacs-nox to the system-dependencies step in ci.yml." >&2
+    exit 1
+  fi
   echo "WARNING: emacs not found — Scheme formatting skipped." >&2
   echo "         Install emacs-nox to enforce formatting locally." >&2
   exit 0
