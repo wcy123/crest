@@ -33,8 +33,6 @@
     %target-add-legal-op
     %target-add-dynamically-legal-op
     %target-mark-unknown-ops-dynamically-legal
-    %pattern-set-create
-    %pattern-set-destroy
     %apply-full-conversion
     %add-conversion-pattern
     %add-rewrite-pattern
@@ -204,26 +202,6 @@
     (foreign-procedure
      "mlir_transforms_dialect_conversion_target_mark_unknown_ops_dynamically_legal"
      (uptr scheme-object) void))
-
-  ;; @brief mlir::RewritePatternSet constructor — allocate a new pattern set
-  ;;        bound to the given MLIRContext.
-  ;; @param ctx MLIRContext* uptr
-  ;; @return    RewritePatternSet* uptr — caller must destroy with
-  ;;            %pattern-set-destroy (or pass to %apply-full-conversion which
-  ;;            consumes it)
-  ;; @see   mlir/IR/PatternMatch.h
-  ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
-  (define %pattern-set-create
-    (foreign-procedure "mlir_transforms_dialect_conversion_pattern_set_create"
-                       (uptr) uptr))
-
-  ;; @brief mlir::RewritePatternSet destructor — free a pattern set.
-  ;; @param patterns RewritePatternSet* uptr — must not be used after this call
-  ;; @see   mlir/IR/PatternMatch.h
-  ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
-  (define %pattern-set-destroy
-    (foreign-procedure "mlir_transforms_dialect_conversion_pattern_set_destroy"
-                       (uptr) void))
 
   ;; @brief mlir::applyFullConversion — apply patterns until the target is
   ;;        satisfied; fails if any illegal op remains.

@@ -267,25 +267,6 @@ static int mlir_transforms_dialect_conversion_type_converter_is_signature_legal(
   return converter->isSignatureLegal(func_op.getFunctionType()) ? 1 : 0;
 }
 
-static uint64_t
-mlir_transforms_dialect_conversion_pattern_set_create(uint64_t ctx_ptr) {
-  if (!ctx_ptr) {
-    scheme_error("mlir-transforms-dialect-conversion-pattern-set-create",
-                 "ctx must not be null");
-    return 0; // unreachable — error performs non-local exit
-  }
-  auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
-  return reinterpret_cast<uint64_t>(new mlir::RewritePatternSet(ctx));
-}
-
-static void
-mlir_transforms_dialect_conversion_pattern_set_destroy(uint64_t patterns_ptr) {
-  if (!patterns_ptr) {
-    return;
-  }
-  delete reinterpret_cast<mlir::RewritePatternSet*>(patterns_ptr);
-}
-
 // Returns 1 on success, 0 on failure. Takes ownership of patterns.
 static int mlir_transforms_dialect_conversion_apply_full_conversion(
     uint64_t module_ptr, uint64_t target_ptr, uint64_t patterns_ptr) {
@@ -453,12 +434,6 @@ void registerTransformsDialectConversionBindings() {
       (void*)::
           mlir_transforms_dialect_conversion_type_converter_is_signature_legal);
   Sregister_symbol(
-      "mlir_transforms_dialect_conversion_pattern_set_create",
-      (void*)::mlir_transforms_dialect_conversion_pattern_set_create);
-  Sregister_symbol(
-      "mlir_transforms_dialect_conversion_pattern_set_destroy",
-      (void*)::mlir_transforms_dialect_conversion_pattern_set_destroy);
-  Sregister_symbol(
       "mlir_transforms_dialect_conversion_apply_full_conversion",
       (void*)::mlir_transforms_dialect_conversion_apply_full_conversion);
   Sregister_symbol(
@@ -524,12 +499,6 @@ void registerTransformsDialectConversionBindings() {
       "mlir_type_converter_is_signature_legal",
       (void*)::
           mlir_transforms_dialect_conversion_type_converter_is_signature_legal);
-  Sregister_symbol(
-      "mlir_create_rewrite_pattern_set",
-      (void*)::mlir_transforms_dialect_conversion_pattern_set_create);
-  Sregister_symbol(
-      "mlir_destroy_rewrite_pattern_set",
-      (void*)::mlir_transforms_dialect_conversion_pattern_set_destroy);
   Sregister_symbol(
       "mlir_apply_full_conversion",
       (void*)::mlir_transforms_dialect_conversion_apply_full_conversion);

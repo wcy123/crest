@@ -41,11 +41,14 @@
     populate-func-type-conversion
     with-TypeConverter
     with-ConversionTarget
-    with-RewritePatternSet)
+    )
 
   (import (rnrs)
           (mlir Transforms DialectConversion ffi)
-          (only (mlir core builder) with-raii)
+          (only (mlir IR PatternMatch ffi)
+                %mlir::RewritePatternSet::RewritePatternSet
+                %mlir::RewritePatternSet::~RewritePatternSet)
+          (only (mlir support RAII) with-raii)
           (only (mlir IR MLIRContext) current-MLIRContext))
 
   ;; @brief mlir::TypeConverter constructor — allocate a new TypeConverter.
@@ -197,15 +200,13 @@
   ;;            consumes it)
   ;; @see   mlir/IR/PatternMatch.h
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
-  (define pattern-set-create
-    %pattern-set-create)
+  (define pattern-set-create  %mlir::RewritePatternSet::RewritePatternSet)
 
   ;; @brief mlir::RewritePatternSet destructor — free a pattern set.
   ;; @param patterns RewritePatternSet* uptr — must not be used after this call
   ;; @see   mlir/IR/PatternMatch.h
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
-  (define pattern-set-destroy
-    %pattern-set-destroy)
+  (define pattern-set-destroy %mlir::RewritePatternSet::~RewritePatternSet)
 
   ;; @brief mlir::applyFullConversion — apply patterns until the target is
   ;;        satisfied; fails if any illegal op remains.

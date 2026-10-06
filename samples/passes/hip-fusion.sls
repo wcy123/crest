@@ -33,6 +33,7 @@
 
           (only (mlir core builder) mlir-transforms-greedy-pattern-rewrite-driver-apply)
           (mlir Transforms DialectConversion)
+          (only (mlir IR PatternMatch) with-RewritePatternSet)
           (crest)
           (passes hip-fusion helpers)
           (passes hip-fusion qadd)

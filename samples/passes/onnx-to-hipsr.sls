@@ -40,6 +40,7 @@
                 mlir-ir-rewriter-base-set-insertion-point
                 mlir-ir-rewriter-base-erase-op)
           (mlir Transforms DialectConversion)
+          (only (mlir IR PatternMatch) with-RewritePatternSet)
           (mlir dialects hipsr)
           (mlir Dialect Func IR FuncOps)
           (mlir support logging)

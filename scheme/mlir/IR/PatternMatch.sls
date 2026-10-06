@@ -34,6 +34,7 @@
     mlir-build-operation
     ;; RAII macros
     with-raii
+    with-RewritePatternSet
     with-RewriterBase
     with-current-OpBuilder
     with-OpBuilder
@@ -223,5 +224,19 @@
     (syntax-rules ()
       [(_ loc body ...)
        (parameterize ([current-Location loc]) body ...)]))
+
+  ;; @brief with-RewritePatternSet — RAII for a heap-allocated RewritePatternSet.
+  ;; @param var  identifier bound to the RewritePatternSet* uptr for BODY
+  ;; @param ctx  MLIRContext* uptr (optional; defaults to current-MLIRContext)
+  (define-syntax with-RewritePatternSet
+    (syntax-rules ()
+      [(_ (var) body ...)
+       (with-raii (var (%mlir::RewritePatternSet::RewritePatternSet (current-MLIRContext))
+                       %mlir::RewritePatternSet::~RewritePatternSet)
+                  body ...)]
+      [(_ (var ctx) body ...)
+       (with-raii (var (%mlir::RewritePatternSet::RewritePatternSet ctx)
+                       %mlir::RewritePatternSet::~RewritePatternSet)
+                  body ...)]))
 
   ) ;; end library (mlir IR PatternMatch)
