@@ -60,7 +60,7 @@
     mlir::Region::push_back<Block>
     ;; Pattern application (canonical name)
     mlir-transforms-greedy-pattern-rewrite-driver-apply
-)
+    )
 
   (import (rnrs)
           (only (chezscheme) foreign-procedure parameterize void)
@@ -347,8 +347,8 @@
       [(_ (var ctor dtor) body ...)
        (let ([var ctor])
          (dynamic-wind void
-           (lambda () body ...)
-           (lambda () (dtor var))))]))
+             (lambda () body ...)
+             (lambda () (dtor var))))]))
 
   ;; @brief macro: with-op-builder — RAII for a heap-allocated OpBuilder.
   ;;        Calls mlir-ir-op-builder-at-block-end on BLOCK, binds the result to
@@ -361,9 +361,9 @@
       [(_ (builder block) body ...)
        (let ([builder (mlir-ir-op-builder-at-block-end block)])
          (dynamic-wind
-           (lambda () #f)
-           (lambda () body ...)
-           (lambda () (mlir-ir-op-builder-destroy builder))))]))
+             (lambda () #f)
+             (lambda () body ...)
+             (lambda () (mlir-ir-op-builder-destroy builder))))]))
 
   ;; @brief macro: with-operation-state — RAII for a heap-allocated OperationState.
   ;;        Creates STATE via mlir-ir-operation-state-create(LOC, NAME), runs BODY,
@@ -377,9 +377,9 @@
       [(_ (state loc name) body ...)
        (let ([state (mlir-ir-operation-state-create loc name)])
          (dynamic-wind
-           (lambda () #f)
-           (lambda () body ...)
-           (lambda () (mlir-ir-operation-state-destroy state))))]))
+             (lambda () #f)
+             (lambda () body ...)
+             (lambda () (mlir-ir-operation-state-destroy state))))]))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Dynamic builder context
@@ -402,32 +402,32 @@
     (let ([nregions (if (pair? rest) (car rest) 0)]
           [loc-op   (current-loc)])
       (cond
-        [(current-rewriter) =>
-         (lambda (rw)
-           (mlir-ir-rewriter-base-set-insertion-point rw loc-op)
-           (with-operation-state (state (mlir-Operation::getLoc loc-op) name)
-             (for-each (lambda (v) (mlir-ir-operation-state-add-operands state v))
-                       operands)
-             (for-each (lambda (t) (mlir-ir-operation-state-add-types state t))
-                       types)
-             (let loop ([i 0])
-               (when (< i nregions)
-                 (mlir-ir-operation-state-add-region state)
-                 (loop (+ i 1))))
-             (mlir-ir-rewriter-base-create-from-state rw state)))]
-        [(current-block-builder) =>
-         (lambda (b)
-           (with-operation-state (state (mlir-Operation::getLoc loc-op) name)
-             (for-each (lambda (v) (mlir-ir-operation-state-add-operands state v))
-                       operands)
-             (for-each (lambda (t) (mlir-ir-operation-state-add-types state t))
-                       types)
-             (let loop ([i 0])
-               (when (< i nregions)
-                 (mlir-ir-operation-state-add-region state)
-                 (loop (+ i 1))))
-             (mlir-ir-op-builder-create-from-state b state)))]
-        [else (error 'crest::RewriterBase::build "no current builder installed")])))
+       [(current-rewriter) =>
+        (lambda (rw)
+          (mlir-ir-rewriter-base-set-insertion-point rw loc-op)
+          (with-operation-state (state (mlir-Operation::getLoc loc-op) name)
+                                (for-each (lambda (v) (mlir-ir-operation-state-add-operands state v))
+                                          operands)
+                                (for-each (lambda (t) (mlir-ir-operation-state-add-types state t))
+                                          types)
+                                (let loop ([i 0])
+                                  (when (< i nregions)
+                                    (mlir-ir-operation-state-add-region state)
+                                    (loop (+ i 1))))
+                                (mlir-ir-rewriter-base-create-from-state rw state)))]
+       [(current-block-builder) =>
+        (lambda (b)
+          (with-operation-state (state (mlir-Operation::getLoc loc-op) name)
+                                (for-each (lambda (v) (mlir-ir-operation-state-add-operands state v))
+                                          operands)
+                                (for-each (lambda (t) (mlir-ir-operation-state-add-types state t))
+                                          types)
+                                (let loop ([i 0])
+                                  (when (< i nregions)
+                                    (mlir-ir-operation-state-add-region state)
+                                    (loop (+ i 1))))
+                                (mlir-ir-op-builder-create-from-state b state)))]
+       [else (error 'crest::RewriterBase::build "no current builder installed")])))
 
   ;; @brief macro: with-rewrite-builder — install a RewriterBase as the active
   ;;        builder context for BODY.  Sets current-rewriter, current-loc, and
@@ -469,9 +469,9 @@
     (syntax-rules ()
       [(_ block body ...)
        (with-op-builder (%builder block)
-         (parameterize ([current-block-builder %builder]
-                        [current-rewriter #f])
-           body ...))]))
+                        (parameterize ([current-block-builder %builder]
+                                       [current-rewriter #f])
+                          body ...))]))
 
   ;; @brief macro: with-op-location — temporarily override current-loc with LOC
   ;;        for the duration of BODY.
@@ -482,4 +482,4 @@
       [(_ loc body ...)
        (parameterize ([current-loc loc]) body ...)]))
 
-) ;; end library (mlir core builder)
+  ) ;; end library (mlir core builder)

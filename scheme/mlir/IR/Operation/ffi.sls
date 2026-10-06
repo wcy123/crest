@@ -353,4 +353,4 @@
     (foreign-procedure "mlir::Operation::getAttrOfType<FloatAttr>"
                        (uptr string) double))
 
-) ;; end library (mlir IR Operation ffi)
+  ) ;; end library (mlir IR Operation ffi)

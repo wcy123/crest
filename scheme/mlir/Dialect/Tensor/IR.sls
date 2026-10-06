@@ -38,4 +38,4 @@
   (define mlir::tensor::CastOp::create
     %mlir::tensor::CastOp::create)
 
-) ;; end library (mlir dialects tensor)
+  ) ;; end library (mlir dialects tensor)

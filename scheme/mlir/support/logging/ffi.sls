@@ -68,4 +68,4 @@
   ;; @note       Defined in lib/Bindings/Support/Logging.cpp
   (define %logging-fatal   (foreign-procedure "crest::logging::fatal"   (string) void))
 
-) ;; end library (mlir support logging ffi)
+  ) ;; end library (mlir support logging ffi)

@@ -25,7 +25,7 @@
   ;; @note  Defined in lib/Bindings/Transforms/GreedyPatternRewriteDriver.cpp
   (define %greedy-pattern-rewrite-driver-apply
     (foreign-procedure
-      "mlir_transforms_greedy_pattern_rewrite_driver_apply"
-      (uptr uptr) int))
+     "mlir_transforms_greedy_pattern_rewrite_driver_apply"
+     (uptr uptr) int))
 
-) ;; end library (mlir Transforms GreedyPatternRewriteDriver ffi)
+  ) ;; end library (mlir Transforms GreedyPatternRewriteDriver ffi)

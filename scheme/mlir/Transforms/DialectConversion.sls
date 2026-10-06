@@ -264,7 +264,7 @@
     (syntax-rules ()
       [(_ (var) body ...)
        (with-raii (var (type-converter-create) type-converter-destroy)
-         body ...)]))
+                  body ...)]))
 
   ;; @brief RAII macro — create a ConversionTarget for CTX, bind it to VAR,
   ;;        execute BODY, then unconditionally destroy the target on exit.
@@ -282,10 +282,10 @@
     (syntax-rules ()
       [(_ (var) body ...)
        (with-raii (var (target-create (current-mlir-context)) target-destroy)
-         body ...)]
+                  body ...)]
       [(_ (var ctx) body ...)
        (with-raii (var (target-create ctx) target-destroy)
-         body ...)]))
+                  body ...)]))
 
   ;; @brief RAII macro — create a RewritePatternSet for CTX, bind it to VAR,
   ;;        execute BODY, then unconditionally destroy the pattern set on exit.
@@ -306,9 +306,9 @@
     (syntax-rules ()
       [(_ (var) body ...)
        (with-raii (var (pattern-set-create (current-mlir-context)) pattern-set-destroy)
-         body ...)]
+                  body ...)]
       [(_ (var ctx) body ...)
        (with-raii (var (pattern-set-create ctx) pattern-set-destroy)
-         body ...)]))
+                  body ...)]))
 
-) ;; end library (mlir Transforms DialectConversion)
+  ) ;; end library (mlir Transforms DialectConversion)

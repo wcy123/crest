@@ -66,4 +66,4 @@
     (let ([attr (%get-attr op name)])
       (if (zero? attr) +nan.0 (mlir::FloatAttr::getValueAsDouble.f32 attr))))
 
-) ;; end library (passes hip-fusion helpers)
+  ) ;; end library (passes hip-fusion helpers)

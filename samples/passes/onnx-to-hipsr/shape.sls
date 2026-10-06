@@ -59,7 +59,7 @@
   ;; into the destination tensor via tensor.insert. Returns the final tensor Value*.
   ;; Mirrors ShapeConversion.cpp::populateComputeBody.
   (define (build-compute-body! in-val dest-val input-shape start end
-                                index-type i64-type out-host-type)
+                               index-type i64-type out-host-type)
     (let loop ([axis start] [slot 0] [acc dest-val])
       (if (>= axis end)
           acc
@@ -67,76 +67,76 @@
                  ;; extent: arith.constant (static) or tensor.dim + index_cast (dynamic)
                  [ext (if (dynamic-dim? dim)
                           (let* ([ci-op (crest::RewriterBase::build "arith.constant"
-                                          '() (list index-type))]
+                                                                    '() (list index-type))]
                                  [_     (mlir::Operation::setAttr! ci-op "value" (mlir::IntegerAttr::get<index> axis))]
                                  [ci    (mlir::Operation::getResult ci-op 0)]
                                  [d-op  (crest::RewriterBase::build "tensor.dim"
-                                          (list in-val ci) (list index-type))]
+                                                                    (list in-val ci) (list index-type))]
                                  [d     (mlir::Operation::getResult d-op 0)]
                                  [e-op  (crest::RewriterBase::build "arith.index_cast"
-                                          (list d) (list i64-type))])
+                                                                    (list d) (list i64-type))])
                             (mlir::Operation::getResult e-op 0))
                           (let* ([e-op (crest::RewriterBase::build "arith.constant"
-                                         '() (list i64-type))]
+                                                                   '() (list i64-type))]
                                  [_    (mlir::Operation::setAttr! e-op "value" (mlir::IntegerAttr::get<i64> dim))])
                             (mlir::Operation::getResult e-op 0)))]
                  ;; slot constant (= axis - start within the output tensor)
                  [slot-op (crest::RewriterBase::build "arith.constant"
-                             '() (list index-type))]
+                                                      '() (list index-type))]
                  [_       (mlir::Operation::setAttr! slot-op "value" (mlir::IntegerAttr::get<index> slot))]
                  [slot-c  (mlir::Operation::getResult slot-op 0)]
                  ;; tensor.insert %ext into %acc[%slot-c]
                  [ins-op  (crest::RewriterBase::build "tensor.insert"
-                             (list ext acc slot-c) (list out-host-type))]
+                                                      (list ext acc slot-c) (list out-host-type))]
                  [ins     (mlir::Operation::getResult ins-op 0)])
             (loop (+ axis 1) (+ slot 1) ins)))))
 
   (define-conversion-pattern (onnx-shape->hipsr op operands-ref rewriter type-converter)
     :if-match
-        %output = onnx.Shape (%input)
+      %output = onnx.Shape (%input)
     :then-let
-        ([ctx         (mlir::Operation::getContext op)]
-         [!input-type (mlir::Value::getType %input)]
-         [!out-type   (mlir::Value::getType %output)]
-         [!out-host   (make-mlir-tensor-in-host-space !out-type)]
-         [input-rank  (mlir::RankedTensorType::getRank !input-type)]
-         [input-shape (mlir::RankedTensorType::getShape !input-type)]
-         [%ctx        (mlir-get-hipsr-context-arg op)]
-         [start-raw   (mlir::Operation::getAttrOfType<IntegerAttr> op "start" 0)]
-         [end-raw     (mlir::Operation::getAttrOfType<IntegerAttr> op "end" 0)]
-         ;; ONNX normalizes negative bounds by adding rank, then clamps to [0, rank].
-         ;; A zero end means "absent" and defaults to the rank.
-         [start       (normalize-bound start-raw input-rank #f 0)]
-         [end         (normalize-bound end-raw   input-rank #t  input-rank)]
-         [num-dims    (- end start)]
-         [!shape-type (mlir::shape::ShapeType::get)]
-         [!index-type (mlir::IndexType::get       ctx)]
-         [!i64-type   (mlir::IntegerType::get<i64>         ctx)]
-         [!ctx-type   (mlir-get-hipsr-context-type ctx)])
+      ([ctx         (mlir::Operation::getContext op)]
+       [!input-type (mlir::Value::getType %input)]
+       [!out-type   (mlir::Value::getType %output)]
+       [!out-host   (make-mlir-tensor-in-host-space !out-type)]
+       [input-rank  (mlir::RankedTensorType::getRank !input-type)]
+       [input-shape (mlir::RankedTensorType::getShape !input-type)]
+       [%ctx        (mlir-get-hipsr-context-arg op)]
+       [start-raw   (mlir::Operation::getAttrOfType<IntegerAttr> op "start" 0)]
+       [end-raw     (mlir::Operation::getAttrOfType<IntegerAttr> op "end" 0)]
+       ;; ONNX normalizes negative bounds by adding rank, then clamps to [0, rank].
+       ;; A zero end means "absent" and defaults to the rank.
+       [start       (normalize-bound start-raw input-rank #f 0)]
+       [end         (normalize-bound end-raw   input-rank #t  input-rank)]
+       [num-dims    (- end start)]
+       [!shape-type (mlir::shape::ShapeType::get)]
+       [!index-type (mlir::IndexType::get       ctx)]
+       [!i64-type   (mlir::IntegerType::get<i64>         ctx)]
+       [!ctx-type   (mlir-get-hipsr-context-type ctx)])
     :rewrite %output :with
-        ;; Placeholder: shape region yields const shape [num-dims].
-        ;; Uses arith.constant (index) → shape.from_extents, matching
-        ;; ShapeConversion.cpp::populateShapeRegion.
-        (%placeholder = hipsr.placeholder (%ctx %input !out-host)
-                        (^bb0 ((%s : !shape-type))
-                              (%cN = arith.constant () (value = num-dims :index) -> !index-type)
-                              (%r  = shape.from_extents (%cN) -> !shape-type)
-                              (hipsr.shape_yield (%r)))
-                        -> !out-host)
-        ;; Compute body: inserts extents one by one via tensor.insert.
-        ;; build-compute-body! uses crest::RewriterBase::build directly to mix
-        ;; Scheme control flow with MLIR op creation.
-        (%result = hipsr.compute (%ctx %input %placeholder !out-host)
-                   (operandSegmentSizes = (list 1 1 1) :i32-array)
-                   (^bb0 ((%c : !ctx-type) (%in : !input-type) (%dest : !out-host))
-                         (%final = (build-compute-body!
-                                     %in %dest input-shape start end
-                                     !index-type !i64-type !out-host))
-                         (hipsr.compute_yield (%final)))
-                   -> !out-host))
+      ;; Placeholder: shape region yields const shape [num-dims].
+      ;; Uses arith.constant (index) → shape.from_extents, matching
+      ;; ShapeConversion.cpp::populateShapeRegion.
+      (%placeholder = hipsr.placeholder (%ctx %input !out-host)
+                    (^bb0 ((%s : !shape-type))
+                          (%cN = arith.constant () (value = num-dims :index) -> !index-type)
+                          (%r  = shape.from_extents (%cN) -> !shape-type)
+                          (hipsr.shape_yield (%r)))
+                    -> !out-host)
+      ;; Compute body: inserts extents one by one via tensor.insert.
+      ;; build-compute-body! uses crest::RewriterBase::build directly to mix
+      ;; Scheme control flow with MLIR op creation.
+      (%result = hipsr.compute (%ctx %input %placeholder !out-host)
+               (operandSegmentSizes = (list 1 1 1) :i32-array)
+               (^bb0 ((%c : !ctx-type) (%in : !input-type) (%dest : !out-host))
+                     (%final = (build-compute-body!
+                                %in %dest input-shape start end
+                                !index-type !i64-type !out-host))
+                     (hipsr.compute_yield (%final)))
+               -> !out-host))
 
   (define (populate-shape-patterns type-converter patterns ctx)
     (add-conversion-pattern patterns "onnx.Shape"
-                                      onnx-shape->hipsr type-converter 1))
+                            onnx-shape->hipsr type-converter 1))
 
-) ;; end library (onnx-to-hipsr shape)
+  ) ;; end library (onnx-to-hipsr shape)

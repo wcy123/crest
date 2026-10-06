@@ -117,4 +117,4 @@
   ;; @note        Wraps %integer-type-is-unsigned; returns boolean instead of 1/0
   (define (mlir::IntegerType::isUnsigned? t)  (not (zero? (%integer-type-is-unsigned t))))
 
-) ;; end library (mlir IR BuiltinTypes)
+  ) ;; end library (mlir IR BuiltinTypes)

@@ -36,7 +36,7 @@
           (crest)
           (only (mlir IR Operation)
                 mlir::Operation::getResult)
-  )
+          )
 
   ;;===--------------------------------------------------------------------===;;
   ;; Binary case — DSL with inline broadcast shape region (identical to equal)
@@ -44,19 +44,19 @@
 
   (define-conversion-pattern (onnx-min-2->hipsr op operands-ref rewriter type-converter)
     :if-match
-        %output = onnx.Min (%lhs %rhs)
+      %output = onnx.Min (%lhs %rhs)
     :then-let
-        ([%ctx        (mlir-get-hipsr-context-arg op)]
-         [!out-type   (mlir::Value::getType %output)]
-         [!out-device (mlir::RankedTensorType::cloneWithEncoding !out-type (make-hipsr-device-space-attr))]
-         [!shape-type (mlir::shape::ShapeType::get)])
+      ([%ctx        (mlir-get-hipsr-context-arg op)]
+       [!out-type   (mlir::Value::getType %output)]
+       [!out-device (mlir::RankedTensorType::cloneWithEncoding !out-type (make-hipsr-device-space-attr))]
+       [!shape-type (mlir::shape::ShapeType::get)])
     :rewrite %output :with
-        (%placeholder = hipsr.placeholder (%ctx %lhs %rhs !out-device)
-                        (^bb0 ((%ls : !shape-type) (%rs : !shape-type))
-                              (%broadcast = shape.broadcast (%ls %rs) -> !shape-type)
-                              (hipsr.shape_yield (%broadcast)))
-                        -> !out-device)
-        (%result = hipsr.min (%ctx %lhs %rhs %placeholder) -> !out-device))
+      (%placeholder = hipsr.placeholder (%ctx %lhs %rhs !out-device)
+                    (^bb0 ((%ls : !shape-type) (%rs : !shape-type))
+                          (%broadcast = shape.broadcast (%ls %rs) -> !shape-type)
+                          (hipsr.shape_yield (%broadcast)))
+                    -> !out-device)
+      (%result = hipsr.min (%ctx %lhs %rhs %placeholder) -> !out-device))
 
   ;;===--------------------------------------------------------------------===;;
   ;; General case — N=1 identity; N>2 chain (binary DSL pattern handles N=2)
@@ -66,36 +66,36 @@
     (let ([!shape-type (mlir::shape::ShapeType::get)])
       (mlir::RewriterBase::setInsertionPoint rewriter loc-op)
       (with-rewrite-builder (rewriter loc-op)
-        (with-mlir-ops
-          (%ph = hipsr.placeholder (ctx lhs rhs)
-                 (^bb0 ((%ls : !shape-type) (%rs : !shape-type))
-                       (%bc = shape.broadcast (%ls %rs) -> !shape-type)
-                       (hipsr.shape_yield (%bc)))
-                 -> out-type)
-          (%r = hipsr.min (ctx lhs rhs %ph) -> out-type)))))
+                            (with-mlir-ops
+                             (%ph = hipsr.placeholder (ctx lhs rhs)
+                                  (^bb0 ((%ls : !shape-type) (%rs : !shape-type))
+                                        (%bc = shape.broadcast (%ls %rs) -> !shape-type)
+                                        (hipsr.shape_yield (%bc)))
+                                  -> out-type)
+                             (%r = hipsr.min (ctx lhs rhs %ph) -> out-type)))))
 
   (define (onnx-min-general->hipsr op operands-ref rewriter type-converter)
     (let ([n (array-ref-size operands-ref)])
       (cond
-        [(eqv? n 1)
-         (mlir::RewriterBase::replaceOp rewriter op (array-ref-at operands-ref 0))
-         #t]
-        [(> n 2)
-         (let* ([ctx      (mlir-get-hipsr-context-arg op)]
-                [!base    (mlir::Value::getType (mlir::Operation::getResult op 0))]
-                [out-type (mlir::RankedTensorType::cloneWithEncoding !base
-                            (make-hipsr-device-space-attr))])
-           (let loop ([i 2]
-                      [acc (make-binary-min! rewriter op ctx
-                             (array-ref-at operands-ref 0)
-                             (array-ref-at operands-ref 1)
-                             out-type)])
-             (if (eqv? i n)
-                 (begin (mlir::RewriterBase::replaceOp rewriter op acc) #t)
-                 (loop (+ i 1)
-                       (make-binary-min! rewriter op ctx acc
-                         (array-ref-at operands-ref i) out-type)))))]
-        [else #f])))
+       [(eqv? n 1)
+        (mlir::RewriterBase::replaceOp rewriter op (array-ref-at operands-ref 0))
+        #t]
+       [(> n 2)
+        (let* ([ctx      (mlir-get-hipsr-context-arg op)]
+               [!base    (mlir::Value::getType (mlir::Operation::getResult op 0))]
+               [out-type (mlir::RankedTensorType::cloneWithEncoding !base
+                                                                    (make-hipsr-device-space-attr))])
+          (let loop ([i 2]
+                     [acc (make-binary-min! rewriter op ctx
+                                            (array-ref-at operands-ref 0)
+                                            (array-ref-at operands-ref 1)
+                                            out-type)])
+            (if (eqv? i n)
+                (begin (mlir::RewriterBase::replaceOp rewriter op acc) #t)
+                (loop (+ i 1)
+                      (make-binary-min! rewriter op ctx acc
+                                        (array-ref-at operands-ref i) out-type)))))]
+       [else #f])))
 
   (define (populate-min-patterns type-converter patterns ctx)
     ;; DSL pattern for the common binary case (N=2) — inline shape region
@@ -103,4 +103,4 @@
     ;; Scheme fallback for N=1 (identity) and N>2 (chain)
     (add-conversion-pattern patterns "onnx.Min" onnx-min-general->hipsr type-converter 1))
 
-) ;; end library (onnx-to-hipsr min)
+  ) ;; end library (onnx-to-hipsr min)

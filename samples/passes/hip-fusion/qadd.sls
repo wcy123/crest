@@ -57,8 +57,8 @@
   ;; Uses current-mlir-context — no explicit ctx needed.
   (define (scale-attr scale-val)
     (mlir::FloatAttr::get<f32>
-      (mlir::DenseElementsAttr::getSplatValue<APFloat>
-        (mlir::Operation::getAttr (mlir::Value::getDefiningOp scale-val) "value"))))
+     (mlir::DenseElementsAttr::getSplatValue<APFloat>
+      (mlir::Operation::getAttr (mlir::Value::getDefiningOp scale-val) "value"))))
 
   ;; Build an IntegerAttr<i64> for the zero-point.
   ;; Present: extract the splat integer from the hip.constant.
@@ -66,42 +66,42 @@
   ;; Uses current-mlir-context — no explicit ctx needed.
   (define (zp-attr zp-val)
     (mlir::IntegerAttr::get<i64>
-      (if (unbound-value? zp-val)
-          0
-          (mlir::DenseElementsAttr::getSplatValue<APInt>
-            (mlir::Operation::getAttr (mlir::Value::getDefiningOp zp-val) "value")))))
+     (if (unbound-value? zp-val)
+         0
+         (mlir::DenseElementsAttr::getSplatValue<APInt>
+          (mlir::Operation::getAttr (mlir::Value::getDefiningOp zp-val) "value")))))
 
   (define-rewrite-pattern (hip-qadd-fusion op rewriter)
     :if-match
-        %lhs_scale = hip.constant          ()
-                       :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
-        %dq_lhs    = hip.dequantize_linear (%ctx %lhs %lhs_scale (:optional %lhs_zp) %dq_lhs_init)
-        %rhs_scale = hip.constant          ()
-                       :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
-        %dq_rhs    = hip.dequantize_linear (%ctx %rhs %rhs_scale (:optional %rhs_zp) %dq_rhs_init)
-        %out_scale = hip.constant          ()
-                       :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
-        %sum       = hip.add               (%ctx %dq_lhs %dq_rhs %sum_init)
-                       :where (and (single-consumer? %sum)
-                                   (same-rank? %q %sum_init))
-        %q         = hip.quantize_linear   (%ctx %sum %out_scale (:optional %out_zp) %q_init)
+      %lhs_scale = hip.constant          ()
+        :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
+      %dq_lhs    = hip.dequantize_linear (%ctx %lhs %lhs_scale (:optional %lhs_zp) %dq_lhs_init)
+      %rhs_scale = hip.constant          ()
+        :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
+      %dq_rhs    = hip.dequantize_linear (%ctx %rhs %rhs_scale (:optional %rhs_zp) %dq_rhs_init)
+      %out_scale = hip.constant          ()
+        :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
+      %sum       = hip.add               (%ctx %dq_lhs %dq_rhs %sum_init)
+        :where (and (single-consumer? %sum)
+                    (same-rank? %q %sum_init))
+      %q         = hip.quantize_linear   (%ctx %sum %out_scale (:optional %out_zp) %q_init)
     :then-let
-        ([!out-type  (mlir::Value::getType %q)]
-         [lhs-scale  (scale-attr %lhs_scale)]
-         [rhs-scale  (scale-attr %rhs_scale)]
-         [out-scale  (scale-attr %out_scale)]
-         [lhs-zp     (zp-attr %lhs_zp)]
-         [rhs-zp     (zp-attr %rhs_zp)]
-         [out-zp     (zp-attr %out_zp)]
-         [%init      (hip-build-init rewriter !out-type %sum_init)])
+      ([!out-type  (mlir::Value::getType %q)]
+       [lhs-scale  (scale-attr %lhs_scale)]
+       [rhs-scale  (scale-attr %rhs_scale)]
+       [out-scale  (scale-attr %out_scale)]
+       [lhs-zp     (zp-attr %lhs_zp)]
+       [rhs-zp     (zp-attr %rhs_zp)]
+       [out-zp     (zp-attr %out_zp)]
+       [%init      (hip-build-init rewriter !out-type %sum_init)])
     :rewrite %q :with
-        (%result = hip.qadd (%ctx %lhs %rhs %init)
-                    ("lhs_scale"    = lhs-scale)
-                    ("lhs_zp"       = lhs-zp)
-                    ("rhs_scale"    = rhs-scale)
-                    ("rhs_zp"       = rhs-zp)
-                    ("output_scale" = out-scale)
-                    ("output_zp"    = out-zp)
-                    -> !out-type))
+      (%result = hip.qadd (%ctx %lhs %rhs %init)
+               ("lhs_scale"    = lhs-scale)
+               ("lhs_zp"       = lhs-zp)
+               ("rhs_scale"    = rhs-scale)
+               ("rhs_zp"       = rhs-zp)
+               ("output_scale" = out-scale)
+               ("output_zp"    = out-zp)
+               -> !out-type))
 
-) ;; end library (passes hip-fusion qadd)
+  ) ;; end library (passes hip-fusion qadd)

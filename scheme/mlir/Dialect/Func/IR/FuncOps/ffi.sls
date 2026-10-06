@@ -28,4 +28,4 @@
   (define %populate-func-type-conversion-pattern
     (foreign-procedure "mlir_transforms_dialect_conversion_populate_func_type_conversion" (uptr uptr) void))
 
-) ;; end library (mlir Dialect Func IR FuncOps ffi)
+  ) ;; end library (mlir Dialect Func IR FuncOps ffi)

@@ -113,4 +113,4 @@
   (define %mlir::MLIRContext::printStackTraceOnDiagnostic
     (foreign-procedure "mlir_ir_mlir_context_print_stack_trace_on_diagnostic" (uptr int) void))
 
-) ;; end library (mlir IR MLIRContext ffi)
+  ) ;; end library (mlir IR MLIRContext ffi)

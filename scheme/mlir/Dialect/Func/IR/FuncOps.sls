@@ -27,4 +27,4 @@
   (define mlir-populate-func-type-conversion-pattern
     %populate-func-type-conversion-pattern)
 
-) ;; end library (mlir Dialect Func IR FuncOps)
+  ) ;; end library (mlir Dialect Func IR FuncOps)

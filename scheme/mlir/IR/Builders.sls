@@ -57,4 +57,4 @@
   ;; @note           Defined in lib/Bindings/IR/OpBuilder.cpp; no-op if builder is 0
   (define mlir::OpBuilder::~OpBuilder             %mlir::OpBuilder::~OpBuilder)
 
-) ;; end library (mlir IR Builders)
+  ) ;; end library (mlir IR Builders)

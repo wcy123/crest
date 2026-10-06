@@ -36,4 +36,4 @@
   ;;                C++ implementation in lib/Bindings/IR/Region.cpp
   (define mlir::Region::front %mlir::Region::front)
 
-) ;; end library (mlir IR Region)
+  ) ;; end library (mlir IR Region)

@@ -43,4 +43,4 @@
   ;; :variadic — (:variadic %rest) in an operand list marks a variadic tail.
   ;; Parsed but not yet implemented in analyze/codegen.
   (define-syntax :variadic   (lambda (x) (syntax-violation 'pattern-keyword "misplaced :variadic (only valid inside DDR operand list)" x)))
-)
+  )

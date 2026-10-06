@@ -18,6 +18,12 @@ repos:
     -   id: check-merge-conflict
 -   repo: local
     hooks:
+    -   id: scheme-format
+        name: scheme-format (emacs)
+        entry: tools/pretty-print-hook
+        language: script
+        files: '\.(scm|sps|ss|sls)$'
+        pass_filenames: true
     -   id: lintrunner
         name: lintrunner
         entry: lintrunner

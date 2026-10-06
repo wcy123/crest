@@ -24,4 +24,4 @@
   ;; @note        Defined in lib/Bindings/IR/Type.cpp
   (define mlir::Type::getContext %mlir::Type::getContext)
 
-) ;; end library (mlir IR Types)
+  ) ;; end library (mlir IR Types)
