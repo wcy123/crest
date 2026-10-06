@@ -386,88 +386,69 @@ namespace crest {
 void registerTransformsDialectConversionBindings() {
   // ── New canonical names ───────────────────────────────────────────────────
   Sregister_symbol(
-      "mlir_transforms_dialect_conversion_add_conversion_pattern",
+      "crest::DialectConversion::addConversionPattern",
       (void*)::mlir_transforms_dialect_conversion_add_conversion_pattern);
   Sregister_symbol(
-      "mlir_transforms_dialect_conversion_add_rewrite_pattern",
+      "crest::DialectConversion::addRewritePattern",
       (void*)::mlir_transforms_dialect_conversion_add_rewrite_pattern);
   Sregister_symbol(
-      "mlir_transforms_dialect_conversion_type_converter_create",
+      "mlir::TypeConverter::TypeConverter",
       (void*)::mlir_transforms_dialect_conversion_type_converter_create);
   Sregister_symbol(
-      "mlir_transforms_dialect_conversion_type_converter_destroy",
+      "mlir::TypeConverter::~TypeConverter",
       (void*)::mlir_transforms_dialect_conversion_type_converter_destroy);
-  Sregister_symbol("mlir_transforms_dialect_conversion_target_create",
+  Sregister_symbol("mlir::ConversionTarget::ConversionTarget",
                    (void*)::mlir_transforms_dialect_conversion_target_create);
-  Sregister_symbol("mlir_transforms_dialect_conversion_target_destroy",
+  Sregister_symbol("mlir::ConversionTarget::~ConversionTarget",
                    (void*)::mlir_transforms_dialect_conversion_target_destroy);
   Sregister_symbol(
-      "mlir_transforms_dialect_conversion_target_add_illegal_dialect",
+      "mlir::ConversionTarget::addIllegalDialect",
       (void*)::mlir_transforms_dialect_conversion_target_add_illegal_dialect);
   Sregister_symbol(
-      "mlir_transforms_dialect_conversion_target_add_legal_dialect",
+      "mlir::ConversionTarget::addLegalDialect",
       (void*)::mlir_transforms_dialect_conversion_target_add_legal_dialect);
   Sregister_symbol(
-      "mlir_transforms_dialect_conversion_target_add_legal_op",
+      "mlir::ConversionTarget::addLegalOp",
       (void*)::mlir_transforms_dialect_conversion_target_add_legal_op);
   Sregister_symbol(
-      "mlir_transforms_dialect_conversion_target_add_dynamically_legal_op",
+      "mlir::ConversionTarget::addDynamicallyLegalOp",
       (void*)::
           mlir_transforms_dialect_conversion_target_add_dynamically_legal_op);
   Sregister_symbol(
-      "mlir_transforms_dialect_conversion_target_mark_unknown_ops_dynamically_"
-      "legal",
+      "mlir::ConversionTarget::markUnknownOpsDynamicallyLegal",
       (void*)::
           mlir_transforms_dialect_conversion_target_mark_unknown_ops_dynamically_legal);
   Sregister_symbol(
-      "mlir_transforms_dialect_conversion_type_converter_add_conversion",
+      "mlir::TypeConverter::addConversion",
       (void*)::
           mlir_transforms_dialect_conversion_type_converter_add_conversion);
   Sregister_symbol(
-      "mlir_transforms_dialect_conversion_type_converter_is_legal_type",
+      "mlir::TypeConverter::isLegal<Type>",
       (void*)::mlir_transforms_dialect_conversion_type_converter_is_legal_type);
   Sregister_symbol(
-      "mlir_transforms_dialect_conversion_type_converter_is_legal",
+      "mlir::TypeConverter::isLegal<Operation>",
       (void*)::mlir_transforms_dialect_conversion_type_converter_is_legal);
   Sregister_symbol(
-      "mlir_transforms_dialect_conversion_type_converter_is_signature_legal",
+      "mlir::TypeConverter::isSignatureLegal",
       (void*)::
           mlir_transforms_dialect_conversion_type_converter_is_signature_legal);
   Sregister_symbol(
       "mlir_transforms_dialect_conversion_apply_full_conversion",
       (void*)::mlir_transforms_dialect_conversion_apply_full_conversion);
   Sregister_symbol(
-      "mlir_transforms_dialect_conversion_populate_func_type_conversion",
+      "mlir::populateFunctionOpInterfaceTypeConversionPattern<FuncOp>",
       (void*)::
           mlir_transforms_dialect_conversion_populate_func_type_conversion);
   Sregister_symbol(
-      "mlir_transforms_dialect_conversion_type_converter_add_source_"
-      "materialization",
+      "mlir::TypeConverter::addSourceMaterialization",
       (void*)::
           mlir_transforms_dialect_conversion_type_converter_add_source_materialization);
   Sregister_symbol(
-      "mlir_transforms_dialect_conversion_type_converter_add_target_"
-      "materialization",
+      "mlir::TypeConverter::addTargetMaterialization",
       (void*)::
           mlir_transforms_dialect_conversion_type_converter_add_target_materialization);
 
   // ── Backward-compat aliases (old names) ──────────────────────────────────
-  Sregister_symbol(
-      "mlir_register_conversion_pattern",
-      (void*)::mlir_transforms_dialect_conversion_add_conversion_pattern);
-  Sregister_symbol(
-      "mlir_register_rewrite_pattern",
-      (void*)::mlir_transforms_dialect_conversion_add_rewrite_pattern);
-  Sregister_symbol(
-      "mlir_create_type_converter",
-      (void*)::mlir_transforms_dialect_conversion_type_converter_create);
-  Sregister_symbol(
-      "mlir_destroy_type_converter",
-      (void*)::mlir_transforms_dialect_conversion_type_converter_destroy);
-  Sregister_symbol("mlir_create_conversion_target",
-                   (void*)::mlir_transforms_dialect_conversion_target_create);
-  Sregister_symbol("mlir_destroy_conversion_target",
-                   (void*)::mlir_transforms_dialect_conversion_target_destroy);
   Sregister_symbol(
       "mlir_conversion_target_add_illegal_dialect",
       (void*)::mlir_transforms_dialect_conversion_target_add_illegal_dialect);
@@ -499,9 +480,6 @@ void registerTransformsDialectConversionBindings() {
       "mlir_type_converter_is_signature_legal",
       (void*)::
           mlir_transforms_dialect_conversion_type_converter_is_signature_legal);
-  Sregister_symbol(
-      "mlir_apply_full_conversion",
-      (void*)::mlir_transforms_dialect_conversion_apply_full_conversion);
   Sregister_symbol(
       "mlir_populate_func_type_conversion_pattern",
       (void*)::

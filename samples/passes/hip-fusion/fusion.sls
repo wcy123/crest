@@ -77,7 +77,7 @@
     hip-create-requantized-layout-op)
 
   (import (rnrs)
-          (only (chezscheme) nan? foreign-procedure)
+          (only (chezscheme) nan?)
 
           (only (mlir IR Value)
                 mlir::Value::getDefiningOp
@@ -96,16 +96,11 @@
                 mlir::RankedTensorType::getRank
                 mlir::RankedTensorType::getShape)
           (only (mlir IR Operation)
+                mlir::Operation::getAttr
                 crest::Operation::getIntegerArrayAttr mlir::OpOperand::get mlir::OpResult::getOwner mlir::Operation::getAttr mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getName mlir::Operation::getNumOperands mlir::Operation::getResult mlir::Operation::hasAttr?)
           )
 
   ;; Local helpers — expressed via explicit builtin-attributes functions.
-
-  ;; Private: fetch a named attr uptr from an op (0 if absent).
-  (define %op-get-attr
-    (foreign-procedure "mlir_operation_get_attribute" (uptr string) uptr))
-
-
 
 
   ;;===--------------------------------------------------------------------===;;
@@ -224,7 +219,7 @@
   ;;   epsilon = 0, axis = last dimension, scale ≈ 1/sqrt(N) in float.
   ;; Mirrors hip_is_l2_equiv_rms_norm in Hip.cpp.
   (define (hip-l2-equiv-rms-norm? op)
-    (let ([eps  (let ([a (%op-get-attr op "epsilon")])
+    (let ([eps  (let ([a (mlir::Operation::getAttr op "epsilon")])
                   (if (zero? a) +nan.0 (mlir::FloatAttr::getValueAsDouble.f32 a)))]
           [axis (mlir::Operation::getAttrOfType<IntegerAttr> op "axis" -999)])
       (and

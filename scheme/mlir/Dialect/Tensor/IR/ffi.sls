@@ -17,6 +17,7 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 
+;; Mirrors mlir/Dialect/Tensor/IR/Tensor.h
 (library (mlir Dialect Tensor IR ffi)
   (export %mlir::tensor::CastOp::areCastCompatible
           %mlir::tensor::CastOp::create)

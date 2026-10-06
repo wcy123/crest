@@ -55,12 +55,9 @@ namespace crest {
 
 void registerInterfacesDpsBindings() {
   // ── New canonical names ───────────────────────────────────────────────────
-  Sregister_symbol("mlir_interfaces_dps_get_num_dps_inits",
+  Sregister_symbol("mlir::DestinationStyleOpInterface::getNumDpsInits",
                    (void*)::mlir_interfaces_dps_get_num_dps_inits);
-  Sregister_symbol("mlir_interfaces_dps_get_dps_init_operand",
-                   (void*)::mlir_interfaces_dps_get_dps_init_operand);
-  // ── Backward-compat alias (old name) ─────────────────────────────────────
-  Sregister_symbol("mlir_interfaces_dps_get_dps_init_value",
+  Sregister_symbol("mlir::DestinationStyleOpInterface::getDpsInitOperand",
                    (void*)::mlir_interfaces_dps_get_dps_init_operand);
 }
 

@@ -492,22 +492,6 @@ void registerIROperationBindings() {
                    (void*)::mlir_ir_operation_get_attr);
   Sregister_symbol("mlir::Operation::setAttr",
                    (void*)::mlir_ir_operation_set_attr);
-  Sregister_symbol("mlir_ir_operation_get_float_attr",
-                   (void*)::mlir_ir_operation_get_float_attr);
-  // Backward-compat aliases for old mlir_ir_builtin_attributes_* names
-  Sregister_symbol("mlir_ir_builtin_attributes_operation_get_attr",
-                   (void*)::mlir_ir_operation_get_attr);
-  Sregister_symbol("mlir_ir_builtin_attributes_operation_set_attr",
-                   (void*)::mlir_ir_operation_set_attr);
-  Sregister_symbol("mlir_ir_builtin_attributes_operation_get_float_attr",
-                   (void*)::mlir_ir_operation_get_float_attr);
-  // Backward-compat aliases for even older short names
-  Sregister_symbol("mlir_operation_get_attribute",
-                   (void*)::mlir_ir_operation_get_attr);
-  Sregister_symbol("mlir_operation_set_attribute",
-                   (void*)::mlir_ir_operation_set_attr);
-  Sregister_symbol("mlir_op_get_float_attr",
-                   (void*)::mlir_ir_operation_get_float_attr);
   // Aliases with ? and ! suffix (Scheme predicate/mutator convention)
   Sregister_symbol("mlir::Operation::use_empty?",
                    (void*)::mlir_ir_operation_use_empty);

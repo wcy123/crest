@@ -28,7 +28,6 @@
     mlir-hipsr-load-file-map)
 
   (import (rnrs)
-          (only (chezscheme) foreign-entry? foreign-procedure)
           (only (mlir IR Operation)
                 mlir::Operation::getName
                 mlir::Operation::getParentOp)
@@ -54,35 +53,14 @@
 
 
   ;;===--------------------------------------------------------------------===;;
-  ;; C++ functions — called via foreign-entry? when HipSR dialect is loaded,
-  ;; otherwise Scheme-level stubs return safe sentinel values.
+  ;; HipSR dialect stubs — return safe sentinel values.
+  ;; TODO: replace with real bindings once HipSR exposes a proper module.
   ;;===--------------------------------------------------------------------===;;
 
-  ;; 1 if type has a HipSR device MemorySpaceAttr, 0 otherwise.
-  (define (mlir-type-is-device-tensor type)
-    (if (foreign-entry? "mlir_type_is_device_tensor")
-        ((foreign-procedure "mlir_type_is_device_tensor" (uptr) int) type)
-        0))
-
-  ;; Clone a RankedTensorType with the HipSR host memory space encoding.
-  ;; Returns the type unchanged when HipSR dialect is not loaded.
-  (define (make-mlir-tensor-in-host-space type)
-    (if (foreign-entry? "mlir_tensor_type_in_host_space")
-        ((foreign-procedure "mlir_tensor_type_in_host_space" (uptr) uptr) type)
-        type))
-
-  ;; Return the !hipsr.context type. Returns 0 when HipSR dialect not loaded.
-  (define (mlir-get-hipsr-context-type ctx)
-    (if (foreign-entry? "mlir_get_hipsr_context_type")
-        ((foreign-procedure "mlir_get_hipsr_context_type" (uptr) uptr) ctx)
-        0))
-
-
-  ;; Memory-map a file. Returns 0 when HipSR dialect not loaded.
-  (define (mlir-hipsr-load-file-map ctx path)
-    (if (foreign-entry? "mlir_hipsr_load_file_map")
-        ((foreign-procedure "mlir_hipsr_load_file_map" (uptr string) uptr) ctx path)
-        0))
+  (define (mlir-type-is-device-tensor type)   0)   ; stub
+  (define (make-mlir-tensor-in-host-space type) type) ; stub — returns type unchanged
+  (define (mlir-get-hipsr-context-type ctx)   0)   ; stub
+  (define (mlir-hipsr-load-file-map ctx path) 0)   ; stub
 
   ;;===--------------------------------------------------------------------===;;
   ;; Attr construction — uses the generic :opaque API; no C++ required.
