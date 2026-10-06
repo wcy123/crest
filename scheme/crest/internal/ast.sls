@@ -163,7 +163,7 @@
                                  ;; Phase 2 (validate): integer - index of root var in root operation's result list
                                  ;; Example: 0 (if root var is first result)
                                  ;;          1 (if root var is second result in (%a %b) = "op"(...))
-                                 ;; Cached for efficiency, used by codegen with mlir-operation-get-result
+                                 ;; Cached for efficiency, used by codegen with mlir-Operation::getResult
 
       (mutable match)            ;; Phase 1 (parse): list of ast-match-expand (parsed in order)
                                  ;; Phase 2 (validate): vector of ast-match-expand (normalized for indexing)
@@ -265,7 +265,7 @@
       (mutable where-expr)))   ;; Phase 1 (parse): syntax object - pure Scheme guard expression
                                ;; Executes after matching this operation (early return on failure)
                                ;; Default: #'#f (no guard, always succeeds)
-                               ;; Example: #'(let ([$ks (mlir-operation-get-attribute %a "kernel_shape")])
+                               ;; Example: #'(let ([$ks (mlir-operation-get-attr %a "kernel_shape")])
                                ;;             (and $ks (is-1x1-kernel? $ks)))
                                ;; Can access: matched result-var, operands, any previously bound vars
 

@@ -19,9 +19,11 @@ static void scheme_error(const char* who, const char* msg) {
 extern "C" {
 
 // mlir::OpBuilder::create(OperationState) — op builder variant (no rewriter).
-uint64_t mlir_ir_op_builder_create(uint64_t builder_ptr, uint64_t loc_op_ptr,
-                                   const char* op_name, ptr operands_list,
-                                   ptr result_types_list) {
+static uint64_t mlir_ir_op_builder_create(uint64_t builder_ptr,
+                                          uint64_t loc_op_ptr,
+                                          const char* op_name,
+                                          ptr operands_list,
+                                          ptr result_types_list) {
   if (!builder_ptr) {
     scheme_error("mlir-ir-op-builder-create", "null builder pointer");
     return 0; // unreachable — error performs non-local exit
@@ -59,7 +61,7 @@ uint64_t mlir_ir_op_builder_create(uint64_t builder_ptr, uint64_t loc_op_ptr,
 }
 
 // Like mlir_ir_op_builder_create but pre-allocates num_regions empty regions.
-uint64_t mlir_ir_op_builder_create_with_regions(
+static uint64_t mlir_ir_op_builder_create_with_regions(
     uint64_t builder_ptr, uint64_t loc_op_ptr, const char* op_name,
     ptr operands_list, ptr result_types_list, int num_regions) {
   if (!builder_ptr) {
@@ -106,7 +108,7 @@ uint64_t mlir_ir_op_builder_create_with_regions(
 }
 
 // Heap-allocate an OpBuilder positioned at the end of a block.
-uint64_t mlir_ir_op_builder_at_block_end(uint64_t block_ptr) {
+static uint64_t mlir_ir_op_builder_at_block_end(uint64_t block_ptr) {
   if (!block_ptr) {
     scheme_error("mlir-ir-op-builder-at-block-end", "null block pointer");
     return 0; // unreachable — error performs non-local exit
@@ -116,7 +118,7 @@ uint64_t mlir_ir_op_builder_at_block_end(uint64_t block_ptr) {
 }
 
 // Destroy an OpBuilder created by mlir_ir_op_builder_at_block_end.
-void mlir_ir_op_builder_destroy(uint64_t builder_ptr) {
+static void mlir_ir_op_builder_destroy(uint64_t builder_ptr) {
   if (!builder_ptr) {
     scheme_error("mlir-ir-op-builder-destroy", "null builder pointer");
     return; // unreachable — error performs non-local exit
@@ -130,8 +132,8 @@ void mlir_ir_op_builder_destroy(uint64_t builder_ptr) {
 // builder_ptr: OpBuilder* as uptr
 // state_ptr:   OperationState* as uptr
 // Returns: Operation* as uptr, or 0 on bad input.
-uint64_t mlir_ir_op_builder_create_from_state(uint64_t builder_ptr,
-                                              uint64_t state_ptr) {
+static uint64_t mlir_ir_op_builder_create_from_state(uint64_t builder_ptr,
+                                                     uint64_t state_ptr) {
   if (!builder_ptr) {
     scheme_error("mlir-ir-op-builder-create-from-state",
                  "null builder pointer");

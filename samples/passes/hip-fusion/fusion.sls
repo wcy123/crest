@@ -14,12 +14,12 @@
 ;;
 ;; The eight functions that hip-ep implements in C++ (Hip.cpp) are re-expressed
 ;; here using generic MLIR attr/type/operand APIs from (mlir core operation),
-;; (mlir ir value), (mlir ir builtin-attributes), and (mlir dialects builtin):
-;;   hip-extract-splat-scale         — DenseElementsAttr:getSplatValue/APFloat
-;;   hip-build-init                  — mlir-build-operation "tensor.empty"
-;;   hip-create-requantized-layout-op — mlir-op-clone-with-types
-;;   hip-extractable-qdq-zeropoint?  — operand count + DenseElementsAttr:isSplat
-;;   hip-extract-qdq-zeropoint-i64   — mlir-operation-get-integer-attr on zp op
+;; (mlir IR Value), (mlir IR BuiltinAttributes), and (mlir IR BuiltinTypes):
+;;   hip-extract-splat-scale         — mlir::DenseElementsAttr::getSplatValue<APFloat>
+;;   hip-build-init                  — crest::RewriterBase::build "tensor.empty"
+;;   hip-create-requantized-layout-op — mlir-ir-rewriter-base-clone-with-types
+;;   hip-extractable-qdq-zeropoint?  — operand count + mlir::DenseElementsAttr::isSplat
+;;   hip-extract-qdq-zeropoint-i64   — mlir::Operation::getAttrOfType<IntegerAttr> on zp op
 ;;   hip-qdq-value-bits-c            — alias for pure-Scheme hip-qdq-value-bits
 ;;   hip-fusable-conv-geometry?      — integer-array attr reads
 ;;   hip-l2-equiv-rms-norm?          — epsilon, axis, splat scale vs 1/sqrt(N)
@@ -78,36 +78,26 @@
 
   (import (rnrs)
           (only (chezscheme) nan? foreign-procedure)
-          (rename (only (mlir ir operation)
-                       op-operand-get-value
-                       op-result-get-value
-                       operation-get-attr
-                       operation-get-integer-attr
-                       operation-get-integer-array-attr
-                       operation-get-name
-                       operation-get-num-operands
-                       operation-get-result
-                       operation-has-attr?)
-                 (op-operand-get-value              mlir-operation-get-operand-value)
-                 (op-result-get-value               mlir-operation-get-result-value)
-                 (operation-get-attr                mlir-operation-get-attribute)
-                 (operation-get-integer-attr        mlir-operation-get-integer-attr)
-                 (operation-get-integer-array-attr  mlir-operation-get-integer-array-attr)
-                 (operation-get-name                mlir-operation-name)
-                 (operation-get-num-operands        mlir-operation-num-operands)
-                 (operation-get-result              mlir-operation-get-result)
-                 (operation-has-attr?               mlir-operation-has-attr?))
-          (rename (mlir ir value)
-            (get-defining-op   mlir-value-get-defining-op)
-            (get-type          mlir-value-get-type)
-            (num-uses          mlir-value-num-uses))
-          (only (mlir ir builtin-attributes)
-                DenseElementsAttr:isSplat
-                FloatAttr:getValueAsDouble.f32
-                DenseElementsAttr:getSplatValue/APFloat
-                DenseElementsAttr:getSplatValue/APInt)
-          (only (mlir core builder) mlir-build-op mlir-op-clone-with-types)
-          (mlir dialects builtin))
+
+          (only (mlir IR Value)
+                mlir::Value::getDefiningOp
+                mlir::Value::getType
+                mlir::Value::getUses)
+          (only (mlir IR BuiltinAttributes)
+                mlir::DenseElementsAttr::isSplat
+                mlir::FloatAttr::getValueAsDouble.f32
+                mlir::DenseElementsAttr::getSplatValue<APFloat>
+                mlir::DenseElementsAttr::getSplatValue<APInt>)
+          (only (mlir core builder) mlir-ir-rewriter-base-create mlir-ir-rewriter-base-clone-with-types)
+          (only (mlir IR BuiltinTypes)
+                mlir::ShapedType::getElementType
+                mlir::IntegerType::getWidth
+                mlir::IntegerType::isUnsigned?
+                mlir::RankedTensorType::getRank
+                mlir::RankedTensorType::getShape)
+          (only (mlir IR Operation)
+                crest::Operation::getIntegerArrayAttr mlir::OpOperand::get mlir::OpResult::getOwner mlir::Operation::getAttr mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getName mlir::Operation::getNumOperands mlir::Operation::getResult mlir::Operation::hasAttr?)
+  )
 
   ;; Local helpers — expressed via explicit builtin-attributes functions.
 
@@ -124,7 +114,7 @@
 
   ;; Returns #t when op's first result has exactly one use.
   (define (hip-op-single-use? op)
-    (= (mlir-value-num-uses (mlir-operation-get-result op 0)) 1))
+    (= (mlir::Value::getUses (mlir::Operation::getResult op 0)) 1))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Q/DQ operand access
@@ -135,17 +125,17 @@
   ;;===--------------------------------------------------------------------===;;
 
   (define (hip-qdq-has-zeropoint? op)
-    (= (mlir-operation-num-operands op) 5))
+    (= (mlir::Operation::getNumOperands op) 5))
 
   (define (hip-qdq-input-operand op)
-    (mlir-operation-get-operand-value op 1))
+    (mlir::OpOperand::get op 1))
 
   (define (hip-qdq-scale-operand op)
-    (mlir-operation-get-operand-value op 2))
+    (mlir::OpOperand::get op 2))
 
   (define (hip-qdq-zeropoint op absent-val)
     (if (hip-qdq-has-zeropoint? op)
-        (mlir-operation-get-operand-value op 3)
+        (mlir::OpOperand::get op 3)
         absent-val))
 
   ;;===--------------------------------------------------------------------===;;
@@ -155,12 +145,12 @@
   ;; Returns #t when val's defining op is a hip.constant whose "value" attr
   ;; is a splat DenseElementsAttr.
   (define (hip-splat-scale? val)
-    (let ([def (mlir-value-get-defining-op val)])
+    (let ([def (mlir::Value::getDefiningOp val)])
       (and def
-           (string=? (mlir-operation-name def) "hip.constant")
-           (let ([a (mlir-operation-get-attribute def "value")])
+           (string=? (mlir::Operation::getName def) "hip.constant")
+           (let ([a (mlir::Operation::getAttr def "value")])
              (and (not (zero? a))
-                  (DenseElementsAttr:isSplat a))))))
+                  (mlir::DenseElementsAttr::isSplat a))))))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Type / width checks
@@ -169,20 +159,20 @@
   (define (hip-qdq-element-type op)
     ;; Q: result 0 is the integer tensor.
     ;; DQ: operand 1 (input) is the integer tensor; result 0 is float.
-    (if (string=? (mlir-operation-name op) "hip.quantize_linear")
-        (mlir-type-element-type
-          (mlir-value-get-type (mlir-operation-get-result op 0)))
-        (mlir-type-element-type
-          (mlir-value-get-type (hip-qdq-input-operand op)))))
+    (if (string=? (mlir::Operation::getName op) "hip.quantize_linear")
+        (mlir::ShapedType::getElementType
+          (mlir::Value::getType (mlir::Operation::getResult op 0)))
+        (mlir::ShapedType::getElementType
+          (mlir::Value::getType (hip-qdq-input-operand op)))))
 
   (define (hip-qdq-value-bits op)
     ;; packed_int4 is a UnitAttr — test with has-attr?, not get-integer-attr.
-    (if (mlir-operation-has-attr? op "packed_int4")
+    (if (mlir::Operation::hasAttr? op "packed_int4")
         4
-        (mlir-type-integer-width (hip-qdq-element-type op))))
+        (mlir::IntegerType::getWidth (hip-qdq-element-type op))))
 
   (define (hip-qdq-unsigned? op)
-    (mlir-type-is-unsigned (hip-qdq-element-type op)))
+    (mlir::IntegerType::isUnsigned? (hip-qdq-element-type op)))
 
   (define (hip-qdq-quantized-width? op allowed-widths)
     (let ([w (hip-qdq-value-bits op)])
@@ -214,11 +204,11 @@
     '("hip.transpose" "tensor.collapse_shape" "tensor.expand_shape"))
 
   (define (hip-can-requantize-layout-op? layout-op q-op)
-    (and (member (mlir-operation-name layout-op) %hip-requantizable-ops) #t))
+    (and (member (mlir::Operation::getName layout-op) %hip-requantizable-ops) #t))
 
   (define (hip-layout-op-has-ctx? layout-op)
     ;; DPS hip ops take a ctx as their first operand; pure tensor ops do not.
-    (let ([name (mlir-operation-name layout-op)]
+    (let ([name (mlir::Operation::getName layout-op)]
           [n    (string-length "hip.")])
       (and (>= (string-length name) n)
            (string=? (substring name 0 n) "hip."))))
@@ -228,35 +218,35 @@
   ;;===--------------------------------------------------------------------===;;
 
   (define (hip-int-attr-equal? op name expected absent-val)
-    (= (mlir-operation-get-integer-attr op name absent-val) expected))
+    (= (mlir::Operation::getAttrOfType<IntegerAttr> op name absent-val) expected))
 
   ;; Check whether a hip.rms_norm op is equivalent to L2 normalization:
   ;;   epsilon = 0, axis = last dimension, scale ≈ 1/sqrt(N) in float.
   ;; Mirrors hip_is_l2_equiv_rms_norm in Hip.cpp.
   (define (hip-l2-equiv-rms-norm? op)
     (let ([eps  (let ([a (%op-get-attr op "epsilon")])
-                  (if (zero? a) +nan.0 (FloatAttr:getValueAsDouble.f32 a)))]
-          [axis (mlir-operation-get-integer-attr op "axis" -999)])
+                  (if (zero? a) +nan.0 (mlir::FloatAttr::getValueAsDouble.f32 a)))]
+          [axis (mlir::Operation::getAttrOfType<IntegerAttr> op "axis" -999)])
       (and
         ;; epsilon must be 0.0
         (= eps 0.0)
         ;; axis must be -1 (trailing)
         (= axis -1)
         ;; scale operand must be a splat float hip.constant
-        (let ([scale-val (mlir-operation-get-operand-value op 2)])
+        (let ([scale-val (mlir::OpOperand::get op 2)])
           (and (hip-splat-scale? scale-val)
                ;; scale value must equal 1/sqrt(N) where N is the last dim
-               (let* ([in-type   (mlir-value-get-type
-                                   (mlir-operation-get-operand-value op 1))]
-                      [rank      (mlir-type-get-rank in-type)]
-                      [shape     (mlir-type-get-shape in-type)]
+               (let* ([in-type   (mlir::Value::getType
+                                   (mlir::OpOperand::get op 1))]
+                      [rank      (mlir::RankedTensorType::getRank in-type)]
+                      [shape     (mlir::RankedTensorType::getShape in-type)]
                       [n         (and (> rank 0) (list-ref shape (- rank 1)))])
                  (and n
                       (> n 0)
                       (let* ([expected  (/ 1.0 (sqrt (inexact n)))]
-                             [actual    (DenseElementsAttr:getSplatValue/APFloat
-                                          (mlir-operation-get-attribute
-                                            (mlir-value-get-defining-op scale-val)
+                             [actual    (mlir::DenseElementsAttr::getSplatValue<APFloat>
+                                          (mlir::Operation::getAttr
+                                            (mlir::Value::getDefiningOp scale-val)
                                             "value"))]
                              ;; Use relative tolerance to match float rounding.
                              [rel-err   (abs (- actual expected))])
@@ -266,11 +256,11 @@
   ;; 1x1 kernel, unit strides, unit dilations, zero pads, group=1.
   ;; Mirrors hip_is_fusable_conv_geometry in Hip.cpp.
   (define (hip-fusable-conv-geometry? op)
-    (let ([ks    (mlir-operation-get-integer-array-attr op "kernel_shape")]
-          [st    (mlir-operation-get-integer-array-attr op "strides")]
-          [di    (mlir-operation-get-integer-array-attr op "dilations")]
-          [pd    (mlir-operation-get-integer-array-attr op "pads")]
-          [group (mlir-operation-get-integer-attr op "group" 0)])
+    (let ([ks    (crest::Operation::getIntegerArrayAttr op "kernel_shape")]
+          [st    (crest::Operation::getIntegerArrayAttr op "strides")]
+          [di    (crest::Operation::getIntegerArrayAttr op "dilations")]
+          [pd    (crest::Operation::getIntegerArrayAttr op "pads")]
+          [group (mlir::Operation::getAttrOfType<IntegerAttr> op "group" 0)])
       (and (equal? ks '(1 1))
            (equal? st '(1 1))
            (equal? di '(1 1))
@@ -280,28 +270,28 @@
   (define (hip-per-axis-weight? dq-op rank axis packed-int4?)
     ;; Scale must be rank-1 and packed_int4 must match.
     (let* ([scale-val  (hip-qdq-scale-operand dq-op)]
-           [scale-rank (mlir-type-get-rank (mlir-value-get-type scale-val))]
+           [scale-rank (mlir::RankedTensorType::getRank (mlir::Value::getType scale-val))]
            [bits       (hip-qdq-value-bits dq-op)])
       (and (= scale-rank 1)
            (= bits (if packed-int4? 4 8)))))
 
   (define (hip-per-channel-weight? dq-op q-op)
-    (= (mlir-type-get-rank (mlir-value-get-type (hip-qdq-scale-operand dq-op))) 1))
+    (= (mlir::RankedTensorType::getRank (mlir::Value::getType (hip-qdq-scale-operand dq-op))) 1))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Init guard
   ;;===--------------------------------------------------------------------===;;
 
   (define (hip-can-build-init? q-op shape-source)
-    (= (mlir-type-get-rank (mlir-value-get-type (mlir-operation-get-result q-op 0)))
-       (mlir-type-get-rank (mlir-value-get-type shape-source))))
+    (= (mlir::RankedTensorType::getRank (mlir::Value::getType (mlir::Operation::getResult q-op 0)))
+       (mlir::RankedTensorType::getRank (mlir::Value::getType shape-source))))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Value-level single-use helper
   ;;===--------------------------------------------------------------------===;;
 
   (define (hip-value-single-use? val)
-    (= (mlir-value-num-uses val) 1))
+    (= (mlir::Value::getUses val) 1))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Zero-point extraction — pure Scheme
@@ -310,28 +300,28 @@
   ;; Returns #t when the zero-point is absent (4-operand) or is a splat
   ;; integer hip.constant — i.e. it can be extracted as a scalar i64.
   (define (hip-extractable-qdq-zeropoint? op)
-    (if (= (mlir-operation-num-operands op) 4)
+    (if (= (mlir::Operation::getNumOperands op) 4)
         #t
-        (let* ([zp-val (mlir-operation-get-operand-value op 3)]
-               [def    (mlir-value-get-defining-op zp-val)])
+        (let* ([zp-val (mlir::OpOperand::get op 3)]
+               [def    (mlir::Value::getDefiningOp zp-val)])
           (and def
-               (string=? (mlir-operation-name def) "hip.constant")
-               (let ([a (mlir-operation-get-attribute def "value")])
+               (string=? (mlir::Operation::getName def) "hip.constant")
+               (let ([a (mlir::Operation::getAttr def "value")])
                  (and (not (zero? a))
-                      (DenseElementsAttr:isSplat a)))))))
+                      (mlir::DenseElementsAttr::isSplat a)))))))
 
   ;; Extract zero-point of op as i64.  Returns absent-val when absent.
   ;; Reads the splat integer value from the DenseElementsAttr on the
   ;; hip.constant defining the zero-point operand.
   (define (hip-extract-qdq-zeropoint-i64 op absent-val)
-    (if (= (mlir-operation-num-operands op) 4)
+    (if (= (mlir::Operation::getNumOperands op) 4)
         absent-val
-        (let* ([zp-val (mlir-operation-get-operand-value op 3)]
-               [def    (mlir-value-get-defining-op zp-val)])
-          (if (and def (string=? (mlir-operation-name def) "hip.constant"))
-              (if (DenseElementsAttr:isSplat (mlir-operation-get-attribute def "value"))
-                  (DenseElementsAttr:getSplatValue/APInt
-                    (mlir-operation-get-attribute def "value"))
+        (let* ([zp-val (mlir::OpOperand::get op 3)]
+               [def    (mlir::Value::getDefiningOp zp-val)])
+          (if (and def (string=? (mlir::Operation::getName def) "hip.constant"))
+              (if (mlir::DenseElementsAttr::isSplat (mlir::Operation::getAttr def "value"))
+                  (mlir::DenseElementsAttr::getSplatValue<APInt>
+                    (mlir::Operation::getAttr def "value"))
                   absent-val)
               absent-val))))
 
@@ -340,31 +330,31 @@
     (hip-qdq-value-bits op))
 
   ;;===--------------------------------------------------------------------===;;
-  ;; Scale extraction — pure Scheme via DenseElementsAttr:getSplatValue/APFloat
+  ;; Scale extraction — pure Scheme via mlir::DenseElementsAttr::getSplatValue<APFloat>
   ;;===--------------------------------------------------------------------===;;
 
   ;; Extract the splat float64 value from a hip.constant scale Value.
   (define (hip-extract-splat-scale val)
-    (DenseElementsAttr:getSplatValue/APFloat
-      (mlir-operation-get-attribute (mlir-value-get-defining-op val) "value")))
+    (mlir::DenseElementsAttr::getSplatValue<APFloat>
+      (mlir::Operation::getAttr (mlir::Value::getDefiningOp val) "value")))
 
   ;;===--------------------------------------------------------------------===;;
-  ;; Init builder — pure Scheme using mlir-build-operation
+  ;; Init builder — pure Scheme using crest::RewriterBase::build
   ;;===--------------------------------------------------------------------===;;
 
   ;; Build a tensor.empty whose result type is out-type.
-  ;; Uses mlir-build-op directly with the provided rewriter uptr so this works
+  ;; Uses mlir-ir-rewriter-base-create directly with the provided rewriter uptr so this works
   ;; both inside and outside the with-rewrite-builder context (e.g. :then-let).
   ;; The loc-op anchor is the defining op of shape-source.
   ;; Returns result Value (index 0) of the new tensor.empty op.
   (define (hip-build-init rewriter out-type shape-source)
-    (let ([loc-op (mlir-value-get-defining-op shape-source)])
-      (mlir-operation-get-result
-        (mlir-build-op rewriter loc-op "tensor.empty" '() (list out-type))
+    (let ([loc-op (mlir::Value::getDefiningOp shape-source)])
+      (mlir::Operation::getResult
+        (mlir-ir-rewriter-base-create rewriter loc-op "tensor.empty" '() (list out-type))
         0)))
 
   ;;===--------------------------------------------------------------------===;;
-  ;; Requantized layout op — pure Scheme via mlir-op-clone-with-types
+  ;; Requantized layout op — pure Scheme via mlir-ir-rewriter-base-clone-with-types
   ;;===--------------------------------------------------------------------===;;
 
   ;; Clone layout-op substituting the quantized output type from q-op.
@@ -377,17 +367,17 @@
   ;; for hip.* ops the operand order is [ctx, input(s)..., init] where
   ;; the LAST operand is always the output buffer.
   (define (hip-create-requantized-layout-op rewriter dq-op layout-op q-op)
-    (let* ([q-type    (mlir-value-get-type (mlir-operation-get-result q-op 0))]
-           [dq-result (mlir-operation-get-result-value dq-op 0)]
+    (let* ([q-type    (mlir::Value::getType (mlir::Operation::getResult q-op 0))]
+           [dq-result (mlir::OpResult::getOwner dq-op 0)]
            [dq-input  (hip-qdq-input-operand dq-op)]
-           [n         (mlir-operation-num-operands layout-op)]
+           [n         (mlir::Operation::getNumOperands layout-op)]
            ;; For hip.* ops the last operand is the DPS init; for tensor.* ops there is none.
            [has-ctx?  (hip-layout-op-has-ctx? layout-op)]
            [init-idx  (if has-ctx? (- n 1) -1)]
            ;; Build a new tensor.empty for the init when needed.
            [new-init  (if has-ctx?
-                          (mlir-operation-get-result
-                            (mlir-build-op rewriter layout-op
+                          (mlir::Operation::getResult
+                            (mlir-ir-rewriter-base-create rewriter layout-op
                                            "tensor.empty" '() (list q-type))
                             0)
                           0)]
@@ -396,15 +386,15 @@
            [operands  (let loop ([i 0] [acc '()])
                         (if (= i n)
                             (reverse acc)
-                            (let ([v (mlir-operation-get-operand-value layout-op i)])
+                            (let ([v (mlir::OpOperand::get layout-op i)])
                               (loop (+ i 1)
                                     (cons (cond
                                             [(= v dq-result) dq-input]
                                             [(= i init-idx)  new-init]
                                             [else v])
                                           acc)))))]
-           [new-op    (mlir-op-clone-with-types rewriter layout-op
+           [new-op    (mlir-ir-rewriter-base-clone-with-types rewriter layout-op
                                                operands (list q-type))])
-      (mlir-operation-get-result new-op 0)))
+      (mlir::Operation::getResult new-op 0)))
 
 ) ;; end library (passes hip-fusion fusion)

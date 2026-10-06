@@ -17,7 +17,7 @@ static void scheme_error(const char* who, const char* msg) {
 
 extern "C" {
 
-int mlir_interfaces_dps_get_num_dps_inits(uint64_t op_ptr) {
+static int mlir_interfaces_dps_get_num_dps_inits(uint64_t op_ptr) {
   if (!op_ptr) {
     scheme_error("mlir-interfaces-dps-get-num-dps-inits",
                  "op must not be null");
@@ -31,7 +31,8 @@ int mlir_interfaces_dps_get_num_dps_inits(uint64_t op_ptr) {
   return static_cast<int>(dpsOp.getNumDpsInits());
 }
 
-uint64_t mlir_interfaces_dps_get_dps_init_operand(uint64_t op_ptr, int index) {
+static uint64_t mlir_interfaces_dps_get_dps_init_operand(uint64_t op_ptr,
+                                                         int index) {
   if (!op_ptr) {
     scheme_error("mlir-interfaces-dps-get-dps-init-operand",
                  "op must not be null");

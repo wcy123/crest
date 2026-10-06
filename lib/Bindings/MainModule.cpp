@@ -3,6 +3,8 @@
  * Licensed under the MIT License.
  */
 
+// Registration hub — no MLIR header mirror.
+
 // Registration hub — calls every canonical register*Bindings() directly.
 // No Core/ shim layer; each header belongs to its canonical IR/, Transforms/,
 // Dialect/, or Interfaces/ sub-tree.

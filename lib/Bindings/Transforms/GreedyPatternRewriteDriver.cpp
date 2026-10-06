@@ -18,8 +18,9 @@ static void scheme_error(const char* who, const char* msg) {
 extern "C" {
 
 // mlir::applyPatternsGreedily — consumes the pattern set.
-int mlir_transforms_greedy_pattern_rewrite_driver_apply(uint64_t op_ptr,
-                                                        uint64_t patterns_ptr) {
+static int
+mlir_transforms_greedy_pattern_rewrite_driver_apply(uint64_t op_ptr,
+                                                    uint64_t patterns_ptr) {
   if (!op_ptr || !patterns_ptr) {
     scheme_error("mlir-transforms-greedy-pattern-rewrite-driver-apply",
                  "op and patterns must not be null");

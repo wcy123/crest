@@ -4,9 +4,12 @@
 ;; Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 ;; Licensed under the MIT License.
 ;;
+;; Mirrors lib/Bindings/Support/ArrayRef.h (CREST-specific, no MLIR counterpart).
 ;;===----------------------------------------------------------------------===;;
 ;;
 ;; (mlir support array-ref) — C ABI helpers for ArrayRef<T> structs.
+;;
+;; CREST-specific (no direct MLIR header); mirrors lib/Bindings/Support/ArrayRef.h.
 ;;
 ;; Struct layout (matching llvm::ArrayRef<T> ABI, 64-bit):
 ;;   offset 0: data uptr   — pointer to first element

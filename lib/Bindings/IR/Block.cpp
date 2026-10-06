@@ -16,7 +16,8 @@ extern "C" {
 // block_ptr:  Block* as uptr
 // idx:        0-based argument index
 // Returns: Value opaque ptr uptr; raises Scheme error on null or out-of-range.
-uint64_t mlir_ir_block_get_argument_by_index(uint64_t block_ptr, int idx) {
+static uint64_t mlir_ir_block_get_argument_by_index(uint64_t block_ptr,
+                                                    int idx) {
   if (!block_ptr) {
     Scall2(Stop_level_value(Sstring_to_symbol("error")),
            Sstring("mlir-ir-block-get-argument-by-index"),
@@ -40,7 +41,7 @@ uint64_t mlir_ir_block_get_argument_by_index(uint64_t block_ptr, int idx) {
 // mlir::Block::getNumArguments — return the number of block arguments.
 // block_ptr: Block* as uptr
 // Returns: argument count (unsigned → uint64_t)
-uint64_t mlir_ir_block_get_num_arguments(uint64_t block_ptr) {
+static uint64_t mlir_ir_block_get_num_arguments(uint64_t block_ptr) {
   return reinterpret_cast<mlir::Block*>(block_ptr)->getNumArguments();
 }
 

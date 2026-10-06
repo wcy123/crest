@@ -3,6 +3,8 @@
  * Licensed under the MIT License.
  */
 
+// Mirrors lib/Bindings/Support/Logging.h (CREST-specific).
+
 #include "../../Interpreter/ChezSchemeInterpreter.h"
 #include "SchemeWrapper.h"
 #include "llvm/Support/raw_ostream.h"
@@ -60,17 +62,16 @@ void mlir_support_logging_fatal(const char* msg) {
 namespace crest {
 
 void registerLoggingBindings() {
-  Sregister_symbol("mlir_support_logging_trace",
+  Sregister_symbol("crest::logging::trace",
                    (void*)::mlir_support_logging_trace);
-  Sregister_symbol("mlir_support_logging_debug",
+  Sregister_symbol("crest::logging::debug",
                    (void*)::mlir_support_logging_debug);
-  Sregister_symbol("mlir_support_logging_info",
-                   (void*)::mlir_support_logging_info);
-  Sregister_symbol("mlir_support_logging_warning",
+  Sregister_symbol("crest::logging::info", (void*)::mlir_support_logging_info);
+  Sregister_symbol("crest::logging::warning",
                    (void*)::mlir_support_logging_warning);
-  Sregister_symbol("mlir_support_logging_error",
+  Sregister_symbol("crest::logging::error",
                    (void*)::mlir_support_logging_error);
-  Sregister_symbol("mlir_support_logging_fatal",
+  Sregister_symbol("crest::logging::fatal",
                    (void*)::mlir_support_logging_fatal);
 }
 

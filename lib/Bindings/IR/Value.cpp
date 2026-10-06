@@ -19,7 +19,7 @@ static void scheme_error(const char* who, const char* msg) {
 extern "C" {
 
 // mlir::Value::getDefiningOp()
-uint64_t mlir_ir_value_get_defining_op(uint64_t value) {
+static uint64_t mlir_ir_value_get_defining_op(uint64_t value) {
   if (!value) {
     scheme_error("mlir-ir-value-get-defining-op", "value pointer is null");
     return 0; // unreachable — error performs non-local exit
@@ -29,7 +29,7 @@ uint64_t mlir_ir_value_get_defining_op(uint64_t value) {
 }
 
 // mlir::isa<BlockArgument>(val)
-int mlir_ir_value_is_block_argument(uint64_t value) {
+static int mlir_ir_value_is_block_argument(uint64_t value) {
   if (!value) {
     scheme_error("mlir-ir-value-is-block-argument", "value pointer is null");
     return 0; // unreachable — error performs non-local exit
@@ -39,7 +39,7 @@ int mlir_ir_value_is_block_argument(uint64_t value) {
 }
 
 // mlir::Value::use_begin/use_end (count)
-uint64_t mlir_ir_value_num_uses(uint64_t val_ptr) {
+static uint64_t mlir_ir_value_num_uses(uint64_t val_ptr) {
   if (!val_ptr) {
     scheme_error("mlir-ir-value-num-uses", "value pointer is null");
     return 0; // unreachable — error performs non-local exit
@@ -50,7 +50,7 @@ uint64_t mlir_ir_value_num_uses(uint64_t val_ptr) {
 }
 
 // mlir::Value::getType()
-uint64_t mlir_ir_value_get_type(uint64_t value_ptr) {
+static uint64_t mlir_ir_value_get_type(uint64_t value_ptr) {
   if (!value_ptr) {
     scheme_error("mlir-ir-value-get-type", "value pointer is null");
     return 0; // unreachable — error performs non-local exit
@@ -65,12 +65,15 @@ uint64_t mlir_ir_value_get_type(uint64_t value_ptr) {
 namespace crest {
 
 void registerIRValueBindings() {
-  Sregister_symbol("mlir_ir_value_get_defining_op",
+  Sregister_symbol("mlir::Value::getDefiningOp",
                    (void*)::mlir_ir_value_get_defining_op);
-  Sregister_symbol("mlir_ir_value_is_block_argument",
+  Sregister_symbol("mlir::isa<BlockArgument>",
                    (void*)::mlir_ir_value_is_block_argument);
-  Sregister_symbol("mlir_ir_value_num_uses", (void*)::mlir_ir_value_num_uses);
-  Sregister_symbol("mlir_ir_value_get_type", (void*)::mlir_ir_value_get_type);
+  Sregister_symbol("mlir::Value::getUses", (void*)::mlir_ir_value_num_uses);
+  Sregister_symbol("mlir::Value::getType", (void*)::mlir_ir_value_get_type);
+  // Alias with ? suffix (Scheme predicate convention)
+  Sregister_symbol("mlir::isa<BlockArgument>?",
+                   (void*)::mlir_ir_value_is_block_argument);
 }
 
 } // namespace crest

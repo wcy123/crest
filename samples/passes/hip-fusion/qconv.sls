@@ -18,24 +18,18 @@
   (import (except (rnrs) =)
           (only (chezscheme) nan?)
           (rename (only (rnrs) =) (= num=))
-          (rename (only (mlir ir operation)
-                       operation-get-result
-                       operation-set-f32-attr!
-                       operation-set-i64-attr!
-                       operation-set-unit-attr!)
-                 (operation-get-result     mlir-operation-get-result)
-                 (operation-set-f32-attr!  mlir-operation-set-f32-attr!)
-                 (operation-set-i64-attr!  mlir-operation-set-i64-attr!)
-                 (operation-set-unit-attr! mlir-operation-set-unit-attr!))
-          (rename (mlir ir value)
-            (get-defining-op   mlir-value-get-defining-op)
-            (get-type          mlir-value-get-type))
-          (only (mlir core builder) mlir-build-operation)
-          (mlir dialects builtin)
-          (mlir transforms dialect-conversion)
+
+          (only (mlir IR Value)
+                mlir::Value::getDefiningOp
+                mlir::Value::getType)
+          (only (mlir core builder) crest::RewriterBase::build)
+          (mlir Transforms DialectConversion)
           (passes hip-fusion fusion)
           (crest)
-          (passes hip-fusion helpers))
+          (passes hip-fusion helpers)
+          (only (mlir IR Operation)
+                crest::Operation::setF32Attr crest::Operation::setI64Attr crest::Operation::setUnitAttr mlir::Operation::getResult)
+  )
 
   (define-rewrite-pattern (hip-qconv-fusion op rewriter)
     :if-match
@@ -47,41 +41,41 @@
         %conv = hip.conv              (%ctx %dq_in %dq_w %conv_init)
                   :where (and (hip-value-single-use? %conv)
                               (hip-fusable-conv-geometry?
-                                (mlir-value-get-defining-op %conv))
+                                (mlir::Value::getDefiningOp %conv))
                               (hip-can-build-init? op %conv_init))
         %dq_in = hip.dequantize_linear (%ctx %input %in_scale)
                   :where (and (hip-qdq-quantized-width?
-                                (mlir-value-get-defining-op %dq_in) '(16))
-                              (hip-qdq-unsigned? (mlir-value-get-defining-op %dq_in))
+                                (mlir::Value::getDefiningOp %dq_in) '(16))
+                              (hip-qdq-unsigned? (mlir::Value::getDefiningOp %dq_in))
                               (hip-splat-scale? %in_scale)
                               (hip-extractable-qdq-zeropoint?
-                                (mlir-value-get-defining-op %dq_in)))
+                                (mlir::Value::getDefiningOp %dq_in)))
         %dq_w  = hip.dequantize_linear (%ctx %weights %w_scales %w_zps %w_init)
                   :where (hip-per-axis-weight?
-                            (mlir-value-get-defining-op %dq_w) 4 0 #t)
+                            (mlir::Value::getDefiningOp %dq_w) 4 0 #t)
     :then-let
-        ([!out-type (mlir-value-get-type %q)]
-         [%dq-in-op (mlir-value-get-defining-op %dq_in)]
+        ([!out-type (mlir::Value::getType %q)]
+         [%dq-in-op (mlir::Value::getDefiningOp %dq_in)]
          [in-scale  (hip-extract-splat-scale %in_scale)]
          [out-scale (hip-extract-splat-scale %out_scale)]
          [in-zp     (hip-extract-qdq-zeropoint-i64 %dq-in-op 0)]
          [out-zp    (hip-extract-qdq-zeropoint-i64 op 0)]
          [%init     (hip-build-init rewriter !out-type %conv_init)])
     :rewrite %q :with
-        (%result = (let ([new-op (mlir-build-operation "hip.qconv"
+        (%result = (let ([new-op (crest::RewriterBase::build "hip.qconv"
                                    (list %ctx %input %weights %w_scales %w_zps %init)
                                    (list !out-type))])
-                     (mlir-operation-set-f32-attr! new-op "input_scale"   in-scale)
-                     (mlir-operation-set-i64-attr! new-op "input_zp"      in-zp)
-                     (mlir-operation-set-f32-attr! new-op "output_scale"  out-scale)
-                     (mlir-operation-set-i64-attr! new-op "output_zp"     out-zp)
-                     (mlir-operation-set-i64-attr! new-op "weight_axis"   0)
+                     (crest::Operation::setF32Attr new-op "input_scale"   in-scale)
+                     (crest::Operation::setI64Attr new-op "input_zp"      in-zp)
+                     (crest::Operation::setF32Attr new-op "output_scale"  out-scale)
+                     (crest::Operation::setI64Attr new-op "output_zp"     out-zp)
+                     (crest::Operation::setI64Attr new-op "weight_axis"   0)
                      (mlir-operation-set-i64-array-attr! new-op "kernel_shape" '(1 1))
                      (mlir-operation-set-i64-array-attr! new-op "strides"      '(1 1))
                      (mlir-operation-set-i64-array-attr! new-op "pads"         '(0 0 0 0))
                      (mlir-operation-set-i64-array-attr! new-op "dilations"    '(1 1))
-                     (mlir-operation-set-i64-attr! new-op "group"          1)
-                     (mlir-operation-set-unit-attr! new-op "packed_int4")
-                     (mlir-operation-get-result new-op 0))))
+                     (crest::Operation::setI64Attr new-op "group"          1)
+                     (crest::Operation::setUnitAttr new-op "packed_int4")
+                     (mlir::Operation::getResult new-op 0))))
 
 ) ;; end library (passes hip-fusion qconv)

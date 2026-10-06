@@ -17,22 +17,28 @@
 (library (passes onnx-to-hipsr min)
   (export populate-min-patterns)
   (import (except (rnrs (6)) =)
-          (rename (only (mlir ir operation)
-                            operation-get-context
-                            operation-get-result)
-                      (operation-get-context mlir-operation-get-context)
-                      (operation-get-result mlir-operation-get-result))
-          (rename (mlir ir value)
-            (get-type          mlir-value-get-type))
+
+          (only (mlir IR Value)
+                mlir::Value::getDefiningOp
+                mlir::Value::getType)
           (mlir support array-ref)
-          (only (mlir core builder) mlir-replace-op mlir-set-insertion-point-before with-rewrite-builder)
-          (mlir dialects builtin)
-          (mlir transforms dialect-conversion)
+          (only (mlir IR PatternMatch) mlir::RewriterBase::replaceOp mlir::RewriterBase::setInsertionPoint with-rewrite-builder)
+          (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
-          (mlir dialects tensor)
-          (mlir dialects shape)
+          (mlir Dialect Tensor IR)
+          (only (mlir IR BuiltinTypes)
+                mlir::RankedTensorType::cloneWithEncoding)
+          (only (mlir Dialect Shape IR Shape)
+                mlir::shape::ShapeType::get
+                mlir::shape::SizeType::get
+                mlir::shape::WitnessType::get)
           (crest internal rewrite)
-          (crest))
+          (crest)
+          (only (mlir IR Operation)
+                mlir::Operation::getResult)
+
+          (only (mlir IR Types) mlir::Type::getContext)
+  )
 
   ;;===--------------------------------------------------------------------===;;
   ;; Binary case — DSL with inline broadcast shape region (identical to equal)
@@ -43,9 +49,9 @@
         %output = onnx.Min (%lhs %rhs)
     :then-let
         ([%ctx        (mlir-get-hipsr-context-arg op)]
-         [!out-type   (mlir-value-get-type %output)]
-         [!out-device (mlir-ranked-tensor-type-with-encoding !out-type (make-hipsr-device-space-attr (mlir-type-get-context !out-type)))]
-         [!shape-type (mlir-shape.shape-type (mlir-operation-get-context op))])
+         [!out-type   (mlir::Value::getType %output)]
+         [!out-device (mlir::RankedTensorType::cloneWithEncoding !out-type (make-hipsr-device-space-attr (mlir::Type::getContext !out-type)))]
+         [!shape-type (mlir::shape::ShapeType::get)])
     :rewrite %output :with
         (%placeholder = hipsr.placeholder (%ctx %lhs %rhs !out-device)
                         (^bb0 ((%ls : !shape-type) (%rs : !shape-type))
@@ -59,8 +65,8 @@
   ;;===--------------------------------------------------------------------===;;
 
   (define (make-binary-min! rewriter loc-op ctx lhs rhs out-type)
-    (let ([!shape-type (mlir-shape.shape-type (mlir-operation-get-context loc-op))])
-      (mlir-set-insertion-point-before rewriter loc-op)
+    (let ([!shape-type (mlir::shape::ShapeType::get)])
+      (mlir::RewriterBase::setInsertionPoint rewriter loc-op)
       (with-rewrite-builder (rewriter loc-op)
         (with-mlir-ops
           (%ph = hipsr.placeholder (ctx lhs rhs)
@@ -74,20 +80,20 @@
     (let ([n (array-ref-size operands-ref)])
       (cond
         [(eqv? n 1)
-         (mlir-replace-op rewriter op (array-ref-at operands-ref 0))
+         (mlir::RewriterBase::replaceOp rewriter op (array-ref-at operands-ref 0))
          #t]
         [(> n 2)
          (let* ([ctx      (mlir-get-hipsr-context-arg op)]
-                [!base    (mlir-value-get-type (mlir-operation-get-result op 0))]
-                [out-type (mlir-ranked-tensor-type-with-encoding !base
-                            (make-hipsr-device-space-attr (mlir-type-get-context !base)))])
+                [!base    (mlir::Value::getType (mlir::Operation::getResult op 0))]
+                [out-type (mlir::RankedTensorType::cloneWithEncoding !base
+                            (make-hipsr-device-space-attr (mlir::Type::getContext !base)))])
            (let loop ([i 2]
                       [acc (make-binary-min! rewriter op ctx
                              (array-ref-at operands-ref 0)
                              (array-ref-at operands-ref 1)
                              out-type)])
              (if (eqv? i n)
-                 (begin (mlir-replace-op rewriter op acc) #t)
+                 (begin (mlir::RewriterBase::replaceOp rewriter op acc) #t)
                  (loop (+ i 1)
                        (make-binary-min! rewriter op ctx acc
                          (array-ref-at operands-ref i) out-type)))))]

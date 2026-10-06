@@ -22,26 +22,18 @@
   (import (except (rnrs) =)
           (only (chezscheme) nan?)
           (rename (only (rnrs) =) (= num=))
-          (rename (only (mlir ir operation)
-                       operation-get-integer-attr
-                       operation-get-result
-                       operation-set-f32-attr!
-                       operation-set-i64-attr!
-                       operation-set-unit-attr!)
-                 (operation-get-integer-attr mlir-operation-get-integer-attr)
-                 (operation-get-result       mlir-operation-get-result)
-                 (operation-set-f32-attr!    mlir-operation-set-f32-attr!)
-                 (operation-set-i64-attr!    mlir-operation-set-i64-attr!)
-                 (operation-set-unit-attr!   mlir-operation-set-unit-attr!))
-          (rename (mlir ir value)
-            (get-defining-op   mlir-value-get-defining-op)
-            (get-type          mlir-value-get-type))
-          (only (mlir core builder) mlir-build-operation)
-          (mlir dialects builtin)
-          (mlir transforms dialect-conversion)
+
+          (only (mlir IR Value)
+                mlir::Value::getDefiningOp
+                mlir::Value::getType)
+          (only (mlir core builder) crest::RewriterBase::build)
+          (mlir Transforms DialectConversion)
           (passes hip-fusion fusion)
           (crest)
-          (passes hip-fusion helpers))
+          (passes hip-fusion helpers)
+          (only (mlir IR Operation)
+                crest::Operation::setF32Attr crest::Operation::setI64Attr crest::Operation::setUnitAttr mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getResult)
+  )
 
   ;;===--------------------------------------------------------------------===;;
   ;; Pattern 3: QMatMul per-tensor  (benefit 10)
@@ -58,43 +50,43 @@
                                 (hip-can-build-init? op %matmul_init))
         %dq_a   = hip.dequantize_linear (%ctx %a %a_scale)
                     :where (and (hip-qdq-quantized-width?
-                                  (mlir-value-get-defining-op %dq_a) '(8 16))
+                                  (mlir::Value::getDefiningOp %dq_a) '(8 16))
                                 (hip-splat-scale? %a_scale)
                                 (hip-extractable-qdq-zeropoint?
-                                  (mlir-value-get-defining-op %dq_a)))
+                                  (mlir::Value::getDefiningOp %dq_a)))
         %dq_b   = hip.dequantize_linear (%ctx %b %b_scale)
                     :where (and (hip-qdq-quantized-width?
-                                  (mlir-value-get-defining-op %dq_b) '(8))
+                                  (mlir::Value::getDefiningOp %dq_b) '(8))
                                 (hip-splat-scale? %b_scale)
                                 (hip-extractable-qdq-zeropoint?
-                                  (mlir-value-get-defining-op %dq_b)))
+                                  (mlir::Value::getDefiningOp %dq_b)))
     :then-let
-        ([!y-type    (mlir-value-get-type %q)]
-         [%dq-a-op   (mlir-value-get-defining-op %dq_a)]
-         [%dq-b-op   (mlir-value-get-defining-op %dq_b)]
-         [%mm-op     (mlir-value-get-defining-op %matmul)]
+        ([!y-type    (mlir::Value::getType %q)]
+         [%dq-a-op   (mlir::Value::getDefiningOp %dq_a)]
+         [%dq-b-op   (mlir::Value::getDefiningOp %dq_b)]
+         [%mm-op     (mlir::Value::getDefiningOp %matmul)]
          [a-scale    (hip-extract-splat-scale %a_scale)]
          [b-scale    (hip-extract-splat-scale %b_scale)]
          [y-scale    (hip-extract-splat-scale %y_scale)]
          [a-zp       (hip-extract-qdq-zeropoint-i64 %dq-a-op 0)]
          [b-zp       (hip-extract-qdq-zeropoint-i64 %dq-b-op 0)]
          [y-zp       (hip-extract-qdq-zeropoint-i64 op 0)]
-         [trans-a    (mlir-operation-get-integer-attr %mm-op "transA" 0)]
-         [trans-b    (mlir-operation-get-integer-attr %mm-op "transB" 0)]
+         [trans-a    (mlir::Operation::getAttrOfType<IntegerAttr> %mm-op "transA" 0)]
+         [trans-b    (mlir::Operation::getAttrOfType<IntegerAttr> %mm-op "transB" 0)]
          [%init      (hip-build-init rewriter !y-type %matmul_init)])
     :rewrite %q :with
-        (%result = (let ([new-op (mlir-build-operation "hip.qmatmul"
+        (%result = (let ([new-op (crest::RewriterBase::build "hip.qmatmul"
                                    (list %ctx %a %b %init)
                                    (list !y-type))])
-                     (mlir-operation-set-f32-attr! new-op "A_scale"       a-scale)
-                     (mlir-operation-set-i64-attr! new-op "A_zero_point"  a-zp)
-                     (mlir-operation-set-f32-attr! new-op "B_scale"       b-scale)
-                     (mlir-operation-set-i64-attr! new-op "B_zero_point"  b-zp)
-                     (mlir-operation-set-f32-attr! new-op "Y_scale"       y-scale)
-                     (mlir-operation-set-i64-attr! new-op "Y_zero_point"  y-zp)
-                     (mlir-operation-set-i64-attr! new-op "transA"        trans-a)
-                     (mlir-operation-set-i64-attr! new-op "transB"        trans-b)
-                     (mlir-operation-get-result new-op 0))))
+                     (crest::Operation::setF32Attr new-op "A_scale"       a-scale)
+                     (crest::Operation::setI64Attr new-op "A_zero_point"  a-zp)
+                     (crest::Operation::setF32Attr new-op "B_scale"       b-scale)
+                     (crest::Operation::setI64Attr new-op "B_zero_point"  b-zp)
+                     (crest::Operation::setF32Attr new-op "Y_scale"       y-scale)
+                     (crest::Operation::setI64Attr new-op "Y_zero_point"  y-zp)
+                     (crest::Operation::setI64Attr new-op "transA"        trans-a)
+                     (crest::Operation::setI64Attr new-op "transB"        trans-b)
+                     (mlir::Operation::getResult new-op 0))))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Pattern 4: QMatMul per-column W4  (benefit 9)
@@ -109,41 +101,41 @@
         %matmul = hip.matmul            (%ctx %dq_a %dq_b %matmul_init)
                     :where (and (hip-value-single-use? %matmul)
                                 (hip-can-build-init? op %matmul_init)
-                                (num= (mlir-operation-get-integer-attr
-                                        (mlir-value-get-defining-op %matmul) "transB" 0)
+                                (num= (mlir::Operation::getAttrOfType<IntegerAttr>
+                                        (mlir::Value::getDefiningOp %matmul) "transB" 0)
                                       0))
         %dq_a   = hip.dequantize_linear (%ctx %a %a_scale)
                     :where (and (hip-qdq-quantized-width?
-                                  (mlir-value-get-defining-op %dq_a) '(8 16))
+                                  (mlir::Value::getDefiningOp %dq_a) '(8 16))
                                 (hip-splat-scale? %a_scale)
                                 (hip-extractable-qdq-zeropoint?
-                                  (mlir-value-get-defining-op %dq_a)))
+                                  (mlir::Value::getDefiningOp %dq_a)))
         %dq_b   = hip.dequantize_linear (%ctx %b %b_scales %b_zps %b_init)
                     :where (hip-per-axis-weight?
-                              (mlir-value-get-defining-op %dq_b) 2 1 #t)
+                              (mlir::Value::getDefiningOp %dq_b) 2 1 #t)
     :then-let
-        ([!y-type    (mlir-value-get-type %q)]
-         [%dq-a-op   (mlir-value-get-defining-op %dq_a)]
-         [%mm-op     (mlir-value-get-defining-op %matmul)]
+        ([!y-type    (mlir::Value::getType %q)]
+         [%dq-a-op   (mlir::Value::getDefiningOp %dq_a)]
+         [%mm-op     (mlir::Value::getDefiningOp %matmul)]
          [a-scale    (hip-extract-splat-scale %a_scale)]
          [y-scale    (hip-extract-splat-scale %y_scale)]
          [a-zp       (hip-extract-qdq-zeropoint-i64 %dq-a-op 0)]
          [y-zp       (hip-extract-qdq-zeropoint-i64 op 0)]
-         [trans-a    (mlir-operation-get-integer-attr %mm-op "transA" 0)]
+         [trans-a    (mlir::Operation::getAttrOfType<IntegerAttr> %mm-op "transA" 0)]
          [%init      (hip-build-init rewriter !y-type %matmul_init)])
     :rewrite %q :with
-        (%result = (let ([new-op (mlir-build-operation "hip.qmatmul"
+        (%result = (let ([new-op (crest::RewriterBase::build "hip.qmatmul"
                                    (list %ctx %a %b %b_scales %b_zps %init)
                                    (list !y-type))])
-                     (mlir-operation-set-f32-attr! new-op "A_scale"       a-scale)
-                     (mlir-operation-set-i64-attr! new-op "A_zero_point"  a-zp)
-                     (mlir-operation-set-f32-attr! new-op "Y_scale"       y-scale)
-                     (mlir-operation-set-i64-attr! new-op "Y_zero_point"  y-zp)
-                     (mlir-operation-set-i64-attr! new-op "transA"        trans-a)
-                     (mlir-operation-set-i64-attr! new-op "transB"        0)
-                     (mlir-operation-set-i64-attr! new-op "B_quant_axis"  1)
-                     (mlir-operation-set-unit-attr! new-op "packed_int4")
-                     (mlir-operation-get-result new-op 0))))
+                     (crest::Operation::setF32Attr new-op "A_scale"       a-scale)
+                     (crest::Operation::setI64Attr new-op "A_zero_point"  a-zp)
+                     (crest::Operation::setF32Attr new-op "Y_scale"       y-scale)
+                     (crest::Operation::setI64Attr new-op "Y_zero_point"  y-zp)
+                     (crest::Operation::setI64Attr new-op "transA"        trans-a)
+                     (crest::Operation::setI64Attr new-op "transB"        0)
+                     (crest::Operation::setI64Attr new-op "B_quant_axis"  1)
+                     (crest::Operation::setUnitAttr new-op "packed_int4")
+                     (mlir::Operation::getResult new-op 0))))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Pattern 5: QMatMul per-column W8  (benefit 9)
@@ -158,39 +150,39 @@
         %matmul = hip.matmul            (%ctx %dq_a %dq_b %matmul_init)
                     :where (and (hip-value-single-use? %matmul)
                                 (hip-can-build-init? op %matmul_init)
-                                (num= (mlir-operation-get-integer-attr
-                                        (mlir-value-get-defining-op %matmul) "transB" 0)
+                                (num= (mlir::Operation::getAttrOfType<IntegerAttr>
+                                        (mlir::Value::getDefiningOp %matmul) "transB" 0)
                                       0))
         %dq_a   = hip.dequantize_linear (%ctx %a %a_scale)
                     :where (and (hip-qdq-quantized-width?
-                                  (mlir-value-get-defining-op %dq_a) '(8 16))
+                                  (mlir::Value::getDefiningOp %dq_a) '(8 16))
                                 (hip-splat-scale? %a_scale)
                                 (hip-extractable-qdq-zeropoint?
-                                  (mlir-value-get-defining-op %dq_a)))
+                                  (mlir::Value::getDefiningOp %dq_a)))
         %dq_b   = hip.dequantize_linear (%ctx %b %b_scales %b_zps %b_init)
                     :where (hip-per-axis-weight?
-                              (mlir-value-get-defining-op %dq_b) 2 1 #f)
+                              (mlir::Value::getDefiningOp %dq_b) 2 1 #f)
     :then-let
-        ([!y-type    (mlir-value-get-type %q)]
-         [%dq-a-op   (mlir-value-get-defining-op %dq_a)]
-         [%mm-op     (mlir-value-get-defining-op %matmul)]
+        ([!y-type    (mlir::Value::getType %q)]
+         [%dq-a-op   (mlir::Value::getDefiningOp %dq_a)]
+         [%mm-op     (mlir::Value::getDefiningOp %matmul)]
          [a-scale    (hip-extract-splat-scale %a_scale)]
          [y-scale    (hip-extract-splat-scale %y_scale)]
          [a-zp       (hip-extract-qdq-zeropoint-i64 %dq-a-op 0)]
          [y-zp       (hip-extract-qdq-zeropoint-i64 op 0)]
-         [trans-a    (mlir-operation-get-integer-attr %mm-op "transA" 0)]
+         [trans-a    (mlir::Operation::getAttrOfType<IntegerAttr> %mm-op "transA" 0)]
          [%init      (hip-build-init rewriter !y-type %matmul_init)])
     :rewrite %q :with
-        (%result = (let ([new-op (mlir-build-operation "hip.qmatmul"
+        (%result = (let ([new-op (crest::RewriterBase::build "hip.qmatmul"
                                    (list %ctx %a %b %b_scales %b_zps %init)
                                    (list !y-type))])
-                     (mlir-operation-set-f32-attr! new-op "A_scale"       a-scale)
-                     (mlir-operation-set-i64-attr! new-op "A_zero_point"  a-zp)
-                     (mlir-operation-set-f32-attr! new-op "Y_scale"       y-scale)
-                     (mlir-operation-set-i64-attr! new-op "Y_zero_point"  y-zp)
-                     (mlir-operation-set-i64-attr! new-op "transA"        trans-a)
-                     (mlir-operation-set-i64-attr! new-op "transB"        0)
-                     (mlir-operation-set-i64-attr! new-op "B_quant_axis"  1)
-                     (mlir-operation-get-result new-op 0))))
+                     (crest::Operation::setF32Attr new-op "A_scale"       a-scale)
+                     (crest::Operation::setI64Attr new-op "A_zero_point"  a-zp)
+                     (crest::Operation::setF32Attr new-op "Y_scale"       y-scale)
+                     (crest::Operation::setI64Attr new-op "Y_zero_point"  y-zp)
+                     (crest::Operation::setI64Attr new-op "transA"        trans-a)
+                     (crest::Operation::setI64Attr new-op "transB"        0)
+                     (crest::Operation::setI64Attr new-op "B_quant_axis"  1)
+                     (mlir::Operation::getResult new-op 0))))
 
 ) ;; end library (passes hip-fusion qmatmul)

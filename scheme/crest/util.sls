@@ -22,14 +22,14 @@
     type-converter-add-tensor-widening-materialization)
 
   (import (rnrs)
-          (only (mlir ir mlir-context) current-mlir-context)
-          (only (mlir ir builtin-types)
-                ranked-tensor-type?)
-          (only (mlir ir value) get-type)
-          (only (mlir dialects tensor)
-                mlir-tensor-cast-are-cast-compatible
-                mlir-tensor-cast-create)
-          (mlir transforms dialect-conversion))
+          (only (mlir IR MLIRContext) current-mlir-context)
+          (only (mlir IR BuiltinTypes)
+                mlir::isa<RankedTensorType>?)
+          (only (mlir IR Value) mlir::Value::getType)
+          (only (mlir Dialect Tensor IR)
+                mlir::tensor::CastOp::areCastCompatible
+                mlir::tensor::CastOp::create)
+          (mlir Transforms DialectConversion))
 
   ;; @brief Mark builtin.module and arith.constant as unconditionally legal.
   ;;
@@ -80,13 +80,13 @@
       (if (not (and (pair? inputs) (null? (cdr inputs))))
           #f
           (let* ((input       (car inputs))
-                 (input-type  (get-type input)))
-            (if (not (and (ranked-tensor-type? input-type)
-                          (ranked-tensor-type? result-type)
-                          (= 1 (mlir-tensor-cast-are-cast-compatible
+                 (input-type  (mlir::Value::getType input)))
+            (if (not (and (mlir::isa<RankedTensorType>? input-type)
+                          (mlir::isa<RankedTensorType>? result-type)
+                          (= 1 (mlir::tensor::CastOp::areCastCompatible
                                 input-type result-type))))
                 #f
-                (mlir-tensor-cast-create builder loc result-type input)))))
+                (mlir::tensor::CastOp::create builder loc result-type input)))))
     (type-converter-add-source-materialization converter widen-materialize)
     (type-converter-add-target-materialization converter widen-materialize))
 

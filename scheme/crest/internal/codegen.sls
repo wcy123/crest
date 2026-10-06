@@ -16,31 +16,31 @@
           (for (crest internal parse) expand)
           (for (crest internal validate) expand)
           (for (crest internal analyze) expand)
-          (for (only (mlir core builder)
-                     with-rewrite-builder mlir-replace-op) expand)
-                    (for (rename (only (mlir ir operation)
-                            operation-get-context
-                            operation-get-num-results
-                            operation-get-result
-                            op-operand-get-value
-                            operation-has-attr?
-                            operation-get-attr
-                            operation-get-name
-                            operation-emit-error!
+          (for (only (mlir IR PatternMatch)
+                     with-rewrite-builder mlir::RewriterBase::replaceOp) expand)
+                    (for (rename (only (mlir IR Operation)
+                            mlir::Operation::getContext
+                            mlir::Operation::getNumResults
+                            mlir::Operation::getResult
+                            mlir::OpOperand::get
+                            mlir::Operation::hasAttr?
+                            mlir::Operation::getAttr
+                            mlir::Operation::getName
+                            mlir::Operation::emitError
                             operation-get-operands)
-                      (operation-get-context    mlir-operation-get-context)
-                      (operation-get-num-results mlir-operation-num-results)
-                      (operation-get-result     mlir-operation-get-result)
-                      (op-operand-get-value     mlir-operation-get-operand-value)
-                      (operation-has-attr?      mlir-operation-has-attr?)
-                      (operation-get-attr       mlir-operation-get-attribute)
-                      (operation-get-name       mlir-operation-name)
-                      (operation-emit-error!    mlir-emit-error!)
+                      (mlir::Operation::getContext    mlir-Operation::getContext)
+                      (mlir::Operation::getNumResults mlir-operation-num-results)
+                      (mlir::Operation::getResult     mlir-Operation::getResult)
+                      (mlir::OpOperand::get     mlir-operation-get-operand-value)
+                      (mlir::Operation::hasAttr?      mlir-Operation::hasAttr?)
+                      (mlir::Operation::getAttr       mlir-operation-get-attr)
+                      (mlir::Operation::getName       mlir-operation-name)
+                      (mlir::Operation::emitError    mlir-emit-error!)
                       (operation-get-operands   mlir-operation-get-operands)) expand)
-          (for (rename (only (mlir ir value) get-defining-op)
-                     (get-defining-op mlir-value-get-defining-op)) expand)
+          (for (rename (only (mlir IR Value) mlir::Value::getDefiningOp)
+                     (mlir::Value::getDefiningOp mlir-value-get-defining-op)) expand)
           (for (only (mlir support array-ref) array-ref-size array-ref-at) expand)
-          (for (only (mlir ir mlir-context) current-mlir-context) expand)
+          (for (only (mlir IR MLIRContext) current-mlir-context) expand)
           (for (only (chezscheme) parameterize) expand)
           (for (only (crest internal rewrite) with-mlir-ops) expand)
           ;; keywords needed at expand time for free-identifier=? matching in transform-where-expr
@@ -51,7 +51,7 @@
   ;;=======================================================================
   ;;
   ;; generate-pattern-match-and-rewrite
-  ;; ├── generate-root-result-setters  (set! %varN (mlir-operation-get-result op N)) per root result
+  ;; ├── generate-root-result-setters  (set! %varN (mlir-Operation::getResult op N)) per root result
   ;; │   └── find-root-op
   ;; ├── collect-all-variables
   ;; ├── generate-check-code           (and check₀ check₁ …) for :if-match
@@ -133,7 +133,7 @@
                   ;; make-mlir-attribute and type constructors work in :then-let
                   ;; without requiring an explicit ctx argument.
                   (parameterize ([current-mlir-context
-                                  (mlir-operation-get-context root-op)])
+                                  (mlir-Operation::getContext root-op)])
                     (let ([var (make-unbound-value)] ...
                           [all-operations (make-vector num-operations (make-unbound-value))])
                       root-result-setter ...
@@ -155,12 +155,12 @@
   ;; Generated shape ('conversion):
   ;;   (with-rewrite-builder (rw op)
   ;;     (let ([result (with-mlir-ops form ...)])
-  ;;       (mlir-replace-op rw op result)
+  ;;       (mlir::RewriterBase::replaceOp rw op result)
   ;;       #t))
   ;;
   ;; with-mlir-ops handles op-forms, :attrs, :regions, and :scheme escapes.
-  ;; with-rewrite-builder installs current-rewriter and current-loc so mlir-build-operation
-  ;; dispatches through mlir-build-operation-op / mlir-build-operation-op-in-block.
+  ;; with-rewrite-builder installs current-rewriter and current-loc so crest::RewriterBase::build
+  ;; dispatches through the active rewriter or block-builder.
   (define (generate-rewrite-code raw-body pattern-type rw op)
     (if (null? raw-body)
         #'#t
@@ -179,7 +179,7 @@
                    (let ([result (with-mlir-ops form ...)])
                      ;; result is a Value* uptr on success, or #f to signal failure.
                      (if result
-                         (begin (mlir-replace-op #,rw #,op result) #t)
+                         (begin (mlir::RewriterBase::replaceOp #,rw #,op result) #t)
                          #f))))]))))
 
     ;;=======================================================================
@@ -208,9 +208,9 @@
   ;;                    raise (error ...) if absent → guard returns #f
   ;;
   ;; Compose (:attr "name") with explicit builtin-attributes extractors, e.g.:
-  ;;   (IntegerAttr:getValue  (:attr "axis"))
-  ;;   (FloatAttr:getValueAsDouble.f32  (:attr "epsilon"))
-  ;;   (DenseElementsAttr:isSplat (:attr "value"))
+  ;;   (mlir::IntegerAttr::getValue  (:attr "axis"))
+  ;;   (mlir::FloatAttr::getValueAsDouble.f32  (:attr "epsilon"))
+  ;;   (mlir::DenseElementsAttr::isSplat (:attr "value"))
   ;;
   ;; Uses free-identifier=? via (syntax-case s (:current-op :attr) ...) so
   ;; only :current-op/:attr from (crest internal keywords) are substituted.
@@ -218,7 +218,7 @@
   ;; transform-where-expr — syntactic substitution for :where expressions.
   ;;
   ;; No (:attr "name" :type) form: clients compose (:attr "name") with
-  ;; explicit attr-extraction functions from (mlir ir builtin-attributes).
+  ;; explicit attr-extraction functions from (mlir IR BuiltinAttributes).
   (define (transform-where-expr where-stx op-idx)
     (let ([cur-op #`(vector-ref all-operations #,op-idx)])
       (let walk ([s where-stx])
@@ -229,8 +229,8 @@
           [(:attr name)
            (string? (syntax->datum #'name))
            #`(let ([%cur #,cur-op])
-               (if (mlir-operation-has-attr? %cur name)
-                   (mlir-operation-get-attribute %cur name)
+               (if (mlir-Operation::hasAttr? %cur name)
+                   (mlir-operation-get-attr %cur name)
                    (error ':attr
                           (string-append "attribute '" name "' absent on op: ")
                           (mlir-operation-name %cur))))]
@@ -314,7 +314,7 @@
                 [result-idx (cdr (assq 'result-idx fields))]
                 [var        (cdr (assq 'var        fields))])
            #`(begin
-               (set! #,var (mlir-operation-get-result
+               (set! #,var (mlir-Operation::getResult
                              (vector-ref all-operations #,op-idx)
                              #,result-idx))
                #t))]
@@ -366,7 +366,7 @@
   (define (generate-root-result-setters root-result-vars op-param)
     (loop :for var :in root-result-vars
           :for idx :from 0
-          :collect #`(set! #,var (mlir-operation-get-result #,op-param #,idx))))
+          :collect #`(set! #,var (mlir-Operation::getResult #,op-param #,idx))))
 
   ;;=======================================================================
   ;; Variable collection
