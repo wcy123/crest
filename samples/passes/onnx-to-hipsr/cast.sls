@@ -13,27 +13,34 @@
 (library (passes onnx-to-hipsr cast)
   (export populate-cast-patterns)
   (import (except (rnrs (6)) =)
-          (rename (only (mlir ir operation)
-                            operation-get-context)
-                      (operation-get-context mlir-operation-get-context))
-          (rename (only (mlir ir value) get-type) (get-type mlir-value-get-type))
-          (mlir dialects builtin)
-          (mlir transforms dialect-conversion)
+
+
+          (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
-          (mlir dialects tensor)
-          (mlir dialects shape)
-          (crest))
+          (mlir Dialect Tensor IR)
+          (only (mlir IR BuiltinTypes)
+                mlir::RankedTensorType::cloneWithEncoding)
+          (only (mlir Dialect Shape IR Shape)
+                mlir::shape::ShapeType::get
+                mlir::shape::SizeType::get
+                mlir::shape::WitnessType::get)
+          (crest)
+          (only (mlir IR Operation)
+                mlir::Operation::getContext)
+          (only (mlir IR Value)
+                mlir::Value::getType)
+  )
 
   (define-conversion-pattern (onnx-cast->hipsr op operands-ref rewriter type-converter)
     :if-match
         %output = onnx.Cast (%input)
     :then-let
-        ([ctx            (mlir-operation-get-context op)]
+        ([ctx            (mlir::Operation::getContext op)]
          [%ctx           (mlir-get-hipsr-context-arg op)]
-         [!output-type   (mlir-value-get-type %output)]
-         [!output-device (mlir-ranked-tensor-type-with-encoding !output-type
+         [!output-type   (mlir::Value::getType %output)]
+         [!output-device (mlir::RankedTensorType::cloneWithEncoding !output-type
                             (make-hipsr-device-space-attr ctx))]
-         [!shape-type    (mlir-shape.shape-type ctx)])
+         [!shape-type    (mlir::shape::ShapeType::get)])
     :rewrite %output :with
         (%placeholder = hipsr.placeholder (%ctx %input)
                         (^bb0 ((%shape-in : !shape-type))

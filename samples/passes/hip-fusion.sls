@@ -30,11 +30,9 @@
 
   (import (except (rnrs) =)
           (rename (only (rnrs) =) (= num=))
-          (rename (only (mlir ir operation)
-                            operation-get-context)
-                      (operation-get-context mlir-operation-get-context))
-          (only (mlir core builder) mlir-apply-patterns-greedy)
-          (mlir transforms dialect-conversion)
+
+          (only (mlir core builder) mlir-transforms-greedy-pattern-rewrite-driver-apply)
+          (mlir Transforms DialectConversion)
           (crest)
           (passes hip-fusion helpers)
           (passes hip-fusion qadd)
@@ -44,10 +42,16 @@
           (passes hip-fusion qconv)
           (passes hip-fusion qsigmoid)
           (passes hip-fusion qlpnorm)
-          (passes hip-fusion qdq-roundtrip))
+          (passes hip-fusion qdq-roundtrip)
+          (only (mlir IR Operation)
+                mlir::Operation::getContext)
+          (only (mlir IR MLIRContext)
+                with-mlir-context)
+  )
 
   (define (run-pass module-op)
-    (let ([ctx (mlir-operation-get-context module-op)])
+    (let ([ctx (mlir::Operation::getContext module-op)])
+      (with-mlir-context ctx
       (with-pattern-set (patterns ctx)
         (add-rewrite-pattern patterns "hip.quantize_linear"
                                        hip-qadd-fusion 10)
@@ -79,6 +83,6 @@
                                        hip-qdq-roundtrip-tensor 10)
         (add-rewrite-pattern patterns "hip.quantize_linear"
                                        hip-qdq-roundtrip-pair 10)
-        (mlir-apply-patterns-greedy module-op patterns))))
+        (mlir-transforms-greedy-pattern-rewrite-driver-apply module-op patterns)))))
 
 ) ;; end library (passes hip-fusion)

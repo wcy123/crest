@@ -18,7 +18,7 @@ static void scheme_error(const char* who, const char* msg) {
 extern "C" {
 
 // mlir::IndexType::get(ctx)
-uint64_t mlir_ir_builtin_types_index_type_get(uint64_t ctx_ptr) {
+static uint64_t mlir_ir_builtin_types_index_type_get(uint64_t ctx_ptr) {
   if (!ctx_ptr) {
     scheme_error("mlir-ir-builtin-types-index-type-get",
                  "null MLIRContext pointer");
@@ -29,7 +29,7 @@ uint64_t mlir_ir_builtin_types_index_type_get(uint64_t ctx_ptr) {
 }
 
 // mlir::IntegerType::get(ctx, 64)
-uint64_t mlir_ir_builtin_types_integer_type_get_i64(uint64_t ctx_ptr) {
+static uint64_t mlir_ir_builtin_types_integer_type_get_i64(uint64_t ctx_ptr) {
   if (!ctx_ptr) {
     scheme_error("mlir-ir-builtin-types-integer-type-get-i64",
                  "null MLIRContext pointer");
@@ -40,7 +40,7 @@ uint64_t mlir_ir_builtin_types_integer_type_get_i64(uint64_t ctx_ptr) {
 }
 
 // mlir::IntegerType::get(ctx, 1)
-uint64_t mlir_ir_builtin_types_integer_type_get_i1(uint64_t ctx_ptr) {
+static uint64_t mlir_ir_builtin_types_integer_type_get_i1(uint64_t ctx_ptr) {
   if (!ctx_ptr) {
     scheme_error("mlir-ir-builtin-types-integer-type-get-i1",
                  "null MLIRContext pointer");
@@ -51,7 +51,7 @@ uint64_t mlir_ir_builtin_types_integer_type_get_i1(uint64_t ctx_ptr) {
 }
 
 // mlir::isa<mlir::RankedTensorType>(type)
-int mlir_ir_builtin_types_ranked_tensor_type_isa(uint64_t type_ptr) {
+static int mlir_ir_builtin_types_ranked_tensor_type_isa(uint64_t type_ptr) {
   if (!type_ptr) {
     return 0;
   }
@@ -62,7 +62,8 @@ int mlir_ir_builtin_types_ranked_tensor_type_isa(uint64_t type_ptr) {
 }
 
 // mlir::RankedTensorType::getRank()
-int64_t mlir_ir_builtin_types_ranked_tensor_type_get_rank(uint64_t type_ptr) {
+static int64_t
+mlir_ir_builtin_types_ranked_tensor_type_get_rank(uint64_t type_ptr) {
   if (!type_ptr) {
     scheme_error("mlir-ir-builtin-types-ranked-tensor-type-get-rank",
                  "null type pointer");
@@ -78,7 +79,7 @@ int64_t mlir_ir_builtin_types_ranked_tensor_type_get_rank(uint64_t type_ptr) {
 }
 
 // mlir::RankedTensorType::getElementType()
-uint64_t
+static uint64_t
 mlir_ir_builtin_types_ranked_tensor_type_get_element_type(uint64_t type_ptr) {
   if (!type_ptr) {
     scheme_error("mlir-ir-builtin-types-ranked-tensor-type-get-element-type",
@@ -96,7 +97,7 @@ mlir_ir_builtin_types_ranked_tensor_type_get_element_type(uint64_t type_ptr) {
 }
 
 // mlir::RankedTensorType::getShape() → Scheme list of integers
-ptr mlir_ir_builtin_types_ranked_tensor_type_get_shape(ptr type_ptr) {
+static ptr mlir_ir_builtin_types_ranked_tensor_type_get_shape(ptr type_ptr) {
   if (!type_ptr) {
     scheme_error("mlir-ir-builtin-types-ranked-tensor-type-get-shape",
                  "null type pointer");
@@ -115,7 +116,7 @@ ptr mlir_ir_builtin_types_ranked_tensor_type_get_shape(ptr type_ptr) {
 }
 
 // mlir::RankedTensorType::getEncoding()
-uint64_t
+static uint64_t
 mlir_ir_builtin_types_ranked_tensor_type_get_encoding(uint64_t type_ptr) {
   if (!type_ptr) {
     scheme_error("mlir-ir-builtin-types-ranked-tensor-type-get-encoding",
@@ -133,7 +134,7 @@ mlir_ir_builtin_types_ranked_tensor_type_get_encoding(uint64_t type_ptr) {
 }
 
 // mlir::RankedTensorType::cloneWithEncoding(attr)
-uint64_t mlir_ir_builtin_types_ranked_tensor_type_clone_with_encoding(
+static uint64_t mlir_ir_builtin_types_ranked_tensor_type_clone_with_encoding(
     uint64_t type_ptr, uint64_t attr_ptr) {
   if (!type_ptr) {
     scheme_error("mlir-ir-builtin-types-ranked-tensor-type-clone-with-encoding",
@@ -157,7 +158,8 @@ uint64_t mlir_ir_builtin_types_ranked_tensor_type_clone_with_encoding(
 }
 
 // mlir::ShapedType::getElementType()
-uint64_t mlir_ir_builtin_types_shaped_type_get_element_type(uint64_t type_ptr) {
+static uint64_t
+mlir_ir_builtin_types_shaped_type_get_element_type(uint64_t type_ptr) {
   if (!type_ptr) {
     scheme_error("mlir-ir-builtin-types-shaped-type-get-element-type",
                  "null type pointer");
@@ -173,7 +175,8 @@ uint64_t mlir_ir_builtin_types_shaped_type_get_element_type(uint64_t type_ptr) {
 }
 
 // mlir::IntegerType::getWidth()
-uint64_t mlir_ir_builtin_types_integer_type_get_width(uint64_t type_ptr) {
+static uint64_t
+mlir_ir_builtin_types_integer_type_get_width(uint64_t type_ptr) {
   if (!type_ptr) {
     scheme_error("mlir-ir-builtin-types-integer-type-get-width",
                  "null type pointer");
@@ -189,7 +192,7 @@ uint64_t mlir_ir_builtin_types_integer_type_get_width(uint64_t type_ptr) {
 }
 
 // mlir::IntegerType::isUnsigned()
-int mlir_ir_builtin_types_integer_type_is_unsigned(uint64_t type_ptr) {
+static int mlir_ir_builtin_types_integer_type_is_unsigned(uint64_t type_ptr) {
   if (!type_ptr) {
     scheme_error("mlir-ir-builtin-types-integer-type-is-unsigned",
                  "null type pointer");
@@ -209,33 +212,33 @@ int mlir_ir_builtin_types_integer_type_is_unsigned(uint64_t type_ptr) {
 namespace crest {
 
 void registerIRBuiltinTypesBindings() {
-  Sregister_symbol("mlir_ir_builtin_types_index_type_get",
+  Sregister_symbol("mlir::IndexType::get",
                    (void*)::mlir_ir_builtin_types_index_type_get);
-  Sregister_symbol("mlir_ir_builtin_types_integer_type_get_i64",
+  Sregister_symbol("mlir::IntegerType::get<i64>",
                    (void*)::mlir_ir_builtin_types_integer_type_get_i64);
-  Sregister_symbol("mlir_ir_builtin_types_integer_type_get_i1",
+  Sregister_symbol("mlir::IntegerType::get<i1>",
                    (void*)::mlir_ir_builtin_types_integer_type_get_i1);
-  Sregister_symbol("mlir_ir_builtin_types_ranked_tensor_type_isa",
+  Sregister_symbol("mlir::isa<RankedTensorType>",
                    (void*)::mlir_ir_builtin_types_ranked_tensor_type_isa);
-  Sregister_symbol("mlir_ir_builtin_types_ranked_tensor_type_get_rank",
+  Sregister_symbol("mlir::RankedTensorType::getRank",
                    (void*)::mlir_ir_builtin_types_ranked_tensor_type_get_rank);
   Sregister_symbol(
-      "mlir_ir_builtin_types_ranked_tensor_type_get_element_type",
+      "mlir::RankedTensorType::getElementType",
       (void*)::mlir_ir_builtin_types_ranked_tensor_type_get_element_type);
-  Sregister_symbol("mlir_ir_builtin_types_ranked_tensor_type_get_shape",
+  Sregister_symbol("mlir::RankedTensorType::getShape",
                    (void*)::mlir_ir_builtin_types_ranked_tensor_type_get_shape);
   Sregister_symbol(
-      "mlir_ir_builtin_types_ranked_tensor_type_get_encoding",
+      "mlir::RankedTensorType::getEncoding",
       (void*)::mlir_ir_builtin_types_ranked_tensor_type_get_encoding);
   Sregister_symbol(
-      "mlir_ir_builtin_types_ranked_tensor_type_clone_with_encoding",
+      "mlir::RankedTensorType::cloneWithEncoding",
       (void*)::mlir_ir_builtin_types_ranked_tensor_type_clone_with_encoding);
   // ── Type query functions (moved from BuiltinAttributes.cpp) ─────────────
-  Sregister_symbol("mlir_ir_builtin_types_shaped_type_get_element_type",
+  Sregister_symbol("mlir::ShapedType::getElementType",
                    (void*)::mlir_ir_builtin_types_shaped_type_get_element_type);
-  Sregister_symbol("mlir_ir_builtin_types_integer_type_get_width",
+  Sregister_symbol("mlir::IntegerType::getWidth",
                    (void*)::mlir_ir_builtin_types_integer_type_get_width);
-  Sregister_symbol("mlir_ir_builtin_types_integer_type_is_unsigned",
+  Sregister_symbol("mlir::IntegerType::isUnsigned",
                    (void*)::mlir_ir_builtin_types_integer_type_is_unsigned);
   // ── Old names (backward compat) ──────────────────────────────────────────
   Sregister_symbol("mlir_ir_builtin_attributes_shaped_type_get_element_type",
@@ -250,6 +253,24 @@ void registerIRBuiltinTypesBindings() {
                    (void*)::mlir_ir_builtin_types_integer_type_get_width);
   Sregister_symbol("mlir_type_is_unsigned",
                    (void*)::mlir_ir_builtin_types_integer_type_is_unsigned);
+  // Aliases for names used in builtin-types.sls wrapper
+  Sregister_symbol(
+      "mlir::RankedTensorType::getElementType",
+      (void*)::mlir_ir_builtin_types_ranked_tensor_type_get_element_type);
+  Sregister_symbol(
+      "mlir::RankedTensorType::cloneWithEncoding",
+      (void*)::mlir_ir_builtin_types_ranked_tensor_type_clone_with_encoding);
+  Sregister_symbol(
+      "mlir::RankedTensorType::getEncoding",
+      (void*)::mlir_ir_builtin_types_ranked_tensor_type_get_encoding);
+  Sregister_symbol("mlir::isa<RankedTensorType>?",
+                   (void*)::mlir_ir_builtin_types_ranked_tensor_type_isa);
+  Sregister_symbol("mlir::IntegerType::isUnsigned?",
+                   (void*)::mlir_ir_builtin_types_integer_type_is_unsigned);
+  Sregister_symbol("mlir::IntegerType::get<i64>",
+                   (void*)::mlir_ir_builtin_types_integer_type_get_i64);
+  Sregister_symbol("mlir::IntegerType::get<i1>",
+                   (void*)::mlir_ir_builtin_types_integer_type_get_i1);
 }
 
 } // namespace crest

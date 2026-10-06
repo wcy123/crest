@@ -18,32 +18,41 @@
   (export populate-matmul-patterns
           onnx-matmul->hipsr)
   (import (except (rnrs (6)) =)
-          (rename (only (mlir ir operation)
-                            operation-get-context)
-                      (operation-get-context mlir-operation-get-context))
-          (rename (mlir ir value)
-            (get-type          mlir-value-get-type))
-          (mlir dialects builtin)
-          (mlir transforms dialect-conversion)
+
+          (only (mlir IR Value)
+                mlir::Value::getDefiningOp
+                mlir::Value::getType)
+          (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
-          (mlir dialects tensor)
-          (mlir dialects shape)
+          (mlir Dialect Tensor IR)
+          (only (mlir Dialect Shape IR Shape)
+                mlir::shape::ShapeType::get
+                mlir::shape::SizeType::get
+                mlir::shape::WitnessType::get)
           (mlir support logging)
-          (crest))
+          (crest)
+          (only (mlir support logging)
+                crest::logging::info)
+
+          (only (mlir IR Types) mlir::Type::getContext)
+
+          (only (mlir IR BuiltinTypes)
+                mlir::RankedTensorType::cloneWithEncoding
+                mlir::RankedTensorType::getRank))
 
   (define-conversion-pattern (onnx-matmul->hipsr op operands-ref rewriter type-converter)
     :if-match
         %output = onnx.MatMul (%a %b)
     :then-let
         ([%ctx           (mlir-get-hipsr-context-arg op)]
-         [!output-type   (mlir-value-get-type %output)]
-         [!output-device (mlir-ranked-tensor-type-with-encoding !output-type (make-hipsr-device-space-attr (mlir-type-get-context !output-type)))]
-         [!shape-type    (mlir-shape.shape-type   (mlir-operation-get-context op))]
-         [!size-type     (mlir-shape.size-type    (mlir-operation-get-context op))]
-         [!witness-type  (mlir-shape.witness-type (mlir-operation-get-context op))]
+         [!output-type   (mlir::Value::getType %output)]
+         [!output-device (mlir::RankedTensorType::cloneWithEncoding !output-type (make-hipsr-device-space-attr (mlir::Type::getContext !output-type)))]
+         [!shape-type    (mlir::shape::ShapeType::get)]
+         [!size-type     (mlir::shape::SizeType::get)]
+         [!witness-type  (mlir::shape::WitnessType::get)]
          ;; Rank info from operand types (runtime)
-         [a-rank         (mlir-type-get-rank (mlir-value-get-type %a))]
-         [b-rank         (mlir-type-get-rank (mlir-value-get-type %b))]
+         [a-rank         (mlir::RankedTensorType::getRank (mlir::Value::getType %a))]
+         [b-rank         (mlir::RankedTensorType::getRank (mlir::Value::getType %b))]
          ;; K indices: A's last dim; B's second-to-last (or last if 1-D)
          [k-a-idx        (- a-rank 1)]
          [k-b-idx        (if (eqv? b-rank 1) (- b-rank 1) (- b-rank 2))]
@@ -90,7 +99,7 @@
                    -> !output-device))
 
   (define (populate-matmul-patterns type-converter patterns ctx)
-    (mlir-log-info "Registering onnx.MatMul pattern (inline shape region)")
+    (crest::logging::info "Registering onnx.MatMul pattern (inline shape region)")
     (add-conversion-pattern patterns "onnx.MatMul"
                                       onnx-matmul->hipsr type-converter 1))
 

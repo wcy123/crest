@@ -3,6 +3,8 @@
  * Licensed under the MIT License.
  */
 
+// Mirrors lib/Bindings/Support/ArrayRef.h (CREST-specific).
+
 // C++ lifecycle bindings for (mlir support array-ref).
 //
 // The struct layout (matching llvm::ArrayRef<T> ABI):
@@ -19,13 +21,13 @@
 extern "C" {
 
 // Allocate a CArrayRef on the C heap and return its address as uptr.
-uint64_t mlir_support_array_ref_make(uint64_t data_ptr, uint64_t size) {
+static uint64_t mlir_support_array_ref_make(uint64_t data_ptr, uint64_t size) {
   auto* ref = new CArrayRef{data_ptr, size};
   return reinterpret_cast<uint64_t>(ref);
 }
 
 // Free a CArrayRef previously created by mlir_support_array_ref_make.
-void mlir_support_array_ref_destroy(uint64_t ref_ptr) {
+static void mlir_support_array_ref_destroy(uint64_t ref_ptr) {
   delete reinterpret_cast<CArrayRef*>(ref_ptr);
 }
 

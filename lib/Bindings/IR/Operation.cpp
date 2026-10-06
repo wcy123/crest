@@ -43,7 +43,7 @@ const char* mlir_ir_operation_get_name(uint64_t op) {
       .data();
 }
 
-uint64_t mlir_ir_operation_get_context(uint64_t op) {
+static uint64_t mlir_ir_operation_get_context(uint64_t op) {
   if (!op) {
     scheme_error("mlir-ir-operation-get-context", "operation must not be null");
     return 0; // unreachable — error performs non-local exit
@@ -52,7 +52,7 @@ uint64_t mlir_ir_operation_get_context(uint64_t op) {
       reinterpret_cast<mlir::Operation*>(op)->getContext());
 }
 
-int64_t mlir_ir_operation_get_num_operands(uint64_t op) {
+static int64_t mlir_ir_operation_get_num_operands(uint64_t op) {
   if (!op) {
     scheme_error("mlir-ir-operation-get-num-operands",
                  "operation must not be null");
@@ -61,7 +61,7 @@ int64_t mlir_ir_operation_get_num_operands(uint64_t op) {
   return reinterpret_cast<mlir::Operation*>(op)->getNumOperands();
 }
 
-int64_t mlir_ir_operation_get_num_results(uint64_t op) {
+static int64_t mlir_ir_operation_get_num_results(uint64_t op) {
   if (!op) {
     scheme_error("mlir-ir-operation-get-num-results",
                  "operation must not be null");
@@ -70,7 +70,7 @@ int64_t mlir_ir_operation_get_num_results(uint64_t op) {
   return reinterpret_cast<mlir::Operation*>(op)->getNumResults();
 }
 
-uint64_t mlir_ir_operation_get_op_operand(uint64_t op, int64_t index) {
+static uint64_t mlir_ir_operation_get_op_operand(uint64_t op, int64_t index) {
   if (!op) {
     scheme_error("mlir-ir-operation-get-op-operand",
                  "operation must not be null");
@@ -87,7 +87,7 @@ uint64_t mlir_ir_operation_get_op_operand(uint64_t op, int64_t index) {
   return reinterpret_cast<uint64_t>(const_cast<void*>(cVal.ptr));
 }
 
-uint64_t mlir_ir_operation_get_result(uint64_t op, int64_t index) {
+static uint64_t mlir_ir_operation_get_result(uint64_t op, int64_t index) {
   if (!op) {
     scheme_error("mlir-ir-operation-get-result", "operation must not be null");
     return 0; // unreachable — error performs non-local exit
@@ -103,7 +103,7 @@ uint64_t mlir_ir_operation_get_result(uint64_t op, int64_t index) {
   return reinterpret_cast<uint64_t>(const_cast<void*>(cVal.ptr));
 }
 
-ptr mlir_ir_operation_get_parent_op(ptr op_ptr) {
+static ptr mlir_ir_operation_get_parent_op(ptr op_ptr) {
   if (!op_ptr) {
     scheme_error("mlir-ir-operation-get-parent-op",
                  "operation must not be null");
@@ -112,7 +112,7 @@ ptr mlir_ir_operation_get_parent_op(ptr op_ptr) {
   return static_cast<mlir::Operation*>(op_ptr)->getParentOp();
 }
 
-ptr mlir_ir_op_operand_get_value(ptr op_ptr, int index) {
+static ptr mlir_ir_op_operand_get_value(ptr op_ptr, int index) {
   if (!op_ptr) {
     scheme_error("mlir-ir-op-operand-get-value", "operation must not be null");
     return nullptr; // unreachable — error performs non-local exit
@@ -126,7 +126,7 @@ ptr mlir_ir_op_operand_get_value(ptr op_ptr, int index) {
   return const_cast<void*>(op->getOperand(index).getAsOpaquePointer());
 }
 
-ptr mlir_ir_op_result_get_value(ptr op_ptr, int index) {
+static ptr mlir_ir_op_result_get_value(ptr op_ptr, int index) {
   if (!op_ptr) {
     scheme_error("mlir-ir-op-result-get-value", "operation must not be null");
     return nullptr; // unreachable — error performs non-local exit
@@ -140,7 +140,7 @@ ptr mlir_ir_op_result_get_value(ptr op_ptr, int index) {
   return const_cast<void*>(op->getResult(index).getAsOpaquePointer());
 }
 
-ptr mlir_ir_operation_get_loc(ptr op_ptr) {
+static ptr mlir_ir_operation_get_loc(ptr op_ptr) {
   if (!op_ptr) {
     scheme_error("mlir-ir-operation-get-loc", "operation must not be null");
     return nullptr; // unreachable — error performs non-local exit
@@ -149,7 +149,7 @@ ptr mlir_ir_operation_get_loc(ptr op_ptr) {
       static_cast<mlir::Operation*>(op_ptr)->getLoc().getAsOpaquePointer());
 }
 
-void mlir_ir_operation_walk(uint64_t op, ptr callback) {
+static void mlir_ir_operation_walk(uint64_t op, ptr callback) {
   if (!op) {
     return;
   }
@@ -161,7 +161,8 @@ void mlir_ir_operation_walk(uint64_t op, ptr callback) {
   });
 }
 
-void mlir_ir_operation_set_operand(uint64_t op_ptr, int index, uint64_t value) {
+static void mlir_ir_operation_set_operand(uint64_t op_ptr, int index,
+                                          uint64_t value) {
   if (!op_ptr || !value) {
     return;
   }
@@ -170,7 +171,7 @@ void mlir_ir_operation_set_operand(uint64_t op_ptr, int index, uint64_t value) {
   op->setOperand(static_cast<unsigned>(index), val);
 }
 
-int mlir_ir_operation_use_empty(uint64_t op_ptr) {
+static int mlir_ir_operation_use_empty(uint64_t op_ptr) {
   if (!op_ptr) {
     return 1;
   }
@@ -190,9 +191,9 @@ const char* mlir_ir_operation_get_string_attr(uint64_t op_ptr,
   return attr.getValue().data();
 }
 
-int64_t mlir_ir_operation_get_integer_attr(uint64_t op_ptr,
-                                           const char* attr_name,
-                                           int64_t default_val) {
+static int64_t mlir_ir_operation_get_integer_attr(uint64_t op_ptr,
+                                                  const char* attr_name,
+                                                  int64_t default_val) {
   if (!op_ptr) {
     return default_val;
   }
@@ -203,8 +204,8 @@ int64_t mlir_ir_operation_get_integer_attr(uint64_t op_ptr,
   return default_val;
 }
 
-ptr mlir_ir_operation_get_integer_array_attr(uint64_t op_ptr,
-                                             const char* attr_name) {
+static ptr mlir_ir_operation_get_integer_array_attr(uint64_t op_ptr,
+                                                    const char* attr_name) {
   if (!op_ptr) {
     return Snil;
   }
@@ -230,8 +231,9 @@ ptr mlir_ir_operation_get_integer_array_attr(uint64_t op_ptr,
   return Snil;
 }
 
-void mlir_ir_operation_set_index_attr(uint64_t op_ptr, const char* attr_name,
-                                      int64_t value) {
+static void mlir_ir_operation_set_index_attr(uint64_t op_ptr,
+                                             const char* attr_name,
+                                             int64_t value) {
   if (!op_ptr) {
     return;
   }
@@ -241,9 +243,9 @@ void mlir_ir_operation_set_index_attr(uint64_t op_ptr, const char* attr_name,
       mlir::IntegerAttr::get(mlir::IndexType::get(cppOp->getContext()), value));
 }
 
-void mlir_ir_operation_set_i64_array_attr(uint64_t op_ptr,
-                                          const char* attr_name,
-                                          ptr values_list) {
+static void mlir_ir_operation_set_i64_array_attr(uint64_t op_ptr,
+                                                 const char* attr_name,
+                                                 ptr values_list) {
   if (!op_ptr) {
     return;
   }
@@ -259,9 +261,9 @@ void mlir_ir_operation_set_i64_array_attr(uint64_t op_ptr,
   op->setAttr(attr_name, mlir::ArrayAttr::get(op->getContext(), attrs));
 }
 
-void mlir_ir_operation_set_dense_i64_array(uint64_t op_ptr,
-                                           const char* attr_name,
-                                           ptr values_list) {
+static void mlir_ir_operation_set_dense_i64_array(uint64_t op_ptr,
+                                                  const char* attr_name,
+                                                  ptr values_list) {
   if (!op_ptr) {
     return;
   }
@@ -277,9 +279,9 @@ void mlir_ir_operation_set_dense_i64_array(uint64_t op_ptr,
               mlir::DenseI64ArrayAttr::get(op->getContext(), values));
 }
 
-void mlir_ir_operation_set_dense_i32_array(uint64_t op_ptr,
-                                           const char* attr_name,
-                                           ptr values_list) {
+static void mlir_ir_operation_set_dense_i32_array(uint64_t op_ptr,
+                                                  const char* attr_name,
+                                                  ptr values_list) {
   if (!op_ptr) {
     return;
   }
@@ -295,8 +297,8 @@ void mlir_ir_operation_set_dense_i32_array(uint64_t op_ptr,
               mlir::DenseI32ArrayAttr::get(op->getContext(), values));
 }
 
-void mlir_ir_operation_set_f32_attr(uint64_t op_ptr, const char* name,
-                                    double value) {
+static void mlir_ir_operation_set_f32_attr(uint64_t op_ptr, const char* name,
+                                           double value) {
   if (!op_ptr) {
     return;
   }
@@ -306,8 +308,8 @@ void mlir_ir_operation_set_f32_attr(uint64_t op_ptr, const char* name,
                                    static_cast<float>(value)));
 }
 
-void mlir_ir_operation_set_i64_attr(uint64_t op_ptr, const char* name,
-                                    int64_t value) {
+static void mlir_ir_operation_set_i64_attr(uint64_t op_ptr, const char* name,
+                                           int64_t value) {
   if (!op_ptr) {
     return;
   }
@@ -316,7 +318,7 @@ void mlir_ir_operation_set_i64_attr(uint64_t op_ptr, const char* name,
                         mlir::IntegerType::get(op->getContext(), 64), value));
 }
 
-void mlir_ir_operation_set_unit_attr(uint64_t op_ptr, const char* name) {
+static void mlir_ir_operation_set_unit_attr(uint64_t op_ptr, const char* name) {
   if (!op_ptr) {
     return;
   }
@@ -324,8 +326,10 @@ void mlir_ir_operation_set_unit_attr(uint64_t op_ptr, const char* name) {
   op->setAttr(name, mlir::UnitAttr::get(op->getContext()));
 }
 
-void mlir_ir_operation_copy_attr(uint64_t dst_op_ptr, const char* dst_name,
-                                 uint64_t src_op_ptr, const char* src_name) {
+static void mlir_ir_operation_copy_attr(uint64_t dst_op_ptr,
+                                        const char* dst_name,
+                                        uint64_t src_op_ptr,
+                                        const char* src_name) {
   if (!dst_op_ptr || !src_op_ptr) {
     return;
   }
@@ -337,7 +341,7 @@ void mlir_ir_operation_copy_attr(uint64_t dst_op_ptr, const char* dst_name,
   }
 }
 
-int mlir_ir_operation_has_attr(uint64_t op_ptr, const char* attr_name) {
+static int mlir_ir_operation_has_attr(uint64_t op_ptr, const char* attr_name) {
   if (!op_ptr) {
     scheme_error("mlir-ir-operation-has-attr", "operation must not be null");
     return 0; // unreachable — error performs non-local exit
@@ -345,7 +349,7 @@ int mlir_ir_operation_has_attr(uint64_t op_ptr, const char* attr_name) {
   return reinterpret_cast<mlir::Operation*>(op_ptr)->hasAttr(attr_name) ? 1 : 0;
 }
 
-void mlir_ir_operation_emit_error(uint64_t op_ptr, const char* msg) {
+static void mlir_ir_operation_emit_error(uint64_t op_ptr, const char* msg) {
   if (!op_ptr) {
     mlir_support_logging_error(msg);
     return;
@@ -353,7 +357,7 @@ void mlir_ir_operation_emit_error(uint64_t op_ptr, const char* msg) {
   reinterpret_cast<mlir::Operation*>(op_ptr)->emitError(msg);
 }
 
-void mlir_ir_operation_emit_warning(uint64_t op_ptr, const char* msg) {
+static void mlir_ir_operation_emit_warning(uint64_t op_ptr, const char* msg) {
   if (!op_ptr) {
     mlir_support_logging_warning(msg);
     return;
@@ -361,7 +365,7 @@ void mlir_ir_operation_emit_warning(uint64_t op_ptr, const char* msg) {
   reinterpret_cast<mlir::Operation*>(op_ptr)->emitWarning(msg);
 }
 
-void mlir_ir_operation_emit_remark(uint64_t op_ptr, const char* msg) {
+static void mlir_ir_operation_emit_remark(uint64_t op_ptr, const char* msg) {
   if (!op_ptr) {
     mlir_support_logging_info(msg);
     return;
@@ -369,14 +373,14 @@ void mlir_ir_operation_emit_remark(uint64_t op_ptr, const char* msg) {
   reinterpret_cast<mlir::Operation*>(op_ptr)->emitRemark(msg);
 }
 
-void mlir_ir_operation_erase(uint64_t op_ptr) {
+static void mlir_ir_operation_erase(uint64_t op_ptr) {
   if (!op_ptr) {
     return;
   }
   reinterpret_cast<mlir::Operation*>(op_ptr)->erase();
 }
 
-uint64_t mlir_ir_operation_get_attr(uint64_t op_ptr, const char* name) {
+static uint64_t mlir_ir_operation_get_attr(uint64_t op_ptr, const char* name) {
   if (!op_ptr) {
     scheme_error("mlir-ir-operation-get-attr", "operation must not be null");
     return 0; // unreachable — error performs non-local exit
@@ -391,8 +395,8 @@ uint64_t mlir_ir_operation_get_attr(uint64_t op_ptr, const char* name) {
   return attr ? reinterpret_cast<uint64_t>(attr.getAsOpaquePointer()) : 0;
 }
 
-void mlir_ir_operation_set_attr(uint64_t op_ptr, const char* name,
-                                uint64_t attr_ptr) {
+static void mlir_ir_operation_set_attr(uint64_t op_ptr, const char* name,
+                                       uint64_t attr_ptr) {
   if (!op_ptr || !attr_ptr) {
     return;
   }
@@ -401,7 +405,8 @@ void mlir_ir_operation_set_attr(uint64_t op_ptr, const char* name,
                 reinterpret_cast<const void*>(attr_ptr)));
 }
 
-double mlir_ir_operation_get_float_attr(uint64_t op_ptr, const char* name) {
+static double mlir_ir_operation_get_float_attr(uint64_t op_ptr,
+                                               const char* name) {
   if (!op_ptr || !name) {
     return std::numeric_limits<double>::quiet_NaN();
   }
@@ -416,7 +421,7 @@ double mlir_ir_operation_get_float_attr(uint64_t op_ptr, const char* name) {
 // region_idx:  0-based region index
 // Returns: Region* as uptr; raises a Scheme error if op is null or index out of
 // range.
-uint64_t mlir_ir_operation_get_region(uint64_t op_ptr, int region_idx) {
+static uint64_t mlir_ir_operation_get_region(uint64_t op_ptr, int region_idx) {
   if (!op_ptr) {
     scheme_error("mlir-ir-operation-get-region", "operation must not be null");
     return 0; // unreachable — error performs non-local exit
@@ -435,67 +440,67 @@ uint64_t mlir_ir_operation_get_region(uint64_t op_ptr, int region_idx) {
 namespace crest {
 
 void registerIROperationBindings() {
-  Sregister_symbol("mlir_ir_operation_get_name",
+  Sregister_symbol("mlir::Operation::getName",
                    (void*)::mlir_ir_operation_get_name);
-  Sregister_symbol("mlir_ir_operation_get_context",
+  Sregister_symbol("mlir::Operation::getContext",
                    (void*)::mlir_ir_operation_get_context);
-  Sregister_symbol("mlir_ir_operation_get_num_operands",
+  Sregister_symbol("mlir::Operation::getNumOperands",
                    (void*)::mlir_ir_operation_get_num_operands);
-  Sregister_symbol("mlir_ir_operation_get_num_results",
+  Sregister_symbol("mlir::Operation::getNumResults",
                    (void*)::mlir_ir_operation_get_num_results);
-  Sregister_symbol("mlir_ir_operation_get_op_operand",
+  Sregister_symbol("mlir::Operation::getOpOperand",
                    (void*)::mlir_ir_operation_get_op_operand);
-  Sregister_symbol("mlir_ir_operation_get_result",
+  Sregister_symbol("mlir::Operation::getResult",
                    (void*)::mlir_ir_operation_get_result);
-  Sregister_symbol("mlir_ir_operation_get_parent_op",
+  Sregister_symbol("mlir::Operation::getParentOp",
                    (void*)::mlir_ir_operation_get_parent_op);
-  Sregister_symbol("mlir_ir_op_operand_get_value",
+  Sregister_symbol("mlir::OpOperand::get",
                    (void*)::mlir_ir_op_operand_get_value);
-  Sregister_symbol("mlir_ir_op_result_get_value",
+  Sregister_symbol("mlir::OpResult::getOwner",
                    (void*)::mlir_ir_op_result_get_value);
-  Sregister_symbol("mlir_ir_operation_get_loc",
+  Sregister_symbol("mlir::Operation::getLoc",
                    (void*)::mlir_ir_operation_get_loc);
-  Sregister_symbol("mlir_ir_operation_walk", (void*)::mlir_ir_operation_walk);
-  Sregister_symbol("mlir_ir_operation_set_operand",
+  Sregister_symbol("mlir::Operation::walk", (void*)::mlir_ir_operation_walk);
+  Sregister_symbol("mlir::Operation::setOperand",
                    (void*)::mlir_ir_operation_set_operand);
-  Sregister_symbol("mlir_ir_operation_use_empty",
+  Sregister_symbol("mlir::Operation::use_empty",
                    (void*)::mlir_ir_operation_use_empty);
-  Sregister_symbol("mlir_ir_operation_get_string_attr",
+  Sregister_symbol("mlir::Operation::getAttrOfType<StringAttr>",
                    (void*)::mlir_ir_operation_get_string_attr);
-  Sregister_symbol("mlir_ir_operation_get_integer_attr",
+  Sregister_symbol("mlir::Operation::getAttrOfType<IntegerAttr>",
                    (void*)::mlir_ir_operation_get_integer_attr);
-  Sregister_symbol("mlir_ir_operation_get_integer_array_attr",
+  Sregister_symbol("crest::Operation::getIntegerArrayAttr",
                    (void*)::mlir_ir_operation_get_integer_array_attr);
-  Sregister_symbol("mlir_ir_operation_set_f32_attr",
+  Sregister_symbol("crest::Operation::setF32Attr",
                    (void*)::mlir_ir_operation_set_f32_attr);
-  Sregister_symbol("mlir_ir_operation_set_i64_attr",
+  Sregister_symbol("crest::Operation::setI64Attr",
                    (void*)::mlir_ir_operation_set_i64_attr);
-  Sregister_symbol("mlir_ir_operation_set_unit_attr",
+  Sregister_symbol("crest::Operation::setUnitAttr",
                    (void*)::mlir_ir_operation_set_unit_attr);
-  Sregister_symbol("mlir_ir_operation_set_index_attr",
+  Sregister_symbol("crest::Operation::setIndexAttr",
                    (void*)::mlir_ir_operation_set_index_attr);
-  Sregister_symbol("mlir_ir_operation_set_dense_i64_array",
+  Sregister_symbol("crest::Operation::setDenseI64Array",
                    (void*)::mlir_ir_operation_set_dense_i64_array);
-  Sregister_symbol("mlir_ir_operation_set_i64_array_attr",
+  Sregister_symbol("crest::Operation::setI64ArrayAttr",
                    (void*)::mlir_ir_operation_set_i64_array_attr);
-  Sregister_symbol("mlir_ir_operation_set_dense_i32_array",
+  Sregister_symbol("crest::Operation::setDenseI32Array",
                    (void*)::mlir_ir_operation_set_dense_i32_array);
-  Sregister_symbol("mlir_ir_operation_copy_attr",
+  Sregister_symbol("crest::Operation::copyAttr",
                    (void*)::mlir_ir_operation_copy_attr);
-  Sregister_symbol("mlir_ir_operation_has_attr",
+  Sregister_symbol("mlir::Operation::hasAttr",
                    (void*)::mlir_ir_operation_has_attr);
-  Sregister_symbol("mlir_ir_operation_emit_error",
+  Sregister_symbol("mlir::Operation::emitError",
                    (void*)::mlir_ir_operation_emit_error);
-  Sregister_symbol("mlir_ir_operation_emit_warning",
+  Sregister_symbol("mlir::Operation::emitWarning",
                    (void*)::mlir_ir_operation_emit_warning);
-  Sregister_symbol("mlir_ir_operation_emit_remark",
+  Sregister_symbol("mlir::Operation::emitRemark",
                    (void*)::mlir_ir_operation_emit_remark);
-  Sregister_symbol("mlir_ir_operation_erase", (void*)::mlir_ir_operation_erase);
-  Sregister_symbol("mlir_ir_operation_get_region",
+  Sregister_symbol("mlir::Operation::erase", (void*)::mlir_ir_operation_erase);
+  Sregister_symbol("mlir::Operation::getRegion",
                    (void*)::mlir_ir_operation_get_region);
-  Sregister_symbol("mlir_ir_operation_get_attr",
+  Sregister_symbol("mlir::Operation::getAttr",
                    (void*)::mlir_ir_operation_get_attr);
-  Sregister_symbol("mlir_ir_operation_set_attr",
+  Sregister_symbol("mlir::Operation::setAttr",
                    (void*)::mlir_ir_operation_set_attr);
   Sregister_symbol("mlir_ir_operation_get_float_attr",
                    (void*)::mlir_ir_operation_get_float_attr);
@@ -512,6 +517,17 @@ void registerIROperationBindings() {
   Sregister_symbol("mlir_operation_set_attribute",
                    (void*)::mlir_ir_operation_set_attr);
   Sregister_symbol("mlir_op_get_float_attr",
+                   (void*)::mlir_ir_operation_get_float_attr);
+  // Aliases with ? and ! suffix (Scheme predicate/mutator convention)
+  Sregister_symbol("mlir::Operation::use_empty?",
+                   (void*)::mlir_ir_operation_use_empty);
+  Sregister_symbol("mlir::Operation::hasAttr?",
+                   (void*)::mlir_ir_operation_has_attr);
+  Sregister_symbol("mlir::Operation::setAttr!",
+                   (void*)::mlir_ir_operation_set_attr);
+  Sregister_symbol("mlir::Operation::emitError!",
+                   (void*)::mlir_ir_operation_emit_error);
+  Sregister_symbol("mlir::Operation::getAttrOfType<FloatAttr>",
                    (void*)::mlir_ir_operation_get_float_attr);
 }
 

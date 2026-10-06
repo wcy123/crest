@@ -18,28 +18,31 @@
   (export populate-shape-patterns
           onnx-shape->hipsr)
   (import (except (rnrs (6)) =)
-          (rename (only (mlir ir operation)
-                       operation-get-context
-                       operation-get-integer-attr
-                       operation-get-result
-                       operation-set-attr!)
-                 (operation-get-context      mlir-operation-get-context)
-                 (operation-get-integer-attr mlir-operation-get-integer-attr)
-                 (operation-get-result       mlir-operation-get-result)
-                 (operation-set-attr!        mlir-operation-set-attribute!))
-          (rename (mlir ir value)
-            (get-type          mlir-value-get-type))
-          (only (mlir ir builtin-attributes ffi)
-                %IntegerAttr:get/index
-                %IntegerAttr:get/i64)
-          (only (mlir core builder) mlir-build-operation)
-          (mlir dialects builtin)
-          (mlir transforms dialect-conversion)
+
+          (only (mlir IR Value)
+                mlir::Value::getDefiningOp
+                mlir::Value::getType)
+          (only (mlir IR BuiltinAttributes)
+                mlir::IntegerAttr::get<index>
+                mlir::IntegerAttr::get<i64>)
+          (only (mlir core builder) crest::RewriterBase::build)
+          (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
-          (mlir dialects shape)
+          (only (mlir Dialect Shape IR Shape)
+                mlir::shape::ShapeType::get
+                mlir::shape::SizeType::get
+                mlir::shape::WitnessType::get)
           (crest internal rewrite)
           (rename (rime loop) (:with :rime-with))
-          (crest))
+          (crest)
+          (only (mlir IR Operation)
+                mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getContext mlir::Operation::getResult mlir::Operation::setAttr!)
+
+          (only (mlir IR BuiltinTypes)
+                mlir::IndexType::get
+                mlir::IntegerType::get<i64>
+                mlir::RankedTensorType::getRank
+                mlir::RankedTensorType::getShape))
 
   ;; MLIR uses kDynamic = std::numeric_limits<int64_t>::min() for unknown dims.
   (define (dynamic-dim? d) (< d 0))
@@ -63,52 +66,52 @@
           (let* ([dim (list-ref input-shape axis)]
                  ;; extent: arith.constant (static) or tensor.dim + index_cast (dynamic)
                  [ext (if (dynamic-dim? dim)
-                          (let* ([ci-op (mlir-build-operation "arith.constant"
+                          (let* ([ci-op (crest::RewriterBase::build "arith.constant"
                                           '() (list index-type))]
-                                 [_     (mlir-operation-set-attribute! ci-op "value" (%IntegerAttr:get/index (mlir-operation-get-context ci-op) axis))]
-                                 [ci    (mlir-operation-get-result ci-op 0)]
-                                 [d-op  (mlir-build-operation "tensor.dim"
+                                 [_     (mlir::Operation::setAttr! ci-op "value" (mlir::IntegerAttr::get<index> axis))]
+                                 [ci    (mlir::Operation::getResult ci-op 0)]
+                                 [d-op  (crest::RewriterBase::build "tensor.dim"
                                           (list in-val ci) (list index-type))]
-                                 [d     (mlir-operation-get-result d-op 0)]
-                                 [e-op  (mlir-build-operation "arith.index_cast"
+                                 [d     (mlir::Operation::getResult d-op 0)]
+                                 [e-op  (crest::RewriterBase::build "arith.index_cast"
                                           (list d) (list i64-type))])
-                            (mlir-operation-get-result e-op 0))
-                          (let* ([e-op (mlir-build-operation "arith.constant"
+                            (mlir::Operation::getResult e-op 0))
+                          (let* ([e-op (crest::RewriterBase::build "arith.constant"
                                          '() (list i64-type))]
-                                 [_    (mlir-operation-set-attribute! e-op "value" (%IntegerAttr:get/i64 (mlir-operation-get-context e-op) dim))])
-                            (mlir-operation-get-result e-op 0)))]
+                                 [_    (mlir::Operation::setAttr! e-op "value" (mlir::IntegerAttr::get<i64> dim))])
+                            (mlir::Operation::getResult e-op 0)))]
                  ;; slot constant (= axis - start within the output tensor)
-                 [slot-op (mlir-build-operation "arith.constant"
+                 [slot-op (crest::RewriterBase::build "arith.constant"
                              '() (list index-type))]
-                 [_       (mlir-operation-set-attribute! slot-op "value" (%IntegerAttr:get/index (mlir-operation-get-context slot-op) slot))]
-                 [slot-c  (mlir-operation-get-result slot-op 0)]
+                 [_       (mlir::Operation::setAttr! slot-op "value" (mlir::IntegerAttr::get<index> slot))]
+                 [slot-c  (mlir::Operation::getResult slot-op 0)]
                  ;; tensor.insert %ext into %acc[%slot-c]
-                 [ins-op  (mlir-build-operation "tensor.insert"
+                 [ins-op  (crest::RewriterBase::build "tensor.insert"
                              (list ext acc slot-c) (list out-host-type))]
-                 [ins     (mlir-operation-get-result ins-op 0)])
+                 [ins     (mlir::Operation::getResult ins-op 0)])
             (loop (+ axis 1) (+ slot 1) ins)))))
 
   (define-conversion-pattern (onnx-shape->hipsr op operands-ref rewriter type-converter)
     :if-match
         %output = onnx.Shape (%input)
     :then-let
-        ([ctx         (mlir-operation-get-context op)]
-         [!input-type (mlir-value-get-type %input)]
-         [!out-type   (mlir-value-get-type %output)]
+        ([ctx         (mlir::Operation::getContext op)]
+         [!input-type (mlir::Value::getType %input)]
+         [!out-type   (mlir::Value::getType %output)]
          [!out-host   (make-mlir-tensor-in-host-space !out-type)]
-         [input-rank  (mlir-type-get-rank !input-type)]
-         [input-shape (mlir-type-get-shape !input-type)]
+         [input-rank  (mlir::RankedTensorType::getRank !input-type)]
+         [input-shape (mlir::RankedTensorType::getShape !input-type)]
          [%ctx        (mlir-get-hipsr-context-arg op)]
-         [start-raw   (mlir-operation-get-integer-attr op "start" 0)]
-         [end-raw     (mlir-operation-get-integer-attr op "end" 0)]
+         [start-raw   (mlir::Operation::getAttrOfType<IntegerAttr> op "start" 0)]
+         [end-raw     (mlir::Operation::getAttrOfType<IntegerAttr> op "end" 0)]
          ;; ONNX normalizes negative bounds by adding rank, then clamps to [0, rank].
          ;; A zero end means "absent" and defaults to the rank.
          [start       (normalize-bound start-raw input-rank #f 0)]
          [end         (normalize-bound end-raw   input-rank #t  input-rank)]
          [num-dims    (- end start)]
-         [!shape-type (mlir-shape.shape-type ctx)]
-         [!index-type (mlir-get-index-type       ctx)]
-         [!i64-type   (mlir-get-i64-type         ctx)]
+         [!shape-type (mlir::shape::ShapeType::get)]
+         [!index-type (mlir::IndexType::get       ctx)]
+         [!i64-type   (mlir::IntegerType::get<i64>         ctx)]
          [!ctx-type   (mlir-get-hipsr-context-type ctx)])
     :rewrite %output :with
         ;; Placeholder: shape region yields const shape [num-dims].
@@ -121,7 +124,7 @@
                               (hipsr.shape_yield (%r)))
                         -> !out-host)
         ;; Compute body: inserts extents one by one via tensor.insert.
-        ;; build-compute-body! uses mlir-build-operation directly to mix
+        ;; build-compute-body! uses crest::RewriterBase::build directly to mix
         ;; Scheme control flow with MLIR op creation.
         (%result = hipsr.compute (%ctx %input %placeholder !out-host)
                    (operandSegmentSizes = (list 1 1 1) :i32-array)

@@ -35,20 +35,25 @@
 
   (import (rnrs)
           (only (chezscheme) foreign-entry? foreign-procedure)
-          (rename (only (mlir ir operation)
-                            operation-get-name
-                            operation-get-parent-op)
-                      (operation-get-name mlir-operation-name)
-                      (operation-get-parent-op mlir-operation-get-parent))
-          (mlir dialects builtin)
-          (only (mlir ir builtin-attributes ffi) %parseAttribute)
-          (mlir transforms dialect-conversion)
-          (mlir dialects tensor)
+          (only (mlir IR Operation)
+                mlir::Operation::getName
+                mlir::Operation::getParentOp)
+          (only (mlir IR Region) mlir::Region::front)
+          (only (mlir IR BuiltinAttributes ffi) %mlir::parseAttribute)
+          (mlir Transforms DialectConversion)
+          (mlir Dialect Tensor IR)
           (only (crest util)
                 type-converter-add-tensor-widening-materialization)
-          (only (mlir core builder) mlir-op-get-region mlir-block-get-argument)
-          (rename (only (mlir ir region) mlir::Region::front)
-                  (mlir::Region::front mlir-region-get-first-block)))
+          (only (mlir core builder) mlir-ir-operation-get-region mlir::Block::getArgument)
+
+          (only (mlir IR BuiltinTypes)
+                mlir::RankedTensorType::cloneWithEncoding
+                mlir::RankedTensorType::getEncoding
+                mlir::RankedTensorType::getRank
+                mlir::isa<RankedTensorType>?)
+
+          (only (mlir IR Types) mlir::Type::getContext)
+  )
 
   (define-syntax :hipsr-device-space (identifier-syntax 'hipsr-device-space))
   (define-syntax :hipsr-barrier-type (identifier-syntax 'hipsr-barrier-type))
@@ -96,10 +101,10 @@
   ;;===--------------------------------------------------------------------===;;
 
   (define (make-hipsr-device-space-attr ctx)
-    (%parseAttribute ctx "#hipsr.mem<device>"))
+    (%mlir::parseAttribute ctx "#hipsr.mem<device>"))
 
   (define (make-hipsr-barrier-type-attr ctx)
-    (%parseAttribute ctx "#hipsr.placeholder<barrier>"))
+    (%mlir::parseAttribute ctx "#hipsr.placeholder<barrier>"))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Context convention — HipSR passes argument 0 of func.func as context.
@@ -111,22 +116,22 @@
     (let loop ((cur op))
       (cond
         ((= 0 cur) 0)
-        ((string=? (mlir-operation-name cur) "func.func")
-         (let* ((region (mlir-op-get-region cur 0))
-                (block  (if (= 0 region) 0 (mlir-region-get-first-block region))))
-           (if (= 0 block) 0 (mlir-block-get-argument block 0))))
-        (else (loop (mlir-operation-get-parent cur))))))
+        ((string=? (mlir::Operation::getName cur) "func.func")
+         (let* ((region (mlir-ir-operation-get-region cur 0))
+                (block  (if (= 0 region) 0 (mlir::Region::front region))))
+           (if (= 0 block) 0 (mlir::Block::getArgument block 0))))
+        (else (loop (mlir::Operation::getParentOp cur))))))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Op ancestry predicates
   ;;===--------------------------------------------------------------------===;;
 
   (define (has-ancestor-named? op name)
-    (let loop ((parent (mlir-operation-get-parent op)))
+    (let loop ((parent (mlir::Operation::getParentOp op)))
       (cond
         ((= 0 parent) #f)
-        ((string=? (mlir-operation-name parent) name) #t)
-        (else (loop (mlir-operation-get-parent parent))))))
+        ((string=? (mlir::Operation::getName parent) name) #t)
+        (else (loop (mlir::Operation::getParentOp parent))))))
 
   (define (hipsr-has-compute-ancestor? op)
     (has-ancestor-named? op "hipsr.compute"))
@@ -142,11 +147,11 @@
     (type-converter-add-conversion type-converter (lambda (t) t))
     (type-converter-add-conversion type-converter
       (lambda (type)
-        (if (and (= 1 (mlir-type-is-ranked-tensor type))
-                 (> (mlir-type-get-rank type) 0)
-                 (= 0 (mlir-ranked-tensor-type-get-encoding type)))
-          (mlir-ranked-tensor-type-with-encoding type
-              (make-hipsr-device-space-attr (mlir-type-get-context type)))
+        (if (and (mlir::isa<RankedTensorType>? type)
+                 (> (mlir::RankedTensorType::getRank type) 0)
+                 (= 0 (mlir::RankedTensorType::getEncoding type)))
+          (mlir::RankedTensorType::cloneWithEncoding type
+              (make-hipsr-device-space-attr (mlir::Type::getContext type)))
             #f)))
     (type-converter-add-tensor-widening-materialization type-converter))
 

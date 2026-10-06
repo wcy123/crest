@@ -30,8 +30,8 @@ extern "C" {
 // Attr construction — mlir_ir_builtin_attributes_*_get
 //===----------------------------------------------------------------------===//
 
-uint64_t mlir_ir_builtin_attributes_integer_attr_get_i64(uint64_t ctx_ptr,
-                                                         ptr value) {
+static uint64_t
+mlir_ir_builtin_attributes_integer_attr_get_i64(uint64_t ctx_ptr, ptr value) {
   auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
   return reinterpret_cast<uint64_t>(
       mlir::IntegerAttr::get(mlir::IntegerType::get(ctx, 64),
@@ -39,16 +39,16 @@ uint64_t mlir_ir_builtin_attributes_integer_attr_get_i64(uint64_t ctx_ptr,
           .getAsOpaquePointer());
 }
 
-uint64_t mlir_ir_builtin_attributes_integer_attr_get_index(uint64_t ctx_ptr,
-                                                           ptr value) {
+static uint64_t
+mlir_ir_builtin_attributes_integer_attr_get_index(uint64_t ctx_ptr, ptr value) {
   auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
   return reinterpret_cast<uint64_t>(
       mlir::IntegerAttr::get(mlir::IndexType::get(ctx), Sinteger64_value(value))
           .getAsOpaquePointer());
 }
 
-uint64_t mlir_ir_builtin_attributes_float_attr_get_f32(uint64_t ctx_ptr,
-                                                       ptr value) {
+static uint64_t mlir_ir_builtin_attributes_float_attr_get_f32(uint64_t ctx_ptr,
+                                                              ptr value) {
   auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
   return reinterpret_cast<uint64_t>(
       mlir::FloatAttr::get(mlir::Float32Type::get(ctx),
@@ -56,8 +56,9 @@ uint64_t mlir_ir_builtin_attributes_float_attr_get_f32(uint64_t ctx_ptr,
           .getAsOpaquePointer());
 }
 
-uint64_t mlir_ir_builtin_attributes_dense_i32_array_attr_get(uint64_t ctx_ptr,
-                                                             ptr value) {
+static uint64_t
+mlir_ir_builtin_attributes_dense_i32_array_attr_get(uint64_t ctx_ptr,
+                                                    ptr value) {
   auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
   llvm::SmallVector<int32_t> vec;
   for (ptr cur = value; cur != Snil; cur = Scdr(cur)) {
@@ -67,8 +68,9 @@ uint64_t mlir_ir_builtin_attributes_dense_i32_array_attr_get(uint64_t ctx_ptr,
       mlir::DenseI32ArrayAttr::get(ctx, vec).getAsOpaquePointer());
 }
 
-uint64_t mlir_ir_builtin_attributes_dense_i64_array_attr_get(uint64_t ctx_ptr,
-                                                             ptr value) {
+static uint64_t
+mlir_ir_builtin_attributes_dense_i64_array_attr_get(uint64_t ctx_ptr,
+                                                    ptr value) {
   auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
   llvm::SmallVector<int64_t> vec;
   for (ptr cur = value; cur != Snil; cur = Scdr(cur)) {
@@ -78,7 +80,7 @@ uint64_t mlir_ir_builtin_attributes_dense_i64_array_attr_get(uint64_t ctx_ptr,
       mlir::DenseI64ArrayAttr::get(ctx, vec).getAsOpaquePointer());
 }
 
-uint64_t mlir_ir_builtin_attributes_parse(uint64_t ctx_ptr, ptr value) {
+static uint64_t mlir_ir_builtin_attributes_parse(uint64_t ctx_ptr, ptr value) {
   if (!Sstringp(value)) {
     scheme_error("mlir-ir-builtin-attributes-parse",
                  "value must be a string (MLIR attribute syntax)");
@@ -107,7 +109,7 @@ static std::string schemeStringToStd(ptr s) {
   return result;
 }
 
-uint64_t mlir_ir_builtin_attributes_dense_resource_elements_attr_get(
+static uint64_t mlir_ir_builtin_attributes_dense_resource_elements_attr_get(
     uint64_t /*ctx_ptr*/, ptr value) {
   auto result_type_ptr = Sunsigned64_value(Scar(value));
   std::string key_str = schemeStringToStd(Scar(Scdr(value)));
@@ -134,7 +136,7 @@ uint64_t mlir_ir_builtin_attributes_dense_resource_elements_attr_get(
 // Attribute type predicates — mlir_ir_builtin_attributes_*_isa
 //===----------------------------------------------------------------------===//
 
-int mlir_ir_builtin_attributes_integer_attr_isa(uint64_t attr_ptr) {
+static int mlir_ir_builtin_attributes_integer_attr_isa(uint64_t attr_ptr) {
   if (!attr_ptr) {
     return 0;
   }
@@ -144,7 +146,7 @@ int mlir_ir_builtin_attributes_integer_attr_isa(uint64_t attr_ptr) {
              : 0;
 }
 
-int mlir_ir_builtin_attributes_float_attr_isa(uint64_t attr_ptr) {
+static int mlir_ir_builtin_attributes_float_attr_isa(uint64_t attr_ptr) {
   if (!attr_ptr) {
     return 0;
   }
@@ -154,7 +156,7 @@ int mlir_ir_builtin_attributes_float_attr_isa(uint64_t attr_ptr) {
              : 0;
 }
 
-int mlir_ir_builtin_attributes_string_attr_isa(uint64_t attr_ptr) {
+static int mlir_ir_builtin_attributes_string_attr_isa(uint64_t attr_ptr) {
   if (!attr_ptr) {
     return 0;
   }
@@ -164,7 +166,8 @@ int mlir_ir_builtin_attributes_string_attr_isa(uint64_t attr_ptr) {
              : 0;
 }
 
-int mlir_ir_builtin_attributes_dense_i32_array_attr_isa(uint64_t attr_ptr) {
+static int
+mlir_ir_builtin_attributes_dense_i32_array_attr_isa(uint64_t attr_ptr) {
   if (!attr_ptr) {
     return 0;
   }
@@ -175,7 +178,8 @@ int mlir_ir_builtin_attributes_dense_i32_array_attr_isa(uint64_t attr_ptr) {
              : 0;
 }
 
-int mlir_ir_builtin_attributes_dense_elements_attr_isa(uint64_t attr_ptr) {
+static int
+mlir_ir_builtin_attributes_dense_elements_attr_isa(uint64_t attr_ptr) {
   if (!attr_ptr) {
     return 0;
   }
@@ -186,7 +190,8 @@ int mlir_ir_builtin_attributes_dense_elements_attr_isa(uint64_t attr_ptr) {
              : 0;
 }
 
-int mlir_ir_builtin_attributes_dense_elements_attr_is_splat(uint64_t attr_ptr) {
+static int
+mlir_ir_builtin_attributes_dense_elements_attr_is_splat(uint64_t attr_ptr) {
   if (!attr_ptr) {
     return 0;
   }
@@ -196,7 +201,7 @@ int mlir_ir_builtin_attributes_dense_elements_attr_is_splat(uint64_t attr_ptr) {
   return (dense && dense.isSplat()) ? 1 : 0;
 }
 
-int mlir_ir_builtin_attributes_float32_attr_isa(uint64_t attr_ptr) {
+static int mlir_ir_builtin_attributes_float32_attr_isa(uint64_t attr_ptr) {
   return mlir_ir_builtin_attributes_float_attr_isa(attr_ptr);
 }
 
@@ -204,7 +209,8 @@ int mlir_ir_builtin_attributes_float32_attr_isa(uint64_t attr_ptr) {
 // Scalar extraction — mlir_ir_builtin_attributes_*_get_value
 //===----------------------------------------------------------------------===//
 
-ptr mlir_ir_builtin_attributes_integer_attr_get_value(uint64_t attr_ptr) {
+static ptr
+mlir_ir_builtin_attributes_integer_attr_get_value(uint64_t attr_ptr) {
   if (!attr_ptr) {
     scheme_error("mlir-ir-builtin-attributes-integer-attr-get-value",
                  "null attribute pointer");
@@ -219,7 +225,7 @@ ptr mlir_ir_builtin_attributes_integer_attr_get_value(uint64_t attr_ptr) {
   return Sinteger64(iattr.getValue().getSExtValue());
 }
 
-ptr mlir_ir_builtin_attributes_float_attr_get_value(uint64_t attr_ptr) {
+static ptr mlir_ir_builtin_attributes_float_attr_get_value(uint64_t attr_ptr) {
   if (!attr_ptr) {
     scheme_error("mlir-ir-builtin-attributes-float-attr-get-value",
                  "null attribute pointer");
@@ -234,11 +240,12 @@ ptr mlir_ir_builtin_attributes_float_attr_get_value(uint64_t attr_ptr) {
   return Sflonum(fattr.getValueAsDouble());
 }
 
-ptr mlir_ir_builtin_attributes_float32_attr_get_value(uint64_t attr_ptr) {
+static ptr
+mlir_ir_builtin_attributes_float32_attr_get_value(uint64_t attr_ptr) {
   return mlir_ir_builtin_attributes_float_attr_get_value(attr_ptr);
 }
 
-uint64_t mlir_ir_builtin_attributes_dense_i32_array_attr_as_array_ref(
+static uint64_t mlir_ir_builtin_attributes_dense_i32_array_attr_as_array_ref(
     uint64_t attr_ptr) {
   if (!attr_ptr) {
     scheme_error("mlir-ir-builtin-attributes-dense-i32-array-attr-as-array-ref",
@@ -260,7 +267,7 @@ uint64_t mlir_ir_builtin_attributes_dense_i32_array_attr_as_array_ref(
 // Complex extraction — mlir_ir_builtin_attributes_dense_*_splat_value
 //===----------------------------------------------------------------------===//
 
-ptr mlir_ir_builtin_attributes_dense_fp_elements_attr_splat_value(
+static ptr mlir_ir_builtin_attributes_dense_fp_elements_attr_splat_value(
     uint64_t attr_ptr) {
   if (!attr_ptr) {
     scheme_error(
@@ -283,7 +290,7 @@ ptr mlir_ir_builtin_attributes_dense_fp_elements_attr_splat_value(
   return Sflonum((*dense.begin()).convertToDouble());
 }
 
-ptr mlir_ir_builtin_attributes_dense_int_elements_attr_splat_value(
+static ptr mlir_ir_builtin_attributes_dense_int_elements_attr_splat_value(
     uint64_t attr_ptr) {
   if (!attr_ptr) {
     scheme_error(
@@ -306,7 +313,8 @@ ptr mlir_ir_builtin_attributes_dense_int_elements_attr_splat_value(
   return Sinteger64((*dense.begin()).getSExtValue());
 }
 
-ptr mlir_ir_builtin_attributes_dense_i32_array_attr_to_list(uint64_t attr_ptr) {
+static ptr
+mlir_ir_builtin_attributes_dense_i32_array_attr_to_list(uint64_t attr_ptr) {
   if (!attr_ptr) {
     scheme_error("mlir-ir-builtin-attributes-dense-i32-array-attr-to-list",
                  "null attribute pointer");

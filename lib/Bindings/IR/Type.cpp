@@ -17,7 +17,7 @@ static void scheme_error(const char* who, const char* msg) {
 extern "C" {
 
 // mlir::Type::getContext() → MLIRContext*
-uint64_t mlir_ir_type_get_context(uint64_t type_ptr) {
+static uint64_t mlir_ir_type_get_context(uint64_t type_ptr) {
   if (!type_ptr) {
     scheme_error("mlir-ir-type-get-context", "type pointer is null");
     return 0; // unreachable — error performs non-local exit
@@ -32,8 +32,7 @@ uint64_t mlir_ir_type_get_context(uint64_t type_ptr) {
 namespace crest {
 
 void registerIRTypeBindings() {
-  Sregister_symbol("mlir_ir_type_get_context",
-                   (void*)::mlir_ir_type_get_context);
+  Sregister_symbol("mlir::Type::getContext", (void*)::mlir_ir_type_get_context);
 }
 
 } // namespace crest

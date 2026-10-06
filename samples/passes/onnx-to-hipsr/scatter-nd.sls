@@ -16,25 +16,32 @@
   (export populate-scatter-nd-patterns
           onnx-scatter-nd->hipsr)
   (import (except (rnrs (6)) =)
-          (rename (only (mlir ir operation)
-                            operation-get-context)
-                      (operation-get-context mlir-operation-get-context))
-          (rename (only (mlir ir value) get-type) (get-type mlir-value-get-type))
-          (mlir dialects builtin)
-          (mlir transforms dialect-conversion)
+
+
+          (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
-          (mlir dialects tensor)
-          (mlir dialects shape)
-          (crest))
+          (mlir Dialect Tensor IR)
+          (only (mlir IR BuiltinTypes)
+                mlir::RankedTensorType::cloneWithEncoding)
+          (only (mlir Dialect Shape IR Shape)
+                mlir::shape::ShapeType::get
+                mlir::shape::SizeType::get
+                mlir::shape::WitnessType::get)
+          (crest)
+          (only (mlir IR Value)
+                mlir::Value::getType)
+
+          (only (mlir IR Types) mlir::Type::getContext)
+  )
 
   (define-conversion-pattern (onnx-scatter-nd->hipsr op operands-ref rewriter type-converter)
     :if-match
         %output = onnx.ScatterND (%data %indices %updates)
     :then-let
         ([%ctx           (mlir-get-hipsr-context-arg op)]
-         [!output-type   (mlir-value-get-type %output)]
-         [!output-device (mlir-ranked-tensor-type-with-encoding !output-type (make-hipsr-device-space-attr (mlir-type-get-context !output-type)))]
-         [!shape-type    (mlir-shape.shape-type (mlir-operation-get-context op))])
+         [!output-type   (mlir::Value::getType %output)]
+         [!output-device (mlir::RankedTensorType::cloneWithEncoding !output-type (make-hipsr-device-space-attr (mlir::Type::getContext !output-type)))]
+         [!shape-type    (mlir::shape::ShapeType::get)])
     :rewrite %output :with
         ;; placeholder ins = (%data) only: scatter output has data's shape
         (%placeholder = hipsr.placeholder (%ctx %data !output-device)

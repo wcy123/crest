@@ -4,11 +4,14 @@
 ;; Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 ;; Licensed under the MIT License.
 ;;
+;; Mirrors lib/Bindings/Support/ArrayRef.h (CREST-specific, no MLIR counterpart).
 ;;===----------------------------------------------------------------------===;;
 ;;
 ;; (mlir support array-ref ffi) — raw C bindings for CArrayRef lifecycle.
 ;;
 ;; % prefix = raw C binding. Prefer (mlir support array-ref) for normal use.
+;;
+;; CREST-specific (no direct MLIR header); mirrors lib/Bindings/Support/ArrayRef.h.
 ;;
 ;;===----------------------------------------------------------------------===;;
 

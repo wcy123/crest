@@ -17,42 +17,31 @@
 (library (passes onnx-to-hipsr)
   (export run-pass)
   (import (rnrs (6))
-          (rename (only (mlir ir operation)
-                            op-operand-get-value
-                            operation-emit-error!
-                            operation-get-context
-                            operation-get-name
-                            operation-get-num-operands
-                            operation-set-operand
-                            operation-use-empty?
-                            operation-walk)
-                      (op-operand-get-value mlir-operation-get-operand-value)
-                      (operation-emit-error! mlir-emit-error!)
-                      (operation-get-context mlir-operation-get-context)
-                      (operation-get-name mlir-operation-name)
-                      (operation-get-num-operands mlir-operation-num-operands)
-                      (operation-set-operand mlir-operation-set-operand)
-                      (operation-use-empty? mlir-operation-use-empty?)
-                      (operation-walk mlir-operation-walk))
-          (rename (mlir ir value)
-            (get-defining-op   mlir-value-get-defining-op)
-            (get-type          mlir-value-get-type)
-            (block-argument?   mlir-value-is-block-argument?)
-            (num-uses          mlir-value-num-uses))
-          (rename (mlir ir op-result)
-            (get-result-number mlir-value-get-result-number))
+          (only (mlir IR MLIRContext) with-mlir-context)
+          (only (mlir IR Operation)
+                mlir::OpOperand::get
+                mlir::Operation::emitError
+                mlir::Operation::erase
+                mlir::Operation::getContext
+                mlir::Operation::getName
+                mlir::Operation::getNumOperands
+                mlir::Operation::setOperand
+                mlir::Operation::use_empty?
+                mlir::Operation::walk)
+          (only (mlir IR Value)
+                mlir::Value::getDefiningOp
+                mlir::Value::getType
+                mlir::isa<BlockArgument>?
+                mlir::Value::getUses
+                mlir::OpResult::getResultNumber)
           (mlir support array-ref)
-          (only (mlir core builder) mlir-build-op mlir-set-insertion-point-before mlir-erase-op mlir-op-erase)
-          (mlir transforms dialect-conversion)
-          (rename (mlir ir value)
-            (get-defining-op   mlir-value-get-defining-op)
-            (get-type          mlir-value-get-type)
-            (block-argument?   mlir-value-is-block-argument?)
-            (num-uses          mlir-value-num-uses))
-          (rename (mlir ir op-result)
-            (get-result-number mlir-value-get-result-number))
+          (only (mlir core builder)
+                mlir-ir-rewriter-base-create
+                mlir-ir-rewriter-base-set-insertion-point
+                mlir-ir-rewriter-base-erase-op)
+          (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
-          (mlir dialects func)
+          (mlir Dialect Func IR FuncOps)
           (mlir support logging)
           (passes onnx-to-hipsr cast)
           (passes onnx-to-hipsr scatter-nd)
@@ -65,7 +54,10 @@
           (passes onnx-to-hipsr constant)
           (passes onnx-to-hipsr shape)
           (only (chezscheme) foreign-procedure)
-          (for (rime loop) expand))
+          (for (rime loop) expand)
+          (only (mlir support logging)
+                crest::logging::debug crest::logging::info)
+  )
 
   ;; DPS (DestinationPassing-Style) interface helpers.
   ;; These were in (mlir core operation) and are now defined here directly.
@@ -79,9 +71,9 @@
   (define (onnx-return->func-return op operands-ref rewriter type-converter)
     (let ((operands (loop :for i :from 0 :below (array-ref-size operands-ref)
                          :collect (array-ref-at operands-ref i))))
-      (mlir-set-insertion-point-before rewriter op)
-      (mlir-build-op rewriter op "func.return" operands '())
-      (mlir-erase-op rewriter op)
+      (mlir-ir-rewriter-base-set-insertion-point rewriter op)
+      (mlir-ir-rewriter-base-create rewriter op "func.return" operands '())
+      (mlir-ir-rewriter-base-erase-op rewriter op)
       #t))
 
   (define (populate-return-patterns type-converter patterns ctx)
@@ -93,63 +85,64 @@
   ;;===--------------------------------------------------------------------===;;
   (define (erase-dead-novalue! module-op)
     (let ((dead '()))
-      (mlir-operation-walk module-op
+      (mlir::Operation::walk module-op
         (lambda (op)
-          (when (and (string=? (mlir-operation-name op) "onnx.NoValue")
-                     (mlir-operation-use-empty? op))
+          (when (and (string=? (mlir::Operation::getName op) "onnx.NoValue")
+                     (mlir::Operation::use_empty? op))
             (set! dead (cons op dead)))))
-      (for-each mlir-op-erase dead)))
+      (for-each mlir::Operation::erase dead)))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Post-processing: rewire placeholder inputs to follow the shape graph
   ;;===--------------------------------------------------------------------===;;
   (define (shape-graph-counterpart value)
-    (if (mlir-value-is-block-argument? value)
+    (if (mlir::isa<BlockArgument>? value)
         value
-        (let* ((def-op  (mlir-value-get-defining-op value))
-               (op-name (if (zero? def-op) "" (mlir-operation-name def-op))))
+        (let* ((def-op  (mlir::Value::getDefiningOp value))
+               (op-name (if (zero? def-op) "" (mlir::Operation::getName def-op))))
           (if (or (string=? op-name "hipsr.placeholder")
                   (string=? op-name "hipsr.constant")
                   (string=? op-name "arith.constant"))
               value
-              (let* ((result-idx (mlir-value-get-result-number value))
+              (let* ((result-idx (mlir::OpResult::getResultNumber value))
                      (num-inits  (mlir-operation-num-dps-inits def-op)))
                 (if (>= result-idx num-inits)
                     value
                     (mlir-operation-get-dps-init-operand def-op result-idx)))))))
 
   (define (rewire-placeholder-inputs! module-op)
-    (mlir-operation-walk module-op
+    (mlir::Operation::walk module-op
       (lambda (op)
-        (when (string=? (mlir-operation-name op) "hipsr.placeholder")
+        (when (string=? (mlir::Operation::getName op) "hipsr.placeholder")
           (let loop ((i 1))
-            (when (< i (mlir-operation-num-operands op))
-              (let* ((old-val (mlir-operation-get-operand-value op i))
+            (when (< i (mlir::Operation::getNumOperands op))
+              (let* ((old-val (mlir::OpOperand::get op i))
                      (new-val (shape-graph-counterpart old-val)))
                 (unless (eqv? old-val new-val)
-                  (mlir-operation-set-operand op i new-val)))
+                  (mlir::Operation::setOperand op i new-val)))
               (loop (+ i 1))))))))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Helper: apply conversion then run post-processing
   ;;===--------------------------------------------------------------------===;;
   (define (do-conversion module-op target patterns)
-    (mlir-log-debug "Applying full conversion...")
+    (crest::logging::debug "Applying full conversion...")
     (let ((success (apply-full-conversion module-op target patterns)))
       (if (= success 1)
           (begin
-            (mlir-log-debug "Erasing dead NoValue ops...")
+            (crest::logging::debug "Erasing dead NoValue ops...")
             (erase-dead-novalue! module-op)
-            (mlir-log-debug "Rewiring placeholder inputs...")
+            (crest::logging::debug "Rewiring placeholder inputs...")
             (rewire-placeholder-inputs! module-op)
-            (mlir-log-info "ONNX to HipSR Conversion (Scheme): Success"))
+            (crest::logging::info "ONNX to HipSR Conversion (Scheme): Success"))
           (begin
-            (mlir-emit-error! module-op "onnx-to-hipsr: dialect conversion failed")
+            (mlir::Operation::emitError module-op "onnx-to-hipsr: dialect conversion failed")
             #f))))
 
   (define (run-pass module-op . args)
-    (mlir-log-info "Starting ONNX to HipSR Conversion (Scheme)")
-    (let ((ctx (mlir-operation-get-context module-op)))
+    (crest::logging::info "Starting ONNX to HipSR Conversion (Scheme)")
+    (let ((ctx (mlir::Operation::getContext module-op)))
+      (with-mlir-context ctx
       (with-type-converter (type-converter)
         (hipsr-type-converter-add-device-memory-conversions! type-converter)
         (with-conversion-target (target ctx)
@@ -169,6 +162,6 @@
             ;; Infrastructure patterns
             (populate-return-patterns type-converter patterns ctx)
             (mlir-populate-func-type-conversion-pattern patterns type-converter)
-            (do-conversion module-op target patterns))))))
+            (do-conversion module-op target patterns)))))))
 
 ) ;; end library (passes onnx-to-hipsr)

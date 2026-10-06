@@ -18,8 +18,8 @@ extern "C" {
 // mlir::tensor::CastOp::areCastCompatible(fromType, toType) — returns 1 if a
 // tensor.cast between the two types is valid, 0 otherwise.
 // Both type_ptr arguments are opaque type pointers.
-int mlir_dialect_tensor_cast_are_cast_compatible(uint64_t from_type_ptr,
-                                                 uint64_t to_type_ptr) {
+static int mlir_dialect_tensor_cast_are_cast_compatible(uint64_t from_type_ptr,
+                                                        uint64_t to_type_ptr) {
   if (!from_type_ptr || !to_type_ptr) {
     return 0;
   }
@@ -37,9 +37,10 @@ int mlir_dialect_tensor_cast_are_cast_compatible(uint64_t from_type_ptr,
 // result_type_ptr: Type opaque uptr
 // input_value_ptr: Value opaque uptr
 // Returns: Value opaque uptr of the cast result, or 0 on failure.
-uint64_t mlir_dialect_tensor_cast_create(uint64_t builder_ptr, uint64_t loc_ptr,
-                                         uint64_t result_type_ptr,
-                                         uint64_t input_value_ptr) {
+static uint64_t mlir_dialect_tensor_cast_create(uint64_t builder_ptr,
+                                                uint64_t loc_ptr,
+                                                uint64_t result_type_ptr,
+                                                uint64_t input_value_ptr) {
   if (!builder_ptr || !loc_ptr || !result_type_ptr || !input_value_ptr) {
     return 0;
   }
@@ -59,9 +60,9 @@ uint64_t mlir_dialect_tensor_cast_create(uint64_t builder_ptr, uint64_t loc_ptr,
 namespace crest {
 
 void registerDialectTensorBindings() {
-  Sregister_symbol("mlir_dialect_tensor_cast_are_cast_compatible",
+  Sregister_symbol("mlir::tensor::CastOp::areCastCompatible",
                    (void*)::mlir_dialect_tensor_cast_are_cast_compatible);
-  Sregister_symbol("mlir_dialect_tensor_cast_create",
+  Sregister_symbol("mlir::tensor::CastOp::create",
                    (void*)::mlir_dialect_tensor_cast_create);
 }
 
