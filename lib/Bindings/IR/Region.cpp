@@ -19,8 +19,8 @@ static void scheme_error(const char* who, const char* msg) {
 extern "C" {
 
 // Append a new Block to a region with typed arguments.
-uint64_t mlir_ir_region_append_new_block(uint64_t region_ptr,
-                                         ptr arg_types_list) {
+static uint64_t mlir_ir_region_append_new_block(uint64_t region_ptr,
+                                                ptr arg_types_list) {
   if (!region_ptr) {
     scheme_error("mlir-ir-region-append-new-block", "region pointer is null");
     return 0; // unreachable — error performs non-local exit
@@ -44,7 +44,7 @@ uint64_t mlir_ir_region_append_new_block(uint64_t region_ptr,
 
 // Return the first Block of a region, or 0 if the region is empty.
 // Mirrors Region::front().
-uint64_t mlir_ir_region_get_first_block(uint64_t region_ptr) {
+static uint64_t mlir_ir_region_get_first_block(uint64_t region_ptr) {
   if (!region_ptr) {
     scheme_error("mlir-ir-region-get-first-block", "region pointer is null");
     return 0; // unreachable — error performs non-local exit

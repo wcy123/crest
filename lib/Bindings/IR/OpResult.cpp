@@ -16,7 +16,7 @@ static void scheme_error(const char* who, const char* msg) {
 extern "C" {
 
 // mlir::OpResult::getResultNumber()
-uint64_t mlir_ir_op_result_get_result_number(uint64_t value) {
+static uint64_t mlir_ir_op_result_get_result_number(uint64_t value) {
   if (!value) {
     scheme_error("mlir-ir-op-result-get-result-number",
                  "value must not be null");

@@ -13,14 +13,14 @@
 extern "C" {
 
 // MLIRContext::allowUnregisteredDialects(bool allow = true)
-void mlir_ir_mlir_context_allow_unregistered_dialects(uint64_t ctx_ptr,
-                                                      int allow) {
+static void mlir_ir_mlir_context_allow_unregistered_dialects(uint64_t ctx_ptr,
+                                                             int allow) {
   reinterpret_cast<mlir::MLIRContext*>(ctx_ptr)->allowUnregisteredDialects(
       allow != 0);
 }
 
 // MLIRContext::allowsUnregisteredDialects()
-int mlir_ir_mlir_context_allows_unregistered_dialects(uint64_t ctx_ptr) {
+static int mlir_ir_mlir_context_allows_unregistered_dialects(uint64_t ctx_ptr) {
   return reinterpret_cast<mlir::MLIRContext*>(ctx_ptr)
                  ->allowsUnregisteredDialects()
              ? 1
@@ -28,20 +28,21 @@ int mlir_ir_mlir_context_allows_unregistered_dialects(uint64_t ctx_ptr) {
 }
 
 // MLIRContext::enableMultithreading(bool enable = true)
-void mlir_ir_mlir_context_enable_multithreading(uint64_t ctx_ptr, int enable) {
+static void mlir_ir_mlir_context_enable_multithreading(uint64_t ctx_ptr,
+                                                       int enable) {
   reinterpret_cast<mlir::MLIRContext*>(ctx_ptr)->enableMultithreading(enable !=
                                                                       0);
 }
 
 // MLIRContext::disableMultithreading(bool disable = true)
-void mlir_ir_mlir_context_disable_multithreading(uint64_t ctx_ptr,
-                                                 int disable) {
+static void mlir_ir_mlir_context_disable_multithreading(uint64_t ctx_ptr,
+                                                        int disable) {
   reinterpret_cast<mlir::MLIRContext*>(ctx_ptr)->disableMultithreading(
       disable != 0);
 }
 
 // MLIRContext::isMultithreadingEnabled()
-int mlir_ir_mlir_context_is_multithreading_enabled(uint64_t ctx_ptr) {
+static int mlir_ir_mlir_context_is_multithreading_enabled(uint64_t ctx_ptr) {
   return reinterpret_cast<mlir::MLIRContext*>(ctx_ptr)
                  ->isMultithreadingEnabled()
              ? 1
@@ -49,25 +50,27 @@ int mlir_ir_mlir_context_is_multithreading_enabled(uint64_t ctx_ptr) {
 }
 
 // MLIRContext::getOrLoadDialect(StringRef)
-uint64_t mlir_ir_mlir_context_get_or_load_dialect(uint64_t ctx_ptr,
-                                                  const char* ns) {
+static uint64_t mlir_ir_mlir_context_get_or_load_dialect(uint64_t ctx_ptr,
+                                                         const char* ns) {
   return reinterpret_cast<uint64_t>(
       reinterpret_cast<mlir::MLIRContext*>(ctx_ptr)->getOrLoadDialect(ns));
 }
 
 // MLIRContext::loadAllAvailableDialects()
-void mlir_ir_mlir_context_load_all_available_dialects(uint64_t ctx_ptr) {
+static void mlir_ir_mlir_context_load_all_available_dialects(uint64_t ctx_ptr) {
   reinterpret_cast<mlir::MLIRContext*>(ctx_ptr)->loadAllAvailableDialects();
 }
 
 // MLIRContext::printOpOnDiagnostic(bool enable)
-void mlir_ir_mlir_context_print_op_on_diagnostic(uint64_t ctx_ptr, int enable) {
+static void mlir_ir_mlir_context_print_op_on_diagnostic(uint64_t ctx_ptr,
+                                                        int enable) {
   reinterpret_cast<mlir::MLIRContext*>(ctx_ptr)->printOpOnDiagnostic(enable !=
                                                                      0);
 }
 
 // MLIRContext::shouldPrintOpOnDiagnostic()
-int mlir_ir_mlir_context_should_print_op_on_diagnostic(uint64_t ctx_ptr) {
+static int
+mlir_ir_mlir_context_should_print_op_on_diagnostic(uint64_t ctx_ptr) {
   return reinterpret_cast<mlir::MLIRContext*>(ctx_ptr)
                  ->shouldPrintOpOnDiagnostic()
              ? 1
@@ -75,8 +78,9 @@ int mlir_ir_mlir_context_should_print_op_on_diagnostic(uint64_t ctx_ptr) {
 }
 
 // MLIRContext::printStackTraceOnDiagnostic(bool enable)
-void mlir_ir_mlir_context_print_stack_trace_on_diagnostic(uint64_t ctx_ptr,
-                                                          int enable) {
+static void
+mlir_ir_mlir_context_print_stack_trace_on_diagnostic(uint64_t ctx_ptr,
+                                                     int enable) {
   reinterpret_cast<mlir::MLIRContext*>(ctx_ptr)->printStackTraceOnDiagnostic(
       enable != 0);
 }

@@ -21,10 +21,11 @@ extern "C" {
 
 // mlir::RewriterBase::create(OperationState) — set insertion point before
 // loc_op and create the op there.
-uint64_t mlir_ir_rewriter_base_create(uint64_t rewriter_ptr,
-                                      uint64_t loc_op_ptr, const char* op_name,
-                                      ptr operands_list,
-                                      ptr result_types_list) {
+static uint64_t mlir_ir_rewriter_base_create(uint64_t rewriter_ptr,
+                                             uint64_t loc_op_ptr,
+                                             const char* op_name,
+                                             ptr operands_list,
+                                             ptr result_types_list) {
   if (!rewriter_ptr) {
     scheme_error("mlir-ir-rewriter-base-create", "null rewriter pointer");
     return 0; // unreachable — error performs non-local exit
@@ -65,7 +66,7 @@ uint64_t mlir_ir_rewriter_base_create(uint64_t rewriter_ptr,
 
 // Like mlir_ir_rewriter_base_create but pre-allocates num_regions empty
 // regions.
-uint64_t mlir_ir_rewriter_base_create_with_regions(
+static uint64_t mlir_ir_rewriter_base_create_with_regions(
     uint64_t rewriter_ptr, uint64_t loc_op_ptr, const char* op_name,
     ptr operands_list, ptr result_types_list, int num_regions) {
   if (!rewriter_ptr) {
@@ -113,8 +114,8 @@ uint64_t mlir_ir_rewriter_base_create_with_regions(
 }
 
 // mlir::RewriterBase::setInsertionPoint(op)
-void mlir_ir_rewriter_base_set_insertion_point(uint64_t rewriter_ptr,
-                                               uint64_t op_ptr) {
+static void mlir_ir_rewriter_base_set_insertion_point(uint64_t rewriter_ptr,
+                                                      uint64_t op_ptr) {
   if (!rewriter_ptr) {
     scheme_error("mlir-ir-rewriter-base-set-insertion-point",
                  "null rewriter pointer");
@@ -130,8 +131,9 @@ void mlir_ir_rewriter_base_set_insertion_point(uint64_t rewriter_ptr,
 }
 
 // mlir::RewriterBase::setInsertionPointToEnd(block)
-void mlir_ir_rewriter_base_set_insertion_point_to_end(uint64_t rewriter_ptr,
-                                                      uint64_t block_ptr) {
+static void
+mlir_ir_rewriter_base_set_insertion_point_to_end(uint64_t rewriter_ptr,
+                                                 uint64_t block_ptr) {
   if (!rewriter_ptr) {
     scheme_error("mlir-ir-rewriter-base-set-insertion-point-to-end",
                  "null rewriter pointer");
@@ -147,9 +149,9 @@ void mlir_ir_rewriter_base_set_insertion_point_to_end(uint64_t rewriter_ptr,
 }
 
 // mlir::RewriterBase::createBlock(region) + add typed arguments
-uint64_t mlir_ir_rewriter_base_create_block(uint64_t rewriter_ptr,
-                                            uint64_t region_ptr,
-                                            ptr arg_types_list) {
+static uint64_t mlir_ir_rewriter_base_create_block(uint64_t rewriter_ptr,
+                                                   uint64_t region_ptr,
+                                                   ptr arg_types_list) {
   if (!rewriter_ptr) {
     scheme_error("mlir-ir-rewriter-base-create-block", "null rewriter pointer");
     return 0; // unreachable — error performs non-local exit
@@ -179,8 +181,9 @@ uint64_t mlir_ir_rewriter_base_create_block(uint64_t rewriter_ptr,
 }
 
 // mlir::RewriterBase::replaceOp
-int mlir_ir_rewriter_base_replace_op(uint64_t rewriter_ptr, uint64_t old_op_ptr,
-                                     uint64_t new_value_ptr) {
+static int mlir_ir_rewriter_base_replace_op(uint64_t rewriter_ptr,
+                                            uint64_t old_op_ptr,
+                                            uint64_t new_value_ptr) {
   if (!rewriter_ptr) {
     scheme_error("mlir-ir-rewriter-base-replace-op", "null rewriter pointer");
     return 0; // unreachable — error performs non-local exit
@@ -193,7 +196,8 @@ int mlir_ir_rewriter_base_replace_op(uint64_t rewriter_ptr, uint64_t old_op_ptr,
 }
 
 // mlir::RewriterBase::eraseOp
-int mlir_ir_rewriter_base_erase_op(uint64_t rewriter_ptr, uint64_t op_ptr) {
+static int mlir_ir_rewriter_base_erase_op(uint64_t rewriter_ptr,
+                                          uint64_t op_ptr) {
   if (!rewriter_ptr) {
     scheme_error("mlir-ir-rewriter-base-erase-op", "null rewriter pointer");
     return 0; // unreachable — error performs non-local exit
@@ -204,10 +208,10 @@ int mlir_ir_rewriter_base_erase_op(uint64_t rewriter_ptr, uint64_t op_ptr) {
 }
 
 // Clone op with new operands/types, copying attributes.
-uint64_t mlir_ir_rewriter_base_clone_with_types(uint64_t rw_ptr,
-                                                uint64_t op_ptr,
-                                                ptr operands_list,
-                                                ptr result_types_list) {
+static uint64_t mlir_ir_rewriter_base_clone_with_types(uint64_t rw_ptr,
+                                                       uint64_t op_ptr,
+                                                       ptr operands_list,
+                                                       ptr result_types_list) {
   if (!rw_ptr) {
     scheme_error("mlir-ir-rewriter-base-clone-with-types",
                  "null rewriter pointer");
@@ -242,8 +246,8 @@ uint64_t mlir_ir_rewriter_base_clone_with_types(uint64_t rw_ptr,
 // rw_ptr:     RewriterBase* as uptr
 // state_ptr:  OperationState* as uptr
 // Returns: Operation* as uptr, or 0 on bad input.
-uint64_t mlir_ir_rewriter_base_create_from_state(uint64_t rw_ptr,
-                                                 uint64_t state_ptr) {
+static uint64_t mlir_ir_rewriter_base_create_from_state(uint64_t rw_ptr,
+                                                        uint64_t state_ptr) {
   if (!rw_ptr) {
     scheme_error("mlir-ir-rewriter-base-create-from-state",
                  "null rewriter pointer");

@@ -86,7 +86,7 @@ static void scheme_error(const char* who, const char* msg) {
 
 extern "C" {
 
-void mlir_transforms_dialect_conversion_add_conversion_pattern(
+static void mlir_transforms_dialect_conversion_add_conversion_pattern(
     ptr patterns_ptr, const char* op_name, ptr callback, ptr type_converter_ptr,
     int benefit) {
   auto* patterns = reinterpret_cast<mlir::RewritePatternSet*>(patterns_ptr);
@@ -99,10 +99,8 @@ void mlir_transforms_dialect_conversion_add_conversion_pattern(
                                          llvm::StringRef(op_name), benefit);
 }
 
-void mlir_transforms_dialect_conversion_add_rewrite_pattern(ptr patterns_ptr,
-                                                            const char* op_name,
-                                                            ptr callback,
-                                                            int benefit) {
+static void mlir_transforms_dialect_conversion_add_rewrite_pattern(
+    ptr patterns_ptr, const char* op_name, ptr callback, int benefit) {
   auto* patterns = reinterpret_cast<mlir::RewritePatternSet*>(patterns_ptr);
   crest::LockedSchemeObject lockedCallback(callback);
   mlir_support_logging_info(
@@ -113,11 +111,11 @@ void mlir_transforms_dialect_conversion_add_rewrite_pattern(ptr patterns_ptr,
                                       llvm::StringRef(op_name), benefit);
 }
 
-uint64_t mlir_transforms_dialect_conversion_type_converter_create() {
+static uint64_t mlir_transforms_dialect_conversion_type_converter_create() {
   return reinterpret_cast<uint64_t>(new mlir::TypeConverter());
 }
 
-void mlir_transforms_dialect_conversion_type_converter_destroy(
+static void mlir_transforms_dialect_conversion_type_converter_destroy(
     uint64_t converter_ptr) {
   if (!converter_ptr) {
     return;
@@ -125,7 +123,8 @@ void mlir_transforms_dialect_conversion_type_converter_destroy(
   delete reinterpret_cast<mlir::TypeConverter*>(converter_ptr);
 }
 
-uint64_t mlir_transforms_dialect_conversion_target_create(uint64_t ctx_ptr) {
+static uint64_t
+mlir_transforms_dialect_conversion_target_create(uint64_t ctx_ptr) {
   if (!ctx_ptr) {
     scheme_error("mlir-transforms-dialect-conversion-target-create",
                  "ctx must not be null");
@@ -135,14 +134,15 @@ uint64_t mlir_transforms_dialect_conversion_target_create(uint64_t ctx_ptr) {
   return reinterpret_cast<uint64_t>(new mlir::ConversionTarget(*ctx));
 }
 
-void mlir_transforms_dialect_conversion_target_destroy(uint64_t target_ptr) {
+static void
+mlir_transforms_dialect_conversion_target_destroy(uint64_t target_ptr) {
   if (!target_ptr) {
     return;
   }
   delete reinterpret_cast<mlir::ConversionTarget*>(target_ptr);
 }
 
-void mlir_transforms_dialect_conversion_target_add_illegal_dialect(
+static void mlir_transforms_dialect_conversion_target_add_illegal_dialect(
     uint64_t target_ptr, const char* dialect_name) {
   if (!target_ptr || !dialect_name) {
     return;
@@ -151,7 +151,7 @@ void mlir_transforms_dialect_conversion_target_add_illegal_dialect(
       ->addIllegalDialect(dialect_name);
 }
 
-void mlir_transforms_dialect_conversion_target_add_legal_dialect(
+static void mlir_transforms_dialect_conversion_target_add_legal_dialect(
     uint64_t target_ptr, const char* dialect_name) {
   if (!target_ptr || !dialect_name) {
     return;
@@ -160,7 +160,7 @@ void mlir_transforms_dialect_conversion_target_add_legal_dialect(
       ->addLegalDialect(dialect_name);
 }
 
-void mlir_transforms_dialect_conversion_target_add_legal_op(
+static void mlir_transforms_dialect_conversion_target_add_legal_op(
     uint64_t target_ptr, uint64_t ctx_ptr, const char* op_name) {
   if (!target_ptr || !ctx_ptr || !op_name) {
     return;
@@ -170,7 +170,7 @@ void mlir_transforms_dialect_conversion_target_add_legal_op(
       ->addLegalOp(mlir::OperationName(op_name, ctx));
 }
 
-void mlir_transforms_dialect_conversion_target_add_dynamically_legal_op(
+static void mlir_transforms_dialect_conversion_target_add_dynamically_legal_op(
     uint64_t target_ptr, uint64_t ctx_ptr, const char* op_name, ptr callback) {
   if (!target_ptr || !ctx_ptr || !op_name) {
     return;
@@ -188,7 +188,8 @@ void mlir_transforms_dialect_conversion_target_add_dynamically_legal_op(
       });
 }
 
-void mlir_transforms_dialect_conversion_target_mark_unknown_ops_dynamically_legal(
+static void
+mlir_transforms_dialect_conversion_target_mark_unknown_ops_dynamically_legal(
     uint64_t target_ptr, ptr callback) {
   if (!target_ptr) {
     return;
@@ -203,7 +204,7 @@ void mlir_transforms_dialect_conversion_target_mark_unknown_ops_dynamically_lega
 }
 
 // callback: (lambda (type-uptr) -> type-uptr-or-#f); #f means not handled.
-void mlir_transforms_dialect_conversion_type_converter_add_conversion(
+static void mlir_transforms_dialect_conversion_type_converter_add_conversion(
     uint64_t converter_ptr, ptr callback) {
   if (!converter_ptr) {
     return;
@@ -227,7 +228,7 @@ void mlir_transforms_dialect_conversion_type_converter_add_conversion(
       });
 }
 
-int mlir_transforms_dialect_conversion_type_converter_is_legal_type(
+static int mlir_transforms_dialect_conversion_type_converter_is_legal_type(
     uint64_t converter_ptr, uint64_t type_ptr) {
   if (!converter_ptr || !type_ptr) {
     scheme_error(
@@ -241,7 +242,7 @@ int mlir_transforms_dialect_conversion_type_converter_is_legal_type(
   return converter->isLegal(type) ? 1 : 0;
 }
 
-int mlir_transforms_dialect_conversion_type_converter_is_legal(
+static int mlir_transforms_dialect_conversion_type_converter_is_legal(
     uint64_t converter_ptr, uint64_t op_ptr) {
   if (!converter_ptr || !op_ptr) {
     scheme_error("mlir-transforms-dialect-conversion-type-converter-is-legal",
@@ -253,7 +254,7 @@ int mlir_transforms_dialect_conversion_type_converter_is_legal(
   return converter->isLegal(op) ? 1 : 0;
 }
 
-int mlir_transforms_dialect_conversion_type_converter_is_signature_legal(
+static int mlir_transforms_dialect_conversion_type_converter_is_signature_legal(
     uint64_t converter_ptr, uint64_t func_op_ptr) {
   if (!converter_ptr || !func_op_ptr) {
     scheme_error(
@@ -273,7 +274,7 @@ int mlir_transforms_dialect_conversion_type_converter_is_signature_legal(
   return converter->isSignatureLegal(func_op.getFunctionType()) ? 1 : 0;
 }
 
-uint64_t
+static uint64_t
 mlir_transforms_dialect_conversion_pattern_set_create(uint64_t ctx_ptr) {
   if (!ctx_ptr) {
     scheme_error("mlir-transforms-dialect-conversion-pattern-set-create",
@@ -284,8 +285,8 @@ mlir_transforms_dialect_conversion_pattern_set_create(uint64_t ctx_ptr) {
   return reinterpret_cast<uint64_t>(new mlir::RewritePatternSet(ctx));
 }
 
-void mlir_transforms_dialect_conversion_pattern_set_destroy(
-    uint64_t patterns_ptr) {
+static void
+mlir_transforms_dialect_conversion_pattern_set_destroy(uint64_t patterns_ptr) {
   if (!patterns_ptr) {
     return;
   }
@@ -293,7 +294,7 @@ void mlir_transforms_dialect_conversion_pattern_set_destroy(
 }
 
 // Returns 1 on success, 0 on failure. Takes ownership of patterns.
-int mlir_transforms_dialect_conversion_apply_full_conversion(
+static int mlir_transforms_dialect_conversion_apply_full_conversion(
     uint64_t module_ptr, uint64_t target_ptr, uint64_t patterns_ptr) {
   if (!module_ptr || !target_ptr || !patterns_ptr) {
     scheme_error("mlir-transforms-dialect-conversion-apply-full-conversion",
@@ -313,7 +314,7 @@ int mlir_transforms_dialect_conversion_apply_full_conversion(
       mlir::applyFullConversion(module, *target, std::move(*patterns)));
 }
 
-void mlir_transforms_dialect_conversion_populate_func_type_conversion(
+static void mlir_transforms_dialect_conversion_populate_func_type_conversion(
     uint64_t patterns_ptr, uint64_t converter_ptr) {
   if (!patterns_ptr || !converter_ptr) {
     return;
@@ -327,7 +328,8 @@ void mlir_transforms_dialect_conversion_populate_func_type_conversion(
 // callback: (lambda (builder-uptr result-type-uptr inputs-list loc-uptr) ->
 //            value-uptr | #f/#0); #f/0 means not handled (return nullptr).
 // inputs-list is a Scheme list of value uptrs.
-void mlir_transforms_dialect_conversion_type_converter_add_source_materialization(
+static void
+mlir_transforms_dialect_conversion_type_converter_add_source_materialization(
     uint64_t converter_ptr, ptr callback) {
   if (!converter_ptr) {
     return;
@@ -366,7 +368,8 @@ void mlir_transforms_dialect_conversion_type_converter_add_source_materializatio
 }
 
 // Same as add_source_materialization but registers a target materialization.
-void mlir_transforms_dialect_conversion_type_converter_add_target_materialization(
+static void
+mlir_transforms_dialect_conversion_type_converter_add_target_materialization(
     uint64_t converter_ptr, ptr callback) {
   if (!converter_ptr) {
     return;

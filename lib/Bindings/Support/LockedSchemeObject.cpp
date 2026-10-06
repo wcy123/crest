@@ -3,6 +3,8 @@
  * Licensed under the MIT License.
  */
 
+// Internal Scheme object locking — CREST-specific, no MLIR header mirror.
+
 #include "LockedSchemeObject.h"
 
 namespace crest {

@@ -3,6 +3,8 @@
  * Licensed under the MIT License.
  */
 
+// Mirrors lib/Bindings/Support/Logging.h (CREST-specific).
+
 #include "../../Interpreter/ChezSchemeInterpreter.h"
 #include "SchemeWrapper.h"
 #include "llvm/Support/raw_ostream.h"

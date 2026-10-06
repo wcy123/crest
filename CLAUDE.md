@@ -137,8 +137,10 @@ Sregister_symbol("mlir::IndexType::get",
                  (void*)::mlir_ir_builtin_types_index_type_get);
 ```
 
-Exception: helper functions used across multiple `.cpp` files (e.g.
-`scheme_error`) may be `static` in each file or defined in a shared header.
+Exception: functions declared in shared headers (e.g. `Logging.h` declares
+`mlir_support_logging_*`) must NOT be `static` — they have external linkage
+by definition. Functions only called within a single TU (the common case)
+must be `static`. `scheme_error` helpers are typically `static` in each file.
 
 ## Summary checklist for a new binding
 
