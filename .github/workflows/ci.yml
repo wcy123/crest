@@ -42,7 +42,8 @@ jobs:
             libncurses-dev \
             uuid-dev \
             libgtest-dev \
-            googletest
+            googletest \
+            emacs-nox
 
       # ── Python tools ────────────────────────────────────────────────────────
       - name: Install Python build tools
