@@ -321,7 +321,7 @@
 
      (mutable expr)))         ;; Phase 1 (parse): syntax expression - Scheme expression to evaluate
   ;; Example: #'(compute-type !old-type)
-  ;; Not used by codegen; with-mlir-ops parses the raw rewrite syntax directly.
+  ;; Not used by codegen; begin-mlir-code parses the raw rewrite syntax directly.
 
   ;;-----------------------------------------------------------------------
   ;; REWRITE-OPERATION-LEVEL RECORD: ast-operation-expand (child of ast-pattern-expand)
@@ -361,16 +361,16 @@
      (mutable regions)        ;; Phase 1 (parse): list of ast-region-expand - nested regions
      ;; Example: control flow ops like scf.if have regions
      ;; Contains: list of ast-region-expand records
-     ;; Not used by codegen; with-mlir-ops parses the raw rewrite syntax directly.
+     ;; Not used by codegen; begin-mlir-code parses the raw rewrite syntax directly.
 
      (mutable attributes)     ;; Phase 1 (parse): syntax list - attribute expressions
      ;; Example: #'(("to" !t3)) for typed attribute
-     ;; Not used by codegen; with-mlir-ops parses the raw rewrite syntax directly.
+     ;; Not used by codegen; begin-mlir-code parses the raw rewrite syntax directly.
 
      (mutable result-types))) ;; Phase 1 (parse): syntax - result type expression(s)
   ;; Example: #'!t3 for single result type
   ;; Example: #'(!t1 !t2) for multiple result types
-  ;; Not used by codegen; with-mlir-ops parses the raw rewrite syntax directly.
+  ;; Not used by codegen; begin-mlir-code parses the raw rewrite syntax directly.
 
   ;;-----------------------------------------------------------------------
   ;; REGION-LEVEL RECORD: ast-region-expand (child of ast-operation-expand)

@@ -48,7 +48,9 @@
     %erase
     %get-attr
     %set-attr
-    %get-float-attr)
+    %get-float-attr
+    %mlir::Operation::getAttrDictionary
+    %mlir::Operation::setAttrs)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::Operation::getName — return the registered op name (e.g. "arith.addi").
@@ -356,5 +358,20 @@
   (define %get-float-attr
     (foreign-procedure "mlir::Operation::getAttrOfType<FloatAttr>"
                        (uptr string) double))
+
+  ;; @brief mlir::Operation::getAttrDictionary — return all attributes as a DictionaryAttr.
+  ;; @param op  Operation* uptr
+  ;; @return    DictionaryAttr opaque ptr as uptr
+  ;; @see       mlir/IR/Operation.h
+  (define %mlir::Operation::getAttrDictionary
+    (foreign-procedure "mlir::Operation::getAttrDictionary" (uptr) uptr))
+
+  ;; @brief mlir::Operation::setAttrs — replace all attributes with those in dict.
+  ;; @param op    Operation* uptr
+  ;; @param dict  DictionaryAttr opaque ptr as uptr
+  ;; @return      void
+  ;; @see         mlir/IR/Operation.h
+  (define %mlir::Operation::setAttrs
+    (foreign-procedure "mlir::Operation::setAttrs" (uptr uptr) void))
 
   ) ;; end library (mlir IR Operation ffi)

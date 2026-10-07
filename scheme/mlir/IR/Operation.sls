@@ -48,6 +48,8 @@
     mlir::Operation::getAttr
     mlir::Operation::setAttr!
     mlir::Operation::getAttrOfType<FloatAttr>
+    mlir::Operation::getAttrDictionary
+    mlir::Operation::setAttrs
     operation-get-operands)
   (import (rnrs)
           (mlir IR Operation ffi)
@@ -379,5 +381,8 @@
                          (error 'operation-get-operands
                                 "unknown kind: expected :required/:optional/:variadic"
                                 kind)]))))))))
+
+  (define mlir::Operation::getAttrDictionary %mlir::Operation::getAttrDictionary)
+  (define mlir::Operation::setAttrs          %mlir::Operation::setAttrs)
 
   ) ;; end library (mlir IR Operation)

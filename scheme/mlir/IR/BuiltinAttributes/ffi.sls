@@ -24,6 +24,7 @@
     %mlir::IntegerAttr::get<i64>
     %mlir::IntegerAttr::get<index>
     %mlir::FloatAttr::get<f32>
+    %mlir::UnitAttr::get
     %mlir::DenseI32ArrayAttr::get
     %mlir::DenseI64ArrayAttr::get
     %mlir::parseAttribute
@@ -238,5 +239,12 @@
   (define %mlir::DenseI32ArrayAttr::asArrayRef->list
     (foreign-procedure "mlir::DenseI32ArrayAttr::asArrayRef->list"
                        (uptr) scheme-object))
+
+  ;; @brief mlir::UnitAttr::get — create a UnitAttr (presence-only flag).
+  ;; @param ctx  MLIRContext* uptr
+  ;; @return     UnitAttr opaque ptr as uptr
+  ;; @see        mlir/IR/BuiltinAttributes.h
+  (define %mlir::UnitAttr::get
+    (foreign-procedure "mlir::UnitAttr::get" (uptr) uptr))
 
   ) ;; end library (mlir IR BuiltinAttributes ffi)

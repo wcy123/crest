@@ -283,9 +283,9 @@
   ;;-----------------------------------------------------------------------
   ;; parse-rewrite-ops-recursive - Collect rewrite operations as raw syntax
   ;;-----------------------------------------------------------------------
-  ;; The :rewrite :with body is the surface syntax of with-mlir-ops.
-  ;; Rather than converting to AST records (which duplicates with-mlir-ops),
-  ;; collect each op-form as a raw syntax object.  with-mlir-ops processes
+  ;; The :rewrite :with body is the surface syntax of begin-mlir-code.
+  ;; Rather than converting to AST records (which duplicates begin-mlir-code),
+  ;; collect each op-form as a raw syntax object.  begin-mlir-code processes
   ;; them at macro-expansion time in the consumer.
   ;;
   (define (parse-rewrite-ops-recursive rest-stx acc-ops ast)

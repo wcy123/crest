@@ -24,9 +24,7 @@
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
           (only (mlir IR BuiltinAttributes)
-                mlir::IntegerAttr::get<index>
-                mlir::DenseI64ArrayAttr::get)
-          (only (mlir IR PatternMatch) mlir-build-operation)
+                mlir::IntegerAttr::get<index>)
           (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
           (mlir Dialect Tensor IR)
@@ -43,21 +41,15 @@
                 mlir::RankedTensorType::getRank))
 
   ;; Build the permuted output shape inside a region block.
-  ;; Uses mlir-build-operation — must be called inside with-current-OpBuilder.
   ;; Returns the output !shape.shape value.
-  (define (build-permuted-shape! loc perm input-shape shape-type size-type)
-    (let* ([extents
-            (map (lambda (p)
-                   (let* ([sz-op (mlir-build-operation "shape.const_size" '() (list size-type))])
-                     (mlir::Operation::setAttr! sz-op "value" (mlir::IntegerAttr::get<index> p))
-                     (let* ([ext-op (mlir-build-operation "shape.get_extent"
-                                                          (list input-shape
-                                                                (mlir::Operation::getResult sz-op 0))
-                                                          (list size-type))])
-                       (mlir::Operation::getResult ext-op 0))))
-                 perm)]
-           [out-op (mlir-build-operation "shape.from_extents" extents (list shape-type))])
-      (mlir::Operation::getResult out-op 0)))
+  (define (build-permuted-shape! builder perm input-shape shape-type size-type)
+    (let ([extents (map (lambda (p)
+                          (begin-mlir-code (:builder builder)
+                                           (%sz  = shape.const_size () ("value" = p :index) -> size-type)
+                                           (%ext = shape.get_extent (input-shape %sz) -> size-type)))
+                        perm)])
+      (begin-mlir-code (:builder builder)
+                       (%out = shape.from_extents (,@extents) -> shape-type))))
 
   (define-conversion-pattern (onnx-transpose->hipsr op operands-ref rewriter type-converter)
     :if-match
@@ -80,15 +72,12 @@
       (%placeholder = "hipsr.placeholder" (%ctx %input !out-device)
                     (^bb0 ((%is : !shape-type))
                           (%out-shape = (build-permuted-shape!
-                                         op perm %is !shape-type !size-type))
+                                         %block-builder perm %is !shape-type !size-type))
                           ("hipsr.shape_yield" (%out-shape)))
                     -> !out-device)
-      ;; :scheme — create transpose op and set perm attribute via mlir-build-operation
-      (%result = (let* ([new-op (mlir-build-operation "hipsr.transpose"
-                                                      (list %ctx %input %placeholder !out-device)
-                                                      (list !out-device))])
-                   (mlir::Operation::setAttr! new-op "perm" (mlir::DenseI64ArrayAttr::get perm))
-                   (mlir::Operation::getResult new-op 0))))
+      (%result = hipsr.transpose (%ctx %input %placeholder !out-device)
+               ("perm" = perm :i64-array)
+               -> !out-device))
 
   (define (populate-transpose-patterns type-converter patterns ctx)
     (add-conversion-pattern patterns "onnx.Transpose"

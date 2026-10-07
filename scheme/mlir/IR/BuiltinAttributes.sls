@@ -27,6 +27,7 @@
     mlir::IntegerAttr::get<i64>
     mlir::IntegerAttr::get<index>
     mlir::FloatAttr::get<f32>
+    mlir::UnitAttr::get
     mlir::DenseI32ArrayAttr::get
     mlir::DenseI64ArrayAttr::get
     mlir::parseAttribute
@@ -79,6 +80,14 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Wraps %mlir::FloatAttr::get<f32>; ctx optional, defaults to current-MLIRContext
   (define-ctx-optional mlir::FloatAttr::get<f32> %mlir::FloatAttr::get<f32> value)
+
+  ;; @brief mlir::UnitAttr::get — create a UnitAttr (presence-only flag, value is ignored).
+  ;; @return  UnitAttr opaque pointer uptr
+  ;; @see     mlir/IR/BuiltinAttributes.h
+  (define mlir::UnitAttr::get
+    (case-lambda
+     [()    (%mlir::UnitAttr::get (current-MLIRContext))]
+     [(ctx) (%mlir::UnitAttr::get ctx)]))
 
   ;; @brief mlir::DenseI32ArrayAttr::get — construct a DenseI32ArrayAttr from a Scheme list.
   ;; @param value  Scheme list of fixnums (each cast to int32_t)

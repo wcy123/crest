@@ -23,10 +23,9 @@
     %mlir::RewriterBase::createBlock
     %mlir::RewriterBase::replaceOp
     %mlir::RewriterBase::eraseOp
-    %crest::RewriterBase::cloneWithTypes
+    %mlir::RewriterBase::create<OperationState>
     %mlir::RewritePatternSet::RewritePatternSet
-    %mlir::RewritePatternSet::~RewritePatternSet
-    %mlir::RewriterBase::create<OperationState>)
+    %mlir::RewritePatternSet::~RewritePatternSet)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::RewriterBase::setInsertionPoint(op) — move the rewriter's insertion point to before op.
@@ -85,26 +84,10 @@
     (foreign-procedure "mlir_ir_rewriter_base_erase_op"
                        (uptr uptr) int))
 
-  ;; @brief Clone op with new operands and result types, copying all attributes, then create via the rewriter.
-  ;; @param rewriter      RewriterBase* uptr
-  ;; @param op            Operation* uptr — template op (name and attributes are copied)
-  ;; @param operands      Scheme list of Value* uptrs — new operand values
-  ;; @param result-types  Scheme list of Type* uptrs — new result types
-  ;; @return              Operation* uptr of the cloned op, or 0 on bad input
-  ;; @see                 mlir/IR/PatternMatch.h
-  ;; @note                Defined in lib/Bindings/IR/RewriterBase.cpp; uses op location for the new OperationState
-  (define %crest::RewriterBase::cloneWithTypes
-    (foreign-procedure "mlir_ir_rewriter_base_clone_with_types"
-                       (uptr uptr scheme-object scheme-object) uptr))
-
-  ;; @brief Create an op from a prepared OperationState via a RewriterBase.
-  ;; @param rewriter    RewriterBase* uptr
-  ;; @param state       OperationState* uptr — ownership NOT transferred; caller must destroy
-  ;; @return            Operation* uptr of the created op, or 0 on bad input
-  ;; @see               mlir/IR/PatternMatch.h, mlir/IR/OperationSupport.h
-  ;; @note              Defined in lib/Bindings/IR/RewriterBase.cpp
+  ;; RewriterBase IS-A OpBuilder (single inheritance). This symbol is kept so cached
+  ;; code resolves correctly; it uses %mlir::OpBuilder::create<OperationState> underneath.
   (define %mlir::RewriterBase::create<OperationState>
-    (foreign-procedure "mlir_ir_rewriter_base_create_from_state" (uptr uptr) uptr))
+    (foreign-procedure "mlir::RewriterBase::create<OperationState>" (uptr uptr) uptr))
 
   ;; @brief mlir::RewritePatternSet::RewritePatternSet — heap-allocate a pattern set.
   ;; @param ctx  MLIRContext* uptr

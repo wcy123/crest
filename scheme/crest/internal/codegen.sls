@@ -17,7 +17,8 @@
           (for (crest internal validate) expand)
           (for (crest internal analyze) expand)
           (for (only (mlir IR PatternMatch)
-                     with-RewriterBase mlir::RewriterBase::replaceOp) expand)
+                     mlir::RewriterBase::setInsertionPoint
+                     mlir::RewriterBase::replaceOp) expand)
           (for (rename (only (mlir IR Operation)
                              mlir::Operation::getContext
                              mlir::Operation::getNumResults
@@ -42,7 +43,7 @@
           (for (only (mlir support array-ref) array-ref-size array-ref-at) expand)
           (for (only (mlir IR MLIRContext) current-MLIRContext) expand)
           (for (only (chezscheme) parameterize) expand)
-          (for (only (crest internal rewrite) with-mlir-ops) expand)
+          (for (only (crest internal rewrite) begin-mlir-code) expand)
           ;; keywords needed at expand time for free-identifier=? matching in transform-where-expr
           (for (only (crest internal keywords) :current-op :attr) expand))
 
@@ -56,8 +57,8 @@
   ;; ├── collect-all-variables
   ;; ├── generate-check-code           (and check₀ check₁ …) for :if-match
   ;; │   └── action->check-code
-  ;; ├── generate-rewrite-code (raw-body)  wraps with-RewriterBase + with-mlir-ops
-  ;; │   :rewrite :with body forwarded verbatim to with-mlir-ops; no AST round-trip
+  ;; ├── generate-rewrite-code (raw-body)  wraps with-RewriterBase + begin-mlir-code
+  ;; │   :rewrite :with body forwarded verbatim to begin-mlir-code; no AST round-trip
   ;; └── generate-then-let-bindings    ((var expr) …) for :then-let
   ;;
   ;; generate-debug-ast / generate-debug-codegen  (debug path, not on hot path)
@@ -102,8 +103,8 @@
                [root-op             (find-root-op match-vec root-op-name)]
                [root-result-vars    (ast-match-expand-result-var root-op)]
                [root-result-setters (generate-root-result-setters root-result-vars op)]
-               ;; :rewrite :with body kept as raw syntax — forwarded to with-mlir-ops.
-               ;; Rewrite vars are NOT pre-declared in the outer let; with-mlir-ops
+               ;; :rewrite :with body kept as raw syntax — forwarded to begin-mlir-code.
+               ;; Rewrite vars are NOT pre-declared in the outer let; begin-mlir-code
                ;; declares them in its own let*.
                [match-vars       (collect-all-variables binding-mgr)]
                [then-let-vars    (map ast-then-let-binding-expand-var then-let-bindings)]
@@ -143,7 +144,7 @@
                                 #f)))))))))))))
 
   ;;=======================================================================
-  ;; Rewrite code — thin wrapper delegating to with-mlir-ops
+  ;; Rewrite code — thin wrapper delegating to begin-mlir-code
   ;;=======================================================================
   ;;
   ;; generate-rewrite-code
@@ -154,12 +155,12 @@
   ;;
   ;; Generated shape ('conversion):
   ;;   (with-RewriterBase (rw op)
-  ;;     (let ([result (with-mlir-ops form ...)])
+  ;;     (let ([result (begin-mlir-code form ...)])
   ;;       (mlir::RewriterBase::replaceOp rw op result)
   ;;       #t))
   ;;
-  ;; with-mlir-ops handles op-forms, :attrs, :regions, and :scheme escapes.
-  ;; with-RewriterBase installs current-RewriterBase and calls setInsertionPoint so mlir-build-operation
+  ;; begin-mlir-code handles op-forms, :attrs, :regions, and :scheme escapes.
+  ;; with-RewriterBase calls setInsertionPoint so
   ;; dispatches through the active rewriter or block-builder.
   (define (generate-rewrite-code raw-body pattern-type rw op)
     (if (null? raw-body)
@@ -175,12 +176,13 @@
                                               (call-with-string-output-port
                                                (lambda (p) (display-condition exn p))))
                             #f])
-                 (with-RewriterBase (#,rw #,op)
-                                    (let ([result (with-mlir-ops form ...)])
-                                      ;; result is a Value* uptr on success, or #f to signal failure.
-                                      (if result
-                                          (begin (mlir::RewriterBase::replaceOp #,rw #,op result) #t)
-                                          #f))))]))))
+                 (begin
+                   (mlir::RewriterBase::setInsertionPoint #,rw #,op)
+                   (let ([result (begin-mlir-code (:rewriter #,rw) form ...)])
+                     ;; result is a Value* uptr on success, or #f to signal failure.
+                     (if result
+                         (begin (mlir::RewriterBase::replaceOp #,rw #,op result) #t)
+                         #f))))]))))
 
   ;;=======================================================================
   ;; :then-let bindings
