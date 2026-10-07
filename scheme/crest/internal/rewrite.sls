@@ -50,11 +50,12 @@
           (for (only (crest internal keywords) = : -> :region) expand)
           (mlir IR BuiltinAttributes)
           (for (mlir IR BuiltinAttributes) expand)
-          (for (only (mlir IR PatternMatch ffi) %mlir::RewriterBase::create<OperationState>) expand)
           (for (only (mlir IR Builders ffi)
                      %mlir::OpBuilder::atBlockEnd
                      %mlir::OpBuilder::~OpBuilder
                      %mlir::OpBuilder::create<OperationState>) expand)
+          (for (only (mlir IR PatternMatch ffi)
+                     %mlir::RewriterBase::create<OperationState>) expand)
           (for (only (mlir IR OperationSupport)
                      %mlir::OperationState::addOperands
                      %mlir::OperationState::addTypes
@@ -140,12 +141,12 @@
 
       ;; Collect all (var . expr) pairs from every op form and emit a flat
       ;; let* returning the last bound variable.
-      ;; First sub-form: the explicit builder (RewriterBase* when called from codegen,
-      ;; OpBuilder* when called from make-block-fill-fn for ^bb0 bodies).
-      ;; create-sym: the C++ create binding to use — passed as a keyword:
-      ;;   :rewriter → %mlir::RewriterBase::create<OperationState>
-      ;;   :builder  → %mlir::OpBuilder::create<OperationState>
-      ;; Callers that don't specify get :rewriter (default for outer DDR body).
+      ;; First sub-form: the explicit builder (RewriterBase* or OpBuilder*).
+      ;; :builder keyword selects %mlir::OpBuilder::create<OperationState> (for ^bb0 blocks).
+      ;; Default (no keyword) selects %mlir::RewriterBase::create<OperationState>.
+      ;; NOTE: OpBuilder has no vtable; RewriterBase introduces one. Their subobject
+      ;; offsets differ, so the two create bindings use different casts and are NOT
+      ;; interchangeable.
       (define (main)
         (syntax-case stx (:builder)
           [(_ builder :builder op ...)
@@ -177,8 +178,10 @@
 
       ;; Parse one op-form; return a flat list of (var . expr) pairs.
       ;; builder-stx   — syntax object for the active builder expression
-      ;; create-sym-stx — the C++ create binding (%mlir::RewriterBase::create<OperationState>
-      ;;                  or %mlir::OpBuilder::create<OperationState>)
+      ;; create-sym-stx — %mlir::RewriterBase::create<OperationState> for outer DDR body,
+      ;;                  %mlir::OpBuilder::create<OperationState> for ^bb0 block builders.
+      ;;                  These are NOT interchangeable: OpBuilder has no vtable, so its
+      ;;                  subobject within RewriterBase is at a non-zero offset.
       (define (process-op op-stx index builder-stx create-sym-stx)
         (syntax-case op-stx (= ->)
           ;; Scheme escape
@@ -333,9 +336,8 @@
       ;;   attr-setter-fns  — Scheme list of closures (lambda (new-op-stx) → setter-syntax)
       ;;   region-fill-fns  — Scheme list of closures (lambda (new-op-stx) → fill-stmt-syntax)
       ;;   index            — integer op index, used to generate a unique %op-tmp-N name
-      ;; create-sym-stx — the C++ create procedure to call:
-      ;;   %mlir::RewriterBase::create<OperationState>  — for rewriter context
-      ;;   %mlir::OpBuilder::create<OperationState>     — for block-builder context
+      ;; create-sym-stx — %mlir::RewriterBase::create<OperationState> or
+      ;;                  %mlir::OpBuilder::create<OperationState>, chosen by main.
       (define (emit-multi result-vars op-name operands result-types attr-setter-fns region-fill-fns index op-name-stx builder-stx create-sym-stx)
         (let* ([nregions  (length region-fill-fns)]
                [new-op-id (car (generate-temporaries '(new-op)))]

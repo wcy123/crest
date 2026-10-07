@@ -99,10 +99,11 @@
   ;; @param operands   Scheme list of Value* uptrs
   ;; @param types      Scheme list of Type* uptrs
   ;; @param nregions   number of empty regions to add (optional, default 0)
-  ;; rewriter-create-op — for RewriterBase* builders (always uses RewriterBase::create).
-  ;; Uses %mlir::RewriterBase::create<OperationState> which casts to RewriterBase* —
-  ;; this is required because RewriterBase introduces virtual methods, making
-  ;; reinterpret_cast<OpBuilder*>(rewriterBase) unsound (vtable pointer mismatch).
+  ;; rewriter-create-op — create an op via a RewriterBase* (or any subclass).
+  ;; Uses %mlir::RewriterBase::create<OperationState> which casts to RewriterBase*.
+  ;; NOTE: reinterpret_cast<OpBuilder*>(rwPtr) is UNSAFE here because OpBuilder has
+  ;; no vtable but RewriterBase introduces one — the OpBuilder subobject is at offset
+  ;; +sizeof(vtable_ptr) within the RewriterBase object, not at offset 0.
   (define rewriter-create-op
     (let ([build (lambda (rw source-loc name operands types nregions)
                    (with-OperationState (state source-loc name)

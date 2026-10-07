@@ -84,13 +84,8 @@
     (foreign-procedure "mlir_ir_rewriter_base_erase_op"
                        (uptr uptr) int))
 
-  ;; @brief Create an op from a prepared OperationState via a RewriterBase.
-  ;; @brief mlir::RewriterBase::create<OperationState> — create op via a RewriterBase.
-  ;; Use this (not %mlir::OpBuilder::create<OperationState>) when the builder is a
-  ;; RewriterBase* — ConversionPatternRewriter has rewriter-specific listener semantics.
-  ;; @param rewriter  RewriterBase* uptr
-  ;; @param state     OperationState* uptr — ownership NOT transferred
-  ;; @return          Operation* uptr
+  ;; RewriterBase IS-A OpBuilder (single inheritance). This symbol is kept so cached
+  ;; code resolves correctly; it uses %mlir::OpBuilder::create<OperationState> underneath.
   (define %mlir::RewriterBase::create<OperationState>
     (foreign-procedure "mlir::RewriterBase::create<OperationState>" (uptr uptr) uptr))
 

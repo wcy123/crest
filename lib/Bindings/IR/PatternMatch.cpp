@@ -121,20 +121,18 @@ static int mlir_ir_rewriter_base_erase_op(uint64_t rewriter_ptr,
   return 1;
 }
 
-// Create an op from a prepared OperationState via a RewriterBase.
-// RewriterBase IS an OpBuilder but has its own create semantics (listener
-// notifications for ConversionPatternRewriter). Use this binding when the
-// caller holds a RewriterBase* — not mlir_ir_op_builder_create_from_state
-// which casts to OpBuilder* and may bypass rewriter-specific behavior.
+// RewriterBase IS-A OpBuilder (single inheritance). Casting RewriterBase* to
+// OpBuilder* is safe — the base subobject is at offset 0, and listener
+// notifications fire correctly since RewriterBase registers itself as the
+// OpBuilder listener. This wrapper keeps the canonical symbol name so that
+// any cached Scheme code still resolves correctly.
 static uint64_t mlir_ir_rewriter_base_create_from_state(uint64_t rw_ptr,
                                                         uint64_t state_ptr) {
   if (!rw_ptr) {
-    scheme_error("mlir::RewriterBase::create<OperationState>",
-                 "null rewriter pointer");
+    scheme_error("mlir::RewriterBase::create<OperationState>", "null rewriter");
   }
   if (!state_ptr) {
-    scheme_error("mlir::RewriterBase::create<OperationState>",
-                 "null state pointer");
+    scheme_error("mlir::RewriterBase::create<OperationState>", "null state");
   }
   return reinterpret_cast<uint64_t>(
       reinterpret_cast<mlir::RewriterBase*>(rw_ptr)->create(
