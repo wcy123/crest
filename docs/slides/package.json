@@ -1,0 +1,20 @@
+{
+  "name": "slides",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "slidev slides.md",
+    "build": "slidev build slides.md",
+    "export": "slidev export slides.md"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@oxc-parser/binding-linux-x64-gnu": "^0.150.0",
+    "@rolldown/binding-linux-x64-gnu": "^1.2.12",
+    "@slidev/cli": "^52.20.1",
+    "@slidev/theme-default": "^0.25.0"
+  }
+}

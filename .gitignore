@@ -30,3 +30,9 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Slidev / Node
+docs/slides/node_modules/
+docs/slides/dist/
+docs/slides/.slidev/
+.node20/
