@@ -61,7 +61,7 @@
     (loop :for axis :from start :below end
           :for slot :from 0
           :rime-with acc := dest-val
-          :rime-with dim := (list-ref input-shape axis)
+          :for dim :in (list-tail input-shape start)
           :rime-with acc := (if (dynamic-dim? dim)
                                 (begin-mlir-code (:builder builder)
                                                  (%ci     = arith.constant () ("value" = axis :index) -> index-type)
