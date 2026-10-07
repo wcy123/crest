@@ -23,6 +23,7 @@
                 mlir::Operation::emitError
                 mlir::Operation::erase
                 mlir::Operation::getContext
+                mlir::Operation::getLoc
                 mlir::Operation::getName
                 mlir::Operation::getNumOperands
                 mlir::Operation::setOperand
@@ -68,7 +69,7 @@
     (let ((operands (loop :for i :from 0 :below (array-ref-size operands-ref)
                           :collect (array-ref-at operands-ref i))))
       (mlir::RewriterBase::setInsertionPoint rewriter op)
-      (rewriter-create-op rewriter op "func.return" operands '())
+      (rewriter-create-op rewriter (mlir::Operation::getLoc op) "func.return" operands '())
       (mlir::RewriterBase::eraseOp rewriter op)
       #t))
 

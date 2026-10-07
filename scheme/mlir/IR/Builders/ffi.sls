@@ -16,7 +16,8 @@
   (export
     %mlir::OpBuilder::atBlockEnd
     %mlir::OpBuilder::~OpBuilder
-    %mlir::OpBuilder::create<OperationState>)
+    %mlir::OpBuilder::create<OperationState>
+    %mlir::OpBuilder::getContext)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief Heap-allocate an mlir::OpBuilder positioned at the end of block.
@@ -43,5 +44,11 @@
   ;; @note              Defined in lib/Bindings/IR/OpBuilder.cpp
   (define %mlir::OpBuilder::create<OperationState>
     (foreign-procedure "mlir_ir_op_builder_create_from_state" (uptr uptr) uptr))
+
+  ;; @brief Return the MLIRContext* associated with this OpBuilder.
+  ;; @param builder  OpBuilder* uptr — heap-allocated builder
+  ;; @return         MLIRContext* uptr
+  (define %mlir::OpBuilder::getContext
+    (foreign-procedure "mlir::OpBuilder::getContext" (uptr) uptr))
 
   ) ;; end library (mlir IR Builders ffi)

@@ -88,7 +88,7 @@
                 mlir::FloatAttr::getValueAsDouble.f32
                 mlir::DenseElementsAttr::getSplatValue<APFloat>
                 mlir::DenseElementsAttr::getSplatValue<APInt>)
-          (only (mlir IR PatternMatch) rewriter-create-op crest::RewriterBase::cloneWithTypes)
+          (only (mlir IR PatternMatch) rewriter-create-op)
           (only (mlir IR BuiltinTypes)
                 mlir::ShapedType::getElementType
                 mlir::IntegerType::getWidth
@@ -97,8 +97,12 @@
                 mlir::RankedTensorType::getShape)
           (only (mlir IR Operation)
                 mlir::Operation::getAttr
-                crest::Operation::getIntegerArrayAttr mlir::OpOperand::get mlir::OpResult::getOwner mlir::Operation::getAttr mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getName mlir::Operation::getNumOperands mlir::Operation::getResult mlir::Operation::hasAttr?)
-          )
+                mlir::Operation::getLoc
+                mlir::Operation::getName
+                mlir::Operation::getAttrDictionary
+                mlir::Operation::setAttrs
+                crest::Operation::getIntegerArrayAttr mlir::OpOperand::get mlir::OpResult::getOwner mlir::Operation::getAttr mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getNumOperands mlir::Operation::getResult mlir::Operation::hasAttr?))
+
 
   ;; Local helpers — expressed via explicit builtin-attributes functions.
 
@@ -345,12 +349,20 @@
   (define (hip-build-init rewriter out-type shape-source)
     (let ([loc-op (mlir::Value::getDefiningOp shape-source)])
       (mlir::Operation::getResult
-       (rewriter-create-op rewriter loc-op "tensor.empty" '() (list out-type))
+       (rewriter-create-op rewriter (mlir::Operation::getLoc loc-op) "tensor.empty" '() (list out-type))
        0)))
 
   ;;===--------------------------------------------------------------------===;;
-  ;; Requantized layout op — pure Scheme via crest::RewriterBase::cloneWithTypes
+  ;; Requantized layout op
   ;;===--------------------------------------------------------------------===;;
+
+  ;; Clone op with new operands and result types, copying all attributes.
+  (define (crest::RewriterBase::cloneWithTypes rw op operands result-types)
+    (let ([new-op (rewriter-create-op rw (mlir::Operation::getLoc op)
+                                      (mlir::Operation::getName op)
+                                      operands result-types)])
+      (mlir::Operation::setAttrs new-op (mlir::Operation::getAttrDictionary op))
+      new-op))
 
   ;; Clone layout-op substituting the quantized output type from q-op.
   ;; Works for hip.transpose (has ctx, last operand is DPS init) and
@@ -372,7 +384,7 @@
            ;; Build a new tensor.empty for the init when needed.
            [new-init  (if has-ctx?
                           (mlir::Operation::getResult
-                           (rewriter-create-op rewriter layout-op
+                           (rewriter-create-op rewriter (mlir::Operation::getLoc layout-op)
                                                "tensor.empty" '() (list q-type))
                            0)
                           0)]

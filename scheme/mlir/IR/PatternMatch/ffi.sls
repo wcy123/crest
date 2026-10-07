@@ -23,7 +23,6 @@
     %mlir::RewriterBase::createBlock
     %mlir::RewriterBase::replaceOp
     %mlir::RewriterBase::eraseOp
-    %crest::RewriterBase::cloneWithTypes
     %mlir::RewritePatternSet::RewritePatternSet
     %mlir::RewritePatternSet::~RewritePatternSet
     %mlir::RewriterBase::create<OperationState>)
@@ -84,18 +83,6 @@
   (define %mlir::RewriterBase::eraseOp
     (foreign-procedure "mlir_ir_rewriter_base_erase_op"
                        (uptr uptr) int))
-
-  ;; @brief Clone op with new operands and result types, copying all attributes, then create via the rewriter.
-  ;; @param rewriter      RewriterBase* uptr
-  ;; @param op            Operation* uptr — template op (name and attributes are copied)
-  ;; @param operands      Scheme list of Value* uptrs — new operand values
-  ;; @param result-types  Scheme list of Type* uptrs — new result types
-  ;; @return              Operation* uptr of the cloned op, or 0 on bad input
-  ;; @see                 mlir/IR/PatternMatch.h
-  ;; @note                Defined in lib/Bindings/IR/RewriterBase.cpp; uses op location for the new OperationState
-  (define %crest::RewriterBase::cloneWithTypes
-    (foreign-procedure "mlir_ir_rewriter_base_clone_with_types"
-                       (uptr uptr scheme-object scheme-object) uptr))
 
   ;; @brief Create an op from a prepared OperationState via a RewriterBase.
   ;; @param rewriter    RewriterBase* uptr
