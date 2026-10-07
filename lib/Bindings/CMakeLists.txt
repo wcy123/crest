@@ -7,6 +7,7 @@ add_library(CrestBindings STATIC
   Dialect/Shape/IR/Shape.cpp
   Dialect/Tensor/Tensor.cpp
   Interfaces/DestinationStyleOp.cpp
+  IR/Location.cpp
   IR/Block.cpp
   IR/Region.cpp
   IR/BuiltinAttributes.cpp
