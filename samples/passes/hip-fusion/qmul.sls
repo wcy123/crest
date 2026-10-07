@@ -21,13 +21,10 @@
           (only (mlir IR Value)
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
-          (only (mlir IR PatternMatch) mlir-create-operation)
           (mlir Transforms DialectConversion)
           (passes hip-fusion fusion)
           (crest)
           (passes hip-fusion helpers)
-          (only (mlir IR Operation)
-                mlir::Operation::getResult)
           )
 
   (define-rewrite-pattern (hip-qmul-fusion op rewriter)
@@ -58,12 +55,13 @@
        [out-zp     (hip-extract-qdq-zeropoint-i64 op 0)]
        [%init      (hip-build-init rewriter !out-type %prod_init)])
     :rewrite %q :with
-      (%result = (let ([new-op (mlir-create-operation rewriter "hip.qmul"
-                                                      (list %ctx %lhs %rhs %init)
-                                                      (list !out-type))])
-                   (set-qdq-scale-zp-attrs! new-op lhs-scale lhs-zp
-                                            rhs-scale rhs-zp
-                                            out-scale out-zp)
-                   (mlir::Operation::getResult new-op 0))))
+      (%result = hip.qmul (%ctx %lhs %rhs %init)
+               ("lhs_scale"    = lhs-scale :f32)
+               ("rhs_scale"    = rhs-scale :f32)
+               ("output_scale" = out-scale :f32)
+               ("lhs_zp"       = lhs-zp   :i64)
+               ("rhs_zp"       = rhs-zp   :i64)
+               ("output_zp"    = out-zp   :i64)
+               -> !out-type))
 
   ) ;; end library (passes hip-fusion qmul)

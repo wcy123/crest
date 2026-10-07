@@ -24,8 +24,7 @@
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
           (only (mlir IR BuiltinAttributes)
-                mlir::IntegerAttr::get<index>
-                mlir::DenseI64ArrayAttr::get)
+                mlir::IntegerAttr::get<index>)
           (only (mlir IR PatternMatch) mlir-create-operation)
           (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
@@ -83,12 +82,9 @@
                                          %block-builder perm %is !shape-type !size-type))
                           ("hipsr.shape_yield" (%out-shape)))
                     -> !out-device)
-      ;; :scheme — create transpose op and set perm attribute via mlir-create-operation
-      (%result = (let* ([new-op (mlir-create-operation rewriter "hipsr.transpose"
-                                                       (list %ctx %input %placeholder !out-device)
-                                                       (list !out-device))])
-                   (mlir::Operation::setAttr! new-op "perm" (mlir::DenseI64ArrayAttr::get perm))
-                   (mlir::Operation::getResult new-op 0))))
+      (%result = hipsr.transpose (%ctx %input %placeholder !out-device)
+               ("perm" = perm :i64-array)
+               -> !out-device))
 
   (define (populate-transpose-patterns type-converter patterns ctx)
     (add-conversion-pattern patterns "onnx.Transpose"
