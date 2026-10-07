@@ -93,24 +93,28 @@ namespace structure:
 
 | Library | Wraps |
 |---|---|
-| `(mlir core operation)` | `mlir_operation_*` |
-| `(mlir core value)` | `mlir_value_*` |
-| `(mlir core context)` | Dynamic parameter `current-mlir-context` |
-| `(mlir core builder)` | Dynamic parameters for rewriter, block builder, insertion point |
-| `(mlir core attribute)` | Generic dispatch via runtime C-symbol lookup |
-| `(mlir core conversion)` | [`TypeConverter`](https://mlir.llvm.org/docs/DialectConversion/#type-converter), `ConversionTarget`, `RewritePatternSet` |
-| `(mlir core ir)` | Re-export hub |
-| `(mlir dialects/*)` | Per-dialect op constructors and type predicates |
+| `(mlir IR Operation)` | `mlir::Operation::*` |
+| `(mlir IR Value)` | `mlir::Value::*` |
+| `(mlir IR MLIRContext)` | `mlir::MLIRContext::*`, dynamic parameter `current-MLIRContext` |
+| `(mlir IR PatternMatch)` | `mlir::RewriterBase::*`, dynamic parameters for builder context |
+| `(mlir IR BuiltinAttributes)` | `mlir::IntegerAttr::get`, `mlir::DenseI32ArrayAttr::get`, … |
+| `(mlir IR Location)` | `mlir::UnknownLoc::get`, `mlir::FileLineColLoc::get` |
+| `(mlir Transforms DialectConversion)` | [`TypeConverter`](https://mlir.llvm.org/docs/DialectConversion/#type-converter), `ConversionTarget`, `applyFullConversion` |
+| `(mlir Transforms GreedyPatternRewriteDriver)` | `mlir::applyPatternsGreedily` |
+| `(mlir Dialect/*)` | Per-dialect op constructors and type predicates |
+| `(mlir support RAII)` | Generic `with-raii` helper |
 
-`(mlir core attribute)` resolves attribute constructor functions
-(`mlir_make_attr_<type>`) at runtime via `foreign-entry?`. New attribute types
-registered in C++ are discoverable from Scheme without any Scheme change.
+Library names mirror MLIR header paths (e.g. `mlir/IR/PatternMatch.h` →
+`(mlir IR PatternMatch)`). Each library has a companion `ffi` sub-library with
+`%`-prefixed raw `foreign-procedure` bindings; the public library re-exports
+clean names and provides `case-lambda` ctx-optional wrappers where applicable.
 
-Dynamic parameters (`current-mlir-context`, `current-rewriter`,
-`current-block-builder`, `current-loc`) follow the same pattern as
+Dynamic parameters (`current-MLIRContext`, `current-RewriterBase`,
+`current-OpBuilder`, `current-InsertionPoint`) follow the same pattern as
 [MLIR's thread-local `OpBuilder` state](https://mlir.llvm.org/docs/Tutorials/Toy/Ch-3/).
-`parameterize` installs the right context for a dynamic extent without
-threading it through every argument.
+`parameterize` (via `with-MLIRContext`, `with-RewriterBase`, etc.) installs
+the right context for a dynamic extent without threading it through every
+argument.
 
 ### Layer 2 — CREST pattern DSL
 
@@ -223,6 +227,31 @@ accept arbitrary Scheme. Complex rewrite logic — axis normalization, shape
 broadcasting, `operandSegmentSizes` construction — is expressed as Scheme
 functions in the same file, with the same edit–reload cycle as the pattern.
 
+#### Emitted op source locations
+
+Every op emitted by `with-mlir-ops` carries the Scheme source file, line, and
+column where it was written in the pattern:
+
+```
+#loc6 = loc("/workspace/crest-1/samples/passes/onnx-to-hipsr/matmul.sls":67:37)
+%c1 = shape.const_size 1 loc(#loc6)
+```
+
+This is implemented entirely at macro-expansion time: `syntax->annotation`
+extracts the byte-file-position from the op-name syntax object, and
+`bfp->line+col` converts it to line/column by scanning the source file.
+There is zero runtime cost. The location falls back to `mlir::UnknownLoc`
+when Chez Scheme bytecode caching strips annotations.
+
+[DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/) attaches the *fused
+location of the matched input ops* to emitted ops — this is genuinely useful:
+it tells you which input ops the emitted op was derived from. CREST instead
+records which line of the *pattern file* produced the op, which is useful
+for debugging the rewrite rules themselves. The two approaches are
+complementary; an ideal system would offer both.
+[PDLL](https://mlir.llvm.org/docs/PDLL/) provides no mechanism to attach
+either the PDLL source or the input-fused location to emitted ops.
+
 #### Comparison with MLIR pattern DSLs
 
 | Dimension | DRR | PDLL | CREST |
@@ -233,6 +262,7 @@ functions in the same file, with the same edit–reload cycle as the pattern.
 | Constraints without C++ (`:where`) | No | No | **Yes** |
 | Turing-complete rewrite logic | Via C++ | Via C++ | **Native Scheme** |
 | Optional / variadic operands | No | Limited | **Yes** |
+| Emitted op location → pattern file | No (input fused loc) | No | **Yes (`.sls` file:line:col)** |
 | Compile-time debug flags | No | No | **Yes** |
 | Patterns in deployed binary | Yes | Yes | **Yes (boot mode)** |
 | Filesystem deployment dependency | No | No | Yes (dev mode) |

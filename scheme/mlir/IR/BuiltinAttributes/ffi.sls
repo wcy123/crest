@@ -102,7 +102,7 @@
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
   (define %mlir::parseAttribute
     (foreign-procedure "mlir::parseAttribute"
-                       (uptr scheme-object) uptr))
+                       (uptr string) uptr))
 
   ;; @brief mlir::DenseResourceElementsAttr::get — construct a DenseResourceElementsAttr.
   ;; @param ctx    MLIRContext* uptr (unused; type carries the context)

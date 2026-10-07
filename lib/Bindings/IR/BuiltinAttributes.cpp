@@ -75,22 +75,13 @@ mlir_ir_builtin_attributes_dense_i64_array_attr_get(uint64_t ctx_ptr,
       mlir::DenseI64ArrayAttr::get(ctx, vec).getAsOpaquePointer());
 }
 
-static uint64_t mlir_ir_builtin_attributes_parse(uint64_t ctx_ptr, ptr value) {
-  if (!Sstringp(value)) {
-    scheme_error("mlir-ir-builtin-attributes-parse",
-                 "value must be a string (MLIR attribute syntax)");
-  }
+static uint64_t mlir_ir_builtin_attributes_parse(uint64_t ctx_ptr,
+                                                 const char* spec) {
   auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
-  iptr len = Sstring_length(value);
-  std::string spec;
-  spec.reserve(static_cast<size_t>(len));
-  for (iptr i = 0; i < len; ++i) {
-    spec.push_back(static_cast<char>(Sstring_ref(value, i)));
-  }
   mlir::Attribute attr = mlir::parseAttribute(spec, ctx);
   if (!attr) {
-    scheme_error("mlir-ir-builtin-attributes-parse",
-                 ("failed to parse attribute: " + spec).c_str());
+    scheme_error("mlir::parseAttribute", "failed to parse attribute: ", spec);
+    return 0; // unreachable
   }
   return reinterpret_cast<uint64_t>(attr.getAsOpaquePointer());
 }

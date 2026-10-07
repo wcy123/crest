@@ -15,6 +15,11 @@
 
 (library (mlir IR OperationSupport ffi)
   (export
+    %mlir::OperationState::create
+    %mlir::OperationState::addOperands
+    %mlir::OperationState::addTypes
+    %mlir::OperationState::addRegion
+    %mlir::OperationState::~OperationState
     %operation-state-create
     %operation-state-add-operands          ;; canonical: mlir::OperationState::addOperands
     %operation-state-add-operand           ;; backward-compat alias
@@ -73,5 +78,11 @@
   ;; @note          Defined in lib/Bindings/IR/OperationState.cpp
   (define %operation-state-destroy
     (foreign-procedure "mlir::OperationState::~OperationState" (uptr) void))
+
+  (define %mlir::OperationState::create        %operation-state-create)
+  (define %mlir::OperationState::addOperands   %operation-state-add-operands)
+  (define %mlir::OperationState::addTypes      %operation-state-add-types)
+  (define %mlir::OperationState::addRegion     %operation-state-add-region)
+  (define %mlir::OperationState::~OperationState %operation-state-destroy)
 
   ) ;; end library (mlir IR OperationSupport ffi)

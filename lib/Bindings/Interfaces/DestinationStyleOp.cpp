@@ -16,7 +16,6 @@ static int mlir_interfaces_dps_get_num_dps_inits(uint64_t op_ptr) {
   if (!op_ptr) {
     scheme_error("mlir-interfaces-dps-get-num-dps-inits",
                  "op must not be null");
-    return 0; // unreachable — error performs non-local exit
   }
   mlir::Operation* op = reinterpret_cast<mlir::Operation*>(op_ptr);
   auto dpsOp = mlir::dyn_cast<mlir::DestinationStyleOpInterface>(op);
@@ -31,19 +30,16 @@ static uint64_t mlir_interfaces_dps_get_dps_init_operand(uint64_t op_ptr,
   if (!op_ptr) {
     scheme_error("mlir-interfaces-dps-get-dps-init-operand",
                  "op must not be null");
-    return 0; // unreachable — error performs non-local exit
   }
   mlir::Operation* op = reinterpret_cast<mlir::Operation*>(op_ptr);
   auto dpsOp = mlir::dyn_cast<mlir::DestinationStyleOpInterface>(op);
   if (!dpsOp) {
     scheme_error("mlir-interfaces-dps-get-dps-init-operand",
                  "op does not implement DestinationStyleOpInterface");
-    return 0; // unreachable — error performs non-local exit
   }
   if (index < 0 || index >= static_cast<int>(dpsOp.getNumDpsInits())) {
     scheme_error("mlir-interfaces-dps-get-dps-init-operand",
                  "index out of range");
-    return 0; // unreachable — error performs non-local exit
   }
   return reinterpret_cast<uint64_t>(
       dpsOp.getDpsInits()[index].getAsOpaquePointer());

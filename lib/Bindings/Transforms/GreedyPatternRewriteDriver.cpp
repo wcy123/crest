@@ -19,7 +19,6 @@ mlir_transforms_greedy_pattern_rewrite_driver_apply(uint64_t op_ptr,
   if (!op_ptr || !patterns_ptr) {
     scheme_error("mlir-transforms-greedy-pattern-rewrite-driver-apply",
                  "op and patterns must not be null");
-    return 0; // unreachable — error performs non-local exit
   }
   auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
   auto* patterns = reinterpret_cast<mlir::RewritePatternSet*>(patterns_ptr);

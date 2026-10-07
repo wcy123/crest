@@ -17,7 +17,6 @@ static uint64_t mlir_dialect_shape_ir_shape_type_get(uint64_t ctx_ptr) {
   if (!ctx_ptr) {
     scheme_error("mlir-dialect-shape-ir-shape-type-get",
                  "ctx must not be null");
-    return 0; // unreachable — error performs non-local exit
   }
   return reinterpret_cast<uint64_t>(
       mlir::shape::ShapeType::get(reinterpret_cast<mlir::MLIRContext*>(ctx_ptr))
@@ -28,7 +27,6 @@ static uint64_t mlir_dialect_shape_ir_shape_type_get(uint64_t ctx_ptr) {
 static uint64_t mlir_dialect_shape_ir_size_type_get(uint64_t ctx_ptr) {
   if (!ctx_ptr) {
     scheme_error("mlir-dialect-shape-ir-size-type-get", "ctx must not be null");
-    return 0; // unreachable — error performs non-local exit
   }
   return reinterpret_cast<uint64_t>(
       mlir::shape::SizeType::get(reinterpret_cast<mlir::MLIRContext*>(ctx_ptr))
@@ -40,7 +38,6 @@ static uint64_t mlir_dialect_shape_ir_witness_type_get(uint64_t ctx_ptr) {
   if (!ctx_ptr) {
     scheme_error("mlir-dialect-shape-ir-witness-type-get",
                  "ctx must not be null");
-    return 0; // unreachable — error performs non-local exit
   }
   return reinterpret_cast<uint64_t>(
       mlir::shape::WitnessType::get(

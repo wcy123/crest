@@ -25,8 +25,21 @@ extern "C" {
 // This assumes Sstring_to_symbol returns the standard Scheme value type.
 using SValue = decltype(Sstring_to_symbol("x"));
 
+// Portable unreachable hint. Needed because Scall2 (which invokes Scheme's
+// error procedure via longjmp) is not declared [[noreturn]], so the compiler
+// cannot see that control never returns from scheme_error. Without this hint,
+// [[noreturn]] on scheme_error would produce a warning/error. std::unreachable
+// is C++23; this macro achieves the same on C++17 across all target platforms.
+[[noreturn]] inline void crest_unreachable() {
+#ifdef _MSC_VER
+  __assume(false);
+#else
+  __builtin_unreachable();
+#endif
+}
+
 template <typename... Ts>
-inline void scheme_error(const char* who, const Ts&... args) {
+[[noreturn]] inline void scheme_error(const char* who, const Ts&... args) {
   std::ostringstream stream;
 
   bool first = true;
@@ -44,6 +57,7 @@ inline void scheme_error(const char* who, const Ts&... args) {
   // Note: use stream.str().c_str() to get a const char*
   Scall2(Stop_level_value(Sstring_to_symbol("error")), Sstring(who),
          Sstring(stream.str().c_str()));
+  crest_unreachable();
 }
 // ---- convert_to_scheme: explicit return types via overloads ----
 

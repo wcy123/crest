@@ -121,7 +121,6 @@ mlir_transforms_dialect_conversion_target_create(uint64_t ctx_ptr) {
   if (!ctx_ptr) {
     scheme_error("mlir-transforms-dialect-conversion-target-create",
                  "ctx must not be null");
-    return 0; // unreachable — error performs non-local exit
   }
   auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
   return reinterpret_cast<uint64_t>(new mlir::ConversionTarget(*ctx));
@@ -227,7 +226,6 @@ static int mlir_transforms_dialect_conversion_type_converter_is_legal_type(
     scheme_error(
         "mlir-transforms-dialect-conversion-type-converter-is-legal-type",
         "converter and type must not be null");
-    return 0; // unreachable — error performs non-local exit
   }
   auto* converter = reinterpret_cast<mlir::TypeConverter*>(converter_ptr);
   mlir::Type type =
@@ -240,7 +238,6 @@ static int mlir_transforms_dialect_conversion_type_converter_is_legal(
   if (!converter_ptr || !op_ptr) {
     scheme_error("mlir-transforms-dialect-conversion-type-converter-is-legal",
                  "converter and op must not be null");
-    return 0; // unreachable — error performs non-local exit
   }
   auto* converter = reinterpret_cast<mlir::TypeConverter*>(converter_ptr);
   auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
@@ -253,7 +250,6 @@ static int mlir_transforms_dialect_conversion_type_converter_is_signature_legal(
     scheme_error(
         "mlir-transforms-dialect-conversion-type-converter-is-signature-legal",
         "converter and func-op must not be null");
-    return 0; // unreachable — error performs non-local exit
   }
   auto* converter = reinterpret_cast<mlir::TypeConverter*>(converter_ptr);
   auto func_op = mlir::dyn_cast<mlir::func::FuncOp>(
@@ -262,7 +258,6 @@ static int mlir_transforms_dialect_conversion_type_converter_is_signature_legal(
     scheme_error(
         "mlir-transforms-dialect-conversion-type-converter-is-signature-legal",
         "op is not a func.func operation");
-    return 0; // unreachable — error performs non-local exit
   }
   return converter->isSignatureLegal(func_op.getFunctionType()) ? 1 : 0;
 }
@@ -273,14 +268,12 @@ static int mlir_transforms_dialect_conversion_apply_full_conversion(
   if (!module_ptr || !target_ptr || !patterns_ptr) {
     scheme_error("mlir-transforms-dialect-conversion-apply-full-conversion",
                  "module, target, and patterns must not be null");
-    return 0; // unreachable — error performs non-local exit
   }
   auto module = mlir::dyn_cast<mlir::ModuleOp>(
       reinterpret_cast<mlir::Operation*>(module_ptr));
   if (!module) {
     scheme_error("mlir-transforms-dialect-conversion-apply-full-conversion",
                  "op is not a module op");
-    return 0; // unreachable — error performs non-local exit
   }
   auto* target = reinterpret_cast<mlir::ConversionTarget*>(target_ptr);
   auto* patterns = reinterpret_cast<mlir::RewritePatternSet*>(patterns_ptr);
