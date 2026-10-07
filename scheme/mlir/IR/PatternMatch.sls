@@ -168,6 +168,42 @@
                              (loop (+ i 1))))
                          (%mlir::OpBuilder::create<OperationState> b state)))
 
+  ;; Variants that take an explicit mlir::Location for the OperationState
+  ;; (used by with-mlir-ops to attach Scheme source location to emitted ops).
+  (define (rewriter-create-op* rw insertion-op source-loc name operands types)
+    (mlir::RewriterBase::setInsertionPoint rw insertion-op)
+    (with-OperationState (state source-loc name)
+                         (for-each (lambda (v) (%mlir::OperationState::addOperands state v)) operands)
+                         (for-each (lambda (t) (%mlir::OperationState::addTypes state t)) types)
+                         (%mlir::RewriterBase::create<OperationState> rw state)))
+
+  (define (rewriter-create-op*-with-regions rw insertion-op source-loc name operands types nregions)
+    (mlir::RewriterBase::setInsertionPoint rw insertion-op)
+    (with-OperationState (state source-loc name)
+                         (for-each (lambda (v) (%mlir::OperationState::addOperands state v)) operands)
+                         (for-each (lambda (t) (%mlir::OperationState::addTypes state t)) types)
+                         (let loop ([i 0])
+                           (when (< i nregions)
+                             (%mlir::OperationState::addRegion state)
+                             (loop (+ i 1))))
+                         (%mlir::RewriterBase::create<OperationState> rw state)))
+
+  (define (op-builder-create-op* b source-loc name operands types)
+    (with-OperationState (state source-loc name)
+                         (for-each (lambda (v) (%mlir::OperationState::addOperands state v)) operands)
+                         (for-each (lambda (t) (%mlir::OperationState::addTypes state t)) types)
+                         (%mlir::OpBuilder::create<OperationState> b state)))
+
+  (define (op-builder-create-op*-with-regions b source-loc name operands types nregions)
+    (with-OperationState (state source-loc name)
+                         (for-each (lambda (v) (%mlir::OperationState::addOperands state v)) operands)
+                         (for-each (lambda (t) (%mlir::OperationState::addTypes state t)) types)
+                         (let loop ([i 0])
+                           (when (< i nregions)
+                             (%mlir::OperationState::addRegion state)
+                             (loop (+ i 1))))
+                         (%mlir::OpBuilder::create<OperationState> b state)))
+
   (define mlir-build-operation
     (let ([build (lambda (name operands types loc nregions)
                    (cond
@@ -188,8 +224,21 @@
         (build name operands types (current-Location) default-nregions)]
        [(name operands types nregions)
         (build name operands types (current-Location) nregions)]
-       [(name operands types loc nregions)
-        (build name operands types loc nregions)])))
+       [(name operands types source-loc nregions)
+        ;; source-loc is a mlir::Location uptr (e.g. from Scheme source annotation)
+        (let ([ip (current-Location)])
+          (cond
+           [(current-RewriterBase) =>
+            (lambda (rw)
+              (if (zero? nregions)
+                  (rewriter-create-op* rw ip source-loc name operands types)
+                  (rewriter-create-op*-with-regions rw ip source-loc name operands types nregions)))]
+           [(current-OpBuilder) =>
+            (lambda (b)
+              (if (zero? nregions)
+                  (op-builder-create-op* b source-loc name operands types)
+                  (op-builder-create-op*-with-regions b source-loc name operands types nregions)))]
+           [else (error 'mlir-build-operation "no current builder installed")]))])))
 
   ;; @brief RAII macro — install a RewriterBase as the active builder for the dynamic extent of body.
   ;; @param rw    RewriterBase* uptr (ConversionPatternRewriter or IRRewriter)
