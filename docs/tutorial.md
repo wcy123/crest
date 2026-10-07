@@ -18,66 +18,85 @@ Wang Chunye · AMD Research · 2026
 
 ---
 
-<!-- _style: "pre { font-size: 0.58em; } code { font-size: 0.62em; } p { margin: 0.2em 0; }" -->
-
 ## What is CREST?
 
-**CREST** — Scheme-hosted MLIR pass framework. Write patterns in Scheme; CREST generates `matchAndRewrite`.
+**CREST** — Scheme-hosted MLIR pass framework.
 
-<div class="cols" style="grid-template-columns:1fr 1fr 1fr; gap:0.6em">
+You write patterns in Scheme; CREST generates the C++ `matchAndRewrite` callback.
 
-**Greedy rewrite**
+Three macros form the public surface:
+
+| Macro | Use case |
+|---|---|
+| `define-rewrite-pattern` | Greedy rewrite — fuse, fold, simplify ops |
+| `define-conversion-pattern` | Dialect conversion with `TypeConverter` |
+| `begin-mlir-code` | Inline op emission DSL — used inside the above |
+
+---
+
+## `define-rewrite-pattern`
+
 ```scheme
-(define-rewrite-pattern (name op rw)
-  :if-match
-    %r = dialect.op (%a)
-      :where guard?
-    %d = other.op   (%b)
-  :then-let
-    ([!ty (get-type %r)]
-     [v   (analyze  %d)])
-  :rewrite %r :with
-    (%new = new.op (%a)
-           ("attr" = v :f32)
-           -> !ty))
+(define-rewrite-pattern (name matched-op rewriter)
+  :if-match                           ; ── structural match on the IR
+    %root = dialect.op  (%a %b)
+      :where (guard? %a)              ;    arbitrary Scheme predicate
+    %dep  = other.op    (%c)
+      :where (another-guard? %dep)
+
+  :then-let                           ; ── pure analysis, before any mutation
+    ([!ty  (mlir::Value::getType %root)]
+     [v    (analyze %dep)]
+     [%aux (build-helper rewriter !ty %c)])
+
+  :rewrite %root :with                ; ── emit new ops, replace %root
+    (%result = new.op (%a %b %aux)
+               ("attr" = v :f32)
+               -> !ty))
 ```
 
-**Dialect conversion**
+---
+
+## `define-conversion-pattern`
+
 ```scheme
-(define-conversion-pattern
-    (name op operands rw tc)
-  :if-match
-    %r = onnx.Op (%a %b)
-  :then-let
-    ([!ty (get-type %r)])
-  :rewrite %r :with
-    (%ph = new.placeholder (%ctx %a)
-           (^bb0 ((%s : !sh))
-                 (new.yield (%s)))
-           -> !ty)
-    (%r2 = new.op (%ctx %a %ph)
-           -> !ty))
+(define-conversion-pattern (name matched-op operands-ref rewriter type-converter)
+  :if-match                           ; ── same syntax as rewrite-pattern
+    %root = onnx.Op (%a %b)
+
+  :then-let                           ; ── operands already type-converted
+    ([!out-ty  (mlir::Value::getType %root)]
+     [!sh-ty   (mlir::shape::ShapeType::get)]
+     [rank     (mlir::RankedTensorType::getRank (mlir::Value::getType %a))])
+
+  :rewrite %root :with
+    (%ph = hipsr.placeholder (%ctx %a %b)  ; ── region block inline
+           (^bb0 ((%sa : !sh-ty) (%sb : !sh-ty))
+                 (%bc = shape.broadcast (%sa %sb) -> !sh-ty)
+                 (hipsr.shape_yield (%bc)))
+           -> !out-ty)
+    (%result = hipsr.op (%ctx %a %b %ph) -> !out-ty))
 ```
 
-**Inline op emission**
-```scheme
-;; Inside :rewrite :with
-;; or standalone helper:
+---
 
+## `begin-mlir-code`
+
+```scheme
+;; (:rewriter rw) — use inside :rewrite :with or a helper function
 (begin-mlir-code (:rewriter rw)
-  (%r = dialect.op (%a %b)
-       ("scale" = s :f32)
-       ("axis"  = 1 :i64)
-       -> !ty))
+  (%init   = tensor.empty () -> !ty)
+  (%result = hip.qadd (%ctx %a %b %init)
+             ("lhs_scale"    = ls  :f32)
+             ("output_scale" = os  :f32)
+             ("lhs_zp"       = lzp :i64)
+             -> !ty))
 
-;; Inside a ^bb0 block:
-(begin-mlir-code (:builder b)
-  (%c = arith.constant ()
-       ("value" = 0 :i64)
-       -> i64))
-```
-
-</div>
+;; (:builder b) — inside ^bb0 region blocks
+(begin-mlir-code (:builder %block-builder)
+  (%c  = arith.constant () ("value" = 42 :index) -> index)
+  (%e  = shape.get_extent (%shape %c) -> !size-ty)
+  (%sh = shape.from_extents (%e) -> !shape-ty))
 
 ---
 
