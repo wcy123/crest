@@ -12,25 +12,22 @@
 ;; Re-exports clean names from (mlir IR PatternMatch ffi).
 ;; Also provides RAII macros for builder context.
 ;;
-;; Builder threading: the builder (RewriterBase* or OpBuilder*) is passed
-;; explicitly to mlir-build-operation and rewriter-create-op. Since
-;; mlir::RewriterBase inherits from mlir::OpBuilder, a single C++ binding
-;; (%mlir::OpBuilder::create<OperationState>) handles both.
+;; Builder threading: the RewriterBase* is passed explicitly to
+;; mlir-create-operation. The builder manages its own insertion point;
+;; with-RewriterBase calls setInsertionPoint once at install.
 ;;
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir IR PatternMatch)
   (export
     ;; Clean-name re-exports from ffi
-    rewriter-create-op
+    mlir-create-operation
     mlir::RewriterBase::setInsertionPoint          ;; canonical: mlir::RewriterBase::setInsertionPoint(op)
     mlir::RewriterBase::setInsertionPoint-before   ;; backward-compat alias
     mlir::RewriterBase::setInsertionPoint-to-end
     mlir::RewriterBase::createBlock
     mlir::RewriterBase::replaceOp
     mlir::RewriterBase::eraseOp
-    ;; Context-dispatching constructor (explicit builder)
-    mlir-build-operation
     ;; RAII macros
     with-raii
     with-RewritePatternSet
@@ -68,44 +65,56 @@
                 %mlir::OperationState::~OperationState
                 with-OperationState))
 
+  ;; @brief mlir::Operation::getContext — return the MLIRContext that owns this op.
+  ;; @param op  Operation* uptr
+  ;; @return    MLIRContext* uptr
+  ;; @see       mlir/IR/Operation.h
   (define mlir-Operation::getContext mlir::Operation::getContext)
 
+  ;; @brief mlir::RewriterBase::setInsertionPoint(op) — move IP to before op.
+  ;; @param rewriter  RewriterBase* uptr
+  ;; @param op        Operation* uptr
+  ;; @see             mlir/IR/PatternMatch.h
   (define mlir::RewriterBase::setInsertionPoint       %mlir::RewriterBase::setInsertionPoint)
   (define mlir::RewriterBase::setInsertionPoint-before %mlir::RewriterBase::setInsertionPoint)
+
+  ;; @brief mlir::RewriterBase::setInsertionPoint — move IP to end of block.
+  ;; @param rewriter  RewriterBase* uptr
+  ;; @param block     Block* uptr
+  ;; @see             mlir/IR/PatternMatch.h
   (define mlir::RewriterBase::setInsertionPoint-to-end %mlir::RewriterBase::setInsertionPoint-to-end)
+
+  ;; @brief mlir::RewriterBase::createBlock — append a new block to region.
+  ;; @param rewriter  RewriterBase* uptr
+  ;; @param region    Region* uptr
+  ;; @return          Block* uptr
+  ;; @see             mlir/IR/PatternMatch.h
   (define mlir::RewriterBase::createBlock             %mlir::RewriterBase::createBlock)
+
+  ;; @brief mlir::RewriterBase::replaceOp — replace op with new values and erase it.
+  ;; @param rewriter  RewriterBase* uptr
+  ;; @param op        Operation* uptr — op to replace
+  ;; @param new-op    Operation* uptr — replacement
+  ;; @see             mlir/IR/PatternMatch.h
   (define mlir::RewriterBase::replaceOp               %mlir::RewriterBase::replaceOp)
+
+  ;; @brief mlir::RewriterBase::eraseOp — erase op and all uses (must be dead).
+  ;; @param rewriter  RewriterBase* uptr
+  ;; @param op        Operation* uptr
+  ;; @see             mlir/IR/PatternMatch.h
   (define mlir::RewriterBase::eraseOp                 %mlir::RewriterBase::eraseOp)
 
-  ;; Pure Scheme helpers — compose raw C++ primitives.
+  ;; @brief Create an op via a RewriterBase*.
+  ;; (rw name operands types)                     — UnknownLoc, 0 regions
+  ;; (rw name operands types nregions)            — UnknownLoc, N regions
+  ;; (rw name operands types source-loc nregions) — explicit mlir::Location
   ;;
-  ;; mlir::RewriterBase inherits from mlir::OpBuilder, so a single C++ binding
-  ;; (%mlir::OpBuilder::create<OperationState>) works for both RewriterBase* and
-  ;; OpBuilder* pointers. The caller passes whichever builder is active.
-  ;;
-  ;; Insertion point: managed by the BUILDER's own state.
-  ;;   with-RewriterBase calls setInsertionPoint once at install.
-  ;;   After each create(), the builder advances its position naturally.
-  ;;
-  ;; Location for the OperationState:
-  ;;   rewriter-create-op (explicit loc arg): caller provides mlir::Location uptr
-  ;;   3/4-arg mlir-build-operation: mlir::UnknownLoc::get
-  ;;   5-arg mlir-build-operation: explicit source-loc from #'op annotation
-
-  ;; @brief Create an op via any builder (RewriterBase* or OpBuilder*).
-  ;; @param builder    OpBuilder* uptr (RewriterBase* also accepted — it IS an OpBuilder)
-  ;; @param source-loc mlir::Location uptr
-  ;; @param name       string — registered op name (e.g. "arith.addi")
-  ;; @param operands   Scheme list of Value* uptrs
-  ;; @param types      Scheme list of Type* uptrs
-  ;; @param nregions   number of empty regions to add (optional, default 0)
-  ;; rewriter-create-op — create an op via a RewriterBase* (or any subclass).
-  ;; Uses %mlir::RewriterBase::create<OperationState> which casts to RewriterBase*.
-  ;; NOTE: reinterpret_cast<OpBuilder*>(rwPtr) is UNSAFE here because OpBuilder has
-  ;; no vtable but RewriterBase introduces one — the OpBuilder subobject is at offset
-  ;; +sizeof(vtable_ptr) within the RewriterBase object, not at offset 0.
-  (define rewriter-create-op
-    (let ([build (lambda (rw source-loc name operands types nregions)
+  ;; NOTE: reinterpret_cast<OpBuilder*>(rwPtr) is UNSAFE — OpBuilder has no vtable
+  ;; but RewriterBase introduces one, so the OpBuilder subobject sits at offset
+  ;; +sizeof(vtable_ptr) within the RewriterBase object. Uses
+  ;; %mlir::RewriterBase::create<OperationState> which casts to RewriterBase*.
+  (define mlir-create-operation
+    (let ([build (lambda (rw name operands types source-loc nregions)
                    (with-OperationState (state source-loc name)
                                         (for-each (lambda (v) (%mlir::OperationState::addOperands state v)) operands)
                                         (for-each (lambda (t) (%mlir::OperationState::addTypes state t)) types)
@@ -115,23 +124,8 @@
                                             (loop (+ i 1))))
                                         (%mlir::RewriterBase::create<OperationState> rw state)))])
       (case-lambda
-       [(rw source-loc name operands types)
-        (build rw source-loc name operands types 0)]
-       [(rw source-loc name operands types nregions)
-        (build rw source-loc name operands types nregions)])))
-
-  ;; @brief Explicit-builder op constructor for samples that call it directly.
-  ;; The first argument MUST be a RewriterBase* (not a plain OpBuilder*).
-  ;; (rw name operands types)                    — UnknownLoc
-  ;; (rw name operands types nregions)           — UnknownLoc, with regions
-  ;; (rw name operands types source-loc nregions) — explicit mlir::Location
-  (define mlir-build-operation
-    (let ([build (lambda (rw name operands types source-loc nregions)
-                   (rewriter-create-op rw source-loc name operands types nregions))]
-          [default-nregions 0])
-      (case-lambda
        [(rw name operands types)
-        (build rw name operands types (mlir::UnknownLoc::get) default-nregions)]
+        (build rw name operands types (mlir::UnknownLoc::get) 0)]
        [(rw name operands types nregions)
         (build rw name operands types (mlir::UnknownLoc::get) nregions)]
        [(rw name operands types source-loc nregions)

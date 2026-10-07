@@ -88,7 +88,7 @@
                 mlir::FloatAttr::getValueAsDouble.f32
                 mlir::DenseElementsAttr::getSplatValue<APFloat>
                 mlir::DenseElementsAttr::getSplatValue<APInt>)
-          (only (mlir IR PatternMatch) rewriter-create-op)
+          (only (mlir IR PatternMatch) mlir-create-operation)
           (only (mlir IR BuiltinTypes)
                 mlir::ShapedType::getElementType
                 mlir::IntegerType::getWidth
@@ -342,14 +342,14 @@
   ;;===--------------------------------------------------------------------===;;
 
   ;; Build a tensor.empty whose result type is out-type.
-  ;; Uses rewriter-create-op directly with the provided rewriter uptr so this works
+  ;; Uses mlir-create-operation directly with the provided rewriter uptr so this works
   ;; both inside and outside the with-RewriterBase context (e.g. :then-let).
   ;; The loc-op anchor is the defining op of shape-source.
   ;; Returns result Value (index 0) of the new tensor.empty op.
   (define (hip-build-init rewriter out-type shape-source)
     (let ([loc-op (mlir::Value::getDefiningOp shape-source)])
       (mlir::Operation::getResult
-       (rewriter-create-op rewriter (mlir::Operation::getLoc loc-op) "tensor.empty" '() (list out-type))
+       (mlir-create-operation rewriter "tensor.empty" '() (list out-type) (mlir::Operation::getLoc loc-op) 0)
        0)))
 
   ;;===--------------------------------------------------------------------===;;
@@ -358,9 +358,8 @@
 
   ;; Clone op with new operands and result types, copying all attributes.
   (define (crest::RewriterBase::cloneWithTypes rw op operands result-types)
-    (let ([new-op (rewriter-create-op rw (mlir::Operation::getLoc op)
-                                      (mlir::Operation::getName op)
-                                      operands result-types)])
+    (let ([new-op (mlir-create-operation rw (mlir::Operation::getName op)
+                                         operands result-types (mlir::Operation::getLoc op) 0)])
       (mlir::Operation::setAttrs new-op (mlir::Operation::getAttrDictionary op))
       new-op))
 
@@ -384,8 +383,8 @@
            ;; Build a new tensor.empty for the init when needed.
            [new-init  (if has-ctx?
                           (mlir::Operation::getResult
-                           (rewriter-create-op rewriter (mlir::Operation::getLoc layout-op)
-                                               "tensor.empty" '() (list q-type))
+                           (mlir-create-operation rewriter "tensor.empty" '() (list q-type)
+                                                  (mlir::Operation::getLoc layout-op) 0)
                            0)
                           0)]
            ;; Rebuild operand list: replace dq-result with dq-input, and replace

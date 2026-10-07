@@ -22,7 +22,7 @@
           (only (mlir IR Value)
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
-          (only (mlir IR PatternMatch) mlir-build-operation)
+          (only (mlir IR PatternMatch) mlir-create-operation)
           (mlir Transforms DialectConversion)
           (passes hip-fusion fusion)
           (crest)
@@ -62,9 +62,9 @@
        [out-zp    (hip-extract-qdq-zeropoint-i64 op 0)]
        [%init     (hip-build-init rewriter !out-type %conv_init)])
     :rewrite %q :with
-      (%result = (let ([new-op (mlir-build-operation rewriter "hip.qconv"
-                                                     (list %ctx %input %weights %w_scales %w_zps %init)
-                                                     (list !out-type))])
+      (%result = (let ([new-op (mlir-create-operation rewriter "hip.qconv"
+                                                      (list %ctx %input %weights %w_scales %w_zps %init)
+                                                      (list !out-type))])
                    (crest::Operation::setF32Attr new-op "input_scale"   in-scale)
                    (crest::Operation::setI64Attr new-op "input_zp"      in-zp)
                    (crest::Operation::setF32Attr new-op "output_scale"  out-scale)
