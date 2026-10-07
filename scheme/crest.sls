@@ -2,6 +2,7 @@
 (library (crest)
   (export define-conversion-pattern
           define-rewrite-pattern
+          begin-mlir-code
           :if-match :then-let :rewrite :with :where
           :debug-parse :debug-validate :debug-analyze :debug-codegen :debug-matching
           = : -> :region :regions
@@ -11,7 +12,7 @@
           make-unbound-value unbound-value?)
   (import (except (rnrs) =)
           (crest internal keywords)  ;; Import keywords at run time for re-export
-          (crest internal rewrite)               ;; with-mlir-ops used in generated :rewrite bodies
+          (for (only (crest internal rewrite) begin-mlir-code) expand)
           (for (crest internal keywords) expand)  ;; Also at expand time
           (for (crest internal ast) expand)  ;; For AST predicates
           (for (crest internal codegen) expand)

@@ -8,15 +8,17 @@
 ;;
 ;; (crest internal rewrite) — expression-level MLIR operation builder
 ;;
-;; Provides two forms:
+;; Provides:
 ;;
-;;   (with-RewriterBase (rw loc) body ...)
-;;     Installs rw (RewriterBase*) and loc (Operation* for location/IP)
-;;     as dynamic context for the duration of body.
+;;   (begin-mlir-code (:rewriter rw) op-form ...)
+;;     Sequences MLIR op-forms using a RewriterBase* builder.
+;;     Returns the last result (like Scheme's begin).
 ;;
-;;   (with-mlir-ops op-form ...)
-;;     Builds a sequence of MLIR operations using the current builder.
-;;     Returns the last result (Scheme convention).
+;;   (begin-mlir-code (:builder b) op-form ...)
+;;     Same, using a plain OpBuilder* (e.g. inside ^bb0 blocks).
+;;     NOTE: (:rewriter rw) and (:builder b) use different C++ create
+;;     bindings — they are NOT interchangeable. OpBuilder has no vtable
+;;     but RewriterBase introduces one, so their subobject offsets differ.
 ;;
 ;; op-form syntax:
 ;;   (%var = "op.name" (operands...) modifiers... -> result-type)   single-result
@@ -38,7 +40,7 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (crest internal rewrite)
-  (export with-mlir-ops)
+  (export begin-mlir-code)
 
   (import (except (rnrs (6)) =)
           (only (chezscheme) syntax->list syntax->datum datum->syntax parameterize
@@ -93,13 +95,13 @@
       [else (error '%make-attr-by-type "unknown attr type in rewrite DSL" type)]))
 
   ;;===--------------------------------------------------------------------===;;
-  ;; with-mlir-ops
+  ;; begin-mlir-code
   ;;===--------------------------------------------------------------------===;;
 
   ;; NOTE: the = symbol in op-forms must be the DSL = from (crest internal keywords),
   ;; not the R6RS numeric =. Libraries using (except (rnrs) =) satisfy this;
   ;; others must import (only (crest internal keywords) =) explicitly.
-  (define-syntax with-mlir-ops
+  (define-syntax begin-mlir-code
     (lambda (stx)
 
       ;;-------------------------------------------------------------------
@@ -141,30 +143,28 @@
 
       ;; Collect all (var . expr) pairs from every op form and emit a flat
       ;; let* returning the last bound variable.
-      ;; First sub-form: the explicit builder (RewriterBase* or OpBuilder*).
-      ;; :builder keyword selects %mlir::OpBuilder::create<OperationState> (for ^bb0 blocks).
-      ;; Default (no keyword) selects %mlir::RewriterBase::create<OperationState>.
-      ;; NOTE: OpBuilder has no vtable; RewriterBase introduces one. Their subobject
-      ;; offsets differ, so the two create bindings use different casts and are NOT
-      ;; interchangeable.
+      ;; (:rewriter rw) — rw is RewriterBase*, uses %mlir::RewriterBase::create<OperationState>
+      ;; (:builder b)   — b is OpBuilder*, uses %mlir::OpBuilder::create<OperationState>
+      ;; The two create bindings use different casts and are NOT interchangeable:
+      ;; OpBuilder has no vtable; RewriterBase introduces one, shifting subobject offsets.
       (define (main)
-        (syntax-case stx (:builder)
-          [(_ builder :builder op ...)
+        (syntax-case stx (:rewriter :builder)
+          [(_ (:rewriter rw) op ...)
            (let ([pairs (loop :for op-stx :in (syntax->list #'(op ...))
                               :for index :from 0
-                              :append (process-op op-stx index #'builder
-                                                  #'%mlir::OpBuilder::create<OperationState>))])
+                              :append (process-op op-stx index #'rw
+                                                  #'%mlir::RewriterBase::create<OperationState>))])
              (if (null? pairs)
                  #'(if #f #f)
                  (with-syntax ([(binding ...) (loop :for pair :in pairs
                                                     :collect (make-binding pair))]
                                [result        (car (car (reverse pairs)))])
                    #'(let* (binding ...) result))))]
-          [(_ builder op ...)
+          [(_ (:builder b) op ...)
            (let ([pairs (loop :for op-stx :in (syntax->list #'(op ...))
                               :for index :from 0
-                              :append (process-op op-stx index #'builder
-                                                  #'%mlir::RewriterBase::create<OperationState>))])
+                              :append (process-op op-stx index #'b
+                                                  #'%mlir::OpBuilder::create<OperationState>))])
              (if (null? pairs)
                  #'(if #f #f)
                  (with-syntax ([(binding ...) (loop :for pair :in pairs
@@ -207,7 +207,7 @@
           [(op (operands ...) modifiers ...)
            (op-name? #'op)
            (process-op #'(() = op (operands ...) modifiers ... -> ()) index builder-stx create-sym-stx)]
-          [_ (syntax-violation 'with-mlir-ops "invalid op form" op-stx)]))
+          [_ (syntax-violation 'begin-mlir-code "invalid op form" op-stx)]))
 
       ;;-------------------------------------------------------------------
       ;; Modifier parser
@@ -277,7 +277,7 @@
                                          (map syntax->list (syntax->list #'(body ...))))])
                (loop #'remaining attr-setter-fns
                      (append region-fill-fns (list (make-region-fill-fn region-index block-fill-fns)))))]
-            [_ (syntax-violation 'with-mlir-ops "invalid modifier entry" rest)])))
+            [_ (syntax-violation 'begin-mlir-code "invalid modifier entry" rest)])))
 
       ;; True when x is a block label identifier starting with ^.
       (define (block-label? x)
@@ -307,7 +307,7 @@
         (syntax-case attr-stx (=)
           [(name = val type)  (make-typed-setter  (name->str #'name) #'val #''type)]
           [(name = val)       (make-direct-setter (name->str #'name) #'val)]
-          [_ (syntax-violation 'with-mlir-ops
+          [_ (syntax-violation 'begin-mlir-code
                                "attr modifier: (name = val :type) or (name = val) for pre-built attr"
                                attr-stx)]))
 
@@ -412,7 +412,7 @@
                [block-builder-id (datum->syntax user-scope-id '%block-builder)]
                [body-stx         (with-syntax ([(body ...) body-ops]
                                                [block-builder block-builder-id])
-                                   #'(with-mlir-ops block-builder :builder body ...))]
+                                   #'(begin-mlir-code (:builder block-builder) body ...))]
                [arg-bind-pairs   (loop :for var :in arg-vars
                                        :for i :from 0
                                        :collect (cons var #`(mlir::Block::getArgument block #,i)))])

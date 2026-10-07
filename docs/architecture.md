@@ -229,7 +229,7 @@ functions in the same file, with the same edit–reload cycle as the pattern.
 
 #### Emitted op source locations
 
-Every op emitted by `with-mlir-ops` carries the Scheme source file, line, and
+Every op emitted by `begin-mlir-code` carries the Scheme source file, line, and
 column where it was written in the pattern:
 
 ```
@@ -294,7 +294,7 @@ either the PDLL source or the input-fused location to emitted ops.
    `(and check₀ check₁ …)` expression wrapped in a `guard`, producing a
    lambda with the signature of `mlir::ConversionPattern::matchAndRewrite`.
 
-The `:rewrite` body is compiled by a separate `with-mlir-ops` macro that
+The `:rewrite` body is compiled by a separate `begin-mlir-code` macro that
 translates named SSA op-forms into a `let*` of builder calls.
 
 Debug flags (`:debug-parse`, `:debug-validate`, `:debug-analyze`,
