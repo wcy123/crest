@@ -22,7 +22,7 @@
     type-converter-add-tensor-widening-materialization)
 
   (import (rnrs)
-          (only (mlir IR MLIRContext) current-mlir-context)
+          (only (mlir IR MLIRContext) current-MLIRContext)
           (only (mlir IR BuiltinTypes)
                 mlir::isa<RankedTensorType>?)
           (only (mlir IR Value) mlir::Value::getType)
@@ -39,7 +39,7 @@
   ;;
   ;; @param target  ConversionTarget* uptr
   (define (conversion-target-add-common-legal-ops target)
-    (let ((ctx (current-mlir-context)))
+    (let ((ctx (current-MLIRContext)))
       (target-add-legal-op target ctx "builtin.module")
       (target-add-legal-op target ctx "arith.constant")))
 
@@ -55,7 +55,7 @@
   ;; @param target    ConversionTarget* uptr
   ;; @param converter TypeConverter* uptr
   (define (conversion-target-add-dynamically-legal-func target converter)
-    (let ((ctx (current-mlir-context)))
+    (let ((ctx (current-MLIRContext)))
       (target-add-dynamically-legal-op target ctx "func.func"
                                        (lambda (op)
                                          (= 1 (type-converter-is-signature-legal converter op))))

@@ -9,11 +9,11 @@
 ;; (mlir IR MLIRContext) — Public API for mlir::MLIRContext.
 ;;
 ;; Mirrors mlir/IR/MLIRContext.h.
-;; Provides the ambient context parameter (current-mlir-context,
-;; with-mlir-context) and clean wrappers around the raw FFI bindings.
+;; Provides the ambient context parameter (current-MLIRContext,
+;; with-MLIRContext) and clean wrappers around the raw FFI bindings.
 ;;
 ;; Usage:
-;;   (with-mlir-context ctx
+;;   (with-MLIRContext ctx
 ;;     (mlir::MLIRContext::loadAllAvailableDialects ctx)
 ;;     (mlir::MLIRContext::allowUnregisteredDialects ctx #t))
 ;;
@@ -21,8 +21,8 @@
 
 (library (mlir IR MLIRContext)
   (export
-    current-mlir-context
-    with-mlir-context
+    current-MLIRContext
+    with-MLIRContext
     define-ctx-optional
     mlir::MLIRContext::allowUnregisteredDialects
     mlir::MLIRContext::allowsUnregisteredDialects?
@@ -38,22 +38,22 @@
           (only (chezscheme) make-parameter parameterize)
           (mlir IR MLIRContext ffi))
 
-  ;; @brief current-mlir-context — dynamic parameter holding the ambient MLIRContext* uptr.
+  ;; @brief current-MLIRContext — dynamic parameter holding the ambient MLIRContext* uptr.
   ;; @return  MLIRContext* as uptr, or #f when no context is installed
-  ;; @see     with-mlir-context, mlir/IR/MLIRContext.h
-  ;; @note    Set via (parameterize ([current-mlir-context ctx]) ...) or with-mlir-context
-  (define current-mlir-context (make-parameter #f))
+  ;; @see     with-MLIRContext, mlir/IR/MLIRContext.h
+  ;; @note    Set via (parameterize ([current-MLIRContext ctx]) ...) or with-MLIRContext
+  (define current-MLIRContext (make-parameter #f))
 
-  ;; @brief with-mlir-context — RAII macro: install ctx as current-mlir-context for body forms.
+  ;; @brief with-MLIRContext — RAII macro: install ctx as current-MLIRContext for body forms.
   ;; @param ctx   MLIRContext* uptr to bind as the ambient context
-  ;; @param body  One or more expressions evaluated with current-mlir-context = ctx
+  ;; @param body  One or more expressions evaluated with current-MLIRContext = ctx
   ;; @return      Value of the last body expression
-  ;; @see         current-mlir-context, mlir/IR/MLIRContext.h
+  ;; @see         current-MLIRContext, mlir/IR/MLIRContext.h
   ;; @note        Implemented via parameterize; the previous value is restored on exit (normal or exception)
-  (define-syntax with-mlir-context
+  (define-syntax with-MLIRContext
     (syntax-rules ()
       [(_ ctx body ...)
-       (parameterize ([current-mlir-context ctx]) body ...)]))
+       (parameterize ([current-MLIRContext ctx]) body ...)]))
 
   ;; @brief mlir::MLIRContext::allowUnregisteredDialects — enable or disable unregistered dialects.
   ;; @param ctx     MLIRContext* as uptr
@@ -140,7 +140,7 @@
     (%mlir::MLIRContext::printStackTraceOnDiagnostic ctx (if enable? 1 0)))
 
   ;; @brief define-ctx-optional — define a function whose first argument is an
-  ;; optional MLIRContext*.  The zero-extra-arg form uses current-mlir-context;
+  ;; optional MLIRContext*.  The zero-extra-arg form uses current-MLIRContext;
   ;; the one-or-more-arg form forwards the first argument as the context.
   ;;
   ;; Usage:
@@ -151,7 +151,7 @@
       [(_ name raw arg ...)
        (define name
          (case-lambda
-          [(arg ...)     (raw (current-mlir-context) arg ...)]
+          [(arg ...)     (raw (current-MLIRContext) arg ...)]
           [(ctx arg ...) (raw ctx arg ...)]))]))
 
   ) ;; end library (mlir IR MLIRContext)

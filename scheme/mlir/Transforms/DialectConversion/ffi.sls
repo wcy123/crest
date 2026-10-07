@@ -33,8 +33,6 @@
     %target-add-legal-op
     %target-add-dynamically-legal-op
     %target-mark-unknown-ops-dynamically-legal
-    %pattern-set-create
-    %pattern-set-destroy
     %apply-full-conversion
     %add-conversion-pattern
     %add-rewrite-pattern
@@ -48,7 +46,7 @@
   ;; @see    mlir/Transforms/DialectConversion.h
   ;; @note   Defined in lib/Bindings/Transforms/DialectConversion.cpp
   (define %type-converter-create
-    (foreign-procedure "mlir_transforms_dialect_conversion_type_converter_create"
+    (foreign-procedure "mlir::TypeConverter::TypeConverter"
                        () uptr))
 
   ;; @brief mlir::TypeConverter destructor — free a TypeConverter.
@@ -56,7 +54,7 @@
   ;; @see   mlir/Transforms/DialectConversion.h
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
   (define %type-converter-destroy
-    (foreign-procedure "mlir_transforms_dialect_conversion_type_converter_destroy"
+    (foreign-procedure "mlir::TypeConverter::~TypeConverter"
                        (uptr) void))
 
   ;; @brief TypeConverter::addConversion — register a Scheme type-conversion
@@ -67,7 +65,7 @@
   ;; @see   mlir/Transforms/DialectConversion.h
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
   (define %type-converter-add-conversion
-    (foreign-procedure "mlir_transforms_dialect_conversion_type_converter_add_conversion"
+    (foreign-procedure "mlir::TypeConverter::addConversion"
                        (uptr scheme-object) void))
 
   ;; @brief TypeConverter::addSourceMaterialization — register a Scheme callback
@@ -82,7 +80,7 @@
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
   (define %type-converter-add-source-materialization
     (foreign-procedure
-     "mlir_transforms_dialect_conversion_type_converter_add_source_materialization"
+     "mlir::TypeConverter::addSourceMaterialization"
      (uptr scheme-object) void))
 
   ;; @brief TypeConverter::addTargetMaterialization — register a Scheme callback
@@ -97,7 +95,7 @@
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
   (define %type-converter-add-target-materialization
     (foreign-procedure
-     "mlir_transforms_dialect_conversion_type_converter_add_target_materialization"
+     "mlir::TypeConverter::addTargetMaterialization"
      (uptr scheme-object) void))
 
   ;; @brief TypeConverter::isLegal(Type) — test whether a single MLIR type is
@@ -108,7 +106,7 @@
   ;; @see   mlir/Transforms/DialectConversion.h
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
   (define %type-converter-is-legal-type
-    (foreign-procedure "mlir_transforms_dialect_conversion_type_converter_is_legal_type"
+    (foreign-procedure "mlir::TypeConverter::isLegal<Type>"
                        (uptr uptr) int))
 
   ;; @brief TypeConverter::isLegal(Operation*) — test whether all operand and
@@ -119,7 +117,7 @@
   ;; @see   mlir/Transforms/DialectConversion.h
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
   (define %type-converter-is-legal
-    (foreign-procedure "mlir_transforms_dialect_conversion_type_converter_is_legal"
+    (foreign-procedure "mlir::TypeConverter::isLegal<Operation>"
                        (uptr uptr) int))
 
   ;; @brief TypeConverter::isSignatureLegal — test whether a func.func
@@ -130,7 +128,7 @@
   ;; @see   mlir/Transforms/DialectConversion.h
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
   (define %type-converter-is-signature-legal
-    (foreign-procedure "mlir_transforms_dialect_conversion_type_converter_is_signature_legal"
+    (foreign-procedure "mlir::TypeConverter::isSignatureLegal"
                        (uptr uptr) int))
 
   ;; @brief mlir::ConversionTarget constructor — allocate a new ConversionTarget
@@ -140,7 +138,7 @@
   ;; @see   mlir/Transforms/DialectConversion.h
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
   (define %target-create
-    (foreign-procedure "mlir_transforms_dialect_conversion_target_create"
+    (foreign-procedure "mlir::ConversionTarget::ConversionTarget"
                        (uptr) uptr))
 
   ;; @brief mlir::ConversionTarget destructor — free a ConversionTarget.
@@ -148,7 +146,7 @@
   ;; @see   mlir/Transforms/DialectConversion.h
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
   (define %target-destroy
-    (foreign-procedure "mlir_transforms_dialect_conversion_target_destroy"
+    (foreign-procedure "mlir::ConversionTarget::~ConversionTarget"
                        (uptr) void))
 
   ;; @brief ConversionTarget::addIllegalDialect — mark all ops in a dialect
@@ -158,7 +156,7 @@
   ;; @see   mlir/Transforms/DialectConversion.h
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
   (define %target-add-illegal-dialect
-    (foreign-procedure "mlir_transforms_dialect_conversion_target_add_illegal_dialect"
+    (foreign-procedure "mlir::ConversionTarget::addIllegalDialect"
                        (uptr string) void))
 
   ;; @brief ConversionTarget::addLegalDialect — mark all ops in a dialect
@@ -168,7 +166,7 @@
   ;; @see   mlir/Transforms/DialectConversion.h
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
   (define %target-add-legal-dialect
-    (foreign-procedure "mlir_transforms_dialect_conversion_target_add_legal_dialect"
+    (foreign-procedure "mlir::ConversionTarget::addLegalDialect"
                        (uptr string) void))
 
   ;; @brief ConversionTarget::addLegalOp — mark a single op (by name) as
@@ -179,7 +177,7 @@
   ;; @see   mlir/Transforms/DialectConversion.h
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
   (define %target-add-legal-op
-    (foreign-procedure "mlir_transforms_dialect_conversion_target_add_legal_op"
+    (foreign-procedure "mlir::ConversionTarget::addLegalOp"
                        (uptr uptr string) void))
 
   ;; @brief ConversionTarget::addDynamicallyLegalOp — mark a single op as
@@ -191,7 +189,7 @@
   ;; @see   mlir/Transforms/DialectConversion.h
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
   (define %target-add-dynamically-legal-op
-    (foreign-procedure "mlir_transforms_dialect_conversion_target_add_dynamically_legal_op"
+    (foreign-procedure "mlir::ConversionTarget::addDynamicallyLegalOp"
                        (uptr uptr string scheme-object) void))
 
   ;; @brief ConversionTarget::markUnknownOpDynamicallyLegal — classify ops not
@@ -202,28 +200,8 @@
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
   (define %target-mark-unknown-ops-dynamically-legal
     (foreign-procedure
-     "mlir_transforms_dialect_conversion_target_mark_unknown_ops_dynamically_legal"
+     "mlir::ConversionTarget::markUnknownOpsDynamicallyLegal"
      (uptr scheme-object) void))
-
-  ;; @brief mlir::RewritePatternSet constructor — allocate a new pattern set
-  ;;        bound to the given MLIRContext.
-  ;; @param ctx MLIRContext* uptr
-  ;; @return    RewritePatternSet* uptr — caller must destroy with
-  ;;            %pattern-set-destroy (or pass to %apply-full-conversion which
-  ;;            consumes it)
-  ;; @see   mlir/IR/PatternMatch.h
-  ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
-  (define %pattern-set-create
-    (foreign-procedure "mlir_transforms_dialect_conversion_pattern_set_create"
-                       (uptr) uptr))
-
-  ;; @brief mlir::RewritePatternSet destructor — free a pattern set.
-  ;; @param patterns RewritePatternSet* uptr — must not be used after this call
-  ;; @see   mlir/IR/PatternMatch.h
-  ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
-  (define %pattern-set-destroy
-    (foreign-procedure "mlir_transforms_dialect_conversion_pattern_set_destroy"
-                       (uptr) void))
 
   ;; @brief mlir::applyFullConversion — apply patterns until the target is
   ;;        satisfied; fails if any illegal op remains.
@@ -248,7 +226,7 @@
   ;; @see   mlir/Transforms/DialectConversion.h
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
   (define %add-conversion-pattern
-    (foreign-procedure "mlir_transforms_dialect_conversion_add_conversion_pattern"
+    (foreign-procedure "crest::DialectConversion::addConversionPattern"
                        (uptr string scheme-object uptr int) void))
 
   ;; @brief Register a Scheme RewritePattern (no TypeConverter) for a named op.
@@ -261,7 +239,7 @@
   ;; @see   mlir/IR/PatternMatch.h
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
   (define %add-rewrite-pattern
-    (foreign-procedure "mlir_transforms_dialect_conversion_add_rewrite_pattern"
+    (foreign-procedure "crest::DialectConversion::addRewritePattern"
                        (uptr string scheme-object int) void))
 
   ;; @brief mlir::populateFunctionOpInterfaceTypeConversionPattern<FuncOp> —
@@ -271,7 +249,7 @@
   ;; @see   mlir/Dialect/Func/Transforms/FuncConversions.h
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
   (define %populate-func-type-conversion
-    (foreign-procedure "mlir_transforms_dialect_conversion_populate_func_type_conversion"
+    (foreign-procedure "mlir::populateFunctionOpInterfaceTypeConversionPattern<FuncOp>"
                        (uptr uptr) void))
 
   ) ;; end library (mlir Transforms DialectConversion ffi)

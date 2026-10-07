@@ -3,14 +3,37 @@
  * Licensed under the MIT License.
  */
 
-// Mirrors mlir/IR/PatternMatch.h — RewriterBase bindings.
+// Mirrors mlir/IR/PatternMatch.h — RewriterBase and RewritePatternSet bindings.
 
-#include "RewriterBase.h"
+#include "PatternMatch.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/IR/PatternMatch.h"
+
+// mlir::RewritePatternSet::RewritePatternSet(ctx) — heap-allocate a pattern
+// set.
+static uint64_t
+mlir_ir_pattern_match_rewrite_pattern_set_create(uint64_t ctx_ptr) {
+  if (!ctx_ptr) {
+    scheme_error("mlir::RewritePatternSet::RewritePatternSet",
+                 "ctx must not be null");
+    return 0; // unreachable
+  }
+  auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+  return reinterpret_cast<uint64_t>(new mlir::RewritePatternSet(ctx));
+}
+
+// mlir::RewritePatternSet::~RewritePatternSet — free a heap-allocated pattern
+// set.
+static void
+mlir_ir_pattern_match_rewrite_pattern_set_destroy(uint64_t patterns_ptr) {
+  if (!patterns_ptr) {
+    return;
+  }
+  delete reinterpret_cast<mlir::RewritePatternSet*>(patterns_ptr);
+}
 
 extern "C" {
 
@@ -285,6 +308,10 @@ void registerIRRewriterBaseBindings() {
                    (void*)::mlir_ir_rewriter_base_clone_with_types);
   Sregister_symbol("mlir_ir_rewriter_base_create_from_state",
                    (void*)::mlir_ir_rewriter_base_create_from_state);
+  Sregister_symbol("mlir::RewritePatternSet::RewritePatternSet",
+                   (void*)::mlir_ir_pattern_match_rewrite_pattern_set_create);
+  Sregister_symbol("mlir::RewritePatternSet::~RewritePatternSet",
+                   (void*)::mlir_ir_pattern_match_rewrite_pattern_set_destroy);
 }
 
 } // namespace crest

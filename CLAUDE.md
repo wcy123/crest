@@ -142,6 +142,55 @@ Exception: functions declared in shared headers (e.g. `Logging.h` declares
 by definition. Functions only called within a single TU (the common case)
 must be `static`. `scheme_error` helpers are typically `static` in each file.
 
+## Scheme RAII and Dynamic Parameter Convention
+
+### Rule 9 — RAII macros use `with-<C++ClassName>`
+
+Every RAII macro that manages the lifetime of a specific C++ object is named
+after the C++ class it wraps:
+
+```scheme
+(with-MLIRContext ctx body ...)       ; wraps mlir::MLIRContext*
+(with-TypeConverter (tc) body ...)    ; wraps mlir::TypeConverter
+(with-ConversionTarget (t ctx) body ...) ; wraps mlir::ConversionTarget
+(with-RewritePatternSet (ps ctx) body ...) ; wraps mlir::RewritePatternSet
+(with-RewriterBase (rw loc) body ...) ; installs a mlir::RewriterBase
+(with-OpBuilder block body ...)       ; wraps mlir::OpBuilder
+```
+
+The generic underlying helper that takes an explicit ctor/dtor pair is `with-raii`
+(no C++ class name, because it is class-agnostic).
+
+### Rule 10 — Dynamic parameters use `current-<C++ClassName>`
+
+Every `make-parameter` that holds a pointer to a specific C++ object is named
+`current-<C++ClassName>`:
+
+```scheme
+current-MLIRContext   ; MLIRContext* (mlir/IR/MLIRContext.h)
+current-RewriterBase  ; RewriterBase* (mlir/IR/PatternMatch.h)
+current-OpBuilder     ; OpBuilder*   (mlir/IR/Builders.h)
+current-Location      ; Location     (mlir/IR/Location.h)
+```
+
+The `current-` prefix signals that the binding is a dynamic parameter, not a
+value — analogous to Scheme's `current-input-port`. C++ developers reading
+`(current-MLIRContext)` immediately know which C++ type is involved.
+
+### Rule 11 — RAII module placement follows the C++ header
+
+The RAII macro lives in the same Scheme module that wraps the C++ class:
+
+| Macro | Module | C++ header |
+|---|---|---|
+| `with-MLIRContext` | `(mlir IR MLIRContext)` | `mlir/IR/MLIRContext.h` |
+| `with-RewriterBase` | `(mlir IR PatternMatch)` | `mlir/IR/PatternMatch.h` |
+| `with-RewritePatternSet` | `(mlir IR PatternMatch)` | `mlir/IR/PatternMatch.h` |
+| `with-OpBuilder` | `(mlir IR Builders)` | `mlir/IR/Builders.h` |
+| `with-TypeConverter` | `(mlir Transforms DialectConversion)` | `mlir/Transforms/DialectConversion.h` |
+| `with-ConversionTarget` | `(mlir Transforms DialectConversion)` | `mlir/Transforms/DialectConversion.h` |
+| `with-raii` | `(mlir support RAII)` | no C++ counterpart (generic helper) |
+
 ## Summary checklist for a new binding
 
 - [ ] One `.cpp` file in `lib/Bindings/<Path>/` matching the header path

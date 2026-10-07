@@ -17,7 +17,7 @@
 ;; (mlir IR Value), (mlir IR BuiltinAttributes), and (mlir IR BuiltinTypes):
 ;;   hip-extract-splat-scale         — mlir::DenseElementsAttr::getSplatValue<APFloat>
 ;;   hip-build-init                  — crest::RewriterBase::build "tensor.empty"
-;;   hip-create-requantized-layout-op — mlir-ir-rewriter-base-clone-with-types
+;;   hip-create-requantized-layout-op — crest::RewriterBase::cloneWithTypes
 ;;   hip-extractable-qdq-zeropoint?  — operand count + mlir::DenseElementsAttr::isSplat
 ;;   hip-extract-qdq-zeropoint-i64   — mlir::Operation::getAttrOfType<IntegerAttr> on zp op
 ;;   hip-qdq-value-bits-c            — alias for pure-Scheme hip-qdq-value-bits
@@ -77,7 +77,7 @@
     hip-create-requantized-layout-op)
 
   (import (rnrs)
-          (only (chezscheme) nan? foreign-procedure)
+          (only (chezscheme) nan?)
 
           (only (mlir IR Value)
                 mlir::Value::getDefiningOp
@@ -88,7 +88,7 @@
                 mlir::FloatAttr::getValueAsDouble.f32
                 mlir::DenseElementsAttr::getSplatValue<APFloat>
                 mlir::DenseElementsAttr::getSplatValue<APInt>)
-          (only (mlir core builder) mlir-ir-rewriter-base-create mlir-ir-rewriter-base-clone-with-types)
+          (only (mlir IR PatternMatch) mlir::RewriterBase::create crest::RewriterBase::cloneWithTypes)
           (only (mlir IR BuiltinTypes)
                 mlir::ShapedType::getElementType
                 mlir::IntegerType::getWidth
@@ -96,16 +96,11 @@
                 mlir::RankedTensorType::getRank
                 mlir::RankedTensorType::getShape)
           (only (mlir IR Operation)
+                mlir::Operation::getAttr
                 crest::Operation::getIntegerArrayAttr mlir::OpOperand::get mlir::OpResult::getOwner mlir::Operation::getAttr mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getName mlir::Operation::getNumOperands mlir::Operation::getResult mlir::Operation::hasAttr?)
           )
 
   ;; Local helpers — expressed via explicit builtin-attributes functions.
-
-  ;; Private: fetch a named attr uptr from an op (0 if absent).
-  (define %op-get-attr
-    (foreign-procedure "mlir_operation_get_attribute" (uptr string) uptr))
-
-
 
 
   ;;===--------------------------------------------------------------------===;;
@@ -224,7 +219,7 @@
   ;;   epsilon = 0, axis = last dimension, scale ≈ 1/sqrt(N) in float.
   ;; Mirrors hip_is_l2_equiv_rms_norm in Hip.cpp.
   (define (hip-l2-equiv-rms-norm? op)
-    (let ([eps  (let ([a (%op-get-attr op "epsilon")])
+    (let ([eps  (let ([a (mlir::Operation::getAttr op "epsilon")])
                   (if (zero? a) +nan.0 (mlir::FloatAttr::getValueAsDouble.f32 a)))]
           [axis (mlir::Operation::getAttrOfType<IntegerAttr> op "axis" -999)])
       (and
@@ -343,18 +338,18 @@
   ;;===--------------------------------------------------------------------===;;
 
   ;; Build a tensor.empty whose result type is out-type.
-  ;; Uses mlir-ir-rewriter-base-create directly with the provided rewriter uptr so this works
-  ;; both inside and outside the with-rewrite-builder context (e.g. :then-let).
+  ;; Uses mlir::RewriterBase::create directly with the provided rewriter uptr so this works
+  ;; both inside and outside the with-RewriterBase context (e.g. :then-let).
   ;; The loc-op anchor is the defining op of shape-source.
   ;; Returns result Value (index 0) of the new tensor.empty op.
   (define (hip-build-init rewriter out-type shape-source)
     (let ([loc-op (mlir::Value::getDefiningOp shape-source)])
       (mlir::Operation::getResult
-       (mlir-ir-rewriter-base-create rewriter loc-op "tensor.empty" '() (list out-type))
+       (mlir::RewriterBase::create rewriter loc-op "tensor.empty" '() (list out-type))
        0)))
 
   ;;===--------------------------------------------------------------------===;;
-  ;; Requantized layout op — pure Scheme via mlir-ir-rewriter-base-clone-with-types
+  ;; Requantized layout op — pure Scheme via crest::RewriterBase::cloneWithTypes
   ;;===--------------------------------------------------------------------===;;
 
   ;; Clone layout-op substituting the quantized output type from q-op.
@@ -377,8 +372,8 @@
            ;; Build a new tensor.empty for the init when needed.
            [new-init  (if has-ctx?
                           (mlir::Operation::getResult
-                           (mlir-ir-rewriter-base-create rewriter layout-op
-                                                         "tensor.empty" '() (list q-type))
+                           (mlir::RewriterBase::create rewriter layout-op
+                                                       "tensor.empty" '() (list q-type))
                            0)
                           0)]
            ;; Rebuild operand list: replace dq-result with dq-input, and replace
@@ -393,8 +388,8 @@
                                            [(= i init-idx)  new-init]
                                            [else v])
                                           acc)))))]
-           [new-op    (mlir-ir-rewriter-base-clone-with-types rewriter layout-op
-                                                              operands (list q-type))])
+           [new-op    (crest::RewriterBase::cloneWithTypes rewriter layout-op
+                                                           operands (list q-type))])
       (mlir::Operation::getResult new-op 0)))
 
   ) ;; end library (passes hip-fusion fusion)
