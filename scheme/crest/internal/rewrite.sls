@@ -92,6 +92,7 @@
       [(i64-array :i64-array)   (mlir::DenseI64ArrayAttr::get val)]
       [(i64 :i64)               (mlir::IntegerAttr::get<i64> val)]
       [(f32 :f32)               (mlir::FloatAttr::get<f32> val)]
+      [(unit :unit)             (mlir::UnitAttr::get)]
       [else (error '%make-attr-by-type "unknown attr type in rewrite DSL" type)]))
 
   ;;===--------------------------------------------------------------------===;;

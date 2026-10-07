@@ -102,6 +102,7 @@
 ;;   ("name" = val :index)     — IntegerAttr (IndexType)
 ;;   ("name" = val :i32-array) — DenseI32ArrayAttr
 ;;   ("name" = val :i64-array) — DenseI64ArrayAttr
+;;   ("name" = _   :unit)      — UnitAttr (presence-only flag; val is ignored)
 ;;   ("name" = val)            — val is a pre-built Attribute uptr
 ;;   (^bb0 ((arg : !type) ...) body ...)  — inline region block
 ;;

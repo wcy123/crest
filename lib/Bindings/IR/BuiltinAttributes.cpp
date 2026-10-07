@@ -320,6 +320,12 @@ mlir_ir_builtin_attributes_dense_i32_array_attr_to_list(uint64_t attr_ptr) {
   return result;
 }
 
+static uint64_t mlir_ir_builtin_attributes_unit_attr_get(uint64_t ctx_ptr) {
+  auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+  return reinterpret_cast<uint64_t>(
+      mlir::UnitAttr::get(ctx).getAsOpaquePointer());
+}
+
 } // extern "C"
 
 namespace crest {
@@ -377,6 +383,8 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::DenseI32ArrayAttr::asArrayRef->list",
       (void*)::mlir_ir_builtin_attributes_dense_i32_array_attr_to_list);
+  Sregister_symbol("mlir::UnitAttr::get",
+                   (void*)::mlir_ir_builtin_attributes_unit_attr_get);
   // Old-name aliases removed: (mlir core attribute) dynamic dispatch deleted.
 }
 

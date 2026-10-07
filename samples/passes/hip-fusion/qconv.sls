@@ -22,13 +22,12 @@
           (only (mlir IR Value)
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
-          (only (mlir IR PatternMatch) mlir-create-operation)
           (mlir Transforms DialectConversion)
           (passes hip-fusion fusion)
           (crest)
           (passes hip-fusion helpers)
-          (only (mlir IR Operation)
-                crest::Operation::setF32Attr crest::Operation::setI64Attr crest::Operation::setUnitAttr mlir::Operation::getResult)
+          (only (mlir IR Value) mlir::Value::getDefiningOp)
+          (only (mlir IR Operation) crest::Operation::setUnitAttr)
           )
 
   (define-rewrite-pattern (hip-qconv-fusion op rewriter)
@@ -62,20 +61,22 @@
        [out-zp    (hip-extract-qdq-zeropoint-i64 op 0)]
        [%init     (hip-build-init rewriter !out-type %conv_init)])
     :rewrite %q :with
-      (%result = (let ([new-op (mlir-create-operation rewriter "hip.qconv"
-                                                      (list %ctx %input %weights %w_scales %w_zps %init)
-                                                      (list !out-type))])
-                   (crest::Operation::setF32Attr new-op "input_scale"   in-scale)
-                   (crest::Operation::setI64Attr new-op "input_zp"      in-zp)
-                   (crest::Operation::setF32Attr new-op "output_scale"  out-scale)
-                   (crest::Operation::setI64Attr new-op "output_zp"     out-zp)
-                   (crest::Operation::setI64Attr new-op "weight_axis"   0)
+      (%qconv-result = hip.qconv (%ctx %input %weights %w_scales %w_zps %init)
+                     ("input_scale"  = in-scale  :f32)
+                     ("input_zp"     = in-zp     :i64)
+                     ("output_scale" = out-scale :f32)
+                     ("output_zp"    = out-zp    :i64)
+                     ("weight_axis"  = 0         :i64)
+                     ("group"        = 1         :i64)
+                     -> !out-type)
+      (%result = (let ([new-op (mlir::Value::getDefiningOp %qconv-result)])
+                   ;; kernel_shape/strides/pads/dilations use ArrayAttr<IntegerAttr>
+                   ;; not DenseI64ArrayAttr — must use setI64ArrayAttr helper
                    (mlir-operation-set-i64-array-attr! new-op "kernel_shape" '(1 1))
                    (mlir-operation-set-i64-array-attr! new-op "strides"      '(1 1))
                    (mlir-operation-set-i64-array-attr! new-op "pads"         '(0 0 0 0))
                    (mlir-operation-set-i64-array-attr! new-op "dilations"    '(1 1))
-                   (crest::Operation::setI64Attr new-op "group"          1)
                    (crest::Operation::setUnitAttr new-op "packed_int4")
-                   (mlir::Operation::getResult new-op 0))))
+                   %qconv-result)))
 
   ) ;; end library (passes hip-fusion qconv)
