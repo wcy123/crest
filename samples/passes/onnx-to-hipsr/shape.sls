@@ -25,7 +25,6 @@
           (only (mlir IR BuiltinAttributes)
                 mlir::IntegerAttr::get<index>
                 mlir::IntegerAttr::get<i64>)
-          (only (mlir IR PatternMatch) mlir-create-operation)
           (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
           (only (mlir Dialect Shape IR Shape)
@@ -36,7 +35,7 @@
           (rename (rime loop) (:with :rime-with))
           (crest)
           (only (mlir IR Operation)
-                mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getContext mlir::Operation::getResult mlir::Operation::setAttr!)
+                mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getContext)
 
           (only (mlir IR BuiltinTypes)
                 mlir::IndexType::get
@@ -64,31 +63,18 @@
       (if (>= axis end)
           acc
           (let* ([dim (list-ref input-shape axis)]
-                 ;; extent: arith.constant (static) or tensor.dim + index_cast (dynamic)
+                 ;; extent: arith.constant i64 (static) or tensor.dim → index_cast (dynamic)
                  [ext (if (dynamic-dim? dim)
-                          (let* ([ci-op (mlir-create-operation builder "arith.constant"
-                                                               '() (list index-type))]
-                                 [_     (mlir::Operation::setAttr! ci-op "value" (mlir::IntegerAttr::get<index> axis))]
-                                 [ci    (mlir::Operation::getResult ci-op 0)]
-                                 [d-op  (mlir-create-operation builder "tensor.dim"
-                                                               (list in-val ci) (list index-type))]
-                                 [d     (mlir::Operation::getResult d-op 0)]
-                                 [e-op  (mlir-create-operation builder "arith.index_cast"
-                                                               (list d) (list i64-type))])
-                            (mlir::Operation::getResult e-op 0))
-                          (let* ([e-op (mlir-create-operation builder "arith.constant"
-                                                              '() (list i64-type))]
-                                 [_    (mlir::Operation::setAttr! e-op "value" (mlir::IntegerAttr::get<i64> dim))])
-                            (mlir::Operation::getResult e-op 0)))]
-                 ;; slot constant (= axis - start within the output tensor)
-                 [slot-op (mlir-create-operation builder "arith.constant"
-                                                 '() (list index-type))]
-                 [_       (mlir::Operation::setAttr! slot-op "value" (mlir::IntegerAttr::get<index> slot))]
-                 [slot-c  (mlir::Operation::getResult slot-op 0)]
-                 ;; tensor.insert %ext into %acc[%slot-c]
-                 [ins-op  (mlir-create-operation builder "tensor.insert"
-                                                 (list ext acc slot-c) (list out-host-type))]
-                 [ins     (mlir::Operation::getResult ins-op 0)])
+                          (begin-mlir-code (:builder builder)
+                                           (%ci = arith.constant () ("value" = axis :index) -> index-type)
+                                           (%d  = tensor.dim (in-val %ci) -> index-type)
+                                           (%e  = arith.index_cast (%d) -> i64-type))
+                          (begin-mlir-code (:builder builder)
+                                           (%e  = arith.constant () ("value" = dim :i64) -> i64-type)))]
+                 ;; slot constant + tensor.insert
+                 [ins (begin-mlir-code (:builder builder)
+                                       (%slot-c = arith.constant () ("value" = slot :index) -> index-type)
+                                       (%ins    = tensor.insert (ext acc %slot-c) -> out-host-type))])
             (loop (+ axis 1) (+ slot 1) ins)))))
 
   (define-conversion-pattern (onnx-shape->hipsr op operands-ref rewriter type-converter)

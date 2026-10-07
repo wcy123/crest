@@ -25,7 +25,6 @@
                 mlir::Value::getType)
           (only (mlir IR BuiltinAttributes)
                 mlir::IntegerAttr::get<index>)
-          (only (mlir IR PatternMatch) mlir-create-operation)
           (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
           (mlir Dialect Tensor IR)
@@ -42,21 +41,15 @@
                 mlir::RankedTensorType::getRank))
 
   ;; Build the permuted output shape inside a region block.
-  ;; Uses mlir-create-operation — must be called inside with-current-OpBuilder.
   ;; Returns the output !shape.shape value.
   (define (build-permuted-shape! builder perm input-shape shape-type size-type)
-    (let* ([extents
-            (map (lambda (p)
-                   (let* ([sz-op (mlir-create-operation builder "shape.const_size" '() (list size-type))])
-                     (mlir::Operation::setAttr! sz-op "value" (mlir::IntegerAttr::get<index> p))
-                     (let* ([ext-op (mlir-create-operation builder "shape.get_extent"
-                                                           (list input-shape
-                                                                 (mlir::Operation::getResult sz-op 0))
-                                                           (list size-type))])
-                       (mlir::Operation::getResult ext-op 0))))
-                 perm)]
-           [out-op (mlir-create-operation builder "shape.from_extents" extents (list shape-type))])
-      (mlir::Operation::getResult out-op 0)))
+    (let ([extents (map (lambda (p)
+                          (begin-mlir-code (:builder builder)
+                                           (%sz  = shape.const_size () ("value" = p :index) -> size-type)
+                                           (%ext = shape.get_extent (input-shape %sz) -> size-type)))
+                        perm)])
+      (begin-mlir-code (:builder builder)
+                       (%out = shape.from_extents (,@extents) -> shape-type))))
 
   (define-conversion-pattern (onnx-transpose->hipsr op operands-ref rewriter type-converter)
     :if-match
