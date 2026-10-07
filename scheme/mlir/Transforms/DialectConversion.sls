@@ -21,8 +21,8 @@
     type-converter-create
     type-converter-destroy
     type-converter-add-conversion
-    type-converter-add-source-materialization
-    type-converter-add-target-materialization
+    mlir::TypeConverter::addSourceMaterialization
+    mlir::TypeConverter::addTargetMaterialization
     type-converter-is-legal-type
     type-converter-is-legal
     type-converter-is-signature-legal
@@ -84,8 +84,8 @@
   ;;                    -> value-uptr | #f)
   ;; @see   mlir/Transforms/DialectConversion.h
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
-  (define type-converter-add-source-materialization
-    %type-converter-add-source-materialization)
+  (define mlir::TypeConverter::addSourceMaterialization
+    %mlir::TypeConverter::addSourceMaterialization)
 
   ;; @brief TypeConverter::addTargetMaterialization — register a Scheme callback
   ;;        to produce a tarmlir::Value::getType value from an unconverted one.
@@ -95,8 +95,8 @@
   ;;                    -> value-uptr | #f)
   ;; @see   mlir/Transforms/DialectConversion.h
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
-  (define type-converter-add-target-materialization
-    %type-converter-add-target-materialization)
+  (define mlir::TypeConverter::addTargetMaterialization
+    %mlir::TypeConverter::addTargetMaterialization)
 
   ;; @brief TypeConverter::isLegal(Type) — test whether a single MLIR type is
   ;;        legal under this converter.
