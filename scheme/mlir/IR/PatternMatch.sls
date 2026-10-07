@@ -13,8 +13,8 @@
 ;; Also provides RAII macros for builder context.
 ;;
 ;; Builder threading: the RewriterBase* is passed explicitly to
-;; mlir-create-operation. The builder manages its own insertion point;
-;; with-RewriterBase calls setInsertionPoint once at install.
+;; mlir-create-operation. Insertion point is set by the caller via
+;; mlir::RewriterBase::setInsertionPoint before emitting ops.
 ;;
 ;;===----------------------------------------------------------------------===;;
 
@@ -30,10 +30,7 @@
     mlir::RewriterBase::eraseOp
     ;; RAII macros
     with-raii
-    with-RewritePatternSet
-    with-RewriterBase
-    with-current-OpBuilder
-    with-OpBuilder)
+    with-RewritePatternSet)
 
   (import (rnrs)
           (only (mlir support RAII) with-raii)
@@ -49,10 +46,7 @@
                 %mlir::RewritePatternSet::RewritePatternSet
                 %mlir::RewritePatternSet::~RewritePatternSet)
           (only (mlir IR Builders ffi)
-                %mlir::OpBuilder::atBlockEnd
-                %mlir::OpBuilder::~OpBuilder
-                %mlir::OpBuilder::create<OperationState>
-                %mlir::OpBuilder::getContext)
+                %mlir::OpBuilder::create<OperationState>)
           (only (mlir IR MLIRContext) current-MLIRContext)
           (only (mlir IR Location) mlir::UnknownLoc::get)
           (only (mlir IR Operation)
@@ -130,41 +124,6 @@
         (build rw name operands types (mlir::UnknownLoc::get) nregions)]
        [(rw name operands types source-loc nregions)
         (build rw name operands types source-loc nregions)])))
-
-  ;; @brief with-RewriterBase — install a RewriterBase and set its initial insertion point.
-  ;; @param rw           RewriterBase* uptr (ConversionPatternRewriter or IRRewriter)
-  ;; @param insert-point Operation* uptr — setInsertionPoint is called once here.
-  ;;        The builder advances its own position after each create().
-  (define-syntax with-RewriterBase
-    (syntax-rules ()
-      [(_ (rw insert-point) body ...)
-       (begin
-         (mlir::RewriterBase::setInsertionPoint rw insert-point)
-         (parameterize ([current-MLIRContext (mlir-Operation::getContext insert-point)])
-           body ...))]))
-
-  ;; @brief with-current-OpBuilder — install an existing OpBuilder*.
-  ;; @param builder      OpBuilder* uptr — already positioned by caller
-  ;; @param insert-point Operation* uptr — used only to derive current-MLIRContext
-  (define-syntax with-current-OpBuilder
-    (syntax-rules ()
-      [(_ (builder insert-point) body ...)
-       (parameterize ([current-MLIRContext (mlir-Operation::getContext insert-point)])
-         body ...)]))
-
-  ;; @brief with-OpBuilder — heap-allocate an OpBuilder at block end, run body, destroy.
-  ;; @param block  Block* uptr — the builder is positioned at block->end() on creation
-  ;; Note: the OpBuilder is exposed as %builder within body for explicit threading.
-  (define-syntax with-OpBuilder
-    (syntax-rules ()
-      [(_ block body ...)
-       (let ([%builder (%mlir::OpBuilder::atBlockEnd block)])
-         (dynamic-wind
-             (lambda () #f)
-             (lambda ()
-               (parameterize ([current-MLIRContext (%mlir::OpBuilder::getContext %builder)])
-                 body ...))
-             (lambda () (%mlir::OpBuilder::~OpBuilder %builder))))]))
 
   ;; @brief with-RewritePatternSet — RAII for a heap-allocated RewritePatternSet.
   (define-syntax with-RewritePatternSet

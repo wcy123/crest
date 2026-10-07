@@ -17,7 +17,8 @@
           (for (crest internal validate) expand)
           (for (crest internal analyze) expand)
           (for (only (mlir IR PatternMatch)
-                     with-RewriterBase mlir::RewriterBase::replaceOp) expand)
+                     mlir::RewriterBase::setInsertionPoint
+                     mlir::RewriterBase::replaceOp) expand)
           (for (rename (only (mlir IR Operation)
                              mlir::Operation::getContext
                              mlir::Operation::getNumResults
@@ -175,12 +176,13 @@
                                               (call-with-string-output-port
                                                (lambda (p) (display-condition exn p))))
                             #f])
-                 (with-RewriterBase (#,rw #,op)
-                                    (let ([result (begin-mlir-code (:rewriter #,rw) form ...)])
-                                      ;; result is a Value* uptr on success, or #f to signal failure.
-                                      (if result
-                                          (begin (mlir::RewriterBase::replaceOp #,rw #,op result) #t)
-                                          #f))))]))))
+                 (begin
+                   (mlir::RewriterBase::setInsertionPoint #,rw #,op)
+                   (let ([result (begin-mlir-code (:rewriter #,rw) form ...)])
+                     ;; result is a Value* uptr on success, or #f to signal failure.
+                     (if result
+                         (begin (mlir::RewriterBase::replaceOp #,rw #,op result) #t)
+                         #f))))]))))
 
   ;;=======================================================================
   ;; :then-let bindings
