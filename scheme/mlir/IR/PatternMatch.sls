@@ -45,6 +45,9 @@
           (only (chezscheme) make-parameter parameterize void)
           (mlir IR PatternMatch ffi)
           (mlir IR Builders ffi)
+          (only (mlir IR Builders)
+                mlir::OpBuilder::create
+                mlir::OpBuilder::create-with-regions)
           (only (mlir IR MLIRContext) current-MLIRContext)
           (only (mlir IR Operation) mlir::Operation::getContext))
 
@@ -155,18 +158,20 @@
                          [(current-RewriterBase) =>
                           (lambda (rw)
                             (if (zero? nregions)
-                                (%mlir::RewriterBase::create rw loc name operands types)
-                                (%mlir::RewriterBase::create-with-regions rw loc name operands types nregions)))]
+                                (mlir::RewriterBase::create rw loc name operands types)
+                                (mlir::RewriterBase::create-with-regions rw loc name operands types nregions)))]
                          [(current-OpBuilder) =>
                           (lambda (b)
                             (if (zero? nregions)
-                                (%mlir::OpBuilder::create b loc name operands types)
-                                (%mlir::OpBuilder::create-with-regions b loc name operands types nregions)))]
+                                (mlir::OpBuilder::create b loc name operands types)
+                                (mlir::OpBuilder::create-with-regions b loc name operands types nregions)))]
                          [else (error 'mlir-build-operation "no current builder installed")]))]
           [default-nregions 0])
       (case-lambda
        [(name operands types)
         (build name operands types (current-Location) default-nregions)]
+       [(name operands types nregions)
+        (build name operands types (current-Location) nregions)]
        [(name operands types loc nregions)
         (build name operands types loc nregions)])))
 
