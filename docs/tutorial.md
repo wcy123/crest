@@ -18,25 +18,26 @@ Wang Chunye · AMD Research · 2026
 
 ---
 
+<!-- _style: "pre { font-size: 0.58em; } code { font-size: 0.62em; } p { margin: 0.2em 0; }" -->
+
 ## What is CREST?
 
-**CREST** is a Scheme-hosted MLIR pass framework. You write patterns in Scheme; CREST generates the C++ `matchAndRewrite` callback.
+**CREST** — Scheme-hosted MLIR pass framework. Write patterns in Scheme; CREST generates `matchAndRewrite`.
 
-<div class="cols" style="grid-template-columns:1fr 1fr 1fr">
+<div class="cols" style="grid-template-columns:1fr 1fr 1fr; gap:0.6em">
 
 **Greedy rewrite**
 ```scheme
-(define-rewrite-pattern
-  (name op rw)
+(define-rewrite-pattern (name op rw)
   :if-match
-    %r = dialect.op (...)
+    %r = dialect.op (%a)
       :where guard?
-    %dep = other.op (...)
+    %d = other.op   (%b)
   :then-let
     ([!ty (get-type %r)]
-     [v   (analyze %dep)])
+     [v   (analyze  %d)])
   :rewrite %r :with
-    (%new = new.op (...)
+    (%new = new.op (%a)
            ("attr" = v :f32)
            -> !ty))
 ```
@@ -44,39 +45,36 @@ Wang Chunye · AMD Research · 2026
 **Dialect conversion**
 ```scheme
 (define-conversion-pattern
-  (name op operands rw tc)
+    (name op operands rw tc)
   :if-match
     %r = onnx.Op (%a %b)
   :then-let
-    ([!ty  (get-type %r)]
-     [rank (get-rank %a)])
+    ([!ty (get-type %r)])
   :rewrite %r :with
-    (%ph = hipsr.placeholder
-           (%ctx %a %b)
-           (^bb0 (...) ...)
+    (%ph = new.placeholder (%ctx %a)
+           (^bb0 ((%s : !sh))
+                 (new.yield (%s)))
            -> !ty)
-    (%res = hipsr.op
-            (%ctx %a %b %ph)
-            -> !ty))
+    (%r2 = new.op (%ctx %a %ph)
+           -> !ty))
 ```
 
 **Inline op emission**
 ```scheme
-(begin-mlir-code
-  (:rewriter rw)
+;; Inside :rewrite :with
+;; or standalone helper:
 
-  (%r = dialect.op
-        (%a %b)
-        ("scale" = s :f32)
-        ("axis"  = 1 :i64)
-        -> !ty))
+(begin-mlir-code (:rewriter rw)
+  (%r = dialect.op (%a %b)
+       ("scale" = s :f32)
+       ("axis"  = 1 :i64)
+       -> !ty))
 
-;; Inside ^bb0 blocks:
-(begin-mlir-code
-  (:builder %block-builder)
+;; Inside a ^bb0 block:
+(begin-mlir-code (:builder b)
   (%c = arith.constant ()
-        ("value" = 0 :i64)
-        -> i64))
+       ("value" = 0 :i64)
+       -> i64))
 ```
 
 </div>
