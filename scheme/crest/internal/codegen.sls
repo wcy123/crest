@@ -176,7 +176,7 @@
                                                (lambda (p) (display-condition exn p))))
                             #f])
                  (with-RewriterBase (#,rw #,op)
-                                    (let ([result (with-mlir-ops form ...)])
+                                    (let ([result (with-mlir-ops #,rw form ...)])
                                       ;; result is a Value* uptr on success, or #f to signal failure.
                                       (if result
                                           (begin (mlir::RewriterBase::replaceOp #,rw #,op result) #t)

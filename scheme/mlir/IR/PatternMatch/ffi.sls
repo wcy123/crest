@@ -23,9 +23,9 @@
     %mlir::RewriterBase::createBlock
     %mlir::RewriterBase::replaceOp
     %mlir::RewriterBase::eraseOp
+    %mlir::RewriterBase::create<OperationState>
     %mlir::RewritePatternSet::RewritePatternSet
-    %mlir::RewritePatternSet::~RewritePatternSet
-    %mlir::RewriterBase::create<OperationState>)
+    %mlir::RewritePatternSet::~RewritePatternSet)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::RewriterBase::setInsertionPoint(op) — move the rewriter's insertion point to before op.
@@ -85,13 +85,14 @@
                        (uptr uptr) int))
 
   ;; @brief Create an op from a prepared OperationState via a RewriterBase.
-  ;; @param rewriter    RewriterBase* uptr
-  ;; @param state       OperationState* uptr — ownership NOT transferred; caller must destroy
-  ;; @return            Operation* uptr of the created op, or 0 on bad input
-  ;; @see               mlir/IR/PatternMatch.h, mlir/IR/OperationSupport.h
-  ;; @note              Defined in lib/Bindings/IR/RewriterBase.cpp
+  ;; @brief mlir::RewriterBase::create<OperationState> — create op via a RewriterBase.
+  ;; Use this (not %mlir::OpBuilder::create<OperationState>) when the builder is a
+  ;; RewriterBase* — ConversionPatternRewriter has rewriter-specific listener semantics.
+  ;; @param rewriter  RewriterBase* uptr
+  ;; @param state     OperationState* uptr — ownership NOT transferred
+  ;; @return          Operation* uptr
   (define %mlir::RewriterBase::create<OperationState>
-    (foreign-procedure "mlir_ir_rewriter_base_create_from_state" (uptr uptr) uptr))
+    (foreign-procedure "mlir::RewriterBase::create<OperationState>" (uptr uptr) uptr))
 
   ;; @brief mlir::RewritePatternSet::RewritePatternSet — heap-allocate a pattern set.
   ;; @param ctx  MLIRContext* uptr

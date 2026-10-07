@@ -54,24 +54,24 @@
   ;;   leading, _ = split_at(data_shape, axis)
   ;;   _, trailing = split_at(data_shape, axis+1)
   ;;   result = concat(concat(leading, indices_shape), trailing)
-  (define (build-gather-shape! axis data-shape idx-shape shape-type size-type)
+  (define (build-gather-shape! builder axis data-shape idx-shape shape-type size-type)
     (define (mk-sz n)
-      (let ([op (mlir-build-operation "shape.const_size" '() (list size-type))])
+      (let ([op (mlir-build-operation builder "shape.const_size" '() (list size-type))])
         (mlir::Operation::setAttr! op "value" (mlir::IntegerAttr::get<index> n))
         (mlir::Operation::getResult op 0)))
     (let* ([sz1      (mk-sz axis)]
-           [sp1      (mlir-build-operation "shape.split_at"
+           [sp1      (mlir-build-operation builder "shape.split_at"
                                            (list data-shape sz1) (list shape-type shape-type))]
            [leading  (mlir::Operation::getResult sp1 0)]
            [sz2      (mk-sz (+ axis 1))]
-           [sp2      (mlir-build-operation "shape.split_at"
+           [sp2      (mlir-build-operation builder "shape.split_at"
                                            (list data-shape sz2) (list shape-type shape-type))]
            [trailing (mlir::Operation::getResult sp2 1)]
-           [gathered-op (mlir-build-operation "shape.concat"
+           [gathered-op (mlir-build-operation builder "shape.concat"
                                               (list leading idx-shape) (list shape-type))]
            [gathered    (mlir::Operation::getResult gathered-op 0)])
       (mlir::Operation::getResult
-       (mlir-build-operation "shape.concat"
+       (mlir-build-operation builder "shape.concat"
                              (list gathered trailing) (list shape-type))
        0)))
 
@@ -100,7 +100,7 @@
       (%placeholder = "hipsr.placeholder" (%ctx %data %indices !out-device)
                     (^bb0 ((%ds : !shape-type) (%is : !shape-type))
                           (%result-shape = (build-gather-shape!
-                                            axis %ds %is !shape-type !size-type))
+                                            %block-builder axis %ds %is !shape-type !size-type))
                           ("hipsr.shape_yield" (%result-shape)))
                     -> !out-device)
       (%result = hipsr.gather (%ctx %data %indices %placeholder)

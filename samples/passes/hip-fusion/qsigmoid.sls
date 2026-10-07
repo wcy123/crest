@@ -56,7 +56,7 @@
        [out-zp    (hip-extract-qdq-zeropoint-i64 op 0)]
        [%init     (hip-build-init rewriter !out-type %sigmoid_init)])
     :rewrite %q :with
-      (%result = (let ([new-op (mlir-build-operation "hip.qsigmoid"
+      (%result = (let ([new-op (mlir-build-operation rewriter "hip.qsigmoid"
                                                      (list %ctx %input %init)
                                                      (list !out-type))])
                    (set-qdq-in-out-attrs! new-op in-scale in-zp out-scale out-zp)

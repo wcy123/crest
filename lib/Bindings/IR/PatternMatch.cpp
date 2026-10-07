@@ -122,19 +122,18 @@ static int mlir_ir_rewriter_base_erase_op(uint64_t rewriter_ptr,
 }
 
 // Create an op from a prepared OperationState via a RewriterBase.
-// Ownership of the OperationState is NOT transferred — caller must still
-// destroy it with mlir_ir_operation_state_destroy.
-// rw_ptr:     RewriterBase* as uptr
-// state_ptr:  OperationState* as uptr
-// Returns: Operation* as uptr, or 0 on bad input.
+// RewriterBase IS an OpBuilder but has its own create semantics (listener
+// notifications for ConversionPatternRewriter). Use this binding when the
+// caller holds a RewriterBase* — not mlir_ir_op_builder_create_from_state
+// which casts to OpBuilder* and may bypass rewriter-specific behavior.
 static uint64_t mlir_ir_rewriter_base_create_from_state(uint64_t rw_ptr,
                                                         uint64_t state_ptr) {
   if (!rw_ptr) {
-    scheme_error("mlir-ir-rewriter-base-create-from-state",
+    scheme_error("mlir::RewriterBase::create<OperationState>",
                  "null rewriter pointer");
   }
   if (!state_ptr) {
-    scheme_error("mlir-ir-rewriter-base-create-from-state",
+    scheme_error("mlir::RewriterBase::create<OperationState>",
                  "null state pointer");
   }
   return reinterpret_cast<uint64_t>(
@@ -162,7 +161,7 @@ void registerIRRewriterBaseBindings() {
   Sregister_symbol("mlir_ir_rewriter_base_erase_op",
                    (void*)::mlir_ir_rewriter_base_erase_op);
 
-  Sregister_symbol("mlir_ir_rewriter_base_create_from_state",
+  Sregister_symbol("mlir::RewriterBase::create<OperationState>",
                    (void*)::mlir_ir_rewriter_base_create_from_state);
   Sregister_symbol("mlir::RewritePatternSet::RewritePatternSet",
                    (void*)::mlir_ir_pattern_match_rewrite_pattern_set_create);

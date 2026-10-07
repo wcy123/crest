@@ -58,7 +58,7 @@
   ;; (static dim as arith.constant i64; dynamic dim via tensor.dim + index_cast)
   ;; into the destination tensor via tensor.insert. Returns the final tensor Value*.
   ;; Mirrors ShapeConversion.cpp::populateComputeBody.
-  (define (build-compute-body! in-val dest-val input-shape start end
+  (define (build-compute-body! builder in-val dest-val input-shape start end
                                index-type i64-type out-host-type)
     (let loop ([axis start] [slot 0] [acc dest-val])
       (if (>= axis end)
@@ -66,27 +66,27 @@
           (let* ([dim (list-ref input-shape axis)]
                  ;; extent: arith.constant (static) or tensor.dim + index_cast (dynamic)
                  [ext (if (dynamic-dim? dim)
-                          (let* ([ci-op (mlir-build-operation "arith.constant"
+                          (let* ([ci-op (mlir-build-operation builder "arith.constant"
                                                               '() (list index-type))]
                                  [_     (mlir::Operation::setAttr! ci-op "value" (mlir::IntegerAttr::get<index> axis))]
                                  [ci    (mlir::Operation::getResult ci-op 0)]
-                                 [d-op  (mlir-build-operation "tensor.dim"
+                                 [d-op  (mlir-build-operation builder "tensor.dim"
                                                               (list in-val ci) (list index-type))]
                                  [d     (mlir::Operation::getResult d-op 0)]
-                                 [e-op  (mlir-build-operation "arith.index_cast"
+                                 [e-op  (mlir-build-operation builder "arith.index_cast"
                                                               (list d) (list i64-type))])
                             (mlir::Operation::getResult e-op 0))
-                          (let* ([e-op (mlir-build-operation "arith.constant"
+                          (let* ([e-op (mlir-build-operation builder "arith.constant"
                                                              '() (list i64-type))]
                                  [_    (mlir::Operation::setAttr! e-op "value" (mlir::IntegerAttr::get<i64> dim))])
                             (mlir::Operation::getResult e-op 0)))]
                  ;; slot constant (= axis - start within the output tensor)
-                 [slot-op (mlir-build-operation "arith.constant"
+                 [slot-op (mlir-build-operation builder "arith.constant"
                                                 '() (list index-type))]
                  [_       (mlir::Operation::setAttr! slot-op "value" (mlir::IntegerAttr::get<index> slot))]
                  [slot-c  (mlir::Operation::getResult slot-op 0)]
                  ;; tensor.insert %ext into %acc[%slot-c]
-                 [ins-op  (mlir-build-operation "tensor.insert"
+                 [ins-op  (mlir-build-operation builder "tensor.insert"
                                                 (list ext acc slot-c) (list out-host-type))]
                  [ins     (mlir::Operation::getResult ins-op 0)])
             (loop (+ axis 1) (+ slot 1) ins)))))
@@ -130,7 +130,7 @@
                (operandSegmentSizes = (list 1 1 1) :i32-array)
                (^bb0 ((%c : !ctx-type) (%in : !input-type) (%dest : !out-host))
                      (%final = (build-compute-body!
-                                %in %dest input-shape start end
+                                %block-builder %in %dest input-shape start end
                                 !index-type !i64-type !out-host))
                      (hipsr.compute_yield (%final)))
                -> !out-host))

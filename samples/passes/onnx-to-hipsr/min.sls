@@ -66,13 +66,13 @@
     (let ([!shape-type (mlir::shape::ShapeType::get)])
       (mlir::RewriterBase::setInsertionPoint rewriter loc-op)
       (with-RewriterBase (rewriter loc-op)
-                         (with-mlir-ops
-                          (%ph = hipsr.placeholder (ctx lhs rhs)
-                               (^bb0 ((%ls : !shape-type) (%rs : !shape-type))
-                                     (%bc = shape.broadcast (%ls %rs) -> !shape-type)
-                                     (hipsr.shape_yield (%bc)))
-                               -> out-type)
-                          (%r = hipsr.min (ctx lhs rhs %ph) -> out-type)))))
+                         (with-mlir-ops rewriter
+                                        (%ph = hipsr.placeholder (ctx lhs rhs)
+                                             (^bb0 ((%ls : !shape-type) (%rs : !shape-type))
+                                                   (%bc = shape.broadcast (%ls %rs) -> !shape-type)
+                                                   (hipsr.shape_yield (%bc)))
+                                             -> out-type)
+                                        (%r = hipsr.min (ctx lhs rhs %ph) -> out-type)))))
 
   (define (onnx-min-general->hipsr op operands-ref rewriter type-converter)
     (let ([n (array-ref-size operands-ref)])
