@@ -150,34 +150,32 @@
       ;;-------------------------------------------------------------------
 
       ;; Parse one op-form; return a flat list of (var . expr) pairs.
-      ;; source-stx is the original pre-normalization syntax used for source location.
-      (define (process-op op-stx index . source-stx-opt)
-        (let ([source-stx (if (null? source-stx-opt) op-stx (car source-stx-opt))])
-          (syntax-case op-stx (= ->)
-            ;; Scheme escape
-            [(var = expr)
-             (and (identifier? #'var) (not (op-name? #'expr)))
-             (list (cons #'var #'expr))]
-            ;; Single-result: normalize but thread source-stx so annotation survives.
-            [(var = op (operands ...) modifiers ... -> result-type)
-             (and (identifier? #'var) (op-name? #'op))
-             (process-op #'((var) = op (operands ...) modifiers ... -> (result-type)) index source-stx)]
-            ;; Multi-result (and normalized single): result vars and result types are lists
-            [((var ...) = op (operands ...) modifiers ... -> (result-type ...))
-             (and (op-name? #'op)
-                  (for-all identifier? (syntax->list #'(var ...)))
-                  (eqv? (length (syntax->list #'(var ...)))
-                        (length (syntax->list #'(result-type ...)))))
-             (let-values ([(attr-setter-fns region-fill-fns) (parse-modifiers #'(modifiers ...))])
-               (emit-multi (syntax->list #'(var ...)) (op-name->str #'op)
-                           (value-operands #'(operands ...))
-                           (syntax->list #'(result-type ...)) attr-setter-fns
-                           region-fill-fns index source-stx))]
-            ;; Statement: no var, no ->. Normalize to (() = op ...) then recurse.
-            [(op (operands ...) modifiers ...)
-             (op-name? #'op)
-             (process-op #'(() = op (operands ...) modifiers ... -> ()) index source-stx)]
-            [_ (syntax-violation 'with-mlir-ops "invalid op form" op-stx)])))
+      (define (process-op op-stx index)
+        (syntax-case op-stx (= ->)
+          ;; Scheme escape
+          [(var = expr)
+           (and (identifier? #'var) (not (op-name? #'expr)))
+           (list (cons #'var #'expr))]
+          ;; Single-result: normalize (var) to ((var)) and result-type to (result-type)
+          [(var = op (operands ...) modifiers ... -> result-type)
+           (and (identifier? #'var) (op-name? #'op))
+           (process-op #'((var) = op (operands ...) modifiers ... -> (result-type)) index)]
+          ;; Multi-result: #'op carries the source annotation of the op name.
+          [((var ...) = op (operands ...) modifiers ... -> (result-type ...))
+           (and (op-name? #'op)
+                (for-all identifier? (syntax->list #'(var ...)))
+                (eqv? (length (syntax->list #'(var ...)))
+                      (length (syntax->list #'(result-type ...)))))
+           (let-values ([(attr-setter-fns region-fill-fns) (parse-modifiers #'(modifiers ...))])
+             (emit-multi (syntax->list #'(var ...)) (op-name->str #'op)
+                         (value-operands #'(operands ...))
+                         (syntax->list #'(result-type ...)) attr-setter-fns
+                         region-fill-fns index #'op))]
+          ;; Statement: no var, no ->.
+          [(op (operands ...) modifiers ...)
+           (op-name? #'op)
+           (process-op #'(() = op (operands ...) modifiers ... -> ()) index)]
+          [_ (syntax-violation 'with-mlir-ops "invalid op form" op-stx)]))
 
       ;;-------------------------------------------------------------------
       ;; Modifier parser
@@ -304,7 +302,7 @@
       ;;   attr-setter-fns  — Scheme list of closures (lambda (new-op-stx) → setter-syntax)
       ;;   region-fill-fns  — Scheme list of closures (lambda (new-op-stx) → fill-stmt-syntax)
       ;;   index            — integer op index, used to generate a unique %op-tmp-N name
-      (define (emit-multi result-vars op-name operands result-types attr-setter-fns region-fill-fns index op-stx)
+      (define (emit-multi result-vars op-name operands result-types attr-setter-fns region-fill-fns index op-name-stx)
         (let* ([nregions  (length region-fill-fns)]
                [new-op-id (car (generate-temporaries '(new-op)))]
                [tmp       (car (generate-temporaries
@@ -316,7 +314,7 @@
                         [(region-fill-stmt ...) (map (lambda (fn) (fn new-op-id)) region-fill-fns)]
                         [nregions nregions])
             (cons (cons #'tmp-var
-                        (with-syntax ([source-loc (syntax->mlir-loc-expr op-stx)])
+                        (with-syntax ([source-loc (syntax->mlir-loc-expr op-name-stx)])
                           #'(let ([new-op (mlir-build-operation name
                                                                 operands-expr (list result-type ...) source-loc nregions)])
                               setter ...
