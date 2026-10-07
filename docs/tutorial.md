@@ -20,25 +20,66 @@ Wang Chunye · AMD Research · 2026
 
 ## What is CREST?
 
-**CREST** is a Scheme-hosted MLIR pass framework.
+**CREST** is a Scheme-hosted MLIR pass framework. You write patterns in Scheme; CREST generates the C++ `matchAndRewrite` callback.
 
-You write rewrite patterns in Scheme; CREST generates the C++ `matchAndRewrite` callback.
+<div class="cols" style="grid-template-columns:1fr 1fr 1fr">
 
+**Greedy rewrite**
+```scheme
+(define-rewrite-pattern
+  (name op rw)
+  :if-match
+    %r = dialect.op (...)
+      :where guard?
+    %dep = other.op (...)
+  :then-let
+    ([!ty (get-type %r)]
+     [v   (analyze %dep)])
+  :rewrite %r :with
+    (%new = new.op (...)
+           ("attr" = v :f32)
+           -> !ty))
 ```
-  MLIR C++ runtime                 Scheme DSL
-  ─────────────────                ──────────────────────────────────
-  PatternRewriter ──────────────►  (define-rewrite-pattern ...)
-  ConversionPattern ────────────►  (define-conversion-pattern ...)
-  OpBuilder (^bb0 blocks) ──────►  (begin-mlir-code (:builder b) ...)
+
+**Dialect conversion**
+```scheme
+(define-conversion-pattern
+  (name op operands rw tc)
+  :if-match
+    %r = onnx.Op (%a %b)
+  :then-let
+    ([!ty  (get-type %r)]
+     [rank (get-rank %a)])
+  :rewrite %r :with
+    (%ph = hipsr.placeholder
+           (%ctx %a %b)
+           (^bb0 (...) ...)
+           -> !ty)
+    (%res = hipsr.op
+            (%ctx %a %b %ph)
+            -> !ty))
 ```
 
-Three phases per pattern:
+**Inline op emission**
+```scheme
+(begin-mlir-code
+  (:rewriter rw)
 
-| Phase | Keyword | Runs when |
-|---|---|---|
-| Match | `:if-match` | Before any IR mutation |
-| Analyze | `:then-let` | After match succeeds |
-| Rewrite | `:rewrite :with` | Emit new ops, replace root |
+  (%r = dialect.op
+        (%a %b)
+        ("scale" = s :f32)
+        ("axis"  = 1 :i64)
+        -> !ty))
+
+;; Inside ^bb0 blocks:
+(begin-mlir-code
+  (:builder %block-builder)
+  (%c = arith.constant ()
+        ("value" = 0 :i64)
+        -> i64))
+```
+
+</div>
 
 ---
 
