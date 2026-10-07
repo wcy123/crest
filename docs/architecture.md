@@ -110,7 +110,7 @@ Library names mirror MLIR header paths (e.g. `mlir/IR/PatternMatch.h` →
 clean names and provides `case-lambda` ctx-optional wrappers where applicable.
 
 Dynamic parameters (`current-MLIRContext`, `current-RewriterBase`,
-`current-OpBuilder`, `current-Location`) follow the same pattern as
+`current-OpBuilder`, `current-InsertionPoint`) follow the same pattern as
 [MLIR's thread-local `OpBuilder` state](https://mlir.llvm.org/docs/Tutorials/Toy/Ch-3/).
 `parameterize` (via `with-MLIRContext`, `with-RewriterBase`, etc.) installs
 the right context for a dynamic extent without threading it through every

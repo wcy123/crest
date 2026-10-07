@@ -29,7 +29,7 @@
     ;; Dynamic builder context
     current-RewriterBase
     current-OpBuilder
-    current-Location
+    current-InsertionPoint
     ;; Context-dispatching constructor
     mlir-build-operation
     ;; RAII macros
@@ -38,7 +38,7 @@
     with-RewriterBase
     with-current-OpBuilder
     with-OpBuilder
-    with-Location)
+    with-InsertionPoint)
 
   (import (rnrs)
           (only (mlir support RAII) with-raii)
@@ -122,8 +122,8 @@
   (define current-OpBuilder (make-parameter #f))
 
   ;; @brief Dynamic parameter holding the current location Operation* uptr used by mlir-build-operation.
-  ;; @note  Set by with-RewriterBase, with-current-OpBuilder, and with-Location.
-  (define current-Location           (make-parameter #f))
+  ;; @note  Set by with-RewriterBase, with-current-OpBuilder, and with-InsertionPoint.
+  (define current-InsertionPoint           (make-parameter #f))
 
   ;; @brief Context-dispatching op constructor — build an op using whichever builder is currently active.
   ;; @param name       Registered MLIR op name string (e.g. "arith.addi")
@@ -221,12 +221,12 @@
           [default-nregions 0])
       (case-lambda
        [(name operands types)
-        (build name operands types (current-Location) default-nregions)]
+        (build name operands types (current-InsertionPoint) default-nregions)]
        [(name operands types nregions)
-        (build name operands types (current-Location) nregions)]
+        (build name operands types (current-InsertionPoint) nregions)]
        [(name operands types source-loc nregions)
         ;; source-loc is a mlir::Location uptr (e.g. from Scheme source annotation)
-        (let ([ip (current-Location)])
+        (let ([ip (current-InsertionPoint)])
           (cond
            [(current-RewriterBase) =>
             (lambda (rw)
@@ -252,7 +252,7 @@
       [(_ (rw loc) body ...)
        (parameterize ([current-RewriterBase      rw]
                       [current-OpBuilder #f]
-                      [current-Location           loc]
+                      [current-InsertionPoint           loc]
                       [current-MLIRContext  (mlir-Operation::getContext loc)])
          body ...)]))
 
@@ -267,7 +267,7 @@
       [(_ (builder loc) body ...)
        (parameterize ([current-OpBuilder builder]
                       [current-RewriterBase      #f]
-                      [current-Location           loc]
+                      [current-InsertionPoint           loc]
                       [current-MLIRContext  (mlir-Operation::getContext loc)])
          body ...)]))
 
@@ -277,7 +277,7 @@
   ;; @note         Allocates an OpBuilder via %mlir::OpBuilder::atBlockEnd and frees it with
   ;;               %mlir::OpBuilder::~OpBuilder on exit (even via non-local exit).
   ;;               Sets current-OpBuilder and clears current-RewriterBase to #f.
-  ;;               Does NOT update current-Location or current-MLIRContext; use with-Location if needed.
+  ;;               Does NOT update current-InsertionPoint or current-MLIRContext; use with-InsertionPoint if needed.
   (define-syntax with-OpBuilder
     (syntax-rules ()
       [(_ block body ...)
@@ -290,15 +290,15 @@
                  body ...))
              (lambda () (%mlir::OpBuilder::~OpBuilder %builder))))]))
 
-  ;; @brief Override current-Location for the dynamic extent of body without changing the active builder.
+  ;; @brief Override current-InsertionPoint for the dynamic extent of body without changing the active builder.
   ;; @param loc   Operation* uptr — new location source for mlir-build-operation
   ;; @return      Value of the last body expression
-  ;; @note        Only rebinds current-Location; current-RewriterBase and current-OpBuilder are unchanged.
+  ;; @note        Only rebinds current-InsertionPoint; current-RewriterBase and current-OpBuilder are unchanged.
   ;;              Useful when emitting ops that should carry a location different from the builder's default.
-  (define-syntax with-Location
+  (define-syntax with-InsertionPoint
     (syntax-rules ()
       [(_ loc body ...)
-       (parameterize ([current-Location loc]) body ...)]))
+       (parameterize ([current-InsertionPoint loc]) body ...)]))
 
   ;; @brief with-RewritePatternSet — RAII for a heap-allocated RewritePatternSet.
   ;; @param var  identifier bound to the RewritePatternSet* uptr for BODY
