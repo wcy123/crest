@@ -17,7 +17,6 @@ extern "C" {
 static uint64_t mlir_ir_op_builder_at_block_end(uint64_t block_ptr) {
   if (!block_ptr) {
     scheme_error("mlir-ir-op-builder-at-block-end", "null block pointer");
-    return 0; // unreachable — error performs non-local exit
   }
   auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
   return reinterpret_cast<uint64_t>(new mlir::OpBuilder(block, block->end()));
@@ -27,7 +26,6 @@ static uint64_t mlir_ir_op_builder_at_block_end(uint64_t block_ptr) {
 static void mlir_ir_op_builder_destroy(uint64_t builder_ptr) {
   if (!builder_ptr) {
     scheme_error("mlir-ir-op-builder-destroy", "null builder pointer");
-    return; // unreachable — error performs non-local exit
   }
   delete reinterpret_cast<mlir::OpBuilder*>(builder_ptr);
 }
@@ -43,11 +41,9 @@ static uint64_t mlir_ir_op_builder_create_from_state(uint64_t builder_ptr,
   if (!builder_ptr) {
     scheme_error("mlir-ir-op-builder-create-from-state",
                  "null builder pointer");
-    return 0; // unreachable — error performs non-local exit
   }
   if (!state_ptr) {
     scheme_error("mlir-ir-op-builder-create-from-state", "null state pointer");
-    return 0; // unreachable — error performs non-local exit
   }
   return reinterpret_cast<uint64_t>(
       reinterpret_cast<mlir::OpBuilder*>(builder_ptr)
