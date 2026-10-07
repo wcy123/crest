@@ -244,13 +244,13 @@ There is zero runtime cost. The location falls back to `mlir::UnknownLoc`
 when Chez Scheme bytecode caching strips annotations.
 
 [DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/) attaches the *fused
-location of the matched input ops* to emitted ops — useful for preserving
-where the input came from, but loses the rewrite rule source.
-[PDLL](https://mlir.llvm.org/docs/PDLL/) provides no mechanism to attach its
-own `.pdll` source location to emitted ops. CREST is the only MLIR pattern
-DSL that annotates each emitted op with the exact line in the pattern file
-that produced it, making `--mlir-print-debuginfo` output directly traceable
-to the Scheme source.
+location of the matched input ops* to emitted ops — this is genuinely useful:
+it tells you which input ops the emitted op was derived from. CREST instead
+records which line of the *pattern file* produced the op, which is useful
+for debugging the rewrite rules themselves. The two approaches are
+complementary; an ideal system would offer both.
+[PDLL](https://mlir.llvm.org/docs/PDLL/) provides no mechanism to attach
+either the PDLL source or the input-fused location to emitted ops.
 
 #### Comparison with MLIR pattern DSLs
 
