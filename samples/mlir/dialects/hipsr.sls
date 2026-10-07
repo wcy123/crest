@@ -35,7 +35,7 @@
           (mlir Transforms DialectConversion)
           (mlir Dialect Tensor IR)
           (only (crest util)
-                type-converter-add-tensor-widening-materialization)
+                add-tensor-cast-materialization)
           (only (mlir IR Operation) mlir::Operation::getRegion)
           (only (mlir IR Block) mlir::Block::getArgument)
 
@@ -119,7 +119,7 @@
                                          (mlir::RankedTensorType::cloneWithEncoding type
                                                                                     (mlir::parseAttribute (mlir::Type::getContext type) "#hipsr.mem<device>"))
                                          #f)))
-    (type-converter-add-tensor-widening-materialization type-converter))
+    (add-tensor-cast-materialization type-converter))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Conversion target configuration
