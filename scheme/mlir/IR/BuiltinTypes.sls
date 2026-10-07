@@ -29,25 +29,25 @@
     mlir::IntegerType::getWidth
     mlir::IntegerType::isUnsigned?)
   (import (rnrs)
-          (only (mlir IR MLIRContext) current-mlir-context define-ctx-optional)
+          (only (mlir IR MLIRContext) current-MLIRContext define-ctx-optional)
           (mlir IR BuiltinTypes ffi))
 
   ;; @brief mlir::IndexType::get — construct an index type in the given context.
-  ;; @param ctx  MLIRContext* uptr (optional; defaults to current-mlir-context)
+  ;; @param ctx  MLIRContext* uptr (optional; defaults to current-MLIRContext)
   ;; @return     IndexType opaque pointer uptr, or 0 on failure
   ;; @see        mlir/IR/BuiltinTypes.h
   ;; @note       Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define-ctx-optional mlir::IndexType::get %mlir::IndexType::get)
 
   ;; @brief mlir::IntegerType::get(ctx, 64) — construct a 64-bit integer type.
-  ;; @param ctx  MLIRContext* uptr (optional; defaults to current-mlir-context)
+  ;; @param ctx  MLIRContext* uptr (optional; defaults to current-MLIRContext)
   ;; @return     IntegerType (i64) opaque pointer uptr, or 0 on failure
   ;; @see        mlir/IR/BuiltinTypes.h
   ;; @note       Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define-ctx-optional mlir::IntegerType::get<i64> %mlir::IntegerType::get<i64>)
 
   ;; @brief mlir::IntegerType::get(ctx, 1) — construct a 1-bit integer type.
-  ;; @param ctx  MLIRContext* uptr (optional; defaults to current-mlir-context)
+  ;; @param ctx  MLIRContext* uptr (optional; defaults to current-MLIRContext)
   ;; @return     IntegerType (i1) opaque pointer uptr, or 0 on failure
   ;; @see        mlir/IR/BuiltinTypes.h
   ;; @note       Defined in lib/Bindings/IR/BuiltinTypes.cpp

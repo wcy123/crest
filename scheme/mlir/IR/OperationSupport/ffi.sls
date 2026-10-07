@@ -31,7 +31,7 @@
   ;; @see             mlir/IR/OperationSupport.h
   ;; @note            Defined in lib/Bindings/IR/OperationState.cpp
   (define %operation-state-create
-    (foreign-procedure "mlir_ir_operation_state_create" (uptr string) uptr))
+    (foreign-procedure "mlir::OperationState::create" (uptr string) uptr))
 
   ;; @brief mlir::OperationState::addOperands — add a single operand Value to the state.
   ;; @param state   OperationState* uptr
@@ -40,7 +40,7 @@
   ;; @see           mlir/IR/OperationSupport.h
   ;; @note          Defined in lib/Bindings/IR/OperationState.cpp
   (define %operation-state-add-operands
-    (foreign-procedure "mlir_ir_operation_state_add_operands" (uptr uptr) void))
+    (foreign-procedure "mlir::OperationState::addOperands" (uptr uptr) void))
 
   ;; @brief Backward-compat alias for %operation-state-add-operands.
   (define %operation-state-add-operand %operation-state-add-operands)
@@ -52,7 +52,7 @@
   ;; @see           mlir/IR/OperationSupport.h
   ;; @note          Defined in lib/Bindings/IR/OperationState.cpp
   (define %operation-state-add-types
-    (foreign-procedure "mlir_ir_operation_state_add_types" (uptr uptr) void))
+    (foreign-procedure "mlir::OperationState::addTypes" (uptr uptr) void))
 
   ;; @brief Backward-compat alias for %operation-state-add-types.
   (define %operation-state-add-result-type %operation-state-add-types)
@@ -64,7 +64,7 @@
   ;; @note          Defined in lib/Bindings/IR/OperationState.cpp
   ;; @note          Required for ops that verify they have exactly N regions at creation time.
   (define %operation-state-add-region
-    (foreign-procedure "mlir_ir_operation_state_add_region" (uptr) void))
+    (foreign-procedure "mlir::OperationState::addRegion" (uptr) void))
 
   ;; @brief Destroy an OperationState created by %operation-state-create.
   ;; @param state   OperationState* uptr — no-op if 0
@@ -72,6 +72,6 @@
   ;; @see           mlir/IR/OperationSupport.h
   ;; @note          Defined in lib/Bindings/IR/OperationState.cpp
   (define %operation-state-destroy
-    (foreign-procedure "mlir_ir_operation_state_destroy" (uptr) void))
+    (foreign-procedure "mlir::OperationState::~OperationState" (uptr) void))
 
   ) ;; end library (mlir IR OperationSupport ffi)

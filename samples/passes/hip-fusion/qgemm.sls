@@ -28,7 +28,7 @@
           (only (mlir IR Value)
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
-          (only (mlir core builder) crest::RewriterBase::build)
+          (only (mlir IR PatternMatch) mlir-build-operation)
           (mlir Transforms DialectConversion)
           (passes hip-fusion fusion)
           (crest)
@@ -89,9 +89,9 @@
        [trans-b   (mlir::Operation::getAttrOfType<IntegerAttr> %gemm-op "transB" 0)]
        [%init     (hip-build-init rewriter !y-type %gemm_init)])
     :rewrite %q :with
-      (%result = (let ([new-op (crest::RewriterBase::build "hip.qgemm"
-                                                           (list %ctx %a %b %c %init)
-                                                           (list !y-type))])
+      (%result = (let ([new-op (mlir-build-operation "hip.qgemm"
+                                                     (list %ctx %a %b %c %init)
+                                                     (list !y-type))])
                    (mlir-operation-set-dense-i32-array! new-op "operandSegmentSizes"
                                                         '(1 1 1 0 0 1 1))
                    (crest::Operation::setF32Attr new-op "A_scale"      a-scale)
@@ -151,9 +151,9 @@
        [trans-b  (mlir::Operation::getAttrOfType<IntegerAttr> %gemm-op "transB" 0)]
        [%init    (hip-build-init rewriter !y-type %gemm_init)])
     :rewrite %q :with
-      (%result = (let ([new-op (crest::RewriterBase::build "hip.qgemm"
-                                                           (list %ctx %a %b %init)
-                                                           (list !y-type))])
+      (%result = (let ([new-op (mlir-build-operation "hip.qgemm"
+                                                     (list %ctx %a %b %init)
+                                                     (list !y-type))])
                    (mlir-operation-set-dense-i32-array! new-op "operandSegmentSizes"
                                                         '(1 1 1 0 0 0 1))
                    (crest::Operation::setF32Attr new-op "A_scale"      a-scale)
@@ -216,9 +216,9 @@
        [trans-b  (mlir::Operation::getAttrOfType<IntegerAttr> %gemm-op "transB" 0)]
        [%init    (hip-build-init rewriter !y-type %gemm_init)])
     :rewrite %q :with
-      (%result = (let ([new-op (crest::RewriterBase::build "hip.qgemm"
-                                                           (list %ctx %a %b %b_scales %b_zps %c %init)
-                                                           (list !y-type))])
+      (%result = (let ([new-op (mlir-build-operation "hip.qgemm"
+                                                     (list %ctx %a %b %b_scales %b_zps %c %init)
+                                                     (list !y-type))])
                    (mlir-operation-set-dense-i32-array! new-op "operandSegmentSizes"
                                                         '(1 1 1 1 1 1 1))
                    (crest::Operation::setF32Attr new-op "A_scale"      a-scale)
@@ -272,9 +272,9 @@
        [trans-b  (mlir::Operation::getAttrOfType<IntegerAttr> %gemm-op "transB" 0)]
        [%init    (hip-build-init rewriter !y-type %gemm_init)])
     :rewrite %q :with
-      (%result = (let ([new-op (crest::RewriterBase::build "hip.qgemm"
-                                                           (list %ctx %a %b %b_scales %b_zps %init)
-                                                           (list !y-type))])
+      (%result = (let ([new-op (mlir-build-operation "hip.qgemm"
+                                                     (list %ctx %a %b %b_scales %b_zps %init)
+                                                     (list !y-type))])
                    (mlir-operation-set-dense-i32-array! new-op "operandSegmentSizes"
                                                         '(1 1 1 1 1 0 1))
                    (crest::Operation::setF32Attr new-op "A_scale"      a-scale)

@@ -25,7 +25,8 @@
     %get-parent-op
     %mlir::OpOperand::get
     %mlir::OpResult::getOwner
-    %get-loc
+    %mlir::Operation::getLoc
+    %mlir::Operation::getRegion
     %walk
     %set-operand
     %use-empty
@@ -131,8 +132,11 @@
   ;; @return    Opaque Location* as uptr; 0 if op is null
   ;; @see       mlir/IR/Operation.h
   ;; @note      Defined in lib/Bindings/IR/Operation.cpp
-  (define %get-loc
+  (define %mlir::Operation::getLoc
     (foreign-procedure "mlir::Operation::getLoc" (uptr) uptr))
+
+  (define %mlir::Operation::getRegion
+    (foreign-procedure "mlir::Operation::getRegion" (uptr int) uptr))
 
   ;; @brief mlir::Operation::walk — walk all nested ops, calling callback for each.
   ;; @param op        Operation* uptr (root of walk)

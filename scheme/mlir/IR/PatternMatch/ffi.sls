@@ -26,6 +26,8 @@
     %mlir::RewriterBase::replaceOp
     %mlir::RewriterBase::eraseOp
     %crest::RewriterBase::cloneWithTypes
+    %mlir::RewritePatternSet::RewritePatternSet
+    %mlir::RewritePatternSet::~RewritePatternSet
     %mlir::RewriterBase::create<OperationState>)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
@@ -132,5 +134,20 @@
   ;; @note              Defined in lib/Bindings/IR/RewriterBase.cpp
   (define %mlir::RewriterBase::create<OperationState>
     (foreign-procedure "mlir_ir_rewriter_base_create_from_state" (uptr uptr) uptr))
+
+  ;; @brief mlir::RewritePatternSet::RewritePatternSet — heap-allocate a pattern set.
+  ;; @param ctx  MLIRContext* uptr
+  ;; @return     RewritePatternSet* uptr — destroy with %mlir::RewritePatternSet::~RewritePatternSet
+  ;; @see        mlir/IR/PatternMatch.h
+  ;; @note       Defined in lib/Bindings/IR/PatternMatch.cpp
+  (define %mlir::RewritePatternSet::RewritePatternSet
+    (foreign-procedure "mlir::RewritePatternSet::RewritePatternSet" (uptr) uptr))
+
+  ;; @brief mlir::RewritePatternSet::~RewritePatternSet — free a heap-allocated pattern set.
+  ;; @param patterns  RewritePatternSet* uptr — no-op if already consumed by applyFullConversion
+  ;; @see        mlir/IR/PatternMatch.h
+  ;; @note       Defined in lib/Bindings/IR/PatternMatch.cpp
+  (define %mlir::RewritePatternSet::~RewritePatternSet
+    (foreign-procedure "mlir::RewritePatternSet::~RewritePatternSet" (uptr) void))
 
   ) ;; end library (mlir IR PatternMatch ffi)

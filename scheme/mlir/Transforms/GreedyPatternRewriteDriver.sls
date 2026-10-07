@@ -12,7 +12,7 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir Transforms GreedyPatternRewriteDriver)
-  (export greedy-pattern-rewrite-driver-apply)
+  (export mlir::applyPatternsGreedily)
   (import (rnrs) (mlir Transforms GreedyPatternRewriteDriver ffi))
 
   ;; @brief mlir::applyPatternsGreedily — repeatedly apply patterns to op and
@@ -23,7 +23,7 @@
   ;; @return         1 on success (fixed point reached), 0 on failure
   ;; @see   mlir/Transforms/GreedyPatternRewriteDriver.h
   ;; @note  Defined in lib/Bindings/Transforms/GreedyPatternRewriteDriver.cpp
-  (define greedy-pattern-rewrite-driver-apply
-    %greedy-pattern-rewrite-driver-apply)
+  (define mlir::applyPatternsGreedily
+    %mlir::applyPatternsGreedily)
 
   ) ;; end library (mlir Transforms GreedyPatternRewriteDriver)

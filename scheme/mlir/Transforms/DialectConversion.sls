@@ -39,14 +39,17 @@
     add-conversion-pattern
     add-rewrite-pattern
     populate-func-type-conversion
-    with-type-converter
-    with-conversion-target
-    with-pattern-set)
+    with-TypeConverter
+    with-ConversionTarget
+    )
 
   (import (rnrs)
           (mlir Transforms DialectConversion ffi)
-          (only (mlir core builder) with-raii)
-          (only (mlir IR MLIRContext) current-mlir-context))
+          (only (mlir IR PatternMatch ffi)
+                %mlir::RewritePatternSet::RewritePatternSet
+                %mlir::RewritePatternSet::~RewritePatternSet)
+          (only (mlir support RAII) with-raii)
+          (only (mlir IR MLIRContext) current-MLIRContext))
 
   ;; @brief mlir::TypeConverter constructor — allocate a new TypeConverter.
   ;; @return TypeConverter* uptr — heap-allocated; caller must destroy with
@@ -197,15 +200,13 @@
   ;;            consumes it)
   ;; @see   mlir/IR/PatternMatch.h
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
-  (define pattern-set-create
-    %pattern-set-create)
+  (define pattern-set-create  %mlir::RewritePatternSet::RewritePatternSet)
 
   ;; @brief mlir::RewritePatternSet destructor — free a pattern set.
   ;; @param patterns RewritePatternSet* uptr — must not be used after this call
   ;; @see   mlir/IR/PatternMatch.h
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
-  (define pattern-set-destroy
-    %pattern-set-destroy)
+  (define pattern-set-destroy %mlir::RewritePatternSet::~RewritePatternSet)
 
   ;; @brief mlir::applyFullConversion — apply patterns until the target is
   ;;        satisfied; fails if any illegal op remains.
@@ -257,10 +258,10 @@
   ;; @param var  identifier bound to the TypeConverter* uptr for BODY
   ;; @param body forms to evaluate with var in scope
   ;; @example
-  ;;   (with-type-converter (tc)
+  ;;   (with-TypeConverter (tc)
   ;;     (type-converter-add-conversion tc my-fn)
   ;;     ...)
-  (define-syntax with-type-converter
+  (define-syntax with-TypeConverter
     (syntax-rules ()
       [(_ (var) body ...)
        (with-raii (var (type-converter-create) type-converter-destroy)
@@ -269,19 +270,19 @@
   ;; @brief RAII macro — create a ConversionTarget for CTX, bind it to VAR,
   ;;        execute BODY, then unconditionally destroy the target on exit.
   ;; @param var identifier bound to the ConversionTarget* uptr for BODY
-  ;; @param ctx MLIRContext* uptr (optional; defaults to current-mlir-context)
+  ;; @param ctx MLIRContext* uptr (optional; defaults to current-MLIRContext)
   ;; @param body forms to evaluate with var in scope
   ;; @example
-  ;;   (with-conversion-target (tgt)
+  ;;   (with-ConversionTarget (tgt)
   ;;     (target-add-illegal-dialect tgt "onnx")
   ;;     ...)
-  ;;   (with-conversion-target (tgt ctx)
+  ;;   (with-ConversionTarget (tgt ctx)
   ;;     (target-add-illegal-dialect tgt "onnx")
   ;;     ...)
-  (define-syntax with-conversion-target
+  (define-syntax with-ConversionTarget
     (syntax-rules ()
       [(_ (var) body ...)
-       (with-raii (var (target-create (current-mlir-context)) target-destroy)
+       (with-raii (var (target-create (current-MLIRContext)) target-destroy)
                   body ...)]
       [(_ (var ctx) body ...)
        (with-raii (var (target-create ctx) target-destroy)
@@ -290,22 +291,22 @@
   ;; @brief RAII macro — create a RewritePatternSet for CTX, bind it to VAR,
   ;;        execute BODY, then unconditionally destroy the pattern set on exit.
   ;; @param var  identifier bound to the RewritePatternSet* uptr for BODY
-  ;; @param ctx  MLIRContext* uptr (optional; defaults to current-mlir-context)
+  ;; @param ctx  MLIRContext* uptr (optional; defaults to current-MLIRContext)
   ;; @param body forms to evaluate with var in scope
   ;; @note  If BODY passes VAR to apply-full-conversion the set is consumed
   ;;        (moved); the subsequent destroy is then a no-op (the C++ side checks
   ;;        the pointer).
   ;; @example
-  ;;   (with-pattern-set (ps)
+  ;;   (with-RewritePatternSet (ps)
   ;;     (add-conversion-pattern ps "onnx.MatMul" my-pattern tc 1)
   ;;     (apply-full-conversion op tgt ps))
-  ;;   (with-pattern-set (ps ctx)
+  ;;   (with-RewritePatternSet (ps ctx)
   ;;     (add-conversion-pattern ps "onnx.MatMul" my-pattern tc 1)
   ;;     (apply-full-conversion op tgt ps))
-  (define-syntax with-pattern-set
+  (define-syntax with-RewritePatternSet
     (syntax-rules ()
       [(_ (var) body ...)
-       (with-raii (var (pattern-set-create (current-mlir-context)) pattern-set-destroy)
+       (with-raii (var (pattern-set-create (current-MLIRContext)) pattern-set-destroy)
                   body ...)]
       [(_ (var ctx) body ...)
        (with-raii (var (pattern-set-create ctx) pattern-set-destroy)

@@ -21,8 +21,8 @@
     op-get-f32-attr)              ; (op name) → flonum or +nan.0 if absent
 
   (import (except (rnrs) =)
-          (only (chezscheme) foreign-procedure)
           (only (mlir IR Operation)
+                mlir::Operation::getAttr
                 crest::Operation::setF32Attr
                 crest::Operation::setI64Attr
                 crest::Operation::setDenseI32Array
@@ -47,23 +47,13 @@
     (crest::Operation::setF32Attr new-op "output_scale" out-scale)
     (crest::Operation::setI64Attr new-op "output_zp"    out-zp))
 
-  (define mlir-operation-set-dense-i32-array!
-    (foreign-procedure "crest::Operation::setDenseI32Array" (uptr string scheme-object) void))
-
-  (define mlir-operation-set-dense-i64-array!
-    (foreign-procedure "crest::Operation::setDenseI64Array" (uptr string scheme-object) void))
-
-  ;; For ODS I64ArrayAttr (ArrayAttr of IntegerAttr) — different from DenseI64ArrayAttr
-  (define mlir-operation-set-i64-array-attr!
-    (foreign-procedure "crest::Operation::setI64ArrayAttr" (uptr string scheme-object) void))
-
-  ;; (op-get-f32-attr op name) — FloatAttr by name as flonum; +nan.0 if absent.
-  ;; Expressed via mlir::FloatAttr::getValueAsDouble.f32 so no separate FFI binding needed.
-  (define %get-attr
-    (foreign-procedure "mlir_operation_get_attribute" (uptr string) uptr))
+  ;; Aliases for convenience — these are already in (mlir IR Operation)
+  (define mlir-operation-set-dense-i32-array! crest::Operation::setDenseI32Array)
+  (define mlir-operation-set-dense-i64-array! crest::Operation::setDenseI64Array)
+  (define mlir-operation-set-i64-array-attr!  crest::Operation::setI64ArrayAttr)
 
   (define (op-get-f32-attr op name)
-    (let ([attr (%get-attr op name)])
+    (let ([attr (mlir::Operation::getAttr op name)])
       (if (zero? attr) +nan.0 (mlir::FloatAttr::getValueAsDouble.f32 attr))))
 
   ) ;; end library (passes hip-fusion helpers)

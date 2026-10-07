@@ -26,6 +26,6 @@
   ;; @see   mlir/Dialect/Func/Transforms/FuncConversions.h
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
   (define %populate-func-type-conversion-pattern
-    (foreign-procedure "mlir_transforms_dialect_conversion_populate_func_type_conversion" (uptr uptr) void))
+    (foreign-procedure "mlir::populateFunctionOpInterfaceTypeConversionPattern<FuncOp>" (uptr uptr) void))
 
   ) ;; end library (mlir Dialect Func IR FuncOps ffi)

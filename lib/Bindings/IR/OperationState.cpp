@@ -70,21 +70,17 @@ static void mlir_ir_operation_state_destroy(uint64_t state_ptr) {
 namespace crest {
 
 void registerIROperationStateBindings() {
-  Sregister_symbol("mlir_ir_operation_state_create",
+  Sregister_symbol("mlir::OperationState::create",
                    (void*)::mlir_ir_operation_state_create);
   // Canonical names (matching C++ method names)
-  Sregister_symbol("mlir_ir_operation_state_add_operands",
+  Sregister_symbol("mlir::OperationState::addOperands",
                    (void*)::mlir_ir_operation_state_add_operands);
-  Sregister_symbol("mlir_ir_operation_state_add_types",
+  Sregister_symbol("mlir::OperationState::addTypes",
                    (void*)::mlir_ir_operation_state_add_types);
   // Backward-compat aliases (old names)
-  Sregister_symbol("mlir_ir_operation_state_add_operand",
-                   (void*)::mlir_ir_operation_state_add_operands);
-  Sregister_symbol("mlir_ir_operation_state_add_result_type",
-                   (void*)::mlir_ir_operation_state_add_types);
-  Sregister_symbol("mlir_ir_operation_state_add_region",
+  Sregister_symbol("mlir::OperationState::addRegion",
                    (void*)::mlir_ir_operation_state_add_region);
-  Sregister_symbol("mlir_ir_operation_state_destroy",
+  Sregister_symbol("mlir::OperationState::~OperationState",
                    (void*)::mlir_ir_operation_state_destroy);
 }
 

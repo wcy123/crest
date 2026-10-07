@@ -21,7 +21,7 @@
           (only (mlir IR Value)
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
-          (only (mlir core builder) crest::RewriterBase::build)
+          (only (mlir IR PatternMatch) mlir-build-operation)
           (mlir Transforms DialectConversion)
           (passes hip-fusion fusion)
           (crest)
@@ -56,9 +56,9 @@
        [out-zp    (hip-extract-qdq-zeropoint-i64 op 0)]
        [%init     (hip-build-init rewriter !out-type %sigmoid_init)])
     :rewrite %q :with
-      (%result = (let ([new-op (crest::RewriterBase::build "hip.qsigmoid"
-                                                           (list %ctx %input %init)
-                                                           (list !out-type))])
+      (%result = (let ([new-op (mlir-build-operation "hip.qsigmoid"
+                                                     (list %ctx %input %init)
+                                                     (list !out-type))])
                    (set-qdq-in-out-attrs! new-op in-scale in-zp out-scale out-zp)
                    (mlir::Operation::getResult new-op 0))))
 

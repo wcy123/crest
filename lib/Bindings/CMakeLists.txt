@@ -16,7 +16,7 @@ add_library(CrestBindings STATIC
   IR/OpBuilder.cpp
   IR/Operation.cpp
   IR/OpResult.cpp
-  IR/RewriterBase.cpp
+  IR/PatternMatch.cpp
   IR/Type.cpp
   IR/Value.cpp
   Support/ArrayRef.cpp
