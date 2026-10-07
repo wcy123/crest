@@ -22,7 +22,6 @@
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
           (only (mlir IR BuiltinAttributes) mlir::IntegerAttr::get<index>)
-          (only (mlir IR PatternMatch) mlir-build-operation)
           (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
           (mlir Dialect Tensor IR)
@@ -33,7 +32,7 @@
           (crest internal rewrite)
           (crest)
           (only (mlir IR Operation)
-                mlir::Operation::emitRemark mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getResult mlir::Operation::setAttr!)
+                mlir::Operation::emitRemark mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::setAttr!)
 
           (only (mlir IR BuiltinTypes)
                 mlir::RankedTensorType::cloneWithEncoding
@@ -54,26 +53,18 @@
   ;;   leading, _ = split_at(data_shape, axis)
   ;;   _, trailing = split_at(data_shape, axis+1)
   ;;   result = concat(concat(leading, indices_shape), trailing)
-  (define (build-gather-shape! axis data-shape idx-shape shape-type size-type)
-    (define (mk-sz n)
-      (let ([op (mlir-build-operation "shape.const_size" '() (list size-type))])
-        (mlir::Operation::setAttr! op "value" (mlir::IntegerAttr::get<index> n))
-        (mlir::Operation::getResult op 0)))
-    (let* ([sz1      (mk-sz axis)]
-           [sp1      (mlir-build-operation "shape.split_at"
-                                           (list data-shape sz1) (list shape-type shape-type))]
-           [leading  (mlir::Operation::getResult sp1 0)]
-           [sz2      (mk-sz (+ axis 1))]
-           [sp2      (mlir-build-operation "shape.split_at"
-                                           (list data-shape sz2) (list shape-type shape-type))]
-           [trailing (mlir::Operation::getResult sp2 1)]
-           [gathered-op (mlir-build-operation "shape.concat"
-                                              (list leading idx-shape) (list shape-type))]
-           [gathered    (mlir::Operation::getResult gathered-op 0)])
-      (mlir::Operation::getResult
-       (mlir-build-operation "shape.concat"
-                             (list gathered trailing) (list shape-type))
-       0)))
+  (define (build-gather-shape! builder axis data-shape idx-shape shape-type size-type)
+    (begin-mlir-code (:builder builder)
+                     (%sz1              = shape.const_size ()
+                                        ("value" = (mlir::IntegerAttr::get<index> axis))
+                                        -> size-type)
+                     ((%leading %_sp1)  = shape.split_at (data-shape %sz1)       -> (shape-type shape-type))
+                     (%sz2              = shape.const_size ()
+                                        ("value" = (mlir::IntegerAttr::get<index> (+ axis 1)))
+                                        -> size-type)
+                     ((%_sp2 %trailing) = shape.split_at (data-shape %sz2)       -> (shape-type shape-type))
+                     (%gathered         = shape.concat   (%leading idx-shape)     -> shape-type)
+                     (%result           = shape.concat   (%gathered %trailing)    -> shape-type)))
 
   (define-conversion-pattern (onnx-gather->hipsr op operands-ref rewriter type-converter)
     :if-match
@@ -100,7 +91,7 @@
       (%placeholder = "hipsr.placeholder" (%ctx %data %indices !out-device)
                     (^bb0 ((%ds : !shape-type) (%is : !shape-type))
                           (%result-shape = (build-gather-shape!
-                                            axis %ds %is !shape-type !size-type))
+                                            %block-builder axis %ds %is !shape-type !size-type))
                           ("hipsr.shape_yield" (%result-shape)))
                     -> !out-device)
       (%result = hipsr.gather (%ctx %data %indices %placeholder)

@@ -30,6 +30,15 @@ static void mlir_ir_op_builder_destroy(uint64_t builder_ptr) {
   delete reinterpret_cast<mlir::OpBuilder*>(builder_ptr);
 }
 
+// mlir::OpBuilder::getContext() — return the MLIRContext* held by this builder.
+static uint64_t mlir_ir_op_builder_get_context(uint64_t builder_ptr) {
+  if (!builder_ptr) {
+    scheme_error("mlir::OpBuilder::getContext", "null builder pointer");
+  }
+  return reinterpret_cast<uint64_t>(
+      reinterpret_cast<mlir::OpBuilder*>(builder_ptr)->getContext());
+}
+
 // Create an op from a prepared OperationState via a plain OpBuilder.
 // Ownership of the OperationState is NOT transferred — caller must still
 // destroy it with mlir_ir_operation_state_destroy.
@@ -61,6 +70,8 @@ void registerIROpBuilderBindings() {
                    (void*)::mlir_ir_op_builder_destroy);
   Sregister_symbol("mlir_ir_op_builder_create_from_state",
                    (void*)::mlir_ir_op_builder_create_from_state);
+  Sregister_symbol("mlir::OpBuilder::getContext",
+                   (void*)::mlir_ir_op_builder_get_context);
 }
 
 } // namespace crest

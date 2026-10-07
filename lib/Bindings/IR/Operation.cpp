@@ -394,6 +394,27 @@ static double mlir_ir_operation_get_float_attr(uint64_t op_ptr,
 // region_idx:  0-based region index
 // Returns: Region* as uptr; raises a Scheme error if op is null or index out of
 // range.
+static uint64_t mlir_ir_operation_get_attr_dictionary(uint64_t op_ptr) {
+  if (!op_ptr) {
+    scheme_error("mlir::Operation::getAttrDictionary", "null op pointer");
+  }
+  return reinterpret_cast<uint64_t>(reinterpret_cast<mlir::Operation*>(op_ptr)
+                                        ->getAttrDictionary()
+                                        .getAsOpaquePointer());
+}
+
+static void mlir_ir_operation_set_attrs(uint64_t op_ptr, uint64_t dict_ptr) {
+  if (!op_ptr) {
+    scheme_error("mlir::Operation::setAttrs", "null op pointer");
+  }
+  if (!dict_ptr) {
+    scheme_error("mlir::Operation::setAttrs", "null dict pointer");
+  }
+  reinterpret_cast<mlir::Operation*>(op_ptr)->setAttrs(
+      mlir::DictionaryAttr::getFromOpaquePointer(
+          reinterpret_cast<const void*>(dict_ptr)));
+}
+
 static uint64_t mlir_ir_operation_get_region(uint64_t op_ptr, int region_idx) {
   if (!op_ptr) {
     scheme_error("mlir-ir-operation-get-region", "operation must not be null");
@@ -468,6 +489,10 @@ void registerIROperationBindings() {
   Sregister_symbol("mlir::Operation::emitRemark",
                    (void*)::mlir_ir_operation_emit_remark);
   Sregister_symbol("mlir::Operation::erase", (void*)::mlir_ir_operation_erase);
+  Sregister_symbol("mlir::Operation::getAttrDictionary",
+                   (void*)::mlir_ir_operation_get_attr_dictionary);
+  Sregister_symbol("mlir::Operation::setAttrs",
+                   (void*)::mlir_ir_operation_set_attrs);
   Sregister_symbol("mlir::Operation::getRegion",
                    (void*)::mlir_ir_operation_get_region);
   Sregister_symbol("mlir::Operation::getAttr",

@@ -121,52 +121,18 @@ static int mlir_ir_rewriter_base_erase_op(uint64_t rewriter_ptr,
   return 1;
 }
 
-// Clone op with new operands/types, copying attributes.
-static uint64_t mlir_ir_rewriter_base_clone_with_types(uint64_t rw_ptr,
-                                                       uint64_t op_ptr,
-                                                       ptr operands_list,
-                                                       ptr result_types_list) {
-  if (!rw_ptr) {
-    scheme_error("mlir-ir-rewriter-base-clone-with-types",
-                 "null rewriter pointer");
-  }
-  if (!op_ptr) {
-    scheme_error("mlir-ir-rewriter-base-clone-with-types", "null op pointer");
-  }
-  auto* rw = reinterpret_cast<mlir::RewriterBase*>(rw_ptr);
-  auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-  llvm::SmallVector<mlir::Value> operands;
-  llvm::SmallVector<mlir::Type> resultTypes;
-  for (ptr cur = operands_list; cur != Snil; cur = Scdr(cur)) {
-    operands.push_back(mlir::Value::getFromOpaquePointer(
-        reinterpret_cast<const void*>(Sunsigned64_value(Scar(cur)))));
-  }
-  for (ptr cur = result_types_list; cur != Snil; cur = Scdr(cur)) {
-    resultTypes.push_back(mlir::Type::getFromOpaquePointer(
-        reinterpret_cast<const void*>(Sunsigned64_value(Scar(cur)))));
-  }
-  mlir::OperationState state(op->getLoc(), op->getName());
-  state.addOperands(operands);
-  state.addTypes(resultTypes);
-  state.addAttributes(op->getAttrs());
-  return reinterpret_cast<uint64_t>(rw->create(state));
-}
-
-// Create an op from a prepared OperationState via a RewriterBase.
-// Ownership of the OperationState is NOT transferred — caller must still
-// destroy it with mlir_ir_operation_state_destroy.
-// rw_ptr:     RewriterBase* as uptr
-// state_ptr:  OperationState* as uptr
-// Returns: Operation* as uptr, or 0 on bad input.
+// RewriterBase IS-A OpBuilder (single inheritance). Casting RewriterBase* to
+// OpBuilder* is safe — the base subobject is at offset 0, and listener
+// notifications fire correctly since RewriterBase registers itself as the
+// OpBuilder listener. This wrapper keeps the canonical symbol name so that
+// any cached Scheme code still resolves correctly.
 static uint64_t mlir_ir_rewriter_base_create_from_state(uint64_t rw_ptr,
                                                         uint64_t state_ptr) {
   if (!rw_ptr) {
-    scheme_error("mlir-ir-rewriter-base-create-from-state",
-                 "null rewriter pointer");
+    scheme_error("mlir::RewriterBase::create<OperationState>", "null rewriter");
   }
   if (!state_ptr) {
-    scheme_error("mlir-ir-rewriter-base-create-from-state",
-                 "null state pointer");
+    scheme_error("mlir::RewriterBase::create<OperationState>", "null state");
   }
   return reinterpret_cast<uint64_t>(
       reinterpret_cast<mlir::RewriterBase*>(rw_ptr)->create(
@@ -192,9 +158,8 @@ void registerIRRewriterBaseBindings() {
                    (void*)::mlir_ir_rewriter_base_replace_op);
   Sregister_symbol("mlir_ir_rewriter_base_erase_op",
                    (void*)::mlir_ir_rewriter_base_erase_op);
-  Sregister_symbol("mlir_ir_rewriter_base_clone_with_types",
-                   (void*)::mlir_ir_rewriter_base_clone_with_types);
-  Sregister_symbol("mlir_ir_rewriter_base_create_from_state",
+
+  Sregister_symbol("mlir::RewriterBase::create<OperationState>",
                    (void*)::mlir_ir_rewriter_base_create_from_state);
   Sregister_symbol("mlir::RewritePatternSet::RewritePatternSet",
                    (void*)::mlir_ir_pattern_match_rewrite_pattern_set_create);
