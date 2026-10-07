@@ -13,95 +13,6 @@
 
 extern "C" {
 
-// mlir::OpBuilder::create(OperationState) — op builder variant (no rewriter).
-static uint64_t mlir_ir_op_builder_create(uint64_t builder_ptr,
-                                          uint64_t loc_op_ptr,
-                                          const char* op_name,
-                                          ptr operands_list,
-                                          ptr result_types_list) {
-  if (!builder_ptr) {
-    scheme_error("mlir-ir-op-builder-create", "null builder pointer");
-    return 0; // unreachable — error performs non-local exit
-  }
-  if (!loc_op_ptr) {
-    scheme_error("mlir-ir-op-builder-create", "null loc_op pointer");
-    return 0; // unreachable — error performs non-local exit
-  }
-  auto* builder = reinterpret_cast<mlir::OpBuilder*>(builder_ptr);
-  auto* loc_op = reinterpret_cast<mlir::Operation*>(loc_op_ptr);
-  llvm::SmallVector<mlir::Value> operands;
-  llvm::SmallVector<mlir::Type> resultTypes;
-  for (ptr cur = static_cast<ptr>(operands_list); cur != Snil;
-       cur = Scdr(cur)) {
-    if (!Spairp(cur)) {
-      scheme_error("mlir-ir-op-builder-create", "malformed operands list");
-      return 0; // unreachable — error performs non-local exit
-    }
-    operands.push_back(mlir::Value::getFromOpaquePointer(
-        reinterpret_cast<void*>(Sunsigned64_value(Scar(cur)))));
-  }
-  for (ptr cur = static_cast<ptr>(result_types_list); cur != Snil;
-       cur = Scdr(cur)) {
-    if (!Spairp(cur)) {
-      scheme_error("mlir-ir-op-builder-create", "malformed result types list");
-      return 0; // unreachable — error performs non-local exit
-    }
-    resultTypes.push_back(mlir::Type::getFromOpaquePointer(
-        reinterpret_cast<const void*>(Sunsigned64_value(Scar(cur)))));
-  }
-  mlir::OperationState state(loc_op->getLoc(), op_name);
-  state.addOperands(operands);
-  state.addTypes(resultTypes);
-  return reinterpret_cast<uint64_t>(builder->create(state));
-}
-
-// Like mlir_ir_op_builder_create but pre-allocates num_regions empty regions.
-static uint64_t mlir_ir_op_builder_create_with_regions(
-    uint64_t builder_ptr, uint64_t loc_op_ptr, const char* op_name,
-    ptr operands_list, ptr result_types_list, int num_regions) {
-  if (!builder_ptr) {
-    scheme_error("mlir-ir-op-builder-create-with-regions",
-                 "null builder pointer");
-    return 0; // unreachable — error performs non-local exit
-  }
-  if (!loc_op_ptr) {
-    scheme_error("mlir-ir-op-builder-create-with-regions",
-                 "null loc_op pointer");
-    return 0; // unreachable — error performs non-local exit
-  }
-  auto* builder = reinterpret_cast<mlir::OpBuilder*>(builder_ptr);
-  auto* loc_op = reinterpret_cast<mlir::Operation*>(loc_op_ptr);
-  llvm::SmallVector<mlir::Value> operands;
-  llvm::SmallVector<mlir::Type> resultTypes;
-  for (ptr cur = static_cast<ptr>(operands_list); cur != Snil;
-       cur = Scdr(cur)) {
-    if (!Spairp(cur)) {
-      scheme_error("mlir-ir-op-builder-create-with-regions",
-                   "malformed operands list");
-      return 0; // unreachable — error performs non-local exit
-    }
-    operands.push_back(mlir::Value::getFromOpaquePointer(
-        reinterpret_cast<void*>(Sunsigned64_value(Scar(cur)))));
-  }
-  for (ptr cur = static_cast<ptr>(result_types_list); cur != Snil;
-       cur = Scdr(cur)) {
-    if (!Spairp(cur)) {
-      scheme_error("mlir-ir-op-builder-create-with-regions",
-                   "malformed result types list");
-      return 0; // unreachable — error performs non-local exit
-    }
-    resultTypes.push_back(mlir::Type::getFromOpaquePointer(
-        reinterpret_cast<const void*>(Sunsigned64_value(Scar(cur)))));
-  }
-  mlir::OperationState state(loc_op->getLoc(), op_name);
-  state.addOperands(operands);
-  state.addTypes(resultTypes);
-  for (int i = 0; i < num_regions; ++i) {
-    state.addRegion();
-  }
-  return reinterpret_cast<uint64_t>(builder->create(state));
-}
-
 // Heap-allocate an OpBuilder positioned at the end of a block.
 static uint64_t mlir_ir_op_builder_at_block_end(uint64_t block_ptr) {
   if (!block_ptr) {
@@ -148,10 +59,6 @@ static uint64_t mlir_ir_op_builder_create_from_state(uint64_t builder_ptr,
 namespace crest {
 
 void registerIROpBuilderBindings() {
-  Sregister_symbol("mlir_ir_op_builder_create",
-                   (void*)::mlir_ir_op_builder_create);
-  Sregister_symbol("mlir_ir_op_builder_create_with_regions",
-                   (void*)::mlir_ir_op_builder_create_with_regions);
   Sregister_symbol("mlir_ir_op_builder_at_block_end",
                    (void*)::mlir_ir_op_builder_at_block_end);
   Sregister_symbol("mlir_ir_op_builder_destroy",

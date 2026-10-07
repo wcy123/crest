@@ -37,100 +37,6 @@ mlir_ir_pattern_match_rewrite_pattern_set_destroy(uint64_t patterns_ptr) {
 
 extern "C" {
 
-// mlir::RewriterBase::create(OperationState) — set insertion point before
-// loc_op and create the op there.
-static uint64_t mlir_ir_rewriter_base_create(uint64_t rewriter_ptr,
-                                             uint64_t loc_op_ptr,
-                                             const char* op_name,
-                                             ptr operands_list,
-                                             ptr result_types_list) {
-  if (!rewriter_ptr) {
-    scheme_error("mlir-ir-rewriter-base-create", "null rewriter pointer");
-    return 0; // unreachable — error performs non-local exit
-  }
-  if (!loc_op_ptr) {
-    scheme_error("mlir-ir-rewriter-base-create", "null loc_op pointer");
-    return 0; // unreachable — error performs non-local exit
-  }
-  auto* rewriter = reinterpret_cast<mlir::RewriterBase*>(rewriter_ptr);
-  auto* loc_op = reinterpret_cast<mlir::Operation*>(loc_op_ptr);
-  llvm::SmallVector<mlir::Value> operands;
-  llvm::SmallVector<mlir::Type> resultTypes;
-  for (ptr cur = static_cast<ptr>(operands_list); cur != Snil;
-       cur = Scdr(cur)) {
-    if (!Spairp(cur)) {
-      scheme_error("mlir-ir-rewriter-base-create", "malformed operands list");
-      return 0; // unreachable — error performs non-local exit
-    }
-    operands.push_back(mlir::Value::getFromOpaquePointer(
-        reinterpret_cast<void*>(Sunsigned64_value(Scar(cur)))));
-  }
-  for (ptr cur = static_cast<ptr>(result_types_list); cur != Snil;
-       cur = Scdr(cur)) {
-    if (!Spairp(cur)) {
-      scheme_error("mlir-ir-rewriter-base-create",
-                   "malformed result types list");
-      return 0; // unreachable — error performs non-local exit
-    }
-    resultTypes.push_back(mlir::Type::getFromOpaquePointer(
-        reinterpret_cast<const void*>(Sunsigned64_value(Scar(cur)))));
-  }
-  rewriter->setInsertionPoint(loc_op);
-  mlir::OperationState state(loc_op->getLoc(), op_name);
-  state.addOperands(operands);
-  state.addTypes(resultTypes);
-  return reinterpret_cast<uint64_t>(rewriter->create(state));
-}
-
-// Like mlir_ir_rewriter_base_create but pre-allocates num_regions empty
-// regions.
-static uint64_t mlir_ir_rewriter_base_create_with_regions(
-    uint64_t rewriter_ptr, uint64_t loc_op_ptr, const char* op_name,
-    ptr operands_list, ptr result_types_list, int num_regions) {
-  if (!rewriter_ptr) {
-    scheme_error("mlir-ir-rewriter-base-create-with-regions",
-                 "null rewriter pointer");
-    return 0; // unreachable — error performs non-local exit
-  }
-  if (!loc_op_ptr) {
-    scheme_error("mlir-ir-rewriter-base-create-with-regions",
-                 "null loc_op pointer");
-    return 0; // unreachable — error performs non-local exit
-  }
-  auto* rewriter = reinterpret_cast<mlir::RewriterBase*>(rewriter_ptr);
-  auto* loc_op = reinterpret_cast<mlir::Operation*>(loc_op_ptr);
-  llvm::SmallVector<mlir::Value> operands;
-  llvm::SmallVector<mlir::Type> resultTypes;
-  for (ptr cur = static_cast<ptr>(operands_list); cur != Snil;
-       cur = Scdr(cur)) {
-    if (!Spairp(cur)) {
-      scheme_error("mlir-ir-rewriter-base-create-with-regions",
-                   "malformed operands list");
-      return 0; // unreachable — error performs non-local exit
-    }
-    operands.push_back(mlir::Value::getFromOpaquePointer(
-        reinterpret_cast<void*>(Sunsigned64_value(Scar(cur)))));
-  }
-  for (ptr cur = static_cast<ptr>(result_types_list); cur != Snil;
-       cur = Scdr(cur)) {
-    if (!Spairp(cur)) {
-      scheme_error("mlir-ir-rewriter-base-create-with-regions",
-                   "malformed result types list");
-      return 0; // unreachable — error performs non-local exit
-    }
-    resultTypes.push_back(mlir::Type::getFromOpaquePointer(
-        reinterpret_cast<const void*>(Sunsigned64_value(Scar(cur)))));
-  }
-  rewriter->setInsertionPoint(loc_op);
-  mlir::OperationState state(loc_op->getLoc(), op_name);
-  state.addOperands(operands);
-  state.addTypes(resultTypes);
-  for (int i = 0; i < num_regions; ++i) {
-    state.addRegion();
-  }
-  return reinterpret_cast<uint64_t>(rewriter->create(state));
-}
-
 // mlir::RewriterBase::setInsertionPoint(op)
 static void mlir_ir_rewriter_base_set_insertion_point(uint64_t rewriter_ptr,
                                                       uint64_t op_ptr) {
@@ -286,10 +192,6 @@ static uint64_t mlir_ir_rewriter_base_create_from_state(uint64_t rw_ptr,
 namespace crest {
 
 void registerIRRewriterBaseBindings() {
-  Sregister_symbol("mlir_ir_rewriter_base_create",
-                   (void*)::mlir_ir_rewriter_base_create);
-  Sregister_symbol("mlir_ir_rewriter_base_create_with_regions",
-                   (void*)::mlir_ir_rewriter_base_create_with_regions);
   // Canonical name (matching C++ setInsertionPoint(op))
   Sregister_symbol("mlir_ir_rewriter_base_set_insertion_point",
                    (void*)::mlir_ir_rewriter_base_set_insertion_point);
