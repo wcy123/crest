@@ -150,23 +150,25 @@
   ;; @note             Dispatches to current-RewriterBase if set, else current-OpBuilder.
   ;;                   Raises an error if neither is installed.
   (define mlir-build-operation
-    (case-lambda
-     [(name operands types)
-      (mlir-build-operation name operands types 0)]
-     [(name operands types nregions)
-      (let ([loc (current-Location)])
-        (cond
-         [(current-RewriterBase) =>
-          (lambda (rw)
-            (if (zero? nregions)
-                (%mlir::RewriterBase::create rw loc name operands types)
-                (%mlir::RewriterBase::create-with-regions rw loc name operands types nregions)))]
-         [(current-OpBuilder) =>
-          (lambda (b)
-            (if (zero? nregions)
-                (%mlir::OpBuilder::create b loc name operands types)
-                (%mlir::OpBuilder::create-with-regions b loc name operands types nregions)))]
-         [else (error 'mlir-build-operation "no current builder installed")]))]))
+    (let ([build      (lambda (name operands types loc nregions)
+                        (cond
+                         [(current-RewriterBase) =>
+                          (lambda (rw)
+                            (if (zero? nregions)
+                                (%mlir::RewriterBase::create rw loc name operands types)
+                                (%mlir::RewriterBase::create-with-regions rw loc name operands types nregions)))]
+                         [(current-OpBuilder) =>
+                          (lambda (b)
+                            (if (zero? nregions)
+                                (%mlir::OpBuilder::create b loc name operands types)
+                                (%mlir::OpBuilder::create-with-regions b loc name operands types nregions)))]
+                         [else (error 'mlir-build-operation "no current builder installed")]))]
+          [default-nregions 0])
+      (case-lambda
+       [(name operands types)
+        (build name operands types (current-Location) default-nregions)]
+       [(name operands types nregions)
+        (build name operands types (current-Location) nregions)])))
 
   ;; @brief RAII macro — install a RewriterBase as the active builder for the dynamic extent of body.
   ;; @param rw    RewriterBase* uptr (ConversionPatternRewriter or IRRewriter)
