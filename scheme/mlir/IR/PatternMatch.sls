@@ -167,8 +167,8 @@
       (case-lambda
        [(name operands types)
         (build name operands types (current-Location) default-nregions)]
-       [(name operands types nregions)
-        (build name operands types (current-Location) nregions)])))
+       [(name operands types loc nregions)
+        (build name operands types loc nregions)])))
 
   ;; @brief RAII macro — install a RewriterBase as the active builder for the dynamic extent of body.
   ;; @param rw    RewriterBase* uptr (ConversionPatternRewriter or IRRewriter)
