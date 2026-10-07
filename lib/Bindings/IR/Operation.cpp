@@ -32,7 +32,6 @@ const char* mlir_ir_operation_get_name(uint64_t op) {
 static uint64_t mlir_ir_operation_get_context(uint64_t op) {
   if (!op) {
     scheme_error("mlir-ir-operation-get-context", "operation must not be null");
-    return 0; // unreachable — error performs non-local exit
   }
   return reinterpret_cast<uint64_t>(
       reinterpret_cast<mlir::Operation*>(op)->getContext());
@@ -42,7 +41,6 @@ static int64_t mlir_ir_operation_get_num_operands(uint64_t op) {
   if (!op) {
     scheme_error("mlir-ir-operation-get-num-operands",
                  "operation must not be null");
-    return 0; // unreachable — error performs non-local exit
   }
   return reinterpret_cast<mlir::Operation*>(op)->getNumOperands();
 }
@@ -51,7 +49,6 @@ static int64_t mlir_ir_operation_get_num_results(uint64_t op) {
   if (!op) {
     scheme_error("mlir-ir-operation-get-num-results",
                  "operation must not be null");
-    return 0; // unreachable — error performs non-local exit
   }
   return reinterpret_cast<mlir::Operation*>(op)->getNumResults();
 }
@@ -60,14 +57,12 @@ static uint64_t mlir_ir_operation_get_op_operand(uint64_t op, int64_t index) {
   if (!op) {
     scheme_error("mlir-ir-operation-get-op-operand",
                  "operation must not be null");
-    return 0; // unreachable — error performs non-local exit
   }
   mlir::Operation* cppOp = reinterpret_cast<mlir::Operation*>(op);
   if (index < 0 || index >= (int64_t)cppOp->getNumOperands()) {
     scheme_error("mlir-ir-operation-get-op-operand",
                  "index out of range: ", index, " (size ",
                  (int64_t)cppOp->getNumOperands(), ")");
-    return 0; // unreachable — error performs non-local exit
   }
   mlir::Value val = cppOp->getOperand(index);
   MlirValue cVal = wrap(val);
@@ -77,13 +72,11 @@ static uint64_t mlir_ir_operation_get_op_operand(uint64_t op, int64_t index) {
 static uint64_t mlir_ir_operation_get_result(uint64_t op, int64_t index) {
   if (!op) {
     scheme_error("mlir-ir-operation-get-result", "operation must not be null");
-    return 0; // unreachable — error performs non-local exit
   }
   mlir::Operation* cppOp = reinterpret_cast<mlir::Operation*>(op);
   if (index < 0 || index >= (int64_t)cppOp->getNumResults()) {
     scheme_error("mlir-ir-operation-get-result", "index out of range: ", index,
                  " (size ", (int64_t)cppOp->getNumResults(), ")");
-    return 0; // unreachable — error performs non-local exit
   }
   mlir::Value val = cppOp->getResult(index);
   MlirValue cVal = wrap(val);
@@ -94,7 +87,6 @@ static ptr mlir_ir_operation_get_parent_op(ptr op_ptr) {
   if (!op_ptr) {
     scheme_error("mlir-ir-operation-get-parent-op",
                  "operation must not be null");
-    return nullptr; // unreachable — error performs non-local exit
   }
   return static_cast<mlir::Operation*>(op_ptr)->getParentOp();
 }
@@ -102,14 +94,12 @@ static ptr mlir_ir_operation_get_parent_op(ptr op_ptr) {
 static ptr mlir_ir_op_operand_get_value(ptr op_ptr, int index) {
   if (!op_ptr) {
     scheme_error("mlir-ir-op-operand-get-value", "operation must not be null");
-    return nullptr; // unreachable — error performs non-local exit
   }
   mlir::Operation* op = static_cast<mlir::Operation*>(op_ptr);
   if (index < 0 || index >= (int)op->getNumOperands()) {
     scheme_error("mlir-ir-op-operand-get-value",
                  "index out of range: ", (int64_t)index, " (size ",
                  (int64_t)op->getNumOperands(), ")");
-    return nullptr; // unreachable — error performs non-local exit
   }
   return const_cast<void*>(op->getOperand(index).getAsOpaquePointer());
 }
@@ -117,14 +107,12 @@ static ptr mlir_ir_op_operand_get_value(ptr op_ptr, int index) {
 static ptr mlir_ir_op_result_get_value(ptr op_ptr, int index) {
   if (!op_ptr) {
     scheme_error("mlir-ir-op-result-get-value", "operation must not be null");
-    return nullptr; // unreachable — error performs non-local exit
   }
   mlir::Operation* op = static_cast<mlir::Operation*>(op_ptr);
   if (index < 0 || index >= (int)op->getNumResults()) {
     scheme_error("mlir-ir-op-result-get-value",
                  "index out of range: ", (int64_t)index, " (size ",
                  (int64_t)op->getNumResults(), ")");
-    return nullptr; // unreachable — error performs non-local exit
   }
   return const_cast<void*>(op->getResult(index).getAsOpaquePointer());
 }
@@ -132,7 +120,6 @@ static ptr mlir_ir_op_result_get_value(ptr op_ptr, int index) {
 static ptr mlir_ir_operation_get_loc(ptr op_ptr) {
   if (!op_ptr) {
     scheme_error("mlir-ir-operation-get-loc", "operation must not be null");
-    return nullptr; // unreachable — error performs non-local exit
   }
   return const_cast<void*>(
       static_cast<mlir::Operation*>(op_ptr)->getLoc().getAsOpaquePointer());
@@ -333,7 +320,6 @@ static void mlir_ir_operation_copy_attr(uint64_t dst_op_ptr,
 static int mlir_ir_operation_has_attr(uint64_t op_ptr, const char* attr_name) {
   if (!op_ptr) {
     scheme_error("mlir-ir-operation-has-attr", "operation must not be null");
-    return 0; // unreachable — error performs non-local exit
   }
   return reinterpret_cast<mlir::Operation*>(op_ptr)->hasAttr(attr_name) ? 1 : 0;
 }
@@ -372,12 +358,10 @@ static void mlir_ir_operation_erase(uint64_t op_ptr) {
 static uint64_t mlir_ir_operation_get_attr(uint64_t op_ptr, const char* name) {
   if (!op_ptr) {
     scheme_error("mlir-ir-operation-get-attr", "operation must not be null");
-    return 0; // unreachable — error performs non-local exit
   }
   if (!name) {
     scheme_error("mlir-ir-operation-get-attr",
                  "attribute name must not be null");
-    return 0; // unreachable — error performs non-local exit
   }
   auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
   auto attr = op->getAttr(name);
@@ -413,14 +397,12 @@ static double mlir_ir_operation_get_float_attr(uint64_t op_ptr,
 static uint64_t mlir_ir_operation_get_region(uint64_t op_ptr, int region_idx) {
   if (!op_ptr) {
     scheme_error("mlir-ir-operation-get-region", "operation must not be null");
-    return 0; // unreachable — error performs non-local exit
   }
   auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
   if (region_idx < 0 || region_idx >= (int)op->getNumRegions()) {
     scheme_error("mlir-ir-operation-get-region",
                  "index out of range: ", (int64_t)region_idx, " (size ",
                  (int64_t)op->getNumRegions(), ")");
-    return 0; // unreachable — error performs non-local exit
   }
   return reinterpret_cast<uint64_t>(&op->getRegion(region_idx));
 }

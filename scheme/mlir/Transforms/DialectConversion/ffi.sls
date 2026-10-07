@@ -21,8 +21,8 @@
     %type-converter-create
     %type-converter-destroy
     %type-converter-add-conversion
-    %type-converter-add-source-materialization
-    %type-converter-add-target-materialization
+    %mlir::TypeConverter::addSourceMaterialization
+    %mlir::TypeConverter::addTargetMaterialization
     %type-converter-is-legal-type
     %type-converter-is-legal
     %type-converter-is-signature-legal
@@ -78,7 +78,7 @@
   ;;                  #f means not handled
   ;; @see   mlir/Transforms/DialectConversion.h
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
-  (define %type-converter-add-source-materialization
+  (define %mlir::TypeConverter::addSourceMaterialization
     (foreign-procedure
      "mlir::TypeConverter::addSourceMaterialization"
      (uptr scheme-object) void))
@@ -93,7 +93,7 @@
   ;;                  #f means not handled
   ;; @see   mlir/Transforms/DialectConversion.h
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
-  (define %type-converter-add-target-materialization
+  (define %mlir::TypeConverter::addTargetMaterialization
     (foreign-procedure
      "mlir::TypeConverter::addTargetMaterialization"
      (uptr scheme-object) void))

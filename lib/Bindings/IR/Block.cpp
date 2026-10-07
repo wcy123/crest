@@ -21,14 +21,12 @@ static uint64_t mlir_ir_block_get_argument_by_index(uint64_t block_ptr,
   if (!block_ptr) {
     scheme_error("mlir-ir-block-get-argument-by-index",
                  "block pointer is null");
-    return 0; // unreachable — error performs non-local exit
   }
   auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
   if (idx < 0 || idx >= (int)block->getNumArguments()) {
     scheme_error("mlir-ir-block-get-argument-by-index",
                  "index out of range: idx=", idx,
                  ", num-args=", (int)block->getNumArguments());
-    return 0; // unreachable — error performs non-local exit
   }
   return reinterpret_cast<uint64_t>(
       block->getArgument(idx).getAsOpaquePointer());

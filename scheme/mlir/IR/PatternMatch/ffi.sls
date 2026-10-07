@@ -17,8 +17,6 @@
 
 (library (mlir IR PatternMatch ffi)
   (export
-    %mlir::RewriterBase::create
-    %mlir::RewriterBase::create-with-regions
     %mlir::RewriterBase::setInsertionPoint          ;; canonical: mlir::RewriterBase::setInsertionPoint(op)
     %mlir::RewriterBase::setInsertionPoint-before   ;; backward-compat alias
     %mlir::RewriterBase::setInsertionPoint-to-end
@@ -30,33 +28,6 @@
     %mlir::RewritePatternSet::~RewritePatternSet
     %mlir::RewriterBase::create<OperationState>)
   (import (rnrs) (only (chezscheme) foreign-procedure))
-
-  ;; @brief mlir::RewriterBase::create — create an op via OperationState, setting insertion point before loc-op.
-  ;; @param rewriter      RewriterBase* uptr (ConversionPatternRewriter or IRRewriter)
-  ;; @param loc-op        Operation* uptr — insertion point and location source
-  ;; @param op-name       Registered MLIR op name string (e.g. "arith.addi")
-  ;; @param operands      Scheme list of Value* uptrs
-  ;; @param result-types  Scheme list of Type* uptrs
-  ;; @return              Operation* uptr of the created op, or 0 on bad input
-  ;; @see                 mlir/IR/PatternMatch.h
-  ;; @note                Defined in lib/Bindings/IR/RewriterBase.cpp
-  (define %mlir::RewriterBase::create
-    (foreign-procedure "mlir_ir_rewriter_base_create"
-                       (uptr uptr string scheme-object scheme-object) uptr))
-
-  ;; @brief mlir::RewriterBase::create — create an op with pre-allocated empty regions, setting insertion point before loc-op.
-  ;; @param rewriter      RewriterBase* uptr
-  ;; @param loc-op        Operation* uptr — insertion point and location source
-  ;; @param op-name       Registered MLIR op name string
-  ;; @param operands      Scheme list of Value* uptrs
-  ;; @param result-types  Scheme list of Type* uptrs
-  ;; @param num-regions   Number of empty regions to pre-allocate (int)
-  ;; @return              Operation* uptr of the created op, or 0 on bad input
-  ;; @see                 mlir/IR/PatternMatch.h
-  ;; @note                Defined in lib/Bindings/IR/RewriterBase.cpp
-  (define %mlir::RewriterBase::create-with-regions
-    (foreign-procedure "mlir_ir_rewriter_base_create_with_regions"
-                       (uptr uptr string scheme-object scheme-object int) uptr))
 
   ;; @brief mlir::RewriterBase::setInsertionPoint(op) — move the rewriter's insertion point to before op.
   ;; @param rewriter  RewriterBase* uptr
@@ -82,7 +53,7 @@
     (foreign-procedure "mlir_ir_rewriter_base_set_insertion_point_to_end"
                        (uptr uptr) void))
 
-  ;; @brief mlir::RewriterBase::createBlock(region) — create a new block in region, add typed arguments, set insertion point to end.
+  ;; @brief rewriter-create-opBlock(region) — create a new block in region, add typed arguments, set insertion point to end.
   ;; @param rewriter       RewriterBase* uptr
   ;; @param region         Region* uptr — target region
   ;; @param arg-types      Scheme list of Type* uptrs for block arguments (may be '())

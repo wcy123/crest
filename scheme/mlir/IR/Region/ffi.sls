@@ -4,34 +4,35 @@
 ;; Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 ;; Licensed under the MIT License.
 ;;
-;;
-;; Mirrors mlir/IR/Region.h.
 ;;===----------------------------------------------------------------------===;;
 ;;
-;; (mlir IR Region ffi) — raw C bindings for mlir/IR/Region.h.
+;; (mlir IR Region ffi) — Raw C bindings for mlir::Region and mlir::Block lifecycle.
+;;
+;; Mirrors mlir/IR/Region.h
 ;;
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir IR Region ffi)
-  (export %mlir::Region::push_back<Block>
-          %mlir::Region::front)
+  (export
+    %mlir::Block::new
+    %mlir::Region::push_back
+    %mlir::Block::addArgument
+    %mlir::Region::getParentOp
+    %mlir::Region::front)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
-  ;; @brief mlir::Region::push_back<Block> — append a new Block to a region
-  ;;        with typed arguments.
-  ;; @param region     Region* uptr — the target region
-  ;; @param arg-types  Scheme list of Type* uptrs — types for the new block's arguments
-  ;; @return           Block* uptr of the newly appended block; 0 if region is null
-  ;; @see              mlir/IR/Region.h  Region::push_back
-  ;; @note             Defined in lib/Bindings/IR/Region.cpp ::mlir_ir_region_append_new_block
-  (define %mlir::Region::push_back<Block>
-    (foreign-procedure "mlir::Region::push_back<Block>" (uptr scheme-object) uptr))
+  (define %mlir::Block::new
+    (foreign-procedure "mlir::Block::new" () uptr))
 
-  ;; @brief mlir::Region::front — return the first Block of a region.
-  ;; @param region  Region* uptr — the target region
-  ;; @return        Block* uptr; 0 if region is null or empty
-  ;; @see           mlir/IR/Region.h  Region::front()
-  ;; @note          Defined in lib/Bindings/IR/Region.cpp ::mlir_ir_region_get_first_block
+  (define %mlir::Region::push_back
+    (foreign-procedure "mlir::Region::push_back" (uptr uptr) void))
+
+  (define %mlir::Block::addArgument
+    (foreign-procedure "mlir::Block::addArgument" (uptr uptr uptr) uptr))
+
+  (define %mlir::Region::getParentOp
+    (foreign-procedure "mlir::Region::getParentOp" (uptr) uptr))
+
   (define %mlir::Region::front
     (foreign-procedure "mlir::Region::front" (uptr) uptr))
 

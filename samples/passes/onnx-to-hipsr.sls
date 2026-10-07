@@ -36,7 +36,7 @@
                 mlir::OpResult::getResultNumber)
           (mlir support array-ref)
           (only (mlir IR PatternMatch)
-                mlir::RewriterBase::create
+                rewriter-create-op
                 mlir::RewriterBase::setInsertionPoint
                 mlir::RewriterBase::eraseOp)
           (mlir Transforms DialectConversion)
@@ -68,7 +68,7 @@
     (let ((operands (loop :for i :from 0 :below (array-ref-size operands-ref)
                           :collect (array-ref-at operands-ref i))))
       (mlir::RewriterBase::setInsertionPoint rewriter op)
-      (mlir::RewriterBase::create rewriter op "func.return" operands '())
+      (rewriter-create-op rewriter op "func.return" operands '())
       (mlir::RewriterBase::eraseOp rewriter op)
       #t))
 

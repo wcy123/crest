@@ -34,13 +34,16 @@
           (only (mlir IR Region) mlir::Region::front)
           (mlir Transforms DialectConversion)
           (mlir Dialect Tensor IR)
-          (only (crest util)
-                type-converter-add-tensor-widening-materialization)
           (only (mlir IR Operation) mlir::Operation::getRegion)
           (only (mlir IR Block) mlir::Block::getArgument)
 
           (only (mlir IR BuiltinAttributes)
                 mlir::parseAttribute)
+          (only (mlir IR Value) mlir::Value::getType)
+          (mlir Dialect Tensor IR)
+          (only (mlir Transforms DialectConversion)
+                mlir::TypeConverter::addSourceMaterialization
+                mlir::TypeConverter::addTargetMaterialization)
           (only (mlir IR BuiltinTypes)
                 mlir::RankedTensorType::cloneWithEncoding
                 mlir::RankedTensorType::getEncoding
@@ -109,6 +112,23 @@
   ;; Type converter configuration
   ;;===--------------------------------------------------------------------===;;
 
+  ;; Bridge a #hipsr.mem<device> tensor to a plain tensor (or vice versa)
+  ;; at conversion boundaries using tensor.cast.
+  (define (hipsr-add-tensor-cast-materialization! converter)
+    (define (cast builder result-type inputs loc)
+      (if (not (and (pair? inputs) (null? (cdr inputs))))
+          #f
+          (let* ([input      (car inputs)]
+                 [input-type (mlir::Value::getType input)])
+            (if (not (and (mlir::isa<RankedTensorType>? input-type)
+                          (mlir::isa<RankedTensorType>? result-type)
+                          (= 1 (mlir::tensor::CastOp::areCastCompatible
+                                input-type result-type))))
+                #f
+                (mlir::tensor::CastOp::create builder loc result-type input)))))
+    (mlir::TypeConverter::addSourceMaterialization converter cast)
+    (mlir::TypeConverter::addTargetMaterialization converter cast))
+
   (define (hipsr-type-converter-add-device-memory-conversions! type-converter)
     (type-converter-add-conversion type-converter (lambda (t) t))
     (type-converter-add-conversion type-converter
@@ -117,9 +137,10 @@
                                               (> (mlir::RankedTensorType::getRank type) 0)
                                               (= 0 (mlir::RankedTensorType::getEncoding type)))
                                          (mlir::RankedTensorType::cloneWithEncoding type
-                                                                                    (mlir::parseAttribute (mlir::Type::getContext type) "#hipsr.mem<device>"))
+                                                                                    (mlir::parseAttribute (mlir::Type::getContext type)
+                                                                                                          "#hipsr.mem<device>"))
                                          #f)))
-    (type-converter-add-tensor-widening-materialization type-converter))
+    (hipsr-add-tensor-cast-materialization! type-converter))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Conversion target configuration

@@ -170,7 +170,7 @@ Every `make-parameter` that holds a pointer to a specific C++ object is named
 current-MLIRContext   ; MLIRContext* (mlir/IR/MLIRContext.h)
 current-RewriterBase  ; RewriterBase* (mlir/IR/PatternMatch.h)
 current-OpBuilder     ; OpBuilder*   (mlir/IR/Builders.h)
-current-Location      ; Location     (mlir/IR/Location.h)
+current-InsertionPoint      ; Location     (mlir/IR/Location.h)
 ```
 
 The `current-` prefix signals that the binding is a dynamic parameter, not a

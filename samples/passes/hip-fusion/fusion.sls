@@ -88,7 +88,7 @@
                 mlir::FloatAttr::getValueAsDouble.f32
                 mlir::DenseElementsAttr::getSplatValue<APFloat>
                 mlir::DenseElementsAttr::getSplatValue<APInt>)
-          (only (mlir IR PatternMatch) mlir::RewriterBase::create crest::RewriterBase::cloneWithTypes)
+          (only (mlir IR PatternMatch) rewriter-create-op crest::RewriterBase::cloneWithTypes)
           (only (mlir IR BuiltinTypes)
                 mlir::ShapedType::getElementType
                 mlir::IntegerType::getWidth
@@ -338,14 +338,14 @@
   ;;===--------------------------------------------------------------------===;;
 
   ;; Build a tensor.empty whose result type is out-type.
-  ;; Uses mlir::RewriterBase::create directly with the provided rewriter uptr so this works
+  ;; Uses rewriter-create-op directly with the provided rewriter uptr so this works
   ;; both inside and outside the with-RewriterBase context (e.g. :then-let).
   ;; The loc-op anchor is the defining op of shape-source.
   ;; Returns result Value (index 0) of the new tensor.empty op.
   (define (hip-build-init rewriter out-type shape-source)
     (let ([loc-op (mlir::Value::getDefiningOp shape-source)])
       (mlir::Operation::getResult
-       (mlir::RewriterBase::create rewriter loc-op "tensor.empty" '() (list out-type))
+       (rewriter-create-op rewriter loc-op "tensor.empty" '() (list out-type))
        0)))
 
   ;;===--------------------------------------------------------------------===;;
@@ -372,8 +372,8 @@
            ;; Build a new tensor.empty for the init when needed.
            [new-init  (if has-ctx?
                           (mlir::Operation::getResult
-                           (mlir::RewriterBase::create rewriter layout-op
-                                                       "tensor.empty" '() (list q-type))
+                           (rewriter-create-op rewriter layout-op
+                                               "tensor.empty" '() (list q-type))
                            0)
                           0)]
            ;; Rebuild operand list: replace dq-result with dq-input, and replace
