@@ -98,10 +98,7 @@
   ;; @return     mlir::UnitAttr opaque pointer uptr
   ;;             Context-owned — valid for the MLIRContext lifetime; do NOT free.
   ;; @see        mlir/IR/BuiltinAttributes.h
-  (define mlir::UnitAttr::get
-    (case-lambda
-     [()    (%mlir::UnitAttr::get (current-MLIRContext))]
-     [(ctx) (%mlir::UnitAttr::get ctx)]))
+  (define-ctx-optional mlir::UnitAttr::get %mlir::UnitAttr::get)
 
   ;; @brief mlir::DenseI32ArrayAttr::get — pack a Scheme list or vector into a mlir::DenseI32ArrayAttr.
   ;; @param ctx    mlir::MLIRContext* uptr (optional; defaults to current-MLIRContext)
