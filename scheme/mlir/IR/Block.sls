@@ -14,7 +14,9 @@
 
 (library (mlir IR Block)
   (export mlir::Block::getArgument
-          mlir::Block::getNumArguments)
+          mlir::Block::getNumArguments
+          mlir::Block::new
+          mlir::Block::addArgument)
   (import (rnrs) (mlir IR Block ffi))
 
   ;; @brief mlir::Block::getArgument — return the idx-th block argument.
@@ -29,5 +31,18 @@
   ;; @return       Argument count (uptr)
   ;; @see          mlir/IR/Block.h
   (define mlir::Block::getNumArguments %mlir::Block::getNumArguments)
+
+  ;; @brief mlir::Block::new — heap-allocate an empty Block.
+  ;; @return  Block* uptr — ownership transferred to region on push_back
+  ;; @see     mlir/IR/Block.h
+  (define mlir::Block::new %mlir::Block::new)
+
+  ;; @brief mlir::Block::addArgument — append one typed argument to a block.
+  ;; @param block  Block* uptr
+  ;; @param type   Type opaque pointer uptr
+  ;; @param loc    Location opaque pointer uptr
+  ;; @return       Value opaque pointer uptr of the new BlockArgument
+  ;; @see          mlir/IR/Block.h
+  (define mlir::Block::addArgument %mlir::Block::addArgument)
 
   ) ;; end library (mlir IR Block)
