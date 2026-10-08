@@ -16,8 +16,7 @@
 
 (library (mlir IR Region)
   (export
-    %mlir::Region::push_back
-    %mlir::Region::getParentOp
+    mlir::Region::getParentOp
     mlir::Region::push_back<Block>
     mlir::Region::front)
   (import (rnrs)
@@ -26,7 +25,17 @@
           (only (mlir IR Operation) mlir::Operation::getLoc))
 
 
+  ;; @brief mlir::Region::front — return the first Block in the region, or 0 if empty.
+  ;; @param region  Region* uptr
+  ;; @return        mlir::Block* uptr; 0 if the region has no blocks
+  ;; @see           mlir/IR/Region.h
   (define mlir::Region::front %mlir::Region::front)
+
+  ;; @brief mlir::Region::getParentOp — return the Operation that owns this region.
+  ;; @param region  Region* uptr
+  ;; @return        mlir::Operation* uptr
+  ;; @see           mlir/IR/Region.h
+  (define mlir::Region::getParentOp %mlir::Region::getParentOp)
 
   ;; @brief mlir::Region::push_back<Block> — append a new block with typed arguments.
   ;; @param region    Region* uptr
