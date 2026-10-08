@@ -33,14 +33,6 @@
     %get-string-attr
     %get-integer-attr
     %get-integer-array-attr
-    %set-f32-attr
-    %set-i64-attr
-    %set-unit-attr
-    %set-index-attr
-    %set-dense-i64-array
-    %set-i64-array-attr
-    %set-dense-i32-array
-    %copy-attr
     %has-attr
     %emit-error
     %emit-warning
@@ -196,93 +188,6 @@
   (define %get-integer-array-attr
     (foreign-procedure "crest::Operation::getIntegerArrayAttr"
                        (uptr string) scheme-object))
-
-  ;; @brief mlir::Operation::setAttr! — set a Float32 attribute.
-  ;; @param op    Operation* uptr
-  ;; @param name  Attribute name (string)
-  ;; @param value Float value (double, truncated to f32 internally)
-  ;; @return      void
-  ;; @see         mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
-  ;; @note        Defined in lib/Bindings/IR/Operation.cpp
-  (define %set-f32-attr
-    (foreign-procedure "crest::Operation::setF32Attr"
-                       (uptr string double) void))
-
-  ;; @brief mlir::Operation::setAttr! — set an i64 IntegerAttr.
-  ;; @param op    Operation* uptr
-  ;; @param name  Attribute name (string)
-  ;; @param value Integer value (integer-64)
-  ;; @return      void
-  ;; @see         mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
-  ;; @note        Defined in lib/Bindings/IR/Operation.cpp
-  (define %set-i64-attr
-    (foreign-procedure "crest::Operation::setI64Attr"
-                       (uptr string integer-64) void))
-
-  ;; @brief mlir::Operation::setAttr! — set a UnitAttr (presence-only flag).
-  ;; @param op    Operation* uptr
-  ;; @param name  Attribute name (string)
-  ;; @return      void
-  ;; @see         mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
-  ;; @note        Defined in lib/Bindings/IR/Operation.cpp
-  (define %set-unit-attr
-    (foreign-procedure "crest::Operation::setUnitAttr" (uptr string) void))
-
-  ;; @brief mlir::Operation::setAttr! — set an IndexType IntegerAttr.
-  ;; @param op    Operation* uptr
-  ;; @param name  Attribute name (string)
-  ;; @param value Index value (integer-64)
-  ;; @return      void
-  ;; @see         mlir/IR/Operation.h, mlir/IR/BuiltinTypes.h
-  ;; @note        Defined in lib/Bindings/IR/Operation.cpp
-  (define %set-index-attr
-    (foreign-procedure "crest::Operation::setIndexAttr"
-                       (uptr string integer-64) void))
-
-  ;; @brief mlir::Operation::setAttr! — set a DenseI64ArrayAttr from a Scheme list.
-  ;; @param op          Operation* uptr
-  ;; @param name        Attribute name (string)
-  ;; @param values-list Scheme list of integers
-  ;; @return            void
-  ;; @see               mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
-  ;; @note              Defined in lib/Bindings/IR/Operation.cpp
-  (define %set-dense-i64-array
-    (foreign-procedure "crest::Operation::setDenseI64Array"
-                       (uptr string scheme-object) void))
-
-  ;; @brief mlir::Operation::setAttr! — set an ArrayAttr of i64 IntegerAttrs from a Scheme list.
-  ;; @param op          Operation* uptr
-  ;; @param name        Attribute name (string)
-  ;; @param values-list Scheme list of integers
-  ;; @return            void
-  ;; @see               mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
-  ;; @note              Defined in lib/Bindings/IR/Operation.cpp; use %set-dense-i64-array for dense form
-  (define %set-i64-array-attr
-    (foreign-procedure "crest::Operation::setI64ArrayAttr"
-                       (uptr string scheme-object) void))
-
-  ;; @brief mlir::Operation::setAttr! — set a DenseI32ArrayAttr from a Scheme list.
-  ;; @param op          Operation* uptr
-  ;; @param name        Attribute name (string)
-  ;; @param values-list Scheme list of integers (truncated to i32)
-  ;; @return            void
-  ;; @see               mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
-  ;; @note              Defined in lib/Bindings/IR/Operation.cpp
-  (define %set-dense-i32-array
-    (foreign-procedure "crest::Operation::setDenseI32Array"
-                       (uptr string scheme-object) void))
-
-  ;; @brief mlir::Operation::setAttr! — copy an attribute from src-op to dst-op.
-  ;; @param dst-op    Destination Operation* uptr
-  ;; @param dst-name  Attribute name on the destination (string)
-  ;; @param src-op    Source Operation* uptr
-  ;; @param src-name  Attribute name on the source (string)
-  ;; @return          void; no-op if either op is null or src attr is absent
-  ;; @see             mlir/IR/Operation.h
-  ;; @note            Defined in lib/Bindings/IR/Operation.cpp
-  (define %copy-attr
-    (foreign-procedure "crest::Operation::copyAttr"
-                       (uptr string uptr string) void))
 
   ;; @brief mlir::Operation::hasAttr — test whether an attribute is present.
   ;; @param op         Operation* uptr
