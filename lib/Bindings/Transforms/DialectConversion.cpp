@@ -40,21 +40,16 @@ public:
     if (op->getName().getStringRef() != targetOpName) {
       return mlir::failure();
     }
-    ptr opPtr = Sunsigned64(reinterpret_cast<uint64_t>(op));
-    // Wrap operands in a heap-allocated CArrayRef; C++ frees it after the call.
-    auto* operandsWrapped = new CArrayRef<uintptr_t>(
+    // operandsWrapped: C++ owns — unique_ptr destructs after scheme_call.
+    auto operandsWrapped = std::make_unique<CArrayRef<uintptr_t>>(
         reinterpret_cast<const uintptr_t*>(operands.data()), operands.size());
-    ptr operandsRefPtr =
-        Sunsigned64(reinterpret_cast<uint64_t>(operandsWrapped));
-    // Heap-allocate CrestRef shell for rewriter — Scheme frees via
+    // rwShell: Scheme owns — release() transfers ownership; Scheme frees via
     // with-CrestObject.
-    auto* rwShell = new crest::CrestRef<mlir::RewriterBase>(&rewriter);
-    ptr rewriterPtr = Sunsigned64(reinterpret_cast<uint64_t>(rwShell));
-    ptr typeConverterPtr = Sunsigned64(schemeTypeConverterPtr_);
-    ptr result = scheme_call(callback_.get(), opPtr, operandsRefPtr,
-                             rewriterPtr, typeConverterPtr);
-    delete operandsWrapped;
-    // rwShell is freed by Scheme via with-CrestObject — do NOT delete here.
+    auto rwShell =
+        std::make_unique<crest::CrestRef<mlir::RewriterBase>>(&rewriter);
+    ptr result = scheme_call(
+        callback_.get(), op, operandsWrapped.get(), rwShell.release(),
+        reinterpret_cast<crest::CrestObject*>(schemeTypeConverterPtr_));
     return result == Strue ? mlir::success() : mlir::failure();
   }
 
@@ -81,12 +76,11 @@ public:
     if (op->getName().getStringRef() != targetOpName) {
       return mlir::failure();
     }
-    ptr opPtr = Sunsigned64(reinterpret_cast<uint64_t>(op));
-    // Heap-allocate CrestRef shell — Scheme frees via with-CrestObject.
-    auto* rwShell = new crest::CrestRef<mlir::RewriterBase>(&rewriter);
-    ptr rewriterPtr = Sunsigned64(reinterpret_cast<uint64_t>(rwShell));
-    ptr result = scheme_call(callback_.get(), opPtr, rewriterPtr);
-    // rwShell freed by Scheme — do NOT delete here.
+    // rwShell: Scheme owns — release() transfers ownership; Scheme frees via
+    // with-CrestObject.
+    auto rwShell =
+        std::make_unique<crest::CrestRef<mlir::RewriterBase>>(&rewriter);
+    ptr result = scheme_call(callback_.get(), op, rwShell.release());
     return result == Strue ? mlir::success() : mlir::failure();
   }
 

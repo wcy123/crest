@@ -104,6 +104,13 @@ inline SValue convert_to_scheme(unsigned char v) {
   return Sfixnum(static_cast<long>(v));
 }
 
+// Raw C++ pointer types → Scheme uptr (unsigned tagged integer).
+// Non-template overloads (const char*, void*) take precedence in overload
+// resolution, so char* → Sstring and SValue → identity are unaffected.
+template <typename T> inline SValue convert_to_scheme(T* p) {
+  return Sunsigned64(reinterpret_cast<uint64_t>(p));
+}
+
 // C strings
 inline SValue convert_to_scheme(const char* s) { return Sstring(s ? s : ""); }
 inline SValue convert_to_scheme(char* s) { return Sstring(s ? s : ""); }
