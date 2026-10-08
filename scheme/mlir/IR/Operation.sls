@@ -273,10 +273,10 @@
                                                    n-spec "segments but attr has" n))]
                                   [sizes  (loop :for i :from 0 :below n
                                                 :collect (ArrayRef::at segs i 'i32))]
-                                  [starts (let lp ([ss sizes] [off 0] [acc '()])
-                                            (if (null? ss)
-                                                (reverse acc)
-                                                (lp (cdr ss) (+ off (car ss)) (cons off acc))))])
+                                  [starts (loop :rime-with off := 0
+                                                :for size :in sizes
+                                                :collect off
+                                                :rime-with off := (+ off size))])
                              (loop :for kind  :in spec
                                    :for start :in starts
                                    :for size  :in sizes

@@ -78,6 +78,7 @@
 
   (import (rnrs)
           (only (chezscheme) nan?)
+          (rename (rime loop) (:with :rime-with))
 
           (only (mlir IR Value)
                 mlir::Value::getDefiningOp
@@ -258,10 +259,9 @@
     (and (not (zero? attr))
          (with-ArrayRef (ref (mlir::DenseI64ArrayAttr::intoArrayRef attr))
                         (and (= (ArrayRef::size ref) (length expected))
-                             (let loop ([i 0] [exp expected])
-                               (or (null? exp)
-                                   (and (= (ArrayRef::at ref i :i64) (car exp))
-                                        (loop (+ i 1) (cdr exp)))))))))
+                             (= 0 (loop :for i :from 0
+                                        :for e :in expected
+                                        :count :unless (= (ArrayRef::at ref i :i64) e)))))))
 
   ;; Check whether a hip.conv op has fusable geometry:
   ;; 1x1 kernel, unit strides, unit dilations, zero pads, group=1.
@@ -396,16 +396,12 @@
                           0)]
            ;; Rebuild operand list: replace dq-result with dq-input, and replace
            ;; the last operand (DPS init for hip.*) with the typed init.
-           [operands  (let loop ([i 0] [acc '()])
-                        (if (= i n)
-                            (reverse acc)
-                            (let ([v (mlir::OpOperand::get layout-op i)])
-                              (loop (+ i 1)
-                                    (cons (cond
-                                           [(= v dq-result) dq-input]
-                                           [(= i init-idx)  new-init]
-                                           [else v])
-                                          acc)))))]
+           [operands  (loop :for i :from 0 :below n
+                            :rime-with v := (mlir::OpOperand::get layout-op i)
+                            :collect (cond
+                                      [(= v dq-result) dq-input]
+                                      [(= i init-idx)  new-init]
+                                      [else v]))]
            [new-op    (crest::RewriterBase::cloneWithTypes rewriter layout-op
                                                            operands (list q-type))])
       (mlir::Operation::getResult new-op 0)))
