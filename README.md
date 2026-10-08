@@ -1,11 +1,14 @@
 # CREST — Conversion and Rewriting Engine for Scheme Transformations
 
-CREST is a homoiconic pattern DSL for MLIR — patterns are Scheme macros, so
-constraints and rewrite logic are plain Scheme functions with no C++ escapes
-and a seconds-level edit-reload cycle. Unlike [PDL](https://mlir.llvm.org/docs/PDLL/)
-and [DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/), CREST generates
-both `RewritePattern` and `ConversionPattern` subclasses, covering dialect
-conversion passes that neither DSL supports.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+CREST is a homoiconic pattern DSL for MLIR built on [Chez Scheme](https://cisco.github.io/ChezScheme/).
+Patterns are Scheme macros — guards and analysis are plain Scheme functions, no C++ required.
+Edit a `.sls` pattern file and re-run: no rebuild, no relink, changes take effect immediately.
+
+Unlike [PDL](https://mlir.llvm.org/docs/PDLL/) and [DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/),
+CREST generates both `RewritePattern` and `ConversionPattern` subclasses, covering
+dialect conversion passes that neither DSL supports.
 
 Three macros form the public surface:
 
@@ -19,73 +22,50 @@ Three macros form the public surface:
 
 ---
 
-## Example 1 — Dialect conversion: `onnx.MatMul` → `hipsr.matmul`
+## Why not C++?
 
-**Command**
+A quantization fusion in C++:
 
-```bash
-CREST_PATH=$(pwd)/samples \
-  build/tools/crest-opt/crest-opt \
-  -allow-unregistered-dialect \
-  --crest-pass="module=passes/onnx-to-hipsr" \
-  --split-input-file test/onnx-to-hipsr/matmul.mlir
+```cpp
+struct QAddFusion : OpRewritePattern<QuantizeLinearOp> {
+  LogicalResult matchAndRewrite(QuantizeLinearOp op,
+                                PatternRewriter &rw) const override {
+    auto add = op.getInput().getDefiningOp<AddOp>();
+    if (!add || !add->hasOneUse()) return failure();
+    auto dqL = add.getLhs().getDefiningOp<DequantizeLinearOp>();
+    auto dqR = add.getRhs().getDefiningOp<DequantizeLinearOp>();
+    if (!dqL || !dqR) return failure();
+    if (!isSplatConstant(dqL.getScale())) return failure();
+    if (!isSplatConstant(dqR.getScale())) return failure();
+    // ... extract float values, build OperationState, setAttr × 6, ...
+    // ~60 more lines, plus a rebuild cycle on every change
+  }
+};
 ```
 
-**Input [`test/onnx-to-hipsr/matmul.mlir`](test/onnx-to-hipsr/matmul.mlir):**
-```mlir
-func.func @matmul(%ctx: !hipsr.context, %a: tensor<?x4096xf16>, %b: tensor<4096x1024xf16>)
-                 -> tensor<?x1024xf16> {
-  %0 = "onnx.MatMul"(%a, %b) : (tensor<?x4096xf16>, tensor<4096x1024xf16>) -> tensor<?x1024xf16>
-  "onnx.Return"(%0) : (tensor<?x1024xf16>) -> ()
-}
-```
+The same pattern in CREST — match, analysis, and emission in one form, no rebuild needed:
 
-**Output [`docs/examples/matmul-output.mlir`](docs/examples/matmul-output.mlir)** (after `--crest-pass="module=passes/onnx-to-hipsr"`):
-```mlir
-func.func @matmul(%ctx: !hipsr.context, %a: tensor<?x4096xf16>, %b: tensor<4096x1024xf16>)
-                 -> tensor<?x1024xf16, #hipsr.mem<device>> {
-  %0 = "hipsr.placeholder"(%ctx, %a, %b) ({
-  ^bb0(%sa: !shape.shape, %sb: !shape.shape):
-    // K equality check + batch broadcast constraints ...
-    "hipsr.shape_yield"(%out_shape) : (!shape.shape) -> ()
-  }) : (...) -> tensor<?x1024xf16, #hipsr.mem<device>>
-  %1 = "hipsr.matmul"(%ctx, %a, %b, %0) : (...) -> tensor<?x1024xf16, #hipsr.mem<device>>
-  return %1 ...
-}
-```
-
-**The Scheme pattern:  [`samples/passes/onnx-to-hipsr/matmul.sls`](samples/passes/onnx-to-hipsr/matmul.sls)**
 ```scheme
-(define-conversion-pattern (onnx-matmul->hipsr op operands-ref rewriter type-converter)
+(define-rewrite-pattern (hip-qadd-fusion op rewriter)
   :if-match
-    %output = onnx.MatMul (%a %b)
-
+    %dq_lhs = hip.dequantize_linear (%ctx %lhs %lhs_scale (:optional %lhs_zp) %init)
+    %dq_rhs = hip.dequantize_linear (%ctx %rhs %rhs_scale (:optional %rhs_zp) %init)
+    %sum    = hip.add               (%ctx %dq_lhs %dq_rhs %init)  :where (single-consumer? %sum)
+    %q      = hip.quantize_linear   (%ctx %sum %out_scale (:optional %out_zp) %init)
   :then-let
-    ([%ctx         (mlir-get-hipsr-context-arg op)]
-     [!output-type (mlir::Value::getType %output)]
-     [!shape-type  (mlir::shape::ShapeType::get)]
-     [a-rank       (mlir::RankedTensorType::getRank (mlir::Value::getType %a))]
-     [k-a-idx      (- a-rank 1)]          ; K dim index — pure Scheme arithmetic
-     ...)
-
-  :rewrite %output :with
-    (%placeholder = hipsr.placeholder (%ctx %a %b !output-type)
-      (^bb0 ((%a-shape : !shape-type) (%b-shape : !shape-type))
-            (%ck = shape.const_size () (value = k-a-idx :index) -> !size-type)
-            (%ek = shape.get_extent (%a-shape %ck) -> !size-type)
-            ...
-            (hipsr.shape_yield (%out)))
-      -> !output-type)
-    (%result = hipsr.matmul (%ctx %a %b %placeholder) -> !output-type))
+    ([lhs-scale (scale-attr %lhs_scale)]  [lhs-zp (zp-attr %lhs_zp)]
+     [rhs-scale (scale-attr %rhs_scale)]  [rhs-zp (zp-attr %rhs_zp)]
+     [out-scale (scale-attr %out_scale)]  [out-zp (zp-attr %out_zp)] ...)
+  :rewrite %q :with
+    (%result = hip.qadd (%ctx %lhs %rhs %init)
+              ("lhs_scale" = lhs-scale) ("lhs_zp" = lhs-zp)
+              ("output_scale" = out-scale) ("output_zp" = out-zp)
+              -> !out-type))
 ```
-
-`:then-let` runs after the match and before any IR mutation — pure Scheme,
-safe to read the IR freely. `k-a-idx` is computed with plain arithmetic; no
-C++ helper needed.
 
 ---
 
-## Example 2 — Fusion rewrite: `DQ + DQ + add + Q` → `qadd`
+## Example 1 — Fusion rewrite: `DQ + DQ + add + Q` → `qadd`
 
 **Command**
 
@@ -110,9 +90,8 @@ CREST_PATH=$(pwd)/samples \
                                          (scales/zp as attributes)
 ```
 
-Four ops collapse to one. Scales and zero-points move from operands to attributes.
-
 **Input [`test/hip-fusion/qadd.mlir`](test/hip-fusion/qadd.mlir):**
+
 ```mlir
 %lhs_scale = "hip.constant"() {value = dense<0.25> : tensor<f32>} : () -> tensor<f32>
 %lhs_zp    = "hip.constant"() {value = dense<-5>   : tensor<i8>}  : () -> tensor<i8>
@@ -127,6 +106,7 @@ Four ops collapse to one. Scales and zero-points move from operands to attribute
 ```
 
 **The Scheme pattern: [`samples/passes/hip-fusion/qadd.sls`](samples/passes/hip-fusion/qadd.sls)**
+
 ```scheme
 (define-rewrite-pattern (hip-qadd-fusion op rewriter)
   :if-match
@@ -139,10 +119,9 @@ Four ops collapse to one. Scales and zero-points move from operands to attribute
     %q         = hip.quantize_linear   (%ctx %sum %out_scale (:optional %out_zp) %q_init)
   :then-let
     ([!out-type (mlir::Value::getType %q)]
-     [lhs-scale (scale-attr %lhs_scale)]   ; extract splat float → FloatAttr
-     [lhs-zp    (zp-attr %lhs_zp)]         ; present → IntegerAttr; absent → 0
-     [rhs-scale (scale-attr %rhs_scale)]   [rhs-zp  (zp-attr %rhs_zp)]
-     [out-scale (scale-attr %out_scale)]   [out-zp  (zp-attr %out_zp)]
+     [lhs-scale (scale-attr %lhs_scale)]  [lhs-zp (zp-attr %lhs_zp)]
+     [rhs-scale (scale-attr %rhs_scale)]  [rhs-zp (zp-attr %rhs_zp)]
+     [out-scale (scale-attr %out_scale)]  [out-zp (zp-attr %out_zp)]
      [%init     (hip-build-init rewriter !out-type %sum_init)])
   :rewrite %q :with
     (%result = hip.qadd (%ctx %lhs %rhs %init)
@@ -152,20 +131,89 @@ Four ops collapse to one. Scales and zero-points move from operands to attribute
               -> !out-type))
 ```
 
+`:if-match` traverses the def-use graph structurally. `:where` guards are plain Scheme predicates.
+`(:optional %lhs_zp)` handles both 4-operand and 5-operand DQ forms without a separate pattern.
+
 **Output [`docs/examples/qadd-output.mlir`](docs/examples/qadd-output.mlir):**
+
 ```mlir
-%init   = tensor.empty() : tensor<1x128x32xi8>
-%result = "hip.qadd"(%ctx, %lhs, %rhs, %init) {
+// Dead ops retained — greedy rewriter skips DCE for unregistered-dialect ops.
+// A subsequent DCE pass removes them.
+    // ... hip.constant × 6, hip.dequantize_linear × 2, hip.add × 1 ...
+    %12 = tensor.empty() : tensor<1x128x32xi8>
+    %13 = "hip.qadd"(%arg0, %arg1, %arg2, %12) {
             lhs_scale = 2.500000e-01 : f32, lhs_zp = -5 : i64,
             rhs_scale = 5.000000e-01 : f32, rhs_zp = 3 : i64,
             output_scale = 1.250000e-01 : f32, output_zp = 7 : i64
-          } -> tensor<1x128x32xi8>
+          } : (!hip.context, tensor<...xi8>, tensor<...xi8>, tensor<...xi8>) -> tensor<1x128x32xi8>
+    return %13 : tensor<1x128x32xi8>
 ```
 
-`:if-match` traverses the def-use graph structurally — match root `%q`, walk
-back through `%sum`, `%dq_lhs`, `%dq_rhs`, and the scale constants. `:where`
-guards are plain Scheme predicates; `(:optional %lhs_zp)` handles both
-4-operand and 5-operand DQ forms without a separate pattern.
+---
+
+## Example 2 — Dialect conversion: `onnx.MatMul` → `hipsr.matmul`
+
+**Command**
+
+```bash
+CREST_PATH=$(pwd)/samples \
+  build/tools/crest-opt/crest-opt \
+  -allow-unregistered-dialect \
+  --crest-pass="module=passes/onnx-to-hipsr" \
+  --split-input-file test/onnx-to-hipsr/matmul.mlir
+```
+
+**Input [`test/onnx-to-hipsr/matmul.mlir`](test/onnx-to-hipsr/matmul.mlir):**
+
+```mlir
+func.func @matmul(%ctx: !hipsr.context, %a: tensor<?x4096xf16>, %b: tensor<4096x1024xf16>)
+                 -> tensor<?x1024xf16> {
+  %0 = "onnx.MatMul"(%a, %b) : (tensor<?x4096xf16>, tensor<4096x1024xf16>) -> tensor<?x1024xf16>
+  "onnx.Return"(%0) : (tensor<?x1024xf16>) -> ()
+}
+```
+
+**The Scheme pattern: [`samples/passes/onnx-to-hipsr/matmul.sls`](samples/passes/onnx-to-hipsr/matmul.sls)**
+
+```scheme
+(define-conversion-pattern (onnx-matmul->hipsr op operands-ref rewriter type-converter)
+  :if-match
+    %output = onnx.MatMul (%a %b)
+  :then-let
+    ([%ctx         (mlir-get-hipsr-context-arg op)]
+     [!output-type (mlir::Value::getType %output)]
+     [!shape-type  (mlir::shape::ShapeType::get)]
+     [a-rank       (mlir::RankedTensorType::getRank (mlir::Value::getType %a))]
+     [k-a-idx      (- a-rank 1)]          ; K dim index — pure Scheme arithmetic
+     ...)
+  :rewrite %output :with
+    (%placeholder = hipsr.placeholder (%ctx %a %b !output-type)
+      (^bb0 ((%a-shape : !shape-type) (%b-shape : !shape-type))
+            (%ck = shape.const_size () (value = k-a-idx :index) -> !size-type)
+            (%ek = shape.get_extent (%a-shape %ck) -> !size-type)
+            ...                            ; K-equality + batch-broadcast shape constraints
+            (hipsr.shape_yield (%out)))
+      -> !output-type)
+    (%result = hipsr.matmul (%ctx %a %b %placeholder) -> !output-type))
+```
+
+`:then-let` runs after the match and before any IR mutation — safe to read the IR freely.
+`k-a-idx` is plain Scheme arithmetic; no C++ helper needed.
+
+**Output [`docs/examples/matmul-output.mlir`](docs/examples/matmul-output.mlir)** (abbreviated):
+
+```mlir
+func.func @matmul(%ctx: !hipsr.context, %a: tensor<?x4096xf16>, %b: tensor<4096x1024xf16>)
+                 -> tensor<?x1024xf16, #hipsr.mem<device>> {
+  %0 = "hipsr.placeholder"(%ctx, %a, %b) ({
+  ^bb0(%sa: !shape.shape, %sb: !shape.shape):
+    // K equality + batch broadcast shape constraints (~30 ops)
+    "hipsr.shape_yield"(%result_shape) : (!shape.shape) -> ()
+  }) : (...) -> tensor<?x1024xf16, #hipsr.mem<device>>
+  %1 = "hipsr.matmul"(%ctx, %a, %b, %0) : (...) -> tensor<?x1024xf16, #hipsr.mem<device>>
+  return %1 : tensor<?x1024xf16, #hipsr.mem<device>>
+}
+```
 
 ---
 
@@ -189,10 +237,9 @@ CREST_PATH=$(pwd)/samples \
 %2 = "hipsr.min"(...)          loc("samples/passes/onnx-to-hipsr/min.sls":59:18)
 ```
 
-The location is derived from the syntax annotation of `#'op-name` at macro
-expand time and encoded as `mlir::FileLineColLoc`. MLIR error messages,
-`--mlir-print-ir-after-all`, and crash traces all resolve to the exact line in
-the `.sls` pattern file.
+Locations are derived from the syntax annotation of `#'op-name` at macro expand time.
+MLIR error messages, `--mlir-print-ir-after-all`, and crash traces resolve to the
+exact `.sls` line — no extra work required.
 
 ---
 
