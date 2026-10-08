@@ -1,213 +1,272 @@
 # CREST — Conversion and Rewriting Engine for Scheme Transformations
 
-CREST is a homoiconic pattern DSL for MLIR — patterns are Scheme macros, so
-constraints and rewrite logic are plain Scheme functions with no C++ escapes
-and a seconds-level edit-reload cycle. Unlike [PDL](https://mlir.llvm.org/docs/PDLL/)
-and [DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/), CREST generates
-both `RewritePattern` and `ConversionPattern` subclasses, covering dialect
-conversion passes that neither DSL supports.
+[![CI](https://github.com/wcy123/crest/actions/workflows/ci.yml/badge.svg)](https://github.com/wcy123/crest/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-See [docs/architecture.md](docs/architecture.md) for a full design overview.
+CREST is a homoiconic pattern DSL for MLIR built on [Chez Scheme](https://cisco.github.io/ChezScheme/).
+Patterns are Scheme macros — guards and analysis are plain Scheme functions, no C++ required.
+Edit a `.sls` pattern file and re-run: no rebuild, no relink, changes take effect immediately.
 
-## Setup
+Three macros form the public surface:
 
-### Ubuntu 22.04 (recommended, matches CI)
+| Macro | Use case |
+|---|---|
+| `define-rewrite-pattern` | Greedy rewrite — fuse, fold, simplify ops |
+| `define-conversion-pattern` | Dialect conversion with `TypeConverter` |
+| `begin-mlir-code` | Inline op emission DSL — used inside the above |
 
-```bash
-# LLVM 22 + MLIR
-wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
-  | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
-echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-22 main" \
-  | sudo tee /etc/apt/sources.list.d/llvm.list
-sudo apt-get update
-sudo apt-get install -y clang-22 llvm-22-dev libmlir-22-dev mlir-22-tools
+→ **[Getting started](docs/getting-started.md)** — build instructions, prerequisites, deployment.
 
-# Other build dependencies
-sudo apt-get install -y \
-  build-essential ninja-build \
-  libncurses-dev uuid-dev \
-  libgtest-dev googletest
-pip install lit
+---
 
-# Build CREST
-cmake -B build -G Ninja \
-  -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-  -DCMAKE_C_COMPILER=clang-22 \
-  -DCMAKE_CXX_COMPILER=clang++-22 \
-  -DMLIR_DIR=/usr/lib/llvm-22/lib/cmake/mlir \
-  -DLLVM_DIR=/usr/lib/llvm-22/lib/cmake/llvm
-cmake --build build -j$(nproc)
-```
+## Why not PDL / DRR / C++?
 
-### Ubuntu 20.04
+[PDL](https://mlir.llvm.org/docs/PDLL/) and [DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/)
+generate only `RewritePattern` subclasses. Neither supports
+[`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns),
+`TypeConverter`, or `applyFullConversion` — the machinery required for dialect
+conversion passes. **CREST is the only DSL-based option that covers dialect conversion.**
 
-The `apt.llvm.org` packages require `libc6 ≥ 2.34`, which is not available
-on focal. Build LLVM 22 from source instead (~30 min, ~20 GB disk):
+| | DRR | PDLL | CREST |
+|---|---|---|---|
+| `ConversionPattern` support | No | No | **Yes** |
+| Edit → test cycle | full rebuild | full rebuild | **reload `.sls`** |
+| Match constraints without C++ | No | No | **Yes** (plain Scheme) |
+| Optional / variadic operands | No | Limited | **Yes** |
+| Emitted op → pattern file:line | No | No | **Yes** |
 
-`pip install cmake` does not work for building LLVM — it loses `CMAKE_ROOT`.
-Use the Kitware PPA:
-```bash
-wget -qO- https://apt.kitware.com/keys/kitware-archive-latest.asc \
-  | sudo apt-key add -
-sudo apt-add-repository 'deb https://apt.kitware.com/ubuntu/ focal main'
-sudo apt-get update && sudo apt-get install cmake
-```
-
-Build and install LLVM:
-```bash
-git clone --depth=1 --branch llvmorg-22.1.8 https://github.com/llvm/llvm-project.git
-cmake -B llvm-project/build -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DLLVM_ENABLE_PROJECTS="mlir" \
-  -DLLVM_TARGETS_TO_BUILD="X86" \
-  -DLLVM_INSTALL_UTILS=ON \
-  llvm-project/llvm
-cmake --build llvm-project/build -j$(nproc)
-sudo cmake --install llvm-project/build --prefix /usr/local
-```
-
-`-DLLVM_INSTALL_UTILS=ON` is required — it installs `FileCheck` and exports
-it as a CMake target. Without it the test suite fails.
-
-Then build CREST:
-```bash
-cmake -B build -G Ninja \
-  -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-  -DMLIR_DIR=/usr/local/lib/cmake/mlir \
-  -DLLVM_DIR=/usr/local/lib/cmake/llvm
-cmake --build build -j$(nproc)
-```
-
-## Quick start
-
-After setup, run tests:
-```bash
-# Unit tests
-./build/unittests/Interpreter/CrestInterpreterTests
-
-# Integration tests (lit + FileCheck)
-CREST_PATH=$(pwd)/samples cmake --build build --target check-crest
-```
-
-Run the sample hip-fusion pass:
-
-```bash
-CREST_PATH=/path/to/crest/samples \
-  build/tools/crest-opt/crest-opt \
-  --crest-pass="module=passes/hip-fusion" \
-  my-module.mlir
-```
-
-## Writing a pattern
-
-A conversion pattern in Scheme:
-
-```scheme
-(define-conversion-pattern (lower-cast op operands-ref rw tc)
-  :if-match
-      %cast = onnx.Cast (%data)
-                :where (quantized-tensor? %data)
-  :rewrite %cast :with
-      (%result = hipsr.cast (%data) -> (mlir-value-get-type %cast)))
-```
-
-The match side names operands structurally. The `:where` guard is plain
-Scheme — any predicate, no C++ required. `:rewrite %cast :with` names the
-root op to replace and lists the builder calls; CREST emits the
-`replaceOp` call automatically.
-
-A pass entry point:
-
-```scheme
-(library (passes my-pass)
-  (export run-pass)
-  (import (rnrs) (crest)
-          (mlir IR MLIRContext)
-          (mlir IR Operation)
-          (mlir Transforms DialectConversion))
-
-  (define (run-pass module-op)
-    (with-mlir-context (mlir::Operation::getContext module-op)
-      (with-type-converter (tc)
-        (with-conversion-target (target (current-mlir-context))
-          (with-pattern-set (patterns (current-mlir-context))
-            (mlir::applyFullConversion module-op target patterns)))))))
-```
-
-## CREST_PATH
-
-`CREST_PATH` is a colon-separated (POSIX) or semicolon-separated (Windows)
-list of directories where the interpreter searches for `.sls` files at
-runtime, analogous to `PATH`. Point it at any directory containing your pass
-libraries:
-
-```bash
-export CREST_PATH=/my-project/scheme:/path/to/crest/samples
-```
-
-## Deployment
-
-During development, `.sls` files are loaded from the filesystem at runtime —
-edit a pattern and re-run, no rebuild needed. Downstream developers point
-`CREST_PATH` at their own `.sls` directory; the interpreter picks up changes
-on the next run without touching the CREST build:
-
-```bash
-export CREST_PATH=/my-project/scheme
-build/tools/crest-opt/crest-opt --crest-pass="module=passes/my-pass" input.mlir
-```
-
-In production, the deployed binary must be able to find the `.sls` files at
-the same paths used at build time. If the deployment environment does not have
-the source tree, the binary will fail at startup. `CREST_EMBED_SCHEME_BOOT=ON`
-eliminates this dependency: all `.sls` libraries are compiled into a single
-`crest.boot` file and embedded as a C byte-array in the binary. The deployed
-binary requires no `.sls` files at runtime.
-
-```bash
-cmake -B build -DCREST_EMBED_SCHEME_BOOT=ON
-cmake --build build   # compiles .sls → crest.boot → embeds in binary
-```
-
-Downstream projects include their own `.sls` files in the boot by setting
-`CREST_BOOT_SOURCE_DIRS` (directories containing `.sls` files) and
-`CREST_BOOT_ROOTS` (root entry points whose transitive imports are compiled)
-before `add_subdirectory(crest)`. CREST compiles all roots and their
-dependencies into a single `crest.boot` at build time.
-
-```cmake
-# In your project's CMakeLists.txt, before add_subdirectory(crest):
-set(CREST_EMBED_SCHEME_BOOT ON)
-list(PREPEND CREST_BOOT_SOURCE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/scheme")
-list(PREPEND CREST_BOOT_ROOTS       "${CMAKE_CURRENT_SOURCE_DIR}/scheme/my-pass.sls")
-add_subdirectory(crest)
-```
-
-## Extending CREST
-
-Downstream projects register additional C++ bindings without modifying CREST:
+For patterns expressible in DRR or PDLL, the choice is C++ boilerplate.
+A quantization fusion in C++:
 
 ```cpp
-extern "C" void crest_register_extra_bindings(void (*fn)());
-
-// In your initialization:
-crest_register_extra_bindings([]() {
-  Sregister_symbol("myDialect::MyOp::create", (void*)my_dialect_op_create);
-});
+struct QAddFusion : OpRewritePattern<QuantizeLinearOp> {
+  LogicalResult matchAndRewrite(QuantizeLinearOp op,
+                                PatternRewriter &rw) const override {
+    auto add = op.getInput().getDefiningOp<AddOp>();
+    if (!add || !add->hasOneUse()) return failure();
+    auto dqL = add.getLhs().getDefiningOp<DequantizeLinearOp>();
+    auto dqR = add.getRhs().getDefiningOp<DequantizeLinearOp>();
+    if (!dqL || !dqR) return failure();
+    if (!isSplatConstant(dqL.getScale())) return failure();
+    if (!isSplatConstant(dqR.getScale())) return failure();
+    // ... extract float values, build OperationState, setAttr × 6, ...
+    // ~60 more lines, plus a rebuild cycle on every change
+  }
+};
 ```
+
+The same pattern in CREST — match, analysis, and emission in one form, no rebuild needed:
+
+```lisp
+(define-rewrite-pattern (hip-qadd-fusion op rewriter)
+  :if-match
+    %dq_lhs = hip.dequantize_linear (%ctx %lhs %lhs_scale (:optional %lhs_zp) %init)
+    %dq_rhs = hip.dequantize_linear (%ctx %rhs %rhs_scale (:optional %rhs_zp) %init)
+    %sum    = hip.add               (%ctx %dq_lhs %dq_rhs %init)  :where (single-consumer? %sum)
+    %q      = hip.quantize_linear   (%ctx %sum %out_scale (:optional %out_zp) %init)
+  :then-let
+    ([lhs-scale (scale-attr %lhs_scale)]  [lhs-zp (zp-attr %lhs_zp)]
+     [rhs-scale (scale-attr %rhs_scale)]  [rhs-zp (zp-attr %rhs_zp)]
+     [out-scale (scale-attr %out_scale)]  [out-zp (zp-attr %out_zp)] ...)
+  :rewrite %q :with
+    (%result = hip.qadd (%ctx %lhs %rhs %init)
+              ("lhs_scale" = lhs-scale) ("lhs_zp" = lhs-zp)
+              ("output_scale" = out-scale) ("output_zp" = out-zp)
+              -> !out-type))
+```
+
+---
+
+## Example 1 — Fusion rewrite: `DQ + DQ + add + Q` → `qadd`
+
+**Command**
+
+```bash
+CREST_PATH=$(pwd)/samples \
+  build/tools/crest-opt/crest-opt \
+  -allow-unregistered-dialect \
+  --crest-pass="module=passes/hip-fusion" \
+  --split-input-file test/hip-fusion/qadd.mlir
+```
+
+```
+  Before                                 After
+
+  %a:i8 ──► [dequantize] ──┐
+                            ├──► [add] ──► [quantize] ──► %q:i8
+  %b:i8 ──► [dequantize] ──┘
+                                                ↓
+                                         %a:i8 ──┐
+                                                  ├──► [qadd] ──► %q:i8
+                                         %b:i8 ──┘
+                                         (scales/zp as attributes)
+```
+
+**Input [`test/hip-fusion/qadd.mlir`](test/hip-fusion/qadd.mlir):**
+
+```mlir
+%lhs_scale = "hip.constant"() {value = dense<0.25> : tensor<f32>} : () -> tensor<f32>
+%lhs_zp    = "hip.constant"() {value = dense<-5>   : tensor<i8>}  : () -> tensor<i8>
+%rhs_scale = "hip.constant"() {value = dense<0.5>  : tensor<f32>} : () -> tensor<f32>
+%rhs_zp    = "hip.constant"() {value = dense<3>    : tensor<i8>}  : () -> tensor<i8>
+%out_scale = "hip.constant"() {value = dense<0.125>: tensor<f32>} : () -> tensor<f32>
+%out_zp    = "hip.constant"() {value = dense<7>    : tensor<i8>}  : () -> tensor<i8>
+%dq_lhs = "hip.dequantize_linear"(%ctx, %lhs, %lhs_scale, %lhs_zp, ...) -> tensor<...xf32>
+%dq_rhs = "hip.dequantize_linear"(%ctx, %rhs, %rhs_scale, %rhs_zp, ...) -> tensor<...xf32>
+%sum    = "hip.add"(%ctx, %dq_lhs, %dq_rhs, ...)                         -> tensor<...xf32>
+%q      = "hip.quantize_linear"(%ctx, %sum, %out_scale, %out_zp, ...)    -> tensor<...xi8>
+```
+
+**The Scheme pattern: [`samples/passes/hip-fusion/qadd.sls`](samples/passes/hip-fusion/qadd.sls)**
+
+```lisp
+(define-rewrite-pattern (hip-qadd-fusion op rewriter)
+  :if-match
+    %lhs_scale = hip.constant          ()  :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
+    %dq_lhs    = hip.dequantize_linear (%ctx %lhs %lhs_scale (:optional %lhs_zp) %dq_lhs_init)
+    %rhs_scale = hip.constant          ()  :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
+    %dq_rhs    = hip.dequantize_linear (%ctx %rhs %rhs_scale (:optional %rhs_zp) %dq_rhs_init)
+    %out_scale = hip.constant          ()  :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
+    %sum       = hip.add               (%ctx %dq_lhs %dq_rhs %sum_init)  :where (single-consumer? %sum)
+    %q         = hip.quantize_linear   (%ctx %sum %out_scale (:optional %out_zp) %q_init)
+  :then-let
+    ([!out-type (mlir::Value::getType %q)]
+     [lhs-scale (scale-attr %lhs_scale)]  [lhs-zp (zp-attr %lhs_zp)]
+     [rhs-scale (scale-attr %rhs_scale)]  [rhs-zp (zp-attr %rhs_zp)]
+     [out-scale (scale-attr %out_scale)]  [out-zp (zp-attr %out_zp)]
+     [%init     (hip-build-init rewriter !out-type %sum_init)])
+  :rewrite %q :with
+    (%result = hip.qadd (%ctx %lhs %rhs %init)
+              ("lhs_scale" = lhs-scale) ("lhs_zp" = lhs-zp)
+              ("rhs_scale" = rhs-scale) ("rhs_zp" = rhs-zp)
+              ("output_scale" = out-scale) ("output_zp" = out-zp)
+              -> !out-type))
+```
+
+`:if-match` traverses the def-use graph structurally. `:where` guards are plain Scheme predicates.
+`(:optional %lhs_zp)` handles both 4-operand and 5-operand DQ forms without a separate pattern.
+
+**Output [`docs/examples/qadd-output.mlir`](docs/examples/qadd-output.mlir):**
+
+```mlir
+// Dead ops retained — greedy rewriter skips DCE for unregistered-dialect ops.
+// A subsequent DCE pass removes them.
+    // ... hip.constant × 6, hip.dequantize_linear × 2, hip.add × 1 ...
+    %12 = tensor.empty() : tensor<1x128x32xi8>
+    %13 = "hip.qadd"(%arg0, %arg1, %arg2, %12) {
+            lhs_scale = 2.500000e-01 : f32, lhs_zp = -5 : i64,
+            rhs_scale = 5.000000e-01 : f32, rhs_zp = 3 : i64,
+            output_scale = 1.250000e-01 : f32, output_zp = 7 : i64
+          } : (!hip.context, tensor<...xi8>, tensor<...xi8>, tensor<...xi8>) -> tensor<1x128x32xi8>
+    return %13 : tensor<1x128x32xi8>
+```
+
+---
+
+## Example 2 — Dialect conversion: `onnx.MatMul` → `hipsr.matmul`
+
+**Command**
+
+```bash
+CREST_PATH=$(pwd)/samples \
+  build/tools/crest-opt/crest-opt \
+  -allow-unregistered-dialect \
+  --crest-pass="module=passes/onnx-to-hipsr" \
+  --split-input-file test/onnx-to-hipsr/matmul.mlir
+```
+
+**Input [`test/onnx-to-hipsr/matmul.mlir`](test/onnx-to-hipsr/matmul.mlir):**
+
+```mlir
+func.func @matmul(%ctx: !hipsr.context, %a: tensor<?x4096xf16>, %b: tensor<4096x1024xf16>)
+                 -> tensor<?x1024xf16> {
+  %0 = "onnx.MatMul"(%a, %b) : (tensor<?x4096xf16>, tensor<4096x1024xf16>) -> tensor<?x1024xf16>
+  "onnx.Return"(%0) : (tensor<?x1024xf16>) -> ()
+}
+```
+
+**The Scheme pattern: [`samples/passes/onnx-to-hipsr/matmul.sls`](samples/passes/onnx-to-hipsr/matmul.sls)**
+
+```lisp
+(define-conversion-pattern (onnx-matmul->hipsr op operands-ref rewriter type-converter)
+  :if-match
+    %output = onnx.MatMul (%a %b)
+  :then-let
+    ([%ctx         (mlir-get-hipsr-context-arg op)]
+     [!output-type (mlir::Value::getType %output)]
+     [!shape-type  (mlir::shape::ShapeType::get)]
+     [a-rank       (mlir::RankedTensorType::getRank (mlir::Value::getType %a))]
+     [k-a-idx      (- a-rank 1)]          ; K dim index — pure Scheme arithmetic
+     ...)
+  :rewrite %output :with
+    (%placeholder = hipsr.placeholder (%ctx %a %b !output-type)
+      (^bb0 ((%a-shape : !shape-type) (%b-shape : !shape-type))
+            (%ck = shape.const_size () (value = k-a-idx :index) -> !size-type)
+            (%ek = shape.get_extent (%a-shape %ck) -> !size-type)
+            ...                            ; K-equality + batch-broadcast shape constraints
+            (hipsr.shape_yield (%out)))
+      -> !output-type)
+    (%result = hipsr.matmul (%ctx %a %b %placeholder) -> !output-type))
+```
+
+`:then-let` runs after the match and before any IR mutation — safe to read the IR freely.
+`k-a-idx` is plain Scheme arithmetic; no C++ helper needed.
+
+**Output [`docs/examples/matmul-output.mlir`](docs/examples/matmul-output.mlir)** (abbreviated):
+
+```mlir
+func.func @matmul(%ctx: !hipsr.context, %a: tensor<?x4096xf16>, %b: tensor<4096x1024xf16>)
+                 -> tensor<?x1024xf16, #hipsr.mem<device>> {
+  %0 = "hipsr.placeholder"(%ctx, %a, %b) ({
+  ^bb0(%sa: !shape.shape, %sb: !shape.shape):
+    // K equality + batch broadcast shape constraints (~30 ops)
+    "hipsr.shape_yield"(%result_shape) : (!shape.shape) -> ()
+  }) : (...) -> tensor<?x1024xf16, #hipsr.mem<device>>
+  %1 = "hipsr.matmul"(%ctx, %a, %b, %0) : (...) -> tensor<?x1024xf16, #hipsr.mem<device>>
+  return %1 : tensor<?x1024xf16, #hipsr.mem<device>>
+}
+```
+
+---
+
+## Debug info — for free
+
+Every op emitted by `begin-mlir-code` carries `mlir::FileLineColLoc` from the
+Scheme source — no `UnknownLoc`, no manual `getLoc` threading:
+
+```bash
+CREST_PATH=$(pwd)/samples \
+  build/tools/crest-opt/crest-opt \
+  -allow-unregistered-dialect \
+  --crest-pass="module=passes/onnx-to-hipsr" \
+  --split-input-file --mlir-print-debuginfo \
+  test/onnx-to-hipsr/min.mlir
+```
+
+```
+%0 = "hipsr.placeholder"(...)  loc("samples/passes/onnx-to-hipsr/min.sls":54:23)
+%1 = shape.broadcast %a, %b   loc("samples/passes/onnx-to-hipsr/min.sls":56:41)
+%2 = "hipsr.min"(...)          loc("samples/passes/onnx-to-hipsr/min.sls":59:18)
+```
+
+Locations are derived from the syntax annotation of `#'op-name` at macro expand time.
+MLIR error messages, `--mlir-print-ir-after-all`, and crash traces resolve to the
+exact `.sls` line — no extra work required.
+
+---
 
 ## Architecture
 
 ```
 samples/passes/      — example passes (hip-fusion, onnx-to-hipsr)
-scheme/              — core Scheme libraries (mlir core/dialects/support)
+scheme/              — core Scheme libraries (mlir IR/dialects/support)
 lib/Interpreter/     — Chez Scheme runtime wrapper
-lib/Bindings/        — MLIR C API → Scheme FFI
+lib/Bindings/        — MLIR → Scheme FFI
 lib/Passes/          — --crest-pass pipeline registration
 tools/crest-opt/     — mlir-opt-style driver
 ```
 
-See [docs/architecture.md](docs/architecture.md) for the full design.
+→ See [docs/architecture.md](docs/architecture.md) for the full design.
 
 ## License
 
