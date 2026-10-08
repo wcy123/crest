@@ -18,7 +18,7 @@
 ;; Performance design:
 ;;   array-ref-size, array-ref-at — foreign-ref (zero FFI overhead, raw loads)
 ;;   make-array-ref, array-ref-destroy — C++ FFI (acceptable for lifecycle)
-;;   with-array-ref — macro: RAII wrapper via dynamic-wind
+;;   with-ArrayRef — macro: RAII wrapper via dynamic-wind
 ;;
 ;;===----------------------------------------------------------------------===;;
 
@@ -28,7 +28,7 @@
     array-ref-at        ; (ref index [type]) → element, bounds-checked
     make-array-ref      ; (data-ptr size) → ref  [C heap allocation]
     array-ref-destroy   ; (ref) → void           [C heap free]
-    with-array-ref      ; (syntax) RAII: make + body + destroy
+    with-ArrayRef      ; (syntax) RAII: make + body + destroy
     :uptr               ; array-ref-at element type → 'uptr (8-byte pointer, default)
     :i64)              ; array-ref-at element type → 'i64  (8-byte signed integer)
                                         ; :i32 is a local keyword synonym — 'i32
@@ -89,7 +89,7 @@
   ;; @param data-ptr  uptr — pointer to the first element of the backing array
   ;; @param size      uptr — number of elements
   ;; @return          uptr — address of the newly allocated CArrayRef
-  ;; @note            Must be paired with array-ref-destroy, or use with-array-ref (RAII)
+  ;; @note            Must be paired with array-ref-destroy, or use with-ArrayRef (RAII)
   ;; @note            Defined in lib/Bindings/Support/ArrayRef.cpp
   (define make-array-ref %make)
 
@@ -101,7 +101,7 @@
   (define array-ref-destroy %destroy)
 
   ;;===--------------------------------------------------------------------===;;
-  ;; with-array-ref — RAII macro.
+  ;; with-ArrayRef — RAII macro.
   ;; Guarantees array-ref-destroy is called even on exception (dynamic-wind).
   ;;===--------------------------------------------------------------------===;;
 
@@ -109,11 +109,11 @@
   ;;
   ;; Two forms:
   ;;
-  ;;   (with-array-ref (name existing-ref) body ...)
+  ;;   (with-ArrayRef (name existing-ref) body ...)
   ;;     Adopt an existing CArrayRef uptr.  name is bound to existing-ref inside body.
   ;;     array-ref-destroy is called on name when body exits (normally or via exception).
   ;;
-  ;;   (with-array-ref (name data-ptr size) body ...)
+  ;;   (with-ArrayRef (name data-ptr size) body ...)
   ;;     Allocate a new CArrayRef via make-array-ref.  name is bound to the new uptr.
   ;;     array-ref-destroy is called on name when body exits (normally or via exception).
   ;;
@@ -125,9 +125,9 @@
   ;; @return          Value of the last body expression
   ;; @note            Implemented via dynamic-wind; destruction runs even on exceptions
   ;; @note            Do not let name escape body — it is freed on exit
-  (define-syntax with-array-ref
+  (define-syntax with-ArrayRef
     (syntax-rules ()
-      ;; (with-array-ref (name existing-ref) body ...)
+      ;; (with-ArrayRef (name existing-ref) body ...)
       ;; Manage an existing array-ref uptr — destroyed on exit even on exception.
       [(_ (name ref-expr) body ...)
        (let ([name ref-expr])
@@ -135,7 +135,7 @@
              (lambda () #f)
              (lambda () body ...)
              (lambda () (array-ref-destroy name))))]
-      ;; (with-array-ref (name data-ptr size) body ...)
+      ;; (with-ArrayRef (name data-ptr size) body ...)
       ;; Allocate a new CArrayRef from data pointer + element count.
       [(_ (name data-ptr size) body ...)
        (let ([name (make-array-ref data-ptr size)])
