@@ -264,8 +264,7 @@ static uint64_t mlir_ir_builtin_attributes_dense_i32_array_attr_as_array_ref(
     scheme_error("mlir-ir-builtin-attributes-dense-i32-array-attr-as-array-ref",
                  "attribute is not a DenseI32ArrayAttr");
   }
-  auto* ref = new CArrayRef{reinterpret_cast<uint64_t>(arr.asArrayRef().data()),
-                            static_cast<uint64_t>(arr.size())};
+  auto* ref = new CArrayRef(arr.asArrayRef().data(), arr.size());
   return reinterpret_cast<uint64_t>(ref);
 }
 
@@ -281,8 +280,7 @@ static uint64_t mlir_ir_dense_i64_array_as_array_ref(uint64_t attr_ptr) {
     scheme_error("mlir::DenseI64ArrayAttr::intoArrayRef",
                  "attribute is not a DenseI64ArrayAttr");
   }
-  auto* ref = new CArrayRef{reinterpret_cast<uint64_t>(arr.asArrayRef().data()),
-                            static_cast<uint64_t>(arr.size())};
+  auto* ref = new CArrayRef(arr.asArrayRef().data(), arr.size());
   return reinterpret_cast<uint64_t>(ref);
 }
 

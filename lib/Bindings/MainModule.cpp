@@ -26,6 +26,7 @@
 #include "IR/Value.h"
 #include "Interfaces/DestinationStyleOp.h"
 #include "Support/ArrayRef.h"
+#include "Support/CrestObject.h"
 #include "Support/Logging.h"
 #include "Transforms/DialectConversion.h"
 #include "Transforms/GreedyPatternRewriteDriver.h"
@@ -57,6 +58,7 @@ void registerMlirForeignFunctions() {
   registerIRRewriterBaseBindings();
   registerIRTypeBindings();
   registerIRValueBindings();
+  registerCrestObjectBindings();
   registerArrayRefBindings();
   registerLoggingBindings();
   registerTransformsDialectConversionBindings();
