@@ -15,7 +15,6 @@
 (library (mlir IR Block)
   (export mlir::Block::getArgument
           mlir::Block::getNumArguments
-          mlir::Block::new
           mlir::Block::addArgument)
   (import (rnrs) (mlir IR Block ffi))
 
@@ -33,10 +32,10 @@
   ;; @see          mlir/IR/Block.h
   (define mlir::Block::getNumArguments %mlir::Block::getNumArguments)
 
-  ;; @brief mlir::Block::new — heap-allocate an empty Block.
-  ;; @return  Block* uptr — ownership transferred to region on push_back
-  ;; @see     mlir/IR/Block.h
-  (define mlir::Block::new %mlir::Block::new)
+  ;; @note mlir::Block::new is intentionally NOT exported.
+  ;;       Blocks must be pushed into a Region immediately after creation or
+  ;;       the memory leaks — there is no destructor to call.
+  ;;       Use mlir::Region::push_back<Block> which creates and pushes atomically.
 
   ;; @brief mlir::Block::addArgument — append one typed argument to a block.
   ;; @param block  Block* uptr
