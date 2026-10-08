@@ -38,7 +38,8 @@ public:
     // size@16) so Scheme's ArrayRef::size / ArrayRef::at work correctly.
     // Freed here in C++ after the Scheme call — Scheme accesses it directly
     // without with-ArrayRef, so the deletor is never called from Scheme.
-    auto* operandsWrapped = new CArrayRef(operands.data(), operands.size());
+    auto* operandsWrapped = new CArrayRef<uintptr_t>(
+        reinterpret_cast<const uintptr_t*>(operands.data()), operands.size());
     ptr operandsRefPtr =
         Sunsigned64(reinterpret_cast<uint64_t>(operandsWrapped));
     ptr rewriterPtr = Sunsigned64(reinterpret_cast<uint64_t>(&rewriter));

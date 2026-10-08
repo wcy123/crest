@@ -36,7 +36,7 @@
           (only (mlir IR Operation)
                 mlir::Operation::getResult mlir::Operation::setAttr! mlir::Operation::getAttr)
           (only (mlir IR BuiltinAttributes) mlir::DenseI64ArrayAttr::intoArrayRef)
-          (only (mlir support array-ref) with-ArrayRef ArrayRef::at ArrayRef::size :i64)
+          (only (mlir support array-ref) with-ArrayRef ArrayRef::at ArrayRef::size)
           (rename (rime loop) (:with :rime-with))
 
           (only (mlir IR BuiltinTypes)
@@ -72,7 +72,7 @@
                           (with-ArrayRef (ref (mlir::DenseI64ArrayAttr::intoArrayRef attr))
                                          (list->vector
                                           (loop :for i :from 0 :below (ArrayRef::size ref)
-                                                :collect (ArrayRef::at ref i :i64))))))])
+                                                :collect (ArrayRef::at ref i))))))])
     :rewrite %output :with
       (%placeholder = "hipsr.placeholder" (%ctx %input !out-device)
                     (^bb0 ((%is : !shape-type))

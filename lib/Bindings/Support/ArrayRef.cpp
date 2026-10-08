@@ -10,11 +10,10 @@
 
 extern "C" {
 
-// Allocate a CArrayRef on the C heap and return its address as uptr.
-// The deletor (from AsCrest<CArrayRef>) is set automatically by the
-// constructor. Layout: { deletor@0, data@8, size@16 }
+// Allocate a CArrayRef<uintptr_t> on the C heap (generic uptr arrays).
 static uint64_t mlir_support_array_ref_make(uint64_t data_ptr, uint64_t size) {
-  auto* ref = new CArrayRef(reinterpret_cast<const void*>(data_ptr), size);
+  auto* ref = new CArrayRef<uintptr_t>(
+      reinterpret_cast<const uintptr_t*>(data_ptr), size);
   return reinterpret_cast<uint64_t>(ref);
 }
 
@@ -25,6 +24,31 @@ namespace crest {
 void registerArrayRefBindings() {
   Sregister_symbol("mlir_support_array_ref_make",
                    (void*)::mlir_support_array_ref_make);
+
+  // CrestObject::isa<CArrayRef<T>> — type predicates.
+  // Non-capturing lambdas converted to plain function pointers via unary +.
+  // The isa logic (deletor address comparison) stays in C++ where it belongs.
+  Sregister_symbol(
+      "CArrayRef<i32>::isa", (void*)+[](uint64_t p) -> int {
+        return reinterpret_cast<crest::CrestObject*>(p)
+                       ->isa<CArrayRef<int32_t>>()
+                   ? 1
+                   : 0;
+      });
+  Sregister_symbol(
+      "CArrayRef<i64>::isa", (void*)+[](uint64_t p) -> int {
+        return reinterpret_cast<crest::CrestObject*>(p)
+                       ->isa<CArrayRef<int64_t>>()
+                   ? 1
+                   : 0;
+      });
+  Sregister_symbol(
+      "CArrayRef<uptr>::isa", (void*)+[](uint64_t p) -> int {
+        return reinterpret_cast<crest::CrestObject*>(p)
+                       ->isa<CArrayRef<uintptr_t>>()
+                   ? 1
+                   : 0;
+      });
 }
 
 } // namespace crest

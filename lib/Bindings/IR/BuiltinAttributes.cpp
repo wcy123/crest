@@ -66,8 +66,24 @@ mlir_ir_builtin_attributes_dense_i32_array_attr_get(uint64_t ctx_ptr,
       vec.push_back(static_cast<int32_t>(Sfixnum_value(Scar(cur))));
     }
   } else {
-    scheme_error("mlir::DenseI32ArrayAttr::get",
-                 "value must be a Scheme list or vector");
+    // Attempt CArrayRef<int32_t> path. After ruling out Scheme vector and list,
+    // value must be a uptr (raw C pointer as Scheme integer). We treat it as
+    // CrestObject* and call isa<CArrayRef<int32_t>>() to confirm the type.
+    // RISK: if the caller passes an arbitrary integer (not a CArrayRef*),
+    // the dereference is undefined behaviour — contract requires list, vector,
+    // or CArrayRef<int32_t>.
+    auto* obj = reinterpret_cast<crest::CrestObject*>(
+        static_cast<uintptr_t>(Sunsigned_value(value)));
+    if (obj->isa<CArrayRef<int32_t>>()) {
+      auto* ref = static_cast<CArrayRef<int32_t>*>(static_cast<void*>(obj));
+      for (size_t i = 0; i < ref->size; ++i) {
+        vec.push_back(ref->data[i]);
+      }
+    } else {
+      scheme_error("mlir::DenseI32ArrayAttr::get",
+                   "value must be a Scheme list, vector, or CArrayRef<int32_t>;"
+                   " got a CrestObject with a different type tag");
+    }
   }
   return reinterpret_cast<uint64_t>(
       mlir::DenseI32ArrayAttr::get(ctx, vec).getAsOpaquePointer());
@@ -88,8 +104,20 @@ mlir_ir_builtin_attributes_dense_i64_array_attr_get(uint64_t ctx_ptr,
       vec.push_back(Sinteger64_value(Scar(cur)));
     }
   } else {
-    scheme_error("mlir::DenseI64ArrayAttr::get",
-                 "value must be a Scheme list or vector");
+    // Attempt CArrayRef<int64_t> path — same RISK as DenseI32 above: UB if
+    // the caller passes an arbitrary integer instead of a valid CArrayRef*.
+    auto* obj = reinterpret_cast<crest::CrestObject*>(
+        static_cast<uintptr_t>(Sunsigned_value(value)));
+    if (obj->isa<CArrayRef<int64_t>>()) {
+      auto* ref = static_cast<CArrayRef<int64_t>*>(static_cast<void*>(obj));
+      for (size_t i = 0; i < ref->size; ++i) {
+        vec.push_back(ref->data[i]);
+      }
+    } else {
+      scheme_error("mlir::DenseI64ArrayAttr::get",
+                   "value must be a Scheme list, vector, or CArrayRef<int64_t>;"
+                   " got a CrestObject with a different type tag");
+    }
   }
   return reinterpret_cast<uint64_t>(
       mlir::DenseI64ArrayAttr::get(ctx, vec).getAsOpaquePointer());
@@ -264,7 +292,7 @@ static uint64_t mlir_ir_builtin_attributes_dense_i32_array_attr_as_array_ref(
     scheme_error("mlir-ir-builtin-attributes-dense-i32-array-attr-as-array-ref",
                  "attribute is not a DenseI32ArrayAttr");
   }
-  auto* ref = new CArrayRef(arr.asArrayRef().data(), arr.size());
+  auto* ref = new CArrayRef<int32_t>(arr.asArrayRef().data(), arr.size());
   return reinterpret_cast<uint64_t>(ref);
 }
 
@@ -280,7 +308,7 @@ static uint64_t mlir_ir_dense_i64_array_as_array_ref(uint64_t attr_ptr) {
     scheme_error("mlir::DenseI64ArrayAttr::intoArrayRef",
                  "attribute is not a DenseI64ArrayAttr");
   }
-  auto* ref = new CArrayRef(arr.asArrayRef().data(), arr.size());
+  auto* ref = new CArrayRef<int64_t>(arr.asArrayRef().data(), arr.size());
   return reinterpret_cast<uint64_t>(ref);
 }
 
