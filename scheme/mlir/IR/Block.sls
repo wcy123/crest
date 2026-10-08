@@ -20,11 +20,15 @@
 
   ;; @brief mlir::Block::getArgument — return the idx-th block argument.
   ;; @param block  Block* uptr
-  ;; @param idx    0-based argument index (int)
-  ;; @return       mlir::BlockArgument opaque pointer uptr (subclass of mlir::Value);
-  ;;               raises Scheme error if null or index out of range
+  ;; @param idx    0-based argument index (exact integer)
+  ;; @return       mlir::BlockArgument opaque pointer uptr (subclass of mlir::Value)
+  ;; @error        raises error 'mlir::Block::getArgument if idx is out of range
   ;; @see          mlir/IR/Block.h
-  (define mlir::Block::getArgument %mlir::Block::getArgument)
+  (define (mlir::Block::getArgument block idx)
+    (let ([n (mlir::Block::getNumArguments block)])
+      (unless (and (>= idx 0) (< idx n))
+        (error 'mlir::Block::getArgument "index out of range" idx n))
+      (%mlir::Block::getArgument block idx)))
 
   ;; @brief mlir::Block::getNumArguments — return the number of block arguments.
   ;; @param block  Block* uptr (must be non-null)
@@ -32,7 +36,7 @@
   ;; @see          mlir/IR/Block.h
   (define mlir::Block::getNumArguments %mlir::Block::getNumArguments)
 
-  ;; @note mlir::Block::new is intentionally NOT exported.
+  ;; @note %mlir::Block::new is intentionally NOT exported.
   ;;       Blocks must be pushed into a Region immediately after creation or
   ;;       the memory leaks — there is no destructor to call.
   ;;       Use mlir::Region::push_back<Block> which creates and pushes atomically.
