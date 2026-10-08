@@ -342,8 +342,10 @@ void registerTransformsDialectConversionBindings() {
             [locked](mlir::OpBuilder& builder, mlir::Type resultType,
                      mlir::ValueRange inputs,
                      mlir::Location loc) -> mlir::Value {
-              // Wrap builder in CrestRef shell; freed by Scheme via
-              // with-CrestObject.
+              // C++ owns this shell — delete after scheme_apply regardless of
+              // outcome. Materialization callbacks are user lambdas; unlike
+              // pattern callbacks, the framework never wraps builder in
+              // with-CrestObject on the Scheme side.
               auto* builderShell = new CrestRef<mlir::OpBuilder>(&builder);
               ptr builder_arg =
                   Sunsigned64(reinterpret_cast<uint64_t>(builderShell));
@@ -361,6 +363,7 @@ void registerTransformsDialectConversionBindings() {
                                Scons(result_type_arg,
                                      Scons(inputs_list, Scons(loc_arg, Snil))));
               ptr result = scheme_apply(locked->get(), args);
+              delete builderShell;
               if (result == Sfalse || result == Sfixnum(0)) {
                 return nullptr;
               }
@@ -386,8 +389,10 @@ void registerTransformsDialectConversionBindings() {
             [locked](mlir::OpBuilder& builder, mlir::Type resultType,
                      mlir::ValueRange inputs,
                      mlir::Location loc) -> mlir::Value {
-              // Wrap builder in CrestRef shell; freed by Scheme via
-              // with-CrestObject.
+              // C++ owns this shell — delete after scheme_apply regardless of
+              // outcome. Materialization callbacks are user lambdas; unlike
+              // pattern callbacks, the framework never wraps builder in
+              // with-CrestObject on the Scheme side.
               auto* builderShell = new CrestRef<mlir::OpBuilder>(&builder);
               ptr builder_arg =
                   Sunsigned64(reinterpret_cast<uint64_t>(builderShell));
@@ -405,6 +410,7 @@ void registerTransformsDialectConversionBindings() {
                                Scons(result_type_arg,
                                      Scons(inputs_list, Scons(loc_arg, Snil))));
               ptr result = scheme_apply(locked->get(), args);
+              delete builderShell;
               if (result == Sfalse || result == Sfixnum(0)) {
                 return nullptr;
               }
