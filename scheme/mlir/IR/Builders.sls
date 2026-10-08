@@ -25,11 +25,10 @@
   ;; @see           mlir/IR/Builders.h
   (define mlir::OpBuilder::atBlockEnd %mlir::OpBuilder::atBlockEnd)
 
-  ;; @brief mlir::OpBuilder? — is this ptr an OpBuilder (owned or borrowed)?
-  ;; Returns true for CrestOwned<OpBuilder>* (from atBlockEnd) and
-  ;; CrestRef<OpBuilder>* (from materialization callbacks).
+  ;; @brief mlir::OpBuilder? — is this ptr a CrestOwned<mlir::OpBuilder>?
+  ;; OpBuilder is always owned: created by with-OpBuilder or copied from
+  ;; materialization callback arguments. CrestRef<OpBuilder> no longer exists.
   (define (mlir::OpBuilder? ptr)
-    (or (not (zero? (%crest::isa<CrestOwned<mlir::OpBuilder>> ptr)))
-        (not (zero? (%crest::isa<CrestRef<mlir::OpBuilder>> ptr)))))
+    (not (zero? (%crest::isa<CrestOwned<mlir::OpBuilder>> ptr))))
 
   ) ;; end library (mlir IR Builders)

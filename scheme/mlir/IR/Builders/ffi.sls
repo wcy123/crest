@@ -17,8 +17,7 @@
     %mlir::OpBuilder::atBlockEnd
     %mlir::OpBuilder::create<OperationState>
     %mlir::OpBuilder::getContext
-    %crest::isa<CrestOwned<mlir::OpBuilder>>
-    %crest::isa<CrestRef<mlir::OpBuilder>>)
+    %crest::isa<CrestOwned<mlir::OpBuilder>>)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief Heap-allocate a CrestOwned<mlir::OpBuilder> positioned at end of block.
@@ -42,11 +41,8 @@
   (define %mlir::OpBuilder::getContext
     (foreign-procedure "mlir::OpBuilder::getContext" (uptr) uptr))
 
-  ;; @brief Type predicates — CrestObject::isa<T>.
+  ;; @brief Type predicate — CrestObject::isa<CrestOwned<OpBuilder>>.
   (define %crest::isa<CrestOwned<mlir::OpBuilder>>
     (foreign-procedure "crest::isa<CrestOwned<mlir::OpBuilder>>" (uptr) int))
-
-  (define %crest::isa<CrestRef<mlir::OpBuilder>>
-    (foreign-procedure "crest::isa<CrestRef<mlir::OpBuilder>>" (uptr) int))
 
   ) ;; end library (mlir IR Builders ffi)

@@ -14,22 +14,6 @@
 
 namespace crest {
 
-// Extract mlir::OpBuilder* from either CrestOwned<OpBuilder> or
-// CrestRef<OpBuilder>. Calls scheme_error if ptr is null or neither type.
-static mlir::OpBuilder* extract_op_builder(uint64_t ptr, const char* who) {
-  if (!ptr) {
-    scheme_error(who, "null pointer");
-  }
-  auto* co = reinterpret_cast<CrestObject*>(ptr);
-  if (co->isa<CrestOwned<mlir::OpBuilder>>()) {
-    return &reinterpret_cast<CrestOwned<mlir::OpBuilder>*>(ptr)->inner;
-  }
-  if (co->isa<CrestRef<mlir::OpBuilder>>()) {
-    return reinterpret_cast<CrestRef<mlir::OpBuilder>*>(ptr)->ptr;
-  }
-  scheme_error(who, "expected OpBuilder (owned or ref)");
-}
-
 void registerIROpBuilderBindings() {
   Sregister_symbol(
       "mlir_ir_op_builder_at_block_end",
@@ -44,18 +28,18 @@ void registerIROpBuilderBindings() {
   Sregister_symbol(
       "mlir_ir_op_builder_create_from_state",
       (void*)+[](uint64_t builder_ptr, uint64_t state_ptr) -> uint64_t {
-        auto* builder = extract_op_builder(
+        auto& builder = crest_owned<mlir::OpBuilder>(
             builder_ptr, "mlir_ir_op_builder_create_from_state");
         auto& state = crest_owned<mlir::OperationState>(
             state_ptr, "mlir_ir_op_builder_create_from_state");
-        return reinterpret_cast<uint64_t>(builder->create(state));
+        return reinterpret_cast<uint64_t>(builder.create(state));
       });
   Sregister_symbol(
       "mlir::OpBuilder::getContext",
       (void*)+[](uint64_t builder_ptr) -> uint64_t {
-        auto* builder =
-            extract_op_builder(builder_ptr, "mlir::OpBuilder::getContext");
-        return reinterpret_cast<uint64_t>(builder->getContext());
+        auto& builder = crest_owned<mlir::OpBuilder>(
+            builder_ptr, "mlir::OpBuilder::getContext");
+        return reinterpret_cast<uint64_t>(builder.getContext());
       });
   Sregister_symbol(
       "crest::isa<CrestOwned<mlir::OpBuilder>>",
@@ -65,16 +49,6 @@ void registerIROpBuilderBindings() {
         }
         return reinterpret_cast<CrestObject*>(ptr)
                        ->isa<CrestOwned<mlir::OpBuilder>>()
-                   ? 1
-                   : 0;
-      });
-  Sregister_symbol(
-      "crest::isa<CrestRef<mlir::OpBuilder>>", (void*)+[](uint64_t ptr) -> int {
-        if (!ptr) {
-          return 0;
-        }
-        return reinterpret_cast<CrestObject*>(ptr)
-                       ->isa<CrestRef<mlir::OpBuilder>>()
                    ? 1
                    : 0;
       });

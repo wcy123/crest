@@ -321,11 +321,11 @@ void registerTransformsDialectConversionBindings() {
             [locked](mlir::OpBuilder& builder, mlir::Type resultType,
                      mlir::ValueRange inputs,
                      mlir::Location loc) -> mlir::Value {
-              // unique_ptr ensures the shell is freed even if scheme_apply
-              // returns early; C++ owns it (materialization callbacks are user
-              // lambdas — the framework never calls with-CrestObject for them).
+              // Copy builder into CrestOwned — OpBuilder is copyable (context
+              // ptr + insertion point). No CrestRef<OpBuilder> needed; Scheme
+              // always sees CrestOwned<OpBuilder>.
               auto builderShell =
-                  std::make_unique<CrestRef<mlir::OpBuilder>>(&builder);
+                  std::make_unique<CrestOwned<mlir::OpBuilder>>(builder);
               ptr builder_arg =
                   Sunsigned64(reinterpret_cast<uint64_t>(builderShell.get()));
               ptr result_type_arg = Sunsigned64(
@@ -363,10 +363,11 @@ void registerTransformsDialectConversionBindings() {
             [locked](mlir::OpBuilder& builder, mlir::Type resultType,
                      mlir::ValueRange inputs,
                      mlir::Location loc) -> mlir::Value {
-              // unique_ptr ensures the shell is freed even if scheme_apply
-              // returns early; C++ owns it (user lambda, no with-CrestObject).
+              // Copy builder into CrestOwned — OpBuilder is copyable (context
+              // ptr + insertion point). No CrestRef<OpBuilder> needed; Scheme
+              // always sees CrestOwned<OpBuilder>.
               auto builderShell =
-                  std::make_unique<CrestRef<mlir::OpBuilder>>(&builder);
+                  std::make_unique<CrestOwned<mlir::OpBuilder>>(builder);
               ptr builder_arg =
                   Sunsigned64(reinterpret_cast<uint64_t>(builderShell.get()));
               ptr result_type_arg = Sunsigned64(
