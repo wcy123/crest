@@ -95,11 +95,15 @@ CREST_PATH=$(pwd)/samples \
   Before                                 After
 
   %a:i8 ──► [dequantize] ──┐
-                            ├──► [add] ──► [quantize] ──► %q:i8
+                           ├──► [add] ──► [quantize] ──► %q:i8
   %b:i8 ──► [dequantize] ──┘
+
+                                                │
+                                                │
                                                 ↓
+
                                          %a:i8 ──┐
-                                                  ├──► [qadd] ──► %q:i8
+                                                 ├──► [qadd] ──► %q:i8
                                          %b:i8 ──┘
                                          (scales/zp as attributes)
 ```
