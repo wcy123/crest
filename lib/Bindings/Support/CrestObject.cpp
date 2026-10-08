@@ -13,22 +13,18 @@
 #include "CrestObject.h"
 #include "SchemeWrapper.h"
 
-extern "C" {
-
-// Call the deletor stored at offset 0 of a CrestObject, freeing the object.
-// Needed as a C binding because Scheme cannot call an arbitrary function
-// pointer (uptr) without a C-side trampoline.
-static void crest_crest_object_delete(uint64_t obj_ptr) {
-  auto* obj = reinterpret_cast<crest::CrestObject*>(obj_ptr);
-  obj->deletor(obj);
-}
-
-} // extern "C"
+extern "C" {} // extern "C"
 
 namespace crest {
 
 void registerCrestObjectBindings() {
-  Sregister_symbol("CrestObject::delete", (void*)::crest_crest_object_delete);
+  // Call the deletor stored at offset 0 of a CrestObject.
+  // Needed as a C trampoline because Scheme cannot call a raw function pointer.
+  Sregister_symbol(
+      "CrestObject::delete", (void*)+[](uint64_t obj_ptr) -> void {
+        auto* obj = reinterpret_cast<crest::CrestObject*>(obj_ptr);
+        obj->deletor(obj);
+      });
 }
 
 } // namespace crest

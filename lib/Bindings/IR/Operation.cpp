@@ -211,13 +211,6 @@ static void mlir_ir_operation_emit_remark(uint64_t op_ptr, const char* msg) {
   reinterpret_cast<mlir::Operation*>(op_ptr)->emitRemark(msg);
 }
 
-static void mlir_ir_operation_erase(uint64_t op_ptr) {
-  if (!op_ptr) {
-    return;
-  }
-  reinterpret_cast<mlir::Operation*>(op_ptr)->erase();
-}
-
 static uint64_t mlir_ir_operation_get_attr(uint64_t op_ptr, const char* name) {
   if (!op_ptr) {
     scheme_error("mlir-ir-operation-get-attr", "operation must not be null");
@@ -333,7 +326,13 @@ void registerIROperationBindings() {
                    (void*)::mlir_ir_operation_emit_warning);
   Sregister_symbol("mlir::Operation::emitRemark",
                    (void*)::mlir_ir_operation_emit_remark);
-  Sregister_symbol("mlir::Operation::erase", (void*)::mlir_ir_operation_erase);
+  Sregister_symbol(
+      "mlir::Operation::erase", (void*)+[](uint64_t op_ptr) -> void {
+        if (!op_ptr) {
+          return;
+        }
+        reinterpret_cast<mlir::Operation*>(op_ptr)->erase();
+      });
   Sregister_symbol("mlir::Operation::getAttrDictionary",
                    (void*)::mlir_ir_operation_get_attr_dictionary);
   Sregister_symbol("mlir::Operation::setAttrs",
