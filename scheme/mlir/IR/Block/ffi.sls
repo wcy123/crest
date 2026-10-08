@@ -22,7 +22,8 @@
   ;; @brief mlir::Block::getArgument — return the idx-th block argument.
   ;; @param block  Block* uptr
   ;; @param idx    0-based argument index (int)
-  ;; @return       Value opaque pointer uptr; 0 if null or index out of range
+  ;; @return       mlir::BlockArgument opaque pointer uptr (subclass of mlir::Value);
+  ;;               raises Scheme error if null or index out of range
   ;; @see          mlir/IR/Block.h
   ;; @note         Defined in lib/Bindings/IR/Block.cpp
   (define %mlir::Block::getArgument
@@ -44,9 +45,9 @@
 
   ;; @brief mlir::Block::addArgument — append one typed argument to a block.
   ;; @param block  Block* uptr
-  ;; @param type   Type opaque pointer uptr
-  ;; @param loc    Location opaque pointer uptr
-  ;; @return       Value opaque pointer uptr of the new BlockArgument
+  ;; @param type   mlir::Type opaque pointer uptr
+  ;; @param loc    mlir::Location opaque pointer uptr
+  ;; @return       mlir::BlockArgument opaque pointer uptr (subclass of mlir::Value)
   ;; @see          mlir/IR/Block.h
   (define %mlir::Block::addArgument
     (foreign-procedure "mlir::Block::addArgument" (uptr uptr uptr) uptr))
