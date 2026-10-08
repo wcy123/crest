@@ -207,116 +207,6 @@ static ptr mlir_ir_operation_get_integer_array_attr(uint64_t op_ptr,
   return Snil;
 }
 
-static void mlir_ir_operation_set_index_attr(uint64_t op_ptr,
-                                             const char* attr_name,
-                                             int64_t value) {
-  if (!op_ptr) {
-    return;
-  }
-  mlir::Operation* cppOp = reinterpret_cast<mlir::Operation*>(op_ptr);
-  cppOp->setAttr(
-      attr_name,
-      mlir::IntegerAttr::get(mlir::IndexType::get(cppOp->getContext()), value));
-}
-
-static void mlir_ir_operation_set_i64_array_attr(uint64_t op_ptr,
-                                                 const char* attr_name,
-                                                 ptr values_list) {
-  if (!op_ptr) {
-    return;
-  }
-  auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-  llvm::SmallVector<mlir::Attribute> attrs;
-  auto i64Type = mlir::IntegerType::get(op->getContext(), 64);
-  for (ptr cur = static_cast<ptr>(values_list); cur != Snil; cur = Scdr(cur)) {
-    if (!Spairp(cur)) {
-      break;
-    }
-    attrs.push_back(mlir::IntegerAttr::get(i64Type, Sinteger_value(Scar(cur))));
-  }
-  op->setAttr(attr_name, mlir::ArrayAttr::get(op->getContext(), attrs));
-}
-
-static void mlir_ir_operation_set_dense_i64_array(uint64_t op_ptr,
-                                                  const char* attr_name,
-                                                  ptr values_list) {
-  if (!op_ptr) {
-    return;
-  }
-  auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-  llvm::SmallVector<int64_t> values;
-  for (ptr cur = static_cast<ptr>(values_list); cur != Snil; cur = Scdr(cur)) {
-    if (!Spairp(cur)) {
-      break;
-    }
-    values.push_back(Sinteger_value(Scar(cur)));
-  }
-  op->setAttr(attr_name,
-              mlir::DenseI64ArrayAttr::get(op->getContext(), values));
-}
-
-static void mlir_ir_operation_set_dense_i32_array(uint64_t op_ptr,
-                                                  const char* attr_name,
-                                                  ptr values_list) {
-  if (!op_ptr) {
-    return;
-  }
-  auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-  llvm::SmallVector<int32_t> values;
-  for (ptr cur = static_cast<ptr>(values_list); cur != Snil; cur = Scdr(cur)) {
-    if (!Spairp(cur)) {
-      break;
-    }
-    values.push_back(static_cast<int32_t>(Sinteger_value(Scar(cur))));
-  }
-  op->setAttr(attr_name,
-              mlir::DenseI32ArrayAttr::get(op->getContext(), values));
-}
-
-static void mlir_ir_operation_set_f32_attr(uint64_t op_ptr, const char* name,
-                                           double value) {
-  if (!op_ptr) {
-    return;
-  }
-  auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-  op->setAttr(name,
-              mlir::FloatAttr::get(mlir::Float32Type::get(op->getContext()),
-                                   static_cast<float>(value)));
-}
-
-static void mlir_ir_operation_set_i64_attr(uint64_t op_ptr, const char* name,
-                                           int64_t value) {
-  if (!op_ptr) {
-    return;
-  }
-  auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-  op->setAttr(name, mlir::IntegerAttr::get(
-                        mlir::IntegerType::get(op->getContext(), 64), value));
-}
-
-static void mlir_ir_operation_set_unit_attr(uint64_t op_ptr, const char* name) {
-  if (!op_ptr) {
-    return;
-  }
-  auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-  op->setAttr(name, mlir::UnitAttr::get(op->getContext()));
-}
-
-static void mlir_ir_operation_copy_attr(uint64_t dst_op_ptr,
-                                        const char* dst_name,
-                                        uint64_t src_op_ptr,
-                                        const char* src_name) {
-  if (!dst_op_ptr || !src_op_ptr) {
-    return;
-  }
-  auto* dst = reinterpret_cast<mlir::Operation*>(dst_op_ptr);
-  auto* src = reinterpret_cast<mlir::Operation*>(src_op_ptr);
-  auto attr = src->getAttr(src_name);
-  if (attr) {
-    dst->setAttr(dst_name, attr);
-  }
-}
-
 static int mlir_ir_operation_has_attr(uint64_t op_ptr, const char* attr_name) {
   if (!op_ptr) {
     scheme_error("mlir-ir-operation-has-attr", "operation must not be null");
@@ -464,22 +354,6 @@ void registerIROperationBindings() {
                    (void*)::mlir_ir_operation_get_integer_attr);
   Sregister_symbol("crest::Operation::getIntegerArrayAttr",
                    (void*)::mlir_ir_operation_get_integer_array_attr);
-  Sregister_symbol("crest::Operation::setF32Attr",
-                   (void*)::mlir_ir_operation_set_f32_attr);
-  Sregister_symbol("crest::Operation::setI64Attr",
-                   (void*)::mlir_ir_operation_set_i64_attr);
-  Sregister_symbol("crest::Operation::setUnitAttr",
-                   (void*)::mlir_ir_operation_set_unit_attr);
-  Sregister_symbol("crest::Operation::setIndexAttr",
-                   (void*)::mlir_ir_operation_set_index_attr);
-  Sregister_symbol("crest::Operation::setDenseI64Array",
-                   (void*)::mlir_ir_operation_set_dense_i64_array);
-  Sregister_symbol("crest::Operation::setI64ArrayAttr",
-                   (void*)::mlir_ir_operation_set_i64_array_attr);
-  Sregister_symbol("crest::Operation::setDenseI32Array",
-                   (void*)::mlir_ir_operation_set_dense_i32_array);
-  Sregister_symbol("crest::Operation::copyAttr",
-                   (void*)::mlir_ir_operation_copy_attr);
   Sregister_symbol("mlir::Operation::hasAttr",
                    (void*)::mlir_ir_operation_has_attr);
   Sregister_symbol("mlir::Operation::emitError",

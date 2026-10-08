@@ -27,7 +27,8 @@
           (crest)
           (passes hip-fusion helpers)
           (only (mlir IR Value) mlir::Value::getDefiningOp)
-          (only (mlir IR Operation) crest::Operation::setUnitAttr)
+          (only (mlir IR Operation) mlir::Operation::setAttr!)
+          (only (mlir IR BuiltinAttributes) mlir::UnitAttr::get)
           )
 
   (define-rewrite-pattern (hip-qconv-fusion op rewriter)
@@ -76,7 +77,7 @@
                    (mlir-operation-set-i64-array-attr! new-op "strides"      '(1 1))
                    (mlir-operation-set-i64-array-attr! new-op "pads"         '(0 0 0 0))
                    (mlir-operation-set-i64-array-attr! new-op "dilations"    '(1 1))
-                   (crest::Operation::setUnitAttr new-op "packed_int4")
+                   (mlir::Operation::setAttr! new-op "packed_int4" (mlir::UnitAttr::get))
                    %qconv-result)))
 
   ) ;; end library (passes hip-fusion qconv)

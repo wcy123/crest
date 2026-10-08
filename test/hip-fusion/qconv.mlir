@@ -24,7 +24,7 @@
 // CHECK:         %[[WZP:.*]] = "hip.constant"() {location = "w.bin", offset = 16 : i64, size = 2 : i64} : () -> tensor<4xi8>
 // CHECK:         %[[WSCALE:.*]] = "hip.constant"() {location = "w.bin", offset = 32 : i64, size = 16 : i64} : () -> tensor<4xf32>
 // CHECK:         %[[INIT:.*]] = tensor.empty() : tensor<1x4x1x2xui16>
-// CHECK:         %[[QCONV:.*]] = "hip.qconv"(%[[CTX]], %[[X]], %[[W]], %[[WSCALE]], %[[WZP]], %[[INIT]]) {dilations = [1, 1], group = 1 : i64, input_scale = 1.638800e-04 : f32, input_zp = -30261 : i64, kernel_shape = [1, 1], output_scale = 3.687020e-04 : f32, output_zp = -29214 : i64, packed_int4, pads = [0, 0, 0, 0], strides = [1, 1], weight_axis = 0 : i64}
+// CHECK:         %[[QCONV:.*]] = "hip.qconv"(%[[CTX]], %[[X]], %[[W]], %[[WSCALE]], %[[WZP]], %[[INIT]]) {dilations = array<i64: 1, 1>, group = 1 : i64, input_scale = 1.638800e-04 : f32, input_zp = -30261 : i64, kernel_shape = array<i64: 1, 1>, output_scale = 3.687020e-04 : f32, output_zp = -29214 : i64, packed_int4, pads = array<i64: 0, 0, 0, 0>, strides = array<i64: 1, 1>, weight_axis = 0 : i64}
 // CHECK-SAME:    : (!hip.context, tensor<1x8x1x2xui16>, tensor<4x8x1x1xi8>, tensor<4xf32>, tensor<4xi8>, tensor<1x4x1x2xui16>) -> tensor<1x4x1x2xui16>
 // CHECK:         return %[[QCONV]] : tensor<1x4x1x2xui16>
 func.func @qconv(%ctx: !hip.context,

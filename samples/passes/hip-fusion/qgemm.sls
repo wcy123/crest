@@ -34,7 +34,9 @@
           (passes hip-fusion helpers)
           (only (mlir IR Value) mlir::Value::getDefiningOp)
           (only (mlir IR Operation)
-                crest::Operation::setF32Attr mlir::Operation::getAttrOfType<IntegerAttr>)
+                mlir::Operation::setAttr! mlir::Operation::getAttrOfType<IntegerAttr>)
+          (only (mlir IR BuiltinAttributes)
+                mlir::FloatAttr::get<f32>)
           )
 
   ;;===--------------------------------------------------------------------===;;
@@ -104,8 +106,8 @@
                     ("transB"       = trans-b :i64)
                     -> !y-type)
       (%result = (let ([new-op (mlir::Value::getDefiningOp %gemm-result)])
-                   (unless (nan? alpha) (crest::Operation::setF32Attr new-op "alpha" alpha))
-                   (unless (nan? beta)  (crest::Operation::setF32Attr new-op "beta"  beta))
+                   (unless (nan? alpha) (mlir::Operation::setAttr! new-op "alpha" (mlir::FloatAttr::get<f32> alpha)))
+                   (unless (nan? beta)  (mlir::Operation::setAttr! new-op "beta" (mlir::FloatAttr::get<f32>  beta)))
                    %gemm-result)))
 
   ;;===--------------------------------------------------------------------===;;
@@ -163,7 +165,7 @@
                     ("transB"       = trans-b :i64)
                     -> !y-type)
       (%result = (let ([new-op (mlir::Value::getDefiningOp %gemm-result)])
-                   (unless (nan? alpha) (crest::Operation::setF32Attr new-op "alpha" alpha))
+                   (unless (nan? alpha) (mlir::Operation::setAttr! new-op "alpha" (mlir::FloatAttr::get<f32> alpha)))
                    %gemm-result)))
 
   ;;===--------------------------------------------------------------------===;;
@@ -227,8 +229,8 @@
                     ("transB"       = trans-b :i64)
                     -> !y-type)
       (%result = (let ([new-op (mlir::Value::getDefiningOp %gemm-result)])
-                   (unless (nan? alpha) (crest::Operation::setF32Attr new-op "alpha" alpha))
-                   (unless (nan? beta)  (crest::Operation::setF32Attr new-op "beta"  beta))
+                   (unless (nan? alpha) (mlir::Operation::setAttr! new-op "alpha" (mlir::FloatAttr::get<f32> alpha)))
+                   (unless (nan? beta)  (mlir::Operation::setAttr! new-op "beta" (mlir::FloatAttr::get<f32>  beta)))
                    %gemm-result)))
 
   ;;===--------------------------------------------------------------------===;;
@@ -280,7 +282,7 @@
                     ("transB"       = trans-b :i64)
                     -> !y-type)
       (%result = (let ([new-op (mlir::Value::getDefiningOp %gemm-result)])
-                   (unless (nan? alpha) (crest::Operation::setF32Attr new-op "alpha" alpha))
+                   (unless (nan? alpha) (mlir::Operation::setAttr! new-op "alpha" (mlir::FloatAttr::get<f32> alpha)))
                    %gemm-result)))
 
   ) ;; end library (passes hip-fusion qgemm)
