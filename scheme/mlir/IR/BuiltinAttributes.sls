@@ -46,7 +46,8 @@
     mlir::DenseI32ArrayAttr::intoArrayRef
     mlir::DenseElementsAttr::getSplatValue<APFloat>
     mlir::DenseElementsAttr::getSplatValue<APInt>
-    mlir::DenseI32ArrayAttr::intoArrayRef->list
+    mlir::DenseI32ArrayAttr::toVector
+    mlir::DenseI64ArrayAttr::toVector
     mlir::Operation::getAttr
     mlir::Operation::setAttr!
     mlir::Operation::getAttrOfType<FloatAttr>
@@ -225,12 +226,17 @@
   ;; @note         Direct alias for %mlir::DenseElementsAttr::getSplatValue<APInt>
   (define mlir::DenseElementsAttr::getSplatValue<APInt>    %mlir::DenseElementsAttr::getSplatValue<APInt>)
 
-  ;; @brief mlir::DenseI32ArrayAttr::intoArrayRef->list — convert a DenseI32ArrayAttr to a Scheme list.
+  ;; @brief mlir::DenseI32ArrayAttr::toVector — convert a DenseI32ArrayAttr to a Scheme vector.
   ;; @param attr   mlir::DenseI32ArrayAttr opaque pointer uptr; raises error if null or wrong type
-  ;; @return       Scheme list of fixnums, one per element
+  ;; @return       Scheme vector of fixnums, one per element
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Direct alias for %mlir::DenseI32ArrayAttr::intoArrayRef->list
-  (define mlir::DenseI32ArrayAttr::intoArrayRef->list  %mlir::DenseI32ArrayAttr::intoArrayRef->list)
+  (define mlir::DenseI32ArrayAttr::toVector  %mlir::DenseI32ArrayAttr::toVector)
+
+  ;; @brief mlir::DenseI64ArrayAttr::toVector — convert a DenseI64ArrayAttr to a Scheme vector.
+  ;; @param attr   mlir::DenseI64ArrayAttr opaque pointer uptr; raises error if null or wrong type
+  ;; @return       Scheme vector of integers, one per element
+  ;; @see          mlir/IR/BuiltinAttributes.h
+  (define mlir::DenseI64ArrayAttr::toVector  %mlir::DenseI64ArrayAttr::toVector)
 
   ;; @brief mlir::Operation::getAttr — retrieve a named attribute from an operation.
   ;; @param op     mlir::Operation* uptr

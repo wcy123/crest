@@ -89,7 +89,7 @@
                 mlir::FloatAttr::getValueAsDouble.f32
                 mlir::DenseElementsAttr::getSplatValue<APFloat>
                 mlir::DenseElementsAttr::getSplatValue<APInt>
-                mlir::DenseI64ArrayAttr::intoArrayRef)
+                mlir::DenseI64ArrayAttr::toVector)
           (only (mlir IR PatternMatch) mlir-create-operation)
           (only (mlir IR BuiltinTypes)
                 mlir::ShapedType::getElementType
@@ -104,7 +104,7 @@
                 mlir::Operation::getAttrDictionary
                 mlir::Operation::setAttrs
                 mlir::OpOperand::get mlir::OpResult::getOwner mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getNumOperands mlir::Operation::getResult mlir::Operation::hasAttr?)
-          (only (mlir support array-ref) with-ArrayRef ArrayRef::at ArrayRef::size :i64))
+          )
 
 
   ;; Local helpers — expressed via explicit builtin-attributes functions.
@@ -254,14 +254,14 @@
                             [rel-err   (abs (- actual expected))])
                        (< rel-err (* 2.0 (expt 2.0 -23) (abs expected)))))))))))
 
-  ;; Compare a DenseI64ArrayAttr against an expected list without building a Scheme list.
+  ;; Compare a DenseI64ArrayAttr against an expected list.
   (define (dense-i64-attr=? attr expected)
     (and (not (zero? attr))
-         (with-ArrayRef (ref (mlir::DenseI64ArrayAttr::intoArrayRef attr))
-                        (and (= (ArrayRef::size ref) (length expected))
-                             (= 0 (loop :for i :from 0
-                                        :for e :in expected
-                                        :count :unless (= (ArrayRef::at ref i :i64) e)))))))
+         (let ([v (mlir::DenseI64ArrayAttr::toVector attr)])
+           (and (= (vector-length v) (length expected))
+                (= 0 (loop :for e :in expected
+                           :for i :from 0
+                           :count :unless (= (vector-ref v i) e)))))))
 
   ;; Check whether a hip.conv op has fusable geometry:
   ;; 1x1 kernel, unit strides, unit dilations, zero pads, group=1.

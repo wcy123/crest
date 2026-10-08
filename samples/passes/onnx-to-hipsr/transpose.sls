@@ -46,11 +46,10 @@
   ;; Build the permuted output shape inside a region block.
   ;; Returns the output !shape.shape value.
   (define (build-permuted-shape! builder perm input-shape shape-type size-type)
-    (let ([extents (map (lambda (p)
-                          (begin-mlir-code (:builder builder)
-                                           (%sz  = shape.const_size () ("value" = p :index) -> size-type)
-                                           (%ext = shape.get_extent (input-shape %sz) -> size-type)))
-                        perm)])
+    (let ([extents (loop :for p :in-vector perm
+                         :collect (begin-mlir-code (:builder builder)
+                                                   (%sz  = shape.const_size () ("value" = p :index) -> size-type)
+                                                   (%ext = shape.get_extent (input-shape %sz) -> size-type)))])
       (begin-mlir-code (:builder builder)
                        (%out = shape.from_extents (,@extents) -> shape-type))))
 
@@ -71,8 +70,9 @@
                             (let loop ([i 0] [acc '()])
                               (if (eqv? i rank) acc (loop (+ i 1) (cons i acc)))))
                           (with-ArrayRef (ref (mlir::DenseI64ArrayAttr::intoArrayRef attr))
-                                         (loop :for i :from 0 :below (ArrayRef::size ref)
-                                               :collect (ArrayRef::at ref i :i64)))))])
+                                         (list->vector
+                                          (loop :for i :from 0 :below (ArrayRef::size ref)
+                                                :collect (ArrayRef::at ref i :i64))))))])
     :rewrite %output :with
       (%placeholder = "hipsr.placeholder" (%ctx %input !out-device)
                     (^bb0 ((%is : !shape-type))
@@ -81,7 +81,7 @@
                           ("hipsr.shape_yield" (%out-shape)))
                     -> !out-device)
       (%result = hipsr.transpose (%ctx %input %placeholder !out-device)
-               ("perm" = perm :i64-array)
+               ("perm" = (vector->list perm) :i64-array)
                -> !out-device))
 
   (define (populate-transpose-patterns type-converter patterns ctx)
