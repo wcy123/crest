@@ -154,12 +154,19 @@ guards are plain Scheme predicates; `(:optional %lhs_zp)` handles both
 Every op emitted by `begin-mlir-code` carries `mlir::FileLineColLoc` from the
 Scheme source — no `UnknownLoc`, no manual `getLoc` threading:
 
+```bash
+CREST_PATH=$(pwd)/samples \
+  build/tools/crest-opt/crest-opt \
+  -allow-unregistered-dialect \
+  --crest-pass="module=passes/onnx-to-hipsr" \
+  --split-input-file --mlir-print-debuginfo \
+  test/onnx-to-hipsr/min.mlir
 ```
-$ crest-opt --mlir-print-debuginfo input.mlir
 
-%0 = "hipsr.placeholder"(...)  loc("min.sls":54:23)
-%1 = shape.broadcast %a, %b   loc("min.sls":56:41)
-%2 = "hipsr.min"(...)          loc("min.sls":59:18)
+```
+%0 = "hipsr.placeholder"(...)  loc("samples/passes/onnx-to-hipsr/min.sls":54:23)
+%1 = shape.broadcast %a, %b   loc("samples/passes/onnx-to-hipsr/min.sls":56:41)
+%2 = "hipsr.min"(...)          loc("samples/passes/onnx-to-hipsr/min.sls":59:18)
 ```
 
 The location is derived from the syntax annotation of `#'op-name` at macro
