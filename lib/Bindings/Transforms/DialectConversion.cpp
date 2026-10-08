@@ -51,10 +51,8 @@ public:
     auto* rwShell = new crest::CrestRef<mlir::RewriterBase>(&rewriter);
     ptr rewriterPtr = Sunsigned64(reinterpret_cast<uint64_t>(rwShell));
     ptr typeConverterPtr = Sunsigned64(schemeTypeConverterPtr_);
-    ptr args_list =
-        Scons(opPtr, Scons(operandsRefPtr,
-                           Scons(rewriterPtr, Scons(typeConverterPtr, Snil))));
-    ptr result = scheme_apply(callback_.get(), args_list);
+    ptr result = scheme_call(callback_.get(), opPtr, operandsRefPtr,
+                             rewriterPtr, typeConverterPtr);
     delete operandsWrapped;
     // rwShell is freed by Scheme via with-CrestObject — do NOT delete here.
     return result == Strue ? mlir::success() : mlir::failure();
@@ -87,8 +85,7 @@ public:
     // Heap-allocate CrestRef shell — Scheme frees via with-CrestObject.
     auto* rwShell = new crest::CrestRef<mlir::RewriterBase>(&rewriter);
     ptr rewriterPtr = Sunsigned64(reinterpret_cast<uint64_t>(rwShell));
-    ptr args_list = Scons(opPtr, Scons(rewriterPtr, Snil));
-    ptr result = scheme_apply(callback_.get(), args_list);
+    ptr result = scheme_call(callback_.get(), opPtr, rewriterPtr);
     // rwShell freed by Scheme — do NOT delete here.
     return result == Strue ? mlir::success() : mlir::failure();
   }
@@ -338,10 +335,8 @@ void registerTransformsDialectConversionBindings() {
               }
               ptr loc_arg = Sunsigned64(
                   reinterpret_cast<uint64_t>(loc.getAsOpaquePointer()));
-              ptr args = Scons(builder_arg,
-                               Scons(result_type_arg,
-                                     Scons(inputs_list, Scons(loc_arg, Snil))));
-              ptr result = scheme_apply(locked->get(), args);
+              ptr result = scheme_call(locked->get(), builder_arg,
+                                       result_type_arg, inputs_list, loc_arg);
               // Sync cursor back: the callback may have advanced the insertion
               // point on the copy. Cheap assignment; removes dependency on
               // whether MLIR uses the builder cursor after the callback.
@@ -384,10 +379,8 @@ void registerTransformsDialectConversionBindings() {
               }
               ptr loc_arg = Sunsigned64(
                   reinterpret_cast<uint64_t>(loc.getAsOpaquePointer()));
-              ptr args = Scons(builder_arg,
-                               Scons(result_type_arg,
-                                     Scons(inputs_list, Scons(loc_arg, Snil))));
-              ptr result = scheme_apply(locked->get(), args);
+              ptr result = scheme_call(locked->get(), builder_arg,
+                                       result_type_arg, inputs_list, loc_arg);
               // Sync cursor back: the callback may have advanced the insertion
               // point on the copy. Cheap assignment; removes dependency on
               // whether MLIR uses the builder cursor after the callback.
