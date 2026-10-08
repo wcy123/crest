@@ -103,6 +103,8 @@
   ;; @brief mlir::DenseI32ArrayAttr::get — pack a Scheme list or vector into a mlir::DenseI32ArrayAttr.
   ;; @param ctx    mlir::MLIRContext* uptr (optional; defaults to current-MLIRContext)
   ;; @param value  Scheme list or vector of fixnums (each truncated to int32_t)
+  ;;               CArrayRef is NOT accepted — use (with-ArrayRef (ref ...) (loop :collect ...))
+  ;;               to convert a CArrayRef to a vector first.
   ;; @return       mlir::DenseI32ArrayAttr opaque pointer uptr
   ;;               Context-owned — valid for the MLIRContext lifetime; do NOT free.
   ;; @see          mlir/IR/BuiltinAttributes.h
@@ -111,6 +113,8 @@
   ;; @brief mlir::DenseI64ArrayAttr::get — pack a Scheme list or vector into a mlir::DenseI64ArrayAttr.
   ;; @param ctx    mlir::MLIRContext* uptr (optional; defaults to current-MLIRContext)
   ;; @param value  Scheme list or vector of exact integers (each coerced to int64_t)
+  ;;               CArrayRef is NOT accepted — use (with-ArrayRef (ref ...) (loop :collect ...))
+  ;;               to convert a CArrayRef to a vector first.
   ;; @return       mlir::DenseI64ArrayAttr opaque pointer uptr
   ;;               Context-owned — valid for the MLIRContext lifetime; do NOT free.
   ;; @see          mlir/IR/BuiltinAttributes.h
