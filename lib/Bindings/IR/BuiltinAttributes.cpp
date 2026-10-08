@@ -56,8 +56,15 @@ mlir_ir_builtin_attributes_dense_i32_array_attr_get(uint64_t ctx_ptr,
                                                     ptr value) {
   auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
   llvm::SmallVector<int32_t> vec;
-  for (ptr cur = value; cur != Snil; cur = Scdr(cur)) {
-    vec.push_back(static_cast<int32_t>(Sfixnum_value(Scar(cur))));
+  if (Svectorp(value)) {
+    iptr n = Svector_length(value);
+    for (iptr i = 0; i < n; ++i) {
+      vec.push_back(static_cast<int32_t>(Sfixnum_value(Svector_ref(value, i))));
+    }
+  } else {
+    for (ptr cur = value; cur != Snil; cur = Scdr(cur)) {
+      vec.push_back(static_cast<int32_t>(Sfixnum_value(Scar(cur))));
+    }
   }
   return reinterpret_cast<uint64_t>(
       mlir::DenseI32ArrayAttr::get(ctx, vec).getAsOpaquePointer());
@@ -68,8 +75,15 @@ mlir_ir_builtin_attributes_dense_i64_array_attr_get(uint64_t ctx_ptr,
                                                     ptr value) {
   auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
   llvm::SmallVector<int64_t> vec;
-  for (ptr cur = value; cur != Snil; cur = Scdr(cur)) {
-    vec.push_back(Sinteger64_value(Scar(cur)));
+  if (Svectorp(value)) {
+    iptr n = Svector_length(value);
+    for (iptr i = 0; i < n; ++i) {
+      vec.push_back(Sinteger64_value(Svector_ref(value, i)));
+    }
+  } else {
+    for (ptr cur = value; cur != Snil; cur = Scdr(cur)) {
+      vec.push_back(Sinteger64_value(Scar(cur)));
+    }
   }
   return reinterpret_cast<uint64_t>(
       mlir::DenseI64ArrayAttr::get(ctx, vec).getAsOpaquePointer());

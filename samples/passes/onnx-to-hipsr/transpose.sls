@@ -81,7 +81,7 @@
                           ("hipsr.shape_yield" (%out-shape)))
                     -> !out-device)
       (%result = hipsr.transpose (%ctx %input %placeholder !out-device)
-               ("perm" = (vector->list perm) :i64-array)
+               ("perm" = perm :i64-array)
                -> !out-device))
 
   (define (populate-transpose-patterns type-converter patterns ctx)
