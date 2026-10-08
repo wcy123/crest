@@ -25,83 +25,49 @@
     %mlir::RewriterBase::eraseOp
     %mlir::RewriterBase::create<OperationState>
     %mlir::RewritePatternSet::RewritePatternSet
-    %mlir::RewritePatternSet::~RewritePatternSet)
+    %crest::isa<CrestOwned<mlir::RewritePatternSet>>
+    %crest::isa<CrestRef<mlir::RewriterBase>>)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
-  ;; @brief mlir::RewriterBase::setInsertionPoint(op) — move the rewriter's insertion point to before op.
-  ;; @param rewriter  RewriterBase* uptr
-  ;; @param op        Operation* uptr — target operation
-  ;; @return          void
-  ;; @see             mlir/IR/PatternMatch.h, mlir/IR/Builders.h
-  ;; @note            Defined in lib/Bindings/IR/RewriterBase.cpp
   (define %mlir::RewriterBase::setInsertionPoint
     (foreign-procedure "mlir_ir_rewriter_base_set_insertion_point"
                        (uptr uptr) void))
 
-  ;; @brief Backward-compat alias for %mlir::RewriterBase::setInsertionPoint.
   (define %mlir::RewriterBase::setInsertionPoint-before
     %mlir::RewriterBase::setInsertionPoint)
 
-  ;; @brief mlir::RewriterBase::setInsertionPointToEnd(block) — move the rewriter's insertion point to the end of block.
-  ;; @param rewriter  RewriterBase* uptr
-  ;; @param block     Block* uptr — target block
-  ;; @return          void
-  ;; @see             mlir/IR/PatternMatch.h
-  ;; @note            Defined in lib/Bindings/IR/RewriterBase.cpp
   (define %mlir::RewriterBase::setInsertionPoint-to-end
     (foreign-procedure "mlir_ir_rewriter_base_set_insertion_point_to_end"
                        (uptr uptr) void))
 
-  ;; @brief rewriter-create-opBlock(region) — create a new block in region, add typed arguments, set insertion point to end.
-  ;; @param rewriter       RewriterBase* uptr
-  ;; @param region         Region* uptr — target region
-  ;; @param arg-types      Scheme list of Type* uptrs for block arguments (may be '())
-  ;; @return               Block* uptr of the newly created block, or 0 on bad input
-  ;; @see                  mlir/IR/PatternMatch.h
-  ;; @note                 Defined in lib/Bindings/IR/RewriterBase.cpp; sets insertion point to end of new block
   (define %mlir::RewriterBase::createBlock
     (foreign-procedure "mlir_ir_rewriter_base_create_block"
                        (uptr uptr scheme-object) uptr))
 
-  ;; @brief mlir::RewriterBase::replaceOp — replace old-op with a single new Value.
-  ;; @param rewriter   RewriterBase* uptr
-  ;; @param old-op     Operation* uptr — op to replace and erase
-  ;; @param new-value  Value* uptr — replacement value
-  ;; @return           1 on success, 0 if rewriter is null
-  ;; @see              mlir/IR/PatternMatch.h
-  ;; @note             Defined in lib/Bindings/IR/RewriterBase.cpp
   (define %mlir::RewriterBase::replaceOp
     (foreign-procedure "mlir_ir_rewriter_base_replace_op"
                        (uptr uptr uptr) int))
 
-  ;; @brief mlir::RewriterBase::eraseOp — erase op from its parent block (op must have no uses).
-  ;; @param rewriter  RewriterBase* uptr
-  ;; @param op        Operation* uptr — op to erase
-  ;; @return          1 on success, 0 if rewriter is null
-  ;; @see             mlir/IR/PatternMatch.h
-  ;; @note            Defined in lib/Bindings/IR/RewriterBase.cpp
   (define %mlir::RewriterBase::eraseOp
     (foreign-procedure "mlir_ir_rewriter_base_erase_op"
                        (uptr uptr) int))
 
-  ;; RewriterBase IS-A OpBuilder (single inheritance). This symbol is kept so cached
-  ;; code resolves correctly; it uses %mlir::OpBuilder::create<OperationState> underneath.
+  ;; Accepts CrestRef<RewriterBase>* and CrestOwned<OperationState>*; extracts
+  ;; inner pointers in C++. See lib/Bindings/IR/PatternMatch.cpp.
   (define %mlir::RewriterBase::create<OperationState>
     (foreign-procedure "mlir::RewriterBase::create<OperationState>" (uptr uptr) uptr))
 
-  ;; @brief mlir::RewritePatternSet::RewritePatternSet — heap-allocate a pattern set.
+  ;; @brief mlir::RewritePatternSet constructor — heap-allocate a CrestOwned pattern set.
   ;; @param ctx  MLIRContext* uptr
-  ;; @return     RewritePatternSet* uptr — destroy with %mlir::RewritePatternSet::~RewritePatternSet
-  ;; @see        mlir/IR/PatternMatch.h
-  ;; @note       Defined in lib/Bindings/IR/PatternMatch.cpp
+  ;; @return     CrestOwned<RewritePatternSet>* uptr — freed via with-CrestObject
   (define %mlir::RewritePatternSet::RewritePatternSet
     (foreign-procedure "mlir::RewritePatternSet::RewritePatternSet" (uptr) uptr))
 
-  ;; @brief mlir::RewritePatternSet::~RewritePatternSet — free a heap-allocated pattern set.
-  ;; @param patterns  RewritePatternSet* uptr — no-op if already consumed by applyFullConversion
-  ;; @see        mlir/IR/PatternMatch.h
-  ;; @note       Defined in lib/Bindings/IR/PatternMatch.cpp
-  (define %mlir::RewritePatternSet::~RewritePatternSet
-    (foreign-procedure "mlir::RewritePatternSet::~RewritePatternSet" (uptr) void))
+  ;; @brief Type predicates via CrestObject::isa<T>.
+  (define %crest::isa<CrestOwned<mlir::RewritePatternSet>>
+    (foreign-procedure "crest::isa<CrestOwned<mlir::RewritePatternSet>>" (uptr) int))
+
+  (define %crest::isa<CrestRef<mlir::RewriterBase>>
+    (foreign-procedure "crest::isa<CrestRef<mlir::RewriterBase>>" (uptr) int))
 
   ) ;; end library (mlir IR PatternMatch ffi)

@@ -6,6 +6,7 @@
 // Mirrors mlir/Transforms/GreedyPatternRewriteDriver.h
 
 #include "GreedyPatternRewriteDriver.h"
+#include "../Support/CrestObject.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
@@ -21,10 +22,11 @@ void registerTransformsGreedyPatternRewriteDriverBindings() {
                        "op and patterns must not be null");
         }
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-        auto* patterns =
-            reinterpret_cast<mlir::RewritePatternSet*>(patterns_ptr);
+        auto& patterns =
+            reinterpret_cast<CrestOwned<mlir::RewritePatternSet>*>(patterns_ptr)
+                ->inner;
         return mlir::succeeded(
-                   mlir::applyPatternsGreedily(op, std::move(*patterns)))
+                   mlir::applyPatternsGreedily(op, std::move(patterns)))
                    ? 1
                    : 0;
       });

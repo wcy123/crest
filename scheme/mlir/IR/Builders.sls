@@ -15,21 +15,21 @@
 (library (mlir IR Builders)
   (export
     mlir::OpBuilder::atBlockEnd
-    mlir::OpBuilder::~OpBuilder)
-  (import (rnrs) (mlir IR Builders ffi))
+    mlir::OpBuilder?)
+  (import (rnrs)
+          (mlir IR Builders ffi))
 
-  ;; @brief Heap-allocate an mlir::OpBuilder positioned at the end of block.
-  ;; @param block   Block* uptr — target block; builder is positioned at block->end()
-  ;; @return        OpBuilder* uptr (heap-allocated), or 0 if block is null
+  ;; @brief Heap-allocate a CrestOwned<mlir::OpBuilder> positioned at end of block.
+  ;; @param block   Block* uptr — target block
+  ;; @return        CrestOwned<OpBuilder>* uptr — freed via with-CrestObject
   ;; @see           mlir/IR/Builders.h
-  ;; @note          Defined in lib/Bindings/IR/OpBuilder.cpp; caller must free via mlir::OpBuilder::~OpBuilder
-  (define mlir::OpBuilder::atBlockEnd        %mlir::OpBuilder::atBlockEnd)
+  (define mlir::OpBuilder::atBlockEnd %mlir::OpBuilder::atBlockEnd)
 
-  ;; @brief Destroy an mlir::OpBuilder created by mlir::OpBuilder::atBlockEnd.
-  ;; @param builder  OpBuilder* uptr — heap-allocated builder to delete
-  ;; @return         void
-  ;; @see            mlir/IR/Builders.h
-  ;; @note           Defined in lib/Bindings/IR/OpBuilder.cpp; no-op if builder is 0
-  (define mlir::OpBuilder::~OpBuilder             %mlir::OpBuilder::~OpBuilder)
+  ;; @brief mlir::OpBuilder? — is this ptr an OpBuilder (owned or borrowed)?
+  ;; Returns true for CrestOwned<OpBuilder>* (from atBlockEnd) and
+  ;; CrestRef<OpBuilder>* (from materialization callbacks).
+  (define (mlir::OpBuilder? ptr)
+    (or (not (zero? (%crest::isa<CrestOwned<mlir::OpBuilder>> ptr)))
+        (not (zero? (%crest::isa<CrestRef<mlir::OpBuilder>> ptr)))))
 
   ) ;; end library (mlir IR Builders)

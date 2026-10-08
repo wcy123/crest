@@ -6,6 +6,7 @@
 // Mirrors mlir/IR/PatternMatch.h — RewriterBase and RewritePatternSet bindings.
 
 #include "PatternMatch.h"
+#include "../Support/CrestObject.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/Operation.h"
@@ -26,8 +27,9 @@ void registerIRRewriterBaseBindings() {
           scheme_error("mlir_ir_rewriter_base_set_insertion_point",
                        "null op pointer");
         }
-        reinterpret_cast<mlir::RewriterBase*>(rewriter_ptr)
-            ->setInsertionPoint(reinterpret_cast<mlir::Operation*>(op_ptr));
+        reinterpret_cast<CrestRef<mlir::RewriterBase>*>(rewriter_ptr)
+            ->ptr->setInsertionPoint(
+                reinterpret_cast<mlir::Operation*>(op_ptr));
       });
   // Backward-compat alias
   Sregister_symbol(
@@ -41,8 +43,9 @@ void registerIRRewriterBaseBindings() {
           scheme_error("mlir_ir_rewriter_base_set_insertion_point_before",
                        "null op pointer");
         }
-        reinterpret_cast<mlir::RewriterBase*>(rewriter_ptr)
-            ->setInsertionPoint(reinterpret_cast<mlir::Operation*>(op_ptr));
+        reinterpret_cast<CrestRef<mlir::RewriterBase>*>(rewriter_ptr)
+            ->ptr->setInsertionPoint(
+                reinterpret_cast<mlir::Operation*>(op_ptr));
       });
   Sregister_symbol(
       "mlir_ir_rewriter_base_set_insertion_point_to_end",
@@ -55,8 +58,9 @@ void registerIRRewriterBaseBindings() {
           scheme_error("mlir_ir_rewriter_base_set_insertion_point_to_end",
                        "null block pointer");
         }
-        reinterpret_cast<mlir::RewriterBase*>(rewriter_ptr)
-            ->setInsertionPointToEnd(reinterpret_cast<mlir::Block*>(block_ptr));
+        reinterpret_cast<CrestRef<mlir::RewriterBase>*>(rewriter_ptr)
+            ->ptr->setInsertionPointToEnd(
+                reinterpret_cast<mlir::Block*>(block_ptr));
       });
   Sregister_symbol(
       "mlir_ir_rewriter_base_create_block",
@@ -70,7 +74,8 @@ void registerIRRewriterBaseBindings() {
           scheme_error("mlir_ir_rewriter_base_create_block",
                        "null region pointer");
         }
-        auto* rewriter = reinterpret_cast<mlir::RewriterBase*>(rewriter_ptr);
+        auto* rewriter =
+            reinterpret_cast<CrestRef<mlir::RewriterBase>*>(rewriter_ptr)->ptr;
         auto* region = reinterpret_cast<mlir::Region*>(region_ptr);
         mlir::Location loc = region->getParentOp()->getLoc();
         mlir::Block* block = rewriter->createBlock(region);
@@ -96,10 +101,10 @@ void registerIRRewriterBaseBindings() {
           scheme_error("mlir_ir_rewriter_base_replace_op",
                        "null rewriter pointer");
         }
-        reinterpret_cast<mlir::RewriterBase*>(rewriter_ptr)
-            ->replaceOp(reinterpret_cast<mlir::Operation*>(old_op_ptr),
-                        mlir::Value::getFromOpaquePointer(
-                            reinterpret_cast<void*>(new_value_ptr)));
+        reinterpret_cast<CrestRef<mlir::RewriterBase>*>(rewriter_ptr)
+            ->ptr->replaceOp(reinterpret_cast<mlir::Operation*>(old_op_ptr),
+                             mlir::Value::getFromOpaquePointer(
+                                 reinterpret_cast<void*>(new_value_ptr)));
         return 1;
       });
   Sregister_symbol(
@@ -109,14 +114,13 @@ void registerIRRewriterBaseBindings() {
           scheme_error("mlir_ir_rewriter_base_erase_op",
                        "null rewriter pointer");
         }
-        reinterpret_cast<mlir::RewriterBase*>(rewriter_ptr)
-            ->eraseOp(reinterpret_cast<mlir::Operation*>(op_ptr));
+        reinterpret_cast<CrestRef<mlir::RewriterBase>*>(rewriter_ptr)
+            ->ptr->eraseOp(reinterpret_cast<mlir::Operation*>(op_ptr));
         return 1;
       });
-  // RewriterBase IS-A OpBuilder (single inheritance). Casting RewriterBase* to
-  // OpBuilder* is safe — the base subobject is at offset 0, and listener
-  // notifications fire correctly since RewriterBase registers itself as the
-  // OpBuilder listener.
+  // RewriterBase IS-A OpBuilder (single inheritance).
+  // CrestRef<RewriterBase>->ptr gives the raw RewriterBase* which can be safely
+  // used with RewriterBase::create.
   Sregister_symbol(
       "mlir::RewriterBase::create<OperationState>",
       (void*)+[](uint64_t rw_ptr, uint64_t state_ptr) -> uint64_t {
@@ -128,9 +132,11 @@ void registerIRRewriterBaseBindings() {
           scheme_error("mlir::RewriterBase::create<OperationState>",
                        "null state");
         }
-        return reinterpret_cast<uint64_t>(
-            reinterpret_cast<mlir::RewriterBase*>(rw_ptr)->create(
-                *reinterpret_cast<mlir::OperationState*>(state_ptr)));
+        auto* rw = reinterpret_cast<CrestRef<mlir::RewriterBase>*>(rw_ptr)->ptr;
+        auto& state =
+            reinterpret_cast<CrestOwned<mlir::OperationState>*>(state_ptr)
+                ->inner;
+        return reinterpret_cast<uint64_t>(rw->create(state));
       });
   Sregister_symbol(
       "mlir::RewritePatternSet::RewritePatternSet",
@@ -140,15 +146,30 @@ void registerIRRewriterBaseBindings() {
                        "ctx must not be null");
         }
         auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
-        return reinterpret_cast<uint64_t>(new mlir::RewritePatternSet(ctx));
+        return reinterpret_cast<uint64_t>(
+            new CrestOwned<mlir::RewritePatternSet>(ctx));
       });
   Sregister_symbol(
-      "mlir::RewritePatternSet::~RewritePatternSet",
-      (void*)+[](uint64_t patterns_ptr) -> void {
-        if (!patterns_ptr) {
-          return;
+      "crest::isa<CrestOwned<mlir::RewritePatternSet>>",
+      (void*)+[](uint64_t ptr) -> int {
+        if (!ptr) {
+          return 0;
         }
-        delete reinterpret_cast<mlir::RewritePatternSet*>(patterns_ptr);
+        return reinterpret_cast<CrestObject*>(ptr)
+                       ->isa<CrestOwned<mlir::RewritePatternSet>>()
+                   ? 1
+                   : 0;
+      });
+  Sregister_symbol(
+      "crest::isa<CrestRef<mlir::RewriterBase>>",
+      (void*)+[](uint64_t ptr) -> int {
+        if (!ptr) {
+          return 0;
+        }
+        return reinterpret_cast<CrestObject*>(ptr)
+                       ->isa<CrestRef<mlir::RewriterBase>>()
+                   ? 1
+                   : 0;
       });
 }
 

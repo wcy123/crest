@@ -18,26 +18,27 @@
     %mlir::OperationState::addOperands
     %mlir::OperationState::addTypes
     %mlir::OperationState::addRegion
-    %mlir::OperationState::~OperationState
+    mlir::OperationState?
     with-OperationState)
   (import (rnrs)
-          (only (mlir support RAII) with-raii)
+          (only (mlir support array-ref) with-CrestObject)
           (mlir IR OperationSupport ffi))
 
+  ;; @brief mlir::OperationState? — is this ptr a CrestOwned<mlir::OperationState>?
+  (define (mlir::OperationState? ptr)
+    (not (zero? (%crest::isa<CrestOwned<mlir::OperationState>> ptr))))
+
   ;; @brief with-OperationState — RAII for a heap-allocated mlir::OperationState.
-  ;; @param var   identifier bound to the OperationState* uptr for BODY
+  ;; @param var   identifier bound to the CrestOwned<OperationState>* uptr for BODY
   ;; @param loc   mlir::Location uptr — source-code location attached to the new op
-  ;;              (file/line/column used in error messages and debug info).
-  ;;              Obtain via (mlir::Operation::getLoc some-op).
-  ;;              See mlir/IR/Location.h.
   ;; @param name  string — fully-qualified op name (e.g. "arith.addi")
   ;; @param body  forms evaluated with var in scope; last value is returned
-  ;; @note        Destroys the OperationState on exit (normal or non-local).
+  ;; @note        Destroys the OperationState on exit (normal or non-local) via
+  ;;              CrestObject deletor — no explicit destructor binding needed.
   (define-syntax with-OperationState
     (syntax-rules ()
       [(_ (var loc name) body ...)
-       (with-raii (var (%mlir::OperationState::create loc name)
-                       %mlir::OperationState::~OperationState)
-                  body ...)]))
+       (with-CrestObject (var (%mlir::OperationState::create loc name))
+                         body ...)]))
 
   ) ;; end library (mlir IR OperationSupport)

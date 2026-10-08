@@ -52,9 +52,12 @@
           (for (only (crest internal keywords) = : -> :region) expand)
           (mlir IR BuiltinAttributes)
           (for (mlir IR BuiltinAttributes) expand)
+          ;; Runtime predicates for begin-mlir-code runtime dispatch
+          (only (mlir IR PatternMatch) mlir::RewriterBase?)
+          (only (mlir IR Builders) mlir::OpBuilder?)
+          (only (mlir support array-ref) CrestObject::delete)
           (for (only (mlir IR Builders ffi)
                      %mlir::OpBuilder::atBlockEnd
-                     %mlir::OpBuilder::~OpBuilder
                      %mlir::OpBuilder::create<OperationState>) expand)
           (for (only (mlir IR PatternMatch ffi)
                      %mlir::RewriterBase::create<OperationState>) expand)
@@ -62,7 +65,6 @@
                      %mlir::OperationState::addOperands
                      %mlir::OperationState::addTypes
                      %mlir::OperationState::addRegion
-                     %mlir::OperationState::~OperationState
                      with-OperationState) expand)
           (for (only (mlir IR Operation) mlir::Operation::getRegion) expand)
           (for (only (mlir IR Location)
@@ -144,10 +146,10 @@
 
       ;; Collect all (var . expr) pairs from every op form and emit a flat
       ;; let* returning the last bound variable.
-      ;; (:rewriter rw) — rw is RewriterBase*, uses %mlir::RewriterBase::create<OperationState>
-      ;; (:builder b)   — b is OpBuilder*, uses %mlir::OpBuilder::create<OperationState>
-      ;; The two create bindings use different casts and are NOT interchangeable:
-      ;; OpBuilder has no vtable; RewriterBase introduces one, shifting subobject offsets.
+      ;; (:rewriter rw) — rw is CrestRef<RewriterBase>*, uses %mlir::RewriterBase::create<OperationState>
+      ;; (:builder b)   — b is CrestOwned<OpBuilder>*, uses %mlir::OpBuilder::create<OperationState>
+      ;; The two create bindings use different casts and are NOT interchangeable.
+      ;; Plain (ctx op ...) — runtime dispatch on mlir::RewriterBase? / mlir::OpBuilder?.
       (define (main)
         (syntax-case stx (:rewriter :builder)
           [(_ (:rewriter rw) op ...)
@@ -171,7 +173,18 @@
                  (with-syntax ([(binding ...) (loop :for pair :in pairs
                                                     :collect (make-binding pair))]
                                [result        (car (car (reverse pairs)))])
-                   #'(let* (binding ...) result))))]))
+                   #'(let* (binding ...) result))))]
+          ;; Runtime dispatch: detect type at runtime and delegate to tagged form.
+          ;; %ctx is evaluated once; cond chooses the correct create binding.
+          [(_ ctx op ...)
+           #'(let ([%ctx ctx])
+               (cond
+                [(mlir::RewriterBase? %ctx) (begin-mlir-code (:rewriter %ctx) op ...)]
+                [(mlir::OpBuilder?    %ctx) (begin-mlir-code (:builder  %ctx) op ...)]
+                [else (error 'begin-mlir-code
+                             "expected a RewriterBase or OpBuilder"
+                             %ctx)]))]))
+
 
       ;;-------------------------------------------------------------------
       ;; Op form parser
@@ -431,7 +444,7 @@
                     (dynamic-wind
                         (lambda () #f)
                         (lambda () body)
-                        (lambda () (%mlir::OpBuilder::~OpBuilder block-builder)))))))))
+                        (lambda () (CrestObject::delete block-builder)))))))))
 
 
       ;;-------------------------------------------------------------------

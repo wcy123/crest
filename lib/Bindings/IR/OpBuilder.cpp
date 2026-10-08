@@ -6,12 +6,27 @@
 // Mirrors mlir/IR/Builders.h — OpBuilder bindings.
 
 #include "OpBuilder.h"
+#include "../Support/CrestObject.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/IR/OperationSupport.h"
 
 namespace crest {
+
+// Extract mlir::OpBuilder* from either CrestOwned<OpBuilder> or
+// CrestRef<OpBuilder>. Returns nullptr if ptr is neither — caller must
+// check/error.
+static mlir::OpBuilder* extract_op_builder(uint64_t ptr) {
+  auto* co = reinterpret_cast<CrestObject*>(ptr);
+  if (co->isa<CrestOwned<mlir::OpBuilder>>()) {
+    return &reinterpret_cast<CrestOwned<mlir::OpBuilder>*>(ptr)->inner;
+  }
+  if (co->isa<CrestRef<mlir::OpBuilder>>()) {
+    return reinterpret_cast<CrestRef<mlir::OpBuilder>*>(ptr)->ptr;
+  }
+  return nullptr;
+}
 
 void registerIROpBuilderBindings() {
   Sregister_symbol(
@@ -22,14 +37,7 @@ void registerIROpBuilderBindings() {
         }
         auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
         return reinterpret_cast<uint64_t>(
-            new mlir::OpBuilder(block, block->end()));
-      });
-  Sregister_symbol(
-      "mlir_ir_op_builder_destroy", (void*)+[](uint64_t builder_ptr) -> void {
-        if (!builder_ptr) {
-          scheme_error("mlir_ir_op_builder_destroy", "null builder pointer");
-        }
-        delete reinterpret_cast<mlir::OpBuilder*>(builder_ptr);
+            new CrestOwned<mlir::OpBuilder>(block, block->end()));
       });
   Sregister_symbol(
       "mlir_ir_op_builder_create_from_state",
@@ -42,9 +50,15 @@ void registerIROpBuilderBindings() {
           scheme_error("mlir_ir_op_builder_create_from_state",
                        "null state pointer");
         }
-        return reinterpret_cast<uint64_t>(
-            reinterpret_cast<mlir::OpBuilder*>(builder_ptr)
-                ->create(*reinterpret_cast<mlir::OperationState*>(state_ptr)));
+        auto* builder = extract_op_builder(builder_ptr);
+        if (!builder) {
+          scheme_error("mlir_ir_op_builder_create_from_state",
+                       "not an OpBuilder");
+        }
+        auto& state =
+            reinterpret_cast<CrestOwned<mlir::OperationState>*>(state_ptr)
+                ->inner;
+        return reinterpret_cast<uint64_t>(builder->create(state));
       });
   Sregister_symbol(
       "mlir::OpBuilder::getContext",
@@ -52,8 +66,32 @@ void registerIROpBuilderBindings() {
         if (!builder_ptr) {
           scheme_error("mlir::OpBuilder::getContext", "null builder pointer");
         }
-        return reinterpret_cast<uint64_t>(
-            reinterpret_cast<mlir::OpBuilder*>(builder_ptr)->getContext());
+        auto* builder = extract_op_builder(builder_ptr);
+        if (!builder) {
+          scheme_error("mlir::OpBuilder::getContext", "not an OpBuilder");
+        }
+        return reinterpret_cast<uint64_t>(builder->getContext());
+      });
+  Sregister_symbol(
+      "crest::isa<CrestOwned<mlir::OpBuilder>>",
+      (void*)+[](uint64_t ptr) -> int {
+        if (!ptr) {
+          return 0;
+        }
+        return reinterpret_cast<CrestObject*>(ptr)
+                       ->isa<CrestOwned<mlir::OpBuilder>>()
+                   ? 1
+                   : 0;
+      });
+  Sregister_symbol(
+      "crest::isa<CrestRef<mlir::OpBuilder>>", (void*)+[](uint64_t ptr) -> int {
+        if (!ptr) {
+          return 0;
+        }
+        return reinterpret_cast<CrestObject*>(ptr)
+                       ->isa<CrestRef<mlir::OpBuilder>>()
+                   ? 1
+                   : 0;
       });
 }
 
