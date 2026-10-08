@@ -22,7 +22,7 @@ static uint64_t mlir_ir_op_builder_at_block_end(uint64_t block_ptr) {
   return reinterpret_cast<uint64_t>(new mlir::OpBuilder(block, block->end()));
 }
 
-// Destroy an OpBuilder created by mlir_ir_op_builder_at_block_end.
+// Destroy an OpBuilder
 static void mlir_ir_op_builder_destroy(uint64_t builder_ptr) {
   if (!builder_ptr) {
     scheme_error("mlir-ir-op-builder-destroy", "null builder pointer");
