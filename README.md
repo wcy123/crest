@@ -7,22 +7,7 @@ and [DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/), CREST generates
 both `RewritePattern` and `ConversionPattern` subclasses, covering dialect
 conversion passes that neither DSL supports.
 
-## Quick start
-
-```bash
-CREST_PATH=$(pwd)/samples cmake --build build --target check-crest
-```
-
-Run the sample hip-fusion pass:
-
-```bash
-CREST_PATH=/path/to/crest/samples \
-  build/tools/crest-opt/crest-opt \
-  --crest-pass="module=passes/hip-fusion" \
-  my-module.mlir
-```
-
-→ See [docs/install.md](docs/install.md) for build instructions.
+→ **[Getting started](docs/getting-started.md)** — build instructions, quick start, deployment.
 
 ## Writing a pattern
 

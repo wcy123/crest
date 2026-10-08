@@ -1,4 +1,21 @@
-# CREST — Installation
+# CREST — Getting Started
+
+## Quick start
+
+After building (see [Prerequisites](#prerequisites) below):
+
+```bash
+# Run the test suite
+CREST_PATH=$(pwd)/samples cmake --build build --target check-crest
+
+# Run the sample hip-fusion pass on your own MLIR module
+CREST_PATH=/path/to/crest/samples \
+  build/tools/crest-opt/crest-opt \
+  --crest-pass="module=passes/hip-fusion" \
+  my-module.mlir
+```
+
+---
 
 ## Prerequisites
 
