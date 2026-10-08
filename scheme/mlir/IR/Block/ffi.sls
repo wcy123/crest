@@ -14,13 +14,16 @@
 
 (library (mlir IR Block ffi)
   (export %mlir::Block::getArgument
-          %mlir::Block::getNumArguments)
+          %mlir::Block::getNumArguments
+          %mlir::Block::new
+          %mlir::Block::addArgument)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::Block::getArgument — return the idx-th block argument.
   ;; @param block  Block* uptr
   ;; @param idx    0-based argument index (int)
-  ;; @return       Value opaque pointer uptr; 0 if null or index out of range
+  ;; @return       mlir::BlockArgument opaque pointer uptr (subclass of mlir::Value);
+  ;;               raises Scheme error if null or index out of range
   ;; @see          mlir/IR/Block.h
   ;; @note         Defined in lib/Bindings/IR/Block.cpp
   (define %mlir::Block::getArgument
@@ -33,5 +36,20 @@
   ;; @note         Defined in lib/Bindings/IR/Block.cpp
   (define %mlir::Block::getNumArguments
     (foreign-procedure "mlir::Block::getNumArguments" (uptr) uptr))
+
+  ;; @brief mlir::Block::new — heap-allocate an empty Block.
+  ;; @return  Block* uptr — ownership transferred to region on push_back
+  ;; @see     mlir/IR/Block.h
+  (define %mlir::Block::new
+    (foreign-procedure "mlir::Block::new" () uptr))
+
+  ;; @brief mlir::Block::addArgument — append one typed argument to a block.
+  ;; @param block  Block* uptr
+  ;; @param type   mlir::Type opaque pointer uptr
+  ;; @param loc    mlir::Location opaque pointer uptr
+  ;; @return       mlir::BlockArgument opaque pointer uptr (subclass of mlir::Value)
+  ;; @see          mlir/IR/Block.h
+  (define %mlir::Block::addArgument
+    (foreign-procedure "mlir::Block::addArgument" (uptr uptr uptr) uptr))
 
   ) ;; end library (mlir IR Block ffi)

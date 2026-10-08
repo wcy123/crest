@@ -6,26 +6,36 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 ;;
-;; (mlir IR Region) — Region and Block lifecycle bindings.
+;; (mlir IR Region) — Region lifecycle bindings.
 ;;
 ;; Mirrors mlir/IR/Region.h
+;; Block construction bindings (mlir::Block::new, mlir::Block::addArgument)
+;; live in (mlir IR Block) — mirrors mlir/IR/Block.h per Rule 1.
 ;;
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir IR Region)
   (export
-    %mlir::Block::new
-    %mlir::Region::push_back
-    %mlir::Block::addArgument
-    %mlir::Region::getParentOp
+    mlir::Region::getParentOp
     mlir::Region::push_back<Block>
     mlir::Region::front)
   (import (rnrs)
           (mlir IR Region ffi)
+          (only (mlir IR Block ffi) %mlir::Block::new %mlir::Block::addArgument)
           (only (mlir IR Operation) mlir::Operation::getLoc))
 
 
+  ;; @brief mlir::Region::front — return the first Block in the region, or 0 if empty.
+  ;; @param region  Region* uptr
+  ;; @return        mlir::Block* uptr; 0 if the region has no blocks
+  ;; @see           mlir/IR/Region.h
   (define mlir::Region::front %mlir::Region::front)
+
+  ;; @brief mlir::Region::getParentOp — return the Operation that owns this region.
+  ;; @param region  Region* uptr
+  ;; @return        mlir::Operation* uptr
+  ;; @see           mlir/IR/Region.h
+  (define mlir::Region::getParentOp %mlir::Region::getParentOp)
 
   ;; @brief mlir::Region::push_back<Block> — append a new block with typed arguments.
   ;; @param region    Region* uptr

@@ -121,13 +121,32 @@ Sregister_symbol("crest::logging::info", ...);  // Scheme has no direct stderr/d
 - File header must start with: `;; Mirrors mlir/IR/BuiltinTypes.h`
   (or list multiple headers if the module spans more than one)
 
-### Rule 7 — No backward-compatibility shims
+### Rule 7 — Public modules never export `%`-prefixed bindings
+
+`%`-prefixed bindings are private FFI primitives and must stay in `ffi.sls` files.
+The public `.sls` module re-exports only clean names (without `%`):
+
+```scheme
+;; WRONG — leaks raw FFI into the public API
+(library (mlir IR Region)
+  (export %mlir::Region::push_back ...))   ; % names must never appear here
+
+;; CORRECT — clean name re-exported
+(library (mlir IR Region)
+  (export mlir::Region::front ...)
+  (define mlir::Region::front %mlir::Region::front))
+```
+
+If a `%` binding is only used internally within the same `.sls` file, it must
+not appear in `(export ...)` at all.
+
+### Rule 8 — No backward-compatibility shims
 
 Do not create wrapper libraries that alias old names to new ones.
 Callers must use the canonical C++ names directly. When a function
 moves to a new module, update all callers — do not leave an alias.
 
-### Rule 8 — All C binding functions must be `static`
+### Rule 9 — All C binding functions must be `static`
 
 Every C function in a binding file must be declared `static` to minimize
 visibility and avoid polluting the global symbol namespace:
@@ -157,7 +176,7 @@ must be `static`. `scheme_error` helpers are typically `static` in each file.
 
 ## Scheme RAII and Dynamic Parameter Convention
 
-### Rule 9 — RAII macros use `with-<C++ClassName>`
+### Rule 10 — RAII macros use `with-<C++ClassName>`
 
 Every RAII macro that manages the lifetime of a specific C++ object is named
 after the C++ class it wraps:
@@ -174,7 +193,7 @@ after the C++ class it wraps:
 The generic underlying helper that takes an explicit ctor/dtor pair is `with-raii`
 (no C++ class name, because it is class-agnostic).
 
-### Rule 10 — Dynamic parameters use `current-<C++ClassName>`
+### Rule 11 — Dynamic parameters use `current-<C++ClassName>`
 
 Every `make-parameter` that holds a pointer to a specific C++ object is named
 `current-<C++ClassName>`:
@@ -190,7 +209,7 @@ The `current-` prefix signals that the binding is a dynamic parameter, not a
 value — analogous to Scheme's `current-input-port`. C++ developers reading
 `(current-MLIRContext)` immediately know which C++ type is involved.
 
-### Rule 11 — RAII module placement follows the C++ header
+### Rule 12 — RAII module placement follows the C++ header
 
 The RAII macro lives in the same Scheme module that wraps the C++ class:
 

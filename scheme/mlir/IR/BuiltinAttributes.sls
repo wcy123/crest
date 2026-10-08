@@ -48,16 +48,9 @@
     mlir::DenseElementsAttr::getSplatValue<APInt>
     mlir::DenseI32ArrayAttr::toVector
     mlir::DenseI64ArrayAttr::toVector
-    mlir::Operation::getAttr
-    mlir::Operation::setAttr!
-    mlir::Operation::getAttrOfType<FloatAttr>
-    mlir::ShapedType::getElementType
-    mlir::IntegerType::getWidth
-    mlir::IntegerType::isUnsigned?)
+    )
   (import (rnrs)
           (mlir IR BuiltinAttributes ffi)
-          (mlir IR Operation ffi)
-          (mlir IR BuiltinTypes ffi)
           (mlir IR MLIRContext))
 
   ;; Constructors — use current-MLIRContext so callers only pass the value.
@@ -237,51 +230,5 @@
   ;; @return       Scheme vector of integers, one per element
   ;; @see          mlir/IR/BuiltinAttributes.h
   (define mlir::DenseI64ArrayAttr::toVector  %mlir::DenseI64ArrayAttr::toVector)
-
-  ;; @brief mlir::Operation::getAttr — retrieve a named attribute from an operation.
-  ;; @param op     mlir::Operation* uptr
-  ;; @param name   C string attribute name
-  ;; @return       mlir::Attribute opaque pointer uptr; 0 if attribute not found
-  ;; @see          mlir/IR/Operation.h
-  ;; @note         Direct alias for %get-attr (from mlir ir operation ffi)
-  (define mlir::Operation::getAttr                %get-attr)
-
-  ;; @brief mlir::Operation::setAttr! — set a named attribute on an operation.
-  ;; @param op     mlir::Operation* uptr
-  ;; @param name   C string attribute name
-  ;; @param attr   mlir::Attribute opaque pointer uptr
-  ;; @return       unspecified
-  ;; @see          mlir/IR/Operation.h
-  ;; @note         Wraps %set-attr (from mlir ir operation ffi)
-  (define (mlir::Operation::setAttr! op name attr) (%set-attr op name attr))
-
-  ;; @brief mlir::Operation::getAttrOfType<FloatAttr> — retrieve a named FloatAttr as a double.
-  ;; @param op     mlir::Operation* uptr (0 returns NaN)
-  ;; @param name   C string attribute name (NULL returns NaN)
-  ;; @return       double: the float attribute's value, or NaN if not found
-  ;; @see          mlir/IR/Operation.h
-  ;; @note         Direct alias for %get-float-attr (from mlir ir operation ffi)
-  (define mlir::Operation::getAttrOfType<FloatAttr>          %get-float-attr)
-
-  ;; @brief mlir::ShapedType::getElementType — return the element type of a ShapedType.
-  ;; @param type   mlir::Type opaque pointer uptr (0 returns 0)
-  ;; @return       mlir::Type opaque pointer uptr for the element type; 0 if not a ShapedType
-  ;; @see          mlir/IR/BuiltinTypes.h
-  ;; @note         Direct alias for %mlir::ShapedType::getElementType (from mlir ir builtin-types ffi)
-  (define mlir::ShapedType::getElementType          %mlir::ShapedType::getElementType)
-
-  ;; @brief mlir::IntegerType::getWidth — return the bit width of an IntegerType.
-  ;; @param type   mlir::Type opaque pointer uptr (0 returns 0)
-  ;; @return       uint64 bit width; 0 if not an IntegerType
-  ;; @see          mlir/IR/BuiltinTypes.h
-  ;; @note         Direct alias for %mlir::IntegerType::getWidth (from mlir ir builtin-types ffi)
-  (define mlir::IntegerType::getWidth                %mlir::IntegerType::getWidth)
-
-  ;; @brief mlir::IntegerType::isUnsigned — test whether an IntegerType has unsigned signedness.
-  ;; @param t      mlir::Type opaque pointer uptr (0 returns #f)
-  ;; @return       boolean: #t if the IntegerType is unsigned, #f otherwise
-  ;; @see          mlir/IR/BuiltinTypes.h
-  ;; @note         Wraps %mlir::IntegerType::isUnsigned (from mlir ir builtin-types ffi)
-  (define (mlir::IntegerType::isUnsigned? t) (not (zero? (%mlir::IntegerType::isUnsigned t))))
 
   ) ;; end library (mlir IR BuiltinAttributes)
