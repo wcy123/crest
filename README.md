@@ -1,14 +1,11 @@
 # CREST — Conversion and Rewriting Engine for Scheme Transformations
 
+[![CI](https://github.com/wcy123/crest/actions/workflows/ci.yml/badge.svg)](https://github.com/wcy123/crest/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 CREST is a homoiconic pattern DSL for MLIR built on [Chez Scheme](https://cisco.github.io/ChezScheme/).
 Patterns are Scheme macros — guards and analysis are plain Scheme functions, no C++ required.
 Edit a `.sls` pattern file and re-run: no rebuild, no relink, changes take effect immediately.
-
-Unlike [PDL](https://mlir.llvm.org/docs/PDLL/) and [DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/),
-CREST generates both `RewritePattern` and `ConversionPattern` subclasses, covering
-dialect conversion passes that neither DSL supports.
 
 Three macros form the public surface:
 
@@ -22,8 +19,23 @@ Three macros form the public surface:
 
 ---
 
-## Why not C++?
+## Why not PDL / DRR / C++?
 
+[PDL](https://mlir.llvm.org/docs/PDLL/) and [DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/)
+generate only `RewritePattern` subclasses. Neither supports
+[`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns),
+`TypeConverter`, or `applyFullConversion` — the machinery required for dialect
+conversion passes. **CREST is the only DSL-based option that covers dialect conversion.**
+
+| | DRR | PDLL | CREST |
+|---|---|---|---|
+| `ConversionPattern` support | No | No | **Yes** |
+| Edit → test cycle | full rebuild | full rebuild | **reload `.sls`** |
+| Match constraints without C++ | No | No | **Yes** (plain Scheme) |
+| Optional / variadic operands | No | Limited | **Yes** |
+| Emitted op → pattern file:line | No | No | **Yes** |
+
+For patterns expressible in DRR or PDLL, the choice is C++ boilerplate.
 A quantization fusion in C++:
 
 ```cpp
