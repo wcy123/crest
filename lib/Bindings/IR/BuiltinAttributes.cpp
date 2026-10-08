@@ -56,8 +56,18 @@ mlir_ir_builtin_attributes_dense_i32_array_attr_get(uint64_t ctx_ptr,
                                                     ptr value) {
   auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
   llvm::SmallVector<int32_t> vec;
-  for (ptr cur = value; cur != Snil; cur = Scdr(cur)) {
-    vec.push_back(static_cast<int32_t>(Sfixnum_value(Scar(cur))));
+  if (Svectorp(value)) {
+    iptr n = Svector_length(value);
+    for (iptr i = 0; i < n; ++i) {
+      vec.push_back(static_cast<int32_t>(Sfixnum_value(Svector_ref(value, i))));
+    }
+  } else if (Spairp(value) || value == Snil) {
+    for (ptr cur = value; cur != Snil; cur = Scdr(cur)) {
+      vec.push_back(static_cast<int32_t>(Sfixnum_value(Scar(cur))));
+    }
+  } else {
+    scheme_error("mlir::DenseI32ArrayAttr::get",
+                 "value must be a Scheme list or vector");
   }
   return reinterpret_cast<uint64_t>(
       mlir::DenseI32ArrayAttr::get(ctx, vec).getAsOpaquePointer());
@@ -68,8 +78,18 @@ mlir_ir_builtin_attributes_dense_i64_array_attr_get(uint64_t ctx_ptr,
                                                     ptr value) {
   auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
   llvm::SmallVector<int64_t> vec;
-  for (ptr cur = value; cur != Snil; cur = Scdr(cur)) {
-    vec.push_back(Sinteger64_value(Scar(cur)));
+  if (Svectorp(value)) {
+    iptr n = Svector_length(value);
+    for (iptr i = 0; i < n; ++i) {
+      vec.push_back(Sinteger64_value(Svector_ref(value, i)));
+    }
+  } else if (Spairp(value) || value == Snil) {
+    for (ptr cur = value; cur != Snil; cur = Scdr(cur)) {
+      vec.push_back(Sinteger64_value(Scar(cur)));
+    }
+  } else {
+    scheme_error("mlir::DenseI64ArrayAttr::get",
+                 "value must be a Scheme list or vector");
   }
   return reinterpret_cast<uint64_t>(
       mlir::DenseI64ArrayAttr::get(ctx, vec).getAsOpaquePointer());
@@ -249,6 +269,23 @@ static uint64_t mlir_ir_builtin_attributes_dense_i32_array_attr_as_array_ref(
   return reinterpret_cast<uint64_t>(ref);
 }
 
+static uint64_t mlir_ir_dense_i64_array_as_array_ref(uint64_t attr_ptr) {
+  if (!attr_ptr) {
+    scheme_error("mlir::DenseI64ArrayAttr::intoArrayRef",
+                 "null attribute pointer");
+  }
+  auto arr = mlir::dyn_cast<mlir::DenseI64ArrayAttr>(
+      mlir::Attribute::getFromOpaquePointer(
+          reinterpret_cast<const void*>(attr_ptr)));
+  if (!arr) {
+    scheme_error("mlir::DenseI64ArrayAttr::intoArrayRef",
+                 "attribute is not a DenseI64ArrayAttr");
+  }
+  auto* ref = new CArrayRef{reinterpret_cast<uint64_t>(arr.asArrayRef().data()),
+                            static_cast<uint64_t>(arr.size())};
+  return reinterpret_cast<uint64_t>(ref);
+}
+
 //===----------------------------------------------------------------------===//
 // Complex extraction — mlir_ir_builtin_attributes_dense_*_splat_value
 //===----------------------------------------------------------------------===//
@@ -299,25 +336,42 @@ static ptr mlir_ir_builtin_attributes_dense_int_elements_attr_splat_value(
   return Sinteger64((*dense.begin()).getSExtValue());
 }
 
-static ptr
-mlir_ir_builtin_attributes_dense_i32_array_attr_to_list(uint64_t attr_ptr) {
+static ptr mlir_ir_dense_i32_array_to_vector(uint64_t attr_ptr) {
   if (!attr_ptr) {
-    scheme_error("mlir-ir-builtin-attributes-dense-i32-array-attr-to-list",
-                 "null attribute pointer");
+    scheme_error("mlir::DenseI32ArrayAttr::toVector", "null attribute pointer");
   }
   auto arr = mlir::dyn_cast<mlir::DenseI32ArrayAttr>(
       mlir::Attribute::getFromOpaquePointer(
           reinterpret_cast<const void*>(attr_ptr)));
   if (!arr) {
-    scheme_error("mlir-ir-builtin-attributes-dense-i32-array-attr-to-list",
+    scheme_error("mlir::DenseI32ArrayAttr::toVector",
                  "attribute is not a DenseI32ArrayAttr");
   }
-  ptr result = Snil;
   auto vals = arr.asArrayRef();
-  for (int i = static_cast<int>(vals.size()) - 1; i >= 0; --i) {
-    result = Scons(Sfixnum(vals[i]), result);
+  ptr v = Smake_vector(static_cast<iptr>(vals.size()), Sfixnum(0));
+  for (iptr i = 0; i < static_cast<iptr>(vals.size()); ++i) {
+    Svector_set(v, i, Sfixnum(vals[i]));
   }
-  return result;
+  return v;
+}
+
+static ptr mlir_ir_dense_i64_array_to_vector(uint64_t attr_ptr) {
+  if (!attr_ptr) {
+    scheme_error("mlir::DenseI64ArrayAttr::toVector", "null attribute pointer");
+  }
+  auto arr = mlir::dyn_cast<mlir::DenseI64ArrayAttr>(
+      mlir::Attribute::getFromOpaquePointer(
+          reinterpret_cast<const void*>(attr_ptr)));
+  if (!arr) {
+    scheme_error("mlir::DenseI64ArrayAttr::toVector",
+                 "attribute is not a DenseI64ArrayAttr");
+  }
+  auto vals = arr.asArrayRef();
+  ptr v = Smake_vector(static_cast<iptr>(vals.size()), Sfixnum(0));
+  for (iptr i = 0; i < static_cast<iptr>(vals.size()); ++i) {
+    Svector_set(v, i, Sinteger(vals[i]));
+  }
+  return v;
 }
 
 static uint64_t mlir_ir_builtin_attributes_unit_attr_get(uint64_t ctx_ptr) {
@@ -371,8 +425,10 @@ void registerIRBuiltinAttributesBindings() {
                    (void*)::mlir_ir_builtin_attributes_float_attr_get_value);
   Sregister_symbol("mlir::FloatAttr::getValueAsDouble.f32",
                    (void*)::mlir_ir_builtin_attributes_float32_attr_get_value);
+  Sregister_symbol("mlir::DenseI64ArrayAttr::intoArrayRef",
+                   (void*)::mlir_ir_dense_i64_array_as_array_ref);
   Sregister_symbol(
-      "mlir::DenseI32ArrayAttr::asArrayRef",
+      "mlir::DenseI32ArrayAttr::intoArrayRef",
       (void*)::mlir_ir_builtin_attributes_dense_i32_array_attr_as_array_ref);
   Sregister_symbol(
       "mlir::DenseElementsAttr::getSplatValue<APFloat>",
@@ -380,9 +436,10 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::DenseElementsAttr::getSplatValue<APInt>",
       (void*)::mlir_ir_builtin_attributes_dense_int_elements_attr_splat_value);
-  Sregister_symbol(
-      "mlir::DenseI32ArrayAttr::asArrayRef->list",
-      (void*)::mlir_ir_builtin_attributes_dense_i32_array_attr_to_list);
+  Sregister_symbol("mlir::DenseI32ArrayAttr::toVector",
+                   (void*)::mlir_ir_dense_i32_array_to_vector);
+  Sregister_symbol("mlir::DenseI64ArrayAttr::toVector",
+                   (void*)::mlir_ir_dense_i64_array_to_vector);
   Sregister_symbol("mlir::UnitAttr::get",
                    (void*)::mlir_ir_builtin_attributes_unit_attr_get);
   // Old-name aliases removed: (mlir core attribute) dynamic dispatch deleted.

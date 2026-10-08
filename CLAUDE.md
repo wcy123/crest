@@ -62,10 +62,23 @@ Sregister_symbol("mlir::IntegerType::get<i64>", ...);
 Sregister_symbol("mlir::DenseElementsAttr::getSplatValue<APFloat>", ...);
 ```
 
-For CREST-specific utilities with no direct MLIR counterpart, use `crest::`:
+For CREST-specific **FFI infrastructure** with no direct MLIR counterpart, use `crest::`:
 ```cpp
-Sregister_symbol("crest::Operation::setF32Attr", ...);
-Sregister_symbol("crest::RewriterBase::build", ...);
+Sregister_symbol("crest::logging::info", ...);   // logging — Scheme can't call stderr directly
+```
+
+**`crest::` is only for FFI plumbing** — C++ code that solves an inherent boundary problem
+between Scheme and C++ (type adapters, memory lifecycle, I/O). It is **not** for business logic
+that could be expressed as a Scheme composition of existing MLIR bindings.
+
+Wrong (avoidable logic in C++, now deleted):
+```cpp
+Sregister_symbol("crest::Operation::setF32Attr", ...);  // was just setAttr + FloatAttr::get
+```
+
+Right (genuine FFI infrastructure):
+```cpp
+Sregister_symbol("crest::logging::info", ...);  // Scheme has no direct stderr/diagnostic API
 ```
 
 ### Rule 5 — Raw FFI binding has `%` prefix

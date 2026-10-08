@@ -78,6 +78,7 @@
 
   (import (rnrs)
           (only (chezscheme) nan?)
+          (rename (rime loop) (:with :rime-with))
 
           (only (mlir IR Value)
                 mlir::Value::getDefiningOp
@@ -87,7 +88,8 @@
                 mlir::DenseElementsAttr::isSplat
                 mlir::FloatAttr::getValueAsDouble.f32
                 mlir::DenseElementsAttr::getSplatValue<APFloat>
-                mlir::DenseElementsAttr::getSplatValue<APInt>)
+                mlir::DenseElementsAttr::getSplatValue<APInt>
+                mlir::DenseI64ArrayAttr::toVector)
           (only (mlir IR PatternMatch) mlir-create-operation)
           (only (mlir IR BuiltinTypes)
                 mlir::ShapedType::getElementType
@@ -101,7 +103,8 @@
                 mlir::Operation::getName
                 mlir::Operation::getAttrDictionary
                 mlir::Operation::setAttrs
-                crest::Operation::getIntegerArrayAttr mlir::OpOperand::get mlir::OpResult::getOwner mlir::Operation::getAttr mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getNumOperands mlir::Operation::getResult mlir::Operation::hasAttr?))
+                mlir::OpOperand::get mlir::OpResult::getOwner mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getNumOperands mlir::Operation::getResult mlir::Operation::hasAttr?)
+          )
 
 
   ;; Local helpers — expressed via explicit builtin-attributes functions.
@@ -251,20 +254,24 @@
                             [rel-err   (abs (- actual expected))])
                        (< rel-err (* 2.0 (expt 2.0 -23) (abs expected)))))))))))
 
+  ;; Compare a DenseI64ArrayAttr against an expected list.
+  (define (dense-i64-attr=? attr expected)
+    (and (not (zero? attr))
+         (let ([v (mlir::DenseI64ArrayAttr::toVector attr)])
+           (and (= (vector-length v) (length expected))
+                (= 0 (loop :for e :in expected
+                           :for i :from 0
+                           :count :unless (= (vector-ref v i) e)))))))
+
   ;; Check whether a hip.conv op has fusable geometry:
   ;; 1x1 kernel, unit strides, unit dilations, zero pads, group=1.
   ;; Mirrors hip_is_fusable_conv_geometry in Hip.cpp.
   (define (hip-fusable-conv-geometry? op)
-    (let ([ks    (crest::Operation::getIntegerArrayAttr op "kernel_shape")]
-          [st    (crest::Operation::getIntegerArrayAttr op "strides")]
-          [di    (crest::Operation::getIntegerArrayAttr op "dilations")]
-          [pd    (crest::Operation::getIntegerArrayAttr op "pads")]
-          [group (mlir::Operation::getAttrOfType<IntegerAttr> op "group" 0)])
-      (and (equal? ks '(1 1))
-           (equal? st '(1 1))
-           (equal? di '(1 1))
-           (equal? pd '(0 0 0 0))
-           (= group 1))))
+    (and (dense-i64-attr=? (mlir::Operation::getAttr op "kernel_shape") '(1 1))
+         (dense-i64-attr=? (mlir::Operation::getAttr op "strides")      '(1 1))
+         (dense-i64-attr=? (mlir::Operation::getAttr op "dilations")    '(1 1))
+         (dense-i64-attr=? (mlir::Operation::getAttr op "pads")         '(0 0 0 0))
+         (= (mlir::Operation::getAttrOfType<IntegerAttr> op "group" 0) 1)))
 
   (define (hip-per-axis-weight? dq-op rank axis packed-int4?)
     ;; Scale must be rank-1 and packed_int4 must match.
@@ -389,16 +396,12 @@
                           0)]
            ;; Rebuild operand list: replace dq-result with dq-input, and replace
            ;; the last operand (DPS init for hip.*) with the typed init.
-           [operands  (let loop ([i 0] [acc '()])
-                        (if (= i n)
-                            (reverse acc)
-                            (let ([v (mlir::OpOperand::get layout-op i)])
-                              (loop (+ i 1)
-                                    (cons (cond
-                                           [(= v dq-result) dq-input]
-                                           [(= i init-idx)  new-init]
-                                           [else v])
-                                          acc)))))]
+           [operands  (loop :for i :from 0 :below n
+                            :rime-with v := (mlir::OpOperand::get layout-op i)
+                            :collect (cond
+                                      [(= v dq-result) dq-input]
+                                      [(= i init-idx)  new-init]
+                                      [else v]))]
            [new-op    (crest::RewriterBase::cloneWithTypes rewriter layout-op
                                                            operands (list q-type))])
       (mlir::Operation::getResult new-op 0)))

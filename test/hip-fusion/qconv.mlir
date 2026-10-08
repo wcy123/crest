@@ -51,8 +51,8 @@ func.func @qconv(%ctx: !hip.context,
 
   %e2 = tensor.empty() : tensor<1x4x1x2xf32>
   %conv = "hip.conv"(%ctx, %dq_x, %dq_w, %e2)
-      {kernel_shape = [1, 1], strides = [1, 1], pads = [0, 0, 0, 0],
-       dilations = [1, 1], group = 1 : i64}
+      {kernel_shape = array<i64: 1, 1>, strides = array<i64: 1, 1>, pads = array<i64: 0, 0, 0, 0>,
+       dilations = array<i64: 1, 1>, group = 1 : i64}
       : (!hip.context, tensor<1x8x1x2xf32>, tensor<4x8x1x1xf32>, tensor<1x4x1x2xf32>)
       -> tensor<1x4x1x2xf32>
 
@@ -97,8 +97,8 @@ func.func @qconv_w8_not_fused(%ctx: !hip.context,
 
   %e2 = tensor.empty() : tensor<1x4x1x2xf32>
   %conv = "hip.conv"(%ctx, %dq_x, %dq_w, %e2)
-      {kernel_shape = [1, 1], strides = [1, 1], pads = [0, 0, 0, 0],
-       dilations = [1, 1], group = 1 : i64}
+      {kernel_shape = array<i64: 1, 1>, strides = array<i64: 1, 1>, pads = array<i64: 0, 0, 0, 0>,
+       dilations = array<i64: 1, 1>, group = 1 : i64}
       : (!hip.context, tensor<1x8x1x2xf32>, tensor<4x8x1x1xf32>, tensor<1x4x1x2xf32>)
       -> tensor<1x4x1x2xf32>
 
@@ -142,8 +142,8 @@ func.func @qconv_per_tensor_weight_scale_not_fused(%ctx: !hip.context,
 
   %e2 = tensor.empty() : tensor<1x4x1x2xf32>
   %conv = "hip.conv"(%ctx, %dq_x, %dq_w, %e2)
-      {kernel_shape = [1, 1], strides = [1, 1], pads = [0, 0, 0, 0],
-       dilations = [1, 1], group = 1 : i64}
+      {kernel_shape = array<i64: 1, 1>, strides = array<i64: 1, 1>, pads = array<i64: 0, 0, 0, 0>,
+       dilations = array<i64: 1, 1>, group = 1 : i64}
       : (!hip.context, tensor<1x8x1x2xf32>, tensor<4x8x1x1xf32>, tensor<1x4x1x2xf32>)
       -> tensor<1x4x1x2xf32>
 
@@ -186,8 +186,8 @@ func.func @qconv_3x3_not_fused(%ctx: !hip.context,
 
   %e2 = tensor.empty() : tensor<1x4x8x8xf32>
   %conv = "hip.conv"(%ctx, %dq_x, %dq_w, %e2)
-      {kernel_shape = [3, 3], strides = [1, 1], pads = [1, 1, 1, 1],
-       dilations = [1, 1], group = 1 : i64}
+      {kernel_shape = [3, 3], strides = array<i64: 1, 1>, pads = [1, 1, 1, 1],
+       dilations = array<i64: 1, 1>, group = 1 : i64}
       : (!hip.context, tensor<1x8x8x8xf32>, tensor<4x8x3x3xf32>, tensor<1x4x8x8xf32>)
       -> tensor<1x4x8x8xf32>
 
@@ -230,8 +230,8 @@ func.func @qconv_i16_activation_not_fused(%ctx: !hip.context,
 
   %e2 = tensor.empty() : tensor<1x4x1x2xf32>
   %conv = "hip.conv"(%ctx, %dq_x, %dq_w, %e2)
-      {kernel_shape = [1, 1], strides = [1, 1], pads = [0, 0, 0, 0],
-       dilations = [1, 1], group = 1 : i64}
+      {kernel_shape = array<i64: 1, 1>, strides = array<i64: 1, 1>, pads = array<i64: 0, 0, 0, 0>,
+       dilations = array<i64: 1, 1>, group = 1 : i64}
       : (!hip.context, tensor<1x8x1x2xf32>, tensor<4x8x1x1xf32>, tensor<1x4x1x2xf32>)
       -> tensor<1x4x1x2xf32>
 

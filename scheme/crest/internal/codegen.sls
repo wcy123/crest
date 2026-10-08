@@ -40,7 +40,7 @@
                        (operation-get-operands   mlir-operation-get-operands)) expand)
           (for (rename (only (mlir IR Value) mlir::Value::getDefiningOp)
                        (mlir::Value::getDefiningOp mlir-value-get-defining-op)) expand)
-          (for (only (mlir support array-ref) array-ref-size array-ref-at) expand)
+          (for (only (mlir support array-ref) ArrayRef::size ArrayRef::at) expand)
           (for (only (mlir IR MLIRContext) current-MLIRContext) expand)
           (for (only (chezscheme) parameterize) expand)
           (for (only (crest internal rewrite) begin-mlir-code) expand)
@@ -289,8 +289,8 @@
          (let* ([fields      (cdr action)]
                 [var         (cdr (assq 'var fields))]
                 [operand-idx (cdr (assq 'operand-idx fields))])
-           #`(if (< #,operand-idx (array-ref-size #,operands-ref))
-                 (let ([val (array-ref-at #,operands-ref #,operand-idx)])
+           #`(if (< #,operand-idx (ArrayRef::size #,operands-ref))
+                 (let ([val (ArrayRef::at #,operands-ref #,operand-idx)])
                    (and (not (zero? val))
                         (begin (set! #,var val) #t)))
                  #f))]

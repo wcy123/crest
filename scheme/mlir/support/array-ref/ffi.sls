@@ -23,7 +23,7 @@
   ;; @param data-ptr  uptr — pointer to the first element of the array
   ;; @param size      uptr — number of elements in the array
   ;; @return          uptr — address of a newly allocated CArrayRef{data, size}
-  ;; @note            Caller must pair with %destroy (or use with-array-ref) to avoid leaks
+  ;; @note            Caller must pair with %destroy (or use with-ArrayRef) to avoid leaks
   ;; @note            Defined in lib/Bindings/Support/ArrayRef.cpp; struct in ArrayRef.h
   (define %make
     (foreign-procedure "mlir_support_array_ref_make" (uptr uptr) uptr))

@@ -34,7 +34,10 @@
                 mlir::shape::WitnessType::get)
           (crest)
           (only (mlir IR Operation)
-                crest::Operation::getIntegerArrayAttr mlir::Operation::getResult mlir::Operation::setAttr!)
+                mlir::Operation::getResult mlir::Operation::setAttr! mlir::Operation::getAttr)
+          (only (mlir IR BuiltinAttributes) mlir::DenseI64ArrayAttr::intoArrayRef)
+          (only (mlir support array-ref) with-ArrayRef ArrayRef::at ArrayRef::size :i64)
+          (rename (rime loop) (:with :rime-with))
 
           (only (mlir IR BuiltinTypes)
                 mlir::RankedTensorType::cloneWithEncoding
@@ -43,11 +46,10 @@
   ;; Build the permuted output shape inside a region block.
   ;; Returns the output !shape.shape value.
   (define (build-permuted-shape! builder perm input-shape shape-type size-type)
-    (let ([extents (map (lambda (p)
-                          (begin-mlir-code (:builder builder)
-                                           (%sz  = shape.const_size () ("value" = p :index) -> size-type)
-                                           (%ext = shape.get_extent (input-shape %sz) -> size-type)))
-                        perm)])
+    (let ([extents (loop :for p :in-vector perm
+                         :collect (begin-mlir-code (:builder builder)
+                                                   (%sz  = shape.const_size () ("value" = p :index) -> size-type)
+                                                   (%ext = shape.get_extent (input-shape %sz) -> size-type)))])
       (begin-mlir-code (:builder builder)
                        (%out = shape.from_extents (,@extents) -> shape-type))))
 
@@ -61,13 +63,16 @@
        [!out-device (mlir::RankedTensorType::cloneWithEncoding !out-type (make-hipsr-device-space-attr))]
        [!shape-type (mlir::shape::ShapeType::get)]
        [!size-type  (mlir::shape::SizeType::get)]
-       [perm        (let ([raw (crest::Operation::getIntegerArrayAttr op "perm")])
-                      (if (null? raw)
+       [perm        (let ([attr (mlir::Operation::getAttr op "perm")])
+                      (if (zero? attr)
                           ;; absent perm → reverse permutation
                           (let ([rank (mlir::RankedTensorType::getRank !in-type)])
                             (let loop ([i 0] [acc '()])
                               (if (eqv? i rank) acc (loop (+ i 1) (cons i acc)))))
-                          raw))])
+                          (with-ArrayRef (ref (mlir::DenseI64ArrayAttr::intoArrayRef attr))
+                                         (list->vector
+                                          (loop :for i :from 0 :below (ArrayRef::size ref)
+                                                :collect (ArrayRef::at ref i :i64))))))])
     :rewrite %output :with
       (%placeholder = "hipsr.placeholder" (%ctx %input !out-device)
                     (^bb0 ((%is : !shape-type))

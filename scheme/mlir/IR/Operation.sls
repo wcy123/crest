@@ -31,7 +31,7 @@
     mlir::Operation::use_empty?
     mlir::Operation::getAttrOfType<StringAttr>
     mlir::Operation::getAttrOfType<IntegerAttr>
-    crest::Operation::getIntegerArrayAttr
+
     mlir::Operation::hasAttr?
     mlir::Operation::emitError
     mlir::Operation::emitWarning
@@ -46,7 +46,9 @@
   (import (rnrs)
           (mlir IR Operation ffi)
           (rename (rime loop) (:with :rime-with))
-          (only (mlir IR BuiltinAttributes) mlir::DenseI32ArrayAttr::asArrayRef)
+          (only (mlir IR BuiltinAttributes)
+                mlir::DenseI32ArrayAttr::intoArrayRef
+                mlir::DenseI64ArrayAttr::intoArrayRef)
           (mlir support array-ref))
 
   ;; @brief mlir::Operation::getName — return the registered op name (e.g. "arith.addi").
@@ -165,14 +167,6 @@
   ;; @note               Defined in lib/Bindings/IR/Operation.cpp
   (define mlir::Operation::getAttrOfType<IntegerAttr>  %get-integer-attr)
 
-  ;; @brief mlir::Operation — return a DenseI64ArrayAttr or ArrayAttr as a Scheme list.
-  ;; @param op         Operation* uptr
-  ;; @param attr-name  Attribute name (string)
-  ;; @return           Scheme list of integers; '() if absent, wrong type, or op is null
-  ;; @see              mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
-  ;; @note             Defined in lib/Bindings/IR/Operation.cpp; tries DenseI64ArrayAttr first
-  (define crest::Operation::getIntegerArrayAttr %get-integer-array-attr)
-
   ;; @brief mlir::Operation::hasAttr — return #t if the named attribute is present.
   ;; @param op    Operation* uptr
   ;; @param name  Attribute name (string)
@@ -269,38 +263,38 @@
             (unless (and attr (not (zero? attr)))
               (error 'operation-get-operands
                      "op must have operandSegmentSizes for optional/variadic operands"))
-            ;; with-array-ref manages the ref lifecycle.
-            (with-array-ref (segs (mlir::DenseI32ArrayAttr::asArrayRef attr))
-              (let* ([n     (array-ref-size segs)]
-                     [n-spec (length spec)]
-                     [_      (unless (= n n-spec)
-                               (error 'operation-get-operands
-                                      "operandSegmentSizes count mismatch: spec has"
-                                      n-spec "segments but attr has" n))]
-                     [sizes  (loop :for i :from 0 :below n
-                                   :collect (array-ref-at segs i 'i32))]
-                     [starts (let lp ([ss sizes] [off 0] [acc '()])
-                               (if (null? ss)
-                                   (reverse acc)
-                                   (lp (cdr ss) (+ off (car ss)) (cons off acc))))])
-                (loop :for kind  :in spec
-                      :for start :in starts
-                      :for size  :in sizes
-                      :collect
-                      (case kind
-                        [(:required)
-                         (read-op start)]
-                        [(:optional)
-                         (if (zero? size) %absent (read-op start))]
-                        [(:variadic)
-                         (if (zero? size)
-                             %absent
-                             (loop :for i :from start :below (+ start size)
-                                   :collect (read-op i)))]
-                        [else
-                         (error 'operation-get-operands
-                                "unknown kind: expected :required/:optional/:variadic"
-                                kind)]))))))))
+            ;; with-ArrayRef manages the ref lifecycle.
+            (with-ArrayRef (segs (mlir::DenseI32ArrayAttr::intoArrayRef attr))
+                           (let* ([n     (ArrayRef::size segs)]
+                                  [n-spec (length spec)]
+                                  [_      (unless (= n n-spec)
+                                            (error 'operation-get-operands
+                                                   "operandSegmentSizes count mismatch: spec has"
+                                                   n-spec "segments but attr has" n))]
+                                  [sizes  (loop :for i :from 0 :below n
+                                                :collect (ArrayRef::at segs i 'i32))]
+                                  [starts (loop :rime-with off := 0
+                                                :for size :in sizes
+                                                :collect off
+                                                :rime-with off := (+ off size))])
+                             (loop :for kind  :in spec
+                                   :for start :in starts
+                                   :for size  :in sizes
+                                   :collect
+                                   (case kind
+                                     [(:required)
+                                      (read-op start)]
+                                     [(:optional)
+                                      (if (zero? size) %absent (read-op start))]
+                                     [(:variadic)
+                                      (if (zero? size)
+                                          %absent
+                                          (loop :for i :from start :below (+ start size)
+                                                :collect (read-op i)))]
+                                     [else
+                                      (error 'operation-get-operands
+                                             "unknown kind: expected :required/:optional/:variadic"
+                                             kind)]))))))))
 
   (define mlir::Operation::getAttrDictionary %mlir::Operation::getAttrDictionary)
   (define mlir::Operation::setAttrs          %mlir::Operation::setAttrs)
