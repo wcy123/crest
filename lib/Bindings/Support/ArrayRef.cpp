@@ -8,22 +8,15 @@
 #include "ArrayRef.h"
 #include "SchemeWrapper.h"
 
-extern "C" {
-
-// Allocate a CArrayRef<uintptr_t> on the C heap (generic uptr arrays).
-static uint64_t mlir_support_array_ref_make(uint64_t data_ptr, uint64_t size) {
-  auto* ref = new CArrayRef<uintptr_t>(
-      reinterpret_cast<const uintptr_t*>(data_ptr), size);
-  return reinterpret_cast<uint64_t>(ref);
-}
-
-} // extern "C"
-
 namespace crest {
 
 void registerArrayRefBindings() {
-  Sregister_symbol("mlir_support_array_ref_make",
-                   (void*)::mlir_support_array_ref_make);
+  Sregister_symbol(
+      "mlir_support_array_ref_make",
+      (void*)+[](uint64_t data_ptr, uint64_t size) -> uint64_t {
+        return reinterpret_cast<uint64_t>(new CArrayRef<uintptr_t>(
+            reinterpret_cast<const uintptr_t*>(data_ptr), size));
+      });
 
   // CrestObject::isa<CArrayRef<T>> — type predicates.
   // Non-capturing lambdas converted to plain function pointers via unary +.
