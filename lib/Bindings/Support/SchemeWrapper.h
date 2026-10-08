@@ -172,64 +172,40 @@ template <typename... Ts> inline SValue make_scheme_list(Ts&&... args) {
 // SValue identity — lets make_scheme_list accept already-converted args.
 inline SValue convert_to_scheme(SValue v) { return v; }
 
-// ---- scheme_call: direct Scall<N> for N ≤ 3; apply fallback for N > 3 ----
+// ---- scheme_call: direct Scall<N> for N ≤ 3; apply+Scons for N = 4 ----
 //
-// Use scheme_call(proc, a, b, ...) when proc is an already-resolved SValue
-// (e.g. from LockedSchemeObject). Prefer over scheme_apply(proc, list) for
-// N ≤ 3: Scall<N> avoids the apply symbol lookup and list allocation.
-
-inline SValue scheme_call(SValue proc) { return Scall0(proc); }
-inline SValue scheme_call(SValue proc, SValue a1) { return Scall1(proc, a1); }
-inline SValue scheme_call(SValue proc, SValue a1, SValue a2) {
-  return Scall2(proc, a1, a2);
-}
-inline SValue scheme_call(SValue proc, SValue a1, SValue a2, SValue a3) {
-  return Scall3(proc, a1, a2, a3);
-}
-// N = 4 — no Scall4; use Scons directly (exact behaviour match with old
-// hand-built lists; avoids going through make_scheme_list/convert_to_scheme).
-inline SValue scheme_call(SValue proc, SValue a1, SValue a2, SValue a3,
-                          SValue a4) {
-  SValue apply = Stop_level_value(Sstring_to_symbol("apply"));
-  return Scall2(apply, proc, Scons(a1, Scons(a2, Scons(a3, Scons(a4, Snil)))));
-}
-
-// ---- scheme_call by name: symbol lookup + Scall<N> ----
+// The first argument is either:
+//   SValue proc   — an already-resolved Scheme procedure (e.g. from
+//   LockedSchemeObject) const char*   — a top-level name (symbol lookup fires
+//   on each call; avoid in hot paths)
 //
-// For one-off calls to named top-level procedures. Avoid in hot-path
-// callbacks — symbol lookup fires on every call.
+// convert_to_scheme_func unifies the two so a single set of overloads handles
+// both.
 
-inline SValue scheme_call(const char* fname) {
-  return Scall0(Stop_level_value(Sstring_to_symbol(fname)));
+inline SValue convert_to_scheme_func(const char* fname) {
+  return Stop_level_value(Sstring_to_symbol(fname));
 }
-template <typename T1>
-inline SValue scheme_call(const char* fname, const T1& a1) {
-  return Scall1(Stop_level_value(Sstring_to_symbol(fname)),
-                convert_to_scheme(a1));
+inline SValue convert_to_scheme_func(SValue f) { return f; }
+
+template <typename F> inline SValue scheme_call(F f) {
+  return Scall0(convert_to_scheme_func(f));
 }
-template <typename T1, typename T2>
-inline SValue scheme_call(const char* fname, const T1& a1, const T2& a2) {
-  return Scall2(Stop_level_value(Sstring_to_symbol(fname)),
-                convert_to_scheme(a1), convert_to_scheme(a2));
+template <typename F> inline SValue scheme_call(F f, SValue a1) {
+  return Scall1(convert_to_scheme_func(f), a1);
 }
-template <typename T1, typename T2, typename T3>
-inline SValue scheme_call(const char* fname, const T1& a1, const T2& a2,
-                          const T3& a3) {
-  return Scall3(Stop_level_value(Sstring_to_symbol(fname)),
-                convert_to_scheme(a1), convert_to_scheme(a2),
-                convert_to_scheme(a3));
+template <typename F> inline SValue scheme_call(F f, SValue a1, SValue a2) {
+  return Scall2(convert_to_scheme_func(f), a1, a2);
 }
-// N = 4 by name
-template <typename T1, typename T2, typename T3, typename T4>
-inline SValue scheme_call(const char* fname, const T1& a1, const T2& a2,
-                          const T3& a3, const T4& a4) {
+template <typename F>
+inline SValue scheme_call(F f, SValue a1, SValue a2, SValue a3) {
+  return Scall3(convert_to_scheme_func(f), a1, a2, a3);
+}
+// N = 4 — no Scall4; fall back to (apply f args) via Scons.
+template <typename F>
+inline SValue scheme_call(F f, SValue a1, SValue a2, SValue a3, SValue a4) {
   SValue apply = Stop_level_value(Sstring_to_symbol("apply"));
-  SValue func = Stop_level_value(Sstring_to_symbol(fname));
-  return Scall2(apply, func,
-                Scons(convert_to_scheme(a1),
-                      Scons(convert_to_scheme(a2),
-                            Scons(convert_to_scheme(a3),
-                                  Scons(convert_to_scheme(a4), Snil)))));
+  return Scall2(apply, convert_to_scheme_func(f),
+                Scons(a1, Scons(a2, Scons(a3, Scons(a4, Snil)))));
 }
 
 #endif // CREST_BINDINGS_SCHEME_WRAPPER_H
