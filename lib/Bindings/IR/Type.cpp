@@ -9,8 +9,6 @@
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/Types.h"
 
-extern "C" {} // extern "C"
-
 namespace crest {
 
 void registerIRTypeBindings() {

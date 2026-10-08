@@ -13,8 +13,6 @@
 #include "CrestObject.h"
 #include "SchemeWrapper.h"
 
-extern "C" {} // extern "C"
-
 namespace crest {
 
 void registerCrestObjectBindings() {
