@@ -249,6 +249,23 @@ static uint64_t mlir_ir_builtin_attributes_dense_i32_array_attr_as_array_ref(
   return reinterpret_cast<uint64_t>(ref);
 }
 
+static uint64_t mlir_ir_dense_i64_array_as_array_ref(uint64_t attr_ptr) {
+  if (!attr_ptr) {
+    scheme_error("mlir::DenseI64ArrayAttr::intoArrayRef",
+                 "null attribute pointer");
+  }
+  auto arr = mlir::dyn_cast<mlir::DenseI64ArrayAttr>(
+      mlir::Attribute::getFromOpaquePointer(
+          reinterpret_cast<const void*>(attr_ptr)));
+  if (!arr) {
+    scheme_error("mlir::DenseI64ArrayAttr::intoArrayRef",
+                 "attribute is not a DenseI64ArrayAttr");
+  }
+  auto* ref = new CArrayRef{reinterpret_cast<uint64_t>(arr.asArrayRef().data()),
+                            static_cast<uint64_t>(arr.size())};
+  return reinterpret_cast<uint64_t>(ref);
+}
+
 //===----------------------------------------------------------------------===//
 // Complex extraction — mlir_ir_builtin_attributes_dense_*_splat_value
 //===----------------------------------------------------------------------===//
@@ -371,8 +388,10 @@ void registerIRBuiltinAttributesBindings() {
                    (void*)::mlir_ir_builtin_attributes_float_attr_get_value);
   Sregister_symbol("mlir::FloatAttr::getValueAsDouble.f32",
                    (void*)::mlir_ir_builtin_attributes_float32_attr_get_value);
+  Sregister_symbol("mlir::DenseI64ArrayAttr::intoArrayRef",
+                   (void*)::mlir_ir_dense_i64_array_as_array_ref);
   Sregister_symbol(
-      "mlir::DenseI32ArrayAttr::asArrayRef",
+      "mlir::DenseI32ArrayAttr::intoArrayRef",
       (void*)::mlir_ir_builtin_attributes_dense_i32_array_attr_as_array_ref);
   Sregister_symbol(
       "mlir::DenseElementsAttr::getSplatValue<APFloat>",
@@ -381,7 +400,7 @@ void registerIRBuiltinAttributesBindings() {
       "mlir::DenseElementsAttr::getSplatValue<APInt>",
       (void*)::mlir_ir_builtin_attributes_dense_int_elements_attr_splat_value);
   Sregister_symbol(
-      "mlir::DenseI32ArrayAttr::asArrayRef->list",
+      "mlir::DenseI32ArrayAttr::intoArrayRef->list",
       (void*)::mlir_ir_builtin_attributes_dense_i32_array_attr_to_list);
   Sregister_symbol("mlir::UnitAttr::get",
                    (void*)::mlir_ir_builtin_attributes_unit_attr_get);

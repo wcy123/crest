@@ -32,7 +32,7 @@
     %use-empty
     %get-string-attr
     %get-integer-attr
-    %get-integer-array-attr
+
     %has-attr
     %emit-error
     %emit-warning
@@ -178,16 +178,6 @@
   (define %get-integer-attr
     (foreign-procedure "mlir::Operation::getAttrOfType<IntegerAttr>"
                        (uptr string integer-64) integer-64))
-
-  ;; @brief mlir::Operation — return a DenseI64ArrayAttr or ArrayAttr as a Scheme list.
-  ;; @param op         Operation* uptr
-  ;; @param attr-name  Attribute name (string)
-  ;; @return           Scheme list of integers; '() if absent, wrong type, or op is null
-  ;; @see              mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
-  ;; @note             Defined in lib/Bindings/IR/Operation.cpp; tries DenseI64ArrayAttr first, then ArrayAttr
-  (define %get-integer-array-attr
-    (foreign-procedure "crest::Operation::getIntegerArrayAttr"
-                       (uptr string) scheme-object))
 
   ;; @brief mlir::Operation::hasAttr — test whether an attribute is present.
   ;; @param op         Operation* uptr

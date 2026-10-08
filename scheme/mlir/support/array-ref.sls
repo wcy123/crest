@@ -29,7 +29,8 @@
     make-array-ref      ; (data-ptr size) → ref  [C heap allocation]
     array-ref-destroy   ; (ref) → void           [C heap free]
     with-array-ref      ; (syntax) RAII: make + body + destroy
-    :uptr)              ; array-ref-at element type → 'uptr (8-byte pointer, default)
+    :uptr               ; array-ref-at element type → 'uptr (8-byte pointer, default)
+    :i64)              ; array-ref-at element type → 'i64  (8-byte signed integer)
                                         ; :i32 is a local keyword synonym — 'i32
 
   (import (rnrs)
@@ -41,6 +42,7 @@
   ;; @note  :i32 is internal — the symbol 'i32 used as the element type tag
   (define-syntax :uptr (identifier-syntax 'uptr))
   (define-syntax :i32  (identifier-syntax 'i32))
+  (define-syntax :i64  (identifier-syntax 'i64))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Fast path — foreign-ref compiles to raw load instructions, no FFI call.
@@ -76,7 +78,8 @@
         (cond
          [(eq? type :uptr) (foreign-ref 'uptr       data (* index 8))]
          [(eq? type :i32)  (foreign-ref 'integer-32 data (* index 4))]
-         [else             (error 'array-ref-at "unknown type (expected :uptr or :i32)" type)]))]))
+         [(eq? type :i64)  (foreign-ref 'integer-64 data (* index 8))]
+         [else             (error 'array-ref-at "unknown type (expected :uptr, :i32, or :i64)" type)]))]))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Lifecycle — C++ FFI (one call per array lifetime, overhead acceptable).

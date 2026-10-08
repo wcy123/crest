@@ -46,7 +46,9 @@
   (import (rnrs)
           (mlir IR Operation ffi)
           (rename (rime loop) (:with :rime-with))
-          (only (mlir IR BuiltinAttributes) mlir::DenseI32ArrayAttr::asArrayRef)
+          (only (mlir IR BuiltinAttributes)
+                mlir::DenseI32ArrayAttr::intoArrayRef
+                mlir::DenseI64ArrayAttr::intoArrayRef)
           (mlir support array-ref))
 
   ;; @brief mlir::Operation::getName — return the registered op name (e.g. "arith.addi").
@@ -165,13 +167,19 @@
   ;; @note               Defined in lib/Bindings/IR/Operation.cpp
   (define mlir::Operation::getAttrOfType<IntegerAttr>  %get-integer-attr)
 
-  ;; @brief mlir::Operation — return a DenseI64ArrayAttr or ArrayAttr as a Scheme list.
+  ;; @brief crest::Operation::getIntegerArrayAttr — return a DenseI64ArrayAttr as a Scheme list.
   ;; @param op         Operation* uptr
   ;; @param attr-name  Attribute name (string)
-  ;; @return           Scheme list of integers; '() if absent, wrong type, or op is null
-  ;; @see              mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
-  ;; @note             Defined in lib/Bindings/IR/Operation.cpp; tries DenseI64ArrayAttr first
-  (define crest::Operation::getIntegerArrayAttr %get-integer-array-attr)
+  ;; @return           Scheme list of integers; '() if absent or op is null
+  ;; @note             Pure Scheme: getAttr → intoArrayRef → array-ref-at :i64; caller must not
+  ;;                   retain the CArrayRef outside this call (with-array-ref destroys it on exit)
+  (define (crest::Operation::getIntegerArrayAttr op name)
+    (let ([attr (mlir::Operation::getAttr op name)])
+      (if (zero? attr)
+          '()
+          (with-array-ref (ref (mlir::DenseI64ArrayAttr::intoArrayRef attr))
+            (loop :for i :from 0 :below (array-ref-size ref)
+                  :collect (array-ref-at ref i :i64))))))
 
   ;; @brief mlir::Operation::hasAttr — return #t if the named attribute is present.
   ;; @param op    Operation* uptr
@@ -270,7 +278,7 @@
               (error 'operation-get-operands
                      "op must have operandSegmentSizes for optional/variadic operands"))
             ;; with-array-ref manages the ref lifecycle.
-            (with-array-ref (segs (mlir::DenseI32ArrayAttr::asArrayRef attr))
+            (with-array-ref (segs (mlir::DenseI32ArrayAttr::intoArrayRef attr))
               (let* ([n     (array-ref-size segs)]
                      [n-spec (length spec)]
                      [_      (unless (= n n-spec)

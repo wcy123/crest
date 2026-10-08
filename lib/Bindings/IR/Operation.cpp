@@ -180,33 +180,6 @@ static int64_t mlir_ir_operation_get_integer_attr(uint64_t op_ptr,
   return default_val;
 }
 
-static ptr mlir_ir_operation_get_integer_array_attr(uint64_t op_ptr,
-                                                    const char* attr_name) {
-  if (!op_ptr) {
-    return Snil;
-  }
-  auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-  if (auto attr = op->getAttrOfType<mlir::DenseI64ArrayAttr>(attr_name)) {
-    ptr list = Snil;
-    for (int i = (int)attr.size() - 1; i >= 0; --i) {
-      list = Scons(Sinteger(attr[i]), list);
-    }
-    return list;
-  }
-  if (auto attr = op->getAttrOfType<mlir::ArrayAttr>(attr_name)) {
-    ptr list = Snil;
-    for (int i = (int)attr.size() - 1; i >= 0; --i) {
-      auto intAttr = mlir::dyn_cast<mlir::IntegerAttr>(attr[i]);
-      if (!intAttr) {
-        return Snil;
-      }
-      list = Scons(Sinteger(intAttr.getInt()), list);
-    }
-    return list;
-  }
-  return Snil;
-}
-
 static int mlir_ir_operation_has_attr(uint64_t op_ptr, const char* attr_name) {
   if (!op_ptr) {
     scheme_error("mlir-ir-operation-has-attr", "operation must not be null");
@@ -352,8 +325,6 @@ void registerIROperationBindings() {
                    (void*)::mlir_ir_operation_get_string_attr);
   Sregister_symbol("mlir::Operation::getAttrOfType<IntegerAttr>",
                    (void*)::mlir_ir_operation_get_integer_attr);
-  Sregister_symbol("crest::Operation::getIntegerArrayAttr",
-                   (void*)::mlir_ir_operation_get_integer_array_attr);
   Sregister_symbol("mlir::Operation::hasAttr",
                    (void*)::mlir_ir_operation_has_attr);
   Sregister_symbol("mlir::Operation::emitError",
