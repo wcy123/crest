@@ -21,6 +21,17 @@ Three macros form the public surface:
 
 ## Example 1 — Dialect conversion: `onnx.MatMul` → `hipsr.matmul`
 
+Input: [`test/onnx-to-hipsr/matmul.mlir`](test/onnx-to-hipsr/matmul.mlir) ·
+Pattern: [`samples/passes/onnx-to-hipsr/matmul.sls`](samples/passes/onnx-to-hipsr/matmul.sls)
+
+```bash
+CREST_PATH=$(pwd)/samples \
+  build/tools/crest-opt/crest-opt \
+  -allow-unregistered-dialect \
+  --crest-pass="module=passes/onnx-to-hipsr" \
+  --split-input-file test/onnx-to-hipsr/matmul.mlir
+```
+
 **Input:**
 ```mlir
 func.func @matmul(%ctx: !hipsr.context, %a: tensor<?x4096xf16>, %b: tensor<4096x1024xf16>)
@@ -76,6 +87,17 @@ C++ helper needed.
 ---
 
 ## Example 2 — Fusion rewrite: `DQ + DQ + add + Q` → `qadd`
+
+Input: [`test/hip-fusion/qadd.mlir`](test/hip-fusion/qadd.mlir) ·
+Pattern: [`samples/passes/hip-fusion/qadd.sls`](samples/passes/hip-fusion/qadd.sls)
+
+```bash
+CREST_PATH=$(pwd)/samples \
+  build/tools/crest-opt/crest-opt \
+  -allow-unregistered-dialect \
+  --crest-pass="module=passes/hip-fusion" \
+  --split-input-file test/hip-fusion/qadd.mlir
+```
 
 ```
   Before                                 After
