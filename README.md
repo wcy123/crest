@@ -21,9 +21,7 @@ Three macros form the public surface:
 
 ## Example 1 — Dialect conversion: `onnx.MatMul` → `hipsr.matmul`
 
-Input: [`test/onnx-to-hipsr/matmul.mlir`](test/onnx-to-hipsr/matmul.mlir) ·
-Pattern: [`samples/passes/onnx-to-hipsr/matmul.sls`](samples/passes/onnx-to-hipsr/matmul.sls) ·
-Output: [`docs/examples/matmul-output.mlir`](docs/examples/matmul-output.mlir)
+**Command**
 
 ```bash
 CREST_PATH=$(pwd)/samples \
@@ -33,7 +31,7 @@ CREST_PATH=$(pwd)/samples \
   --split-input-file test/onnx-to-hipsr/matmul.mlir
 ```
 
-**Input:**
+**Input [`test/onnx-to-hipsr/matmul.mlir`](test/onnx-to-hipsr/matmul.mlir):**
 ```mlir
 func.func @matmul(%ctx: !hipsr.context, %a: tensor<?x4096xf16>, %b: tensor<4096x1024xf16>)
                  -> tensor<?x1024xf16> {
@@ -42,7 +40,7 @@ func.func @matmul(%ctx: !hipsr.context, %a: tensor<?x4096xf16>, %b: tensor<4096x
 }
 ```
 
-**Output** (after `--crest-pass="module=passes/onnx-to-hipsr"`):
+**Output [`docs/examples/matmul-output.mlir`](docs/examples/matmul-output.mlir)** (after `--crest-pass="module=passes/onnx-to-hipsr"`):
 ```mlir
 func.func @matmul(%ctx: !hipsr.context, %a: tensor<?x4096xf16>, %b: tensor<4096x1024xf16>)
                  -> tensor<?x1024xf16, #hipsr.mem<device>> {
@@ -56,7 +54,7 @@ func.func @matmul(%ctx: !hipsr.context, %a: tensor<?x4096xf16>, %b: tensor<4096x
 }
 ```
 
-**The Scheme pattern:**
+**The Scheme pattern:  [`samples/passes/onnx-to-hipsr/matmul.sls`](samples/passes/onnx-to-hipsr/matmul.sls)**
 ```scheme
 (define-conversion-pattern (onnx-matmul->hipsr op operands-ref rewriter type-converter)
   :if-match
@@ -89,9 +87,7 @@ C++ helper needed.
 
 ## Example 2 — Fusion rewrite: `DQ + DQ + add + Q` → `qadd`
 
-Input: [`test/hip-fusion/qadd.mlir`](test/hip-fusion/qadd.mlir) ·
-Pattern: [`samples/passes/hip-fusion/qadd.sls`](samples/passes/hip-fusion/qadd.sls) ·
-Output: [`docs/examples/qadd-output.mlir`](docs/examples/qadd-output.mlir)
+**Command**
 
 ```bash
 CREST_PATH=$(pwd)/samples \
@@ -116,7 +112,7 @@ CREST_PATH=$(pwd)/samples \
 
 Four ops collapse to one. Scales and zero-points move from operands to attributes.
 
-**Input:**
+**Input [`test/hip-fusion/qadd.mlir`](test/hip-fusion/qadd.mlir):**
 ```mlir
 %lhs_scale = "hip.constant"() {value = dense<0.25> : tensor<f32>} : () -> tensor<f32>
 %lhs_zp    = "hip.constant"() {value = dense<-5>   : tensor<i8>}  : () -> tensor<i8>
@@ -130,7 +126,7 @@ Four ops collapse to one. Scales and zero-points move from operands to attribute
 %q      = "hip.quantize_linear"(%ctx, %sum, %out_scale, %out_zp, ...)    -> tensor<...xi8>
 ```
 
-**The Scheme pattern:**
+**The Scheme pattern: [`samples/passes/hip-fusion/qadd.sls`](samples/passes/hip-fusion/qadd.sls)**
 ```scheme
 (define-rewrite-pattern (hip-qadd-fusion op rewriter)
   :if-match
@@ -156,7 +152,7 @@ Four ops collapse to one. Scales and zero-points move from operands to attribute
               -> !out-type))
 ```
 
-**Output:**
+**Output [`docs/examples/qadd-output.mlir`](docs/examples/qadd-output.mlir):**
 ```mlir
 %init   = tensor.empty() : tensor<1x128x32xi8>
 %result = "hip.qadd"(%ctx, %lhs, %rhs, %init) {
