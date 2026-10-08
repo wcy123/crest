@@ -31,7 +31,7 @@
     mlir::Operation::use_empty?
     mlir::Operation::getAttrOfType<StringAttr>
     mlir::Operation::getAttrOfType<IntegerAttr>
-    crest::Operation::getIntegerArrayAttr
+
     mlir::Operation::hasAttr?
     mlir::Operation::emitError
     mlir::Operation::emitWarning
@@ -166,20 +166,6 @@
   ;; @see                mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note               Defined in lib/Bindings/IR/Operation.cpp
   (define mlir::Operation::getAttrOfType<IntegerAttr>  %get-integer-attr)
-
-  ;; @brief crest::Operation::getIntegerArrayAttr — return a DenseI64ArrayAttr as a Scheme list.
-  ;; @param op         Operation* uptr
-  ;; @param attr-name  Attribute name (string)
-  ;; @return           Scheme list of integers; '() if absent or op is null
-  ;; @note             Pure Scheme: getAttr → intoArrayRef → ArrayRef::at :i64; caller must not
-  ;;                   retain the CArrayRef outside this call (with-ArrayRef destroys it on exit)
-  (define (crest::Operation::getIntegerArrayAttr op name)
-    (let ([attr (mlir::Operation::getAttr op name)])
-      (if (zero? attr)
-          '()
-          (with-ArrayRef (ref (mlir::DenseI64ArrayAttr::intoArrayRef attr))
-                         (loop :for i :from 0 :below (ArrayRef::size ref)
-                               :collect (ArrayRef::at ref i :i64))))))
 
   ;; @brief mlir::Operation::hasAttr — return #t if the named attribute is present.
   ;; @param op    Operation* uptr

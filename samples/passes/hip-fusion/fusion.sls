@@ -87,7 +87,8 @@
                 mlir::DenseElementsAttr::isSplat
                 mlir::FloatAttr::getValueAsDouble.f32
                 mlir::DenseElementsAttr::getSplatValue<APFloat>
-                mlir::DenseElementsAttr::getSplatValue<APInt>)
+                mlir::DenseElementsAttr::getSplatValue<APInt>
+                mlir::DenseI64ArrayAttr::intoArrayRef)
           (only (mlir IR PatternMatch) mlir-create-operation)
           (only (mlir IR BuiltinTypes)
                 mlir::ShapedType::getElementType
@@ -101,7 +102,8 @@
                 mlir::Operation::getName
                 mlir::Operation::getAttrDictionary
                 mlir::Operation::setAttrs
-                crest::Operation::getIntegerArrayAttr mlir::OpOperand::get mlir::OpResult::getOwner mlir::Operation::getAttr mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getNumOperands mlir::Operation::getResult mlir::Operation::hasAttr?))
+                mlir::OpOperand::get mlir::OpResult::getOwner mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::getNumOperands mlir::Operation::getResult mlir::Operation::hasAttr?)
+          (only (mlir support array-ref) with-ArrayRef ArrayRef::at ArrayRef::size :i64))
 
 
   ;; Local helpers — expressed via explicit builtin-attributes functions.
@@ -251,20 +253,25 @@
                             [rel-err   (abs (- actual expected))])
                        (< rel-err (* 2.0 (expt 2.0 -23) (abs expected)))))))))))
 
+  ;; Compare a DenseI64ArrayAttr against an expected list without building a Scheme list.
+  (define (dense-i64-attr=? attr expected)
+    (and (not (zero? attr))
+         (with-ArrayRef (ref (mlir::DenseI64ArrayAttr::intoArrayRef attr))
+                        (and (= (ArrayRef::size ref) (length expected))
+                             (let loop ([i 0] [exp expected])
+                               (or (null? exp)
+                                   (and (= (ArrayRef::at ref i :i64) (car exp))
+                                        (loop (+ i 1) (cdr exp)))))))))
+
   ;; Check whether a hip.conv op has fusable geometry:
   ;; 1x1 kernel, unit strides, unit dilations, zero pads, group=1.
   ;; Mirrors hip_is_fusable_conv_geometry in Hip.cpp.
   (define (hip-fusable-conv-geometry? op)
-    (let ([ks    (crest::Operation::getIntegerArrayAttr op "kernel_shape")]
-          [st    (crest::Operation::getIntegerArrayAttr op "strides")]
-          [di    (crest::Operation::getIntegerArrayAttr op "dilations")]
-          [pd    (crest::Operation::getIntegerArrayAttr op "pads")]
-          [group (mlir::Operation::getAttrOfType<IntegerAttr> op "group" 0)])
-      (and (equal? ks '(1 1))
-           (equal? st '(1 1))
-           (equal? di '(1 1))
-           (equal? pd '(0 0 0 0))
-           (= group 1))))
+    (and (dense-i64-attr=? (mlir::Operation::getAttr op "kernel_shape") '(1 1))
+         (dense-i64-attr=? (mlir::Operation::getAttr op "strides")      '(1 1))
+         (dense-i64-attr=? (mlir::Operation::getAttr op "dilations")    '(1 1))
+         (dense-i64-attr=? (mlir::Operation::getAttr op "pads")         '(0 0 0 0))
+         (= (mlir::Operation::getAttrOfType<IntegerAttr> op "group" 0) 1)))
 
   (define (hip-per-axis-weight? dq-op rank axis packed-int4?)
     ;; Scale must be rank-1 and packed_int4 must match.
