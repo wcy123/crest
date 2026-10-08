@@ -17,14 +17,14 @@ void registerTransformsGreedyPatternRewriteDriverBindings() {
   Sregister_symbol(
       "mlir_transforms_greedy_pattern_rewrite_driver_apply",
       (void*)+[](uint64_t op_ptr, uint64_t patterns_ptr) -> int {
-        if (!op_ptr || !patterns_ptr) {
+        if (!op_ptr) {
           scheme_error("mlir_transforms_greedy_pattern_rewrite_driver_apply",
-                       "op and patterns must not be null");
+                       "null op");
         }
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-        auto& patterns =
-            reinterpret_cast<CrestOwned<mlir::RewritePatternSet>*>(patterns_ptr)
-                ->inner;
+        auto& patterns = crest_owned<mlir::RewritePatternSet>(
+            patterns_ptr,
+            "mlir_transforms_greedy_pattern_rewrite_driver_apply");
         return mlir::succeeded(
                    mlir::applyPatternsGreedily(op, std::move(patterns)))
                    ? 1

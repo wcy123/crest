@@ -29,28 +29,25 @@ void registerIROperationStateBindings() {
   Sregister_symbol(
       "mlir::OperationState::addOperands",
       (void*)+[](uint64_t state_ptr, uint64_t value_ptr) -> void {
-        auto* state =
-            &reinterpret_cast<CrestOwned<mlir::OperationState>*>(state_ptr)
-                 ->inner;
-        state->addOperands(mlir::Value::getFromOpaquePointer(
-            reinterpret_cast<void*>(value_ptr)));
+        crest_owned<mlir::OperationState>(state_ptr,
+                                          "mlir::OperationState::addOperands")
+            .addOperands(mlir::Value::getFromOpaquePointer(
+                reinterpret_cast<void*>(value_ptr)));
       });
   Sregister_symbol(
       "mlir::OperationState::addTypes",
       (void*)+[](uint64_t state_ptr, uint64_t type_ptr) -> void {
-        auto* state =
-            &reinterpret_cast<CrestOwned<mlir::OperationState>*>(state_ptr)
-                 ->inner;
-        state->addTypes(mlir::Type::getFromOpaquePointer(
-            reinterpret_cast<const void*>(type_ptr)));
+        crest_owned<mlir::OperationState>(state_ptr,
+                                          "mlir::OperationState::addTypes")
+            .addTypes(mlir::Type::getFromOpaquePointer(
+                reinterpret_cast<const void*>(type_ptr)));
       });
   Sregister_symbol(
       "mlir::OperationState::addRegion",
       (void*)+[](uint64_t state_ptr) -> void {
-        auto* state =
-            &reinterpret_cast<CrestOwned<mlir::OperationState>*>(state_ptr)
-                 ->inner;
-        state->addRegion();
+        crest_owned<mlir::OperationState>(state_ptr,
+                                          "mlir::OperationState::addRegion")
+            .addRegion();
       });
   Sregister_symbol(
       "crest::isa<CrestOwned<mlir::OperationState>>",

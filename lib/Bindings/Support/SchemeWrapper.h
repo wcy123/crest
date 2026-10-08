@@ -5,6 +5,7 @@
 
 #ifndef CREST_BINDINGS_SCHEME_WRAPPER_H
 #define CREST_BINDINGS_SCHEME_WRAPPER_H
+#include "CrestObject.h"
 #include <array>
 #include <sstream>
 #include <string>
@@ -59,6 +60,31 @@ template <typename... Ts>
          Sstring(stream.str().c_str()));
   crest_unreachable();
 }
+// crest_cast<T> — validated CrestObject downcast.
+// Checks null and isa<T> before casting; calls scheme_error on failure.
+template <typename T>
+[[nodiscard]] inline T* crest_cast(uint64_t ptr, const char* who) {
+  if (!ptr) {
+    scheme_error(who, "null pointer");
+  }
+  if (!reinterpret_cast<crest::CrestObject*>(ptr)->isa<T>()) {
+    scheme_error(who, "wrong CrestObject type");
+  }
+  return reinterpret_cast<T*>(ptr);
+}
+
+// crest_owned<T> — extract T& from a CrestOwned<T>* at ptr.
+template <typename T>
+[[nodiscard]] inline T& crest_owned(uint64_t ptr, const char* who) {
+  return crest_cast<crest::CrestOwned<T>>(ptr, who)->inner;
+}
+
+// crest_ref<T> — extract T* from a CrestRef<T>* at ptr.
+template <typename T>
+[[nodiscard]] inline T* crest_ref(uint64_t ptr, const char* who) {
+  return crest_cast<crest::CrestRef<T>>(ptr, who)->ptr;
+}
+
 // ---- convert_to_scheme: explicit return types via overloads ----
 
 // booleans
