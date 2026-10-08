@@ -20,15 +20,12 @@
 
   ;; @brief mlir::Block::getArgument — return the idx-th block argument.
   ;; @param block  Block* uptr
-  ;; @param idx    0-based argument index (exact integer)
+  ;; @param idx    0-based argument index (int)
   ;; @return       mlir::BlockArgument opaque pointer uptr (subclass of mlir::Value)
-  ;; @error        raises error 'mlir::Block::getArgument if idx is out of range
+  ;; @error        raises Scheme error 'mlir::Block::getArgument if null or index out of range
   ;; @see          mlir/IR/Block.h
-  (define (mlir::Block::getArgument block idx)
-    (let ([n (mlir::Block::getNumArguments block)])
-      (unless (and (>= idx 0) (< idx n))
-        (error 'mlir::Block::getArgument "index out of range" idx n))
-      (%mlir::Block::getArgument block idx)))
+  ;; @note         bounds check is in C++ — catches even raw %mlir::Block::getArgument callers
+  (define mlir::Block::getArgument %mlir::Block::getArgument)
 
   ;; @brief mlir::Block::getNumArguments — return the number of block arguments.
   ;; @param block  Block* uptr (must be non-null)

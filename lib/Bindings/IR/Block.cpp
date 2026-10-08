@@ -21,13 +21,11 @@ extern "C" {
 static uint64_t mlir_ir_block_get_argument_by_index(uint64_t block_ptr,
                                                     int idx) {
   if (!block_ptr) {
-    scheme_error("mlir-ir-block-get-argument-by-index",
-                 "block pointer is null");
+    scheme_error("mlir::Block::getArgument", "block pointer is null");
   }
   auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
   if (idx < 0 || idx >= (int)block->getNumArguments()) {
-    scheme_error("mlir-ir-block-get-argument-by-index",
-                 "index out of range: idx=", idx,
+    scheme_error("mlir::Block::getArgument", "index out of range: idx=", idx,
                  ", num-args=", (int)block->getNumArguments());
   }
   return reinterpret_cast<uint64_t>(
