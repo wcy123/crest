@@ -28,12 +28,16 @@
     mlir::RewriterBase::createBlock
     mlir::RewriterBase::replaceOp
     mlir::RewriterBase::eraseOp
+    ;; Type predicates
+    mlir::RewriterBase?
+    mlir::RewritePatternSet?
     ;; RAII macros
     with-raii
     with-RewritePatternSet)
 
   (import (rnrs)
           (only (mlir support RAII) with-raii)
+          (only (mlir support array-ref) with-CrestObject)
           (only (chezscheme) make-parameter parameterize void)
           (only (mlir IR PatternMatch ffi)
                 %mlir::RewriterBase::setInsertionPoint
@@ -44,7 +48,8 @@
                 %mlir::RewriterBase::eraseOp
                 %mlir::RewriterBase::create<OperationState>
                 %mlir::RewritePatternSet::RewritePatternSet
-                %mlir::RewritePatternSet::~RewritePatternSet)
+                %crest::isa<CrestOwned<mlir::RewritePatternSet>>
+                %crest::isa<CrestRef<mlir::RewriterBase>>)
           (only (mlir IR Builders ffi)
                 %mlir::OpBuilder::create<OperationState>)
           (only (mlir IR MLIRContext) current-MLIRContext)
@@ -56,57 +61,43 @@
                 %mlir::OperationState::addOperands
                 %mlir::OperationState::addTypes
                 %mlir::OperationState::addRegion
-                %mlir::OperationState::~OperationState
                 with-OperationState))
 
   ;; @brief mlir::Operation::getContext — return the MLIRContext that owns this op.
-  ;; @param op  Operation* uptr
-  ;; @return    MLIRContext* uptr
-  ;; @see       mlir/IR/Operation.h
   (define mlir-Operation::getContext mlir::Operation::getContext)
 
   ;; @brief mlir::RewriterBase::setInsertionPoint(op) — move IP to before op.
-  ;; @param rewriter  RewriterBase* uptr
-  ;; @param op        Operation* uptr
-  ;; @see             mlir/IR/PatternMatch.h
   (define mlir::RewriterBase::setInsertionPoint       %mlir::RewriterBase::setInsertionPoint)
   (define mlir::RewriterBase::setInsertionPoint-before %mlir::RewriterBase::setInsertionPoint)
 
   ;; @brief mlir::RewriterBase::setInsertionPoint — move IP to end of block.
-  ;; @param rewriter  RewriterBase* uptr
-  ;; @param block     Block* uptr
-  ;; @see             mlir/IR/PatternMatch.h
   (define mlir::RewriterBase::setInsertionPoint-to-end %mlir::RewriterBase::setInsertionPoint-to-end)
 
   ;; @brief mlir::RewriterBase::createBlock — append a new block to region.
-  ;; @param rewriter  RewriterBase* uptr
-  ;; @param region    Region* uptr
-  ;; @return          Block* uptr
-  ;; @see             mlir/IR/PatternMatch.h
   (define mlir::RewriterBase::createBlock             %mlir::RewriterBase::createBlock)
 
   ;; @brief mlir::RewriterBase::replaceOp — replace op with new values and erase it.
-  ;; @param rewriter  RewriterBase* uptr
-  ;; @param op        Operation* uptr — op to replace
-  ;; @param new-op    Operation* uptr — replacement
-  ;; @see             mlir/IR/PatternMatch.h
   (define mlir::RewriterBase::replaceOp               %mlir::RewriterBase::replaceOp)
 
   ;; @brief mlir::RewriterBase::eraseOp — erase op and all uses (must be dead).
-  ;; @param rewriter  RewriterBase* uptr
-  ;; @param op        Operation* uptr
-  ;; @see             mlir/IR/PatternMatch.h
   (define mlir::RewriterBase::eraseOp                 %mlir::RewriterBase::eraseOp)
+
+  ;; @brief mlir::RewriterBase? — is this ptr a CrestRef<mlir::RewriterBase>?
+  (define (mlir::RewriterBase? ptr)
+    (not (zero? (%crest::isa<CrestRef<mlir::RewriterBase>> ptr))))
+
+  ;; @brief mlir::RewritePatternSet? — is this ptr a CrestOwned<mlir::RewritePatternSet>?
+  (define (mlir::RewritePatternSet? ptr)
+    (not (zero? (%crest::isa<CrestOwned<mlir::RewritePatternSet>> ptr))))
 
   ;; @brief Create an op via a RewriterBase*.
   ;; (rw name operands types)                     — UnknownLoc, 0 regions
   ;; (rw name operands types nregions)            — UnknownLoc, N regions
   ;; (rw name operands types source-loc nregions) — explicit mlir::Location
   ;;
-  ;; NOTE: reinterpret_cast<OpBuilder*>(rwPtr) is UNSAFE — OpBuilder has no vtable
-  ;; but RewriterBase introduces one, so the OpBuilder subobject sits at offset
-  ;; +sizeof(vtable_ptr) within the RewriterBase object. Uses
-  ;; %mlir::RewriterBase::create<OperationState> which casts to RewriterBase*.
+  ;; NOTE: rw is a CrestRef<RewriterBase>*; %mlir::RewriterBase::create<OperationState>
+  ;; extracts ->ptr internally. RewriterBase introduces the first vtable, so its
+  ;; subobject offset differs from OpBuilder — these bindings are NOT interchangeable.
   (define mlir-create-operation
     (let ([build (lambda (rw name operands types source-loc nregions)
                    (with-OperationState (state source-loc name)
@@ -126,15 +117,14 @@
         (build rw name operands types source-loc nregions)])))
 
   ;; @brief with-RewritePatternSet — RAII for a heap-allocated RewritePatternSet.
+  ;; @note  Lifetime managed by CrestObject deletor; no explicit destructor needed.
   (define-syntax with-RewritePatternSet
     (syntax-rules ()
       [(_ (var) body ...)
-       (with-raii (var (%mlir::RewritePatternSet::RewritePatternSet (current-MLIRContext))
-                       %mlir::RewritePatternSet::~RewritePatternSet)
-                  body ...)]
+       (with-CrestObject (var (%mlir::RewritePatternSet::RewritePatternSet (current-MLIRContext)))
+                         body ...)]
       [(_ (var ctx) body ...)
-       (with-raii (var (%mlir::RewritePatternSet::RewritePatternSet ctx)
-                       %mlir::RewritePatternSet::~RewritePatternSet)
-                  body ...)]))
+       (with-CrestObject (var (%mlir::RewritePatternSet::RewritePatternSet ctx))
+                         body ...)]))
 
   ) ;; end library (mlir IR PatternMatch)

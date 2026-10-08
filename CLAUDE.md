@@ -146,33 +146,31 @@ Do not create wrapper libraries that alias old names to new ones.
 Callers must use the canonical C++ names directly. When a function
 moves to a new module, update all callers — do not leave an alias.
 
-### Rule 9 — All C binding functions must be `static`
+### Rule 9 — Use anonymous lambdas in `Sregister_symbol` calls
 
-Every C function in a binding file must be declared `static` to minimize
-visibility and avoid polluting the global symbol namespace:
+Every `Sregister_symbol` call must use a non-capturing lambda converted to a
+function pointer with the unary `+` operator — never a named static function:
 
 ```cpp
-// WRONG — external linkage, visible outside the TU
-uint64_t mlir_ir_builtin_types_index_type_get(uint64_t ctx_ptr) { ... }
+// WRONG — named static function leaks into TU-level symbol table
+static uint64_t mlir_ir_index_type_get(uint64_t ctx_ptr) { ... }
+Sregister_symbol("mlir::IndexType::get", (void*)::mlir_ir_index_type_get);
 
-// CORRECT — internal linkage, only referenced via Sregister_symbol
-static uint64_t mlir_ir_builtin_types_index_type_get(uint64_t ctx_ptr) { ... }
-```
-
-The function is never called directly from other TUs — it is only passed to
-`Sregister_symbol` as a function pointer. `static` prevents link-time symbol
-conflicts and allows the compiler to inline or optimize freely.
-
-The `Sregister_symbol` call passes the address of the static function:
-```cpp
+// CORRECT — anonymous lambda, no name in the symbol table
 Sregister_symbol("mlir::IndexType::get",
-                 (void*)::mlir_ir_builtin_types_index_type_get);
+    (void*)+[](uint64_t ctx_ptr) -> uint64_t {
+      ...
+    });
 ```
+
+The unary `+` converts a non-capturing lambda to a plain function pointer.
+The `(void*)` cast satisfies `Sregister_symbol`'s `void*` parameter.
+Anonymous lambdas cannot be accidentally called from other TUs and the
+compiler can inline or optimize them freely.
 
 Exception: functions declared in shared headers (e.g. `Logging.h` declares
-`mlir_support_logging_*`) must NOT be `static` — they have external linkage
-by definition. Functions only called within a single TU (the common case)
-must be `static`. `scheme_error` helpers are typically `static` in each file.
+`mlir_support_logging_*`) keep external linkage by definition and are not
+registered via anonymous lambdas.
 
 ## Scheme RAII and Dynamic Parameter Convention
 
@@ -232,4 +230,4 @@ The RAII macro lives in the same Scheme module that wraps the C++ class:
 - [ ] `scheme/mlir/<Path>/<Name>.sls` re-exporting without `%`
 - [ ] Both `.sls` files have `;; Mirrors mlir/<Path>/<Header>.h` in docstring
 - [ ] Module name `(mlir Path Name)` matches header path exactly
-- [ ] All C binding functions are declared `static`
+- [ ] All `Sregister_symbol` calls use anonymous lambdas (`(void*)+[](…) -> T { … }`)

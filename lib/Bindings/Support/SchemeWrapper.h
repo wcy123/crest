@@ -5,6 +5,7 @@
 
 #ifndef CREST_BINDINGS_SCHEME_WRAPPER_H
 #define CREST_BINDINGS_SCHEME_WRAPPER_H
+#include "CrestObject.h"
 #include <array>
 #include <sstream>
 #include <string>
@@ -59,6 +60,31 @@ template <typename... Ts>
          Sstring(stream.str().c_str()));
   crest_unreachable();
 }
+// crest_cast<T> — validated CrestObject downcast.
+// Checks null and isa<T> before casting; calls scheme_error on failure.
+template <typename T>
+[[nodiscard]] inline T* crest_cast(uint64_t ptr, const char* who) {
+  if (!ptr) {
+    scheme_error(who, "null pointer");
+  }
+  if (!reinterpret_cast<crest::CrestObject*>(ptr)->isa<T>()) {
+    scheme_error(who, "wrong CrestObject type");
+  }
+  return reinterpret_cast<T*>(ptr);
+}
+
+// crest_owned<T> — extract T& from a CrestOwned<T>* at ptr.
+template <typename T>
+[[nodiscard]] inline T& crest_owned(uint64_t ptr, const char* who) {
+  return crest_cast<crest::CrestOwned<T>>(ptr, who)->inner;
+}
+
+// crest_ref<T> — extract T* from a CrestRef<T>* at ptr.
+template <typename T>
+[[nodiscard]] inline T* crest_ref(uint64_t ptr, const char* who) {
+  return crest_cast<crest::CrestRef<T>>(ptr, who)->ptr;
+}
+
 // ---- convert_to_scheme: explicit return types via overloads ----
 
 // booleans
@@ -76,6 +102,13 @@ inline SValue convert_to_scheme(signed char v) {
 }
 inline SValue convert_to_scheme(unsigned char v) {
   return Sfixnum(static_cast<long>(v));
+}
+
+// Raw C++ pointer types → Scheme uptr (unsigned tagged integer).
+// Non-template overloads (const char*, void*) take precedence in overload
+// resolution, so char* → Sstring and SValue → identity are unaffected.
+template <typename T> inline SValue convert_to_scheme(T* p) {
+  return Sunsigned64(reinterpret_cast<uint64_t>(p));
 }
 
 // C strings
@@ -143,21 +176,51 @@ template <typename... Ts> inline SValue make_scheme_list(Ts&&... args) {
   return list;
 }
 
-// ---- scheme_apply with explicit return type ----
+// SValue identity — lets make_scheme_list accept already-converted args.
+inline SValue convert_to_scheme(SValue v) { return v; }
 
-// Call a named top-level Scheme procedure: (apply func_name args...)
-template <typename... Ts>
-inline SValue scheme_apply(const char* func_name, Ts&&... args) {
+// ---- scheme_call: direct Scall<N> for N ≤ 3; apply+Scons for N = 4 ----
+//
+// The first argument is either:
+//   SValue proc   — an already-resolved Scheme procedure (e.g. from
+//   LockedSchemeObject) const char*   — a top-level name (symbol lookup fires
+//   on each call; avoid in hot paths)
+//
+// convert_to_scheme_func unifies the two so a single set of overloads handles
+// both.
+
+inline SValue convert_to_scheme_func(const char* fname) {
+  return Stop_level_value(Sstring_to_symbol(fname));
+}
+inline SValue convert_to_scheme_func(SValue f) { return f; }
+
+template <typename F> inline SValue scheme_call(F f) {
+  return Scall0(convert_to_scheme_func(f));
+}
+template <typename F, typename T1>
+inline SValue scheme_call(F f, const T1& a1) {
+  return Scall1(convert_to_scheme_func(f), convert_to_scheme(a1));
+}
+template <typename F, typename T1, typename T2>
+inline SValue scheme_call(F f, const T1& a1, const T2& a2) {
+  return Scall2(convert_to_scheme_func(f), convert_to_scheme(a1),
+                convert_to_scheme(a2));
+}
+template <typename F, typename T1, typename T2, typename T3>
+inline SValue scheme_call(F f, const T1& a1, const T2& a2, const T3& a3) {
+  return Scall3(convert_to_scheme_func(f), convert_to_scheme(a1),
+                convert_to_scheme(a2), convert_to_scheme(a3));
+}
+// N = 4 — no Scall4; fall back to (apply f args) via Scons.
+template <typename F, typename T1, typename T2, typename T3, typename T4>
+inline SValue scheme_call(F f, const T1& a1, const T2& a2, const T3& a3,
+                          const T4& a4) {
   SValue apply = Stop_level_value(Sstring_to_symbol("apply"));
-  SValue func = Stop_level_value(Sstring_to_symbol(func_name));
-  SValue scheme_args = make_scheme_list(std::forward<Ts>(args)...);
-  return Scall2(apply, func, scheme_args);
+  return Scall2(apply, convert_to_scheme_func(f),
+                Scons(convert_to_scheme(a1),
+                      Scons(convert_to_scheme(a2),
+                            Scons(convert_to_scheme(a3),
+                                  Scons(convert_to_scheme(a4), Snil)))));
 }
 
-// Call an already-resolved Scheme procedure ptr: (apply proc args...)
-// Use this when the callback is stored as a ptr (e.g. LockedSchemeObject).
-inline SValue scheme_apply(SValue proc, SValue args_list) {
-  SValue apply = Stop_level_value(Sstring_to_symbol("apply"));
-  return Scall2(apply, proc, args_list);
-}
 #endif // CREST_BINDINGS_SCHEME_WRAPPER_H

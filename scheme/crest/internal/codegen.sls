@@ -40,7 +40,7 @@
                        (operation-get-operands   mlir-operation-get-operands)) expand)
           (for (rename (only (mlir IR Value) mlir::Value::getDefiningOp)
                        (mlir::Value::getDefiningOp mlir-value-get-defining-op)) expand)
-          (for (only (mlir support array-ref) ArrayRef::size ArrayRef::at) expand)
+          (for (only (mlir support array-ref) ArrayRef::size ArrayRef::at with-CrestObject) expand)
           (for (only (mlir IR MLIRContext) current-MLIRContext) expand)
           (for (only (chezscheme) parameterize) expand)
           (for (only (crest internal rewrite) begin-mlir-code) expand)
@@ -168,6 +168,7 @@
         (with-syntax ([(form ...) raw-body])
           (case pattern-type
             [(conversion rewrite)
+             ;; rwShell is owned by C++ (unique_ptr); no with-CrestObject needed.
              #`(guard (exn [#t
                             ;; A Scheme exception in the rewrite body is a pattern
                             ;; failure. Emit the full condition text as an MLIR

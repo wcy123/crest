@@ -1,5 +1,7 @@
 #pragma once
 
+#include <utility> // std::forward for CrestOwned<T> constructor
+
 // Symbol-visibility macro for type_deletor.
 // Forces default (exported) visibility so the dynamic linker can unify copies
 // of type_deletor across DSO boundaries, keeping isa<T>() comparisons safe.
@@ -10,11 +12,11 @@
 #endif
 
 namespace crest {
+
 // CrestObject — base for all CREST-managed foreign objects.
 // The deletor function pointer at offset 0 serves dual purpose:
 //   1. Destructor: called by with-CrestObject on exit to free the object
-//   2. Type tag:   compare the deletor address to identify the concrete
-//   type
+//   2. Type tag:   compare the deletor address to identify the concrete type
 //
 // To make your class a CrestObject, inherit from AsCrest<YourClass>:
 //   struct CMyObj : public AsCrest<CMyObj> { ... };
@@ -54,7 +56,28 @@ template <typename T> struct AsCrest : public CrestObject {
 template <typename T> inline bool CrestObject::isa() const {
   return deletor == AsCrest<T>::type_deletor;
 }
-} // namespace crest
-namespace crest {
+
+// CrestOwned<T> — heap-allocates T by value inside a CrestObject shell.
+// The AsCrest<CrestOwned<T>> type_deletor frees the whole struct (including T).
+// Use for objects that CREST creates and owns:
+//   OperationState, RewritePatternSet, TypeConverter, ConversionTarget,
+//   OpBuilder.
+template <typename T> struct CrestOwned : public AsCrest<CrestOwned<T>> {
+  T inner;
+  template <typename... Args>
+  explicit CrestOwned(Args&&... args)
+      : AsCrest<CrestOwned<T>>(), inner(std::forward<Args>(args)...) {}
+};
+
+// CrestRef<T> — heap-allocates a non-owning shell holding T*.
+// The AsCrest<CrestRef<T>> type_deletor frees only the shell; T is owned
+// externally. Use for objects MLIR owns and passes into callbacks (e.g.
+// RewriterBase in patterns).
+template <typename T> struct CrestRef : public AsCrest<CrestRef<T>> {
+  T* ptr;
+  explicit CrestRef(T* p) : AsCrest<CrestRef<T>>(), ptr(p) {}
+};
+
 void registerCrestObjectBindings();
-}
+
+} // namespace crest

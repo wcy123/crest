@@ -19,31 +19,24 @@
     %mlir::OperationState::addOperands
     %mlir::OperationState::addTypes
     %mlir::OperationState::addRegion
-    %mlir::OperationState::~OperationState
+    %crest::isa<CrestOwned<mlir::OperationState>>
     %operation-state-create
     %operation-state-add-operands          ;; canonical: mlir::OperationState::addOperands
     %operation-state-add-operand           ;; backward-compat alias
     %operation-state-add-types             ;; canonical: mlir::OperationState::addTypes
     %operation-state-add-result-type       ;; backward-compat alias
-    %operation-state-add-region
-    %operation-state-destroy)
+    %operation-state-add-region)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
-  ;; @brief mlir::OperationState constructor — heap-allocate an OperationState for loc and op name.
-  ;; @param loc-ptr   Location opaque ptr as uptr (from %mlir::Operation::getLoc)
+  ;; @brief mlir::OperationState constructor — heap-allocate a CrestOwned<OperationState>.
+  ;; @param loc-ptr   Location opaque ptr as uptr
   ;; @param name      Registered MLIR op name string (e.g. "arith.constant")
-  ;; @return          OperationState* as uptr — caller must destroy with %operation-state-destroy
+  ;; @return          CrestOwned<OperationState>* as uptr — freed via with-CrestObject
   ;; @see             mlir/IR/OperationSupport.h
-  ;; @note            Defined in lib/Bindings/IR/OperationState.cpp
   (define %operation-state-create
     (foreign-procedure "mlir::OperationState::create" (uptr string) uptr))
 
   ;; @brief mlir::OperationState::addOperands — add a single operand Value to the state.
-  ;; @param state   OperationState* uptr
-  ;; @param value   Value opaque ptr as uptr
-  ;; @return        void
-  ;; @see           mlir/IR/OperationSupport.h
-  ;; @note          Defined in lib/Bindings/IR/OperationState.cpp
   (define %operation-state-add-operands
     (foreign-procedure "mlir::OperationState::addOperands" (uptr uptr) void))
 
@@ -51,11 +44,6 @@
   (define %operation-state-add-operand %operation-state-add-operands)
 
   ;; @brief mlir::OperationState::addTypes — add a single result Type to the state.
-  ;; @param state   OperationState* uptr
-  ;; @param type    Type opaque ptr as uptr
-  ;; @return        void
-  ;; @see           mlir/IR/OperationSupport.h
-  ;; @note          Defined in lib/Bindings/IR/OperationState.cpp
   (define %operation-state-add-types
     (foreign-procedure "mlir::OperationState::addTypes" (uptr uptr) void))
 
@@ -63,26 +51,16 @@
   (define %operation-state-add-result-type %operation-state-add-types)
 
   ;; @brief mlir::OperationState::addRegion — add one empty region to the state.
-  ;; @param state   OperationState* uptr
-  ;; @return        void
-  ;; @see           mlir/IR/OperationSupport.h
-  ;; @note          Defined in lib/Bindings/IR/OperationState.cpp
-  ;; @note          Required for ops that verify they have exactly N regions at creation time.
   (define %operation-state-add-region
     (foreign-procedure "mlir::OperationState::addRegion" (uptr) void))
 
-  ;; @brief Destroy an OperationState created by %operation-state-create.
-  ;; @param state   OperationState* uptr — no-op if 0
-  ;; @return        void
-  ;; @see           mlir/IR/OperationSupport.h
-  ;; @note          Defined in lib/Bindings/IR/OperationState.cpp
-  (define %operation-state-destroy
-    (foreign-procedure "mlir::OperationState::~OperationState" (uptr) void))
+  ;; @brief Type predicate — is this ptr a CrestOwned<mlir::OperationState>?
+  (define %crest::isa<CrestOwned<mlir::OperationState>>
+    (foreign-procedure "crest::isa<CrestOwned<mlir::OperationState>>" (uptr) int))
 
   (define %mlir::OperationState::create        %operation-state-create)
   (define %mlir::OperationState::addOperands   %operation-state-add-operands)
   (define %mlir::OperationState::addTypes      %operation-state-add-types)
   (define %mlir::OperationState::addRegion     %operation-state-add-region)
-  (define %mlir::OperationState::~OperationState %operation-state-destroy)
 
   ) ;; end library (mlir IR OperationSupport ffi)
