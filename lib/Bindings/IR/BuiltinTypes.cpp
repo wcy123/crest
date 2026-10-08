@@ -10,163 +10,40 @@
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Types.h"
 
-extern "C" {
-
-// mlir::IndexType::get(ctx)
-static uint64_t mlir_ir_builtin_types_index_type_get(uint64_t ctx_ptr) {
-  if (!ctx_ptr) {
-    scheme_error("mlir-ir-builtin-types-index-type-get",
-                 "null MLIRContext pointer");
-  }
-  return reinterpret_cast<uint64_t>(
-      mlir::IndexType::get(reinterpret_cast<mlir::MLIRContext*>(ctx_ptr))
-          .getAsOpaquePointer());
-}
-
-// mlir::IntegerType::get(ctx, 64)
-static uint64_t mlir_ir_builtin_types_integer_type_get_i64(uint64_t ctx_ptr) {
-  if (!ctx_ptr) {
-    scheme_error("mlir-ir-builtin-types-integer-type-get-i64",
-                 "null MLIRContext pointer");
-  }
-  return reinterpret_cast<uint64_t>(
-      mlir::IntegerType::get(reinterpret_cast<mlir::MLIRContext*>(ctx_ptr), 64)
-          .getAsOpaquePointer());
-}
-
-// mlir::IntegerType::get(ctx, 1)
-static uint64_t mlir_ir_builtin_types_integer_type_get_i1(uint64_t ctx_ptr) {
-  if (!ctx_ptr) {
-    scheme_error("mlir-ir-builtin-types-integer-type-get-i1",
-                 "null MLIRContext pointer");
-  }
-  return reinterpret_cast<uint64_t>(
-      mlir::IntegerType::get(reinterpret_cast<mlir::MLIRContext*>(ctx_ptr), 1)
-          .getAsOpaquePointer());
-}
-
-// mlir::RankedTensorType::getRank()
-static int64_t
-mlir_ir_builtin_types_ranked_tensor_type_get_rank(uint64_t type_ptr) {
-  if (!type_ptr) {
-    scheme_error("mlir-ir-builtin-types-ranked-tensor-type-get-rank",
-                 "null type pointer");
-  }
-  auto t =
-      mlir::dyn_cast<mlir::RankedTensorType>(mlir::Type::getFromOpaquePointer(
-          reinterpret_cast<const void*>(type_ptr)));
-  if (!t) {
-    scheme_error("mlir-ir-builtin-types-ranked-tensor-type-get-rank",
-                 "type is not a RankedTensorType");
-  }
-  return t.getRank();
-}
-
-// mlir::RankedTensorType::getElementType()
-static uint64_t
-mlir_ir_builtin_types_ranked_tensor_type_get_element_type(uint64_t type_ptr) {
-  if (!type_ptr) {
-    scheme_error("mlir-ir-builtin-types-ranked-tensor-type-get-element-type",
-                 "null type pointer");
-  }
-  auto t =
-      mlir::dyn_cast<mlir::RankedTensorType>(mlir::Type::getFromOpaquePointer(
-          reinterpret_cast<const void*>(type_ptr)));
-  if (!t) {
-    scheme_error("mlir-ir-builtin-types-ranked-tensor-type-get-element-type",
-                 "type is not a RankedTensorType");
-  }
-  return reinterpret_cast<uint64_t>(
-      const_cast<void*>(t.getElementType().getAsOpaquePointer()));
-}
-
-// mlir::RankedTensorType::getEncoding()
-static uint64_t
-mlir_ir_builtin_types_ranked_tensor_type_get_encoding(uint64_t type_ptr) {
-  if (!type_ptr) {
-    scheme_error("mlir-ir-builtin-types-ranked-tensor-type-get-encoding",
-                 "null type pointer");
-  }
-  auto t =
-      mlir::dyn_cast<mlir::RankedTensorType>(mlir::Type::getFromOpaquePointer(
-          reinterpret_cast<const void*>(type_ptr)));
-  if (!t) {
-    scheme_error("mlir-ir-builtin-types-ranked-tensor-type-get-encoding",
-                 "type is not a RankedTensorType");
-  }
-  mlir::Attribute enc = t.getEncoding();
-  return enc ? reinterpret_cast<uint64_t>(enc.getAsOpaquePointer()) : 0;
-}
-
-// mlir::RankedTensorType::cloneWithEncoding(attr)
-static uint64_t mlir_ir_builtin_types_ranked_tensor_type_clone_with_encoding(
-    uint64_t type_ptr, uint64_t attr_ptr) {
-  if (!type_ptr) {
-    scheme_error("mlir-ir-builtin-types-ranked-tensor-type-clone-with-encoding",
-                 "null type pointer");
-  }
-  if (!attr_ptr) {
-    scheme_error("mlir-ir-builtin-types-ranked-tensor-type-clone-with-encoding",
-                 "null attribute pointer");
-  }
-  auto t =
-      mlir::dyn_cast<mlir::RankedTensorType>(mlir::Type::getFromOpaquePointer(
-          reinterpret_cast<const void*>(type_ptr)));
-  if (!t) {
-    scheme_error("mlir-ir-builtin-types-ranked-tensor-type-clone-with-encoding",
-                 "type is not a RankedTensorType");
-  }
-  auto attr = mlir::Attribute::getFromOpaquePointer(
-      reinterpret_cast<const void*>(attr_ptr));
-  return reinterpret_cast<uint64_t>(
-      t.cloneWithEncoding(attr).getAsOpaquePointer());
-}
-
-// mlir::ShapedType::getElementType()
-static uint64_t
-mlir_ir_builtin_types_shaped_type_get_element_type(uint64_t type_ptr) {
-  if (!type_ptr) {
-    scheme_error("mlir-ir-builtin-types-shaped-type-get-element-type",
-                 "null type pointer");
-  }
-  auto type =
-      mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(type_ptr));
-  auto st = mlir::dyn_cast<mlir::ShapedType>(type);
-  if (!st) {
-    scheme_error("mlir-ir-builtin-types-shaped-type-get-element-type",
-                 "type is not a ShapedType");
-  }
-  return reinterpret_cast<uint64_t>(st.getElementType().getAsOpaquePointer());
-}
-
-// mlir::IntegerType::getWidth()
-static uint64_t
-mlir_ir_builtin_types_integer_type_get_width(uint64_t type_ptr) {
-  if (!type_ptr) {
-    scheme_error("mlir-ir-builtin-types-integer-type-get-width",
-                 "null type pointer");
-  }
-  auto type =
-      mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(type_ptr));
-  auto it = mlir::dyn_cast<mlir::IntegerType>(type);
-  if (!it) {
-    scheme_error("mlir-ir-builtin-types-integer-type-get-width",
-                 "type is not an IntegerType");
-  }
-  return static_cast<uint64_t>(it.getWidth());
-}
-
-} // extern "C"
-
 namespace crest {
 
 void registerIRBuiltinTypesBindings() {
-  Sregister_symbol("mlir::IndexType::get",
-                   (void*)::mlir_ir_builtin_types_index_type_get);
-  Sregister_symbol("mlir::IntegerType::get<i64>",
-                   (void*)::mlir_ir_builtin_types_integer_type_get_i64);
-  Sregister_symbol("mlir::IntegerType::get<i1>",
-                   (void*)::mlir_ir_builtin_types_integer_type_get_i1);
+  Sregister_symbol(
+      "mlir::IndexType::get", (void*)+[](uint64_t ctx_ptr) -> uint64_t {
+        if (!ctx_ptr) {
+          scheme_error("mlir::IndexType::get", "null MLIRContext pointer");
+        }
+        return reinterpret_cast<uint64_t>(
+            mlir::IndexType::get(reinterpret_cast<mlir::MLIRContext*>(ctx_ptr))
+                .getAsOpaquePointer());
+      });
+  Sregister_symbol(
+      "mlir::IntegerType::get<i64>", (void*)+[](uint64_t ctx_ptr) -> uint64_t {
+        if (!ctx_ptr) {
+          scheme_error("mlir::IntegerType::get<i64>",
+                       "null MLIRContext pointer");
+        }
+        return reinterpret_cast<uint64_t>(
+            mlir::IntegerType::get(
+                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr), 64)
+                .getAsOpaquePointer());
+      });
+  Sregister_symbol(
+      "mlir::IntegerType::get<i1>", (void*)+[](uint64_t ctx_ptr) -> uint64_t {
+        if (!ctx_ptr) {
+          scheme_error("mlir::IntegerType::get<i1>",
+                       "null MLIRContext pointer");
+        }
+        return reinterpret_cast<uint64_t>(
+            mlir::IntegerType::get(
+                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr), 1)
+                .getAsOpaquePointer());
+      });
   Sregister_symbol(
       "mlir::isa<RankedTensorType>", (void*)+[](uint64_t p) -> int {
         return (p && mlir::isa<mlir::RankedTensorType>(
@@ -175,11 +52,38 @@ void registerIRBuiltinTypesBindings() {
                    ? 1
                    : 0;
       });
-  Sregister_symbol("mlir::RankedTensorType::getRank",
-                   (void*)::mlir_ir_builtin_types_ranked_tensor_type_get_rank);
+  Sregister_symbol(
+      "mlir::RankedTensorType::getRank",
+      (void*)+[](uint64_t type_ptr) -> int64_t {
+        if (!type_ptr) {
+          scheme_error("mlir::RankedTensorType::getRank", "null type pointer");
+        }
+        auto t = mlir::dyn_cast<mlir::RankedTensorType>(
+            mlir::Type::getFromOpaquePointer(
+                reinterpret_cast<const void*>(type_ptr)));
+        if (!t) {
+          scheme_error("mlir::RankedTensorType::getRank",
+                       "type is not a RankedTensorType");
+        }
+        return t.getRank();
+      });
   Sregister_symbol(
       "mlir::RankedTensorType::getElementType",
-      (void*)::mlir_ir_builtin_types_ranked_tensor_type_get_element_type);
+      (void*)+[](uint64_t type_ptr) -> uint64_t {
+        if (!type_ptr) {
+          scheme_error("mlir::RankedTensorType::getElementType",
+                       "null type pointer");
+        }
+        auto t = mlir::dyn_cast<mlir::RankedTensorType>(
+            mlir::Type::getFromOpaquePointer(
+                reinterpret_cast<const void*>(type_ptr)));
+        if (!t) {
+          scheme_error("mlir::RankedTensorType::getElementType",
+                       "type is not a RankedTensorType");
+        }
+        return reinterpret_cast<uint64_t>(
+            const_cast<void*>(t.getElementType().getAsOpaquePointer()));
+      });
   Sregister_symbol(
       "mlir::RankedTensorType::getShape", (void*)+[](ptr p) -> ptr {
         if (!p) {
@@ -199,15 +103,75 @@ void registerIRBuiltinTypesBindings() {
       });
   Sregister_symbol(
       "mlir::RankedTensorType::getEncoding",
-      (void*)::mlir_ir_builtin_types_ranked_tensor_type_get_encoding);
+      (void*)+[](uint64_t type_ptr) -> uint64_t {
+        if (!type_ptr) {
+          scheme_error("mlir::RankedTensorType::getEncoding",
+                       "null type pointer");
+        }
+        auto t = mlir::dyn_cast<mlir::RankedTensorType>(
+            mlir::Type::getFromOpaquePointer(
+                reinterpret_cast<const void*>(type_ptr)));
+        if (!t) {
+          scheme_error("mlir::RankedTensorType::getEncoding",
+                       "type is not a RankedTensorType");
+        }
+        mlir::Attribute enc = t.getEncoding();
+        return enc ? reinterpret_cast<uint64_t>(enc.getAsOpaquePointer()) : 0;
+      });
   Sregister_symbol(
       "mlir::RankedTensorType::cloneWithEncoding",
-      (void*)::mlir_ir_builtin_types_ranked_tensor_type_clone_with_encoding);
+      (void*)+[](uint64_t type_ptr, uint64_t attr_ptr) -> uint64_t {
+        if (!type_ptr) {
+          scheme_error("mlir::RankedTensorType::cloneWithEncoding",
+                       "null type pointer");
+        }
+        if (!attr_ptr) {
+          scheme_error("mlir::RankedTensorType::cloneWithEncoding",
+                       "null attribute pointer");
+        }
+        auto t = mlir::dyn_cast<mlir::RankedTensorType>(
+            mlir::Type::getFromOpaquePointer(
+                reinterpret_cast<const void*>(type_ptr)));
+        if (!t) {
+          scheme_error("mlir::RankedTensorType::cloneWithEncoding",
+                       "type is not a RankedTensorType");
+        }
+        auto attr = mlir::Attribute::getFromOpaquePointer(
+            reinterpret_cast<const void*>(attr_ptr));
+        return reinterpret_cast<uint64_t>(
+            t.cloneWithEncoding(attr).getAsOpaquePointer());
+      });
   // ── Type query functions (moved from BuiltinAttributes.cpp) ─────────────
-  Sregister_symbol("mlir::ShapedType::getElementType",
-                   (void*)::mlir_ir_builtin_types_shaped_type_get_element_type);
-  Sregister_symbol("mlir::IntegerType::getWidth",
-                   (void*)::mlir_ir_builtin_types_integer_type_get_width);
+  Sregister_symbol(
+      "mlir::ShapedType::getElementType",
+      (void*)+[](uint64_t type_ptr) -> uint64_t {
+        if (!type_ptr) {
+          scheme_error("mlir::ShapedType::getElementType", "null type pointer");
+        }
+        auto type = mlir::Type::getFromOpaquePointer(
+            reinterpret_cast<const void*>(type_ptr));
+        auto st = mlir::dyn_cast<mlir::ShapedType>(type);
+        if (!st) {
+          scheme_error("mlir::ShapedType::getElementType",
+                       "type is not a ShapedType");
+        }
+        return reinterpret_cast<uint64_t>(
+            st.getElementType().getAsOpaquePointer());
+      });
+  Sregister_symbol(
+      "mlir::IntegerType::getWidth", (void*)+[](uint64_t type_ptr) -> uint64_t {
+        if (!type_ptr) {
+          scheme_error("mlir::IntegerType::getWidth", "null type pointer");
+        }
+        auto type = mlir::Type::getFromOpaquePointer(
+            reinterpret_cast<const void*>(type_ptr));
+        auto it = mlir::dyn_cast<mlir::IntegerType>(type);
+        if (!it) {
+          scheme_error("mlir::IntegerType::getWidth",
+                       "type is not an IntegerType");
+        }
+        return static_cast<uint64_t>(it.getWidth());
+      });
   Sregister_symbol(
       "mlir::IntegerType::isUnsigned", (void*)+[](uint64_t p) -> int {
         if (!p) {
