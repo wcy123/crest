@@ -66,8 +66,8 @@
   ;; Populate return-conversion patterns in Scheme.
   ;; onnx.Return → func.return, forwarding the (already type-converted) operands.
   (define (onnx-return->func-return op operands-ref rewriter type-converter)
-    (let ((operands (loop :for i :from 0 :below (array-ref-size operands-ref)
-                          :collect (array-ref-at operands-ref i))))
+    (let ((operands (loop :for i :from 0 :below (ArrayRef::size operands-ref)
+                          :collect (ArrayRef::at operands-ref i))))
       (mlir::RewriterBase::setInsertionPoint rewriter op)
       (mlir-create-operation rewriter "func.return" operands '() (mlir::Operation::getLoc op) 0)
       (mlir::RewriterBase::eraseOp rewriter op)

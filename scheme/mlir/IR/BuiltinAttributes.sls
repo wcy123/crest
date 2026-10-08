@@ -196,8 +196,8 @@
   ;; @note         Caller owns the returned CArrayRef; always use with-ArrayRef for automatic cleanup:
   ;;
   ;;   (with-ArrayRef (ref (mlir::DenseI64ArrayAttr::intoArrayRef attr))
-  ;;     (loop :for i :from 0 :below (array-ref-size ref)
-  ;;           :collect (array-ref-at ref i :i64)))
+  ;;     (loop :for i :from 0 :below (ArrayRef::size ref)
+  ;;           :collect (ArrayRef::at ref i :i64)))
   (define mlir::DenseI64ArrayAttr::intoArrayRef        %mlir::DenseI64ArrayAttr::intoArrayRef)
 
   ;; @brief mlir::DenseI32ArrayAttr::intoArrayRef — transfer a DenseI32ArrayAttr into a CArrayRef*.
@@ -207,8 +207,8 @@
   ;; @note         Caller owns the returned CArrayRef; always use with-ArrayRef for automatic cleanup:
   ;;
   ;;   (with-ArrayRef (ref (mlir::DenseI32ArrayAttr::intoArrayRef attr))
-  ;;     (loop :for i :from 0 :below (array-ref-size ref)
-  ;;           :collect (array-ref-at ref i :i32)))
+  ;;     (loop :for i :from 0 :below (ArrayRef::size ref)
+  ;;           :collect (ArrayRef::at ref i :i32)))
   (define mlir::DenseI32ArrayAttr::intoArrayRef        %mlir::DenseI32ArrayAttr::intoArrayRef)
 
   ;; @brief mlir::DenseElementsAttr::getSplatValue<APFloat> — extract the splat float value.

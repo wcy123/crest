@@ -16,7 +16,7 @@
 ;;   offset 8: size uptr   — number of elements
 ;;
 ;; Performance design:
-;;   array-ref-size, array-ref-at — foreign-ref (zero FFI overhead, raw loads)
+;;   ArrayRef::size, ArrayRef::at — foreign-ref (zero FFI overhead, raw loads)
 ;;   make-array-ref, array-ref-destroy — C++ FFI (acceptable for lifecycle)
 ;;   with-ArrayRef — macro: RAII wrapper via dynamic-wind
 ;;
@@ -24,13 +24,13 @@
 
 (library (mlir support array-ref)
   (export
-    array-ref-size      ; (ref) → element count, zero FFI overhead
-    array-ref-at        ; (ref index [type]) → element, bounds-checked
+    ArrayRef::size      ; (ref) → element count, zero FFI overhead
+    ArrayRef::at        ; (ref index [type]) → element, bounds-checked
     make-array-ref      ; (data-ptr size) → ref  [C heap allocation]
     array-ref-destroy   ; (ref) → void           [C heap free]
     with-ArrayRef      ; (syntax) RAII: make + body + destroy
-    :uptr               ; array-ref-at element type → 'uptr (8-byte pointer, default)
-    :i64)              ; array-ref-at element type → 'i64  (8-byte signed integer)
+    :uptr               ; ArrayRef::at element type → 'uptr (8-byte pointer, default)
+    :i64)              ; ArrayRef::at element type → 'i64  (8-byte signed integer)
                                         ; :i32 is a local keyword synonym — 'i32
 
   (import (rnrs)
@@ -38,7 +38,7 @@
           (mlir support array-ref ffi))
 
   ;; @brief Compile-time keyword: element type 'uptr — 8-byte pointer (Value*, Operation*, etc.).
-  ;; @note  Pass as the optional third argument to array-ref-at
+  ;; @note  Pass as the optional third argument to ArrayRef::at
   ;; @note  :i32 is internal — the symbol 'i32 used as the element type tag
   (define-syntax :uptr (identifier-syntax 'uptr))
   (define-syntax :i32  (identifier-syntax 'i32))
@@ -53,7 +53,7 @@
   ;; @return       Number of elements (uptr, reads size field at offset 8)
   ;; @note         Zero FFI overhead — compiles to a raw memory load via foreign-ref
   ;; @note         Struct layout defined in lib/Bindings/Support/ArrayRef.h
-  (define (array-ref-size ref)
+  (define (ArrayRef::size ref)
     (foreign-ref 'uptr ref 8))
 
   ;; @brief Read the i-th element from a CArrayRef with bounds checking.
@@ -63,23 +63,23 @@
   ;;               :uptr → foreign-ref 'uptr       at offset index*8  (Value*, Operation*, etc.)
   ;;               :i32  → foreign-ref 'integer-32  at offset index*4  (DenseI32ArrayAttr data)
   ;; @return       Element value as uptr or integer-32 depending on type
-  ;; @note         Raises error 'array-ref-at if index >= size
+  ;; @note         Raises error 'ArrayRef::at if index >= size
   ;; @note         Zero FFI overhead — compiles to raw memory loads via foreign-ref
   ;; @note         Use :uptr or :i32 compile-time keywords as the type argument
-  (define array-ref-at
+  (define ArrayRef::at
     (case-lambda
      [(ref index)
-      (array-ref-at ref index 'uptr)]
+      (ArrayRef::at ref index 'uptr)]
      [(ref index type)
       (let ([size (foreign-ref 'uptr ref 8)]
             [data (foreign-ref 'uptr ref 0)])
         (when (>= index size)
-          (error 'array-ref-at "index out of range" index size))
+          (error 'ArrayRef::at "index out of range" index size))
         (cond
          [(eq? type :uptr) (foreign-ref 'uptr       data (* index 8))]
          [(eq? type :i32)  (foreign-ref 'integer-32 data (* index 4))]
          [(eq? type :i64)  (foreign-ref 'integer-64 data (* index 8))]
-         [else             (error 'array-ref-at "unknown type (expected :uptr, :i32, or :i64)" type)]))]))
+         [else             (error 'ArrayRef::at "unknown type (expected :uptr, :i32, or :i64)" type)]))]))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Lifecycle — C++ FFI (one call per array lifetime, overhead acceptable).

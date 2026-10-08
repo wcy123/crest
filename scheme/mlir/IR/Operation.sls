@@ -171,15 +171,15 @@
   ;; @param op         Operation* uptr
   ;; @param attr-name  Attribute name (string)
   ;; @return           Scheme list of integers; '() if absent or op is null
-  ;; @note             Pure Scheme: getAttr → intoArrayRef → array-ref-at :i64; caller must not
+  ;; @note             Pure Scheme: getAttr → intoArrayRef → ArrayRef::at :i64; caller must not
   ;;                   retain the CArrayRef outside this call (with-ArrayRef destroys it on exit)
   (define (crest::Operation::getIntegerArrayAttr op name)
     (let ([attr (mlir::Operation::getAttr op name)])
       (if (zero? attr)
           '()
           (with-ArrayRef (ref (mlir::DenseI64ArrayAttr::intoArrayRef attr))
-                         (loop :for i :from 0 :below (array-ref-size ref)
-                               :collect (array-ref-at ref i :i64))))))
+                         (loop :for i :from 0 :below (ArrayRef::size ref)
+                               :collect (ArrayRef::at ref i :i64))))))
 
   ;; @brief mlir::Operation::hasAttr — return #t if the named attribute is present.
   ;; @param op    Operation* uptr
@@ -279,14 +279,14 @@
                      "op must have operandSegmentSizes for optional/variadic operands"))
             ;; with-ArrayRef manages the ref lifecycle.
             (with-ArrayRef (segs (mlir::DenseI32ArrayAttr::intoArrayRef attr))
-                           (let* ([n     (array-ref-size segs)]
+                           (let* ([n     (ArrayRef::size segs)]
                                   [n-spec (length spec)]
                                   [_      (unless (= n n-spec)
                                             (error 'operation-get-operands
                                                    "operandSegmentSizes count mismatch: spec has"
                                                    n-spec "segments but attr has" n))]
                                   [sizes  (loop :for i :from 0 :below n
-                                                :collect (array-ref-at segs i 'i32))]
+                                                :collect (ArrayRef::at segs i 'i32))]
                                   [starts (let lp ([ss sizes] [off 0] [acc '()])
                                             (if (null? ss)
                                                 (reverse acc)
