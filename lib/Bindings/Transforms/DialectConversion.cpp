@@ -41,14 +41,14 @@ public:
       return mlir::failure();
     }
     // operandsWrapped: C++ owns — unique_ptr destructs after scheme_call.
+    // Both unique_ptrs owned by C++; Scheme uses pointers during scheme_call
+    // and does not free them — no with-CrestObject on the Scheme side.
     auto operandsWrapped = std::make_unique<CArrayRef<uintptr_t>>(
         reinterpret_cast<const uintptr_t*>(operands.data()), operands.size());
-    // rwShell: Scheme owns — release() transfers ownership; Scheme frees via
-    // with-CrestObject.
     auto rwShell =
         std::make_unique<crest::CrestRef<mlir::RewriterBase>>(&rewriter);
     ptr result = scheme_call(
-        callback_.get(), op, operandsWrapped.get(), rwShell.release(),
+        callback_.get(), op, operandsWrapped.get(), rwShell.get(),
         reinterpret_cast<crest::CrestObject*>(schemeTypeConverterPtr_));
     return result == Strue ? mlir::success() : mlir::failure();
   }
@@ -76,11 +76,10 @@ public:
     if (op->getName().getStringRef() != targetOpName) {
       return mlir::failure();
     }
-    // rwShell: Scheme owns — release() transfers ownership; Scheme frees via
-    // with-CrestObject.
+    // C++ owns rwShell; Scheme uses it during scheme_call without freeing it.
     auto rwShell =
         std::make_unique<crest::CrestRef<mlir::RewriterBase>>(&rewriter);
-    ptr result = scheme_call(callback_.get(), op, rwShell.release());
+    ptr result = scheme_call(callback_.get(), op, rwShell.get());
     return result == Strue ? mlir::success() : mlir::failure();
   }
 

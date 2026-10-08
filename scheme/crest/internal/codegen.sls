@@ -168,22 +168,22 @@
         (with-syntax ([(form ...) raw-body])
           (case pattern-type
             [(conversion rewrite)
-             #`(with-CrestObject (#,rw #,rw)
-                                 (guard (exn [#t
-                                              ;; A Scheme exception in the rewrite body is a pattern
-                                              ;; failure. Emit the full condition text as an MLIR
-                                              ;; diagnostic so it appears in ORT's error output.
-                                              (mlir-emit-error! #,op
-                                                                (call-with-string-output-port
-                                                                 (lambda (p) (display-condition exn p))))
-                                              #f])
-                                   (begin
-                                     (mlir::RewriterBase::setInsertionPoint #,rw #,op)
-                                     (let ([result (begin-mlir-code (:rewriter #,rw) form ...)])
-                                       ;; result is a Value* uptr on success, or #f to signal failure.
-                                       (if result
-                                           (begin (mlir::RewriterBase::replaceOp #,rw #,op result) #t)
-                                           #f)))))]))))
+             ;; rwShell is owned by C++ (unique_ptr); no with-CrestObject needed.
+             #`(guard (exn [#t
+                            ;; A Scheme exception in the rewrite body is a pattern
+                            ;; failure. Emit the full condition text as an MLIR
+                            ;; diagnostic so it appears in ORT's error output.
+                            (mlir-emit-error! #,op
+                                              (call-with-string-output-port
+                                               (lambda (p) (display-condition exn p))))
+                            #f])
+                 (begin
+                   (mlir::RewriterBase::setInsertionPoint #,rw #,op)
+                   (let ([result (begin-mlir-code (:rewriter #,rw) form ...)])
+                     ;; result is a Value* uptr on success, or #f to signal failure.
+                     (if result
+                         (begin (mlir::RewriterBase::replaceOp #,rw #,op result) #t)
+                         #f))))]))))
 
   ;;=======================================================================
   ;; :then-let bindings
