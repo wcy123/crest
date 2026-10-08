@@ -190,7 +190,7 @@ void registerTransformsDialectConversionBindings() {
             mlir::OperationName(op_name, ctx),
             [locked](mlir::Operation* op) -> bool {
               ptr op_arg = Sunsigned64(reinterpret_cast<uint64_t>(op));
-              ptr result = Scall1(locked->get(), op_arg);
+              ptr result = scheme_call(locked->get(), op_arg);
               return result != Sfalse && result != Sfixnum(0);
             });
       });
@@ -204,7 +204,7 @@ void registerTransformsDialectConversionBindings() {
             .markUnknownOpDynamicallyLegal(
                 [locked](mlir::Operation* op) -> bool {
                   ptr op_arg = Sunsigned64(reinterpret_cast<uint64_t>(op));
-                  ptr result = Scall1(locked->get(), op_arg);
+                  ptr result = scheme_call(locked->get(), op_arg);
                   return result != Sfalse && result != Sfixnum(0);
                 });
       });
@@ -218,7 +218,7 @@ void registerTransformsDialectConversionBindings() {
             [locked](mlir::Type type) -> std::optional<mlir::Type> {
               ptr type_arg = Sunsigned64(
                   reinterpret_cast<uint64_t>(type.getAsOpaquePointer()));
-              ptr result = Scall1(locked->get(), type_arg);
+              ptr result = scheme_call(locked->get(), type_arg);
               if (result == Sfalse) {
                 return std::nullopt;
               }
@@ -467,7 +467,7 @@ void registerTransformsDialectConversionBindings() {
             mlir::OperationName(op_name, ctx),
             [locked](mlir::Operation* op) -> bool {
               ptr op_arg = Sunsigned64(reinterpret_cast<uint64_t>(op));
-              ptr result = Scall1(locked->get(), op_arg);
+              ptr result = scheme_call(locked->get(), op_arg);
               return result != Sfalse && result != Sfixnum(0);
             });
       });
@@ -481,7 +481,7 @@ void registerTransformsDialectConversionBindings() {
             .markUnknownOpDynamicallyLegal(
                 [locked](mlir::Operation* op) -> bool {
                   ptr op_arg = Sunsigned64(reinterpret_cast<uint64_t>(op));
-                  ptr result = Scall1(locked->get(), op_arg);
+                  ptr result = scheme_call(locked->get(), op_arg);
                   return result != Sfalse && result != Sfixnum(0);
                 });
       });
@@ -495,7 +495,7 @@ void registerTransformsDialectConversionBindings() {
             [locked](mlir::Type type) -> std::optional<mlir::Type> {
               ptr type_arg = Sunsigned64(
                   reinterpret_cast<uint64_t>(type.getAsOpaquePointer()));
-              ptr result = Scall1(locked->get(), type_arg);
+              ptr result = scheme_call(locked->get(), type_arg);
               if (result == Sfalse) {
                 return std::nullopt;
               }

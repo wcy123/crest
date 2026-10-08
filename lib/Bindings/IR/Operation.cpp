@@ -147,7 +147,7 @@ void registerIROperationBindings() {
         crest::LockedSchemeObject locked(callback);
         cppOp->walk([&locked](mlir::Operation* walkOp) {
           ptr schemeOp = Sunsigned64(reinterpret_cast<uint64_t>(walkOp));
-          Scall1(locked.get(), schemeOp);
+          scheme_call(locked.get(), schemeOp);
         });
       });
   Sregister_symbol(
