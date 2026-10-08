@@ -45,7 +45,7 @@ struct QAddFusion : OpRewritePattern<QuantizeLinearOp> {
 
 The same pattern in CREST — match, analysis, and emission in one form, no rebuild needed:
 
-```scheme
+```lisp
 (define-rewrite-pattern (hip-qadd-fusion op rewriter)
   :if-match
     %dq_lhs = hip.dequantize_linear (%ctx %lhs %lhs_scale (:optional %lhs_zp) %init)
@@ -107,7 +107,7 @@ CREST_PATH=$(pwd)/samples \
 
 **The Scheme pattern: [`samples/passes/hip-fusion/qadd.sls`](samples/passes/hip-fusion/qadd.sls)**
 
-```scheme
+```lisp
 (define-rewrite-pattern (hip-qadd-fusion op rewriter)
   :if-match
     %lhs_scale = hip.constant          ()  :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
@@ -175,7 +175,7 @@ func.func @matmul(%ctx: !hipsr.context, %a: tensor<?x4096xf16>, %b: tensor<4096x
 
 **The Scheme pattern: [`samples/passes/onnx-to-hipsr/matmul.sls`](samples/passes/onnx-to-hipsr/matmul.sls)**
 
-```scheme
+```lisp
 (define-conversion-pattern (onnx-matmul->hipsr op operands-ref rewriter type-converter)
   :if-match
     %output = onnx.MatMul (%a %b)
