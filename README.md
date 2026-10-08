@@ -22,7 +22,8 @@ Three macros form the public surface:
 ## Example 1 — Dialect conversion: `onnx.MatMul` → `hipsr.matmul`
 
 Input: [`test/onnx-to-hipsr/matmul.mlir`](test/onnx-to-hipsr/matmul.mlir) ·
-Pattern: [`samples/passes/onnx-to-hipsr/matmul.sls`](samples/passes/onnx-to-hipsr/matmul.sls)
+Pattern: [`samples/passes/onnx-to-hipsr/matmul.sls`](samples/passes/onnx-to-hipsr/matmul.sls) ·
+Output: [`docs/examples/matmul-output.mlir`](docs/examples/matmul-output.mlir)
 
 ```bash
 CREST_PATH=$(pwd)/samples \
@@ -89,7 +90,8 @@ C++ helper needed.
 ## Example 2 — Fusion rewrite: `DQ + DQ + add + Q` → `qadd`
 
 Input: [`test/hip-fusion/qadd.mlir`](test/hip-fusion/qadd.mlir) ·
-Pattern: [`samples/passes/hip-fusion/qadd.sls`](samples/passes/hip-fusion/qadd.sls)
+Pattern: [`samples/passes/hip-fusion/qadd.sls`](samples/passes/hip-fusion/qadd.sls) ·
+Output: [`docs/examples/qadd-output.mlir`](docs/examples/qadd-output.mlir)
 
 ```bash
 CREST_PATH=$(pwd)/samples \
