@@ -79,7 +79,21 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   (define-ctx-optional mlir::FloatAttr::get<f32> %mlir::FloatAttr::get<f32> value)
 
-  ;; @brief mlir::UnitAttr::get — create a presence-only unit flag (no value).
+  ;; @brief mlir::UnitAttr::get — create a presence-only boolean flag.
+  ;;
+  ;; Design rationale: UnitAttr encodes a boolean as attribute presence/absence.
+  ;; An operation HAVING the attribute means "true"; NOT having it means "false".
+  ;; The attribute carries no value — only existence matters.
+  ;;
+  ;; This avoids storing redundant `= true` in the IR. In MLIR textual format,
+  ;; UnitAttr prints as just the name with no value:
+  ;;   {packed_int4}         ; UnitAttr — "packed" is true
+  ;; compared to a boolean IntegerAttr:
+  ;;   {packed_int4 = true}  ; IntegerAttr<i1> — "packed" is true (more verbose)
+  ;;
+  ;; Example usage: `packed_int4` on hip.qadd marks packed 4-bit weight encoding.
+  ;; Check presence with mlir::Operation::hasAttr?, not mlir::Operation::getAttr.
+  ;;
   ;; @param ctx  mlir::MLIRContext* uptr (optional; defaults to current-MLIRContext)
   ;; @return     mlir::UnitAttr opaque pointer uptr
   ;;             Context-owned — valid for the MLIRContext lifetime; do NOT free.
