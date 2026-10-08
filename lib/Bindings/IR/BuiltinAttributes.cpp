@@ -66,8 +66,24 @@ mlir_ir_builtin_attributes_dense_i32_array_attr_get(uint64_t ctx_ptr,
       vec.push_back(static_cast<int32_t>(Sfixnum_value(Scar(cur))));
     }
   } else {
-    scheme_error("mlir::DenseI32ArrayAttr::get",
-                 "value must be a Scheme list or vector");
+    // Attempt CArrayRef<int32_t> path. After ruling out Scheme vector and list,
+    // value must be a uptr (raw C pointer as Scheme integer). We treat it as
+    // CrestObject* and call isa<CArrayRef<int32_t>>() to confirm the type.
+    // RISK: if the caller passes an arbitrary integer (not a CArrayRef*),
+    // the dereference is undefined behaviour — contract requires list, vector,
+    // or CArrayRef<int32_t>.
+    auto* obj = reinterpret_cast<crest::CrestObject*>(
+        static_cast<uintptr_t>(Sunsigned_value(value)));
+    if (obj->isa<CArrayRef<int32_t>>()) {
+      auto* ref = static_cast<CArrayRef<int32_t>*>(static_cast<void*>(obj));
+      for (size_t i = 0; i < ref->size; ++i) {
+        vec.push_back(ref->data[i]);
+      }
+    } else {
+      scheme_error("mlir::DenseI32ArrayAttr::get",
+                   "value must be a Scheme list, vector, or CArrayRef<int32_t>;"
+                   " got a CrestObject with a different type tag");
+    }
   }
   return reinterpret_cast<uint64_t>(
       mlir::DenseI32ArrayAttr::get(ctx, vec).getAsOpaquePointer());
@@ -88,8 +104,20 @@ mlir_ir_builtin_attributes_dense_i64_array_attr_get(uint64_t ctx_ptr,
       vec.push_back(Sinteger64_value(Scar(cur)));
     }
   } else {
-    scheme_error("mlir::DenseI64ArrayAttr::get",
-                 "value must be a Scheme list or vector");
+    // Attempt CArrayRef<int64_t> path — same RISK as DenseI32 above: UB if
+    // the caller passes an arbitrary integer instead of a valid CArrayRef*.
+    auto* obj = reinterpret_cast<crest::CrestObject*>(
+        static_cast<uintptr_t>(Sunsigned_value(value)));
+    if (obj->isa<CArrayRef<int64_t>>()) {
+      auto* ref = static_cast<CArrayRef<int64_t>*>(static_cast<void*>(obj));
+      for (size_t i = 0; i < ref->size; ++i) {
+        vec.push_back(ref->data[i]);
+      }
+    } else {
+      scheme_error("mlir::DenseI64ArrayAttr::get",
+                   "value must be a Scheme list, vector, or CArrayRef<int64_t>;"
+                   " got a CrestObject with a different type tag");
+    }
   }
   return reinterpret_cast<uint64_t>(
       mlir::DenseI64ArrayAttr::get(ctx, vec).getAsOpaquePointer());
@@ -142,31 +170,11 @@ static uint64_t mlir_ir_builtin_attributes_dense_resource_elements_attr_get(
 // Attribute type predicates — mlir_ir_builtin_attributes_*_isa
 //===----------------------------------------------------------------------===//
 
-static int mlir_ir_builtin_attributes_integer_attr_isa(uint64_t attr_ptr) {
-  if (!attr_ptr) {
-    return 0;
-  }
-  return mlir::isa<mlir::IntegerAttr>(mlir::Attribute::getFromOpaquePointer(
-             reinterpret_cast<const void*>(attr_ptr)))
-             ? 1
-             : 0;
-}
-
 static int mlir_ir_builtin_attributes_float_attr_isa(uint64_t attr_ptr) {
   if (!attr_ptr) {
     return 0;
   }
   return mlir::isa<mlir::FloatAttr>(mlir::Attribute::getFromOpaquePointer(
-             reinterpret_cast<const void*>(attr_ptr)))
-             ? 1
-             : 0;
-}
-
-static int mlir_ir_builtin_attributes_string_attr_isa(uint64_t attr_ptr) {
-  if (!attr_ptr) {
-    return 0;
-  }
-  return mlir::isa<mlir::StringAttr>(mlir::Attribute::getFromOpaquePointer(
              reinterpret_cast<const void*>(attr_ptr)))
              ? 1
              : 0;
@@ -264,8 +272,7 @@ static uint64_t mlir_ir_builtin_attributes_dense_i32_array_attr_as_array_ref(
     scheme_error("mlir-ir-builtin-attributes-dense-i32-array-attr-as-array-ref",
                  "attribute is not a DenseI32ArrayAttr");
   }
-  auto* ref = new CArrayRef{reinterpret_cast<uint64_t>(arr.asArrayRef().data()),
-                            static_cast<uint64_t>(arr.size())};
+  auto* ref = new CArrayRef<int32_t>(arr.asArrayRef().data(), arr.size());
   return reinterpret_cast<uint64_t>(ref);
 }
 
@@ -281,60 +288,13 @@ static uint64_t mlir_ir_dense_i64_array_as_array_ref(uint64_t attr_ptr) {
     scheme_error("mlir::DenseI64ArrayAttr::intoArrayRef",
                  "attribute is not a DenseI64ArrayAttr");
   }
-  auto* ref = new CArrayRef{reinterpret_cast<uint64_t>(arr.asArrayRef().data()),
-                            static_cast<uint64_t>(arr.size())};
+  auto* ref = new CArrayRef<int64_t>(arr.asArrayRef().data(), arr.size());
   return reinterpret_cast<uint64_t>(ref);
 }
 
 //===----------------------------------------------------------------------===//
 // Complex extraction — mlir_ir_builtin_attributes_dense_*_splat_value
 //===----------------------------------------------------------------------===//
-
-static ptr mlir_ir_builtin_attributes_dense_fp_elements_attr_splat_value(
-    uint64_t attr_ptr) {
-  if (!attr_ptr) {
-    scheme_error(
-        "mlir-ir-builtin-attributes-dense-fp-elements-attr-splat-value",
-        "null attribute pointer");
-  }
-  auto dense = mlir::dyn_cast<mlir::DenseFPElementsAttr>(
-      mlir::Attribute::getFromOpaquePointer(
-          reinterpret_cast<const void*>(attr_ptr)));
-  if (!dense) {
-    scheme_error(
-        "mlir-ir-builtin-attributes-dense-fp-elements-attr-splat-value",
-        "attribute is not a DenseFPElementsAttr");
-  }
-  if (!dense.isSplat()) {
-    scheme_error(
-        "mlir-ir-builtin-attributes-dense-fp-elements-attr-splat-value",
-        "DenseFPElementsAttr is not a splat");
-  }
-  return Sflonum((*dense.begin()).convertToDouble());
-}
-
-static ptr mlir_ir_builtin_attributes_dense_int_elements_attr_splat_value(
-    uint64_t attr_ptr) {
-  if (!attr_ptr) {
-    scheme_error(
-        "mlir-ir-builtin-attributes-dense-int-elements-attr-splat-value",
-        "null attribute pointer");
-  }
-  auto dense = mlir::dyn_cast<mlir::DenseIntElementsAttr>(
-      mlir::Attribute::getFromOpaquePointer(
-          reinterpret_cast<const void*>(attr_ptr)));
-  if (!dense) {
-    scheme_error(
-        "mlir-ir-builtin-attributes-dense-int-elements-attr-splat-value",
-        "attribute is not a DenseIntElementsAttr");
-  }
-  if (!dense.isSplat()) {
-    scheme_error(
-        "mlir-ir-builtin-attributes-dense-int-elements-attr-splat-value",
-        "DenseIntElementsAttr is not a splat");
-  }
-  return Sinteger64((*dense.begin()).getSExtValue());
-}
 
 static ptr mlir_ir_dense_i32_array_to_vector(uint64_t attr_ptr) {
   if (!attr_ptr) {
@@ -403,12 +363,24 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::DenseResourceElementsAttr::get",
       (void*)::mlir_ir_builtin_attributes_dense_resource_elements_attr_get);
-  Sregister_symbol("mlir::isa<IntegerAttr>",
-                   (void*)::mlir_ir_builtin_attributes_integer_attr_isa);
+  Sregister_symbol(
+      "mlir::isa<IntegerAttr>", (void*)+[](uint64_t p) -> int {
+        return (p && mlir::isa<mlir::IntegerAttr>(
+                         mlir::Attribute::getFromOpaquePointer(
+                             reinterpret_cast<const void*>(p))))
+                   ? 1
+                   : 0;
+      });
   Sregister_symbol("mlir::isa<FloatAttr>",
                    (void*)::mlir_ir_builtin_attributes_float_attr_isa);
-  Sregister_symbol("mlir::isa<StringAttr>",
-                   (void*)::mlir_ir_builtin_attributes_string_attr_isa);
+  Sregister_symbol(
+      "mlir::isa<StringAttr>", (void*)+[](uint64_t p) -> int {
+        return (p && mlir::isa<mlir::StringAttr>(
+                         mlir::Attribute::getFromOpaquePointer(
+                             reinterpret_cast<const void*>(p))))
+                   ? 1
+                   : 0;
+      });
   Sregister_symbol(
       "mlir::isa<DenseI32ArrayAttr>",
       (void*)::mlir_ir_builtin_attributes_dense_i32_array_attr_isa);
@@ -432,10 +404,44 @@ void registerIRBuiltinAttributesBindings() {
       (void*)::mlir_ir_builtin_attributes_dense_i32_array_attr_as_array_ref);
   Sregister_symbol(
       "mlir::DenseElementsAttr::getSplatValue<APFloat>",
-      (void*)::mlir_ir_builtin_attributes_dense_fp_elements_attr_splat_value);
+      (void*)+[](uint64_t p) -> ptr {
+        if (!p) {
+          scheme_error("mlir::DenseElementsAttr::getSplatValue<APFloat>",
+                       "null pointer");
+        }
+        auto d = mlir::dyn_cast<mlir::DenseFPElementsAttr>(
+            mlir::Attribute::getFromOpaquePointer(
+                reinterpret_cast<const void*>(p)));
+        if (!d) {
+          scheme_error("mlir::DenseElementsAttr::getSplatValue<APFloat>",
+                       "not DenseFPElementsAttr");
+        }
+        if (!d.isSplat()) {
+          scheme_error("mlir::DenseElementsAttr::getSplatValue<APFloat>",
+                       "not a splat");
+        }
+        return Sflonum((*d.begin()).convertToDouble());
+      });
   Sregister_symbol(
       "mlir::DenseElementsAttr::getSplatValue<APInt>",
-      (void*)::mlir_ir_builtin_attributes_dense_int_elements_attr_splat_value);
+      (void*)+[](uint64_t p) -> ptr {
+        if (!p) {
+          scheme_error("mlir::DenseElementsAttr::getSplatValue<APInt>",
+                       "null pointer");
+        }
+        auto d = mlir::dyn_cast<mlir::DenseIntElementsAttr>(
+            mlir::Attribute::getFromOpaquePointer(
+                reinterpret_cast<const void*>(p)));
+        if (!d) {
+          scheme_error("mlir::DenseElementsAttr::getSplatValue<APInt>",
+                       "not DenseIntElementsAttr");
+        }
+        if (!d.isSplat()) {
+          scheme_error("mlir::DenseElementsAttr::getSplatValue<APInt>",
+                       "not a splat");
+        }
+        return Sinteger64((*d.begin()).getSExtValue());
+      });
   Sregister_symbol("mlir::DenseI32ArrayAttr::toVector",
                    (void*)::mlir_ir_dense_i32_array_to_vector);
   Sregister_symbol("mlir::DenseI64ArrayAttr::toVector",

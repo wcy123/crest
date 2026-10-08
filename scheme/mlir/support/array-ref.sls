@@ -7,141 +7,126 @@
 ;; Mirrors lib/Bindings/Support/ArrayRef.h (CREST-specific, no MLIR counterpart).
 ;;===----------------------------------------------------------------------===;;
 ;;
-;; (mlir support array-ref) — C ABI helpers for ArrayRef<T> structs.
+;; (mlir support array-ref) — C ABI helpers for CArrayRef and CrestObject.
 ;;
-;; CREST-specific (no direct MLIR header); mirrors lib/Bindings/Support/ArrayRef.h.
+;; CArrayRef<T> layout (64-bit), from lib/Bindings/Support/ArrayRef.h:
+;;   offset 0:  deletor (8B) — function pointer (type tag + destructor)
+;;   offset 8:  data    (8B) — non-owning const T* pointer to first element
+;;   offset 16: size    (8B) — number of elements
 ;;
-;; Struct layout (matching llvm::ArrayRef<T> ABI, 64-bit):
-;;   offset 0: data uptr   — pointer to first element
-;;   offset 8: size uptr   — number of elements
+;; Three typed instantiations:
+;;   CArrayRef<i32>  — int32_t elements (stride 4B); CArrayRef<i32>?
+;;   CArrayRef<i64>  — int64_t elements (stride 8B); CArrayRef<i64>?
+;;   CArrayRef<uptr> — uintptr_t elements (stride 8B); CArrayRef<uptr>?
 ;;
-;; Performance design:
-;;   ArrayRef::size, ArrayRef::at — foreign-ref (zero FFI overhead, raw loads)
-;;   make-array-ref, array-ref-destroy — C++ FFI (acceptable for lifecycle)
-;;   with-ArrayRef — macro: RAII wrapper via dynamic-wind
+;; Each has a unique deletor address (type tag). ArrayRef::at dispatches on
+;; the runtime type — no explicit element-type keyword needed.
 ;;
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir support array-ref)
   (export
-    ArrayRef::size      ; (ref) → element count, zero FFI overhead
-    ArrayRef::at        ; (ref index [type]) → element, bounds-checked
-    make-array-ref      ; (data-ptr size) → ref  [C heap allocation]
-    array-ref-destroy   ; (ref) → void           [C heap free]
-    with-ArrayRef      ; (syntax) RAII: make + body + destroy
-    :uptr               ; ArrayRef::at element type → 'uptr (8-byte pointer, default)
-    :i64)              ; ArrayRef::at element type → 'i64  (8-byte signed integer)
-                                        ; :i32 is a local keyword synonym — 'i32
+    ;; CrestObject — generic base for all CREST-managed foreign objects
+    CrestObject::deletor    ; (obj) → uptr: read deletor address (type tag)
+    CrestObject::delete     ; (obj) → void: call deletor, freeing the object
+    with-CrestObject        ; (syntax) RAII for any CrestObject
+    ;; Typed CArrayRef predicates
+    CArrayRef<i32>?         ; (obj) → boolean
+    CArrayRef<i64>?         ; (obj) → boolean
+    CArrayRef<uptr>?        ; (obj) → boolean
+    CArrayRef?              ; (obj) → boolean: any CArrayRef<T>
+    ;; CArrayRef accessors
+    ArrayRef::size          ; (ref) → fixnum: element count
+    ArrayRef::at            ; (ref index) → element value (type inferred)
+    make-array-ref          ; (data-ptr size) → CArrayRef<uptr> [heap alloc]
+    with-ArrayRef)          ; (syntax) RAII for CArrayRef
 
   (import (rnrs)
           (only (chezscheme) foreign-ref)
           (mlir support array-ref ffi))
 
-  ;; @brief Compile-time keyword: element type 'uptr — 8-byte pointer (Value*, Operation*, etc.).
-  ;; @note  Pass as the optional third argument to ArrayRef::at
-  ;; @note  :i32 is internal — the symbol 'i32 used as the element type tag
-  (define-syntax :uptr (identifier-syntax 'uptr))
-  (define-syntax :i32  (identifier-syntax 'i32))
-  (define-syntax :i64  (identifier-syntax 'i64))
-
   ;;===--------------------------------------------------------------------===;;
-  ;; Fast path — foreign-ref compiles to raw load instructions, no FFI call.
+  ;; CrestObject — generic base for heap-allocated CREST foreign objects.
   ;;===--------------------------------------------------------------------===;;
 
-  ;; @brief Read element count from a CArrayRef struct.
-  ;; @param ref    uptr — pointer to CArrayRef{uint64_t data; uint64_t size}
-  ;; @return       Number of elements (uptr, reads size field at offset 8)
-  ;; @note         Zero FFI overhead — compiles to a raw memory load via foreign-ref
-  ;; @note         Struct layout defined in lib/Bindings/Support/ArrayRef.h
+  ;; @brief CrestObject::deletor — read the deletor (type tag) from a CrestObject.
+  ;; @param obj  uptr — pointer to any CrestObject
+  ;; @return     uptr — address of the deletor function (unique per concrete type)
+  (define (CrestObject::deletor obj)
+    (foreign-ref 'uptr obj 0))
+
+  ;; @brief CrestObject::delete — call the stored deletor, freeing the object.
+  ;; @param obj  uptr — pointer to any CrestObject
+  (define CrestObject::delete %CrestObject::delete)
+
+  ;; @brief with-CrestObject — RAII for any CrestObject.
+  (define-syntax with-CrestObject
+    (syntax-rules ()
+      [(_ (name expr) body ...)
+       (let ([name expr])
+         (dynamic-wind
+             (lambda () #f)
+             (lambda () body ...)
+             (lambda () (CrestObject::delete name))))]))
+
+  ;;===--------------------------------------------------------------------===;;
+  ;; Typed CArrayRef predicates.
+  ;; The isa logic (deletor comparison) is in C++ via %CArrayRef<T>::isa.
+  ;;===--------------------------------------------------------------------===;;
+
+  ;; @brief CArrayRef<i32>? — is this a CArrayRef<int32_t>?
+  (define (CArrayRef<i32>?  obj) (not (zero? (%CArrayRef<i32>::isa  obj))))
+  ;; @brief CArrayRef<i64>? — is this a CArrayRef<int64_t>?
+  (define (CArrayRef<i64>?  obj) (not (zero? (%CArrayRef<i64>::isa  obj))))
+  ;; @brief CArrayRef<uptr>? — is this a CArrayRef<uintptr_t>?
+  (define (CArrayRef<uptr>? obj) (not (zero? (%CArrayRef<uptr>::isa obj))))
+  ;; @brief CArrayRef? — is this any typed CArrayRef<T>?
+  (define (CArrayRef? obj)
+    (or (CArrayRef<i32>? obj) (CArrayRef<i64>? obj) (CArrayRef<uptr>? obj)))
+
+  ;;===--------------------------------------------------------------------===;;
+  ;; CArrayRef accessors.
+  ;; Layout: { deletor@0(8B), data@8(8B), size@16(8B) }
+  ;;===--------------------------------------------------------------------===;;
+
+  ;; @brief ArrayRef::size — read element count from a CArrayRef.
+  ;; @param ref  uptr — pointer to any CArrayRef<T>
+  ;; @return     fixnum element count
   (define (ArrayRef::size ref)
-    (foreign-ref 'uptr ref 8))
+    (foreign-ref 'uptr ref 16))
 
-  ;; @brief Read the i-th element from a CArrayRef with bounds checking.
-  ;; @param ref    uptr — pointer to CArrayRef{data; size}
-  ;; @param index  Exact non-negative integer — zero-based element index
-  ;; @param type   (optional) Element type symbol; default is 'uptr
-  ;;               :uptr → foreign-ref 'uptr       at offset index*8  (Value*, Operation*, etc.)
-  ;;               :i32  → foreign-ref 'integer-32  at offset index*4  (DenseI32ArrayAttr data)
-  ;; @return       Element value as uptr or integer-32 depending on type
-  ;; @note         Raises error 'ArrayRef::at if index >= size
-  ;; @note         Zero FFI overhead — compiles to raw memory loads via foreign-ref
-  ;; @note         Use :uptr or :i32 compile-time keywords as the type argument
-  (define ArrayRef::at
-    (case-lambda
-     [(ref index)
-      (ArrayRef::at ref index 'uptr)]
-     [(ref index type)
-      (let ([size (foreign-ref 'uptr ref 8)]
-            [data (foreign-ref 'uptr ref 0)])
-        (when (>= index size)
-          (error 'ArrayRef::at "index out of range" index size))
-        (cond
-         [(eq? type :uptr) (foreign-ref 'uptr       data (* index 8))]
-         [(eq? type :i32)  (foreign-ref 'integer-32 data (* index 4))]
-         [(eq? type :i64)  (foreign-ref 'integer-64 data (* index 8))]
-         [else             (error 'ArrayRef::at "unknown type (expected :uptr, :i32, or :i64)" type)]))]))
+  ;; @brief ArrayRef::at — read the i-th element, dispatching on the runtime type.
+  ;; @param ref    uptr — pointer to a typed CArrayRef<T>
+  ;; @param index  0-based exact integer
+  ;; @return       element value (integer-32 for i32, integer-64 for i64, uptr for uptr)
+  ;; @error        raises 'ArrayRef::at if index out of range or unknown type
+  (define (ArrayRef::at ref index)
+    (let ([n    (foreign-ref 'uptr ref 16)]
+          [data (foreign-ref 'uptr ref 8)])
+      (unless (and (>= index 0) (< index n))
+        (error 'ArrayRef::at "index out of range" index n))
+      (cond
+       [(CArrayRef<i32>?  ref) (foreign-ref 'integer-32 data (* index 4))]
+       [(CArrayRef<i64>?  ref) (foreign-ref 'integer-64 data (* index 8))]
+       [(CArrayRef<uptr>? ref) (foreign-ref 'uptr       data (* index 8))]
+       [else (error 'ArrayRef::at "unknown CArrayRef element type")])))
 
-  ;;===--------------------------------------------------------------------===;;
-  ;; Lifecycle — C++ FFI (one call per array lifetime, overhead acceptable).
-  ;;===--------------------------------------------------------------------===;;
-
-  ;; @brief Allocate a CArrayRef on the C heap.
-  ;; @param data-ptr  uptr — pointer to the first element of the backing array
-  ;; @param size      uptr — number of elements
-  ;; @return          uptr — address of the newly allocated CArrayRef
-  ;; @note            Must be paired with array-ref-destroy, or use with-ArrayRef (RAII)
-  ;; @note            Defined in lib/Bindings/Support/ArrayRef.cpp
+  ;; @brief make-array-ref — allocate a CArrayRef<uintptr_t> on the C heap.
+  ;; @param data-ptr  uptr — pointer to backing array data
+  ;; @param size      uptr — element count
+  ;; @return          uptr — new CArrayRef<uptr>; use with-ArrayRef for cleanup
   (define make-array-ref %make)
 
-  ;; @brief Free a CArrayRef previously created by make-array-ref.
-  ;; @param ref  uptr — address returned by make-array-ref
-  ;; @return     void
-  ;; @note       Do not call twice on the same pointer (double-free is UB)
-  ;; @note       Defined in lib/Bindings/Support/ArrayRef.cpp
-  (define array-ref-destroy %destroy)
-
-  ;;===--------------------------------------------------------------------===;;
-  ;; with-ArrayRef — RAII macro.
-  ;; Guarantees array-ref-destroy is called even on exception (dynamic-wind).
-  ;;===--------------------------------------------------------------------===;;
-
-  ;; @brief RAII macro — create or adopt a CArrayRef and guarantee its destruction.
+  ;; @brief with-ArrayRef — RAII for CArrayRef; calls CrestObject::delete on exit.
   ;;
   ;; Two forms:
-  ;;
-  ;;   (with-ArrayRef (name existing-ref) body ...)
-  ;;     Adopt an existing CArrayRef uptr.  name is bound to existing-ref inside body.
-  ;;     array-ref-destroy is called on name when body exits (normally or via exception).
-  ;;
-  ;;   (with-ArrayRef (name data-ptr size) body ...)
-  ;;     Allocate a new CArrayRef via make-array-ref.  name is bound to the new uptr.
-  ;;     array-ref-destroy is called on name when body exits (normally or via exception).
-  ;;
-  ;; @param name      Identifier to bind the CArrayRef uptr inside body
-  ;; @param ref-expr  (1-arg form) uptr — address of an existing CArrayRef
-  ;; @param data-ptr  (2-arg form) uptr — pointer to backing array data
-  ;; @param size      (2-arg form) uptr — element count
-  ;; @param body      One or more expressions evaluated with name in scope
-  ;; @return          Value of the last body expression
-  ;; @note            Implemented via dynamic-wind; destruction runs even on exceptions
-  ;; @note            Do not let name escape body — it is freed on exit
+  ;;   (with-ArrayRef (name existing-ref) body ...)  — adopt existing CArrayRef
+  ;;   (with-ArrayRef (name data-ptr size) body ...)  — allocate + adopt
   (define-syntax with-ArrayRef
     (syntax-rules ()
-      ;; (with-ArrayRef (name existing-ref) body ...)
-      ;; Manage an existing array-ref uptr — destroyed on exit even on exception.
       [(_ (name ref-expr) body ...)
-       (let ([name ref-expr])
-         (dynamic-wind
-             (lambda () #f)
-             (lambda () body ...)
-             (lambda () (array-ref-destroy name))))]
-      ;; (with-ArrayRef (name data-ptr size) body ...)
-      ;; Allocate a new CArrayRef from data pointer + element count.
+       (with-CrestObject (name ref-expr) body ...)]
       [(_ (name data-ptr size) body ...)
-       (let ([name (make-array-ref data-ptr size)])
-         (dynamic-wind
-             (lambda () #f)
-             (lambda () body ...)
-             (lambda () (array-ref-destroy name))))]))
+       (with-CrestObject (name (make-array-ref data-ptr size)) body ...)]))
 
   ) ;; end library (mlir support array-ref)

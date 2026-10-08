@@ -11,29 +11,34 @@
 ;;
 ;; % prefix = raw C binding. Prefer (mlir support array-ref) for normal use.
 ;;
-;; CREST-specific (no direct MLIR header); mirrors lib/Bindings/Support/ArrayRef.h.
-;;
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir support array-ref ffi)
-  (export %make %destroy)
+  (export %make %CrestObject::delete
+          %CArrayRef<i32>::isa
+          %CArrayRef<i64>::isa
+          %CArrayRef<uptr>::isa)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
-  ;; @brief Allocate a CArrayRef struct on the C heap.
-  ;; @param data-ptr  uptr — pointer to the first element of the array
-  ;; @param size      uptr — number of elements in the array
-  ;; @return          uptr — address of a newly allocated CArrayRef{data, size}
-  ;; @note            Caller must pair with %destroy (or use with-ArrayRef) to avoid leaks
-  ;; @note            Defined in lib/Bindings/Support/ArrayRef.cpp; struct in ArrayRef.h
+  ;; @brief Allocate a CArrayRef<uintptr_t> on the C heap.
+  ;; @param data-ptr  uptr — pointer to the first element
+  ;; @param size      uptr — number of elements
+  ;; @return          uptr — address of newly allocated CArrayRef<uintptr_t>
+  ;;                  Layout: { deletor@0, data@8, size@16 }
   (define %make
     (foreign-procedure "mlir_support_array_ref_make" (uptr uptr) uptr))
 
-  ;; @brief Free a CArrayRef previously allocated by %make.
-  ;; @param ref  uptr — address returned by %make (mlir_support_array_ref_make)
-  ;; @return     void
-  ;; @note       Must not be called twice on the same pointer (double-free is UB)
-  ;; @note       Defined in lib/Bindings/Support/ArrayRef.cpp
-  (define %destroy
-    (foreign-procedure "mlir_support_array_ref_destroy" (uptr) void))
+  ;; @brief Call the deletor stored in a CrestObject, freeing it.
+  (define %CrestObject::delete
+    (foreign-procedure "CrestObject::delete" (uptr) void))
+
+  ;; @brief Type predicates — is this CrestObject a CArrayRef<T>?
+  ;; Returns 1 (true) or 0 (false). The isa logic (deletor comparison) is in C++.
+  (define %CArrayRef<i32>::isa
+    (foreign-procedure "CArrayRef<i32>::isa" (uptr) int))
+  (define %CArrayRef<i64>::isa
+    (foreign-procedure "CArrayRef<i64>::isa" (uptr) int))
+  (define %CArrayRef<uptr>::isa
+    (foreign-procedure "CArrayRef<uptr>::isa" (uptr) int))
 
   ) ;; end library (mlir support array-ref ffi)
