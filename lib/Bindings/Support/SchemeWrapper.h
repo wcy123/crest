@@ -190,22 +190,30 @@ inline SValue convert_to_scheme_func(SValue f) { return f; }
 template <typename F> inline SValue scheme_call(F f) {
   return Scall0(convert_to_scheme_func(f));
 }
-template <typename F> inline SValue scheme_call(F f, SValue a1) {
-  return Scall1(convert_to_scheme_func(f), a1);
+template <typename F, typename T1>
+inline SValue scheme_call(F f, const T1& a1) {
+  return Scall1(convert_to_scheme_func(f), convert_to_scheme(a1));
 }
-template <typename F> inline SValue scheme_call(F f, SValue a1, SValue a2) {
-  return Scall2(convert_to_scheme_func(f), a1, a2);
+template <typename F, typename T1, typename T2>
+inline SValue scheme_call(F f, const T1& a1, const T2& a2) {
+  return Scall2(convert_to_scheme_func(f), convert_to_scheme(a1),
+                convert_to_scheme(a2));
 }
-template <typename F>
-inline SValue scheme_call(F f, SValue a1, SValue a2, SValue a3) {
-  return Scall3(convert_to_scheme_func(f), a1, a2, a3);
+template <typename F, typename T1, typename T2, typename T3>
+inline SValue scheme_call(F f, const T1& a1, const T2& a2, const T3& a3) {
+  return Scall3(convert_to_scheme_func(f), convert_to_scheme(a1),
+                convert_to_scheme(a2), convert_to_scheme(a3));
 }
 // N = 4 — no Scall4; fall back to (apply f args) via Scons.
-template <typename F>
-inline SValue scheme_call(F f, SValue a1, SValue a2, SValue a3, SValue a4) {
+template <typename F, typename T1, typename T2, typename T3, typename T4>
+inline SValue scheme_call(F f, const T1& a1, const T2& a2, const T3& a3,
+                          const T4& a4) {
   SValue apply = Stop_level_value(Sstring_to_symbol("apply"));
   return Scall2(apply, convert_to_scheme_func(f),
-                Scons(a1, Scons(a2, Scons(a3, Scons(a4, Snil)))));
+                Scons(convert_to_scheme(a1),
+                      Scons(convert_to_scheme(a2),
+                            Scons(convert_to_scheme(a3),
+                                  Scons(convert_to_scheme(a4), Snil)))));
 }
 
 #endif // CREST_BINDINGS_SCHEME_WRAPPER_H
