@@ -39,13 +39,6 @@ static uint64_t mlir_ir_block_get_num_arguments(uint64_t block_ptr) {
   return reinterpret_cast<mlir::Block*>(block_ptr)->getNumArguments();
 }
 
-// mlir::Block::Block() — heap-allocate an empty block.
-// Ownership is transferred to the region when pushed with
-// mlir::Region::push_back.
-static uint64_t mlir_ir_block_new() {
-  return reinterpret_cast<uint64_t>(new mlir::Block());
-}
-
 // mlir::Block::addArgument(type, loc) — append one typed argument to a block.
 static uint64_t mlir_ir_block_add_argument(uint64_t block_ptr,
                                            uint64_t type_ptr,
@@ -73,7 +66,10 @@ void registerIRBlockBindings() {
                    (void*)::mlir_ir_block_get_argument_by_index);
   Sregister_symbol("mlir::Block::getNumArguments",
                    (void*)::mlir_ir_block_get_num_arguments);
-  Sregister_symbol("mlir::Block::new", (void*)::mlir_ir_block_new);
+  Sregister_symbol(
+      "mlir::Block::new", (void*)+[]() -> uint64_t {
+        return reinterpret_cast<uint64_t>(new mlir::Block());
+      });
   Sregister_symbol("mlir::Block::addArgument",
                    (void*)::mlir_ir_block_add_argument);
 }

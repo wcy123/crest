@@ -6,6 +6,7 @@
 // Mirrors mlir/Transforms/DialectConversion.h
 
 #include "mlir/Transforms/DialectConversion.h"
+#include "../Support/ArrayRef.h"
 #include "../Support/LockedSchemeObject.h"
 #include "../Support/Logging.h"
 #include "../Support/SchemeWrapper.h"
@@ -33,7 +34,14 @@ public:
       return mlir::failure();
     }
     ptr opPtr = Sunsigned64(reinterpret_cast<uint64_t>(op));
-    ptr operandsRefPtr = Sunsigned64(reinterpret_cast<uint64_t>(&operands));
+    // Wrap operands in a heap-allocated CArrayRef (layout: deletor@0, data@8,
+    // size@16) so Scheme's ArrayRef::size / ArrayRef::at work correctly.
+    // Freed here in C++ after the Scheme call — Scheme accesses it directly
+    // without with-ArrayRef, so the deletor is never called from Scheme.
+    auto* operandsWrapped = new CArrayRef<uintptr_t>(
+        reinterpret_cast<const uintptr_t*>(operands.data()), operands.size());
+    ptr operandsRefPtr =
+        Sunsigned64(reinterpret_cast<uint64_t>(operandsWrapped));
     ptr rewriterPtr = Sunsigned64(reinterpret_cast<uint64_t>(&rewriter));
     ptr typeConverterPtr =
         Sunsigned64(reinterpret_cast<uint64_t>(getTypeConverter()));
@@ -41,6 +49,7 @@ public:
         Scons(opPtr, Scons(operandsRefPtr,
                            Scons(rewriterPtr, Scons(typeConverterPtr, Snil))));
     ptr result = scheme_apply(callback_.get(), args_list);
+    delete operandsWrapped;
     return result == Strue ? mlir::success() : mlir::failure();
   }
 

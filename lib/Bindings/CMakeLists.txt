@@ -21,6 +21,7 @@ add_library(CrestBindings STATIC
   IR/Type.cpp
   IR/Value.cpp
   Support/ArrayRef.cpp
+  Support/CrestObject.cpp
   Support/Logging.cpp
   Support/LockedSchemeObject.cpp
   Transforms/DialectConversion.cpp

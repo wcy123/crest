@@ -12,17 +12,6 @@
 
 extern "C" {
 
-// mlir::UnknownLoc::get(ctx) — create an unknown/unspecified location.
-static uint64_t mlir_ir_unknown_loc_get(uint64_t ctx_ptr) {
-  if (!ctx_ptr) {
-    scheme_error("mlir::UnknownLoc::get", "ctx must not be null");
-    return 0; // unreachable
-  }
-  auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
-  return reinterpret_cast<uint64_t>(
-      mlir::UnknownLoc::get(ctx).getAsOpaquePointer());
-}
-
 // mlir::FileLineColLoc::get(ctx, filename, line, col) — create a file/line/col
 // location.
 static uint64_t mlir_ir_file_line_col_loc_get(uint64_t ctx_ptr,
@@ -42,7 +31,16 @@ static uint64_t mlir_ir_file_line_col_loc_get(uint64_t ctx_ptr,
 namespace crest {
 
 void registerIRLocationBindings() {
-  Sregister_symbol("mlir::UnknownLoc::get", (void*)::mlir_ir_unknown_loc_get);
+  Sregister_symbol(
+      "mlir::UnknownLoc::get", (void*)+[](uint64_t ctx_ptr) -> uint64_t {
+        if (!ctx_ptr) {
+          scheme_error("mlir::UnknownLoc::get", "ctx must not be null");
+          return 0;
+        }
+        auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+        return reinterpret_cast<uint64_t>(
+            mlir::UnknownLoc::get(ctx).getAsOpaquePointer());
+      });
   Sregister_symbol("mlir::FileLineColLoc::get",
                    (void*)::mlir_ir_file_line_col_loc_get);
 }

@@ -272,7 +272,7 @@
                                                    "operandSegmentSizes count mismatch: spec has"
                                                    n-spec "segments but attr has" n))]
                                   [sizes  (loop :for i :from 0 :below n
-                                                :collect (ArrayRef::at segs i 'i32))]
+                                                :collect (ArrayRef::at segs i))]
                                   [starts (loop :rime-with off := 0
                                                 :for size :in sizes
                                                 :collect off

@@ -31,26 +31,6 @@ static int mlir_ir_value_is_block_argument(uint64_t value) {
   return mlir::isa<mlir::BlockArgument>(val) ? 1 : 0;
 }
 
-// mlir::Value::use_begin/use_end (count)
-static uint64_t mlir_ir_value_num_uses(uint64_t val_ptr) {
-  if (!val_ptr) {
-    scheme_error("mlir-ir-value-num-uses", "value pointer is null");
-  }
-  auto val =
-      mlir::Value::getFromOpaquePointer(reinterpret_cast<const void*>(val_ptr));
-  return static_cast<uint64_t>(std::distance(val.use_begin(), val.use_end()));
-}
-
-// mlir::Value::getType()
-static uint64_t mlir_ir_value_get_type(uint64_t value_ptr) {
-  if (!value_ptr) {
-    scheme_error("mlir-ir-value-get-type", "value pointer is null");
-  }
-  auto val = mlir::Value::getFromOpaquePointer(
-      reinterpret_cast<const void*>(value_ptr));
-  return reinterpret_cast<uint64_t>(val.getType().getAsOpaquePointer());
-}
-
 } // extern "C"
 
 namespace crest {
@@ -60,8 +40,25 @@ void registerIRValueBindings() {
                    (void*)::mlir_ir_value_get_defining_op);
   Sregister_symbol("mlir::isa<BlockArgument>",
                    (void*)::mlir_ir_value_is_block_argument);
-  Sregister_symbol("mlir::Value::getUses", (void*)::mlir_ir_value_num_uses);
-  Sregister_symbol("mlir::Value::getType", (void*)::mlir_ir_value_get_type);
+  Sregister_symbol(
+      "mlir::Value::getUses", (void*)+[](uint64_t val_ptr) -> uint64_t {
+        if (!val_ptr) {
+          scheme_error("mlir::Value::getUses", "value pointer is null");
+        }
+        auto val = mlir::Value::getFromOpaquePointer(
+            reinterpret_cast<const void*>(val_ptr));
+        return static_cast<uint64_t>(
+            std::distance(val.use_begin(), val.use_end()));
+      });
+  Sregister_symbol(
+      "mlir::Value::getType", (void*)+[](uint64_t value_ptr) -> uint64_t {
+        if (!value_ptr) {
+          scheme_error("mlir::Value::getType", "value pointer is null");
+        }
+        auto val = mlir::Value::getFromOpaquePointer(
+            reinterpret_cast<const void*>(value_ptr));
+        return reinterpret_cast<uint64_t>(val.getType().getAsOpaquePointer());
+      });
   // Alias with ? suffix (Scheme predicate convention)
   Sregister_symbol("mlir::isa<BlockArgument>?",
                    (void*)::mlir_ir_value_is_block_argument);
