@@ -342,6 +342,10 @@ void registerTransformsDialectConversionBindings() {
                                Scons(result_type_arg,
                                      Scons(inputs_list, Scons(loc_arg, Snil))));
               ptr result = scheme_apply(locked->get(), args);
+              // Sync cursor back: the callback may have advanced the insertion
+              // point on the copy. Cheap assignment; removes dependency on
+              // whether MLIR uses the builder cursor after the callback.
+              builder = builderShell->inner;
               if (result == Sfalse || result == Sfixnum(0)) {
                 return nullptr;
               }
@@ -384,6 +388,10 @@ void registerTransformsDialectConversionBindings() {
                                Scons(result_type_arg,
                                      Scons(inputs_list, Scons(loc_arg, Snil))));
               ptr result = scheme_apply(locked->get(), args);
+              // Sync cursor back: the callback may have advanced the insertion
+              // point on the copy. Cheap assignment; removes dependency on
+              // whether MLIR uses the builder cursor after the callback.
+              builder = builderShell->inner;
               if (result == Sfalse || result == Sfixnum(0)) {
                 return nullptr;
               }
