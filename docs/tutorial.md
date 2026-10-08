@@ -1,15 +1,4 @@
----
-marp: true
-theme: default
-paginate: true
-style: |
-  section { font-size: 1.05em; }
-  pre { font-size: 0.7em; }
-  code { font-size: 0.78em; }
-  h1 { color: #b00; }
-  h2 { color: #222; }
-  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2em; }
----
+
 
 # CREST
 ## Conversion and Rewriting Engine for Scheme Transformations
