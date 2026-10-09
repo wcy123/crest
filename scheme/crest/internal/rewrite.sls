@@ -178,9 +178,15 @@
       ;; Op form parser
       ;;-------------------------------------------------------------------
 
-      ;; Parse one op-form; return a flat list of (var . expr) pairs.
-      ;; builder-stx — syntax object for the active builder expression.
-      ;; %%crest:create-op! dispatches to the correct C++ create at runtime.
+      ;; Parse one op-form into a flat list of (syntax-var . syntax-expr) pairs
+      ;; that become let* bindings.  A single-result op produces two pairs:
+      ;;
+      ;;   (%r = arith.constant () ("value" = 0 :index) -> i32)
+      ;;   →  [(%op-tmp-0 . (let ([new-op (with-OperationState ...)]) new-op))
+      ;;        (%r        . (mlir-Operation::getResult %op-tmp-0 0))]
+      ;;
+      ;; A multi-result op produces one tmp pair plus one pair per result var.
+      ;; A statement (no result) produces one pair binding the tmp to the op itself.
       (define (process-op op-stx index builder-stx)
         (syntax-case op-stx (= ->)
           ;; Scheme escape
