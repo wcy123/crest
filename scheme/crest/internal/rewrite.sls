@@ -286,8 +286,7 @@
                  :for idx :from 0
                  :collect (make-region-fill-fn idx (cdr e)))))
         (define (make-block-fill blk)
-          (let-values ([(builder-name arg-vars arg-types body-ops) (parse-block-form blk)])
-            (make-block-fill-fn arg-vars arg-types body-ops builder-stx builder-name)))
+          (apply make-block-fill-fn builder-stx (parse-block-form blk)))
         (define (make-region-fill-fn region-index block-fill-fns)
           (lambda (op-stx)
             ;; region-id must be in scope as a Scheme value before with-syntax
@@ -304,6 +303,27 @@
           (lambda (state-stx)
             (with-syntax ([state state-stx] [n name-str] [v val-stx])
               #'(mlir::OperationState::addAttribute state n v))))
+        ;; Parse a full block stx of the form:
+        ;;   (^label ((arg : type) ...) body ...)         — no builder name
+        ;;   (^label builder-name ((arg : type) ...) ...) — explicit builder name
+        ;; Returns (list builder-name-stx arg-vars arg-types body-ops).
+        (define (parse-block-form block-stx)
+          (let* ([elems  (syntax->list block-stx)]
+                 [second (list-ref elems 1)])
+            (if (identifier? second)
+                (let ([av-at (split-arg-types (syntax->list (list-ref elems 2)))])
+                  (list second (car av-at) (cadr av-at) (list-tail elems 3)))
+                (let ([av-at (split-arg-types (syntax->list second))])
+                  (list #f (car av-at) (cadr av-at) (list-tail elems 2))))))
+        ;; Split ((arg : type) ...) syntax into two lists: arg identifiers and types.
+        (define (split-arg-types arg-type-list)
+          (let ([arg-vars '()] [arg-types '()])
+            (for-each (lambda (entry)
+                        (let ([elems (syntax->list entry)])
+                          (set! arg-vars (append arg-vars (list (list-ref elems 0))))
+                          (set! arg-types (append arg-types (list (list-ref elems 2))))))
+                      arg-type-list)
+            (list arg-vars arg-types)))
         (split-modifiers
          (loop :for m :in (syntax->list modifiers-stx) :collect (classify m))))
 
@@ -410,45 +430,20 @@
       ;; creating ops inside a pre-OperationState block breaks MLIR's IR invariants
       ;; (verification requires a fully linked parent-op chain).
       ;; The addRegion call in OperationState pre-allocates the slot; fill happens post-create.
-      ;; Split ((arg : type) ...) syntax into two lists: arg identifiers and types.
-      (define (split-arg-types arg-type-list)
-        (let ([arg-vars '()] [arg-types '()])
-          (for-each (lambda (entry)
-                      (let ([elems (syntax->list entry)])
-                        (set! arg-vars (append arg-vars (list (list-ref elems 0))))
-                        (set! arg-types (append arg-types (list (list-ref elems 2))))))
-                    arg-type-list)
-          (values arg-vars arg-types)))
 
-      ;; Parse a full block stx of the form:
-      ;;   (^label ((arg : type) ...) body ...)         — no builder name
-      ;;   (^label builder-name ((arg : type) ...) ...) — explicit builder name
-      ;; Returns (values builder-name-stx arg-vars arg-types body-ops).
-      (define (parse-block-form block-stx)
-        (let* ([elems  (syntax->list block-stx)]
-               [second (list-ref elems 1)])
-          (if (identifier? second)
-              ;; (^label builder-name ((arg : type) ...) body ...)
-              (let-values ([(arg-vars arg-types)
-                            (split-arg-types (syntax->list (list-ref elems 2)))])
-                (values second arg-vars arg-types (list-tail elems 3)))
-              ;; (^label ((arg : type) ...) body ...)
-              (let-values ([(arg-vars arg-types)
-                            (split-arg-types (syntax->list second))])
-                (values #f arg-vars arg-types (list-tail elems 2))))))
 
-      ;; Returns a closure (lambda (new-op-stx region-stx) → block-fill-syntax).
+
+
+      ;; Returns a closure (lambda (region-stx) → block-fill-syntax).
       ;; Takes pre-extracted components — no re-parsing of syntax.
+      ;;   builder-stx      — syntax for the active builder expression
+      ;;   builder-name-stx — #f (builder unnamed) or a syntax identifier (user-chosen name)
       ;;   arg-vars         — Scheme list of arg variable syntax objects
       ;;   arg-types        — Scheme list of arg type syntax objects
       ;;   body-ops         — Scheme list of body op syntax objects
-      ;;   builder-name-stx — #f (builder unnamed) or a syntax identifier (user-chosen name)
       ;;
-      ;; When builder-name-stx is #f, the OpBuilder is bound to a fresh gensym and
-      ;; is only accessible via begin-mlir-code op-forms inside the body.
-      ;; When builder-name-stx is an identifier, that name is in scope for the body,
-      ;; allowing Scheme escapes to pass it to external helpers explicitly.
-      (define (make-block-fill-fn arg-vars arg-types body-ops builder-stx builder-name-stx)
+      ;; Parameter order matches parse-block-form's list return so callers can use apply.
+      (define (make-block-fill-fn builder-stx builder-name-stx arg-vars arg-types body-ops)
         (let* ([block-builder-id (if builder-name-stx
                                      builder-name-stx
                                      (car (generate-temporaries '(block-builder))))]
