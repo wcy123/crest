@@ -140,6 +140,7 @@
           :any
           :current-op :attr
           :optional :variadic
+          :index :i64 :f32 :i32-array :i64-array :unit
           make-unbound-value unbound-value?)
   (import (except (rnrs) =)
           (crest internal keywords)

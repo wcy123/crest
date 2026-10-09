@@ -24,10 +24,25 @@
 ;;   (op-name (operands...) modifiers...)                           statement (no result)
 ;;
 ;; Modifiers (any order, between operands and ->):
-;;   (name = val)            — set string attr
-;;   (name = val :index)     — set index attr
-;;   (name = val :i32-array) — set dense i32 array attr
-;;   (^label ((arg : !type) ...) body ...) — region block
+;;
+;;   Attr modifiers:
+;;   (name = val)            — set attr (val is mlir::Attribute uptr)
+;;   (name = val :index)     — construct and set IntegerAttr<index>
+;;   (name = val :i64)       — construct and set IntegerAttr<i64>
+;;   (name = val :f32)       — construct and set FloatAttr<f32>
+;;   (name = val :i32-array) — construct and set DenseI32ArrayAttr
+;;   (name = val :i64-array) — construct and set DenseI64ArrayAttr
+;;   (name = val :unit)      — construct and set UnitAttr
+;;
+;;   Region modifiers — each (^label ...) creates ONE region with ONE block:
+;;   (^label ((arg : !type) ...) body ...)         — unnamed builder
+;;   (^label builder-name ((arg : !type) ...) ...) — builder name in scope for body
+;;
+;;   Consecutive shorthands = multiple regions (common case, no :region wrapper needed):
+;;   (%r = "scf.if" (%c) (^then () then...) (^else () else...) -> i32)
+;;
+;;   One region with multiple blocks — use :region explicitly:
+;;   (:region (^entry ((i : index)) body...) (^exit () exit...))
 ;;
 ;; Operands prefixed with ! are types filtered from the value operand list.
 ;; ,@list splices a dynamic list into the operand position:
@@ -46,8 +61,9 @@
                 source-file-descriptor-path)
           (rename (rime loop) (:with :rime-with))
           (for (rename (rime loop) (:with :rime-with)) expand)
-          (for (only (crest internal keywords) = : -> :region) expand)
-          (mlir IR BuiltinAttributes)
+          (for (only (crest internal keywords)
+                     = : -> :region
+                     :index :i64 :f32 :i32-array :i64-array :unit) expand)
           (for (mlir IR BuiltinAttributes) expand)
           ;; Runtime predicates and create bindings for %%crest:create-op! dispatch
           (only (mlir IR PatternMatch)
@@ -56,44 +72,25 @@
           (only (mlir IR Builders)
                 crest::isa<CrestOwned<mlir::OpBuilder>>?
                 mlir::OpBuilder::create<OperationState>)
-          (only (mlir support array-ref) CrestObject::delete)
+          (only (mlir support array-ref) with-CrestObject)
           (for (only (mlir IR Builders)
                      mlir::OpBuilder::atBlockEnd) expand)
           (for (only (mlir IR OperationSupport)
                      mlir::OperationState::addOperands
                      mlir::OperationState::addTypes
                      mlir::OperationState::addRegion
+                     mlir::OperationState::addAttribute
                      with-OperationState) expand)
-          (for (only (mlir IR Operation) mlir::Operation::getRegion) expand)
           (for (only (mlir IR Location)
                      mlir::UnknownLoc::get
                      mlir::FileLineColLoc::get) expand)
           (for (only (mlir IR Region) mlir::Region::push_back<Block>) expand)
           (for (only (mlir IR Block) mlir::Block::getArgument) expand)
-          (for (rename (only (mlir IR Operation) mlir::Operation::getContext
-                             mlir::Operation::getResult
-                             mlir::Operation::setAttr!)
-                       (mlir::Operation::getContext    mlir-Operation::getContext)
-                       (mlir::Operation::getResult     mlir-Operation::getResult)
-                       (mlir::Operation::setAttr!      mlir-operation-set-attribute!)) expand))
+          (for (only (mlir IR Operation) mlir::Operation::getRegion) expand)
+          (for (rename (only (mlir IR Operation)
+                             mlir::Operation::getResult)
+                       (mlir::Operation::getResult mlir-Operation::getResult)) expand))
 
-  ;;===--------------------------------------------------------------------===;;
-  ;; Attr-constructor dispatch — used by the (name = val :type) modifier
-  ;; form to build an MLIR attribute at runtime.  Replaces the old generic
-  ;; generic mlir-make-attr dispatcher (removed with (mlir core attribute)).
-  ;;
-  ;; ctx is passed but unused here — the explicit constructors from
-  ;; (mlir IR BuiltinAttributes) read current-MLIRContext internally.
-  ;;===--------------------------------------------------------------------===;;
-  (define (%%make-attr-by-type _ctx type val)
-    (case type
-      [(index :index)           (mlir::IntegerAttr::get<index> val)]
-      [(i32-array :i32-array)   (mlir::DenseI32ArrayAttr::get val)]
-      [(i64-array :i64-array)   (mlir::DenseI64ArrayAttr::get val)]
-      [(i64 :i64)               (mlir::IntegerAttr::get<i64> val)]
-      [(f32 :f32)               (mlir::FloatAttr::get<f32> val)]
-      [(unit :unit)             (mlir::UnitAttr::get)]
-      [else (error '%%make-attr-by-type "unknown attr type in rewrite DSL" type)]))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Runtime create dispatcher
@@ -178,9 +175,21 @@
       ;; Op form parser
       ;;-------------------------------------------------------------------
 
-      ;; Parse one op-form; return a flat list of (var . expr) pairs.
-      ;; builder-stx — syntax object for the active builder expression.
-      ;; %%crest:create-op! dispatches to the correct C++ create at runtime.
+      ;; Parse one op-form into a flat list of (syntax-var . syntax-expr) pairs
+      ;; that become let* bindings.
+      ;;
+      ;; Single-result — two pairs:
+      ;;   (%r = arith.constant () ("value" = 0 :index) -> i32)
+      ;;   →  [(%op-tmp-<index> . (let ([new-op (with-OperationState ...)]) new-op))
+      ;;        (%r             . (mlir-Operation::getResult %op-tmp-<index> 0))]
+      ;;
+      ;; Multi-result — one tmp pair + one pair per result variable:
+      ;;   ((%a %b) = some.op (%x) -> (t1 t2))
+      ;;   →  [(%op-tmp-<index> . (let ([new-op (with-OperationState ...)]) new-op))
+      ;;        (%a             . (mlir-Operation::getResult %op-tmp-<index> 0))
+      ;;        (%b             . (mlir-Operation::getResult %op-tmp-<index> 1))]
+      ;;
+      ;; Statement (no result) — one pair binding the tmp to the op itself.
       (define (process-op op-stx index builder-stx)
         (syntax-case op-stx (= ->)
           ;; Scheme escape
@@ -212,121 +221,155 @@
       ;; Modifier parser
       ;;-------------------------------------------------------------------
 
-      ;; Parse the optional modifier clause between the operand list and ->.
-      ;; modifiers-stx is the captured (modifiers ...) syntax list.
+      ;; Parse the modifier clause between the operand list and ->.
+      ;; Returns (values attr-setter-fns region-fill-fns):
+      ;;   attr-setter-fns  — list of (lambda (op-stx) → setter-syntax)
+      ;;   region-fill-fns  — list of (lambda (op-stx) → fill-stmt-syntax)
       ;;
-      ;; Returns (values attr-setter-fns region-fill-fns) where:
-      ;;   attr-setter-fns  — Scheme list of closures (lambda (new-op-stx) → setter-syntax)
-      ;;   region-fill-fns  — Scheme list of closures (lambda (new-op-stx) → fill-stmt-syntax)
+      ;; Attr modifier forms:
+      ;;   (name = val)            — val is a mlir::Attribute uptr; set directly
+      ;;   (name = val :index)     — construct IntegerAttr<index>
+      ;;   (name = val :i64)       — construct IntegerAttr<i64>
+      ;;   (name = val :f32)       — construct FloatAttr<f32>
+      ;;   (name = val :i32-array) — construct DenseI32ArrayAttr
+      ;;   (name = val :i64-array) — construct DenseI64ArrayAttr
+      ;;   (name = val :unit)      — construct UnitAttr (val ignored)
       ;;
-      ;; Blocks are parsed immediately; closures carry the pre-parsed structure.
-      ;; No re-parsing occurs later.
+      ;; Region modifier forms:
       ;;
-      ;; Attr entries:
-      ;;   (name = val :i64)       — set i64 integer attr
-      ;;   (name = val :index)     — set index attr
-      ;;   (name = val :i32-array) — set dense i32 array attr
-      ;;   (name = val :i64-array) — set dense i64 array attr
+      ;;   (^label ((arg : type) ...) body ...)          — one region, one block (shorthand)
+      ;;   (^label builder-name ((arg : type) ...) ...)  — same, builder name in scope
       ;;
-      ;; Region forms — two syntaxes:
-      ;;   (^label ((arg : type) ...) body ...)
-      ;;       Shorthand: one region containing exactly one block.
-      ;;       Normalised to (:region (^label ...)) and re-parsed.
+      ;;   Multiple consecutive shorthands = multiple single-block regions:
+      ;;   (^then () then-body ...) (^else () else-body ...)
+      ;;   → two regions; no :region wrapper needed (the common case for scf.if etc.)
       ;;
-      ;;   (:region (^label ((arg : type) ...) body ...) ...)
-      ;;       Full form: one region containing one or more blocks.
+      ;;   (:region (^label ...) ...)  — one region with multiple blocks (rare)
       ;;
       ;; Examples:
-      ;;   %r = "arith.constant" () ("value" = 42 :index) -> (i32)
-      ;;   %r = "scf.if" (%c) (^bb0 () then-body...) -> (i1)          ;; shorthand
-      ;;   %r = "scf.for" (%lo %hi %step)
-      ;;          (:region (^bb0 ((i : index)) body...) (^bb1 () exit...))
-      ;;          -> (i32)
+      ;;   ("value" = 42 :index)                    — attr modifier
+      ;;   (^bb0 () body ...)                        — one region, one block
+      ;;   (^then () t ...) (^else () f ...)         — two regions (e.g. scf.if)
+      ;;   (:region (^entry () ...) (^exit () ...))  — one region, two blocks
       (define (parse-modifiers modifiers-stx builder-stx)
-        (let loop ([rest modifiers-stx] [attr-setter-fns '()] [region-fill-fns '()])
-          (syntax-case rest (= : :region)
-            [()
-             (values attr-setter-fns region-fill-fns)]
-            ;; Attr entry
-            [((name = val . qualifier) . remaining)
-             (loop #'remaining
-                   (append attr-setter-fns (list (make-attr-setter #'(name = val . qualifier))))
-                   region-fill-fns)]
-            ;; Shorthand: bare block — with or without explicit builder name.
-            ;; (^label ((arg : type) ...) body ...)         — builder unnamed
-            ;; (^label builder-name ((arg : type) ...) ...) — builder named
-            [((label . rest-of-block) . remaining)
-             (block-label? #'label)
-             (let* ([block-stx    (cons #'label #'rest-of-block)]
-                    [region-index (length region-fill-fns)])
-               (let-values ([(bname avars atypes abody) (parse-block-form block-stx)])
-                 (let ([fill-fn (make-block-fill-fn avars atypes abody builder-stx bname)])
-                   (loop #'remaining attr-setter-fns
-                         (append region-fill-fns (list (make-region-fill-fn region-index (list fill-fn))))))))]
-            ;; Full form: one region with one or more blocks, each optionally naming the builder.
-            ;; (:region (^bb0 ((arg : type) ...) body ...) ...)
-            ;; (:region (^bb0 b ((arg : type) ...) body ...) ...)
-            [((:region block ...) . remaining)
+        ;; Classify one modifier: normalise symbol/typed/shorthand forms first,
+        ;; then return a tagged handler at the terminal branches.
+        (define (classify m)
+          (syntax-case m (= :index :i64 :f32 :i32-array :i64-array :unit :region)
+            ;; Normalise and retry
+            [(name = val . rest) (symbol? (syntax->datum #'name))
+             (with-syntax ([str-name (datum->syntax #'name
+                                                    (symbol->string (syntax->datum #'name)))])
+               (classify #'(str-name = val . rest)))]
+            [(name = val :index)     (classify #'(name = (mlir::IntegerAttr::get<index> val)))]
+            [(name = val :i64)       (classify #'(name = (mlir::IntegerAttr::get<i64> val)))]
+            [(name = val :f32)       (classify #'(name = (mlir::FloatAttr::get<f32> val)))]
+            [(name = val :i32-array) (classify #'(name = (mlir::DenseI32ArrayAttr::get val)))]
+            [(name = val :i64-array) (classify #'(name = (mlir::DenseI64ArrayAttr::get val)))]
+            [(name = val :unit)      (classify #'(name = (mlir::UnitAttr::get)))]
+            [(label . _) (block-label? #'label) (classify #`(:region #,m))]
+            ;; Terminals
+            [(name = val) (string? (syntax->datum #'name))
+             (cons 'attr (make-direct-setter (syntax->datum #'name) #'val))]
+            [(:region block ...)
+             ;; All blocks must start with a label; labels start with ^.
              (for-all (lambda (b) (block-label? (car (syntax->list b))))
                       (syntax->list #'(block ...)))
-             (let* ([region-index (length region-fill-fns)]
-                    [block-fill-fns
-                     (map (lambda (blk)
-                            (let-values ([(bname avars atypes abody) (parse-block-form blk)])
-                              (make-block-fill-fn avars atypes abody builder-stx bname)))
-                          (syntax->list #'(block ...)))])
-               (loop #'remaining attr-setter-fns
-                     (append region-fill-fns (list (make-region-fill-fn region-index block-fill-fns)))))]
-            [_ (syntax-violation 'begin-mlir-code "invalid modifier entry" rest)])))
+             (cons 'region (map make-block-fill (syntax->list #'(block ...))))]
+            [_ (syntax-violation 'begin-mlir-code "invalid modifier entry" m)]))
+        ;; Split a tagged list into (values attr-fns region-fns).
+        ;; Applies region indices by position in the filtered region list.
 
-      ;; True when x is a block label identifier starting with ^.
-      (define (block-label? x)
-        (let ([datum (syntax->datum x)])
-          (and (symbol? datum)
-               (char=? #\^ (string-ref (symbol->string datum) 0)))))
-
-      ;; Returns a closure (lambda (new-op-stx) → setter-syntax) for one attr form.
-      ;;
-      ;; Two forms:
-      ;;   (name = val type)  — construct attr via (%%make-attr-by-type ctx type val)
-      ;;   (name = val)       — val is already an attr uptr; set directly
-      (define (make-attr-setter attr-stx)
-        (define (name->str x)
+        ;; True when x is a block label identifier starting with ^.
+        (define (block-label? x)
           (let ([datum (syntax->datum x)])
-            (if (string? datum) datum (symbol->string datum))))
-        (define (make-typed-setter name-str val-stx type-quoted-stx)
-          (lambda (new-op-stx)
-            (with-syntax ([new-op new-op-stx] [n name-str] [v val-stx]
-                          [type-q type-quoted-stx])
-              #'(mlir-operation-set-attribute! new-op n
-                                               (%%make-attr-by-type (mlir-Operation::getContext new-op) type-q v)))))
-        (define (make-direct-setter name-str val-stx)
-          (lambda (new-op-stx)
-            (with-syntax ([new-op new-op-stx] [n name-str] [v val-stx])
-              #'(mlir-operation-set-attribute! new-op n v))))
-        (syntax-case attr-stx (=)
-          [(name = val type)  (make-typed-setter  (name->str #'name) #'val #''type)]
-          [(name = val)       (make-direct-setter (name->str #'name) #'val)]
-          [_ (syntax-violation 'begin-mlir-code
-                               "attr modifier: (name = val :type) or (name = val) for pre-built attr"
-                               attr-stx)]))
+            (and (symbol? datum)
+                 (char=? #\^ (string-ref (symbol->string datum) 0)))))
 
+        (define (split-modifiers tagged)
+          (values
+           (loop :for e :in tagged :if (eq? (car e) 'attr) :collect (cdr e))
+           (loop :for e :in (filter (lambda (e) (eq? (car e) 'region)) tagged)
+                 :for idx :from 0
+                 :collect (make-region-fill-fn idx (cdr e)))))
+        (define (make-direct-setter name-str val-stx)
+          (lambda (state-stx)
+            (with-syntax ([state state-stx] [n name-str] [v val-stx])
+              #'(mlir::OperationState::addAttribute state n v))))
+        (define (make-block-fill blk)
+          (apply make-block-fill-fn (parse-block-form blk)))
+        (define (make-block-fill-fn builder-id arg-vars arg-types body-ops)
+          ;; builder-id is always a valid identifier — parse-block-form
+          ;; generates a gensym when the user didn't provide an explicit name.
+          (let ([body-stx (with-syntax ([(body ...) body-ops]
+                                        [block-builder builder-id])
+                            #'(begin-mlir-code block-builder body ...))])
+            (lambda (region-stx)
+              (with-syntax ([(arg-type ...) arg-types]
+                            [(arg-binding ...)
+                             (loop :for var :in arg-vars
+                                   :for i   :from 0
+                                   :collect #`(#,var (mlir::Block::getArgument block #,i)))]
+                            [body          body-stx]
+                            [block-builder builder-id]
+                            [region        region-stx])
+                #'(let* ([block (mlir::Region::push_back<Block> region (list arg-type ...))]
+                         arg-binding ...)
+                    (with-CrestObject (block-builder (mlir::OpBuilder::atBlockEnd block))
+                                      body))))))
+        (define (make-region-fill-fn region-index block-fill-fns)
+          (lambda (op-stx)
+            ;; region-id must be in scope as a Scheme value before with-syntax
+            ;; because (map (fn region-id) ...) runs during binding evaluation —
+            ;; with-syntax bindings are parallel, so [region-id ...] wouldn't help.
+            (let ([region-id (car (generate-temporaries '(region)))])
+              (with-syntax ([new-op     op-stx]
+                            [region-idx region-index]
+                            [(block-fill-stmt ...)
+                             (map (lambda (fn) (fn region-id)) block-fill-fns)])
+                #`(let ([#,region-id (mlir::Operation::getRegion new-op region-idx)])
+                    block-fill-stmt ...)))))
+        ;; Parse a full block stx of the form:
+        ;;   (^label ((arg : type) ...) body ...)         — no builder name
+        ;;   (^label builder-name ((arg : type) ...) ...) — explicit builder name
+        ;; Returns (list builder-id arg-vars arg-types body-ops).
+        ;; Uses : as a literal keyword to match (arg : type) pairs directly.
+        (define (parse-block-form block-stx)
+          (let parse ([stx block-stx])
+            (syntax-case stx (:)
+              ;; No builder-id — inject gensym and retry
+              [(label ((arg : type) ...) . body)
+               (for-all identifier? (syntax->list #'(arg ...)))
+               (with-syntax ([tmp (car (generate-temporaries '(block-builder)))])
+                 (parse #'(label tmp ((arg : type) ...) . body)))]
+              ;; Terminal: builder-id present — extract arg/type lists via pattern
+              [(label builder-id ((arg : type) ...) . body)
+               (and (identifier? #'builder-id) (for-all identifier? (syntax->list #'(arg ...))))
+               (list #'builder-id
+                     (syntax->list #'(arg ...))
+                     (syntax->list #'(type ...))
+                     (syntax->list #'body))])))
+        (split-modifiers
+         (loop :for m :in (syntax->list modifiers-stx) :collect (classify m)))
+        )
       ;;-------------------------------------------------------------------
       ;; Code emitters
       ;;-------------------------------------------------------------------
 
-      ;; Core code generator. Produces the (var . expr) pairs that become let*
-      ;; bindings in the final expansion.
+      ;; Binding-descriptor protocol
+      ;; ─────────────────────────────────────────────────────────────────────
+      ;; emit-multi (and process-op, which delegates to it) returns a flat list
+      ;; of binding-descriptors, each a SCHEME CONS CELL:
+      ;;   (cons var-syntax expr-syntax)   — a pair of two syntax objects
+      ;; make-binding deconstructs each with plain (car d) / (cdr d).
+      ;; main collects all descriptors across the op sequence and assembles them
+      ;; into a single (let* ((var expr) ...) result) expansion.
       ;;
-      ;; Always generates a tmp binding for the Operation* itself:
-      ;;   (%op-tmp-N . (let ([new-op (%%crest:create-op! builder state)])
-      ;;                  setter ...           ; apply attributes
-      ;;                  region-fill-stmt ... ; fill each region
-      ;;                  new-op))
+      ;; emit-multi always produces at least one descriptor for the Operation*:
+      ;;   (op-tmp . (let ([op (with-OperationState ...)]) setter... fills... op))
       ;;
-      ;; Then appends one binding per result variable:
-      ;;   — non-empty result-types: (%var . (mlir-Operation::getResult %op-tmp-N i))
-      ;;   — empty result-types:     (%var . %op-tmp-N)  (var bound to op itself)
+      ;; Plus one descriptor per result variable (empty for zero-result ops):
+      ;;   (%var . (mlir-Operation::getResult op-tmp i))
       ;;
       ;; Parameters:
       ;;   result-vars   — Scheme list of result variable syntax objects
@@ -336,121 +379,71 @@
       ;;   attr-setter-fns  — Scheme list of closures (lambda (new-op-stx) → setter-syntax)
       ;;   region-fill-fns  — Scheme list of closures (lambda (new-op-stx) → fill-stmt-syntax)
       ;;   index            — integer op index, used to generate a unique %op-tmp-N name
-      (define (emit-multi result-vars op-name operands result-types attr-setter-fns region-fill-fns index op-name-stx builder-stx)
-        (let* ([nregions  (length region-fill-fns)]
-               [new-op-id (car (generate-temporaries '(new-op)))]
-               [tmp       (car (generate-temporaries
-                                (list (string->symbol (string-append "%op-tmp-" (number->string index))))))])
-          (with-syntax ([operands-expr operands] [name op-name]
-                        [(result-type ...) result-types] [tmp-var tmp]
-                        [new-op new-op-id]
-                        [builder builder-stx]
-                        [(setter ...) (map (lambda (fn) (fn new-op-id)) attr-setter-fns)]
-                        [(region-fill-stmt ...) (map (lambda (fn) (fn new-op-id)) region-fill-fns)]
-                        [nregions nregions])
-            (cons (cons #'tmp-var
-                        (with-syntax ([source-loc (syntax->mlir-loc-expr op-name-stx)])
-                          #'(let ([new-op (let ()
-                                            (with-OperationState (state source-loc name)
-                                                                 (for-each (lambda (v) (mlir::OperationState::addOperands state v)) operands-expr)
-                                                                 (for-each (lambda (t) (mlir::OperationState::addTypes state t)) (list result-type ...))
-                                                                 (let loop ([i 0])
-                                                                   (when (< i nregions)
-                                                                     (mlir::OperationState::addRegion state)
-                                                                     (loop (+ i 1))))
-                                                                 (%%crest:create-op! builder state)))])
-                              setter ...
-                              region-fill-stmt ...
-                              new-op)))
-                  (if (null? result-types)
-                      ;; zero-result: bind each var directly to new-op
-                      (map (lambda (var) (cons var #'tmp-var)) result-vars)
-                      ;; extract each result by index
-                      (let loop ([vars result-vars] [i 0] [acc '()])
-                        (if (null? vars)
-                            (reverse acc)
-                            (loop (cdr vars) (+ i 1)
-                                  (cons (cons (car vars)
-                                              #`(mlir-Operation::getResult tmp-var #,i))
-                                        acc)))))))))
+      ;; Generate a unique gensym named %op-tmp-N for the Nth op in the form.
+      (define (op-tmp-id n)
+        (car (generate-temporaries
+              (list (string->symbol (string-append "%op-tmp-" (number->string n)))))))
 
-      ;; Returns a closure (lambda (new-op-stx) → fill-stmt-syntax) for one region.
-      ;; region-index    — 0-based index of this region within the op.
-      ;; block-fill-fns  — Scheme list of block-fill closures from make-block-fill-fn.
-      (define (make-region-fill-fn region-index block-fill-fns)
-        (lambda (new-op-stx)
-          (let ([region-id (car (generate-temporaries '(region)))])
-            (with-syntax ([new-op      new-op-stx]
-                          [region      region-id]
-                          [region-idx  region-index]
-                          [(block-fill-stmt ...)
-                           (map (lambda (fn) (fn new-op-stx region-id)) block-fill-fns)])
-              #'(let ([region (mlir::Operation::getRegion new-op region-idx)])
-                  block-fill-stmt ...)))))
+      (define (emit-multi result-vars   ; syntax list — result variable names
+                          op-name       ; string — e.g. "arith.constant"
+                          operands      ; syntax expr — (list v1 v2 ...)
+                          result-types  ; syntax list — empty for statements
+                          attr-setter-fns   ; list of (lambda (op-stx) → setter-stx)
+                          region-fill-fns   ; list of (lambda (op-stx) → fill-stx)
+                          index         ; integer — op position in begin-mlir-code
+                          op-name-stx   ; syntax — carries source location annotation
+                          builder-stx)  ; syntax — the active builder expression
+        (let* ([nregions  (length region-fill-fns)]  ; number of region modifiers
+               [op-var   (op-tmp-id index)]           ; %op-tmp-N — outer let* binding
+               [state-id (car (generate-temporaries '(state)))]  ; gensym for OperationState
+               ;; Generate N addRegion calls using state-id directly via #`
+               ;; (can't use the 'state pattern var — with-syntax bindings are parallel).
+               [addregion-calls
+                (loop :for i :from 0 :below nregions
+                      :collect #`(mlir::OperationState::addRegion #,state-id))])
+          (with-syntax
+              ([operands-expr  operands]         ; runtime operand list expr
+               [name           op-name]          ; string literal
+               [(result-type ...) result-types]  ; result type exprs
+               [op-tmp         op-var]           ; %op-tmp-N exposed to callers
+               [builder        builder-stx]      ; active builder
+               [state          state-id]         ; gensym for OperationState binding
+               ;; Setters call addAttribute on state BEFORE create (correct MLIR idiom).
+               ;; state-id threads the gensym to setter closures — no literal #'state.
+               [(setter ...)
+                (map (lambda (fn) (fn state-id)) attr-setter-fns)]
+               ;; Region fills use getRegion AFTER create — inserting ops into a
+               ;; pre-OperationState block violates MLIR's parent-op invariants.
+               [(region-fill-stmt ...)
+                (map (lambda (fn) (fn op-var)) region-fill-fns)]
+               [(addregion-call ...) addregion-calls]
+               [source-loc (syntax->mlir-loc-expr op-name-stx)])
+            (cons
+             ;; Binding descriptor: op-tmp bound to the created Operation*.
+             ;; Attributes set in OperationState (before create);
+             ;; region slots pre-allocated in OperationState, filled post-create.
+             (cons #'op-tmp
+                   #'(let ([op-tmp
+                            (with-OperationState
+                             (state source-loc name)
+                             (for-each
+                              (lambda (v) (mlir::OperationState::addOperands state v))
+                              operands-expr)
+                             (for-each
+                              (lambda (t) (mlir::OperationState::addTypes state t))
+                              (list result-type ...))
+                             setter ...           ; addAttribute — before create
+                             addregion-call ...   ; addRegion — pre-allocate slots
+                             (%%crest:create-op! builder state))])
+                       region-fill-stmt ...        ; fill regions — after create
+                       op-tmp))
+             ;; Bindings for result variables — loop returns '() when result-vars is empty,
+             ;; which happens for zero-result ops (length guard in process-op enforces this).
+             ;; TODO: add :current-op in begin-mlir-code to capture zero-result ops by name.
+             (loop :for var :in result-vars
+                   :for i   :from 0
+                   :collect (cons var #`(mlir-Operation::getResult op-tmp #,i)))))))
 
-      ;; Split ((arg : type) ...) syntax into two lists: arg identifiers and types.
-      (define (split-arg-types arg-type-list)
-        (let ([avars '()] [atypes '()])
-          (for-each (lambda (entry)
-                      (let ([elems (syntax->list entry)])
-                        (set! avars (append avars (list (list-ref elems 0))))
-                        (set! atypes (append atypes (list (list-ref elems 2))))))
-                    arg-type-list)
-          (values avars atypes)))
-
-      ;; Parse a full block stx of the form:
-      ;;   (^label ((arg : type) ...) body ...)         — no builder name
-      ;;   (^label builder-name ((arg : type) ...) ...) — explicit builder name
-      ;; Returns (values builder-name-stx arg-vars arg-types body-ops).
-      (define (parse-block-form block-stx)
-        (let* ([elems  (syntax->list block-stx)]
-               [second (list-ref elems 1)])
-          (if (identifier? second)
-              ;; (^label builder-name ((arg : type) ...) body ...)
-              (let-values ([(avars atypes)
-                            (split-arg-types (syntax->list (list-ref elems 2)))])
-                (values second avars atypes (list-tail elems 3)))
-              ;; (^label ((arg : type) ...) body ...)
-              (let-values ([(avars atypes)
-                            (split-arg-types (syntax->list second))])
-                (values #f avars atypes (list-tail elems 2))))))
-
-      ;; Returns a closure (lambda (new-op-stx region-stx) → block-fill-syntax).
-      ;; Takes pre-extracted components — no re-parsing of syntax.
-      ;;   arg-vars         — Scheme list of arg variable syntax objects
-      ;;   arg-types        — Scheme list of arg type syntax objects
-      ;;   body-ops         — Scheme list of body op syntax objects
-      ;;   builder-name-stx — #f (builder unnamed) or a syntax identifier (user-chosen name)
-      ;;
-      ;; When builder-name-stx is #f, the OpBuilder is bound to a fresh gensym and
-      ;; is only accessible via begin-mlir-code op-forms inside the body.
-      ;; When builder-name-stx is an identifier, that name is in scope for the body,
-      ;; allowing Scheme escapes to pass it to external helpers explicitly.
-      (define (make-block-fill-fn arg-vars arg-types body-ops builder-stx builder-name-stx)
-        (let* ([block-builder-id (if builder-name-stx
-                                     builder-name-stx
-                                     (car (generate-temporaries '(block-builder))))]
-               [body-stx         (with-syntax ([(body ...) body-ops]
-                                               [block-builder block-builder-id])
-                                   #'(begin-mlir-code block-builder body ...))]
-               [arg-bind-pairs   (loop :for var :in arg-vars
-                                       :for i :from 0
-                                       :collect (cons var #`(mlir::Block::getArgument block #,i)))])
-          (lambda (new-op-stx region-stx)
-            (with-syntax ([(arg-type ...) arg-types]
-                          [(arg-binding ...) (loop :for pair :in arg-bind-pairs
-                                                   :collect (make-binding pair))]
-                          [body              body-stx]
-                          [block-builder     block-builder-id]
-                          [new-op            new-op-stx]
-                          [region            region-stx])
-              #'(let* ([block (mlir::Region::push_back<Block> region (list arg-type ...))]
-                       arg-binding ...)
-                  (let ([block-builder (mlir::OpBuilder::atBlockEnd block)])
-                    (dynamic-wind
-                        (lambda () #f)
-                        (lambda () body)
-                        (lambda () (CrestObject::delete block-builder)))))))))
 
 
       ;;-------------------------------------------------------------------
