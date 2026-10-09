@@ -330,13 +330,11 @@
            (make-typed-setter  (syntax->datum #'name) #'val #''type)]
           [(name = val)      (string? (syntax->datum #'name))
            (make-direct-setter (syntax->datum #'name) #'val)]
-          ;; Symbol name — normalise to string and recurse into string branch
-          [(name = val type) (symbol? (syntax->datum #'name))
+          ;; Symbol name — normalise to string and recurse into string branch.
+          ;; '. rest' captures the optional type argument (either () or (type)).
+          [(name = val . rest) (symbol? (syntax->datum #'name))
            (make-attr-setter
-            #`(#,(datum->syntax #'name (symbol->string (syntax->datum #'name))) = val type))]
-          [(name = val)      (symbol? (syntax->datum #'name))
-           (make-attr-setter
-            #`(#,(datum->syntax #'name (symbol->string (syntax->datum #'name))) = val))]
+            #`(#,(datum->syntax #'name (symbol->string (syntax->datum #'name))) = val . rest))]
           [_ (syntax-violation 'begin-mlir-code
                                "attr modifier: (name = val :type) or (name = val) for pre-built attr"
                                attr-stx)]))
