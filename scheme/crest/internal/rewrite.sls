@@ -252,6 +252,16 @@
       ;;   (^then () t ...) (^else () f ...)         — two regions (e.g. scf.if)
       ;;   (:region (^entry () ...) (^exit () ...))  — one region, two blocks
       (define (parse-modifiers modifiers-stx builder-stx)
+        (define (make-region-fill-fn region-index block-fill-fns)
+          (lambda (op-stx)
+            (let ([region-id (car (generate-temporaries '(region)))])
+              (with-syntax ([new-op     op-stx]
+                            [region     region-id]
+                            [region-idx region-index]
+                            [(block-fill-stmt ...)
+                             (map (lambda (fn) (fn region-id)) block-fill-fns)])
+                #'(let ([region (mlir::Operation::getRegion new-op region-idx)])
+                    block-fill-stmt ...)))))
         (define (make-direct-setter name-str val-stx)
           (lambda (state-stx)
             (with-syntax ([state state-stx] [n name-str] [v val-stx])
@@ -404,17 +414,6 @@
       ;; creating ops inside a pre-OperationState block breaks MLIR's IR invariants
       ;; (verification requires a fully linked parent-op chain).
       ;; The addRegion call in OperationState pre-allocates the slot; fill happens post-create.
-      (define (make-region-fill-fn region-index block-fill-fns)
-        (lambda (op-stx)
-          (let ([region-id (car (generate-temporaries '(region)))])
-            (with-syntax ([new-op     op-stx]
-                          [region     region-id]
-                          [region-idx region-index]
-                          [(block-fill-stmt ...)
-                           (map (lambda (fn) (fn region-id)) block-fill-fns)])
-              #'(let ([region (mlir::Operation::getRegion new-op region-idx)])
-                  block-fill-stmt ...)))))
-
       ;; Split ((arg : type) ...) syntax into two lists: arg identifiers and types.
       (define (split-arg-types arg-type-list)
         (let ([arg-vars '()] [arg-types '()])
