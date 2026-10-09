@@ -183,14 +183,14 @@
       ;;
       ;; Single-result — two pairs:
       ;;   (%r = arith.constant () ("value" = 0 :index) -> i32)
-      ;;   →  [(%op-tmp-0 . (let ([new-op (with-OperationState ...)]) new-op))
-      ;;        (%r        . (mlir-Operation::getResult %op-tmp-0 0))]
+      ;;   →  [(%op-tmp-<index> . (let ([new-op (with-OperationState ...)]) new-op))
+      ;;        (%r             . (mlir-Operation::getResult %op-tmp-<index> 0))]
       ;;
       ;; Multi-result — one tmp pair + one pair per result variable:
       ;;   ((%a %b) = some.op (%x) -> (t1 t2))
-      ;;   →  [(%op-tmp-0 . (let ([new-op (with-OperationState ...)]) new-op))
-      ;;        (%a        . (mlir-Operation::getResult %op-tmp-0 0))
-      ;;        (%b        . (mlir-Operation::getResult %op-tmp-0 1))]
+      ;;   →  [(%op-tmp-<index> . (let ([new-op (with-OperationState ...)]) new-op))
+      ;;        (%a             . (mlir-Operation::getResult %op-tmp-<index> 0))
+      ;;        (%b             . (mlir-Operation::getResult %op-tmp-<index> 1))]
       ;;
       ;; Statement (no result) — one pair binding the tmp to the op itself.
       (define (process-op op-stx index builder-stx)
