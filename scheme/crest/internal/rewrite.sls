@@ -359,44 +359,63 @@
       ;;   attr-setter-fns  — Scheme list of closures (lambda (new-op-stx) → setter-syntax)
       ;;   region-fill-fns  — Scheme list of closures (lambda (new-op-stx) → fill-stmt-syntax)
       ;;   index            — integer op index, used to generate a unique %op-tmp-N name
-      (define (emit-multi result-vars op-name operands result-types attr-setter-fns region-fill-fns index op-name-stx builder-stx)
+      (define (emit-multi result-vars   ; syntax list — result variable names
+                          op-name       ; string — e.g. "arith.constant"
+                          operands      ; syntax expr — (list v1 v2 ...)
+                          result-types  ; syntax list — empty for statements
+                          attr-setter-fns   ; list of (lambda (op-stx) → setter-stx)
+                          region-fill-fns   ; list of (lambda (op-stx) → fill-stx)
+                          index         ; integer — op position in begin-mlir-code
+                          op-name-stx   ; syntax — carries source location annotation
+                          builder-stx)  ; syntax — the active builder expression
         (let* ([nregions  (length region-fill-fns)]
                [new-op-id (car (generate-temporaries '(new-op)))]
                [tmp       (car (generate-temporaries
-                                (list (string->symbol (string-append "%op-tmp-" (number->string index))))))])
-          (with-syntax ([operands-expr operands] [name op-name]
-                        [(result-type ...) result-types] [tmp-var tmp]
-                        [new-op new-op-id]
-                        [builder builder-stx]
-                        [(setter ...) (map (lambda (fn) (fn new-op-id)) attr-setter-fns)]
-                        [(region-fill-stmt ...) (map (lambda (fn) (fn new-op-id)) region-fill-fns)]
-                        ;; Unroll addRegion calls at expand time — nregions is a compile-time
-                        ;; constant so we generate N calls inline instead of a runtime loop.
-                        [(addregion-call ...)
-                         (loop :for i :from 0 :below nregions
-                               :collect #'(mlir::OperationState::addRegion state))])
-            (cons (cons #'tmp-var
-                        (with-syntax ([source-loc (syntax->mlir-loc-expr op-name-stx)])
-                          #'(let ([new-op (let ()
-                                            (with-OperationState (state source-loc name)
-                                                                 (for-each (lambda (v) (mlir::OperationState::addOperands state v)) operands-expr)
-                                                                 (for-each (lambda (t) (mlir::OperationState::addTypes state t)) (list result-type ...))
-                                                                 addregion-call ...
-                                                                 (%%crest:create-op! builder state)))])
-                              setter ...
-                              region-fill-stmt ...
-                              new-op)))
-                  (if (null? result-types)
-                      ;; zero-result: bind each var directly to new-op
-                      (map (lambda (var) (cons var #'tmp-var)) result-vars)
-                      ;; extract each result by index
-                      (let loop ([vars result-vars] [i 0] [acc '()])
-                        (if (null? vars)
-                            (reverse acc)
-                            (loop (cdr vars) (+ i 1)
-                                  (cons (cons (car vars)
-                                              #`(mlir-Operation::getResult tmp-var #,i))
-                                        acc)))))))))
+                                (list (string->symbol
+                                       (string-append "%op-tmp-"
+                                                      (number->string index))))))])
+          (with-syntax
+              ([operands-expr  operands]         ; runtime operand list expr
+               [name           op-name]          ; string literal
+               [(result-type ...) result-types]  ; result type exprs
+               [tmp-var        tmp]              ; gensym for the Operation*
+               [new-op         new-op-id]        ; gensym inside with-OperationState
+               [builder        builder-stx]      ; active builder
+               [(setter ...)                     ; attr-setting stmts
+                (map (lambda (fn) (fn new-op-id)) attr-setter-fns)]
+               [(region-fill-stmt ...)           ; region-filling stmts
+                (map (lambda (fn) (fn new-op-id)) region-fill-fns)]
+               ;; Unroll N addRegion calls at expand time — nregions is compile-time.
+               [(addregion-call ...)
+                (loop :for i :from 0 :below nregions
+                      :collect #'(mlir::OperationState::addRegion state))]
+               [source-loc (syntax->mlir-loc-expr op-name-stx)])
+            (cons
+             ;; Binding for the Operation* itself
+             (cons #'tmp-var
+                   #'(let ([new-op
+                            (let ()
+                              (with-OperationState (state source-loc name)
+                                                   (for-each
+                                                    (lambda (v) (mlir::OperationState::addOperands state v))
+                                                    operands-expr)
+                                                   (for-each
+                                                    (lambda (t) (mlir::OperationState::addTypes state t))
+                                                    (list result-type ...))
+                                                   addregion-call ...        ; N addRegion calls, inlined
+                                                   (%%crest:create-op! builder state)))])
+                       setter ...           ; apply attributes
+                       region-fill-stmt ... ; fill regions
+                       new-op))
+             ;; Bindings for result variables
+             (if (null? result-types)
+                 ;; Zero-result: each var bound to the op itself
+                 (map (lambda (var) (cons var #'tmp-var)) result-vars)
+                 ;; Multi-result: each var bound to getResult at its index
+                 (loop :for var :in result-vars
+                       :for i   :from 0
+                       :collect (cons var
+                                      #`(mlir-Operation::getResult tmp-var #,i))))))))
 
       ;; Returns a closure (lambda (new-op-stx) → fill-stmt-syntax) for one region.
       ;; region-index    — 0-based index of this region within the op.
