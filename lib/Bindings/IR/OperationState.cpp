@@ -44,10 +44,23 @@ void registerIROperationStateBindings() {
       });
   Sregister_symbol(
       "mlir::OperationState::addRegion",
-      (void*)+[](uint64_t state_ptr) -> void {
+      (void*)+[](uint64_t state_ptr) -> uint64_t {
+        mlir::Region* region = crest_owned<mlir::OperationState>(
+                                   state_ptr, "mlir::OperationState::addRegion")
+                                   .addRegion();
+        return reinterpret_cast<uint64_t>(region);
+      });
+  Sregister_symbol(
+      "mlir::OperationState::addAttribute",
+      (void*)+[](uint64_t state_ptr, const char* name,
+                 uint64_t attr_ptr) -> void {
+        if (!name || !attr_ptr) {
+          return;
+        }
         crest_owned<mlir::OperationState>(state_ptr,
-                                          "mlir::OperationState::addRegion")
-            .addRegion();
+                                          "mlir::OperationState::addAttribute")
+            .addAttribute(name, mlir::Attribute::getFromOpaquePointer(
+                                    reinterpret_cast<const void*>(attr_ptr)));
       });
   Sregister_symbol(
       "crest::isa<CrestOwned<mlir::OperationState>>",

@@ -19,13 +19,15 @@
     %mlir::OperationState::addOperands
     %mlir::OperationState::addTypes
     %mlir::OperationState::addRegion
+    %mlir::OperationState::addAttribute
     %crest::isa<CrestOwned<mlir::OperationState>>
     %operation-state-create
     %operation-state-add-operands          ;; canonical: mlir::OperationState::addOperands
     %operation-state-add-operand           ;; backward-compat alias
     %operation-state-add-types             ;; canonical: mlir::OperationState::addTypes
     %operation-state-add-result-type       ;; backward-compat alias
-    %operation-state-add-region)
+    %operation-state-add-region
+    %operation-state-add-attribute)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::OperationState constructor — heap-allocate a CrestOwned<OperationState>.
@@ -50,9 +52,13 @@
   ;; @brief Backward-compat alias for %operation-state-add-types.
   (define %operation-state-add-result-type %operation-state-add-types)
 
-  ;; @brief mlir::OperationState::addRegion — add one empty region to the state.
+  ;; @brief mlir::OperationState::addRegion — add one region; returns Region* uptr.
   (define %operation-state-add-region
-    (foreign-procedure "mlir::OperationState::addRegion" (uptr) void))
+    (foreign-procedure "mlir::OperationState::addRegion" (uptr) uptr))
+
+  ;; @brief mlir::OperationState::addAttribute — set an attribute before create.
+  (define %operation-state-add-attribute
+    (foreign-procedure "mlir::OperationState::addAttribute" (uptr string uptr) void))
 
   ;; @brief Type predicate — is this ptr a CrestOwned<mlir::OperationState>?
   (define %crest::isa<CrestOwned<mlir::OperationState>>
@@ -62,5 +68,6 @@
   (define %mlir::OperationState::addOperands   %operation-state-add-operands)
   (define %mlir::OperationState::addTypes      %operation-state-add-types)
   (define %mlir::OperationState::addRegion     %operation-state-add-region)
+  (define %mlir::OperationState::addAttribute  %operation-state-add-attribute)
 
   ) ;; end library (mlir IR OperationSupport ffi)

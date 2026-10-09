@@ -78,19 +78,17 @@
                      mlir::OperationState::addOperands
                      mlir::OperationState::addTypes
                      mlir::OperationState::addRegion
+                     mlir::OperationState::addAttribute
                      with-OperationState) expand)
-          (for (only (mlir IR Operation) mlir::Operation::getRegion) expand)
           (for (only (mlir IR Location)
                      mlir::UnknownLoc::get
                      mlir::FileLineColLoc::get) expand)
           (for (only (mlir IR Region) mlir::Region::push_back<Block>) expand)
           (for (only (mlir IR Block) mlir::Block::getArgument) expand)
-          (for (rename (only (mlir IR Operation) mlir::Operation::getContext
-                             mlir::Operation::getResult
-                             mlir::Operation::setAttr!)
-                       (mlir::Operation::getContext    mlir-Operation::getContext)
-                       (mlir::Operation::getResult     mlir-Operation::getResult)
-                       (mlir::Operation::setAttr!      mlir-operation-set-attribute!)) expand))
+          (for (only (mlir IR Operation) mlir::Operation::getRegion) expand)
+          (for (rename (only (mlir IR Operation)
+                             mlir::Operation::getResult)
+                       (mlir::Operation::getResult mlir-Operation::getResult)) expand))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Attr-constructor dispatch — used by the (name = val :type) modifier
@@ -308,25 +306,27 @@
           (and (symbol? datum)
                (char=? #\^ (string-ref (symbol->string datum) 0)))))
 
-      ;; Returns a closure (lambda (new-op-stx) → setter-syntax) for one attr form.
+      ;; Returns a closure (lambda (state-stx) → addAttribute-syntax) for one attr form.
       ;;
       ;; Two forms:
-      ;;   (name = val type)  — construct attr via (%%make-attr-by-type ctx type val)
-      ;;   (name = val)       — val is already an attr uptr; set directly
+      ;;   (name = val type)  — construct attr via (%%make-attr-by-type #f type val)
+      ;;   (name = val)       — val is already an mlir::Attribute uptr; add directly
+      ;; Both generate (mlir::OperationState::addAttribute state name attr) — called
+      ;; BEFORE %%crest:create-op! so the attribute is part of the OperationState.
       (define (make-attr-setter attr-stx)
         (define (name->str x)
           (let ([datum (syntax->datum x)])
             (if (string? datum) datum (symbol->string datum))))
         (define (make-typed-setter name-str val-stx type-quoted-stx)
-          (lambda (new-op-stx)
-            (with-syntax ([new-op new-op-stx] [n name-str] [v val-stx]
+          (lambda (state-stx)
+            (with-syntax ([state  state-stx] [n name-str] [v val-stx]
                           [type-q type-quoted-stx])
-              #'(mlir-operation-set-attribute! new-op n
-                                               (%%make-attr-by-type (mlir-Operation::getContext new-op) type-q v)))))
+              #'(mlir::OperationState::addAttribute
+                 state n (%%make-attr-by-type #f type-q v)))))
         (define (make-direct-setter name-str val-stx)
-          (lambda (new-op-stx)
-            (with-syntax ([new-op new-op-stx] [n name-str] [v val-stx])
-              #'(mlir-operation-set-attribute! new-op n v))))
+          (lambda (state-stx)
+            (with-syntax ([state state-stx] [n name-str] [v val-stx])
+              #'(mlir::OperationState::addAttribute state n v))))
         (syntax-case attr-stx (=)
           [(name = val type)  (make-typed-setter  (name->str #'name) #'val #''type)]
           [(name = val)       (make-direct-setter (name->str #'name) #'val)]
@@ -376,44 +376,44 @@
                           op-name-stx   ; syntax — carries source location annotation
                           builder-stx)  ; syntax — the active builder expression
         (let* ([nregions (length region-fill-fns)]  ; number of region modifiers
-               [op-var   (op-tmp-id index)])        ; %op-tmp-N — used for both inner and outer let
+               [op-var   (op-tmp-id index)])        ; %op-tmp-N — outer let* binding
           (with-syntax
               ([operands-expr  operands]         ; runtime operand list expr
                [name           op-name]          ; string literal
                [(result-type ...) result-types]  ; result type exprs
-               ;; op-var serves as BOTH the outer let* binding (%op-tmp-N)
-               ;; and the inner let binding that holds the mlir::Operation*.
-               ;; The inner shadows the outer within the let body — valid Scheme.
-               [op              op-var]          ; inner: mlir::Operation* from create
-               [op-tmp          op-var]          ; outer: %op-tmp-N exposed to callers
-               [builder         builder-stx]     ; active builder
-               [(setter ...)                     ; attr-setting stmts (reference op)
-                (map (lambda (fn) (fn op-var)) attr-setter-fns)]
-               [(region-fill-stmt ...)           ; region-filling stmts (reference op)
+               [op-tmp         op-var]           ; %op-tmp-N exposed to callers
+               [builder        builder-stx]      ; active builder
+               ;; Setters call addAttribute on state BEFORE create (correct MLIR idiom)
+               [(setter ...)
+                (map (lambda (fn) (fn #'state)) attr-setter-fns)]
+               ;; Region fills use getRegion AFTER create — inserting ops into a
+               ;; pre-OperationState block violates MLIR's parent-op invariants.
+               [(region-fill-stmt ...)
                 (map (lambda (fn) (fn op-var)) region-fill-fns)]
-               ;; Unroll N addRegion calls at expand time — nregions is compile-time.
+               ;; Unroll N addRegion calls at expand time — pre-allocates region slots.
                [(addregion-call ...)
                 (loop :for i :from 0 :below nregions
                       :collect #'(mlir::OperationState::addRegion state))]
                [source-loc (syntax->mlir-loc-expr op-name-stx)])
             (cons
-             ;; Binding descriptor for the Operation* itself: (cons var-stx expr-stx)
+             ;; Binding descriptor: op-tmp bound to the created Operation*.
+             ;; Attributes set in OperationState (before create);
+             ;; region slots pre-allocated in OperationState, filled post-create.
              (cons #'op-tmp
-                   #'(let ([op
-                            (let ()
-                              (with-OperationState
-                               (state source-loc name)
-                               (for-each
-                                (lambda (v) (mlir::OperationState::addOperands state v))
-                                operands-expr)
-                               (for-each
-                                (lambda (t) (mlir::OperationState::addTypes state t))
-                                (list result-type ...))
-                               addregion-call ...        ; N addRegion calls, inlined
-                               (%%crest:create-op! builder state)))])
-                       setter ...           ; apply attributes
-                       region-fill-stmt ... ; fill regions
-                       op))
+                   #'(let ([op-tmp
+                            (with-OperationState
+                             (state source-loc name)
+                             (for-each
+                              (lambda (v) (mlir::OperationState::addOperands state v))
+                              operands-expr)
+                             (for-each
+                              (lambda (t) (mlir::OperationState::addTypes state t))
+                              (list result-type ...))
+                             setter ...           ; addAttribute — before create
+                             addregion-call ...   ; addRegion — pre-allocate slots
+                             (%%crest:create-op! builder state))])
+                       region-fill-stmt ...        ; fill regions — after create
+                       op-tmp))
              ;; Bindings for result variables — loop returns '() when result-vars is empty,
              ;; which happens for zero-result ops (length guard in process-op enforces this).
              ;; TODO: add :current-op in begin-mlir-code to capture zero-result ops by name.
@@ -421,17 +421,19 @@
                    :for i   :from 0
                    :collect (cons var #`(mlir-Operation::getResult op-tmp #,i)))))))
 
-      ;; Returns a closure (lambda (new-op-stx) → fill-stmt-syntax) for one region.
-      ;; region-index    — 0-based index of this region within the op.
-      ;; block-fill-fns  — Scheme list of block-fill closures from make-block-fill-fn.
+      ;; Returns a closure (lambda (op-stx) → fill-stmt-syntax) for one region.
+      ;; Regions are filled AFTER %%crest:create-op! via mlir::Operation::getRegion —
+      ;; creating ops inside a pre-OperationState block breaks MLIR's IR invariants
+      ;; (verification requires a fully linked parent-op chain).
+      ;; The addRegion call in OperationState pre-allocates the slot; fill happens post-create.
       (define (make-region-fill-fn region-index block-fill-fns)
-        (lambda (new-op-stx)
+        (lambda (op-stx)
           (let ([region-id (car (generate-temporaries '(region)))])
-            (with-syntax ([new-op      new-op-stx]
-                          [region      region-id]
-                          [region-idx  region-index]
+            (with-syntax ([new-op     op-stx]
+                          [region     region-id]
+                          [region-idx region-index]
                           [(block-fill-stmt ...)
-                           (map (lambda (fn) (fn new-op-stx region-id)) block-fill-fns)])
+                           (map (lambda (fn) (fn region-id)) block-fill-fns)])
               #'(let ([region (mlir::Operation::getRegion new-op region-idx)])
                   block-fill-stmt ...)))))
 
@@ -483,14 +485,13 @@
                [arg-bind-pairs   (loop :for var :in arg-vars
                                        :for i :from 0
                                        :collect (cons var #`(mlir::Block::getArgument block #,i)))])
-          (lambda (new-op-stx region-stx)
+          (lambda (region-stx)
             (with-syntax ([(arg-type ...) arg-types]
                           [(arg-binding ...) (loop :for pair :in arg-bind-pairs
                                                    :collect (make-binding pair))]
-                          [body              body-stx]
-                          [block-builder     block-builder-id]
-                          [new-op            new-op-stx]
-                          [region            region-stx])
+                          [body          body-stx]
+                          [block-builder block-builder-id]
+                          [region        region-stx])
               #'(let* ([block (mlir::Region::push_back<Block> region (list arg-type ...))]
                        arg-binding ...)
                   (let ([block-builder (mlir::OpBuilder::atBlockEnd block)])
