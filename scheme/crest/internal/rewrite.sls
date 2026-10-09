@@ -359,6 +359,11 @@
       ;;   attr-setter-fns  — Scheme list of closures (lambda (new-op-stx) → setter-syntax)
       ;;   region-fill-fns  — Scheme list of closures (lambda (new-op-stx) → fill-stmt-syntax)
       ;;   index            — integer op index, used to generate a unique %op-tmp-N name
+      ;; Generate a unique gensym named %op-tmp-N for the Nth op in the form.
+      (define (op-tmp-id n)
+        (car (generate-temporaries
+              (list (string->symbol (string-append "%op-tmp-" (number->string n)))))))
+
       (define (emit-multi result-vars   ; syntax list — result variable names
                           op-name       ; string — e.g. "arith.constant"
                           operands      ; syntax expr — (list v1 v2 ...)
@@ -370,10 +375,7 @@
                           builder-stx)  ; syntax — the active builder expression
         (let* ([nregions  (length region-fill-fns)]
                [new-op-id (car (generate-temporaries '(new-op)))]
-               [tmp       (car (generate-temporaries
-                                (list (string->symbol
-                                       (string-append "%op-tmp-"
-                                                      (number->string index))))))])
+               [tmp       (op-tmp-id index)])
           (with-syntax
               ([operands-expr  operands]         ; runtime operand list expr
                [name           op-name]          ; string literal
