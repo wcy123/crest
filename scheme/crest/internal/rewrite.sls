@@ -309,7 +309,7 @@
                             [(arg-binding ...)
                              (loop :for var :in arg-vars
                                    :for i   :from 0
-                                   :collect (make-binding (cons var #`(mlir::Block::getArgument block #,i))))]
+                                   :collect #`(#,var (mlir::Block::getArgument block #,i)))]
                             [body          body-stx]
                             [block-builder builder-id]
                             [region        region-stx])
