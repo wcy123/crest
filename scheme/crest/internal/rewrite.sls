@@ -252,28 +252,6 @@
       ;;   (^then () t ...) (^else () f ...)         — two regions (e.g. scf.if)
       ;;   (:region (^entry () ...) (^exit () ...))  — one region, two blocks
       (define (parse-modifiers modifiers-stx builder-stx)
-        (define (make-region-fill-fn region-index block-fill-fns)
-          (lambda (op-stx)
-            (let ([region-id (car (generate-temporaries '(region)))])
-              (with-syntax ([new-op     op-stx]
-                            [region     region-id]
-                            [region-idx region-index]
-                            [(block-fill-stmt ...)
-                             (map (lambda (fn) (fn region-id)) block-fill-fns)])
-                #'(let ([region (mlir::Operation::getRegion new-op region-idx)])
-                    block-fill-stmt ...)))))
-        (define (make-direct-setter name-str val-stx)
-          (lambda (state-stx)
-            (with-syntax ([state state-stx] [n name-str] [v val-stx])
-              #'(mlir::OperationState::addAttribute state n v))))
-        ;; Split a tagged list into (values attr-fns region-fns).
-        ;; Applies region indices by position in the filtered region list.
-        (define (split-modifiers tagged)
-          (values
-           (loop :for e :in tagged :if (eq? (car e) 'attr) :collect (cdr e))
-           (loop :for e :in (filter (lambda (e) (eq? (car e) 'region)) tagged)
-                 :for idx :from 0
-                 :collect ((cdr e) idx))))
         ;; Classify one modifier: normalise symbol/typed/shorthand forms first,
         ;; then return a tagged handler at the terminal branches.
         (define (classify m)
@@ -304,6 +282,28 @@
                                   (syntax->list #'(block ...)))])
                (cons 'region (lambda (idx) (make-region-fill-fn idx fill-fns))))]
             [_ (syntax-violation 'begin-mlir-code "invalid modifier entry" m)]))
+        ;; Split a tagged list into (values attr-fns region-fns).
+        ;; Applies region indices by position in the filtered region list.
+        (define (split-modifiers tagged)
+          (values
+           (loop :for e :in tagged :if (eq? (car e) 'attr) :collect (cdr e))
+           (loop :for e :in (filter (lambda (e) (eq? (car e) 'region)) tagged)
+                 :for idx :from 0
+                 :collect ((cdr e) idx))))
+        (define (make-region-fill-fn region-index block-fill-fns)
+          (lambda (op-stx)
+            (let ([region-id (car (generate-temporaries '(region)))])
+              (with-syntax ([new-op     op-stx]
+                            [region     region-id]
+                            [region-idx region-index]
+                            [(block-fill-stmt ...)
+                             (map (lambda (fn) (fn region-id)) block-fill-fns)])
+                #'(let ([region (mlir::Operation::getRegion new-op region-idx)])
+                    block-fill-stmt ...)))))
+        (define (make-direct-setter name-str val-stx)
+          (lambda (state-stx)
+            (with-syntax ([state state-stx] [n name-str] [v val-stx])
+              #'(mlir::OperationState::addAttribute state n v))))
         (split-modifiers
          (loop :for m :in (syntax->list modifiers-stx) :collect (classify m))))
 
