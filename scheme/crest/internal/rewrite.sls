@@ -291,13 +291,13 @@
             (make-block-fill-fn arg-vars arg-types body-ops builder-stx builder-name)))
         (define (make-region-fill-fn region-index block-fill-fns)
           (lambda (op-stx)
-            (let ([region-id (car (generate-temporaries '(region)))])
-              (with-syntax ([new-op     op-stx]
-                            [region-idx region-index]
-                            [(block-fill-stmt ...)
-                             (map (lambda (fn) (fn region-id)) block-fill-fns)])
-                #`(let ([#,region-id (mlir::Operation::getRegion new-op region-idx)])
-                    block-fill-stmt ...)))))
+            (with-syntax ([new-op     op-stx]
+                          [region-idx region-index]
+                          [region-id  (car (generate-temporaries '(region)))]
+                          [(block-fill-stmt ...)
+                           (map (lambda (fn) (fn #'region-id)) block-fill-fns)])
+              #'(let ([region-id (mlir::Operation::getRegion new-op region-idx)])
+                  block-fill-stmt ...))))
         (define (make-direct-setter name-str val-stx)
           (lambda (state-stx)
             (with-syntax ([state state-stx] [n name-str] [v val-stx])
