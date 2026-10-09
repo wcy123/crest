@@ -179,14 +179,20 @@
       ;;-------------------------------------------------------------------
 
       ;; Parse one op-form into a flat list of (syntax-var . syntax-expr) pairs
-      ;; that become let* bindings.  A single-result op produces two pairs:
+      ;; that become let* bindings.
       ;;
+      ;; Single-result — two pairs:
       ;;   (%r = arith.constant () ("value" = 0 :index) -> i32)
       ;;   →  [(%op-tmp-0 . (let ([new-op (with-OperationState ...)]) new-op))
       ;;        (%r        . (mlir-Operation::getResult %op-tmp-0 0))]
       ;;
-      ;; A multi-result op produces one tmp pair plus one pair per result var.
-      ;; A statement (no result) produces one pair binding the tmp to the op itself.
+      ;; Multi-result — one tmp pair + one pair per result variable:
+      ;;   ((%a %b) = some.op (%x) -> (t1 t2))
+      ;;   →  [(%op-tmp-0 . (let ([new-op (with-OperationState ...)]) new-op))
+      ;;        (%a        . (mlir-Operation::getResult %op-tmp-0 0))
+      ;;        (%b        . (mlir-Operation::getResult %op-tmp-0 1))]
+      ;;
+      ;; Statement (no result) — one pair binding the tmp to the op itself.
       (define (process-op op-stx index builder-stx)
         (syntax-case op-stx (= ->)
           ;; Scheme escape
