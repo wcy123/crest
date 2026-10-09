@@ -305,15 +305,20 @@
             [(f32 :f32)             #'mlir::FloatAttr::get<f32>]
             [(i32-array :i32-array) #'mlir::DenseI32ArrayAttr::get]
             [(i64-array :i64-array) #'mlir::DenseI64ArrayAttr::get]
-            [(unit :unit)           #'mlir::UnitAttr::get]
             [else (syntax-violation 'begin-mlir-code
                                     "unknown attr type in rewrite DSL"
                                     type-stx)]))
         (define (make-typed-setter name-str val-stx type-stx)
-          (let ([ctor (attr-ctor-stx type-stx)])
-            (lambda (state-stx)
-              (with-syntax ([state state-stx] [n name-str] [v val-stx] [c ctor])
-                #'(mlir::OperationState::addAttribute state n (c v))))))
+          (if (memv (syntax->datum type-stx) '(unit :unit))
+              ;; UnitAttr takes no argument — val is ignored
+              (lambda (state-stx)
+                (with-syntax ([state state-stx] [n name-str])
+                  #'(mlir::OperationState::addAttribute state n (mlir::UnitAttr::get))))
+              ;; All other attr types take one value argument
+              (let ([ctor (attr-ctor-stx type-stx)])
+                (lambda (state-stx)
+                  (with-syntax ([state state-stx] [n name-str] [v val-stx] [c ctor])
+                    #'(mlir::OperationState::addAttribute state n (c v)))))))
         (define (make-direct-setter name-str val-stx)
           (lambda (state-stx)
             (with-syntax ([state state-stx] [n name-str] [v val-stx])
