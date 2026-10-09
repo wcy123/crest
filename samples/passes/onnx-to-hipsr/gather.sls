@@ -89,9 +89,9 @@
                       #f)
                #t))
       (%placeholder = "hipsr.placeholder" (%ctx %data %indices !out-device)
-                    (^bb0 ((%ds : !shape-type) (%is : !shape-type))
+                    (^bb0 builder ((%ds : !shape-type) (%is : !shape-type))
                           (%result-shape = (build-gather-shape!
-                                            %block-builder axis %ds %is !shape-type !size-type))
+                                            builder axis %ds %is !shape-type !size-type))
                           ("hipsr.shape_yield" (%result-shape)))
                     -> !out-device)
       (%result = hipsr.gather (%ctx %data %indices %placeholder)

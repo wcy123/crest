@@ -40,7 +40,7 @@
   (export begin-mlir-code)
 
   (import (except (rnrs (6)) =)
-          (only (chezscheme) syntax->list syntax->datum datum->syntax parameterize
+          (only (chezscheme) syntax->list syntax->datum parameterize
                 syntax->annotation annotation? annotation-source
                 source-object? source-object-sfd source-object-bfp
                 source-file-descriptor-path)
@@ -54,6 +54,7 @@
                 crest::isa<CrestRef<mlir::RewriterBase>>?
                 mlir::RewriterBase::create<OperationState>)
           (only (mlir IR Builders)
+                crest::isa<CrestOwned<mlir::OpBuilder>>?
                 mlir::OpBuilder::create<OperationState>)
           (only (mlir support array-ref) CrestObject::delete)
           (for (only (mlir IR Builders)
@@ -102,9 +103,13 @@
   ;; - CrestRef<RewriterBase>  → mlir::RewriterBase::create<OperationState>
   ;; - CrestOwned<OpBuilder>   → mlir::OpBuilder::create<OperationState>
   (define (crest:create-op! ctx state)
-    (if (crest::isa<CrestRef<mlir::RewriterBase>>? ctx)
-        (mlir::RewriterBase::create<OperationState> ctx state)
-        (mlir::OpBuilder::create<OperationState> ctx state)))
+    (cond
+     [(crest::isa<CrestRef<mlir::RewriterBase>>? ctx)
+      (mlir::RewriterBase::create<OperationState> ctx state)]
+     [(crest::isa<CrestOwned<mlir::OpBuilder>>? ctx)
+      (mlir::OpBuilder::create<OperationState> ctx state)]
+     [else
+      (error 'crest:create-op! "expected RewriterBase or OpBuilder" ctx)]))
 
   ;;===--------------------------------------------------------------------===;;
   ;; begin-mlir-code
@@ -247,28 +252,29 @@
              (loop #'remaining
                    (append attr-setter-fns (list (make-attr-setter #'(name = val . qualifier))))
                    region-fill-fns)]
-            ;; Shorthand: bare block — extract components from pattern vars directly
-            [((label ((arg : type) ...) . body) . remaining)
+            ;; Shorthand: bare block — with or without explicit builder name.
+            ;; (^label ((arg : type) ...) body ...)         — builder unnamed
+            ;; (^label builder-name ((arg : type) ...) ...) — builder named
+            [((label . rest-of-block) . remaining)
              (block-label? #'label)
+             (let* ([block-stx    (cons #'label #'rest-of-block)]
+                    [region-index (length region-fill-fns)])
+               (let-values ([(bname avars atypes abody) (parse-block-form block-stx)])
+                 (let ([fill-fn (make-block-fill-fn avars atypes abody builder-stx bname)])
+                   (loop #'remaining attr-setter-fns
+                         (append region-fill-fns (list (make-region-fill-fn region-index (list fill-fn))))))))]
+            ;; Full form: one region with one or more blocks, each optionally naming the builder.
+            ;; (:region (^bb0 ((arg : type) ...) body ...) ...)
+            ;; (:region (^bb0 b ((arg : type) ...) body ...) ...)
+            [((:region block ...) . remaining)
+             (for-all (lambda (b) (block-label? (car (syntax->list b))))
+                      (syntax->list #'(block ...)))
              (let* ([region-index (length region-fill-fns)]
-                    [fill-fn      (make-block-fill-fn
-                                   (syntax->list #'(arg ...))
-                                   (syntax->list #'(type ...))
-                                   (syntax->list #'body)
-                                   builder-stx)])
-               (loop #'remaining attr-setter-fns
-                     (append region-fill-fns (list (make-region-fill-fn region-index (list fill-fn))))))]
-            ;; Full form: pattern matches all block structures directly via nested ellipsis
-            [((:region (label ((arg : type) ...) . body) ...) . remaining)
-             (and (for-all block-label? (syntax->list #'(label ...)))
-                  (for-all identifier?
-                           (apply append (map syntax->list (syntax->list #'((arg ...) ...))))))
-             (let* ([region-index  (length region-fill-fns)]
-                    [block-fill-fns (map (lambda (avars atypes abody)
-                                           (make-block-fill-fn avars atypes abody builder-stx))
-                                         (map syntax->list (syntax->list #'((arg ...) ...)))
-                                         (map syntax->list (syntax->list #'((type ...) ...)))
-                                         (map syntax->list (syntax->list #'(body ...))))])
+                    [block-fill-fns
+                     (map (lambda (blk)
+                            (let-values ([(bname avars atypes abody) (parse-block-form blk)])
+                              (make-block-fill-fn avars atypes abody builder-stx bname)))
+                          (syntax->list #'(block ...)))])
                (loop #'remaining attr-setter-fns
                      (append region-fill-fns (list (make-region-fill-fn region-index block-fill-fns)))))]
             [_ (syntax-violation 'begin-mlir-code "invalid modifier entry" rest)])))
@@ -382,25 +388,48 @@
               #'(let ([region (mlir::Operation::getRegion new-op region-idx)])
                   block-fill-stmt ...)))))
 
+      ;; Split ((arg : type) ...) syntax into two lists: arg identifiers and types.
+      (define (split-arg-types arg-type-list)
+        (let ([avars '()] [atypes '()])
+          (for-each (lambda (entry)
+                      (let ([elems (syntax->list entry)])
+                        (set! avars (append avars (list (list-ref elems 0))))
+                        (set! atypes (append atypes (list (list-ref elems 2))))))
+                    arg-type-list)
+          (values avars atypes)))
+
+      ;; Parse a full block stx of the form:
+      ;;   (^label ((arg : type) ...) body ...)         — no builder name
+      ;;   (^label builder-name ((arg : type) ...) ...) — explicit builder name
+      ;; Returns (values builder-name-stx arg-vars arg-types body-ops).
+      (define (parse-block-form block-stx)
+        (let* ([elems  (syntax->list block-stx)]
+               [second (list-ref elems 1)])
+          (if (identifier? second)
+              ;; (^label builder-name ((arg : type) ...) body ...)
+              (let-values ([(avars atypes)
+                            (split-arg-types (syntax->list (list-ref elems 2)))])
+                (values second avars atypes (list-tail elems 3)))
+              ;; (^label ((arg : type) ...) body ...)
+              (let-values ([(avars atypes)
+                            (split-arg-types (syntax->list second))])
+                (values #f avars atypes (list-tail elems 2))))))
+
       ;; Returns a closure (lambda (new-op-stx region-stx) → block-fill-syntax).
       ;; Takes pre-extracted components — no re-parsing of syntax.
-      ;;   arg-vars  — Scheme list of arg variable syntax objects
-      ;;   arg-types — Scheme list of arg type syntax objects
-      ;;   body-ops  — Scheme list of body op syntax objects
-      ;; The block builder is exposed as %block-builder in the body of ^bb0 blocks,
-      ;; allowing Scheme escapes to pass it to helper functions explicitly.
-      ;; datum->syntax uses an arg-var identifier (or builder-stx fallback) so that
-      ;; %block-builder is in the user's lexical scope and can be referenced by name
-      ;; in Scheme escapes like (%result = (helper %block-builder ...)).
-      (define (make-block-fill-fn arg-vars arg-types body-ops builder-stx)
-        (let* ([user-scope-id (if (null? arg-vars)
-                                  builder-stx
-                                  ;; Find first actual identifier in arg-vars
-                                  (let loop ([vs arg-vars])
-                                    (cond [(null? vs) builder-stx]
-                                          [(identifier? (car vs)) (car vs)]
-                                          [else (loop (cdr vs))])))]
-               [block-builder-id (datum->syntax user-scope-id '%block-builder)]
+      ;;   arg-vars         — Scheme list of arg variable syntax objects
+      ;;   arg-types        — Scheme list of arg type syntax objects
+      ;;   body-ops         — Scheme list of body op syntax objects
+      ;;   builder-name-stx — #f (builder unnamed) or a syntax identifier (user-chosen name)
+      ;;
+      ;; When builder-name-stx is #f, the OpBuilder is bound to a fresh gensym and
+      ;; is only accessible via begin-mlir-code op-forms inside the body.
+      ;; When builder-name-stx is an identifier, that name is in scope for the body,
+      ;; allowing Scheme escapes to pass it to external helpers explicitly.
+      (define (make-block-fill-fn arg-vars arg-types body-ops builder-stx builder-name-stx)
+        (let* ([block-builder-id (if builder-name-stx
+                                     builder-name-stx
+                                     (car (generate-temporaries '(block-builder))))]
                [body-stx         (with-syntax ([(body ...) body-ops]
                                                [block-builder block-builder-id])
                                    #'(begin-mlir-code block-builder body ...))]
