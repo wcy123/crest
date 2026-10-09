@@ -301,16 +301,15 @@
         (define (make-block-fill-fn builder-id arg-vars arg-types body-ops)
           ;; builder-id is always a valid identifier — parse-block-form
           ;; generates a gensym when the user didn't provide an explicit name.
-          (let* ([body-stx       (with-syntax ([(body ...) body-ops]
-                                               [block-builder builder-id])
-                                   #'(begin-mlir-code block-builder body ...))]
-                 [arg-bind-pairs (loop :for var :in arg-vars
-                                       :for i :from 0
-                                       :collect (cons var #`(mlir::Block::getArgument block #,i)))])
+          (let ([body-stx (with-syntax ([(body ...) body-ops]
+                                        [block-builder builder-id])
+                            #'(begin-mlir-code block-builder body ...))])
             (lambda (region-stx)
               (with-syntax ([(arg-type ...) arg-types]
-                            [(arg-binding ...) (loop :for pair :in arg-bind-pairs
-                                                     :collect (make-binding pair))]
+                            [(arg-binding ...)
+                             (loop :for var :in arg-vars
+                                   :for i   :from 0
+                                   :collect (make-binding (cons var #`(mlir::Block::getArgument block #,i))))]
                             [body          body-stx]
                             [block-builder builder-id]
                             [region        region-stx])
