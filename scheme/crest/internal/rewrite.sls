@@ -238,21 +238,22 @@
       ;;   (name = val :i64-array) — construct DenseI64ArrayAttr
       ;;   (name = val :unit)      — construct UnitAttr (val ignored)
       ;;
-      ;; Region modifier forms (optional explicit builder name for ^bb0 blocks):
+      ;; Region modifier forms:
       ;;
-      ;;   Shorthand — one region, one block:
-      ;;   (^label ((arg : type) ...) body ...)
-      ;;   (^label builder-name ((arg : type) ...) body ...)
+      ;;   (^label ((arg : type) ...) body ...)          — one region, one block (shorthand)
+      ;;   (^label builder-name ((arg : type) ...) ...)  — same, builder name in scope
       ;;
-      ;;   Full form — one region, one or more blocks:
-      ;;   (:region (^label ((arg : type) ...) body ...) ...)
-      ;;   (:region (^label b ((arg : type) ...) body ...) ...)
+      ;;   Multiple consecutive shorthands = multiple single-block regions:
+      ;;   (^then () then-body ...) (^else () else-body ...)
+      ;;   → two regions; no :region wrapper needed (the common case for scf.if etc.)
+      ;;
+      ;;   (:region (^label ...) ...)  — one region with multiple blocks (rare)
       ;;
       ;; Examples:
-      ;;   ("value" = 42 :index)                          — attr modifier
-      ;;   (^bb0 ((%x : i32)) body ...)                   — shorthand, unnamed builder
-      ;;   (^bb0 b ((%x : i32)) body ...)                 — shorthand, builder named b
-      ;;   (:region (^bb0 ((i : index)) body...) (^exit () exit...))  — full form
+      ;;   ("value" = 42 :index)                    — attr modifier
+      ;;   (^bb0 () body ...)                        — one region, one block
+      ;;   (^then () t ...) (^else () f ...)         — two regions (e.g. scf.if)
+      ;;   (:region (^entry () ...) (^exit () ...))  — one region, two blocks
       (define (parse-modifiers modifiers-stx builder-stx)
         (define (attr-name? x)
           (let ([d (syntax->datum x)])
