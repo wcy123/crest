@@ -17,14 +17,14 @@
   ;;-----------------------------------------------------------------------
 
   (define (analyze-ast ast-rec)
-    (analyze-match-operations ast-rec)
+    (%%analyze-match-operations ast-rec)
     ast-rec)
 
   ;;-----------------------------------------------------------------------
   ;; Match operations analysis
   ;;-----------------------------------------------------------------------
 
-  (define (analyze-match-operations ast-rec)
+  (define (%%analyze-match-operations ast-rec)
     ;; Phase 2 validation guarantees: root variable exists as a result in some match operation
     (let* ([match-vec (ast-pattern-expand-match ast-rec)]
            [root-var (ast-pattern-expand-root-var ast-rec)]
@@ -32,7 +32,7 @@
            [root-op (vector-ref match-vec root-op-idx)])
 
       ;; Build match actions starting from root operation
-      (let* ([bindings-and-actions (build-bindings-and-actions ast-rec match-vec root-op-idx root-var)]
+      (let* ([bindings-and-actions (%%build-bindings-and-actions ast-rec match-vec root-op-idx root-var)]
              [binding-mgr (car bindings-and-actions)]
              [actions (cdr bindings-and-actions)])
 
@@ -43,9 +43,9 @@
   ;; DAG traversal and action generation
   ;;-----------------------------------------------------------------------
 
-  (define (build-bindings-and-actions ast-rec match-vec root-op-idx root-var)
+  (define (%%build-bindings-and-actions ast-rec match-vec root-op-idx root-var)
     ;; Create binding manager and visited vector locally
-    (let* ([binding-mgr (collect-all-identifiers match-vec)]
+    (let* ([binding-mgr (%%collect-all-identifiers match-vec)]
            [visited (make-vector (vector-length match-vec) #f)]
            [acc '()]
            [pattern-type (ast-pattern-expand-pattern-type ast-rec)]
@@ -63,7 +63,7 @@
                  [operands (ast-match-expand-operands match-op)]  ; list of ast-operand records
                  ;; Cache binding entries - avoid repeated hashtable lookups
                  ;; Extract var field from ast-operand for lookup
-                 [entries (map (lambda (op) (find-binding-entry binding-mgr (ast-operand-var op))) operands)])
+                 [entries (map (lambda (op) (%%find-binding-entry binding-mgr (ast-operand-var op))) operands)])
 
             ;; Emit header actions (building backwards, will reverse at end)
             (set! acc (cons (action:set-current-op op-idx result-var) acc))
@@ -83,7 +83,7 @@
             ;; The root op's results are set by root-result-setters before checks.
             (loop :for res-var :in (ast-match-expand-result-var match-op)
                   :for result-idx :from 0
-                  :rime-with result-entry := (find-binding-entry binding-mgr res-var)
+                  :rime-with result-entry := (%%find-binding-entry binding-mgr res-var)
                   :do (begin
                         (binding-entry-bound?-set! result-entry #t)
                         (when (not (= op-idx root-op-idx))
@@ -111,7 +111,7 @@
                     (for-each (lambda (operand entry)
                                 (binding-entry-bound?-set! entry #t)
                                 (when (binding-entry-is-result? entry)
-                                  (let ([producer-op-idx (find-operation-by-result
+                                  (let ([producer-op-idx (%%find-operation-by-result
                                                           match-vec (ast-operand-var operand))])
                                     (traverse producer-op-idx (ast-operand-var operand)))))
                               operands entries))
@@ -130,7 +130,7 @@
                                   (set! acc (cons (action:bind-argument-operand operand-idx operand-var) acc))
                                   (set! acc (cons (action:bind-operand op-idx operand-idx operand-var) acc)))
                               (binding-entry-bound?-set! entry #t)
-                              (let ([producer-op-idx (find-operation-by-result match-vec operand-var)])
+                              (let ([producer-op-idx (%%find-operation-by-result match-vec operand-var)])
                                 (traverse producer-op-idx operand-var))]
                              [(and (not is-bound) (not is-result))
                               (if (and is-conversion? (= op-idx root-op-idx))
@@ -157,7 +157,7 @@
                 (set! acc (cons (action:check-where where-expr op-idx) acc)))))))
 
       ;; Warn about unvisited operations
-      (warn-unvisited-operations match-vec visited)
+      (%%warn-unvisited-operations match-vec visited)
 
       ;; Return (binding-mgr . reversed-actions)
       (cons binding-mgr (reverse acc))))
@@ -166,12 +166,12 @@
   ;; Identifier collection and binding manager construction
   ;;-----------------------------------------------------------------------
 
-  (define (collect-all-identifiers match-vec)
+  (define (%%collect-all-identifiers match-vec)
     ;; Two-pass collection:
     ;; Pass 1: collect operand occurrences (last write wins)
     ;; Pass 2: results overwrite everything
     ;; Note: duplicate result variables are validated earlier, guaranteed not to happen here
-    (let ([ht (make-hashtable identifier-hash bound-identifier=?)])
+    (let ([ht (make-hashtable %%identifier-hash bound-identifier=?)])
 
       ;; Pass 1: Collect operand occurrences (last write wins)
       ;; operands is a list of ast-operand records after validation phase
@@ -217,38 +217,38 @@
   (define (binding-manager-bindings mgr)
     (binding-manager-bindings-table mgr))
 
-  (define (find-binding-entry mgr id)
+  (define (%%find-binding-entry mgr id)
     (hashtable-ref (binding-manager-bindings mgr) id #f))
 
-  (define (is-binding-bound? mgr id)
-    (let ([entry (find-binding-entry mgr id)])
+  (define (%%is-binding-bound? mgr id)
+    (let ([entry (%%find-binding-entry mgr id)])
       (and entry (binding-entry-bound? entry))))
 
   ;;-----------------------------------------------------------------------
   ;; Binding actions
   ;;-----------------------------------------------------------------------
 
-  (define (action-bind-result! mgr id)
+  (define (%%action-bind-result! mgr id)
     ;; Mark a result variable as bound - returns :bind-result action
-    ;; Note: result-op-idx and result-idx are already set during collect-all-identifiers
+    ;; Note: result-op-idx and result-idx are already set during %%collect-all-identifiers
     ;; Phase 2 validation guarantees: identifier exists, starts with %, is a result variable
-    (let ([entry (find-binding-entry mgr id)])
+    (let ([entry (%%find-binding-entry mgr id)])
       (binding-entry-bound?-set! entry #t)
       (list ':bind-result id
             (binding-entry-result-op-idx entry)
             (binding-entry-result-idx entry))))
 
-  (define (action-bind-operand! mgr id op-idx operand-idx)
+  (define (%%action-bind-operand! mgr id op-idx operand-idx)
     ;; Bind an operand variable - updates entry in place, returns :bind-operand action
-    ;; Note: operand location is already recorded during collect-all-identifiers
+    ;; Note: operand location is already recorded during %%collect-all-identifiers
     ;; Phase 2 validation guarantees: identifier exists and starts with %
-    (let ([entry (find-binding-entry mgr id)])
+    (let ([entry (%%find-binding-entry mgr id)])
       (binding-entry-bound?-set! entry #t)
       (list ':bind-operand id
             (binding-entry-operand-op-idx entry)
             (binding-entry-operand-idx entry))))
 
-  (define (action-check-operand-equal mgr id op-idx operand-idx)
+  (define (%%action-check-operand-equal mgr id op-idx operand-idx)
     ;; Check operand equality - returns :check-operand-equal action
     ;; Phase 2 validation guarantees: identifier exists and starts with %
     ;; DAG traversal guarantees: identifier is already bound
@@ -259,17 +259,17 @@
   ;; Helper functions
   ;;-----------------------------------------------------------------------
 
-  (define (identifier-hash id)
+  (define (%%identifier-hash id)
     (symbol-hash (syntax->datum id)))
 
-  (define (warn-unvisited-operations match-vec visited)
+  (define (%%warn-unvisited-operations match-vec visited)
     (loop :for op-idx :from 0 :below (vector-length match-vec)
           :rime-with match-op := (vector-ref match-vec op-idx)
           :when (not (vector-ref visited op-idx))
           :do (format #t "WARNING: Operation ~a at index ~a is not reachable from root~%"
                       (syntax->datum (ast-match-expand-op-name match-op)) op-idx)))
 
-  (define (find-root-operation match-vec root-var)
+  (define (%%find-root-operation match-vec root-var)
     ;; Find which operation index produces root-var as a result
     (loop :initially := #f
           :for idx :from 0 :below (vector-length match-vec)
@@ -280,7 +280,7 @@
                                :when (bound-identifier=? var root-var)
                                :break #t)))
 
-  (define (find-operation-by-result match-vec result-var)
+  (define (%%find-operation-by-result match-vec result-var)
     (loop :initially := #f
           :for op-idx :from 0 :below (vector-length match-vec)
           :rime-with match-op := (vector-ref match-vec op-idx)

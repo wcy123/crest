@@ -44,7 +44,7 @@
           (for (only (mlir IR MLIRContext) current-MLIRContext) expand)
           (for (only (chezscheme) parameterize) expand)
           (for (only (crest internal rewrite) begin-mlir-code) expand)
-          ;; keywords needed at expand time for free-identifier=? matching in transform-where-expr
+          ;; keywords needed at expand time for free-identifier=? matching in %%transform-where-expr
           (for (only (crest internal keywords) :current-op :attr) expand))
 
   ;;=======================================================================
@@ -52,17 +52,17 @@
   ;;=======================================================================
   ;;
   ;; generate-pattern-match-and-rewrite
-  ;; ├── generate-root-result-setters  (set! %varN (mlir-Operation::getResult op N)) per root result
-  ;; │   └── find-root-op
-  ;; ├── collect-all-variables
-  ;; ├── generate-check-code           (and check₀ check₁ …) for :if-match
-  ;; │   └── action->check-code
-  ;; ├── generate-rewrite-code (raw-body)  wraps with-RewriterBase + begin-mlir-code
+  ;; ├── %%generate-root-result-setters  (set! %varN (mlir-Operation::getResult op N)) per root result
+  ;; │   └── %%find-root-op
+  ;; ├── %%collect-all-variables
+  ;; ├── %%generate-check-code           (and check₀ check₁ …) for :if-match
+  ;; │   └── %%action->check-code
+  ;; ├── %%generate-rewrite-code (raw-body)  wraps with-RewriterBase + begin-mlir-code
   ;; │   :rewrite :with body forwarded verbatim to begin-mlir-code; no AST round-trip
-  ;; └── generate-then-let-bindings    ((var expr) …) for :then-let
+  ;; └── %%generate-then-let-bindings    ((var expr) …) for :then-let
   ;;
   ;; generate-debug-ast / generate-debug-codegen  (debug path, not on hot path)
-  ;; └── record->alist
+  ;; └── %%record->alist
   ;;
   ;;=======================================================================
   ;; Entry points (called from pattern-macro.sls waterfall)
@@ -70,7 +70,7 @@
 
   (define (generate-debug-ast ast-rec)
     (with-syntax ([fname (ast-pattern-expand-function-name ast-rec)])
-      (let ([alist-data (record->alist ast-rec)])
+      (let ([alist-data (%%record->alist ast-rec)])
         (with-syntax ([ast-list (datum->syntax #'fname `',alist-data)])
           #'(define fname (lambda () ast-list))))))
 
@@ -100,20 +100,20 @@
 
         ;; Computed values — each may depend on earlier bindings in this block.
         (let* ([num-ops          (vector-length match-vec)]
-               [root-op             (find-root-op match-vec root-op-name)]
+               [root-op             (%%find-root-op match-vec root-op-name)]
                [root-result-vars    (ast-match-expand-result-var root-op)]
-               [root-result-setters (generate-root-result-setters root-result-vars op)]
+               [root-result-setters (%%generate-root-result-setters root-result-vars op)]
                ;; :rewrite :with body kept as raw syntax — forwarded to begin-mlir-code.
                ;; Rewrite vars are NOT pre-declared in the outer let; begin-mlir-code
                ;; declares them in its own let*.
-               [match-vars       (collect-all-variables binding-mgr)]
+               [match-vars       (%%collect-all-variables binding-mgr)]
                [then-let-vars    (map ast-then-let-binding-expand-var then-let-bindings)]
                [all-vars         (append match-vars then-let-vars)]
                )
 
           ;; Code generation — the two halves are independent of each other.
-          (let ([check-code  (generate-check-code actions match-vec operands-ref)]
-                [rewrite-code (generate-rewrite-code raw-rewrite pattern-type rewriter op)])
+          (let ([check-code  (%%generate-check-code actions match-vec operands-ref)]
+                [rewrite-code (%%generate-rewrite-code raw-rewrite pattern-type rewriter op)])
 
             ;; Build param list: 4 params for conversion, 2 for rewrite (no operands-ref/type-converter)
             (let ([params (if operands-ref
@@ -124,7 +124,7 @@
                             [(var ...) all-vars]
                             [num-operations num-ops]
                             [(root-result-setter ...) root-result-setters]
-                            [(then-let-binding ...) (generate-then-let-bindings then-let-bindings)]
+                            [(then-let-binding ...) (%%generate-then-let-bindings then-let-bindings)]
                             [checks  check-code]
                             [rewrite rewrite-code])
                 (with-syntax ([root-op op])
@@ -147,7 +147,7 @@
   ;; Rewrite code — thin wrapper delegating to begin-mlir-code
   ;;=======================================================================
   ;;
-  ;; generate-rewrite-code
+  ;; %%generate-rewrite-code
   ;;
   ;; raw-body     — list of raw syntax objects (the :rewrite :with op-forms)
   ;; pattern-type — 'conversion | 'rewrite
@@ -162,7 +162,7 @@
   ;; begin-mlir-code handles op-forms, :attrs, :regions, and :scheme escapes.
   ;; with-RewriterBase calls setInsertionPoint so
   ;; dispatches through the active rewriter or block-builder.
-  (define (generate-rewrite-code raw-body pattern-type rw op)
+  (define (%%generate-rewrite-code raw-body pattern-type rw op)
     (if (null? raw-body)
         #'#t
         (with-syntax ([(form ...) raw-body])
@@ -189,7 +189,7 @@
   ;; :then-let bindings
   ;;=======================================================================
 
-  (define (generate-then-let-bindings then-let-list)
+  (define (%%generate-then-let-bindings then-let-list)
     (loop :for binding-rec :in then-let-list
           :rime-with var  := (ast-then-let-binding-expand-var  binding-rec)
           :rime-with expr := (ast-then-let-binding-expand-expr binding-rec)
@@ -218,11 +218,11 @@
   ;; Uses free-identifier=? via (syntax-case s (:current-op :attr) ...) so
   ;; only :current-op/:attr from (crest internal keywords) are substituted.
 
-  ;; transform-where-expr — syntactic substitution for :where expressions.
+  ;; %%transform-where-expr — syntactic substitution for :where expressions.
   ;;
   ;; No (:attr "name" :type) form: clients compose (:attr "name") with
   ;; explicit attr-extraction functions from (mlir IR BuiltinAttributes).
-  (define (transform-where-expr where-stx op-idx)
+  (define (%%transform-where-expr where-stx op-idx)
     (let ([cur-op #`(vector-ref all-operations #,op-idx)])
       (let walk ([s where-stx])
         (syntax-case s (:current-op :attr)
@@ -242,16 +242,16 @@
           ;; Atoms pass through unchanged
           [_ s]))))
 
-  (define (generate-check-code actions match-vec operands-ref)
+  (define (%%generate-check-code actions match-vec operands-ref)
     (if (null? actions)
         #'#t
-        (let ([checks (map (lambda (act) (action->check-code act match-vec operands-ref)) actions)])
+        (let ([checks (map (lambda (act) (%%action->check-code act match-vec operands-ref)) actions)])
           ;; Wrap in guard so any exception (e.g. from (:attr ...) on absent attr,
           ;; or any other runtime error during matching) becomes a silent match failure.
           #`(guard (exn [#t #f])
               (and #,@checks)))))
 
-  (define (action->check-code action match-vec operands-ref)
+  (define (%%action->check-code action match-vec operands-ref)
     (let ([tag (car action)])
       (case tag
         [(:set-current-op)
@@ -328,7 +328,7 @@
          (let* ([fields  (cdr action)]
                 [op-idx  (cdr (assq 'op-idx fields))]
                 [expr    (cdr (assq 'expr   fields))])
-           (transform-where-expr expr op-idx))]
+           (%%transform-where-expr expr op-idx))]
 
         [(:bind-operands)
          ;; Bind all operands of an op with optional/variadic slots via mlir-operation-get-operands.
@@ -346,13 +346,13 @@
                #t))]
 
         [else
-         (error 'action->check-code "Unknown action type" tag)])))
+         (error '%%action->check-code "Unknown action type" tag)])))
 
   ;;=======================================================================
   ;; Root op lookup and initialization
   ;;=======================================================================
 
-  (define (find-root-op match-vec root-op-name-stx)
+  (define (%%find-root-op match-vec root-op-name-stx)
     (let ([root-op-name (syntax->datum root-op-name-stx)])
       (loop :initially := #f
             :for idx :from 0 :below (vector-length match-vec)
@@ -366,7 +366,7 @@
                                  (if (string? root-op-name) root-op-name (symbol->string root-op-name))))
             :break match-op)))
 
-  (define (generate-root-result-setters root-result-vars op-param)
+  (define (%%generate-root-result-setters root-result-vars op-param)
     (loop :for var :in root-result-vars
           :for idx :from 0
           :collect #`(set! #,var (mlir-Operation::getResult #,op-param #,idx))))
@@ -375,7 +375,7 @@
   ;; Variable collection
   ;;=======================================================================
 
-  (define (collect-all-variables binding-mgr)
+  (define (%%collect-all-variables binding-mgr)
     (vector->list (hashtable-keys (binding-manager-bindings binding-mgr))))
 
   ;;=======================================================================
@@ -389,7 +389,7 @@
   ;; whether an (:optional %var) was actually bound.
   (define (unbound-value? v) (eq? v (make-unbound-value)))
 
-  (define (record->alist obj)
+  (define (%%record->alist obj)
     (let ([datum (syntax-object->datum obj)])
       (cond
        [(not (eq? datum obj)) datum]
@@ -404,8 +404,8 @@
                                                        (symbol->string b))))
                                        keys)])
           (loop :for key :in sorted-keys
-                :collect (cons (record->alist key)
-                               (record->alist (hashtable-ref obj key #f)))))]
+                :collect (cons (%%record->alist key)
+                               (%%record->alist (hashtable-ref obj key #f)))))]
        [(record? obj)
         (let* ([rtd (record-rtd obj)]
                [field-names (vector->list (record-type-field-names rtd))])
@@ -413,9 +413,9 @@
                 :for i :from 0
                 :collect (let* ([accessor (record-accessor rtd i)]
                                 [value (accessor obj)])
-                           (cons name (record->alist value)))))]
-       [(list? obj) (map record->alist obj)]
-       [(vector? obj) (vector->list (vector-map record->alist obj))]
+                           (cons name (%%record->alist value)))))]
+       [(list? obj) (map %%record->alist obj)]
+       [(vector? obj) (vector->list (vector-map %%record->alist obj))]
        [else obj])))
 
   ;; Shared pipeline helper — runs the 4 phases, short-circuits on debug flags.
