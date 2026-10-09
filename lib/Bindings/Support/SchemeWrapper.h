@@ -192,8 +192,15 @@ inline SValue convert_to_scheme(SValue v) { return v; }
 // convert_to_scheme_func unifies the two so a single set of overloads handles
 // both.
 
+// Resolve a top-level Scheme name to its procedure value.
+// Calls scheme_error if the name is unbound (value is #f).
+// Must stay inline — defined in a header included by multiple TUs.
 inline SValue convert_to_scheme_func(const char* fname) {
-  return Stop_level_value(Sstring_to_symbol(fname));
+  SValue f = Stop_level_value(Sstring_to_symbol(fname));
+  if (f == Sfalse) {
+    scheme_error("scheme_call", "unbound top-level function:", fname);
+  }
+  return f;
 }
 inline SValue convert_to_scheme_func(SValue f) { return f; }
 
