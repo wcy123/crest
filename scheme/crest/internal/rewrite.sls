@@ -395,15 +395,16 @@
              (cons #'tmp-var
                    #'(let ([new-op
                             (let ()
-                              (with-OperationState (state source-loc name)
-                                                   (for-each
-                                                    (lambda (v) (mlir::OperationState::addOperands state v))
-                                                    operands-expr)
-                                                   (for-each
-                                                    (lambda (t) (mlir::OperationState::addTypes state t))
-                                                    (list result-type ...))
-                                                   addregion-call ...        ; N addRegion calls, inlined
-                                                   (%%crest:create-op! builder state)))])
+                              (with-OperationState
+                               (state source-loc name)
+                               (for-each
+                                (lambda (v) (mlir::OperationState::addOperands state v))
+                                operands-expr)
+                               (for-each
+                                (lambda (t) (mlir::OperationState::addTypes state t))
+                                (list result-type ...))
+                               addregion-call ...        ; N addRegion calls, inlined
+                               (%%crest:create-op! builder state)))])
                        setter ...           ; apply attributes
                        region-fill-stmt ... ; fill regions
                        new-op))
@@ -414,8 +415,7 @@
                  ;; Multi-result: each var bound to getResult at its index
                  (loop :for var :in result-vars
                        :for i   :from 0
-                       :collect (cons var
-                                      #`(mlir-Operation::getResult tmp-var #,i))))))))
+                       :collect #`(#,var . (mlir-Operation::getResult tmp-var #,i))))))))
 
       ;; Returns a closure (lambda (new-op-stx) → fill-stmt-syntax) for one region.
       ;; region-index    — 0-based index of this region within the op.
@@ -478,7 +478,7 @@
                                    #'(begin-mlir-code block-builder body ...))]
                [arg-bind-pairs   (loop :for var :in arg-vars
                                        :for i :from 0
-                                       :collect (cons var #`(mlir::Block::getArgument block #,i)))])
+                                       :collect #`(#,var . (mlir::Block::getArgument block #,i)))])
           (lambda (new-op-stx region-stx)
             (with-syntax ([(arg-type ...) arg-types]
                           [(arg-binding ...) (loop :for pair :in arg-bind-pairs
