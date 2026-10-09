@@ -28,6 +28,8 @@
     mlir::RewriterBase::createBlock
     mlir::RewriterBase::replaceOp
     mlir::RewriterBase::eraseOp
+    ;; Raw FFI re-export for crest:create-op! dispatcher in (crest internal rewrite)
+    %mlir::RewriterBase::create<OperationState>
     ;; Type predicates
     crest::isa<CrestRef<mlir::RewriterBase>>?
     crest::isa<CrestOwned<mlir::RewritePatternSet>>?

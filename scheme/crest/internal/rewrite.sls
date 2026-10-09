@@ -10,15 +10,12 @@
 ;;
 ;; Provides:
 ;;
-;;   (begin-mlir-code (:rewriter rw) op-form ...)
-;;     Sequences MLIR op-forms using a RewriterBase* builder.
+;;   (begin-mlir-code ctx op-form ...)
+;;     Sequences MLIR op-forms using ctx as the builder.
+;;     ctx may be a CrestRef<RewriterBase> (from a pattern callback) or
+;;     a CrestOwned<OpBuilder> (from with-OpBuilder or a ^bb0 block).
+;;     The correct C++ create binding is selected at runtime via crest:create-op!.
 ;;     Returns the last result (like Scheme's begin).
-;;
-;;   (begin-mlir-code (:builder b) op-form ...)
-;;     Same, using a plain OpBuilder* (e.g. inside ^bb0 blocks).
-;;     NOTE: (:rewriter rw) and (:builder b) use different C++ create
-;;     bindings — they are NOT interchangeable. OpBuilder has no vtable
-;;     but RewriterBase introduces one, so their subobject offsets differ.
 ;;
 ;; op-form syntax:
 ;;   (%var = "op.name" (operands...) modifiers... -> result-type)   single-result
@@ -52,15 +49,15 @@
           (for (only (crest internal keywords) = : -> :region) expand)
           (mlir IR BuiltinAttributes)
           (for (mlir IR BuiltinAttributes) expand)
-          ;; Runtime predicates for begin-mlir-code runtime dispatch
-          (only (mlir IR PatternMatch) crest::isa<CrestRef<mlir::RewriterBase>>?)
-          (only (mlir IR Builders) crest::isa<CrestOwned<mlir::OpBuilder>>?)
+          ;; Runtime predicates and create bindings for crest:create-op! dispatch
+          (only (mlir IR PatternMatch)
+                crest::isa<CrestRef<mlir::RewriterBase>>?
+                %mlir::RewriterBase::create<OperationState>)
+          (only (mlir IR Builders ffi)
+                %mlir::OpBuilder::create<OperationState>)
           (only (mlir support array-ref) CrestObject::delete)
           (for (only (mlir IR Builders ffi)
-                     %mlir::OpBuilder::atBlockEnd
-                     %mlir::OpBuilder::create<OperationState>) expand)
-          (for (only (mlir IR PatternMatch ffi)
-                     %mlir::RewriterBase::create<OperationState>) expand)
+                     %mlir::OpBuilder::atBlockEnd) expand)
           (for (only (mlir IR OperationSupport)
                      %mlir::OperationState::addOperands
                      %mlir::OperationState::addTypes
@@ -96,6 +93,18 @@
       [(f32 :f32)               (mlir::FloatAttr::get<f32> val)]
       [(unit :unit)             (mlir::UnitAttr::get)]
       [else (error '%make-attr-by-type "unknown attr type in rewrite DSL" type)]))
+
+  ;;===--------------------------------------------------------------------===;;
+  ;; Runtime create dispatcher
+  ;;===--------------------------------------------------------------------===;;
+
+  ;; Select the correct C++ create binding based on the CREST wrapper type.
+  ;; - CrestRef<RewriterBase>  → %mlir::RewriterBase::create<OperationState>
+  ;; - CrestOwned<OpBuilder>   → %mlir::OpBuilder::create<OperationState>
+  (define (crest:create-op! ctx state)
+    (if (crest::isa<CrestRef<mlir::RewriterBase>>? ctx)
+        (%mlir::RewriterBase::create<OperationState> ctx state)
+        (%mlir::OpBuilder::create<OperationState> ctx state)))
 
   ;;===--------------------------------------------------------------------===;;
   ;; begin-mlir-code
@@ -144,46 +153,20 @@
       ;; Main entry
       ;;-------------------------------------------------------------------
 
-      ;; Collect all (var . expr) pairs from every op form and emit a flat
-      ;; let* returning the last bound variable.
-      ;; (:rewriter rw) — rw is CrestRef<RewriterBase>*, uses %mlir::RewriterBase::create<OperationState>
-      ;; (:builder b)   — b is CrestOwned<OpBuilder>*, uses %mlir::OpBuilder::create<OperationState>
-      ;; The two create bindings use different casts and are NOT interchangeable.
-      ;; Plain (ctx op ...) — runtime dispatch on crest::isa<CrestRef<mlir::RewriterBase>>? / crest::isa<CrestOwned<mlir::OpBuilder>>?.
+      ;; Single case: ctx is any builder (CrestRef<RewriterBase> or
+      ;; CrestOwned<OpBuilder>). crest:create-op! dispatches at runtime.
       (define (main)
-        (syntax-case stx (:rewriter :builder)
-          [(_ (:rewriter rw) op ...)
-           (let ([pairs (loop :for op-stx :in (syntax->list #'(op ...))
-                              :for index :from 0
-                              :append (process-op op-stx index #'rw
-                                                  #'%mlir::RewriterBase::create<OperationState>))])
-             (if (null? pairs)
-                 #'(if #f #f)
-                 (with-syntax ([(binding ...) (loop :for pair :in pairs
-                                                    :collect (make-binding pair))]
-                               [result        (car (car (reverse pairs)))])
-                   #'(let* (binding ...) result))))]
-          [(_ (:builder b) op ...)
-           (let ([pairs (loop :for op-stx :in (syntax->list #'(op ...))
-                              :for index :from 0
-                              :append (process-op op-stx index #'b
-                                                  #'%mlir::OpBuilder::create<OperationState>))])
-             (if (null? pairs)
-                 #'(if #f #f)
-                 (with-syntax ([(binding ...) (loop :for pair :in pairs
-                                                    :collect (make-binding pair))]
-                               [result        (car (car (reverse pairs)))])
-                   #'(let* (binding ...) result))))]
-          ;; Runtime dispatch: detect type at runtime and delegate to tagged form.
-          ;; %ctx is evaluated once; cond chooses the correct create binding.
+        (syntax-case stx ()
           [(_ ctx op ...)
-           #'(let ([%ctx ctx])
-               (cond
-                [(crest::isa<CrestRef<mlir::RewriterBase>>? %ctx) (begin-mlir-code (:rewriter %ctx) op ...)]
-                [(crest::isa<CrestOwned<mlir::OpBuilder>>?    %ctx) (begin-mlir-code (:builder  %ctx) op ...)]
-                [else (error 'begin-mlir-code
-                             "expected a RewriterBase or OpBuilder"
-                             %ctx)]))]))
+           (let ([pairs (loop :for op-stx :in (syntax->list #'(op ...))
+                              :for index :from 0
+                              :append (process-op op-stx index #'ctx))])
+             (if (null? pairs)
+                 #'(if #f #f)
+                 (with-syntax ([(binding ...) (loop :for pair :in pairs
+                                                    :collect (make-binding pair))]
+                               [result        (car (car (reverse pairs)))])
+                   #'(let* (binding ...) result))))]))
 
 
       ;;-------------------------------------------------------------------
@@ -191,12 +174,9 @@
       ;;-------------------------------------------------------------------
 
       ;; Parse one op-form; return a flat list of (var . expr) pairs.
-      ;; builder-stx   — syntax object for the active builder expression
-      ;; create-sym-stx — %mlir::RewriterBase::create<OperationState> for outer DDR body,
-      ;;                  %mlir::OpBuilder::create<OperationState> for ^bb0 block builders.
-      ;;                  These are NOT interchangeable: OpBuilder has no vtable, so its
-      ;;                  subobject within RewriterBase is at a non-zero offset.
-      (define (process-op op-stx index builder-stx create-sym-stx)
+      ;; builder-stx — syntax object for the active builder expression.
+      ;; crest:create-op! dispatches to the correct C++ create at runtime.
+      (define (process-op op-stx index builder-stx)
         (syntax-case op-stx (= ->)
           ;; Scheme escape
           [(var = expr)
@@ -205,22 +185,22 @@
           ;; Single-result: normalize (var) to ((var)) and result-type to (result-type)
           [(var = op (operands ...) modifiers ... -> result-type)
            (and (identifier? #'var) (op-name? #'op))
-           (process-op #'((var) = op (operands ...) modifiers ... -> (result-type)) index builder-stx create-sym-stx)]
+           (process-op #'((var) = op (operands ...) modifiers ... -> (result-type)) index builder-stx)]
           ;; Multi-result: #'op carries the source annotation of the op name.
           [((var ...) = op (operands ...) modifiers ... -> (result-type ...))
            (and (op-name? #'op)
                 (for-all identifier? (syntax->list #'(var ...)))
                 (eqv? (length (syntax->list #'(var ...)))
                       (length (syntax->list #'(result-type ...)))))
-           (let-values ([(attr-setter-fns region-fill-fns) (parse-modifiers #'(modifiers ...) builder-stx create-sym-stx)])
+           (let-values ([(attr-setter-fns region-fill-fns) (parse-modifiers #'(modifiers ...) builder-stx)])
              (emit-multi (syntax->list #'(var ...)) (op-name->str #'op)
                          (value-operands #'(operands ...))
                          (syntax->list #'(result-type ...)) attr-setter-fns
-                         region-fill-fns index #'op builder-stx create-sym-stx))]
+                         region-fill-fns index #'op builder-stx))]
           ;; Statement: no var, no ->.
           [(op (operands ...) modifiers ...)
            (op-name? #'op)
-           (process-op #'(() = op (operands ...) modifiers ... -> ()) index builder-stx create-sym-stx)]
+           (process-op #'(() = op (operands ...) modifiers ... -> ()) index builder-stx)]
           [_ (syntax-violation 'begin-mlir-code "invalid op form" op-stx)]))
 
       ;;-------------------------------------------------------------------
@@ -257,7 +237,7 @@
       ;;   %r = "scf.for" (%lo %hi %step)
       ;;          (:region (^bb0 ((i : index)) body...) (^bb1 () exit...))
       ;;          -> (i32)
-      (define (parse-modifiers modifiers-stx builder-stx create-sym-stx)
+      (define (parse-modifiers modifiers-stx builder-stx)
         (let loop ([rest modifiers-stx] [attr-setter-fns '()] [region-fill-fns '()])
           (syntax-case rest (= : :region)
             [()
@@ -333,7 +313,7 @@
       ;; bindings in the final expansion.
       ;;
       ;; Always generates a tmp binding for the Operation* itself:
-      ;;   (%op-tmp-N . (let ([new-op (builder name operands result-types nregions)])
+      ;;   (%op-tmp-N . (let ([new-op (crest:create-op! builder state)])
       ;;                  setter ...           ; apply attributes
       ;;                  region-fill-stmt ... ; fill each region
       ;;                  new-op))
@@ -350,9 +330,7 @@
       ;;   attr-setter-fns  — Scheme list of closures (lambda (new-op-stx) → setter-syntax)
       ;;   region-fill-fns  — Scheme list of closures (lambda (new-op-stx) → fill-stmt-syntax)
       ;;   index            — integer op index, used to generate a unique %op-tmp-N name
-      ;; create-sym-stx — %mlir::RewriterBase::create<OperationState> or
-      ;;                  %mlir::OpBuilder::create<OperationState>, chosen by main.
-      (define (emit-multi result-vars op-name operands result-types attr-setter-fns region-fill-fns index op-name-stx builder-stx create-sym-stx)
+      (define (emit-multi result-vars op-name operands result-types attr-setter-fns region-fill-fns index op-name-stx builder-stx)
         (let* ([nregions  (length region-fill-fns)]
                [new-op-id (car (generate-temporaries '(new-op)))]
                [tmp       (car (generate-temporaries
@@ -361,7 +339,6 @@
                         [(result-type ...) result-types] [tmp-var tmp]
                         [new-op new-op-id]
                         [builder builder-stx]
-                        [create-sym create-sym-stx]
                         [(setter ...) (map (lambda (fn) (fn new-op-id)) attr-setter-fns)]
                         [(region-fill-stmt ...) (map (lambda (fn) (fn new-op-id)) region-fill-fns)]
                         [nregions nregions])
@@ -375,7 +352,7 @@
                                                                    (when (< i nregions)
                                                                      (%mlir::OperationState::addRegion state)
                                                                      (loop (+ i 1))))
-                                                                 (create-sym builder state)))])
+                                                                 (crest:create-op! builder state)))])
                               setter ...
                               region-fill-stmt ...
                               new-op)))
@@ -426,7 +403,7 @@
                [block-builder-id (datum->syntax user-scope-id '%block-builder)]
                [body-stx         (with-syntax ([(body ...) body-ops]
                                                [block-builder block-builder-id])
-                                   #'(begin-mlir-code (:builder block-builder) body ...))]
+                                   #'(begin-mlir-code block-builder body ...))]
                [arg-bind-pairs   (loop :for var :in arg-vars
                                        :for i :from 0
                                        :collect (cons var #`(mlir::Block::getArgument block #,i)))])

@@ -54,7 +54,7 @@
   ;;   _, trailing = split_at(data_shape, axis+1)
   ;;   result = concat(concat(leading, indices_shape), trailing)
   (define (build-gather-shape! builder axis data-shape idx-shape shape-type size-type)
-    (begin-mlir-code (:builder builder)
+    (begin-mlir-code builder
                      (%sz1              = shape.const_size ()
                                         ("value" = (mlir::IntegerAttr::get<index> axis))
                                         -> size-type)
