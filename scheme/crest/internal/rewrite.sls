@@ -324,21 +324,22 @@
           (lambda (state-stx)
             (with-syntax ([state state-stx] [n name-str] [v val-stx])
               #'(mlir::OperationState::addAttribute state n v))))
-        (syntax-case attr-stx (=)
-          ;; String literal name — use directly
-          [(name = val type) (string? (syntax->datum #'name))
-           (make-typed-setter  (syntax->datum #'name) #'val #''type)]
-          [(name = val)      (string? (syntax->datum #'name))
-           (make-direct-setter (syntax->datum #'name) #'val)]
-          ;; Symbol name — normalise to string and recurse into string branch.
-          ;; '. rest' captures the optional type argument (either () or (type)).
-          [(name = val . rest) (symbol? (syntax->datum #'name))
-           (with-syntax ([str-name (datum->syntax #'name
-                                                  (symbol->string (syntax->datum #'name)))])
-             (make-attr-setter #'(str-name = val . rest)))]
-          [_ (syntax-violation 'begin-mlir-code
-                               "attr modifier: (name = val :type) or (name = val) for pre-built attr"
-                               attr-stx)]))
+        ;; Named loop: symbol names are normalised to strings, then retried.
+        (let parse ([stx attr-stx])
+          (syntax-case stx (=)
+            ;; String literal name — canonical form, dispatch to setters
+            [(name = val type) (string? (syntax->datum #'name))
+             (make-typed-setter  (syntax->datum #'name) #'val #''type)]
+            [(name = val)      (string? (syntax->datum #'name))
+             (make-direct-setter (syntax->datum #'name) #'val)]
+            ;; Symbol name — normalise to string and retry
+            [(name = val . rest) (symbol? (syntax->datum #'name))
+             (with-syntax ([str-name (datum->syntax #'name
+                                                    (symbol->string (syntax->datum #'name)))])
+               (parse #'(str-name = val . rest)))]
+            [_ (syntax-violation 'begin-mlir-code
+                                 "attr modifier: (name = val :type) or (name = val) for pre-built attr"
+                                 stx)])))
 
       ;;-------------------------------------------------------------------
       ;; Code emitters
