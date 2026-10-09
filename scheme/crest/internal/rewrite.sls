@@ -256,7 +256,10 @@
       (define (parse-modifiers modifiers-stx builder-stx)
         (define (attr-modifier? m)
           (syntax-case m (=)
-            [(name = val . qualifier)
+            [(name = val type)
+             (let ([d (syntax->datum #'name)])
+               (or (string? d) (symbol? d)))]
+            [(name = val)
              (let ([d (syntax->datum #'name)])
                (or (string? d) (symbol? d)))]
             [_ #f]))
