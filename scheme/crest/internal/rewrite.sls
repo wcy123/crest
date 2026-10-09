@@ -291,13 +291,16 @@
             (make-block-fill-fn arg-vars arg-types body-ops builder-stx builder-name)))
         (define (make-region-fill-fn region-index block-fill-fns)
           (lambda (op-stx)
-            (with-syntax ([new-op     op-stx]
-                          [region-idx region-index]
-                          [region-id  (car (generate-temporaries '(region)))]
-                          [(block-fill-stmt ...)
-                           (map (lambda (fn) (fn #'region-id)) block-fill-fns)])
-              #'(let ([region-id (mlir::Operation::getRegion new-op region-idx)])
-                  block-fill-stmt ...))))
+            ;; region-id must be in scope as a Scheme value before with-syntax
+            ;; because (map (fn region-id) ...) runs during binding evaluation —
+            ;; with-syntax bindings are parallel, so [region-id ...] wouldn't help.
+            (let ([region-id (car (generate-temporaries '(region)))])
+              (with-syntax ([new-op     op-stx]
+                            [region-idx region-index]
+                            [(block-fill-stmt ...)
+                             (map (lambda (fn) (fn region-id)) block-fill-fns)])
+                #`(let ([#,region-id (mlir::Operation::getRegion new-op region-idx)])
+                    block-fill-stmt ...)))))
         (define (make-direct-setter name-str val-stx)
           (lambda (state-stx)
             (with-syntax ([state state-stx] [n name-str] [v val-stx])
