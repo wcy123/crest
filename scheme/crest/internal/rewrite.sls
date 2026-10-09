@@ -254,14 +254,13 @@
       ;;   (^bb0 b ((%x : i32)) body ...)                 — shorthand, builder named b
       ;;   (:region (^bb0 ((i : index)) body...) (^exit () exit...))  — full form
       (define (parse-modifiers modifiers-stx builder-stx)
+        (define (attr-name? x)
+          (let ([d (syntax->datum x)])
+            (or (string? d) (symbol? d))))
         (define (attr-modifier? m)
           (syntax-case m (=)
-            [(name = val type)
-             (let ([d (syntax->datum #'name)])
-               (or (string? d) (symbol? d)))]
-            [(name = val)
-             (let ([d (syntax->datum #'name)])
-               (or (string? d) (symbol? d)))]
+            [(name = val type) (attr-name? #'name) #t]
+            [(name = val)      (attr-name? #'name) #t]
             [_ #f]))
         (define (make-region-fn m region-idx)
           (syntax-case m (:region)
