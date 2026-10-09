@@ -7,8 +7,6 @@
 #define CREST_BINDINGS_SCHEME_WRAPPER_H
 #include "CrestObject.h"
 #include <array>
-#include <cstdio>
-#include <cstdlib>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -195,18 +193,9 @@ inline SValue convert_to_scheme(SValue v) { return v; }
 // both.
 
 // Resolve a top-level Scheme name to its procedure value.
-// Logs to stderr and aborts if the name is unbound — Scheme exceptions are
-// rarely caught, so a direct stderr message is more reliable.
-// Must stay inline — defined in a header included by multiple TUs.
-inline SValue convert_to_scheme_func(const char* fname) {
-  SValue f = Stop_level_value(Sstring_to_symbol(fname));
-  if (f == Sfalse) {
-    fprintf(stderr, "error: scheme_call: unbound Scheme function '%s'\n",
-            fname);
-    std::abort();
-  }
-  return f;
-}
+// Logs to stderr and aborts if the name is unbound — defined in
+// SchemeWrapper.cpp.
+SValue convert_to_scheme_func(const char* fname);
 inline SValue convert_to_scheme_func(SValue f) { return f; }
 
 template <typename F> inline SValue scheme_call(F f) {
