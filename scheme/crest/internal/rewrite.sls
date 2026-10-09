@@ -377,7 +377,12 @@
                           builder-stx)  ; syntax — the active builder expression
         (let* ([nregions  (length region-fill-fns)]  ; number of region modifiers
                [op-var   (op-tmp-id index)]           ; %op-tmp-N — outer let* binding
-               [state-id (car (generate-temporaries '(state)))])  ; gensym for OperationState
+               [state-id (car (generate-temporaries '(state)))]  ; gensym for OperationState
+               ;; Generate N addRegion calls using state-id directly via #`
+               ;; (can't use the 'state pattern var — with-syntax bindings are parallel).
+               [addregion-calls
+                (loop :for i :from 0 :below nregions
+                      :collect #`(mlir::OperationState::addRegion #,state-id))])
           (with-syntax
               ([operands-expr  operands]         ; runtime operand list expr
                [name           op-name]          ; string literal
@@ -393,11 +398,7 @@
                ;; pre-OperationState block violates MLIR's parent-op invariants.
                [(region-fill-stmt ...)
                 (map (lambda (fn) (fn op-var)) region-fill-fns)]
-               ;; Unroll N addRegion calls at expand time — pre-allocates region slots.
-               ;; 'state' in the template refers to the with-syntax binding above.
-               [(addregion-call ...)
-                (loop :for i :from 0 :below nregions
-                      :collect #'(mlir::OperationState::addRegion state))]
+               [(addregion-call ...) addregion-calls]
                [source-loc (syntax->mlir-loc-expr op-name-stx)])
             (cons
              ;; Binding descriptor: op-tmp bound to the created Operation*.
