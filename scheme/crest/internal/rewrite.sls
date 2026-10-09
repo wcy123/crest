@@ -279,6 +279,13 @@
             [_ (syntax-violation 'begin-mlir-code "invalid modifier entry" m)]))
         ;; Split a tagged list into (values attr-fns region-fns).
         ;; Applies region indices by position in the filtered region list.
+
+        ;; True when x is a block label identifier starting with ^.
+        (define (block-label? x)
+          (let ([datum (syntax->datum x)])
+            (and (symbol? datum)
+                 (char=? #\^ (string-ref (symbol->string datum) 0)))))
+
         (define (split-modifiers tagged)
           (values
            (loop :for e :in tagged :if (eq? (car e) 'attr) :collect (cdr e))
@@ -349,13 +356,6 @@
         (split-modifiers
          (loop :for m :in (syntax->list modifiers-stx) :collect (classify m)))
         )
-
-      ;; True when x is a block label identifier starting with ^.
-      (define (block-label? x)
-        (let ([datum (syntax->datum x)])
-          (and (symbol? datum)
-               (char=? #\^ (string-ref (symbol->string datum) 0)))))
-
       ;;-------------------------------------------------------------------
       ;; Code emitters
       ;;-------------------------------------------------------------------
