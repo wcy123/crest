@@ -72,7 +72,7 @@
           (only (mlir IR Builders)
                 crest::isa<CrestOwned<mlir::OpBuilder>>?
                 mlir::OpBuilder::create<OperationState>)
-          (only (mlir support array-ref) CrestObject::delete)
+          (only (mlir support array-ref) with-CrestObject)
           (for (only (mlir IR Builders)
                      mlir::OpBuilder::atBlockEnd) expand)
           (for (only (mlir IR OperationSupport)
@@ -315,11 +315,8 @@
                             [region        region-stx])
                 #'(let* ([block (mlir::Region::push_back<Block> region (list arg-type ...))]
                          arg-binding ...)
-                    (let ([block-builder (mlir::OpBuilder::atBlockEnd block)])
-                      (dynamic-wind
-                          (lambda () #f)
-                          (lambda () body)
-                          (lambda () (CrestObject::delete block-builder)))))))))
+                    (with-CrestObject (block-builder (mlir::OpBuilder::atBlockEnd block))
+                                      body))))))
         (define (make-region-fill-fn region-index block-fill-fns)
           (lambda (op-stx)
             ;; region-id must be in scope as a Scheme value before with-syntax
