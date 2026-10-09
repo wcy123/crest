@@ -47,43 +47,43 @@
           (only (mlir IR Operation)
                 mlir::Operation::getContext)
           (only (mlir IR MLIRContext)
-                with-MLIRContext)
+                with-current-MLIRContext)
           )
 
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
-      (with-MLIRContext ctx
-                        (with-RewritePatternSet (patterns ctx)
-                                                (add-rewrite-pattern patterns "hip.quantize_linear"
-                                                                     hip-qadd-fusion 10)
-                                                (add-rewrite-pattern patterns "hip.quantize_linear"
-                                                                     hip-qmul-fusion 10)
-                                                (add-rewrite-pattern patterns "hip.quantize_linear"
-                                                                     hip-qmatmul-fusion 10)
-                                                (add-rewrite-pattern patterns "hip.quantize_linear"
-                                                                     hip-qmatmul-per-col-w4 9)
-                                                (add-rewrite-pattern patterns "hip.quantize_linear"
-                                                                     hip-qmatmul-per-col-w8 9)
-                                                (add-rewrite-pattern patterns "hip.quantize_linear"
-                                                                     hip-qgemm-fusion 10)
-                                                (add-rewrite-pattern patterns "hip.quantize_linear"
-                                                                     hip-qgemm-no-bias 10)
-                                                (add-rewrite-pattern patterns "hip.quantize_linear"
-                                                                     hip-qgemm-per-channel 9)
-                                                (add-rewrite-pattern patterns "hip.quantize_linear"
-                                                                     hip-qgemm-no-bias-per-channel 9)
-                                                (add-rewrite-pattern patterns "hip.quantize_linear"
-                                                                     hip-qconv-fusion 10)
-                                                (add-rewrite-pattern patterns "hip.quantize_linear"
-                                                                     hip-qsigmoid-fusion 10)
-                                                (add-rewrite-pattern patterns "hip.quantize_linear"
-                                                                     hip-qlpnorm-fusion 10)
-                                                (add-rewrite-pattern patterns "hip.quantize_linear"
-                                                                     hip-qdq-roundtrip-dps 10)
-                                                (add-rewrite-pattern patterns "hip.quantize_linear"
-                                                                     hip-qdq-roundtrip-tensor 10)
-                                                (add-rewrite-pattern patterns "hip.quantize_linear"
-                                                                     hip-qdq-roundtrip-pair 10)
-                                                (mlir::applyPatternsGreedily module-op patterns)))))
+      (with-current-MLIRContext ctx
+                                (with-RewritePatternSet (patterns ctx)
+                                                        (add-rewrite-pattern patterns "hip.quantize_linear"
+                                                                             hip-qadd-fusion 10)
+                                                        (add-rewrite-pattern patterns "hip.quantize_linear"
+                                                                             hip-qmul-fusion 10)
+                                                        (add-rewrite-pattern patterns "hip.quantize_linear"
+                                                                             hip-qmatmul-fusion 10)
+                                                        (add-rewrite-pattern patterns "hip.quantize_linear"
+                                                                             hip-qmatmul-per-col-w4 9)
+                                                        (add-rewrite-pattern patterns "hip.quantize_linear"
+                                                                             hip-qmatmul-per-col-w8 9)
+                                                        (add-rewrite-pattern patterns "hip.quantize_linear"
+                                                                             hip-qgemm-fusion 10)
+                                                        (add-rewrite-pattern patterns "hip.quantize_linear"
+                                                                             hip-qgemm-no-bias 10)
+                                                        (add-rewrite-pattern patterns "hip.quantize_linear"
+                                                                             hip-qgemm-per-channel 9)
+                                                        (add-rewrite-pattern patterns "hip.quantize_linear"
+                                                                             hip-qgemm-no-bias-per-channel 9)
+                                                        (add-rewrite-pattern patterns "hip.quantize_linear"
+                                                                             hip-qconv-fusion 10)
+                                                        (add-rewrite-pattern patterns "hip.quantize_linear"
+                                                                             hip-qsigmoid-fusion 10)
+                                                        (add-rewrite-pattern patterns "hip.quantize_linear"
+                                                                             hip-qlpnorm-fusion 10)
+                                                        (add-rewrite-pattern patterns "hip.quantize_linear"
+                                                                             hip-qdq-roundtrip-dps 10)
+                                                        (add-rewrite-pattern patterns "hip.quantize_linear"
+                                                                             hip-qdq-roundtrip-tensor 10)
+                                                        (add-rewrite-pattern patterns "hip.quantize_linear"
+                                                                             hip-qdq-roundtrip-pair 10)
+                                                        (mlir::applyPatternsGreedily module-op patterns)))))
 
   ) ;; end library (passes hip-fusion)

@@ -180,7 +180,7 @@ Every RAII macro that manages the lifetime of a specific C++ object is named
 after the C++ class it wraps:
 
 ```scheme
-(with-MLIRContext ctx body ...)       ; wraps mlir::MLIRContext*
+(with-current-MLIRContext ctx body ...)       ; wraps mlir::MLIRContext*
 (with-TypeConverter (tc) body ...)    ; wraps mlir::TypeConverter
 (with-ConversionTarget (t ctx) body ...) ; wraps mlir::ConversionTarget
 (with-RewritePatternSet (ps ctx) body ...) ; wraps mlir::RewritePatternSet
@@ -213,7 +213,7 @@ The RAII macro lives in the same Scheme module that wraps the C++ class:
 
 | Macro | Module | C++ header |
 |---|---|---|
-| `with-MLIRContext` | `(mlir IR MLIRContext)` | `mlir/IR/MLIRContext.h` |
+| `with-current-MLIRContext` | `(mlir IR MLIRContext)` | `mlir/IR/MLIRContext.h` |
 | `with-RewriterBase` | `(mlir IR PatternMatch)` | `mlir/IR/PatternMatch.h` |
 | `with-RewritePatternSet` | `(mlir IR PatternMatch)` | `mlir/IR/PatternMatch.h` |
 | `with-OpBuilder` | `(mlir IR Builders)` | `mlir/IR/Builders.h` |

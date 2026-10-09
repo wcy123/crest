@@ -10,10 +10,10 @@
 ;;
 ;; Mirrors mlir/IR/MLIRContext.h.
 ;; Provides the ambient context parameter (current-MLIRContext,
-;; with-MLIRContext) and clean wrappers around the raw FFI bindings.
+;; with-current-MLIRContext) and clean wrappers around the raw FFI bindings.
 ;;
 ;; Usage:
-;;   (with-MLIRContext ctx
+;;   (with-current-MLIRContext ctx
 ;;     (mlir::MLIRContext::loadAllAvailableDialects ctx)
 ;;     (mlir::MLIRContext::allowUnregisteredDialects ctx #t))
 ;;
@@ -22,7 +22,7 @@
 (library (mlir IR MLIRContext)
   (export
     current-MLIRContext
-    with-MLIRContext
+    with-current-MLIRContext
     define-ctx-optional
     mlir::MLIRContext::allowUnregisteredDialects
     mlir::MLIRContext::allowsUnregisteredDialects?
@@ -40,17 +40,17 @@
 
   ;; @brief current-MLIRContext — dynamic parameter holding the ambient MLIRContext* uptr.
   ;; @return  MLIRContext* as uptr, or #f when no context is installed
-  ;; @see     with-MLIRContext, mlir/IR/MLIRContext.h
-  ;; @note    Set via (parameterize ([current-MLIRContext ctx]) ...) or with-MLIRContext
+  ;; @see     with-current-MLIRContext, mlir/IR/MLIRContext.h
+  ;; @note    Set via (parameterize ([current-MLIRContext ctx]) ...) or with-current-MLIRContext
   (define current-MLIRContext (make-parameter #f))
 
-  ;; @brief with-MLIRContext — RAII macro: install ctx as current-MLIRContext for body forms.
+  ;; @brief with-current-MLIRContext — RAII macro: install ctx as current-MLIRContext for body forms.
   ;; @param ctx   MLIRContext* uptr to bind as the ambient context
   ;; @param body  One or more expressions evaluated with current-MLIRContext = ctx
   ;; @return      Value of the last body expression
   ;; @see         current-MLIRContext, mlir/IR/MLIRContext.h
   ;; @note        Implemented via parameterize; the previous value is restored on exit (normal or exception)
-  (define-syntax with-MLIRContext
+  (define-syntax with-current-MLIRContext
     (syntax-rules ()
       [(_ ctx body ...)
        (parameterize ([current-MLIRContext ctx]) body ...)]))
