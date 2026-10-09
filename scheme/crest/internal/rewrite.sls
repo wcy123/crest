@@ -373,9 +373,9 @@
                           index         ; integer — op position in begin-mlir-code
                           op-name-stx   ; syntax — carries source location annotation
                           builder-stx)  ; syntax — the active builder expression
-        (let* ([nregions  (length region-fill-fns)]
-               [new-op-id (car (generate-temporaries '(new-op)))]
-               [tmp       (op-tmp-id index)])
+        (let* ([nregions  (length region-fill-fns)]  ; number of region modifiers
+               [new-op-id (car (generate-temporaries '(new-op)))]  ; gensym for mlir::Operation* inside let
+               [tmp       (op-tmp-id index)])  ; gensym exposed in outer let* as %op-tmp-N
           (with-syntax
               ([operands-expr  operands]         ; runtime operand list expr
                [name           op-name]          ; string literal
