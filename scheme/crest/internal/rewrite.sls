@@ -314,9 +314,6 @@
       ;; Both generate (mlir::OperationState::addAttribute state name attr) — called
       ;; BEFORE %%crest:create-op! so the attribute is part of the OperationState.
       (define (make-attr-setter attr-stx)
-        (define (name->str x)
-          (let ([datum (syntax->datum x)])
-            (if (string? datum) datum (symbol->string datum))))
         (define (make-typed-setter name-str val-stx type-quoted-stx)
           (lambda (state-stx)
             (with-syntax ([state  state-stx] [n name-str] [v val-stx]
@@ -328,8 +325,18 @@
             (with-syntax ([state state-stx] [n name-str] [v val-stx])
               #'(mlir::OperationState::addAttribute state n v))))
         (syntax-case attr-stx (=)
-          [(name = val type)  (make-typed-setter  (name->str #'name) #'val #''type)]
-          [(name = val)       (make-direct-setter (name->str #'name) #'val)]
+          ;; String literal name — use directly
+          [(name = val type) (string? (syntax->datum #'name))
+           (make-typed-setter  (syntax->datum #'name) #'val #''type)]
+          [(name = val)      (string? (syntax->datum #'name))
+           (make-direct-setter (syntax->datum #'name) #'val)]
+          ;; Symbol name — normalise to string and recurse into string branch
+          [(name = val type) (symbol? (syntax->datum #'name))
+           (make-attr-setter
+            #`(#,(datum->syntax #'name (symbol->string (syntax->datum #'name))) = val type))]
+          [(name = val)      (symbol? (syntax->datum #'name))
+           (make-attr-setter
+            #`(#,(datum->syntax #'name (symbol->string (syntax->datum #'name))) = val))]
           [_ (syntax-violation 'begin-mlir-code
                                "attr modifier: (name = val :type) or (name = val) for pre-built attr"
                                attr-stx)]))
