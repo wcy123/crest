@@ -292,21 +292,20 @@
         (define (make-block-fill blk)
           (apply make-block-fill-fn (parse-block-form blk)))
         (define (make-block-fill-fn builder-name-stx arg-vars arg-types body-ops)
-          (let* ([block-builder-id (if builder-name-stx
-                                       builder-name-stx
-                                       (car (generate-temporaries '(block-builder))))]
-                 [body-stx         (with-syntax ([(body ...) body-ops]
-                                                 [block-builder block-builder-id])
-                                     #'(begin-mlir-code block-builder body ...))]
-                 [arg-bind-pairs   (loop :for var :in arg-vars
-                                         :for i :from 0
-                                         :collect (cons var #`(mlir::Block::getArgument block #,i)))])
+          ;; builder-name-stx is always a valid identifier — parse-block-form
+          ;; generates a gensym when the user didn't provide an explicit name.
+          (let* ([body-stx       (with-syntax ([(body ...) body-ops]
+                                               [block-builder builder-name-stx])
+                                   #'(begin-mlir-code block-builder body ...))]
+                 [arg-bind-pairs (loop :for var :in arg-vars
+                                       :for i :from 0
+                                       :collect (cons var #`(mlir::Block::getArgument block #,i)))])
             (lambda (region-stx)
               (with-syntax ([(arg-type ...) arg-types]
                             [(arg-binding ...) (loop :for pair :in arg-bind-pairs
                                                      :collect (make-binding pair))]
                             [body          body-stx]
-                            [block-builder block-builder-id]
+                            [block-builder builder-name-stx]
                             [region        region-stx])
                 #'(let* ([block (mlir::Region::push_back<Block> region (list arg-type ...))]
                          arg-binding ...)
@@ -335,10 +334,13 @@
           (let* ([elems  (syntax->list block-stx)]
                  [second (list-ref elems 1)])
             (if (identifier? second)
+                ;; Explicit builder name provided by user
                 (let ([av-at (split-arg-types (syntax->list (list-ref elems 2)))])
                   (list second (car av-at) (cadr av-at) (list-tail elems 3)))
+                ;; No builder name — generate a gensym so callers always get a valid id
                 (let ([av-at (split-arg-types (syntax->list second))])
-                  (list #f (car av-at) (cadr av-at) (list-tail elems 2))))))
+                  (list (car (generate-temporaries '(block-builder)))
+                        (car av-at) (cadr av-at) (list-tail elems 2))))))
         ;; Split ((arg : type) ...) syntax into two lists: arg identifiers and types.
         (define (split-arg-types arg-type-list)
           (let ([arg-vars '()] [arg-types '()])
