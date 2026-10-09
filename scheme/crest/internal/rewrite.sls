@@ -329,31 +329,26 @@
         ;; Parse a full block stx of the form:
         ;;   (^label ((arg : type) ...) body ...)         — no builder name
         ;;   (^label builder-name ((arg : type) ...) ...) — explicit builder name
-        ;; Returns (list builder-name-stx arg-vars arg-types body-ops).
+        ;; Returns (list builder-id arg-vars arg-types body-ops).
+        ;; Uses : as a literal keyword to match (arg : type) pairs directly.
         (define (parse-block-form block-stx)
-          ;; (^label builder-id ((arg : type) ...) body ...)  — explicit builder id
-          ;; (^label ((arg : type) ...) body ...)               — inject gensym, retry
           (let parse ([stx block-stx])
-            (syntax-case stx ()
-              ;; No builder-id — inject gensym and retry (normalisation)
-              [(label arg-list . body) (not (identifier? #'arg-list))
+            (syntax-case stx (:)
+              ;; No builder-id — inject gensym and retry
+              [(label ((arg : type) ...) . body)
+               (for-all identifier? (syntax->list #'(arg ...)))
                (with-syntax ([tmp (car (generate-temporaries '(block-builder)))])
-                 (parse #'(label tmp arg-list . body)))]
-              ;; Terminal: builder-id present
-              [(label builder-id arg-list . body) (identifier? #'builder-id)
-               (let ([av-at (split-arg-types (syntax->list #'arg-list))])
-                 (list #'builder-id (car av-at) (cadr av-at) (syntax->list #'body)))])))
-        ;; Split ((arg : type) ...) syntax into two lists: arg identifiers and types.
-        (define (split-arg-types arg-type-list)
-          (let ([arg-vars '()] [arg-types '()])
-            (for-each (lambda (entry)
-                        (let ([elems (syntax->list entry)])
-                          (set! arg-vars (append arg-vars (list (list-ref elems 0))))
-                          (set! arg-types (append arg-types (list (list-ref elems 2))))))
-                      arg-type-list)
-            (list arg-vars arg-types)))
+                 (parse #'(label tmp ((arg : type) ...) . body)))]
+              ;; Terminal: builder-id present — extract arg/type lists via pattern
+              [(label builder-id ((arg : type) ...) . body)
+               (and (identifier? #'builder-id) (for-all identifier? (syntax->list #'(arg ...))))
+               (list #'builder-id
+                     (syntax->list #'(arg ...))
+                     (syntax->list #'(type ...))
+                     (syntax->list #'body))])))
         (split-modifiers
-         (loop :for m :in (syntax->list modifiers-stx) :collect (classify m))))
+         (loop :for m :in (syntax->list modifiers-stx) :collect (classify m)))
+        )
 
       ;; True when x is a block label identifier starting with ^.
       (define (block-label? x)
