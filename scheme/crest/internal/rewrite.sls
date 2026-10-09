@@ -290,8 +290,8 @@
             (with-syntax ([state state-stx] [n name-str] [v val-stx])
               #'(mlir::OperationState::addAttribute state n v))))
         (define (make-block-fill blk)
-          (apply make-block-fill-fn builder-stx (parse-block-form blk)))
-        (define (make-block-fill-fn builder-stx builder-name-stx arg-vars arg-types body-ops)
+          (apply make-block-fill-fn (parse-block-form blk)))
+        (define (make-block-fill-fn builder-name-stx arg-vars arg-types body-ops)
           (let* ([block-builder-id (if builder-name-stx
                                        builder-name-stx
                                        (car (generate-temporaries '(block-builder))))]
