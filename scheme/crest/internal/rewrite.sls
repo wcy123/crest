@@ -395,23 +395,22 @@
                       :collect #'(mlir::OperationState::addRegion state))]
                [source-loc (syntax->mlir-loc-expr op-name-stx)])
             (cons
-             ;; Binding for the Operation* itself
-             (cons #'op-tmp
-                   #'(let ([op
-                            (let ()
-                              (with-OperationState
-                               (state source-loc name)
-                               (for-each
-                                (lambda (v) (mlir::OperationState::addOperands state v))
-                                operands-expr)
-                               (for-each
-                                (lambda (t) (mlir::OperationState::addTypes state t))
-                                (list result-type ...))
-                               addregion-call ...        ; N addRegion calls, inlined
-                               (%%crest:create-op! builder state)))])
-                       setter ...           ; apply attributes
-                       region-fill-stmt ... ; fill regions
-                       op))
+             ;; Binding for the Operation* itself: (op-tmp . let-expr)
+             #`(op-tmp . (let ([op
+                                (let ()
+                                  (with-OperationState
+                                   (state source-loc name)
+                                   (for-each
+                                    (lambda (v) (mlir::OperationState::addOperands state v))
+                                    operands-expr)
+                                   (for-each
+                                    (lambda (t) (mlir::OperationState::addTypes state t))
+                                    (list result-type ...))
+                                   addregion-call ...        ; N addRegion calls, inlined
+                                   (%%crest:create-op! builder state)))])
+                           setter ...           ; apply attributes
+                           region-fill-stmt ... ; fill regions
+                           op))
              ;; Bindings for result variables
              (if (null? result-types)
                  ;; Zero-result: each var bound to the op itself
