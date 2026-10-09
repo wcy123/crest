@@ -107,6 +107,9 @@ inline SValue convert_to_scheme(unsigned char v) {
 // Raw C++ pointer types → Scheme uptr (unsigned tagged integer).
 // Non-template overloads (const char*, void*) take precedence in overload
 // resolution, so char* → Sstring and SValue → identity are unaffected.
+// WARNING: MLIR Op wrappers (ModuleOp, FuncOp, …) are NOT pointers — they
+// convert to bool via operator bool(), not to Operation*. Always extract
+// the underlying Operation* explicitly: op.getOperation().
 template <typename T> inline SValue convert_to_scheme(T* p) {
   return Sunsigned64(reinterpret_cast<uint64_t>(p));
 }

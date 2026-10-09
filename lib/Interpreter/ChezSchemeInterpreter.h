@@ -71,8 +71,6 @@ public:
   // "passes/my-rewrite" → (import (passes my-rewrite))
   // Returns false if the import fails.
   bool importLibrary(const std::string& slashSeparatedName);
-  void callPassFunction(const char* functionName, mlir::Operation* op);
-
   void addLibraryPath(const char* src_path, const char* bin_path);
 
   // For debugging only — returns a human-readable string of all (src . bin)

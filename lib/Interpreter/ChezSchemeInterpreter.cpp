@@ -246,18 +246,4 @@ bool ChezSchemeInterpreter::eval(const char* code) {
   return true;
 }
 
-// ─── Function calls
-// ───────────────────────────────────────────────────────────
-
-void ChezSchemeInterpreter::callPassFunction(const char* functionName,
-                                             mlir::Operation* op) {
-  ptr func = Stop_level_value(Sstring_to_symbol(functionName));
-  if (func == Sfalse) {
-    llvm::errs() << "Warning: Scheme function '" << functionName
-                 << "' not found\n";
-    return;
-  }
-  scheme_call(func, op);
-}
-
 } // namespace crest

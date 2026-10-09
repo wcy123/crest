@@ -81,7 +81,7 @@ struct CrestPass : public mlir::OperationPass<mlir::ModuleOp> {
       return signalPassFailure();
     }
 
-    interp->callPassFunction("run-pass", getOperation());
+    scheme_call("run-pass", getOperation().getOperation());
   }
 
 private:
