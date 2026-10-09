@@ -370,17 +370,18 @@
                         [builder builder-stx]
                         [(setter ...) (map (lambda (fn) (fn new-op-id)) attr-setter-fns)]
                         [(region-fill-stmt ...) (map (lambda (fn) (fn new-op-id)) region-fill-fns)]
-                        [nregions nregions])
+                        ;; Unroll addRegion calls at expand time — nregions is a compile-time
+                        ;; constant so we generate N calls inline instead of a runtime loop.
+                        [(addregion-call ...)
+                         (loop :for i :from 0 :below nregions
+                               :collect #'(mlir::OperationState::addRegion state))])
             (cons (cons #'tmp-var
                         (with-syntax ([source-loc (syntax->mlir-loc-expr op-name-stx)])
                           #'(let ([new-op (let ()
                                             (with-OperationState (state source-loc name)
                                                                  (for-each (lambda (v) (mlir::OperationState::addOperands state v)) operands-expr)
                                                                  (for-each (lambda (t) (mlir::OperationState::addTypes state t)) (list result-type ...))
-                                                                 (let loop ([i 0])
-                                                                   (when (< i nregions)
-                                                                     (mlir::OperationState::addRegion state)
-                                                                     (loop (+ i 1))))
+                                                                 addregion-call ...
                                                                  (%%crest:create-op! builder state)))])
                               setter ...
                               region-fill-stmt ...
