@@ -17,7 +17,6 @@
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Pass/PassRegistry.h"
 
-#include <algorithm>
 #include <memory>
 
 namespace crest {
@@ -73,14 +72,8 @@ struct CrestPass : public mlir::OperationPass<mlir::ModuleOp> {
         level, crest::registerMlirForeignFunctions);
     interp->setLogLevel(level);
 
-    // Convert slash-separated name to space-separated R6RS library name.
-    // e.g. "passes/my-rewrite" → "(import (passes my-rewrite))"
-    std::string lib = moduleName_;
-    std::replace(lib.begin(), lib.end(), '/', ' ');
-    std::string importCode = "(import (" + lib + "))";
-
-    if (!interp->eval(importCode.c_str())) {
-      auto err = getOperation().emitError("Failed to import (" + lib + ")");
+    if (!interp->importLibrary(moduleName_)) {
+      auto err = getOperation().emitError("Failed to import " + moduleName_);
       auto dirs = interp->getLibraryDirectories();
       if (!dirs.empty()) {
         err << " (library-directories: " << dirs << ")";

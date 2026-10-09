@@ -66,6 +66,11 @@ public:
   SchemeLogLevel getLogLevel() const;
 
   bool eval(const char* code);
+
+  // Import a Scheme library by its slash-separated name.
+  // "passes/my-rewrite" → (import (passes my-rewrite))
+  // Returns false if the import fails.
+  bool importLibrary(const std::string& slashSeparatedName);
   void callPassFunction(const char* functionName, mlir::Operation* op);
 
   void addLibraryPath(const char* src_path, const char* bin_path);

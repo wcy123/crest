@@ -231,6 +231,14 @@ std::string ChezSchemeInterpreter::getLibraryDirectories() const {
 // ─── Script / eval
 // ────────────────────────────────────────────────────────────
 
+bool ChezSchemeInterpreter::importLibrary(
+    const std::string& slashSeparatedName) {
+  std::string lib = slashSeparatedName;
+  std::replace(lib.begin(), lib.end(), '/', ' ');
+  std::string importCode = "(import (" + lib + "))";
+  return eval(importCode.c_str());
+}
+
 bool ChezSchemeInterpreter::eval(const char* code) {
   ptr port = scheme_call("open-string-input-port", Sstring(code));
   ptr expr = scheme_call("read", port);
