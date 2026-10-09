@@ -298,11 +298,11 @@
               #'(mlir::OperationState::addAttribute state n v))))
         (define (make-block-fill blk)
           (apply make-block-fill-fn (parse-block-form blk)))
-        (define (make-block-fill-fn builder-name-stx arg-vars arg-types body-ops)
-          ;; builder-name-stx is always a valid identifier — parse-block-form
+        (define (make-block-fill-fn builder-id arg-vars arg-types body-ops)
+          ;; builder-id is always a valid identifier — parse-block-form
           ;; generates a gensym when the user didn't provide an explicit name.
           (let* ([body-stx       (with-syntax ([(body ...) body-ops]
-                                               [block-builder builder-name-stx])
+                                               [block-builder builder-id])
                                    #'(begin-mlir-code block-builder body ...))]
                  [arg-bind-pairs (loop :for var :in arg-vars
                                        :for i :from 0
@@ -312,7 +312,7 @@
                             [(arg-binding ...) (loop :for pair :in arg-bind-pairs
                                                      :collect (make-binding pair))]
                             [body          body-stx]
-                            [block-builder builder-name-stx]
+                            [block-builder builder-id]
                             [region        region-stx])
                 #'(let* ([block (mlir::Region::push_back<Block> region (list arg-type ...))]
                          arg-binding ...)
