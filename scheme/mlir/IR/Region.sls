@@ -22,7 +22,8 @@
   (import (rnrs)
           (mlir IR Region ffi)
           (only (mlir IR Block) mlir::Block::addArgument)
-          (only (mlir IR Operation) mlir::Operation::getLoc))
+          (only (mlir IR Operation) mlir::Operation::getLoc)
+          (only (mlir IR Location) mlir::UnknownLoc::get))
 
 
   ;; @brief mlir::Region::front — return the first Block in the region, or 0 if empty.
@@ -42,8 +43,13 @@
   ;; @param arg-types Scheme list of Type* uptrs
   ;; @return          Block* uptr of the new block
   (define (mlir::Region::push_back<Block> region arg-types)
-    (let* ([block (%mlir::Block::new)]
-           [loc   (mlir::Operation::getLoc (%mlir::Region::getParentOp region))])
+    (let* ([block    (%mlir::Block::new)]
+           [parent-op (%mlir::Region::getParentOp region)]
+           ;; Parent op may be null when filling a region before %%crest:create-op!
+           ;; (OperationState owns the region but the op doesn't exist yet).
+           [loc     (if (zero? parent-op)
+                        (mlir::UnknownLoc::get)
+                        (mlir::Operation::getLoc parent-op))])
       (%mlir::Region::push_back region block)
       (for-each (lambda (t) (mlir::Block::addArgument block t loc)) arg-types)
       block))

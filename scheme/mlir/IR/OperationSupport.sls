@@ -18,6 +18,7 @@
     mlir::OperationState::addOperands
     mlir::OperationState::addTypes
     mlir::OperationState::addRegion
+    mlir::OperationState::addAttribute
     crest::isa<CrestOwned<mlir::OperationState>>?
     with-OperationState)
   (import (rnrs)
@@ -28,10 +29,11 @@
   (define (crest::isa<CrestOwned<mlir::OperationState>>? ptr)
     (not (zero? (%crest::isa<CrestOwned<mlir::OperationState>> ptr))))
 
-  (define mlir::OperationState::create    %mlir::OperationState::create)
-  (define mlir::OperationState::addOperands %mlir::OperationState::addOperands)
-  (define mlir::OperationState::addTypes  %mlir::OperationState::addTypes)
-  (define mlir::OperationState::addRegion %mlir::OperationState::addRegion)
+  (define mlir::OperationState::create       %mlir::OperationState::create)
+  (define mlir::OperationState::addOperands  %mlir::OperationState::addOperands)
+  (define mlir::OperationState::addTypes     %mlir::OperationState::addTypes)
+  (define mlir::OperationState::addRegion    %mlir::OperationState::addRegion)
+  (define mlir::OperationState::addAttribute %mlir::OperationState::addAttribute)
 
   ;; @brief with-OperationState — RAII for a heap-allocated mlir::OperationState.
   ;; @param var   identifier bound to the CrestOwned<OperationState>* uptr for BODY

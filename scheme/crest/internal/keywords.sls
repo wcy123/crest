@@ -5,7 +5,9 @@
           = : -> :region :regions
           :any
           :current-op :attr
-          :optional :variadic)
+          :optional :variadic
+          ;; Attr type keywords used in (name = val :type) modifier forms
+          :index :i64 :f32 :i32-array :i64-array :unit)
   (import (except (rnrs) =))
 
   ;; Define keywords as syntax (for cross-library hygiene)
@@ -43,4 +45,11 @@
   ;; :variadic — (:variadic %rest) in an operand list marks a variadic tail.
   ;; Parsed but not yet implemented in analyze/codegen.
   (define-syntax :variadic   (lambda (x) (syntax-violation 'pattern-keyword "misplaced :variadic (only valid inside DDR operand list)" x)))
+  ;; Attr type keywords — used as literals in (name = val :type) modifier forms.
+  (define-syntax :index    (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :index (only valid as attr type in begin-mlir-code)" x)))
+  (define-syntax :i64      (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :i64 (only valid as attr type in begin-mlir-code)" x)))
+  (define-syntax :f32      (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :f32 (only valid as attr type in begin-mlir-code)" x)))
+  (define-syntax :i32-array (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :i32-array (only valid as attr type in begin-mlir-code)" x)))
+  (define-syntax :i64-array (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :i64-array (only valid as attr type in begin-mlir-code)" x)))
+  (define-syntax :unit     (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :unit (only valid as attr type in begin-mlir-code)" x)))
   )

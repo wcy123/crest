@@ -77,38 +77,38 @@
     (let ([pattern-type (if (pair? args) (car args) 'conversion)])
       (syntax-case whole-stx ()
         [(_ . rest)
-         (parse-rest #'rest (make-ast-pattern-expand pattern-type))])))
+         (%%parse-rest #'rest (make-ast-pattern-expand pattern-type))])))
 
   ;;-----------------------------------------------------------------------
-  ;; parse-rest - Parse function name, debug flags, then dispatch to :if-match
+  ;; %%parse-rest - Parse function name, debug flags, then dispatch to :if-match
   ;;-----------------------------------------------------------------------
-  (define (parse-rest rest ast)
+  (define (%%parse-rest rest ast)
     (syntax-case rest (:debug-parse :debug-validate :debug-analyze :debug-codegen :debug-matching :if-match :then-let :rewrite :with)
       ;; Debug flags
       [(:debug-parse . more)
        (begin
          (ast-pattern-expand-debug-parse?-set! ast #t)
-         (parse-rest #'more ast))]
+         (%%parse-rest #'more ast))]
 
       [(:debug-validate . more)
        (begin
          (ast-pattern-expand-debug-validate?-set! ast #t)
-         (parse-rest #'more ast))]
+         (%%parse-rest #'more ast))]
 
       [(:debug-analyze . more)
        (begin
          (ast-pattern-expand-debug-analyze?-set! ast #t)
-         (parse-rest #'more ast))]
+         (%%parse-rest #'more ast))]
 
       [(:debug-codegen . more)
        (begin
          (ast-pattern-expand-debug-codegen?-set! ast #t)
-         (parse-rest #'more ast))]
+         (%%parse-rest #'more ast))]
 
       [(:debug-matching . more)
        (begin
          (ast-pattern-expand-debug-matching?-set! ast #t)
-         (parse-rest #'more ast))]
+         (%%parse-rest #'more ast))]
 
       ;; 3-param form for rewrite patterns: (fname op rewriter)
       [((fname p-op p-rewriter) . more)
@@ -121,7 +121,7 @@
          (ast-pattern-expand-param-operands-ref-set!    ast #f)
          (ast-pattern-expand-param-rewriter-set!        ast #'p-rewriter)
          (ast-pattern-expand-param-type-converter-set!  ast #f)
-         (parse-rest #'more ast))]
+         (%%parse-rest #'more ast))]
 
       ;; 5-param form for conversion patterns: (fname op operands-ref rewriter type-converter)
       [((fname p-op p-operands-ref p-rewriter p-type-converter) . more)
@@ -133,13 +133,13 @@
          (ast-pattern-expand-param-operands-ref-set!    ast #'p-operands-ref)
          (ast-pattern-expand-param-rewriter-set!        ast #'p-rewriter)
          (ast-pattern-expand-param-type-converter-set!  ast #'p-type-converter)
-         (parse-rest #'more ast))]
+         (%%parse-rest #'more ast))]
 
       [(:if-match . match-rest)
        (ast-pattern-expand-function-name ast)
-       (parse-match-ops-recursive #'match-rest '() ast)]
+       (%%parse-match-ops-recursive #'match-rest '() ast)]
 
-      [_ (syntax-violation 'parse-rest
+      [_ (syntax-violation '%%parse-rest
                            "Expected function name and :if-match clause"
                            rest)]))
 
@@ -151,52 +151,52 @@
   ;; operations and dispatching to detail parsers.
   ;;
   ;; Call graph:
-  ;;   parse-match-ops-recursive  → parse-after-match → parse-rewrite-ops-recursive
+  ;;   %%parse-match-ops-recursive  → %%parse-after-match → %%parse-rewrite-ops-recursive
   ;;        ↓ creates ast-match-expand    ↓ parses :then-let         ↓ collects raw syntax
   ;;
   ;;=======================================================================
 
   ;;-----------------------------------------------------------------------
-  ;; parse-match-ops-recursive - Collect match operations
+  ;; %%parse-match-ops-recursive - Collect match operations
   ;;-----------------------------------------------------------------------
   ;; Stops at :then-let or :rewrite. Creates ast-match-expand records directly.
   ;; Note: Operands are parsed and flattened to ast-operand records in phase 1.
   ;; Validation (% prefix check) happens in phase 2 (pattern-validate.sls).
   ;;
-  (define (parse-match-ops-recursive rest-stx acc-ops ast)
+  (define (%%parse-match-ops-recursive rest-stx acc-ops ast)
     (syntax-case rest-stx (:then-let :rewrite :where =)
       ;; Stop: :then-let or :rewrite
       [(:then-let . _)
        (begin
          (ast-pattern-expand-match-set! ast (reverse acc-ops))
-         (parse-after-match rest-stx ast))]
+         (%%parse-after-match rest-stx ast))]
 
       [(:rewrite . _)
        (begin
          (ast-pattern-expand-match-set! ast (reverse acc-ops))
-         (parse-after-match rest-stx ast))]
+         (%%parse-after-match rest-stx ast))]
 
       ;; Match operation WITH :where guard
       [(result = op-name (operand ...) :where guard-expr . rest)
        (identifier? #'result)
-       (let* ([operands (parse-operands #'(operand ...))]
+       (let* ([operands (%%parse-operands #'(operand ...))]
               [match-op (make-ast-match-expand #'result #'op-name operands #'guard-expr)])
-         (parse-match-ops-recursive #'rest (cons match-op acc-ops) ast))]
+         (%%parse-match-ops-recursive #'rest (cons match-op acc-ops) ast))]
 
       ;; Match operation WITHOUT :where guard
       [(result = op-name (operand ...)  . rest)
        ;; Guard removed: multi-result patterns use a list for result, not an identifier.
        ;; The multi-result clause above catches ((%a %b) = ...) first.
-       (let* ([operands (parse-operands #'(operand ...))]
+       (let* ([operands (%%parse-operands #'(operand ...))]
               [match-op (make-ast-match-expand #'result #'op-name operands #f)])
-         (parse-match-ops-recursive #'rest (cons match-op acc-ops) ast))]
+         (%%parse-match-ops-recursive #'rest (cons match-op acc-ops) ast))]
 
-      [_ (syntax-violation 'parse-match-ops-recursive
+      [_ (syntax-violation '%%parse-match-ops-recursive
                            "Invalid3 match operation (expected: result = \"op\" (...) [:where expr])" rest-stx)]))
 
 
   ;;-----------------------------------------------------------------------
-  ;; parse-operands - Parse operand list, flattening groups
+  ;; %%parse-operands - Parse operand list, flattening groups
   ;;-----------------------------------------------------------------------
   ;;
   ;; Parses operand syntax and flattens (:optional ...) and (:variadic ...)
@@ -217,7 +217,7 @@
   ;; Phase 2 (validate) checks:
   ;; - All identifiers start with % (semantic rule)
   ;;
-  (define (parse-operands operands-stx)
+  (define (%%parse-operands operands-stx)
     (define (parse-one operand-stx)
       (syntax-case operand-stx (:optional :variadic)
         ;; Optional group: (:optional %y %z) → flatten to multiple optional operands
@@ -238,22 +238,22 @@
          (list (make-ast-operand ':required #'var))]
 
         [_
-         (syntax-violation 'parse-operands
+         (syntax-violation '%%parse-operands
                            "Invalid operand syntax (expected: identifier, (:optional ...), or (:variadic var))"
                            operand-stx)]))
 
     ;; Helper: check syntax structure (identifier check only, no % validation)
     (define (check-identifier var)
       (unless (identifier? var)
-        (syntax-violation 'parse-operands "Operand must be identifier" var)))
+        (syntax-violation '%%parse-operands "Operand must be identifier" var)))
 
     (apply append (map parse-one (syntax->list operands-stx))))
 
 
   ;;-----------------------------------------------------------------------
-  ;; parse-after-match - Parse optional :then-let, then :rewrite
+  ;; %%parse-after-match - Parse optional :then-let, then :rewrite
   ;;-----------------------------------------------------------------------
-  (define (parse-after-match rest-stx ast)
+  (define (%%parse-after-match rest-stx ast)
     (syntax-case rest-stx (:then-let :rewrite :with)
       ;; Pattern 1: :then-let followed by :rewrite
       [(:then-let ((var expr) ...) :rewrite root :with . rewrite-rest)
@@ -266,29 +266,29 @@
                                                     [(v e)
                                                      (identifier? #'v)
                                                      (make-ast-then-let-binding-expand #'v #'e)]
-                                                    [_ (syntax-violation 'parse-after-match "Invalid :then-let binding (expected: (var expr))" binding)]))
+                                                    [_ (syntax-violation '%%parse-after-match "Invalid :then-let binding (expected: (var expr))" binding)]))
                                                 (syntax->list #'((var expr) ...))))
-         (parse-rewrite-ops-recursive #'rewrite-rest '() ast))]
+         (%%parse-rewrite-ops-recursive #'rewrite-rest '() ast))]
 
       ;; Pattern 2: :rewrite without :then-let
       [(:rewrite root :with . rewrite-rest)
        (identifier? #'root)
        (begin
          (ast-pattern-expand-root-var-set! ast #'root)
-         (parse-rewrite-ops-recursive #'rewrite-rest '() ast))]
+         (%%parse-rewrite-ops-recursive #'rewrite-rest '() ast))]
 
       [_ (syntax-violation 'define-conversion-pattern
                            "Expected [:then-let (...)] :rewrite root :with rewrite-ops..." rest-stx)]))
 
   ;;-----------------------------------------------------------------------
-  ;; parse-rewrite-ops-recursive - Collect rewrite operations as raw syntax
+  ;; %%parse-rewrite-ops-recursive - Collect rewrite operations as raw syntax
   ;;-----------------------------------------------------------------------
   ;; The :rewrite :with body is the surface syntax of begin-mlir-code.
   ;; Rather than converting to AST records (which duplicates begin-mlir-code),
   ;; collect each op-form as a raw syntax object.  begin-mlir-code processes
   ;; them at macro-expansion time in the consumer.
   ;;
-  (define (parse-rewrite-ops-recursive rest-stx acc-ops ast)
+  (define (%%parse-rewrite-ops-recursive rest-stx acc-ops ast)
     (syntax-case rest-stx ()
       ;; End of operations
       [()
@@ -297,9 +297,9 @@
 
       ;; Collect one raw op-form, continue with rest
       [(op-syntax . rest)
-       (parse-rewrite-ops-recursive #'rest (cons #'op-syntax acc-ops) ast)]
+       (%%parse-rewrite-ops-recursive #'rest (cons #'op-syntax acc-ops) ast)]
 
-      [_ (syntax-violation 'parse-rewrite-ops-recursive
+      [_ (syntax-violation '%%parse-rewrite-ops-recursive
                            "Invalid rewrite operation syntax" rest-stx)]))
 
   )
