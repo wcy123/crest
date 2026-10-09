@@ -256,7 +256,9 @@
       (define (parse-modifiers modifiers-stx builder-stx)
         (define (attr-modifier? m)
           (syntax-case m (=)
-            [(name = val . qualifier) #t]
+            [(name = val . qualifier)
+             (let ([d (syntax->datum #'name)])
+               (or (string? d) (symbol? d)))]
             [_ #f]))
         (define (make-region-fn m region-idx)
           (syntax-case m (:region)
