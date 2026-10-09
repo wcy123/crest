@@ -285,24 +285,12 @@
            (loop :for e :in (filter (lambda (e) (eq? (car e) 'region)) tagged)
                  :for idx :from 0
                  :collect (make-region-fill-fn idx (cdr e)))))
-        (define (make-block-fill blk)
-          (apply make-block-fill-fn builder-stx (parse-block-form blk)))
-        (define (make-region-fill-fn region-index block-fill-fns)
-          (lambda (op-stx)
-            ;; region-id must be in scope as a Scheme value before with-syntax
-            ;; because (map (fn region-id) ...) runs during binding evaluation —
-            ;; with-syntax bindings are parallel, so [region-id ...] wouldn't help.
-            (let ([region-id (car (generate-temporaries '(region)))])
-              (with-syntax ([new-op     op-stx]
-                            [region-idx region-index]
-                            [(block-fill-stmt ...)
-                             (map (lambda (fn) (fn region-id)) block-fill-fns)])
-                #`(let ([#,region-id (mlir::Operation::getRegion new-op region-idx)])
-                    block-fill-stmt ...)))))
         (define (make-direct-setter name-str val-stx)
           (lambda (state-stx)
             (with-syntax ([state state-stx] [n name-str] [v val-stx])
               #'(mlir::OperationState::addAttribute state n v))))
+        (define (make-block-fill blk)
+          (apply make-block-fill-fn builder-stx (parse-block-form blk)))
         (define (make-block-fill-fn builder-stx builder-name-stx arg-vars arg-types body-ops)
           (let* ([block-builder-id (if builder-name-stx
                                        builder-name-stx
@@ -327,6 +315,18 @@
                           (lambda () #f)
                           (lambda () body)
                           (lambda () (CrestObject::delete block-builder)))))))))
+        (define (make-region-fill-fn region-index block-fill-fns)
+          (lambda (op-stx)
+            ;; region-id must be in scope as a Scheme value before with-syntax
+            ;; because (map (fn region-id) ...) runs during binding evaluation —
+            ;; with-syntax bindings are parallel, so [region-id ...] wouldn't help.
+            (let ([region-id (car (generate-temporaries '(region)))])
+              (with-syntax ([new-op     op-stx]
+                            [region-idx region-index]
+                            [(block-fill-stmt ...)
+                             (map (lambda (fn) (fn region-id)) block-fill-fns)])
+                #`(let ([#,region-id (mlir::Operation::getRegion new-op region-idx)])
+                    block-fill-stmt ...)))))
         ;; Parse a full block stx of the form:
         ;;   (^label ((arg : type) ...) body ...)         — no builder name
         ;;   (^label builder-name ((arg : type) ...) ...) — explicit builder name
