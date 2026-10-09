@@ -52,16 +52,16 @@
           ;; Runtime predicates and create bindings for crest:create-op! dispatch
           (only (mlir IR PatternMatch)
                 crest::isa<CrestRef<mlir::RewriterBase>>?
-                %mlir::RewriterBase::create<OperationState>)
-          (only (mlir IR Builders ffi)
-                %mlir::OpBuilder::create<OperationState>)
+                mlir::RewriterBase::create<OperationState>)
+          (only (mlir IR Builders)
+                mlir::OpBuilder::create<OperationState>)
           (only (mlir support array-ref) CrestObject::delete)
-          (for (only (mlir IR Builders ffi)
-                     %mlir::OpBuilder::atBlockEnd) expand)
+          (for (only (mlir IR Builders)
+                     mlir::OpBuilder::atBlockEnd) expand)
           (for (only (mlir IR OperationSupport)
-                     %mlir::OperationState::addOperands
-                     %mlir::OperationState::addTypes
-                     %mlir::OperationState::addRegion
+                     mlir::OperationState::addOperands
+                     mlir::OperationState::addTypes
+                     mlir::OperationState::addRegion
                      with-OperationState) expand)
           (for (only (mlir IR Operation) mlir::Operation::getRegion) expand)
           (for (only (mlir IR Location)
@@ -99,12 +99,12 @@
   ;;===--------------------------------------------------------------------===;;
 
   ;; Select the correct C++ create binding based on the CREST wrapper type.
-  ;; - CrestRef<RewriterBase>  → %mlir::RewriterBase::create<OperationState>
-  ;; - CrestOwned<OpBuilder>   → %mlir::OpBuilder::create<OperationState>
+  ;; - CrestRef<RewriterBase>  → mlir::RewriterBase::create<OperationState>
+  ;; - CrestOwned<OpBuilder>   → mlir::OpBuilder::create<OperationState>
   (define (crest:create-op! ctx state)
     (if (crest::isa<CrestRef<mlir::RewriterBase>>? ctx)
-        (%mlir::RewriterBase::create<OperationState> ctx state)
-        (%mlir::OpBuilder::create<OperationState> ctx state)))
+        (mlir::RewriterBase::create<OperationState> ctx state)
+        (mlir::OpBuilder::create<OperationState> ctx state)))
 
   ;;===--------------------------------------------------------------------===;;
   ;; begin-mlir-code
@@ -346,11 +346,11 @@
                         (with-syntax ([source-loc (syntax->mlir-loc-expr op-name-stx)])
                           #'(let ([new-op (let ()
                                             (with-OperationState (state source-loc name)
-                                                                 (for-each (lambda (v) (%mlir::OperationState::addOperands state v)) operands-expr)
-                                                                 (for-each (lambda (t) (%mlir::OperationState::addTypes state t)) (list result-type ...))
+                                                                 (for-each (lambda (v) (mlir::OperationState::addOperands state v)) operands-expr)
+                                                                 (for-each (lambda (t) (mlir::OperationState::addTypes state t)) (list result-type ...))
                                                                  (let loop ([i 0])
                                                                    (when (< i nregions)
-                                                                     (%mlir::OperationState::addRegion state)
+                                                                     (mlir::OperationState::addRegion state)
                                                                      (loop (+ i 1))))
                                                                  (crest:create-op! builder state)))])
                               setter ...
@@ -417,7 +417,7 @@
                           [region            region-stx])
               #'(let* ([block (mlir::Region::push_back<Block> region (list arg-type ...))]
                        arg-binding ...)
-                  (let ([block-builder (%mlir::OpBuilder::atBlockEnd block)])
+                  (let ([block-builder (mlir::OpBuilder::atBlockEnd block)])
                     (dynamic-wind
                         (lambda () #f)
                         (lambda () body)

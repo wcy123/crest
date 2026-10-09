@@ -44,8 +44,8 @@
 
   (import (rnrs)
           (mlir Transforms DialectConversion ffi)
-          (only (mlir IR PatternMatch ffi)
-                %mlir::RewritePatternSet::RewritePatternSet)
+          (only (mlir IR PatternMatch)
+                mlir::RewritePatternSet::RewritePatternSet)
           (only (mlir support array-ref) with-CrestObject)
           (only (mlir IR MLIRContext) current-MLIRContext))
 
@@ -108,7 +108,7 @@
   ;; @param ctx MLIRContext* uptr
   ;; @return    CrestOwned<RewritePatternSet>* uptr — freed via with-CrestObject
   (define pattern-set-create
-    %mlir::RewritePatternSet::RewritePatternSet)
+    mlir::RewritePatternSet::RewritePatternSet)
 
   ;; @brief mlir::applyFullConversion.
   (define apply-full-conversion

@@ -15,6 +15,7 @@
 (library (mlir IR Builders)
   (export
     mlir::OpBuilder::atBlockEnd
+    mlir::OpBuilder::create<OperationState>
     crest::isa<CrestOwned<mlir::OpBuilder>>?)
   (import (rnrs)
           (mlir IR Builders ffi))
@@ -24,6 +25,9 @@
   ;; @return        CrestOwned<OpBuilder>* uptr — freed via with-CrestObject
   ;; @see           mlir/IR/Builders.h
   (define mlir::OpBuilder::atBlockEnd %mlir::OpBuilder::atBlockEnd)
+
+  (define mlir::OpBuilder::create<OperationState>
+    %mlir::OpBuilder::create<OperationState>)
 
   ;; @brief crest::isa<CrestOwned<mlir::OpBuilder>>? — is this ptr a CrestOwned<mlir::OpBuilder>?
   ;; OpBuilder is always owned: created by with-OpBuilder or copied from
