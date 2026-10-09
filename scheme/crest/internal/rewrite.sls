@@ -373,20 +373,22 @@
                           index         ; integer — op position in begin-mlir-code
                           op-name-stx   ; syntax — carries source location annotation
                           builder-stx)  ; syntax — the active builder expression
-        (let* ([nregions  (length region-fill-fns)]  ; number of region modifiers
-               [new-op-id (car (generate-temporaries '(new-op)))]  ; gensym for mlir::Operation* inside let
-               [tmp       (op-tmp-id index)])  ; gensym exposed in outer let* as %op-tmp-N
+        (let* ([nregions (length region-fill-fns)]  ; number of region modifiers
+               [op-var   (op-tmp-id index)])        ; %op-tmp-N — used for both inner and outer let
           (with-syntax
               ([operands-expr  operands]         ; runtime operand list expr
                [name           op-name]          ; string literal
                [(result-type ...) result-types]  ; result type exprs
-               [tmp-var        tmp]              ; gensym for the Operation*
-               [new-op         new-op-id]        ; gensym inside with-OperationState
-               [builder        builder-stx]      ; active builder
-               [(setter ...)                     ; attr-setting stmts
-                (map (lambda (fn) (fn new-op-id)) attr-setter-fns)]
-               [(region-fill-stmt ...)           ; region-filling stmts
-                (map (lambda (fn) (fn new-op-id)) region-fill-fns)]
+               ;; op-var serves as BOTH the outer let* binding (%op-tmp-N)
+               ;; and the inner let binding that holds the mlir::Operation*.
+               ;; The inner shadows the outer within the let body — valid Scheme.
+               [op              op-var]          ; inner: mlir::Operation* from create
+               [op-tmp          op-var]          ; outer: %op-tmp-N exposed to callers
+               [builder         builder-stx]     ; active builder
+               [(setter ...)                     ; attr-setting stmts (reference op)
+                (map (lambda (fn) (fn op-var)) attr-setter-fns)]
+               [(region-fill-stmt ...)           ; region-filling stmts (reference op)
+                (map (lambda (fn) (fn op-var)) region-fill-fns)]
                ;; Unroll N addRegion calls at expand time — nregions is compile-time.
                [(addregion-call ...)
                 (loop :for i :from 0 :below nregions
@@ -394,8 +396,8 @@
                [source-loc (syntax->mlir-loc-expr op-name-stx)])
             (cons
              ;; Binding for the Operation* itself
-             (cons #'tmp-var
-                   #'(let ([new-op
+             (cons #'op-tmp
+                   #'(let ([op
                             (let ()
                               (with-OperationState
                                (state source-loc name)
@@ -409,15 +411,15 @@
                                (%%crest:create-op! builder state)))])
                        setter ...           ; apply attributes
                        region-fill-stmt ... ; fill regions
-                       new-op))
+                       op))
              ;; Bindings for result variables
              (if (null? result-types)
                  ;; Zero-result: each var bound to the op itself
-                 (map (lambda (var) (cons var #'tmp-var)) result-vars)
+                 (map (lambda (var) (cons var #'op-tmp)) result-vars)
                  ;; Multi-result: each var bound to getResult at its index
                  (loop :for var :in result-vars
                        :for i   :from 0
-                       :collect #`(#,var . (mlir-Operation::getResult tmp-var #,i))))))))
+                       :collect #`(#,var . (mlir-Operation::getResult op-tmp #,i))))))))
 
       ;; Returns a closure (lambda (new-op-stx) → fill-stmt-syntax) for one region.
       ;; region-index    — 0-based index of this region within the op.
