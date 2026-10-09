@@ -272,11 +272,10 @@
                                          (let-values ([(bname avars atypes abody) (parse-block-form blk)])
                                            (make-block-fill-fn avars atypes abody builder-stx bname)))
                                        (syntax->list #'(block ...))))]
+            ;; Shorthand: (^label ...) — normalise to (:region (^label ...)) and recurse.
             [(label . _)
              (block-label? #'label)
-             (let-values ([(bname avars atypes abody) (parse-block-form m)])
-               (make-region-fill-fn region-idx
-                                    (list (make-block-fill-fn avars atypes abody builder-stx bname))))]
+             (make-region-fn #`(:region #,m) region-idx)]
             [_ (syntax-violation 'begin-mlir-code "invalid modifier entry" m)]))
         (let ([result
                (loop :for m :in (syntax->list modifiers-stx)
