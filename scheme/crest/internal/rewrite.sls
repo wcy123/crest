@@ -331,16 +331,16 @@
         ;;   (^label builder-name ((arg : type) ...) ...) — explicit builder name
         ;; Returns (list builder-name-stx arg-vars arg-types body-ops).
         (define (parse-block-form block-stx)
-          (let* ([elems  (syntax->list block-stx)]
-                 [second (list-ref elems 1)])
-            (if (identifier? second)
-                ;; Explicit builder name provided by user
-                (let ([av-at (split-arg-types (syntax->list (list-ref elems 2)))])
-                  (list second (car av-at) (cadr av-at) (list-tail elems 3)))
-                ;; No builder name — generate a gensym so callers always get a valid id
-                (let ([av-at (split-arg-types (syntax->list second))])
-                  (list (car (generate-temporaries '(block-builder)))
-                        (car av-at) (cadr av-at) (list-tail elems 2))))))
+          ;; (^label builder-name ((arg : type) ...) body ...)  — explicit builder name
+          ;; (^label ((arg : type) ...) body ...)               — gensym for builder
+          (syntax-case block-stx ()
+            [(_ builder-name arg-list . body) (identifier? #'builder-name)
+             (let ([av-at (split-arg-types (syntax->list #'arg-list))])
+               (list #'builder-name (car av-at) (cadr av-at) (syntax->list #'body)))]
+            [(_ arg-list . body)
+             (let ([av-at (split-arg-types (syntax->list #'arg-list))])
+               (list (car (generate-temporaries '(block-builder)))
+                     (car av-at) (cadr av-at) (syntax->list #'body)))]))
         ;; Split ((arg : type) ...) syntax into two lists: arg identifiers and types.
         (define (split-arg-types arg-type-list)
           (let ([arg-vars '()] [arg-types '()])
