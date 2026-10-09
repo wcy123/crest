@@ -230,7 +230,7 @@
       ;;   region-fill-fns  — list of (lambda (op-stx) → fill-stmt-syntax)
       ;;
       ;; Attr modifier forms:
-      ;;   (name = val)            — val is a pre-built attr uptr; set directly
+      ;;   (name = val)            — val is a mlir::Attribute uptr; set directly
       ;;   (name = val :index)     — construct IntegerAttr<index>
       ;;   (name = val :i64)       — construct IntegerAttr<i64>
       ;;   (name = val :f32)       — construct FloatAttr<f32>
