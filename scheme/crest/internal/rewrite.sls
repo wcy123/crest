@@ -252,37 +252,45 @@
       ;;   (^then () t ...) (^else () f ...)         — two regions (e.g. scf.if)
       ;;   (:region (^entry () ...) (^exit () ...))  — one region, two blocks
       (define (parse-modifiers modifiers-stx builder-stx)
-        (define (attr-name? x)
-          (let ([d (syntax->datum x)])
-            (or (string? d) (symbol? d))))
-        (define (attr-modifier? m)
-          (syntax-case m (=)
-            [(name = val type) (attr-name? #'name) #t]
-            [(name = val)      (attr-name? #'name) #t]
-            [_ #f]))
-        (define (make-region-fn m region-idx)
-          (syntax-case m (:region)
+        ;; Classify one modifier and return a tagged handler:
+        ;;   (cons 'attr  attr-setter-fn)         — (make-attr-setter m)
+        ;;   (cons 'region (lambda (idx) ...))     — region fill fn taking its index
+        ;; Shorthand block (^label ...) normalises to (:region (^label ...)) and recurses.
+        ;; Single syntax-case pass — no separate attr-modifier? + make-region-fn.
+        (define (classify-modifier m)
+          (syntax-case m (= :region)
+            ;; Attr form: name is a string or symbol
+            [(name = val . rest)
+             (let ([d (syntax->datum #'name)])
+               (or (string? d) (symbol? d)))
+             (cons 'attr (make-attr-setter m))]
+            ;; Full :region form — each block parsed once
             [(:region block ...)
              (for-all (lambda (b) (block-label? (car (syntax->list b))))
                       (syntax->list #'(block ...)))
-             (make-region-fill-fn region-idx
-                                  (map (lambda (blk)
-                                         (let-values ([(builder-name arg-vars arg-types body-ops) (parse-block-form blk)])
-                                           (make-block-fill-fn arg-vars arg-types body-ops builder-stx builder-name)))
-                                       (syntax->list #'(block ...))))]
-            ;; Shorthand: (^label ...) — normalise to (:region (^label ...)) and recurse.
+             (let ([fill-fns (map (lambda (blk)
+                                    (let-values ([(builder-name arg-vars arg-types body-ops)
+                                                  (parse-block-form blk)])
+                                      (make-block-fill-fn arg-vars arg-types body-ops
+                                                          builder-stx builder-name)))
+                                  (syntax->list #'(block ...)))])
+               (cons 'region (lambda (idx) (make-region-fill-fn idx fill-fns))))]
+            ;; Shorthand (^label ...) — normalise and recurse
             [(label . _)
              (block-label? #'label)
-             (make-region-fn #`(:region #,m) region-idx)]
+             (classify-modifier #`(:region #,m))]
             [_ (syntax-violation 'begin-mlir-code "invalid modifier entry" m)]))
-        (let ([result
-               (loop :for m :in (syntax->list modifiers-stx)
-                     :rime-with is-attr := (attr-modifier? m)
-                     :collect (make-attr-setter m) :into attr-fns :if is-attr
-                     :collect (make-region-fn m region-idx) :into region-fns :unless is-attr
-                     :count :into region-idx :unless is-attr
-                     :finally (cons attr-fns region-fns))])
-          (values (car result) (cdr result))))
+        ;; Collect tagged handlers in one pass — no duplicate parsing, no conditions.
+        (let* ([tagged      (loop :for m :in (syntax->list modifiers-stx)
+                                  :collect (classify-modifier m))]
+               [attr-fns    (loop :for e :in tagged
+                                  :if (eq? (car e) 'attr)
+                                  :collect (cdr e))]
+               [region-entries (filter (lambda (e) (eq? (car e) 'region)) tagged)]
+               [region-fns  (loop :for e :in region-entries
+                                  :for idx :from 0
+                                  :collect ((cdr e) idx))])
+          (values attr-fns region-fns)))
 
       ;; True when x is a block label identifier starting with ^.
       (define (block-label? x)
