@@ -293,11 +293,10 @@
           (lambda (op-stx)
             (let ([region-id (car (generate-temporaries '(region)))])
               (with-syntax ([new-op     op-stx]
-                            [region     region-id]
                             [region-idx region-index]
                             [(block-fill-stmt ...)
                              (map (lambda (fn) (fn region-id)) block-fill-fns)])
-                #'(let ([region (mlir::Operation::getRegion new-op region-idx)])
+                #`(let ([#,region-id (mlir::Operation::getRegion new-op region-idx)])
                     block-fill-stmt ...)))))
         (define (make-direct-setter name-str val-stx)
           (lambda (state-stx)
