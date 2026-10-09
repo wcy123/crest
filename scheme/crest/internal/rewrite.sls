@@ -279,12 +279,11 @@
                                     (list (make-block-fill-fn avars atypes abody builder-stx bname))))]
             [_ (syntax-violation 'begin-mlir-code "invalid modifier entry" m)]))
         (let ([result
-               (loop :initially region-idx := 0
-                     :for m :in (syntax->list modifiers-stx)
+               (loop :for m :in (syntax->list modifiers-stx)
                      :rime-with is-attr := (attr-modifier? m)
                      :collect (make-attr-setter m) :into attr-fns :if is-attr
                      :collect (make-region-fn m region-idx) :into region-fns :unless is-attr
-                     :do (set! region-idx (+ region-idx 1)) :unless is-attr
+                     :count :into region-idx :unless is-attr
                      :finally (cons attr-fns region-fns))])
           (values (car result) (cdr result))))
 
