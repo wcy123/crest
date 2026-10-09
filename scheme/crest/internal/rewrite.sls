@@ -275,12 +275,7 @@
              ;; All blocks must start with a label; labels start with ^.
              (for-all (lambda (b) (block-label? (car (syntax->list b))))
                       (syntax->list #'(block ...)))
-             (let ([fill-fns (map (lambda (blk)
-                                    (let-values ([(builder-name arg-vars arg-types body-ops)
-                                                  (parse-block-form blk)])
-                                      (make-block-fill-fn arg-vars arg-types body-ops
-                                                          builder-stx builder-name)))
-                                  (syntax->list #'(block ...)))])
+             (let ([fill-fns (map make-block-fill (syntax->list #'(block ...)))])
                (cons 'region (lambda (idx) (make-region-fill-fn idx fill-fns))))]
             [_ (syntax-violation 'begin-mlir-code "invalid modifier entry" m)]))
         ;; Split a tagged list into (values attr-fns region-fns).
@@ -291,6 +286,9 @@
            (loop :for e :in (filter (lambda (e) (eq? (car e) 'region)) tagged)
                  :for idx :from 0
                  :collect ((cdr e) idx))))
+        (define (make-block-fill blk)
+          (let-values ([(builder-name arg-vars arg-types body-ops) (parse-block-form blk)])
+            (make-block-fill-fn arg-vars arg-types body-ops builder-stx builder-name)))
         (define (make-region-fill-fn region-index block-fill-fns)
           (lambda (op-stx)
             (let ([region-id (car (generate-temporaries '(region)))])
