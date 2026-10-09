@@ -414,7 +414,7 @@
              ;; Bindings for result variables
              (if (null? result-types)
                  ;; Zero-result: each var bound to the op itself
-                 (map (lambda (var) (cons var #'op-tmp)) result-vars)
+                 (map (lambda (var) #`(#,var . op-tmp)) result-vars)
                  ;; Multi-result: each var bound to getResult at its index
                  (loop :for var :in result-vars
                        :for i   :from 0
