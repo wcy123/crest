@@ -303,6 +303,30 @@
           (lambda (state-stx)
             (with-syntax ([state state-stx] [n name-str] [v val-stx])
               #'(mlir::OperationState::addAttribute state n v))))
+        (define (make-block-fill-fn builder-stx builder-name-stx arg-vars arg-types body-ops)
+          (let* ([block-builder-id (if builder-name-stx
+                                       builder-name-stx
+                                       (car (generate-temporaries '(block-builder))))]
+                 [body-stx         (with-syntax ([(body ...) body-ops]
+                                                 [block-builder block-builder-id])
+                                     #'(begin-mlir-code block-builder body ...))]
+                 [arg-bind-pairs   (loop :for var :in arg-vars
+                                         :for i :from 0
+                                         :collect (cons var #`(mlir::Block::getArgument block #,i)))])
+            (lambda (region-stx)
+              (with-syntax ([(arg-type ...) arg-types]
+                            [(arg-binding ...) (loop :for pair :in arg-bind-pairs
+                                                     :collect (make-binding pair))]
+                            [body          body-stx]
+                            [block-builder block-builder-id]
+                            [region        region-stx])
+                #'(let* ([block (mlir::Region::push_back<Block> region (list arg-type ...))]
+                         arg-binding ...)
+                    (let ([block-builder (mlir::OpBuilder::atBlockEnd block)])
+                      (dynamic-wind
+                          (lambda () #f)
+                          (lambda () body)
+                          (lambda () (CrestObject::delete block-builder)))))))))
         ;; Parse a full block stx of the form:
         ;;   (^label ((arg : type) ...) body ...)         — no builder name
         ;;   (^label builder-name ((arg : type) ...) ...) — explicit builder name
@@ -425,48 +449,6 @@
                    :for i   :from 0
                    :collect (cons var #`(mlir-Operation::getResult op-tmp #,i)))))))
 
-      ;; Returns a closure (lambda (op-stx) → fill-stmt-syntax) for one region.
-      ;; Regions are filled AFTER %%crest:create-op! via mlir::Operation::getRegion —
-      ;; creating ops inside a pre-OperationState block breaks MLIR's IR invariants
-      ;; (verification requires a fully linked parent-op chain).
-      ;; The addRegion call in OperationState pre-allocates the slot; fill happens post-create.
-
-
-
-
-      ;; Returns a closure (lambda (region-stx) → block-fill-syntax).
-      ;; Takes pre-extracted components — no re-parsing of syntax.
-      ;;   builder-stx      — syntax for the active builder expression
-      ;;   builder-name-stx — #f (builder unnamed) or a syntax identifier (user-chosen name)
-      ;;   arg-vars         — Scheme list of arg variable syntax objects
-      ;;   arg-types        — Scheme list of arg type syntax objects
-      ;;   body-ops         — Scheme list of body op syntax objects
-      ;;
-      ;; Parameter order matches parse-block-form's list return so callers can use apply.
-      (define (make-block-fill-fn builder-stx builder-name-stx arg-vars arg-types body-ops)
-        (let* ([block-builder-id (if builder-name-stx
-                                     builder-name-stx
-                                     (car (generate-temporaries '(block-builder))))]
-               [body-stx         (with-syntax ([(body ...) body-ops]
-                                               [block-builder block-builder-id])
-                                   #'(begin-mlir-code block-builder body ...))]
-               [arg-bind-pairs   (loop :for var :in arg-vars
-                                       :for i :from 0
-                                       :collect (cons var #`(mlir::Block::getArgument block #,i)))])
-          (lambda (region-stx)
-            (with-syntax ([(arg-type ...) arg-types]
-                          [(arg-binding ...) (loop :for pair :in arg-bind-pairs
-                                                   :collect (make-binding pair))]
-                          [body          body-stx]
-                          [block-builder block-builder-id]
-                          [region        region-stx])
-              #'(let* ([block (mlir::Region::push_back<Block> region (list arg-type ...))]
-                       arg-binding ...)
-                  (let ([block-builder (mlir::OpBuilder::atBlockEnd block)])
-                    (dynamic-wind
-                        (lambda () #f)
-                        (lambda () body)
-                        (lambda () (CrestObject::delete block-builder)))))))))
 
 
       ;;-------------------------------------------------------------------
