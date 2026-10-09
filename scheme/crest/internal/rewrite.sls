@@ -254,41 +254,35 @@
       ;;   (^bb0 b ((%x : i32)) body ...)                 — shorthand, builder named b
       ;;   (:region (^bb0 ((i : index)) body...) (^exit () exit...))  — full form
       (define (parse-modifiers modifiers-stx builder-stx)
-        (let loop ([rest modifiers-stx] [attr-setter-fns '()] [region-fill-fns '()])
-          (syntax-case rest (= : :region)
-            [()
-             (values attr-setter-fns region-fill-fns)]
-            ;; Attr entry
-            [((name = val . qualifier) . remaining)
-             (loop #'remaining
-                   (append attr-setter-fns (list (make-attr-setter #'(name = val . qualifier))))
-                   region-fill-fns)]
-            ;; Shorthand: bare block — with or without explicit builder name.
-            ;; (^label ((arg : type) ...) body ...)         — builder unnamed
-            ;; (^label builder-name ((arg : type) ...) ...) — builder named
-            [((label . rest-of-block) . remaining)
-             (block-label? #'label)
-             (let* ([block-stx    (cons #'label #'rest-of-block)]
-                    [region-index (length region-fill-fns)])
-               (let-values ([(bname avars atypes abody) (parse-block-form block-stx)])
-                 (let ([fill-fn (make-block-fill-fn avars atypes abody builder-stx bname)])
-                   (loop #'remaining attr-setter-fns
-                         (append region-fill-fns (list (make-region-fill-fn region-index (list fill-fn))))))))]
-            ;; Full form: one region with one or more blocks, each optionally naming the builder.
-            ;; (:region (^bb0 ((arg : type) ...) body ...) ...)
-            ;; (:region (^bb0 b ((arg : type) ...) body ...) ...)
-            [((:region block ...) . remaining)
+        (define (attr-modifier? m)
+          (syntax-case m (=)
+            [(name = val . qualifier) #t]
+            [_ #f]))
+        (define (make-region-fn m region-idx)
+          (syntax-case m (:region)
+            [(:region block ...)
              (for-all (lambda (b) (block-label? (car (syntax->list b))))
                       (syntax->list #'(block ...)))
-             (let* ([region-index (length region-fill-fns)]
-                    [block-fill-fns
-                     (map (lambda (blk)
-                            (let-values ([(bname avars atypes abody) (parse-block-form blk)])
-                              (make-block-fill-fn avars atypes abody builder-stx bname)))
-                          (syntax->list #'(block ...)))])
-               (loop #'remaining attr-setter-fns
-                     (append region-fill-fns (list (make-region-fill-fn region-index block-fill-fns)))))]
-            [_ (syntax-violation 'begin-mlir-code "invalid modifier entry" rest)])))
+             (make-region-fill-fn region-idx
+                                  (map (lambda (blk)
+                                         (let-values ([(bname avars atypes abody) (parse-block-form blk)])
+                                           (make-block-fill-fn avars atypes abody builder-stx bname)))
+                                       (syntax->list #'(block ...))))]
+            [(label . _)
+             (block-label? #'label)
+             (let-values ([(bname avars atypes abody) (parse-block-form m)])
+               (make-region-fill-fn region-idx
+                                    (list (make-block-fill-fn avars atypes abody builder-stx bname))))]
+            [_ (syntax-violation 'begin-mlir-code "invalid modifier entry" m)]))
+        (let ([result
+               (loop :initially region-idx := 0
+                     :for m :in (syntax->list modifiers-stx)
+                     :rime-with is-attr := (attr-modifier? m)
+                     :collect (make-attr-setter m) :into attr-fns :if is-attr
+                     :collect (make-region-fn m region-idx) :into region-fns :unless is-attr
+                     :do (set! region-idx (+ region-idx 1)) :unless is-attr
+                     :finally (cons attr-fns region-fns))])
+          (values (car result) (cdr result))))
 
       ;; True when x is a block label identifier starting with ^.
       (define (block-label? x)
