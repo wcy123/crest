@@ -272,6 +272,7 @@
             [(name = val) (string? (syntax->datum #'name))
              (cons 'attr (make-direct-setter (syntax->datum #'name) #'val))]
             [(:region block ...)
+             ;; All blocks must start with a label; labels start with ^.
              (for-all (lambda (b) (block-label? (car (syntax->list b))))
                       (syntax->list #'(block ...)))
              (let ([fill-fns (map (lambda (blk)
