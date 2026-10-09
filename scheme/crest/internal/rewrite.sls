@@ -333,8 +333,9 @@
           ;; Symbol name — normalise to string and recurse into string branch.
           ;; '. rest' captures the optional type argument (either () or (type)).
           [(name = val . rest) (symbol? (syntax->datum #'name))
-           (make-attr-setter
-            #`(#,(datum->syntax #'name (symbol->string (syntax->datum #'name))) = val . rest))]
+           (with-syntax ([str-name (datum->syntax #'name
+                                                  (symbol->string (syntax->datum #'name)))])
+             (make-attr-setter #'(str-name = val . rest)))]
           [_ (syntax-violation 'begin-mlir-code
                                "attr modifier: (name = val :type) or (name = val) for pre-built attr"
                                attr-stx)]))
