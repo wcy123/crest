@@ -411,159 +411,155 @@
                            setter ...           ; apply attributes
                            region-fill-stmt ... ; fill regions
                            op))
-             ;; TODO: add :current-op syntax to begin-mlir-code so zero-result ops
-             ;; (e.g. memref.store, func.return) can be captured by name:
-             ;;   (%op = memref.store (%val %ptr) :as-op)
-             ;; For now, zero-result ops produce no bindings (result-vars is always
-             ;; empty when result-types is empty — enforced by the length guard).
-             (if (null? result-types)
-                 '()
-                 (loop :for var :in result-vars
-                       :for i   :from 0
-                       :collect #`(#,var . (mlir-Operation::getResult op-tmp #,i))))))))))
+             ;; Bindings for result variables — loop returns '() when result-vars is empty,
+             ;; which happens for zero-result ops (length guard in process-op enforces this).
+             ;; TODO: add :current-op in begin-mlir-code to capture zero-result ops by name.
+             (loop :for var :in result-vars
+                   :for i   :from 0
+                   :collect #`(#,var . (mlir-Operation::getResult op-tmp #,i)))))))
 
-  ;; Returns a closure (lambda (new-op-stx) → fill-stmt-syntax) for one region.
-  ;; region-index    — 0-based index of this region within the op.
-  ;; block-fill-fns  — Scheme list of block-fill closures from make-block-fill-fn.
-  (define (make-region-fill-fn region-index block-fill-fns)
-    (lambda (new-op-stx)
-      (let ([region-id (car (generate-temporaries '(region)))])
-        (with-syntax ([new-op      new-op-stx]
-                      [region      region-id]
-                      [region-idx  region-index]
-                      [(block-fill-stmt ...)
-                       (map (lambda (fn) (fn new-op-stx region-id)) block-fill-fns)])
-          #'(let ([region (mlir::Operation::getRegion new-op region-idx)])
-              block-fill-stmt ...)))))
+      ;; Returns a closure (lambda (new-op-stx) → fill-stmt-syntax) for one region.
+      ;; region-index    — 0-based index of this region within the op.
+      ;; block-fill-fns  — Scheme list of block-fill closures from make-block-fill-fn.
+      (define (make-region-fill-fn region-index block-fill-fns)
+        (lambda (new-op-stx)
+          (let ([region-id (car (generate-temporaries '(region)))])
+            (with-syntax ([new-op      new-op-stx]
+                          [region      region-id]
+                          [region-idx  region-index]
+                          [(block-fill-stmt ...)
+                           (map (lambda (fn) (fn new-op-stx region-id)) block-fill-fns)])
+              #'(let ([region (mlir::Operation::getRegion new-op region-idx)])
+                  block-fill-stmt ...)))))
 
-  ;; Split ((arg : type) ...) syntax into two lists: arg identifiers and types.
-  (define (split-arg-types arg-type-list)
-    (let ([arg-vars '()] [arg-types '()])
-      (for-each (lambda (entry)
-                  (let ([elems (syntax->list entry)])
-                    (set! arg-vars (append arg-vars (list (list-ref elems 0))))
-                    (set! arg-types (append arg-types (list (list-ref elems 2))))))
-                arg-type-list)
-      (values arg-vars arg-types)))
+      ;; Split ((arg : type) ...) syntax into two lists: arg identifiers and types.
+      (define (split-arg-types arg-type-list)
+        (let ([arg-vars '()] [arg-types '()])
+          (for-each (lambda (entry)
+                      (let ([elems (syntax->list entry)])
+                        (set! arg-vars (append arg-vars (list (list-ref elems 0))))
+                        (set! arg-types (append arg-types (list (list-ref elems 2))))))
+                    arg-type-list)
+          (values arg-vars arg-types)))
 
-  ;; Parse a full block stx of the form:
-  ;;   (^label ((arg : type) ...) body ...)         — no builder name
-  ;;   (^label builder-name ((arg : type) ...) ...) — explicit builder name
-  ;; Returns (values builder-name-stx arg-vars arg-types body-ops).
-  (define (parse-block-form block-stx)
-    (let* ([elems  (syntax->list block-stx)]
-           [second (list-ref elems 1)])
-      (if (identifier? second)
-          ;; (^label builder-name ((arg : type) ...) body ...)
-          (let-values ([(arg-vars arg-types)
-                        (split-arg-types (syntax->list (list-ref elems 2)))])
-            (values second arg-vars arg-types (list-tail elems 3)))
-          ;; (^label ((arg : type) ...) body ...)
-          (let-values ([(arg-vars arg-types)
-                        (split-arg-types (syntax->list second))])
-            (values #f arg-vars arg-types (list-tail elems 2))))))
+      ;; Parse a full block stx of the form:
+      ;;   (^label ((arg : type) ...) body ...)         — no builder name
+      ;;   (^label builder-name ((arg : type) ...) ...) — explicit builder name
+      ;; Returns (values builder-name-stx arg-vars arg-types body-ops).
+      (define (parse-block-form block-stx)
+        (let* ([elems  (syntax->list block-stx)]
+               [second (list-ref elems 1)])
+          (if (identifier? second)
+              ;; (^label builder-name ((arg : type) ...) body ...)
+              (let-values ([(arg-vars arg-types)
+                            (split-arg-types (syntax->list (list-ref elems 2)))])
+                (values second arg-vars arg-types (list-tail elems 3)))
+              ;; (^label ((arg : type) ...) body ...)
+              (let-values ([(arg-vars arg-types)
+                            (split-arg-types (syntax->list second))])
+                (values #f arg-vars arg-types (list-tail elems 2))))))
 
-  ;; Returns a closure (lambda (new-op-stx region-stx) → block-fill-syntax).
-  ;; Takes pre-extracted components — no re-parsing of syntax.
-  ;;   arg-vars         — Scheme list of arg variable syntax objects
-  ;;   arg-types        — Scheme list of arg type syntax objects
-  ;;   body-ops         — Scheme list of body op syntax objects
-  ;;   builder-name-stx — #f (builder unnamed) or a syntax identifier (user-chosen name)
-  ;;
-  ;; When builder-name-stx is #f, the OpBuilder is bound to a fresh gensym and
-  ;; is only accessible via begin-mlir-code op-forms inside the body.
-  ;; When builder-name-stx is an identifier, that name is in scope for the body,
-  ;; allowing Scheme escapes to pass it to external helpers explicitly.
-  (define (make-block-fill-fn arg-vars arg-types body-ops builder-stx builder-name-stx)
-    (let* ([block-builder-id (if builder-name-stx
-                                 builder-name-stx
-                                 (car (generate-temporaries '(block-builder))))]
-           [body-stx         (with-syntax ([(body ...) body-ops]
-                                           [block-builder block-builder-id])
-                               #'(begin-mlir-code block-builder body ...))]
-           [arg-bind-pairs   (loop :for var :in arg-vars
-                                   :for i :from 0
-                                   :collect #`(#,var . (mlir::Block::getArgument block #,i)))])
-      (lambda (new-op-stx region-stx)
-        (with-syntax ([(arg-type ...) arg-types]
-                      [(arg-binding ...) (loop :for pair :in arg-bind-pairs
-                                               :collect (make-binding pair))]
-                      [body              body-stx]
-                      [block-builder     block-builder-id]
-                      [new-op            new-op-stx]
-                      [region            region-stx])
-          #'(let* ([block (mlir::Region::push_back<Block> region (list arg-type ...))]
-                   arg-binding ...)
-              (let ([block-builder (mlir::OpBuilder::atBlockEnd block)])
-                (dynamic-wind
-                    (lambda () #f)
-                    (lambda () body)
-                    (lambda () (CrestObject::delete block-builder)))))))))
+      ;; Returns a closure (lambda (new-op-stx region-stx) → block-fill-syntax).
+      ;; Takes pre-extracted components — no re-parsing of syntax.
+      ;;   arg-vars         — Scheme list of arg variable syntax objects
+      ;;   arg-types        — Scheme list of arg type syntax objects
+      ;;   body-ops         — Scheme list of body op syntax objects
+      ;;   builder-name-stx — #f (builder unnamed) or a syntax identifier (user-chosen name)
+      ;;
+      ;; When builder-name-stx is #f, the OpBuilder is bound to a fresh gensym and
+      ;; is only accessible via begin-mlir-code op-forms inside the body.
+      ;; When builder-name-stx is an identifier, that name is in scope for the body,
+      ;; allowing Scheme escapes to pass it to external helpers explicitly.
+      (define (make-block-fill-fn arg-vars arg-types body-ops builder-stx builder-name-stx)
+        (let* ([block-builder-id (if builder-name-stx
+                                     builder-name-stx
+                                     (car (generate-temporaries '(block-builder))))]
+               [body-stx         (with-syntax ([(body ...) body-ops]
+                                               [block-builder block-builder-id])
+                                   #'(begin-mlir-code block-builder body ...))]
+               [arg-bind-pairs   (loop :for var :in arg-vars
+                                       :for i :from 0
+                                       :collect #`(#,var . (mlir::Block::getArgument block #,i)))])
+          (lambda (new-op-stx region-stx)
+            (with-syntax ([(arg-type ...) arg-types]
+                          [(arg-binding ...) (loop :for pair :in arg-bind-pairs
+                                                   :collect (make-binding pair))]
+                          [body              body-stx]
+                          [block-builder     block-builder-id]
+                          [new-op            new-op-stx]
+                          [region            region-stx])
+              #'(let* ([block (mlir::Region::push_back<Block> region (list arg-type ...))]
+                       arg-binding ...)
+                  (let ([block-builder (mlir::OpBuilder::atBlockEnd block)])
+                    (dynamic-wind
+                        (lambda () #f)
+                        (lambda () body)
+                        (lambda () (CrestObject::delete block-builder)))))))))
 
 
-  ;;-------------------------------------------------------------------
-  ;; Leaf helpers
-  ;;-------------------------------------------------------------------
+      ;;-------------------------------------------------------------------
+      ;; Leaf helpers
+      ;;-------------------------------------------------------------------
 
-  ;; Lift a (var-stx . expr-stx) cons cell into a syntax binding (var expr).
-  (define (make-binding pair)
-    (with-syntax ([var (car pair)] [expr (cdr pair)]) #'(var expr)))
+      ;; Lift a (var-stx . expr-stx) cons cell into a syntax binding (var expr).
+      (define (make-binding pair)
+        (with-syntax ([var (car pair)] [expr (cdr pair)]) #'(var expr)))
 
-  ;; Accept both 'arith.constant and "arith.constant" as op names.
-  (define (op-name? x)
-    (let ([datum (syntax->datum x)])
-      (or (string? datum) (symbol? datum))))
-  (define (op-name->str x)
-    (let ([datum (syntax->datum x)])
-      (if (string? datum) datum (symbol->string datum))))
+      ;; Accept both 'arith.constant and "arith.constant" as op names.
+      (define (op-name? x)
+        (let ([datum (syntax->datum x)])
+          (or (string? datum) (symbol? datum))))
+      (define (op-name->str x)
+        (let ([datum (syntax->datum x)])
+          (if (string? datum) datum (symbol->string datum))))
 
-  ;; Build a runtime expression for the operand list from (operands ...).
-  ;; Operands prefixed with ! are filtered (they are types, not values).
-  ;; ,@list splices a dynamic list: (v1 ,@%more v2) → (append (list v1) %more (list v2))
-  ;; All-static result: #'(list v1 v2 ...)
-  ;; Any splice present: #'(append (list v1) %splice (list v2) ...)
-  (define (value-operands operands-stx)
-    (define (splice? x)
-      (let ([d (syntax->datum x)])
-        (and (pair? d) (eq? (car d) 'unquote-splicing))))
-    (let ([items (filter (lambda (x) (not (type-id? x)))
-                         (syntax->list operands-stx))])
-      (if (for-all (lambda (x) (not (splice? x))) items)
-          ;; All static — simple (list ...)
-          (with-syntax ([(v ...) items]) #'(list v ...))
-          ;; Mixed — build with append, grouping static runs
-          (let loop ([rest items] [static-run '()] [chunks '()])
-            (cond
-             [(null? rest)
-              (let ([final-chunks
-                     (if (null? static-run)
-                         (reverse chunks)
-                         (reverse (cons (with-syntax ([(v ...) (reverse static-run)])
-                                          #'(list v ...))
-                                        chunks)))])
-                (with-syntax ([(chunk ...) final-chunks])
-                  #'(append chunk ...)))]
-             [(splice? (car rest))
-              (let* ([splice-expr (cadr (syntax->list (car rest)))]
-                     [chunks+     (if (null? static-run)
-                                      (cons splice-expr chunks)
-                                      (cons splice-expr
-                                            (cons (with-syntax ([(v ...) (reverse static-run)])
-                                                    #'(list v ...))
-                                                  chunks)))])
-                (loop (cdr rest) '() chunks+))]
-             [else
-              (loop (cdr rest) (cons (car rest) static-run) chunks)])))))
+      ;; Build a runtime expression for the operand list from (operands ...).
+      ;; Operands prefixed with ! are filtered (they are types, not values).
+      ;; ,@list splices a dynamic list: (v1 ,@%more v2) → (append (list v1) %more (list v2))
+      ;; All-static result: #'(list v1 v2 ...)
+      ;; Any splice present: #'(append (list v1) %splice (list v2) ...)
+      (define (value-operands operands-stx)
+        (define (splice? x)
+          (let ([d (syntax->datum x)])
+            (and (pair? d) (eq? (car d) 'unquote-splicing))))
+        (let ([items (filter (lambda (x) (not (type-id? x)))
+                             (syntax->list operands-stx))])
+          (if (for-all (lambda (x) (not (splice? x))) items)
+              ;; All static — simple (list ...)
+              (with-syntax ([(v ...) items]) #'(list v ...))
+              ;; Mixed — build with append, grouping static runs
+              (let loop ([rest items] [static-run '()] [chunks '()])
+                (cond
+                 [(null? rest)
+                  (let ([final-chunks
+                         (if (null? static-run)
+                             (reverse chunks)
+                             (reverse (cons (with-syntax ([(v ...) (reverse static-run)])
+                                              #'(list v ...))
+                                            chunks)))])
+                    (with-syntax ([(chunk ...) final-chunks])
+                      #'(append chunk ...)))]
+                 [(splice? (car rest))
+                  (let* ([splice-expr (cadr (syntax->list (car rest)))]
+                         [chunks+     (if (null? static-run)
+                                          (cons splice-expr chunks)
+                                          (cons splice-expr
+                                                (cons (with-syntax ([(v ...) (reverse static-run)])
+                                                        #'(list v ...))
+                                                      chunks)))])
+                    (loop (cdr rest) '() chunks+))]
+                 [else
+                  (loop (cdr rest) (cons (car rest) static-run) chunks)])))))
 
-  ;; True when identifier starts with ! (type convention, not a value).
-  (define (type-id? x)
-    (let ([datum (syntax->datum x)])
-      (and (symbol? datum)
-           (let ([str (symbol->string datum)])
-             (and (> (string-length str) 0)
-                  (char=? #\! (string-ref str 0)))))))
+      ;; True when identifier starts with ! (type convention, not a value).
+      (define (type-id? x)
+        (let ([datum (syntax->datum x)])
+          (and (symbol? datum)
+               (let ([str (symbol->string datum)])
+                 (and (> (string-length str) 0)
+                      (char=? #\! (string-ref str 0)))))))
 
-  (main)))
+      (main)))
 
 
-) ;; end library (crest internal rewrite)
+  ) ;; end library (crest internal rewrite)
