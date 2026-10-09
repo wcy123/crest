@@ -47,10 +47,10 @@
   ;; Returns the output !shape.shape value.
   (define (build-permuted-shape! builder perm input-shape shape-type size-type)
     (let ([extents (loop :for p :in-vector perm
-                         :collect (begin-mlir-code (:builder builder)
+                         :collect (begin-mlir-code builder
                                                    (%sz  = shape.const_size () ("value" = p :index) -> size-type)
                                                    (%ext = shape.get_extent (input-shape %sz) -> size-type)))])
-      (begin-mlir-code (:builder builder)
+      (begin-mlir-code builder
                        (%out = shape.from_extents (,@extents) -> shape-type))))
 
   (define-conversion-pattern (onnx-transpose->hipsr op operands-ref rewriter type-converter)
@@ -75,9 +75,9 @@
                                                 :collect (ArrayRef::at ref i))))))])
     :rewrite %output :with
       (%placeholder = "hipsr.placeholder" (%ctx %input !out-device)
-                    (^bb0 ((%is : !shape-type))
+                    (^bb0 block-builder ((%is : !shape-type))
                           (%out-shape = (build-permuted-shape!
-                                         %block-builder perm %is !shape-type !size-type))
+                                         block-builder perm %is !shape-type !size-type))
                           ("hipsr.shape_yield" (%out-shape)))
                     -> !out-device)
       (%result = hipsr.transpose (%ctx %input %placeholder !out-device)

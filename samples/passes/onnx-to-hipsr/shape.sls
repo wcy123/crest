@@ -63,13 +63,13 @@
           :rime-with acc := dest-val
           :for dim :in (list-tail input-shape start)
           :rime-with acc := (if (dynamic-dim? dim)
-                                (begin-mlir-code (:builder builder)
+                                (begin-mlir-code builder
                                                  (%ci     = arith.constant () ("value" = axis :index) -> index-type)
                                                  (%d      = tensor.dim (in-val %ci) -> index-type)
                                                  (%e      = arith.index_cast (%d) -> i64-type)
                                                  (%slot-c = arith.constant () ("value" = slot :index) -> index-type)
                                                  (%ins    = tensor.insert (%e acc %slot-c) -> out-host-type))
-                                (begin-mlir-code (:builder builder)
+                                (begin-mlir-code builder
                                                  (%e      = arith.constant () ("value" = dim :i64) -> i64-type)
                                                  (%slot-c = arith.constant () ("value" = slot :index) -> index-type)
                                                  (%ins    = tensor.insert (%e acc %slot-c) -> out-host-type)))
@@ -112,9 +112,9 @@
       ;; Scheme control flow with MLIR op creation.
       (%result = hipsr.compute (%ctx %input %placeholder !out-host)
                (operandSegmentSizes = (list 1 1 1) :i32-array)
-               (^bb0 ((%c : !ctx-type) (%in : !input-type) (%dest : !out-host))
+               (^bb0 bldr ((%c : !ctx-type) (%in : !input-type) (%dest : !out-host))
                      (%final = (build-compute-body!
-                                %block-builder %in %dest input-shape start end
+                                bldr %in %dest input-shape start end
                                 !index-type !i64-type !out-host))
                      (hipsr.compute_yield (%final)))
                -> !out-host))

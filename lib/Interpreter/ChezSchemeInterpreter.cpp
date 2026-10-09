@@ -203,34 +203,47 @@ void ChezSchemeInterpreter::addLibraryPath(const char* src_path,
   }
 }
 
+std::string ChezSchemeInterpreter::getLibraryDirectories() const {
+  auto str = [](ptr s) {
+    std::string out;
+    iptr len = Sstring_length(s);
+    out.reserve(len);
+    for (iptr i = 0; i < len; ++i) {
+      out += static_cast<char>(Schar_value(Sstring_ref(s, i)));
+    }
+    return out;
+  };
+  ptr lib_dirs = scheme_call("library-directories");
+  std::string result;
+  for (ptr p = lib_dirs; p != Snil && Spairp(p); p = Scdr(p)) {
+    ptr pair = Scar(p);
+    if (!Spairp(pair) || !Sstringp(Scar(pair)) || !Sstringp(Scdr(pair))) {
+      continue;
+    }
+    if (!result.empty()) {
+      result += ", ";
+    }
+    result += "(" + str(Scar(pair)) + " . " + str(Scdr(pair)) + ")";
+  }
+  return result;
+}
+
 // ─── Script / eval
 // ────────────────────────────────────────────────────────────
 
-bool ChezSchemeInterpreter::eval(const char* code) {
-  ptr eval_sym = Stop_level_value(Sstring_to_symbol("eval"));
-  ptr read_sym = Stop_level_value(Sstring_to_symbol("read"));
-  ptr open_port_sym =
-      Stop_level_value(Sstring_to_symbol("open-string-input-port"));
-
-  ptr port = Scall1(open_port_sym, Sstring(code));
-  ptr expr = Scall1(read_sym, port);
-  Scall1(eval_sym, expr);
-  return true;
+bool ChezSchemeInterpreter::importLibrary(
+    const std::string& slashSeparatedName) {
+  std::string lib = slashSeparatedName;
+  std::replace(lib.begin(), lib.end(), '/', ' ');
+  std::string importCode = "(import (" + lib + "))";
+  return eval(importCode.c_str());
 }
 
-// ─── Function calls
-// ───────────────────────────────────────────────────────────
-
-void ChezSchemeInterpreter::callPassFunction(const char* functionName,
-                                             mlir::Operation* op) {
-  ptr func = Stop_level_value(Sstring_to_symbol(functionName));
-  if (func == Sfalse) {
-    llvm::errs() << "Warning: Scheme function '" << functionName
-                 << "' not found\n";
-    return;
-  }
-  ptr schemeOp = Sunsigned64(reinterpret_cast<uint64_t>(op));
-  Scall1(func, schemeOp);
+bool ChezSchemeInterpreter::eval(const char* code) {
+  ptr port = scheme_call("open-string-input-port", Sstring(code));
+  ptr expr = scheme_call("read", port);
+  scheme_call("eval", expr);
+  return true;
 }
 
 } // namespace crest

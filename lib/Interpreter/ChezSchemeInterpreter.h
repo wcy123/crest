@@ -66,9 +66,17 @@ public:
   SchemeLogLevel getLogLevel() const;
 
   bool eval(const char* code);
-  void callPassFunction(const char* functionName, mlir::Operation* op);
 
+  // Import a Scheme library by its slash-separated name.
+  // "passes/my-rewrite" → (import (passes my-rewrite))
+  // Returns false if the import fails.
+  bool importLibrary(const std::string& slashSeparatedName);
   void addLibraryPath(const char* src_path, const char* bin_path);
+
+  // For debugging only — returns a human-readable string of all (src . bin)
+  // pairs in Chez Scheme's library-directories parameter.
+  // e.g. "(/a/scheme . /a/bin), (/b/scheme . /b/bin)"
+  std::string getLibraryDirectories() const;
 
 private:
   friend struct WeakSingleton<ChezSchemeInterpreter>;
