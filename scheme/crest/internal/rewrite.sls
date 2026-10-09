@@ -24,10 +24,25 @@
 ;;   (op-name (operands...) modifiers...)                           statement (no result)
 ;;
 ;; Modifiers (any order, between operands and ->):
-;;   (name = val)            — set string attr
-;;   (name = val :index)     — set index attr
-;;   (name = val :i32-array) — set dense i32 array attr
-;;   (^label ((arg : !type) ...) body ...) — region block
+;;
+;;   Attr modifiers:
+;;   (name = val)            — set attr (val is mlir::Attribute uptr)
+;;   (name = val :index)     — construct and set IntegerAttr<index>
+;;   (name = val :i64)       — construct and set IntegerAttr<i64>
+;;   (name = val :f32)       — construct and set FloatAttr<f32>
+;;   (name = val :i32-array) — construct and set DenseI32ArrayAttr
+;;   (name = val :i64-array) — construct and set DenseI64ArrayAttr
+;;   (name = val :unit)      — construct and set UnitAttr
+;;
+;;   Region modifiers — each (^label ...) creates ONE region with ONE block:
+;;   (^label ((arg : !type) ...) body ...)         — unnamed builder
+;;   (^label builder-name ((arg : !type) ...) ...) — builder name in scope for body
+;;
+;;   Consecutive shorthands = multiple regions (common case, no :region wrapper needed):
+;;   (%r = "scf.if" (%c) (^then () then...) (^else () else...) -> i32)
+;;
+;;   One region with multiple blocks — use :region explicitly:
+;;   (:region (^entry ((i : index)) body...) (^exit () exit...))
 ;;
 ;; Operands prefixed with ! are types filtered from the value operand list.
 ;; ,@list splices a dynamic list into the operand position:
