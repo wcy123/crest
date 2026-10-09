@@ -285,8 +285,8 @@
                       (syntax->list #'(block ...)))
              (make-region-fill-fn region-idx
                                   (map (lambda (blk)
-                                         (let-values ([(bname avars atypes abody) (parse-block-form blk)])
-                                           (make-block-fill-fn avars atypes abody builder-stx bname)))
+                                         (let-values ([(builder-name arg-vars arg-types body-ops) (parse-block-form blk)])
+                                           (make-block-fill-fn arg-vars arg-types body-ops builder-stx builder-name)))
                                        (syntax->list #'(block ...))))]
             ;; Shorthand: (^label ...) — normalise to (:region (^label ...)) and recurse.
             [(label . _)
@@ -413,13 +413,13 @@
 
       ;; Split ((arg : type) ...) syntax into two lists: arg identifiers and types.
       (define (split-arg-types arg-type-list)
-        (let ([avars '()] [atypes '()])
+        (let ([arg-vars '()] [arg-types '()])
           (for-each (lambda (entry)
                       (let ([elems (syntax->list entry)])
-                        (set! avars (append avars (list (list-ref elems 0))))
-                        (set! atypes (append atypes (list (list-ref elems 2))))))
+                        (set! arg-vars (append arg-vars (list (list-ref elems 0))))
+                        (set! arg-types (append arg-types (list (list-ref elems 2))))))
                     arg-type-list)
-          (values avars atypes)))
+          (values arg-vars arg-types)))
 
       ;; Parse a full block stx of the form:
       ;;   (^label ((arg : type) ...) body ...)         — no builder name
@@ -430,13 +430,13 @@
                [second (list-ref elems 1)])
           (if (identifier? second)
               ;; (^label builder-name ((arg : type) ...) body ...)
-              (let-values ([(avars atypes)
+              (let-values ([(arg-vars arg-types)
                             (split-arg-types (syntax->list (list-ref elems 2)))])
-                (values second avars atypes (list-tail elems 3)))
+                (values second arg-vars arg-types (list-tail elems 3)))
               ;; (^label ((arg : type) ...) body ...)
-              (let-values ([(avars atypes)
+              (let-values ([(arg-vars arg-types)
                             (split-arg-types (syntax->list second))])
-                (values #f avars atypes (list-tail elems 2))))))
+                (values #f arg-vars arg-types (list-tail elems 2))))))
 
       ;; Returns a closure (lambda (new-op-stx region-stx) → block-fill-syntax).
       ;; Takes pre-extracted components — no re-parsing of syntax.
