@@ -338,18 +338,18 @@
       ;; Code emitters
       ;;-------------------------------------------------------------------
 
-      ;; Core code generator. Produces the (var . expr) pairs that become let*
-      ;; bindings in the final expansion.
+      ;; Binding-descriptor protocol
+      ;; ─────────────────────────────────────────────────────────────────────
+      ;; emit-multi (and process-op, which delegates to it) returns a flat list
+      ;; of binding-descriptors: (var-syntax . expr-syntax) cons pairs.
+      ;; main collects all descriptors across the op sequence and assembles them
+      ;; into a single (let* ((var expr) ...) result) expansion.
       ;;
-      ;; Always generates a tmp binding for the Operation* itself:
-      ;;   (%op-tmp-N . (let ([new-op (%%crest:create-op! builder state)])
-      ;;                  setter ...           ; apply attributes
-      ;;                  region-fill-stmt ... ; fill each region
-      ;;                  new-op))
+      ;; emit-multi always produces at least one descriptor for the Operation*:
+      ;;   (op-tmp . (let ([op (with-OperationState ...)]) setter... fills... op))
       ;;
-      ;; Then appends one binding per result variable:
-      ;;   — non-empty result-types: (%var . (mlir-Operation::getResult %op-tmp-N i))
-      ;;   — empty result-types:     (%var . %op-tmp-N)  (var bound to op itself)
+      ;; Plus one descriptor per result variable (empty for zero-result ops):
+      ;;   (%var . (mlir-Operation::getResult op-tmp i))
       ;;
       ;; Parameters:
       ;;   result-vars   — Scheme list of result variable syntax objects
