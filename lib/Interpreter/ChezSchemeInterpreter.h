@@ -70,6 +70,11 @@ public:
 
   void addLibraryPath(const char* src_path, const char* bin_path);
 
+  // For debugging only — returns a human-readable string of all (src . bin)
+  // pairs in Chez Scheme's library-directories parameter.
+  // e.g. "(/a/scheme . /a/bin), (/b/scheme . /b/bin)"
+  std::string getLibraryDirectories() const;
+
 private:
   friend struct WeakSingleton<ChezSchemeInterpreter>;
 

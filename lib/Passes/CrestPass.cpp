@@ -80,7 +80,11 @@ struct CrestPass : public mlir::OperationPass<mlir::ModuleOp> {
     std::string importCode = "(import (" + lib + "))";
 
     if (!interp->eval(importCode.c_str())) {
-      getOperation().emitError("Failed to import (") << moduleName_ << ")";
+      auto err = getOperation().emitError("Failed to import (" + lib + ")");
+      auto dirs = interp->getLibraryDirectories();
+      if (!dirs.empty()) {
+        err << " (library-directories: " << dirs << ")";
+      }
       return signalPassFailure();
     }
 
