@@ -313,18 +313,12 @@
                                                     (symbol->string (syntax->datum #'name)))])
                (parse #'(str-name = val . rest)))]
             ;; Typed forms — construct attr inline, recurse into direct branch
-            [(name = val :index)    (string? (syntax->datum #'name))
-             (parse #'(name = (mlir::IntegerAttr::get<index> val)))]
-            [(name = val :i64)      (string? (syntax->datum #'name))
-             (parse #'(name = (mlir::IntegerAttr::get<i64> val)))]
-            [(name = val :f32)      (string? (syntax->datum #'name))
-             (parse #'(name = (mlir::FloatAttr::get<f32> val)))]
-            [(name = val :i32-array) (string? (syntax->datum #'name))
-             (parse #'(name = (mlir::DenseI32ArrayAttr::get val)))]
-            [(name = val :i64-array) (string? (syntax->datum #'name))
-             (parse #'(name = (mlir::DenseI64ArrayAttr::get val)))]
-            [(name = val :unit)     (string? (syntax->datum #'name))
-             (parse #'(name = (mlir::UnitAttr::get)))]   ; no val argument
+            [(name = val :index)     (parse #'(name = (mlir::IntegerAttr::get<index> val)))]
+            [(name = val :i64)       (parse #'(name = (mlir::IntegerAttr::get<i64> val)))]
+            [(name = val :f32)       (parse #'(name = (mlir::FloatAttr::get<f32> val)))]
+            [(name = val :i32-array) (parse #'(name = (mlir::DenseI32ArrayAttr::get val)))]
+            [(name = val :i64-array) (parse #'(name = (mlir::DenseI64ArrayAttr::get val)))]
+            [(name = val :unit)      (parse #'(name = (mlir::UnitAttr::get)))]  ; no val
             ;; String only — val is already an mlir::Attribute uptr; add directly
             [(name = val) (string? (syntax->datum #'name))
              (make-direct-setter (syntax->datum #'name) #'val)]
