@@ -252,44 +252,52 @@
       ;;   (^then () t ...) (^else () f ...)         — two regions (e.g. scf.if)
       ;;   (:region (^entry () ...) (^exit () ...))  — one region, two blocks
       (define (parse-modifiers modifiers-stx builder-stx)
-        ;; Classify one modifier and return a tagged handler:
-        ;;   (cons 'attr  attr-setter-fn)         — (make-attr-setter m)
-        ;;   (cons 'region (lambda (idx) ...))     — region fill fn taking its index
-        ;; Shorthand block (^label ...) normalises to (:region (^label ...)) and recurses.
-        ;; Single syntax-case pass — no separate attr-modifier? + make-region-fn.
-        (define (classify-modifier m)
-          (syntax-case m (= :region)
-            ;; Attr form: name is a string or symbol
-            [(name = val . rest)
-             (let ([d (syntax->datum #'name)])
-               (or (string? d) (symbol? d)))
-             (cons 'attr (make-attr-setter m))]
-            ;; Full :region form — each block parsed once
-            [(:region block ...)
-             (for-all (lambda (b) (block-label? (car (syntax->list b))))
-                      (syntax->list #'(block ...)))
-             (let ([fill-fns (map (lambda (blk)
-                                    (let-values ([(builder-name arg-vars arg-types body-ops)
-                                                  (parse-block-form blk)])
-                                      (make-block-fill-fn arg-vars arg-types body-ops
-                                                          builder-stx builder-name)))
-                                  (syntax->list #'(block ...)))])
-               (cons 'region (lambda (idx) (make-region-fill-fn idx fill-fns))))]
-            ;; Shorthand (^label ...) — normalise and recurse
-            [(label . _)
-             (block-label? #'label)
-             (classify-modifier #`(:region #,m))]
-            [_ (syntax-violation 'begin-mlir-code "invalid modifier entry" m)]))
-        ;; Collect tagged handlers in one pass — no duplicate parsing, no conditions.
-        (let* ([tagged      (loop :for m :in (syntax->list modifiers-stx)
-                                  :collect (classify-modifier m))]
-               [attr-fns    (loop :for e :in tagged
-                                  :if (eq? (car e) 'attr)
-                                  :collect (cdr e))]
+        (define (make-direct-setter name-str val-stx)
+          (lambda (state-stx)
+            (with-syntax ([state state-stx] [n name-str] [v val-stx])
+              #'(mlir::OperationState::addAttribute state n v))))
+        ;; Named loop: classify each modifier in one pass, then separate by tag.
+        ;; Returns (cons 'attr setter-fn) or (cons 'region (lambda (idx) fill-fn)).
+        ;; Symbol names, typed attrs, and shorthand blocks all normalise via recursion.
+        (let* ([tagged
+                (loop :for m :in (syntax->list modifiers-stx)
+                      :collect
+                      (let classify ([m m])
+                        (syntax-case m (= :index :i64 :f32 :i32-array :i64-array :unit :region)
+                          ;; Symbol name — normalise to string and retry
+                          [(name = val . rest) (symbol? (syntax->datum #'name))
+                           (with-syntax ([str-name
+                                          (datum->syntax #'name
+                                                         (symbol->string (syntax->datum #'name)))])
+                             (classify #'(str-name = val . rest)))]
+                          ;; Typed attrs — normalise to pre-built form and retry
+                          [(name = val :index)     (classify #'(name = (mlir::IntegerAttr::get<index> val)))]
+                          [(name = val :i64)       (classify #'(name = (mlir::IntegerAttr::get<i64> val)))]
+                          [(name = val :f32)       (classify #'(name = (mlir::FloatAttr::get<f32> val)))]
+                          [(name = val :i32-array) (classify #'(name = (mlir::DenseI32ArrayAttr::get val)))]
+                          [(name = val :i64-array) (classify #'(name = (mlir::DenseI64ArrayAttr::get val)))]
+                          [(name = val :unit)      (classify #'(name = (mlir::UnitAttr::get)))]
+                          ;; Pre-built attr — string name, val is mlir::Attribute uptr
+                          [(name = val) (string? (syntax->datum #'name))
+                           (cons 'attr (make-direct-setter (syntax->datum #'name) #'val))]
+                          ;; Full :region form
+                          [(:region block ...)
+                           (for-all (lambda (b) (block-label? (car (syntax->list b))))
+                                    (syntax->list #'(block ...)))
+                           (let ([fill-fns (map (lambda (blk)
+                                                  (let-values ([(builder-name arg-vars arg-types body-ops)
+                                                                (parse-block-form blk)])
+                                                    (make-block-fill-fn arg-vars arg-types body-ops
+                                                                        builder-stx builder-name)))
+                                                (syntax->list #'(block ...)))])
+                             (cons 'region (lambda (idx) (make-region-fill-fn idx fill-fns))))]
+                          ;; Shorthand block — normalise to :region and retry
+                          [(label . _) (block-label? #'label)
+                           (classify #`(:region #,m))]
+                          [_ (syntax-violation 'begin-mlir-code "invalid modifier entry" m)])))]
+               [attr-fns       (loop :for e :in tagged :if (eq? (car e) 'attr)   :collect (cdr e))]
                [region-entries (filter (lambda (e) (eq? (car e) 'region)) tagged)]
-               [region-fns  (loop :for e :in region-entries
-                                  :for idx :from 0
-                                  :collect ((cdr e) idx))])
+               [region-fns     (loop :for e :in region-entries :for idx :from 0  :collect ((cdr e) idx))])
           (values attr-fns region-fns)))
 
       ;; True when x is a block label identifier starting with ^.
@@ -297,42 +305,6 @@
         (let ([datum (syntax->datum x)])
           (and (symbol? datum)
                (char=? #\^ (string-ref (symbol->string datum) 0)))))
-
-      ;; Returns a closure (lambda (state-stx) → addAttribute-syntax) for one attr form.
-      ;;
-      ;; Two forms:
-      ;;   (name = val :type) — inline attr constructor selected at expand time
-      ;;   (name = val)       — val is already an mlir::Attribute uptr; add directly
-      ;; Both generate (mlir::OperationState::addAttribute state name attr) — called
-      ;; BEFORE %%crest:create-op! so the attribute is part of the OperationState.
-      (define (make-attr-setter attr-stx)
-        (define (make-direct-setter name-str val-stx)
-          (lambda (state-stx)
-            (with-syntax ([state state-stx] [n name-str] [v val-stx])
-              #'(mlir::OperationState::addAttribute state n v))))
-        ;; Named loop: normalize symbol names to strings, then dispatch on type keyword.
-        ;; Typed forms normalize to (name = (ctor val)) and recurse into the direct branch.
-        ;; :unit is special — no val argument.
-        (let parse ([stx attr-stx])
-          (syntax-case stx (= :index :i64 :f32 :i32-array :i64-array :unit)
-            ;; Symbol name — normalise to string and retry
-            [(name = val . rest) (symbol? (syntax->datum #'name))
-             (with-syntax ([str-name (datum->syntax #'name
-                                                    (symbol->string (syntax->datum #'name)))])
-               (parse #'(str-name = val . rest)))]
-            ;; Typed forms — construct attr inline, recurse into direct branch
-            [(name = val :index)     (parse #'(name = (mlir::IntegerAttr::get<index> val)))]
-            [(name = val :i64)       (parse #'(name = (mlir::IntegerAttr::get<i64> val)))]
-            [(name = val :f32)       (parse #'(name = (mlir::FloatAttr::get<f32> val)))]
-            [(name = val :i32-array) (parse #'(name = (mlir::DenseI32ArrayAttr::get val)))]
-            [(name = val :i64-array) (parse #'(name = (mlir::DenseI64ArrayAttr::get val)))]
-            [(name = val :unit)      (parse #'(name = (mlir::UnitAttr::get)))]  ; no val
-            ;; String only — val is already an mlir::Attribute uptr; add directly
-            [(name = val) (string? (syntax->datum #'name))
-             (make-direct-setter (syntax->datum #'name) #'val)]
-            [_ (syntax-violation 'begin-mlir-code
-                                 "attr modifier: (name = val :type) or (name = val) for pre-built attr"
-                                 stx)])))
 
       ;;-------------------------------------------------------------------
       ;; Code emitters
