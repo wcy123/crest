@@ -341,7 +341,9 @@
       ;; Binding-descriptor protocol
       ;; ─────────────────────────────────────────────────────────────────────
       ;; emit-multi (and process-op, which delegates to it) returns a flat list
-      ;; of binding-descriptors: (var-syntax . expr-syntax) cons pairs.
+      ;; of binding-descriptors, each a SCHEME CONS CELL:
+      ;;   (cons var-syntax expr-syntax)   — a pair of two syntax objects
+      ;; make-binding deconstructs each with plain (car d) / (cdr d).
       ;; main collects all descriptors across the op sequence and assembles them
       ;; into a single (let* ((var expr) ...) result) expansion.
       ;;
@@ -395,28 +397,29 @@
                       :collect #'(mlir::OperationState::addRegion state))]
                [source-loc (syntax->mlir-loc-expr op-name-stx)])
             (cons
-             ;; Binding for the Operation* itself: (op-tmp . let-expr)
-             #`(op-tmp . (let ([op
-                                (let ()
-                                  (with-OperationState
-                                   (state source-loc name)
-                                   (for-each
-                                    (lambda (v) (mlir::OperationState::addOperands state v))
-                                    operands-expr)
-                                   (for-each
-                                    (lambda (t) (mlir::OperationState::addTypes state t))
-                                    (list result-type ...))
-                                   addregion-call ...        ; N addRegion calls, inlined
-                                   (%%crest:create-op! builder state)))])
-                           setter ...           ; apply attributes
-                           region-fill-stmt ... ; fill regions
-                           op))
+             ;; Binding descriptor for the Operation* itself: (cons var-stx expr-stx)
+             (cons #'op-tmp
+                   #'(let ([op
+                            (let ()
+                              (with-OperationState
+                               (state source-loc name)
+                               (for-each
+                                (lambda (v) (mlir::OperationState::addOperands state v))
+                                operands-expr)
+                               (for-each
+                                (lambda (t) (mlir::OperationState::addTypes state t))
+                                (list result-type ...))
+                               addregion-call ...        ; N addRegion calls, inlined
+                               (%%crest:create-op! builder state)))])
+                       setter ...           ; apply attributes
+                       region-fill-stmt ... ; fill regions
+                       op))
              ;; Bindings for result variables — loop returns '() when result-vars is empty,
              ;; which happens for zero-result ops (length guard in process-op enforces this).
              ;; TODO: add :current-op in begin-mlir-code to capture zero-result ops by name.
              (loop :for var :in result-vars
                    :for i   :from 0
-                   :collect #`(#,var . (mlir-Operation::getResult op-tmp #,i)))))))
+                   :collect (cons var #`(mlir-Operation::getResult op-tmp #,i)))))))
 
       ;; Returns a closure (lambda (new-op-stx) → fill-stmt-syntax) for one region.
       ;; region-index    — 0-based index of this region within the op.
@@ -479,7 +482,7 @@
                                    #'(begin-mlir-code block-builder body ...))]
                [arg-bind-pairs   (loop :for var :in arg-vars
                                        :for i :from 0
-                                       :collect #`(#,var . (mlir::Block::getArgument block #,i)))])
+                                       :collect (cons var #`(mlir::Block::getArgument block #,i)))])
           (lambda (new-op-stx region-stx)
             (with-syntax ([(arg-type ...) arg-types]
                           [(arg-binding ...) (loop :for pair :in arg-bind-pairs
