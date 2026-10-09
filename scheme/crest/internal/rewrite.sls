@@ -61,7 +61,9 @@
                 source-file-descriptor-path)
           (rename (rime loop) (:with :rime-with))
           (for (rename (rime loop) (:with :rime-with)) expand)
-          (for (only (crest internal keywords) = : -> :region) expand)
+          (for (only (crest internal keywords)
+                     = : -> :region
+                     :index :i64 :f32 :i32-array :i64-array :unit) expand)
           (for (mlir IR BuiltinAttributes) expand)
           ;; Runtime predicates and create bindings for %%crest:create-op! dispatch
           (only (mlir IR PatternMatch)
@@ -291,50 +293,39 @@
       ;; Returns a closure (lambda (state-stx) → addAttribute-syntax) for one attr form.
       ;;
       ;; Two forms:
-      ;;   (name = val type)  — construct attr via (%%make-attr-by-type #f type val)
+      ;;   (name = val :type) — inline attr constructor selected at expand time
       ;;   (name = val)       — val is already an mlir::Attribute uptr; add directly
       ;; Both generate (mlir::OperationState::addAttribute state name attr) — called
       ;; BEFORE %%crest:create-op! so the attribute is part of the OperationState.
       (define (make-attr-setter attr-stx)
-        ;; Dispatch on type at expand time — type keyword is known at macro expansion.
-        ;; Returns the appropriate attr constructor as a syntax object.
-        (define (attr-ctor-stx type-stx)
-          (case (syntax->datum type-stx)
-            [(index :index)         #'mlir::IntegerAttr::get<index>]
-            [(i64 :i64)             #'mlir::IntegerAttr::get<i64>]
-            [(f32 :f32)             #'mlir::FloatAttr::get<f32>]
-            [(i32-array :i32-array) #'mlir::DenseI32ArrayAttr::get]
-            [(i64-array :i64-array) #'mlir::DenseI64ArrayAttr::get]
-            [else (syntax-violation 'begin-mlir-code
-                                    "unknown attr type in rewrite DSL"
-                                    type-stx)]))
-        (define (make-typed-setter name-str val-stx type-stx)
-          (if (memv (syntax->datum type-stx) '(unit :unit))
-              ;; UnitAttr takes no argument — val is ignored
-              (lambda (state-stx)
-                (with-syntax ([state state-stx] [n name-str])
-                  #'(mlir::OperationState::addAttribute state n (mlir::UnitAttr::get))))
-              ;; All other attr types take one value argument
-              (let ([ctor (attr-ctor-stx type-stx)])
-                (lambda (state-stx)
-                  (with-syntax ([state state-stx] [n name-str] [v val-stx] [c ctor])
-                    #'(mlir::OperationState::addAttribute state n (c v)))))))
         (define (make-direct-setter name-str val-stx)
           (lambda (state-stx)
             (with-syntax ([state state-stx] [n name-str] [v val-stx])
               #'(mlir::OperationState::addAttribute state n v))))
-        ;; Named loop: symbol names are normalised to strings first, then retried.
+        ;; Named loop: normalize symbol names to strings, then dispatch on type keyword.
+        ;; Typed forms normalize to (name = (ctor val)) and recurse into the direct branch.
+        ;; :unit is special — no val argument.
         (let parse ([stx attr-stx])
-          (syntax-case stx (=)
-            ;; Symbol name — normalise to string and retry (canonical form is string)
+          (syntax-case stx (= :index :i64 :f32 :i32-array :i64-array :unit)
+            ;; Symbol name — normalise to string and retry
             [(name = val . rest) (symbol? (syntax->datum #'name))
              (with-syntax ([str-name (datum->syntax #'name
                                                     (symbol->string (syntax->datum #'name)))])
                (parse #'(str-name = val . rest)))]
-            ;; String + type — construct attr via expand-time ctor dispatch
-            [(name = val type) (string? (syntax->datum #'name))
-             (make-typed-setter (syntax->datum #'name) #'val #'type)]
-            ;; String only — val is already an mlir::Attribute uptr
+            ;; Typed forms — construct attr inline, recurse into direct branch
+            [(name = val :index)    (string? (syntax->datum #'name))
+             (parse #'(name = (mlir::IntegerAttr::get<index> val)))]
+            [(name = val :i64)      (string? (syntax->datum #'name))
+             (parse #'(name = (mlir::IntegerAttr::get<i64> val)))]
+            [(name = val :f32)      (string? (syntax->datum #'name))
+             (parse #'(name = (mlir::FloatAttr::get<f32> val)))]
+            [(name = val :i32-array) (string? (syntax->datum #'name))
+             (parse #'(name = (mlir::DenseI32ArrayAttr::get val)))]
+            [(name = val :i64-array) (string? (syntax->datum #'name))
+             (parse #'(name = (mlir::DenseI64ArrayAttr::get val)))]
+            [(name = val :unit)     (string? (syntax->datum #'name))
+             (parse #'(name = (mlir::UnitAttr::get)))]   ; no val argument
+            ;; String only — val is already an mlir::Attribute uptr; add directly
             [(name = val) (string? (syntax->datum #'name))
              (make-direct-setter (syntax->datum #'name) #'val)]
             [_ (syntax-violation 'begin-mlir-code
