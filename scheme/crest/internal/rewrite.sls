@@ -224,36 +224,35 @@
       ;; Modifier parser
       ;;-------------------------------------------------------------------
 
-      ;; Parse the optional modifier clause between the operand list and ->.
-      ;; modifiers-stx is the captured (modifiers ...) syntax list.
+      ;; Parse the modifier clause between the operand list and ->.
+      ;; Returns (values attr-setter-fns region-fill-fns):
+      ;;   attr-setter-fns  — list of (lambda (op-stx) → setter-syntax)
+      ;;   region-fill-fns  — list of (lambda (op-stx) → fill-stmt-syntax)
       ;;
-      ;; Returns (values attr-setter-fns region-fill-fns) where:
-      ;;   attr-setter-fns  — Scheme list of closures (lambda (new-op-stx) → setter-syntax)
-      ;;   region-fill-fns  — Scheme list of closures (lambda (new-op-stx) → fill-stmt-syntax)
+      ;; Attr modifier forms:
+      ;;   (name = val)            — val is a pre-built attr uptr; set directly
+      ;;   (name = val :index)     — construct IntegerAttr<index>
+      ;;   (name = val :i64)       — construct IntegerAttr<i64>
+      ;;   (name = val :f32)       — construct FloatAttr<f32>
+      ;;   (name = val :i32-array) — construct DenseI32ArrayAttr
+      ;;   (name = val :i64-array) — construct DenseI64ArrayAttr
+      ;;   (name = val :unit)      — construct UnitAttr (val ignored)
       ;;
-      ;; Blocks are parsed immediately; closures carry the pre-parsed structure.
-      ;; No re-parsing occurs later.
+      ;; Region modifier forms (optional explicit builder name for ^bb0 blocks):
       ;;
-      ;; Attr entries:
-      ;;   (name = val :i64)       — set i64 integer attr
-      ;;   (name = val :index)     — set index attr
-      ;;   (name = val :i32-array) — set dense i32 array attr
-      ;;   (name = val :i64-array) — set dense i64 array attr
-      ;;
-      ;; Region forms — two syntaxes:
+      ;;   Shorthand — one region, one block:
       ;;   (^label ((arg : type) ...) body ...)
-      ;;       Shorthand: one region containing exactly one block.
-      ;;       Normalised to (:region (^label ...)) and re-parsed.
+      ;;   (^label builder-name ((arg : type) ...) body ...)
       ;;
+      ;;   Full form — one region, one or more blocks:
       ;;   (:region (^label ((arg : type) ...) body ...) ...)
-      ;;       Full form: one region containing one or more blocks.
+      ;;   (:region (^label b ((arg : type) ...) body ...) ...)
       ;;
       ;; Examples:
-      ;;   %r = "arith.constant" () ("value" = 42 :index) -> (i32)
-      ;;   %r = "scf.if" (%c) (^bb0 () then-body...) -> (i1)          ;; shorthand
-      ;;   %r = "scf.for" (%lo %hi %step)
-      ;;          (:region (^bb0 ((i : index)) body...) (^bb1 () exit...))
-      ;;          -> (i32)
+      ;;   ("value" = 42 :index)                          — attr modifier
+      ;;   (^bb0 ((%x : i32)) body ...)                   — shorthand, unnamed builder
+      ;;   (^bb0 b ((%x : i32)) body ...)                 — shorthand, builder named b
+      ;;   (:region (^bb0 ((i : index)) body...) (^exit () exit...))  — full form
       (define (parse-modifiers modifiers-stx builder-stx)
         (let loop ([rest modifiers-stx] [attr-setter-fns '()] [region-fill-fns '()])
           (syntax-case rest (= : :region)
