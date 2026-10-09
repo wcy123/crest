@@ -36,8 +36,8 @@
     add-conversion-pattern
     add-rewrite-pattern
     populate-func-type-conversion
-    mlir::TypeConverter?
-    mlir::ConversionTarget?
+    crest::isa<CrestOwned<mlir::TypeConverter>>?
+    crest::isa<CrestOwned<mlir::ConversionTarget>>?
     with-TypeConverter
     with-ConversionTarget
     )
@@ -126,12 +126,12 @@
   (define populate-func-type-conversion
     %populate-func-type-conversion)
 
-  ;; @brief mlir::TypeConverter? — is this ptr a CrestOwned<mlir::TypeConverter>?
-  (define (mlir::TypeConverter? ptr)
+  ;; @brief crest::isa<CrestOwned<mlir::TypeConverter>>? — is this ptr a CrestOwned<mlir::TypeConverter>?
+  (define (crest::isa<CrestOwned<mlir::TypeConverter>>? ptr)
     (not (zero? (%crest::isa<CrestOwned<mlir::TypeConverter>> ptr))))
 
-  ;; @brief mlir::ConversionTarget? — is this ptr a CrestOwned<mlir::ConversionTarget>?
-  (define (mlir::ConversionTarget? ptr)
+  ;; @brief crest::isa<CrestOwned<mlir::ConversionTarget>>? — is this ptr a CrestOwned<mlir::ConversionTarget>?
+  (define (crest::isa<CrestOwned<mlir::ConversionTarget>>? ptr)
     (not (zero? (%crest::isa<CrestOwned<mlir::ConversionTarget>> ptr))))
 
   ;; @brief RAII macro — create a TypeConverter, execute BODY, then destroy on exit.

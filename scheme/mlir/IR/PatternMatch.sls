@@ -29,8 +29,8 @@
     mlir::RewriterBase::replaceOp
     mlir::RewriterBase::eraseOp
     ;; Type predicates
-    mlir::RewriterBase?
-    mlir::RewritePatternSet?
+    crest::isa<CrestRef<mlir::RewriterBase>>?
+    crest::isa<CrestOwned<mlir::RewritePatternSet>>?
     ;; RAII macros
     with-raii
     with-RewritePatternSet)
@@ -82,12 +82,12 @@
   ;; @brief mlir::RewriterBase::eraseOp — erase op and all uses (must be dead).
   (define mlir::RewriterBase::eraseOp                 %mlir::RewriterBase::eraseOp)
 
-  ;; @brief mlir::RewriterBase? — is this ptr a CrestRef<mlir::RewriterBase>?
-  (define (mlir::RewriterBase? ptr)
+  ;; @brief crest::isa<CrestRef<mlir::RewriterBase>>? — is this ptr a CrestRef<mlir::RewriterBase>?
+  (define (crest::isa<CrestRef<mlir::RewriterBase>>? ptr)
     (not (zero? (%crest::isa<CrestRef<mlir::RewriterBase>> ptr))))
 
-  ;; @brief mlir::RewritePatternSet? — is this ptr a CrestOwned<mlir::RewritePatternSet>?
-  (define (mlir::RewritePatternSet? ptr)
+  ;; @brief crest::isa<CrestOwned<mlir::RewritePatternSet>>? — is this ptr a CrestOwned<mlir::RewritePatternSet>?
+  (define (crest::isa<CrestOwned<mlir::RewritePatternSet>>? ptr)
     (not (zero? (%crest::isa<CrestOwned<mlir::RewritePatternSet>> ptr))))
 
   ;; @brief Create an op via a RewriterBase*.

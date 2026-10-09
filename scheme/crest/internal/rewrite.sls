@@ -53,8 +53,8 @@
           (mlir IR BuiltinAttributes)
           (for (mlir IR BuiltinAttributes) expand)
           ;; Runtime predicates for begin-mlir-code runtime dispatch
-          (only (mlir IR PatternMatch) mlir::RewriterBase?)
-          (only (mlir IR Builders) mlir::OpBuilder?)
+          (only (mlir IR PatternMatch) crest::isa<CrestRef<mlir::RewriterBase>>?)
+          (only (mlir IR Builders) crest::isa<CrestOwned<mlir::OpBuilder>>?)
           (only (mlir support array-ref) CrestObject::delete)
           (for (only (mlir IR Builders ffi)
                      %mlir::OpBuilder::atBlockEnd
@@ -149,7 +149,7 @@
       ;; (:rewriter rw) — rw is CrestRef<RewriterBase>*, uses %mlir::RewriterBase::create<OperationState>
       ;; (:builder b)   — b is CrestOwned<OpBuilder>*, uses %mlir::OpBuilder::create<OperationState>
       ;; The two create bindings use different casts and are NOT interchangeable.
-      ;; Plain (ctx op ...) — runtime dispatch on mlir::RewriterBase? / mlir::OpBuilder?.
+      ;; Plain (ctx op ...) — runtime dispatch on crest::isa<CrestRef<mlir::RewriterBase>>? / crest::isa<CrestOwned<mlir::OpBuilder>>?.
       (define (main)
         (syntax-case stx (:rewriter :builder)
           [(_ (:rewriter rw) op ...)
@@ -179,8 +179,8 @@
           [(_ ctx op ...)
            #'(let ([%ctx ctx])
                (cond
-                [(mlir::RewriterBase? %ctx) (begin-mlir-code (:rewriter %ctx) op ...)]
-                [(mlir::OpBuilder?    %ctx) (begin-mlir-code (:builder  %ctx) op ...)]
+                [(crest::isa<CrestRef<mlir::RewriterBase>>? %ctx) (begin-mlir-code (:rewriter %ctx) op ...)]
+                [(crest::isa<CrestOwned<mlir::OpBuilder>>?    %ctx) (begin-mlir-code (:builder  %ctx) op ...)]
                 [else (error 'begin-mlir-code
                              "expected a RewriterBase or OpBuilder"
                              %ctx)]))]))

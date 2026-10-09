@@ -18,14 +18,14 @@
     %mlir::OperationState::addOperands
     %mlir::OperationState::addTypes
     %mlir::OperationState::addRegion
-    mlir::OperationState?
+    crest::isa<CrestOwned<mlir::OperationState>>?
     with-OperationState)
   (import (rnrs)
           (only (mlir support array-ref) with-CrestObject)
           (mlir IR OperationSupport ffi))
 
-  ;; @brief mlir::OperationState? — is this ptr a CrestOwned<mlir::OperationState>?
-  (define (mlir::OperationState? ptr)
+  ;; @brief crest::isa<CrestOwned<mlir::OperationState>>? — is this ptr a CrestOwned<mlir::OperationState>?
+  (define (crest::isa<CrestOwned<mlir::OperationState>>? ptr)
     (not (zero? (%crest::isa<CrestOwned<mlir::OperationState>> ptr))))
 
   ;; @brief with-OperationState — RAII for a heap-allocated mlir::OperationState.
