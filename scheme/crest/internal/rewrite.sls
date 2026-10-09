@@ -14,7 +14,7 @@
 ;;     Sequences MLIR op-forms using ctx as the builder.
 ;;     ctx may be a CrestRef<RewriterBase> (from a pattern callback) or
 ;;     a CrestOwned<OpBuilder> (from with-OpBuilder or a ^bb0 block).
-;;     The correct C++ create binding is selected at runtime via crest:create-op!.
+;;     The correct C++ create binding is selected at runtime via %%crest:create-op!.
 ;;     Returns the last result (like Scheme's begin).
 ;;
 ;; op-form syntax:
@@ -49,7 +49,7 @@
           (for (only (crest internal keywords) = : -> :region) expand)
           (mlir IR BuiltinAttributes)
           (for (mlir IR BuiltinAttributes) expand)
-          ;; Runtime predicates and create bindings for crest:create-op! dispatch
+          ;; Runtime predicates and create bindings for %%crest:create-op! dispatch
           (only (mlir IR PatternMatch)
                 crest::isa<CrestRef<mlir::RewriterBase>>?
                 mlir::RewriterBase::create<OperationState>)
@@ -85,7 +85,7 @@
   ;; ctx is passed but unused here — the explicit constructors from
   ;; (mlir IR BuiltinAttributes) read current-MLIRContext internally.
   ;;===--------------------------------------------------------------------===;;
-  (define (%make-attr-by-type _ctx type val)
+  (define (%%make-attr-by-type _ctx type val)
     (case type
       [(index :index)           (mlir::IntegerAttr::get<index> val)]
       [(i32-array :i32-array)   (mlir::DenseI32ArrayAttr::get val)]
@@ -93,7 +93,7 @@
       [(i64 :i64)               (mlir::IntegerAttr::get<i64> val)]
       [(f32 :f32)               (mlir::FloatAttr::get<f32> val)]
       [(unit :unit)             (mlir::UnitAttr::get)]
-      [else (error '%make-attr-by-type "unknown attr type in rewrite DSL" type)]))
+      [else (error '%%make-attr-by-type "unknown attr type in rewrite DSL" type)]))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Runtime create dispatcher
@@ -102,14 +102,14 @@
   ;; Select the correct C++ create binding based on the CREST wrapper type.
   ;; - CrestRef<RewriterBase>  → mlir::RewriterBase::create<OperationState>
   ;; - CrestOwned<OpBuilder>   → mlir::OpBuilder::create<OperationState>
-  (define (crest:create-op! ctx state)
+  (define (%%crest:create-op! ctx state)
     (cond
      [(crest::isa<CrestRef<mlir::RewriterBase>>? ctx)
       (mlir::RewriterBase::create<OperationState> ctx state)]
      [(crest::isa<CrestOwned<mlir::OpBuilder>>? ctx)
       (mlir::OpBuilder::create<OperationState> ctx state)]
      [else
-      (error 'crest:create-op! "expected RewriterBase or OpBuilder" ctx)]))
+      (error '%%crest:create-op! "expected RewriterBase or OpBuilder" ctx)]))
 
   ;;===--------------------------------------------------------------------===;;
   ;; begin-mlir-code
@@ -159,7 +159,7 @@
       ;;-------------------------------------------------------------------
 
       ;; Single case: ctx is any builder (CrestRef<RewriterBase> or
-      ;; CrestOwned<OpBuilder>). crest:create-op! dispatches at runtime.
+      ;; CrestOwned<OpBuilder>). %%crest:create-op! dispatches at runtime.
       (define (main)
         (syntax-case stx ()
           [(_ ctx op ...)
@@ -180,7 +180,7 @@
 
       ;; Parse one op-form; return a flat list of (var . expr) pairs.
       ;; builder-stx — syntax object for the active builder expression.
-      ;; crest:create-op! dispatches to the correct C++ create at runtime.
+      ;; %%crest:create-op! dispatches to the correct C++ create at runtime.
       (define (process-op op-stx index builder-stx)
         (syntax-case op-stx (= ->)
           ;; Scheme escape
@@ -288,7 +288,7 @@
       ;; Returns a closure (lambda (new-op-stx) → setter-syntax) for one attr form.
       ;;
       ;; Two forms:
-      ;;   (name = val type)  — construct attr via (%make-attr-by-type ctx type val)
+      ;;   (name = val type)  — construct attr via (%%make-attr-by-type ctx type val)
       ;;   (name = val)       — val is already an attr uptr; set directly
       (define (make-attr-setter attr-stx)
         (define (name->str x)
@@ -299,7 +299,7 @@
             (with-syntax ([new-op new-op-stx] [n name-str] [v val-stx]
                           [type-q type-quoted-stx])
               #'(mlir-operation-set-attribute! new-op n
-                                               (%make-attr-by-type (mlir-Operation::getContext new-op) type-q v)))))
+                                               (%%make-attr-by-type (mlir-Operation::getContext new-op) type-q v)))))
         (define (make-direct-setter name-str val-stx)
           (lambda (new-op-stx)
             (with-syntax ([new-op new-op-stx] [n name-str] [v val-stx])
@@ -319,7 +319,7 @@
       ;; bindings in the final expansion.
       ;;
       ;; Always generates a tmp binding for the Operation* itself:
-      ;;   (%op-tmp-N . (let ([new-op (crest:create-op! builder state)])
+      ;;   (%op-tmp-N . (let ([new-op (%%crest:create-op! builder state)])
       ;;                  setter ...           ; apply attributes
       ;;                  region-fill-stmt ... ; fill each region
       ;;                  new-op))
@@ -358,7 +358,7 @@
                                                                    (when (< i nregions)
                                                                      (mlir::OperationState::addRegion state)
                                                                      (loop (+ i 1))))
-                                                                 (crest:create-op! builder state)))])
+                                                                 (%%crest:create-op! builder state)))])
                               setter ...
                               region-fill-stmt ...
                               new-op)))
