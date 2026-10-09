@@ -334,9 +334,9 @@
           ;; (^label builder-name ((arg : type) ...) body ...)  — explicit builder name
           ;; (^label ((arg : type) ...) body ...)               — gensym for builder
           (syntax-case block-stx ()
-            [(_ builder-name arg-list . body) (identifier? #'builder-name)
+            [(_ builder-id arg-list . body) (identifier? #'builder-id)
              (let ([av-at (split-arg-types (syntax->list #'arg-list))])
-               (list #'builder-name (car av-at) (cadr av-at) (syntax->list #'body)))]
+               (list #'builder-id (car av-at) (cadr av-at) (syntax->list #'body)))]
             [(_ arg-list . body)
              (let ([av-at (split-arg-types (syntax->list #'arg-list))])
                (list (car (generate-temporaries '(block-builder)))
