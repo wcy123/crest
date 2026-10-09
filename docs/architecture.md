@@ -237,11 +237,8 @@ column where it was written in the pattern:
 %c1 = shape.const_size 1 loc(#loc6)
 ```
 
-This is implemented entirely at macro-expansion time: `syntax->annotation`
-extracts the byte-file-position from the op-name syntax object, and
-`bfp->line+col` converts it to line/column by scanning the source file.
-There is zero runtime cost. The location falls back to `mlir::UnknownLoc`
-when Chez Scheme bytecode caching strips annotations.
+Location tracking is zero-cost at runtime and falls back to `mlir::UnknownLoc`
+when Chez Scheme bytecode caching strips source annotations.
 
 [DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/) attaches the *fused
 location of the matched input ops* to emitted ops — this is genuinely useful:

@@ -21,7 +21,7 @@
     mlir::Region::front)
   (import (rnrs)
           (mlir IR Region ffi)
-          (only (mlir IR Block ffi) %mlir::Block::new %mlir::Block::addArgument)
+          (only (mlir IR Block) mlir::Block::addArgument)
           (only (mlir IR Operation) mlir::Operation::getLoc))
 
 
@@ -45,7 +45,7 @@
     (let* ([block (%mlir::Block::new)]
            [loc   (mlir::Operation::getLoc (%mlir::Region::getParentOp region))])
       (%mlir::Region::push_back region block)
-      (for-each (lambda (t) (%mlir::Block::addArgument block t loc)) arg-types)
+      (for-each (lambda (t) (mlir::Block::addArgument block t loc)) arg-types)
       block))
 
   ) ;; end library (mlir IR Region)

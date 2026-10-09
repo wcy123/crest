@@ -65,7 +65,7 @@
   (define (make-binary-min! rewriter loc-op ctx lhs rhs out-type)
     (let ([!shape-type (mlir::shape::ShapeType::get)])
       (mlir::RewriterBase::setInsertionPoint rewriter loc-op)
-      (begin-mlir-code (:rewriter rewriter)
+      (begin-mlir-code rewriter
                        (%ph = hipsr.placeholder (ctx lhs rhs)
                             (^bb0 ((%ls : !shape-type) (%rs : !shape-type))
                                   (%bc = shape.broadcast (%ls %rs) -> !shape-type)

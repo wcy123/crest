@@ -242,7 +242,7 @@
   ;; @note        When spec contains :optional or :variadic, op must carry
   ;;              an operandSegmentSizes DenseI32ArrayAttr.  For all-:required
   ;;              specs no attribute read is needed.
-  (define %absent (if #f #f))  ; sentinel: absent optional/variadic slot
+  (define %%absent (if #f #f))  ; sentinel: absent optional/variadic slot
 
   (define (operation-get-operands op . spec)
     (define (read-op i) (mlir::OpOperand::get op i))
@@ -285,10 +285,10 @@
                                      [(:required)
                                       (read-op start)]
                                      [(:optional)
-                                      (if (zero? size) %absent (read-op start))]
+                                      (if (zero? size) %%absent (read-op start))]
                                      [(:variadic)
                                       (if (zero? size)
-                                          %absent
+                                          %%absent
                                           (loop :for i :from start :below (+ start size)
                                                 :collect (read-op i)))]
                                      [else
