@@ -275,8 +275,8 @@
              ;; All blocks must start with a label; labels start with ^.
              (for-all (lambda (b) (block-label? (car (syntax->list b))))
                       (syntax->list #'(block ...)))
-             (let ([fill-fns (map make-block-fill (syntax->list #'(block ...)))])
-               (cons 'region (lambda (idx) (make-region-fill-fn idx fill-fns))))]
+             (cons 'region (lambda (idx)
+                             (make-region-fill-fn idx (map make-block-fill (syntax->list #'(block ...))))))]
             [_ (syntax-violation 'begin-mlir-code "invalid modifier entry" m)]))
         ;; Split a tagged list into (values attr-fns region-fns).
         ;; Applies region indices by position in the filtered region list.
