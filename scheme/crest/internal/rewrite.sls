@@ -62,7 +62,6 @@
           (rename (rime loop) (:with :rime-with))
           (for (rename (rime loop) (:with :rime-with)) expand)
           (for (only (crest internal keywords) = : -> :region) expand)
-          (mlir IR BuiltinAttributes)
           (for (mlir IR BuiltinAttributes) expand)
           ;; Runtime predicates and create bindings for %%crest:create-op! dispatch
           (only (mlir IR PatternMatch)
@@ -90,23 +89,6 @@
                              mlir::Operation::getResult)
                        (mlir::Operation::getResult mlir-Operation::getResult)) expand))
 
-  ;;===--------------------------------------------------------------------===;;
-  ;; Attr-constructor dispatch — used by the (name = val :type) modifier
-  ;; form to build an MLIR attribute at runtime.  Replaces the old generic
-  ;; generic mlir-make-attr dispatcher (removed with (mlir core attribute)).
-  ;;
-  ;; ctx is passed but unused here — the explicit constructors from
-  ;; (mlir IR BuiltinAttributes) read current-MLIRContext internally.
-  ;;===--------------------------------------------------------------------===;;
-  (define (%%make-attr-by-type _ctx type val)
-    (case type
-      [(index :index)           (mlir::IntegerAttr::get<index> val)]
-      [(i32-array :i32-array)   (mlir::DenseI32ArrayAttr::get val)]
-      [(i64-array :i64-array)   (mlir::DenseI64ArrayAttr::get val)]
-      [(i64 :i64)               (mlir::IntegerAttr::get<i64> val)]
-      [(f32 :f32)               (mlir::FloatAttr::get<f32> val)]
-      [(unit :unit)             (mlir::UnitAttr::get)]
-      [else (error '%%make-attr-by-type "unknown attr type in rewrite DSL" type)]))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Runtime create dispatcher
@@ -314,29 +296,42 @@
       ;; Both generate (mlir::OperationState::addAttribute state name attr) — called
       ;; BEFORE %%crest:create-op! so the attribute is part of the OperationState.
       (define (make-attr-setter attr-stx)
-        (define (make-typed-setter name-str val-stx type-quoted-stx)
-          (lambda (state-stx)
-            (with-syntax ([state  state-stx] [n name-str] [v val-stx]
-                          [type-q type-quoted-stx])
-              #'(mlir::OperationState::addAttribute
-                 state n (%%make-attr-by-type #f type-q v)))))
+        ;; Dispatch on type at expand time — type keyword is known at macro expansion.
+        ;; Returns the appropriate attr constructor as a syntax object.
+        (define (attr-ctor-stx type-stx)
+          (case (syntax->datum type-stx)
+            [(index :index)         #'mlir::IntegerAttr::get<index>]
+            [(i64 :i64)             #'mlir::IntegerAttr::get<i64>]
+            [(f32 :f32)             #'mlir::FloatAttr::get<f32>]
+            [(i32-array :i32-array) #'mlir::DenseI32ArrayAttr::get]
+            [(i64-array :i64-array) #'mlir::DenseI64ArrayAttr::get]
+            [(unit :unit)           #'mlir::UnitAttr::get]
+            [else (syntax-violation 'begin-mlir-code
+                                    "unknown attr type in rewrite DSL"
+                                    type-stx)]))
+        (define (make-typed-setter name-str val-stx type-stx)
+          (let ([ctor (attr-ctor-stx type-stx)])
+            (lambda (state-stx)
+              (with-syntax ([state state-stx] [n name-str] [v val-stx] [c ctor])
+                #'(mlir::OperationState::addAttribute state n (c v))))))
         (define (make-direct-setter name-str val-stx)
           (lambda (state-stx)
             (with-syntax ([state state-stx] [n name-str] [v val-stx])
               #'(mlir::OperationState::addAttribute state n v))))
-        ;; Named loop: symbol names are normalised to strings, then retried.
+        ;; Named loop: symbol names are normalised to strings first, then retried.
         (let parse ([stx attr-stx])
           (syntax-case stx (=)
-            ;; String literal name — canonical form, dispatch to setters
-            [(name = val type) (string? (syntax->datum #'name))
-             (make-typed-setter  (syntax->datum #'name) #'val #''type)]
-            [(name = val)      (string? (syntax->datum #'name))
-             (make-direct-setter (syntax->datum #'name) #'val)]
-            ;; Symbol name — normalise to string and retry
+            ;; Symbol name — normalise to string and retry (canonical form is string)
             [(name = val . rest) (symbol? (syntax->datum #'name))
              (with-syntax ([str-name (datum->syntax #'name
                                                     (symbol->string (syntax->datum #'name)))])
                (parse #'(str-name = val . rest)))]
+            ;; String + type — construct attr via expand-time ctor dispatch
+            [(name = val type) (string? (syntax->datum #'name))
+             (make-typed-setter (syntax->datum #'name) #'val #'type)]
+            ;; String only — val is already an mlir::Attribute uptr
+            [(name = val) (string? (syntax->datum #'name))
+             (make-direct-setter (syntax->datum #'name) #'val)]
             [_ (syntax-violation 'begin-mlir-code
                                  "attr modifier: (name = val :type) or (name = val) for pre-built attr"
                                  stx)])))
