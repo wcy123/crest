@@ -375,22 +375,26 @@
                           index         ; integer — op position in begin-mlir-code
                           op-name-stx   ; syntax — carries source location annotation
                           builder-stx)  ; syntax — the active builder expression
-        (let* ([nregions (length region-fill-fns)]  ; number of region modifiers
-               [op-var   (op-tmp-id index)])        ; %op-tmp-N — outer let* binding
+        (let* ([nregions  (length region-fill-fns)]  ; number of region modifiers
+               [op-var   (op-tmp-id index)]           ; %op-tmp-N — outer let* binding
+               [state-id (car (generate-temporaries '(state)))])  ; gensym for OperationState
           (with-syntax
               ([operands-expr  operands]         ; runtime operand list expr
                [name           op-name]          ; string literal
                [(result-type ...) result-types]  ; result type exprs
                [op-tmp         op-var]           ; %op-tmp-N exposed to callers
                [builder        builder-stx]      ; active builder
-               ;; Setters call addAttribute on state BEFORE create (correct MLIR idiom)
+               [state          state-id]         ; gensym for OperationState binding
+               ;; Setters call addAttribute on state BEFORE create (correct MLIR idiom).
+               ;; state-id threads the gensym to setter closures — no literal #'state.
                [(setter ...)
-                (map (lambda (fn) (fn #'state)) attr-setter-fns)]
+                (map (lambda (fn) (fn state-id)) attr-setter-fns)]
                ;; Region fills use getRegion AFTER create — inserting ops into a
                ;; pre-OperationState block violates MLIR's parent-op invariants.
                [(region-fill-stmt ...)
                 (map (lambda (fn) (fn op-var)) region-fill-fns)]
                ;; Unroll N addRegion calls at expand time — pre-allocates region slots.
+               ;; 'state' in the template refers to the with-syntax binding above.
                [(addregion-call ...)
                 (loop :for i :from 0 :below nregions
                       :collect #'(mlir::OperationState::addRegion state))]
