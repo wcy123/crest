@@ -213,8 +213,7 @@ std::string ChezSchemeInterpreter::getLibraryDirectories() const {
     }
     return out;
   };
-  ptr lib_dirs =
-      Scall0(Stop_level_value(Sstring_to_symbol("library-directories")));
+  ptr lib_dirs = scheme_call("library-directories");
   std::string result;
   for (ptr p = lib_dirs; p != Snil && Spairp(p); p = Scdr(p)) {
     ptr pair = Scar(p);
@@ -233,14 +232,9 @@ std::string ChezSchemeInterpreter::getLibraryDirectories() const {
 // ────────────────────────────────────────────────────────────
 
 bool ChezSchemeInterpreter::eval(const char* code) {
-  ptr eval_sym = Stop_level_value(Sstring_to_symbol("eval"));
-  ptr read_sym = Stop_level_value(Sstring_to_symbol("read"));
-  ptr open_port_sym =
-      Stop_level_value(Sstring_to_symbol("open-string-input-port"));
-
-  ptr port = Scall1(open_port_sym, Sstring(code));
-  ptr expr = Scall1(read_sym, port);
-  Scall1(eval_sym, expr);
+  ptr port = scheme_call("open-string-input-port", Sstring(code));
+  ptr expr = scheme_call("read", port);
+  scheme_call("eval", expr);
   return true;
 }
 
@@ -255,8 +249,7 @@ void ChezSchemeInterpreter::callPassFunction(const char* functionName,
                  << "' not found\n";
     return;
   }
-  ptr schemeOp = Sunsigned64(reinterpret_cast<uint64_t>(op));
-  Scall1(func, schemeOp);
+  scheme_call(func, op);
 }
 
 } // namespace crest
