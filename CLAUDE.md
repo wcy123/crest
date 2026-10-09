@@ -180,7 +180,7 @@ Every RAII macro that manages the lifetime of a specific C++ object is named
 after the C++ class it wraps:
 
 ```scheme
-(with-MLIRContext ctx body ...)       ; wraps mlir::MLIRContext*
+(with-current-MLIRContext ctx body ...)       ; wraps mlir::MLIRContext*
 (with-TypeConverter (tc) body ...)    ; wraps mlir::TypeConverter
 (with-ConversionTarget (t ctx) body ...) ; wraps mlir::ConversionTarget
 (with-RewritePatternSet (ps ctx) body ...) ; wraps mlir::RewritePatternSet
@@ -213,13 +213,38 @@ The RAII macro lives in the same Scheme module that wraps the C++ class:
 
 | Macro | Module | C++ header |
 |---|---|---|
-| `with-MLIRContext` | `(mlir IR MLIRContext)` | `mlir/IR/MLIRContext.h` |
+| `with-current-MLIRContext` | `(mlir IR MLIRContext)` | `mlir/IR/MLIRContext.h` |
 | `with-RewriterBase` | `(mlir IR PatternMatch)` | `mlir/IR/PatternMatch.h` |
 | `with-RewritePatternSet` | `(mlir IR PatternMatch)` | `mlir/IR/PatternMatch.h` |
 | `with-OpBuilder` | `(mlir IR Builders)` | `mlir/IR/Builders.h` |
 | `with-TypeConverter` | `(mlir Transforms DialectConversion)` | `mlir/Transforms/DialectConversion.h` |
 | `with-ConversionTarget` | `(mlir Transforms DialectConversion)` | `mlir/Transforms/DialectConversion.h` |
 | `with-raii` | `(mlir support RAII)` | no C++ counterpart (generic helper) |
+
+### Rule 13 — Internal Scheme helpers use `%%` prefix
+
+Private implementation-level Scheme functions that are not exported and not raw
+FFI bindings use `%%` prefix:
+
+- `%name` — raw FFI binding (a `foreign-procedure` wrapper, lives in `ffi.sls`)
+- `%%name` — internal Scheme helper (not exported, not an FFI binding)
+
+```scheme
+;; WRONG — % prefix on a non-FFI Scheme function (Rule 5 violation)
+(define (%make-attr-by-type ctx type val) ...)
+
+;; CORRECT — %% marks it as an internal helper
+(define (%%make-attr-by-type ctx type val) ...)
+```
+
+The `%%` prefix:
+- Makes internal helpers immediately recognizable when reading code
+- Provides a grep target: `grep '%%'` audits all internals at once
+- Fixes the ambiguity between `%` (FFI binding) and "just not exported"
+
+Only apply `%%` to functions defined at the library level that need a visual
+signal of their private status. Purely local helpers defined inside another
+function's body do not need `%%`.
 
 ## Summary checklist for a new binding
 
@@ -231,3 +256,4 @@ The RAII macro lives in the same Scheme module that wraps the C++ class:
 - [ ] Both `.sls` files have `;; Mirrors mlir/<Path>/<Header>.h` in docstring
 - [ ] Module name `(mlir Path Name)` matches header path exactly
 - [ ] All `Sregister_symbol` calls use anonymous lambdas (`(void*)+[](…) -> T { … }`)
+- [ ] Internal Scheme helpers use `%%` prefix; raw FFI bindings use `%` prefix
