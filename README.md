@@ -36,6 +36,9 @@ conversion passes. **CREST is the only DSL-based option that covers dialect conv
 | Match constraints without C++ | No | No | **Yes** (plain Scheme) |
 | Optional / variadic operands | No | Limited | **Yes** |
 | Emitted op → pattern file:line | No | No | **Yes** |
+| Debug why a pattern didn't fire | No¹ | No¹ | **Yes** (`CREST_DEBUG_MATCH=1`) |
+
+¹ DRR/PDLL only expose a raw `pdl_interp` bytecode trace via `--debug`. For C++ patterns, `notifyMatchFailure` must be added manually throughout `matchAndRewrite`. Neither provides per-check visibility for large patterns.
 
 For patterns DRR and PDLL cannot express, the only fallback is C++ boilerplate.
 A quantization fusion in C++:
@@ -257,6 +260,47 @@ CREST_PATH=$(pwd)/samples \
 Locations are derived from the syntax annotation of `#'op-name` at macro expand time.
 MLIR error messages, `--mlir-print-ir-after-all`, and crash traces resolve to the
 exact `.sls` line — no extra work required.
+
+---
+
+## Debug why a pattern didn't fire
+
+When a pattern doesn't match an op you expect it to, DRR and PDLL give you nothing — or a
+raw `pdl_interp` bytecode trace that reflects the lowered representation, not your source
+pattern ([LLVM Discourse](https://discourse.llvm.org/t/how-to-debug-pdl-pattern-matching/87940)).
+For large patterns (10+ nodes) this is painful: there is no way to ask "at which node did the
+match fail?"
+
+CREST solves this with a single environment variable:
+
+```bash
+CREST_DEBUG_MATCH=1 \
+CREST_PATH=$(pwd)/samples \
+  build/tools/crest-opt/crest-opt \
+  -allow-unregistered-dialect \
+  --crest-pass="module=passes/hip-fusion" \
+  test/hip-fusion/qadd.mlir
+```
+
+Sample output when `hip.add` is replaced by `hip.sub` (which no fusion pattern handles):
+
+```
+[warning] samples/passes/hip-fusion/qadd.sls:83:20: [hip-qadd-fusion] FAILED: (and (string=? (mlir-operation-name (vector-ref all-operations 5)) "hip.add") (= (mlir-operation-num-results (vector-ref all-operations 5)) 1))
+[warning] samples/passes/hip-fusion/qmul.sls:35:15: [hip-qmul-fusion] FAILED: (and (string=? (mlir-operation-name (vector-ref all-operations 1)) "hip.mul") (= (mlir-operation-num-results (vector-ref all-operations 1)) 1))
+[warning] samples/passes/hip-fusion/qmatmul.sls:47:17: [hip-qmatmul-fusion] FAILED: (and (string=? (mlir-operation-name (vector-ref all-operations 1)) "hip.matmul") (= (mlir-operation-num-results (vector-ref all-operations 1)) 1))
+...
+```
+
+Each line shows the **exact Scheme expression** that returned `#f`, baked in at macro expand
+time. No C++ changes, no recompile — just set the env var and re-run.
+
+When an exception is thrown during matching (e.g. `(:attr "value")` on an op that lacks the
+attribute), the condition message is also printed before the match failure is silently discarded.
+
+**How it works:** `CREST_DEBUG_MATCH` is read once at pattern expand time (when the `.sls` is
+loaded). Patterns compiled with the variable set generate verbose check code; patterns compiled
+without it generate the silent production path. No per-match overhead, no code bloat in
+production — just set the variable, re-run, debug, unset, re-run.
 
 ---
 

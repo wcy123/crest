@@ -135,7 +135,7 @@
           define-rewrite-pattern
           begin-mlir-code
           :if-match :then-let :rewrite :with :where
-          :debug-parse :debug-validate :debug-analyze :debug-codegen :debug-matching
+          :debug-parse :debug-validate :debug-analyze :debug-codegen
           = : -> :region :regions
           :any
           :current-op :attr

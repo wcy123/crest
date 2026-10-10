@@ -122,10 +122,14 @@ ChezSchemeInterpreter::ChezSchemeInterpreter(PrivateTag,
 
 #ifndef CREST_BOOT_EMBEDDED
   // Development mode: load .sls files from the source tree at runtime.
-  // Both pairs use SCHEME_BINARY_DIR as the object-dir so compiled .so
-  // files always land in the build tree, never in the source trees.
-  addLibraryPath(SCHEME_LIBRARIES_DIR, SCHEME_BINARY_DIR);
-  addLibraryPath(RIME_DIR, SCHEME_BINARY_DIR);
+  // CREST_SCHEME_BINARY_DIR overrides the compiled .so cache directory at
+  // runtime — useful for tests that need an isolated cache (e.g. to force
+  // recompilation with CREST_DEBUG_MATCH=1 without polluting the shared dir).
+  const std::string schemeBinaryDir =
+      llvm::sys::Process::GetEnv("CREST_SCHEME_BINARY_DIR")
+          .value_or(std::string(SCHEME_BINARY_DIR));
+  addLibraryPath(SCHEME_LIBRARIES_DIR, schemeBinaryDir.c_str());
+  addLibraryPath(RIME_DIR, schemeBinaryDir.c_str());
 #endif
 
   // CREST_PATH: optional colon-separated (POSIX) or semicolon-separated
@@ -135,7 +139,7 @@ ChezSchemeInterpreter::ChezSchemeInterpreter(PrivateTag,
     llvm::StringRef(*val).split(dirs, llvm::sys::EnvPathSeparator);
     for (auto dir : dirs) {
       if (!dir.empty()) {
-        addLibraryPath(dir.str().c_str(), SCHEME_BINARY_DIR);
+        addLibraryPath(dir.str().c_str(), schemeBinaryDir.c_str());
       }
     }
   }

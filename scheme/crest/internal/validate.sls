@@ -167,10 +167,10 @@
               ;; Cache indices for codegen
               (ast-pattern-expand-root-op-index-set! ast-rec (car found))
               (ast-pattern-expand-root-result-idx-set! ast-rec (cdr found))
-              ;; Also cache root-op-name for convenience
+              ;; Cache root-op-name as a plain string (car of the normalized pair).
               (let ([root-op (vector-ref match-vec (car found))])
                 (ast-pattern-expand-root-op-name-set! ast-rec
-                                                      (ast-match-expand-op-name root-op))))
+                                                      (car (ast-match-expand-op-name root-op)))))
             (syntax-violation '%%validate-and-cache-root-var
                               "Root variable not found in any match operation result" root-var)))))
 
@@ -252,6 +252,9 @@
       (unless (or (string? op-name-datum) (symbol? op-name-datum))
         (syntax-violation '%%validate-match-operations
                           "Operation name must be string or symbol" op-name-stx))
-      (when (symbol? op-name-datum)
-        (ast-match-expand-op-name-set! match-op
-                                       (datum->syntax op-name-stx (symbol->string op-name-datum)))))))
+      ;; Store as (normalized-string . original-stx) so callers can use the
+      ;; string for comparison and the original-stx for source location.
+      (let ([normalized (if (string? op-name-datum)
+                            op-name-datum
+                            (symbol->string op-name-datum))])
+        (ast-match-expand-op-name-set! match-op (cons normalized op-name-stx))))))
