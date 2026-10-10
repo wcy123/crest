@@ -1,7 +1,7 @@
 #!r6rs
 (library (crest internal keywords)
   (export :if-match :then-let :rewrite :with :where
-          :debug-parse :debug-validate :debug-analyze :debug-codegen :debug-matching
+          :debug-parse :debug-validate :debug-analyze :debug-codegen
           = : -> :region :regions
           :any
           :current-op :attr
@@ -20,7 +20,6 @@
   (define-syntax :debug-validate (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
   (define-syntax :debug-analyze (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
   (define-syntax :debug-codegen (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
-  (define-syntax :debug-matching (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
   (define-syntax = (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
   (define-syntax : (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
   (define-syntax -> (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))

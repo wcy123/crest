@@ -83,7 +83,7 @@
   ;; %%parse-rest - Parse function name, debug flags, then dispatch to :if-match
   ;;-----------------------------------------------------------------------
   (define (%%parse-rest rest ast)
-    (syntax-case rest (:debug-parse :debug-validate :debug-analyze :debug-codegen :debug-matching :if-match :then-let :rewrite :with)
+    (syntax-case rest (:debug-parse :debug-validate :debug-analyze :debug-codegen :if-match :then-let :rewrite :with)
       ;; Debug flags
       [(:debug-parse . more)
        (begin
@@ -103,11 +103,6 @@
       [(:debug-codegen . more)
        (begin
          (ast-pattern-expand-debug-codegen?-set! ast #t)
-         (%%parse-rest #'more ast))]
-
-      [(:debug-matching . more)
-       (begin
-         (ast-pattern-expand-debug-matching?-set! ast #t)
          (%%parse-rest #'more ast))]
 
       ;; 3-param form for rewrite patterns: (fname op rewriter)

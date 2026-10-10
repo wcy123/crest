@@ -10,12 +10,14 @@
           (only (chezscheme) syntax->list syntax->datum syntax-object->datum record-rtd record-type-field-names record-accessor identifier?
                 call-with-string-output-port display-condition)
           (rename (rime loop) (:with :rime-with))
-          (for (only (chezscheme) syntax->list syntax->datum record-rtd record-type-field-names record-accessor identifier?) expand)
+          (for (only (chezscheme) syntax->list syntax->datum record-rtd record-type-field-names record-accessor identifier?
+                     call-with-string-output-port write) expand)
           (for (rename (rime loop) (:with :rime-with)) expand)
           (for (crest internal ast) expand)
           (for (crest internal parse) expand)
           (for (crest internal validate) expand)
           (for (crest internal analyze) expand)
+          (for (only (mlir support logging) crest::logging::info) expand)
           (for (only (mlir IR PatternMatch)
                      mlir::RewriterBase::setInsertionPoint
                      mlir::RewriterBase::replaceOp) expand)
@@ -112,7 +114,9 @@
                )
 
           ;; Code generation — the two halves are independent of each other.
-          (let ([check-code  (%%generate-check-code actions match-vec operands-ref)]
+          (let ([check-code  (%%generate-check-code actions match-vec operands-ref
+                                                    (ast-pattern-expand-debug-matching? ast-rec)
+                                                    (syntax->datum (ast-pattern-expand-function-name ast-rec)))]
                 [rewrite-code (%%generate-rewrite-code raw-rewrite pattern-type rewriter op)])
 
             ;; Build param list: 4 params for conversion, 2 for rewrite (no operands-ref/type-converter)
@@ -242,14 +246,33 @@
           ;; Atoms pass through unchanged
           [_ s]))))
 
-  (define (%%generate-check-code actions match-vec operands-ref)
+  (define (%%generate-check-code actions match-vec operands-ref debug? fname)
     (if (null? actions)
         #'#t
         (let ([checks (map (lambda (act) (%%action->check-code act match-vec operands-ref)) actions)])
-          ;; Wrap in guard so any exception (e.g. from (:attr ...) on absent attr,
-          ;; or any other runtime error during matching) becomes a silent match failure.
-          #`(guard (exn [#t #f])
-              (and #,@checks)))))
+          (if debug?
+              ;; Debug path: log which check failed (code text baked in at expand time)
+              ;; and log any exception message before returning #f.
+              (let ([check-strs (map (lambda (chk)
+                                       (call-with-string-output-port
+                                        (lambda (p) (write (syntax->datum chk) p))))
+                                     checks)]
+                    [prefix (string-append "[debug-match " (symbol->string fname) "] ")])
+                #`(guard (exn [#t
+                               (crest::logging::info
+                                (string-append #,prefix "exception: "
+                                               (call-with-string-output-port
+                                                (lambda (p) (display-condition exn p)))))
+                               #f])
+                    (and #,@(map (lambda (chk str)
+                                   #`(or #,chk
+                                         (begin (crest::logging::info
+                                                 (string-append #,prefix "FAILED: " #,str))
+                                                #f)))
+                                 checks check-strs))))
+              ;; Silent path (production): any exception → #f, no output.
+              #`(guard (exn [#t #f])
+                  (and #,@checks))))))
 
   (define (%%action->check-code action match-vec operands-ref)
     (let ([tag (car action)])
