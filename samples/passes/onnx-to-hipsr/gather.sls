@@ -88,7 +88,7 @@
                (begin (mlir::Operation::emitRemark op "onnx-gather->hipsr: skipping host data")
                       #f)
                #t))
-      (%placeholder = "hipsr.placeholder" (%ctx %data %indices !out-device)
+      (%placeholder = "hipsr.placeholder" (%ctx %data %indices)
                     (^bb0 builder ((%ds : !shape-type) (%is : !shape-type))
                           (%result-shape = (build-gather-shape!
                                             builder axis %ds %is !shape-type !size-type))

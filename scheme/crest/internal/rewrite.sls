@@ -463,50 +463,15 @@
           (if (string? datum) datum (symbol->string datum))))
 
       ;; Build a runtime expression for the operand list from (operands ...).
-      ;; Operands prefixed with ! are filtered (they are types, not values).
       ;; ,@list splices a dynamic list: (v1 ,@%more v2) → (append (list v1) %more (list v2))
-      ;; All-static result: #'(list v1 v2 ...)
-      ;; Any splice present: #'(append (list v1) %splice (list v2) ...)
+      ;; Each operand converts to a chunk; (append chunk ...) flattens them.
       (define (value-operands operands-stx)
-        (define (splice? x)
-          (let ([d (syntax->datum x)])
-            (and (pair? d) (eq? (car d) 'unquote-splicing))))
-        (let ([items (filter (lambda (x) (not (type-id? x)))
-                             (syntax->list operands-stx))])
-          (if (for-all (lambda (x) (not (splice? x))) items)
-              ;; All static — simple (list ...)
-              (with-syntax ([(v ...) items]) #'(list v ...))
-              ;; Mixed — build with append, grouping static runs
-              (let loop ([rest items] [static-run '()] [chunks '()])
-                (cond
-                 [(null? rest)
-                  (let ([final-chunks
-                         (if (null? static-run)
-                             (reverse chunks)
-                             (reverse (cons (with-syntax ([(v ...) (reverse static-run)])
-                                              #'(list v ...))
-                                            chunks)))])
-                    (with-syntax ([(chunk ...) final-chunks])
-                      #'(append chunk ...)))]
-                 [(splice? (car rest))
-                  (let* ([splice-expr (cadr (syntax->list (car rest)))]
-                         [chunks+     (if (null? static-run)
-                                          (cons splice-expr chunks)
-                                          (cons splice-expr
-                                                (cons (with-syntax ([(v ...) (reverse static-run)])
-                                                        #'(list v ...))
-                                                      chunks)))])
-                    (loop (cdr rest) '() chunks+))]
-                 [else
-                  (loop (cdr rest) (cons (car rest) static-run) chunks)])))))
-
-      ;; True when identifier starts with ! (type convention, not a value).
-      (define (type-id? x)
-        (let ([datum (syntax->datum x)])
-          (and (symbol? datum)
-               (let ([str (symbol->string datum)])
-                 (and (> (string-length str) 0)
-                      (char=? #\! (string-ref str 0)))))))
+        (define (convert x)
+          (syntax-case x (unquote-splicing)
+            [(unquote-splicing expr) #'expr]  ; ,@expr → raw list (spliced in)
+            [val                     #'(list val)])) ; value → singleton list
+        (with-syntax ([(chunk ...) (map convert (syntax->list operands-stx))])
+          #'(append chunk ...)))
 
       (main)))
 
