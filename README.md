@@ -69,9 +69,10 @@ The same pattern in CREST — match, analysis, and emission in one form, no rebu
   :then-let
     ([lhs-scale (scale-attr %lhs_scale)]  [lhs-zp (zp-attr %lhs_zp)]
      [rhs-scale (scale-attr %rhs_scale)]  [rhs-zp (zp-attr %rhs_zp)]
-     [out-scale (scale-attr %out_scale)]  [out-zp (zp-attr %out_zp)] ...)
+     [out-scale (scale-attr %out_scale)]  [out-zp (zp-attr %out_zp)])
   :rewrite %q :with
-    (%result = hip.qadd (%ctx %lhs %rhs %q_init)
+    (%init   = tensor.empty () -> !out-type)
+    (%result = hip.qadd (%ctx %lhs %rhs %init)
               ("lhs_scale" = lhs-scale) ("lhs_zp" = lhs-zp)
               ("output_scale" = out-scale) ("output_zp" = out-zp)
               -> !out-type))
@@ -139,9 +140,9 @@ CREST_PATH=$(pwd)/samples \
     ([!out-type (mlir::Value::getType %q)]
      [lhs-scale (scale-attr %lhs_scale)]  [lhs-zp (zp-attr %lhs_zp)]
      [rhs-scale (scale-attr %rhs_scale)]  [rhs-zp (zp-attr %rhs_zp)]
-     [out-scale (scale-attr %out_scale)]  [out-zp (zp-attr %out_zp)]
-     [%init     (hip-build-init rewriter !out-type %sum_init)])
+     [out-scale (scale-attr %out_scale)]  [out-zp (zp-attr %out_zp)])
   :rewrite %q :with
+    (%init   = tensor.empty () -> !out-type)
     (%result = hip.qadd (%ctx %lhs %rhs %init)
               ("lhs_scale" = lhs-scale) ("lhs_zp" = lhs-zp)
               ("rhs_scale" = rhs-scale) ("rhs_zp" = rhs-zp)
