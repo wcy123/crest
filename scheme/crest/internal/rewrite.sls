@@ -61,8 +61,12 @@
                 source-file-descriptor-path)
           (rename (rime loop) (:with :rime-with))
           (for (rename (rime loop) (:with :rime-with)) expand)
-          ;; (meta 2): the let wrapping begin-mlir-code runs at phase 1;
-          ;; expanding `loop` there requires loop's transformer at phase 2.
+          ;; (meta 2): the let wrapping begin-mlir-code runs at phase 1.
+          ;; Expanding loop there requires loop's transformer at phase 2.
+          ;; (rnrs) and (chezscheme) supply quotient, guard, call-with-port,
+          ;; make-hashtable etc. needed by the closure body at that phase.
+          (for (except (rnrs (6)) =) (meta 2))
+          (for (only (chezscheme) make-hashtable string-hash guard) (meta 2))
           (for (rename (rime loop) (:with :rime-with)) (meta 2))
           (for (only (crest internal keywords)
                      = : -> :region
