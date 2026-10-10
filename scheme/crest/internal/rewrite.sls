@@ -142,7 +142,7 @@
                                    starts))))))))
              (define (line-starts->line+col v bfp)
                (let lp ([lo 0] [hi (- (vector-length v) 1)])
-                 (if (= (+ lo 1) hi)
+                 (if (eqv? (+ lo 1) hi)
                      (values (+ lo 1) (+ (- bfp (vector-ref v lo)) 1))
                      (let ([mid (quotient (+ lo hi) 2)])
                        (if (<= (vector-ref v mid) bfp)
