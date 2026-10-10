@@ -285,9 +285,9 @@ CREST_PATH=$(pwd)/samples \
 Sample output when `hip.add` is replaced by `hip.sub` (which no fusion pattern handles):
 
 ```
-[warning] [debug-match hip-qadd-fusion] FAILED: (and (string=? (mlir-operation-name (vector-ref all-operations 5)) "hip.add") (= (mlir-operation-num-results (vector-ref all-operations 5)) 1))
-[warning] [debug-match hip-qmul-fusion] FAILED: (and (string=? (mlir-operation-name (vector-ref all-operations 1)) "hip.mul") (= (mlir-operation-num-results (vector-ref all-operations 1)) 1))
-[warning] [debug-match hip-qconv-fusion] FAILED: (and (string=? (mlir-operation-name (vector-ref all-operations 1)) "hip.conv") (= (mlir-operation-num-results (vector-ref all-operations 1)) 1))
+[warning] samples/passes/hip-fusion/qadd.sls:83:20: [hip-qadd-fusion] FAILED: (and (string=? (mlir-operation-name (vector-ref all-operations 5)) "hip.add") (= (mlir-operation-num-results (vector-ref all-operations 5)) 1))
+[warning] samples/passes/hip-fusion/qmul.sls:35:15: [hip-qmul-fusion] FAILED: (and (string=? (mlir-operation-name (vector-ref all-operations 1)) "hip.mul") (= (mlir-operation-num-results (vector-ref all-operations 1)) 1))
+[warning] samples/passes/hip-fusion/qmatmul.sls:47:17: [hip-qmatmul-fusion] FAILED: (and (string=? (mlir-operation-name (vector-ref all-operations 1)) "hip.matmul") (= (mlir-operation-num-results (vector-ref all-operations 1)) 1))
 ...
 ```
 
