@@ -93,6 +93,53 @@
 
 
   ;;===--------------------------------------------------------------------===;;
+  ;; Source location cache — expand-time helper
+  ;;
+  ;; %%bfp->line+col : filename bfp → (values line col)  (both 1-indexed)
+  ;;
+  ;; The cache maps filename → vector of line-start byte positions:
+  ;;   #(0  s1  s2  ...  file-size)
+  ;; where v[i] is the byte offset of the first character on line i+1 and
+  ;; v[last]=file-size is a sentinel.  Built once per file; the closure holds
+  ;; the hashtable across all macro invocations in the session.
+  ;; Falls back to (values 1 1) when the file cannot be read.
+  ;;===--------------------------------------------------------------------===;;
+
+  (define %%bfp->line+col
+    (let ([cache (make-hashtable string-hash string=?)])
+      (define (get-line-starts filename)
+        (or (hashtable-ref cache filename #f)
+            (let ([v (compute-line-starts filename)])
+              (when v (hashtable-set! cache filename v))
+              v)))
+      (define (compute-line-starts filename)
+        (guard (e [#t #f])
+          (call-with-port
+              (transcoded-port (open-file-input-port filename)
+                               (make-transcoder (utf-8-codec) (eol-style none)))
+            (lambda (p)
+              (loop :for pos :from 0
+                    :with ch := (read-char p)
+                    :break :if (eof-object? ch)
+                    :if (char=? ch #\newline)
+                    :collect (+ pos 1)
+                    :finally (list->vector (cons 0 (append :return-value (list (- pos 1))))))))))
+      ;; Binary search: largest lo s.t. v[lo] <= bfp < v[lo+1].
+      (define (line-starts->line+col v bfp)
+        (let loop ([lo 0] [hi (- (vector-length v) 1)])
+          (if (= (+ lo 1) hi)
+              (values (+ lo 1) (+ (- bfp (vector-ref v lo)) 1))
+              (let ([mid (quotient (+ lo hi) 2)])
+                (if (<= (vector-ref v mid) bfp)
+                    (loop mid hi)
+                    (loop lo mid))))))
+      (lambda (filename bfp)
+        (let ([v (get-line-starts filename)])
+          (if v
+              (line-starts->line+col v bfp)
+              (values 1 1))))))
+
+  ;;===--------------------------------------------------------------------===;;
   ;; Runtime create dispatcher
   ;;===--------------------------------------------------------------------===;;
 
@@ -122,24 +169,8 @@
       ;; Source location helpers — extract Scheme source loc at expand time
       ;;-------------------------------------------------------------------
 
-      (define (bfp->line+col filename bfp)
-        (guard (e [#t (values 1 1)])
-          (call-with-port
-              (transcoded-port (open-file-input-port filename)
-                               (make-transcoder (utf-8-codec) (eol-style none)))
-            (lambda (p)
-              (let loop ([pos 0] [line 1] [col 1])
-                (if (>= pos bfp)
-                    (values line col)
-                    (let ([ch (read-char p)])
-                      (cond
-                       [(eof-object? ch) (values line col)]
-                       [(char=? ch #\newline) (loop (+ pos 1) (+ line 1) 1)]
-                       [else (loop (+ pos 1) line (+ col 1))]))))))))
-
-      ;; At expand time: derive mlir::Location expr from a syntax object's
-      ;; source annotation.  Falls back to mlir::UnknownLoc::get when
-      ;; source info is unavailable.
+      ;; Derive mlir::Location expr from a syntax object's source annotation.
+      ;; Falls back to mlir::UnknownLoc::get when source info is unavailable.
       (define (syntax->mlir-loc-expr op-stx)
         (let* ([ann (syntax->annotation op-stx)]
                [src (and (annotation? ann) (annotation-source ann))]
@@ -147,7 +178,7 @@
                [bfp (and sfd (source-object-bfp src))])
           (if sfd
               (let ([file (source-file-descriptor-path sfd)])
-                (let-values ([(line col) (bfp->line+col file bfp)])
+                (let-values ([(line col) (%%bfp->line+col file bfp)])
                   #`(mlir::FileLineColLoc::get #,file #,line #,col)))
               #'(mlir::UnknownLoc::get))))
 
