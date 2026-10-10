@@ -157,7 +157,7 @@
                (let ([v (get-line-starts filename)])
                  (if v
                      (line-starts->line+col v bfp)
-                     (values 1 1)))))])
+                     (values #f #f)))))])
       (lambda (stx)
 
         ;;-------------------------------------------------------------------
@@ -174,7 +174,9 @@
             (if sfd
                 (let ([file (source-file-descriptor-path sfd)])
                   (let-values ([(line col) (%%bfp->line+col file bfp)])
-                    #`(mlir::FileLineColLoc::get #,file #,line #,col)))
+                    (if line
+                        #`(mlir::FileLineColLoc::get #,file #,line #,col)
+                        #'(mlir::UnknownLoc::get))))  ; I/O error reading file
                 #'(mlir::UnknownLoc::get))))
 
         ;;-------------------------------------------------------------------
