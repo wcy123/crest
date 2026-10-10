@@ -51,7 +51,7 @@
        [!out-device (mlir::RankedTensorType::cloneWithEncoding !out-type (make-hipsr-device-space-attr))]
        [!shape-type (mlir::shape::ShapeType::get)])
     :rewrite %output :with
-      (%placeholder = hipsr.placeholder (%ctx %lhs %rhs !out-device)
+      (%placeholder = hipsr.placeholder (%ctx %lhs %rhs)
                     (^bb0 ((%ls : !shape-type) (%rs : !shape-type))
                           (%broadcast = shape.broadcast (%ls %rs) -> !shape-type)
                           (hipsr.shape_yield (%broadcast)))

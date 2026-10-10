@@ -101,7 +101,7 @@
       ;; Placeholder: shape region yields const shape [num-dims].
       ;; Uses arith.constant (index) → shape.from_extents, matching
       ;; ShapeConversion.cpp::populateShapeRegion.
-      (%placeholder = hipsr.placeholder (%ctx %input !out-host)
+      (%placeholder = hipsr.placeholder (%ctx %input)
                     (^bb0 ((%s : !shape-type))
                           (%cN = arith.constant () (value = num-dims :index) -> !index-type)
                           (%r  = shape.from_extents (%cN) -> !shape-type)
@@ -110,7 +110,7 @@
       ;; Compute body: inserts extents one by one via tensor.insert.
       ;; build-compute-body! uses mlir-create-operation directly to mix
       ;; Scheme control flow with MLIR op creation.
-      (%result = hipsr.compute (%ctx %input %placeholder !out-host)
+      (%result = hipsr.compute (%ctx %input %placeholder)
                (operandSegmentSizes = (list 1 1 1) :i32-array)
                (^bb0 bldr ((%c : !ctx-type) (%in : !input-type) (%dest : !out-host))
                      (%final = (build-compute-body!

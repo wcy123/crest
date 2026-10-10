@@ -468,8 +468,8 @@
       (define (value-operands operands-stx)
         (define (convert x)
           (syntax-case x (unquote-splicing)
-            [(unquote-splicing expr) #'expr]   ; ,@expr → raw list (spliced in)
-            [val                     #`(list #,#'val)])) ; value → singleton list
+            [(unquote-splicing expr) #'expr]  ; ,@expr → raw list (spliced in)
+            [val                     #'(list val)])) ; value → singleton list
         (with-syntax ([(chunk ...) (map convert (syntax->list operands-stx))])
           #'(append chunk ...)))
 
