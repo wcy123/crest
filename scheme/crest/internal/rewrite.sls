@@ -61,6 +61,7 @@
                 source-file-descriptor-path)
           (rename (rime loop) (:with :rime-with))
           (for (rename (rime loop) (:with :rime-with)) expand)
+          (for (only (crest internal srcloc) %%bfp->line+col) expand)
           (for (only (crest internal keywords)
                      = : -> :region
                      :index :i64 :f32 :i32-array :i64-array :unit) expand)
@@ -91,53 +92,6 @@
                              mlir::Operation::getResult)
                        (mlir::Operation::getResult mlir-Operation::getResult)) expand))
 
-
-  ;;===--------------------------------------------------------------------===;;
-  ;; Source location cache — expand-time helper
-  ;;
-  ;; %%bfp->line+col : filename bfp → (values line col)  (both 1-indexed)
-  ;;
-  ;; The cache maps filename → vector of line-start byte positions:
-  ;;   #(0  s1  s2  ...  file-size)
-  ;; where v[i] is the byte offset of the first character on line i+1 and
-  ;; v[last]=file-size is a sentinel.  Built once per file; the closure holds
-  ;; the hashtable across all macro invocations in the session.
-  ;; Falls back to (values 1 1) when the file cannot be read.
-  ;;===--------------------------------------------------------------------===;;
-
-  (define %%bfp->line+col
-    (let ([cache (make-hashtable string-hash string=?)])
-      (define (get-line-starts filename)
-        (or (hashtable-ref cache filename #f)
-            (let ([v (compute-line-starts filename)])
-              (when v (hashtable-set! cache filename v))
-              v)))
-      (define (compute-line-starts filename)
-        (guard (e [#t #f])
-          (call-with-port
-              (transcoded-port (open-file-input-port filename)
-                               (make-transcoder (utf-8-codec) (eol-style none)))
-            (lambda (p)
-              (loop :for pos :from 0
-                    :with ch := (read-char p)
-                    :break :if (eof-object? ch)
-                    :if (char=? ch #\newline)
-                    :collect (+ pos 1)
-                    :finally (list->vector (cons 0 (append :return-value (list (- pos 1))))))))))
-      ;; Binary search: largest lo s.t. v[lo] <= bfp < v[lo+1].
-      (define (line-starts->line+col v bfp)
-        (let loop ([lo 0] [hi (- (vector-length v) 1)])
-          (if (= (+ lo 1) hi)
-              (values (+ lo 1) (+ (- bfp (vector-ref v lo)) 1))
-              (let ([mid (quotient (+ lo hi) 2)])
-                (if (<= (vector-ref v mid) bfp)
-                    (loop mid hi)
-                    (loop lo mid))))))
-      (lambda (filename bfp)
-        (let ([v (get-line-starts filename)])
-          (if v
-              (line-starts->line+col v bfp)
-              (values 1 1))))))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Runtime create dispatcher
