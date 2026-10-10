@@ -36,7 +36,6 @@
                 mlir::DenseElementsAttr::isSplat
                 mlir::DenseElementsAttr::getSplatValue<APFloat>
                 mlir::DenseElementsAttr::getSplatValue<APInt>)
-          (passes hip-fusion fusion)
           (crest)
           (only (mlir IR Operation)
                 mlir::Operation::getAttr)
@@ -92,9 +91,9 @@
        [out-scale  (scale-attr %out_scale)]
        [lhs-zp     (zp-attr %lhs_zp)]
        [rhs-zp     (zp-attr %rhs_zp)]
-       [out-zp     (zp-attr %out_zp)]
-       [%init      (hip-build-init rewriter !out-type %sum_init)])
+       [out-zp     (zp-attr %out_zp)])
     :rewrite %q :with
+      (%init   = tensor.empty () -> !out-type)
       (%result = hip.qadd (%ctx %lhs %rhs %init)
                ("lhs_scale"    = lhs-scale)
                ("lhs_zp"       = lhs-zp)

@@ -9,7 +9,7 @@ add_library(CrestPasses STATIC CrestPass.cpp)
 
 target_link_libraries(CrestPasses
   PUBLIC
-    CrestBindings
+    CrestInterpreter
     MLIRPass
     MLIRFuncDialect
     MLIRShapeDialect

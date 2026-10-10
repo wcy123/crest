@@ -69,9 +69,10 @@ The same pattern in CREST — match, analysis, and emission in one form, no rebu
   :then-let
     ([lhs-scale (scale-attr %lhs_scale)]  [lhs-zp (zp-attr %lhs_zp)]
      [rhs-scale (scale-attr %rhs_scale)]  [rhs-zp (zp-attr %rhs_zp)]
-     [out-scale (scale-attr %out_scale)]  [out-zp (zp-attr %out_zp)] ...)
+     [out-scale (scale-attr %out_scale)]  [out-zp (zp-attr %out_zp)])
   :rewrite %q :with
-    (%result = hip.qadd (%ctx %lhs %rhs %q_init)
+    (%init   = tensor.empty () -> !out-type)
+    (%result = hip.qadd (%ctx %lhs %rhs %init)
               ("lhs_scale" = lhs-scale) ("lhs_zp" = lhs-zp)
               ("output_scale" = out-scale) ("output_zp" = out-zp)
               -> !out-type))
@@ -139,9 +140,9 @@ CREST_PATH=$(pwd)/samples \
     ([!out-type (mlir::Value::getType %q)]
      [lhs-scale (scale-attr %lhs_scale)]  [lhs-zp (zp-attr %lhs_zp)]
      [rhs-scale (scale-attr %rhs_scale)]  [rhs-zp (zp-attr %rhs_zp)]
-     [out-scale (scale-attr %out_scale)]  [out-zp (zp-attr %out_zp)]
-     [%init     (hip-build-init rewriter !out-type %sum_init)])
+     [out-scale (scale-attr %out_scale)]  [out-zp (zp-attr %out_zp)])
   :rewrite %q :with
+    (%init   = tensor.empty () -> !out-type)
     (%result = hip.qadd (%ctx %lhs %rhs %init)
               ("lhs_scale" = lhs-scale) ("lhs_zp" = lhs-zp)
               ("rhs_scale" = rhs-scale) ("rhs_zp" = rhs-zp)
@@ -201,18 +202,37 @@ The full pattern is in the linked file. Key structure:
   :if-match
     %output = onnx.MatMul (%a %b)
   :then-let
-    ([%ctx         (mlir-get-hipsr-context-arg op)]
-     [!output-type (mlir::Value::getType %output)]
-     [!shape-type  (mlir::shape::ShapeType::get)]
-     [a-rank       (mlir::RankedTensorType::getRank (mlir::Value::getType %a))]
-     [k-a-idx      (- a-rank 1)])         ; K dim index — pure Scheme arithmetic
+    ([%ctx          (mlir-get-hipsr-context-arg op)]
+     [!output-device (mlir::RankedTensorType::cloneWithEncoding
+                       (mlir::Value::getType %output) (make-hipsr-device-space-attr))]
+     [!shape-type   (mlir::shape::ShapeType::get)]
+     [!witness-type (mlir::shape::WitnessType::get)]
+     [a-rank        (mlir::RankedTensorType::getRank (mlir::Value::getType %a))]
+     [k-a-idx       (- a-rank 1)]          ; K index — pure Scheme arithmetic
+     [a-batch-rank  (max 0 (- a-rank 2))])
   :rewrite %output :with
-    (%placeholder = hipsr.placeholder (%ctx %a %b !output-type)
+    (%placeholder = hipsr.placeholder (%ctx %a %b)
       (^bb0 ((%a-shape : !shape-type) (%b-shape : !shape-type))
-            ; K-equality + batch-broadcast shape constraints (~30 ops, see .sls)
-            (hipsr.shape_yield (%out)))
-      -> !output-type)
-    (%result = hipsr.matmul (%ctx %a %b %placeholder) -> !output-type))
+            ;; K equality: A's last dim must equal B's second-to-last
+            (%eka  = shape.get_extent (%a-shape %cka) -> !size-type)
+            (%ekb  = shape.get_extent (%b-shape %ckb) -> !size-type)
+            (%wk   = shape.cstr_eq (%eka %ekb)        -> !witness-type)
+            ;; Batch dims must be broadcastable
+            (%ab   = shape.split_at (%a-shape %cab)   -> !shape-type)
+            (%bb   = shape.split_at (%b-shape %cbb)   -> !shape-type)
+            (%wbc  = shape.cstr_broadcastable (%ab %bb) -> !witness-type)
+            (%wall = shape.assuming_all (%wk %wbc)    -> !witness-type)
+            ;; Result shape: broadcast(batch_a, batch_b) ++ [M, N]
+            (%res  = shape.assuming (%wall)
+                   (^bb0 ()
+                         (%batch = shape.broadcast    (%ab %bb)    -> !shape-type)
+                         (%mn    = shape.from_extents (%em %en)   -> !shape-type)
+                         (%out   = shape.concat       (%batch %mn) -> !shape-type)
+                         (shape.assuming_yield (%out)))
+                   -> !shape-type)
+            (hipsr.shape_yield (%res)))
+      -> !output-device)
+    (%result = hipsr.matmul (%ctx %a %b %placeholder) -> !output-device))
 ```
 
 `:then-let` runs after the match and before any IR mutation — safe to read the IR freely.
