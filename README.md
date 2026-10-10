@@ -282,11 +282,13 @@ CREST_PATH=$(pwd)/samples \
   test/hip-fusion/qadd.mlir
 ```
 
-Sample output when `hip.add` is replaced by an unsupported op:
+Sample output when `hip.add` is replaced by `hip.sub` (which no fusion pattern handles):
 
 ```
-[debug-match hip-qadd-fusion] FAILED: (string=? (mlir-operation-name (vector-ref all-operations 3)) "hip.add")
-[debug-match hip-qadd-fusion] FAILED: (and (single-consumer? sum) (same-rank? q sum_init))
+[warning] [debug-match hip-qadd-fusion] FAILED: (and (string=? (mlir-operation-name (vector-ref all-operations 5)) "hip.add") (= (mlir-operation-num-results (vector-ref all-operations 5)) 1))
+[warning] [debug-match hip-qmul-fusion] FAILED: (and (string=? (mlir-operation-name (vector-ref all-operations 1)) "hip.mul") (= (mlir-operation-num-results (vector-ref all-operations 1)) 1))
+[warning] [debug-match hip-qconv-fusion] FAILED: (and (string=? (mlir-operation-name (vector-ref all-operations 1)) "hip.conv") (= (mlir-operation-num-results (vector-ref all-operations 1)) 1))
+...
 ```
 
 Each line shows the **exact Scheme expression** that returned `#f`, baked in at macro expand

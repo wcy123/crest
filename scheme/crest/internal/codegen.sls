@@ -9,6 +9,9 @@
   (import (rnrs)
           (only (chezscheme) syntax->list syntax->datum syntax-object->datum record-rtd record-type-field-names record-accessor identifier?
                 call-with-string-output-port display-condition)
+          ;; crest::logging::warning is needed at run time: generated debug lambdas call it.
+          ;; Warning level is always emitted regardless of log level setting.
+          (only (mlir support logging) crest::logging::warning)
           (rename (rime loop) (:with :rime-with))
           (for (only (chezscheme) syntax->list syntax->datum record-rtd record-type-field-names record-accessor identifier?
                      call-with-string-output-port write) expand)
@@ -17,7 +20,7 @@
           (for (crest internal parse) expand)
           (for (crest internal validate) expand)
           (for (crest internal analyze) expand)
-          (for (only (mlir support logging) crest::logging::info) expand)
+          (for (only (mlir support logging) crest::logging::warning) expand)
           (for (only (mlir IR PatternMatch)
                      mlir::RewriterBase::setInsertionPoint
                      mlir::RewriterBase::replaceOp) expand)
@@ -259,14 +262,14 @@
                                      checks)]
                     [prefix (string-append "[debug-match " (symbol->string fname) "] ")])
                 #`(guard (exn [#t
-                               (crest::logging::info
+                               (crest::logging::warning
                                 (string-append #,prefix "exception: "
                                                (call-with-string-output-port
                                                 (lambda (p) (display-condition exn p)))))
                                #f])
                     (and #,@(map (lambda (chk str)
                                    #`(or #,chk
-                                         (begin (crest::logging::info
+                                         (begin (crest::logging::warning
                                                  (string-append #,prefix "FAILED: " #,str))
                                                 #f)))
                                  checks check-strs))))
