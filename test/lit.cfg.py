@@ -11,7 +11,14 @@ config.suffixes = [".mlir"]
 config.test_source_root = os.path.dirname(__file__)
 config.test_exec_root = os.path.join(config.crest_obj_root, "test")
 
-llvm_config.with_system_environment(["HOME", "PATH", "CREST_PATH"])
+llvm_config.with_system_environment(["HOME", "PATH", "CREST_PATH",
+                                     "CREST_DEBUG_MATCH",
+                                     "CREST_SCHEME_BINARY_DIR"])
+
+# %t — per-test temp directory used by debug-match tests to isolate the
+# Scheme binary cache so patterns are always compiled fresh with CREST_DEBUG_MATCH=1.
+config.substitutions.append(("%t",
+    os.path.join(config.test_exec_root, "tmp")))
 
 # Tool paths
 llvm_config.with_environment("PATH", config.llvm_tools_dir,  append_path=True)
