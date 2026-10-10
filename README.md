@@ -57,27 +57,6 @@ struct QAddFusion : OpRewritePattern<QuantizeLinearOp> {
 };
 ```
 
-The same pattern in CREST — match, analysis, and emission in one form, no rebuild needed:
-
-```lisp
-(define-rewrite-pattern (hip-qadd-fusion op rewriter)
-  :if-match
-    %dq_lhs = hip.dequantize_linear (%ctx %lhs %lhs_scale (:optional %lhs_zp) %dq_lhs_init)
-    %dq_rhs = hip.dequantize_linear (%ctx %rhs %rhs_scale (:optional %rhs_zp) %dq_rhs_init)
-    %sum    = hip.add               (%ctx %dq_lhs %dq_rhs %sum_init)  :where (single-consumer? %sum)
-    %q      = hip.quantize_linear   (%ctx %sum %out_scale (:optional %out_zp) %q_init)
-  :then-let
-    ([lhs-scale (scale-attr %lhs_scale)]  [lhs-zp (zp-attr %lhs_zp)]
-     [rhs-scale (scale-attr %rhs_scale)]  [rhs-zp (zp-attr %rhs_zp)]
-     [out-scale (scale-attr %out_scale)]  [out-zp (zp-attr %out_zp)])
-  :rewrite %q :with
-    (%init   = tensor.empty () -> !out-type)
-    (%result = hip.qadd (%ctx %lhs %rhs %init)
-              ("lhs_scale" = lhs-scale) ("lhs_zp" = lhs-zp)
-              ("output_scale" = out-scale) ("output_zp" = out-zp)
-              -> !out-type))
-```
-
 ---
 
 ## Example 1 — Fusion rewrite: `DQ + DQ + add + Q` → `qadd`
