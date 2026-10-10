@@ -1,5 +1,8 @@
 ##
 # CREST Bindings — Chez Scheme / MLIR integration
+#
+# CrestBindings owns the Chez Scheme build artifacts (scheme.h, libkernel.a,
+# liblz4.a, libz.a). CrestInterpreter and other targets get them transitively.
 ##
 
 add_library(CrestBindings STATIC
@@ -29,14 +32,17 @@ add_library(CrestBindings STATIC
   Transforms/GreedyPatternRewriteDriver.cpp
 )
 
+add_dependencies(CrestBindings ChezScheme ChezBootHeaders)
+
 target_include_directories(CrestBindings
+  PUBLIC
+    ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}  # scheme.h
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 target_link_libraries(CrestBindings
   PUBLIC
-    CrestInterpreter
     MLIRIR
     MLIRFuncDialect
     MLIRTensorDialect
@@ -44,4 +50,11 @@ target_link_libraries(CrestBindings
     MLIRTransforms
     MLIRDialectUtils
     MLIRTransformUtils
+    ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/libkernel.a
+    ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/lz4/lib/liblz4.a
+    ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/zlib/libz.a
+    ${CMAKE_DL_LIBS}
+    m
+    pthread
+    ncurses
 )
