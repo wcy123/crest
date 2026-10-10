@@ -42,7 +42,7 @@
        [!shape-type    (mlir::shape::ShapeType::get)])
     :rewrite %output :with
       ;; placeholder ins = (%data) only: scatter output has data's shape
-      (%placeholder = hipsr.placeholder (%ctx %data !output-device)
+      (%placeholder = hipsr.placeholder (%ctx %data)
                     (^bb0 ((%data-shape : !shape-type))
                           (hipsr.shape_yield (%data-shape)))
                     -> !output-device)

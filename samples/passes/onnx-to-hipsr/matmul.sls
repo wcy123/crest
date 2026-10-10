@@ -61,7 +61,7 @@
        [m-idx          (- a-rank 2)]
        [n-idx          (- b-rank 1)])
     :rewrite %output :with
-      (%placeholder = hipsr.placeholder (%ctx %a %b !output-device)
+      (%placeholder = hipsr.placeholder (%ctx %a %b)
                     (^bb0 ((%a-shape : !shape-type) (%b-shape : !shape-type))
                           ;; K equality: compare single-element shape of K dims
                           (%cka   = shape.const_size () (value = k-a-idx :index) -> !size-type)
