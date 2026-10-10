@@ -66,7 +66,7 @@
           ;; (rnrs) and (chezscheme) supply quotient, guard, call-with-port,
           ;; make-hashtable etc. needed by the closure body at that phase.
           (for (except (rnrs (6)) =) (meta 2))
-          (for (only (chezscheme) make-hashtable string-hash guard) (meta 2))
+          (for (only (chezscheme) make-hashtable string-hash guard quotient) (meta 2))
           (for (rename (rime loop) (:with :rime-with)) (meta 2))
           (for (only (crest internal keywords)
                      = : -> :region
