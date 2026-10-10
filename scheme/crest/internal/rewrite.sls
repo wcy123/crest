@@ -61,6 +61,9 @@
                 source-file-descriptor-path)
           (rename (rime loop) (:with :rime-with))
           (for (rename (rime loop) (:with :rime-with)) expand)
+          ;; (meta 2): the let wrapping begin-mlir-code runs at phase 1;
+          ;; expanding `loop` there requires loop's transformer at phase 2.
+          (for (rename (rime loop) (:with :rime-with)) (meta 2))
           (for (only (crest internal keywords)
                      = : -> :region
                      :index :i64 :f32 :i32-array :i64-array :unit) expand)
@@ -132,17 +135,15 @@
                      (transcoded-port (open-file-input-port filename)
                                       (make-transcoder (utf-8-codec) (eol-style none)))
                    (lambda (p)
-                     (let lp ([pos 0] [ch (read-char p)] [starts '()])
-                       (if (eof-object? ch)
-                           (list->vector (cons 0 (reverse starts)))
-                           (lp (+ pos 1)
-                               (read-char p)
-                               (if (char=? ch #\newline)
-                                   (cons (+ pos 1) starts)
-                                   starts))))))))
+                     (loop :for pos :from 0
+                           :rime-with ch := (read-char p)
+                           :break :if (eof-object? ch)
+                           :if (char=? ch #\newline)
+                           :collect (+ pos 1)
+                           :finally (list->vector (cons 0 (append :return-value (list (- pos 1))))))))))
              (define (line-starts->line+col v bfp)
                (let lp ([lo 0] [hi (- (vector-length v) 1)])
-                 (if (eqv? (+ lo 1) hi)
+                 (if (eqv? (+ lo 1) hi) ; = is the DDR aux keyword at phase 1
                      (values (+ lo 1) (+ (- bfp (vector-ref v lo)) 1))
                      (let ([mid (quotient (+ lo hi) 2)])
                        (if (<= (vector-ref v mid) bfp)
