@@ -13,7 +13,7 @@
           ;; Warning level is always emitted regardless of log level setting.
           (only (mlir support logging) crest::logging::warning)
           ;; srcloc: shared source-location utilities; cache is module-level in srcloc.sls.
-          (only (crest internal srcloc) %%syntax->loc-string)
+          (only (crest internal srcloc) syntax->file+line+col)
           (rename (rime loop) (:with :rime-with))
           (for (only (chezscheme) syntax->list syntax->datum record-rtd record-type-field-names record-accessor identifier?
                      call-with-string-output-port write) expand)
@@ -276,7 +276,15 @@
               ;; Debug path: each failing check logs "file:line:col: [pattern] FAILED: expr"
               ;; — location and code text baked in at expand time.
               (let* ([src-stxs (map (lambda (act) (%%action->source-stx act match-vec)) actions)]
-                     [locs     (map (lambda (s) (if s (%%syntax->loc-string s) "unknown")) src-stxs)]
+                     [locs     (map (lambda (s)
+                                      (let ([loc (and s (syntax->file+line+col s))])
+                                        (if loc
+                                            (apply (lambda (file line col)
+                                                     (string-append file ":" (number->string line)
+                                                                    ":" (number->string col)))
+                                                   loc)
+                                            "unknown")))
+                                    src-stxs)]
                      [check-strs (map (lambda (chk)
                                         (call-with-string-output-port
                                          (lambda (p) (write (syntax->datum chk) p))))

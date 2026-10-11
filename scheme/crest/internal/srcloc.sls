@@ -26,7 +26,7 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (crest internal srcloc)
-  (export %%bfp->line+col syntax->file+line+col %%syntax->loc-string)
+  (export syntax->file+line+col)
   (import (rnrs)
           (only (chezscheme) make-hashtable string-hash guard quotient
                 syntax->annotation annotation? annotation-source
