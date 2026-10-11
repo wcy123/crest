@@ -144,7 +144,8 @@
                         (parameterize ([current-MLIRContext
                                         (mlir-Operation::getContext root-op)])
                           (let ([var (make-unbound-value)] ...
-                                [all-operations (make-vector num-operations (make-unbound-value))])
+                                ;; 0 = unset; non-zero = valid Operation*.
+                                [all-operations (make-vector num-operations 0)])
                             root-result-setter ...
                             (if checks
                                 (let* (then-let-binding ...)
@@ -363,9 +364,10 @@
          (let* ([fields (cdr action)]
                 [op-idx (cdr (assq 'op-idx fields))]
                 [var    (cdr (assq 'var fields))])
-           ;; Always write to the slot so warn-match sees 0 (not an unbound
-           ;; sentinel) when there is no defining op — safe for actual: print.
            #`(let ([def-op (mlir-value-get-defining-op #,var)])
+               ;; Slot initialized to 0; non-zero means already visited — bug.
+               (when (not (zero? (vector-ref all-operations #,op-idx)))
+                 (error ':set-current-op "op slot already set" #,op-idx))
                (vector-set! all-operations #,op-idx (or def-op 0))
                (and def-op #t)))]
 
