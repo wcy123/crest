@@ -324,28 +324,29 @@
       (let* ([loc       (and src-stx (syntax->file+line+col src-stx))]
              [loc-str   (loc->string loc)]
              [ex-prefix (string-append loc-str ": [" fname-sym "] exception: ")]
-             ;; Inner form: (or check (warn "FAILED:" actual)) in debug,
+             ;; body-of-checks: (or check (warn "FAILED:" actual)) in debug,
              ;; plain check in production.
-             [inner     (if debug?
-                            (let ([fmsg (string-append
-                                         loc-str ": [" fname-sym "] FAILED: "
-                                         (call-with-string-output-port
-                                          (lambda (p) (write (syntax->datum chk) p))))])
-                              (with-syntax ([check chk]
-                                            [fmsg  (datum->syntax #'quote fmsg)]
-                                            [op    (or actual-op-stx #'0)])
-                                #'(or check (begin (warn-match fmsg op) #f))))
-                            chk)])
-        (with-syntax ([body     inner]
-                      [exprefix (datum->syntax #'quote ex-prefix)]
-                      [op       (or actual-op-stx #'0)])
+             [body-of-checks
+              (if debug?
+                  (let ([fmsg (string-append
+                               loc-str ": [" fname-sym "] FAILED: "
+                               (call-with-string-output-port
+                                (lambda (p) (write (syntax->datum chk) p))))])
+                    (with-syntax ([check chk]
+                                  [fmsg  (datum->syntax #'quote fmsg)]
+                                  [op    (or actual-op-stx #'0)])
+                      #'(or check (begin (warn-match fmsg op) #f))))
+                  chk)])
+        (with-syntax ([body-of-checks body-of-checks]
+                      [exprefix       (datum->syntax #'quote ex-prefix)]
+                      [op             (or actual-op-stx #'0)])
           #'(guard (exn [#t
                          (warn-match (string-append exprefix
                                                     (call-with-string-output-port
                                                      (lambda (p) (display-condition exn p))))
                                      op)
                          #f])
-              body))))
+              body-of-checks))))
     (define (%%make-checks)
       ;; Always wrap each check in a per-check guard (always-on exception loc).
       (let* ([raw-checks  (map (lambda (act) (%%action->check-code act match-vec operands-ref)) actions)]
