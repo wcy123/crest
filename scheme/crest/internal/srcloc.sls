@@ -20,9 +20,6 @@
 ;;   bfp → (line, col).  Returns #f when unavailable.
 ;;   Use with apply: (apply (lambda (f l c) ...) loc)
 ;;
-;; %%syntax->loc-string : stx → string
-;;   Formats syntax->file+line+col as "file:line:col", or "unknown".
-;;
 ;;===----------------------------------------------------------------------===;;
 
 (library (crest internal srcloc)
@@ -88,16 +85,5 @@
             (let-values ([(line col) (%%bfp->line+col file bfp)])
               (and line (list file line col))))
           #f)))
-
-  ;;-------------------------------------------------------------------
-  ;; %%syntax->loc-string
-  ;;-------------------------------------------------------------------
-  (define (%%syntax->loc-string stx)
-    (let ([loc (syntax->file+line+col stx)])
-      (if loc
-          (apply (lambda (file line col)
-                   (string-append file ":" (number->string line) ":" (number->string col)))
-                 loc)
-          "unknown")))
 
   ) ;; end library (crest internal srcloc)

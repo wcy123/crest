@@ -237,7 +237,7 @@
         (syntax-case s (:current-op :attr :has-attr? :attr-or)
           ;; Bare :current-op identifier → the matched sub-op
           [:current-op cur-op]
-          ;; (:has-attr? "name") → #t if attribute present, #f otherwise — no error
+          ;; (:has-attr? "name") → #t/#f. hasAttr? wraps int with (= 1 ...) → boolean.
           [(:has-attr? name)
            (string? (syntax->datum #'name))
            #`(mlir-Operation::hasAttr? #,cur-op name)]
@@ -248,13 +248,14 @@
                (if (mlir-Operation::hasAttr? %cur name)
                    (mlir-operation-get-attr %cur name)
                    default))]
-          ;; (:attr "name") → raw attr uptr; #f if absent (treated as match failure).
-          ;; Use :has-attr? to explicitly test presence without fetching.
+          ;; (:attr "name") → raw attr uptr, or #f if absent (clean match failure).
+          ;; hasAttr? wraps int with (= 1 ...) → proper #t/#f boolean; safe in if.
           [(:attr name)
            (string? (syntax->datum #'name))
            #`(let ([%cur #,cur-op])
-               (and (mlir-Operation::hasAttr? %cur name)
-                    (mlir-operation-get-attr %cur name)))]
+               (if (mlir-Operation::hasAttr? %cur name)
+                   (mlir-operation-get-attr %cur name)
+                   #f))]
           ;; Recurse into compound forms
           [(e ...) #`(#,@(map walk (syntax->list s)))]
           ;; Atoms pass through unchanged

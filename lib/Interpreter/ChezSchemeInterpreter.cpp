@@ -225,6 +225,17 @@ std::string ChezSchemeInterpreter::getLibraryDirectories() const {
 
 bool ChezSchemeInterpreter::importLibrary(
     const std::string& slashSeparatedName) {
+  // Validate before string-building Scheme code — reject names with characters
+  // outside [a-zA-Z0-9/_-] to prevent injection of arbitrary Scheme
+  // expressions.
+  for (char c : slashSeparatedName) {
+    if (!std::isalnum(static_cast<unsigned char>(c)) && c != '/' && c != '_' &&
+        c != '-' && c != '.') {
+      llvm::errs() << "[error] invalid module name character '" << c
+                   << "' in: " << slashSeparatedName << "\n";
+      return false;
+    }
+  }
   std::string lib = slashSeparatedName;
   std::replace(lib.begin(), lib.end(), '/', ' ');
   // call/cc + with-exception-handler: catches "library not found" before it

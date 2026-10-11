@@ -1,7 +1,7 @@
 #!r6rs
-;; Test pass: exercises always-on exception logging.
-;; (:attr "missing") on test.add — attribute never exists → unexpected error
-;; always logged via crest::logging::warning regardless of CREST_DEBUG_MATCH.
+;; Test pass: exercises :check-where FAILED: debug output.
+;; (:attr "missing") on test.add — attribute absent → #f (clean match failure).
+;; With CREST_DEBUG_MATCH=1, prints FAILED: with file:line:col and actual: op.
 (library (passes debug-match-attr-error)
   (export run-pass)
   (import (except (rnrs) =)

@@ -14,7 +14,7 @@
 // RUN:   --mlir-print-debuginfo %s 2>&1 \
 // RUN:   | %FileCheck %s
 
-// CHECK: debug-match-attr-error.sls:{{[0-9]+}}:{{[0-9]+}}: {{\[%%require-missing-attr\]}} :check-where FAILED: (let ((%cur (vector-ref all-operations 0))) (and (mlir-Operation::hasAttr? %cur "missing") (mlir-operation-get-attr %cur "missing")))
+// CHECK: debug-match-attr-error.sls:{{[0-9]+}}:{{[0-9]+}}: {{\[%%require-missing-attr\]}} :check-where FAILED: (let ((%cur (vector-ref all-operations 0))) (if (mlir-Operation::hasAttr? %cur "missing") (mlir-operation-get-attr %cur "missing") #f))
 // CHECK: "test.add"(%arg0, %arg1) : (i32, i32) -> i32 loc([[LOC:#loc[0-9]+]])
 // CHECK: [[LOC]] = loc({{.*}}debug-match-attr-error.mlir":{{[0-9]+}}:{{[0-9]+}})
 
