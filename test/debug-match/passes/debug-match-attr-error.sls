@@ -6,11 +6,7 @@
   (export run-pass)
   (import (except (rnrs) =)
           (only (mlir IR Value) mlir::Value::getType)
-          (only (mlir IR Operation) mlir::Operation::getContext)
-          (only (mlir IR MLIRContext) with-current-MLIRContext)
-          (only (mlir IR PatternMatch) with-RewritePatternSet)
-          (only (mlir Transforms GreedyPatternRewriteDriver) mlir::applyPatternsGreedily)
-          (only (mlir Transforms DialectConversion) add-rewrite-pattern)
+          (passes debug-match-common)
           (crest))
 
   (define-rewrite-pattern (%%pattern op rewriter)
@@ -20,11 +16,6 @@
     :rewrite %out :with
       (%result = test.add (%a %b) -> (mlir::Value::getType %out)))
 
-  (define (run-pass module-op)
-    (let ([ctx (mlir::Operation::getContext module-op)])
-      (with-current-MLIRContext ctx
-                                (with-RewritePatternSet (patterns ctx)
-                                                        (add-rewrite-pattern patterns "test.add" %%pattern 1)
-                                                        (mlir::applyPatternsGreedily module-op patterns)))))
+  (define run-pass (make-run-pass "test.add" %%pattern))
 
   ) ;; end library
