@@ -134,6 +134,12 @@
          (ast-pattern-expand-param-type-converter-set!  ast #'p-type-converter)
          (%%parse-rest #'more ast))]
 
+      ;; This clause is NOT dead code — it is reached on the SECOND recursive
+      ;; call to %%parse-rest.  The 3-param/5-param clauses above consume the
+      ;; function signature and call (%%parse-rest #'more ast) where #'more
+      ;; begins with :if-match.  The fender (ast-pattern-expand-function-name ast)
+      ;; confirms the function name was already set, ensuring we never process
+      ;; :if-match before a valid signature clause has run.
       [(:if-match . match-rest)
        (ast-pattern-expand-function-name ast)
        (%%parse-match-ops-recursive #'match-rest '() ast)]
