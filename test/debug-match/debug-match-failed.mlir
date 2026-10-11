@@ -12,7 +12,9 @@
 // RUN:   --crest-pass="module=passes/debug-match-check-op" %s 2>&1 \
 // RUN:   | %FileCheck %s
 
-// CHECK: FAILED:
+// CHECK: [warning]
+// CHECK-SAME: debug-match-check-op.sls
+// CHECK-SAME: [%%pattern] FAILED:
 // CHECK-SAME: "test.add"
 
 func.func @no_match(%a: i32, %b: i32) -> i32 {
