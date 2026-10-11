@@ -273,15 +273,16 @@
                                   (and (= n n-spec)
                                        (let* ([sizes  (loop :for i :from 0 :below n
                                                             :collect (ArrayRef::at segs i))]
-                                              ;; Cumulative starts: starts[i] = sum(sizes[0..i-1]).
-                                              ;; Use map+mutation — rime :rime-with does NOT
-                                              ;; propagate accumulator across iterations.
-                                              [starts (let ([off 0])
-                                                        (map (lambda (size)
-                                                               (let ([s off])
-                                                                 (set! off (+ off size))
-                                                                 s))
-                                                             sizes))])
+                                              ;; fold-left guarantees left-to-right evaluation.
+                                              ;; map and :rime-with have unspecified order in Chez.
+                                              [starts (reverse
+                                                       (car
+                                                        (fold-left
+                                                         (lambda (acc size)
+                                                           (cons (cons (cdr acc) (car acc))
+                                                                 (+ (cdr acc) size)))
+                                                         (cons '() 0)
+                                                         sizes)))])
                                          (loop :for kind  :in spec
                                                :for start :in starts
                                                :for size  :in sizes
