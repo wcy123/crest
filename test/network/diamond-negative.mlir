@@ -16,8 +16,9 @@
 // :bind-operands failure — %s2 (operand of test.sub) != %s1 (%shared from test.add)
 // CHECK: network-diamond.sls:{{[0-9]+}}:{{[0-9]+}}: {{\[%%diamond\]}} :bind-operands FAILED:
 // CHECK: actual: {{.*}}"test.sub"
-// Pattern did not fire — test.combine still present
+// Pattern did not fire — test.combine still present, test.fused absent
 // CHECK: "test.combine"
+// CHECK-NOT: test.fused
 
 func.func @diamond_no_match(%a: i32, %b: i32, %x: i32, %y: i32) -> i32 {
   %s1   = "test.mul"(%a, %b)  : (i32, i32) -> i32
