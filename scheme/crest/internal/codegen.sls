@@ -447,15 +447,23 @@
                 [op-idx  (cdr (assq 'op-idx fields))]
                 [spec    (cdr (assq 'spec   fields))]
                 [vars    (cdr (assq 'vars   fields))])
-           #`(let ([%operands (operation-get-operands
-                               (vector-ref all-operations #,op-idx)
-                               #,@(map (lambda (s) #`'#,s) spec))])
-               (and %operands
-                    (begin
-                      #,@(loop :for var :in vars
-                               :for i   :from 0
-                               :collect #`(set! #,var (list-ref %operands #,i)))
-                      #t))))]
+           (with-syntax ([(quoted-spec ...)
+                          (map (lambda (s)
+                                 (with-syntax ([sym s]) #'(quote sym)))
+                               spec)]
+                         [(setting-or-comparing ...)
+                          (loop :for var :in vars
+                                :for i   :from 0
+                                :collect (with-syntax ([v   var]
+                                                       [idx (datum->syntax var i)])
+                                           #'(if (unbound-value? v)
+                                                 (begin (set! v (list-ref %operands idx)) #t)
+                                                 (eqv? v (list-ref %operands idx)))))]
+                         [op-idx* (datum->syntax #'begin op-idx)])
+             #'(let ([%operands (operation-get-operands
+                                 (vector-ref all-operations op-idx*)
+                                 quoted-spec ...)])
+                 (and %operands setting-or-comparing ...))))]
 
         [else
          (error '%%action->check-code "Unknown action type" tag)])))
