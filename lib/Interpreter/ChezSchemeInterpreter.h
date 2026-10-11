@@ -8,6 +8,8 @@
 
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "../Bindings/Support/SchemeWrapper.h"
 
@@ -82,6 +84,8 @@ private:
   friend struct WeakSingleton<ChezSchemeInterpreter>;
 
   SchemeLogLevel logLevel_;
+  // Paths added via addLibraryPath, stored for error reporting.
+  std::vector<std::pair<std::string, std::string>> libraryPaths_;
 };
 
 // Parse a log-level string ("trace", "debug", "info", "warning", "error",
