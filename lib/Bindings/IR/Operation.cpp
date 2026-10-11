@@ -9,6 +9,7 @@
 #include "../Support/LockedSchemeObject.h"
 #include "../Support/Logging.h"
 #include "../Support/SchemeWrapper.h"
+#include "llvm/Support/raw_ostream.h"
 #include "mlir/CAPI/IR.h"
 #include "mlir/CAPI/Wrap.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
@@ -231,6 +232,16 @@ void registerIROperationBindings() {
           return;
         }
         reinterpret_cast<mlir::Operation*>(op_ptr)->emitRemark(msg);
+      });
+  Sregister_symbol(
+      "mlir::Operation::print", (void*)+[](uint64_t op_ptr) -> ptr {
+        if (!op_ptr) {
+          return Sstring("");
+        }
+        std::string str;
+        llvm::raw_string_ostream os(str);
+        reinterpret_cast<mlir::Operation*>(op_ptr)->print(os);
+        return Sstring(str.c_str());
       });
   Sregister_symbol(
       "mlir::Operation::erase", (void*)+[](uint64_t op_ptr) -> void {

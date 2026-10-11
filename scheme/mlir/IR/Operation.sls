@@ -36,6 +36,7 @@
     mlir::Operation::emitError
     mlir::Operation::emitWarning
     mlir::Operation::emitRemark
+    mlir::Operation::print
     mlir::Operation::erase
     mlir::Operation::getAttr
     mlir::Operation::setAttr!
@@ -198,6 +199,10 @@
   ;; @see        mlir/IR/Operation.h, mlir/IR/Diagnostics.h
   ;; @note       Defined in lib/Bindings/IR/Operation.cpp
   (define mlir::Operation::emitRemark      %emit-remark)
+
+  ;; @brief mlir::Operation::print — return full MLIR textual form as a string (for debugging).
+  ;; For debugging only — shows operands, attrs, types, regions in MLIR text format.
+  (define mlir::Operation::print              %mlir::Operation::print)
 
   ;; @brief mlir::Operation::erase — remove and deallocate this operation.
   ;; @param op  Operation* uptr
