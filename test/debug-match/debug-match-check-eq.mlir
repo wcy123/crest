@@ -1,7 +1,7 @@
-// CREST_DEBUG_MATCH=1 — :check-eq DAG-diamond failure
+// CREST_DEBUG_MATCH=1 — DAG-diamond failure via :bind-operands
 //
 // Pattern expects both operands of test.mul to be the same SSA value,
-// but %a and %b are distinct — :check-eq FAILED.
+// but %a and %b are distinct — the eqv? check inside :bind-operands FAILED.
 
 // RUN: env CREST_DEBUG_MATCH=1 CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
 // RUN:   %crest-opt -allow-unregistered-dialect \
@@ -9,7 +9,7 @@
 // RUN:   --mlir-print-debuginfo %s 2>&1 \
 // RUN:   | %FileCheck %s
 
-// CHECK: debug-match-check-eq.sls:{{[0-9]+}}:{{[0-9]+}}: {{\[%%check-eq-same-value\]}} :check-eq FAILED: (eqv? (mlir::OpOperand::get (vector-ref all-operations 0) 1) %shared)
+// CHECK: debug-match-check-eq.sls:{{[0-9]+}}:{{[0-9]+}}: {{\[%%check-eq-same-value\]}} :bind-operands FAILED:
 // CHECK: actual: %0 = "test.mul"(%arg0, %arg1) : (i32, i32) -> i32 loc(
 // CHECK-SAME: debug-match-check-eq.mlir
 

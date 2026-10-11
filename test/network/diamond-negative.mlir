@@ -4,8 +4,8 @@
 //                                ├──► test.combine ──► %out
 //   %s2 ──► test.sub ──► %right ─┘
 //
-// %s1 and %s2 are distinct SSA values — :check-eq fails because operand 0
-// of test.sub (%s2) differs from the already-bound %shared (%s1).
+// %s1 and %s2 are distinct SSA values — the eqv? check inside :bind-operands
+// for %shared (already bound to %s1) fails when test.sub's operand 0 is %s2.
 // Pattern does NOT fire: test.combine remains in the output.
 
 // RUN: env CREST_DEBUG_MATCH=1 CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
@@ -13,11 +13,12 @@
 // RUN:   --crest-pass="module=passes/network-diamond" %s 2>&1 \
 // RUN:   | %FileCheck %s
 
-// :check-eq failure — %s2 (operand of test.sub) != %s1 (%shared from test.add)
-// CHECK: network-diamond.sls:{{[0-9]+}}:{{[0-9]+}}: {{\[%%diamond\]}} :check-eq FAILED: (eqv? (mlir::OpOperand::get (vector-ref all-operations 1) 0) %shared)
+// :bind-operands failure — %s2 (operand of test.sub) != %s1 (%shared from test.add)
+// CHECK: network-diamond.sls:{{[0-9]+}}:{{[0-9]+}}: {{\[%%diamond\]}} :bind-operands FAILED:
 // CHECK: actual: {{.*}}"test.sub"
-// Pattern did not fire — test.combine still present
+// Pattern did not fire — test.combine still present, test.fused absent
 // CHECK: "test.combine"
+// CHECK-NOT: test.fused
 
 func.func @diamond_no_match(%a: i32, %b: i32, %x: i32, %y: i32) -> i32 {
   %s1   = "test.mul"(%a, %b)  : (i32, i32) -> i32

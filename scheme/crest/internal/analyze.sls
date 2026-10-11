@@ -114,28 +114,37 @@
                                                           match-vec (ast-operand-var operand))])
                                     (traverse producer-op-idx (ast-operand-var operand)))))
                               operands entries))
-                  ;; All-required path: per-operand binding / check-eq / traversal.
-                  (loop :for operand :in operands
-                        :for entry :in entries
-                        :for operand-idx :from 0
-                        :rime-with operand-var := (ast-operand-var operand)
-                        :rime-with is-result := (binding-entry-is-result? entry)
-                        :rime-with is-bound := (binding-entry-bound? entry)
-                        :do (cond
-                             [is-bound
-                              (set! acc (cons (action:check-eq op-idx operand-idx operand-var) acc))]
-                             [(and (not is-bound) is-result)
-                              (if (and is-conversion? (= op-idx root-op-idx))
+                  ;; All-required path.
+                  ;; Conversion root: one :bind-argument-operand per operand (from operands-ref).
+                  ;; All other ops: one :bind-operands for all operands; codegen distinguishes
+                  ;;   fresh (set!) from already-bound (eqv?) via unbound-value?.
+                  (if (and is-conversion? (= op-idx root-op-idx))
+                      (loop :for operand :in operands
+                            :for entry :in entries
+                            :for operand-idx :from 0
+                            :rime-with operand-var := (ast-operand-var operand)
+                            :rime-with is-result := (binding-entry-is-result? entry)
+                            :do (begin
                                   (set! acc (cons (action:bind-argument-operand operand-idx operand-var) acc))
-                                  (set! acc (cons (action:bind-operand op-idx operand-idx operand-var) acc)))
-                              (binding-entry-bound?-set! entry #t)
-                              (let ([producer-op-idx (%%find-operation-by-result match-vec operand-var)])
-                                (traverse producer-op-idx operand-var))]
-                             [(and (not is-bound) (not is-result))
-                              (if (and is-conversion? (= op-idx root-op-idx))
-                                  (set! acc (cons (action:bind-argument-operand operand-idx operand-var) acc))
-                                  (set! acc (cons (action:bind-operand op-idx operand-idx operand-var) acc)))
-                              (binding-entry-bound?-set! entry #t)]))))
+                                  (binding-entry-bound?-set! entry #t)
+                                  (when is-result
+                                    (let ([producer-op-idx (%%find-operation-by-result match-vec operand-var)])
+                                      (traverse producer-op-idx operand-var)))))
+                      (begin
+                        (set! acc (cons (action:bind-operands
+                                         op-idx
+                                         (map (lambda (operand)
+                                                (datum->syntax (ast-operand-var operand) ':required))
+                                              operands)
+                                         (map ast-operand-var operands))
+                                        acc))
+                        (for-each (lambda (operand entry)
+                                    (binding-entry-bound?-set! entry #t)
+                                    (when (binding-entry-is-result? entry)
+                                      (let ([producer-op-idx (%%find-operation-by-result
+                                                              match-vec (ast-operand-var operand))])
+                                        (traverse producer-op-idx (ast-operand-var operand)))))
+                                  operands entries)))))
 
             ;; Emit :where guard AFTER this op's own operands are bound.
             ;;

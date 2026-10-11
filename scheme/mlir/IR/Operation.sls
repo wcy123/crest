@@ -251,55 +251,46 @@
 
   (define (operation-get-operands op . spec)
     (define (read-op i) (mlir::OpOperand::get op i))
-    (let ([has-flex (loop :initially := #f
-                          :for s :in spec
-                          :break #t :if (memq s '(optional variadic)))])
-      (if (not has-flex)
-          ;; All required: verify count matches spec, then bind sequentially.
-          (let ([n-spec (length spec)]
-                [n-ops  (mlir::Operation::getNumOperands op)])
-            (unless (= n-spec n-ops)
-              (error 'operation-get-operands
-                     "operand count mismatch: spec expects" n-spec "but op has" n-ops))
-            (loop :for i :from 0 :below n-spec
-                  :collect (read-op i)))
-          ;; Has optional or variadic: use operandSegmentSizes attribute.
-          (let ([attr (mlir::Operation::getAttr op "operandSegmentSizes")])
-            (unless (and attr (not (zero? attr)))
-              (error 'operation-get-operands
-                     "op must have operandSegmentSizes for optional/variadic operands"))
-            ;; with-ArrayRef manages the ref lifecycle.
-            (with-ArrayRef (segs (mlir::DenseI32ArrayAttr::intoArrayRef attr))
-                           (let* ([n     (ArrayRef::size segs)]
-                                  [n-spec (length spec)]
-                                  [_      (unless (= n n-spec)
-                                            (error 'operation-get-operands
-                                                   "operandSegmentSizes count mismatch: spec has"
-                                                   n-spec "segments but attr has" n))]
-                                  [sizes  (loop :for i :from 0 :below n
+    (define (%%flex-path attr n-spec)
+      (with-ArrayRef (segs (mlir::DenseI32ArrayAttr::intoArrayRef attr))
+                     (let ([n (ArrayRef::size segs)])
+                       (and (= n n-spec)
+                            (let* ([sizes (loop :for i :from 0 :below n
                                                 :collect (ArrayRef::at segs i))]
-                                  [starts (loop :rime-with off := 0
-                                                :for size :in sizes
-                                                :collect off
-                                                :rime-with off := (+ off size))])
-                             (loop :for kind  :in spec
-                                   :for start :in starts
-                                   :for size  :in sizes
-                                   :collect
-                                   (case kind
-                                     [(:required)
-                                      (read-op start)]
-                                     [(:optional)
-                                      (if (zero? size) %%absent (read-op start))]
-                                     [(:variadic)
-                                      (if (zero? size)
-                                          %%absent
-                                          (loop :for i :from start :below (+ start size)
-                                                :collect (read-op i)))]
-                                     [else
-                                      (error 'operation-get-operands
-                                             "unknown kind: expected :required/:optional/:variadic"
-                                             kind)]))))))))
+                                   ;; fold-left guarantees left-to-right; map/:rime-with do not.
+                                   [starts (reverse
+                                            (car (fold-left (lambda (acc size)
+                                                              (cons (cons (cdr acc) (car acc))
+                                                                    (+ (cdr acc) size)))
+                                                            (cons '() 0)
+                                                            sizes)))])
+                              (loop :for kind  :in spec
+                                    :for start :in starts
+                                    :for size  :in sizes
+                                    :collect (case kind
+                                               [(:required) (read-op start)]
+                                               [(:optional) (if (zero? size) %%absent (read-op start))]
+                                               [(:variadic) (if (zero? size)
+                                                                %%absent
+                                                                (loop :for i :from start
+                                                                      :below (+ start size)
+                                                                      :collect (read-op i)))]
+                                               [else (error 'operation-get-operands
+                                                            "unknown kind: expected :required/:optional/:variadic"
+                                                            kind)])))))))
+    (let ([n-spec (length spec)]
+          [has-flex (loop :initially := #f
+                          :for s :in spec
+                          :break #t :if (memq s '(:optional :variadic)))])
+      (if (not has-flex)
+          ;; All required: prefix-match — op must have at least n-spec operands.
+          ;; Patterns deliberately list only the operands they care about.
+          (and (<= n-spec (mlir::Operation::getNumOperands op))
+               (loop :for i :from 0 :below n-spec :collect (read-op i)))
+          ;; Has optional/variadic: operandSegmentSizes is mandatory.
+          ;; Without it we cannot determine group boundaries — return #f.
+          (let ([attr (mlir::Operation::getAttr op "operandSegmentSizes")])
+            (and attr (not (zero? attr)) (%%flex-path attr n-spec))))))
 
   (define mlir::Operation::getAttrDictionary %mlir::Operation::getAttrDictionary)
   (define mlir::Operation::setAttrs          %mlir::Operation::setAttrs)

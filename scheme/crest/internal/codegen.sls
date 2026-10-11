@@ -262,7 +262,7 @@
          (cdr (ast-match-expand-op-name (vector-ref match-vec (cdr (assq 'op-idx fields)))))]
         [(:check-where)
          (cdr (assq 'expr fields))]
-        [(:bind-operand :bind-argument-operand :check-eq :bind-result)
+        [(:bind-argument-operand :bind-result)
          (cdr (assq 'var fields))]
         [(:bind-operands)
          (let ([vars (cdr (assq 'vars fields))])
@@ -382,17 +382,6 @@
                   (= (mlir::Operation::getNumResults (vector-ref all-operations #,op-idx))
                      #,num-results)))]
 
-        [(:bind-operand)
-         (let* ([fields      (cdr action)]
-                [op-idx      (cdr (assq 'op-idx fields))]
-                [var         (cdr (assq 'var fields))]
-                [operand-idx (cdr (assq 'operand-idx fields))])
-           #`(begin
-               (set! #,var (mlir::OpOperand::get
-                            (vector-ref all-operations #,op-idx)
-                            #,operand-idx))
-               #t))]
-
         [(:bind-argument-operand)
          (let* ([fields      (cdr action)]
                 [var         (cdr (assq 'var fields))]
@@ -402,19 +391,6 @@
                    (and (not (zero? val))
                         (begin (set! #,var val) #t)))
                  #f))]
-
-        [(:check-eq)
-         ;; DAG diamond: verify that the operand of this op equals an already-bound var.
-         ;; get-operand retrieves a Value* from an op by index.
-         ;; value-equal? checks pointer identity (same SSA value).
-         (let* ([fields      (cdr action)]
-                [op-idx      (cdr (assq 'op-idx fields))]
-                [operand-idx (cdr (assq 'operand-idx fields))]
-                [var         (cdr (assq 'var fields))])
-           #`(eqv? (mlir::OpOperand::get
-                    (vector-ref all-operations #,op-idx)
-                    #,operand-idx)
-                   #,var))]
 
         [(:bind-result)
          ;; Set a non-root result variable to the actual mlir::Value so that
@@ -438,19 +414,30 @@
            (%%transform-where-expr expr op-idx))]
 
         [(:bind-operands)
-         ;; Bind all operands of an op with optional/variadic slots via operation-get-operands.
-         ;; Returns a list; bind each variable positionally with list-ref.
+         ;; Bind all operands via operation-get-operands, which returns #f on structural
+         ;; mismatch (count wrong, or missing operandSegmentSizes for flex ops).
          (let* ([fields  (cdr action)]
                 [op-idx  (cdr (assq 'op-idx fields))]
                 [spec    (cdr (assq 'spec   fields))]
                 [vars    (cdr (assq 'vars   fields))])
-           #`(let ([%operands (operation-get-operands
-                               (vector-ref all-operations #,op-idx)
-                               #,@(map (lambda (s) #`'#,s) spec))])
-               #,@(loop :for var :in vars
-                        :for i   :from 0
-                        :collect #`(set! #,var (list-ref %operands #,i)))
-               #t))]
+           (with-syntax ([%operands  (datum->syntax #'begin '%operands)]
+                         [(quoted-spec ...)
+                          (map (lambda (s)
+                                 (with-syntax ([sym s]) #'(quote sym)))
+                               spec)]
+                         [(setting-or-comparing ...)
+                          (loop :for var :in vars
+                                :for i   :from 0
+                                :collect (with-syntax ([v   var]
+                                                       [idx (datum->syntax var i)])
+                                           #'(if (unbound-value? v)
+                                                 (begin (set! v (list-ref %operands idx)) #t)
+                                                 (eqv? v (list-ref %operands idx)))))]
+                         [op-idx* (datum->syntax #'begin op-idx)])
+             #'(let ([%operands (operation-get-operands
+                                 (vector-ref all-operations op-idx*)
+                                 quoted-spec ...)])
+                 (and %operands setting-or-comparing ...))))]
 
         [else
          (error '%%action->check-code "Unknown action type" tag)])))

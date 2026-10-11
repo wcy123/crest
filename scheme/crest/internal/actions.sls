@@ -2,10 +2,8 @@
 (library (crest internal actions)
   (export action:set-current-op
           action:check-op
-          action:bind-operand
           action:bind-operands
           action:bind-argument-operand
-          action:check-eq
           action:check-where
           action:bind-result)
   (import (rnrs))
@@ -14,11 +12,10 @@
   ;; Output format: (:tag (field-name . value) ...)
   ;;
   ;; Actions represent runtime pattern matching algorithm:
-  ;; - :set-current-op - Navigate to operation in DAG
-  ;; - :check-op - Verify operation type matches
-  ;; - :bind-operand - Bind free variable to operation's operand (can match any input)
-  ;; - :bind-argument-operand - Bind root operand from operands-ref (conversion patterns only)
-  ;; - :check-eq - Verify bound variable equals current operand
+  ;; - :set-current-op          - Navigate to operation in DAG
+  ;; - :check-op                - Verify operation type and result count
+  ;; - :bind-operands           - Bind all operands; fresh → set!, already-bound → eqv?
+  ;; - :bind-argument-operand   - Bind root operand from operands-ref (conversion patterns only)
 
   (define (action:set-current-op op-idx var)
     (list ':set-current-op
@@ -29,17 +26,10 @@
     (list ':check-op
           (cons 'op-idx op-idx)))
 
-  (define (action:bind-operand op-idx operand-idx var)
-    (list ':bind-operand
-          (cons 'op-idx op-idx)
-          (cons 'operand-idx operand-idx)
-          (cons 'var var)))
-
-  ;; Bind all operands of an op that has optional or variadic slots.
-  ;; Delegates entirely to mlir-operation-get-operands, which reads operandSegmentSizes
-  ;; and returns a list — one element per spec entry.
-  ;; spec: list of 'required / 'optional / 'variadic symbols (same length as vars)
-  ;; vars: list of syntax identifiers to bind (positionally matched to spec)
+  ;; Bind all operands of an op via operation-get-operands.
+  ;; spec: list of syntax keyword objects (:required / :optional / :variadic)
+  ;; vars: list of syntax identifiers (positionally matched to spec)
+  ;; Fresh vars are set!; already-bound vars are checked via eqv? (DAG diamond).
   (define (action:bind-operands op-idx spec vars)
     (list ':bind-operands
           (cons 'op-idx op-idx)
@@ -48,12 +38,6 @@
 
   (define (action:bind-argument-operand operand-idx var)
     (list ':bind-argument-operand
-          (cons 'operand-idx operand-idx)
-          (cons 'var var)))
-
-  (define (action:check-eq op-idx operand-idx var)
-    (list ':check-eq
-          (cons 'op-idx op-idx)
           (cons 'operand-idx operand-idx)
           (cons 'var var)))
 

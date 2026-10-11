@@ -1,5 +1,5 @@
 #!r6rs
-;; Test pass: exercises :check-eq debug output.
+;; Test pass: exercises DAG-diamond eqv? check in :bind-operands.
 ;; Pattern expects both operands of test.mul to be the same SSA value.
 (library (passes debug-match-check-eq)
   (export run-pass)

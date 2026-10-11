@@ -134,6 +134,8 @@ CREST_PATH=$(pwd)/samples \
 
 `:if-match` traverses the def-use graph structurally. `:where` guards are plain Scheme predicates.
 `(:optional %lhs_zp)` handles both 4-operand and 5-operand DQ forms without a separate pattern.
+When `:optional` or `:variadic` appears in a spec, the op must carry an `operandSegmentSizes`
+attribute so CREST can determine which operands belong to which group.
 
 **Output [`docs/examples/qadd-output.mlir`](docs/examples/qadd-output.mlir):**
 
@@ -285,9 +287,12 @@ CREST_PATH=$(pwd)/samples \
 Sample output when `hip.add` is replaced by `hip.sub` (which no fusion pattern handles):
 
 ```
-[warning] samples/passes/hip-fusion/qadd.sls:83:20: [hip-qadd-fusion] FAILED: (and (string=? (mlir-operation-name (vector-ref all-operations 5)) "hip.add") (= (mlir-operation-num-results (vector-ref all-operations 5)) 1))
-[warning] samples/passes/hip-fusion/qmul.sls:35:15: [hip-qmul-fusion] FAILED: (and (string=? (mlir-operation-name (vector-ref all-operations 1)) "hip.mul") (= (mlir-operation-num-results (vector-ref all-operations 1)) 1))
-[warning] samples/passes/hip-fusion/qmatmul.sls:47:17: [hip-qmatmul-fusion] FAILED: (and (string=? (mlir-operation-name (vector-ref all-operations 1)) "hip.matmul") (= (mlir-operation-num-results (vector-ref all-operations 1)) 1))
+[warning] samples/passes/hip-fusion/qadd.sls:83:20: [hip-qadd-fusion] :check-op FAILED: (and (string=? (mlir::Operation::getName (vector-ref all-operations 5)) "hip.add") (= (mlir::Operation::getNumResults (vector-ref all-operations 5)) 1))
+[warning]   actual: %11 = "hip.sub"(%arg0, %7, %9, %10) : (!hip.context, ...) -> tensor<1x128x32xf32>
+[warning] samples/passes/hip-fusion/qmul.sls:35:15: [hip-qmul-fusion] :check-op FAILED: (and (string=? (mlir::Operation::getName (vector-ref all-operations 1)) "hip.mul") (= (mlir::Operation::getNumResults (vector-ref all-operations 1)) 1))
+[warning]   actual: %11 = "hip.sub"(%arg0, %7, %9, %10) : (!hip.context, ...) -> tensor<1x128x32xf32>
+[warning] samples/passes/hip-fusion/qmatmul.sls:47:17: [hip-qmatmul-fusion] :check-op FAILED: (and (string=? (mlir::Operation::getName (vector-ref all-operations 1)) "hip.matmul") (= (mlir::Operation::getNumResults (vector-ref all-operations 1)) 1))
+[warning]   actual: %11 = "hip.sub"(%arg0, %7, %9, %10) : (!hip.context, ...) -> tensor<1x128x32xf32>
 ...
 ```
 

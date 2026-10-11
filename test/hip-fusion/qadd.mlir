@@ -28,13 +28,13 @@ func.func @qadd(%ctx: !hip.context,
 
   %e0 = tensor.empty() : tensor<1x128x32xf32>
   %dq_lhs = "hip.dequantize_linear"(%ctx, %lhs, %lhs_scale, %lhs_zp, %e0)
-      {axis = 1 : i64, block_size = 0 : i64}
+      {axis = 1 : i64, block_size = 0 : i64, operandSegmentSizes = array<i32: 1, 1, 1, 1, 1>}
       : (!hip.context, tensor<1x128x32xi8>, tensor<f32>, tensor<i8>, tensor<1x128x32xf32>)
       -> tensor<1x128x32xf32>
 
   %e1 = tensor.empty() : tensor<1x128x32xf32>
   %dq_rhs = "hip.dequantize_linear"(%ctx, %rhs, %rhs_scale, %rhs_zp, %e1)
-      {axis = 1 : i64, block_size = 0 : i64}
+      {axis = 1 : i64, block_size = 0 : i64, operandSegmentSizes = array<i32: 1, 1, 1, 1, 1>}
       : (!hip.context, tensor<1x128x32xi8>, tensor<f32>, tensor<i8>, tensor<1x128x32xf32>)
       -> tensor<1x128x32xf32>
 
@@ -45,7 +45,7 @@ func.func @qadd(%ctx: !hip.context,
 
   %e3 = tensor.empty() : tensor<1x128x32xi8>
   %q = "hip.quantize_linear"(%ctx, %sum, %out_scale, %out_zp, %e3)
-      {axis = 1 : i64, block_size = 0 : i64, precision = 8 : i64, saturate = 1 : i64}
+      {axis = 1 : i64, block_size = 0 : i64, operandSegmentSizes = array<i32: 1, 1, 1, 1, 1>, precision = 8 : i64, saturate = 1 : i64}
       : (!hip.context, tensor<1x128x32xf32>, tensor<f32>, tensor<i8>, tensor<1x128x32xi8>)
       -> tensor<1x128x32xi8>
 
