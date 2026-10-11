@@ -11,7 +11,7 @@
 // RUN:   --mlir-print-debuginfo %s 2>&1 \
 // RUN:   | %FileCheck %s
 
-// CHECK: "test.sub"{{.*}}loc([[LOC:#loc[0-9]+]])
+// CHECK: "test.sub"(%arg0, %arg1) : (i32, i32) -> i32 loc([[LOC:#loc[0-9]+]])
 // CHECK: [[LOC]] = loc({{.*}}debug-match-rewrite.sls":{{[0-9]+}}:{{[0-9]+}})
 
 func.func @rewrite(%a: i32, %b: i32) -> i32 {
