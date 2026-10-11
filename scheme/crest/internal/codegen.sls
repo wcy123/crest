@@ -298,10 +298,12 @@
                                                 (lambda (p) (display-condition exn p)))))
                                #f])
                     (and #,@(map (lambda (chk loc str)
-                                   (let ([msg (string-append loc ": " fname-str "FAILED: " str)])
-                                     (with-syntax ([check chk])
-                                       #`(or check
-                                             (begin (crest::logging::warning #,msg) #f)))))
+                                   (with-syntax ([check chk]
+                                                 [msg   (datum->syntax #'quote
+                                                                       (string-append loc ": " fname-str
+                                                                                      "FAILED: " str))])
+                                     #'(or check
+                                           (begin (crest::logging::warning msg) #f))))
                                  checks locs check-strs))))
               ;; Silent path (production): any exception → #f, no output.
               #`(guard (exn [#t #f])
