@@ -23,6 +23,8 @@
 // CHECK-SAME: "test.add"
 // CHECK: [warning]   actual:
 // CHECK-SAME: "test.mul"
+// CHECK-SAME: loc(
+// CHECK-SAME: debug-match-failed.mlir
 // CHECK: "test.sub"
 
 func.func @no_match(%a: i32, %b: i32, %c: i32) -> i32 {

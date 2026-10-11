@@ -283,6 +283,20 @@
            (and (pair? vars) (car vars)))]
         [else #f])))
 
+  ;;=======================================================================
+  ;; CREST_DEBUG_MATCH warning format (stable contract)
+  ;;=======================================================================
+  ;;
+  ;; Check failure (CREST_DEBUG_MATCH=1):
+  ;;   [warning] <file>:<line>:<col>: [<pattern>] FAILED: <scheme-expr>
+  ;;   [warning]   actual: <mlir-op-text>        ; only for :check-op
+  ;;
+  ;; Unexpected exception (always emitted, regardless of CREST_DEBUG_MATCH):
+  ;;   [warning] unknown: [<pattern>] exception: <condition-message>
+  ;;
+  ;; <pattern> is the Scheme function name of the define-rewrite-pattern.
+  ;; <file>:<line>:<col> points to the failing op in the pattern .sls source.
+  ;;=======================================================================
   (define (%%generate-check-code actions match-vec operands-ref debug? fname)
     ;; Exceptions during matching are always unexpected — always log them.
     ;; debug? only controls per-check FAILED: messages for normal #f returns.
@@ -299,9 +313,11 @@
     ;; For :check-op, generate a runtime expression for the actual op so we
     ;; can print its name alongside the FAILED: message.
     (define (%%action->actual-op-stx action)
+      ;; Returns a syntax expr for the op to print in "actual:" — only for
+      ;; actions where we know which op is being tested.
       (let ([tag (car action)] [fields (cdr action)])
         (case tag
-          [(:check-op)
+          [(:check-op :check-eq :check-where)
            (let ([op-idx (cdr (assq 'op-idx fields))])
              #`(vector-ref all-operations #,op-idx))]
           [else #f])))
