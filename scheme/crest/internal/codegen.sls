@@ -331,14 +331,10 @@
                                          loc-str ": [" fname-sym "] FAILED: "
                                          (call-with-string-output-port
                                           (lambda (p) (write (syntax->datum chk) p))))])
-                              (if actual-op-stx
-                                  (with-syntax ([check chk]
-                                                [fmsg  (datum->syntax #'quote fmsg)]
-                                                [op    actual-op-stx])
-                                    #'(or check (begin (warn-match fmsg op) #f)))
-                                  (with-syntax ([check chk]
-                                                [fmsg  (datum->syntax #'quote fmsg)])
-                                    #'(or check (begin (warn-match fmsg 0) #f)))))
+                              (with-syntax ([check chk]
+                                            [fmsg  (datum->syntax #'quote fmsg)]
+                                            [op    (or actual-op-stx #'0)])
+                                #'(or check (begin (warn-match fmsg op) #f))))
                             chk)])
         (with-syntax ([body     inner]
                       [exprefix (datum->syntax #'quote ex-prefix)]
