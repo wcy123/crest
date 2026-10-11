@@ -309,14 +309,12 @@
     ;; For :check-op, generate a runtime expression for the actual op so we
     ;; can print its name alongside the FAILED: message.
     (define (%%action->actual-op-stx action)
-      ;; Returns a syntax expr for the op to print in "actual:" — only for
-      ;; actions where we know which op is being tested.
-      (let ([tag (car action)] [fields (cdr action)])
-        (case tag
-          [(:check-op :check-eq :check-where)
-           (let ([op-idx (cdr (assq 'op-idx fields))])
-             #`(vector-ref all-operations #,op-idx))]
-          [else #f])))
+      ;; :current-op is (vector-ref all-operations op-idx) for any action with
+      ;; op-idx. :set-current-op always writes to the slot (def-op or 0) so
+      ;; warn-match safely sees 0 and skips actual: when def-op is null.
+      (let ([op-idx-cell (assq 'op-idx (cdr action))])
+        (and op-idx-cell
+             #`(vector-ref all-operations #,(cdr op-idx-cell)))))
     ;; Every check is wrapped in a per-check guard so exceptions carry
     ;; file:line:col of the specific check that threw — not "unknown:".
     ;; Exception logging is always-on; FAILED: logging is debug? only.
@@ -365,11 +363,11 @@
          (let* ([fields (cdr action)]
                 [op-idx (cdr (assq 'op-idx fields))]
                 [var    (cdr (assq 'var fields))])
+           ;; Always write to the slot so warn-match sees 0 (not an unbound
+           ;; sentinel) when there is no defining op — safe for actual: print.
            #`(let ([def-op (mlir-value-get-defining-op #,var)])
-               (and def-op
-                    (begin
-                      (vector-set! all-operations #,op-idx def-op)
-                      #t))))]
+               (vector-set! all-operations #,op-idx (or def-op 0))
+               (and def-op #t)))]
 
         [(:check-op)
          (let* ([fields      (cdr action)]
