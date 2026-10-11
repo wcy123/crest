@@ -12,7 +12,7 @@
     :if-match
       %out = test.add (%a %b)
     :rewrite %out :with
-      (%result = test.add (%a %b) -> (mlir::Value::getType %out)))
+      (%result = test.sub (%a %b) -> (mlir::Value::getType %out)))
 
   (define run-pass (make-run-pass "test.add" %%rewrite))
 

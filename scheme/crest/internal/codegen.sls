@@ -124,7 +124,7 @@
           ;; Code generation — the two halves are independent of each other.
           (let ([check-code  (%%generate-check-code actions match-vec operands-ref
                                                     (ast-pattern-expand-debug-matching? ast-rec)
-                                                    (syntax->datum (ast-pattern-expand-function-name ast-rec)))]
+                                                    (ast-pattern-expand-function-name ast-rec))]
                 [rewrite-code (%%generate-rewrite-code raw-rewrite pattern-type rewriter op)])
 
             ;; Build param list: 4 params for conversion, 2 for rewrite (no operands-ref/type-converter)
@@ -297,12 +297,12 @@
   ;; <pattern> is the Scheme function name of the define-rewrite-pattern.
   ;; <file>:<line>:<col> points to the failing op in the pattern .sls source.
   ;;=======================================================================
-  (define (%%generate-check-code actions match-vec operands-ref debug? fname)
+  (define (%%generate-check-code actions match-vec operands-ref debug? fname-stx)
     ;; Exceptions during matching are always unexpected — always log them.
     ;; debug? only controls per-check FAILED: messages for normal #f returns.
-    (define fname-sym (symbol->string fname))
-    (define ex-prefix (string-append "unknown: [" fname-sym "] exception: "))
+    (define fname-sym (symbol->string (syntax->datum fname-stx)))
     ;; Format (list file line col) | #f → "file:line:col" | "unknown"
+    ;; Must be defined before ex-loc which calls it.
     (define (loc->string loc)
       (if loc
           (apply (lambda (file line col)
@@ -310,6 +310,9 @@
                                   ":" (number->string col)))
                  loc)
           "unknown"))
+    (define ex-loc    (let ([loc (syntax->file+line+col fname-stx)])
+                        (if loc (loc->string loc) "unknown")))
+    (define ex-prefix (string-append ex-loc ": [" fname-sym "] exception: "))
     ;; For :check-op, generate a runtime expression for the actual op so we
     ;; can print its name alongside the FAILED: message.
     (define (%%action->actual-op-stx action)
@@ -321,47 +324,54 @@
            (let ([op-idx (cdr (assq 'op-idx fields))])
              #`(vector-ref all-operations #,op-idx))]
           [else #f])))
+    ;; Every check is wrapped in a per-check guard so exceptions carry
+    ;; file:line:col of the specific check that threw — not "unknown:".
+    ;; Exception logging is always-on; FAILED: logging is debug? only.
     (define (make-check-form chk src-stx actual-op-stx)
-      (let* ([loc (and src-stx (syntax->file+line+col src-stx))]
-             [msg (string-append
-                   (loc->string loc)
-                   ": [" fname-sym "] FAILED: "
-                   (call-with-string-output-port
-                    (lambda (p) (write (syntax->datum chk) p))))])
-        (if actual-op-stx
-            (with-syntax ([check chk]
-                          [msg   (datum->syntax #'quote msg)]
-                          [op    actual-op-stx])
-              #'(or check
-                    (begin
-                      (crest::logging::warning msg)
-                      (crest::logging::warning
-                       (string-append "  actual: " (mlir::Operation::print op)))
-                      #f)))
-            (with-syntax ([check chk]
-                          [msg   (datum->syntax #'quote msg)])
-              #'(or check
-                    (begin (crest::logging::warning msg) #f))))))
-    (define (%%make-checks)
-      (let ([raw-checks (map (lambda (act) (%%action->check-code act match-vec operands-ref)) actions)])
-        (if (not debug?)
-            raw-checks
-            ;; Debug path: each failing check logs "file:line:col: [pattern] FAILED: expr"
-            ;; For :check-op, also logs the actual op name seen at runtime.
-            (let* ([src-stxs    (map (lambda (act) (%%action->source-stx act match-vec)) actions)]
-                   [actual-stxs (map %%action->actual-op-stx actions)])
-              (map make-check-form raw-checks src-stxs actual-stxs)))))
-    (if (null? actions)
-        #'#t
-        (with-syntax ([(check-form ...) (%%make-checks)]
-                      [prefix (datum->syntax #'quote ex-prefix)])
+      (let* ([loc       (and src-stx (syntax->file+line+col src-stx))]
+             [loc-str   (loc->string loc)]
+             [ex-prefix (string-append loc-str ": [" fname-sym "] exception: ")]
+             ;; Inner form: (or check (warn "FAILED:" actual)) in debug,
+             ;; plain check in production.
+             [inner     (if debug?
+                            (let ([fmsg (string-append
+                                         loc-str ": [" fname-sym "] FAILED: "
+                                         (call-with-string-output-port
+                                          (lambda (p) (write (syntax->datum chk) p))))])
+                              (if actual-op-stx
+                                  (with-syntax ([check chk]
+                                                [fmsg  (datum->syntax #'quote fmsg)]
+                                                [op    actual-op-stx])
+                                    #'(or check
+                                          (begin
+                                            (crest::logging::warning fmsg)
+                                            (crest::logging::warning
+                                             (string-append "  actual: "
+                                                            (mlir::Operation::print op)))
+                                            #f)))
+                                  (with-syntax ([check chk]
+                                                [fmsg  (datum->syntax #'quote fmsg)])
+                                    #'(or check (begin (crest::logging::warning fmsg) #f)))))
+                            chk)])
+        (with-syntax ([body     inner]
+                      [exprefix (datum->syntax #'quote ex-prefix)])
           #'(guard (exn [#t
                          (crest::logging::warning
-                          (string-append prefix
+                          (string-append exprefix
                                          (call-with-string-output-port
                                           (lambda (p) (display-condition exn p)))))
                          #f])
-              (and check-form ...)))))
+              body))))
+    (define (%%make-checks)
+      ;; Always wrap each check in a per-check guard (always-on exception loc).
+      (let* ([raw-checks  (map (lambda (act) (%%action->check-code act match-vec operands-ref)) actions)]
+             [src-stxs    (map (lambda (act) (%%action->source-stx act match-vec)) actions)]
+             [actual-stxs (map %%action->actual-op-stx actions)])
+        (map make-check-form raw-checks src-stxs actual-stxs)))
+    (if (null? actions)
+        #'#t
+        (with-syntax ([(check-form ...) (%%make-checks)])
+          #'(and check-form ...))))
 
   (define (%%action->check-code action match-vec operands-ref)
     (let ([tag (car action)])

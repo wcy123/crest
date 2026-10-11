@@ -12,7 +12,7 @@
 // RUN:   --crest-pass="module=passes/debug-match-attr-error" %s 2>&1 \
 // RUN:   | %FileCheck %s
 
-// CHECK: unknown: {{\[%%require-missing-attr\]}} exception: {{.*}}attribute 'missing' absent on op:
+// CHECK: {{.*}}debug-match-attr-error.sls:{{[0-9]+}}:{{[0-9]+}}: {{\[%%require-missing-attr\]}} exception: {{.*}}attribute 'missing' absent on op:
 
 func.func @attr_error(%a: i32, %b: i32) -> i32 {
   %0 = "test.add"(%a, %b) : (i32, i32) -> i32
