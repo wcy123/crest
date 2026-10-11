@@ -289,19 +289,19 @@
                                         (call-with-string-output-port
                                          (lambda (p) (write (syntax->datum chk) p))))
                                       checks)]
-                     [fname-str  (string-append "[" (symbol->string fname) "] ")])
+                     [fname-str  (string-append "[" (symbol->string fname) "] ")]
+                     [ex-prefix  (string-append "unknown: [" (symbol->string fname) "] exception: ")])
                 #`(guard (exn [#t
                                (crest::logging::warning
-                                (string-append "unknown: " #,fname-str "exception: "
+                                (string-append #,ex-prefix
                                                (call-with-string-output-port
                                                 (lambda (p) (display-condition exn p)))))
                                #f])
                     (and #,@(map (lambda (chk loc str)
-                                   #`(or #,chk
-                                         (begin (crest::logging::warning
-                                                 (string-append #,loc ": " #,fname-str
-                                                                "FAILED: " #,str))
-                                                #f)))
+                                   (let ([msg (string-append loc ": " fname-str "FAILED: " str)])
+                                     (with-syntax ([check chk])
+                                       #`(or check
+                                             (begin (crest::logging::warning #,msg) #f)))))
                                  checks locs check-strs))))
               ;; Silent path (production): any exception → #f, no output.
               #`(guard (exn [#t #f])
