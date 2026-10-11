@@ -283,8 +283,9 @@
                           :for s :in spec
                           :break #t :if (memq s '(:optional :variadic)))])
       (if (not has-flex)
-          ;; All required: return #f if count mismatches.
-          (and (= n-spec (mlir::Operation::getNumOperands op))
+          ;; All required: prefix-match — op must have at least n-spec operands.
+          ;; Patterns deliberately list only the operands they care about.
+          (and (<= n-spec (mlir::Operation::getNumOperands op))
                (loop :for i :from 0 :below n-spec :collect (read-op i)))
           ;; Has optional/variadic: operandSegmentSizes is mandatory.
           ;; Without it we cannot determine group boundaries — return #f.
