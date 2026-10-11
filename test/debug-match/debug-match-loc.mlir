@@ -11,8 +11,7 @@
 // RUN:   --mlir-print-debuginfo %s 2>&1 \
 // RUN:   | %FileCheck %s
 
-// CHECK: "test.add"
-// CHECK-SAME: loc({{.*}}debug-match-rewrite.sls:{{[0-9]+}}:{{[0-9]+}})
+// CHECK: "test.add"{{.*}}loc({{.*}}debug-match-rewrite.sls:{{[0-9]+}}:{{[0-9]+}})
 
 func.func @rewrite(%a: i32, %b: i32) -> i32 {
   %0 = "test.add"(%a, %b) : (i32, i32) -> i32

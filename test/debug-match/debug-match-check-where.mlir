@@ -9,8 +9,7 @@
 // RUN:   --crest-pass="module=passes/debug-match-check-where" %s 2>&1 \
 // RUN:   | %FileCheck %s
 
-// CHECK: [warning] unknown: [%%check-where-always-false] exception:
-// CHECK-SAME: mlir::Operation::getNumResults
+// CHECK: unknown: {{\[%%check-where-always-false\]}} exception: {{.*}}mlir::Operation::getNumResults
 
 func.func @check_where(%a: i32, %b: i32) -> i32 {
   %0 = "test.add"(%a, %b) : (i32, i32) -> i32

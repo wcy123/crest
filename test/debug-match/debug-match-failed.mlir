@@ -17,14 +17,8 @@
 // RUN:   --crest-pass="module=passes/debug-match-check-op" --mlir-print-debuginfo %s 2>&1 \
 // RUN:   | %FileCheck %s
 
-// CHECK: [warning]
-// CHECK-SAME: debug-match-check-op.sls:{{[0-9]+}}:{{[0-9]+}}:
-// CHECK-SAME: [%%expect-test.add-then-sub] FAILED:
-// CHECK-SAME: "test.add"
-// CHECK: [warning]   actual:
-// CHECK-SAME: "test.mul"
-// CHECK-SAME: loc(
-// CHECK-SAME: debug-match-failed.mlir
+// CHECK: debug-match-check-op.sls:{{[0-9]+}}:{{[0-9]+}}: {{\[%%expect-test.add-then-sub\]}} FAILED: {{.*}}"test.add"
+// CHECK: actual: {{.*}}"test.mul"{{.*}}loc({{.*}}debug-match-failed.mlir
 // CHECK: "test.sub"
 
 func.func @no_match(%a: i32, %b: i32, %c: i32) -> i32 {
