@@ -375,7 +375,8 @@
                         "analyze-phase bug: op slot already set"
                         #,op-idx))
                (vector-set! all-operations #,op-idx (or def-op 0))
-               (and def-op #t)))]
+               ;; (and def-op #t) would be wrong: 0 is truthy in Scheme.
+               (not (zero? def-op))))]
 
         [(:check-op)
          (let* ([fields      (cdr action)]
