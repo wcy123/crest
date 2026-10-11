@@ -9,9 +9,11 @@
   (import (rnrs)
           (only (chezscheme) syntax->list syntax->datum syntax-object->datum record-rtd record-type-field-names record-accessor identifier?
                 call-with-string-output-port display-condition)
-          ;; crest::logging::warning is needed at run time: generated debug lambdas call it.
-          ;; Warning level is always emitted regardless of log level setting.
+          ;; crest::logging::warning and mlir-operation-name are needed at run time:
+          ;; generated debug lambdas call them to log failures and the actual op seen.
           (only (mlir support logging) crest::logging::warning)
+          (rename (only (mlir IR Operation) mlir::Operation::getName)
+                  (mlir::Operation::getName mlir-operation-name))
           ;; srcloc: shared source-location utilities; cache is module-level in srcloc.sls.
           (only (crest internal srcloc) syntax->file+line+col)
           (rename (rime loop) (:with :rime-with))
@@ -289,7 +291,16 @@
        (lambda (p)
          (display "unknown: [" p) (display fname-sym p)
          (display "] exception: " p))))
-    (define (make-check-form chk src-stx)
+    ;; For :check-op actions, generate a runtime expression for the actual op
+    ;; so we can print its name alongside the FAILED: message.
+    (define (%%action->actual-op-stx action)
+      (let ([tag (car action)] [fields (cdr action)])
+        (case tag
+          [(:check-op)
+           (let ([op-idx (cdr (assq 'op-idx fields))])
+             #`(vector-ref all-operations #,op-idx))]
+          [else #f])))
+    (define (make-check-form chk src-stx actual-op-stx)
       (let* ([loc (and src-stx (syntax->file+line+col src-stx))]
              [msg (call-with-string-output-port
                    (lambda (p)
@@ -303,18 +314,29 @@
                      (display ": [" p) (display fname-sym p)
                      (display "] FAILED: " p)
                      (write (syntax->datum chk) p)))])
-        (with-syntax ([check chk]
-                      [msg   (datum->syntax #'quote msg)])
-          #'(or check
-                (begin (crest::logging::warning msg) #f)))))
+        (if actual-op-stx
+            (with-syntax ([check chk]
+                          [msg   (datum->syntax #'quote msg)]
+                          [op    actual-op-stx])
+              #'(or check
+                    (begin
+                      (crest::logging::warning msg)
+                      (crest::logging::warning
+                       (string-append "  actual: " (mlir-operation-name op)))
+                      #f)))
+            (with-syntax ([check chk]
+                          [msg   (datum->syntax #'quote msg)])
+              #'(or check
+                    (begin (crest::logging::warning msg) #f))))))
     (define (%%make-checks)
       (let ([raw-checks (map (lambda (act) (%%action->check-code act match-vec operands-ref)) actions)])
         (if (not debug?)
             raw-checks
             ;; Debug path: each failing check logs "file:line:col: [pattern] FAILED: expr"
-            ;; — full message string built once at expand time via a single port pass.
-            (let* ([src-stxs   (map (lambda (act) (%%action->source-stx act match-vec)) actions)])
-              (map make-check-form raw-checks src-stxs)))))
+            ;; For :check-op, also logs the actual op name seen at runtime.
+            (let* ([src-stxs    (map (lambda (act) (%%action->source-stx act match-vec)) actions)]
+                   [actual-stxs (map %%action->actual-op-stx actions)])
+              (map make-check-form raw-checks src-stxs actual-stxs)))))
     (if (null? actions)
         #'#t
         (with-syntax ([(check-form ...) (%%make-checks)]
