@@ -291,23 +291,27 @@
                                       checks)]
                      [fname-str  (string-append "[" (symbol->string fname) "] ")]
                      [ex-prefix  (string-append "unknown: [" (symbol->string fname) "] exception: ")])
-                #`(guard (exn [#t
-                               (crest::logging::warning
-                                (string-append #,ex-prefix
-                                               (call-with-string-output-port
-                                                (lambda (p) (display-condition exn p)))))
-                               #f])
-                    (and #,@(map (lambda (chk loc str)
-                                   (with-syntax ([check chk]
-                                                 [msg   (datum->syntax #'quote
-                                                                       (string-append loc ": " fname-str
-                                                                                      "FAILED: " str))])
-                                     #'(or check
-                                           (begin (crest::logging::warning msg) #f))))
-                                 checks locs check-strs))))
+                (with-syntax ([prefix (datum->syntax #'quote ex-prefix)]
+                              [(check-form ...)
+                               (map (lambda (chk loc str)
+                                      (with-syntax ([check chk]
+                                                    [msg   (datum->syntax #'quote
+                                                                          (string-append loc ": " fname-str
+                                                                                         "FAILED: " str))])
+                                        #'(or check
+                                              (begin (crest::logging::warning msg) #f))))
+                                    checks locs check-strs)])
+                  #'(guard (exn [#t
+                                 (crest::logging::warning
+                                  (string-append prefix
+                                                 (call-with-string-output-port
+                                                  (lambda (p) (display-condition exn p)))))
+                                 #f])
+                      (and check-form ...))))
               ;; Silent path (production): any exception → #f, no output.
-              #`(guard (exn [#t #f])
-                  (and #,@checks))))))
+              (with-syntax ([(check-form ...) checks])
+                #'(guard (exn [#t #f])
+                    (and check-form ...)))))))
 
   (define (%%action->check-code action match-vec operands-ref)
     (let ([tag (car action)])
