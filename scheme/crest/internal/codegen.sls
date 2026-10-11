@@ -29,6 +29,7 @@
           (for (only (mlir IR Operation)
                      mlir::Operation::getContext
                      mlir::Operation::getNumResults
+                     mlir::Operation::getNumOperands
                      mlir::Operation::getResult
                      mlir::OpOperand::get
                      mlir::Operation::hasAttr?
@@ -383,15 +384,17 @@
                      #,num-results)))]
 
         [(:bind-operand)
+         ;; Bind a single required operand by index.
+         ;; Returns #f if the index is out of bounds — clean structural mismatch.
          (let* ([fields      (cdr action)]
                 [op-idx      (cdr (assq 'op-idx fields))]
                 [var         (cdr (assq 'var fields))]
                 [operand-idx (cdr (assq 'operand-idx fields))])
-           #`(begin
-               (set! #,var (mlir::OpOperand::get
-                            (vector-ref all-operations #,op-idx)
-                            #,operand-idx))
-               #t))]
+           #`(let ([%op (vector-ref all-operations #,op-idx)])
+               (and (< #,operand-idx (mlir::Operation::getNumOperands %op))
+                    (begin
+                      (set! #,var (mlir::OpOperand::get %op #,operand-idx))
+                      #t))))]
 
         [(:bind-argument-operand)
          (let* ([fields      (cdr action)]
@@ -438,8 +441,8 @@
            (%%transform-where-expr expr op-idx))]
 
         [(:bind-operands)
-         ;; Bind all operands of an op with optional/variadic slots via operation-get-operands.
-         ;; Returns a list; bind each variable positionally with list-ref.
+         ;; Bind all operands via operation-get-operands, which returns #f on structural
+         ;; mismatch (count wrong, or missing operandSegmentSizes for flex ops).
          (let* ([fields  (cdr action)]
                 [op-idx  (cdr (assq 'op-idx fields))]
                 [spec    (cdr (assq 'spec   fields))]
@@ -447,10 +450,12 @@
            #`(let ([%operands (operation-get-operands
                                (vector-ref all-operations #,op-idx)
                                #,@(map (lambda (s) #`'#,s) spec))])
-               #,@(loop :for var :in vars
-                        :for i   :from 0
-                        :collect #`(set! #,var (list-ref %operands #,i)))
-               #t))]
+               (and %operands
+                    (begin
+                      #,@(loop :for var :in vars
+                               :for i   :from 0
+                               :collect #`(set! #,var (list-ref %operands #,i)))
+                      #t))))]
 
         [else
          (error '%%action->check-code "Unknown action type" tag)])))

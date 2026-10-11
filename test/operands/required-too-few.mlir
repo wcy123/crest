@@ -2,7 +2,7 @@
 //
 // BUG (before fix): :bind-operand at index 2 calls mlir::OpOperand::get
 //   out-of-bounds → exception "index out of range" (caught by per-check guard).
-// Expected (after fix): :bind-operands FAILED: with source location — clean
+// Expected (after fix): :bind-operand FAILED: with source location — clean
 //   structural match failure, no exception.
 //
 // CREST_DEBUG_MATCH=1 shows FAILED: with the actual op text.
@@ -13,7 +13,7 @@
 // RUN:   | %FileCheck %s
 
 // After fix: clean FAILED: not exception
-// CHECK: required-too-few.sls:{{[0-9]+}}:{{[0-9]+}}: {{\[%%match\]}} :bind-operands FAILED:
+// CHECK: required-too-few.sls:{{[0-9]+}}:{{[0-9]+}}: {{\[%%match\]}} :bind-operand FAILED:
 // CHECK: actual: {{.*}}"test.add"(%arg0, %arg1)
 // Pattern did not fire — test.add unchanged
 // CHECK: "test.add"(%arg0, %arg1)

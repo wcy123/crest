@@ -115,6 +115,10 @@
                                     (traverse producer-op-idx (ast-operand-var operand)))))
                               operands entries))
                   ;; All-required path: per-operand binding / check-eq / traversal.
+                  ;; Each operand is handled individually:
+                  ;;   - already-bound → :check-eq (DAG diamond)
+                  ;;   - fresh + conversion root → :bind-argument-operand
+                  ;;   - fresh + other → :bind-operand (bounds-checked in codegen)
                   (loop :for operand :in operands
                         :for entry :in entries
                         :for operand-idx :from 0

@@ -16,7 +16,6 @@
   ;; Actions represent runtime pattern matching algorithm:
   ;; - :set-current-op - Navigate to operation in DAG
   ;; - :check-op - Verify operation type matches
-  ;; - :bind-operand - Bind free variable to operation's operand (can match any input)
   ;; - :bind-argument-operand - Bind root operand from operands-ref (conversion patterns only)
   ;; - :check-eq - Verify bound variable equals current operand
 
