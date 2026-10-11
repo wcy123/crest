@@ -55,13 +55,10 @@
   (export begin-mlir-code)
 
   (import (except (rnrs (6)) =)
-          (only (chezscheme) syntax->list syntax->datum parameterize
-                syntax->annotation annotation? annotation-source
-                source-object? source-object-sfd source-object-bfp
-                source-file-descriptor-path)
+          (only (chezscheme) syntax->list syntax->datum parameterize)
           (rename (rime loop) (:with :rime-with))
           (for (rename (rime loop) (:with :rime-with)) expand)
-          (for (only (crest internal srcloc) %%bfp->line+col) expand)
+          (for (only (crest internal srcloc) syntax->file+line+col) expand)
           (for (only (crest internal keywords)
                      = : -> :region
                      :index :i64 :f32 :i32-array :i64-array :unit) expand)
@@ -126,16 +123,9 @@
       ;; Derive mlir::Location expr from a syntax object's source annotation.
       ;; Falls back to mlir::UnknownLoc::get when source info is unavailable.
       (define (syntax->mlir-loc-expr op-stx)
-        (let* ([ann (syntax->annotation op-stx)]
-               [src (and (annotation? ann) (annotation-source ann))]
-               [sfd (and (source-object? src) (source-object-sfd src))]
-               [bfp (and sfd (source-object-bfp src))])
-          (if sfd
-              (let ([file (source-file-descriptor-path sfd)])
-                (let-values ([(line col) (%%bfp->line+col file bfp)])
-                  (if line
-                      #`(mlir::FileLineColLoc::get #,file #,line #,col)
-                      #'(mlir::UnknownLoc::get))))  ; I/O error reading file
+        (let ([loc (syntax->file+line+col op-stx)])
+          (if loc
+              #`(apply mlir::FileLineColLoc::get '#,loc)
               #'(mlir::UnknownLoc::get))))
 
       ;;-------------------------------------------------------------------

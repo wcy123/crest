@@ -15,14 +15,18 @@
 ;;   I/O error.  Cache is module-level — shared across all callers and all
 ;;   macro expansions in the session, maximising hit rate.
 ;;
+;; syntax->file+line+col : stx → (list file line col) | #f
+;;   Extracts source annotation from a syntax object and resolves
+;;   bfp → (line, col).  Returns #f when unavailable.
+;;   Use with apply: (apply (lambda (f l c) ...) loc)
+;;
 ;; %%syntax->loc-string : stx → string
-;;   Extracts the source annotation from a syntax object and returns a
-;;   "file:line:col" string, or "unknown" when no annotation is available.
+;;   Formats syntax->file+line+col as "file:line:col", or "unknown".
 ;;
 ;;===----------------------------------------------------------------------===;;
 
 (library (crest internal srcloc)
-  (export %%bfp->line+col %%syntax->loc-string)
+  (export %%bfp->line+col syntax->file+line+col %%syntax->loc-string)
   (import (rnrs)
           (only (chezscheme) make-hashtable string-hash guard quotient
                 syntax->annotation annotation? annotation-source
@@ -72,9 +76,9 @@
               (values #f #f))))))
 
   ;;-------------------------------------------------------------------
-  ;; %%syntax->loc-string
+  ;; syntax->file+line+col
   ;;-------------------------------------------------------------------
-  (define (%%syntax->loc-string stx)
+  (define (syntax->file+line+col stx)
     (let* ([ann (syntax->annotation stx)]
            [src (and (annotation? ann) (annotation-source ann))]
            [sfd (and (source-object? src) (source-object-sfd src))]
@@ -82,9 +86,18 @@
       (if sfd
           (let ([file (source-file-descriptor-path sfd)])
             (let-values ([(line col) (%%bfp->line+col file bfp)])
-              (if line
-                  (string-append file ":" (number->string line) ":" (number->string col))
-                  file)))
+              (and line (list file line col))))
+          #f)))
+
+  ;;-------------------------------------------------------------------
+  ;; %%syntax->loc-string
+  ;;-------------------------------------------------------------------
+  (define (%%syntax->loc-string stx)
+    (let ([loc (syntax->file+line+col stx)])
+      (if loc
+          (apply (lambda (file line col)
+                   (string-append file ":" (number->string line) ":" (number->string col)))
+                 loc)
           "unknown")))
 
   ) ;; end library (crest internal srcloc)
