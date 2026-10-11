@@ -365,9 +365,13 @@
                 [op-idx (cdr (assq 'op-idx fields))]
                 [var    (cdr (assq 'var fields))])
            #`(let ([def-op (mlir-value-get-defining-op #,var)])
-               ;; Slot initialized to 0; non-zero means already visited — bug.
+               ;; Slot initialized to 0; non-zero means already visited — bug
+               ;; in the analyze phase. Fatal: exit immediately, guard cannot
+               ;; catch this because it runs before the guard body.
                (when (not (zero? (vector-ref all-operations #,op-idx)))
-                 (error ':set-current-op "op slot already set" #,op-idx))
+                 (display "[crest internal error] :set-current-op: op slot already set — analyze-phase bug\n"
+                          (current-error-port))
+                 (exit 1))
                (vector-set! all-operations #,op-idx (or def-op 0))
                (and def-op #t)))]
 
