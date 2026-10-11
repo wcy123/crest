@@ -9,13 +9,13 @@
           (passes debug-match-common)
           (crest))
 
-  (define-rewrite-pattern (%%pattern op rewriter)
+  (define-rewrite-pattern (%%require-missing-attr op rewriter)
     :if-match
       %out = test.add (%a %b)
         :where (:attr "missing")
     :rewrite %out :with
       (%result = test.add (%a %b) -> (mlir::Value::getType %out)))
 
-  (define run-pass (make-run-pass "test.add" %%pattern))
+  (define run-pass (make-run-pass "test.add" %%require-missing-attr))
 
   ) ;; end library

@@ -8,12 +8,12 @@
           (passes debug-match-common)
           (crest))
 
-  (define-rewrite-pattern (%%pattern op rewriter)
+  (define-rewrite-pattern (%%expect-test.add op rewriter)
     :if-match
       %out = test.add (%a %b)
     :rewrite %out :with
       (%result = test.add (%a %b) -> (mlir::Value::getType %out)))
 
-  (define run-pass (make-run-pass "test.sub" %%pattern))
+  (define run-pass (make-run-pass "test.sub" %%expect-test.add))
 
   ) ;; end library
