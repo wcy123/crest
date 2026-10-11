@@ -29,7 +29,6 @@
           (for (only (mlir IR Operation)
                      mlir::Operation::getContext
                      mlir::Operation::getNumResults
-                     mlir::Operation::getNumOperands
                      mlir::Operation::getResult
                      mlir::OpOperand::get
                      mlir::Operation::hasAttr?
@@ -263,7 +262,7 @@
          (cdr (ast-match-expand-op-name (vector-ref match-vec (cdr (assq 'op-idx fields)))))]
         [(:check-where)
          (cdr (assq 'expr fields))]
-        [(:bind-operand :bind-argument-operand :check-eq :bind-result)
+        [(:bind-argument-operand :bind-result)
          (cdr (assq 'var fields))]
         [(:bind-operands)
          (let ([vars (cdr (assq 'vars fields))])
@@ -383,19 +382,6 @@
                   (= (mlir::Operation::getNumResults (vector-ref all-operations #,op-idx))
                      #,num-results)))]
 
-        [(:bind-operand)
-         ;; Bind a single required operand by index.
-         ;; Returns #f if the index is out of bounds — clean structural mismatch.
-         (let* ([fields      (cdr action)]
-                [op-idx      (cdr (assq 'op-idx fields))]
-                [var         (cdr (assq 'var fields))]
-                [operand-idx (cdr (assq 'operand-idx fields))])
-           #`(let ([%op (vector-ref all-operations #,op-idx)])
-               (and (< #,operand-idx (mlir::Operation::getNumOperands %op))
-                    (begin
-                      (set! #,var (mlir::OpOperand::get %op #,operand-idx))
-                      #t))))]
-
         [(:bind-argument-operand)
          (let* ([fields      (cdr action)]
                 [var         (cdr (assq 'var fields))]
@@ -405,19 +391,6 @@
                    (and (not (zero? val))
                         (begin (set! #,var val) #t)))
                  #f))]
-
-        [(:check-eq)
-         ;; DAG diamond: verify that the operand of this op equals an already-bound var.
-         ;; get-operand retrieves a Value* from an op by index.
-         ;; value-equal? checks pointer identity (same SSA value).
-         (let* ([fields      (cdr action)]
-                [op-idx      (cdr (assq 'op-idx fields))]
-                [operand-idx (cdr (assq 'operand-idx fields))]
-                [var         (cdr (assq 'var fields))])
-           #`(eqv? (mlir::OpOperand::get
-                    (vector-ref all-operations #,op-idx)
-                    #,operand-idx)
-                   #,var))]
 
         [(:bind-result)
          ;; Set a non-root result variable to the actual mlir::Value so that
@@ -447,7 +420,8 @@
                 [op-idx  (cdr (assq 'op-idx fields))]
                 [spec    (cdr (assq 'spec   fields))]
                 [vars    (cdr (assq 'vars   fields))])
-           (with-syntax ([(quoted-spec ...)
+           (with-syntax ([%operands  (datum->syntax #'begin '%operands)]
+                         [(quoted-spec ...)
                           (map (lambda (s)
                                  (with-syntax ([sym s]) #'(quote sym)))
                                spec)]
