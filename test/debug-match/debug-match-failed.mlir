@@ -13,7 +13,7 @@
 // RUN:   | %FileCheck %s
 
 // CHECK: [warning]
-// CHECK-SAME: debug-match-check-op.sls
+// CHECK-SAME: debug-match-check-op.sls:
 // CHECK-SAME: [%%pattern] FAILED:
 // CHECK-SAME: "test.add"
 
