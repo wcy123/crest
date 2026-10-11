@@ -52,7 +52,7 @@
           (for (only (chezscheme) parameterize) expand)
           (for (only (crest internal rewrite) begin-mlir-code) expand)
           ;; keywords needed at expand time for free-identifier=? matching in %%transform-where-expr
-          (for (only (crest internal keywords) :current-op :attr) expand))
+          (for (only (crest internal keywords) :current-op :attr :has-attr? :attr-or) expand))
 
   ;;=======================================================================
   ;; Call graph
@@ -234,10 +234,22 @@
   (define (%%transform-where-expr where-stx op-idx)
     (let ([cur-op #`(vector-ref all-operations #,op-idx)])
       (let walk ([s where-stx])
-        (syntax-case s (:current-op :attr)
+        (syntax-case s (:current-op :attr :has-attr? :attr-or)
           ;; Bare :current-op identifier → the matched sub-op
           [:current-op cur-op]
-          ;; (:attr "name") → raw attr uptr; error if absent
+          ;; (:has-attr? "name") → #t if attribute present, #f otherwise — no error
+          [(:has-attr? name)
+           (string? (syntax->datum #'name))
+           #`(mlir-Operation::hasAttr? #,cur-op name)]
+          ;; (:attr-or "name" default) → attr value if present, else default — no error
+          [(:attr-or name default)
+           (string? (syntax->datum #'name))
+           #`(let ([%cur #,cur-op])
+               (if (mlir-Operation::hasAttr? %cur name)
+                   (mlir-operation-get-attr %cur name)
+                   default))]
+          ;; (:attr "name") → raw attr uptr; always expected to be present —
+          ;; raises a real (non-match-failure) error if absent.
           [(:attr name)
            (string? (syntax->datum #'name))
            #`(let ([%cur #,cur-op])
@@ -269,10 +281,14 @@
         [else #f])))
 
   (define (%%generate-check-code actions match-vec operands-ref debug? fname)
-    ;; Returns (cons guard-clause-stx (list check-form-stx ...))
-    ;; guard-clause-stx : the (exn [...]) clause for guard
-    ;; check-form-stx   : one syntax object per action
+    ;; Exceptions during matching are always unexpected — always log them.
+    ;; debug? only controls per-check FAILED: messages for normal #f returns.
     (define fname-sym (symbol->string fname))
+    (define ex-prefix
+      (call-with-string-output-port
+       (lambda (p)
+         (display "unknown: [" p) (display fname-sym p)
+         (display "] exception: " p))))
     (define (make-check-form chk src-stx)
       (let* ([loc (and src-stx (syntax->file+line+col src-stx))]
              [msg (call-with-string-output-port
@@ -291,31 +307,24 @@
                       [msg   (datum->syntax #'quote msg)])
           #'(or check
                 (begin (crest::logging::warning msg) #f)))))
-    (define (%%make-guard+checks)
+    (define (%%make-checks)
       (let ([raw-checks (map (lambda (act) (%%action->check-code act match-vec operands-ref)) actions)])
         (if (not debug?)
-            (cons #'(exn [#t #f]) raw-checks)
+            raw-checks
             ;; Debug path: each failing check logs "file:line:col: [pattern] FAILED: expr"
             ;; — full message string built once at expand time via a single port pass.
-            (let* ([src-stxs   (map (lambda (act) (%%action->source-stx act match-vec)) actions)]
-                   [ex-prefix  (call-with-string-output-port
-                                (lambda (p)
-                                  (display "unknown: [" p) (display fname-sym p)
-                                  (display "] exception: " p)))]
-                   [check-forms (map make-check-form raw-checks src-stxs)])
-              (cons
-               (with-syntax ([prefix (datum->syntax #'quote ex-prefix)])
-                 #'(exn [#t
+            (let* ([src-stxs   (map (lambda (act) (%%action->source-stx act match-vec)) actions)])
+              (map make-check-form raw-checks src-stxs)))))
+    (if (null? actions)
+        #'#t
+        (with-syntax ([(check-form ...) (%%make-checks)]
+                      [prefix (datum->syntax #'quote ex-prefix)])
+          #'(guard (exn [#t
                          (crest::logging::warning
                           (string-append prefix
                                          (call-with-string-output-port
                                           (lambda (p) (display-condition exn p)))))
-                         #f]))
-               check-forms)))))
-    (if (null? actions)
-        #'#t
-        (with-syntax ([(guard-clause check-form ...) (%%make-guard+checks)])
-          #'(guard guard-clause
+                         #f])
               (and check-form ...)))))
 
   (define (%%action->check-code action match-vec operands-ref)

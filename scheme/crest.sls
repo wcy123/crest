@@ -138,7 +138,7 @@
           :debug-parse :debug-validate :debug-analyze :debug-codegen
           = : -> :region :regions
           :any
-          :current-op :attr
+          :current-op :attr :has-attr? :attr-or
           :optional :variadic
           :index :i64 :f32 :i32-array :i64-array :unit
           make-unbound-value unbound-value?)

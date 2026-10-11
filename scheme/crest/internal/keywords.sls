@@ -4,7 +4,7 @@
           :debug-parse :debug-validate :debug-analyze :debug-codegen
           = : -> :region :regions
           :any
-          :current-op :attr
+          :current-op :attr :has-attr? :attr-or
           :optional :variadic
           ;; Attr type keywords used in (name = val :type) modifier forms
           :index :i64 :f32 :i32-array :i64-array :unit)
@@ -37,6 +37,13 @@
   ;; Compose with builtin-attributes functions: mlir::IntegerAttr::getValue, mlir::FloatAttr::getValueAsDouble.f32,
   ;; mlir::DenseElementsAttr::isSplat, mlir::DenseElementsAttr::getSplatValue<APFloat>, etc.
   (define-syntax :attr       (lambda (x) (syntax-violation 'pattern-keyword "misplaced :attr (only valid inside DDR :where)" x)))
+  ;; :has-attr? — (:has-attr? "name") in a :where clause.
+  ;; Returns #t if the named attribute is present on :current-op, #f otherwise.
+  ;; Use instead of (:attr ...) when attribute presence is optional.
+  (define-syntax :has-attr?  (lambda (x) (syntax-violation 'pattern-keyword "misplaced :has-attr? (only valid inside DDR :where)" x)))
+  ;; :attr-or — (:attr-or "name" default) in a :where clause.
+  ;; Returns the attribute value if present on :current-op, else default.
+  (define-syntax :attr-or    (lambda (x) (syntax-violation 'pattern-keyword "misplaced :attr-or (only valid inside DDR :where)" x)))
   ;; :optional — (:optional %var ...) in an operand list marks optional operands.
   ;; Each %var is bound to the operand value if present, left unbound if absent.
   ;; Presence is detected via mlir-operation-num-operands at match time.
