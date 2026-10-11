@@ -14,7 +14,7 @@
 // RUN:   | %FileCheck %s
 
 // :check-eq failure — %s2 (operand of test.sub) != %s1 (%shared from test.add)
-// CHECK: network-diamond.sls:{{[0-9]+}}:{{[0-9]+}}: {{\[%%diamond\]}} :check-eq FAILED: (eqv? (mlir-operation-get-operand-value (vector-ref all-operations 1) 0) %shared)
+// CHECK: network-diamond.sls:{{[0-9]+}}:{{[0-9]+}}: {{\[%%diamond\]}} :check-eq FAILED: (eqv? (mlir::OpOperand::get (vector-ref all-operations 1) 0) %shared)
 // CHECK: actual: {{.*}}"test.sub"
 // Pattern did not fire — test.combine still present
 // CHECK: "test.combine"

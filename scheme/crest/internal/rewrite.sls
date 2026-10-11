@@ -85,9 +85,7 @@
           (for (only (mlir IR Region) mlir::Region::push_back<Block>) expand)
           (for (only (mlir IR Block) mlir::Block::getArgument) expand)
           (for (only (mlir IR Operation) mlir::Operation::getRegion) expand)
-          (for (rename (only (mlir IR Operation)
-                             mlir::Operation::getResult)
-                       (mlir::Operation::getResult mlir-Operation::getResult)) expand))
+          (for (only (mlir IR Operation) mlir::Operation::getResult) expand))
 
 
   ;;===--------------------------------------------------------------------===;;
@@ -158,13 +156,13 @@
       ;; Single-result — two pairs:
       ;;   (%r = arith.constant () ("value" = 0 :index) -> i32)
       ;;   →  [(%op-tmp-<index> . (let ([new-op (with-OperationState ...)]) new-op))
-      ;;        (%r             . (mlir-Operation::getResult %op-tmp-<index> 0))]
+      ;;        (%r             . (mlir::Operation::getResult %op-tmp-<index> 0))]
       ;;
       ;; Multi-result — one tmp pair + one pair per result variable:
       ;;   ((%a %b) = some.op (%x) -> (t1 t2))
       ;;   →  [(%op-tmp-<index> . (let ([new-op (with-OperationState ...)]) new-op))
-      ;;        (%a             . (mlir-Operation::getResult %op-tmp-<index> 0))
-      ;;        (%b             . (mlir-Operation::getResult %op-tmp-<index> 1))]
+      ;;        (%a             . (mlir::Operation::getResult %op-tmp-<index> 0))
+      ;;        (%b             . (mlir::Operation::getResult %op-tmp-<index> 1))]
       ;;
       ;; Statement (no result) — one pair binding the tmp to the op itself.
       (define (process-op op-stx index builder-stx)
@@ -346,7 +344,7 @@
       ;;   (op-tmp . (let ([op (with-OperationState ...)]) setter... fills... op))
       ;;
       ;; Plus one descriptor per result variable (empty for zero-result ops):
-      ;;   (%var . (mlir-Operation::getResult op-tmp i))
+      ;;   (%var . (mlir::Operation::getResult op-tmp i))
       ;;
       ;; Parameters:
       ;;   result-vars   — Scheme list of result variable syntax objects
@@ -419,7 +417,7 @@
              ;; TODO: add :current-op in begin-mlir-code to capture zero-result ops by name.
              (loop :for var :in result-vars
                    :for i   :from 0
-                   :collect (cons var #`(mlir-Operation::getResult op-tmp #,i)))))))
+                   :collect (cons var #`(mlir::Operation::getResult op-tmp #,i)))))))
 
 
 

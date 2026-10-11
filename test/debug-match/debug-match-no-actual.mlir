@@ -11,7 +11,7 @@
 // RUN:   --crest-pass="module=passes/debug-match-no-actual" %s 2>&1 \
 // RUN:   | %FileCheck %s
 
-// CHECK: {{\[%%chain-no-actual\]}} :check-op FAILED: (and (string=? (mlir-operation-name (vector-ref all-operations 0)) "test.add") (= (mlir-operation-num-results (vector-ref all-operations 0)) 1))
+// CHECK: {{\[%%chain-no-actual\]}} :check-op FAILED: (and (string=? (mlir::Operation::getName (vector-ref all-operations 0)) "test.add") (= (mlir::Operation::getNumResults (vector-ref all-operations 0)) 1))
 // CHECK-NOT: actual:
 
 func.func @no_chain(%x: i32) -> i32 {
