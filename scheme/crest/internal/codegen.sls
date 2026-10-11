@@ -341,23 +341,15 @@
                                     #'(or check (begin (warn-match fmsg 0) #f)))))
                             chk)])
         (with-syntax ([body     inner]
-                      [exprefix (datum->syntax #'quote ex-prefix)])
-          (if actual-op-stx
-              (with-syntax ([op actual-op-stx])
-                #'(guard (exn [#t
-                               (warn-match (string-append exprefix
-                                                          (call-with-string-output-port
-                                                           (lambda (p) (display-condition exn p))))
-                                           op)
-                               #f])
-                    body))
-              #'(guard (exn [#t
-                             (warn-match (string-append exprefix
-                                                        (call-with-string-output-port
-                                                         (lambda (p) (display-condition exn p))))
-                                         0)
-                             #f])
-                  body)))))
+                      [exprefix (datum->syntax #'quote ex-prefix)]
+                      [op       (or actual-op-stx #'0)])
+          #'(guard (exn [#t
+                         (warn-match (string-append exprefix
+                                                    (call-with-string-output-port
+                                                     (lambda (p) (display-condition exn p))))
+                                     op)
+                         #f])
+              body))))
     (define (%%make-checks)
       ;; Always wrap each check in a per-check guard (always-on exception loc).
       (let* ([raw-checks  (map (lambda (act) (%%action->check-code act match-vec operands-ref)) actions)]
