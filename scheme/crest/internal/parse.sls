@@ -126,6 +126,10 @@
          (ast-pattern-expand-function-name-set!         ast #'fname)
          (ast-pattern-expand-param-op-set!              ast #'p-op)
          (ast-pattern-expand-param-operands-ref-set!    ast #'p-operands-ref)
+         ;; p-rewriter is the user-chosen identifier for the rewriter parameter.
+         ;; The codegen uses it as the lambda parameter name AND as the target of
+         ;; mlir::RewriterBase::setInsertionPoint and begin-mlir-code in the
+         ;; generated rewrite body — so it must match the user's function signature.
          (ast-pattern-expand-param-rewriter-set!        ast #'p-rewriter)
          (ast-pattern-expand-param-type-converter-set!  ast #'p-type-converter)
          (%%parse-rest #'more ast))]
