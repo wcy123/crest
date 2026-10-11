@@ -1,18 +1,18 @@
-// :set-current-op failure is silent — no FAILED: logged.
+// CREST_DEBUG_MATCH=1 — :set-current-op is pure setup, :check-op is the gate.
 //
 // Pattern expects test.sub's operand to come from test.add.
-// The IR passes a block argument (%x has no defining op) → :set-current-op
-// returns #f silently. "No defining op" is a structural mismatch, not
-// actionable on its own; the subsequent :check-op would give the real message.
-// With CREST_DEBUG_MATCH=1, no warning is emitted for this case.
+// The IR passes a block argument (%x has no defining op).
+// :set-current-op writes 0 to the slot and continues (#t).
+// :check-op then fails with (string=? "" "test.add") → FAILED: logged.
+// No actual: because the op slot is 0 (no op to print).
 
 // RUN: env CREST_DEBUG_MATCH=1 CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
 // RUN:   %crest-opt -allow-unregistered-dialect \
 // RUN:   --crest-pass="module=passes/debug-match-no-actual" %s 2>&1 \
 // RUN:   | %FileCheck %s
 
-// No warning at all — :set-current-op failure is suppressed
-// CHECK-NOT: [warning]
+// CHECK: {{\[%%chain-no-actual\]}} :check-op FAILED: (and (string=? (mlir-operation-name (vector-ref all-operations 0)) "test.add") (= (mlir-operation-num-results (vector-ref all-operations 0)) 1))
+// CHECK-NOT: actual:
 
 func.func @no_chain(%x: i32) -> i32 {
   %0 = "test.sub"(%x) : (i32) -> i32

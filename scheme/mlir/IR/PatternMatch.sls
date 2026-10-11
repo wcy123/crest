@@ -22,9 +22,8 @@
   (export
     ;; Clean-name re-exports from ffi
     mlir-create-operation
-    mlir::RewriterBase::setInsertionPoint          ;; canonical: mlir::RewriterBase::setInsertionPoint(op)
-    mlir::RewriterBase::setInsertionPoint-before   ;; backward-compat alias
-    mlir::RewriterBase::setInsertionPoint-to-end
+    mlir::RewriterBase::setInsertionPoint
+    mlir::RewriterBase::setInsertionPointToEnd
     mlir::RewriterBase::createBlock
     mlir::RewriterBase::replaceOp
     mlir::RewriterBase::eraseOp
@@ -43,8 +42,7 @@
           (only (chezscheme) make-parameter parameterize void)
           (only (mlir IR PatternMatch ffi)
                 %mlir::RewriterBase::setInsertionPoint
-                %mlir::RewriterBase::setInsertionPoint-before
-                %mlir::RewriterBase::setInsertionPoint-to-end
+                %mlir::RewriterBase::setInsertionPointToEnd
                 %mlir::RewriterBase::createBlock
                 %mlir::RewriterBase::replaceOp
                 %mlir::RewriterBase::eraseOp
@@ -67,11 +65,8 @@
   (define mlir-Operation::getContext mlir::Operation::getContext)
 
   ;; @brief mlir::RewriterBase::setInsertionPoint(op) — move IP to before op.
-  (define mlir::RewriterBase::setInsertionPoint       %mlir::RewriterBase::setInsertionPoint)
-  (define mlir::RewriterBase::setInsertionPoint-before %mlir::RewriterBase::setInsertionPoint)
-
-  ;; @brief mlir::RewriterBase::setInsertionPoint — move IP to end of block.
-  (define mlir::RewriterBase::setInsertionPoint-to-end %mlir::RewriterBase::setInsertionPoint-to-end)
+  (define mlir::RewriterBase::setInsertionPoint    %mlir::RewriterBase::setInsertionPoint)
+  (define mlir::RewriterBase::setInsertionPointToEnd %mlir::RewriterBase::setInsertionPointToEnd)
 
   ;; @brief mlir::RewriterBase::createBlock — append a new block to region.
   (define mlir::RewriterBase::createBlock             %mlir::RewriterBase::createBlock)

@@ -296,7 +296,6 @@
     ;; debug? only controls per-check FAILED: messages for normal #f returns.
     (define fname-sym (symbol->string (syntax->datum fname-stx)))
     ;; Format (list file line col) | #f → "file:line:col" | "unknown"
-    ;; Must be defined before ex-loc which calls it.
     (define (loc->string loc)
       (if loc
           (apply (lambda (file line col)
@@ -304,9 +303,6 @@
                                   ":" (number->string col)))
                  loc)
           "unknown"))
-    (define ex-loc    (let ([loc (syntax->file+line+col fname-stx)])
-                        (if loc (loc->string loc) "unknown")))
-    (define ex-prefix (string-append ex-loc ": [" fname-sym "] exception: "))
     ;; For :check-op, generate a runtime expression for the actual op so we
     ;; can print its name alongside the FAILED: message.
     (define (%%action->actual-op-stx action)
@@ -377,9 +373,10 @@
                  (error ':set-current-op
                         "analyze-phase bug: op slot already set"
                         #,op-idx))
+               ;; :set-current-op is pure setup, not a constraint.
+               ;; Write 0 for a null def-op; :check-op is the gatekeeper.
                (vector-set! all-operations #,op-idx (or def-op 0))
-               ;; (and def-op #t) would be wrong: 0 is truthy in Scheme.
-               (not (zero? def-op))))]
+               #t))]
 
         [(:check-op)
          (let* ([fields      (cdr action)]

@@ -17,56 +17,47 @@ namespace crest {
 
 void registerIRRewriterBaseBindings() {
   Sregister_symbol(
-      "mlir_ir_rewriter_base_set_insertion_point",
+      "mlir::RewriterBase::setInsertionPoint",
       (void*)+[](uint64_t rewriter_ptr, uint64_t op_ptr) -> void {
         if (!op_ptr) {
-          scheme_error("mlir_ir_rewriter_base_set_insertion_point",
+          scheme_error("mlir::RewriterBase::setInsertionPoint",
                        "null op pointer");
         }
-        crest_ref<mlir::RewriterBase>(
-            rewriter_ptr, "mlir_ir_rewriter_base_set_insertion_point")
-            ->setInsertionPoint(reinterpret_cast<mlir::Operation*>(op_ptr));
-      });
-  // Backward-compat alias
-  Sregister_symbol(
-      "mlir_ir_rewriter_base_set_insertion_point_before",
-      (void*)+[](uint64_t rewriter_ptr, uint64_t op_ptr) -> void {
-        if (!op_ptr) {
-          scheme_error("mlir_ir_rewriter_base_set_insertion_point_before",
-                       "null op pointer");
-        }
-        crest_ref<mlir::RewriterBase>(
-            rewriter_ptr, "mlir_ir_rewriter_base_set_insertion_point_before")
+        crest_ref<mlir::RewriterBase>(rewriter_ptr,
+                                      "mlir::RewriterBase::setInsertionPoint")
             ->setInsertionPoint(reinterpret_cast<mlir::Operation*>(op_ptr));
       });
   Sregister_symbol(
-      "mlir_ir_rewriter_base_set_insertion_point_to_end",
+      "mlir::RewriterBase::setInsertionPointToEnd",
       (void*)+[](uint64_t rewriter_ptr, uint64_t block_ptr) -> void {
         if (!block_ptr) {
-          scheme_error("mlir_ir_rewriter_base_set_insertion_point_to_end",
+          scheme_error("mlir::RewriterBase::setInsertionPointToEnd",
                        "null block pointer");
         }
         crest_ref<mlir::RewriterBase>(
-            rewriter_ptr, "mlir_ir_rewriter_base_set_insertion_point_to_end")
+            rewriter_ptr, "mlir::RewriterBase::setInsertionPointToEnd")
             ->setInsertionPointToEnd(reinterpret_cast<mlir::Block*>(block_ptr));
       });
   Sregister_symbol(
-      "mlir_ir_rewriter_base_create_block",
+      "mlir::RewriterBase::createBlock",
       (void*)+[](uint64_t rewriter_ptr, uint64_t region_ptr,
                  ptr arg_types_list) -> uint64_t {
         if (!region_ptr) {
-          scheme_error("mlir_ir_rewriter_base_create_block",
+          scheme_error("mlir::RewriterBase::createBlock",
                        "null region pointer");
         }
         auto* rewriter = crest_ref<mlir::RewriterBase>(
-            rewriter_ptr, "mlir_ir_rewriter_base_create_block");
+            rewriter_ptr, "mlir::RewriterBase::createBlock");
         auto* region = reinterpret_cast<mlir::Region*>(region_ptr);
-        mlir::Location loc = region->getParentOp()->getLoc();
+        mlir::Operation* parent = region->getParentOp();
+        mlir::Location loc =
+            parent ? parent->getLoc()
+                   : mlir::UnknownLoc::get(rewriter->getContext());
         mlir::Block* block = rewriter->createBlock(region);
         for (ptr cur = static_cast<ptr>(arg_types_list); cur != Snil;
              cur = Scdr(cur)) {
           if (!Spairp(cur)) {
-            scheme_error("mlir_ir_rewriter_base_create_block",
+            scheme_error("mlir::RewriterBase::createBlock",
                          "malformed arg types list");
           }
           block->addArgument(
@@ -78,21 +69,24 @@ void registerIRRewriterBaseBindings() {
         return reinterpret_cast<uint64_t>(block);
       });
   Sregister_symbol(
-      "mlir_ir_rewriter_base_replace_op",
+      "mlir::RewriterBase::replaceOp",
       (void*)+[](uint64_t rewriter_ptr, uint64_t old_op_ptr,
                  uint64_t new_value_ptr) -> int {
+        if (!old_op_ptr) {
+          scheme_error("mlir::RewriterBase::replaceOp", "null op pointer");
+        }
         crest_ref<mlir::RewriterBase>(rewriter_ptr,
-                                      "mlir_ir_rewriter_base_replace_op")
+                                      "mlir::RewriterBase::replaceOp")
             ->replaceOp(reinterpret_cast<mlir::Operation*>(old_op_ptr),
                         mlir::Value::getFromOpaquePointer(
                             reinterpret_cast<void*>(new_value_ptr)));
         return 1;
       });
   Sregister_symbol(
-      "mlir_ir_rewriter_base_erase_op",
+      "mlir::RewriterBase::eraseOp",
       (void*)+[](uint64_t rewriter_ptr, uint64_t op_ptr) -> int {
         crest_ref<mlir::RewriterBase>(rewriter_ptr,
-                                      "mlir_ir_rewriter_base_erase_op")
+                                      "mlir::RewriterBase::eraseOp")
             ->eraseOp(reinterpret_cast<mlir::Operation*>(op_ptr));
         return 1;
       });
