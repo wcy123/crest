@@ -327,7 +327,10 @@
              ;; body-of-checks: (or check (warn "FAILED:" actual)) in debug,
              ;; plain check in production.
              [body-of-checks
-              (if debug?
+              ;; :set-current-op failure (no defining op) is a silent structural
+              ;; mismatch — not actionable on its own. The following :check-op
+              ;; will provide the meaningful FAILED: message if needed.
+              (if (and debug? (not (eq? action-tag ':set-current-op)))
                   (let ([fmsg (string-append
                                loc-str ": [" fname-sym "] " tag-str " FAILED: "
                                (call-with-string-output-port
