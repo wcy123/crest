@@ -9,12 +9,8 @@
   (import (rnrs)
           (only (chezscheme) syntax->list syntax->datum syntax-object->datum record-rtd record-type-field-names record-accessor identifier?
                 call-with-string-output-port display-condition)
-          ;; crest::logging::warning and mlir-operation-name are needed at run time:
-          ;; generated debug lambdas call them to log failures and the actual op seen.
-          (only (mlir support logging) crest::logging::warning)
-          (rename (only (mlir IR Operation) mlir::Operation::getName)
-                  (mlir::Operation::getName mlir-operation-name))
-          (only (mlir IR Operation) mlir::Operation::print)
+          ;; match-logging: unified warning helper for generated debug code.
+          (only (crest internal match-logging) warn-match)
           ;; srcloc: shared source-location utilities; cache is module-level in srcloc.sls.
           (only (crest internal srcloc) syntax->file+line+col)
           (rename (rime loop) (:with :rime-with))
@@ -251,16 +247,13 @@
                (if (mlir-Operation::hasAttr? %cur name)
                    (mlir-operation-get-attr %cur name)
                    default))]
-          ;; (:attr "name") → raw attr uptr; always expected to be present —
-          ;; raises a real (non-match-failure) error if absent.
+          ;; (:attr "name") → raw attr uptr; #f if absent (treated as match failure).
+          ;; Use :has-attr? to explicitly test presence without fetching.
           [(:attr name)
            (string? (syntax->datum #'name))
            #`(let ([%cur #,cur-op])
-               (if (mlir-Operation::hasAttr? %cur name)
-                   (mlir-operation-get-attr %cur name)
-                   (error ':attr
-                          (string-append "attribute '" name "' absent on op: ")
-                          (mlir-operation-name %cur))))]
+               (and (mlir-Operation::hasAttr? %cur name)
+                    (mlir-operation-get-attr %cur name)))]
           ;; Recurse into compound forms
           [(e ...) #`(#,@(map walk (syntax->list s)))]
           ;; Atoms pass through unchanged
@@ -342,37 +335,27 @@
                                   (with-syntax ([check chk]
                                                 [fmsg  (datum->syntax #'quote fmsg)]
                                                 [op    actual-op-stx])
-                                    #'(or check
-                                          (begin
-                                            (crest::logging::warning fmsg)
-                                            (crest::logging::warning
-                                             (string-append "  actual: "
-                                                            (mlir::Operation::print op)))
-                                            #f)))
+                                    #'(or check (begin (warn-match fmsg op) #f)))
                                   (with-syntax ([check chk]
                                                 [fmsg  (datum->syntax #'quote fmsg)])
-                                    #'(or check (begin (crest::logging::warning fmsg) #f)))))
+                                    #'(or check (begin (warn-match fmsg 0) #f)))))
                             chk)])
-        (if actual-op-stx
-            (with-syntax ([body     inner]
-                          [exprefix (datum->syntax #'quote ex-prefix)]
-                          [op       actual-op-stx])
+        (with-syntax ([body     inner]
+                      [exprefix (datum->syntax #'quote ex-prefix)])
+          (if actual-op-stx
+              (with-syntax ([op actual-op-stx])
+                #'(guard (exn [#t
+                               (warn-match (string-append exprefix
+                                                          (call-with-string-output-port
+                                                           (lambda (p) (display-condition exn p))))
+                                           op)
+                               #f])
+                    body))
               #'(guard (exn [#t
-                             (crest::logging::warning
-                              (string-append exprefix
-                                             (call-with-string-output-port
-                                              (lambda (p) (display-condition exn p)))))
-                             (crest::logging::warning
-                              (string-append "  actual: " (mlir::Operation::print op)))
-                             #f])
-                  body))
-            (with-syntax ([body     inner]
-                          [exprefix (datum->syntax #'quote ex-prefix)])
-              #'(guard (exn [#t
-                             (crest::logging::warning
-                              (string-append exprefix
-                                             (call-with-string-output-port
-                                              (lambda (p) (display-condition exn p)))))
+                             (warn-match (string-append exprefix
+                                                        (call-with-string-output-port
+                                                         (lambda (p) (display-condition exn p))))
+                                         0)
                              #f])
                   body)))))
     (define (%%make-checks)

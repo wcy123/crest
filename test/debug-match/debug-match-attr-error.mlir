@@ -1,19 +1,21 @@
-// Always-on exception logging — no CREST_DEBUG_MATCH needed
+// CREST_DEBUG_MATCH=1 — :attr absence treated as match failure (not exception)
 //
-// (:attr "name") asserts the attribute must exist. If absent, it raises
-// an unexpected error that is always logged via crest::logging::warning,
-// even in production (without CREST_DEBUG_MATCH=1).
+// (:attr "missing") checks attribute presence first via hasAttr?.
+// When absent it returns #f — a clean match failure, not an exception.
+// CREST_DEBUG_MATCH=1 prints FAILED: with file:line:col and actual: op.
 //
-// Pattern: (:attr "missing") on test.add — attribute never present.
-// Expected: warning line containing "exception:" and the attribute name.
+// Verifies the stable warning format:
+//   [warning] <file>:<line>:<col>: [<pattern>] FAILED: <scheme-expr>
+//   [warning]   actual: <mlir-op-text>
 
-// RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
+// RUN: env CREST_DEBUG_MATCH=1 CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
 // RUN:   %crest-opt -allow-unregistered-dialect \
 // RUN:   --crest-pass="module=passes/debug-match-attr-error" \
 // RUN:   --mlir-print-debuginfo %s 2>&1 \
 // RUN:   | %FileCheck %s
 
-// CHECK: debug-match-attr-error.sls:{{[0-9]+}}:{{[0-9]+}}: {{\[%%require-missing-attr\]}} exception: {{.*}}attribute 'missing' absent on op:
+// CHECK: debug-match-attr-error.sls:{{[0-9]+}}:{{[0-9]+}}: {{\[%%require-missing-attr\]}} FAILED:
+// CHECK-SAME: "missing"
 // CHECK: "test.add"(%arg0, %arg1) : (i32, i32) -> i32 loc([[LOC:#loc[0-9]+]])
 // CHECK: [[LOC]] = loc({{.*}}debug-match-attr-error.mlir":{{[0-9]+}}:{{[0-9]+}})
 
