@@ -353,15 +353,28 @@
                                                 [fmsg  (datum->syntax #'quote fmsg)])
                                     #'(or check (begin (crest::logging::warning fmsg) #f)))))
                             chk)])
-        (with-syntax ([body     inner]
-                      [exprefix (datum->syntax #'quote ex-prefix)])
-          #'(guard (exn [#t
-                         (crest::logging::warning
-                          (string-append exprefix
-                                         (call-with-string-output-port
-                                          (lambda (p) (display-condition exn p)))))
-                         #f])
-              body))))
+        (if actual-op-stx
+            (with-syntax ([body     inner]
+                          [exprefix (datum->syntax #'quote ex-prefix)]
+                          [op       actual-op-stx])
+              #'(guard (exn [#t
+                             (crest::logging::warning
+                              (string-append exprefix
+                                             (call-with-string-output-port
+                                              (lambda (p) (display-condition exn p)))))
+                             (crest::logging::warning
+                              (string-append "  actual: " (mlir::Operation::print op)))
+                             #f])
+                  body))
+            (with-syntax ([body     inner]
+                          [exprefix (datum->syntax #'quote ex-prefix)])
+              #'(guard (exn [#t
+                             (crest::logging::warning
+                              (string-append exprefix
+                                             (call-with-string-output-port
+                                              (lambda (p) (display-condition exn p)))))
+                             #f])
+                  body)))))
     (define (%%make-checks)
       ;; Always wrap each check in a per-check guard (always-on exception loc).
       (let* ([raw-checks  (map (lambda (act) (%%action->check-code act match-vec operands-ref)) actions)]

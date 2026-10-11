@@ -9,10 +9,13 @@
 
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
 // RUN:   %crest-opt -allow-unregistered-dialect \
-// RUN:   --crest-pass="module=passes/debug-match-attr-error" %s 2>&1 \
+// RUN:   --crest-pass="module=passes/debug-match-attr-error" \
+// RUN:   --mlir-print-debuginfo %s 2>&1 \
 // RUN:   | %FileCheck %s
 
-// CHECK: {{.*}}debug-match-attr-error.sls:{{[0-9]+}}:{{[0-9]+}}: {{\[%%require-missing-attr\]}} exception: {{.*}}attribute 'missing' absent on op:
+// CHECK: debug-match-attr-error.sls:{{[0-9]+}}:{{[0-9]+}}: {{\[%%require-missing-attr\]}} exception: {{.*}}attribute 'missing' absent on op:
+// CHECK: "test.add"(%arg0, %arg1) : (i32, i32) -> i32 loc([[LOC:#loc[0-9]+]])
+// CHECK: [[LOC]] = loc({{.*}}debug-match-attr-error.mlir":{{[0-9]+}}:{{[0-9]+}})
 
 func.func @attr_error(%a: i32, %b: i32) -> i32 {
   %0 = "test.add"(%a, %b) : (i32, i32) -> i32
