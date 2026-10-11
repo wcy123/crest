@@ -19,27 +19,17 @@
           (for (only (mlir IR PatternMatch)
                      mlir::RewriterBase::setInsertionPoint
                      mlir::RewriterBase::replaceOp) expand)
-          (for (rename (only (mlir IR Operation)
-                             mlir::Operation::getContext
-                             mlir::Operation::getNumResults
-                             mlir::Operation::getResult
-                             mlir::OpOperand::get
-                             mlir::Operation::hasAttr?
-                             mlir::Operation::getAttr
-                             mlir::Operation::getName
-                             mlir::Operation::emitError
-                             operation-get-operands)
-                       (mlir::Operation::getContext    mlir-Operation::getContext)
-                       (mlir::Operation::getNumResults mlir-operation-num-results)
-                       (mlir::Operation::getResult     mlir-Operation::getResult)
-                       (mlir::OpOperand::get     mlir-operation-get-operand-value)
-                       (mlir::Operation::hasAttr?      mlir-Operation::hasAttr?)
-                       (mlir::Operation::getAttr       mlir-operation-get-attr)
-                       (mlir::Operation::getName       mlir-operation-name)
-                       (mlir::Operation::emitError    mlir-emit-error!)
-                       (operation-get-operands   mlir-operation-get-operands)) expand)
-          (for (rename (only (mlir IR Value) mlir::Value::getDefiningOp)
-                       (mlir::Value::getDefiningOp mlir-value-get-defining-op)) expand)
+          (for (only (mlir IR Operation)
+                     mlir::Operation::getContext
+                     mlir::Operation::getNumResults
+                     mlir::Operation::getResult
+                     mlir::OpOperand::get
+                     mlir::Operation::hasAttr?
+                     mlir::Operation::getAttr
+                     mlir::Operation::getName
+                     mlir::Operation::emitError
+                     operation-get-operands) expand)
+          (for (only (mlir IR Value) mlir::Value::getDefiningOp) expand)
           (for (only (mlir support array-ref) ArrayRef::size ArrayRef::at with-CrestObject) expand)
           (for (only (mlir IR MLIRContext) current-MLIRContext) expand)
           (for (only (chezscheme) parameterize) expand)
@@ -52,7 +42,7 @@
   ;;=======================================================================
   ;;
   ;; generate-pattern-match-and-rewrite
-  ;; ├── %%generate-root-result-setters  (set! %varN (mlir-Operation::getResult op N)) per root result
+  ;; ├── %%generate-root-result-setters  (set! %varN (mlir::Operation::getResult op N)) per root result
   ;; │   └── %%find-root-op
   ;; ├── %%collect-all-variables
   ;; ├── %%generate-check-code           (and check₀ check₁ …) for :if-match
@@ -134,7 +124,7 @@
                         ;; make-mlir-attribute and type constructors work in :then-let
                         ;; without requiring an explicit ctx argument.
                         (parameterize ([current-MLIRContext
-                                        (mlir-Operation::getContext root-op)])
+                                        (mlir::Operation::getContext root-op)])
                           (let ([var (make-unbound-value)] ...
                                 [all-operations (make-vector num-operations (make-unbound-value))])
                             root-result-setter ...
@@ -173,9 +163,9 @@
                             ;; A Scheme exception in the rewrite body is a pattern
                             ;; failure. Emit the full condition text as an MLIR
                             ;; diagnostic so it appears in ORT's error output.
-                            (mlir-emit-error! #,op
-                                              (call-with-string-output-port
-                                               (lambda (p) (display-condition exn p))))
+                            (mlir::Operation::emitError #,op
+                                                        (call-with-string-output-port
+                                                         (lambda (p) (display-condition exn p))))
                             #f])
                  (begin
                    (mlir::RewriterBase::setInsertionPoint #,rw #,op)
@@ -232,11 +222,11 @@
           [(:attr name)
            (string? (syntax->datum #'name))
            #`(let ([%cur #,cur-op])
-               (if (mlir-Operation::hasAttr? %cur name)
-                   (mlir-operation-get-attr %cur name)
+               (if (mlir::Operation::hasAttr? %cur name)
+                   (mlir::Operation::getAttr %cur name)
                    (error ':attr
                           (string-append "attribute '" name "' absent on op: ")
-                          (mlir-operation-name %cur))))]
+                          (mlir::Operation::getName %cur))))]
           ;; Recurse into compound forms
           [(e ...) #`(#,@(map walk (syntax->list s)))]
           ;; Atoms pass through unchanged
@@ -258,7 +248,7 @@
          (let* ([fields (cdr action)]
                 [op-idx (cdr (assq 'op-idx fields))]
                 [var    (cdr (assq 'var fields))])
-           #`(let ([def-op (mlir-value-get-defining-op #,var)])
+           #`(let ([def-op (mlir::Value::getDefiningOp #,var)])
                (and def-op
                     (begin
                       (vector-set! all-operations #,op-idx def-op)
@@ -270,9 +260,9 @@
                 [match-op    (vector-ref match-vec op-idx)]
                 [op-name     (ast-match-expand-op-name match-op)]
                 [num-results (length (ast-match-expand-result-var match-op))])
-           #`(and (string=? (mlir-operation-name (vector-ref all-operations #,op-idx))
+           #`(and (string=? (mlir::Operation::getName (vector-ref all-operations #,op-idx))
                             #,(syntax->datum op-name))
-                  (= (mlir-operation-num-results (vector-ref all-operations #,op-idx))
+                  (= (mlir::Operation::getNumResults (vector-ref all-operations #,op-idx))
                      #,num-results)))]
 
         [(:bind-operand)
@@ -281,7 +271,7 @@
                 [var         (cdr (assq 'var fields))]
                 [operand-idx (cdr (assq 'operand-idx fields))])
            #`(begin
-               (set! #,var (mlir-operation-get-operand-value
+               (set! #,var (mlir::OpOperand::get
                             (vector-ref all-operations #,op-idx)
                             #,operand-idx))
                #t))]
@@ -304,7 +294,7 @@
                 [op-idx      (cdr (assq 'op-idx fields))]
                 [operand-idx (cdr (assq 'operand-idx fields))]
                 [var         (cdr (assq 'var fields))])
-           #`(eqv? (mlir-operation-get-operand-value
+           #`(eqv? (mlir::OpOperand::get
                     (vector-ref all-operations #,op-idx)
                     #,operand-idx)
                    #,var))]
@@ -317,7 +307,7 @@
                 [result-idx (cdr (assq 'result-idx fields))]
                 [var        (cdr (assq 'var        fields))])
            #`(begin
-               (set! #,var (mlir-Operation::getResult
+               (set! #,var (mlir::Operation::getResult
                             (vector-ref all-operations #,op-idx)
                             #,result-idx))
                #t))]
@@ -331,13 +321,13 @@
            (%%transform-where-expr expr op-idx))]
 
         [(:bind-operands)
-         ;; Bind all operands of an op with optional/variadic slots via mlir-operation-get-operands.
+         ;; Bind all operands of an op with optional/variadic slots via operation-get-operands.
          ;; Returns a list; bind each variable positionally with list-ref.
          (let* ([fields  (cdr action)]
                 [op-idx  (cdr (assq 'op-idx fields))]
                 [spec    (cdr (assq 'spec   fields))]
                 [vars    (cdr (assq 'vars   fields))])
-           #`(let ([%operands (mlir-operation-get-operands
+           #`(let ([%operands (operation-get-operands
                                (vector-ref all-operations #,op-idx)
                                #,@(map (lambda (s) #`'#,s) spec))])
                #,@(loop :for var :in vars
@@ -369,7 +359,7 @@
   (define (%%generate-root-result-setters root-result-vars op-param)
     (loop :for var :in root-result-vars
           :for idx :from 0
-          :collect #`(set! #,var (mlir-Operation::getResult #,op-param #,idx))))
+          :collect #`(set! #,var (mlir::Operation::getResult #,op-param #,idx))))
 
   ;;=======================================================================
   ;; Variable collection
