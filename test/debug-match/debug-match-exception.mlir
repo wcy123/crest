@@ -12,8 +12,8 @@
 // RUN:   --crest-pass="module=passes/debug-match-attr-error" %s 2>&1 \
 // RUN:   | %FileCheck %s
 
-// CHECK: exception:
-// CHECK-SAME: missing
+// CHECK: [warning] unknown: [%%pattern] exception:
+// CHECK-SAME: attribute 'missing' absent on op:
 
 func.func @attr_error(%a: i32, %b: i32) -> i32 {
   %0 = "test.add"(%a, %b) : (i32, i32) -> i32
