@@ -13,14 +13,8 @@
 // RUN:   --mlir-print-debuginfo %s 2>&1 \
 // RUN:   | %FileCheck %s
 
-// CHECK: [warning]
-// CHECK-SAME: debug-match-check-eq.sls:{{[0-9]+}}:{{[0-9]+}}:
-// CHECK-SAME: [%%check-eq-same-value] FAILED:
-// CHECK-SAME: eqv?
-// CHECK: [warning]   actual:
-// CHECK-SAME: "test.mul"
-// CHECK-SAME: loc(
-// CHECK-SAME: debug-match-check-eq.mlir
+// CHECK: debug-match-check-eq.sls:{{[0-9]+}}:{{[0-9]+}}: {{\[%%check-eq-same-value\]}} FAILED: {{.*}}eqv?
+// CHECK: actual: {{.*}}"test.mul"{{.*}}loc({{.*}}debug-match-check-eq.mlir
 
 func.func @check_eq(%a: i32, %b: i32) -> i32 {
   %0 = "test.mul"(%a, %b) : (i32, i32) -> i32
