@@ -12,11 +12,9 @@
           ;; crest::logging::warning and mlir-operation-name are needed at run time:
           ;; generated debug lambdas call them to log failures and the actual op seen.
           (only (mlir support logging) crest::logging::warning)
-          (rename (only (mlir IR Operation)
-                        mlir::Operation::getName
-                        mlir::Operation::print)
-                  (mlir::Operation::getName  mlir-operation-name)
-                  (mlir::Operation::print    mlir-operation-print))
+          (rename (only (mlir IR Operation) mlir::Operation::getName)
+                  (mlir::Operation::getName mlir-operation-name))
+          (only (mlir IR Operation) mlir::Operation::print)
           ;; srcloc: shared source-location utilities; cache is module-level in srcloc.sls.
           (only (crest internal srcloc) syntax->file+line+col)
           (rename (rime loop) (:with :rime-with))
@@ -322,7 +320,7 @@
                     (begin
                       (crest::logging::warning msg)
                       (crest::logging::warning
-                       (string-append "  actual: " (mlir-operation-print op)))
+                       (string-append "  actual: " (mlir::Operation::print op)))
                       #f)))
             (with-syntax ([check chk]
                           [msg   (datum->syntax #'quote msg)])
