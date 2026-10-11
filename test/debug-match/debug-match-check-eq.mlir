@@ -9,7 +9,7 @@
 // RUN:   --mlir-print-debuginfo %s 2>&1 \
 // RUN:   | %FileCheck %s
 
-// CHECK: debug-match-check-eq.sls:{{[0-9]+}}:{{[0-9]+}}: {{\[%%check-eq-same-value\]}} FAILED: (eqv? (mlir-operation-get-operand-value (vector-ref all-operations 0) 1) %shared)
+// CHECK: debug-match-check-eq.sls:{{[0-9]+}}:{{[0-9]+}}: {{\[%%check-eq-same-value\]}} :check-eq FAILED: (eqv? (mlir-operation-get-operand-value (vector-ref all-operations 0) 1) %shared)
 // CHECK: actual: %0 = "test.mul"(%arg0, %arg1) : (i32, i32) -> i32 loc(
 // CHECK-SAME: debug-match-check-eq.mlir
 

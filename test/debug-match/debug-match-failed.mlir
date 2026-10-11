@@ -10,7 +10,7 @@
 // RUN:   | %FileCheck %s
 
 // FAILED: line — warning from the debug-match system
-// CHECK: debug-match-check-op.sls:{{[0-9]+}}:{{[0-9]+}}: {{\[%%expect-test.add-then-sub\]}} FAILED: (and (string=? (mlir-operation-name (vector-ref all-operations 0)) "test.add") (= (mlir-operation-num-results (vector-ref all-operations 0)) 1))
+// CHECK: debug-match-check-op.sls:{{[0-9]+}}:{{[0-9]+}}: {{\[%%expect-test.add-then-sub\]}} :check-op FAILED: (and (string=? (mlir-operation-name (vector-ref all-operations 0)) "test.add") (= (mlir-operation-num-results (vector-ref all-operations 0)) 1))
 // actual: line — mlir::Operation::print uses inline loc("path":line:col)
 // CHECK: actual: %0 = "test.mul"(%arg0, %arg1) : (i32, i32) -> i32 loc(
 // CHECK-SAME: debug-match-failed.mlir

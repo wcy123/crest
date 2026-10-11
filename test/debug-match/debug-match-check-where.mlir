@@ -8,7 +8,7 @@
 // RUN:   --mlir-print-debuginfo %s 2>&1 \
 // RUN:   | %FileCheck %s
 
-// CHECK: debug-match-check-where.sls:{{[0-9]+}}:{{[0-9]+}}: {{\[%%where-always-false\]}} FAILED: (eqv? 1 2)
+// CHECK: debug-match-check-where.sls:{{[0-9]+}}:{{[0-9]+}}: {{\[%%where-always-false\]}} :check-where FAILED: (eqv? 1 2)
 // CHECK: actual: %0 = "test.add"(%arg0, %arg1) : (i32, i32) -> i32 loc(
 // CHECK-SAME: debug-match-check-where.mlir
 

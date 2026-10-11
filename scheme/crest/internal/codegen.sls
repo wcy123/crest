@@ -319,16 +319,17 @@
     ;; Every check is wrapped in a per-check guard so exceptions carry
     ;; file:line:col of the specific check that threw — not "unknown:".
     ;; Exception logging is always-on; FAILED: logging is debug? only.
-    (define (make-check-form chk src-stx actual-op-stx)
+    (define (make-check-form chk src-stx actual-op-stx action-tag)
       (let* ([loc       (and src-stx (syntax->file+line+col src-stx))]
              [loc-str   (loc->string loc)]
-             [ex-prefix (string-append loc-str ": [" fname-sym "] exception: ")]
+             [tag-str   (symbol->string action-tag)]
+             [ex-prefix (string-append loc-str ": [" fname-sym "] " tag-str " exception: ")]
              ;; body-of-checks: (or check (warn "FAILED:" actual)) in debug,
              ;; plain check in production.
              [body-of-checks
               (if debug?
                   (let ([fmsg (string-append
-                               loc-str ": [" fname-sym "] FAILED: "
+                               loc-str ": [" fname-sym "] " tag-str " FAILED: "
                                (call-with-string-output-port
                                 (lambda (p) (write (syntax->datum chk) p))))])
                     (with-syntax ([check chk]
@@ -350,8 +351,9 @@
       ;; Always wrap each check in a per-check guard (always-on exception loc).
       (let* ([raw-checks  (map (lambda (act) (%%action->check-code act match-vec operands-ref)) actions)]
              [src-stxs    (map (lambda (act) (%%action->source-stx act match-vec)) actions)]
-             [actual-stxs (map %%action->actual-op-stx actions)])
-        (map make-check-form raw-checks src-stxs actual-stxs)))
+             [actual-stxs (map %%action->actual-op-stx actions)]
+             [tags        (map car actions)])
+        (map make-check-form raw-checks src-stxs actual-stxs tags)))
     (if (null? actions)
         #'#t
         (with-syntax ([(check-form ...) (%%make-checks)])

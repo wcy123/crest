@@ -11,7 +11,7 @@
 // RUN:   | %FileCheck %s
 
 // FAILED: is logged — no actual: line follows
-// CHECK: {{\[%%chain-no-actual\]}} FAILED:
+// CHECK: {{\[%%chain-no-actual\]}} :check-op FAILED:
 // CHECK-NOT: actual:
 
 func.func @no_chain(%x: i32) -> i32 {
