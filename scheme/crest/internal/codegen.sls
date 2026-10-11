@@ -286,13 +286,17 @@
     ;; Exceptions during matching are always unexpected — always log them.
     ;; debug? only controls per-check FAILED: messages for normal #f returns.
     (define fname-sym (symbol->string fname))
-    (define ex-prefix
-      (call-with-string-output-port
-       (lambda (p)
-         (display "unknown: [" p) (display fname-sym p)
-         (display "] exception: " p))))
-    ;; For :check-op actions, generate a runtime expression for the actual op
-    ;; so we can print its name alongside the FAILED: message.
+    (define ex-prefix (string-append "unknown: [" fname-sym "] exception: "))
+    ;; Format (list file line col) | #f → "file:line:col" | "unknown"
+    (define (loc->string loc)
+      (if loc
+          (apply (lambda (file line col)
+                   (string-append file ":" (number->string line)
+                                  ":" (number->string col)))
+                 loc)
+          "unknown"))
+    ;; For :check-op, generate a runtime expression for the actual op so we
+    ;; can print its name alongside the FAILED: message.
     (define (%%action->actual-op-stx action)
       (let ([tag (car action)] [fields (cdr action)])
         (case tag
@@ -302,18 +306,11 @@
           [else #f])))
     (define (make-check-form chk src-stx actual-op-stx)
       (let* ([loc (and src-stx (syntax->file+line+col src-stx))]
-             [msg (call-with-string-output-port
-                   (lambda (p)
-                     (if loc
-                         (apply (lambda (file line col)
-                                  (display file p) (display ":" p)
-                                  (display line p) (display ":" p)
-                                  (display col p))
-                                loc)
-                         (display "unknown" p))
-                     (display ": [" p) (display fname-sym p)
-                     (display "] FAILED: " p)
-                     (write (syntax->datum chk) p)))])
+             [msg (string-append
+                   (loc->string loc)
+                   ": [" fname-sym "] FAILED: "
+                   (call-with-string-output-port
+                    (lambda (p) (write (syntax->datum chk) p))))])
         (if actual-op-stx
             (with-syntax ([check chk]
                           [msg   (datum->syntax #'quote msg)]
