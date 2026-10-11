@@ -239,8 +239,19 @@ bool ChezSchemeInterpreter::importLibrary(
     const std::string& slashSeparatedName) {
   std::string lib = slashSeparatedName;
   std::replace(lib.begin(), lib.end(), '/', ' ');
-  std::string importCode = "(import (" + lib + "))";
-  return eval(importCode.c_str());
+  // call/cc + with-exception-handler: catches "library not found" before it
+  // reaches the top-level abort handler. On failure returns #f; the caller
+  // (CrestPass) logs the library search directories at error level.
+  std::string importCode = "(call-with-current-continuation"
+                           " (lambda (k)"
+                           "  (with-exception-handler"
+                           "   (lambda (c) (k #f))"
+                           "   (lambda () (eval '(import (" +
+                           lib + "))) #t))))";
+  ptr port = scheme_call("open-string-input-port", Sstring(importCode.c_str()));
+  ptr expr = scheme_call("read", port);
+  ptr result = scheme_call("eval", expr);
+  return result != Sfalse;
 }
 
 bool ChezSchemeInterpreter::eval(const char* code) {
