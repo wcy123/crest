@@ -215,7 +215,7 @@ std::string ChezSchemeInterpreter::getLibraryDirectories() const {
     if (!result.empty()) {
       result += "\n";
     }
-    result += "  " + src + " -> " + bin;
+    result += "  " + src + ": " + bin;
   }
   return result;
 }
