@@ -9,13 +9,19 @@
   (import (rnrs)
           (only (chezscheme) syntax->list syntax->datum syntax-object->datum record-rtd record-type-field-names record-accessor identifier?
                 call-with-string-output-port display-condition)
+          ;; match-logging: unified warning helper for generated debug code.
+          (only (crest internal match-logging) warn-match)
+          ;; srcloc: shared source-location utilities; cache is module-level in srcloc.sls.
+          (only (crest internal srcloc) syntax->file+line+col)
           (rename (rime loop) (:with :rime-with))
-          (for (only (chezscheme) syntax->list syntax->datum record-rtd record-type-field-names record-accessor identifier?) expand)
+          (for (only (chezscheme) syntax->list syntax->datum record-rtd record-type-field-names record-accessor identifier?
+                     call-with-string-output-port write) expand)
           (for (rename (rime loop) (:with :rime-with)) expand)
           (for (crest internal ast) expand)
           (for (crest internal parse) expand)
           (for (crest internal validate) expand)
           (for (crest internal analyze) expand)
+          (for (only (mlir support logging) crest::logging::warning) expand)
           (for (only (mlir IR PatternMatch)
                      mlir::RewriterBase::setInsertionPoint
                      mlir::RewriterBase::replaceOp) expand)
@@ -45,7 +51,7 @@
           (for (only (chezscheme) parameterize) expand)
           (for (only (crest internal rewrite) begin-mlir-code) expand)
           ;; keywords needed at expand time for free-identifier=? matching in %%transform-where-expr
-          (for (only (crest internal keywords) :current-op :attr) expand))
+          (for (only (crest internal keywords) :current-op :attr :has-attr? :attr-or) expand))
 
   ;;=======================================================================
   ;; Call graph
@@ -112,7 +118,9 @@
                )
 
           ;; Code generation — the two halves are independent of each other.
-          (let ([check-code  (%%generate-check-code actions match-vec operands-ref)]
+          (let ([check-code  (%%generate-check-code actions match-vec operands-ref
+                                                    (ast-pattern-expand-debug-matching? ast-rec)
+                                                    (ast-pattern-expand-function-name ast-rec))]
                 [rewrite-code (%%generate-rewrite-code raw-rewrite pattern-type rewriter op)])
 
             ;; Build param list: 4 params for conversion, 2 for rewrite (no operands-ref/type-converter)
@@ -136,7 +144,8 @@
                         (parameterize ([current-MLIRContext
                                         (mlir-Operation::getContext root-op)])
                           (let ([var (make-unbound-value)] ...
-                                [all-operations (make-vector num-operations (make-unbound-value))])
+                                ;; 0 = unset; non-zero = valid Operation*.
+                                [all-operations (make-vector num-operations 0)])
                             root-result-setter ...
                             (if checks
                                 (let* (then-let-binding ...)
@@ -225,31 +234,130 @@
   (define (%%transform-where-expr where-stx op-idx)
     (let ([cur-op #`(vector-ref all-operations #,op-idx)])
       (let walk ([s where-stx])
-        (syntax-case s (:current-op :attr)
+        (syntax-case s (:current-op :attr :has-attr? :attr-or)
           ;; Bare :current-op identifier → the matched sub-op
           [:current-op cur-op]
-          ;; (:attr "name") → raw attr uptr; error if absent
+          ;; (:has-attr? "name") → #t/#f. hasAttr? wraps int with (= 1 ...) → boolean.
+          [(:has-attr? name)
+           (string? (syntax->datum #'name))
+           #`(mlir-Operation::hasAttr? #,cur-op name)]
+          ;; (:attr-or "name" default) → attr value if present, else default — no error
+          [(:attr-or name default)
+           (string? (syntax->datum #'name))
+           #`(let ([%cur #,cur-op])
+               (if (mlir-Operation::hasAttr? %cur name)
+                   (mlir-operation-get-attr %cur name)
+                   default))]
+          ;; (:attr "name") → raw attr uptr, or #f if absent (clean match failure).
+          ;; hasAttr? wraps int with (= 1 ...) → proper #t/#f boolean; safe in if.
           [(:attr name)
            (string? (syntax->datum #'name))
            #`(let ([%cur #,cur-op])
                (if (mlir-Operation::hasAttr? %cur name)
                    (mlir-operation-get-attr %cur name)
-                   (error ':attr
-                          (string-append "attribute '" name "' absent on op: ")
-                          (mlir-operation-name %cur))))]
+                   #f))]
           ;; Recurse into compound forms
           [(e ...) #`(#,@(map walk (syntax->list s)))]
           ;; Atoms pass through unchanged
           [_ s]))))
 
-  (define (%%generate-check-code actions match-vec operands-ref)
+  ;; Extract the most informative source syntax object from an action,
+  ;; used to compute file:line:col for debug-match diagnostics.
+  ;; op-name is (normalized-string . original-stx) after validation — use cdr for location.
+  (define (%%action->source-stx action match-vec)
+    (let ([tag (car action)] [fields (cdr action)])
+      (case tag
+        [(:check-op)
+         (cdr (ast-match-expand-op-name (vector-ref match-vec (cdr (assq 'op-idx fields)))))]
+        [(:check-where)
+         (cdr (assq 'expr fields))]
+        [(:bind-operand :bind-argument-operand :check-eq :bind-result)
+         (cdr (assq 'var fields))]
+        [(:bind-operands)
+         (let ([vars (cdr (assq 'vars fields))])
+           (and (pair? vars) (car vars)))]
+        [else #f])))
+
+  ;;=======================================================================
+  ;; CREST_DEBUG_MATCH warning format (stable contract)
+  ;;=======================================================================
+  ;;
+  ;; Check failure (CREST_DEBUG_MATCH=1):
+  ;;   [warning] <file>:<line>:<col>: [<pattern>] FAILED: <scheme-expr>
+  ;;   [warning]   actual: <mlir-op-text>        ; only for :check-op
+  ;;
+  ;; Unexpected exception (always emitted, regardless of CREST_DEBUG_MATCH):
+  ;;   [warning] unknown: [<pattern>] exception: <condition-message>
+  ;;
+  ;; <pattern> is the Scheme function name of the define-rewrite-pattern.
+  ;; <file>:<line>:<col> points to the failing op in the pattern .sls source.
+  ;;=======================================================================
+  (define (%%generate-check-code actions match-vec operands-ref debug? fname-stx)
+    ;; Exceptions during matching are always unexpected — always log them.
+    ;; debug? only controls per-check FAILED: messages for normal #f returns.
+    (define fname-sym (symbol->string (syntax->datum fname-stx)))
+    ;; Format (list file line col) | #f → "file:line:col" | "unknown"
+    (define (loc->string loc)
+      (if loc
+          (apply (lambda (file line col)
+                   (string-append file ":" (number->string line)
+                                  ":" (number->string col)))
+                 loc)
+          "unknown"))
+    ;; For :check-op, generate a runtime expression for the actual op so we
+    ;; can print its name alongside the FAILED: message.
+    (define (%%action->actual-op-stx action)
+      ;; :current-op is (vector-ref all-operations op-idx) for any action with
+      ;; op-idx. :set-current-op always writes to the slot (def-op or 0) so
+      ;; warn-match safely sees 0 and skips actual: when def-op is null.
+      (let ([op-idx-cell (assq 'op-idx (cdr action))])
+        (and op-idx-cell
+             #`(vector-ref all-operations #,(cdr op-idx-cell)))))
+    ;; Every check is wrapped in a per-check guard so exceptions carry
+    ;; file:line:col of the specific check that threw — not "unknown:".
+    ;; Exception logging is always-on; FAILED: logging is debug? only.
+    (define (make-check-form chk src-stx actual-op-stx action-tag)
+      (let* ([loc       (and src-stx (syntax->file+line+col src-stx))]
+             [loc-str   (loc->string loc)]
+             [tag-str   (symbol->string action-tag)]
+             [ex-prefix (string-append loc-str ": [" fname-sym "] " tag-str " exception: ")]
+             ;; body-of-checks: (or check (warn "FAILED:" actual)) in debug,
+             ;; plain check in production.
+             [body-of-checks
+              ;; :set-current-op failure (no defining op) is a silent structural
+              ;; mismatch — not actionable on its own. The following :check-op
+              ;; will provide the meaningful FAILED: message if needed.
+              (if (and debug? (not (eq? action-tag ':set-current-op)))
+                  (let ([fmsg (string-append
+                               loc-str ": [" fname-sym "] " tag-str " FAILED: "
+                               (call-with-string-output-port
+                                (lambda (p) (write (syntax->datum chk) p))))])
+                    (with-syntax ([check chk]
+                                  [fmsg  (datum->syntax #'quote fmsg)]
+                                  [op    (or actual-op-stx #'0)])
+                      #'(or check (begin (warn-match fmsg op) #f))))
+                  chk)])
+        (with-syntax ([body-of-checks body-of-checks]
+                      [exprefix       (datum->syntax #'quote ex-prefix)]
+                      [op             (or actual-op-stx #'0)])
+          #'(guard (exn [#t
+                         (warn-match (string-append exprefix
+                                                    (call-with-string-output-port
+                                                     (lambda (p) (display-condition exn p))))
+                                     op)
+                         #f])
+              body-of-checks))))
+    (define (%%make-checks)
+      ;; Always wrap each check in a per-check guard (always-on exception loc).
+      (let* ([raw-checks  (map (lambda (act) (%%action->check-code act match-vec operands-ref)) actions)]
+             [src-stxs    (map (lambda (act) (%%action->source-stx act match-vec)) actions)]
+             [actual-stxs (map %%action->actual-op-stx actions)]
+             [tags        (map car actions)])
+        (map make-check-form raw-checks src-stxs actual-stxs tags)))
     (if (null? actions)
         #'#t
-        (let ([checks (map (lambda (act) (%%action->check-code act match-vec operands-ref)) actions)])
-          ;; Wrap in guard so any exception (e.g. from (:attr ...) on absent attr,
-          ;; or any other runtime error during matching) becomes a silent match failure.
-          #`(guard (exn [#t #f])
-              (and #,@checks)))))
+        (with-syntax ([(check-form ...) (%%make-checks)])
+          #'(and check-form ...))))
 
   (define (%%action->check-code action match-vec operands-ref)
     (let ([tag (car action)])
@@ -259,19 +367,27 @@
                 [op-idx (cdr (assq 'op-idx fields))]
                 [var    (cdr (assq 'var fields))])
            #`(let ([def-op (mlir-value-get-defining-op #,var)])
-               (and def-op
-                    (begin
-                      (vector-set! all-operations #,op-idx def-op)
-                      #t))))]
+               ;; Slot initialized to 0; non-zero means already visited — bug
+               ;; in the analyze phase. Caught by the per-check guard which
+               ;; logs it as an unexpected exception with location and actual:.
+               (when (not (zero? (vector-ref all-operations #,op-idx)))
+                 (error ':set-current-op
+                        "analyze-phase bug: op slot already set"
+                        #,op-idx))
+               ;; :set-current-op is pure setup, not a constraint.
+               ;; Write 0 for a null def-op; :check-op is the gatekeeper.
+               (vector-set! all-operations #,op-idx (or def-op 0))
+               #t))]
 
         [(:check-op)
          (let* ([fields      (cdr action)]
                 [op-idx      (cdr (assq 'op-idx fields))]
                 [match-op    (vector-ref match-vec op-idx)]
-                [op-name     (ast-match-expand-op-name match-op)]
+                ;; op-name is (normalized-string . original-stx) after validation.
+                [op-name     (car (ast-match-expand-op-name match-op))]
                 [num-results (length (ast-match-expand-result-var match-op))])
            #`(and (string=? (mlir-operation-name (vector-ref all-operations #,op-idx))
-                            #,(syntax->datum op-name))
+                            #,op-name)
                   (= (mlir-operation-num-results (vector-ref all-operations #,op-idx))
                      #,num-results)))]
 
@@ -353,17 +469,19 @@
   ;;=======================================================================
 
   (define (%%find-root-op match-vec root-op-name-stx)
-    (let ([root-op-name (syntax->datum root-op-name-stx)])
+    ;; root-op-name-stx is the string cached by validate phase.
+    ;; match-op op-name is (normalized-string . original-stx) after validation.
+    (let ([root-op-name (if (string? root-op-name-stx)
+                            root-op-name-stx
+                            (syntax->datum root-op-name-stx))])
       (loop :initially := #f
             :for idx :from 0 :below (vector-length match-vec)
             :rime-with match-op := (vector-ref match-vec idx)
-            :rime-with op-name  := (syntax->datum (ast-match-expand-op-name match-op))
+            :rime-with op-name  := (car (ast-match-expand-op-name match-op))
             ;; :any ops are never the root — guard against both symbol ':any and
             ;; string ":any" (validate.sls may have normalized the symbol to string).
-            :when (and (not (or (eq? op-name ':any)
-                                (and (string? op-name) (string=? op-name ":any"))))
-                       (string=? (if (string? op-name) op-name (symbol->string op-name))
-                                 (if (string? root-op-name) root-op-name (symbol->string root-op-name))))
+            :when (and (not (string=? op-name ":any"))
+                       (string=? op-name root-op-name))
             :break match-op)))
 
   (define (%%generate-root-result-setters root-result-vars op-param)

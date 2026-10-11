@@ -122,10 +122,14 @@ ChezSchemeInterpreter::ChezSchemeInterpreter(PrivateTag,
 
 #ifndef CREST_BOOT_EMBEDDED
   // Development mode: load .sls files from the source tree at runtime.
-  // Both pairs use SCHEME_BINARY_DIR as the object-dir so compiled .so
-  // files always land in the build tree, never in the source trees.
-  addLibraryPath(SCHEME_LIBRARIES_DIR, SCHEME_BINARY_DIR);
-  addLibraryPath(RIME_DIR, SCHEME_BINARY_DIR);
+  // CREST_SCHEME_BINARY_DIR overrides the compiled .so cache directory at
+  // runtime — useful for tests that need an isolated cache (e.g. to force
+  // recompilation with CREST_DEBUG_MATCH=1 without polluting the shared dir).
+  const std::string schemeBinaryDir =
+      llvm::sys::Process::GetEnv("CREST_SCHEME_BINARY_DIR")
+          .value_or(std::string(SCHEME_BINARY_DIR));
+  addLibraryPath(SCHEME_LIBRARIES_DIR, schemeBinaryDir.c_str());
+  addLibraryPath(RIME_DIR, schemeBinaryDir.c_str());
 #endif
 
   // CREST_PATH: optional colon-separated (POSIX) or semicolon-separated
@@ -135,7 +139,7 @@ ChezSchemeInterpreter::ChezSchemeInterpreter(PrivateTag,
     llvm::StringRef(*val).split(dirs, llvm::sys::EnvPathSeparator);
     for (auto dir : dirs) {
       if (!dir.empty()) {
-        addLibraryPath(dir.str().c_str(), SCHEME_BINARY_DIR);
+        addLibraryPath(dir.str().c_str(), schemeBinaryDir.c_str());
       }
     }
   }
@@ -197,6 +201,7 @@ void ChezSchemeInterpreter::addLibraryPath(const char* src_path,
   ptr pair = Scons(Sstring(src_path), Sstring(bin_path));
   Scall1(lib_dirs_param, Scons(pair, current_dirs));
 
+  libraryPaths_.emplace_back(src_path, bin_path);
   if (logLevel_ <= SchemeLogLevel::Debug) {
     llvm::errs() << "[debug] ChezSchemeInterpreter: added library path ("
                  << src_path << " . " << bin_path << ")\n";
@@ -204,26 +209,13 @@ void ChezSchemeInterpreter::addLibraryPath(const char* src_path,
 }
 
 std::string ChezSchemeInterpreter::getLibraryDirectories() const {
-  auto str = [](ptr s) {
-    std::string out;
-    iptr len = Sstring_length(s);
-    out.reserve(len);
-    for (iptr i = 0; i < len; ++i) {
-      out += static_cast<char>(Schar_value(Sstring_ref(s, i)));
-    }
-    return out;
-  };
-  ptr lib_dirs = scheme_call("library-directories");
+  // Read directly from the C++ vector — no Scheme string extraction needed.
   std::string result;
-  for (ptr p = lib_dirs; p != Snil && Spairp(p); p = Scdr(p)) {
-    ptr pair = Scar(p);
-    if (!Spairp(pair) || !Sstringp(Scar(pair)) || !Sstringp(Scdr(pair))) {
-      continue;
-    }
+  for (const auto& [src, bin] : libraryPaths_) {
     if (!result.empty()) {
-      result += ", ";
+      result += "\n";
     }
-    result += "(" + str(Scar(pair)) + " . " + str(Scdr(pair)) + ")";
+    result += "  " + src + ": " + bin;
   }
   return result;
 }
@@ -233,10 +225,32 @@ std::string ChezSchemeInterpreter::getLibraryDirectories() const {
 
 bool ChezSchemeInterpreter::importLibrary(
     const std::string& slashSeparatedName) {
+  // Validate before string-building Scheme code — reject names with characters
+  // outside [a-zA-Z0-9/_-] to prevent injection of arbitrary Scheme
+  // expressions.
+  for (char c : slashSeparatedName) {
+    if (!std::isalnum(static_cast<unsigned char>(c)) && c != '/' && c != '_' &&
+        c != '-' && c != '.') {
+      llvm::errs() << "[error] invalid module name character '" << c
+                   << "' in: " << slashSeparatedName << "\n";
+      return false;
+    }
+  }
   std::string lib = slashSeparatedName;
   std::replace(lib.begin(), lib.end(), '/', ' ');
-  std::string importCode = "(import (" + lib + "))";
-  return eval(importCode.c_str());
+  // call/cc + with-exception-handler: catches "library not found" before it
+  // reaches the top-level abort handler. On failure returns #f; the caller
+  // (CrestPass) logs the library search directories at error level.
+  std::string importCode = "(call-with-current-continuation"
+                           " (lambda (k)"
+                           "  (with-exception-handler"
+                           "   (lambda (c) (k #f))"
+                           "   (lambda () (eval '(import (" +
+                           lib + "))) #t))))";
+  ptr port = scheme_call("open-string-input-port", Sstring(importCode.c_str()));
+  ptr expr = scheme_call("read", port);
+  ptr result = scheme_call("eval", expr);
+  return result != Sfalse;
 }
 
 bool ChezSchemeInterpreter::eval(const char* code) {

@@ -174,10 +174,11 @@ registered via anonymous lambdas.
 
 ## Scheme RAII and Dynamic Parameter Convention
 
-### Rule 10 — RAII macros use `with-<C++ClassName>`
+### Rule 10 — RAII macros use `with-current-<C++ClassName>` or `with-<C++ClassName>`
 
 Every RAII macro that manages the lifetime of a specific C++ object is named
-after the C++ class it wraps:
+after the C++ class it wraps (prefix `with-current-` when it installs a
+dynamic parameter, `with-` otherwise):
 
 ```scheme
 (with-current-MLIRContext ctx body ...)       ; wraps mlir::MLIRContext*

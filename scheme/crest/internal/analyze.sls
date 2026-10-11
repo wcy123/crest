@@ -71,9 +71,8 @@
             ;; Use :where to filter which ops are acceptable.
             ;; validate.sls normalizes symbol op-names to strings, so :any
             ;; may be stored as the symbol ':any OR the string ":any".
-            (unless (let ([name (syntax->datum (ast-match-expand-op-name match-op))])
-                      (or (eq? name ':any)
-                          (and (string? name) (string=? name ":any"))))
+            ;; op-name is (normalized-string . original-stx) after validation.
+            (unless (string=? (car (ast-match-expand-op-name match-op)) ":any")
               (set! acc (cons (action:check-op op-idx) acc)))
 
             ;; Bind ALL result variables of this operation.
@@ -267,7 +266,7 @@
           :rime-with match-op := (vector-ref match-vec op-idx)
           :when (not (vector-ref visited op-idx))
           :do (format #t "WARNING: Operation ~a at index ~a is not reachable from root~%"
-                      (syntax->datum (ast-match-expand-op-name match-op)) op-idx)))
+                      (car (ast-match-expand-op-name match-op)) op-idx)))
 
   (define (%%find-root-operation match-vec root-var)
     ;; Find which operation index produces root-var as a result

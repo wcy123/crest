@@ -73,7 +73,8 @@
           ast-scheme-binding-expand make-ast-scheme-binding-expand ast-scheme-binding-expand?
           ast-scheme-binding-expand-var ast-scheme-binding-expand-var-set!
           ast-scheme-binding-expand-expr ast-scheme-binding-expand-expr-set!)
-  (import (rnrs))
+  (import (rnrs)
+          (only (chezscheme) getenv))
 
   ;;=======================================================================
   ;; AST RECORD HIERARCHY (top-down tree order: root → leaves)
@@ -130,7 +131,10 @@
               #f            ;; debug-validate?
               #f            ;; debug-analyze?
               #f            ;; debug-codegen?
-              #f))))        ;; debug-matching?
+              ;; debug-matching?: set at expand time from CREST_DEBUG_MATCH env var.
+              ;; Controls whether match failures emit diagnostic info to stderr.
+              ;; Set before running: CREST_DEBUG_MATCH=1 ./crest-opt ...
+              (and (getenv "CREST_DEBUG_MATCH") #t)))))  ;; debug-matching?
     (fields
      (mutable pattern-type)     ;; Phase 1 (parse): symbol - 'conversion or 'rewrite
      ;; Determines operand binding behavior in codegen:

@@ -17,9 +17,8 @@
 
 (library (mlir IR PatternMatch ffi)
   (export
-    %mlir::RewriterBase::setInsertionPoint          ;; canonical: mlir::RewriterBase::setInsertionPoint(op)
-    %mlir::RewriterBase::setInsertionPoint-before   ;; backward-compat alias
-    %mlir::RewriterBase::setInsertionPoint-to-end
+    %mlir::RewriterBase::setInsertionPoint
+    %mlir::RewriterBase::setInsertionPointToEnd
     %mlir::RewriterBase::createBlock
     %mlir::RewriterBase::replaceOp
     %mlir::RewriterBase::eraseOp
@@ -30,26 +29,23 @@
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   (define %mlir::RewriterBase::setInsertionPoint
-    (foreign-procedure "mlir_ir_rewriter_base_set_insertion_point"
+    (foreign-procedure "mlir::RewriterBase::setInsertionPoint"
                        (uptr uptr) void))
 
-  (define %mlir::RewriterBase::setInsertionPoint-before
-    %mlir::RewriterBase::setInsertionPoint)
-
-  (define %mlir::RewriterBase::setInsertionPoint-to-end
-    (foreign-procedure "mlir_ir_rewriter_base_set_insertion_point_to_end"
+  (define %mlir::RewriterBase::setInsertionPointToEnd
+    (foreign-procedure "mlir::RewriterBase::setInsertionPointToEnd"
                        (uptr uptr) void))
 
   (define %mlir::RewriterBase::createBlock
-    (foreign-procedure "mlir_ir_rewriter_base_create_block"
+    (foreign-procedure "mlir::RewriterBase::createBlock"
                        (uptr uptr scheme-object) uptr))
 
   (define %mlir::RewriterBase::replaceOp
-    (foreign-procedure "mlir_ir_rewriter_base_replace_op"
+    (foreign-procedure "mlir::RewriterBase::replaceOp"
                        (uptr uptr uptr) int))
 
   (define %mlir::RewriterBase::eraseOp
-    (foreign-procedure "mlir_ir_rewriter_base_erase_op"
+    (foreign-procedure "mlir::RewriterBase::eraseOp"
                        (uptr uptr) int))
 
   ;; Accepts CrestRef<RewriterBase>* and CrestOwned<OperationState>*; extracts

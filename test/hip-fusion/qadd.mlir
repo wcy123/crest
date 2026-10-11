@@ -2,6 +2,8 @@
 // Licensed under the MIT License.
 
 // RUN: %crest-opt -allow-unregistered-dialect --crest-pass="module=passes/hip-fusion" --split-input-file %s | %FileCheck %s
+// RUN: %crest-opt -allow-unregistered-dialect --crest-pass="module=passes/hip-fusion" --split-input-file --mlir-print-debuginfo %s | %FileCheck %s --check-prefix=LOC
+// LOC: loc({{.*}}qadd.sls":{{[0-9]+}}:
 
 // Tests the QAdd fusion pattern: DQ + DQ → hip.add → hip.quantize_linear → hip.qadd
 // Written in generic MLIR op format so no hip dialect registration is required.
