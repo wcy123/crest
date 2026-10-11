@@ -9,14 +9,10 @@
 ;; (passes hip-fusion qadd) — Pattern 1: QAdd  (benefit 10)
 ;; dq × 2 → hip.add → hip.quantize_linear  ⟹  hip.qadd
 ;;
-;; Scale operands are matched structurally as hip.constant ops so the pattern
-;; engine verifies the op name; :where only checks the "value" attr is splat.
-;;
-;; Zero-point operands are matched with (:optional %zp_val) — the DDR binds
-;; the variable when the operand is present (5-operand form) and leaves it
-;; unbound-value? when absent (4-operand form).  This eliminates the need for
-;; hip-extractable-qdq-zeropoint? guards.  Extraction in :then-let uses
-;; unbound-value? to distinguish absent (→ 0) from present (→ splat integer).
+;; Scale and zero-point operands are matched structurally as hip.constant ops.
+;; hip.dequantize_linear and hip.quantize_linear always carry an explicit
+;; zero-point operand and do not use operandSegmentSizes, so all operands
+;; are matched as required.  Extraction of the splat value happens in :then-let.
 ;;
 ;;===----------------------------------------------------------------------===;;
 
@@ -65,25 +61,23 @@
   ;; Uses current-MLIRContext — no explicit ctx needed.
   (define (zp-attr zp-val)
     (mlir::IntegerAttr::get<i64>
-     (if (unbound-value? zp-val)
-         0
-         (mlir::DenseElementsAttr::getSplatValue<APInt>
-          (mlir::Operation::getAttr (mlir::Value::getDefiningOp zp-val) "value")))))
+     (mlir::DenseElementsAttr::getSplatValue<APInt>
+      (mlir::Operation::getAttr (mlir::Value::getDefiningOp zp-val) "value"))))
 
   (define-rewrite-pattern (hip-qadd-fusion op rewriter)
     :if-match
       %lhs_scale = hip.constant          ()
         :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
-      %dq_lhs    = hip.dequantize_linear (%ctx %lhs %lhs_scale (:optional %lhs_zp) %dq_lhs_init)
+      %dq_lhs    = hip.dequantize_linear (%ctx %lhs %lhs_scale %lhs_zp %dq_lhs_init)
       %rhs_scale = hip.constant          ()
         :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
-      %dq_rhs    = hip.dequantize_linear (%ctx %rhs %rhs_scale (:optional %rhs_zp) %dq_rhs_init)
+      %dq_rhs    = hip.dequantize_linear (%ctx %rhs %rhs_scale %rhs_zp %dq_rhs_init)
       %out_scale = hip.constant          ()
         :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
       %sum       = hip.add               (%ctx %dq_lhs %dq_rhs %sum_init)
         :where (and (single-consumer? %sum)
                     (same-rank? %q %sum_init))
-      %q         = hip.quantize_linear   (%ctx %sum %out_scale (:optional %out_zp) %q_init)
+      %q         = hip.quantize_linear   (%ctx %sum %out_scale %out_zp %q_init)
     :then-let
       ([!out-type  (mlir::Value::getType %q)]
        [lhs-scale  (scale-attr %lhs_scale)]

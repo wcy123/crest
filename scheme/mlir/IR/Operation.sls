@@ -251,57 +251,45 @@
 
   (define (operation-get-operands op . spec)
     (define (read-op i) (mlir::OpOperand::get op i))
-    (let ([has-flex (loop :initially := #f
+    (define (%%flex-path attr n-spec)
+      (with-ArrayRef (segs (mlir::DenseI32ArrayAttr::intoArrayRef attr))
+                     (let ([n (ArrayRef::size segs)])
+                       (and (= n n-spec)
+                            (let* ([sizes (loop :for i :from 0 :below n
+                                                :collect (ArrayRef::at segs i))]
+                                   ;; fold-left guarantees left-to-right; map/:rime-with do not.
+                                   [starts (reverse
+                                            (car (fold-left (lambda (acc size)
+                                                              (cons (cons (cdr acc) (car acc))
+                                                                    (+ (cdr acc) size)))
+                                                            (cons '() 0)
+                                                            sizes)))])
+                              (loop :for kind  :in spec
+                                    :for start :in starts
+                                    :for size  :in sizes
+                                    :collect (case kind
+                                               [(:required) (read-op start)]
+                                               [(:optional) (if (zero? size) %%absent (read-op start))]
+                                               [(:variadic) (if (zero? size)
+                                                                %%absent
+                                                                (loop :for i :from start
+                                                                      :below (+ start size)
+                                                                      :collect (read-op i)))]
+                                               [else (error 'operation-get-operands
+                                                            "unknown kind: expected :required/:optional/:variadic"
+                                                            kind)])))))))
+    (let ([n-spec (length spec)]
+          [has-flex (loop :initially := #f
                           :for s :in spec
                           :break #t :if (memq s '(:optional :variadic)))])
       (if (not has-flex)
-          ;; All required: return #f if count mismatches (structural mismatch, not a bug).
-          (let ([n-spec (length spec)]
-                [n-ops  (mlir::Operation::getNumOperands op)])
-            (and (= n-spec n-ops)
-                 (loop :for i :from 0 :below n-spec
-                       :collect (read-op i))))
-          ;; Has optional or variadic: use operandSegmentSizes attribute.
-          ;; Return #f if the attribute is absent or segment count mismatches.
+          ;; All required: return #f if count mismatches.
+          (and (= n-spec (mlir::Operation::getNumOperands op))
+               (loop :for i :from 0 :below n-spec :collect (read-op i)))
+          ;; Has optional/variadic: operandSegmentSizes is mandatory.
+          ;; Without it we cannot determine group boundaries — return #f.
           (let ([attr (mlir::Operation::getAttr op "operandSegmentSizes")])
-            (and attr
-                 (not (zero? attr))
-                 ;; with-ArrayRef manages the ref lifecycle.
-                 (with-ArrayRef (segs (mlir::DenseI32ArrayAttr::intoArrayRef attr))
-                                (let* ([n      (ArrayRef::size segs)]
-                                       [n-spec (length spec)])
-                                  (and (= n n-spec)
-                                       (let* ([sizes  (loop :for i :from 0 :below n
-                                                            :collect (ArrayRef::at segs i))]
-                                              ;; fold-left guarantees left-to-right evaluation.
-                                              ;; map and :rime-with have unspecified order in Chez.
-                                              [starts (reverse
-                                                       (car
-                                                        (fold-left
-                                                         (lambda (acc size)
-                                                           (cons (cons (cdr acc) (car acc))
-                                                                 (+ (cdr acc) size)))
-                                                         (cons '() 0)
-                                                         sizes)))])
-                                         (loop :for kind  :in spec
-                                               :for start :in starts
-                                               :for size  :in sizes
-                                               :collect
-                                               (case kind
-                                                 [(:required)
-                                                  (read-op start)]
-                                                 [(:optional)
-                                                  (if (zero? size) %%absent (read-op start))]
-                                                 [(:variadic)
-                                                  (if (zero? size)
-                                                      %%absent
-                                                      (loop :for i :from start :below (+ start size)
-                                                            :collect (read-op i)))]
-                                                 [else
-                                                  ;; Programming error: unknown kind is always a bug.
-                                                  (error 'operation-get-operands
-                                                         "unknown kind: expected :required/:optional/:variadic"
-                                                         kind)])))))))))))
+            (and attr (not (zero? attr)) (%%flex-path attr n-spec))))))
 
   (define mlir::Operation::getAttrDictionary %mlir::Operation::getAttrDictionary)
   (define mlir::Operation::setAttrs          %mlir::Operation::setAttrs)
