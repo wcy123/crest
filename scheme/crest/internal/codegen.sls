@@ -269,50 +269,53 @@
         [else #f])))
 
   (define (%%generate-check-code actions match-vec operands-ref debug? fname)
+    ;; Returns (cons guard-clause-stx (list check-form-stx ...))
+    ;; guard-clause-stx : the (exn [...]) clause for guard
+    ;; check-form-stx   : one syntax object per action
+    (define (%%make-guard+checks)
+      (let ([raw-checks (map (lambda (act) (%%action->check-code act match-vec operands-ref)) actions)])
+        (if (not debug?)
+            (cons #'(exn [#t #f]) raw-checks)
+            ;; Debug path: each failing check logs "file:line:col: [pattern] FAILED: expr"
+            ;; — full message string built once at expand time via a single port pass.
+            (let* ([src-stxs  (map (lambda (act) (%%action->source-stx act match-vec)) actions)]
+                   [fname-sym (symbol->string fname)]
+                   [ex-prefix (call-with-string-output-port
+                               (lambda (p)
+                                 (display "unknown: [" p) (display fname-sym p)
+                                 (display "] exception: " p)))])
+              (cons
+               (with-syntax ([prefix (datum->syntax #'quote ex-prefix)])
+                 #'(exn [#t
+                         (crest::logging::warning
+                          (string-append prefix
+                                         (call-with-string-output-port
+                                          (lambda (p) (display-condition exn p)))))
+                         #f]))
+               (map (lambda (chk src-stx)
+                      (let* ([loc (and src-stx (syntax->file+line+col src-stx))]
+                             [msg (call-with-string-output-port
+                                   (lambda (p)
+                                     (if loc
+                                         (apply (lambda (file line col)
+                                                  (display file p) (display ":" p)
+                                                  (display line p) (display ":" p)
+                                                  (display col p))
+                                                loc)
+                                         (display "unknown" p))
+                                     (display ": [" p) (display fname-sym p)
+                                     (display "] FAILED: " p)
+                                     (write (syntax->datum chk) p)))])
+                        (with-syntax ([check chk]
+                                      [msg   (datum->syntax #'quote msg)])
+                          #'(or check
+                                (begin (crest::logging::warning msg) #f)))))
+                    raw-checks src-stxs))))))
     (if (null? actions)
         #'#t
-        (let ([checks (map (lambda (act) (%%action->check-code act match-vec operands-ref)) actions)])
-          (if debug?
-              ;; Debug path: each failing check logs "file:line:col: [pattern] FAILED: expr"
-              ;; — full message string built once at expand time via a single port pass.
-              (let* ([src-stxs  (map (lambda (act) (%%action->source-stx act match-vec)) actions)]
-                     [fname-sym (symbol->string fname)]
-                     [ex-prefix (call-with-string-output-port
-                                 (lambda (p)
-                                   (display "unknown: [" p) (display fname-sym p)
-                                   (display "] exception: " p)))])
-                (with-syntax ([prefix (datum->syntax #'quote ex-prefix)]
-                              [(check-form ...)
-                               (map (lambda (chk src-stx)
-                                      (let* ([loc (and src-stx (syntax->file+line+col src-stx))]
-                                             [msg (call-with-string-output-port
-                                                   (lambda (p)
-                                                     (if loc
-                                                         (apply (lambda (file line col)
-                                                                  (display file p) (display ":" p)
-                                                                  (display line p) (display ":" p)
-                                                                  (display col p))
-                                                                loc)
-                                                         (display "unknown" p))
-                                                     (display ": [" p) (display fname-sym p)
-                                                     (display "] FAILED: " p)
-                                                     (write (syntax->datum chk) p)))])
-                                        (with-syntax ([check chk]
-                                                      [msg   (datum->syntax #'quote msg)])
-                                          #'(or check
-                                                (begin (crest::logging::warning msg) #f)))))
-                                    checks src-stxs)])
-                  #'(guard (exn [#t
-                                 (crest::logging::warning
-                                  (string-append prefix
-                                                 (call-with-string-output-port
-                                                  (lambda (p) (display-condition exn p)))))
-                                 #f])
-                      (and check-form ...))))
-              ;; Silent path (production): any exception → #f, no output.
-              (with-syntax ([(check-form ...) checks])
-                #'(guard (exn [#t #f])
-                    (and check-form ...)))))))
+        (with-syntax ([(guard-clause check-form ...) (%%make-guard+checks)])
+          #'(guard guard-clause
+              (and check-form ...)))))
 
   (define (%%action->check-code action match-vec operands-ref)
     (let ([tag (car action)])
