@@ -46,6 +46,6 @@
     (syntax-rules ()
       [(_ (var loc name) body ...)
        (with-CrestObject (var (mlir::OperationState::create loc name))
-                         body ...)]))
+         body ...)]))
 
   ) ;; end library (mlir IR OperationSupport)

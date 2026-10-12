@@ -70,9 +70,9 @@
                             (let loop ([i 0] [acc '()])
                               (if (eqv? i rank) acc (loop (+ i 1) (cons i acc)))))
                           (with-ArrayRef (ref (mlir::DenseI64ArrayAttr::intoArrayRef attr))
-                                         (list->vector
-                                          (loop :for i :from 0 :below (ArrayRef::size ref)
-                                                :collect (ArrayRef::at ref i))))))])
+                            (list->vector
+                             (loop :for i :from 0 :below (ArrayRef::size ref)
+                                   :collect (ArrayRef::at ref i))))))])
     :rewrite %output :with
       (%placeholder = "hipsr.placeholder" (%ctx %input)
                     (^bb0 block-builder ((%is : !shape-type))

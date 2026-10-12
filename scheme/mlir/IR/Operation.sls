@@ -253,31 +253,31 @@
     (define (read-op i) (mlir::OpOperand::get op i))
     (define (%%flex-path attr n-spec)
       (with-ArrayRef (segs (mlir::DenseI32ArrayAttr::intoArrayRef attr))
-                     (let ([n (ArrayRef::size segs)])
-                       (and (= n n-spec)
-                            (let* ([sizes (loop :for i :from 0 :below n
-                                                :collect (ArrayRef::at segs i))]
-                                   ;; fold-left guarantees left-to-right; map/:rime-with do not.
-                                   [starts (reverse
-                                            (car (fold-left (lambda (acc size)
-                                                              (cons (cons (cdr acc) (car acc))
-                                                                    (+ (cdr acc) size)))
-                                                            (cons '() 0)
-                                                            sizes)))])
-                              (loop :for kind  :in spec
-                                    :for start :in starts
-                                    :for size  :in sizes
-                                    :collect (case kind
-                                               [(:required) (read-op start)]
-                                               [(:optional) (if (zero? size) %%absent (read-op start))]
-                                               [(:variadic) (if (zero? size)
-                                                                %%absent
-                                                                (loop :for i :from start
-                                                                      :below (+ start size)
-                                                                      :collect (read-op i)))]
-                                               [else (error 'operation-get-operands
-                                                            "unknown kind: expected :required/:optional/:variadic"
-                                                            kind)])))))))
+        (let ([n (ArrayRef::size segs)])
+          (and (= n n-spec)
+               (let* ([sizes (loop :for i :from 0 :below n
+                                   :collect (ArrayRef::at segs i))]
+                      ;; fold-left guarantees left-to-right; map/:rime-with do not.
+                      [starts (reverse
+                               (car (fold-left (lambda (acc size)
+                                                 (cons (cons (cdr acc) (car acc))
+                                                       (+ (cdr acc) size)))
+                                               (cons '() 0)
+                                               sizes)))])
+                 (loop :for kind  :in spec
+                       :for start :in starts
+                       :for size  :in sizes
+                       :collect (case kind
+                                  [(:required) (read-op start)]
+                                  [(:optional) (if (zero? size) %%absent (read-op start))]
+                                  [(:variadic) (if (zero? size)
+                                                   %%absent
+                                                   (loop :for i :from start
+                                                         :below (+ start size)
+                                                         :collect (read-op i)))]
+                                  [else (error 'operation-get-operands
+                                               "unknown kind: expected :required/:optional/:variadic"
+                                               kind)])))))))
     (let ([n-spec (length spec)]
           [has-flex (loop :initially := #f
                           :for s :in spec
