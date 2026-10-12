@@ -294,7 +294,6 @@
                                            (map make-ast-then-let-binding-expand
                                                 (syntax->list #'(var ...))
                                                 (syntax->list #'(expr ...))))
-         ;; rewrite-rest is already a proper list — syntax->list collects op-forms directly.
          (ast-pattern-expand-rewrite-set! ast (syntax->list #'rewrite-rest))
          ast)]
 
