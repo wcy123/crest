@@ -26,11 +26,10 @@
 
   (define (%%analyze-match-operations ast-rec)
     ;; Phase 2 validation guarantees: root variable exists as a result in some match operation
-    (let* ([match-vec (ast-pattern-expand-match ast-rec)]
-           [root-var (ast-pattern-expand-root-var ast-rec)]
-           [root-ctx    (ast-pattern-expand-root-context ast-rec)]
-           [root-op-idx (ast-root-context-op-index root-ctx)]
-           [root-op (vector-ref match-vec root-op-idx)])
+    (let* ([match-vec   (ast-pattern-expand-match ast-rec)]
+           [root-var    (ast-pattern-expand-root-var ast-rec)]
+           [root-op-idx (ast-root-context-op-index
+                         (ast-pattern-expand-root-context ast-rec))])
 
       ;; Build match actions starting from root operation
       (let* ([bindings-and-actions (%%build-bindings-and-actions ast-rec match-vec root-op-idx root-var)]
