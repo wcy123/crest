@@ -190,10 +190,14 @@
       ;; also normalises to a list so all downstream phases see a uniform representation.
       ;; terminal branch 1
       [((result ...) = op-name (operand ...) :where guard-expr . rest)
-       (for-all identifier? (syntax->list #'(result ...)))
-       (let* ([operands (%%parse-operands #'(operand ...))]
+       (and (for-all identifier? (syntax->list #'(result ...)))
+            (let ([d (syntax->datum #'op-name)])
+              (or (string? d) (symbol? d))))
+       (let* ([d        (syntax->datum #'op-name)]
+              [op-norm  (cons (if (string? d) d (symbol->string d)) #'op-name)]
+              [operands (%%parse-operands #'(operand ...))]
               [match-op (make-ast-match-expand
-                         (syntax->list #'(result ...)) #'op-name operands #'guard-expr)])
+                         (syntax->list #'(result ...)) op-norm operands #'guard-expr)])
          (%%parse-match-ops-recursive #'rest (cons match-op acc-ops) ast))]
 
       [(result = op-name (operand ...) . rest)
@@ -201,10 +205,14 @@
        (%%parse-match-ops-recursive #'((result) = op-name (operand ...) . rest) acc-ops ast)]
       ;; terminal branch 2
       [((result ...) = op-name (operand ...) . rest)
-       (for-all identifier? (syntax->list #'(result ...)))
-       (let* ([operands (%%parse-operands #'(operand ...))]
+       (and (for-all identifier? (syntax->list #'(result ...)))
+            (let ([d (syntax->datum #'op-name)])
+              (or (string? d) (symbol? d))))
+       (let* ([d        (syntax->datum #'op-name)]
+              [op-norm  (cons (if (string? d) d (symbol->string d)) #'op-name)]
+              [operands (%%parse-operands #'(operand ...))]
               [match-op (make-ast-match-expand
-                         (syntax->list #'(result ...)) #'op-name operands #f)])
+                         (syntax->list #'(result ...)) op-norm operands #f)])
          (%%parse-match-ops-recursive #'rest (cons match-op acc-ops) ast))]
 
       [_ (syntax-violation '%%parse-match-ops-recursive

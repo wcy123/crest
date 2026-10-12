@@ -41,10 +41,10 @@
           ast-pattern-expand-debug-matching? ast-pattern-expand-debug-matching?-set!
 
           ast-match-expand make-ast-match-expand ast-match-expand?
-          ast-match-expand-result-var ast-match-expand-result-var-set!
-          ast-match-expand-op-name ast-match-expand-op-name-set!
-          ast-match-expand-operands ast-match-expand-operands-set!
-          ast-match-expand-where-expr ast-match-expand-where-expr-set!
+          ast-match-expand-result-var
+          ast-match-expand-op-name
+          ast-match-expand-operands
+          ast-match-expand-where-expr
 
           ast-operation-expand make-ast-operation-expand ast-operation-expand?
           ast-operation-expand-result-var ast-operation-expand-result-var-set!
@@ -67,8 +67,8 @@
           ast-block-expand-operations ast-block-expand-operations-set!
 
           ast-operand make-ast-operand ast-operand?
-          ast-operand-kind ast-operand-kind-set!
-          ast-operand-var ast-operand-var-set!
+          ast-operand-kind
+          ast-operand-var
 
           ast-scheme-binding-expand make-ast-scheme-binding-expand ast-scheme-binding-expand?
           ast-scheme-binding-expand-var ast-scheme-binding-expand-var-set!
@@ -230,7 +230,7 @@
   ;;
   (define-record-type (ast-match-expand make-ast-match-expand ast-match-expand?)
     (fields
-     (mutable result-var)     ;; Phase 1 (parse): syntax identifier OR syntax list
+     (immutable result-var)   ;; Phase 1 (parse): list of syntax identifiers (always normalised by parse)
      ;;          Single: #'%b
      ;;          Multiple: #'(%a %b)
      ;;          Variadic (future): #'(%a ...)
@@ -240,33 +240,15 @@
      ;;          Multiple becomes: (#'%a #'%b)
      ;; Normalization: syntax->list converts all forms to uniform list
 
-     (mutable op-name)        ;; Phase 1 (parse): syntax string OR syntax symbol
-     ;;          String: #'"op2"
-     ;;          Symbol: #'op2
-     ;; Phase 2 (validate): syntax string (normalized)
-     ;;          Symbol converted: #'op2 → #'"op2"
+     (immutable op-name)      ;; Phase 1 (parse): (cons normalized-string original-stx)
+     ;;          Normalised by parse: symbol/string → (string . stx)
+     ;;          Downstream: (car op-name) for string comparison, (cdr op-name) for source location
 
-     (mutable operands)       ;; Phase 1 (parse): list of ast-operand records (flattened)
-     ;; Phase 2 (validate): unchanged (records already validated during parse)
+     (immutable operands)     ;; Phase 1 (parse): list of ast-operand records (flattened)
      ;; Phase 3 (analyze): used to generate operand binding actions
-     ;; Contains: list of ast-operand records
-     ;;
-     ;; Input syntax: (%x (:optional %y %z) %w (:variadic %rest))
-     ;; Parsed to flat list:
-     ;;   [ast-operand('required, #'%x),
-     ;;    ast-operand('optional, #'%y),
-     ;;    ast-operand('optional, #'%z),
-     ;;    ast-operand('required, #'%w),
-     ;;    ast-operand('variadic, #'%rest)]
-     ;;
-     ;; Each operand is tagged with kind: 'required, 'optional, or 'variadic
-     ;; Operand vars can be result variables (from other ops) or free variables
-     ;;
-     ;; :optional presence detected via mlir-operation-num-operands.
-     ;; Ops with AttrSizedOperandSegments need operandSegmentSizes
-     ;; for correct offsets (future work).
+     ;;   [ast-operand(':required, #'%x), ast-operand(':optional, #'%y), ...]
 
-     (mutable where-expr)))   ;; Phase 1 (parse): syntax object - pure Scheme guard expression
+     (immutable where-expr))) ;; Phase 1 (parse): syntax object - pure Scheme guard expression
   ;; Executes after matching this operation (early return on failure)
   ;; Default: #'#f (no guard, always succeeds)
   ;; Example: #'(let ([$ks (mlir-operation-get-attr %a "kernel_shape")])
@@ -297,13 +279,8 @@
   ;;
   (define-record-type (ast-operand make-ast-operand ast-operand?)
     (fields
-     (mutable kind)           ;; Phase 1 (parse): symbol - ':required, ':optional, or ':variadic
-     ;; Phase 2 (validate): unchanged
-     ;; Phase 3 (analyze): used to compute operand segment positions
-
-     (mutable var)))          ;; Phase 1 (parse): syntax identifier (e.g., #'%x)
-  ;; Phase 2 (validate): validated to start with %
-  ;; Phase 3 (analyze): used to bind/access this operand
+     (immutable kind)         ;; Phase 1 (parse): keyword symbol ':required, ':optional, or ':variadic
+     (immutable var)))        ;; Phase 1 (parse): syntax identifier (e.g., #'%x)
 
   ;;-----------------------------------------------------------------------
   ;; WHERE-BINDING-LEVEL RECORD: ast-then-let-binding-expand (child of ast-pattern-expand)

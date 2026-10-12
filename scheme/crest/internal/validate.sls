@@ -30,12 +30,6 @@
     ;; Normalization: match field from list to vector (enables indexed access in Phase 3)
     (%%normalize-ast-match-to-vector ast-rec)
 
-    ;; Normalization: result-var from single identifier to list (uniform representation)
-    (%%normalize-match-result-vars ast-rec)
-
-    ;; Normalization: op-name from symbol to string (canonical form)
-    (%%normalize-match-op-names ast-rec)
-
     ;; Rule: All identifiers in match operations must start with %
     ;; Rule: Result variables must be unique across all operations (FATAL if violated)
     ;; Rule: :where guards must be valid syntax objects (not validated for correctness)
@@ -90,27 +84,6 @@
   (define (%%normalize-ast-match-to-vector ast-rec)
     (ast-pattern-expand-match-set! ast-rec
                                    (list->vector (ast-pattern-expand-match ast-rec))))
-
-  (define (%%normalize-match-result-vars ast-rec)
-    (let ([match-vec (ast-pattern-expand-match ast-rec)])
-      (loop :for op-idx :from 0 :below (vector-length match-vec)
-            :rime-with match-op := (vector-ref match-vec op-idx)
-            :rime-with result-var := (ast-match-expand-result-var match-op)
-            :do (cond
-                 ;; Single identifier: %r → (#'%r)
-                 [(identifier? result-var)
-                  (ast-match-expand-result-var-set! match-op (list result-var))]
-
-                 ;; List syntax: #'(%a %b) → (#'%a #'%b)
-                 ;; Also handles future variadic: #'(%a ...) and dotted: #'(%a . %rest)
-                 [else
-                  (ast-match-expand-result-var-set! match-op (syntax->list result-var))]))))
-
-  (define (%%normalize-match-op-names ast-rec)
-    (let ([match-vec (ast-pattern-expand-match ast-rec)])
-      (loop :for op-idx :from 0 :below (vector-length match-vec)
-            :rime-with match-op := (vector-ref match-vec op-idx)
-            :do (%%normalize-op-name match-op))))
 
   ;;-----------------------------------------------------------------------
   ;; Match operations validation
@@ -246,15 +219,4 @@
         (syntax-violation '%%validate-match-operations
                           (string-append context-msg " must start with %") var))))
 
-  (define (%%normalize-op-name match-op)
-    (let* ([op-name-stx (ast-match-expand-op-name match-op)]
-           [op-name-datum (syntax->datum op-name-stx)])
-      (unless (or (string? op-name-datum) (symbol? op-name-datum))
-        (syntax-violation '%%validate-match-operations
-                          "Operation name must be string or symbol" op-name-stx))
-      ;; Store as (normalized-string . original-stx) so callers can use the
-      ;; string for comparison and the original-stx for source location.
-      (let ([normalized (if (string? op-name-datum)
-                            op-name-datum
-                            (symbol->string op-name-datum))])
-        (ast-match-expand-op-name-set! match-op (cons normalized op-name-stx))))))
+  )
