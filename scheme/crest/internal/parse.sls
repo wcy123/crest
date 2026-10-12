@@ -156,7 +156,7 @@
   ;; operations and dispatching to detail parsers.
   ;;
   ;; Call graph:
-  ;;   %%parse-match-ops-recursive  → %%parse-after-match → %%parse-rewrite-ops-recursive
+  ;;   %%parse-match-ops-recursive  → %%parse-after-match
   ;;        ↓ creates ast-match-expand    ↓ parses :then-let         ↓ collects raw syntax
   ;;
   ;;=======================================================================
@@ -294,32 +294,11 @@
                                            (map make-ast-then-let-binding-expand
                                                 (syntax->list #'(var ...))
                                                 (syntax->list #'(expr ...))))
-         (%%parse-rewrite-ops-recursive #'rewrite-rest '() ast))]
-
+         ;; rewrite-rest is already a proper list — syntax->list collects op-forms directly.
+         (ast-pattern-expand-rewrite-set! ast (syntax->list #'rewrite-rest))
+         ast)]
 
       [_ (syntax-violation 'define-conversion-pattern
                            "Expected [:then-let (...)] :rewrite root :with rewrite-ops..." rest-stx)]))
-
-  ;;-----------------------------------------------------------------------
-  ;; %%parse-rewrite-ops-recursive - Collect rewrite operations as raw syntax
-  ;;-----------------------------------------------------------------------
-  ;; The :rewrite :with body is the surface syntax of begin-mlir-code.
-  ;; Rather than converting to AST records (which duplicates begin-mlir-code),
-  ;; collect each op-form as a raw syntax object.  begin-mlir-code processes
-  ;; them at macro-expansion time in the consumer.
-  ;;
-  (define (%%parse-rewrite-ops-recursive rest-stx acc-ops ast)
-    (syntax-case rest-stx ()
-      ;; End of operations
-      [()
-       (ast-pattern-expand-rewrite-set! ast (reverse acc-ops))
-       ast]
-
-      ;; Collect one raw op-form, continue with rest
-      [(op-syntax . rest)
-       (%%parse-rewrite-ops-recursive #'rest (cons #'op-syntax acc-ops) ast)]
-
-      [_ (syntax-violation '%%parse-rewrite-ops-recursive
-                           "Invalid rewrite operation syntax" rest-stx)]))
 
   )
