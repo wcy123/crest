@@ -6,7 +6,7 @@
 ;; Parses pattern DSL syntax into ast-pattern-expand records (defined in pattern-ast.sls).
 ;; This is phase 1 of the 4-phase macro expansion pipeline.
 ;;
-;; INPUT:  Raw syntax from define-conversion-pattern macro
+;; INPUT:  Raw syntax from define-rewrite-pattern or define-conversion-pattern
 ;; OUTPUT: ast-pattern-expand record with parsed structure
 ;;
 ;; Key responsibilities:
