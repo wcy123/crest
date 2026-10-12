@@ -26,18 +26,17 @@
 
   (define (%%analyze-match-operations ast-rec)
     ;; Phase 2 validation guarantees: root variable exists as a result in some match operation
-    (let* ([match-vec (ast-pattern-expand-match ast-rec)]
-           [root-var (ast-pattern-expand-root-var ast-rec)]
-           [root-op-idx (ast-pattern-expand-root-op-index ast-rec)]
-           [root-op (vector-ref match-vec root-op-idx)])
+    (let* ([match-vec   (ast-pattern-expand-match ast-rec)]
+           [root-var    (ast-pattern-expand-root-var ast-rec)]
+           [root-op-idx (%%find-root-op-idx match-vec root-var)])
 
       ;; Build match actions starting from root operation
       (let* ([bindings-and-actions (%%build-bindings-and-actions ast-rec match-vec root-op-idx root-var)]
              [binding-mgr (car bindings-and-actions)]
              [actions (cdr bindings-and-actions)])
 
-        (ast-pattern-expand-match-bindings-set! ast-rec binding-mgr)
-        (ast-pattern-expand-match-actions-set! ast-rec actions))))
+        (ast-pattern-expand-match-analysis-set! ast-rec
+                                                (make-ast-match-analysis binding-mgr actions)))))
 
   ;;-----------------------------------------------------------------------
   ;; DAG traversal and action generation
@@ -70,9 +69,8 @@
             ;; Skip :check-op for :any ops — they match any op name at runtime.
             ;; Use :where to filter which ops are acceptable.
             ;; validate.sls normalizes symbol op-names to strings, so :any
-            ;; may be stored as the symbol ':any OR the string ":any".
-            ;; op-name is (normalized-string . original-stx) after validation.
-            (unless (string=? (car (ast-match-expand-op-name match-op)) ":any")
+            ;; op-name is a normalized string; ":any" means match any op name.
+            (unless (string=? (ast-match-expand-op-name match-op) ":any")
               (set! acc (cons (action:check-op op-idx) acc)))
 
             ;; Bind ALL result variables of this operation.
@@ -267,6 +265,16 @@
   ;; Helper functions
   ;;-----------------------------------------------------------------------
 
+  (define (%%find-root-op-idx match-vec root-var)
+    ;; Find the index of the match-op whose result list contains root-var.
+    (loop :initially := #f
+          :for op-idx :from 0 :below (vector-length match-vec)
+          :rime-with match-op := (vector-ref match-vec op-idx)
+          :break op-idx :if (loop :initially := #f
+                                  :for var :in (ast-match-expand-result-var match-op)
+                                  :when (bound-identifier=? var root-var)
+                                  :break #t)))
+
   (define (%%identifier-hash id)
     (symbol-hash (syntax->datum id)))
 
@@ -275,7 +283,7 @@
           :rime-with match-op := (vector-ref match-vec op-idx)
           :when (not (vector-ref visited op-idx))
           :do (format #t "WARNING: Operation ~a at index ~a is not reachable from root~%"
-                      (car (ast-match-expand-op-name match-op)) op-idx)))
+                      (ast-match-expand-op-name match-op) op-idx)))
 
   (define (%%find-root-operation match-vec root-var)
     ;; Find which operation index produces root-var as a result

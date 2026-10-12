@@ -87,17 +87,18 @@
            [type-converter (ast-pattern-expand-param-type-converter ast-rec)]) ; syntax-identifier
 
       ;; Independent reads from the AST — no ordering required.
-      (let ([match-vec      (ast-pattern-expand-match          ast-rec)] ; vector of ast-match-expand
-            [binding-mgr   (ast-pattern-expand-match-bindings  ast-rec)] ; binding-manager hashtable
-            [actions        (ast-pattern-expand-match-actions   ast-rec)] ; list of action records
-            [root-op-name   (ast-pattern-expand-root-op-name   ast-rec)] ; syntax-string e.g. #'"onnx.Cast"
-            [pattern-type   (ast-pattern-expand-pattern-type   ast-rec)] ; symbol: 'conversion or 'rewrite
-            [raw-rewrite    (ast-pattern-expand-rewrite         ast-rec)] ; list of raw syntax objects
-            [then-let-bindings (ast-pattern-expand-then-let    ast-rec)]) ; list of ast-then-let-binding-expand
+      (let* ([match-vec      (ast-pattern-expand-match          ast-rec)]
+             [root-var-stx   (ast-pattern-expand-root-var       ast-rec)]
+             [analysis       (ast-pattern-expand-match-analysis ast-rec)]
+             [binding-mgr    (ast-match-analysis-bindings       analysis)]
+             [actions        (ast-match-analysis-actions        analysis)]
+             [pattern-type   (ast-pattern-expand-pattern-type   ast-rec)]
+             [raw-rewrite    (ast-pattern-expand-rewrite         ast-rec)]
+             [then-let-bindings (ast-pattern-expand-then-let    ast-rec)])
 
         ;; Computed values — each may depend on earlier bindings in this block.
         (let* ([num-ops          (vector-length match-vec)]
-               [root-op             (%%find-root-op match-vec root-op-name)]
+               [root-op             (%%find-root-op match-vec root-var-stx)]
                [root-result-vars    (ast-match-expand-result-var root-op)]
                [root-result-setters (%%generate-root-result-setters root-result-vars op)]
                ;; :rewrite :with body kept as raw syntax — forwarded to begin-mlir-code.
@@ -259,7 +260,9 @@
     (let ([tag (car action)] [fields (cdr action)])
       (case tag
         [(:check-op)
-         (cdr (ast-match-expand-op-name (vector-ref match-vec (cdr (assq 'op-idx fields)))))]
+         ;; op-name is now a plain string; use the first result-var for source location.
+         (let ([match-op (vector-ref match-vec (cdr (assq 'op-idx fields)))])
+           (car (ast-match-expand-result-var match-op)))]
         [(:check-where)
          (cdr (assq 'expr fields))]
         [(:bind-argument-operand :bind-result)
@@ -374,8 +377,7 @@
          (let* ([fields      (cdr action)]
                 [op-idx      (cdr (assq 'op-idx fields))]
                 [match-op    (vector-ref match-vec op-idx)]
-                ;; op-name is (normalized-string . original-stx) after validation.
-                [op-name     (car (ast-match-expand-op-name match-op))]
+                [op-name     (ast-match-expand-op-name match-op)]
                 [num-results (length (ast-match-expand-result-var match-op))])
            #`(and (string=? (mlir::Operation::getName (vector-ref all-operations #,op-idx))
                             #,op-name)
@@ -446,21 +448,16 @@
   ;; Root op lookup and initialization
   ;;=======================================================================
 
-  (define (%%find-root-op match-vec root-op-name-stx)
-    ;; root-op-name-stx is the string cached by validate phase.
-    ;; match-op op-name is (normalized-string . original-stx) after validation.
-    (let ([root-op-name (if (string? root-op-name-stx)
-                            root-op-name-stx
-                            (syntax->datum root-op-name-stx))])
-      (loop :initially := #f
-            :for idx :from 0 :below (vector-length match-vec)
-            :rime-with match-op := (vector-ref match-vec idx)
-            :rime-with op-name  := (car (ast-match-expand-op-name match-op))
-            ;; :any ops are never the root — guard against both symbol ':any and
-            ;; string ":any" (validate.sls may have normalized the symbol to string).
-            :when (and (not (string=? op-name ":any"))
-                       (string=? op-name root-op-name))
-            :break match-op)))
+  (define (%%find-root-op match-vec root-var)
+    ;; Find the match-op whose result list contains root-var.
+    ;; Identity search — unambiguous even when multiple ops share the same name.
+    (loop :initially := #f
+          :for idx :from 0 :below (vector-length match-vec)
+          :rime-with match-op := (vector-ref match-vec idx)
+          :break match-op :if (loop :initially := #f
+                                    :for var :in (ast-match-expand-result-var match-op)
+                                    :when (bound-identifier=? var root-var)
+                                    :break #t)))
 
   (define (%%generate-root-result-setters root-result-vars op-param)
     (loop :for var :in root-result-vars

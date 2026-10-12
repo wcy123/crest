@@ -21,20 +21,8 @@
     ;; Rule: Parameters (op operands-ref rewriter type-converter) must be present and valid
     (%%validate-parameters ast-rec)
 
-    ;; Rule: Function name must be an identifier
-    (%%validate-ast-match-function-name ast-rec)
-
-    ;; Rule: Root variable must be an identifier (checked before normalization)
-    (%%validate-root-var-is-identifier ast-rec)
-
     ;; Normalization: match field from list to vector (enables indexed access in Phase 3)
     (%%normalize-ast-match-to-vector ast-rec)
-
-    ;; Normalization: result-var from single identifier to list (uniform representation)
-    (%%normalize-match-result-vars ast-rec)
-
-    ;; Normalization: op-name from symbol to string (canonical form)
-    (%%normalize-match-op-names ast-rec)
 
     ;; Rule: All identifiers in match operations must start with %
     ;; Rule: Result variables must be unique across all operations (FATAL if violated)
@@ -45,11 +33,8 @@
     ;; Cache: root-op-index, root-result-idx, root-op-name for codegen
     (%%validate-and-cache-root-var ast-rec)
 
-    ;; :rewrite :with body is kept as raw syntax and forwarded to begin-mlir-code;
-    ;; structural validation happens at macro-expansion time in the consumer.
-
-    ;; Rule: Where binding variables must be identifiers
-    (%%validate-then-let-bindings ast-rec)
+    ;; :rewrite :with and :then-let bodies are kept as raw syntax;
+    ;; structural validation happens at macro-expansion time in begin-mlir-code.
 
     ast-rec)
 
@@ -73,15 +58,6 @@
       (unless is-rewrite?
         (check-param (ast-pattern-expand-param-type-converter ast-rec) "type-converter"))))
 
-  (define (%%validate-ast-match-function-name ast-rec)
-    (unless (identifier? (ast-pattern-expand-function-name ast-rec))
-      (syntax-violation 'validate-ast "Function name must be an identifier"
-                        (ast-pattern-expand-function-name ast-rec))))
-
-  (define (%%validate-root-var-is-identifier ast-rec)
-    (unless (identifier? (ast-pattern-expand-root-var ast-rec))
-      (syntax-violation 'validate-ast "Root variable must be an identifier"
-                        (ast-pattern-expand-root-var ast-rec))))
 
   ;;-----------------------------------------------------------------------
   ;; Normalization
@@ -90,27 +66,6 @@
   (define (%%normalize-ast-match-to-vector ast-rec)
     (ast-pattern-expand-match-set! ast-rec
                                    (list->vector (ast-pattern-expand-match ast-rec))))
-
-  (define (%%normalize-match-result-vars ast-rec)
-    (let ([match-vec (ast-pattern-expand-match ast-rec)])
-      (loop :for op-idx :from 0 :below (vector-length match-vec)
-            :rime-with match-op := (vector-ref match-vec op-idx)
-            :rime-with result-var := (ast-match-expand-result-var match-op)
-            :do (cond
-                 ;; Single identifier: %r → (#'%r)
-                 [(identifier? result-var)
-                  (ast-match-expand-result-var-set! match-op (list result-var))]
-
-                 ;; List syntax: #'(%a %b) → (#'%a #'%b)
-                 ;; Also handles future variadic: #'(%a ...) and dotted: #'(%a . %rest)
-                 [else
-                  (ast-match-expand-result-var-set! match-op (syntax->list result-var))]))))
-
-  (define (%%normalize-match-op-names ast-rec)
-    (let ([match-vec (ast-pattern-expand-match ast-rec)])
-      (loop :for op-idx :from 0 :below (vector-length match-vec)
-            :rime-with match-op := (vector-ref match-vec op-idx)
-            :do (%%normalize-op-name match-op))))
 
   ;;-----------------------------------------------------------------------
   ;; Match operations validation
@@ -162,17 +117,9 @@
                                                         :break idx)
                          :when result-idx
                          :break (cons op-idx result-idx))])
-        (if found
-            (begin
-              ;; Cache indices for codegen
-              (ast-pattern-expand-root-op-index-set! ast-rec (car found))
-              (ast-pattern-expand-root-result-idx-set! ast-rec (cdr found))
-              ;; Cache root-op-name as a plain string (car of the normalized pair).
-              (let ([root-op (vector-ref match-vec (car found))])
-                (ast-pattern-expand-root-op-name-set! ast-rec
-                                                      (car (ast-match-expand-op-name root-op)))))
-            (syntax-violation '%%validate-and-cache-root-var
-                              "Root variable not found in any match operation result" root-var)))))
+        (unless found
+          (syntax-violation '%%validate-and-cache-root-var
+                            "Root variable not found in any match operation result" root-var)))))
 
   ;;-----------------------------------------------------------------------
   ;; Rewrite operation validation
@@ -220,17 +167,6 @@
               (ast-block-expand-operations block)))
 
   ;;-----------------------------------------------------------------------
-  ;; Where binding validation
-  ;;-----------------------------------------------------------------------
-
-  (define (%%validate-then-let-bindings ast-rec)
-    (for-each (lambda (then-let-binding)
-                (unless (identifier? (ast-then-let-binding-expand-var then-let-binding))
-                  (syntax-violation 'validate-ast "Where binding variable must be an identifier"
-                                    (ast-then-let-binding-expand-var then-let-binding))))
-              (ast-pattern-expand-then-let ast-rec)))
-
-  ;;-----------------------------------------------------------------------
   ;; Utilities
   ;;-----------------------------------------------------------------------
 
@@ -246,15 +182,4 @@
         (syntax-violation '%%validate-match-operations
                           (string-append context-msg " must start with %") var))))
 
-  (define (%%normalize-op-name match-op)
-    (let* ([op-name-stx (ast-match-expand-op-name match-op)]
-           [op-name-datum (syntax->datum op-name-stx)])
-      (unless (or (string? op-name-datum) (symbol? op-name-datum))
-        (syntax-violation '%%validate-match-operations
-                          "Operation name must be string or symbol" op-name-stx))
-      ;; Store as (normalized-string . original-stx) so callers can use the
-      ;; string for comparison and the original-stx for source location.
-      (let ([normalized (if (string? op-name-datum)
-                            op-name-datum
-                            (symbol->string op-name-datum))])
-        (ast-match-expand-op-name-set! match-op (cons normalized op-name-stx))))))
+  )
