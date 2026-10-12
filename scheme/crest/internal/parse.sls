@@ -181,19 +181,30 @@
          (ast-pattern-expand-match-set! ast (reverse acc-ops))
          (%%parse-after-match rest-stx ast))]
 
-      ;; Match operation WITH :where guard
+      ;; Single-result shorthand: %out = op (...)  →  normalise to (list #'%out)
       [(result = op-name (operand ...) :where guard-expr . rest)
        (identifier? #'result)
+       (%%parse-match-ops-recursive #'((result) = op-name (operand ...) :where guard-expr . rest) acc-ops ast)]
+      ;; Multi-result terminal: (%a %b ...) = op (...)
+      ;; result-var stored as a list of identifiers; single-result shorthand above
+      ;; also normalises to a list so all downstream phases see a uniform representation.
+      ;; terminal branch 1
+      [((result ...) = op-name (operand ...) :where guard-expr . rest)
+       (for-all identifier? (syntax->list #'(result ...)))
        (let* ([operands (%%parse-operands #'(operand ...))]
-              [match-op (make-ast-match-expand #'result #'op-name operands #'guard-expr)])
+              [match-op (make-ast-match-expand
+                         (syntax->list #'(result ...)) #'op-name operands #'guard-expr)])
          (%%parse-match-ops-recursive #'rest (cons match-op acc-ops) ast))]
 
-      ;; Match operation WITHOUT :where guard
-      [(result = op-name (operand ...)  . rest)
-       ;; Guard removed: multi-result patterns use a list for result, not an identifier.
-       ;; The multi-result clause above catches ((%a %b) = ...) first.
+      [(result = op-name (operand ...) . rest)
+       (identifier? #'result)
+       (%%parse-match-ops-recursive #'((result) = op-name (operand ...) . rest) acc-ops ast)]
+      ;; terminal branch 2
+      [((result ...) = op-name (operand ...) . rest)
+       (for-all identifier? (syntax->list #'(result ...)))
        (let* ([operands (%%parse-operands #'(operand ...))]
-              [match-op (make-ast-match-expand #'result #'op-name operands #f)])
+              [match-op (make-ast-match-expand
+                         (syntax->list #'(result ...)) #'op-name operands #f)])
          (%%parse-match-ops-recursive #'rest (cons match-op acc-ops) ast))]
 
       [_ (syntax-violation '%%parse-match-ops-recursive
