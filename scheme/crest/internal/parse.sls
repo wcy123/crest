@@ -290,7 +290,11 @@
                                                     [(v e)
                                                      (identifier? #'v)
                                                      (make-ast-then-let-binding-expand #'v #'e)]
-                                                    [_ (syntax-violation '%%parse-after-match "Invalid :then-let binding (expected: (var expr))" binding)]))
+                                                    [(v e)
+                                                     (syntax-violation '%%parse-after-match
+                                                                       ":then-let binding variable must be an identifier" #'v)]
+                                                    [_ (syntax-violation '%%parse-after-match
+                                                                         ":then-let binding must have the form (var expr)" binding)]))
                                                 (syntax->list #'((var expr) ...))))
          (%%parse-rewrite-ops-recursive #'rewrite-rest '() ast))]
 
