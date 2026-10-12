@@ -282,7 +282,6 @@
       ;; Empty :then-let — delegate to the :rewrite-only path.
       ;; :rewrite without :then-let.
       [(:rewrite root :with . rewrite-rest)
-       (identifier? #'root)
        (%%parse-after-match #'(:then-let () :rewrite root :with . rewrite-rest) ast)]
 
       ;; :then-let with bindings — all vars must be identifiers.
