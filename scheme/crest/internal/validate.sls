@@ -117,17 +117,9 @@
                                                         :break idx)
                          :when result-idx
                          :break (cons op-idx result-idx))])
-        (if found
-            (let* ([op-idx     (car found)]
-                   [result-idx (cdr found)]
-                   [root-op    (vector-ref match-vec op-idx)])
-              (ast-pattern-expand-root-context-set! ast-rec
-                                                    (make-ast-root-context
-                                                     (ast-match-expand-op-name root-op)
-                                                     op-idx
-                                                     result-idx)))
-            (syntax-violation '%%validate-and-cache-root-var
-                              "Root variable not found in any match operation result" root-var)))))
+        (unless found
+          (syntax-violation '%%validate-and-cache-root-var
+                            "Root variable not found in any match operation result" root-var)))))
 
   ;;-----------------------------------------------------------------------
   ;; Rewrite operation validation

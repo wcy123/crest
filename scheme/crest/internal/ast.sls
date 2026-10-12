@@ -28,14 +28,8 @@
           ast-pattern-expand-param-rewriter ast-pattern-expand-param-rewriter-set!
           ast-pattern-expand-param-type-converter ast-pattern-expand-param-type-converter-set!
           ast-pattern-expand-root-var ast-pattern-expand-root-var-set!
-          ast-pattern-expand-root-context ast-pattern-expand-root-context-set!
           ast-pattern-expand-match ast-pattern-expand-match-set!
           ast-pattern-expand-match-analysis ast-pattern-expand-match-analysis-set!
-
-          ast-root-context make-ast-root-context ast-root-context?
-          ast-root-context-op-name
-          ast-root-context-op-index
-          ast-root-context-result-idx
 
           ast-match-analysis make-ast-match-analysis ast-match-analysis?
           ast-match-analysis-bindings
@@ -116,14 +110,6 @@
   ;;   - then-let: list of ast-then-let-binding-expand (computed bindings)
   ;;   - rewrite: list of ast-operation-expand (operations to construct)
   ;;
-  ;; ast-root-context — set once by validate; groups the three root-op fields
-  ;; that would otherwise be three separate mutable fields on ast-pattern-expand.
-  (define-record-type (ast-root-context make-ast-root-context ast-root-context?)
-    (fields
-     (immutable op-name)     ;; normalized string — operation name of the root op
-     (immutable op-index)    ;; integer — index of root op in the match vector
-     (immutable result-idx)));; integer — index of root var in root op's result list
-
   ;; ast-match-analysis — set once by analyze; groups bindings + actions.
   (define-record-type (ast-match-analysis make-ast-match-analysis ast-match-analysis?)
     (fields
@@ -141,7 +127,6 @@
               #f            ;; param-rewriter
               #f            ;; param-type-converter
               #f            ;; root-var: set by parse-rest
-              #f            ;; root-context: ast-root-context, set by validate
               '()           ;; match: accumulated during parse
               #f            ;; match-analysis: ast-match-analysis, set by analyze
               '()           ;; rewrite: accumulated during parse
@@ -159,7 +144,6 @@
      (mutable param-rewriter)        ;; Phase 1: syntax identifier
      (mutable param-type-converter)  ;; Phase 1: syntax identifier (conversion only)
      (mutable root-var)              ;; Phase 1: syntax identifier — :rewrite %root-var
-     (mutable root-context)          ;; Phase 2 (validate): ast-root-context — op-name/index/result-idx
      (mutable match)                 ;; Phase 1: list → Phase 2: vector of ast-match-expand
      (mutable match-analysis)        ;; Phase 3 (analyze): ast-match-analysis — bindings + actions
 

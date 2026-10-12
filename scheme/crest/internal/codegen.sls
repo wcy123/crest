@@ -88,8 +88,7 @@
 
       ;; Independent reads from the AST — no ordering required.
       (let* ([match-vec      (ast-pattern-expand-match          ast-rec)]
-             [root-ctx       (ast-pattern-expand-root-context   ast-rec)]
-             [root-op-name   (ast-root-context-op-name          root-ctx)]
+             [root-var-stx   (ast-pattern-expand-root-var       ast-rec)]
              [analysis       (ast-pattern-expand-match-analysis ast-rec)]
              [binding-mgr    (ast-match-analysis-bindings       analysis)]
              [actions        (ast-match-analysis-actions        analysis)]
@@ -99,7 +98,7 @@
 
         ;; Computed values — each may depend on earlier bindings in this block.
         (let* ([num-ops          (vector-length match-vec)]
-               [root-op             (%%find-root-op match-vec root-op-name)]
+               [root-op             (%%find-root-op match-vec root-var-stx)]
                [root-result-vars    (ast-match-expand-result-var root-op)]
                [root-result-setters (%%generate-root-result-setters root-result-vars op)]
                ;; :rewrite :with body kept as raw syntax — forwarded to begin-mlir-code.
@@ -449,16 +448,16 @@
   ;; Root op lookup and initialization
   ;;=======================================================================
 
-  (define (%%find-root-op match-vec root-op-name)
-    ;; root-op-name is a normalized string from ast-root-context.
+  (define (%%find-root-op match-vec root-var)
+    ;; Find the match-op whose result list contains root-var.
+    ;; Identity search — unambiguous even when multiple ops share the same name.
     (loop :initially := #f
           :for idx :from 0 :below (vector-length match-vec)
           :rime-with match-op := (vector-ref match-vec idx)
-          :rime-with op-name  := (ast-match-expand-op-name match-op)
-          ;; :any ops are never the root.
-          :when (and (not (string=? op-name ":any"))
-                     (string=? op-name root-op-name))
-          :break match-op))
+          :break match-op :if (loop :initially := #f
+                                    :for var :in (ast-match-expand-result-var match-op)
+                                    :when (bound-identifier=? var root-var)
+                                    :break #t)))
 
   (define (%%generate-root-result-setters root-result-vars op-param)
     (loop :for var :in root-result-vars

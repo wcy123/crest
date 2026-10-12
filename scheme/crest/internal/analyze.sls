@@ -28,8 +28,7 @@
     ;; Phase 2 validation guarantees: root variable exists as a result in some match operation
     (let* ([match-vec   (ast-pattern-expand-match ast-rec)]
            [root-var    (ast-pattern-expand-root-var ast-rec)]
-           [root-op-idx (ast-root-context-op-index
-                         (ast-pattern-expand-root-context ast-rec))])
+           [root-op-idx (%%find-root-op-idx match-vec root-var)])
 
       ;; Build match actions starting from root operation
       (let* ([bindings-and-actions (%%build-bindings-and-actions ast-rec match-vec root-op-idx root-var)]
@@ -265,6 +264,16 @@
   ;;-----------------------------------------------------------------------
   ;; Helper functions
   ;;-----------------------------------------------------------------------
+
+  (define (%%find-root-op-idx match-vec root-var)
+    ;; Find the index of the match-op whose result list contains root-var.
+    (loop :initially := #f
+          :for op-idx :from 0 :below (vector-length match-vec)
+          :rime-with match-op := (vector-ref match-vec op-idx)
+          :break op-idx :if (loop :initially := #f
+                                  :for var :in (ast-match-expand-result-var match-op)
+                                  :when (bound-identifier=? var root-var)
+                                  :break #t)))
 
   (define (%%identifier-hash id)
     (symbol-hash (syntax->datum id)))
