@@ -121,7 +121,8 @@
       ;; 5-param form for conversion patterns: (fname op operands-ref rewriter type-converter)
       [((fname p-op p-operands-ref p-rewriter p-type-converter) . more)
        (and (identifier? #'fname)
-            (not (ast-pattern-expand-function-name ast)))
+            (not (ast-pattern-expand-function-name ast))
+            (eq? (ast-pattern-expand-pattern-type ast) 'conversion))
        (begin
          (ast-pattern-expand-function-name-set!         ast #'fname)
          (ast-pattern-expand-param-op-set!              ast #'p-op)
