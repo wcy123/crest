@@ -73,11 +73,10 @@
   ;; SECTION 1: Entry Points
   ;;=======================================================================
 
-  (define (parse-to-ast whole-stx . args)
-    (let ([pattern-type (if (pair? args) (car args) 'conversion)])
-      (syntax-case whole-stx ()
-        [(_ . rest)
-         (%%parse-rest #'rest (make-ast-pattern-expand pattern-type))])))
+  (define (parse-to-ast whole-stx type)
+    (syntax-case whole-stx ()
+      [(_ . rest)
+       (%%parse-rest #'rest (make-ast-pattern-expand type))]))
 
   ;;-----------------------------------------------------------------------
   ;; %%parse-rest - Parse function name, debug flags, then dispatch to :if-match
