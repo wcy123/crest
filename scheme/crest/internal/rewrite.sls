@@ -291,7 +291,7 @@
                 #'(let* ([block (mlir::Region::push_back<Block> region (list arg-type ...))]
                          arg-binding ...)
                     (with-CrestObject (block-builder (mlir::OpBuilder::atBlockEnd block))
-                                      body))))))
+                      body))))))
         (define (make-region-fill-fn region-index block-fill-fns)
           (lambda (op-stx)
             ;; region-id must be in scope as a Scheme value before with-syntax

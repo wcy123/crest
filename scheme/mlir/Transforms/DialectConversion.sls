@@ -144,7 +144,7 @@
     (syntax-rules ()
       [(_ (var) body ...)
        (with-CrestObject (var (type-converter-create))
-                         body ...)]))
+         body ...)]))
 
   ;; @brief RAII macro — create a ConversionTarget, execute BODY, then destroy on exit.
   ;; @param var identifier bound to the CrestOwned<ConversionTarget>* uptr for BODY
@@ -157,9 +157,9 @@
     (syntax-rules ()
       [(_ (var) body ...)
        (with-CrestObject (var (target-create (current-MLIRContext)))
-                         body ...)]
+         body ...)]
       [(_ (var ctx) body ...)
        (with-CrestObject (var (target-create ctx))
-                         body ...)]))
+         body ...)]))
 
   ) ;; end library (mlir Transforms DialectConversion)
