@@ -279,7 +279,11 @@
   ;;-----------------------------------------------------------------------
   (define (%%parse-after-match rest-stx ast)
     (syntax-case rest-stx (:then-let :rewrite :with)
-      ;; Pattern 1: :then-let followed by :rewrite
+      ;; Empty :then-let — delegate to the :rewrite-only path.
+      [(:then-let () :rewrite root :with . rewrite-rest)
+       (%%parse-after-match #'(:rewrite root :with . rewrite-rest) ast)]
+
+      ;; :then-let with bindings — all vars must be identifiers.
       [(:then-let ((var expr) ...) :rewrite root :with . rewrite-rest)
        (and (identifier? #'root)
             (for-all identifier? (syntax->list #'(var ...))))
@@ -291,7 +295,7 @@
                                                 (syntax->list #'(expr ...))))
          (%%parse-rewrite-ops-recursive #'rewrite-rest '() ast))]
 
-      ;; Pattern 2: :rewrite without :then-let
+      ;; :rewrite without :then-let.
       [(:rewrite root :with . rewrite-rest)
        (identifier? #'root)
        (begin
