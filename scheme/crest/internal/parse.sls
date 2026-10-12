@@ -36,9 +36,9 @@
 ;;   (%x (:variadic %rest))            - x required, rest variadic
 ;;   (%x (:optional %y) (:variadic %w)) - combined
 ;;
-;; Note: :optional presence detection uses mlir-operation-num-operands.
-;; Ops with AttrSizedOperandSegments must still use operandSegmentSizes
-;; for correct offset calculation (future enhancement).
+;; Note: when the spec contains :optional or :variadic, the matched op MUST
+;; carry an operandSegmentSizes DenseI32ArrayAttr — without it CREST cannot
+;; determine group boundaries and the match returns #f.
 ;;
 ;; Guards (:where clause):
 ;;   :where <scheme-expr>
