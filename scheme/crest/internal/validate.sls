@@ -21,12 +21,6 @@
     ;; Rule: Parameters (op operands-ref rewriter type-converter) must be present and valid
     (%%validate-parameters ast-rec)
 
-    ;; Rule: Function name must be an identifier
-    (%%validate-ast-match-function-name ast-rec)
-
-    ;; Rule: Root variable must be an identifier (checked before normalization)
-    (%%validate-root-var-is-identifier ast-rec)
-
     ;; Normalization: match field from list to vector (enables indexed access in Phase 3)
     (%%normalize-ast-match-to-vector ast-rec)
 
@@ -67,15 +61,6 @@
       (unless is-rewrite?
         (check-param (ast-pattern-expand-param-type-converter ast-rec) "type-converter"))))
 
-  (define (%%validate-ast-match-function-name ast-rec)
-    (unless (identifier? (ast-pattern-expand-function-name ast-rec))
-      (syntax-violation 'validate-ast "Function name must be an identifier"
-                        (ast-pattern-expand-function-name ast-rec))))
-
-  (define (%%validate-root-var-is-identifier ast-rec)
-    (unless (identifier? (ast-pattern-expand-root-var ast-rec))
-      (syntax-violation 'validate-ast "Root variable must be an identifier"
-                        (ast-pattern-expand-root-var ast-rec))))
 
   ;;-----------------------------------------------------------------------
   ;; Normalization
