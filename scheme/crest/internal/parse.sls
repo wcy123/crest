@@ -280,8 +280,10 @@
   (define (%%parse-after-match rest-stx ast)
     (syntax-case rest-stx (:then-let :rewrite :with)
       ;; Empty :then-let — delegate to the :rewrite-only path.
-      [(:then-let () :rewrite root :with . rewrite-rest)
-       (%%parse-after-match #'(:rewrite root :with . rewrite-rest) ast)]
+      ;; :rewrite without :then-let.
+      [(:rewrite root :with . rewrite-rest)
+       (identifier? #'root)
+       (%%parse-after-match #'(:then-let () :rewrite root :with . rewrite-rest) ast)]
 
       ;; :then-let with bindings — all vars must be identifiers.
       [(:then-let ((var expr) ...) :rewrite root :with . rewrite-rest)
@@ -295,12 +297,6 @@
                                                 (syntax->list #'(expr ...))))
          (%%parse-rewrite-ops-recursive #'rewrite-rest '() ast))]
 
-      ;; :rewrite without :then-let.
-      [(:rewrite root :with . rewrite-rest)
-       (identifier? #'root)
-       (begin
-         (ast-pattern-expand-root-var-set! ast #'root)
-         (%%parse-rewrite-ops-recursive #'rewrite-rest '() ast))]
 
       [_ (syntax-violation 'define-conversion-pattern
                            "Expected [:then-let (...)] :rewrite root :with rewrite-ops..." rest-stx)]))
