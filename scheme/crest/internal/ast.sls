@@ -28,12 +28,18 @@
           ast-pattern-expand-param-rewriter ast-pattern-expand-param-rewriter-set!
           ast-pattern-expand-param-type-converter ast-pattern-expand-param-type-converter-set!
           ast-pattern-expand-root-var ast-pattern-expand-root-var-set!
-          ast-pattern-expand-root-op-name ast-pattern-expand-root-op-name-set!
-          ast-pattern-expand-root-op-index ast-pattern-expand-root-op-index-set!
-          ast-pattern-expand-root-result-idx ast-pattern-expand-root-result-idx-set!
+          ast-pattern-expand-root-context ast-pattern-expand-root-context-set!
           ast-pattern-expand-match ast-pattern-expand-match-set!
-          ast-pattern-expand-match-bindings ast-pattern-expand-match-bindings-set!
-          ast-pattern-expand-match-actions ast-pattern-expand-match-actions-set!
+          ast-pattern-expand-match-analysis ast-pattern-expand-match-analysis-set!
+
+          ast-root-context make-ast-root-context ast-root-context?
+          ast-root-context-op-name
+          ast-root-context-op-index
+          ast-root-context-result-idx
+
+          ast-match-analysis make-ast-match-analysis ast-match-analysis?
+          ast-match-analysis-bindings
+          ast-match-analysis-actions
           ast-pattern-expand-rewrite ast-pattern-expand-rewrite-set!
           ast-pattern-expand-then-let ast-pattern-expand-then-let-set!
           ast-pattern-expand-debug-parse? ast-pattern-expand-debug-parse?-set!
@@ -110,6 +116,20 @@
   ;;   - then-let: list of ast-then-let-binding-expand (computed bindings)
   ;;   - rewrite: list of ast-operation-expand (operations to construct)
   ;;
+  ;; ast-root-context — set once by validate; groups the three root-op fields
+  ;; that would otherwise be three separate mutable fields on ast-pattern-expand.
+  (define-record-type (ast-root-context make-ast-root-context ast-root-context?)
+    (fields
+     (immutable op-name)     ;; normalized string — operation name of the root op
+     (immutable op-index)    ;; integer — index of root op in the match vector
+     (immutable result-idx)));; integer — index of root var in root op's result list
+
+  ;; ast-match-analysis — set once by analyze; groups bindings + actions.
+  (define-record-type (ast-match-analysis make-ast-match-analysis ast-match-analysis?)
+    (fields
+     (immutable bindings)    ;; binding-manager — maps all %vars to binding-entry records
+     (immutable actions)))   ;; list of actions — ordered runtime matching sequence
+
   (define-record-type (ast-pattern-expand make-ast-pattern-expand ast-pattern-expand?)
     (protocol
      (lambda (new)
@@ -121,74 +141,27 @@
               #f            ;; param-rewriter
               #f            ;; param-type-converter
               #f            ;; root-var: set by parse-rest
-              #f            ;; root-op-name: set by validate phase
-              #f            ;; root-op-index: set by validate phase
-              #f            ;; root-result-idx: set by validate phase
+              #f            ;; root-context: ast-root-context, set by validate
               '()           ;; match: accumulated during parse
-              #f            ;; match-bindings: set by analyze phase
-              #f            ;; match-actions: set by analyze phase
+              #f            ;; match-analysis: ast-match-analysis, set by analyze
               '()           ;; rewrite: accumulated during parse
               '()           ;; then-let: accumulated during parse
               #f            ;; debug-parse?
               #f            ;; debug-validate?
               #f            ;; debug-analyze?
               #f            ;; debug-codegen?
-              ;; debug-matching?: set at expand time from CREST_DEBUG_MATCH env var.
-              ;; Controls whether match failures emit diagnostic info to stderr.
-              ;; Set before running: CREST_DEBUG_MATCH=1 ./crest-opt ...
               (and (getenv "CREST_DEBUG_MATCH") #t)))))  ;; debug-matching?
     (fields
-     (mutable pattern-type)     ;; Phase 1 (parse): symbol - 'conversion or 'rewrite
-     ;; Determines operand binding behavior in codegen:
-     ;; - 'conversion: root operation uses operands-ref parameter
-     ;; - 'rewrite: all operations use mlir-operation-get-operand-value
-
-     (mutable function-name)    ;; Phase 1 (parse): syntax identifier - name of generated pattern function
-
-     (mutable param-op)              ;; Phase 1 (parse): syntax identifier - the op being rewritten
-     (mutable param-operands-ref)    ;; Phase 1 (parse): syntax identifier - converted operands array
-     (mutable param-rewriter)        ;; Phase 1 (parse): syntax identifier - the ConversionPatternRewriter
-     (mutable param-type-converter)  ;; Phase 1 (parse): syntax identifier - the TypeConverter
-
-     (mutable root-var)         ;; Phase 1 (parse): syntax identifier - result variable of the root operation
-     ;; Example: #'%out
-     ;; The root operation is the one matched against the input op
-     ;; Phase 2 (validate): validated and confirmed to be a result var
-
-     (mutable root-op-name)     ;; Phase 1 (parse): not set (initialized to #f)
-     ;; Phase 2 (validate): syntax string - operation name of root operation
-     ;; Example: #'"onnx.Cast"
-     ;; Set after finding which match operation defines root-var
-
-     (mutable root-op-index)    ;; Phase 1 (parse): not set (initialized to #f)
-     ;; Phase 2 (validate): integer - index of root operation in match vector
-     ;; Example: 2 (if root is 3rd operation in :if-match clause)
-     ;; Cached for efficiency, used by codegen to initialize root variable
-
-     (mutable root-result-idx)  ;; Phase 1 (parse): not set (initialized to #f)
-     ;; Phase 2 (validate): integer - index of root var in root operation's result list
-     ;; Example: 0 (if root var is first result)
-     ;;          1 (if root var is second result in (%a %b) = "op"(...))
-     ;; Cached for efficiency, used by codegen with mlir-Operation::getResult
-
-     (mutable match)            ;; Phase 1 (parse): list of ast-match-expand (parsed in order)
-     ;; Phase 2 (validate): vector of ast-match-expand (normalized for indexing)
-     ;; Indexing: vector index = operation index in DAG
-     ;; Phase 3 (analyze): used to generate match-actions
-     ;; Contains: list/vector of ast-match-expand records
-
-     (mutable match-bindings)   ;; Phase 1 (parse): not set (initialized to #f)
-     ;; Phase 2 (validate): not set (still #f)
-     ;; Phase 3 (analyze): binding-manager record
-     ;; Maps all identifiers (results and operands) to binding-entry records
-     ;; Used by codegen to collect all variables
-
-     (mutable match-actions)    ;; Phase 1 (parse): not set (initialized to #f)
-     ;; Phase 2 (validate): not set (still #f)
-     ;; Phase 3 (analyze): list of actions
-     ;; Ordered sequence of runtime matching actions
-     ;; Actions: :set-current-op, :check-op, :bind-operands, :bind-argument-operand, :check-where, :bind-result
-     ;; Used by codegen to generate pattern matching code
+     (mutable pattern-type)          ;; Phase 1: 'conversion or 'rewrite
+     (mutable function-name)         ;; Phase 1: syntax identifier
+     (mutable param-op)              ;; Phase 1: syntax identifier
+     (mutable param-operands-ref)    ;; Phase 1: syntax identifier (conversion only)
+     (mutable param-rewriter)        ;; Phase 1: syntax identifier
+     (mutable param-type-converter)  ;; Phase 1: syntax identifier (conversion only)
+     (mutable root-var)              ;; Phase 1: syntax identifier — :rewrite %root-var
+     (mutable root-context)          ;; Phase 2 (validate): ast-root-context — op-name/index/result-idx
+     (mutable match)                 ;; Phase 1: list → Phase 2: vector of ast-match-expand
+     (mutable match-analysis)        ;; Phase 3 (analyze): ast-match-analysis — bindings + actions
 
      (mutable rewrite)          ;; Phase 1 (parse): list of ast-operation-expand - rewrite operations
      ;; Operations to construct when pattern matches

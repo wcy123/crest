@@ -87,13 +87,15 @@
            [type-converter (ast-pattern-expand-param-type-converter ast-rec)]) ; syntax-identifier
 
       ;; Independent reads from the AST — no ordering required.
-      (let ([match-vec      (ast-pattern-expand-match          ast-rec)] ; vector of ast-match-expand
-            [binding-mgr   (ast-pattern-expand-match-bindings  ast-rec)] ; binding-manager hashtable
-            [actions        (ast-pattern-expand-match-actions   ast-rec)] ; list of action records
-            [root-op-name   (ast-pattern-expand-root-op-name   ast-rec)] ; syntax-string e.g. #'"onnx.Cast"
-            [pattern-type   (ast-pattern-expand-pattern-type   ast-rec)] ; symbol: 'conversion or 'rewrite
-            [raw-rewrite    (ast-pattern-expand-rewrite         ast-rec)] ; list of raw syntax objects
-            [then-let-bindings (ast-pattern-expand-then-let    ast-rec)]) ; list of ast-then-let-binding-expand
+      (let* ([match-vec      (ast-pattern-expand-match          ast-rec)]
+             [root-ctx       (ast-pattern-expand-root-context   ast-rec)]
+             [root-op-name   (ast-root-context-op-name          root-ctx)]
+             [analysis       (ast-pattern-expand-match-analysis ast-rec)]
+             [binding-mgr    (ast-match-analysis-bindings       analysis)]
+             [actions        (ast-match-analysis-actions        analysis)]
+             [pattern-type   (ast-pattern-expand-pattern-type   ast-rec)]
+             [raw-rewrite    (ast-pattern-expand-rewrite         ast-rec)]
+             [then-let-bindings (ast-pattern-expand-then-let    ast-rec)])
 
         ;; Computed values — each may depend on earlier bindings in this block.
         (let* ([num-ops          (vector-length match-vec)]
@@ -447,20 +449,16 @@
   ;; Root op lookup and initialization
   ;;=======================================================================
 
-  (define (%%find-root-op match-vec root-op-name-stx)
-    ;; root-op-name-stx is the string cached by validate phase.
-    ;; match-op op-name is (normalized-string . original-stx) after validation.
-    (let ([root-op-name (if (string? root-op-name-stx)
-                            root-op-name-stx
-                            (syntax->datum root-op-name-stx))])
-      (loop :initially := #f
-            :for idx :from 0 :below (vector-length match-vec)
-            :rime-with match-op := (vector-ref match-vec idx)
-            :rime-with op-name  := (ast-match-expand-op-name match-op)
-            ;; :any ops are never the root — op-name is always a normalized string.
-            :when (and (not (string=? op-name ":any"))
-                       (string=? op-name root-op-name))
-            :break match-op)))
+  (define (%%find-root-op match-vec root-op-name)
+    ;; root-op-name is a normalized string from ast-root-context.
+    (loop :initially := #f
+          :for idx :from 0 :below (vector-length match-vec)
+          :rime-with match-op := (vector-ref match-vec idx)
+          :rime-with op-name  := (ast-match-expand-op-name match-op)
+          ;; :any ops are never the root.
+          :when (and (not (string=? op-name ":any"))
+                     (string=? op-name root-op-name))
+          :break match-op))
 
   (define (%%generate-root-result-setters root-result-vars op-param)
     (loop :for var :in root-result-vars

@@ -28,7 +28,8 @@
     ;; Phase 2 validation guarantees: root variable exists as a result in some match operation
     (let* ([match-vec (ast-pattern-expand-match ast-rec)]
            [root-var (ast-pattern-expand-root-var ast-rec)]
-           [root-op-idx (ast-pattern-expand-root-op-index ast-rec)]
+           [root-ctx    (ast-pattern-expand-root-context ast-rec)]
+           [root-op-idx (ast-root-context-op-index root-ctx)]
            [root-op (vector-ref match-vec root-op-idx)])
 
       ;; Build match actions starting from root operation
@@ -36,8 +37,8 @@
              [binding-mgr (car bindings-and-actions)]
              [actions (cdr bindings-and-actions)])
 
-        (ast-pattern-expand-match-bindings-set! ast-rec binding-mgr)
-        (ast-pattern-expand-match-actions-set! ast-rec actions))))
+        (ast-pattern-expand-match-analysis-set! ast-rec
+                                                (make-ast-match-analysis binding-mgr actions)))))
 
   ;;-----------------------------------------------------------------------
   ;; DAG traversal and action generation

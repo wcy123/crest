@@ -136,13 +136,14 @@
                          :when result-idx
                          :break (cons op-idx result-idx))])
         (if found
-            (begin
-              ;; Cache indices for codegen
-              (ast-pattern-expand-root-op-index-set! ast-rec (car found))
-              (ast-pattern-expand-root-result-idx-set! ast-rec (cdr found))
-              (let ([root-op (vector-ref match-vec (car found))])
-                (ast-pattern-expand-root-op-name-set! ast-rec
-                                                      (ast-match-expand-op-name root-op))))
+            (let* ([op-idx     (car found)]
+                   [result-idx (cdr found)]
+                   [root-op    (vector-ref match-vec op-idx)])
+              (ast-pattern-expand-root-context-set! ast-rec
+                                                    (make-ast-root-context
+                                                     (ast-match-expand-op-name root-op)
+                                                     op-idx
+                                                     result-idx)))
             (syntax-violation '%%validate-and-cache-root-var
                               "Root variable not found in any match operation result" root-var)))))
 
