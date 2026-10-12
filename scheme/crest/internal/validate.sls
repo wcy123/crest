@@ -140,10 +140,9 @@
               ;; Cache indices for codegen
               (ast-pattern-expand-root-op-index-set! ast-rec (car found))
               (ast-pattern-expand-root-result-idx-set! ast-rec (cdr found))
-              ;; Cache root-op-name as a plain string (car of the normalized pair).
               (let ([root-op (vector-ref match-vec (car found))])
                 (ast-pattern-expand-root-op-name-set! ast-rec
-                                                      (car (ast-match-expand-op-name root-op)))))
+                                                      (ast-match-expand-op-name root-op))))
             (syntax-violation '%%validate-and-cache-root-var
                               "Root variable not found in any match operation result" root-var)))))
 

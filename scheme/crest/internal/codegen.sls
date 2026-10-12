@@ -259,7 +259,9 @@
     (let ([tag (car action)] [fields (cdr action)])
       (case tag
         [(:check-op)
-         (cdr (ast-match-expand-op-name (vector-ref match-vec (cdr (assq 'op-idx fields)))))]
+         ;; op-name is now a plain string; use the first result-var for source location.
+         (let ([match-op (vector-ref match-vec (cdr (assq 'op-idx fields)))])
+           (car (ast-match-expand-result-var match-op)))]
         [(:check-where)
          (cdr (assq 'expr fields))]
         [(:bind-argument-operand :bind-result)
@@ -374,8 +376,7 @@
          (let* ([fields      (cdr action)]
                 [op-idx      (cdr (assq 'op-idx fields))]
                 [match-op    (vector-ref match-vec op-idx)]
-                ;; op-name is (normalized-string . original-stx) after validation.
-                [op-name     (car (ast-match-expand-op-name match-op))]
+                [op-name     (ast-match-expand-op-name match-op)]
                 [num-results (length (ast-match-expand-result-var match-op))])
            #`(and (string=? (mlir::Operation::getName (vector-ref all-operations #,op-idx))
                             #,op-name)
@@ -455,9 +456,8 @@
       (loop :initially := #f
             :for idx :from 0 :below (vector-length match-vec)
             :rime-with match-op := (vector-ref match-vec idx)
-            :rime-with op-name  := (car (ast-match-expand-op-name match-op))
-            ;; :any ops are never the root — guard against both symbol ':any and
-            ;; string ":any" (validate.sls may have normalized the symbol to string).
+            :rime-with op-name  := (ast-match-expand-op-name match-op)
+            ;; :any ops are never the root — op-name is always a normalized string.
             :when (and (not (string=? op-name ":any"))
                        (string=? op-name root-op-name))
             :break match-op)))

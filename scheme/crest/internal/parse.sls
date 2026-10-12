@@ -194,7 +194,7 @@
             (let ([d (syntax->datum #'op-name)])
               (or (string? d) (symbol? d))))
        (let* ([d        (syntax->datum #'op-name)]
-              [op-norm  (cons (if (string? d) d (symbol->string d)) #'op-name)]
+              [op-norm  (if (string? d) d (symbol->string d))]
               [operands (%%parse-operands #'(operand ...))]
               [match-op (make-ast-match-expand
                          (syntax->list #'(result ...)) op-norm operands #'guard-expr)])
@@ -209,7 +209,7 @@
             (let ([d (syntax->datum #'op-name)])
               (or (string? d) (symbol? d))))
        (let* ([d        (syntax->datum #'op-name)]
-              [op-norm  (cons (if (string? d) d (symbol->string d)) #'op-name)]
+              [op-norm  (if (string? d) d (symbol->string d))]
               [operands (%%parse-operands #'(operand ...))]
               [match-op (make-ast-match-expand
                          (syntax->list #'(result ...)) op-norm operands #f)])

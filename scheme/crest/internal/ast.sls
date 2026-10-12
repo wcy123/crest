@@ -237,14 +237,12 @@
      ;;     %out      →  (#'%out)
      ;;     (%a %b)   →  (#'%a #'%b)
 
-     (immutable op-name)      ;; Phase 1 (parse): (cons normalized-string original-stx)
-     ;;   Parse accepts string literal or symbol and stores the pair immediately:
-     ;;     "onnx.Cast"  →  ("onnx.Cast" . #'"onnx.Cast")
-     ;;     onnx.Cast    →  ("onnx.Cast" . #'onnx.Cast)
-     ;;   (car op-name)  — normalized string; used by validate, analyze, and codegen
-     ;;                    to compare / embed the op name
-     ;;   (cdr op-name)  — original syntax; used by %%action->source-stx to produce
-     ;;                    file:line:col in CREST_DEBUG_MATCH diagnostics
+     (immutable op-name)      ;; Phase 1 (parse): normalized string — always a Scheme string.
+     ;;   Parse accepts string literal or symbol, converts to string immediately:
+     ;;     "onnx.Cast"  →  "onnx.Cast"
+     ;;     onnx.Cast    →  "onnx.Cast"
+     ;;   Used directly for string comparison in validate, analyze, and codegen.
+     ;;   Source location for CREST_DEBUG_MATCH is taken from result-var instead.
 
      (immutable operands)     ;; Phase 1 (parse): list of ast-operand records (flattened)
      ;; Phase 3 (analyze): used to generate operand binding actions
