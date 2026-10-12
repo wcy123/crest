@@ -6,7 +6,7 @@
 ;; Parses pattern DSL syntax into ast-pattern-expand records (defined in pattern-ast.sls).
 ;; This is phase 1 of the 4-phase macro expansion pipeline.
 ;;
-;; INPUT:  Raw syntax from define-conversion-pattern macro
+;; INPUT:  Raw syntax from define-rewrite-pattern or define-conversion-pattern
 ;; OUTPUT: ast-pattern-expand record with parsed structure
 ;;
 ;; Key responsibilities:
@@ -36,9 +36,9 @@
 ;;   (%x (:variadic %rest))            - x required, rest variadic
 ;;   (%x (:optional %y) (:variadic %w)) - combined
 ;;
-;; Note: :optional presence detection uses mlir-operation-num-operands.
-;; Ops with AttrSizedOperandSegments must still use operandSegmentSizes
-;; for correct offset calculation (future enhancement).
+;; Note: when the spec contains :optional or :variadic, the matched op MUST
+;; carry an operandSegmentSizes DenseI32ArrayAttr — without it CREST cannot
+;; determine group boundaries and the match returns #f.
 ;;
 ;; Guards (:where clause):
 ;;   :where <scheme-expr>
@@ -73,11 +73,10 @@
   ;; SECTION 1: Entry Points
   ;;=======================================================================
 
-  (define (parse-to-ast whole-stx . args)
-    (let ([pattern-type (if (pair? args) (car args) 'conversion)])
-      (syntax-case whole-stx ()
-        [(_ . rest)
-         (%%parse-rest #'rest (make-ast-pattern-expand pattern-type))])))
+  (define (parse-to-ast whole-stx type)
+    (syntax-case whole-stx ()
+      [(_ . rest)
+       (%%parse-rest #'rest (make-ast-pattern-expand type))]))
 
   ;;-----------------------------------------------------------------------
   ;; %%parse-rest - Parse function name, debug flags, then dispatch to :if-match
@@ -121,15 +120,26 @@
       ;; 5-param form for conversion patterns: (fname op operands-ref rewriter type-converter)
       [((fname p-op p-operands-ref p-rewriter p-type-converter) . more)
        (and (identifier? #'fname)
-            (not (ast-pattern-expand-function-name ast)))
+            (not (ast-pattern-expand-function-name ast))
+            (eq? (ast-pattern-expand-pattern-type ast) 'conversion))
        (begin
          (ast-pattern-expand-function-name-set!         ast #'fname)
          (ast-pattern-expand-param-op-set!              ast #'p-op)
          (ast-pattern-expand-param-operands-ref-set!    ast #'p-operands-ref)
+         ;; p-rewriter is the user-chosen identifier for the rewriter parameter.
+         ;; The codegen uses it as the lambda parameter name AND as the target of
+         ;; mlir::RewriterBase::setInsertionPoint and begin-mlir-code in the
+         ;; generated rewrite body — so it must match the user's function signature.
          (ast-pattern-expand-param-rewriter-set!        ast #'p-rewriter)
          (ast-pattern-expand-param-type-converter-set!  ast #'p-type-converter)
          (%%parse-rest #'more ast))]
 
+      ;; This clause is NOT dead code — it is reached on the SECOND recursive
+      ;; call to %%parse-rest.  The 3-param/5-param clauses above consume the
+      ;; function signature and call (%%parse-rest #'more ast) where #'more
+      ;; begins with :if-match.  The fender (ast-pattern-expand-function-name ast)
+      ;; confirms the function name was already set, ensuring we never process
+      ;; :if-match before a valid signature clause has run.
       [(:if-match . match-rest)
        (ast-pattern-expand-function-name ast)
        (%%parse-match-ops-recursive #'match-rest '() ast)]
@@ -171,19 +181,30 @@
          (ast-pattern-expand-match-set! ast (reverse acc-ops))
          (%%parse-after-match rest-stx ast))]
 
-      ;; Match operation WITH :where guard
+      ;; Single-result shorthand: %out = op (...)  →  normalise to (list #'%out)
       [(result = op-name (operand ...) :where guard-expr . rest)
        (identifier? #'result)
+       (%%parse-match-ops-recursive #'((result) = op-name (operand ...) :where guard-expr . rest) acc-ops ast)]
+      ;; Multi-result terminal: (%a %b ...) = op (...)
+      ;; result-var stored as a list of identifiers; single-result shorthand above
+      ;; also normalises to a list so all downstream phases see a uniform representation.
+      ;; terminal branch 1
+      [((result ...) = op-name (operand ...) :where guard-expr . rest)
+       (for-all identifier? (syntax->list #'(result ...)))
        (let* ([operands (%%parse-operands #'(operand ...))]
-              [match-op (make-ast-match-expand #'result #'op-name operands #'guard-expr)])
+              [match-op (make-ast-match-expand
+                         (syntax->list #'(result ...)) #'op-name operands #'guard-expr)])
          (%%parse-match-ops-recursive #'rest (cons match-op acc-ops) ast))]
 
-      ;; Match operation WITHOUT :where guard
-      [(result = op-name (operand ...)  . rest)
-       ;; Guard removed: multi-result patterns use a list for result, not an identifier.
-       ;; The multi-result clause above catches ((%a %b) = ...) first.
+      [(result = op-name (operand ...) . rest)
+       (identifier? #'result)
+       (%%parse-match-ops-recursive #'((result) = op-name (operand ...) . rest) acc-ops ast)]
+      ;; terminal branch 2
+      [((result ...) = op-name (operand ...) . rest)
+       (for-all identifier? (syntax->list #'(result ...)))
        (let* ([operands (%%parse-operands #'(operand ...))]
-              [match-op (make-ast-match-expand #'result #'op-name operands #f)])
+              [match-op (make-ast-match-expand
+                         (syntax->list #'(result ...)) #'op-name operands #f)])
          (%%parse-match-ops-recursive #'rest (cons match-op acc-ops) ast))]
 
       [_ (syntax-violation '%%parse-match-ops-recursive
