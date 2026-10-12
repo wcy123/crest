@@ -7,13 +7,15 @@
 ;; pattern DSL macro expansion pipeline:
 ;;
 ;;   Phase 1 (parse)    - Parse syntax to AST records (this file defines structure)
-;;   Phase 2 (validate) - Normalize and validate AST in-place (mutable fields)
-;;   Phase 3 (analyze)  - Build bindings and actions, store in AST
+;;   Phase 2 (validate) - Validate AST; ast-pattern-expand fields enriched in-place
+;;   Phase 3 (analyze)  - Build bindings and actions, stored in ast-pattern-expand
 ;;   Phase 4 (codegen)  - Generate final lambda from AST
 ;;
-;; All fields store syntax objects (not datums) to preserve lexical context
-;; for code generation. Mutable fields allow later phases to normalize/enrich
-;; the AST in-place without creating new records.
+;; Immutability discipline:
+;;   ast-match-expand and ast-operand fields are immutable — parse sets them
+;;   once and later phases only read them.
+;;   ast-pattern-expand fields are mutable because validate/analyze enrich them
+;;   (e.g. root-op-index, match-bindings, match-actions).
 ;;
 ;;=======================================================================
 
@@ -185,7 +187,7 @@
      ;; Phase 2 (validate): not set (still #f)
      ;; Phase 3 (analyze): list of actions
      ;; Ordered sequence of runtime matching actions
-     ;; Actions: :set-current-op, :check-op, :bind-operand, :check-eq
+     ;; Actions: :set-current-op, :check-op, :bind-operands, :bind-argument-operand, :check-where, :bind-result
      ;; Used by codegen to generate pattern matching code
 
      (mutable rewrite)          ;; Phase 1 (parse): list of ast-operation-expand - rewrite operations
@@ -230,19 +232,17 @@
   ;;
   (define-record-type (ast-match-expand make-ast-match-expand ast-match-expand?)
     (fields
-     (immutable result-var)   ;; Phase 1 (parse): list of syntax identifiers (always normalised by parse)
-     ;;          Single: #'%b
-     ;;          Multiple: #'(%a %b)
-     ;;          Variadic (future): #'(%a ...)
-     ;;          Dotted (future): #'(%a %b . %rest)
-     ;; Phase 2 (validate): list of syntax identifiers (normalized)
-     ;;          Single becomes: (#'%b)
-     ;;          Multiple becomes: (#'%a #'%b)
-     ;; Normalization: syntax->list converts all forms to uniform list
+     (immutable result-var)   ;; Phase 1 (parse): list of syntax identifiers — always a proper list.
+     ;;   Parse normalises both single and multi-result at construction time:
+     ;;     %out      →  (#'%out)
+     ;;     (%a %b)   →  (#'%a #'%b)
 
      (immutable op-name)      ;; Phase 1 (parse): (cons normalized-string original-stx)
-     ;;          Normalised by parse: symbol/string → (string . stx)
-     ;;          Downstream: (car op-name) for string comparison, (cdr op-name) for source location
+     ;;   Parse accepts string literal or symbol and stores the pair immediately:
+     ;;     "onnx.Cast"  →  ("onnx.Cast" . #'"onnx.Cast")
+     ;;     onnx.Cast    →  ("onnx.Cast" . #'onnx.Cast)
+     ;;   (car op-name)  — string for name comparison in codegen / validate
+     ;;   (cdr op-name)  — original syntax for source-location diagnostics
 
      (immutable operands)     ;; Phase 1 (parse): list of ast-operand records (flattened)
      ;; Phase 3 (analyze): used to generate operand binding actions
@@ -273,9 +273,9 @@
   ;;    ast-operand('required, #'%w),
   ;;    ast-operand('variadic, #'%rest)]
   ;;
-  ;; :optional presence detected at runtime via mlir-operation-num-operands.
-  ;; Ops with AttrSizedOperandSegments need operandSegmentSizes instead
-  ;; (future enhancement; :variadic also parsed but not yet codegen'd).
+  ;; When kind is :optional or :variadic, the matched op must carry an
+  ;; operandSegmentSizes DenseI32ArrayAttr — without it CREST cannot determine
+  ;; group boundaries and the match returns #f.
   ;;
   (define-record-type (ast-operand make-ast-operand ast-operand?)
     (fields
