@@ -281,21 +281,14 @@
     (syntax-case rest-stx (:then-let :rewrite :with)
       ;; Pattern 1: :then-let followed by :rewrite
       [(:then-let ((var expr) ...) :rewrite root :with . rewrite-rest)
-       (identifier? #'root)
+       (and (identifier? #'root)
+            (for-all identifier? (syntax->list #'(var ...))))
        (begin
          (ast-pattern-expand-root-var-set! ast #'root)
          (ast-pattern-expand-then-let-set! ast
-                                           (map (lambda (binding)
-                                                  (syntax-case binding ()
-                                                    [(v e)
-                                                     (identifier? #'v)
-                                                     (make-ast-then-let-binding-expand #'v #'e)]
-                                                    [(v e)
-                                                     (syntax-violation '%%parse-after-match
-                                                                       ":then-let binding variable must be an identifier" #'v)]
-                                                    [_ (syntax-violation '%%parse-after-match
-                                                                         ":then-let binding must have the form (var expr)" binding)]))
-                                                (syntax->list #'((var expr) ...))))
+                                           (map make-ast-then-let-binding-expand
+                                                (syntax->list #'(var ...))
+                                                (syntax->list #'(expr ...))))
          (%%parse-rewrite-ops-recursive #'rewrite-rest '() ast))]
 
       ;; Pattern 2: :rewrite without :then-let
