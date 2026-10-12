@@ -33,11 +33,8 @@
     ;; Cache: root-op-index, root-result-idx, root-op-name for codegen
     (%%validate-and-cache-root-var ast-rec)
 
-    ;; :rewrite :with body is kept as raw syntax and forwarded to begin-mlir-code;
-    ;; structural validation happens at macro-expansion time in the consumer.
-
-    ;; Rule: Where binding variables must be identifiers
-    (%%validate-then-let-bindings ast-rec)
+    ;; :rewrite :with and :then-let bodies are kept as raw syntax;
+    ;; structural validation happens at macro-expansion time in begin-mlir-code.
 
     ast-rec)
 
@@ -176,17 +173,6 @@
                 (when (ast-operation-expand? item)
                   (%%validate-operation item)))
               (ast-block-expand-operations block)))
-
-  ;;-----------------------------------------------------------------------
-  ;; Where binding validation
-  ;;-----------------------------------------------------------------------
-
-  (define (%%validate-then-let-bindings ast-rec)
-    (for-each (lambda (then-let-binding)
-                (unless (identifier? (ast-then-let-binding-expand-var then-let-binding))
-                  (syntax-violation 'validate-ast "Where binding variable must be an identifier"
-                                    (ast-then-let-binding-expand-var then-let-binding))))
-              (ast-pattern-expand-then-let ast-rec)))
 
   ;;-----------------------------------------------------------------------
   ;; Utilities
