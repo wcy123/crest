@@ -7,7 +7,10 @@
 # CREST with RTTI while linking against an RTTI-free LLVM causes missing
 # typeinfo symbols for mlir::Pass, mlir::ConversionPattern, etc.
 if(NOT LLVM_ENABLE_RTTI)
-  add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>)
+  add_compile_options(
+    $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:MSVC>>:/GR->
+    $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-fno-rtti>
+  )
 endif()
 
 if(CREST_WARNINGS_AS_ERRORS)
@@ -18,4 +21,11 @@ if(CREST_WARNINGS_AS_ERRORS)
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wextra>
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Werror>
   )
+endif()
+
+if(MSVC)
+  # scheme_error is [[noreturn]], and LLVM headers contain the same pattern.
+  # MSVC reports both as C4702 under /O2. LLVM suppresses it in
+  # HandleLLVMOptions.cmake; do the same here.
+  add_compile_options(/wd4702)
 endif()

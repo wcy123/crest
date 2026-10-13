@@ -69,7 +69,7 @@ void registerIROperationBindings() {
                        "index out of range: ", index, " (size ",
                        (int64_t)cppOp->getNumOperands(), ")");
         }
-        mlir::Value val = cppOp->getOperand(index);
+        mlir::Value val = cppOp->getOperand(static_cast<unsigned>(index));
         MlirValue cVal = wrap(val);
         return reinterpret_cast<uint64_t>(const_cast<void*>(cVal.ptr));
       });
@@ -86,7 +86,7 @@ void registerIROperationBindings() {
                        "index out of range: ", index, " (size ",
                        (int64_t)cppOp->getNumResults(), ")");
         }
-        mlir::Value val = cppOp->getResult(index);
+        mlir::Value val = cppOp->getResult(static_cast<unsigned>(index));
         MlirValue cVal = wrap(val);
         return reinterpret_cast<uint64_t>(const_cast<void*>(cVal.ptr));
       });
@@ -111,7 +111,8 @@ void registerIROperationBindings() {
                        " (size ", (int64_t)op->getNumOperands(), ")");
         }
         return reinterpret_cast<uint64_t>(
-            const_cast<void*>(op->getOperand(index).getAsOpaquePointer()));
+            const_cast<void*>(
+                op->getOperand(static_cast<unsigned>(index)).getAsOpaquePointer()));
       });
   Sregister_symbol(
       "mlir::OpResult::getOwner",
@@ -127,7 +128,8 @@ void registerIROperationBindings() {
                        (int64_t)op->getNumResults(), ")");
         }
         return reinterpret_cast<uint64_t>(
-            const_cast<void*>(op->getResult(index).getAsOpaquePointer()));
+            const_cast<void*>(
+                op->getResult(static_cast<unsigned>(index)).getAsOpaquePointer()));
       });
   Sregister_symbol(
       "mlir::Operation::getLoc", (void*)+[](uint64_t op_ptr) -> uint64_t {

@@ -50,11 +50,28 @@ target_link_libraries(CrestBindings
     MLIRTransforms
     MLIRDialectUtils
     MLIRTransformUtils
-    ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/libkernel.a
-    ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/lz4/lib/liblz4.a
-    ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/zlib/libz.a
-    ${CMAKE_DL_LIBS}
-    m
-    pthread
-    ncurses
+    ${CHEZ_KERNEL_LIB}
+    ${CHEZ_ZLIB_LIB}
+    ${CHEZ_LZ4_LIB}
 )
+
+if(WIN32)
+  # build.bat /exe compiles the kernel with /DSCHEME_STATIC. The same
+  # macro must be set here so scheme.h does not dllimport those symbols.
+  target_compile_definitions(CrestBindings PUBLIC SCHEME_STATIC)
+  target_link_libraries(CrestBindings
+    PUBLIC
+      rpcrt4
+      ole32
+      advapi32
+      user32
+  )
+else()
+  target_link_libraries(CrestBindings
+    PUBLIC
+      ${CMAKE_DL_LIBS}
+      m
+      pthread
+      ncurses
+  )
+endif()

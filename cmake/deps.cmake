@@ -51,27 +51,82 @@ endif()
 set(ChezScheme_SOURCE_DIR "${chezscheme_SOURCE_DIR}" CACHE INTERNAL "")
 set(ChezScheme_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/ChezScheme-build" CACHE INTERNAL "")
 
+# csvNNN.lib uses the first three scheme-version bytes from s/cmacros.ss.
+# #x0a040100 is Chez 10.4.1, and the import/static library is csv1041.lib.
+file(READ "${ChezScheme_SOURCE_DIR}/s/cmacros.ss" _crest_chez_cmacros)
+string(REGEX MATCH "scheme-version #x([0-9A-Fa-f][0-9A-Fa-f])([0-9A-Fa-f][0-9A-Fa-f])([0-9A-Fa-f][0-9A-Fa-f])"
+  _crest_chez_ver "${_crest_chez_cmacros}")
+if(NOT _crest_chez_ver)
+  message(FATAL_ERROR "CREST: could not read scheme-version from Chez Scheme s/cmacros.ss")
+endif()
+math(EXPR _crest_chez_major "0x${CMAKE_MATCH_1}")
+math(EXPR _crest_chez_minor "0x${CMAKE_MATCH_2}")
+math(EXPR _crest_chez_patch "0x${CMAKE_MATCH_3}")
+set(CHEZ_DLL_VER "${_crest_chez_major}${_crest_chez_minor}${_crest_chez_patch}" CACHE INTERNAL "")
+
 # ─── ChezScheme: build ────────────────────────────────────────────────────────
-ExternalProject_Add(ChezScheme
-  SOURCE_DIR ${ChezScheme_SOURCE_DIR}
-  BINARY_DIR ${ChezScheme_BINARY_DIR}
-  CONFIGURE_COMMAND
-    ${CMAKE_COMMAND} -E chdir <BINARY_DIR>
-      ${ChezScheme_SOURCE_DIR}/configure
-      --threads
-      --disable-x11
-      --machine=${CHEZ_MACHINE}
-      CC=${CHEZ_CC}
-  BUILD_COMMAND
-    ${CMAKE_COMMAND} -E chdir <BINARY_DIR> make -j8
-  INSTALL_COMMAND ""
-  BUILD_BYPRODUCTS
-    <BINARY_DIR>/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/petite.boot
-    <BINARY_DIR>/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/scheme.boot
-    <BINARY_DIR>/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/libkernel.a
-    <BINARY_DIR>/${CHEZ_MACHINE}/lz4/lib/liblz4.a
-    <BINARY_DIR>/${CHEZ_MACHINE}/zlib/libz.a
-)
+# Windows uses Chez's MSVC build.bat (machine ta6nt). /exe asks for a static
+# kernel. /MT matches LLVM's CMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded, which
+# this tree's LLVMConfig.cmake applies to every consumer. Unix keeps
+# configure + make.
+if(WIN32)
+  set(CHEZ_KERNEL_LIB
+    "${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/csv${CHEZ_DLL_VER}.lib"
+    CACHE INTERNAL "" FORCE)
+  set(CHEZ_ZLIB_LIB
+    "${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/zlibmts/zlib.lib"
+    CACHE INTERNAL "" FORCE)
+  set(CHEZ_LZ4_LIB
+    "${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/lz4mts/lib/liblz4.lib"
+    CACHE INTERNAL "" FORCE)
+  # build.bat creates the ta6nt workarea in the current directory. The build
+  # step already runs in BINARY_DIR. cmd /c is required because CreateProcess
+  # cannot launch a .bat file.
+  ExternalProject_Add(ChezScheme
+    SOURCE_DIR ${ChezScheme_SOURCE_DIR}
+    BINARY_DIR ${ChezScheme_BINARY_DIR}
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ${CMAKE_COMMAND} -E chdir <BINARY_DIR>
+      cmd /c ${ChezScheme_SOURCE_DIR}/build.bat ${CHEZ_MACHINE} /exe /MT /only
+    INSTALL_COMMAND ""
+    BUILD_BYPRODUCTS
+      ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/petite.boot
+      ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/scheme.boot
+      ${CHEZ_KERNEL_LIB}
+      ${CHEZ_ZLIB_LIB}
+      ${CHEZ_LZ4_LIB}
+  )
+else()
+  set(CHEZ_KERNEL_LIB
+    "${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/libkernel.a"
+    CACHE INTERNAL "")
+  set(CHEZ_ZLIB_LIB
+    "${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/zlib/libz.a"
+    CACHE INTERNAL "")
+  set(CHEZ_LZ4_LIB
+    "${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/lz4/lib/liblz4.a"
+    CACHE INTERNAL "")
+  ExternalProject_Add(ChezScheme
+    SOURCE_DIR ${ChezScheme_SOURCE_DIR}
+    BINARY_DIR ${ChezScheme_BINARY_DIR}
+    CONFIGURE_COMMAND
+      ${CMAKE_COMMAND} -E chdir <BINARY_DIR>
+        ${ChezScheme_SOURCE_DIR}/configure
+        --threads
+        --disable-x11
+        --machine=${CHEZ_MACHINE}
+        CC=${CHEZ_CC}
+    BUILD_COMMAND
+      ${CMAKE_COMMAND} -E chdir <BINARY_DIR> make -j8
+    INSTALL_COMMAND ""
+    BUILD_BYPRODUCTS
+      <BINARY_DIR>/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/petite.boot
+      <BINARY_DIR>/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/scheme.boot
+      <BINARY_DIR>/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/libkernel.a
+      <BINARY_DIR>/${CHEZ_MACHINE}/lz4/lib/liblz4.a
+      <BINARY_DIR>/${CHEZ_MACHINE}/zlib/libz.a
+  )
+endif()
 
 # ─── ChezScheme: embed .boot files as C byte-array headers ───────────────────
 set(ChezBootHeaders_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/ChezBootHeaders" CACHE INTERNAL "")
