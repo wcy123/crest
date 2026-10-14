@@ -21,7 +21,8 @@
 
 extern "C" {
 // scheme.h is generated into the Chez workarea. The directory is the
-// machine type selected in cmake/deps.cmake (ta6nt on Windows, ta6le elsewhere).
+// machine type selected in cmake/deps.cmake (ta6nt on Windows, ta6le
+// elsewhere).
 #if defined(_WIN32)
 #  include "boot/ta6nt/scheme.h"
 #else

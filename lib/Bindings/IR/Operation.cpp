@@ -110,9 +110,8 @@ void registerIROperationBindings() {
           scheme_error("mlir::OpOperand::get", "index out of range: ", index,
                        " (size ", (int64_t)op->getNumOperands(), ")");
         }
-        return reinterpret_cast<uint64_t>(
-            const_cast<void*>(
-                op->getOperand(static_cast<unsigned>(index)).getAsOpaquePointer()));
+        return reinterpret_cast<uint64_t>(const_cast<void*>(
+            op->getOperand(static_cast<unsigned>(index)).getAsOpaquePointer()));
       });
   Sregister_symbol(
       "mlir::OpResult::getOwner",
@@ -127,9 +126,8 @@ void registerIROperationBindings() {
                        "index out of range: ", index, " (size ",
                        (int64_t)op->getNumResults(), ")");
         }
-        return reinterpret_cast<uint64_t>(
-            const_cast<void*>(
-                op->getResult(static_cast<unsigned>(index)).getAsOpaquePointer()));
+        return reinterpret_cast<uint64_t>(const_cast<void*>(
+            op->getResult(static_cast<unsigned>(index)).getAsOpaquePointer()));
       });
   Sregister_symbol(
       "mlir::Operation::getLoc", (void*)+[](uint64_t op_ptr) -> uint64_t {
