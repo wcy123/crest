@@ -97,7 +97,7 @@ void registerIRBuiltinTypesBindings() {
         }
         ptr list = Snil;
         for (int i = static_cast<int>(t.getShape().size()) - 1; i >= 0; --i) {
-          list = Scons(Sinteger(t.getShape()[i]), list);
+          list = Scons(Sinteger(t.getShape()[static_cast<size_t>(i)]), list);
         }
         return list;
       });

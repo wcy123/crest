@@ -151,7 +151,8 @@ void registerIRBuiltinAttributesBindings() {
         iptr klen = Sstring_length(skey);
         std::string key_str(static_cast<size_t>(klen), '\0');
         for (iptr i = 0; i < klen; ++i) {
-          key_str[i] = static_cast<char>(Sstring_ref(skey, i));
+          key_str[static_cast<size_t>(i)] =
+              static_cast<char>(Sstring_ref(skey, i));
         }
         int64_t data_addr = Sinteger64_value(Scar(Scdr(Scdr(value))));
         int64_t data_size = Sinteger64_value(Scar(Scdr(Scdr(Scdr(value)))));
@@ -319,8 +320,8 @@ void registerIRBuiltinAttributesBindings() {
           scheme_error("mlir::DenseI64ArrayAttr::intoArrayRef",
                        "attribute is not a DenseI64ArrayAttr");
         }
-        return reinterpret_cast<uint64_t>(
-            new CArrayRef<int64_t>(arr.asArrayRef().data(), arr.size()));
+        return reinterpret_cast<uint64_t>(new CArrayRef<int64_t>(
+            arr.asArrayRef().data(), static_cast<size_t>(arr.size())));
       });
 
   Sregister_symbol(
@@ -337,8 +338,8 @@ void registerIRBuiltinAttributesBindings() {
           scheme_error("mlir::DenseI32ArrayAttr::intoArrayRef",
                        "attribute is not a DenseI32ArrayAttr");
         }
-        return reinterpret_cast<uint64_t>(
-            new CArrayRef<int32_t>(arr.asArrayRef().data(), arr.size()));
+        return reinterpret_cast<uint64_t>(new CArrayRef<int32_t>(
+            arr.asArrayRef().data(), static_cast<size_t>(arr.size())));
       });
 
   Sregister_symbol(
@@ -399,7 +400,7 @@ void registerIRBuiltinAttributesBindings() {
         auto vals = arr.asArrayRef();
         ptr v = Smake_vector(static_cast<iptr>(vals.size()), Sfixnum(0));
         for (iptr i = 0; i < static_cast<iptr>(vals.size()); ++i) {
-          Svector_set(v, i, Sfixnum(vals[i]));
+          Svector_set(v, i, Sfixnum(vals[static_cast<size_t>(i)]));
         }
         return v;
       });
@@ -420,7 +421,7 @@ void registerIRBuiltinAttributesBindings() {
         auto vals = arr.asArrayRef();
         ptr v = Smake_vector(static_cast<iptr>(vals.size()), Sfixnum(0));
         for (iptr i = 0; i < static_cast<iptr>(vals.size()); ++i) {
-          Svector_set(v, i, Sinteger(vals[i]));
+          Svector_set(v, i, Sinteger(vals[static_cast<size_t>(i)]));
         }
         return v;
       });
