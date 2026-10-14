@@ -19,13 +19,15 @@ if(CREST_WARNINGS_AS_ERRORS)
     $<$<CXX_COMPILER_ID:MSVC>:/WX>
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall>
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wextra>
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wconversion>
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Werror>
   )
 endif()
 
 if(MSVC)
-  # scheme_error is [[noreturn]], and LLVM headers contain the same pattern.
-  # MSVC reports both as C4702 under /O2. LLVM suppresses it in
-  # HandleLLVMOptions.cmake; do the same here.
+  # LLVM headers (e.g. llvm/Support/Error.h) trigger C4702 under /O2 because
+  # MSVC cannot prove that [[noreturn]] callsites are unreachable. scheme_error
+  # has the same issue. We cannot modify LLVM headers, so global suppression is
+  # required — matching what LLVM itself does in HandleLLVMOptions.cmake.
   add_compile_options(/wd4702)
 endif()
