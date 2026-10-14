@@ -127,7 +127,7 @@ jobs:
             -DCMAKE_PREFIX_PATH=C:\Develop\local ^
             -DMLIR_DIR=C:\Develop\local\llvm-22-mlir\lib\cmake\mlir ^
             -DLLVM_DIR=C:\Develop\local\llvm-22-mlir\lib\cmake\llvm ^
-            -DLLVM_EXTERNAL_LIT=C:\Program Files\Python312\Scripts\lit.exe
+            -DLLVM_EXTERNAL_LIT=C:\ProgramData\miniconda3\Scripts\lit.exe
 
       # ── Build ────────────────────────────────────────────────────────────────
       - name: Build
