@@ -125,7 +125,7 @@ jobs:
             -DCMAKE_PREFIX_PATH=C:\Develop\local ^
             -DMLIR_DIR=C:\Develop\local\llvm-22-mlir\lib\cmake\mlir ^
             -DLLVM_DIR=C:\Develop\local\llvm-22-mlir\lib\cmake\llvm ^
-            -DLLVM_EXTERNAL_LIT=C:\Develop\local\llvm-22-mlir\bin\lit.py
+            -DLLVM_EXTERNAL_LIT=C:\Program Files\Python312\Scripts\lit.exe
 
       # ── Build ────────────────────────────────────────────────────────────────
       - name: Build
@@ -144,6 +144,8 @@ jobs:
 
       - name: Lit tests
         shell: cmd
+        env:
+          CREST_PATH: ${{ github.workspace }}/samples
         run: |
           call C:\msvsn2022\VC\Auxiliary\Build\vcvars64.bat
           cmake --build build --target check-crest
