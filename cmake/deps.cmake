@@ -51,18 +51,8 @@ endif()
 set(ChezScheme_SOURCE_DIR "${chezscheme_SOURCE_DIR}" CACHE INTERNAL "")
 set(ChezScheme_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/ChezScheme-build" CACHE INTERNAL "")
 
-# csvNNN.lib uses the first three scheme-version bytes from s/cmacros.ss.
-# #x0a040100 is Chez 10.4.1, and the import/static library is csv1041.lib.
-file(READ "${ChezScheme_SOURCE_DIR}/s/cmacros.ss" _crest_chez_cmacros)
-string(REGEX MATCH "scheme-version #x([0-9A-Fa-f][0-9A-Fa-f])([0-9A-Fa-f][0-9A-Fa-f])([0-9A-Fa-f][0-9A-Fa-f])"
-  _crest_chez_ver "${_crest_chez_cmacros}")
-if(NOT _crest_chez_ver)
-  message(FATAL_ERROR "CREST: could not read scheme-version from Chez Scheme s/cmacros.ss")
-endif()
-math(EXPR _crest_chez_major "0x${CMAKE_MATCH_1}")
-math(EXPR _crest_chez_minor "0x${CMAKE_MATCH_2}")
-math(EXPR _crest_chez_patch "0x${CMAKE_MATCH_3}")
-set(CHEZ_DLL_VER "${_crest_chez_major}${_crest_chez_minor}${_crest_chez_patch}" CACHE INTERNAL "")
+# Chez Scheme 10.4.1 pinned at GIT_TAG e95a7ef. Update when bumping GIT_TAG.
+set(CHEZ_DLL_VER "1041" CACHE INTERNAL "")
 
 # ─── ChezScheme: build ────────────────────────────────────────────────────────
 # Windows uses Chez's MSVC build.bat (machine ta6nt). /exe asks for a static
