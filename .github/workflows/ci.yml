@@ -13,15 +13,14 @@ env:
   CREST_PATH: ${{ github.workspace }}/samples
 
 jobs:
-  build-and-test:
-    name: Build and Test (LLVM 22)
+  linux:
+    name: Build and Test — Linux (LLVM 22)
     runs-on: ubuntu-22.04
 
     steps:
       # ── Checkout ────────────────────────────────────────────────────────────
       - name: Checkout
         uses: actions/checkout@v4
-
 
       # ── LLVM / MLIR (pre-built) ──────────────────────────────────────────────
       - name: Install LLVM/MLIR from apt.llvm.org
@@ -49,7 +48,7 @@ jobs:
       - name: Install Python build tools
         run: pip install cmake ninja lit
 
-      # ── sccache (speeds up incremental crest rebuilds on re-runs) ───────────
+      # ── sccache ─────────────────────────────────────────────────────────────
       - name: Set sccache environment
         run: |
           echo "SCCACHE_DIR=${{ runner.workspace }}/sccache-dir" >> $GITHUB_ENV
@@ -82,7 +81,6 @@ jobs:
       - name: Build
         run: cmake --build build --parallel $(nproc)
 
-      # ── Save sccache ─────────────────────────────────────────────────────────
       - name: Save sccache cache
         uses: actions/cache/save@v4
         if: always()
@@ -90,21 +88,68 @@ jobs:
           path: ${{ runner.workspace }}/sccache-dir
           key: sccache-linux-${{ env.SCCACHE_KEY_DATE }}
 
-      # ── Unit tests (GoogleTest) ───────────────────────────────────────────────
+      # ── Tests ────────────────────────────────────────────────────────────────
       - name: Unit tests
         run: |
           cmake --build build --target CrestInterpreterTests
           ./build/unittests/Interpreter/CrestInterpreterTests \
             --gtest_output=xml:build/test-results/unit-tests.xml
 
-      # ── Integration tests (lit + FileCheck) ───────────────────────────────────
       - name: Lit tests
         run: cmake --build build --target check-crest
 
-      # ── Upload test results ───────────────────────────────────────────────────
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: test-results-linux
+          path: build/test-results/
+
+  windows:
+    name: Build and Test — Windows (LLVM 22, self-hosted)
+    runs-on: [self-hosted, Windows, X64, msvc]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Configure (VS 2022 + pre-built LLVM/MLIR at C:\Develop\local\llvm-22-mlir) ──
+      - name: Configure
+        shell: cmd
+        run: |
+          call C:\msvsn2022\VC\Auxiliary\Build\vcvars64.bat
+          cmake -B build -G Ninja ^
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo ^
+            -DCMAKE_C_COMPILER=cl ^
+            -DCMAKE_CXX_COMPILER=cl ^
+            -DMLIR_DIR=C:\Develop\local\llvm-22-mlir\lib\cmake\mlir ^
+            -DLLVM_DIR=C:\Develop\local\llvm-22-mlir\lib\cmake\llvm ^
+            -DLLVM_EXTERNAL_LIT=C:\Develop\local\llvm-22-mlir\bin\lit.py
+
+      # ── Build ────────────────────────────────────────────────────────────────
+      - name: Build
+        shell: cmd
+        run: |
+          call C:\msvsn2022\VC\Auxiliary\Build\vcvars64.bat
+          cmake --build build --parallel 60
+
+      # ── Tests ────────────────────────────────────────────────────────────────
+      - name: Unit tests
+        shell: cmd
+        run: |
+          cmake --build build --target CrestInterpreterTests
+          build\unittests\Interpreter\CrestInterpreterTests.exe ^
+            --gtest_output=xml:build/test-results/unit-tests.xml
+
+      - name: Lit tests
+        shell: cmd
+        run: |
+          call C:\msvsn2022\VC\Auxiliary\Build\vcvars64.bat
+          cmake --build build --target check-crest
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-windows
           path: build/test-results/
