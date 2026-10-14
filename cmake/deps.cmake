@@ -52,25 +52,44 @@ set(ChezScheme_SOURCE_DIR "${chezscheme_SOURCE_DIR}" CACHE INTERNAL "")
 set(ChezScheme_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/ChezScheme-build" CACHE INTERNAL "")
 
 # ─── ChezScheme: build ────────────────────────────────────────────────────────
-ExternalProject_Add(ChezScheme
-  SOURCE_DIR ${ChezScheme_SOURCE_DIR}
-  BINARY_DIR ${ChezScheme_BINARY_DIR}
-  CONFIGURE_COMMAND
+# Windows uses Chez's MSVC build.bat (machine ta6nt). /exe asks for a static
+# kernel. /MT matches LLVM's CMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded, which
+# this tree's LLVMConfig.cmake applies to every consumer. Unix keeps
+# configure + make.
+if(WIN32)
+  # csv1041.lib = Chez Scheme 10.4.1, pinned at GIT_TAG e95a7ef. Update when bumping GIT_TAG.
+  set(CHEZ_KERNEL_LIB "${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/csv1041.lib" CACHE INTERNAL "" FORCE)
+  set(CHEZ_ZLIB_LIB   "${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/zlibmts/zlib.lib"                 CACHE INTERNAL "" FORCE)
+  set(CHEZ_LZ4_LIB    "${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/lz4mts/lib/liblz4.lib"            CACHE INTERNAL "" FORCE)
+  # cmd /c is required because CreateProcess cannot launch a .bat file directly.
+  set(_chez_configure "")
+  set(_chez_build
+    ${CMAKE_COMMAND} -E chdir <BINARY_DIR>
+      cmd /c ${ChezScheme_SOURCE_DIR}/build.bat ${CHEZ_MACHINE} /exe /MT /only)
+else()
+  set(CHEZ_KERNEL_LIB "${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/libkernel.a" CACHE INTERNAL "")
+  set(CHEZ_ZLIB_LIB   "${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/zlib/libz.a"                      CACHE INTERNAL "")
+  set(CHEZ_LZ4_LIB    "${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/lz4/lib/liblz4.a"                 CACHE INTERNAL "")
+  set(_chez_configure
     ${CMAKE_COMMAND} -E chdir <BINARY_DIR>
       ${ChezScheme_SOURCE_DIR}/configure
-      --threads
-      --disable-x11
-      --machine=${CHEZ_MACHINE}
-      CC=${CHEZ_CC}
-  BUILD_COMMAND
-    ${CMAKE_COMMAND} -E chdir <BINARY_DIR> make -j8
-  INSTALL_COMMAND ""
+        --threads --disable-x11 --machine=${CHEZ_MACHINE} CC=${CHEZ_CC})
+  set(_chez_build
+    ${CMAKE_COMMAND} -E chdir <BINARY_DIR> make -j8)
+endif()
+
+ExternalProject_Add(ChezScheme
+  SOURCE_DIR        ${ChezScheme_SOURCE_DIR}
+  BINARY_DIR        ${ChezScheme_BINARY_DIR}
+  CONFIGURE_COMMAND ${_chez_configure}
+  BUILD_COMMAND     ${_chez_build}
+  INSTALL_COMMAND   ""
   BUILD_BYPRODUCTS
-    <BINARY_DIR>/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/petite.boot
-    <BINARY_DIR>/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/scheme.boot
-    <BINARY_DIR>/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/libkernel.a
-    <BINARY_DIR>/${CHEZ_MACHINE}/lz4/lib/liblz4.a
-    <BINARY_DIR>/${CHEZ_MACHINE}/zlib/libz.a
+    ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/petite.boot
+    ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/scheme.boot
+    ${CHEZ_KERNEL_LIB}
+    ${CHEZ_ZLIB_LIB}
+    ${CHEZ_LZ4_LIB}
 )
 
 # ─── ChezScheme: embed .boot files as C byte-array headers ───────────────────
