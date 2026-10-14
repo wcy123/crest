@@ -1,17 +1,11 @@
 ##
 # CREST GoogleTest unit tests
 #
-# Uses system GTest (libgtest-dev) on Linux or a user-provided GTest on
-# Windows.  When GTest is not found the unit-test tree is skipped silently
-# so that the Windows self-hosted runner (which has no GTest installed)
-# does not fail cmake configure.
+# Uses system GTest (libgtest-dev) on Linux or the GTest installed at
+# C:\Develop\local on the Windows self-hosted runner.
 ##
 
-find_package(GTest QUIET)
-if(NOT GTest_FOUND)
-  message(STATUS "CREST: GTest not found — skipping unittests")
-  return()
-endif()
+find_package(GTest REQUIRED)
 
 # add_crest_unittest: build a GoogleTest binary linked against system GTest.
 function(add_crest_unittest test_name)

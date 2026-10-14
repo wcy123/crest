@@ -153,3 +153,53 @@ jobs:
         with:
           name: test-results-windows
           path: build/test-results/
+
+  windows:
+    name: Build and Test — Windows (LLVM 22, self-hosted)
+    runs-on: [self-hosted, Windows, X64, msvc]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Configure (VS 2022 + pre-built LLVM/MLIR at C:\Develop\local\llvm-22-mlir) ──
+      - name: Configure
+        shell: cmd
+        run: |
+          call C:\msvsn2022\VC\Auxiliary\Build\vcvars64.bat
+          cmake -B build -G Ninja ^
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo ^
+            -DCMAKE_C_COMPILER=cl ^
+            -DCMAKE_CXX_COMPILER=cl ^
+            -DCMAKE_PREFIX_PATH=C:\Develop\local ^
+            -DMLIR_DIR=C:\Develop\local\llvm-22-mlir\lib\cmake\mlir ^
+            -DLLVM_DIR=C:\Develop\local\llvm-22-mlir\lib\cmake\llvm ^
+            -DLLVM_EXTERNAL_LIT=C:\Develop\local\llvm-22-mlir\bin\lit.py
+
+      # ── Build ────────────────────────────────────────────────────────────────
+      - name: Build
+        shell: cmd
+        run: |
+          call C:\msvsn2022\VC\Auxiliary\Build\vcvars64.bat
+          cmake --build build --parallel 60
+
+      # ── Tests ────────────────────────────────────────────────────────────────
+      - name: Unit tests
+        shell: cmd
+        run: |
+          cmake --build build --target CrestInterpreterTests
+          build\unittests\Interpreter\CrestInterpreterTests.exe ^
+            --gtest_output=xml:build/test-results/unit-tests.xml
+
+      - name: Lit tests
+        shell: cmd
+        run: |
+          call C:\msvsn2022\VC\Auxiliary\Build\vcvars64.bat
+          cmake --build build --target check-crest
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-windows
+          path: build/test-results/
