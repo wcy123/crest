@@ -18,6 +18,7 @@ Three macros form the public surface:
 | `begin-mlir-code` | Inline op emission DSL — used inside the above |
 
 **[Getting started →](docs/getting-started.md)** — build instructions, prerequisites, deployment.
+**[Manual →](docs/manual.md)** — pattern DSL reference, pass authoring, debugging, bindings.
 
 ---
 

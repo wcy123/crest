@@ -7,9 +7,9 @@ module {
     %4 = "hip.constant"() {value = dense<1.250000e-01> : tensor<f32>} : () -> tensor<f32>
     %5 = "hip.constant"() {value = dense<7> : tensor<i8>} : () -> tensor<i8>
     %6 = tensor.empty() : tensor<1x128x32xf32>
-    %7 = "hip.dequantize_linear"(%arg0, %arg1, %0, %1, %6) {axis = 1 : i64, block_size = 0 : i64} : (!hip.context, tensor<1x128x32xi8>, tensor<f32>, tensor<i8>, tensor<1x128x32xf32>) -> tensor<1x128x32xf32>
+    %7 = "hip.dequantize_linear"(%arg0, %arg1, %0, %1, %6) {axis = 1 : i64, block_size = 0 : i64, operandSegmentSizes = array<i32: 1, 1, 1, 1, 1>} : (!hip.context, tensor<1x128x32xi8>, tensor<f32>, tensor<i8>, tensor<1x128x32xf32>) -> tensor<1x128x32xf32>
     %8 = tensor.empty() : tensor<1x128x32xf32>
-    %9 = "hip.dequantize_linear"(%arg0, %arg2, %2, %3, %8) {axis = 1 : i64, block_size = 0 : i64} : (!hip.context, tensor<1x128x32xi8>, tensor<f32>, tensor<i8>, tensor<1x128x32xf32>) -> tensor<1x128x32xf32>
+    %9 = "hip.dequantize_linear"(%arg0, %arg2, %2, %3, %8) {axis = 1 : i64, block_size = 0 : i64, operandSegmentSizes = array<i32: 1, 1, 1, 1, 1>} : (!hip.context, tensor<1x128x32xi8>, tensor<f32>, tensor<i8>, tensor<1x128x32xf32>) -> tensor<1x128x32xf32>
     %10 = tensor.empty() : tensor<1x128x32xf32>
     %11 = "hip.add"(%arg0, %7, %9, %10) : (!hip.context, tensor<1x128x32xf32>, tensor<1x128x32xf32>, tensor<1x128x32xf32>) -> tensor<1x128x32xf32>
     %12 = tensor.empty() : tensor<1x128x32xi8>
