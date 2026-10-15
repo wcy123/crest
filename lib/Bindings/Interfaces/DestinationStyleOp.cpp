@@ -45,7 +45,8 @@ void registerInterfacesDpsBindings() {
                        "index out of range");
         }
         return reinterpret_cast<uint64_t>(
-            dpsOp.getDpsInits()[static_cast<size_t>(index)].getAsOpaquePointer());
+            dpsOp.getDpsInits()[static_cast<size_t>(index)]
+                .getAsOpaquePointer());
       });
 }
 
