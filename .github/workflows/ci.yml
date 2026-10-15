@@ -64,6 +64,19 @@ jobs:
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.9
 
+      # ── Cache ChezScheme build ───────────────────────────────────────────────
+      # Key on deps.cmake so cache invalidates when GIT_TAG or build flags change.
+      # Caches source, compiled artifacts, and ExternalProject stamps so cmake
+      # skips the ~4 min ChezScheme configure+build on subsequent runs.
+      - name: Cache ChezScheme
+        uses: actions/cache@v4
+        with:
+          path: |
+            build/_deps/chezscheme-src
+            build/ChezScheme-build
+            build/ChezScheme-prefix/src/ChezScheme-stamp
+          key: chezscheme-linux-${{ hashFiles('cmake/deps.cmake') }}
+
       # ── Configure ───────────────────────────────────────────────────────────
       - name: Configure
         run: |
@@ -73,6 +86,7 @@ jobs:
             -DCMAKE_CXX_COMPILER=clang++-22 \
             -DCMAKE_C_COMPILER_LAUNCHER=sccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
+            -DFETCHCONTENT_UPDATES_DISCONNECTED=ON \
             -DMLIR_DIR=/usr/lib/llvm-22/lib/cmake/mlir \
             -DLLVM_DIR=/usr/lib/llvm-22/lib/cmake/llvm \
             -DLLVM_EXTERNAL_LIT="$(which lit)"
@@ -125,13 +139,18 @@ jobs:
           git config --global --add safe.directory C:/Develop/crest-deps/chezscheme-src
           call C:\msvsn2022\VC\Auxiliary\Build\vcvars64.bat
           cmake -B build -G Ninja ^
-            rem Keep FetchContent source + ChezScheme build outside build\ so they
-            rem survive the rmdir above. ChezScheme takes ~5 min to compile; caching
-            rem it in C:\Develop\crest-deps\chezscheme-build saves that on every run
-            rem after the first. FETCHCONTENT_BASE_DIR caches the cloned source.
+            rem Keep FetchContent source + ChezScheme build/stamps outside build\
+            rem so they survive the rmdir above. ChezScheme takes ~5 min to compile;
+            rem caching it in C:\Develop\crest-deps saves that on every run after
+            rem the first. FETCHCONTENT_UPDATES_DISCONNECTED skips the git update.
             -DFETCHCONTENT_BASE_DIR=C:\Develop\crest-deps ^
+            -DFETCHCONTENT_UPDATES_DISCONNECTED=ON ^
             -DCHEZ_BUILD_DIR=C:\Develop\crest-deps\chezscheme-build ^
-            -DCMAKE_BUILD_TYPE=RelWithDebInfo ^
+            rem Release: no /Zi so no shared .pdb, eliminates C1041/C1090
+            rem PDB write contention when sccache runs cl.exe in parallel.
+            rem CMP0141+Embedded was tried but LLVM's LLVMConfig.cmake overrides
+            rem CMAKE_CXX_FLAGS_RELWITHDEBINFO and re-injects /Zi after the fact.
+            -DCMAKE_BUILD_TYPE=Release ^
             -DCMAKE_C_COMPILER=cl ^
             -DCMAKE_CXX_COMPILER=cl ^
             rem sccache caches CREST C++ compilation across runs.

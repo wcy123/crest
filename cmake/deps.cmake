@@ -49,13 +49,17 @@ if(NOT chezscheme_POPULATED)
   FetchContent_Populate(ChezScheme)
 endif()
 set(ChezScheme_SOURCE_DIR "${chezscheme_SOURCE_DIR}" CACHE INTERNAL "")
-# On Windows, allow the build dir to be redirected outside the cmake build tree
-# so it survives incremental CI runs (the build tree is wiped between runs).
-# Set -DCHEZ_BUILD_DIR=C:/Develop/crest-deps/chezscheme-build in CI.
-if(WIN32 AND DEFINED CHEZ_BUILD_DIR)
+# CHEZ_BUILD_DIR: redirect the ChezScheme build tree outside CMAKE_BINARY_DIR
+# so compiled artifacts survive a cmake clean / rmdir build between CI runs.
+# Windows CI sets -DCHEZ_BUILD_DIR=C:/Develop/crest-deps/chezscheme-build.
+# Linux CI uses actions/cache to restore the default in-tree location.
+if(DEFINED CHEZ_BUILD_DIR)
   set(ChezScheme_BINARY_DIR "${CHEZ_BUILD_DIR}" CACHE INTERNAL "" FORCE)
+  # Keep ExternalProject stamps alongside the build dir so they also survive.
+  set(_chez_stamp_dir "${CHEZ_BUILD_DIR}/../chezscheme-stamp")
 else()
   set(ChezScheme_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/ChezScheme-build" CACHE INTERNAL "")
+  set(_chez_stamp_dir "${CMAKE_CURRENT_BINARY_DIR}/ChezScheme-prefix/src/ChezScheme-stamp")
 endif()
 
 # ─── ChezScheme: build ────────────────────────────────────────────────────────
@@ -91,6 +95,7 @@ endif()
 ExternalProject_Add(ChezScheme
   SOURCE_DIR        ${ChezScheme_SOURCE_DIR}
   BINARY_DIR        ${ChezScheme_BINARY_DIR}
+  STAMP_DIR         ${_chez_stamp_dir}
   CONFIGURE_COMMAND ${_chez_configure}
   BUILD_COMMAND     ${_chez_build}
   INSTALL_COMMAND   ""
