@@ -270,8 +270,8 @@
       (syntax-case operand-stx (:optional :variadic)
         ;; Optional group: (:optional %y %z) → flatten to multiple optional operands
         ;; %_ is allowed and freshened so multiple (:optional %_) never collide.
-        [(:optional var ...)
-         (let ([vars (syntax->list #'(var ...))])
+        [(:optional var1 var ...)
+         (let ([vars (syntax->list #'(var1 var ...))])
            (for-each check-identifier vars)
            (map (lambda (v) (make-ast-operand ':optional (freshen v))) vars))]
 
@@ -279,10 +279,8 @@
         ;; Each variable corresponds to one variadic group in operandSegmentSizes
         ;; and is bound to a list of that group's values.
         ;; (:variadic %_) is allowed: match any number of values, bind none.
-        [(:variadic var ...)
-         (let ([vars (syntax->list #'(var ...))])
-           (when (null? vars)
-             (syntax-violation '%%parse-operands "(:variadic) requires at least one variable" operand-stx))
+        [(:variadic var1 var ...)
+         (let ([vars (syntax->list #'(var1 var ...))])
            (for-each check-identifier vars)
            (map (lambda (v) (make-ast-operand ':variadic (freshen v))) vars))]
 
