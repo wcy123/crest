@@ -152,12 +152,11 @@ registered on (via `add-rewrite-pattern`) and what the rewriter replaces.
 %dq = hip.dequantize_linear (%ctx %x %scale (:optional %zp) %init)
 ```
 
-Requires an `operandSegmentSizes` attribute on the op. If the attribute is
-absent, `operation-get-operands` returns `#f` and the pattern silently fails
-to match — the most common reason a pattern with `:optional` or `:variadic`
-never fires despite the op name matching. When the operand is present,
-`%zp` is bound to its value; when absent, `%zp` is bound to the absent
-sentinel. Test with `unbound-value?`:
+Requires an `operandSegmentSizes` attribute on the op. If absent, the pattern
+silently fails to match — the most common reason a pattern with `:optional`
+or `:variadic` never fires despite the op name matching. When the operand is
+present, `%zp` is bound to its value; when absent, `%zp` is bound to the
+absent sentinel. Test with `unbound-value?`:
 
 ```scheme
 :then-let ([zp (if (unbound-value? %zp) 0 (extract-zp %zp))])
