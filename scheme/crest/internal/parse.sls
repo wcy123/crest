@@ -264,6 +264,8 @@
   ;; - All identifiers start with % (semantic rule)
   ;;
   (define (%%parse-operands operands-stx)
+    ;; Freshen a single identifier: replace %_ with a fresh unique name, pass others through.
+    (define (freshen v) (if (%%wildcard? v) (%%fresh-wildcard v) v))
     (define (parse-one operand-stx)
       (syntax-case operand-stx (:optional :variadic)
         ;; Optional group: (:optional %y %z) → flatten to multiple optional operands
@@ -271,10 +273,7 @@
         [(:optional var ...)
          (let ([vars (syntax->list #'(var ...))])
            (for-each check-identifier vars)
-           (map (lambda (v)
-                  (make-ast-operand ':optional
-                                    (if (%%wildcard? v) (%%fresh-wildcard v) v)))
-                vars))]
+           (map (lambda (v) (make-ast-operand ':optional (freshen v))) vars))]
 
         ;; Variadic group: (:variadic %a %b ...) → one variadic operand per variable.
         ;; Each variable corresponds to one variadic group in operandSegmentSizes
@@ -285,10 +284,7 @@
            (when (null? vars)
              (syntax-violation '%%parse-operands "(:variadic) requires at least one variable" operand-stx))
            (for-each check-identifier vars)
-           (map (lambda (v)
-                  (make-ast-operand ':variadic
-                                    (if (%%wildcard? v) (%%fresh-wildcard v) v)))
-                vars))]
+           (map (lambda (v) (make-ast-operand ':variadic (freshen v))) vars))]
 
         ;; Wildcard operand: %_ → fresh unique identifier, never shared
         [var
