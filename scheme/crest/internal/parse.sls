@@ -267,16 +267,24 @@
     (define (parse-one operand-stx)
       (syntax-case operand-stx (:optional :variadic)
         ;; Optional group: (:optional %y %z) → flatten to multiple optional operands
+        ;; %_ is allowed and freshened so multiple (:optional %_) never collide.
         [(:optional var ...)
          (let ([vars (syntax->list #'(var ...))])
            (for-each check-identifier vars)
-           (map (lambda (v) (make-ast-operand ':optional v)) vars))]
+           (map (lambda (v)
+                  (make-ast-operand ':optional
+                                    (if (%%wildcard? v) (%%fresh-wildcard v) v)))
+                vars))]
 
         ;; Variadic group: (:variadic %rest) → single variadic operand
+        ;; (:variadic %_) is allowed: match any number of values, bind none.
         [(:variadic var)
          (begin
            (check-identifier #'var)
-           (list (make-ast-operand ':variadic #'var)))]
+           (list (make-ast-operand ':variadic
+                                   (if (%%wildcard? #'var)
+                                       (%%fresh-wildcard #'var)
+                                       #'var))))]
 
         ;; Wildcard operand: %_ → fresh unique identifier, never shared
         [var
