@@ -9,10 +9,10 @@ configure_lit_site_cfg(
     ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py
 )
 
-set(CREST_TEST_DEPENDS
-  crest-opt
-  FileCheck
-)
+set(CREST_TEST_DEPENDS crest-opt)
+if(TARGET FileCheck)
+  list(APPEND CREST_TEST_DEPENDS FileCheck)
+endif()
 
 add_lit_testsuite(check-crest "Running CREST regression tests"
   ${CMAKE_CURRENT_BINARY_DIR}

@@ -67,7 +67,7 @@ public:
   SchemeRewritePattern(mlir::MLIRContext* ctx,
                        crest::LockedSchemeObject&& schemeCallback,
                        llvm::StringRef opName, int benefit = 1)
-      : RewritePattern(opName, benefit, ctx),
+      : RewritePattern(opName, static_cast<unsigned>(benefit), ctx),
         callback_(std::move(schemeCallback)), targetOpName(opName.str()) {}
 
   mlir::LogicalResult
@@ -322,9 +322,10 @@ void registerTransformsDialectConversionBindings() {
                   reinterpret_cast<uint64_t>(resultType.getAsOpaquePointer()));
               ptr inputs_list = Snil;
               for (int i = static_cast<int>(inputs.size()) - 1; i >= 0; --i) {
-                inputs_list = Scons(Sunsigned64(reinterpret_cast<uint64_t>(
-                                        inputs[i].getAsOpaquePointer())),
-                                    inputs_list);
+                inputs_list = Scons(
+                    Sunsigned64(reinterpret_cast<uint64_t>(
+                        inputs[static_cast<size_t>(i)].getAsOpaquePointer())),
+                    inputs_list);
               }
               ptr loc_arg = Sunsigned64(
                   reinterpret_cast<uint64_t>(loc.getAsOpaquePointer()));
@@ -366,9 +367,10 @@ void registerTransformsDialectConversionBindings() {
                   reinterpret_cast<uint64_t>(resultType.getAsOpaquePointer()));
               ptr inputs_list = Snil;
               for (int i = static_cast<int>(inputs.size()) - 1; i >= 0; --i) {
-                inputs_list = Scons(Sunsigned64(reinterpret_cast<uint64_t>(
-                                        inputs[i].getAsOpaquePointer())),
-                                    inputs_list);
+                inputs_list = Scons(
+                    Sunsigned64(reinterpret_cast<uint64_t>(
+                        inputs[static_cast<size_t>(i)].getAsOpaquePointer())),
+                    inputs_list);
               }
               ptr loc_arg = Sunsigned64(
                   reinterpret_cast<uint64_t>(loc.getAsOpaquePointer()));

@@ -117,14 +117,17 @@ jobs:
       - name: Configure
         shell: cmd
         run: |
+          rmdir /s /q build 2>nul
           call C:\msvsn2022\VC\Auxiliary\Build\vcvars64.bat
           cmake -B build -G Ninja ^
             -DCMAKE_BUILD_TYPE=RelWithDebInfo ^
             -DCMAKE_C_COMPILER=cl ^
             -DCMAKE_CXX_COMPILER=cl ^
+            -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded ^
+            -DCMAKE_PREFIX_PATH=C:\Develop\local ^
             -DMLIR_DIR=C:\Develop\local\llvm-22-mlir\lib\cmake\mlir ^
             -DLLVM_DIR=C:\Develop\local\llvm-22-mlir\lib\cmake\llvm ^
-            -DLLVM_EXTERNAL_LIT=C:\Develop\local\llvm-22-mlir\bin\lit.py
+            -DLLVM_EXTERNAL_LIT=C:\ProgramData\miniconda3\Scripts\lit.exe
 
       # ── Build ────────────────────────────────────────────────────────────────
       - name: Build
@@ -143,6 +146,8 @@ jobs:
 
       - name: Lit tests
         shell: cmd
+        env:
+          CREST_PATH: ${{ github.workspace }}/samples
         run: |
           call C:\msvsn2022\VC\Auxiliary\Build\vcvars64.bat
           cmake --build build --target check-crest

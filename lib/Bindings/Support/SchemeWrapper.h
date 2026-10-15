@@ -20,7 +20,14 @@
 // This wrapper provides the protection.
 
 extern "C" {
-#include "boot/ta6le/scheme.h"
+// scheme.h is generated into the Chez workarea. The directory is the
+// machine type selected in cmake/deps.cmake (ta6nt on Windows, ta6le
+// elsewhere).
+#if defined(_WIN32)
+#  include "boot/ta6nt/scheme.h"
+#else
+#  include "boot/ta6le/scheme.h"
+#endif
 }
 // Define your Scheme object handle type once.
 // This assumes Sstring_to_symbol returns the standard Scheme value type.

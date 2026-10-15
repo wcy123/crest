@@ -27,7 +27,8 @@ void registerIRBlockBindings() {
                        ", num-args=", (int)block->getNumArguments());
         }
         return reinterpret_cast<uint64_t>(
-            block->getArgument(idx).getAsOpaquePointer());
+            block->getArgument(static_cast<unsigned>(idx))
+                .getAsOpaquePointer());
       });
   Sregister_symbol(
       "mlir::Block::getNumArguments",
