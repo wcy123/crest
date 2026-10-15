@@ -108,10 +108,20 @@ For a conversion pattern, the signature gains `operands-ref` and `type-converter
 
 ```
 %result-var = dialect.op-name (operand-list)
+%result-var = :any            (operand-list)
 ```
 
 - `%result-var` — bound to the single result `mlir::Value`. For multi-result ops: `(%r0 %r1) = dialect.op`.
 - `dialect.op-name` — compared against `mlir::Operation::getName` (must match exactly).
+- **`:any`** — wildcard op name; skips the `:check-op` step entirely so the binding matches an operation of any name. Useful when only the operand structure or a `:where` guard matters, not the op name. Example from `qdq-roundtrip.sls` — match a layout op of unknown dialect between a DQ and a Q:
+
+  ```scheme
+  %q      = hip.quantize_linear   (%ctx %layout %out_scale)
+  %layout = :any                  (%ctx %dq)          ; any layout op — name is irrelevant
+  %dq     = hip.dequantize_linear (%ctx %input %in_scale)
+    :where (hip-can-requantize-layout-op? (mlir::Value::getDefiningOp %layout) op)
+  ```
+
 - `operand-list` — positional operands; each must be a bound `%var` or `%_` (wildcard, discards).
 
 The last binding in `:if-match` is the **root op** — the op on which the
