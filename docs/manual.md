@@ -124,8 +124,9 @@ For a conversion pattern, the signature gains `operands-ref` and `type-converter
 
 - `operand-list` — positional operands; each must be a bound `%var` or `%_` (wildcard, discards).
 
-The last binding in `:if-match` is the **root op** — the op on which the
-pattern is registered and which the rewriter will replace.
+The **root op** is the variable named in `:rewrite root :with` — the order of
+bindings in `:if-match` does not matter. The root op is what the pattern is
+registered on (via `add-rewrite-pattern`) and what the rewriter replaces.
 
 ### `:where` guard
 
