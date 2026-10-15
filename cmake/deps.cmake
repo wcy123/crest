@@ -49,7 +49,14 @@ if(NOT chezscheme_POPULATED)
   FetchContent_Populate(ChezScheme)
 endif()
 set(ChezScheme_SOURCE_DIR "${chezscheme_SOURCE_DIR}" CACHE INTERNAL "")
-set(ChezScheme_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/ChezScheme-build" CACHE INTERNAL "")
+# On Windows, allow the build dir to be redirected outside the cmake build tree
+# so it survives incremental CI runs (the build tree is wiped between runs).
+# Set -DCHEZ_BUILD_DIR=C:/Develop/crest-deps/chezscheme-build in CI.
+if(WIN32 AND DEFINED CHEZ_BUILD_DIR)
+  set(ChezScheme_BINARY_DIR "${CHEZ_BUILD_DIR}" CACHE INTERNAL "" FORCE)
+else()
+  set(ChezScheme_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/ChezScheme-build" CACHE INTERNAL "")
+endif()
 
 # ─── ChezScheme: build ────────────────────────────────────────────────────────
 # Windows uses Chez's MSVC build.bat (machine ta6nt). /exe asks for a static
