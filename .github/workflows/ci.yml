@@ -127,35 +127,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ── Configure (VS 2022 + pre-built LLVM/MLIR at C:\Develop\local\llvm-22-mlir) ──
+      # ── Configure ───────────────────────────────────────────────────────────────
+      # build\ is wiped each run to avoid stale CMakeCache and git ownership issues.
+      # FETCHCONTENT_BASE_DIR + CHEZ_BUILD_DIR keep ChezScheme source/build/stamps
+      # in C:\Develop\crest-deps so they survive the wipe (first run builds Chez,
+      # subsequent runs skip it — saves ~5 min). FETCHCONTENT_UPDATES_DISCONNECTED
+      # skips the git update step on cache hits.
+      # CMAKE_BUILD_TYPE=Release: no /Zi so no shared .pdb — eliminates C1041/C1090
+      # PDB write contention when sccache dispatches cl.exe in parallel.
+      # sccache as compiler launcher caches CREST C++ compilation across runs.
       - name: Configure
         shell: cmd
         run: |
-          rem build\ is wiped each run to avoid stale CMakeCache and git ownership
-          rem issues on _deps (created by NETWORK SERVICE on the previous run).
           rmdir /s /q build 2>nul
-          rem chezscheme-src is cloned by FetchContent and owned by NETWORK SERVICE;
-          rem mark it safe so cmake's git update step doesn't fail.
           git config --global --add safe.directory C:/Develop/crest-deps/chezscheme-src
           call C:\msvsn2022\VC\Auxiliary\Build\vcvars64.bat
           cmake -B build -G Ninja ^
-            rem Keep FetchContent source + ChezScheme build/stamps outside build\
-            rem so they survive the rmdir above. ChezScheme takes ~5 min to compile;
-            rem caching it in C:\Develop\crest-deps saves that on every run after
-            rem the first. FETCHCONTENT_UPDATES_DISCONNECTED skips the git update.
             -DFETCHCONTENT_BASE_DIR=C:\Develop\crest-deps ^
             -DFETCHCONTENT_UPDATES_DISCONNECTED=ON ^
             -DCHEZ_BUILD_DIR=C:\Develop\crest-deps\chezscheme-build ^
-            rem Release: no /Zi so no shared .pdb, eliminates C1041/C1090
-            rem PDB write contention when sccache runs cl.exe in parallel.
-            rem CMP0141+Embedded was tried but LLVM's LLVMConfig.cmake overrides
-            rem CMAKE_CXX_FLAGS_RELWITHDEBINFO and re-injects /Zi after the fact.
             -DCMAKE_BUILD_TYPE=Release ^
             -DCMAKE_C_COMPILER=cl ^
             -DCMAKE_CXX_COMPILER=cl ^
-            rem sccache caches CREST C++ compilation across runs.
-            -DCMAKE_C_COMPILER_LAUNCHER="C:\Program Files\sccache\sccache.exe" ^
-            -DCMAKE_CXX_COMPILER_LAUNCHER="C:\Program Files\sccache\sccache.exe" ^
+            "-DCMAKE_C_COMPILER_LAUNCHER=C:\Program Files\sccache\sccache.exe" ^
+            "-DCMAKE_CXX_COMPILER_LAUNCHER=C:\Program Files\sccache\sccache.exe" ^
             -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded ^
             -DCMAKE_PREFIX_PATH=C:\Develop\local ^
             -DMLIR_DIR=C:\Develop\local\llvm-22-mlir\lib\cmake\mlir ^
