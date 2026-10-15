@@ -266,37 +266,37 @@
   (define (%%parse-operands operands-stx)
     ;; Freshen a single identifier: replace %_ with a fresh unique name, pass others through.
     (define (freshen v) (if (%%wildcard? v) (%%fresh-wildcard v) v))
-    ;; Parse an :optional or :variadic group: validate, freshen, wrap in ast-operand records.
+    ;; #t when v is an identifier whose name starts with %
+    (define (%-id? v)
+      (and (identifier? v)
+           (char=? #\% (string-ref (symbol->string (syntax->datum v)) 0))))
+    ;; Parse an :optional or :variadic group: freshen and wrap in ast-operand records.
     (define (parse-flex-group kind vars)
-      (for-each check-identifier vars)
       (map (lambda (v) (make-ast-operand kind (freshen v))) vars))
     (define (parse-one operand-stx)
       (syntax-case operand-stx (:optional :variadic)
         ;; Optional group: (:optional %y %z) → flatten to multiple optional operands.
         ;; %_ is allowed and freshened so multiple (:optional %_) never collide.
         [(:optional var1 var ...)
+         (for-all %-id? (syntax->list #'(var1 var ...)))
          (parse-flex-group ':optional (syntax->list #'(var1 var ...)))]
 
         ;; Variadic group: (:variadic %a %b ...) → one variadic operand per variable.
         ;; Each variable corresponds to one variadic group in operandSegmentSizes
         ;; and is bound to a list of that group's values.
         [(:variadic var1 var ...)
+         (for-all %-id? (syntax->list #'(var1 var ...)))
          (parse-flex-group ':variadic (syntax->list #'(var1 var ...)))]
 
         ;; Required operand: %x or %_ (wildcard freshened by freshen)
         [var
-         (identifier? #'var)
+         (%-id? #'var)
          (list (make-ast-operand ':required (freshen #'var)))]
 
         [_
          (syntax-violation '%%parse-operands
-                           "Invalid operand syntax (expected: identifier, (:optional ...), or (:variadic var))"
+                           "Invalid operand syntax (expected: %-prefixed identifier, (:optional %...), or (:variadic %...))"
                            operand-stx)]))
-
-    ;; Helper: check syntax structure (identifier check only, no % validation)
-    (define (check-identifier var)
-      (unless (identifier? var)
-        (syntax-violation '%%parse-operands "Operand must be identifier" var)))
 
     (apply append (map parse-one (syntax->list operands-stx))))
 
