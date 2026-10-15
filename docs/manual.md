@@ -152,8 +152,7 @@ registered on (via `add-rewrite-pattern`) and what the rewriter replaces.
 %dq = hip.dequantize_linear (%ctx %x %scale (:optional %zp) %init)
 ```
 
-Requires an `operandSegmentSizes` attribute on the op. If absent, the pattern
-silently fails to match. When the operand is present, `%zp` is bound to its
+When the operand is present, `%zp` is bound to its
 value; when absent, `%zp` is bound to the absent sentinel. Test with
 `unbound-value?`:
 
@@ -170,11 +169,16 @@ value; when absent, `%zp` is bound to the absent sentinel. Test with
 `%inputs` is bound to a Scheme list of `mlir::Value*`. Requires
 `operandSegmentSizes` on the op.
 
+### `operandSegmentSizes` attribute
+
+Requires an `operandSegmentSizes` attribute on the op. If absent, the pattern
+silently fails to match.
+
 ### DAG diamonds (shared values)
 
-When the same `%var` appears as an operand of multiple ops, CREST emits a
-`:check-eq` step that verifies the pointer identity of the two uses. No
-special syntax needed — just reuse the same `%var`:
+When the same `%var` appears as an operand of multiple ops, CREST
+automatically verifies they refer to the same value. No special syntax
+needed — just reuse the same `%var`:
 
 ```scheme
 %shared = some.op (...)
