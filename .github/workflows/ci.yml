@@ -133,9 +133,9 @@ jobs:
       # in C:\Develop\crest-deps so they survive the wipe (first run builds Chez,
       # subsequent runs skip it — saves ~5 min). FETCHCONTENT_UPDATES_DISCONNECTED
       # skips the git update step on cache hits.
-      # CMAKE_BUILD_TYPE=Release: no /Zi so no shared .pdb — eliminates C1041/C1090
-      # PDB write contention when sccache dispatches cl.exe in parallel.
-      # sccache as compiler launcher caches CREST C++ compilation across runs.
+      # Note: sccache with MSVC RelWithDebInfo causes C1041/C1090 PDB contention
+      # (multiple cl.exe writing to the same .pdb). Omitting sccache for Windows
+      # until a clean solution is found; ChezScheme caching already cuts most time.
       - name: Configure
         shell: cmd
         run: |
@@ -146,11 +146,9 @@ jobs:
             -DFETCHCONTENT_BASE_DIR=C:\Develop\crest-deps ^
             -DFETCHCONTENT_UPDATES_DISCONNECTED=ON ^
             -DCHEZ_BUILD_DIR=C:\Develop\crest-deps\chezscheme-build ^
-            -DCMAKE_BUILD_TYPE=Release ^
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo ^
             -DCMAKE_C_COMPILER=cl ^
             -DCMAKE_CXX_COMPILER=cl ^
-            "-DCMAKE_C_COMPILER_LAUNCHER=C:\Program Files\sccache\sccache.exe" ^
-            "-DCMAKE_CXX_COMPILER_LAUNCHER=C:\Program Files\sccache\sccache.exe" ^
             -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded ^
             -DCMAKE_PREFIX_PATH=C:\Develop\local ^
             -DMLIR_DIR=C:\Develop\local\llvm-22-mlir\lib\cmake\mlir ^
