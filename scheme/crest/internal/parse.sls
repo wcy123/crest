@@ -283,15 +283,10 @@
         [(:variadic var1 var ...)
          (parse-flex-group ':variadic (syntax->list #'(var1 var ...)))]
 
-        ;; Wildcard operand: %_ → fresh unique identifier, never shared
-        [var
-         (and (identifier? #'var) (%%wildcard? #'var))
-         (list (make-ast-operand ':required (%%fresh-wildcard #'var)))]
-
-        ;; Required operand: %x → single required operand
+        ;; Required operand: %x or %_ (wildcard freshened by freshen)
         [var
          (identifier? #'var)
-         (list (make-ast-operand ':required #'var))]
+         (list (make-ast-operand ':required (freshen #'var)))]
 
         [_
          (syntax-violation '%%parse-operands
