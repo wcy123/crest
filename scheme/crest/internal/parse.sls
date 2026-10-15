@@ -65,9 +65,31 @@
 (library (crest internal parse)
   (export parse-to-ast)
   (import (except (rnrs) =)
-          (for (only (chezscheme) syntax->list) expand)
+          (for (only (chezscheme) syntax->list generate-temporaries) expand)
           (for (crest internal keywords) expand)
           (for (crest internal ast) expand))
+
+  ;; %%wildcard? — #t when identifier datum is exactly %_
+  (define-syntax %%wildcard?
+    (lambda (stx)
+      (syntax-case stx ()
+        [(_ id) #'(eq? (syntax->datum id) '%_)])))
+
+  ;; %%fresh-wildcard — replace a %_ syntax identifier with a fresh unique
+  ;; identifier that still starts with % (so validation passes) but is
+  ;; never equal to any other wildcard or user-written variable.
+  (define (%%fresh-wildcard ctx)
+    (let* ([tmp   (car (generate-temporaries (list ctx)))]
+           [name  (string->symbol
+                   (string-append "%" (symbol->string (syntax->datum tmp))))])
+      (datum->syntax tmp name)))
+
+  ;; %%freshen-wildcards — replace every %_ in a list of result identifiers
+  ;; with a fresh unique identifier.  Non-wildcard identifiers are unchanged.
+  (define (%%freshen-wildcards vars)
+    (map (lambda (var)
+           (if (%%wildcard? var) (%%fresh-wildcard var) var))
+         vars))
 
   ;;=======================================================================
   ;; SECTION 1: Entry Points
@@ -196,8 +218,8 @@
        (let* ([d        (syntax->datum #'op-name)]
               [op-norm  (if (string? d) d (symbol->string d))]
               [operands (%%parse-operands #'(operand ...))]
-              [match-op (make-ast-match-expand
-                         (syntax->list #'(result ...)) op-norm operands #'guard-expr)])
+              [results  (%%freshen-wildcards (syntax->list #'(result ...)))]
+              [match-op (make-ast-match-expand results op-norm operands #'guard-expr)])
          (%%parse-match-ops-recursive #'rest (cons match-op acc-ops) ast))]
 
       [(result = op-name (operand ...) . rest)
@@ -211,8 +233,8 @@
        (let* ([d        (syntax->datum #'op-name)]
               [op-norm  (if (string? d) d (symbol->string d))]
               [operands (%%parse-operands #'(operand ...))]
-              [match-op (make-ast-match-expand
-                         (syntax->list #'(result ...)) op-norm operands #f)])
+              [results  (%%freshen-wildcards (syntax->list #'(result ...)))]
+              [match-op (make-ast-match-expand results op-norm operands #f)])
          (%%parse-match-ops-recursive #'rest (cons match-op acc-ops) ast))]
 
       [_ (syntax-violation '%%parse-match-ops-recursive
@@ -255,6 +277,11 @@
          (begin
            (check-identifier #'var)
            (list (make-ast-operand ':variadic #'var)))]
+
+        ;; Wildcard operand: %_ → fresh unique identifier, never shared
+        [var
+         (and (identifier? #'var) (%%wildcard? #'var))
+         (list (make-ast-operand ':required (%%fresh-wildcard #'var)))]
 
         ;; Required operand: %x → single required operand
         [var
