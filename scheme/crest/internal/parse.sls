@@ -65,9 +65,31 @@
 (library (crest internal parse)
   (export parse-to-ast)
   (import (except (rnrs) =)
-          (for (only (chezscheme) syntax->list) expand)
+          (for (only (chezscheme) syntax->list generate-temporaries) expand)
           (for (crest internal keywords) expand)
           (for (crest internal ast) expand))
+
+  ;; %%wildcard? — #t when identifier datum is exactly %_
+  (define-syntax %%wildcard?
+    (lambda (stx)
+      (syntax-case stx ()
+        [(_ id) #'(eq? (syntax->datum id) '%_)])))
+
+  ;; %%fresh-wildcard — replace a %_ syntax identifier with a fresh unique
+  ;; identifier that still starts with % (so validation passes) but is
+  ;; never equal to any other wildcard or user-written variable.
+  (define (%%fresh-wildcard ctx)
+    (let* ([tmp   (car (generate-temporaries (list ctx)))]
+           [name  (string->symbol
+                   (string-append "%" (symbol->string (syntax->datum tmp))))])
+      (datum->syntax tmp name)))
+
+  ;; %%freshen-wildcards — replace every %_ in a list of result identifiers
+  ;; with a fresh unique identifier.  Non-wildcard identifiers are unchanged.
+  (define (%%freshen-wildcards vars)
+    (map (lambda (var)
+           (if (%%wildcard? var) (%%fresh-wildcard var) var))
+         vars))
 
   ;;=======================================================================
   ;; SECTION 1: Entry Points
@@ -196,8 +218,8 @@
        (let* ([d        (syntax->datum #'op-name)]
               [op-norm  (if (string? d) d (symbol->string d))]
               [operands (%%parse-operands #'(operand ...))]
-              [match-op (make-ast-match-expand
-                         (syntax->list #'(result ...)) op-norm operands #'guard-expr)])
+              [results  (%%freshen-wildcards (syntax->list #'(result ...)))]
+              [match-op (make-ast-match-expand results op-norm operands #'guard-expr)])
          (%%parse-match-ops-recursive #'rest (cons match-op acc-ops) ast))]
 
       [(result = op-name (operand ...) . rest)
@@ -211,8 +233,8 @@
        (let* ([d        (syntax->datum #'op-name)]
               [op-norm  (if (string? d) d (symbol->string d))]
               [operands (%%parse-operands #'(operand ...))]
-              [match-op (make-ast-match-expand
-                         (syntax->list #'(result ...)) op-norm operands #f)])
+              [results  (%%freshen-wildcards (syntax->list #'(result ...)))]
+              [match-op (make-ast-match-expand results op-norm operands #f)])
          (%%parse-match-ops-recursive #'rest (cons match-op acc-ops) ast))]
 
       [_ (syntax-violation '%%parse-match-ops-recursive
@@ -242,34 +264,39 @@
   ;; - All identifiers start with % (semantic rule)
   ;;
   (define (%%parse-operands operands-stx)
+    ;; Freshen a single identifier: replace %_ with a fresh unique name, pass others through.
+    (define (freshen v) (if (%%wildcard? v) (%%fresh-wildcard v) v))
+    ;; #t when v is an identifier whose name starts with %
+    (define (%-id? v)
+      (and (identifier? v)
+           (char=? #\% (string-ref (symbol->string (syntax->datum v)) 0))))
+    ;; Parse an :optional or :variadic group: freshen and wrap in ast-operand records.
+    (define (parse-flex-group kind vars)
+      (map (lambda (v) (make-ast-operand kind (freshen v))) vars))
     (define (parse-one operand-stx)
       (syntax-case operand-stx (:optional :variadic)
-        ;; Optional group: (:optional %y %z) → flatten to multiple optional operands
-        [(:optional var ...)
-         (let ([vars (syntax->list #'(var ...))])
-           (for-each check-identifier vars)
-           (map (lambda (v) (make-ast-operand ':optional v)) vars))]
+        ;; Optional group: (:optional %y %z) → flatten to multiple optional operands.
+        ;; %_ is allowed and freshened so multiple (:optional %_) never collide.
+        [(:optional var1 var ...)
+         (for-all %-id? (syntax->list #'(var1 var ...)))
+         (parse-flex-group ':optional (syntax->list #'(var1 var ...)))]
 
-        ;; Variadic group: (:variadic %rest) → single variadic operand
-        [(:variadic var)
-         (begin
-           (check-identifier #'var)
-           (list (make-ast-operand ':variadic #'var)))]
+        ;; Variadic group: (:variadic %a %b ...) → one variadic operand per variable.
+        ;; Each variable corresponds to one variadic group in operandSegmentSizes
+        ;; and is bound to a list of that group's values.
+        [(:variadic var1 var ...)
+         (for-all %-id? (syntax->list #'(var1 var ...)))
+         (parse-flex-group ':variadic (syntax->list #'(var1 var ...)))]
 
-        ;; Required operand: %x → single required operand
+        ;; Required operand: %x or %_ (wildcard freshened by freshen)
         [var
-         (identifier? #'var)
-         (list (make-ast-operand ':required #'var))]
+         (%-id? #'var)
+         (list (make-ast-operand ':required (freshen #'var)))]
 
         [_
          (syntax-violation '%%parse-operands
-                           "Invalid operand syntax (expected: identifier, (:optional ...), or (:variadic var))"
+                           "Invalid operand syntax (expected: %-prefixed identifier, (:optional %...), or (:variadic %...))"
                            operand-stx)]))
-
-    ;; Helper: check syntax structure (identifier check only, no % validation)
-    (define (check-identifier var)
-      (unless (identifier? var)
-        (syntax-violation '%%parse-operands "Operand must be identifier" var)))
 
     (apply append (map parse-one (syntax->list operands-stx))))
 
