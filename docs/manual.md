@@ -153,10 +153,9 @@ registered on (via `add-rewrite-pattern`) and what the rewriter replaces.
 ```
 
 Requires an `operandSegmentSizes` attribute on the op. If absent, the pattern
-silently fails to match — the most common reason a pattern with `:optional`
-or `:variadic` never fires despite the op name matching. When the operand is
-present, `%zp` is bound to its value; when absent, `%zp` is bound to the
-absent sentinel. Test with `unbound-value?`:
+silently fails to match. When the operand is present, `%zp` is bound to its
+value; when absent, `%zp` is bound to the absent sentinel. Test with
+`unbound-value?`:
 
 ```scheme
 :then-let ([zp (if (unbound-value? %zp) 0 (extract-zp %zp))])
