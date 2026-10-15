@@ -30,4 +30,8 @@ if(MSVC)
   # has the same issue. We cannot modify LLVM headers, so global suppression is
   # required — matching what LLVM itself does in HandleLLVMOptions.cmake.
   add_compile_options(/wd4702)
+  # /FS: serialize PDB writes. Required when multiple cl.exe processes (parallel
+  # build or sccache) write to the same .pdb file simultaneously — without it
+  # MSVC raises C1041/C1090.
+  add_compile_options(/FS)
 endif()
