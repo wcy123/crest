@@ -276,15 +276,19 @@
                                     (if (%%wildcard? v) (%%fresh-wildcard v) v)))
                 vars))]
 
-        ;; Variadic group: (:variadic %rest) → single variadic operand
+        ;; Variadic group: (:variadic %a %b ...) → one variadic operand per variable.
+        ;; Each variable corresponds to one variadic group in operandSegmentSizes
+        ;; and is bound to a list of that group's values.
         ;; (:variadic %_) is allowed: match any number of values, bind none.
-        [(:variadic var)
-         (begin
-           (check-identifier #'var)
-           (list (make-ast-operand ':variadic
-                                   (if (%%wildcard? #'var)
-                                       (%%fresh-wildcard #'var)
-                                       #'var))))]
+        [(:variadic var ...)
+         (let ([vars (syntax->list #'(var ...))])
+           (when (null? vars)
+             (syntax-violation '%%parse-operands "(:variadic) requires at least one variable" operand-stx))
+           (for-each check-identifier vars)
+           (map (lambda (v)
+                  (make-ast-operand ':variadic
+                                    (if (%%wildcard? v) (%%fresh-wildcard v) v)))
+                vars))]
 
         ;; Wildcard operand: %_ → fresh unique identifier, never shared
         [var
