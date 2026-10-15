@@ -1,8 +1,8 @@
 ##
 # CREST GoogleTest unit tests
 #
-# Uses system GTest (libgtest-dev) rather than LLVM's bundled llvm_gtest,
-# since crest uses pre-built LLVM apt packages that do not ship llvm_gtest.
+# Uses system GTest (libgtest-dev) on Linux or the GTest installed at
+# C:\Develop\local on the Windows self-hosted runner.
 ##
 
 find_package(GTest REQUIRED)

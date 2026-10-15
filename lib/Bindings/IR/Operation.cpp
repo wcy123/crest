@@ -287,7 +287,8 @@ void registerIROperationBindings() {
                        "index out of range: ", (int64_t)region_idx, " (size ",
                        (int64_t)op->getNumRegions(), ")");
         }
-        return reinterpret_cast<uint64_t>(&op->getRegion(region_idx));
+        return reinterpret_cast<uint64_t>(
+            &op->getRegion(static_cast<unsigned>(region_idx)));
       });
   Sregister_symbol(
       "mlir::Operation::getAttr",

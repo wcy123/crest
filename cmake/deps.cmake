@@ -61,11 +61,14 @@ if(WIN32)
   set(CHEZ_KERNEL_LIB "${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/csv1041.lib" CACHE INTERNAL "" FORCE)
   set(CHEZ_ZLIB_LIB   "${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/zlibmts/zlib.lib"                 CACHE INTERNAL "" FORCE)
   set(CHEZ_LZ4_LIB    "${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/lz4mts/lib/liblz4.lib"            CACHE INTERNAL "" FORCE)
-  # cmd /c is required because CreateProcess cannot launch a .bat file directly.
-  set(_chez_configure "")
+  # cmd /c: CreateProcess cannot launch a .bat. cmake -E true is a no-op
+  # configure step; an empty one is dropped, and ExternalProject then runs cmake on Chez, which has no CMakeLists.txt.
+  set(_chez_configure ${CMAKE_COMMAND} -E true)
+  # /keepvs: skip build.bat's own VS detection — vcvars64.bat was already
+  # sourced by the caller (CI step or developer prompt) before cmake runs.
   set(_chez_build
     ${CMAKE_COMMAND} -E chdir <BINARY_DIR>
-      cmd /c ${ChezScheme_SOURCE_DIR}/build.bat ${CHEZ_MACHINE} /exe /MT /only)
+      cmd /c ${ChezScheme_SOURCE_DIR}/build.bat ${CHEZ_MACHINE} /exe /MT /only /keepvs)
 else()
   set(CHEZ_KERNEL_LIB "${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/libkernel.a" CACHE INTERNAL "")
   set(CHEZ_ZLIB_LIB   "${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/zlib/libz.a"                      CACHE INTERNAL "")
