@@ -112,7 +112,7 @@ For a conversion pattern, the signature gains `operands-ref` and `type-converter
 ```
 
 - `%result-var` — bound to the single result `mlir::Value`. For multi-result ops: `(%r0 %r1) = dialect.op`.
-- `dialect.op-name` — a Scheme symbol or string compared against `mlir::Operation::getName` (must match exactly). A symbol is the idiomatic form (`hip.quantize_linear`); use a string when the op name is not a valid Scheme symbol.
+- `dialect.op-name` — a Scheme symbol compared against `mlir::Operation::getName` (must match exactly). A string literal is also accepted.
 - **`:any`** — wildcard op name; skips the `:check-op` step entirely so the binding matches an operation of any name. Useful when only the operand structure or a `:where` guard matters, not the op name. Example from `qdq-roundtrip.sls` — match a layout op of unknown dialect between a DQ and a Q:
 
   ```scheme
