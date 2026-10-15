@@ -266,23 +266,22 @@
   (define (%%parse-operands operands-stx)
     ;; Freshen a single identifier: replace %_ with a fresh unique name, pass others through.
     (define (freshen v) (if (%%wildcard? v) (%%fresh-wildcard v) v))
+    ;; Parse an :optional or :variadic group: validate, freshen, wrap in ast-operand records.
+    (define (parse-flex-group kind vars)
+      (for-each check-identifier vars)
+      (map (lambda (v) (make-ast-operand kind (freshen v))) vars))
     (define (parse-one operand-stx)
       (syntax-case operand-stx (:optional :variadic)
-        ;; Optional group: (:optional %y %z) → flatten to multiple optional operands
+        ;; Optional group: (:optional %y %z) → flatten to multiple optional operands.
         ;; %_ is allowed and freshened so multiple (:optional %_) never collide.
         [(:optional var1 var ...)
-         (let ([vars (syntax->list #'(var1 var ...))])
-           (for-each check-identifier vars)
-           (map (lambda (v) (make-ast-operand ':optional (freshen v))) vars))]
+         (parse-flex-group ':optional (syntax->list #'(var1 var ...)))]
 
         ;; Variadic group: (:variadic %a %b ...) → one variadic operand per variable.
         ;; Each variable corresponds to one variadic group in operandSegmentSizes
         ;; and is bound to a list of that group's values.
-        ;; (:variadic %_) is allowed: match any number of values, bind none.
         [(:variadic var1 var ...)
-         (let ([vars (syntax->list #'(var1 var ...))])
-           (for-each check-identifier vars)
-           (map (lambda (v) (make-ast-operand ':variadic (freshen v))) vars))]
+         (parse-flex-group ':variadic (syntax->list #'(var1 var ...)))]
 
         ;; Wildcard operand: %_ → fresh unique identifier, never shared
         [var
