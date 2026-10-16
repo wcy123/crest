@@ -416,6 +416,11 @@ See `samples/passes/onnx-to-hipsr/matmul.sls` for a real-world example.
 
 ## 6. Pass entry points
 
+A pass is an ordinary R6RS `library` that exports a function named `run-pass`.
+`run-pass` is a convention — it is the name that `--crest-pass="module=passes/my-pass"`
+calls at runtime. Everything else in the library is plain Scheme: helper
+functions, type predicates, constants — no CREST macros required.
+
 ### Greedy rewrite pass
 
 ```scheme
