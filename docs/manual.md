@@ -322,9 +322,15 @@ construct the attribute for you:
 | `("name" = val :unit)` | `mlir::UnitAttr::get` (val ignored) |
 
 ```scheme
+;; Shorthand: integer tag constructs the attribute automatically
 (%c = arith.constant ()
      ("value" = 42 :index)
      -> (mlir::IndexType::get))
+
+;; General form: val is any Scheme expression returning an mlir::Attribute
+(%op = my.op ()
+      ("scale" = (mlir::FloatAttr::get<f32> 0.5))
+      ("zp"    = (mlir::IntegerAttr::get<i64> 0)))
 ```
 
 ### Result types
