@@ -280,7 +280,10 @@ Each line is an op-form:
 (%result-var = dialect.op-name (operand ...) ("attr" = val) ... -> !result-type)
 ```
 
-- Ops are emitted in order using `current-RewriterBase`.
+- Ops are emitted in order. Before emission starts, the insertion point is set
+  to immediately before the root op (equivalent to
+  [`setInsertionPoint(op)`](https://mlir.llvm.org/doxygen/classmlir_1_1OpBuilder.html#a3c5f7fcaf5c4db5a7b3db573e3e14f2f))
+  so new ops appear in place of the matched subgraph.
 - The last op's result replaces `%root` in all uses.
 - `("attr-name" = val)` — sets a named attribute; `val` is any Scheme expression
   returning an `mlir::Attribute`.
