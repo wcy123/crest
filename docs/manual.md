@@ -468,8 +468,8 @@ functions, type predicates, constants — no CREST macros required.
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (with-TypeConverter (tc)
-          (with-ConversionTarget (target ctx)
-            (with-RewritePatternSet (ps ctx)
+          (with-ConversionTarget (target)
+            (with-RewritePatternSet (ps)
               ;; Mark source dialect illegal, target dialect legal
               (mlir::ConversionTarget::addIllegalDialect! target "onnx")
               (mlir::ConversionTarget::addLegalDialect!   target "hipsr")
