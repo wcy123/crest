@@ -90,14 +90,6 @@ A complete greedy-rewrite pattern:
 | [`:then-let`](#then-let) | Bindings computed after match, before IR mutation |
 | [`:rewrite %root :with`](#rewrite-root-with) | New ops to emit; `%root` is replaced with the last emitted op |
 
-For a conversion pattern, the signature gains `operands-ref` and `type-converter`:
-
-```scheme
-(define-conversion-pattern (my-pattern op operands-ref rewriter type-converter)
-  :if-match  ...
-  :rewrite   ...)
-```
-
 `operands-ref` is a handle to the type-converted operands provided by the
 `ConversionPatternRewriter`. Fetch them with `(mlir-get-remapped-operands operands-ref)`.
 
