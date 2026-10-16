@@ -341,7 +341,7 @@ Multi-result ops list all types:
 ```scheme
 ;; Single result
 (%r = my.op (%x) -> !out-type)
-;; Multi-result — bind each result to a variable
+;; Multi-result — number of types must equal number of result variables
 ((%r0 %r1) = my.op (%x) -> (!type-a !type-b))
 ```
 
