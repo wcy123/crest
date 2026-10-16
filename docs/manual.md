@@ -532,20 +532,6 @@ CREST_PATH=$(pwd)/samples \
 MLIR error messages and `--mlir-print-ir-after-all` traces resolve to the
 exact `.sls` line automatically.
 
-### Scheme REPL
-
-Chez Scheme ships a REPL. Load CREST libraries interactively:
-
-```bash
-CREST_PATH=$(pwd)/samples \
-  build/_deps/chezscheme-build/ta6le/bin/ta6le/scheme \
-  --libdirs "$(pwd)/scheme"
-
-> (import (crest))
-> (import (mlir IR BuiltinTypes))
-> (mlir::IndexType::get)   ; etc.
-```
-
 ---
 
 ## 8. MLIR bindings reference
