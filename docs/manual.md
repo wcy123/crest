@@ -306,74 +306,105 @@ Each statement is an op-form:
 (%result-var = dialect.op-name (operand ...) ("attr" = val) ... -> !result-type)
 ```
 
-- `("attr-name" = val)` — sets a named attribute; `val` is any Scheme expression
-  returning an `mlir::Attribute`.
-- `-> !type` — result type expression (an `mlir::Type`).
-- Multi-result: `((%r0 %r1) = ...)`.
-- **Region-bearing ops** — one or more regions follow the attribute list.
-  Each region is a sequence of blocks; each block starts with `^bb<n>` and
-  optional block arguments, followed by op-forms:
+### Attributes
 
-  ```scheme
-  ;; Single region, single block with arguments
-  (%op = my.region_op (%x)
-        (^bb0 ((%arg0 : !i32) (%arg1 : !i32))
-              (%r = arith.addi (%arg0 %arg1) -> !i32)
-              (my.yield (%r)))
-        -> !i32)
-  ```
+The general form `("name" = val)` sets an attribute where `val` is any Scheme
+expression returning an `mlir::Attribute`. Common types have shorthands that
+construct the attribute for you:
 
-  Multiple single-block regions — list `^bb` shorthands consecutively
-  (each shorthand creates exactly one region with one block):
+| Shorthand | Expands to |
+|---|---|
+| `("name" = val :index)` | `mlir::IntegerAttr::get<index>` |
+| `("name" = val :i64)` | `mlir::IntegerAttr::get<i64>` |
+| `("name" = val :f32)` | `mlir::FloatAttr::get<f32>` |
+| `("name" = val :i32-array)` | `mlir::DenseI32ArrayAttr::get` |
+| `("name" = val :i64-array)` | `mlir::DenseI64ArrayAttr::get` |
+| `("name" = val :unit)` | `mlir::UnitAttr::get` (val ignored) |
 
-  ```scheme
-  ;; Two regions (e.g. scf.if: then-region and else-region)
-  (%op = scf.if (%cond)
-        (^then ()
-               (%a = compute_a (%x) -> !i32)
-               (scf.yield (%a)))
-        (^else ()
-               (%b = compute_b (%y) -> !i32)
-               (scf.yield (%b)))
-        -> !i32)
-  ```
+```scheme
+(%c = arith.constant ()
+     ("value" = 42 :index)
+     -> (mlir::IndexType::get))
+```
 
-  One region with multiple blocks — use the explicit `:region` wrapper:
+### Result types
 
-  ```scheme
-  (%op = my.op ()
-        (:region
-          (^entry ()
-                  (cf.br () ^exit))
-          (^exit ((%v : !i32))
-                 (cf.return (%v))))
-        -> !i32)
-  ```
+`-> !type` where `!type` is any Scheme expression returning an `mlir::Type`.
+Multi-result ops list all types:
 
-  Multiple regions each with multiple blocks — use multiple `:region` wrappers:
+```scheme
+;; Single result
+(%r = my.op (%x) -> !out-type)
+;; Multi-result — bind each result to a variable
+((%r0 %r1) = my.op (%x) -> (!type-a !type-b))
+```
 
-  ```scheme
-  (%op = my.op ()
-        (:region
-          (^r0-entry () (cf.br () ^r0-exit))
-          (^r0-exit  () (my.yield ())))
-        (:region
-          (^r1-entry () (cf.br () ^r1-exit))
-          (^r1-exit  () (my.yield ())))
-        -> !i32)
-  ```
+### Regions
 
-  In summary:
+Regions follow the attribute list. Each region is a sequence of blocks;
+each block starts with `^label` and optional block arguments, followed by
+op-forms:
 
-  | Form | Regions | Blocks per region |
-  |---|---|---|
-  | `(^bb ...)` | 1 | 1 |
-  | `(^bb ...) (^bb ...)` | N | 1 each |
-  | `(:region (^a ...) (^b ...))` | 1 | N |
-  | `(:region ...) (:region ...)` | N | N each |
+```scheme
+;; Single region, single block with arguments
+(%op = my.region_op (%x)
+      (^bb0 ((%arg0 : !i32) (%arg1 : !i32))
+            (%r = arith.addi (%arg0 %arg1) -> !i32)
+            (my.yield (%r)))
+      -> !i32)
+```
 
-  Regions can be nested: an op-form inside `^bb` can itself have regions.
-  See `samples/passes/onnx-to-hipsr/matmul.sls` for a real-world example.
+Multiple single-block regions — list `^bb` shorthands consecutively
+(each shorthand creates exactly one region with one block):
+
+```scheme
+;; Two regions (e.g. scf.if: then-region and else-region)
+(%op = scf.if (%cond)
+      (^then ()
+             (%a = compute_a (%x) -> !i32)
+             (scf.yield (%a)))
+      (^else ()
+             (%b = compute_b (%y) -> !i32)
+             (scf.yield (%b)))
+      -> !i32)
+```
+
+One region with multiple blocks — use the explicit `:region` wrapper:
+
+```scheme
+(%op = my.op ()
+      (:region
+        (^entry ()
+                (cf.br () ^exit))
+        (^exit ((%v : !i32))
+               (cf.return (%v))))
+      -> !i32)
+```
+
+Multiple regions each with multiple blocks — use multiple `:region` wrappers:
+
+```scheme
+(%op = my.op ()
+      (:region
+        (^r0-entry () (cf.br () ^r0-exit))
+        (^r0-exit  () (my.yield ())))
+      (:region
+        (^r1-entry () (cf.br () ^r1-exit))
+        (^r1-exit  () (my.yield ())))
+      -> !i32)
+```
+
+In summary:
+
+| Form | Regions | Blocks per region |
+|---|---|---|
+| `(^bb ...)` | 1 | 1 |
+| `(^bb ...) (^bb ...)` | N | 1 each |
+| `(:region (^a ...) (^b ...))` | 1 | N |
+| `(:region ...) (:region ...)` | N | N each |
+
+Regions can be nested: an op-form inside `^bb` can itself have regions.
+See `samples/passes/onnx-to-hipsr/matmul.sls` for a real-world example.
 
 ---
 
