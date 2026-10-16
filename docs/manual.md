@@ -310,7 +310,44 @@ Each statement is an op-form:
   returning an `mlir::Attribute`.
 - `-> !type` — result type expression (an `mlir::Type`).
 - Multi-result: `((%r0 %r1) = ...)`.
-- Region-bearing ops: use `(^bb0 ((arg : !type) ...) body...)` inside the op-form.
+- **Region-bearing ops** — one or more regions follow the attribute list.
+  Each region is a sequence of blocks; each block starts with `^bb<n>` and
+  optional block arguments, followed by op-forms:
+
+  ```scheme
+  ;; Single region, single block with arguments
+  (%op = my.region_op (%x)
+        (^bb0 ((%arg0 : !i32) (%arg1 : !i32))
+              (%r = arith.addi (%arg0 %arg1) -> !i32)
+              (my.yield (%r)))
+        -> !i32)
+  ```
+
+  Multiple blocks in one region — each block after the first is a new `^bb`:
+
+  ```scheme
+  (%op = cf.cond_br (%cond)
+        (^bb0 ()
+              (cf.br (%x) ^bb1))
+        (^bb1 ((%v : !i32))
+              (cf.return (%v)))
+        -> !i32)
+  ```
+
+  Multiple regions — list them one after the other:
+
+  ```scheme
+  ;; shape.assuming has one region; hipsr.placeholder nests shape.assuming inside
+  (%res = shape.assuming (%witness)
+        (^bb0 ()
+              (%r = compute (%a) -> !shape-type)
+              (shape.assuming_yield (%r)))
+        -> !shape-type)
+  ```
+
+  Regions can be nested: an op-form inside `^bb` can itself have regions.
+  See the `hipsr.placeholder` pattern in `samples/passes/onnx-to-hipsr/matmul.sls`
+  for a real-world example of nested regions.
 
 ---
 
