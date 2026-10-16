@@ -510,21 +510,6 @@ warning: samples/passes/hip-fusion/qadd.sls:83:20: [hip-qadd-fusion]
 
 No C++ changes, no rebuild — just set the variable, re-run, debug, unset, re-run.
 
-### Compile-time debug flags
-
-Add as keyword arguments after the pattern name (at expansion time only):
-
-```scheme
-(define-rewrite-pattern (my-pattern op rewriter)
-  :debug-parse    ; print parsed AST
-  :debug-validate ; print validated AST
-  :debug-analyze  ; print action sequence
-  :debug-codegen  ; print generated Scheme code
-  :if-match ...)
-```
-
-Output goes to stderr at library load time.
-
 ### Source locations on emitted ops
 
 Every op emitted by `begin-mlir-code` (inside `:rewrite :with`) carries a
