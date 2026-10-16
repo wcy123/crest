@@ -341,18 +341,39 @@ Each statement is an op-form:
   One region with multiple blocks — use the explicit `:region` wrapper:
 
   ```scheme
-  (%op = cf.cond_br (%cond)
+  (%op = my.op ()
         (:region
           (^entry ()
-                  (cf.br (%x) ^exit))
+                  (cf.br () ^exit))
           (^exit ((%v : !i32))
                  (cf.return (%v))))
         -> !i32)
   ```
 
+  Multiple regions each with multiple blocks — use multiple `:region` wrappers:
+
+  ```scheme
+  (%op = my.op ()
+        (:region
+          (^r0-entry () (cf.br () ^r0-exit))
+          (^r0-exit  () (my.yield ())))
+        (:region
+          (^r1-entry () (cf.br () ^r1-exit))
+          (^r1-exit  () (my.yield ())))
+        -> !i32)
+  ```
+
+  In summary:
+
+  | Form | Regions | Blocks per region |
+  |---|---|---|
+  | `(^bb ...)` | 1 | 1 |
+  | `(^bb ...) (^bb ...)` | N | 1 each |
+  | `(:region (^a ...) (^b ...))` | 1 | N |
+  | `(:region ...) (:region ...)` | N | N each |
+
   Regions can be nested: an op-form inside `^bb` can itself have regions.
-  See the `hipsr.placeholder` pattern in `samples/passes/onnx-to-hipsr/matmul.sls`
-  for a real-world example of nested regions.
+  See `samples/passes/onnx-to-hipsr/matmul.sls` for a real-world example.
 
 ---
 
