@@ -160,10 +160,31 @@ value; when absent, `%zp` is bound to the absent sentinel. Test with
 :then-let ([zp (if (unbound-value? %zp) 0 (extract-zp %zp))])
 ```
 
+Multiple variables in one `(:optional %a %b)` group are independent optional slots.
+
 ### Variadic operands
 
 ```scheme
 %op = my.op (%ctx (:variadic %inputs) %init)
+```
+
+Multiple variables in one `(:variadic %a %b)` group each correspond to one
+variadic group in `operandSegmentSizes` and are bound to a list of values:
+
+```scheme
+;; operandSegmentSizes=[2,3]: %inputs gets a list of 2, %weights a list of 3
+%op = my.op ((:variadic %inputs %weights))
+:then-let ([first-input (car %inputs)]
+           [first-weight (car %weights)])
+```
+
+### Combining `:optional` and `:variadic`
+
+Both can appear together in one operand list:
+
+```scheme
+;; x required, y optional, z variadic
+%op = my.op (%x (:optional %y) (:variadic %z))
 ```
 
 `%inputs` is bound to a Scheme list of `mlir::Value*`. Requires
