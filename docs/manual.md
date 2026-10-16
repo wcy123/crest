@@ -83,7 +83,8 @@ A complete greedy-rewrite pattern:
 
 | Section | Purpose |
 |---|---|
-| `(name op rewriter)` | `op` is the root operation, `rewriter` is the `RewriterBase` handle |
+| `(name op rewriter)` | Rewrite pattern: `op` is the root op, `rewriter` is the `RewriterBase` handle |
+| `(name op operands-ref rewriter type-converter)` | Conversion pattern: adds type-converted operands and `TypeConverter` |
 | [`:if-match`](#3-match-dsl-reference) | Structural traversal of the def-use graph |
 | [`:where`](#where-guard) | Arbitrary Scheme predicate guarding the preceding op |
 | [`:then-let`](#then-let) | Bindings computed after match, before IR mutation |
