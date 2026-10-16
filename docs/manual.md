@@ -246,8 +246,9 @@ independently even if the underlying SSA values differ:
 ```
 
 - All bindings are computed sequentially before any IR mutation.
-- `!name` prefix — signals the binding holds an `mlir::Type` (purely cosmetic,
-  no semantic difference).
+- `!name` prefix — a naming convention signalling the binding holds an
+  `mlir::Type`. The `!` is just part of the Scheme identifier; CREST assigns
+  it no special meaning.
 - Safe to read IR here (e.g. `mlir::Operation::getAttr`, `mlir::Value::getType`).
 - Raise an error to abort the rewrite: `(error "my-pattern" "precondition failed")`.
 
