@@ -536,7 +536,8 @@ exact `.sls` line automatically.
 
 ## 8. MLIR bindings reference
 
-All bindings follow the CLAUDE.md convention: library names mirror MLIR header
+This section lists commonly used bindings. The set is not exhaustive — bindings
+are added on demand as new MLIR APIs are needed. Library names mirror MLIR header
 paths. Import only what you use.
 
 ### Core IR
