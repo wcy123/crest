@@ -323,26 +323,31 @@ Each statement is an op-form:
         -> !i32)
   ```
 
-  Multiple blocks in one region — each block after the first is a new `^bb`:
+  Multiple single-block regions — list `^bb` shorthands consecutively
+  (each shorthand creates exactly one region with one block):
 
   ```scheme
-  (%op = cf.cond_br (%cond)
-        (^bb0 ()
-              (cf.br (%x) ^bb1))
-        (^bb1 ((%v : !i32))
-              (cf.return (%v)))
+  ;; Two regions (e.g. scf.if: then-region and else-region)
+  (%op = scf.if (%cond)
+        (^then ()
+               (%a = compute_a (%x) -> !i32)
+               (scf.yield (%a)))
+        (^else ()
+               (%b = compute_b (%y) -> !i32)
+               (scf.yield (%b)))
         -> !i32)
   ```
 
-  Multiple regions — list them one after the other:
+  One region with multiple blocks — use the explicit `:region` wrapper:
 
   ```scheme
-  ;; shape.assuming has one region; hipsr.placeholder nests shape.assuming inside
-  (%res = shape.assuming (%witness)
-        (^bb0 ()
-              (%r = compute (%a) -> !shape-type)
-              (shape.assuming_yield (%r)))
-        -> !shape-type)
+  (%op = cf.cond_br (%cond)
+        (:region
+          (^entry ()
+                  (cf.br (%x) ^exit))
+          (^exit ((%v : !i32))
+                 (cf.return (%v))))
+        -> !i32)
   ```
 
   Regions can be nested: an op-form inside `^bb` can itself have regions.
