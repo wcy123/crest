@@ -176,12 +176,19 @@ variadic group in `operandSegmentSizes` and are bound to a list of values:
            [first-weight (car %weights)])
 ```
 
-### Combining `:optional` and `:variadic`
+### Multiple and consecutive groups
 
-Both can appear together in one operand list:
+Both `:optional` and `:variadic` support multiple variables and can appear
+consecutively in one operand list:
 
 ```scheme
-;; x required, y optional, z variadic
+;; Two independent optional slots
+%op = my.op (%x (:optional %a %b) %y)
+
+;; Two variadic groups — each bound to a list
+%op = my.op ((:variadic %inputs %weights))
+
+;; Mixed: required, optional, variadic
 %op = my.op (%x (:optional %y) (:variadic %z))
 ```
 
