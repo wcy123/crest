@@ -84,10 +84,10 @@ A complete greedy-rewrite pattern:
 | Section | Purpose |
 |---|---|
 | `(name op rewriter)` | `op` is the root operation, `rewriter` is the `RewriterBase` handle |
-| `:if-match` | Structural traversal of the def-use graph |
-| `:where` | Arbitrary Scheme predicate guarding the preceding op |
-| `:then-let` | Bindings computed after match, before IR mutation |
-| `:rewrite %root :with` | New ops to emit; `%root` is replaced with the last emitted op |
+| [`:if-match`](#3-match-dsl-reference) | Structural traversal of the def-use graph |
+| [`:where`](#where-guard) | Arbitrary Scheme predicate guarding the preceding op |
+| [`:then-let`](#then-let) | Bindings computed after match, before IR mutation |
+| [`:rewrite %root :with`](#rewrite-root-with) | New ops to emit; `%root` is replaced with the last emitted op |
 
 For a conversion pattern, the signature gains `operands-ref` and `type-converter`:
 
