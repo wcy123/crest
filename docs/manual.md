@@ -166,15 +166,7 @@ value; when absent, `%zp` is bound to the absent sentinel. Test with
 %op = my.op (%ctx (:variadic %inputs) %init)
 ```
 
-Multiple variables in one `(:variadic %a %b)` group each correspond to one
-variadic group in `operandSegmentSizes` and are bound to a list of values:
-
-```scheme
-;; operandSegmentSizes=[2,3]: %inputs gets a list of 2, %weights a list of 3
-%op = my.op ((:variadic %inputs %weights))
-:then-let ([first-input (car %inputs)]
-           [first-weight (car %weights)])
-```
+`%inputs` is bound to a Scheme list of `mlir::Value*`.
 
 ### Multiple and consecutive groups
 
@@ -192,8 +184,6 @@ consecutively in one operand list:
 %op = my.op (%x (:optional %y) (:variadic %z))
 ```
 
-`%inputs` is bound to a Scheme list of `mlir::Value*`. Requires
-`operandSegmentSizes` on the op.
 
 ### `operandSegmentSizes` attribute
 
