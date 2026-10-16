@@ -10,12 +10,13 @@ Patterns are Scheme macros — edit a `.sls` file and re-run: no rebuild, no rel
 2. [Pattern anatomy](#2-pattern-anatomy)
 3. [Match DSL reference](#3-match-dsl-reference)
 4. [Rewrite DSL reference](#4-rewrite-dsl-reference)
-5. [Pass entry points](#5-pass-entry-points)
-6. [Writing a new pass](#6-writing-a-new-pass)
-7. [Debugging](#7-debugging)
-8. [MLIR bindings reference](#8-mlir-bindings-reference)
-9. [Deployment](#9-deployment)
-10. [Extending with custom C++ bindings](#10-extending-with-custom-c-bindings)
+5. [`begin-mlir-code`](#5-begin-mlir-code)
+6. [Pass entry points](#6-pass-entry-points)
+7. [Writing a new pass](#7-writing-a-new-pass)
+8. [Debugging](#8-debugging)
+9. [MLIR bindings reference](#9-mlir-bindings-reference)
+10. [Deployment](#10-deployment)
+11. [Extending with custom C++ bindings](#11-extending-with-custom-c-bindings)
 
 ---
 
@@ -270,30 +271,24 @@ independently even if the underlying SSA values differ:
 :rewrite %q :with
   (%init   = tensor.empty () -> !out-type)
   (%result = hip.qadd (%ctx %lhs %rhs %init)
-           ("attr-name" = attr-value)
+           ("lhs_scale" = lhs-scale)
            -> !out-type))
 ```
 
-Each line is an op-form:
+Before emission starts, the insertion point is set to immediately before the
+root op (equivalent to
+[`setInsertionPoint(op)`](https://mlir.llvm.org/doxygen/classmlir_1_1OpBuilder.html#a3c5f7fcaf5c4db5a7b3db573e3e14f2f))
+so new ops appear in place of the matched subgraph. The last emitted op's
+result replaces `%root` in all uses.
 
-```
-(%result-var = dialect.op-name (operand ...) ("attr" = val) ... -> !result-type)
-```
+Op-form syntax — see [§5 `begin-mlir-code`](#5-begin-mlir-code) for the full reference.
 
-- Ops are emitted in order. Before emission starts, the insertion point is set
-  to immediately before the root op (equivalent to
-  [`setInsertionPoint(op)`](https://mlir.llvm.org/doxygen/classmlir_1_1OpBuilder.html#a3c5f7fcaf5c4db5a7b3db573e3e14f2f))
-  so new ops appear in place of the matched subgraph.
-- The last op's result replaces `%root` in all uses.
-- `("attr-name" = val)` — sets a named attribute; `val` is any Scheme expression
-  returning an `mlir::Attribute`.
-- `-> !type` — result type expression (an `mlir::Type`).
-- Multi-result: `((%r0 %r1) = ...)`.
-- Region-bearing ops: use `(^bb0 ((arg : !type) ...) body...)` inside the op-form.
+---
 
-### `begin-mlir-code`
+## 5. `begin-mlir-code`
 
-Used standalone outside a pattern to emit ops imperatively:
+`begin-mlir-code` emits MLIR ops via the current rewriter. It is used
+implicitly inside `:rewrite :with` and can also be called standalone:
 
 ```scheme
 (begin-mlir-code
@@ -303,9 +298,23 @@ Used standalone outside a pattern to emit ops imperatively:
 
 Every emitted op carries a `FileLineColLoc` from the `.sls` source line.
 
+### Op-form syntax
+
+Each statement is an op-form:
+
+```
+(%result-var = dialect.op-name (operand ...) ("attr" = val) ... -> !result-type)
+```
+
+- `("attr-name" = val)` — sets a named attribute; `val` is any Scheme expression
+  returning an `mlir::Attribute`.
+- `-> !type` — result type expression (an `mlir::Type`).
+- Multi-result: `((%r0 %r1) = ...)`.
+- Region-bearing ops: use `(^bb0 ((arg : !type) ...) body...)` inside the op-form.
+
 ---
 
-## 5. Pass entry points
+## 6. Pass entry points
 
 ### Greedy rewrite pass
 
@@ -361,7 +370,7 @@ Every emitted op carries a `FileLineColLoc` from the `.sls` source line.
 
 ---
 
-## 6. Writing a new pass
+## 7. Writing a new pass
 
 ### Step 1 — Create the pattern file
 
@@ -432,7 +441,7 @@ build/tools/crest-opt/crest-opt \
 
 ---
 
-## 7. Debugging
+## 8. Debugging
 
 ### `CREST_DEBUG_MATCH=1`
 
@@ -514,7 +523,7 @@ CREST_PATH=$(pwd)/samples \
 
 ---
 
-## 8. MLIR bindings reference
+## 9. MLIR bindings reference
 
 All bindings follow the CLAUDE.md convention: library names mirror MLIR header
 paths. Import only what you use.
@@ -570,7 +579,7 @@ Exports: `define-rewrite-pattern`, `define-conversion-pattern`,
 
 ---
 
-## 9. Deployment
+## 10. Deployment
 
 ### Development mode (default)
 
@@ -606,7 +615,7 @@ add_subdirectory(crest)
 
 ---
 
-## 10. Extending with custom C++ bindings
+## 11. Extending with custom C++ bindings
 
 Register additional MLIR APIs from a downstream project without modifying CREST:
 
