@@ -14,6 +14,30 @@ See [Getting started](getting-started.md) for build instructions.
 
 ---
 
+## Project layout
+
+A typical pass lives in two files under a `passes/` directory:
+
+```
+my-project/
+  passes/
+    my-pass.sls          ← pass entry point (exports run-pass)
+    my-pass/
+      patterns.sls       ← pattern definitions
+      helpers.sls        ← domain helpers (optional)
+```
+
+Set `CREST_PATH` to the parent of `passes/` so CREST can find the libraries:
+
+```bash
+export CREST_PATH=/my-project
+```
+
+For a small pass a single file is fine — split into sub-libraries only
+when the pattern file grows large.
+
+---
+
 ## 1. A minimal pattern
 
 **Goal:** replace every `source.add(%x, %y)` with `target.fused(%x, %y)`.

@@ -12,11 +12,10 @@ Patterns are Scheme macros — edit a `.sls` file and re-run: no rebuild, no rel
 4. [Rewrite DSL reference](#4-rewrite-dsl-reference)
 5. [`begin-mlir-code`](#5-begin-mlir-code)
 6. [Pass entry points](#6-pass-entry-points)
-7. [Writing a new pass](#7-writing-a-new-pass)
-8. [Debugging](#8-debugging)
-9. [MLIR bindings reference](#9-mlir-bindings-reference)
-10. [Deployment](#10-deployment)
-11. [Extending with custom C++ bindings](#11-extending-with-custom-c-bindings)
+7. [Debugging](#7-debugging)
+8. [MLIR bindings reference](#8-mlir-bindings-reference)
+9. [Deployment](#9-deployment)
+10. [Extending with custom C++ bindings](#10-extending-with-custom-c-bindings)
 
 ---
 
@@ -482,78 +481,7 @@ functions, type predicates, constants — no CREST macros required.
 
 ---
 
-## 7. Writing a new pass
-
-### Step 1 — Create the pattern file
-
-```
-my-project/
-  passes/
-    my-pass.sls          ← pass entry point
-    my-pass/
-      patterns.sls       ← pattern definitions
-      helpers.sls        ← domain helpers
-```
-
-### Step 2 — Write the pattern
-
-`passes/my-pass/patterns.sls`:
-
-```scheme
-#!r6rs
-(library (passes my-pass patterns)
-  (export my-fusion)
-  (import (except (rnrs) =)
-          (crest)
-          (only (mlir IR Value) mlir::Value::getType)
-          (only (mlir IR BuiltinTypes) mlir::IntegerType::get<i64>))
-
-  (define-rewrite-pattern (my-fusion op rewriter)
-    :if-match
-      %input = source.op (%a %b)
-        :where (mlir::IntegerType? (mlir::Value::getType %input))
-    :then-let
-      ([!result-type (mlir::Value::getType %input)])
-    :rewrite %input :with
-      (%result = target.op (%a %b) -> !result-type)))
-```
-
-### Step 3 — Write the pass entry point
-
-`passes/my-pass.sls`:
-
-```scheme
-#!r6rs
-(library (passes my-pass)
-  (export run-pass)
-  (import (except (rnrs) =)
-          (only (mlir Transforms GreedyPatternRewriteDriver) mlir::applyPatternsGreedily)
-          (only (mlir IR PatternMatch) with-RewritePatternSet)
-          (only (mlir IR Operation) mlir::Operation::getContext)
-          (only (mlir IR MLIRContext) with-current-MLIRContext)
-          (crest)
-          (passes my-pass patterns))
-
-  (define (run-pass module-op)
-    (let ([ctx (mlir::Operation::getContext module-op)])
-      (with-current-MLIRContext ctx
-        (with-RewritePatternSet (ps ctx)
-          (add-rewrite-pattern ps "source.op" my-fusion 10)
-          (mlir::applyPatternsGreedily module-op ps))))))
-```
-
-### Step 4 — Run
-
-```bash
-export CREST_PATH=/my-project/passes:/path/to/crest/samples
-build/tools/crest-opt/crest-opt \
-  --crest-pass="module=passes/my-pass" \
-  input.mlir
-```
-
----
-
-## 8. Debugging
+## 7. Debugging
 
 ### `CREST_DEBUG_MATCH=1`
 
@@ -635,7 +563,7 @@ CREST_PATH=$(pwd)/samples \
 
 ---
 
-## 9. MLIR bindings reference
+## 8. MLIR bindings reference
 
 All bindings follow the CLAUDE.md convention: library names mirror MLIR header
 paths. Import only what you use.
@@ -691,7 +619,7 @@ Exports: `define-rewrite-pattern`, `define-conversion-pattern`,
 
 ---
 
-## 10. Deployment
+## 9. Deployment
 
 ### Development mode (default)
 
@@ -727,7 +655,7 @@ add_subdirectory(crest)
 
 ---
 
-## 11. Extending with custom C++ bindings
+## 10. Extending with custom C++ bindings
 
 Register additional MLIR APIs from a downstream project without modifying CREST:
 
