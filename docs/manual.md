@@ -442,7 +442,14 @@ functions, type predicates, constants — no CREST macros required.
           (mlir::applyPatternsGreedily module-op ps))))))
 ```
 
-`add-rewrite-pattern` arguments: `(pattern-set root-op-name pattern-fn benefit)`.
+`add-rewrite-pattern` arguments:
+
+| Argument | Description |
+|---|---|
+| `pattern-set` | The `RewritePatternSet` to register into |
+| `root-op-name` | String — the op name this pattern is dispatched on (e.g. `"hip.quantize_linear"`) |
+| `pattern-fn` | The pattern function defined by `define-rewrite-pattern` |
+| `benefit` | Integer — higher benefit patterns are tried first; use `1` when there is no ordering concern |
 
 ### Dialect conversion pass
 
