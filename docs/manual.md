@@ -90,14 +90,28 @@ A complete greedy-rewrite pattern:
 | [`:then-let`](#then-let) | Bindings computed after match, before IR mutation |
 | [`:rewrite %root :with`](#rewrite-root-with) | New ops to emit; `%root` is replaced with the last emitted op |
 
+### Pattern signatures
+
+CREST generates two kinds of C++ pattern subclass, selected by the macro name:
+
+**`define-rewrite-pattern`** → [`mlir::OpRewritePattern`](https://mlir.llvm.org/doxygen/classmlir_1_1OpRewritePattern.html)
+
 ```scheme
-(define-conversion-pattern (my-pattern op operands-ref rewriter type-converter)
-  :if-match  ...
-  :rewrite   ...)
+(define-rewrite-pattern (name op rewriter)
+  :if-match ... :rewrite ...)
 ```
 
-`operands-ref` is a handle to the type-converted operands provided by the
-`ConversionPatternRewriter`. Fetch them with `(mlir-get-remapped-operands operands-ref)`.
+The three parameters map to [`matchAndRewrite(Operation* op, PatternRewriter& rewriter)`](https://mlir.llvm.org/doxygen/classmlir_1_1RewritePattern.html#a6f5af0f52c32a9f8d9c3696a8d2c87e4).
+
+**`define-conversion-pattern`** → [`mlir::ConversionPattern`](https://mlir.llvm.org/doxygen/classmlir_1_1ConversionPattern.html)
+
+```scheme
+(define-conversion-pattern (name op operands-ref rewriter type-converter)
+  :if-match ... :rewrite ...)
+```
+
+The five parameters map to [`matchAndRewrite(Operation* op, ArrayRef<Value> operands, ConversionPatternRewriter& rewriter)`](https://mlir.llvm.org/doxygen/classmlir_1_1ConversionPattern.html#a4e9e0cb68cd4d6f30b1b02b1f3d1e5a3).
+`operands-ref` carries the type-converted operands; fetch them with `(mlir-get-remapped-operands operands-ref)`.
 
 ---
 
