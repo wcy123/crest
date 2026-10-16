@@ -160,8 +160,6 @@ value; when absent, `%zp` is bound to the absent sentinel. Test with
 :then-let ([zp (if (unbound-value? %zp) 0 (extract-zp %zp))])
 ```
 
-Multiple variables in one `(:optional %a %b)` group are independent optional slots.
-
 ### Variadic operands
 
 ```scheme
