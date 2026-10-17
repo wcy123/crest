@@ -28,8 +28,22 @@ FAILED=0
 # Test registry
 # Format: test_name|scheme_file|generator_function|reference_file
 TESTS=(
-  "arith-dialect-decls|dialects/arith-dialect.sls|generate-dialect-decl|ArithDialect.h.inc.expected"
-  "arith-dialect-defs|dialects/arith-dialect.sls|generate-dialect-def|ArithDialect.cpp.inc.expected"
+  # Real MLIR dialects (for validation)
+  "arith-dialect-decls|dialects/arith-dialect.sls|decl|ArithDialect.h.inc.expected"
+  "arith-dialect-defs|dialects/arith-dialect.sls|def|ArithDialect.cpp.inc.expected"
+
+  # Feature tests
+  "test-01-basic-decls|dialects/test-01-basic.sls|decl|Test01Dialect.h.inc.expected"
+  "test-01-basic-defs|dialects/test-01-basic.sls|def|Test01Dialect.cpp.inc.expected"
+
+  "test-02-single-dep-decls|dialects/test-02-single-dep.sls|decl|Test02Dialect.h.inc.expected"
+  "test-02-single-dep-defs|dialects/test-02-single-dep.sls|def|Test02Dialect.cpp.inc.expected"
+
+  "test-03-multiple-deps-decls|dialects/test-03-multiple-deps.sls|decl|Test03Dialect.h.inc.expected"
+  "test-03-multiple-deps-defs|dialects/test-03-multiple-deps.sls|def|Test03Dialect.cpp.inc.expected"
+
+  "test-12-all-features-decls|dialects/test-12-all-features.sls|decl|Test12Dialect.h.inc.expected"
+  "test-12-all-features-defs|dialects/test-12-all-features.sls|def|Test12Dialect.cpp.inc.expected"
 )
 
 # Function to run a single test
@@ -49,7 +63,7 @@ run_test() {
   # Generate output with CREST
   if ! CHEZSCHEMELIBDIRS="${CREST_ROOT}/scheme" \
        "${SCHEME}" --program "${SCRIPT_DIR}/${scheme_file}" \
-       --generator "${generator}" \
+       "${generator}" \
        > "${actual_file}" 2>&1; then
     echo -e "${RED}[FAIL]${NC} - CREST generation failed"
     cat "${actual_file}"

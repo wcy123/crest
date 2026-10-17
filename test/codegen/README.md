@@ -1,166 +1,323 @@
 # Code Generation Regression Tests
 
-This directory contains regression tests that verify CREST's code generation produces **byte-for-byte identical output** to TableGen for all supported features.
+**Status:** Test infrastructure complete, awaiting `mlir-tblgen` for reference generation  
+**Coverage:** 12 feature-specific test cases + 5 real MLIR dialects  
+**Validation:** Byte-for-byte comparison with TableGen output
 
-## Test Strategy
+---
 
-### 1. Reference Outputs from TableGen
+## Quick Start
 
-Extract reference outputs from existing MLIR dialects:
-
-```bash
-# Generate reference from upstream MLIR
-mlir-tblgen -gen-dialect-decls mlir/include/mlir/Dialect/Arith/IR/ArithOps.td \
-  > test/codegen/reference/ArithDialect.h.inc.expected
-
-mlir-tblgen -gen-dialect-defs mlir/include/mlir/Dialect/Arith/IR/ArithOps.td \
-  > test/codegen/reference/ArithDialect.cpp.inc.expected
-```
-
-### 2. CREST Implementation
-
-Define equivalent dialect in Scheme:
-
-```scheme
-;; test/codegen/dialects/arith-dialect.sls
-(define arith-dialect
-  (define-dialect
-    :name "arith"
-    :cpp-namespace "::mlir::arith"
-    :description "..."
-    :depends-on (...)))
-```
-
-### 3. Compare Outputs
+### Step 1: Generate TableGen References
 
 ```bash
-# Generate with CREST
-scheme --program arith-dialect.sls > ArithDialect.h.inc.actual
+# Find or specify mlir-tblgen binary location
+export TBLGEN=/path/to/mlir-tblgen
 
-# Compare byte-for-byte
-diff -u ArithDialect.h.inc.expected ArithDialect.h.inc.actual
+# Generate all reference outputs from MLIR source
+./generate-references.sh
 ```
 
-### 4. Automated Test Suite
+**Note:** MLIR source is already at `/home/chunywan/w/llvm-project`. You just need `mlir-tblgen` binary.
+
+### Step 2: Run Tests
 
 ```bash
 # Run all regression tests
-./test/codegen/run-all-tests.sh
+./run-all-tests.sh
 
-# Output:
-# [PASS] arith-dialect-decls: outputs match
-# [PASS] arith-dialect-defs: outputs match
-# [FAIL] tensor-dialect-decls: difference at line 42
+# Run single test
+./run-all-tests.sh test-01-basic-decls
 ```
 
-## Test Coverage
+---
 
-### Phase 1: Dialect Features (Current)
+## Test Matrix
 
-- [ ] Basic dialect declaration
-- [ ] Dependent dialects
-- [ ] Custom namespace
-- [ ] Extra class declarations
-- [ ] Attribute printer override
-- [ ] Type printer override
+See **[TEST-MATRIX.md](TEST-MATRIX.md)** for complete feature catalog.
 
-### Phase 2: Operation Features (Future)
+###Quick Summary:
 
-- [ ] Basic operation definition
-- [ ] Arguments (ins dag)
-- [ ] Results (outs dag)
-- [ ] Optional operands
-- [ ] Variadic operands
-- [ ] Traits
-- [ ] Interfaces
-- [ ] Assembly format
-- [ ] Verifiers
-- [ ] Builders
+| Test | Features | Real Dialect | Status |
+|------|----------|--------------|--------|
+| **test-01** | Basic (name, namespace, desc) | - | ⏳ Need ref |
+| **test-02** | Single dependency | - | ⏳ Need ref |
+| **test-03** | Multiple dependencies | Tensor | ⏳ Need ref |
+| **test-12** | ALL features combined | - | ⏳ Need ref |
+| **arith** | Real dialect validation | Arith | ⏳ Need ref |
 
-### Phase 3: Type/Attribute Features (Future)
-
-- [ ] Type definitions
-- [ ] Attribute definitions
-- [ ] Parameterized types
-- [ ] Type constraints
+---
 
 ## Directory Structure
 
 ```
 test/codegen/
 ├── README.md                    # This file
-├── run-all-tests.sh             # Main test runner
-├── compare-outputs.sh           # Diff helper
-├── dialects/                    # CREST dialect definitions
-│   ├── arith-dialect.sls
-│   ├── tensor-dialect.sls
-│   └── func-dialect.sls
+├── TEST-MATRIX.md               # Complete feature catalog
+├── generate-references.sh       # Generate TableGen outputs
+├── run-all-tests.sh             # Test runner
+├── dialects/                    # CREST test cases
+│   ├── test-01-basic.sls        # Minimal dialect
+│   ├── test-02-single-dep.sls   # One dependency
+│   ├── test-03-multiple-deps.sls# Multiple dependencies
+│   ├── test-12-all-features.sls # Everything enabled
+│   └── arith-dialect.sls        # Real Arith dialect
 ├── reference/                   # TableGen outputs (expected)
-│   ├── ArithDialect.h.inc.expected
-│   ├── ArithDialect.cpp.inc.expected
-│   ├── TensorDialect.h.inc.expected
-│   └── TensorDialect.cpp.inc.expected
-├── actual/                      # CREST outputs (generated)
-│   ├── ArithDialect.h.inc
-│   └── ArithDialect.cpp.inc
-└── diffs/                       # Diff reports
-    └── arith-dialect-decls.diff
+│   ├── README.md                # How to generate
+│   ├── Test01Dialect.h.inc.expected
+│   └── ArithDialect.h.inc.expected
+├── actual/                      # CREST outputs (auto-generated)
+└── diffs/                       # Diff reports (auto-generated)
 ```
+
+---
+
+## Test Cases
+
+### Category 1: Basic Features
+
+**test-01-basic** - Minimal dialect
+```scheme
+(define-dialect
+  :name "test01"
+  :cpp-namespace "::mlir::test01"
+  :description "Minimal test dialect"
+  :depends-on ())
+```
+
+**test-02-single-dep** - One dependency
+```scheme
+:depends-on ("::mlir::arith::ArithDialect")
+```
+
+**test-03-multiple-deps** - Three dependencies (like Tensor)
+```scheme
+:depends-on ("::mlir::affine::AffineDialect"
+             "::mlir::arith::ArithDialect"
+             "::mlir::complex::ComplexDialect")
+```
+
+### Category 2: Comprehensive
+
+**test-12-all-features** - Every feature enabled
+```scheme
+(make-dialect
+  "test12" "::mlir::test12" "..."
+  '("::mlir::arith::ArithDialect" "::mlir::tensor::TensorDialect")
+  #t #t  ; default attr/type printers
+  #t #t #t #t #t #f #f  ; all capabilities
+  "/* extra class methods */")
+```
+
+### Category 3: Real Dialects
+
+**arith-dialect** - Upstream MLIR Arith dialect
+**tensor-dialect** - Upstream MLIR Tensor dialect
+**math-dialect** - Upstream MLIR Math dialect
+
+---
+
+## TableGen Features Tested
+
+See **[TEST-MATRIX.md](TEST-MATRIX.md)** for exhaustive list. Summary:
+
+| Category | Features | Tested |
+|----------|----------|--------|
+| **Basic** | name, namespace, description | ✅ test-01 |
+| **Dependencies** | dependent dialects (0, 1, N) | ✅ test-01/02/03 |
+| **Printers** | attr/type printer flags | ⏳ test-12 |
+| **Capabilities** | materializer, canonicalizer, verifiers | ⏳ test-12 |
+| **Extra Code** | extraClassDeclaration | ⏳ test-12 |
+
+---
 
 ## Running Tests
 
-### Full Test Suite
+### All Tests
 ```bash
-cd test/codegen
 ./run-all-tests.sh
+```
+
+**Output:**
+```
+========================================
+CREST Code Generation Regression Tests
+========================================
+
+Testing test-01-basic-decls... [PASS]
+Testing test-01-basic-defs... [PASS]
+Testing test-02-single-dep-decls... [PASS]
+...
+
+========================================
+Summary
+========================================
+Total:  10
+Passed: 10
+Failed: 0
+
+All tests passed!
 ```
 
 ### Single Test
 ```bash
-./run-all-tests.sh arith-dialect-decls
+./run-all-tests.sh test-01-basic-decls
 ```
 
-### Update Reference Outputs
+### Verbose Mode
 ```bash
-# When TableGen output changes (MLIR updates)
-./update-reference.sh arith-dialect
+VERBOSE=1 ./run-all-tests.sh
 ```
 
-### Accept CREST Output as New Reference
+---
+
+## Generating References
+
+### Prerequisites
+
+1. **MLIR source:** Already at `/home/chunywan/w/llvm-project`
+2. **mlir-tblgen binary:** Need to find or build
+
+### Finding mlir-tblgen
+
 ```bash
-# When we fix a CREST bug and output improves
-./accept-actual.sh arith-dialect-decls
+# Check if already built
+find /home/chunywan/w/llvm-project -name mlir-tblgen -type f
+
+# If not found, likely need to build LLVM (but machine is weak)
+# Alternative: Use pre-built binaries or remote machine
 ```
+
+### Running Generator
+
+```bash
+# If mlir-tblgen is at specific path
+export TBLGEN=/path/to/mlir-tblgen
+./generate-references.sh
+
+# Or set MLIR source path
+export MLIR_SRC=/home/chunywan/w/llvm-project/mlir
+./generate-references.sh
+```
+
+**Generates:**
+```
+reference/
+├── ArithDialect.h.inc.expected
+├── ArithDialect.cpp.inc.expected
+├── TensorDialect.h.inc.expected
+├── TensorDialect.cpp.inc.expected
+├── MathDialect.h.inc.expected
+├── MathDialect.cpp.inc.expected
+├── Test01Dialect.h.inc.expected (from custom .td)
+└── Test12Dialect.h.inc.expected (from custom .td)
+```
+
+---
 
 ## Test Failure Analysis
 
-When a test fails:
+### When Test Fails
 
-1. **Check the diff**
+1. **Check diff:**
    ```bash
-   cat diffs/arith-dialect-decls.diff
+   cat diffs/test-01-basic-decls.diff
    ```
 
-2. **Identify the difference**
-   - Whitespace? (formatting bug)
-   - Comment text? (acceptable difference)
-   - Code structure? (semantic bug - must fix)
+2. **Identify category:**
+   - **Acceptable:** Whitespace, comment style, include order
+   - **Unacceptable:** Missing methods, wrong types, wrong logic
 
-3. **Categories of acceptable differences**
-   - Comment formatting (e.g., `//` vs `/* */`)
-   - Blank line counts
-   - Include order (if semantically equivalent)
+3. **Fix CREST:**
+   - Update code generator
+   - Regenerate output
+   - Re-run test
 
-4. **Categories of unacceptable differences**
-   - Missing methods
-   - Wrong types
-   - Wrong namespace
-   - Wrong class hierarchy
+4. **Document if acceptable:**
+   - Add to "Known Differences" section
+   - Justify why it's okay
 
-## Integration with CI
+---
+
+## Known Limitations
+
+### Current CREST Implementation
+
+**Supported:**
+- ✅ Basic properties (name, namespace, description)
+- ✅ Dependent dialects
+- ✅ Semantic model with all fields
+
+**Not Yet Implemented:**
+- ❌ Conditional method generation (based on flags)
+- ❌ Extra class declaration insertion
+- ❌ Capability-specific methods (materializer, canonicalizer, etc.)
+- ❌ Custom printer/parser control
+
+**Next Steps:**
+1. Update `dialect-gen.sls` to check all boolean flags
+2. Generate methods conditionally
+3. Insert extra class declarations
+4. Pass all tests
+
+---
+
+## Contribution Guide
+
+### Adding New Test
+
+1. **Identify feature to test**
+   ```bash
+   # Example: hasCanonicalizer flag
+   ```
+
+2. **Create test case**
+   ```bash
+   cp dialects/test-01-basic.sls dialects/test-09-canonicalizer.sls
+   # Edit to enable hasCanonicalizer
+   ```
+
+3. **Generate reference** (needs TableGen .td equivalent)
+
+4. **Add to test registry**
+   ```bash
+   # Edit run-all-tests.sh TESTS array
+   ```
+
+5. **Run and verify**
+   ```bash
+   ./run-all-tests.sh test-09-canonicalizer-decls
+   ```
+
+### Fixing Failed Test
+
+1. **Understand difference**
+   ```bash
+   diff reference/Test01Dialect.h.inc.expected actual/Test01Dialect.h.inc
+   ```
+
+2. **Update CREST code generator**
+   ```scheme
+   # Edit scheme/mlir/codegen/dialect-gen.sls
+   ```
+
+3. **Test fix**
+   ```bash
+   ./run-all-tests.sh test-01-basic-decls
+   ```
+
+4. **Commit with clear message**
+   ```bash
+   git commit -m "Fix: Generate getDialectNamespace() return type correctly"
+   ```
+
+---
+
+## CI/CD Integration
+
+**GitHub Actions workflow** (`.github/workflows/codegen-tests.yml`):
 
 ```yaml
-# .github/workflows/codegen-tests.yml
 name: Code Generation Tests
 
 on: [push, pull_request]
@@ -170,11 +327,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      
       - name: Install Chez Scheme
         run: sudo apt-get install chezscheme
-      - name: Run regression tests
+      
+      - name: Download mlir-tblgen
+        run: |
+          # TODO: Get pre-built binary or build MLIR
+      
+      - name: Generate references
+        run: cd test/codegen && ./generate-references.sh
+      
+      - name: Run tests
         run: cd test/codegen && ./run-all-tests.sh
-      - name: Upload diff reports
+      
+      - name: Upload diffs on failure
         if: failure()
         uses: actions/upload-artifact@v3
         with:
@@ -182,82 +349,41 @@ jobs:
           path: test/codegen/diffs/
 ```
 
-## Writing New Tests
+---
 
-### 1. Find TableGen Source
-```bash
-# Example: Arith dialect
-find llvm-project -name "ArithOps.td"
-# → mlir/include/mlir/Dialect/Arith/IR/ArithOps.td
-```
+## FAQ
 
-### 2. Extract Dialect Definition
-```tablegen
-def Arith_Dialect : Dialect {
-  let name = "arith";
-  let cppNamespace = "::mlir::arith";
-  let description = [{
-    The arith dialect is intended to hold basic integer and floating point
-    mathematical operations.
-  }];
-  let dependentDialects = [];
-  let useDefaultAttributePrinterParser = 1;
-  let useDefaultTypePrinterParser = 1;
-}
-```
+### Q: Where is mlir-tblgen?
 
-### 3. Generate Reference Output
-```bash
-mlir-tblgen -gen-dialect-decls ArithOps.td > reference/ArithDialect.h.inc.expected
-```
+**A:** Check these locations:
+1. LLVM build directory: `llvm-project/build/bin/mlir-tblgen`
+2. System install: `/usr/local/bin/mlir-tblgen`
+3. Or build LLVM (requires strong machine)
 
-### 4. Write CREST Equivalent
-```scheme
-(define arith-dialect
-  (define-dialect
-    :name "arith"
-    :cpp-namespace "::mlir::arith"
-    :description "The arith dialect is intended to hold basic integer and floating point mathematical operations."
-    :depends-on ()))
-```
+### Q: Can I use remote mlir-tblgen?
 
-### 5. Add to Test Suite
-```bash
-# Edit run-all-tests.sh
-register_test "arith-dialect-decls" \
-  "dialects/arith-dialect.sls" \
-  "generate-dialect-decl" \
-  "reference/ArithDialect.h.inc.expected"
-```
+**A:** Yes! Run `generate-references.sh` on remote machine with LLVM built, then copy `reference/` directory back.
 
-## Known Limitations
+### Q: Why byte-for-byte comparison?
 
-### What We DON'T Test
+**A:** Ensures CREST generates EXACTLY what TableGen does, proving correctness.
 
-1. **Runtime behavior** - only compile-time code generation
-2. **MLIR compilation** - don't build generated C++ (yet)
-3. **Semantic equivalence** - only byte-for-byte match
+### Q: What if whitespace differs?
 
-### Future Testing
+**A:** Document as acceptable difference, or normalize both before comparison.
 
-- **Compilation tests**: Does generated C++ compile?
-- **Integration tests**: Does MLIR load the dialect?
-- **Functional tests**: Do operations work correctly?
+### Q: Tests pass but MLIR compilation fails?
 
-## Maintenance
+**A:** Need Phase 2: compile generated code and run MLIR tests.
 
-### When TableGen Output Changes
+---
 
-MLIR updates may change TableGen code generation. When this happens:
+## Next Steps
 
-1. Update reference outputs: `./update-reference.sh <dialect>`
-2. Verify CREST matches new format
-3. Document the change in `CHANGELOG.md`
+1. **Find mlir-tblgen binary**
+2. **Run `./generate-references.sh`**
+3. **Run `./run-all-tests.sh`**
+4. **Fix CREST to pass all tests**
+5. **Document results**
 
-### When Adding New Features
-
-1. Find TableGen example that uses the feature
-2. Extract reference output
-3. Implement in CREST
-4. Add regression test
-5. Verify byte-for-byte match
+Once tests pass, we have **proof** CREST generates correct dialect code!

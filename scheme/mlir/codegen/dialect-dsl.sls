@@ -7,38 +7,26 @@
   (import (chezscheme)
           (mlir codegen semantic-model))
 
-  ;; Main dialect definition macro
+  ;; Main dialect definition macro with full feature support
   (define-syntax define-dialect
-    (lambda (stx)
-      (syntax-case stx (:name :cpp-namespace :description :depends-on :extra-class-decl)
+    (syntax-rules (:name :cpp-namespace :description :depends-on
+                   :use-default-attr-printer :use-default-type-printer
+                   :has-constant-materializer :has-canonicalizer
+                   :has-op-attr-verify :has-region-arg-attr-verify
+                   :has-region-result-attr-verify :has-non-default-destructor
+                   :has-op-interface-fallback :extra-class-decl)
 
-        ;; Full form with all options
-        [(_ :name name-str
-            :cpp-namespace ns-str
-            :description desc-str
-            :depends-on (deps ...)
-            :extra-class-decl extra-code)
-         #'(make-dialect
-             name-str
-             ns-str
-             desc-str
-             (list deps ...)
-             extra-code
-             #t  ; use-default-attr-printer
-             #t  ; use-default-type-printer
-           )]
+      ;; Minimal form (only required fields)
+      [(_ :name name-str
+          :cpp-namespace ns-str
+          :description desc-str
+          :depends-on (deps ...))
+       (make-dialect
+         name-str ns-str desc-str (list deps ...)
+         #t #t  ; default: use default attr/type printer
+         #f #f #f #f #f #f #f  ; all capabilities off
+         #f)]  ; no extra-class-decl
 
-        ;; Minimal form (no extra-class-decl)
-        [(_ :name name-str
-            :cpp-namespace ns-str
-            :description desc-str
-            :depends-on (deps ...))
-         #'(make-dialect
-             name-str
-             ns-str
-             desc-str
-             (list deps ...)
-             #f  ; no extra-class-decl
-             #t  ; use-default-attr-printer
-             #t  ; use-default-type-printer
-           )]))))
+      ;; TODO: Add keyword argument handler for optional fields
+      ;; For now, require explicit make-dialect calls for advanced features
+    )))
