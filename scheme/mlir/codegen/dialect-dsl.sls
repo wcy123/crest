@@ -7,26 +7,44 @@
   (import (chezscheme)
           (mlir codegen semantic-model))
 
-  ;; Main dialect definition macro with full feature support
+  ;; define-dialect — keyword-argument macro using syntax-case
+  ;; Required: :name, :cpp-namespace, :description, :depends-on
+  ;; All other fields default to #f/#t as appropriate
   (define-syntax define-dialect
-    (syntax-rules (:name :cpp-namespace :description :depends-on
-                   :use-default-attr-printer :use-default-type-printer
-                   :has-constant-materializer :has-canonicalizer
-                   :has-op-attr-verify :has-region-arg-attr-verify
-                   :has-region-result-attr-verify :has-non-default-destructor
-                   :has-op-interface-fallback :extra-class-decl)
-
-      ;; Minimal form (only required fields)
-      [(_ :name name-str
-          :cpp-namespace ns-str
-          :description desc-str
-          :depends-on (deps ...))
-       (make-dialect
-         name-str ns-str desc-str (list deps ...)
-         #t #t  ; default: use default attr/type printer
-         #f #f #f #f #f #f #f  ; all capabilities off
-         #f)]  ; no extra-class-decl
-
-      ;; TODO: Add keyword argument handler for optional fields
-      ;; For now, require explicit make-dialect calls for advanced features
-    )))
+    (lambda (stx)
+      (define (extract-kw kw args default)
+        (let loop ([args args])
+          (cond
+           [(null? args) default]
+           [(and (pair? args)
+                 (equal? (syntax->datum (car args)) kw))
+            (cadr args)]
+           [else (loop (cdr args))])))
+      (syntax-case stx ()
+        [(_ kw-arg ...)
+         (let* ([args (syntax->list #'(kw-arg ...))]
+                [get  (lambda (kw default) (extract-kw kw args default))])
+           (with-syntax
+               ([name    (get ':name #'"")]
+                [ns      (get ':cpp-namespace #'"")]
+                [desc    (get ':description #'"")]
+                [deps    (let ([d (get ':depends-on #f)])
+                           (if d
+                               (with-syntax ([(item ...) d])
+                                 #'(list item ...))
+                               #''()))]
+                [attr-p  (get ':use-default-attr-printer #'#t)]
+                [type-p  (get ':use-default-type-printer #'#t)]
+                [cmater  (get ':has-constant-materializer #'#f)]
+                [canon   (get ':has-canonicalizer #'#f)]
+                [opattr  (get ':has-op-attr-verify #'#f)]
+                [rgarg   (get ':has-region-arg-attr-verify #'#f)]
+                [rgres   (get ':has-region-result-attr-verify #'#f)]
+                [dtor    (get ':has-non-default-destructor #'#f)]
+                [iface   (get ':has-op-interface-fallback #'#f)]
+                [extra   (get ':extra-class-decl #'#f)])
+             #'(make-dialect name ns desc deps
+                             attr-p type-p
+                             cmater canon opattr rgarg rgres dtor iface
+                             extra)))])))
+  )
