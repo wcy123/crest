@@ -8,6 +8,7 @@
 #include "../Bindings/Support/SchemeWrapper.h"
 #include "mlir/IR/ExtensibleDialect.h"
 #include "mlir/IR/Operation.h"
+#include "mlir/IR/PatternMatch.h"
 
 namespace crest {
 
@@ -58,30 +59,86 @@ make_print_fn(std::optional<LockedSchemeObject> cb) {
   };
 }
 
+static mlir::OperationName::FoldHookFn
+make_fold_fn(std::optional<LockedSchemeObject> cb) {
+  if (!cb) {
+    return [](mlir::Operation*, llvm::ArrayRef<mlir::Attribute>,
+              llvm::SmallVectorImpl<mlir::OpFoldResult>&) {
+      return mlir::failure();
+    };
+  }
+  // Scheme callback: (op) → bool.  Fold results not yet bridged —
+  // returning failure when the Scheme side cannot fold is correct.
+  return [cb = std::move(*cb)](mlir::Operation* op,
+                               llvm::ArrayRef<mlir::Attribute>,
+                               llvm::SmallVectorImpl<mlir::OpFoldResult>&) {
+    return Sboolean_value(scheme_call(cb.get(), op)) ? mlir::success()
+                                                     : mlir::failure();
+  };
+}
+
+static mlir::DynamicOpDefinition::GetCanonicalizationPatternsFn
+make_canon_fn(std::optional<LockedSchemeObject> cb) {
+  if (!cb) {
+    return [](mlir::RewritePatternSet&, mlir::MLIRContext*) {};
+  }
+  // Scheme callback: (pattern-set-ptr ctx-ptr) → void.
+  // The Scheme side calls add-rewrite-pattern on the pattern set.
+  return [cb = std::move(*cb)](mlir::RewritePatternSet& patterns,
+                               mlir::MLIRContext* ctx) {
+    scheme_call(cb.get(), &patterns, ctx);
+  };
+}
+
+static mlir::OperationName::PopulateDefaultAttrsFn
+make_default_attrs_fn(std::optional<LockedSchemeObject> cb) {
+  if (!cb) {
+    return [](const mlir::OperationName&, mlir::NamedAttrList&) {};
+  }
+  // Scheme callback: (op-name-ptr attr-list-ptr) → void.
+  return [cb = std::move(*cb)](const mlir::OperationName& name,
+                               mlir::NamedAttrList& attrs) {
+    scheme_call(cb.get(), &name, &attrs);
+  };
+}
+
 // ---------------------------------------------------------------------------
 // CrestOp::registerInto
 // ---------------------------------------------------------------------------
 
 void CrestOp::registerInto(mlir::ExtensibleDialect* dialect,
                            llvm::StringRef op_name, Callbacks cbs) {
-  bool has_custom_assembly = cbs.parse.has_value() || cbs.print.has_value();
-
   auto verify_fn = make_verify_fn(std::move(cbs.verify));
   auto verify_region_fn = make_verify_fn(std::move(cbs.verify_regions));
 
-  if (!has_custom_assembly) {
-    // No custom parse/print — MLIR uses generic assembly format automatically.
-    dialect->registerDynamicOp(mlir::DynamicOpDefinition::get(
-        op_name, dialect, std::move(verify_fn), std::move(verify_region_fn)));
-    return;
+  // Use 2-arg or 4-arg overload for parse/print to preserve MLIR's generic
+  // assembly format default when no custom parse/print is provided.
+  // Wire fold/canonicalization/populate-default-attrs via setXxx so all
+  // 7 slots are honoured without losing the generic format default.
+  std::unique_ptr<mlir::DynamicOpDefinition> def;
+  if (cbs.parse || cbs.print) {
+    def = mlir::DynamicOpDefinition::get(op_name, dialect, std::move(verify_fn),
+                                         std::move(verify_region_fn),
+                                         make_parse_fn(std::move(cbs.parse)),
+                                         make_print_fn(std::move(cbs.print)));
+  } else {
+    def = mlir::DynamicOpDefinition::get(op_name, dialect, std::move(verify_fn),
+                                         std::move(verify_region_fn));
   }
 
-  auto parse_fn = make_parse_fn(std::move(cbs.parse));
-  auto print_fn = make_print_fn(std::move(cbs.print));
+  if (cbs.fold) {
+    def->setFoldHookFn(make_fold_fn(std::move(cbs.fold)));
+  }
+  if (cbs.get_canonicalization_patterns) {
+    def->setGetCanonicalizationPatternsFn(
+        make_canon_fn(std::move(cbs.get_canonicalization_patterns)));
+  }
+  if (cbs.populate_default_attrs) {
+    def->setPopulateDefaultAttrsFn(
+        make_default_attrs_fn(std::move(cbs.populate_default_attrs)));
+  }
 
-  dialect->registerDynamicOp(mlir::DynamicOpDefinition::get(
-      op_name, dialect, std::move(verify_fn), std::move(verify_region_fn),
-      std::move(parse_fn), std::move(print_fn)));
+  dialect->registerDynamicOp(std::move(def));
 }
 
 // ---------------------------------------------------------------------------
@@ -97,9 +154,9 @@ void registerCrestDynamicOpBindings() {
   //   1 verify-regions  (op) → bool
   //   2 parse           (parser state) → bool   [#f = generic format]
   //   3 print           (op printer name) → void [#f = generic format]
-  //   4 fold            — reserved, not yet bridged
-  //   5 get-canonicalization-patterns — reserved
-  //   6 populate-default-attrs        — reserved
+  //   4 fold            (op) → bool
+  //   5 get-canonicalization-patterns (pattern-set-ptr ctx-ptr) → void
+  //   6 populate-default-attrs        (op-name-ptr attr-list-ptr) → void
   Sregister_symbol(
       "crest::register-dynamic-op!",
       (void*)+[](uint64_t dialect_ptr, const char* op_name,
