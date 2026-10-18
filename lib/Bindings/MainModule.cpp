@@ -11,6 +11,7 @@
 
 #include "../Crest/Dialect.h"
 #include "../Crest/Op.h"
+#include "../Crest/Trait.h"
 #include "Dialect/Shape/Shape.h"
 #include "Dialect/Tensor/Tensor.h"
 #include "IR/Block.h"
@@ -49,6 +50,7 @@ void registerMlirForeignFunctions() {
   registerInterfacesDpsBindings();
   registerIRExtensibleDialectBindings();
   registerCrestDynamicOpBindings();
+  registerCrestTraitBindings();
   registerIRLocationBindings();
   registerIRBlockBindings();
   registerIRRegionBindings();
