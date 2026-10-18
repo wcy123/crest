@@ -56,6 +56,24 @@ void registerIROperationBindings() {
         }
         return reinterpret_cast<mlir::Operation*>(op)->getNumResults();
       });
+  // mlir::Operation::getOperand — return the i-th operand Value directly.
+  Sregister_symbol(
+      "mlir::Operation::getOperand",
+      (void*)+[](uint64_t op, int64_t index) -> uint64_t {
+        if (!op) {
+          scheme_error("mlir::Operation::getOperand",
+                       "operation must not be null");
+        }
+        auto* cppOp = reinterpret_cast<mlir::Operation*>(op);
+        if (index < 0 || index >= (int64_t)cppOp->getNumOperands()) {
+          scheme_error("mlir::Operation::getOperand",
+                       "index out of range: ", index, " (size ",
+                       (int64_t)cppOp->getNumOperands(), ")");
+        }
+        return reinterpret_cast<uint64_t>(
+            cppOp->getOperand(static_cast<unsigned>(index))
+                .getAsOpaquePointer());
+      });
   Sregister_symbol(
       "mlir::Operation::getOpOperand",
       (void*)+[](uint64_t op, int64_t index) -> uint64_t {

@@ -17,6 +17,7 @@
   (export
     mlir::Operation::getName
     mlir::Operation::getContext
+    mlir::Operation::getOperand
     mlir::Operation::getNumOperands
     mlir::Operation::getNumResults
     mlir::Operation::getOpOperand
@@ -71,6 +72,7 @@
   ;; @return    Operand count; 0 if op is null
   ;; @see       mlir/IR/Operation.h
   ;; @note      Defined in lib/Bindings/IR/Operation.cpp
+  (define mlir::Operation::getOperand      %mlir::Operation::getOperand)
   (define mlir::Operation::getNumOperands  %get-num-operands)
 
   ;; @brief mlir::Operation::getNumResults — return the number of results.
