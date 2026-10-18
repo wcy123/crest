@@ -1,0 +1,157 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Dialect Declarations                                                       *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|* From: test-06-comprehensive.td                                             *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+namespace mlir::test06 {
+
+/// Comprehensive test dialect with all 17 fields
+/// This dialect enables ALL 17 TableGen dialect features to ensure complete coverage:
+///     - Basic: name, summary, description, cppNamespace
+///     - Dependencies: dependentDialects
+///     - Discardable attrs: discardableAttrs (DAG type)
+///     - Printers: useDefaultAttributePrinterParser, useDefaultTypePrinterParser
+///     - Capabilities: 6 has* flags
+///     - Lifecycle: hasNonDefaultDestructor
+///     - Extensibility: isExtensible
+///     - Extra code: extraClassDeclaration
+class Test06ComprehensiveDialect : public ::mlir::ExtensibleDialect {
+  explicit Test06ComprehensiveDialect(::mlir::MLIRContext *context);
+
+  void initialize();
+  friend class ::mlir::MLIRContext;
+public:
+  ~Test06ComprehensiveDialect() override;
+  static constexpr ::llvm::StringLiteral getDialectNamespace() {
+    return ::llvm::StringLiteral("test06");
+  }
+
+  /// Parse an attribute registered to this dialect.
+  ::mlir::Attribute parseAttribute(::mlir::DialectAsmParser &parser,
+                                   ::mlir::Type type) const override;
+
+  /// Print an attribute registered to this dialect.
+  void printAttribute(::mlir::Attribute attr,
+                      ::mlir::DialectAsmPrinter &os) const override;
+
+  /// Parse a type registered to this dialect.
+  ::mlir::Type parseType(::mlir::DialectAsmParser &parser) const override;
+
+  /// Print a type registered to this dialect.
+  void printType(::mlir::Type type,
+                 ::mlir::DialectAsmPrinter &os) const override;
+
+  /// Register canonicalization patterns.
+  void getCanonicalizationPatterns(
+      ::mlir::RewritePatternSet &results) const override;
+
+  /// Materialize a single constant operation from a given attribute value with
+  /// the desired resultant type.
+  ::mlir::Operation *materializeConstant(::mlir::OpBuilder &builder,
+                                         ::mlir::Attribute value,
+                                         ::mlir::Type type,
+                                         ::mlir::Location loc) override;
+
+    /// Provides a hook for verifying dialect attributes attached to the given
+    /// op.
+    ::llvm::LogicalResult verifyOperationAttribute(
+        ::mlir::Operation *op, ::mlir::NamedAttribute attribute) override;
+
+    /// Provides a hook for verifying dialect attributes attached to the given
+    /// op's region argument.
+    ::llvm::LogicalResult verifyRegionArgAttribute(
+        ::mlir::Operation *op, unsigned regionIndex, unsigned argIndex,
+        ::mlir::NamedAttribute attribute) override;
+
+    /// Provides a hook for verifying dialect attributes attached to the given
+    /// op's region result.
+    ::llvm::LogicalResult verifyRegionResultAttribute(
+        ::mlir::Operation *op, unsigned regionIndex, unsigned resultIndex,
+        ::mlir::NamedAttribute attribute) override;
+
+    /// Provides a hook for op interface.
+    void *getRegisteredInterfaceForOp(mlir::TypeID interfaceID,
+                                      mlir::OperationName opName) override;
+
+    /// Helper to manage the discardable attribute `workgroup_config`.
+    class WorkgroupConfigAttrHelper {
+      ::mlir::StringAttr name;
+    public:
+      static constexpr ::llvm::StringLiteral getNameStr() {
+        return "test06.workgroup_config";
+      }
+      constexpr ::mlir::StringAttr getName() {
+        return name;
+      }
+
+      WorkgroupConfigAttrHelper(::mlir::MLIRContext *ctx)
+        : name(::mlir::StringAttr::get(ctx, getNameStr())) {}
+
+     CustomWorkgroupAttr getAttr(::mlir::Operation *op) {
+       return op->getAttrOfType<CustomWorkgroupAttr>(name);
+     }
+     void setAttr(::mlir::Operation *op, CustomWorkgroupAttr val) {
+       op->setAttr(name, val);
+     }
+     bool isAttrPresent(::mlir::Operation *op) {
+       return op->hasAttrOfType<CustomWorkgroupAttr>(name);
+     }
+     void removeAttr(::mlir::Operation *op) {
+       assert(op->hasAttrOfType<CustomWorkgroupAttr>(name));
+       op->removeAttr(name);
+     }
+   };
+   WorkgroupConfigAttrHelper getWorkgroupConfigAttrHelper() {
+     return workgroupConfigAttrName;
+   }
+ private:
+   WorkgroupConfigAttrHelper workgroupConfigAttrName;
+ public:
+
+    /// Helper to manage the discardable attribute `target_device`.
+    class TargetDeviceAttrHelper {
+      ::mlir::StringAttr name;
+    public:
+      static constexpr ::llvm::StringLiteral getNameStr() {
+        return "test06.target_device";
+      }
+      constexpr ::mlir::StringAttr getName() {
+        return name;
+      }
+
+      TargetDeviceAttrHelper(::mlir::MLIRContext *ctx)
+        : name(::mlir::StringAttr::get(ctx, getNameStr())) {}
+
+     TargetDeviceAttr getAttr(::mlir::Operation *op) {
+       return op->getAttrOfType<TargetDeviceAttr>(name);
+     }
+     void setAttr(::mlir::Operation *op, TargetDeviceAttr val) {
+       op->setAttr(name, val);
+     }
+     bool isAttrPresent(::mlir::Operation *op) {
+       return op->hasAttrOfType<TargetDeviceAttr>(name);
+     }
+     void removeAttr(::mlir::Operation *op) {
+       assert(op->hasAttrOfType<TargetDeviceAttr>(name));
+       op->removeAttr(name);
+     }
+   };
+   TargetDeviceAttrHelper getTargetDeviceAttrHelper() {
+     return targetDeviceAttrName;
+   }
+ private:
+   TargetDeviceAttrHelper targetDeviceAttrName;
+ public:
+
+    // Project-specific helpers
+    static bool isQuantizedType(Type type);
+    void registerCustomPasses();
+    Type parseCustomType(DialectAsmParser &parser);
+  };
+
+} // namespace mlir::test06
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::test06::Test06ComprehensiveDialect)

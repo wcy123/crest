@@ -1,0 +1,30 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Dialect Declarations                                                       *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|* From: test-04-capabilities.td                                              *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+namespace mlir::test04canon {
+
+/// Dialect with canonicalizer.
+class Test04CanonDialect : public ::mlir::Dialect {
+  explicit Test04CanonDialect(::mlir::MLIRContext *context);
+
+  void initialize();
+  friend class ::mlir::MLIRContext;
+public:
+  ~Test04CanonDialect() override;
+  static constexpr ::llvm::StringLiteral getDialectNamespace() {
+    return ::llvm::StringLiteral("test04canon");
+  }
+
+  /// Register canonicalization patterns.
+  void getCanonicalizationPatterns(
+      ::mlir::RewritePatternSet &results) const override;
+};
+
+} // namespace mlir::test04canon
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::test04canon::Test04CanonDialect)

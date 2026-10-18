@@ -1,0 +1,25 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Dialect Definitions                                                        *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|* From: test-04-discardable-attrs.td                                         *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::test04nodiscard::Test04NoDiscardableDialect)
+namespace mlir::test04nodiscard {
+
+
+Test04NoDiscardableDialect::Test04NoDiscardableDialect(::mlir::MLIRContext *context)
+    : ::mlir::Dialect(getDialectNamespace(), context, ::mlir::TypeID::get<Test04NoDiscardableDialect>())
+
+     {
+
+  initialize();
+}
+
+Test04NoDiscardableDialect::~Test04NoDiscardableDialect() = default;
+
+
+} // namespace mlir::test04nodiscard

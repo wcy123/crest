@@ -1,0 +1,27 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Dialect Declarations                                                       *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|* From: test-01-minimal.td                                                   *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+namespace mlir::test01 {
+
+/// Minimal test dialect with only required fields.
+///     No dependencies, no optional features.
+class Test01Dialect : public ::mlir::Dialect {
+  explicit Test01Dialect(::mlir::MLIRContext *context);
+
+  void initialize();
+  friend class ::mlir::MLIRContext;
+public:
+  ~Test01Dialect() override;
+  static constexpr ::llvm::StringLiteral getDialectNamespace() {
+    return ::llvm::StringLiteral("test01");
+  }
+};
+
+} // namespace mlir::test01
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::test01::Test01Dialect)

@@ -1,0 +1,34 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Dialect Declarations                                                       *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|* From: test-03-printers.td                                                  *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+namespace mlir::test03defaultattr {
+
+/// Dialect with default attribute printer.
+class Test03DefaultAttrDialect : public ::mlir::Dialect {
+  explicit Test03DefaultAttrDialect(::mlir::MLIRContext *context);
+
+  void initialize();
+  friend class ::mlir::MLIRContext;
+public:
+  ~Test03DefaultAttrDialect() override;
+  static constexpr ::llvm::StringLiteral getDialectNamespace() {
+    return ::llvm::StringLiteral("test03defaultattr");
+  }
+
+  /// Parse an attribute registered to this dialect.
+  ::mlir::Attribute parseAttribute(::mlir::DialectAsmParser &parser,
+                                   ::mlir::Type type) const override;
+
+  /// Print an attribute registered to this dialect.
+  void printAttribute(::mlir::Attribute attr,
+                      ::mlir::DialectAsmPrinter &os) const override;
+};
+
+} // namespace mlir::test03defaultattr
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::test03defaultattr::Test03DefaultAttrDialect)

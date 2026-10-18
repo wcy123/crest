@@ -1,0 +1,32 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Dialect Declarations                                                       *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|* From: test-04-capabilities.td                                              *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+namespace mlir::test04regionargverify {
+
+/// Dialect with region argument attribute verification.
+class Test04RegionArgAttrVerifyDialect : public ::mlir::Dialect {
+  explicit Test04RegionArgAttrVerifyDialect(::mlir::MLIRContext *context);
+
+  void initialize();
+  friend class ::mlir::MLIRContext;
+public:
+  ~Test04RegionArgAttrVerifyDialect() override;
+  static constexpr ::llvm::StringLiteral getDialectNamespace() {
+    return ::llvm::StringLiteral("test04regionargverify");
+  }
+
+    /// Provides a hook for verifying dialect attributes attached to the given
+    /// op's region argument.
+    ::llvm::LogicalResult verifyRegionArgAttribute(
+        ::mlir::Operation *op, unsigned regionIndex, unsigned argIndex,
+        ::mlir::NamedAttribute attribute) override;
+};
+
+} // namespace mlir::test04regionargverify
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::test04regionargverify::Test04RegionArgAttrVerifyDialect)

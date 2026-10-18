@@ -1,0 +1,30 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Dialect Declarations                                                       *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|* From: test-05-extra-features.td                                            *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+namespace mlir::test05extradecl {
+
+/// Dialect with extra class declarations.
+class Test05ExtraDeclDialect : public ::mlir::Dialect {
+  explicit Test05ExtraDeclDialect(::mlir::MLIRContext *context);
+
+  void initialize();
+  friend class ::mlir::MLIRContext;
+public:
+  ~Test05ExtraDeclDialect() override;
+  static constexpr ::llvm::StringLiteral getDialectNamespace() {
+    return ::llvm::StringLiteral("test05extradecl");
+  }
+
+    // Custom helper methods
+    static bool isQuantizedType(Type type);
+    void registerCustomPasses();
+  };
+
+} // namespace mlir::test05extradecl
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::test05extradecl::Test05ExtraDeclDialect)

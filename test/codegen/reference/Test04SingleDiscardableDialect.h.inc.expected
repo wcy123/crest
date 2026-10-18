@@ -1,0 +1,61 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Dialect Declarations                                                       *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|* From: test-04-discardable-attrs.td                                         *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+namespace mlir::test04single {
+
+/// Dialect with single discardable attribute.
+class Test04SingleDiscardableDialect : public ::mlir::Dialect {
+  explicit Test04SingleDiscardableDialect(::mlir::MLIRContext *context);
+
+  void initialize();
+  friend class ::mlir::MLIRContext;
+public:
+  ~Test04SingleDiscardableDialect() override;
+  static constexpr ::llvm::StringLiteral getDialectNamespace() {
+    return ::llvm::StringLiteral("test04single");
+  }
+
+    /// Helper to manage the discardable attribute `workgroup`.
+    class WorkgroupAttrHelper {
+      ::mlir::StringAttr name;
+    public:
+      static constexpr ::llvm::StringLiteral getNameStr() {
+        return "test04single.workgroup";
+      }
+      constexpr ::mlir::StringAttr getName() {
+        return name;
+      }
+
+      WorkgroupAttrHelper(::mlir::MLIRContext *ctx)
+        : name(::mlir::StringAttr::get(ctx, getNameStr())) {}
+
+     WorkgroupAttr getAttr(::mlir::Operation *op) {
+       return op->getAttrOfType<WorkgroupAttr>(name);
+     }
+     void setAttr(::mlir::Operation *op, WorkgroupAttr val) {
+       op->setAttr(name, val);
+     }
+     bool isAttrPresent(::mlir::Operation *op) {
+       return op->hasAttrOfType<WorkgroupAttr>(name);
+     }
+     void removeAttr(::mlir::Operation *op) {
+       assert(op->hasAttrOfType<WorkgroupAttr>(name));
+       op->removeAttr(name);
+     }
+   };
+   WorkgroupAttrHelper getWorkgroupAttrHelper() {
+     return workgroupAttrName;
+   }
+ private:
+   WorkgroupAttrHelper workgroupAttrName;
+ public:
+};
+
+} // namespace mlir::test04single
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::test04single::Test04SingleDiscardableDialect)

@@ -1,0 +1,25 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Dialect Definitions                                                        *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|* From: test-04-capabilities.td                                              *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::test04opattrverify::Test04OpAttrVerifyDialect)
+namespace mlir::test04opattrverify {
+
+
+Test04OpAttrVerifyDialect::Test04OpAttrVerifyDialect(::mlir::MLIRContext *context)
+    : ::mlir::Dialect(getDialectNamespace(), context, ::mlir::TypeID::get<Test04OpAttrVerifyDialect>())
+
+     {
+
+  initialize();
+}
+
+Test04OpAttrVerifyDialect::~Test04OpAttrVerifyDialect() = default;
+
+
+} // namespace mlir::test04opattrverify

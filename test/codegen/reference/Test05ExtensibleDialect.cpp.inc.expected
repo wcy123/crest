@@ -1,0 +1,25 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Dialect Definitions                                                        *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|* From: test-05-extra-features.td                                            *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::test05extensible::Test05ExtensibleDialect)
+namespace mlir::test05extensible {
+
+
+Test05ExtensibleDialect::Test05ExtensibleDialect(::mlir::MLIRContext *context)
+    : ::mlir::ExtensibleDialect(getDialectNamespace(), context, ::mlir::TypeID::get<Test05ExtensibleDialect>())
+
+     {
+
+  initialize();
+}
+
+Test05ExtensibleDialect::~Test05ExtensibleDialect() = default;
+
+
+} // namespace mlir::test05extensible

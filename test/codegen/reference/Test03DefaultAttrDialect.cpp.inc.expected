@@ -1,0 +1,25 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Dialect Definitions                                                        *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|* From: test-03-printers.td                                                  *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::test03defaultattr::Test03DefaultAttrDialect)
+namespace mlir::test03defaultattr {
+
+
+Test03DefaultAttrDialect::Test03DefaultAttrDialect(::mlir::MLIRContext *context)
+    : ::mlir::Dialect(getDialectNamespace(), context, ::mlir::TypeID::get<Test03DefaultAttrDialect>())
+
+     {
+
+  initialize();
+}
+
+Test03DefaultAttrDialect::~Test03DefaultAttrDialect() = default;
+
+
+} // namespace mlir::test03defaultattr

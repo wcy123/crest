@@ -1,0 +1,26 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Dialect Declarations                                                       *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|* From: test-05-extra-features.td                                            *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+namespace mlir::test05extensible {
+
+/// Extensible dialect (can add ops/types at runtime).
+class Test05ExtensibleDialect : public ::mlir::ExtensibleDialect {
+  explicit Test05ExtensibleDialect(::mlir::MLIRContext *context);
+
+  void initialize();
+  friend class ::mlir::MLIRContext;
+public:
+  ~Test05ExtensibleDialect() override;
+  static constexpr ::llvm::StringLiteral getDialectNamespace() {
+    return ::llvm::StringLiteral("test05extensible");
+  }
+};
+
+} // namespace mlir::test05extensible
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::test05extensible::Test05ExtensibleDialect)
