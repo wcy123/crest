@@ -9,12 +9,12 @@
 // No Core/ shim layer; each header belongs to its canonical IR/, Transforms/,
 // Dialect/, or Interfaces/ sub-tree.
 
+#include "../Crest/Dialect.h"
 #include "Dialect/Shape/Shape.h"
 #include "Dialect/Tensor/Tensor.h"
 #include "IR/Block.h"
 #include "IR/BuiltinAttributes.h"
 #include "IR/BuiltinTypes.h"
-#include "IR/ExtensibleDialect.h"
 #include "IR/Location.h"
 #include "IR/MLIRContext.h"
 #include "IR/OpBuilder.h"

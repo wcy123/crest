@@ -2,12 +2,12 @@
  * Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
  * Licensed under the MIT License.
  */
-// Mirrors mlir/IR/ExtensibleDialect.h
+// CrestDialect bridge — lib/Crest/Dialect.h
 
-#ifndef CREST_BINDINGS_IR_EXTENSIBLE_DIALECT_H
-#define CREST_BINDINGS_IR_EXTENSIBLE_DIALECT_H
+#ifndef CREST_DIALECT_H
+#define CREST_DIALECT_H
 
-#include "../Support/LockedSchemeObject.h"
+#include "../Bindings/Support/LockedSchemeObject.h"
 #include "mlir/IR/Dialect.h"
 #include "mlir/IR/ExtensibleDialect.h"
 #include "mlir/Support/TypeID.h"
@@ -128,4 +128,4 @@ void registerIRExtensibleDialectBindings();
 
 } // namespace crest
 
-#endif // CREST_BINDINGS_IR_EXTENSIBLE_DIALECT_H
+#endif // CREST_DIALECT_H

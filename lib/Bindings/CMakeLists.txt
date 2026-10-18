@@ -7,14 +7,14 @@
 
 add_library(CrestBindings STATIC
   MainModule.cpp
+  ../Crest/Dialect.cpp
+  ../Crest/Dialect.h
   Dialect/Shape/Shape.cpp
   Dialect/Shape/Shape.h
   Dialect/Tensor/Tensor.cpp
   Dialect/Tensor/Tensor.h
   Interfaces/DestinationStyleOp.cpp
   Interfaces/DestinationStyleOp.h
-  IR/ExtensibleDialect.cpp
-  IR/ExtensibleDialect.h
   IR/Block.cpp
   IR/Block.h
   IR/BuiltinAttributes.cpp
@@ -64,6 +64,7 @@ target_include_directories(CrestBindings
     ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}  # scheme.h
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..            # lib/ — allows Crest/ to include Bindings/Support/
 )
 
 target_link_libraries(CrestBindings

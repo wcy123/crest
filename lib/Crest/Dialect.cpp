@@ -2,10 +2,10 @@
  * Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
  * Licensed under the MIT License.
  */
-// Mirrors mlir/IR/ExtensibleDialect.h
+// CrestDialect bridge — lib/Crest/Dialect.cpp
 
-#include "ExtensibleDialect.h"
-#include "../Support/SchemeWrapper.h"
+#include "Dialect.h"
+#include "../Bindings/Support/SchemeWrapper.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/DialectImplementation.h"
 #include "mlir/IR/DialectRegistry.h"
