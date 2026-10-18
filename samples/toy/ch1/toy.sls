@@ -11,7 +11,7 @@
     toy.return?    toy.return:value
     toy.func?)
   (import (chezscheme)
-          (crest op))
+          (crest dialect))
 
   (define-mlir-dialect toy
     (define-op constant
