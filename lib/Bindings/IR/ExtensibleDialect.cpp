@@ -216,6 +216,30 @@ void* CrestDialect::getRegisteredInterfaceForOp(mlir::TypeID interfaceID,
 }
 
 // ---------------------------------------------------------------------------
+// Helpers for Sregister_symbol bindings
+// ---------------------------------------------------------------------------
+
+template <typename MakeCb>
+static CrestDialect::Callbacks unpack_callbacks(MakeCb make_cb,
+                                                uint64_t cbs_ptr) {
+  ptr v = reinterpret_cast<ptr>(cbs_ptr);
+  CrestDialect::Callbacks cbs;
+  cbs.initialize = make_cb(Svector_ref(v, 0));
+  cbs.get_dependent_dialects = make_cb(Svector_ref(v, 1));
+  cbs.parse_attribute = make_cb(Svector_ref(v, 2));
+  cbs.print_attribute = make_cb(Svector_ref(v, 3));
+  cbs.parse_type = make_cb(Svector_ref(v, 4));
+  cbs.print_type = make_cb(Svector_ref(v, 5));
+  cbs.materialize_constant = make_cb(Svector_ref(v, 6));
+  cbs.get_canonicalization_patterns = make_cb(Svector_ref(v, 7));
+  cbs.verify_op_attr = make_cb(Svector_ref(v, 8));
+  cbs.verify_region_arg_attr = make_cb(Svector_ref(v, 9));
+  cbs.verify_region_result_attr = make_cb(Svector_ref(v, 10));
+  cbs.get_registered_interface_for_op = make_cb(Svector_ref(v, 11));
+  return cbs;
+}
+
+// ---------------------------------------------------------------------------
 // Sregister_symbol bindings
 // ---------------------------------------------------------------------------
 
@@ -252,20 +276,7 @@ void registerIRExtensibleDialectBindings() {
           // never reach here.
           return std::nullopt;
         };
-        ptr v = reinterpret_cast<ptr>(cbs_ptr);
-        CrestDialect::Callbacks cbs;
-        cbs.initialize = make_cb(Svector_ref(v, 0));
-        cbs.get_dependent_dialects = make_cb(Svector_ref(v, 1));
-        cbs.parse_attribute = make_cb(Svector_ref(v, 2));
-        cbs.print_attribute = make_cb(Svector_ref(v, 3));
-        cbs.parse_type = make_cb(Svector_ref(v, 4));
-        cbs.print_type = make_cb(Svector_ref(v, 5));
-        cbs.materialize_constant = make_cb(Svector_ref(v, 6));
-        cbs.get_canonicalization_patterns = make_cb(Svector_ref(v, 7));
-        cbs.verify_op_attr = make_cb(Svector_ref(v, 8));
-        cbs.verify_region_arg_attr = make_cb(Svector_ref(v, 9));
-        cbs.verify_region_result_attr = make_cb(Svector_ref(v, 10));
-        cbs.get_registered_interface_for_op = make_cb(Svector_ref(v, 11));
+        CrestDialect::Callbacks cbs = unpack_callbacks(make_cb, cbs_ptr);
 
         // id is pre-allocated so the factory and CrestDialect constructor share
         // the same TypeID — required for isa<>/dyn_cast<> to work correctly.
