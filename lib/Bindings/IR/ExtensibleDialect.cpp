@@ -282,8 +282,15 @@ void registerIRExtensibleDialectBindings() {
         auto cbs_ptr2 = unpack_callbacks(cbs_ptr);
 
         // Allocate id before registering the factory so the factory lambda and
-        // the CrestDialect constructor both receive the same TypeID — required
-        // for isa<>/dyn_cast<> to work correctly.
+        // the CrestDialect constructor both receive the same TypeID.
+        //
+        // MLIRContext maintains two indexes for loaded dialects: one keyed by
+        // namespace string and one keyed by TypeID. The TypeID stored in the
+        // Dialect object (via Dialect::getTypeID(), set in the constructor)
+        // must match the TypeID recorded in the DialectRegistry entry.
+        // A mismatch leaves the TypeID index stale — getOrLoadDialect(TypeID)
+        // would not find the dialect, breaking any code path that looks up a
+        // dialect by type rather than by name.
         //
         // Scope: id lives for the process lifetime (g_crest_type_id_allocator
         // is never destructed), matching the lifetime of static C++ dialect
