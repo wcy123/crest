@@ -281,8 +281,9 @@ void registerIRExtensibleDialectBindings() {
         // std::function (Callbacks is move-only, shared_ptr is copyable).
         auto cbs_ptr2 = unpack_callbacks(cbs_ptr);
 
-        // id is pre-allocated so the factory and CrestDialect constructor share
-        // the same TypeID — required for isa<>/dyn_cast<> to work correctly.
+        // Allocate id before registering the factory so the factory lambda and
+        // the CrestDialect constructor both receive the same TypeID — required
+        // for isa<>/dyn_cast<> to work correctly.
         mlir::TypeID id = g_crest_type_id_allocator.allocate();
 
         insertDialectFactory(
