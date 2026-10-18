@@ -220,44 +220,17 @@ void* CrestDialect::getRegisteredInterfaceForOp(mlir::TypeID interfaceID,
 // ---------------------------------------------------------------------------
 
 void registerIRExtensibleDialectBindings() {
-  // crest::register-dialect!
+  // crest::register-dialect! (uptr ctx) (uptr name-cstr) (uptr vector/12)
+  // Registers a factory in the DialectRegistry so getOrLoadDialect("name")
+  // instantiates the CrestDialect on demand.  Loading is deferred.
   //
-  // Registers a Scheme-defined dialect into the MLIRContext's DialectRegistry
-  // so that ctx->getOrLoadDialect("name") can instantiate it on demand.
-  //
-  // This replaces the earlier crest::load-dialect! approach that called
-  // getOrLoadDialect(name, id, ctor) directly. The registry approach is
-  // superior because:
-  //
-  //   1. Lazy loading: the CrestDialect object is only created when first
-  //      needed, not at registration time.
-  //
-  //   2. Dependency resolution: other dialects (including CrestDialects) can
-  //      declare this dialect as a dependency via get_dependent_dialects and
-  //      MLIR will call getOrLoadDialect("name") to resolve it — which works
-  //      because the factory is now in the registry.
-  //
-  //   3. Consistent TypeID: the same TypeID (pre-allocated from
-  //      g_crest_type_id_allocator) is used both in the registry entry and in
-  //      the CrestDialect constructor. This is critical — if two different
-  //      TypeIDs were used for the same dialect name, MLIR's isa<>/dyn_cast<>
-  //      and interface lookup would silently break.
-  //
-  // TypeID note: we cannot use mlir::SelfOwningTypeID (address of an in-object
-  // storage field) because the TypeID must be known before the object exists
-  // (to register the factory). mlir::TypeIDAllocator pre-allocates stable
-  // heap storage whose address serves as the TypeID.
-  //
-  // Callback vector slots (Sfalse = use ExtensibleDialect default):
+  // Callback vector slots (#f = use ExtensibleDialect default):
   //   0 initialize                       6 materialize-constant
   //   1 get-dependent-dialects           7 get-canonicalization-patterns
   //   2 parse-attribute                  8 verify-op-attr
   //   3 print-attribute                  9 verify-region-arg-attr
   //   4 parse-type                      10 verify-region-result-attr
   //   5 print-type                      11 get-registered-interface-for-op
-  //
-  // Args: (uptr ctx) (uptr name-cstr) (uptr scheme-vector-of-12-callbacks)
-  // Returns: void (loading is deferred to getOrLoadDialect)
   Sregister_symbol(
       "crest::register-dialect!",
       (void*)+[](uint64_t ctx_ptr, uint64_t name_ptr,
@@ -294,27 +267,13 @@ void registerIRExtensibleDialectBindings() {
         cbs.verify_region_result_attr = make_cb(Svector_ref(v, 10));
         cbs.get_registered_interface_for_op = make_cb(Svector_ref(v, 11));
 
-        // Pre-allocate a stable TypeID. The SAME id is captured in the factory
-        // lambda and passed to the CrestDialect constructor — this is the
-        // invariant that keeps the registry entry and the Dialect object in
-        // sync.
+        // id is pre-allocated so the factory and CrestDialect constructor share
+        // the same TypeID — required for isa<>/dyn_cast<> to work correctly.
         mlir::TypeID id = g_crest_type_id_allocator.allocate();
 
-        // shared_ptr keeps the Scheme callback procedures GC-locked for the
-        // entire lifetime of the factory in the DialectRegistry. Each
-        // LockedSchemeObject inside Callbacks calls Scheme's lock primitive on
-        // construction and unlock on destruction — destroying Callbacks would
-        // release those locks and allow the GC to collect the procedures before
-        // they are ever called. The factory lambda captures cbs_ptr2 by value,
-        // so the Callbacks (and its locks) live as long as the factory does.
-        //
-        // shared_ptr also solves a secondary problem: LockedSchemeObject is
-        // move-only, making Callbacks move-only, but std::function<Dialect*(
-        // MLIRContext*)> requires a copyable callable. shared_ptr is copyable
-        // (shallow copy, shared ownership), so the lambda becomes copyable.
-        //
-        // The factory is called at most once (getOrLoadDialect checks loaded
-        // state first), so moving from *cbs_ptr2 on the first call is safe.
+        // shared_ptr: primary — keeps LockedSchemeObject GC locks alive for
+        // the factory's lifetime; secondary — makes the lambda copyable for
+        // std::function (Callbacks is move-only, shared_ptr is copyable).
         auto cbs_ptr2 =
             std::make_shared<CrestDialect::Callbacks>(std::move(cbs));
 
