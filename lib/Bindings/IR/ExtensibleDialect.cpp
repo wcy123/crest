@@ -292,9 +292,8 @@ void registerIRExtensibleDialectBindings() {
         // would not find the dialect, breaking any code path that looks up a
         // dialect by type rather than by name.
         //
-        // Scope: id lives for the process lifetime (g_crest_type_id_allocator
-        // is never destructed), matching the lifetime of static C++ dialect
-        // TypeIDs.
+        // Scope: id is permanent for the life of the process, matching the
+        // lifetime of static C++ dialect TypeIDs.
         //
         // Uniqueness: each call to crest::register-dialect! allocates a fresh
         // id. Within one context the idempotency check (line above) ensures
