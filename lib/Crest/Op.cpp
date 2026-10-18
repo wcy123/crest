@@ -53,7 +53,8 @@ make_print_fn(std::optional<LockedSchemeObject> cb) {
   }
   return [cb = std::move(*cb)](mlir::Operation* op, mlir::OpAsmPrinter& printer,
                                llvm::StringRef name) {
-    scheme_call(cb.get(), op, &printer, name.str().c_str());
+    std::string name_str = name.str();
+    scheme_call(cb.get(), op, &printer, name_str.c_str());
   };
 }
 
