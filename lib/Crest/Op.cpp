@@ -111,10 +111,14 @@ void CrestOp::registerInto(mlir::ExtensibleDialect* dialect,
   auto verify_fn = make_verify_fn(std::move(cbs.verify));
   auto verify_region_fn = make_verify_fn(std::move(cbs.verify_regions));
 
-  // Use 2-arg or 4-arg overload for parse/print to preserve MLIR's generic
-  // assembly format default when no custom parse/print is provided.
-  // Wire fold/canonicalization/populate-default-attrs via setXxx so all
-  // 7 slots are honoured without losing the generic format default.
+  // DynamicOpDefinition::get() has three overloads.  The 2-arg overload
+  // (verify + verify-region only) installs MLIR's generic assembly format
+  // internally.  If we always used the 7-arg overload we would have to
+  // provide our own parse/print defaults, which would NOT be the generic
+  // format — the op would then print as an opaque blob.
+  // Solution: use the 2-arg overload when the user provides no parse/print,
+  // then attach fold/canonicalization/populate-default-attrs via setXxx()
+  // after construction so all remaining slots are still honoured.
   std::unique_ptr<mlir::DynamicOpDefinition> def;
   if (cbs.parse || cbs.print) {
     def = mlir::DynamicOpDefinition::get(op_name, dialect, std::move(verify_fn),
