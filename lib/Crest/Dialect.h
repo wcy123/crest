@@ -125,7 +125,6 @@ private:
 };
 
 void registerIRExtensibleDialectBindings();
-void registerCrestDynamicOpBindings();
 
 } // namespace crest
 

@@ -9,6 +9,8 @@ add_library(CrestBindings STATIC
   MainModule.cpp
   ../Crest/Dialect.cpp
   ../Crest/Dialect.h
+  ../Crest/Op.cpp
+  ../Crest/Op.h
   Dialect/Shape/Shape.cpp
   Dialect/Shape/Shape.h
   Dialect/Tensor/Tensor.cpp

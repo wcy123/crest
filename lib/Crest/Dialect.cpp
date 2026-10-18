@@ -11,7 +11,6 @@
 #include "mlir/IR/DialectRegistry.h"
 #include "mlir/IR/ExtensibleDialect.h"
 #include "mlir/IR/MLIRContext.h"
-#include "mlir/IR/Operation.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Support/TypeID.h"
 #include <memory>
@@ -317,94 +316,6 @@ void registerIRExtensibleDialectBindings() {
               }
               return new CrestDialect(name, load_ctx, id, std::move(*cbs_ptr2));
             });
-      });
-}
-
-// ---------------------------------------------------------------------------
-// crest::register-dynamic-op! — register a runtime op into a CrestDialect
-// ---------------------------------------------------------------------------
-
-void registerCrestDynamicOpBindings() {
-  // crest::register-dynamic-op! (uptr dialect) (string op-name) (uptr vector/7)
-  //
-  // Registers a DynamicOpDefinition into an ExtensibleDialect.
-  // Must be called from inside the dialect's :initialize callback,
-  // which receives the dialect uptr as its sole argument.
-  //
-  // Callback vector slots (#f = use MLIR default behaviour):
-  //   0 verify          (op) → bool
-  //   1 verify-regions  (op) → bool
-  //   2 parse           (parser state) → bool   [#f = generic format]
-  //   3 print           (op printer name) → void [#f = generic format]
-  //   4 fold            (op attrs results) → bool
-  //   5 get-canonicalization-patterns (pattern-set ctx) → void
-  //   6 populate-default-attrs        (op-name attrs) → void
-  Sregister_symbol(
-      "crest::register-dynamic-op!",
-      (void*)+[](uint64_t dialect_ptr, const char* op_name,
-                 uint64_t cbs_ptr) -> void {
-        auto* dialect = reinterpret_cast<mlir::ExtensibleDialect*>(dialect_ptr);
-        ptr v = reinterpret_cast<ptr>(cbs_ptr);
-
-        // Build a VerifyInvariantsFn from slot: #f → always succeed.
-        auto make_verify =
-            [](ptr slot) -> mlir::OperationName::VerifyInvariantsFn {
-          if (slot == Sfalse) {
-            return [](mlir::Operation*) { return mlir::success(); };
-          }
-          // LockedSchemeObject is move-only — captured by move into the
-          // unique_function, keeping the Scheme procedure GC-locked.
-          return [cb = LockedSchemeObject(slot)](mlir::Operation* op) {
-            return Sboolean_value(scheme_call(cb.get(), op)) ? mlir::success()
-                                                             : mlir::failure();
-          };
-        };
-
-        auto verify_fn = make_verify(Svector_ref(v, 0));
-        auto verify_region_fn = make_verify(Svector_ref(v, 1));
-
-        ptr parse_slot = Svector_ref(v, 2);
-        ptr print_slot = Svector_ref(v, 3);
-
-        if (parse_slot == Sfalse && print_slot == Sfalse) {
-          // No custom assembly — MLIR uses generic format automatically.
-          dialect->registerDynamicOp(mlir::DynamicOpDefinition::get(
-              op_name, dialect, std::move(verify_fn),
-              std::move(verify_region_fn)));
-          return;
-        }
-
-        // Custom parse and/or print — bridge both into the 4-arg overload.
-        mlir::OperationName::ParseAssemblyFn parse_fn;
-        if (parse_slot == Sfalse) {
-          parse_fn = [](mlir::OpAsmParser&, mlir::OperationState&) {
-            return mlir::ParseResult::success();
-          };
-        } else {
-          parse_fn = [cb = LockedSchemeObject(parse_slot)](
-                         mlir::OpAsmParser& parser,
-                         mlir::OperationState& state) {
-            return Sboolean_value(scheme_call(cb.get(), &parser, &state))
-                       ? mlir::ParseResult::success()
-                       : mlir::ParseResult::failure();
-          };
-        }
-
-        mlir::OperationName::PrintAssemblyFn print_fn;
-        if (print_slot == Sfalse) {
-          print_fn = [](mlir::Operation*, mlir::OpAsmPrinter&,
-                        llvm::StringRef) {};
-        } else {
-          print_fn = [cb = LockedSchemeObject(print_slot)](
-                         mlir::Operation* op, mlir::OpAsmPrinter& printer,
-                         llvm::StringRef name) {
-            scheme_call(cb.get(), op, &printer, name.str().c_str());
-          };
-        }
-
-        dialect->registerDynamicOp(mlir::DynamicOpDefinition::get(
-            op_name, dialect, std::move(verify_fn), std::move(verify_region_fn),
-            std::move(parse_fn), std::move(print_fn)));
       });
 }
 

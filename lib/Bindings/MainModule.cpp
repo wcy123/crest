@@ -10,6 +10,7 @@
 // Dialect/, or Interfaces/ sub-tree.
 
 #include "../Crest/Dialect.h"
+#include "../Crest/Op.h"
 #include "Dialect/Shape/Shape.h"
 #include "Dialect/Tensor/Tensor.h"
 #include "IR/Block.h"
