@@ -8,32 +8,48 @@
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/DialectImplementation.h"
+#include "mlir/IR/DialectRegistry.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/PatternMatch.h"
+#include "mlir/Support/TypeID.h"
+#include <memory>
 
 namespace crest {
+
+// ---------------------------------------------------------------------------
+// Global TypeID allocator
+//
+// Scheme dialects are defined at runtime and have no C++ class, so they
+// cannot use MLIR_DECLARE_EXPLICIT_TYPE_ID (which requires a static storage
+// variable per class, established at link time).
+//
+// mlir::TypeIDAllocator pre-allocates stable TypeID storage independently of
+// any Dialect object. The allocated IDs remain valid for the lifetime of the
+// allocator. Since dialects live as long as the MLIRContext (which lives as
+// long as the process in typical CREST usage), a process-lifetime allocator
+// is correct.
+//
+// Thread safety: TypeIDAllocator uses a bump-pointer allocator that is NOT
+// thread-safe. CREST's Chez Scheme runtime is single-threaded, so this is
+// safe. Add a mutex if multithreaded dialect registration is ever needed.
+// ---------------------------------------------------------------------------
+static mlir::TypeIDAllocator g_crest_type_id_allocator;
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-// Read a Scheme uptr back as a typed pointer.
 template <typename T> static T* ptr_from_scheme(ptr val) {
   return reinterpret_cast<T*>(static_cast<uint64_t>(Sinteger64_value(val)));
 }
 
 // ---------------------------------------------------------------------------
-// CrestDialect — constructor, classof, getTypeID
+// CrestDialect — constructor and classof
 // ---------------------------------------------------------------------------
 
 CrestDialect::CrestDialect(llvm::StringRef name, mlir::MLIRContext* ctx,
-                           Callbacks cbs)
-    : mlir::ExtensibleDialect(name, ctx, mlir::SelfOwningTypeID::getTypeID()),
-      cbs_(std::move(cbs)) {}
-
-mlir::TypeID CrestDialect::getTypeID() const {
-  return mlir::SelfOwningTypeID::getTypeID();
-}
+                           mlir::TypeID id, Callbacks cbs)
+    : mlir::ExtensibleDialect(name, ctx, id), cbs_(std::move(cbs)) {}
 
 bool CrestDialect::classof(const mlir::Dialect* d) {
   return mlir::isa<mlir::ExtensibleDialect>(d);
@@ -41,22 +57,36 @@ bool CrestDialect::classof(const mlir::Dialect* d) {
 
 // ---------------------------------------------------------------------------
 // Virtual method bridges
-// Each calls the Scheme callback if present, else falls through to
-// ExtensibleDialect's default.
 // ---------------------------------------------------------------------------
 
 void CrestDialect::initialize() {
-  // Load dependent dialects first — callback returns a Scheme list of
-  // namespace strings e.g. '("arith" "func").
-  // get_dependent_dialects returns a Scheme list of uptr (const char*)
-  // namespace strings — each element is a pointer to a null-terminated C
-  // string.
+  // Load dependent dialects first.
+  //
+  // The callback returns a Scheme list of uptr values, each a pointer to a
+  // null-terminated C string naming a dialect namespace (e.g. "arith").
+  // We call getOrLoadDialect(name) for each; MLIR finds the factory in the
+  // DialectRegistry and instantiates it if not already loaded.
+  //
+  // This works for:
+  //   - Built-in MLIR dialects (arith, func, ...) that the host registered via
+  //     registry.insert<T>() or registerAllDialects().
+  //   - Other Scheme-defined CrestDialects that were previously registered via
+  //     crest::register-dialect! (which uses DialectRegistry::insert with a
+  //     pre-allocated TypeID, making them findable by name).
+  //
+  // Note: getOrLoadDialect returns nullptr if the name is not in the registry.
+  // For CrestDialects, this means register-dialect! must be called for all
+  // dependencies before any dialect that needs them is loaded. The Scheme-side
+  // load-dialect! wrapper enforces this ordering.
   if (cbs_.get_dependent_dialects) {
     ptr deps = scheme_call(cbs_.get_dependent_dialects->get());
     for (; deps != Snil; deps = Scdr(deps)) {
       auto* ns = reinterpret_cast<const char*>(
           static_cast<uint64_t>(Sinteger64_value(Scar(deps))));
-      getContext()->getOrLoadDialect(llvm::StringRef(ns));
+      if (!getContext()->getOrLoadDialect(llvm::StringRef(ns))) {
+        llvm::report_fatal_error(
+            llvm::Twine("crest: dependent dialect not in registry: ") + ns);
+      }
     }
   }
   if (cbs_.initialize) {
@@ -175,24 +205,54 @@ void* CrestDialect::getRegisteredInterfaceForOp(mlir::TypeID interfaceID,
 // ---------------------------------------------------------------------------
 
 void registerIRExtensibleDialectBindings() {
-  // crest::load-dialect!
-  // (uptr ctx) (uptr name-cstr) (uptr scheme-vector-of-12-callbacks) → uptr
-  // Callbacks vector slots (Sfalse = use default):
+  // crest::register-dialect!
+  //
+  // Registers a Scheme-defined dialect into the MLIRContext's DialectRegistry
+  // so that ctx->getOrLoadDialect("name") can instantiate it on demand.
+  //
+  // This replaces the earlier crest::load-dialect! approach that called
+  // getOrLoadDialect(name, id, ctor) directly. The registry approach is
+  // superior because:
+  //
+  //   1. Lazy loading: the CrestDialect object is only created when first
+  //      needed, not at registration time.
+  //
+  //   2. Dependency resolution: other dialects (including CrestDialects) can
+  //      declare this dialect as a dependency via get_dependent_dialects and
+  //      MLIR will call getOrLoadDialect("name") to resolve it — which works
+  //      because the factory is now in the registry.
+  //
+  //   3. Consistent TypeID: the same TypeID (pre-allocated from
+  //      g_crest_type_id_allocator) is used both in the registry entry and in
+  //      the CrestDialect constructor. This is critical — if two different
+  //      TypeIDs were used for the same dialect name, MLIR's isa<>/dyn_cast<>
+  //      and interface lookup would silently break.
+  //
+  // TypeID note: we cannot use mlir::SelfOwningTypeID (address of an in-object
+  // storage field) because the TypeID must be known before the object exists
+  // (to register the factory). mlir::TypeIDAllocator pre-allocates stable
+  // heap storage whose address serves as the TypeID.
+  //
+  // Callback vector slots (Sfalse = use ExtensibleDialect default):
   //   0 initialize                       6 materialize-constant
   //   1 get-dependent-dialects           7 get-canonicalization-patterns
   //   2 parse-attribute                  8 verify-op-attr
   //   3 print-attribute                  9 verify-region-arg-attr
   //   4 parse-type                      10 verify-region-result-attr
   //   5 print-type                      11 get-registered-interface-for-op
+  //
+  // Args: (uptr ctx) (uptr name-cstr) (uptr scheme-vector-of-12-callbacks)
+  // Returns: void (loading is deferred to getOrLoadDialect)
   Sregister_symbol(
-      "crest::load-dialect!",
+      "crest::register-dialect!",
       (void*)+[](uint64_t ctx_ptr, uint64_t name_ptr,
-                 uint64_t cbs_ptr) -> uint64_t {
+                 uint64_t cbs_ptr) -> void {
         auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
-        llvm::StringRef name(reinterpret_cast<const char*>(name_ptr));
+        std::string name(reinterpret_cast<const char*>(name_ptr));
 
-        if (auto* existing = ctx->getLoadedDialect(name)) {
-          return reinterpret_cast<uint64_t>(existing);
+        // Already registered? Do nothing — idempotent.
+        if (ctx->getDialectRegistry().getDialectAllocator(name)) {
+          return;
         }
 
         auto make_cb = [](ptr slot) -> std::optional<LockedSchemeObject> {
@@ -216,14 +276,31 @@ void registerIRExtensibleDialectBindings() {
         cbs.verify_region_result_attr = make_cb(Svector_ref(v, 10));
         cbs.get_registered_interface_for_op = make_cb(Svector_ref(v, 11));
 
-        auto dialect =
-            std::make_unique<CrestDialect>(name, ctx, std::move(cbs));
-        mlir::TypeID id = dialect->getTypeID();
-        mlir::Dialect* registered = ctx->getOrLoadDialect(
-            name, id,
-            [d = std::move(dialect)]() mutable
-            -> std::unique_ptr<mlir::Dialect> { return std::move(d); });
-        return reinterpret_cast<uint64_t>(registered);
+        // Pre-allocate a stable TypeID. The SAME id is captured in the factory
+        // lambda and passed to the CrestDialect constructor — this is the
+        // invariant that keeps the registry entry and the Dialect object in
+        // sync.
+        mlir::TypeID id = g_crest_type_id_allocator.allocate();
+
+        // Wrap callbacks in a shared_ptr so the factory lambda is copyable
+        // (required by std::function<Dialect*(MLIRContext*)>).
+        // LockedSchemeObject is move-only, so CrestDialect::Callbacks is
+        // move-only; shared_ptr allows the lambda to be copied while the
+        // callbacks themselves are stored once.
+        // The factory is called at most once per dialect name (getOrLoadDialect
+        // checks loaded state first), so moving from *cbs_ptr on first call
+        // is safe.
+        auto cbs_ptr2 =
+            std::make_shared<CrestDialect::Callbacks>(std::move(cbs));
+
+        mlir::DialectRegistry tmp;
+        tmp.insert(id, llvm::StringRef(name),
+                   [id, name,
+                    cbs_ptr2](mlir::MLIRContext* load_ctx) -> mlir::Dialect* {
+                     return new CrestDialect(name, load_ctx, id,
+                                             std::move(*cbs_ptr2));
+                   });
+        ctx->appendDialectRegistry(tmp);
       });
 }
 

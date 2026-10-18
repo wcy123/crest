@@ -16,16 +16,53 @@
 namespace crest {
 
 /// C++ bridge that implements every mlir::Dialect virtual method by
-/// delegating to a locked Chez Scheme callback.  A missing callback
+/// delegating to a locked Chez Scheme callback. A missing callback
 /// (std::nullopt) falls through to ExtensibleDialect's default.
 ///
-/// Mirrors the same SelfOwningTypeID + ExtensibleDialect pattern that
-/// mlir::DynamicDialect uses, so each instance gets a unique TypeID
-/// without compile-time codegen.
-class CrestDialect : public mlir::SelfOwningTypeID,
-                     public mlir::ExtensibleDialect {
+/// ## Design rationale — TypeID management
+///
+/// Every MLIR dialect needs a stable TypeID for the lifetime of the
+/// MLIRContext. Static C++ dialects get theirs from a static storage variable
+/// via MLIR_DECLARE_EXPLICIT_TYPE_ID (linker-unique, zero overhead). That
+/// mechanism requires a C++ class per dialect — unavailable for runtime
+/// Scheme dialects.
+///
+/// Two dynamic alternatives exist in MLIR:
+///   (a) mlir::SelfOwningTypeID — storage lives inside the Dialect object;
+///       TypeID == &storage.  Simple, but the ID is not known until the
+///       object is constructed, which prevents registry-based lazy loading.
+///   (b) mlir::TypeIDAllocator — pre-allocates stable storage independently
+///       of the Dialect object; ID can be recorded in the DialectRegistry
+///       before any Dialect is instantiated.
+///
+/// CREST uses (b) so that Scheme-defined dialects can be registered in the
+/// MLIRContext's DialectRegistry via crest::register-dialect! and then loaded
+/// lazily by name through ctx->getOrLoadDialect("toy"). This is essential for
+/// dependent dialect loading: if "toy-2" declares "toy-1" as a dependency,
+/// MLIR calls getOrLoadDialect("toy-1") during initialization — which only
+/// works when "toy-1" has a factory in the registry.
+///
+/// ## Why not mlir::DynamicDialect / insertDynamic?
+///
+/// DialectRegistry::insertDynamic creates a mlir::DynamicDialect (MLIR's own
+/// runtime class). Its population callback can register dynamic ops/types/attrs
+/// but CANNOT override the dialect's virtual methods (parseAttribute,
+/// printType, etc.). CrestDialect must override those methods to dispatch into
+/// Scheme, so we cannot use insertDynamic and instead use the lower-level
+/// DialectRegistry::insert(TypeID, name, factory).
+///
+/// ## Why Python MLIR bindings do not use this approach
+///
+/// Python bindings define dialects through ODS / mlir-tblgen, producing a
+/// statically compiled C++ class per dialect even when the surface API is
+/// Python. Truly dynamic Python-defined dialects (no backing C++ class) are
+/// not a supported use-case, so the registry factory mechanism was never
+/// needed. See llvm-project issue #74245, which is still an open feature
+/// request for even basic per-dialect registration from pure Python.
+class CrestDialect : public mlir::ExtensibleDialect {
 public:
   /// One optional locked callback per virtual method.
+  /// Absent (std::nullopt) → fall through to ExtensibleDialect default.
   struct Callbacks {
     std::optional<LockedSchemeObject> initialize;
     std::optional<LockedSchemeObject> get_dependent_dialects;
@@ -41,9 +78,12 @@ public:
     std::optional<LockedSchemeObject> get_registered_interface_for_op;
   };
 
-  CrestDialect(llvm::StringRef name, mlir::MLIRContext* ctx, Callbacks cbs);
-
-  mlir::TypeID getTypeID() const;
+  /// id must be pre-allocated from the global TypeIDAllocator in
+  /// registerIRExtensibleDialectBindings and passed consistently to both the
+  /// DialectRegistry factory and this constructor so the TypeID is identical
+  /// everywhere MLIR uses it for lookup and isa<> checks.
+  CrestDialect(llvm::StringRef name, mlir::MLIRContext* ctx, mlir::TypeID id,
+               Callbacks cbs);
 
   static bool classof(const mlir::Dialect* d);
 
