@@ -1,11 +1,16 @@
 ;; Bridges lib/Crest/Dialect.h — Scheme-defined MLIR dialects
 (library (crest dialect)
-  (export register-dialect!)
+  (export register-dialect!
+          register-dynamic-op!)
   (import (chezscheme)
           (crest dialect ffi))
 
-  ;; Map callback keyword to its slot index (0–11) in the vector.
-  (define (%%slot-index key)
+  ;; -------------------------------------------------------------------------
+  ;; Dialect registration
+  ;; -------------------------------------------------------------------------
+
+  ;; Map callback keyword to its slot index (0–11).
+  (define (%%dialect-slot-index key)
     (case key
       [(:initialize)                        0]
       [(:get-dependent-dialects)            1]
@@ -21,13 +26,11 @@
       [(:get-registered-interface-for-op)  11]
       [else (error "register-dialect!" "unknown callback keyword" key)]))
 
-  ;; Build the 12-slot callback vector from a plist of :keyword proc pairs.
-  ;; Unspecified slots default to #f (use ExtensibleDialect default).
-  (define (%%plist->callbacks plist)
-    (let ([v (make-vector 12 #f)])
+  (define (%%plist->vector n index-fn plist)
+    (let ([v (make-vector n #f)])
       (let loop ([rest plist])
         (unless (null? rest)
-          (vector-set! v (%%slot-index (car rest)) (cadr rest))
+          (vector-set! v (index-fn (car rest)) (cadr rest))
           (loop (cddr rest))))
       v))
 
@@ -35,10 +38,38 @@
   ;; Callbacks are :keyword proc pairs; omitted callbacks use MLIR defaults.
   ;;
   ;; (register-dialect! ctx "toy"
-  ;;   :initialize     my-init
-  ;;   :parse-type     my-parse-type)
+  ;;   :initialize my-init)
   (define (register-dialect! ctx name . callbacks)
     (%crest::register-dialect!
      ctx
      name
-     (%%plist->callbacks callbacks))))
+     (%%plist->vector 12 %%dialect-slot-index callbacks)))
+
+  ;; -------------------------------------------------------------------------
+  ;; Dynamic op registration
+  ;; -------------------------------------------------------------------------
+
+  ;; Map callback keyword to its slot index (0–6).
+  (define (%%op-slot-index key)
+    (case key
+      [(:verify)                         0]
+      [(:verify-regions)                 1]
+      [(:parse)                          2]
+      [(:print)                          3]
+      [(:fold)                           4]
+      [(:get-canonicalization-patterns)  5]
+      [(:populate-default-attrs)         6]
+      [else (error "register-dynamic-op!" "unknown callback keyword" key)]))
+
+  ;; Register a dynamic op into a dialect.
+  ;; Called from inside the dialect's :initialize callback.
+  ;; dialect-ptr: uptr received as the :initialize argument.
+  ;;
+  ;; (register-dynamic-op! dialect-ptr "toy.constant"
+  ;;   :verify my-verify
+  ;;   :print  my-print)
+  (define (register-dynamic-op! dialect-ptr op-name . callbacks)
+    (%crest::register-dynamic-op!
+     dialect-ptr
+     op-name
+     (%%plist->vector 7 %%op-slot-index callbacks))))

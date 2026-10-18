@@ -47,6 +47,7 @@ void registerMlirForeignFunctions() {
   registerDialectTensorBindings();
   registerInterfacesDpsBindings();
   registerIRExtensibleDialectBindings();
+  registerCrestDynamicOpBindings();
   registerIRLocationBindings();
   registerIRBlockBindings();
   registerIRRegionBindings();
