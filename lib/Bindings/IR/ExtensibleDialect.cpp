@@ -17,21 +17,18 @@
 namespace crest {
 
 // ---------------------------------------------------------------------------
-// Global TypeID allocator
+// Scheme dialects have no C++ class, so MLIR_DECLARE_EXPLICIT_TYPE_ID is
+// unavailable (it requires a static variable per class, established at link
+// time). TypeIDAllocator lets us mint a stable TypeID before the Dialect
+// object exists — necessary to register a factory in DialectRegistry before
+// any instance is created.
 //
-// Scheme dialects are defined at runtime and have no C++ class, so they
-// cannot use MLIR_DECLARE_EXPLICIT_TYPE_ID (which requires a static storage
-// variable per class, established at link time).
+// Process-lifetime: TypeID storage must outlive every Dialect that uses it.
+// Dialects live as long as their MLIRContext, which in CREST lives as long
+// as the process, so a static allocator is correct.
 //
-// mlir::TypeIDAllocator pre-allocates stable TypeID storage independently of
-// any Dialect object. The allocated IDs remain valid for the lifetime of the
-// allocator. Since dialects live as long as the MLIRContext (which lives as
-// long as the process in typical CREST usage), a process-lifetime allocator
-// is correct.
-//
-// Thread safety: TypeIDAllocator uses a bump-pointer allocator that is NOT
-// thread-safe. CREST's Chez Scheme runtime is single-threaded, so this is
-// safe. Add a mutex if multithreaded dialect registration is ever needed.
+// Not thread-safe: Chez Scheme is single-threaded, so concurrent calls to
+// crest::register-dialect! cannot occur. Add a mutex if that changes.
 // ---------------------------------------------------------------------------
 static mlir::TypeIDAllocator g_crest_type_id_allocator;
 
