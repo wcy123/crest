@@ -323,7 +323,8 @@ void registerIRExtensibleDialectBindings() {
             [id, name,
              cbs_ptr2](mlir::MLIRContext* load_ctx) -> mlir::Dialect* {
               assert(cbs_ptr2.get() &&
-                     "CrestDialect factory called after callbacks were moved");
+                     "registry was shared across two MLIRContexts — "
+                     "each context needs its own Callbacks instance");
               return new CrestDialect(name, load_ctx, id, std::move(*cbs_ptr2));
             });
       });
