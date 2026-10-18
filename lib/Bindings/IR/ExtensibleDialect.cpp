@@ -322,6 +322,8 @@ void registerIRExtensibleDialectBindings() {
             ctx, id, name,
             [id, name,
              cbs_ptr2](mlir::MLIRContext* load_ctx) -> mlir::Dialect* {
+              assert(cbs_ptr2.get() &&
+                     "CrestDialect factory called after callbacks were moved");
               return new CrestDialect(name, load_ctx, id, std::move(*cbs_ptr2));
             });
       });
