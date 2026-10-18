@@ -43,6 +43,21 @@ template <typename T> static T* ptr_from_scheme(ptr val) {
   return reinterpret_cast<T*>(static_cast<uint64_t>(Sinteger64_value(val)));
 }
 
+// MLIRContext::getDialectRegistry() returns const DialectRegistry& by design.
+// Mutable access was deliberately removed (commit 2996a8d, reviewed in D96331)
+// to enable safe delayed dialect interface registration: appendDialectRegistry
+// calls applyExtensions(ctx) on already-loaded dialects as a side effect,
+// which raw mutable insertion would bypass. The two-step pattern
+// (build a DialectRegistry, then appendDialectRegistry) is the intended idiom.
+// We wrap it in a helper to keep call sites readable.
+static void insertDialectFactory(mlir::MLIRContext* ctx, mlir::TypeID id,
+                                 llvm::StringRef name,
+                                 mlir::DialectAllocatorFunction factory) {
+  mlir::DialectRegistry tmp;
+  tmp.insert(id, name, std::move(factory));
+  ctx->appendDialectRegistry(tmp);
+}
+
 // ---------------------------------------------------------------------------
 // CrestDialect — constructor and classof
 // ---------------------------------------------------------------------------
@@ -293,14 +308,12 @@ void registerIRExtensibleDialectBindings() {
         auto cbs_ptr2 =
             std::make_shared<CrestDialect::Callbacks>(std::move(cbs));
 
-        mlir::DialectRegistry tmp;
-        tmp.insert(id, llvm::StringRef(name),
-                   [id, name,
-                    cbs_ptr2](mlir::MLIRContext* load_ctx) -> mlir::Dialect* {
-                     return new CrestDialect(name, load_ctx, id,
-                                             std::move(*cbs_ptr2));
-                   });
-        ctx->appendDialectRegistry(tmp);
+        insertDialectFactory(
+            ctx, id, name,
+            [id, name,
+             cbs_ptr2](mlir::MLIRContext* load_ctx) -> mlir::Dialect* {
+              return new CrestDialect(name, load_ctx, id, std::move(*cbs_ptr2));
+            });
       });
 }
 
