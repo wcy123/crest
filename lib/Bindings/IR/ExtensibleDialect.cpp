@@ -284,6 +284,17 @@ void registerIRExtensibleDialectBindings() {
         // Allocate id before registering the factory so the factory lambda and
         // the CrestDialect constructor both receive the same TypeID — required
         // for isa<>/dyn_cast<> to work correctly.
+        //
+        // Scope: id lives for the process lifetime (g_crest_type_id_allocator
+        // is never destructed), matching the lifetime of static C++ dialect
+        // TypeIDs.
+        //
+        // Uniqueness: each call to crest::register-dialect! allocates a fresh
+        // id. Within one context the idempotency check (line above) ensures
+        // only one id is ever allocated per dialect name. Across different
+        // contexts the same name gets a different id — this is intentional,
+        // since MLIR contexts are isolated and cross-context TypeID comparison
+        // is not supported.
         mlir::TypeID id = g_crest_type_id_allocator.allocate();
 
         insertDialectFactory(
