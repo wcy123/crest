@@ -296,8 +296,8 @@ void registerIRExtensibleDialectBindings() {
         // lifetime of static C++ dialect TypeIDs.
         //
         // Uniqueness: each call to crest::register-dialect! allocates a fresh
-        // id. Within one context the idempotency check (line above) ensures
-        // only one id is ever allocated per dialect name. Across different
+        // id. Within one context the name check above (getDialectAllocator)
+        // ensures only one id is ever allocated per dialect name. Across
         // contexts the same name gets a different id — this is intentional,
         // since MLIR contexts are isolated and cross-context TypeID comparison
         // is not supported.
