@@ -1,0 +1,25 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Dialect Definitions                                                        *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|* From: test-01-minimal.td                                                   *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::test01::Test01Dialect)
+namespace mlir::test01 {
+
+
+Test01Dialect::Test01Dialect(::mlir::MLIRContext *context)
+    : ::mlir::Dialect(getDialectNamespace(), context, ::mlir::TypeID::get<Test01Dialect>())
+
+     {
+
+  initialize();
+}
+
+Test01Dialect::~Test01Dialect() = default;
+
+
+} // namespace mlir::test01

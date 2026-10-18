@@ -19,11 +19,11 @@
 
 (define (main args)
   (cond
-    [(or (null? args) (equal? (car args) "decl"))
-     (display (sexp->cpp (generate-dialect-decl test-03-dialect)))]
-    [(equal? (car args) "def")
-     (display (sexp->cpp (generate-dialect-def test-03-dialect)))]
-    [else
-     (error "Usage: test-03-multiple-deps.sls [decl|def]")]))
+   [(or (null? args) (equal? (car args) "decl"))
+    (display (sexp->cpp (generate-dialect-decl test-03-dialect)))]
+   [(equal? (car args) "def")
+    (display (sexp->cpp (generate-dialect-def test-03-dialect)))]
+   [else
+    (error "Usage: test-03-multiple-deps.sls [decl|def]")]))
 
-(main (command-line))
+(main (cdr (command-line)))

@@ -1,0 +1,26 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Dialect Declarations                                                       *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|* From: test-02-dependencies.td                                              *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+namespace mlir::test02multiple {
+
+/// Dialect with multiple dependencies.
+class Test02MultipleDialect : public ::mlir::Dialect {
+  explicit Test02MultipleDialect(::mlir::MLIRContext *context);
+
+  void initialize();
+  friend class ::mlir::MLIRContext;
+public:
+  ~Test02MultipleDialect() override;
+  static constexpr ::llvm::StringLiteral getDialectNamespace() {
+    return ::llvm::StringLiteral("test02multiple");
+  }
+};
+
+} // namespace mlir::test02multiple
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::test02multiple::Test02MultipleDialect)

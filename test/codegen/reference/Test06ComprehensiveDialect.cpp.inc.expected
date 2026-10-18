@@ -1,0 +1,23 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Dialect Definitions                                                        *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|* From: test-06-comprehensive.td                                             *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::test06::Test06ComprehensiveDialect)
+namespace mlir::test06 {
+
+
+Test06ComprehensiveDialect::Test06ComprehensiveDialect(::mlir::MLIRContext *context)
+    : ::mlir::ExtensibleDialect(getDialectNamespace(), context, ::mlir::TypeID::get<Test06ComprehensiveDialect>())
+    , workgroupConfigAttrName(context), targetDeviceAttrName(context)
+     {
+  getContext()->loadDialect<arith::ArithDialect>();
+  getContext()->loadDialect<tensor::TensorDialect>();
+  initialize();
+}
+
+} // namespace mlir::test06

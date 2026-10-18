@@ -1,0 +1,25 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Dialect Definitions                                                        *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|* From: test-04-capabilities.td                                              *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::test04constmat::Test04ConstMatDialect)
+namespace mlir::test04constmat {
+
+
+Test04ConstMatDialect::Test04ConstMatDialect(::mlir::MLIRContext *context)
+    : ::mlir::Dialect(getDialectNamespace(), context, ::mlir::TypeID::get<Test04ConstMatDialect>())
+
+     {
+
+  initialize();
+}
+
+Test04ConstMatDialect::~Test04ConstMatDialect() = default;
+
+
+} // namespace mlir::test04constmat

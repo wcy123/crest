@@ -19,12 +19,12 @@
 ;; Command-line handling
 (define (main args)
   (cond
-    [(or (null? args) (equal? (car args) "decl"))
-     (display (sexp->cpp (generate-dialect-decl arith-dialect)))]
-    [(equal? (car args) "def")
-     (display (sexp->cpp (generate-dialect-def arith-dialect)))]
-    [else
-     (error "Usage: arith-dialect.sls [decl|def]")]))
+   [(or (null? args) (equal? (car args) "decl"))
+    (display (sexp->cpp (generate-dialect-decl arith-dialect)))]
+   [(equal? (car args) "def")
+    (display (sexp->cpp (generate-dialect-def arith-dialect)))]
+   [else
+    (error "Usage: arith-dialect.sls [decl|def]")]))
 
 ;; Run
-(main (command-line))
+(main (cdr (command-line)))

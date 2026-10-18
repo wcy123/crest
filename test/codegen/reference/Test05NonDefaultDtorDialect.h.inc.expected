@@ -1,0 +1,26 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Dialect Declarations                                                       *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|* From: test-05-extra-features.td                                            *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+namespace mlir::test05nondtor {
+
+/// Dialect with non-default destructor.
+class Test05NonDefaultDtorDialect : public ::mlir::Dialect {
+  explicit Test05NonDefaultDtorDialect(::mlir::MLIRContext *context);
+
+  void initialize();
+  friend class ::mlir::MLIRContext;
+public:
+  ~Test05NonDefaultDtorDialect() override;
+  static constexpr ::llvm::StringLiteral getDialectNamespace() {
+    return ::llvm::StringLiteral("test05nondtor");
+  }
+};
+
+} // namespace mlir::test05nondtor
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::test05nondtor::Test05NonDefaultDtorDialect)

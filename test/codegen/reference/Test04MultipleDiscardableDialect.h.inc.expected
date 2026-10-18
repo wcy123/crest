@@ -1,0 +1,131 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Dialect Declarations                                                       *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|* From: test-04-discardable-attrs.td                                         *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+namespace mlir::test04multiple {
+
+/// Dialect with multiple discardable attributes.
+class Test04MultipleDiscardableDialect : public ::mlir::Dialect {
+  explicit Test04MultipleDiscardableDialect(::mlir::MLIRContext *context);
+
+  void initialize();
+  friend class ::mlir::MLIRContext;
+public:
+  ~Test04MultipleDiscardableDialect() override;
+  static constexpr ::llvm::StringLiteral getDialectNamespace() {
+    return ::llvm::StringLiteral("test04multiple");
+  }
+
+    /// Helper to manage the discardable attribute `workgroup`.
+    class WorkgroupAttrHelper {
+      ::mlir::StringAttr name;
+    public:
+      static constexpr ::llvm::StringLiteral getNameStr() {
+        return "test04multiple.workgroup";
+      }
+      constexpr ::mlir::StringAttr getName() {
+        return name;
+      }
+
+      WorkgroupAttrHelper(::mlir::MLIRContext *ctx)
+        : name(::mlir::StringAttr::get(ctx, getNameStr())) {}
+
+     WorkgroupAttr getAttr(::mlir::Operation *op) {
+       return op->getAttrOfType<WorkgroupAttr>(name);
+     }
+     void setAttr(::mlir::Operation *op, WorkgroupAttr val) {
+       op->setAttr(name, val);
+     }
+     bool isAttrPresent(::mlir::Operation *op) {
+       return op->hasAttrOfType<WorkgroupAttr>(name);
+     }
+     void removeAttr(::mlir::Operation *op) {
+       assert(op->hasAttrOfType<WorkgroupAttr>(name));
+       op->removeAttr(name);
+     }
+   };
+   WorkgroupAttrHelper getWorkgroupAttrHelper() {
+     return workgroupAttrName;
+   }
+ private:
+   WorkgroupAttrHelper workgroupAttrName;
+ public:
+
+    /// Helper to manage the discardable attribute `target`.
+    class TargetAttrHelper {
+      ::mlir::StringAttr name;
+    public:
+      static constexpr ::llvm::StringLiteral getNameStr() {
+        return "test04multiple.target";
+      }
+      constexpr ::mlir::StringAttr getName() {
+        return name;
+      }
+
+      TargetAttrHelper(::mlir::MLIRContext *ctx)
+        : name(::mlir::StringAttr::get(ctx, getNameStr())) {}
+
+     TargetAttr getAttr(::mlir::Operation *op) {
+       return op->getAttrOfType<TargetAttr>(name);
+     }
+     void setAttr(::mlir::Operation *op, TargetAttr val) {
+       op->setAttr(name, val);
+     }
+     bool isAttrPresent(::mlir::Operation *op) {
+       return op->hasAttrOfType<TargetAttr>(name);
+     }
+     void removeAttr(::mlir::Operation *op) {
+       assert(op->hasAttrOfType<TargetAttr>(name));
+       op->removeAttr(name);
+     }
+   };
+   TargetAttrHelper getTargetAttrHelper() {
+     return targetAttrName;
+   }
+ private:
+   TargetAttrHelper targetAttrName;
+ public:
+
+    /// Helper to manage the discardable attribute `opt_level`.
+    class OptLevelAttrHelper {
+      ::mlir::StringAttr name;
+    public:
+      static constexpr ::llvm::StringLiteral getNameStr() {
+        return "test04multiple.opt_level";
+      }
+      constexpr ::mlir::StringAttr getName() {
+        return name;
+      }
+
+      OptLevelAttrHelper(::mlir::MLIRContext *ctx)
+        : name(::mlir::StringAttr::get(ctx, getNameStr())) {}
+
+     OptimizationLevelAttr getAttr(::mlir::Operation *op) {
+       return op->getAttrOfType<OptimizationLevelAttr>(name);
+     }
+     void setAttr(::mlir::Operation *op, OptimizationLevelAttr val) {
+       op->setAttr(name, val);
+     }
+     bool isAttrPresent(::mlir::Operation *op) {
+       return op->hasAttrOfType<OptimizationLevelAttr>(name);
+     }
+     void removeAttr(::mlir::Operation *op) {
+       assert(op->hasAttrOfType<OptimizationLevelAttr>(name));
+       op->removeAttr(name);
+     }
+   };
+   OptLevelAttrHelper getOptLevelAttrHelper() {
+     return optLevelAttrName;
+   }
+ private:
+   OptLevelAttrHelper optLevelAttrName;
+ public:
+};
+
+} // namespace mlir::test04multiple
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::test04multiple::Test04MultipleDiscardableDialect)

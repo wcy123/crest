@@ -1,0 +1,31 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Dialect Declarations                                                       *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|* From: test-04-capabilities.td                                              *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+namespace mlir::test04opattrverify {
+
+/// Dialect with operation attribute verification.
+class Test04OpAttrVerifyDialect : public ::mlir::Dialect {
+  explicit Test04OpAttrVerifyDialect(::mlir::MLIRContext *context);
+
+  void initialize();
+  friend class ::mlir::MLIRContext;
+public:
+  ~Test04OpAttrVerifyDialect() override;
+  static constexpr ::llvm::StringLiteral getDialectNamespace() {
+    return ::llvm::StringLiteral("test04opattrverify");
+  }
+
+    /// Provides a hook for verifying dialect attributes attached to the given
+    /// op.
+    ::llvm::LogicalResult verifyOperationAttribute(
+        ::mlir::Operation *op, ::mlir::NamedAttribute attribute) override;
+};
+
+} // namespace mlir::test04opattrverify
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::test04opattrverify::Test04OpAttrVerifyDialect)

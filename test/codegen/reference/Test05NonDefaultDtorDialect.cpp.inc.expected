@@ -1,0 +1,22 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Dialect Definitions                                                        *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|* From: test-05-extra-features.td                                            *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::test05nondtor::Test05NonDefaultDtorDialect)
+namespace mlir::test05nondtor {
+
+
+Test05NonDefaultDtorDialect::Test05NonDefaultDtorDialect(::mlir::MLIRContext *context)
+    : ::mlir::Dialect(getDialectNamespace(), context, ::mlir::TypeID::get<Test05NonDefaultDtorDialect>())
+
+     {
+
+  initialize();
+}
+
+} // namespace mlir::test05nondtor

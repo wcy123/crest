@@ -1,0 +1,25 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Dialect Definitions                                                        *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|* From: test-02-dependencies.td                                              *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::test02single::Test02SingleDialect)
+namespace mlir::test02single {
+
+
+Test02SingleDialect::Test02SingleDialect(::mlir::MLIRContext *context)
+    : ::mlir::Dialect(getDialectNamespace(), context, ::mlir::TypeID::get<Test02SingleDialect>())
+
+     {
+  getContext()->loadDialect<arith::ArithDialect>();
+  initialize();
+}
+
+Test02SingleDialect::~Test02SingleDialect() = default;
+
+
+} // namespace mlir::test02single

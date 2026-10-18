@@ -17,11 +17,11 @@
 
 (define (main args)
   (cond
-    [(or (null? args) (equal? (car args) "decl"))
-     (display (sexp->cpp (generate-dialect-decl test-02-dialect)))]
-    [(equal? (car args) "def")
-     (display (sexp->cpp (generate-dialect-def test-02-dialect)))]
-    [else
-     (error "Usage: test-02-single-dep.sls [decl|def]")]))
+   [(or (null? args) (equal? (car args) "decl"))
+    (display (sexp->cpp (generate-dialect-decl test-02-dialect)))]
+   [(equal? (car args) "def")
+    (display (sexp->cpp (generate-dialect-def test-02-dialect)))]
+   [else
+    (error "Usage: test-02-single-dep.sls [decl|def]")]))
 
-(main (command-line))
+(main (cdr (command-line)))

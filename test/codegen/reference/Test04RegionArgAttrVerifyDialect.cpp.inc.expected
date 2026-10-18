@@ -1,0 +1,25 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Dialect Definitions                                                        *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|* From: test-04-capabilities.td                                              *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::test04regionargverify::Test04RegionArgAttrVerifyDialect)
+namespace mlir::test04regionargverify {
+
+
+Test04RegionArgAttrVerifyDialect::Test04RegionArgAttrVerifyDialect(::mlir::MLIRContext *context)
+    : ::mlir::Dialect(getDialectNamespace(), context, ::mlir::TypeID::get<Test04RegionArgAttrVerifyDialect>())
+
+     {
+
+  initialize();
+}
+
+Test04RegionArgAttrVerifyDialect::~Test04RegionArgAttrVerifyDialect() = default;
+
+
+} // namespace mlir::test04regionargverify

@@ -50,17 +50,26 @@ gen_ref_from_td() {
 
   echo "Generating ${base_name}..."
 
-  # For each dialect in the .td file
-  # Extract dialect names
-  local dialects=$(grep "^def.*Dialect : Dialect" "${td_file}" | sed 's/def \(.*\)_Dialect.*/\1/')
+  # Extract def names (used for output filenames) and let names (used for -dialect flag)
+  local def_names=($(grep "^def.*Dialect : Dialect" "${td_file}" | sed 's/def \(.*\)_Dialect.*/\1/'))
+  local let_names=($(grep 'let name = ' "${td_file}" | sed 's/.*let name = "\(.*\)".*/\1/'))
+  local count=${#def_names[@]}
 
-  for dialect in $dialects; do
-    local dialect_name="${dialect}"
+  for i in "${!def_names[@]}"; do
+    local dialect_name="${def_names[$i]}"
+    local dialect_ns="${let_names[$i]}"
 
     echo "  [GEN] ${dialect_name}Dialect..."
 
+    # Pass -dialect only when file contains multiple dialects
+    local dialect_flag=()
+    if [ "$count" -gt 1 ]; then
+      dialect_flag=(-dialect "${dialect_ns}")
+    fi
+
     # Generate declaration
     if ! "${TBLGEN}" -gen-dialect-decls \
+         "${dialect_flag[@]}" \
          -I "${MLIR_SRC}/include" \
          "${td_file}" \
          > "${REF_DIR}/${dialect_name}Dialect.h.inc.expected" 2>&1; then
@@ -70,6 +79,7 @@ gen_ref_from_td() {
 
     # Generate definition
     if ! "${TBLGEN}" -gen-dialect-defs \
+         "${dialect_flag[@]}" \
          -I "${MLIR_SRC}/include" \
          "${td_file}" \
          > "${REF_DIR}/${dialect_name}Dialect.cpp.inc.expected" 2>&1; then

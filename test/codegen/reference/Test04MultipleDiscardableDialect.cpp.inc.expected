@@ -1,0 +1,25 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Dialect Definitions                                                        *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|* From: test-04-discardable-attrs.td                                         *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::test04multiple::Test04MultipleDiscardableDialect)
+namespace mlir::test04multiple {
+
+
+Test04MultipleDiscardableDialect::Test04MultipleDiscardableDialect(::mlir::MLIRContext *context)
+    : ::mlir::Dialect(getDialectNamespace(), context, ::mlir::TypeID::get<Test04MultipleDiscardableDialect>())
+    , workgroupAttrName(context), targetAttrName(context), optLevelAttrName(context)
+     {
+
+  initialize();
+}
+
+Test04MultipleDiscardableDialect::~Test04MultipleDiscardableDialect() = default;
+
+
+} // namespace mlir::test04multiple
