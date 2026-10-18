@@ -14,6 +14,7 @@
 #include "IR/Block.h"
 #include "IR/BuiltinAttributes.h"
 #include "IR/BuiltinTypes.h"
+#include "IR/ExtensibleDialect.h"
 #include "IR/Location.h"
 #include "IR/MLIRContext.h"
 #include "IR/OpBuilder.h"
@@ -45,6 +46,7 @@ void registerMlirForeignFunctions() {
   registerDialectShapeBindings();
   registerDialectTensorBindings();
   registerInterfacesDpsBindings();
+  registerIRExtensibleDialectBindings();
   registerIRLocationBindings();
   registerIRBlockBindings();
   registerIRRegionBindings();

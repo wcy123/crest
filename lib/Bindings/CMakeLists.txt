@@ -7,29 +7,54 @@
 
 add_library(CrestBindings STATIC
   MainModule.cpp
-  Dialect/Shape/IR/Shape.cpp
+  Dialect/Shape/Shape.cpp
+  Dialect/Shape/Shape.h
   Dialect/Tensor/Tensor.cpp
+  Dialect/Tensor/Tensor.h
   Interfaces/DestinationStyleOp.cpp
-  IR/Location.cpp
+  Interfaces/DestinationStyleOp.h
+  IR/ExtensibleDialect.cpp
+  IR/ExtensibleDialect.h
   IR/Block.cpp
-  IR/Region.cpp
+  IR/Block.h
   IR/BuiltinAttributes.cpp
-  IR/MLIRContext.cpp
+  IR/BuiltinAttributes.h
   IR/BuiltinTypes.cpp
-  IR/OperationState.cpp
+  IR/BuiltinTypes.h
+  IR/Location.cpp
+  IR/Location.h
+  IR/MLIRContext.cpp
+  IR/MLIRContext.h
   IR/OpBuilder.cpp
+  IR/OpBuilder.h
   IR/Operation.cpp
+  IR/Operation.h
+  IR/OperationState.cpp
+  IR/OperationState.h
   IR/OpResult.cpp
+  IR/OpResult.h
   IR/PatternMatch.cpp
+  IR/PatternMatch.h
+  IR/Region.cpp
+  IR/Region.h
   IR/Type.cpp
+  IR/Type.h
   IR/Value.cpp
+  IR/Value.h
   Support/ArrayRef.cpp
+  Support/ArrayRef.h
   Support/CrestObject.cpp
-  Support/SchemeWrapper.cpp
-  Support/Logging.cpp
+  Support/CrestObject.h
   Support/LockedSchemeObject.cpp
+  Support/LockedSchemeObject.h
+  Support/Logging.cpp
+  Support/Logging.h
+  Support/SchemeWrapper.cpp
+  Support/SchemeWrapper.h
   Transforms/DialectConversion.cpp
+  Transforms/DialectConversion.h
   Transforms/GreedyPatternRewriteDriver.cpp
+  Transforms/GreedyPatternRewriteDriver.h
 )
 
 add_dependencies(CrestBindings ChezScheme ChezBootHeaders)
