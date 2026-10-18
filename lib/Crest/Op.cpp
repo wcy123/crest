@@ -33,14 +33,9 @@ make_verify_fn(std::optional<LockedSchemeObject> cb) {
 }
 
 static mlir::OperationName::ParseAssemblyFn
-make_parse_fn(std::optional<LockedSchemeObject> cb) {
-  if (!cb) {
-    return [](mlir::OpAsmParser&, mlir::OperationState&) {
-      return mlir::ParseResult::success();
-    };
-  }
-  return [cb = std::move(*cb)](mlir::OpAsmParser& parser,
-                               mlir::OperationState& state) {
+make_parse_fn(LockedSchemeObject cb) {
+  return [cb = std::move(cb)](mlir::OpAsmParser& parser,
+                              mlir::OperationState& state) {
     return Sboolean_value(scheme_call(cb.get(), &parser, &state))
                ? mlir::ParseResult::success()
                : mlir::ParseResult::failure();
@@ -48,12 +43,9 @@ make_parse_fn(std::optional<LockedSchemeObject> cb) {
 }
 
 static mlir::OperationName::PrintAssemblyFn
-make_print_fn(std::optional<LockedSchemeObject> cb) {
-  if (!cb) {
-    return [](mlir::Operation*, mlir::OpAsmPrinter&, llvm::StringRef) {};
-  }
-  return [cb = std::move(*cb)](mlir::Operation* op, mlir::OpAsmPrinter& printer,
-                               llvm::StringRef name) {
+make_print_fn(LockedSchemeObject cb) {
+  return [cb = std::move(cb)](mlir::Operation* op, mlir::OpAsmPrinter& printer,
+                              llvm::StringRef name) {
     std::string name_str = name.str();
     scheme_call(cb.get(), op, &printer, name_str.c_str());
   };
@@ -111,25 +103,18 @@ void CrestOp::registerInto(mlir::ExtensibleDialect* dialect,
   auto verify_fn = make_verify_fn(std::move(cbs.verify));
   auto verify_region_fn = make_verify_fn(std::move(cbs.verify_regions));
 
-  // DynamicOpDefinition::get() has three overloads.  The 2-arg overload
-  // (verify + verify-region only) installs MLIR's generic assembly format
-  // internally.  If we always used the 7-arg overload we would have to
-  // provide our own parse/print defaults, which would NOT be the generic
-  // format — the op would then print as an opaque blob.
-  // Solution: use the 2-arg overload when the user provides no parse/print,
-  // then attach fold/canonicalization/populate-default-attrs via setXxx()
-  // after construction so all remaining slots are still honoured.
-  std::unique_ptr<mlir::DynamicOpDefinition> def;
-  if (cbs.parse || cbs.print) {
-    def = mlir::DynamicOpDefinition::get(op_name, dialect, std::move(verify_fn),
-                                         std::move(verify_region_fn),
-                                         make_parse_fn(std::move(cbs.parse)),
-                                         make_print_fn(std::move(cbs.print)));
-  } else {
-    def = mlir::DynamicOpDefinition::get(op_name, dialect, std::move(verify_fn),
-                                         std::move(verify_region_fn));
+  // Use the 2-arg get() so MLIR installs its own generic assembly format
+  // defaults (printGenericOp for print, parse-error for parse).
+  // Then override each slot individually via set*() if the user provided
+  // a callback — no branching on combinations of slots.
+  auto def = mlir::DynamicOpDefinition::get(
+      op_name, dialect, std::move(verify_fn), std::move(verify_region_fn));
+  if (cbs.parse) {
+    def->setParseFn(make_parse_fn(std::move(*cbs.parse)));
   }
-
+  if (cbs.print) {
+    def->setPrintFn(make_print_fn(std::move(*cbs.print)));
+  }
   if (cbs.fold) {
     def->setFoldHookFn(make_fold_fn(std::move(cbs.fold)));
   }
