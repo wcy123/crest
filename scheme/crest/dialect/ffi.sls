@@ -3,6 +3,6 @@
   (export %crest::register-dialect!)
   (import (chezscheme))
 
-  ;; (uptr ctx) (uptr name-cstr) (uptr vector/12-callbacks) → void
+  ;; (uptr ctx) (string name) (uptr scheme-vector/12) → void
   (define %crest::register-dialect!
-    (foreign-procedure "crest::register-dialect!" (uptr uptr uptr) void)))
+    (foreign-procedure "crest::register-dialect!" (uptr string uptr) void)))
