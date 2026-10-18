@@ -23,7 +23,7 @@
          (let* ([n      (syntax->datum #'op-name)]
                 [n-str  (if (string? n) n (symbol->string n))]
                 [plist  (syntax->datum #'(rest ...))]
-                [defs   (%%expand-op-defs #'op-name n-str plist)]
+                [defs   (expand-op-defs #'op-name n-str plist)]
                 [reg-id (datum->syntax #'op-name
                                        (string->symbol
                                         (string-append n-str ":register!")))])

@@ -1,7 +1,7 @@
 ;; Expand-phase helper for (crest op) macros.
 ;; Imported at (for ... expand) so it is available inside macro transformers.
 (library (crest op expand)
-  (export %%expand-op-defs)
+  (export expand-op-defs)
   (import (chezscheme)
           (mlir IR Operation))
 
@@ -9,7 +9,7 @@
   ;; ctx         — syntax object used as datum->syntax context
   ;; full-name   — string e.g. "toy.constant"
   ;; op-plist    — datum list: (:operands (...) :attributes (...) :results (...))
-  (define (%%expand-op-defs ctx full-name op-plist)
+  (define (expand-op-defs ctx full-name op-plist)
     (define (extract-kw kw plist default)
       (let loop ([rest plist])
         (cond [(null? rest)        default]

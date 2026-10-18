@@ -7,7 +7,7 @@
           register-dynamic-op!
           define-mlir-dialect)
   (import (chezscheme)
-          (for (crest op expand) expand)   ; %%expand-op-defs at macro-expansion time
+          (for (crest op expand) expand)   ; expand-op-defs at macro-expansion time
           (crest dialect ffi))
 
   ;; -------------------------------------------------------------------------
@@ -115,7 +115,7 @@
                                       (symbol->string d-sym) ":register!"))]
                 [all-defs   (apply append
                                    (map (lambda (c)
-                                          (%%expand-op-defs
+                                          (expand-op-defs
                                            #'dialect-sym
                                            (string-append prefix
                                                           (symbol->string (cadr c)))
