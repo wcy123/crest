@@ -271,10 +271,13 @@ void registerIRExtensibleDialectBindings() {
         }
 
         auto make_cb = [](ptr slot) -> std::optional<LockedSchemeObject> {
-          if (slot == Sfalse) {
-            return std::nullopt;
+          if (Sprocedurep(slot)) {
+            return LockedSchemeObject(slot);
           }
-          return LockedSchemeObject(slot);
+          scheme_error("crest::register-dialect!",
+                       "callback slot must be a procedure or #f");
+          // never reach here.
+          return std::nullopt;
         };
         ptr v = reinterpret_cast<ptr>(cbs_ptr);
         CrestDialect::Callbacks cbs;
@@ -297,14 +300,21 @@ void registerIRExtensibleDialectBindings() {
         // sync.
         mlir::TypeID id = g_crest_type_id_allocator.allocate();
 
-        // Wrap callbacks in a shared_ptr so the factory lambda is copyable
-        // (required by std::function<Dialect*(MLIRContext*)>).
-        // LockedSchemeObject is move-only, so CrestDialect::Callbacks is
-        // move-only; shared_ptr allows the lambda to be copied while the
-        // callbacks themselves are stored once.
-        // The factory is called at most once per dialect name (getOrLoadDialect
-        // checks loaded state first), so moving from *cbs_ptr on first call
-        // is safe.
+        // shared_ptr keeps the Scheme callback procedures GC-locked for the
+        // entire lifetime of the factory in the DialectRegistry. Each
+        // LockedSchemeObject inside Callbacks calls Scheme's lock primitive on
+        // construction and unlock on destruction — destroying Callbacks would
+        // release those locks and allow the GC to collect the procedures before
+        // they are ever called. The factory lambda captures cbs_ptr2 by value,
+        // so the Callbacks (and its locks) live as long as the factory does.
+        //
+        // shared_ptr also solves a secondary problem: LockedSchemeObject is
+        // move-only, making Callbacks move-only, but std::function<Dialect*(
+        // MLIRContext*)> requires a copyable callable. shared_ptr is copyable
+        // (shallow copy, shared ownership), so the lambda becomes copyable.
+        //
+        // The factory is called at most once (getOrLoadDialect checks loaded
+        // state first), so moving from *cbs_ptr2 on the first call is safe.
         auto cbs_ptr2 =
             std::make_shared<CrestDialect::Callbacks>(std::move(cbs));
 
