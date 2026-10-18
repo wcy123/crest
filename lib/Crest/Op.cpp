@@ -165,10 +165,14 @@ void registerCrestDynamicOpBindings() {
         ptr v = reinterpret_cast<ptr>(cbs_ptr);
 
         auto make_cb = [](ptr slot) -> std::optional<LockedSchemeObject> {
-          if (slot == Sfalse) {
-            return std::nullopt;
+          if (Sprocedurep(slot)) {
+            return LockedSchemeObject(slot);
           }
-          return LockedSchemeObject(slot);
+          if (slot != Sfalse) {
+            scheme_error("crest::register-dynamic-op!",
+                         "callback slot must be a procedure or #f");
+          }
+          return std::nullopt;
         };
 
         CrestOp::Callbacks cbs;
