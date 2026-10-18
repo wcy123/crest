@@ -64,6 +64,10 @@ CrestDialect::CrestDialect(llvm::StringRef name, mlir::MLIRContext* ctx,
     : mlir::ExtensibleDialect(name, ctx, id), cbs_(std::move(cbs)) {}
 
 bool CrestDialect::classof(const mlir::Dialect* d) {
+  // Limitation: returns true for any ExtensibleDialect, not just CrestDialect.
+  // Without a static C++ class per Scheme dialect there is no per-dialect
+  // TypeID to check against — the same limitation applies to DynamicDialect.
+  // Use d->getDialectNamespace() to identify a specific Scheme dialect.
   return mlir::isa<mlir::ExtensibleDialect>(d);
 }
 
