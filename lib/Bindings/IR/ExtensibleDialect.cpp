@@ -308,9 +308,11 @@ void registerIRExtensibleDialectBindings() {
             ctx, id, name,
             [id, name,
              cbs_ptr2](mlir::MLIRContext* load_ctx) -> mlir::Dialect* {
-              assert(cbs_ptr2.get() &&
-                     "getOrLoadDialect guarantees factory is called at most "
-                     "once per context — this invariant was violated");
+              if (!cbs_ptr2.get()) {
+                llvm::report_fatal_error(
+                    "crest::register-dialect!: factory called more than once "
+                    "— getOrLoadDialect guarantees at-most-once per context");
+              }
               return new CrestDialect(name, load_ctx, id, std::move(*cbs_ptr2));
             });
       });
