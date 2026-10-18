@@ -46,6 +46,19 @@ bool CrestDialect::classof(const mlir::Dialect* d) {
 // ---------------------------------------------------------------------------
 
 void CrestDialect::initialize() {
+  // Load dependent dialects first — callback returns a Scheme list of
+  // namespace strings e.g. '("arith" "func").
+  // get_dependent_dialects returns a Scheme list of uptr (const char*)
+  // namespace strings — each element is a pointer to a null-terminated C
+  // string.
+  if (cbs_.get_dependent_dialects) {
+    ptr deps = scheme_call(cbs_.get_dependent_dialects->get());
+    for (; deps != Snil; deps = Scdr(deps)) {
+      auto* ns = reinterpret_cast<const char*>(
+          static_cast<uint64_t>(Sinteger64_value(Scar(deps))));
+      getContext()->getOrLoadDialect(llvm::StringRef(ns));
+    }
+  }
   if (cbs_.initialize) {
     scheme_call(cbs_.initialize->get(), this);
   }
@@ -163,14 +176,14 @@ void* CrestDialect::getRegisteredInterfaceForOp(mlir::TypeID interfaceID,
 
 void registerIRExtensibleDialectBindings() {
   // crest::load-dialect!
-  // (uptr ctx) (uptr name-cstr) (uptr scheme-vector-of-11-callbacks) → uptr
+  // (uptr ctx) (uptr name-cstr) (uptr scheme-vector-of-12-callbacks) → uptr
   // Callbacks vector slots (Sfalse = use default):
-  //   0 initialize                       6 get-canonicalization-patterns
-  //   1 parse-attribute                  7 verify-op-attr
-  //   2 print-attribute                  8 verify-region-arg-attr
-  //   3 parse-type                       9 verify-region-result-attr
-  //   4 print-type                      10 get-registered-interface-for-op
-  //   5 materialize-constant
+  //   0 initialize                       6 materialize-constant
+  //   1 get-dependent-dialects           7 get-canonicalization-patterns
+  //   2 parse-attribute                  8 verify-op-attr
+  //   3 print-attribute                  9 verify-region-arg-attr
+  //   4 parse-type                      10 verify-region-result-attr
+  //   5 print-type                      11 get-registered-interface-for-op
   Sregister_symbol(
       "crest::load-dialect!",
       (void*)+[](uint64_t ctx_ptr, uint64_t name_ptr,
@@ -191,24 +204,25 @@ void registerIRExtensibleDialectBindings() {
         ptr v = reinterpret_cast<ptr>(cbs_ptr);
         CrestDialect::Callbacks cbs;
         cbs.initialize = make_cb(Svector_ref(v, 0));
-        cbs.parse_attribute = make_cb(Svector_ref(v, 1));
-        cbs.print_attribute = make_cb(Svector_ref(v, 2));
-        cbs.parse_type = make_cb(Svector_ref(v, 3));
-        cbs.print_type = make_cb(Svector_ref(v, 4));
-        cbs.materialize_constant = make_cb(Svector_ref(v, 5));
-        cbs.get_canonicalization_patterns = make_cb(Svector_ref(v, 6));
-        cbs.verify_op_attr = make_cb(Svector_ref(v, 7));
-        cbs.verify_region_arg_attr = make_cb(Svector_ref(v, 8));
-        cbs.verify_region_result_attr = make_cb(Svector_ref(v, 9));
-        cbs.get_registered_interface_for_op = make_cb(Svector_ref(v, 10));
+        cbs.get_dependent_dialects = make_cb(Svector_ref(v, 1));
+        cbs.parse_attribute = make_cb(Svector_ref(v, 2));
+        cbs.print_attribute = make_cb(Svector_ref(v, 3));
+        cbs.parse_type = make_cb(Svector_ref(v, 4));
+        cbs.print_type = make_cb(Svector_ref(v, 5));
+        cbs.materialize_constant = make_cb(Svector_ref(v, 6));
+        cbs.get_canonicalization_patterns = make_cb(Svector_ref(v, 7));
+        cbs.verify_op_attr = make_cb(Svector_ref(v, 8));
+        cbs.verify_region_arg_attr = make_cb(Svector_ref(v, 9));
+        cbs.verify_region_result_attr = make_cb(Svector_ref(v, 10));
+        cbs.get_registered_interface_for_op = make_cb(Svector_ref(v, 11));
 
         auto dialect =
             std::make_unique<CrestDialect>(name, ctx, std::move(cbs));
         mlir::TypeID id = dialect->getTypeID();
         mlir::Dialect* registered = ctx->getOrLoadDialect(
-            name, id, [&]() -> std::unique_ptr<mlir::Dialect> {
-              return std::move(dialect);
-            });
+            name, id,
+            [d = std::move(dialect)]() mutable
+            -> std::unique_ptr<mlir::Dialect> { return std::move(d); });
         return reinterpret_cast<uint64_t>(registered);
       });
 }

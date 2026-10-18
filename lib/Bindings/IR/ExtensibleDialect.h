@@ -28,6 +28,7 @@ public:
   /// One optional locked callback per virtual method.
   struct Callbacks {
     std::optional<LockedSchemeObject> initialize;
+    std::optional<LockedSchemeObject> get_dependent_dialects;
     std::optional<LockedSchemeObject> parse_attribute;
     std::optional<LockedSchemeObject> print_attribute;
     std::optional<LockedSchemeObject> parse_type;
