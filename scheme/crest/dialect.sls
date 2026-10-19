@@ -159,13 +159,30 @@
         (let ([ops '()]
               [cbs (make-vector 12 #f)])
 
+          ;; Validate one operand field: (name type) or (name type :modifier)
+          ;; modifier ∈ {:required :optional :variadic} — default :required.
+          ;; Returns the field as datum.  Attributes and results use plain
+          ;; (name type) without a modifier — no parse-op-operand needed.
+          (define (parse-op-operand field-stx)
+            (syntax-case field-stx ()
+              [(name type)
+               (identifier? #'name)
+               (syntax->datum #'(name type))]
+              [(name type modifier)
+               (and (identifier? #'name) (identifier? #'modifier))
+               (syntax->datum #'(name type modifier))]
+              [_
+               (syntax-violation 'define-op
+                                 "malformed operand — expected (name type) or (name type :modifier)"
+                                 field-stx)]))
+
           ;; Parse sub-clauses of a define-op — name already checked by caller.
           ;;
           ;; Returns alist:
-          ;;   ((operands   . ((name type) ...))   — Value operand declarations
-          ;;    (attributes . ((name type) ...))   — Attribute declarations
-          ;;    (results    . ((name type) ...))   — Result declarations
-          ;;    (op-cbs     . #(stx/#f ...)))      — 7-slot op callback vector
+          ;;   ((operands   . ((name type modifier?) ...)) — Value operand declarations
+          ;;    (attributes . ((name type) ...))          — Attribute declarations
+          ;;    (results    . ((name type) ...))           — Result declarations
+          ;;    (op-cbs     . #(stx/#f ...)))              — 7-slot op callback vector
           ;;
           ;; Op callback vector slots (mirrors CrestOp::Callbacks in lib/Crest/Op.h):
           ;;   0  verify                       (op) → bool
@@ -189,26 +206,19 @@
                                            :populate-default-attrs)
                   [(:summary     _ . rest)  (loop-sub #'rest)]
                   [(:description _ . rest)  (loop-sub #'rest)]
-                  ;; Each field: (name type) or (name type :modifier)
-                  ;; modifier ∈ {:required :optional :variadic} — default :required
-                  ;; mod ... captures 0 or more; guard enforces at most 1.
-                  [(:operands    ((name type mod ...) ...) . rest)
-                   (and (andmap identifier? (syntax->list #'(name ...)))
-                        (andmap (lambda (ms) (<= (length ms) 1))
-                                (syntax->datum #'((mod ...) ...))))
-                   (begin (set! operands (syntax->datum #'((name type mod ...) ...)))
+                  ;; :operands uses parse-op-operand — allows optional :modifier
+                  [(:operands    (field ...) . rest)
+                   (begin
+                     (set! operands (map parse-op-operand (syntax->list #'(field ...))))
+                     (loop-sub #'rest))]
+                  ;; :attributes and :results: plain (name type), no modifier
+                  [(:attributes  ((name type) ...) . rest)
+                   (andmap identifier? (syntax->list #'(name ...)))
+                   (begin (set! attributes (syntax->datum #'((name type) ...)))
                           (loop-sub #'rest))]
-                  [(:attributes  ((name type mod ...) ...) . rest)
-                   (and (andmap identifier? (syntax->list #'(name ...)))
-                        (andmap (lambda (ms) (<= (length ms) 1))
-                                (syntax->datum #'((mod ...) ...))))
-                   (begin (set! attributes (syntax->datum #'((name type mod ...) ...)))
-                          (loop-sub #'rest))]
-                  [(:results     ((name type mod ...) ...) . rest)
-                   (and (andmap identifier? (syntax->list #'(name ...)))
-                        (andmap (lambda (ms) (<= (length ms) 1))
-                                (syntax->datum #'((mod ...) ...))))
-                   (begin (set! results (syntax->datum #'((name type mod ...) ...)))
+                  [(:results     ((name type) ...) . rest)
+                   (andmap identifier? (syntax->list #'(name ...)))
+                   (begin (set! results (syntax->datum #'((name type) ...)))
                           (loop-sub #'rest))]
                   ;; Op callbacks — same inline-lambda syntax as dialect callbacks
                   [((:verify                       (op) body ...) . rest)
