@@ -152,8 +152,10 @@
                  ;; Accessor and predicate definitions for each op
                  op-def ...
 
-                 ;; Called when the dialect is first loaded (initialize callback).
-                 ;; Registers each op into the live CrestDialect instance.
+                 ;; Called by CrestDialect::initialize() in C++ when the dialect
+                 ;; is first loaded. dialect-ptr is the CrestDialect* (uptr)
+                 ;; passed by C++ as `this` — it arrives from the C++ side,
+                 ;; not from any Scheme binding.
                  (define (%%init dialect-ptr)
                    (register-dynamic-op! dialect-ptr op-name-str) ...)
 
