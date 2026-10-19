@@ -158,6 +158,18 @@
         ;; loop only varies over the remaining syntax — no extra accumulators.
         (let ([ops '()]
               [cbs (make-vector 12 #f)])
+
+          ;; Validate and accumulate a (define-op name . rest) clause.
+          (define (parse-define-op clause-stx)
+            (syntax-case clause-stx ()
+              [(define-op name . _)
+               (identifier? #'name)
+               (set! ops (cons clause-stx ops))]
+              [_
+               (syntax-violation 'define-dialect
+                                 "malformed define-op — expected (define-op <name> clause ...)"
+                                 clause-stx)]))
+
           (let loop ([stx clauses-stx])
             (syntax-case stx (:initialize :get-dependent-dialects
                                           :parse-attribute :print-attribute
@@ -170,7 +182,7 @@
                                           :get-registered-interface-for-op
                                           define-op)
               [((define-op . op-rest) . rest)
-               (begin (set! ops (cons #'(define-op . op-rest) ops)) (loop #'rest))]
+               (begin (parse-define-op #'(define-op . op-rest)) (loop #'rest))]
               [((:initialize                  (dialect-ptr) body ...) . rest)
                (identifier? #'dialect-ptr)
                (begin (vector-set! cbs  0 #'(lambda (dialect-ptr) body ...)) (loop #'rest))]
