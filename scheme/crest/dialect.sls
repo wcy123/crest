@@ -171,31 +171,45 @@
             ;; Op definitions
             [((define-op . op-rest) . rest)
              (loop #'rest name (cons #'(define-op . op-rest) ops) cbs)]
-            ;; Callback definitions: (:keyword (args) body ...) → lambda
-            [((:initialize                  (a ...) b ...) . rest)
-             (begin (vector-set! cbs  0 #'(lambda (a ...) b ...)) (loop #'rest name ops cbs))]
-            [((:get-dependent-dialects      (a ...) b ...) . rest)
-             (begin (vector-set! cbs  1 #'(lambda (a ...) b ...)) (loop #'rest name ops cbs))]
-            [((:parse-attribute             (a ...) b ...) . rest)
-             (begin (vector-set! cbs  2 #'(lambda (a ...) b ...)) (loop #'rest name ops cbs))]
-            [((:print-attribute             (a ...) b ...) . rest)
-             (begin (vector-set! cbs  3 #'(lambda (a ...) b ...)) (loop #'rest name ops cbs))]
-            [((:parse-type                  (a ...) b ...) . rest)
-             (begin (vector-set! cbs  4 #'(lambda (a ...) b ...)) (loop #'rest name ops cbs))]
-            [((:print-type                  (a ...) b ...) . rest)
-             (begin (vector-set! cbs  5 #'(lambda (a ...) b ...)) (loop #'rest name ops cbs))]
-            [((:materialize-constant        (a ...) b ...) . rest)
-             (begin (vector-set! cbs  6 #'(lambda (a ...) b ...)) (loop #'rest name ops cbs))]
-            [((:get-canonicalization-patterns (a ...) b ...) . rest)
-             (begin (vector-set! cbs  7 #'(lambda (a ...) b ...)) (loop #'rest name ops cbs))]
-            [((:verify-op-attr              (a ...) b ...) . rest)
-             (begin (vector-set! cbs  8 #'(lambda (a ...) b ...)) (loop #'rest name ops cbs))]
-            [((:verify-region-arg-attr      (a ...) b ...) . rest)
-             (begin (vector-set! cbs  9 #'(lambda (a ...) b ...)) (loop #'rest name ops cbs))]
-            [((:verify-region-result-attr   (a ...) b ...) . rest)
-             (begin (vector-set! cbs 10 #'(lambda (a ...) b ...)) (loop #'rest name ops cbs))]
-            [((:get-registered-interface-for-op (a ...) b ...) . rest)
-             (begin (vector-set! cbs 11 #'(lambda (a ...) b ...)) (loop #'rest name ops cbs))]
+            ;; Callback definitions with exact prototypes — argument names document
+            ;; what C++ passes; wrong arity is a syntax error at expansion time.
+            ;; Prototypes mirror CrestDialect virtual methods in lib/Crest/Dialect.h.
+            [((:initialize                  (dialect-ptr) b ...) . rest)
+             (begin (vector-set! cbs  0 #'(lambda (dialect-ptr) b ...))
+                    (loop #'rest name ops cbs))]
+            [((:get-dependent-dialects      () b ...) . rest)
+             (begin (vector-set! cbs  1 #'(lambda () b ...))
+                    (loop #'rest name ops cbs))]
+            [((:parse-attribute             (parser type) b ...) . rest)
+             (begin (vector-set! cbs  2 #'(lambda (parser type) b ...))
+                    (loop #'rest name ops cbs))]
+            [((:print-attribute             (attr printer) b ...) . rest)
+             (begin (vector-set! cbs  3 #'(lambda (attr printer) b ...))
+                    (loop #'rest name ops cbs))]
+            [((:parse-type                  (parser) b ...) . rest)
+             (begin (vector-set! cbs  4 #'(lambda (parser) b ...))
+                    (loop #'rest name ops cbs))]
+            [((:print-type                  (type printer) b ...) . rest)
+             (begin (vector-set! cbs  5 #'(lambda (type printer) b ...))
+                    (loop #'rest name ops cbs))]
+            [((:materialize-constant        (builder value type loc) b ...) . rest)
+             (begin (vector-set! cbs  6 #'(lambda (builder value type loc) b ...))
+                    (loop #'rest name ops cbs))]
+            [((:get-canonicalization-patterns (pattern-set) b ...) . rest)
+             (begin (vector-set! cbs  7 #'(lambda (pattern-set) b ...))
+                    (loop #'rest name ops cbs))]
+            [((:verify-op-attr              (op attr) b ...) . rest)
+             (begin (vector-set! cbs  8 #'(lambda (op attr) b ...))
+                    (loop #'rest name ops cbs))]
+            [((:verify-region-arg-attr      (op region-index arg-index attr) b ...) . rest)
+             (begin (vector-set! cbs  9 #'(lambda (op region-index arg-index attr) b ...))
+                    (loop #'rest name ops cbs))]
+            [((:verify-region-result-attr   (op region-index result-index attr) b ...) . rest)
+             (begin (vector-set! cbs 10 #'(lambda (op region-index result-index attr) b ...))
+                    (loop #'rest name ops cbs))]
+            [((:get-registered-interface-for-op (interface-id op-name) b ...) . rest)
+             (begin (vector-set! cbs 11 #'(lambda (interface-id op-name) b ...))
+                    (loop #'rest name ops cbs))]
             [(_ . rest)
              (loop #'rest name ops cbs)]
             [()
