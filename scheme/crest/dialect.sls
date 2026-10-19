@@ -33,7 +33,8 @@
           :optional
           :variadic)
   (import (chezscheme)
-          (for (crest op expand) expand)   ; expand-op-defs at macro-expansion time
+          (for (crest op expand)    expand)  ; expand-op-defs at macro-expansion time
+          (for (crest dialect ast)  expand run)  ; %%dialect-parse / %%op-parse records
           (crest dialect ffi))
 
   ;; Chez Scheme identifiers starting with ':' are not self-evaluating (unlike
@@ -66,6 +67,7 @@
   (define :required                    ':required)
   (define :optional                    ':optional)
   (define :variadic                    ':variadic)
+
 
   (define (%%dialect-slot-index key)
     (case key
@@ -164,7 +166,7 @@
           ;;   4  fold                         (op) → bool
           ;;   5  get-canonicalization-patterns (pattern-set) → void
           ;;   6  populate-default-attrs       (op-name attrs) → void
-          (define (parse-define-op sub-clauses-stx)
+          (define (parse-define-op op-name-stx sub-clauses-stx)
             (let ([operands   '()]
                   [attributes '()]
                   [results    '()]
@@ -223,10 +225,7 @@
                                      "unknown clause — expected :operands, :attributes, :results, :summary, :description, or (:callback (args) body ...)"
                                      #'bad)]
                   [()
-                   (list (cons 'operands   operands)
-                         (cons 'attributes attributes)
-                         (cons 'results    results)
-                         (cons 'op-cbs     op-cbs))]))))
+                   (make-%%op-parse op-name-stx operands attributes results op-cbs)]))))
 
 
           (let loop ([stx clauses-stx])
@@ -248,8 +247,7 @@
               [((define-op op-name . op-sub) . rest)
                (identifier? #'op-name)
                (begin
-                 (let ([parsed (parse-define-op #'op-sub)])
-                   (set! ops (cons (cons #'op-name parsed) ops)))
+                 (set! ops (cons (parse-define-op #'op-name #'op-sub) ops))
                  (loop #'rest))]
               [((:initialize                  (dialect-ptr) body ...) . rest)
                (identifier? #'dialect-ptr)
@@ -294,18 +292,16 @@
                                  "unrecognised clause — expected (define-op ...) or (:keyword (args) body ...)"
                                  #'bad)]
               [()
-               (list (cons 'name default-name)
-                     (cons 'ops  (reverse ops))
-                     (cons 'cbs  cbs))]))))
+               (make-%%dialect-parse default-name (reverse ops) cbs)]))))
 
       (syntax-case stx ()
         [(_ dialect-id clause ...)
          (let* ([dialect-sym  (syntax->datum #'dialect-id)]
                 [parsed       (parse-clauses #'(clause ...)
                                              (symbol->string dialect-sym))]
-                [dialect-name (cdr (assq 'name parsed))]
-                [op-clauses   (cdr (assq 'ops  parsed))]
-                [extra-cbs    (cdr (assq 'cbs  parsed))]
+                [dialect-name (%%dialect-parse-name parsed)]
+                [op-clauses   (%%dialect-parse-ops  parsed)]
+                [extra-cbs    (%%dialect-parse-cbs  parsed)]
                 [op-prefix    (string-append dialect-name ".")]
                 [make-id      (lambda (sfx)
                                 (datum->syntax #'dialect-id (string->symbol sfx)))]
@@ -316,23 +312,16 @@
                                         (symbol->string dialect-sym) ":register!"))]
                 [op-names     (map (lambda (c)
                                      (string-append op-prefix
-                                                    (symbol->string (syntax->datum (car c)))))
+                                                    (symbol->string (syntax->datum (%%op-parse-name c)))))
                                    op-clauses)]
                 [all-op-defs  (apply append
                                      (map (lambda (c)
-                                            (let* ([name-stx  (car c)]
-                                                   [parsed    (cdr c)]
-                                                   [full-name (string-append op-prefix
-                                                                             (symbol->string (syntax->datum name-stx)))]
-                                                   ;; expand-op-defs expects a plist datum; reconstruct from alist
-                                                   [plist     (apply append
-                                                                     (map (lambda (entry)
-                                                                            (if (null? (cdr entry)) '()
-                                                                                (list (string->symbol
-                                                                                       (string-append ":"
-                                                                                                      (symbol->string (car entry))))
-                                                                                      (cdr entry))))
-                                                                          parsed))])
+                                            (let* ([full-name (string-append op-prefix
+                                                                             (symbol->string (syntax->datum (%%op-parse-name c))))]
+                                                   [plist (append
+                                                           (if (null? (%%op-parse-operands   c)) '() (list ':operands   (%%op-parse-operands   c)))
+                                                           (if (null? (%%op-parse-attributes c)) '() (list ':attributes (%%op-parse-attributes c)))
+                                                           (if (null? (%%op-parse-results    c)) '() (list ':results    (%%op-parse-results    c))))])
                                               (expand-op-defs #'dialect-id full-name plist)))
                                           op-clauses))]
                 ;; Slot 0 (:initialize) skipped — %%init is always the initializer.
