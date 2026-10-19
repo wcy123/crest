@@ -150,46 +150,39 @@
       ;;    (ops  . (op-stx ...))          — (define-op ...) syntax objects
       ;;    (cbs  . (key-stx val-stx ...)) — callback pairs, values as syntax)
       ;;
-      ;; One pass suffices: (define-op ...) forms, :name, and :keyword value
-      ;; pairs are all distinguished by syntax-case pattern matching.
-      (define (parse-clauses clause-stxs default-name)
-        (let loop ([rest clause-stxs]
+      ;; Receives #'(clause ...) as a single syntax object and recurses using
+      ;; (head . tail) patterns — no syntax->list, no car/cdr on syntax.
+      (define (parse-clauses clauses-stx default-name)
+        (let loop ([stx clauses-stx]
                    [name default-name]
                    [ops  '()]
                    [cbs  '()])
-          (if (null? rest)
-              (list (cons 'name name)
-                    (cons 'ops  (reverse ops))
-                    (cons 'cbs  (reverse cbs)))
-              (syntax-case (car rest) ()
-                ;; (define-op ...) — collect for op registration + accessor gen
-                [(define-op . _)
-                 (loop (cdr rest) name (cons (car rest) ops) cbs)]
-                ;; Identifier — keyword or :name
-                [kw
-                 (identifier? #'kw)
-                 (let ([key (syntax->datum #'kw)])
-                   (cond
-                    ;; :name "str" — dialect name override, skip key + value
-                    [(eq? key ':name)
-                     (if (null? (cdr rest)) (loop '() name ops cbs)
-                         (loop (cddr rest)
-                               (syntax->datum (cadr rest))
-                               ops cbs))]
-                    ;; Other :keyword — dialect callback, collect key + value
-                    [(and (symbol? key)
-                          (char=? (string-ref (symbol->string key) 0) #\:))
-                     (if (null? (cdr rest)) (loop '() name ops cbs)
-                         (loop (cddr rest) name ops
-                               (cons (cadr rest) (cons #'kw cbs))))]
-                    [else (loop (cdr rest) name ops cbs)]))]
-                ;; Anything else — skip
-                [_ (loop (cdr rest) name ops cbs)]))))
+          (syntax-case stx (:name)
+            ;; Empty list — done, build result alist
+            [()
+             (list (cons 'name name)
+                   (cons 'ops  (reverse ops))
+                   (cons 'cbs  (reverse cbs)))]
+            ;; :name "str" . rest — dialect name override
+            [(:name name-str . rest)
+             (string? (syntax->datum #'name-str))
+             (loop #'rest (syntax->datum #'name-str) ops cbs)]
+            ;; (define-op ...) . rest — op definition, collect as syntax
+            [((define-op . op-rest) . rest)
+             (loop #'rest name (cons #'(define-op . op-rest) ops) cbs)]
+            ;; :keyword val . rest — dialect callback pair
+            [(kw val . rest)
+             (and (identifier? #'kw)
+                  (char=? (string-ref (symbol->string (syntax->datum #'kw)) 0) #\:))
+             (loop #'rest name ops (cons #'val (cons #'kw cbs)))]
+            ;; Anything else — skip one element
+            [(_ . rest)
+             (loop #'rest name ops cbs)])))
 
       (syntax-case stx ()
         [(_ dialect-id clause ...)
          (let* ([dialect-sym  (syntax->datum #'dialect-id)]
-                [parsed       (parse-clauses (syntax->list #'(clause ...))
+                [parsed       (parse-clauses #'(clause ...)
                                              (symbol->string dialect-sym))]
                 [dialect-name (cdr (assq 'name parsed))]
                 [op-clauses   (cdr (assq 'ops  parsed))]
