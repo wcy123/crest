@@ -224,8 +224,10 @@
              (and (identifier? #'interface-id) (identifier? #'op-name))
              (begin (vector-set! cbs 11 #'(lambda (interface-id op-name) body ...))
                     (loop #'rest name ops cbs))]
-            [(_ . rest)
-             (loop #'rest name ops cbs)]
+            [(bad . _)
+             (syntax-violation 'define-dialect
+                               "unrecognised clause — expected (define-op ...) or (:keyword (args) body ...)"
+                               #'bad)]
             [()
              (list (cons 'name name)
                    (cons 'ops  (reverse ops))
