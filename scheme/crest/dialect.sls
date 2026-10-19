@@ -159,31 +159,22 @@
         (let ([ops '()]
               [cbs (make-vector 12 #f)])
 
-          ;; Validate sub-clauses of (define-op name . sub-clauses).
+          ;; Validate sub-clauses of a define-op — name already checked by caller.
           ;; Uses (key val . rest) patterns — same approach as parse-clauses.
-          (define (parse-define-op clause-stx)
-            (syntax-case clause-stx ()
-              [(define-op name . sub-clauses)
-               (identifier? #'name)
-               (begin
-                 (let loop-sub ([stx #'sub-clauses])
-                   (syntax-case stx (:summary :description
-                                              :operands :attributes :results)
-                     [() #t]
-                     [(:summary     val . rest) (loop-sub #'rest)]
-                     [(:description val . rest) (loop-sub #'rest)]
-                     [(:operands    val . rest) (loop-sub #'rest)]
-                     [(:attributes  val . rest) (loop-sub #'rest)]
-                     [(:results     val . rest) (loop-sub #'rest)]
-                     [(bad . _)
-                      (syntax-violation 'define-op
-                                        "unknown clause — expected :operands, :attributes, :results, :summary, or :description"
-                                        #'bad)]))
-                 (set! ops (cons clause-stx ops)))]
-              [_
-               (syntax-violation 'define-dialect
-                                 "malformed define-op — expected (define-op <name> clause ...)"
-                                 clause-stx)]))
+          (define (parse-define-op sub-clauses-stx)
+            (let loop-sub ([stx sub-clauses-stx])
+              (syntax-case stx (:summary :description
+                                         :operands :attributes :results)
+                [() #t]
+                [(:summary     val . rest) (loop-sub #'rest)]
+                [(:description val . rest) (loop-sub #'rest)]
+                [(:operands    val . rest) (loop-sub #'rest)]
+                [(:attributes  val . rest) (loop-sub #'rest)]
+                [(:results     val . rest) (loop-sub #'rest)]
+                [(bad . _)
+                 (syntax-violation 'define-op
+                                   "unknown clause — expected :operands, :attributes, :results, :summary, or :description"
+                                   #'bad)])))
 
           (let loop ([stx clauses-stx])
             (syntax-case stx (:summary :description
@@ -200,8 +191,12 @@
               ;; Documentation-only — same placeholder role as in define-op
               [(:summary     _ . rest) (loop #'rest)]
               [(:description _ . rest) (loop #'rest)]
-              [((define-op . op-rest) . rest)
-               (begin (parse-define-op #'(define-op . op-rest)) (loop #'rest))]
+              [((define-op op-name . op-sub) . rest)
+               (identifier? #'op-name)
+               (begin
+                 (parse-define-op #'op-sub)
+                 (set! ops (cons #'(define-op op-name . op-sub) ops))
+                 (loop #'rest))]
               [((:initialize                  (dialect-ptr) body ...) . rest)
                (identifier? #'dialect-ptr)
                (begin (vector-set! cbs  0 #'(lambda (dialect-ptr) body ...)) (loop #'rest))]
