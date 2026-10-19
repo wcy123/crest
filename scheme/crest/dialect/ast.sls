@@ -15,8 +15,27 @@
           op-parse-operands
           op-parse-attributes
           op-parse-results
-          op-parse-op-cbs)
+          op-parse-op-cbs
+          operand-field
+          make-operand-field
+          operand-field?
+          operand-field-name
+          operand-field-type
+          operand-field-modifier)
   (import (chezscheme))
+
+  ;; A single operand field declaration inside (define-op ... :operands (...)).
+  ;;   name     — symbol e.g. 'input — used for accessor name generation
+  ;;   type     — syntax: predicate (value) → bool — used in verify generation
+  ;;              e.g. #'mlir::isa<RankedTensorType>? or #'(lambda (v) ...)
+  ;;   modifier — :required (default), :optional, or :variadic
+  ;;
+  ;; modifier drives verify generation: :required → exact count check,
+  ;; :optional → allows absence, :variadic → lower-bound only.
+  (define-record-type operand-field
+    (fields (immutable name     operand-field-name)
+            (immutable type     operand-field-type)
+            (immutable modifier operand-field-modifier)))
 
   ;; Result of parse-clauses.
   ;;   name — MLIR dialect namespace string e.g. "toy"

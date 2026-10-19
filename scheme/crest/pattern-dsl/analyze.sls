@@ -1,12 +1,12 @@
 #!r6rs
-(library (crest internal analyze)
+(library (crest pattern-dsl analyze)
   (export analyze-ast
           binding-manager-bindings)
   (import (rnrs)
           (only (chezscheme) syntax->list format printf)
           (for (rename (rime loop) (:with :rime-with)) expand)
-          (crest internal ast)
-          (crest internal actions))
+          (crest pattern-dsl ast)
+          (crest pattern-dsl actions))
 
   ;;=======================================================================
   ;; Phase 3: Analysis - build bindings and actions for pattern matching

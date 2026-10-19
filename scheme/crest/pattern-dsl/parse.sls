@@ -62,12 +62,12 @@
 ;;
 ;;=======================================================================
 
-(library (crest internal parse)
+(library (crest pattern-dsl parse)
   (export parse-to-ast)
   (import (except (rnrs) =)
           (for (only (chezscheme) syntax->list generate-temporaries) expand)
-          (for (crest internal keywords) expand)
-          (for (crest internal ast) expand))
+          (for (crest pattern-dsl keywords) expand)
+          (for (crest pattern-dsl ast) expand))
 
   ;; %%wildcard? — #t when identifier datum is exactly %_
   (define-syntax %%wildcard?

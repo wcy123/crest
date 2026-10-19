@@ -128,29 +128,28 @@
   ;; -------------------------------------------------------------------------
   (define-syntax define-dialect
     (lambda (stx)
-
       (define (parse-clauses clauses-stx default-name)
         ;; cbs slot order matches CrestDialect::Callbacks — index set directly
         ;; avoids a secondary lookup at call time.
         (let ([ops '()]
               [cbs (make-vector 12 #f)])
 
-          ;; (name type) normalises to (name type :required) so downstream code
-          ;; always sees a uniform 3-element form.
+          ;; Returns operand-field record.  type is kept as syntax so it resolves
+          ;; correctly when used in generated verify code (a predicate, not a symbol).
           (define (parse-op-operand field-stx)
             (syntax-case field-stx (:required :optional :variadic)
               [(name type)
                (identifier? #'name)
-               (syntax->datum #'(name type :required))]
+               (make-operand-field #'name #'type ':required)]
               [(name type :required)
                (identifier? #'name)
-               (syntax->datum #'(name type :required))]
+               (make-operand-field #'name #'type ':required)]
               [(name type :optional)
                (identifier? #'name)
-               (syntax->datum #'(name type :optional))]
+               (make-operand-field #'name #'type ':optional)]
               [(name type :variadic)
                (identifier? #'name)
-               (syntax->datum #'(name type :variadic))]
+               (make-operand-field #'name #'type ':variadic)]
               [_
                (syntax-violation 'define-op
                                  "malformed operand — expected (name type) or (name type :required/:optional/:variadic)"
@@ -318,10 +317,17 @@
                                      (map (lambda (c)
                                             (let* ([full-name (string-append op-prefix
                                                                              (symbol->string (syntax->datum (op-parse-name c))))]
+                                                   ;; expand-op-defs needs datum (name type) pairs for accessor gen.
+                                                   ;; operand-field records converted here; type predicate syntax
+                                                   ;; stays in the record for future verify code generation.
+                                                   [op-datum (map (lambda (f)
+                                                                    (list (operand-field-name f)
+                                                                          (syntax->datum (operand-field-type f))))
+                                                                  (op-parse-operands c))]
                                                    [plist (append
-                                                           (if (null? (op-parse-operands   c)) '() (list ':operands   (op-parse-operands   c)))
-                                                           (if (null? (op-parse-attributes c)) '() (list ':attributes (op-parse-attributes c)))
-                                                           (if (null? (op-parse-results    c)) '() (list ':results    (op-parse-results    c))))])
+                                                           (if (null? op-datum)                  '() (list ':operands   op-datum))
+                                                           (if (null? (op-parse-attributes c))   '() (list ':attributes (op-parse-attributes c)))
+                                                           (if (null? (op-parse-results    c))   '() (list ':results    (op-parse-results    c))))])
                                               (expand-op-defs #'dialect-id full-name plist)))
                                           op-clauses))]
                 ;; Slot 0 (:initialize) skipped — %%init is always the initializer.
@@ -332,6 +338,9 @@
                                 :get-canonicalization-patterns :verify-op-attr
                                 :verify-region-arg-attr :verify-region-result-attr
                                 :get-registered-interface-for-op)]
+                [%%op-slot-keywords
+                 '#(:verify :verify-regions :parse :print :fold
+                            :get-canonicalization-patterns :populate-default-attrs)]
                 [extra-kv-list
                  (let loop ([i 1] [acc '()])   ; start at 1, skip :initialize
                    (if (= i 12)
@@ -343,16 +352,35 @@
                                    (cons v
                                          (cons (datum->syntax #'dialect-id
                                                               `(quote ,(vector-ref %%slot-keywords i)))
-                                               acc)))))))])
+                                               acc)))))))]
+                [op-register-calls
+                 (map (lambda (c op-name-str)
+                        (let* ([op-cbs (op-parse-op-cbs c)]
+                               [kv-list
+                                (let loop ([i 0] [acc '()])
+                                  (if (= i 7)
+                                      (reverse acc)
+                                      (let ([v (vector-ref op-cbs i)])
+                                        (if (not v)
+                                            (loop (+ i 1) acc)
+                                            (loop (+ i 1)
+                                                  (cons v
+                                                        (cons (datum->syntax #'dialect-id
+                                                                             `(quote ,(vector-ref %%op-slot-keywords i)))
+                                                              acc)))))))])
+                          (with-syntax ([name-str (datum->syntax #'dialect-id op-name-str)]
+                                        [(kv ...) kv-list])
+                            #'(register-dynamic-op! dialect-ptr name-str kv ...))))
+                      op-clauses
+                      op-names)])
 
            (with-syntax
                ([%%init            init-id]
                 [dialect:register! register-id]
                 [dialect-name-str  dialect-name]
                 [(op-def ...)      all-op-defs]
-                [(op-name-str ...) (map (lambda (n) (datum->syntax #'dialect-id n))
-                                        op-names)]
-                [(extra-kv ...)    extra-kv-list])
+                [(op-register-call ...) op-register-calls]
+                [(extra-kv ...)         extra-kv-list])
              #'(begin
                  op-def ...
 
@@ -360,7 +388,7 @@
                  ;; the dialect is first loaded — it arrives from the C++ side,
                  ;; not from any Scheme binding.
                  (define (%%init dialect-ptr)
-                   (register-dynamic-op! dialect-ptr op-name-str) ...)
+                   op-register-call ...)
 
                  ;; extra-kv ... splices user-provided dialect callbacks before
                  ;; :initialize so all 12 CrestDialect slots can be populated.

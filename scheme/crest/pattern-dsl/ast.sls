@@ -19,7 +19,7 @@
 ;;
 ;;=======================================================================
 
-(library (crest internal ast)
+(library (crest pattern-dsl ast)
   (export ast-pattern-expand make-ast-pattern-expand ast-pattern-expand?
           ast-pattern-expand-pattern-type ast-pattern-expand-pattern-type-set!
           ast-pattern-expand-function-name ast-pattern-expand-function-name-set!

@@ -129,6 +129,7 @@ ChezSchemeInterpreter::ChezSchemeInterpreter(PrivateTag,
       llvm::sys::Process::GetEnv("CREST_SCHEME_BINARY_DIR")
           .value_or(std::string(SCHEME_BINARY_DIR));
   addLibraryPath(SCHEME_LIBRARIES_DIR, schemeBinaryDir.c_str());
+  addLibraryPath(SCHEME_BINDINGS_DIR, schemeBinaryDir.c_str());
   addLibraryPath(RIME_DIR, schemeBinaryDir.c_str());
 #endif
 
