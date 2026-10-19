@@ -99,6 +99,24 @@
       (define (define-op-form? clause)
         (and (pair? clause) (eq? (car clause) 'define-op)))
 
+      ;; Extract dialect-level keyword-value pairs from the clause list,
+      ;; skipping :name (handled separately) and (define-op ...) forms.
+      ;; Returns a flat plist datum: (:parse-type val :print-type val ...)
+      ;; These are passed directly to register-dialect! alongside :initialize.
+      (define (dialect-cb-plist clauses)
+        (let loop ([rest clauses] [acc '()])
+          (cond
+           [(null? rest)           (reverse acc)]
+           [(pair? (car rest))     (loop (cdr rest) acc)]  ; (define-op ...) — skip
+           [(eq? (car rest) ':name)
+            (if (null? (cdr rest)) (reverse acc)
+                (loop (cddr rest) acc))]                   ; :name override — skip
+           [(symbol? (car rest))                           ; :keyword value
+            (if (null? (cdr rest)) (reverse acc)
+                (loop (cddr rest)
+                      (cons (cadr rest) (cons (car rest) acc))))]
+           [else                   (loop (cdr rest) acc)])))
+
       (syntax-case stx ()
         [(_ dialect-id clause ...)
          (let* ([all-clauses  (syntax->datum #'(clause ...))]
@@ -137,17 +155,38 @@
                                              (string-append op-prefix
                                                             (symbol->string (cadr c)))
                                              (cddr c)))
-                                          op-clauses))])
+                                          op-clauses))]
+
+                ;; Dialect-level callback plist extracted from clause list
+                [extra-cbs    (dialect-cb-plist all-clauses)]
+
+                ;; Build a flat interleaved list of quoted-key/value syntax pairs.
+                ;; (apply append (map (lambda (k v) (list quoted-k v-expr)) ...))
+                ;; gives (':k1 v1 ':k2 v2 ...) as a single pattern variable.
+                ;; Expanding with extra-kv ... splices all elements flat into
+                ;; the register-dialect! call: k1 v1 k2 v2 ...
+                [cb-keys      (let loop ([rest extra-cbs] [ks '()])
+                                (if (null? rest) (reverse ks)
+                                    (loop (cddr rest) (cons (car rest) ks))))]
+                [cb-vals      (let loop ([rest extra-cbs] [vs '()])
+                                (if (null? rest) (reverse vs)
+                                    (loop (cddr rest) (cons (cadr rest) vs))))])
 
            (with-syntax
-               ([%%init           init-id]
+               ([%%init            init-id]
                 [dialect:register! register-id]
                 [dialect-name-str  dialect-name]
                 [(op-def ...)      all-op-defs]
-                ;; Syntax objects for each op name string, scoped to dialect-id
-                [(op-name-str ...) (map (lambda (n)
-                                          (datum->syntax #'dialect-id n))
-                                        op-names)])
+                [(op-name-str ...) (map (lambda (n) (datum->syntax #'dialect-id n))
+                                        op-names)]
+                ;; Flat interleaved list: (':k1 v1 ':k2 v2 ...) as one pattern.
+                ;; extra-kv ... splices all elements into register-dialect! call.
+                [(extra-kv ...)    (apply append
+                                          (map (lambda (k v)
+                                                 (list
+                                                  (datum->syntax #'dialect-id `(quote ,k))
+                                                  (datum->syntax #'dialect-id v)))
+                                               cb-keys cb-vals))])
              #'(begin
                  ;; Accessor and predicate definitions for each op
                  op-def ...
@@ -159,9 +198,11 @@
                  (define (%%init dialect-ptr)
                    (register-dynamic-op! dialect-ptr op-name-str) ...)
 
-                 ;; ': quotes :initialize as a symbol literal — without the
-                 ;; quote it would be a free identifier in the template.
+                 ;; extra-kv ... splices user dialect callbacks
+                 ;; (':parse-type val ':print-type val ...) before :initialize
+                 ;; so all 12 CrestDialect slots can be set from define-dialect.
                  (define (dialect:register! ctx)
                    (register-dialect! ctx dialect-name-str
+                                      extra-kv ...
                                       ':initialize %%init)))))]))
     ))
