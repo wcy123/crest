@@ -175,39 +175,53 @@
             ;; what C++ passes; wrong arity is a syntax error at expansion time.
             ;; Prototypes mirror CrestDialect virtual methods in lib/Crest/Dialect.h.
             [((:initialize                  (dialect-ptr) body ...) . rest)
+             (identifier? #'dialect-ptr)
              (begin (vector-set! cbs  0 #'(lambda (dialect-ptr) body ...))
                     (loop #'rest name ops cbs))]
-            [((:get-dependent-dialects      () body ...) . rest)
+            [((:get-dependent-dialects      () body ...) . rest)        ; no args
              (begin (vector-set! cbs  1 #'(lambda () body ...))
                     (loop #'rest name ops cbs))]
             [((:parse-attribute             (parser type) body ...) . rest)
+             (and (identifier? #'parser) (identifier? #'type))
              (begin (vector-set! cbs  2 #'(lambda (parser type) body ...))
                     (loop #'rest name ops cbs))]
             [((:print-attribute             (attr printer) body ...) . rest)
+             (and (identifier? #'attr) (identifier? #'printer))
              (begin (vector-set! cbs  3 #'(lambda (attr printer) body ...))
                     (loop #'rest name ops cbs))]
             [((:parse-type                  (parser) body ...) . rest)
+             (identifier? #'parser)
              (begin (vector-set! cbs  4 #'(lambda (parser) body ...))
                     (loop #'rest name ops cbs))]
             [((:print-type                  (type printer) body ...) . rest)
+             (and (identifier? #'type) (identifier? #'printer))
              (begin (vector-set! cbs  5 #'(lambda (type printer) body ...))
                     (loop #'rest name ops cbs))]
             [((:materialize-constant        (builder value type loc) body ...) . rest)
+             (and (identifier? #'builder) (identifier? #'value)
+                  (identifier? #'type)    (identifier? #'loc))
              (begin (vector-set! cbs  6 #'(lambda (builder value type loc) body ...))
                     (loop #'rest name ops cbs))]
             [((:get-canonicalization-patterns (pattern-set) body ...) . rest)
+             (identifier? #'pattern-set)
              (begin (vector-set! cbs  7 #'(lambda (pattern-set) body ...))
                     (loop #'rest name ops cbs))]
             [((:verify-op-attr              (op attr) body ...) . rest)
+             (and (identifier? #'op) (identifier? #'attr))
              (begin (vector-set! cbs  8 #'(lambda (op attr) body ...))
                     (loop #'rest name ops cbs))]
             [((:verify-region-arg-attr      (op region-index arg-index attr) body ...) . rest)
+             (and (identifier? #'op)           (identifier? #'region-index)
+                  (identifier? #'arg-index)    (identifier? #'attr))
              (begin (vector-set! cbs  9 #'(lambda (op region-index arg-index attr) body ...))
                     (loop #'rest name ops cbs))]
             [((:verify-region-result-attr   (op region-index result-index attr) body ...) . rest)
+             (and (identifier? #'op)           (identifier? #'region-index)
+                  (identifier? #'result-index) (identifier? #'attr))
              (begin (vector-set! cbs 10 #'(lambda (op region-index result-index attr) body ...))
                     (loop #'rest name ops cbs))]
             [((:get-registered-interface-for-op (interface-id op-name) body ...) . rest)
+             (and (identifier? #'interface-id) (identifier? #'op-name))
              (begin (vector-set! cbs 11 #'(lambda (interface-id op-name) body ...))
                     (loop #'rest name ops cbs))]
             [(_ . rest)
