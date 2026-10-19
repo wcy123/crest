@@ -146,48 +146,60 @@
     (lambda (stx)
 
       ;; Single-pass clause parser. Returns an alist:
-      ;;   ((name . "toy")                 — MLIR dialect name string
-      ;;    (ops  . (op-stx ...))          — (define-op ...) syntax objects
-      ;;    (cbs  . (key-stx val-stx ...)) — callback pairs, values as syntax)
+      ;;   ((name . "toy")          — MLIR dialect name string
+      ;;    (ops  . (op-stx ...))   — (define-op ...) syntax objects
+      ;;    (cbs  . #(stx/#f ...))  — 12-slot vector, slot N = syntax or #f)
       ;;
-      ;; Receives #'(clause ...) as a single syntax object and recurses using
-      ;; (head . tail) patterns — no syntax->list, no car/cdr on syntax.
+      ;; cbs is a mutable vector matching CrestDialect::Callbacks slot order.
+      ;; Each :keyword branch sets the exact slot index — no secondary
+      ;; slot lookup needed at call time.
       (define (parse-clauses clauses-stx default-name)
         (let loop ([stx clauses-stx]
                    [name default-name]
                    [ops  '()]
-                   [cbs  '()])
-          (syntax-case stx (:name
-                            :initialize :get-dependent-dialects
-                            :parse-attribute :print-attribute
-                            :parse-type :print-type
-                            :materialize-constant
-                            :get-canonicalization-patterns
-                            :verify-op-attr
-                            :verify-region-arg-attr
-                            :verify-region-result-attr
-                            :get-registered-interface-for-op
-                            :verify :verify-regions
-                            :parse :print :fold
-                            :populate-default-attrs
-                            define-op)
-            ;; (define-op ...) . rest — op definition, collect as syntax
+                   [cbs  (make-vector 12 #f)])
+          (syntax-case stx (:initialize :get-dependent-dialects
+                                        :parse-attribute :print-attribute
+                                        :parse-type :print-type
+                                        :materialize-constant
+                                        :get-canonicalization-patterns
+                                        :verify-op-attr
+                                        :verify-region-arg-attr
+                                        :verify-region-result-attr
+                                        :get-registered-interface-for-op
+                                        define-op)
             [((define-op . op-rest) . rest)
              (loop #'rest name (cons #'(define-op . op-rest) ops) cbs)]
-            ;; :keyword val . rest — known keyword, collect pair
-            ;; char=? guard replaced by the literals list above; unknown keys
-            ;; are caught by %%dialect-slot-index at call time
-            [(kw val . rest)
-             (identifier? #'kw)
-             (loop #'rest name ops (cons #'val (cons #'kw cbs)))]
-            ;; Anything else — skip one element
+            [(:initialize                  val . rest)
+             (begin (vector-set! cbs  0 #'val) (loop #'rest name ops cbs))]
+            [(:get-dependent-dialects      val . rest)
+             (begin (vector-set! cbs  1 #'val) (loop #'rest name ops cbs))]
+            [(:parse-attribute             val . rest)
+             (begin (vector-set! cbs  2 #'val) (loop #'rest name ops cbs))]
+            [(:print-attribute             val . rest)
+             (begin (vector-set! cbs  3 #'val) (loop #'rest name ops cbs))]
+            [(:parse-type                  val . rest)
+             (begin (vector-set! cbs  4 #'val) (loop #'rest name ops cbs))]
+            [(:print-type                  val . rest)
+             (begin (vector-set! cbs  5 #'val) (loop #'rest name ops cbs))]
+            [(:materialize-constant        val . rest)
+             (begin (vector-set! cbs  6 #'val) (loop #'rest name ops cbs))]
+            [(:get-canonicalization-patterns val . rest)
+             (begin (vector-set! cbs  7 #'val) (loop #'rest name ops cbs))]
+            [(:verify-op-attr              val . rest)
+             (begin (vector-set! cbs  8 #'val) (loop #'rest name ops cbs))]
+            [(:verify-region-arg-attr      val . rest)
+             (begin (vector-set! cbs  9 #'val) (loop #'rest name ops cbs))]
+            [(:verify-region-result-attr   val . rest)
+             (begin (vector-set! cbs 10 #'val) (loop #'rest name ops cbs))]
+            [(:get-registered-interface-for-op val . rest)
+             (begin (vector-set! cbs 11 #'val) (loop #'rest name ops cbs))]
             [(_ . rest)
              (loop #'rest name ops cbs)]
-            ;; Empty list — base case, build result alist
             [()
              (list (cons 'name name)
                    (cons 'ops  (reverse ops))
-                   (cons 'cbs  (reverse cbs)))])))
+                   (cons 'cbs  cbs))])))
 
       (syntax-case stx ()
         [(_ dialect-id clause ...)
@@ -227,13 +239,28 @@
                                                 (syntax->datum #'rest))]))
                                           op-clauses))]
 
-                ;; Separate callback keys/values from extra-cbs plist
-                [cb-keys      (let loop ([rest extra-cbs] [ks '()])
-                                (if (null? rest) (reverse ks)
-                                    (loop (cddr rest) (cons (car rest) ks))))]
-                [cb-vals      (let loop ([rest extra-cbs] [vs '()])
-                                (if (null? rest) (reverse vs)
-                                    (loop (cddr rest) (cons (cadr rest) vs))))])
+                ;; Convert cbs vector to flat (quoted-key val ...) list.
+                ;; Slot 0 (:initialize) is skipped — %%init is always used.
+                ;; Slot N is included only when the user provided a callback.
+                [%%slot-keywords
+                 '#(:initialize :get-dependent-dialects
+                                :parse-attribute :print-attribute
+                                :parse-type :print-type :materialize-constant
+                                :get-canonicalization-patterns :verify-op-attr
+                                :verify-region-arg-attr :verify-region-result-attr
+                                :get-registered-interface-for-op)]
+                [extra-kv-list
+                 (let loop ([i 1] [acc '()])   ; start at 1, skip :initialize
+                   (if (= i 12)
+                       (reverse acc)
+                       (let ([v (vector-ref extra-cbs i)])
+                         (if (not v)
+                             (loop (+ i 1) acc)
+                             (loop (+ i 1)
+                                   (cons v
+                                         (cons (datum->syntax #'dialect-id
+                                                              `(quote ,(vector-ref %%slot-keywords i)))
+                                               acc)))))))])
 
            (with-syntax
                ([%%init            init-id]
@@ -242,15 +269,8 @@
                 [(op-def ...)      all-op-defs]
                 [(op-name-str ...) (map (lambda (n) (datum->syntax #'dialect-id n))
                                         op-names)]
-                ;; Flat interleaved list: (':k1 v1 ':k2 v2 ...) as one pattern.
-                ;; extra-kv ... splices all elements into register-dialect! call.
-                ;; Keys are syntax identifiers (:parse-type stx) — wrap in quote
-                ;; so they become symbol literals in the generated call.
-                ;; Values are already syntax with correct lexical scope.
-                [(extra-kv ...)    (apply append
-                                          (map (lambda (k v)
-                                                 (list #`(quote #,k) v))
-                                               cb-keys cb-vals))])
+                ;; extra-kv-list is already (quoted-key val ...) interleaved.
+                [(extra-kv ...)    extra-kv-list])
              #'(begin
                  ;; Accessor and predicate definitions for each op
                  op-def ...
