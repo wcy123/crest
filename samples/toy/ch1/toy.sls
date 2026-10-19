@@ -13,7 +13,7 @@
   (import (chezscheme)
           (crest dialect))
 
-  (define-mlir-dialect toy
+  (define-dialect toy
     (define-op constant
       :summary    "Produce a constant tensor from a dense attribute"
       :attributes ((value  mlir::DenseElementsAttr))
