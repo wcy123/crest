@@ -157,20 +157,30 @@
                    [name default-name]
                    [ops  '()]
                    [cbs  '()])
-          (syntax-case stx (:name)
-            ;; :name "str" . rest — dialect name override
-            [(:name name-str . rest)
-             (string? (syntax->datum #'name-str))
-             (loop #'rest (syntax->datum #'name-str) ops cbs)]
+          (syntax-case stx (:name
+                            :initialize :get-dependent-dialects
+                            :parse-attribute :print-attribute
+                            :parse-type :print-type
+                            :materialize-constant
+                            :get-canonicalization-patterns
+                            :verify-op-attr
+                            :verify-region-arg-attr
+                            :verify-region-result-attr
+                            :get-registered-interface-for-op
+                            :verify :verify-regions
+                            :parse :print :fold
+                            :populate-default-attrs
+                            define-op)
             ;; (define-op ...) . rest — op definition, collect as syntax
             [((define-op . op-rest) . rest)
              (loop #'rest name (cons #'(define-op . op-rest) ops) cbs)]
-            ;; :keyword val . rest — dialect callback pair
+            ;; :keyword val . rest — known keyword, collect pair
+            ;; char=? guard replaced by the literals list above; unknown keys
+            ;; are caught by %%dialect-slot-index at call time
             [(kw val . rest)
-             (and (identifier? #'kw)
-                  (char=? (string-ref (symbol->string (syntax->datum #'kw)) 0) #\:))
+             (identifier? #'kw)
              (loop #'rest name ops (cons #'val (cons #'kw cbs)))]
-            ;; Anything else with more elements — skip one
+            ;; Anything else — skip one element
             [(_ . rest)
              (loop #'rest name ops cbs)]
             ;; Empty list — base case, build result alist
