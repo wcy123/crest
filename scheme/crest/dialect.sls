@@ -167,169 +167,181 @@
                                          :operands :attributes :results)
                 [(:summary     val . rest) (loop-sub #'rest)]
                 [(:description val . rest) (loop-sub #'rest)]
-                [(:operands    val . rest) (loop-sub #'rest)]
-                [(:attributes  val . rest) (loop-sub #'rest)]
-                [(:results     val . rest) (loop-sub #'rest)]
+                ;; Each field list must be ((name type) ...) — name must be identifier.
+                ;; Validate each (name type) pair individually.
+                [(:operands    ((name type) ...) . rest)
+                 (andmap (lambda (n) (identifier? n))
+                         (syntax->list #'(name ...)))
+                 (loop-sub #'rest)]
+                [(:attributes  ((name type) ...) . rest)
+                 (andmap (lambda (n) (identifier? n))
+                         (syntax->list #'(name ...)))
+                 (loop-sub #'rest)]
+                [(:results     ((name type) ...) . rest)
+                 (andmap (lambda (n) (identifier? n))
+                         (syntax->list #'(name ...)))
+                 (loop-sub #'rest)]
                 [(bad . _)
                  (syntax-violation 'define-op
                                    "unknown clause — expected :operands, :attributes, :results, :summary, or :description"
                                    #'bad)]
-                [() #t]))))
+                [() #t])))
 
-        (let loop ([stx clauses-stx])
-          (syntax-case stx (:summary :description
-                                     :initialize :get-dependent-dialects
-                                     :parse-attribute :print-attribute
-                                     :parse-type :print-type
-                                     :materialize-constant
-                                     :get-canonicalization-patterns
-                                     :verify-op-attr
-                                     :verify-region-arg-attr
-                                     :verify-region-result-attr
-                                     :get-registered-interface-for-op
-                                     define-op)
-            ;; Documentation-only — same placeholder role as in define-op
-            [(:summary     _ . rest) (loop #'rest)]
-            [(:description _ . rest) (loop #'rest)]
-            [((define-op op-name . op-sub) . rest)
-             (identifier? #'op-name)
-             (begin
-               (parse-define-op #'op-sub)
-               (set! ops (cons #'(define-op op-name . op-sub) ops))
-               (loop #'rest))]
-            [((:initialize                  (dialect-ptr) body ...) . rest)
-             (identifier? #'dialect-ptr)
-             (begin (vector-set! cbs  0 #'(lambda (dialect-ptr) body ...)) (loop #'rest))]
-            [((:get-dependent-dialects      () body ...) . rest)
-             (begin (vector-set! cbs  1 #'(lambda () body ...)) (loop #'rest))]
-            [((:parse-attribute             (parser type) body ...) . rest)
-             (and (identifier? #'parser) (identifier? #'type))
-             (begin (vector-set! cbs  2 #'(lambda (parser type) body ...)) (loop #'rest))]
-            [((:print-attribute             (attr printer) body ...) . rest)
-             (and (identifier? #'attr) (identifier? #'printer))
-             (begin (vector-set! cbs  3 #'(lambda (attr printer) body ...)) (loop #'rest))]
-            [((:parse-type                  (parser) body ...) . rest)
-             (identifier? #'parser)
-             (begin (vector-set! cbs  4 #'(lambda (parser) body ...)) (loop #'rest))]
-            [((:print-type                  (type printer) body ...) . rest)
-             (and (identifier? #'type) (identifier? #'printer))
-             (begin (vector-set! cbs  5 #'(lambda (type printer) body ...)) (loop #'rest))]
-            [((:materialize-constant        (builder value type loc) body ...) . rest)
-             (and (identifier? #'builder) (identifier? #'value)
-                  (identifier? #'type)    (identifier? #'loc))
-             (begin (vector-set! cbs  6 #'(lambda (builder value type loc) body ...)) (loop #'rest))]
-            [((:get-canonicalization-patterns (pattern-set) body ...) . rest)
-             (identifier? #'pattern-set)
-             (begin (vector-set! cbs  7 #'(lambda (pattern-set) body ...)) (loop #'rest))]
-            [((:verify-op-attr              (op attr) body ...) . rest)
-             (and (identifier? #'op) (identifier? #'attr))
-             (begin (vector-set! cbs  8 #'(lambda (op attr) body ...)) (loop #'rest))]
-            [((:verify-region-arg-attr      (op region-index arg-index attr) body ...) . rest)
-             (and (identifier? #'op)           (identifier? #'region-index)
-                  (identifier? #'arg-index)    (identifier? #'attr))
-             (begin (vector-set! cbs  9 #'(lambda (op region-index arg-index attr) body ...)) (loop #'rest))]
-            [((:verify-region-result-attr   (op region-index result-index attr) body ...) . rest)
-             (and (identifier? #'op)           (identifier? #'region-index)
-                  (identifier? #'result-index) (identifier? #'attr))
-             (begin (vector-set! cbs 10 #'(lambda (op region-index result-index attr) body ...)) (loop #'rest))]
-            [((:get-registered-interface-for-op (interface-id op-name) body ...) . rest)
-             (and (identifier? #'interface-id) (identifier? #'op-name))
-             (begin (vector-set! cbs 11 #'(lambda (interface-id op-name) body ...)) (loop #'rest))]
-            [(bad . _)
-             (syntax-violation 'define-dialect
-                               "unrecognised clause — expected (define-op ...) or (:keyword (args) body ...)"
-                               #'bad)]
-            [()
-             (list (cons 'name default-name)
-                   (cons 'ops  (reverse ops))
-                   (cons 'cbs  cbs))]))))
 
-    (syntax-case stx ()
-      [(_ dialect-id clause ...)
-       (let* ([dialect-sym  (syntax->datum #'dialect-id)]
-              [parsed       (parse-clauses #'(clause ...)
-                                           (symbol->string dialect-sym))]
-              [dialect-name (cdr (assq 'name parsed))]
-              [op-clauses   (cdr (assq 'ops  parsed))]
-              [extra-cbs    (cdr (assq 'cbs  parsed))]  ; (key-stx val-stx ...)
-              [op-prefix    (string-append dialect-name ".")]
+          (let loop ([stx clauses-stx])
+            (syntax-case stx (:summary :description
+                                       :initialize :get-dependent-dialects
+                                       :parse-attribute :print-attribute
+                                       :parse-type :print-type
+                                       :materialize-constant
+                                       :get-canonicalization-patterns
+                                       :verify-op-attr
+                                       :verify-region-arg-attr
+                                       :verify-region-result-attr
+                                       :get-registered-interface-for-op
+                                       define-op)
+              ;; Documentation-only — same placeholder role as in define-op
+              [(:summary     _ . rest) (loop #'rest)]
+              [(:description _ . rest) (loop #'rest)]
+              [((define-op op-name . op-sub) . rest)
+               (identifier? #'op-name)
+               (begin
+                 (parse-define-op #'op-sub)
+                 (set! ops (cons #'(define-op op-name . op-sub) ops))
+                 (loop #'rest))]
+              [((:initialize                  (dialect-ptr) body ...) . rest)
+               (identifier? #'dialect-ptr)
+               (begin (vector-set! cbs  0 #'(lambda (dialect-ptr) body ...)) (loop #'rest))]
+              [((:get-dependent-dialects      () body ...) . rest)
+               (begin (vector-set! cbs  1 #'(lambda () body ...)) (loop #'rest))]
+              [((:parse-attribute             (parser type) body ...) . rest)
+               (and (identifier? #'parser) (identifier? #'type))
+               (begin (vector-set! cbs  2 #'(lambda (parser type) body ...)) (loop #'rest))]
+              [((:print-attribute             (attr printer) body ...) . rest)
+               (and (identifier? #'attr) (identifier? #'printer))
+               (begin (vector-set! cbs  3 #'(lambda (attr printer) body ...)) (loop #'rest))]
+              [((:parse-type                  (parser) body ...) . rest)
+               (identifier? #'parser)
+               (begin (vector-set! cbs  4 #'(lambda (parser) body ...)) (loop #'rest))]
+              [((:print-type                  (type printer) body ...) . rest)
+               (and (identifier? #'type) (identifier? #'printer))
+               (begin (vector-set! cbs  5 #'(lambda (type printer) body ...)) (loop #'rest))]
+              [((:materialize-constant        (builder value type loc) body ...) . rest)
+               (and (identifier? #'builder) (identifier? #'value)
+                    (identifier? #'type)    (identifier? #'loc))
+               (begin (vector-set! cbs  6 #'(lambda (builder value type loc) body ...)) (loop #'rest))]
+              [((:get-canonicalization-patterns (pattern-set) body ...) . rest)
+               (identifier? #'pattern-set)
+               (begin (vector-set! cbs  7 #'(lambda (pattern-set) body ...)) (loop #'rest))]
+              [((:verify-op-attr              (op attr) body ...) . rest)
+               (and (identifier? #'op) (identifier? #'attr))
+               (begin (vector-set! cbs  8 #'(lambda (op attr) body ...)) (loop #'rest))]
+              [((:verify-region-arg-attr      (op region-index arg-index attr) body ...) . rest)
+               (and (identifier? #'op)           (identifier? #'region-index)
+                    (identifier? #'arg-index)    (identifier? #'attr))
+               (begin (vector-set! cbs  9 #'(lambda (op region-index arg-index attr) body ...)) (loop #'rest))]
+              [((:verify-region-result-attr   (op region-index result-index attr) body ...) . rest)
+               (and (identifier? #'op)           (identifier? #'region-index)
+                    (identifier? #'result-index) (identifier? #'attr))
+               (begin (vector-set! cbs 10 #'(lambda (op region-index result-index attr) body ...)) (loop #'rest))]
+              [((:get-registered-interface-for-op (interface-id op-name) body ...) . rest)
+               (and (identifier? #'interface-id) (identifier? #'op-name))
+               (begin (vector-set! cbs 11 #'(lambda (interface-id op-name) body ...)) (loop #'rest))]
+              [(bad . _)
+               (syntax-violation 'define-dialect
+                                 "unrecognised clause — expected (define-op ...) or (:keyword (args) body ...)"
+                                 #'bad)]
+              [()
+               (list (cons 'name default-name)
+                     (cons 'ops  (reverse ops))
+                     (cons 'cbs  cbs))]))))
 
-              ;; Helper: build a Scheme identifier in dialect-id's scope
-              [make-id      (lambda (sfx)
-                              (datum->syntax #'dialect-id (string->symbol sfx)))]
-              [init-id      (make-id (string-append
-                                      "%%" (symbol->string dialect-sym)
-                                      ":initialize"))]
-              [register-id  (make-id (string-append
-                                      (symbol->string dialect-sym) ":register!"))]
+      (syntax-case stx ()
+        [(_ dialect-id clause ...)
+         (let* ([dialect-sym  (syntax->datum #'dialect-id)]
+                [parsed       (parse-clauses #'(clause ...)
+                                             (symbol->string dialect-sym))]
+                [dialect-name (cdr (assq 'name parsed))]
+                [op-clauses   (cdr (assq 'ops  parsed))]
+                [extra-cbs    (cdr (assq 'cbs  parsed))]  ; (key-stx val-stx ...)
+                [op-prefix    (string-append dialect-name ".")]
 
-              ;; Op name strings and accessor defs from (define-op ...) forms.
-              ;; Use syntax-case to safely decompose each op syntax object.
-              [op-names     (map (lambda (c)
-                                   (syntax-case c ()
-                                     [(define-op name . _)
-                                      (string-append op-prefix
-                                                     (symbol->string (syntax->datum #'name)))]))
-                                 op-clauses)]
-              [all-op-defs  (apply append
-                                   (map (lambda (c)
-                                          (syntax-case c ()
-                                            [(define-op name . rest)
-                                             (expand-op-defs
-                                              #'dialect-id
-                                              (string-append op-prefix
-                                                             (symbol->string (syntax->datum #'name)))
-                                              (syntax->datum #'rest))]))
-                                        op-clauses))]
+                ;; Helper: build a Scheme identifier in dialect-id's scope
+                [make-id      (lambda (sfx)
+                                (datum->syntax #'dialect-id (string->symbol sfx)))]
+                [init-id      (make-id (string-append
+                                        "%%" (symbol->string dialect-sym)
+                                        ":initialize"))]
+                [register-id  (make-id (string-append
+                                        (symbol->string dialect-sym) ":register!"))]
 
-              ;; Convert cbs vector to flat (quoted-key val ...) list.
-              ;; Slot 0 (:initialize) is skipped — %%init is always used.
-              ;; Slot N is included only when the user provided a callback.
-              [%%slot-keywords
-               '#(:initialize :get-dependent-dialects
-                              :parse-attribute :print-attribute
-                              :parse-type :print-type :materialize-constant
-                              :get-canonicalization-patterns :verify-op-attr
-                              :verify-region-arg-attr :verify-region-result-attr
-                              :get-registered-interface-for-op)]
-              [extra-kv-list
-               (let loop ([i 1] [acc '()])   ; start at 1, skip :initialize
-                 (if (= i 12)
-                     (reverse acc)
-                     (let ([v (vector-ref extra-cbs i)])
-                       (if (not v)
-                           (loop (+ i 1) acc)
-                           (loop (+ i 1)
-                                 (cons v
-                                       (cons (datum->syntax #'dialect-id
-                                                            `(quote ,(vector-ref %%slot-keywords i)))
-                                             acc)))))))])
+                ;; Op name strings and accessor defs from (define-op ...) forms.
+                ;; Use syntax-case to safely decompose each op syntax object.
+                [op-names     (map (lambda (c)
+                                     (syntax-case c ()
+                                       [(define-op name . _)
+                                        (string-append op-prefix
+                                                       (symbol->string (syntax->datum #'name)))]))
+                                   op-clauses)]
+                [all-op-defs  (apply append
+                                     (map (lambda (c)
+                                            (syntax-case c ()
+                                              [(define-op name . rest)
+                                               (expand-op-defs
+                                                #'dialect-id
+                                                (string-append op-prefix
+                                                               (symbol->string (syntax->datum #'name)))
+                                                (syntax->datum #'rest))]))
+                                          op-clauses))]
 
-         (with-syntax
-             ([%%init            init-id]
-              [dialect:register! register-id]
-              [dialect-name-str  dialect-name]
-              [(op-def ...)      all-op-defs]
-              [(op-name-str ...) (map (lambda (n) (datum->syntax #'dialect-id n))
-                                      op-names)]
-              ;; extra-kv-list is already (quoted-key val ...) interleaved.
-              [(extra-kv ...)    extra-kv-list])
-           #'(begin
-               ;; Accessor and predicate definitions for each op
-               op-def ...
+                ;; Convert cbs vector to flat (quoted-key val ...) list.
+                ;; Slot 0 (:initialize) is skipped — %%init is always used.
+                ;; Slot N is included only when the user provided a callback.
+                [%%slot-keywords
+                 '#(:initialize :get-dependent-dialects
+                                :parse-attribute :print-attribute
+                                :parse-type :print-type :materialize-constant
+                                :get-canonicalization-patterns :verify-op-attr
+                                :verify-region-arg-attr :verify-region-result-attr
+                                :get-registered-interface-for-op)]
+                [extra-kv-list
+                 (let loop ([i 1] [acc '()])   ; start at 1, skip :initialize
+                   (if (= i 12)
+                       (reverse acc)
+                       (let ([v (vector-ref extra-cbs i)])
+                         (if (not v)
+                             (loop (+ i 1) acc)
+                             (loop (+ i 1)
+                                   (cons v
+                                         (cons (datum->syntax #'dialect-id
+                                                              `(quote ,(vector-ref %%slot-keywords i)))
+                                               acc)))))))])
 
-               ;; Called by CrestDialect::initialize() in C++ when the dialect
-               ;; is first loaded. dialect-ptr is the CrestDialect* (uptr)
-               ;; passed by C++ as `this` — it arrives from the C++ side,
-               ;; not from any Scheme binding.
-               (define (%%init dialect-ptr)
-                 (register-dynamic-op! dialect-ptr op-name-str) ...)
+           (with-syntax
+               ([%%init            init-id]
+                [dialect:register! register-id]
+                [dialect-name-str  dialect-name]
+                [(op-def ...)      all-op-defs]
+                [(op-name-str ...) (map (lambda (n) (datum->syntax #'dialect-id n))
+                                        op-names)]
+                ;; extra-kv-list is already (quoted-key val ...) interleaved.
+                [(extra-kv ...)    extra-kv-list])
+             #'(begin
+                 ;; Accessor and predicate definitions for each op
+                 op-def ...
 
-               ;; extra-kv ... splices user dialect callbacks
-               ;; (':parse-type val ':print-type val ...) before :initialize
-               ;; so all 12 CrestDialect slots can be set from define-dialect.
-               (define (dialect:register! ctx)
-                 (register-dialect! ctx dialect-name-str
-                                    extra-kv ...
-                                    ':initialize %%init)))))]))
-  ))
+                 ;; Called by CrestDialect::initialize() in C++ when the dialect
+                 ;; is first loaded. dialect-ptr is the CrestDialect* (uptr)
+                 ;; passed by C++ as `this` — it arrives from the C++ side,
+                 ;; not from any Scheme binding.
+                 (define (%%init dialect-ptr)
+                   (register-dynamic-op! dialect-ptr op-name-str) ...)
+
+                 ;; extra-kv ... splices user dialect callbacks
+                 ;; (':parse-type val ':print-type val ...) before :initialize
+                 ;; so all 12 CrestDialect slots can be set from define-dialect.
+                 (define (dialect:register! ctx)
+                   (register-dialect! ctx dialect-name-str
+                                      extra-kv ...
+                                      ':initialize %%init)))))]))
+    ))
