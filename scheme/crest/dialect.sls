@@ -166,10 +166,8 @@
         (let ([ops '()]
               [cbs (make-vector 12 #f)])
 
-          ;; Validate one operand field: (name type) or (name type :modifier)
-          ;; :required/:optional/:variadic are literals (matched by binding).
-          ;; (name type) normalises to (name type :required).
-          ;; Returns the field as datum.
+          ;; (name type) normalises to (name type :required) so downstream code
+          ;; (expand-op-defs, accessor generation) always sees a uniform 3-element form.
           (define (parse-op-operand field-stx)
             (syntax-case field-stx (:required :optional :variadic)
               [(name type)
