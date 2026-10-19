@@ -31,12 +31,6 @@
     %mlir::isa<RankedTensorType>-isa
     %mlir::isa<IntegerType>-isa
     %mlir::isa<FloatType>-isa
-    %mlir::isa<Float16Type>-isa
-    %mlir::isa<BFloat16Type>-isa
-    %mlir::isa<Float32Type>-isa
-    %mlir::isa<Float64Type>-isa
-    %mlir::isa<IndexType>-isa
-    %mlir::isa<NoneType>-isa
     %mlir::isa<MemRefType>-isa
     %mlir::isa<UnrankedMemRefType>-isa
     %mlir::isa<UnrankedTensorType>-isa
@@ -193,18 +187,6 @@
     (foreign-procedure "mlir::isa<IntegerType>" (uptr) int))
   (define %mlir::isa<FloatType>-isa
     (foreign-procedure "mlir::isa<FloatType>" (uptr) int))
-  (define %mlir::isa<Float16Type>-isa
-    (foreign-procedure "mlir::isa<Float16Type>" (uptr) int))
-  (define %mlir::isa<BFloat16Type>-isa
-    (foreign-procedure "mlir::isa<BFloat16Type>" (uptr) int))
-  (define %mlir::isa<Float32Type>-isa
-    (foreign-procedure "mlir::isa<Float32Type>" (uptr) int))
-  (define %mlir::isa<Float64Type>-isa
-    (foreign-procedure "mlir::isa<Float64Type>" (uptr) int))
-  (define %mlir::isa<IndexType>-isa
-    (foreign-procedure "mlir::isa<IndexType>" (uptr) int))
-  (define %mlir::isa<NoneType>-isa
-    (foreign-procedure "mlir::isa<NoneType>" (uptr) int))
   (define %mlir::isa<MemRefType>-isa
     (foreign-procedure "mlir::isa<MemRefType>" (uptr) int))
   (define %mlir::isa<UnrankedMemRefType>-isa

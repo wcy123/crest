@@ -297,14 +297,10 @@ void registerIRBuiltinTypesBindings() {
                    : 0;                                                        \
       })
 
-  CREST_ISA(IntegerType);
-  CREST_ISA(FloatType);
-  CREST_ISA(Float16Type);
-  CREST_ISA(BFloat16Type);
-  CREST_ISA(Float32Type);
-  CREST_ISA(Float64Type);
-  CREST_ISA(IndexType);
-  CREST_ISA(NoneType);
+  // Singleton types (Float16/32/64, BFloat16, Index, None) have Scheme-level
+  // isa predicates via (mlir-isa singleton-ptr) — no C++ binding needed.
+  CREST_ISA(IntegerType); // parameterised — needs C++ isa
+  CREST_ISA(FloatType);   // base float class — parameterised
   CREST_ISA(MemRefType);
   CREST_ISA(UnrankedMemRefType);
   CREST_ISA(UnrankedTensorType);

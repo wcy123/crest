@@ -16,9 +16,16 @@
 
 (library (mlir IR BuiltinTypes)
   (export
-    ;; IndexType
+    ;; Type predicate helpers
+    mlir-isa
+    bind-type
+    ;; Singleton type instances + isa predicates (via bind-type)
+    mlir::Float16Type  mlir::isa<Float16Type>?
+    mlir::BFloat16Type mlir::isa<BFloat16Type>?
+    mlir::Float32Type  mlir::isa<Float32Type>?
+    mlir::Float64Type  mlir::isa<Float64Type>?
+    mlir::NoneType     mlir::IndexType    ;; IndexType constructor (also available as mlir::IndexType above)
     mlir::IndexType::get
-    mlir::isa<IndexType>?
     ;; IntegerType
     mlir::IntegerType::get<i1>
     mlir::IntegerType::get<i8>
@@ -35,14 +42,9 @@
     mlir::Float32Type::get
     mlir::Float64Type::get
     mlir::isa<FloatType>?
-    mlir::isa<Float16Type>?
-    mlir::isa<BFloat16Type>?
-    mlir::isa<Float32Type>?
-    mlir::isa<Float64Type>?
     mlir::FloatType::getWidth
     ;; NoneType
     mlir::NoneType::get
-    mlir::isa<NoneType>?
     ;; RankedTensorType
     mlir::isa<RankedTensorType>?
     mlir::RankedTensorType::getRank
@@ -69,6 +71,48 @@
   (import (rnrs)
           (only (mlir IR MLIRContext) current-MLIRContext define-ctx-optional)
           (mlir IR BuiltinTypes ffi))
+
+  ;; ── mlir-isa ──────────────────────────────────────────────────────────────
+  ;; For singleton types, isa<T>(t) ≡ (equal? t (T::get ctx)).
+  ;; case-lambda: (mlir-isa type-ptr) → predicate; (mlir-isa type-ptr val) → bool
+  (define mlir-isa
+    (case-lambda
+     [(type-ptr)       (lambda (val) (equal? val type-ptr))]
+     [(type-ptr val)   (equal? val type-ptr)]))
+
+  ;; ── bind-type ─────────────────────────────────────────────────────────────
+  ;; Generates a singleton instance AND an isa<Name>? predicate from one call:
+  ;;   (bind-type mlir::Float64Type mlir::Float64Type::get)
+  ;; → mlir::Float64Type       = (mlir::Float64Type::get)   singleton uptr
+  ;; → mlir::isa<Float64Type>? = (mlir-isa mlir::Float64Type)
+  (define-syntax bind-type
+    (lambda (stx)
+      (define (type-name-from s)
+        ;; "mlir::Float64Type" → "Float64Type"
+        (let loop ([i (- (string-length s) 1)])
+          (cond [(< i 1) s]
+                [(and (char=? (string-ref s i) #\:)
+                      (char=? (string-ref s (- i 1)) #\:))
+                 (substring s (+ i 1) (string-length s))]
+                [else (loop (- i 1))])))
+      (syntax-case stx ()
+        [(_ name get-fn)
+         (let* ([n   (symbol->string (syntax->datum #'name))]
+                [isa (datum->syntax #'name
+                                    (string->symbol
+                                     (string-append "mlir::isa<" (type-name-from n) ">?")))])
+           #`(begin
+               (define name (get-fn))
+               (define #,isa (mlir-isa name))))])))
+
+  ;; ── Singleton types (instance + isa predicate via bind-type) ──────────────
+  (bind-type mlir::Float16Type  mlir::Float16Type::get)
+  (bind-type mlir::BFloat16Type mlir::BFloat16Type::get)
+  (bind-type mlir::Float32Type  mlir::Float32Type::get)
+  (bind-type mlir::Float64Type  mlir::Float64Type::get)
+  (bind-type mlir::NoneType     mlir::NoneType::get)
+  (bind-type mlir::IndexType    mlir::IndexType::get)
+
 
   ;; @brief mlir::IndexType::get — construct an index type in the given context.
   ;; @param ctx  MLIRContext* uptr (optional; defaults to current-MLIRContext)
@@ -175,14 +219,8 @@
   (define-ctx-optional mlir::NoneType::get %mlir::NoneType::get)
 
   ;; isa<> predicates — all return #t/#f
-  (define (mlir::isa<IndexType>?          t) (not (zero? (%mlir::isa<IndexType>-isa          t))))
   (define (mlir::isa<IntegerType>?        t) (not (zero? (%mlir::isa<IntegerType>-isa        t))))
   (define (mlir::isa<FloatType>?          t) (not (zero? (%mlir::isa<FloatType>-isa          t))))
-  (define (mlir::isa<Float16Type>?        t) (not (zero? (%mlir::isa<Float16Type>-isa        t))))
-  (define (mlir::isa<BFloat16Type>?       t) (not (zero? (%mlir::isa<BFloat16Type>-isa       t))))
-  (define (mlir::isa<Float32Type>?        t) (not (zero? (%mlir::isa<Float32Type>-isa        t))))
-  (define (mlir::isa<Float64Type>?        t) (not (zero? (%mlir::isa<Float64Type>-isa        t))))
-  (define (mlir::isa<NoneType>?           t) (not (zero? (%mlir::isa<NoneType>-isa           t))))
   (define (mlir::isa<MemRefType>?         t) (not (zero? (%mlir::isa<MemRefType>-isa         t))))
   (define (mlir::isa<UnrankedMemRefType>? t) (not (zero? (%mlir::isa<UnrankedMemRefType>-isa t))))
   (define (mlir::isa<UnrankedTensorType>? t) (not (zero? (%mlir::isa<UnrankedTensorType>-isa t))))
