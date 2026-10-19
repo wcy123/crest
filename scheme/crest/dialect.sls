@@ -159,12 +159,27 @@
         (let ([ops '()]
               [cbs (make-vector 12 #f)])
 
-          ;; Validate and accumulate a (define-op name . rest) clause.
+          ;; Validate sub-clauses of (define-op name . sub-clauses).
+          ;; Uses (key val . rest) patterns — same approach as parse-clauses.
           (define (parse-define-op clause-stx)
             (syntax-case clause-stx ()
-              [(define-op name . _)
+              [(define-op name . sub-clauses)
                (identifier? #'name)
-               (set! ops (cons clause-stx ops))]
+               (begin
+                 (let loop-sub ([stx #'sub-clauses])
+                   (syntax-case stx (:summary :description
+                                              :operands :attributes :results)
+                     [() #t]
+                     [(:summary     val . rest) (loop-sub #'rest)]
+                     [(:description val . rest) (loop-sub #'rest)]
+                     [(:operands    val . rest) (loop-sub #'rest)]
+                     [(:attributes  val . rest) (loop-sub #'rest)]
+                     [(:results     val . rest) (loop-sub #'rest)]
+                     [(bad . _)
+                      (syntax-violation 'define-op
+                                        "unknown clause — expected :operands, :attributes, :results, :summary, or :description"
+                                        #'bad)]))
+                 (set! ops (cons clause-stx ops)))]
               [_
                (syntax-violation 'define-dialect
                                  "malformed define-op — expected (define-op <name> clause ...)"
