@@ -1,8 +1,3 @@
-;; Bridges lib/Crest/Dialect.h — Scheme-defined MLIR dialects
-;;
-;; Runtime API:  register-dialect!    register-dynamic-op!
-;; Macro API:    define-dialect
-;;
 ;; Keyword exports — bound to their own symbol so users can write
 ;; :initialize, :parse-type etc. without quoting in call sites:
 ;;   (register-dialect! ctx "toy" :initialize my-fn)   ; works
@@ -10,7 +5,6 @@
   (export register-dialect!
           register-dynamic-op!
           define-dialect
-          ;; Dialect callback keywords
           :name
           :initialize
           :get-dependent-dialects
@@ -24,20 +18,17 @@
           :verify-region-arg-attr
           :verify-region-result-attr
           :get-registered-interface-for-op
-          ;; Op callback keywords
           :verify
           :verify-regions
           :parse
           :print
           :fold
           :populate-default-attrs
-          ;; Shared / define-op keywords
           :summary
           :description
           :operands
           :attributes
           :results
-          ;; Operand modifiers
           :required
           :optional
           :variadic)
@@ -45,9 +36,9 @@
           (for (crest op expand) expand)   ; expand-op-defs at macro-expansion time
           (crest dialect ffi))
 
-  ;; Keywords — each bound to its own symbol value so it is self-evaluating.
-  ;; Without these bindings, :keyword in a call position would be an
-  ;; unbound-identifier error in Chez Scheme (unlike Common Lisp keywords).
+  ;; Chez Scheme identifiers starting with ':' are not self-evaluating (unlike
+  ;; Common Lisp keywords).  Without these bindings, :keyword in argument
+  ;; position is an unbound-identifier error.
   (define :name                        ':name)
   (define :initialize                  ':initialize)
   (define :get-dependent-dialects      ':get-dependent-dialects)
@@ -76,10 +67,6 @@
   (define :optional                    ':optional)
   (define :variadic                    ':variadic)
 
-  ;; -------------------------------------------------------------------------
-  ;; Dialect registration
-  ;; -------------------------------------------------------------------------
-
   (define (%%dialect-slot-index key)
     (case key
       [(:initialize)                        0]
@@ -104,16 +91,11 @@
           (loop (cddr rest))))
       v))
 
-  ;; (register-dialect! ctx "toy" :initialize my-init)
   (define (register-dialect! ctx name . callbacks)
     (%crest::register-dialect!
      ctx
      name
      (%%plist->vector 12 %%dialect-slot-index callbacks)))
-
-  ;; -------------------------------------------------------------------------
-  ;; Dynamic op registration
-  ;; -------------------------------------------------------------------------
 
   (define (%%op-slot-index key)
     (case key
@@ -126,7 +108,6 @@
       [(:populate-default-attrs)         6]
       [else (error "register-dynamic-op!" "unknown callback keyword" key)]))
 
-  ;; (register-dynamic-op! dialect-ptr "toy.constant" :verify my-verify)
   (define (register-dynamic-op! dialect-ptr op-name . callbacks)
     (%crest::register-dynamic-op!
      dialect-ptr
@@ -137,37 +118,23 @@
   ;; define-dialect — dialect + ops in one declaration (like define-record-type)
   ;;
   ;; (define-dialect toy               ; symbol → MLIR name "toy"
-  ;;   [:name "override"]              ; optional MLIR name override
   ;;   (define-op constant             ; op name auto-prefixed → "toy.constant"
   ;;     :attributes ((value  mlir::DenseElementsAttr))
   ;;     :results    ((output mlir::RankedTensorType)))
-  ;;   (define-op print
-  ;;     :operands ((input mlir::Value))))
-  ;;
-  ;; Generates for each op: predicate, accessors, op-name:register!
-  ;; Generates for the dialect:
-  ;;   %%<dialect>:initialize — private, registers ops into dialect instance
-  ;;   <dialect>:register!   — public, registers dialect into MLIRContext
+  ;;   (:parse-type (parser)
+  ;;     (my-parse-type parser)))
   ;; -------------------------------------------------------------------------
   (define-syntax define-dialect
     (lambda (stx)
 
-      ;; Single-pass clause parser. Returns an alist:
-      ;;   ((name . "toy")          — MLIR dialect name string
-      ;;    (ops  . (op-stx ...))   — (define-op ...) syntax objects
-      ;;    (cbs  . #(stx/#f ...))  — 12-slot vector, slot N = syntax or #f)
-      ;;
-      ;; cbs is a mutable vector matching CrestDialect::Callbacks slot order.
-      ;; Each :keyword branch sets the exact slot index — no secondary
-      ;; slot lookup needed at call time.
       (define (parse-clauses clauses-stx default-name)
-        ;; ops and cbs are mutable state shared across the recursion.
-        ;; loop only varies over the remaining syntax — no extra accumulators.
+        ;; cbs slot order matches CrestDialect::Callbacks — index set directly
+        ;; avoids a secondary lookup at call time.
         (let ([ops '()]
               [cbs (make-vector 12 #f)])
 
           ;; (name type) normalises to (name type :required) so downstream code
-          ;; (expand-op-defs, accessor generation) always sees a uniform 3-element form.
+          ;; always sees a uniform 3-element form.
           (define (parse-op-operand field-stx)
             (syntax-case field-stx (:required :optional :variadic)
               [(name type)
@@ -187,13 +154,7 @@
                                  "malformed operand — expected (name type) or (name type :required/:optional/:variadic)"
                                  field-stx)]))
 
-          ;; Parse sub-clauses of a define-op — name already checked by caller.
-          ;;
-          ;; Returns alist:
-          ;;   ((operands   . ((name type modifier?) ...)) — Value operand declarations
-          ;;    (attributes . ((name type) ...))          — Attribute declarations
-          ;;    (results    . ((name type) ...))           — Result declarations
-          ;;    (op-cbs     . #(stx/#f ...)))              — 7-slot op callback vector
+          ;; name already checked by caller.
           ;;
           ;; Op callback vector slots (mirrors CrestOp::Callbacks in lib/Crest/Op.h):
           ;;   0  verify                       (op) → bool
@@ -217,12 +178,10 @@
                                            :populate-default-attrs)
                   [(:summary     _ . rest)  (loop-sub #'rest)]
                   [(:description _ . rest)  (loop-sub #'rest)]
-                  ;; :operands uses parse-op-operand — allows optional :modifier
                   [(:operands    (field ...) . rest)
                    (begin
                      (set! operands (map parse-op-operand (syntax->list #'(field ...))))
                      (loop-sub #'rest))]
-                  ;; :attributes and :results: plain (name type), no modifier
                   [(:attributes  ((name type) ...) . rest)
                    (andmap identifier? (syntax->list #'(name ...)))
                    (begin (set! attributes (syntax->datum #'((name type) ...)))
@@ -231,7 +190,6 @@
                    (andmap identifier? (syntax->list #'(name ...)))
                    (begin (set! results (syntax->datum #'((name type) ...)))
                           (loop-sub #'rest))]
-                  ;; Op callbacks — same inline-lambda syntax as dialect callbacks
                   [((:verify                       (op) body ...) . rest)
                    (identifier? #'op)
                    (begin (vector-set! op-cbs 0 #'(lambda (op) body ...))
@@ -283,13 +241,13 @@
                                        :verify-region-result-attr
                                        :get-registered-interface-for-op
                                        define-op)
-              ;; Documentation-only — same placeholder role as in define-op
+              ;; :summary/:description accepted but produce no runtime effect —
+              ;; same placeholder role as in define-op.
               [(:summary     _ . rest) (loop #'rest)]
               [(:description _ . rest) (loop #'rest)]
               [((define-op op-name . op-sub) . rest)
                (identifier? #'op-name)
                (begin
-                 ;; Parse sub-clauses and store structured result alongside name
                  (let ([parsed (parse-define-op #'op-sub)])
                    (set! ops (cons (cons #'op-name parsed) ops)))
                  (loop #'rest))]
@@ -347,10 +305,8 @@
                                              (symbol->string dialect-sym))]
                 [dialect-name (cdr (assq 'name parsed))]
                 [op-clauses   (cdr (assq 'ops  parsed))]
-                [extra-cbs    (cdr (assq 'cbs  parsed))]  ; (key-stx val-stx ...)
+                [extra-cbs    (cdr (assq 'cbs  parsed))]
                 [op-prefix    (string-append dialect-name ".")]
-
-                ;; Helper: build a Scheme identifier in dialect-id's scope
                 [make-id      (lambda (sfx)
                                 (datum->syntax #'dialect-id (string->symbol sfx)))]
                 [init-id      (make-id (string-append
@@ -358,34 +314,28 @@
                                         ":initialize"))]
                 [register-id  (make-id (string-append
                                         (symbol->string dialect-sym) ":register!"))]
-
-                ;; op-clauses = list of (name-stx . ((operands . ...) (attributes . ...) (results . ...)))
-                ;; Convert parsed alist back to plist datum for expand-op-defs.
                 [op-names     (map (lambda (c)
                                      (string-append op-prefix
                                                     (symbol->string (syntax->datum (car c)))))
                                    op-clauses)]
                 [all-op-defs  (apply append
                                      (map (lambda (c)
-                                            (let* ([name-stx (car c)]
-                                                   [parsed   (cdr c)]
+                                            (let* ([name-stx  (car c)]
+                                                   [parsed    (cdr c)]
                                                    [full-name (string-append op-prefix
                                                                              (symbol->string (syntax->datum name-stx)))]
-                                                   ;; Reconstruct plist datum: (:operands (...) :attributes (...) ...)
-                                                   [plist (apply append
-                                                                 (map (lambda (entry)
-                                                                        (if (null? (cdr entry)) '()
-                                                                            (list (string->symbol
-                                                                                   (string-append ":"
-                                                                                                  (symbol->string (car entry))))
-                                                                                  (cdr entry))))
-                                                                      parsed))])
+                                                   ;; expand-op-defs expects a plist datum; reconstruct from alist
+                                                   [plist     (apply append
+                                                                     (map (lambda (entry)
+                                                                            (if (null? (cdr entry)) '()
+                                                                                (list (string->symbol
+                                                                                       (string-append ":"
+                                                                                                      (symbol->string (car entry))))
+                                                                                      (cdr entry))))
+                                                                          parsed))])
                                               (expand-op-defs #'dialect-id full-name plist)))
                                           op-clauses))]
-
-                ;; Convert cbs vector to flat (quoted-key val ...) list.
-                ;; Slot 0 (:initialize) is skipped — %%init is always used.
-                ;; Slot N is included only when the user provided a callback.
+                ;; Slot 0 (:initialize) skipped — %%init is always the initializer.
                 [%%slot-keywords
                  '#(:initialize :get-dependent-dialects
                                 :parse-attribute :print-attribute
@@ -413,22 +363,18 @@
                 [(op-def ...)      all-op-defs]
                 [(op-name-str ...) (map (lambda (n) (datum->syntax #'dialect-id n))
                                         op-names)]
-                ;; extra-kv-list is already (quoted-key val ...) interleaved.
                 [(extra-kv ...)    extra-kv-list])
              #'(begin
-                 ;; Accessor and predicate definitions for each op
                  op-def ...
 
-                 ;; Called by CrestDialect::initialize() in C++ when the dialect
-                 ;; is first loaded. dialect-ptr is the CrestDialect* (uptr)
-                 ;; passed by C++ as `this` — it arrives from the C++ side,
+                 ;; dialect-ptr is the CrestDialect* passed by C++ as `this` when
+                 ;; the dialect is first loaded — it arrives from the C++ side,
                  ;; not from any Scheme binding.
                  (define (%%init dialect-ptr)
                    (register-dynamic-op! dialect-ptr op-name-str) ...)
 
-                 ;; extra-kv ... splices user dialect callbacks
-                 ;; (':parse-type val ':print-type val ...) before :initialize
-                 ;; so all 12 CrestDialect slots can be set from define-dialect.
+                 ;; extra-kv ... splices user-provided dialect callbacks before
+                 ;; :initialize so all 12 CrestDialect slots can be populated.
                  (define (dialect:register! ctx)
                    (register-dialect! ctx dialect-name-str
                                       extra-kv ...
