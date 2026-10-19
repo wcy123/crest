@@ -189,17 +189,19 @@
                                            :populate-default-attrs)
                   [(:summary     _ . rest)  (loop-sub #'rest)]
                   [(:description _ . rest)  (loop-sub #'rest)]
-                  [(:operands    ((name type) ...) . rest)
-                   (andmap (lambda (n) (identifier? n)) (syntax->list #'(name ...)))
-                   (begin (set! operands (syntax->datum #'((name type) ...)))
+                  ;; Each field: (name type) or (name type :modifier)
+                  ;; modifier ∈ {:required :optional :variadic} — default :required
+                  [(:operands    ((name type mod ...) ...) . rest)
+                   (andmap identifier? (syntax->list #'(name ...)))
+                   (begin (set! operands (syntax->datum #'((name type mod ...) ...)))
                           (loop-sub #'rest))]
-                  [(:attributes  ((name type) ...) . rest)
-                   (andmap (lambda (n) (identifier? n)) (syntax->list #'(name ...)))
-                   (begin (set! attributes (syntax->datum #'((name type) ...)))
+                  [(:attributes  ((name type mod ...) ...) . rest)
+                   (andmap identifier? (syntax->list #'(name ...)))
+                   (begin (set! attributes (syntax->datum #'((name type mod ...) ...)))
                           (loop-sub #'rest))]
-                  [(:results     ((name type) ...) . rest)
-                   (andmap (lambda (n) (identifier? n)) (syntax->list #'(name ...)))
-                   (begin (set! results (syntax->datum #'((name type) ...)))
+                  [(:results     ((name type mod ...) ...) . rest)
+                   (andmap identifier? (syntax->list #'(name ...)))
+                   (begin (set! results (syntax->datum #'((name type mod ...) ...)))
                           (loop-sub #'rest))]
                   ;; Op callbacks — same inline-lambda syntax as dialect callbacks
                   [((:verify                       (op) body ...) . rest)
