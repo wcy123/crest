@@ -160,40 +160,85 @@
               [cbs (make-vector 12 #f)])
 
           ;; Parse sub-clauses of a define-op — name already checked by caller.
-          ;; Returns alist: ((operands . pairs) (attributes . pairs) (results . pairs))
-          ;; where pairs = list of (name-stx type-stx).
+          ;;
+          ;; Returns alist:
+          ;;   ((operands   . ((name type) ...))   — Value operand declarations
+          ;;    (attributes . ((name type) ...))   — Attribute declarations
+          ;;    (results    . ((name type) ...))   — Result declarations
+          ;;    (op-cbs     . #(stx/#f ...)))      — 7-slot op callback vector
+          ;;
+          ;; Op callback vector slots (mirrors CrestOp::Callbacks in lib/Crest/Op.h):
+          ;;   0  verify                       (op) → bool
+          ;;   1  verify-regions               (op) → bool
+          ;;   2  parse                        (parser state) → bool  [#f = generic]
+          ;;   3  print                        (op printer name) → void [#f = generic]
+          ;;   4  fold                         (op) → bool
+          ;;   5  get-canonicalization-patterns (pattern-set) → void
+          ;;   6  populate-default-attrs       (op-name attrs) → void
           (define (parse-define-op sub-clauses-stx)
             (let ([operands   '()]
                   [attributes '()]
-                  [results    '()])
+                  [results    '()]
+                  [op-cbs     (make-vector 7 #f)])
               (let loop-sub ([stx sub-clauses-stx])
                 (syntax-case stx (:summary :description
-                                           :operands :attributes :results)
+                                           :operands :attributes :results
+                                           :verify :verify-regions
+                                           :parse :print :fold
+                                           :get-canonicalization-patterns
+                                           :populate-default-attrs)
                   [(:summary     _ . rest)  (loop-sub #'rest)]
                   [(:description _ . rest)  (loop-sub #'rest)]
                   [(:operands    ((name type) ...) . rest)
                    (andmap (lambda (n) (identifier? n)) (syntax->list #'(name ...)))
-                   (begin
-                     (set! operands (syntax->datum #'((name type) ...)))
-                     (loop-sub #'rest))]
+                   (begin (set! operands (syntax->datum #'((name type) ...)))
+                          (loop-sub #'rest))]
                   [(:attributes  ((name type) ...) . rest)
                    (andmap (lambda (n) (identifier? n)) (syntax->list #'(name ...)))
-                   (begin
-                     (set! attributes (syntax->datum #'((name type) ...)))
-                     (loop-sub #'rest))]
+                   (begin (set! attributes (syntax->datum #'((name type) ...)))
+                          (loop-sub #'rest))]
                   [(:results     ((name type) ...) . rest)
                    (andmap (lambda (n) (identifier? n)) (syntax->list #'(name ...)))
-                   (begin
-                     (set! results (syntax->datum #'((name type) ...)))
-                     (loop-sub #'rest))]
+                   (begin (set! results (syntax->datum #'((name type) ...)))
+                          (loop-sub #'rest))]
+                  ;; Op callbacks — same inline-lambda syntax as dialect callbacks
+                  [((:verify                       (op) body ...) . rest)
+                   (identifier? #'op)
+                   (begin (vector-set! op-cbs 0 #'(lambda (op) body ...))
+                          (loop-sub #'rest))]
+                  [((:verify-regions               (op) body ...) . rest)
+                   (identifier? #'op)
+                   (begin (vector-set! op-cbs 1 #'(lambda (op) body ...))
+                          (loop-sub #'rest))]
+                  [((:parse                        (parser state) body ...) . rest)
+                   (and (identifier? #'parser) (identifier? #'state))
+                   (begin (vector-set! op-cbs 2 #'(lambda (parser state) body ...))
+                          (loop-sub #'rest))]
+                  [((:print                        (op printer name) body ...) . rest)
+                   (and (identifier? #'op) (identifier? #'printer) (identifier? #'name))
+                   (begin (vector-set! op-cbs 3 #'(lambda (op printer name) body ...))
+                          (loop-sub #'rest))]
+                  [((:fold                         (op) body ...) . rest)
+                   (identifier? #'op)
+                   (begin (vector-set! op-cbs 4 #'(lambda (op) body ...))
+                          (loop-sub #'rest))]
+                  [((:get-canonicalization-patterns (pattern-set) body ...) . rest)
+                   (identifier? #'pattern-set)
+                   (begin (vector-set! op-cbs 5 #'(lambda (pattern-set) body ...))
+                          (loop-sub #'rest))]
+                  [((:populate-default-attrs       (op-name attrs) body ...) . rest)
+                   (and (identifier? #'op-name) (identifier? #'attrs))
+                   (begin (vector-set! op-cbs 6 #'(lambda (op-name attrs) body ...))
+                          (loop-sub #'rest))]
                   [(bad . _)
                    (syntax-violation 'define-op
-                                     "unknown clause — expected :operands, :attributes, :results, :summary, or :description"
+                                     "unknown clause — expected :operands, :attributes, :results, :summary, :description, or (:callback (args) body ...)"
                                      #'bad)]
                   [()
                    (list (cons 'operands   operands)
                          (cons 'attributes attributes)
-                         (cons 'results    results))]))))
+                         (cons 'results    results)
+                         (cons 'op-cbs     op-cbs))]))))
 
 
           (let loop ([stx clauses-stx])
