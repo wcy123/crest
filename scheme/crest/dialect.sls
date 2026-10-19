@@ -145,100 +145,86 @@
   (define-syntax define-dialect
     (lambda (stx)
 
-      ;; Use syntax-case to find an optional :name "str" clause.
-      ;; Scans one element at a time because the clause list mixes
-      ;; (define-op ...) forms with :keyword value pairs.
-      (define (dialect-name-from-clauses clause-stx-list default)
-        (let loop ([rest clause-stx-list])
+      ;; Single-pass clause parser. Returns an alist:
+      ;;   ((name . "toy")                 — MLIR dialect name string
+      ;;    (ops  . (op-stx ...))          — (define-op ...) syntax objects
+      ;;    (cbs  . (key-stx val-stx ...)) — callback pairs, values as syntax)
+      ;;
+      ;; One pass suffices: (define-op ...) forms, :name, and :keyword value
+      ;; pairs are all distinguished by syntax-case pattern matching.
+      (define (parse-clauses clause-stxs default-name)
+        (let loop ([rest clause-stxs]
+                   [name default-name]
+                   [ops  '()]
+                   [cbs  '()])
           (if (null? rest)
-              default
-              (syntax-case (car rest) (:name)
-                [(:name str)
-                 (string? (syntax->datum #'str))
-                 (syntax->datum #'str)]
-                [_ (loop (cdr rest))]))))
-
-      (define (define-op-form? clause)
-        (and (pair? clause) (eq? (car clause) 'define-op)))
-
-      ;; Extract dialect-level keyword-value pairs from the clause syntax list,
-      ;; skipping :name (handled separately) and (define-op ...) forms.
-      ;; Returns a flat list of alternating syntax objects: (key-stx val-stx ...)
-      ;; Values are kept as syntax so inline lambdas retain lexical scope.
-      (define (dialect-cb-plist clause-stx-list)
-        (let loop ([rest clause-stx-list] [acc '()])
-          (if (null? rest)
-              (reverse acc)
+              (list (cons 'name name)
+                    (cons 'ops  (reverse ops))
+                    (cons 'cbs  (reverse cbs)))
               (syntax-case (car rest) ()
-                ;; (define-op ...) form — op definition, skip
+                ;; (define-op ...) — collect for op registration + accessor gen
                 [(define-op . _)
-                 (loop (cdr rest) acc)]
-                ;; Identifier — inspect the keyword datum
+                 (loop (cdr rest) name (cons (car rest) ops) cbs)]
+                ;; Identifier — keyword or :name
                 [kw
                  (identifier? #'kw)
                  (let ([key (syntax->datum #'kw)])
                    (cond
-                    ;; :name override — skip key + value
+                    ;; :name "str" — dialect name override, skip key + value
                     [(eq? key ':name)
-                     (loop (cddr rest) acc)]
+                     (if (null? (cdr rest)) (loop '() name ops cbs)
+                         (loop (cddr rest)
+                               (syntax->datum (cadr rest))
+                               ops cbs))]
                     ;; Other :keyword — dialect callback, collect key + value
                     [(and (symbol? key)
                           (char=? (string-ref (symbol->string key) 0) #\:))
-                     (if (null? (cdr rest))
-                         (reverse acc)
-                         (loop (cddr rest)
-                               (cons (cadr rest) (cons #'kw acc))))]
-                    [else (loop (cdr rest) acc)]))]
+                     (if (null? (cdr rest)) (loop '() name ops cbs)
+                         (loop (cddr rest) name ops
+                               (cons (cadr rest) (cons #'kw cbs))))]
+                    [else (loop (cdr rest) name ops cbs)]))]
                 ;; Anything else — skip
-                [_ (loop (cdr rest) acc)]))))
+                [_ (loop (cdr rest) name ops cbs)]))))
 
       (syntax-case stx ()
         [(_ dialect-id clause ...)
-         (let* ([all-clauses  (syntax->datum #'(clause ...))]
-                [clause-stxs  (syntax->list #'(clause ...))]
-                [dialect-sym  (syntax->datum #'dialect-id)]
-                [dialect-name (dialect-name-from-clauses clause-stxs
-                                                         (symbol->string dialect-sym))]
+         (let* ([dialect-sym  (syntax->datum #'dialect-id)]
+                [parsed       (parse-clauses (syntax->list #'(clause ...))
+                                             (symbol->string dialect-sym))]
+                [dialect-name (cdr (assq 'name parsed))]
+                [op-clauses   (cdr (assq 'ops  parsed))]
+                [extra-cbs    (cdr (assq 'cbs  parsed))]  ; (key-stx val-stx ...)
                 [op-prefix    (string-append dialect-name ".")]
-                [op-clauses   (filter define-op-form? all-clauses)]
-
-                ;; Full op name strings, e.g. "toy.constant"
-                [op-names     (map (lambda (c)
-                                     (string-append op-prefix
-                                                    (symbol->string (cadr c))))
-                                   op-clauses)]
 
                 ;; Helper: build a Scheme identifier in dialect-id's scope
                 [make-id      (lambda (sfx)
-                                (datum->syntax #'dialect-id
-                                               (string->symbol sfx)))]
-
-                ;; %%<dialect>:initialize — private, not exported by user lib
+                                (datum->syntax #'dialect-id (string->symbol sfx)))]
                 [init-id      (make-id (string-append
                                         "%%" (symbol->string dialect-sym)
                                         ":initialize"))]
-
-                ;; <dialect>:register! — public user entry point
                 [register-id  (make-id (string-append
-                                        (symbol->string dialect-sym)
-                                        ":register!"))]
+                                        (symbol->string dialect-sym) ":register!"))]
 
-                ;; Expand accessors/predicates for every op
+                ;; Op name strings and accessor defs from (define-op ...) forms.
+                ;; Use syntax-case to safely decompose each op syntax object.
+                [op-names     (map (lambda (c)
+                                     (syntax-case c ()
+                                       [(define-op name . _)
+                                        (string-append op-prefix
+                                                       (symbol->string (syntax->datum #'name)))]))
+                                   op-clauses)]
                 [all-op-defs  (apply append
                                      (map (lambda (c)
-                                            (expand-op-defs
-                                             #'dialect-id
-                                             (string-append op-prefix
-                                                            (symbol->string (cadr c)))
-                                             (cddr c)))
+                                            (syntax-case c ()
+                                              [(define-op name . rest)
+                                               (expand-op-defs
+                                                #'dialect-id
+                                                (string-append op-prefix
+                                                               (symbol->string (syntax->datum #'name)))
+                                                (syntax->datum #'rest))]))
                                           op-clauses))]
 
-                ;; Dialect-level callbacks as syntax list (keys + values retain scope).
-                ;; extra-cbs = (key-stx val-stx key-stx val-stx ...)
-                [extra-cbs    (dialect-cb-plist clause-stxs)]
-
-                ;; Separate keys and values — both are already syntax objects.
-                ;; Keys are quoted so they arrive as symbol literals at runtime.
+                ;; Separate callback keys/values from extra-cbs plist
                 [cb-keys      (let loop ([rest extra-cbs] [ks '()])
                                 (if (null? rest) (reverse ks)
                                     (loop (cddr rest) (cons (car rest) ks))))]
