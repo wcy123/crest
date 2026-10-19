@@ -159,33 +159,41 @@
         (let ([ops '()]
               [cbs (make-vector 12 #f)])
 
-          ;; Validate sub-clauses of a define-op — name already checked by caller.
-          ;; Uses (key val . rest) patterns — same approach as parse-clauses.
+          ;; Parse sub-clauses of a define-op — name already checked by caller.
+          ;; Returns alist: ((operands . pairs) (attributes . pairs) (results . pairs))
+          ;; where pairs = list of (name-stx type-stx).
           (define (parse-define-op sub-clauses-stx)
-            (let loop-sub ([stx sub-clauses-stx])
-              (syntax-case stx (:summary :description
-                                         :operands :attributes :results)
-                [(:summary     val . rest) (loop-sub #'rest)]
-                [(:description val . rest) (loop-sub #'rest)]
-                ;; Each field list must be ((name type) ...) — name must be identifier.
-                ;; Validate each (name type) pair individually.
-                [(:operands    ((name type) ...) . rest)
-                 (andmap (lambda (n) (identifier? n))
-                         (syntax->list #'(name ...)))
-                 (loop-sub #'rest)]
-                [(:attributes  ((name type) ...) . rest)
-                 (andmap (lambda (n) (identifier? n))
-                         (syntax->list #'(name ...)))
-                 (loop-sub #'rest)]
-                [(:results     ((name type) ...) . rest)
-                 (andmap (lambda (n) (identifier? n))
-                         (syntax->list #'(name ...)))
-                 (loop-sub #'rest)]
-                [(bad . _)
-                 (syntax-violation 'define-op
-                                   "unknown clause — expected :operands, :attributes, :results, :summary, or :description"
-                                   #'bad)]
-                [() #t])))
+            (let ([operands   '()]
+                  [attributes '()]
+                  [results    '()])
+              (let loop-sub ([stx sub-clauses-stx])
+                (syntax-case stx (:summary :description
+                                           :operands :attributes :results)
+                  [(:summary     _ . rest)  (loop-sub #'rest)]
+                  [(:description _ . rest)  (loop-sub #'rest)]
+                  [(:operands    ((name type) ...) . rest)
+                   (andmap (lambda (n) (identifier? n)) (syntax->list #'(name ...)))
+                   (begin
+                     (set! operands (syntax->datum #'((name type) ...)))
+                     (loop-sub #'rest))]
+                  [(:attributes  ((name type) ...) . rest)
+                   (andmap (lambda (n) (identifier? n)) (syntax->list #'(name ...)))
+                   (begin
+                     (set! attributes (syntax->datum #'((name type) ...)))
+                     (loop-sub #'rest))]
+                  [(:results     ((name type) ...) . rest)
+                   (andmap (lambda (n) (identifier? n)) (syntax->list #'(name ...)))
+                   (begin
+                     (set! results (syntax->datum #'((name type) ...)))
+                     (loop-sub #'rest))]
+                  [(bad . _)
+                   (syntax-violation 'define-op
+                                     "unknown clause — expected :operands, :attributes, :results, :summary, or :description"
+                                     #'bad)]
+                  [()
+                   (list (cons 'operands   operands)
+                         (cons 'attributes attributes)
+                         (cons 'results    results))]))))
 
 
           (let loop ([stx clauses-stx])
@@ -206,8 +214,9 @@
               [((define-op op-name . op-sub) . rest)
                (identifier? #'op-name)
                (begin
-                 (parse-define-op #'op-sub)
-                 (set! ops (cons #'(define-op op-name . op-sub) ops))
+                 ;; Parse sub-clauses and store structured result alongside name
+                 (let ([parsed (parse-define-op #'op-sub)])
+                   (set! ops (cons (cons #'op-name parsed) ops)))
                  (loop #'rest))]
               [((:initialize                  (dialect-ptr) body ...) . rest)
                (identifier? #'dialect-ptr)
@@ -275,23 +284,28 @@
                 [register-id  (make-id (string-append
                                         (symbol->string dialect-sym) ":register!"))]
 
-                ;; Op name strings and accessor defs from (define-op ...) forms.
-                ;; Use syntax-case to safely decompose each op syntax object.
+                ;; op-clauses = list of (name-stx . ((operands . ...) (attributes . ...) (results . ...)))
+                ;; Convert parsed alist back to plist datum for expand-op-defs.
                 [op-names     (map (lambda (c)
-                                     (syntax-case c ()
-                                       [(define-op name . _)
-                                        (string-append op-prefix
-                                                       (symbol->string (syntax->datum #'name)))]))
+                                     (string-append op-prefix
+                                                    (symbol->string (syntax->datum (car c)))))
                                    op-clauses)]
                 [all-op-defs  (apply append
                                      (map (lambda (c)
-                                            (syntax-case c ()
-                                              [(define-op name . rest)
-                                               (expand-op-defs
-                                                #'dialect-id
-                                                (string-append op-prefix
-                                                               (symbol->string (syntax->datum #'name)))
-                                                (syntax->datum #'rest))]))
+                                            (let* ([name-stx (car c)]
+                                                   [parsed   (cdr c)]
+                                                   [full-name (string-append op-prefix
+                                                                             (symbol->string (syntax->datum name-stx)))]
+                                                   ;; Reconstruct plist datum: (:operands (...) :attributes (...) ...)
+                                                   [plist (apply append
+                                                                 (map (lambda (entry)
+                                                                        (if (null? (cdr entry)) '()
+                                                                            (list (string->symbol
+                                                                                   (string-append ":"
+                                                                                                  (symbol->string (car entry))))
+                                                                                  (cdr entry))))
+                                                                      parsed))])
+                                              (expand-op-defs #'dialect-id full-name plist)))
                                           op-clauses))]
 
                 ;; Convert cbs vector to flat (quoted-key val ...) list.
