@@ -29,12 +29,6 @@
   ;;            4  :parse-type                   10  :verify-region-result-attr
   ;;            5  :print-type                   11  :get-registered-interface-for-op
   (define-record-type dialect-parse
-    (protocol
-     (lambda (new)
-       (case-lambda
-        [(name)         (new name '() (make-vector 12 #f))]
-        [(name ops)     (new name ops  (make-vector 12 #f))]
-        [(name ops cbs) (new name ops  cbs)])))
     (fields (immutable name dialect-parse-name)
             (immutable ops  dialect-parse-ops)
             (immutable cbs  dialect-parse-cbs)))
@@ -53,19 +47,6 @@
   ;;                  5  :get-canonicalization-patterns (pattern-set) → void
   ;;                  6  :populate-default-attrs        (op-name attrs) → void
   (define-record-type op-parse
-    (protocol
-     (lambda (new)
-       (case-lambda
-        [(name)
-         (new name '() '() '() (make-vector 7 #f))]
-        [(name operands)
-         (new name operands '() '() (make-vector 7 #f))]
-        [(name operands attributes)
-         (new name operands attributes '() (make-vector 7 #f))]
-        [(name operands attributes results)
-         (new name operands attributes results (make-vector 7 #f))]
-        [(name operands attributes results op-cbs)
-         (new name operands attributes results op-cbs)])))
     (fields (immutable name       op-parse-name)
             (immutable operands   op-parse-operands)
             (immutable attributes op-parse-attributes)
