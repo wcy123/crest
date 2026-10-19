@@ -184,6 +184,219 @@ void registerIRBuiltinTypesBindings() {
         }
         return it.isUnsigned() ? 1 : 0;
       });
+
+  // ── Additional integer type constructors ─────────────────────────────────
+  Sregister_symbol(
+      "mlir::IntegerType::get<i8>", (void*)+[](uint64_t ctx_ptr) -> uint64_t {
+        if (!ctx_ptr) {
+          scheme_error("mlir::IntegerType::get<i8>",
+                       "null MLIRContext pointer");
+        }
+        return reinterpret_cast<uint64_t>(
+            mlir::IntegerType::get(
+                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr), 8)
+                .getAsOpaquePointer());
+      });
+  Sregister_symbol(
+      "mlir::IntegerType::get<i16>", (void*)+[](uint64_t ctx_ptr) -> uint64_t {
+        if (!ctx_ptr) {
+          scheme_error("mlir::IntegerType::get<i16>",
+                       "null MLIRContext pointer");
+        }
+        return reinterpret_cast<uint64_t>(
+            mlir::IntegerType::get(
+                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr), 16)
+                .getAsOpaquePointer());
+      });
+  Sregister_symbol(
+      "mlir::IntegerType::get<i32>", (void*)+[](uint64_t ctx_ptr) -> uint64_t {
+        if (!ctx_ptr) {
+          scheme_error("mlir::IntegerType::get<i32>",
+                       "null MLIRContext pointer");
+        }
+        return reinterpret_cast<uint64_t>(
+            mlir::IntegerType::get(
+                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr), 32)
+                .getAsOpaquePointer());
+      });
+  // General IntegerType::get(ctx, width)
+  Sregister_symbol(
+      "mlir::IntegerType::get",
+      (void*)+[](uint64_t ctx_ptr, int64_t width) -> uint64_t {
+        if (!ctx_ptr) {
+          scheme_error("mlir::IntegerType::get", "null MLIRContext pointer");
+        }
+        return reinterpret_cast<uint64_t>(
+            mlir::IntegerType::get(
+                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr),
+                static_cast<unsigned>(width))
+                .getAsOpaquePointer());
+      });
+
+  // ── Float type constructors ───────────────────────────────────────────────
+  Sregister_symbol(
+      "mlir::Float16Type::get", (void*)+[](uint64_t ctx_ptr) -> uint64_t {
+        if (!ctx_ptr) {
+          scheme_error("mlir::Float16Type::get", "null MLIRContext pointer");
+        }
+        return reinterpret_cast<uint64_t>(
+            mlir::Float16Type::get(
+                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr))
+                .getAsOpaquePointer());
+      });
+  Sregister_symbol(
+      "mlir::BFloat16Type::get", (void*)+[](uint64_t ctx_ptr) -> uint64_t {
+        if (!ctx_ptr) {
+          scheme_error("mlir::BFloat16Type::get", "null MLIRContext pointer");
+        }
+        return reinterpret_cast<uint64_t>(
+            mlir::BFloat16Type::get(
+                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr))
+                .getAsOpaquePointer());
+      });
+  Sregister_symbol(
+      "mlir::Float32Type::get", (void*)+[](uint64_t ctx_ptr) -> uint64_t {
+        if (!ctx_ptr) {
+          scheme_error("mlir::Float32Type::get", "null MLIRContext pointer");
+        }
+        return reinterpret_cast<uint64_t>(
+            mlir::Float32Type::get(
+                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr))
+                .getAsOpaquePointer());
+      });
+  Sregister_symbol(
+      "mlir::Float64Type::get", (void*)+[](uint64_t ctx_ptr) -> uint64_t {
+        if (!ctx_ptr) {
+          scheme_error("mlir::Float64Type::get", "null MLIRContext pointer");
+        }
+        return reinterpret_cast<uint64_t>(
+            mlir::Float64Type::get(
+                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr))
+                .getAsOpaquePointer());
+      });
+
+  // ── NoneType constructor ──────────────────────────────────────────────────
+  Sregister_symbol(
+      "mlir::NoneType::get", (void*)+[](uint64_t ctx_ptr) -> uint64_t {
+        if (!ctx_ptr) {
+          scheme_error("mlir::NoneType::get", "null MLIRContext pointer");
+        }
+        return reinterpret_cast<uint64_t>(
+            mlir::NoneType::get(reinterpret_cast<mlir::MLIRContext*>(ctx_ptr))
+                .getAsOpaquePointer());
+      });
+
+  // ── isa<> predicates ─────────────────────────────────────────────────────
+#define CREST_ISA(TypeName)                                                    \
+  Sregister_symbol(                                                            \
+      "mlir::isa<" #TypeName ">", (void*)+[](uint64_t p) -> int {              \
+        return (p &&                                                           \
+                mlir::isa<mlir::TypeName>(mlir::Type::getFromOpaquePointer(    \
+                    reinterpret_cast<const void*>(p))))                        \
+                   ? 1                                                         \
+                   : 0;                                                        \
+      })
+
+  CREST_ISA(IntegerType);
+  CREST_ISA(FloatType);
+  CREST_ISA(Float16Type);
+  CREST_ISA(BFloat16Type);
+  CREST_ISA(Float32Type);
+  CREST_ISA(Float64Type);
+  CREST_ISA(IndexType);
+  CREST_ISA(NoneType);
+  CREST_ISA(MemRefType);
+  CREST_ISA(UnrankedMemRefType);
+  CREST_ISA(UnrankedTensorType);
+  CREST_ISA(VectorType);
+  CREST_ISA(ComplexType);
+#undef CREST_ISA
+
+  // ── Float type accessor ───────────────────────────────────────────────────
+  Sregister_symbol(
+      "mlir::FloatType::getWidth", (void*)+[](uint64_t p) -> int64_t {
+        if (!p) {
+          scheme_error("mlir::FloatType::getWidth", "null type pointer");
+        }
+        auto ft = mlir::dyn_cast<mlir::FloatType>(
+            mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(p)));
+        if (!ft) {
+          scheme_error("mlir::FloatType::getWidth", "not a FloatType");
+        }
+        return static_cast<int64_t>(ft.getWidth());
+      });
+
+  // ── ComplexType accessor ──────────────────────────────────────────────────
+  Sregister_symbol(
+      "mlir::ComplexType::getElementType", (void*)+[](uint64_t p) -> uint64_t {
+        if (!p) {
+          scheme_error("mlir::ComplexType::getElementType",
+                       "null type pointer");
+        }
+        auto ct = mlir::dyn_cast<mlir::ComplexType>(
+            mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(p)));
+        if (!ct) {
+          scheme_error("mlir::ComplexType::getElementType",
+                       "not a ComplexType");
+        }
+        return reinterpret_cast<uint64_t>(
+            ct.getElementType().getAsOpaquePointer());
+      });
+
+  // ── VectorType accessors ──────────────────────────────────────────────────
+  Sregister_symbol(
+      "mlir::VectorType::getRank", (void*)+[](uint64_t p) -> int64_t {
+        if (!p) {
+          scheme_error("mlir::VectorType::getRank", "null type pointer");
+        }
+        auto vt = mlir::dyn_cast<mlir::VectorType>(
+            mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(p)));
+        if (!vt) {
+          scheme_error("mlir::VectorType::getRank", "not a VectorType");
+        }
+        return static_cast<int64_t>(vt.getRank());
+      });
+  Sregister_symbol(
+      "mlir::VectorType::getElementType", (void*)+[](uint64_t p) -> uint64_t {
+        if (!p) {
+          scheme_error("mlir::VectorType::getElementType", "null type pointer");
+        }
+        auto vt = mlir::dyn_cast<mlir::VectorType>(
+            mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(p)));
+        if (!vt) {
+          scheme_error("mlir::VectorType::getElementType", "not a VectorType");
+        }
+        return reinterpret_cast<uint64_t>(
+            vt.getElementType().getAsOpaquePointer());
+      });
+
+  // ── MemRefType accessors ──────────────────────────────────────────────────
+  Sregister_symbol(
+      "mlir::MemRefType::getElementType", (void*)+[](uint64_t p) -> uint64_t {
+        if (!p) {
+          scheme_error("mlir::MemRefType::getElementType", "null type pointer");
+        }
+        auto mt = mlir::dyn_cast<mlir::MemRefType>(
+            mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(p)));
+        if (!mt) {
+          scheme_error("mlir::MemRefType::getElementType", "not a MemRefType");
+        }
+        return reinterpret_cast<uint64_t>(
+            mt.getElementType().getAsOpaquePointer());
+      });
+  Sregister_symbol(
+      "mlir::MemRefType::getMemorySpace", (void*)+[](uint64_t p) -> uint64_t {
+        if (!p) {
+          scheme_error("mlir::MemRefType::getMemorySpace", "null type pointer");
+        }
+        auto mt = mlir::dyn_cast<mlir::MemRefType>(
+            mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(p)));
+        if (!mt) {
+          scheme_error("mlir::MemRefType::getMemorySpace", "not a MemRefType");
+        }
+        mlir::Attribute ms = mt.getMemorySpace();
+        return ms ? reinterpret_cast<uint64_t>(ms.getAsOpaquePointer()) : 0;
+      });
 }
 
 } // namespace crest

@@ -16,18 +16,56 @@
 
 (library (mlir IR BuiltinTypes)
   (export
+    ;; IndexType
     mlir::IndexType::get
-    mlir::IntegerType::get<i64>
+    mlir::isa<IndexType>?
+    ;; IntegerType
     mlir::IntegerType::get<i1>
+    mlir::IntegerType::get<i8>
+    mlir::IntegerType::get<i16>
+    mlir::IntegerType::get<i32>
+    mlir::IntegerType::get<i64>
+    mlir::IntegerType::get
+    mlir::isa<IntegerType>?
+    mlir::IntegerType::getWidth
+    mlir::IntegerType::isUnsigned?
+    ;; Float types
+    mlir::Float16Type::get
+    mlir::BFloat16Type::get
+    mlir::Float32Type::get
+    mlir::Float64Type::get
+    mlir::isa<FloatType>?
+    mlir::isa<Float16Type>?
+    mlir::isa<BFloat16Type>?
+    mlir::isa<Float32Type>?
+    mlir::isa<Float64Type>?
+    mlir::FloatType::getWidth
+    ;; NoneType
+    mlir::NoneType::get
+    mlir::isa<NoneType>?
+    ;; RankedTensorType
     mlir::isa<RankedTensorType>?
     mlir::RankedTensorType::getRank
     mlir::RankedTensorType::getElementType
     mlir::RankedTensorType::getShape
     mlir::RankedTensorType::getEncoding
     mlir::RankedTensorType::cloneWithEncoding
-    mlir::ShapedType::getElementType
-    mlir::IntegerType::getWidth
-    mlir::IntegerType::isUnsigned?)
+    ;; UnrankedTensorType
+    mlir::isa<UnrankedTensorType>?
+    ;; MemRefType
+    mlir::isa<MemRefType>?
+    mlir::isa<UnrankedMemRefType>?
+    mlir::MemRefType::getElementType
+    mlir::MemRefType::getMemorySpace
+    ;; VectorType
+    mlir::isa<VectorType>?
+    mlir::VectorType::getRank
+    mlir::VectorType::getElementType
+    ;; ComplexType
+    mlir::isa<ComplexType>?
+    mlir::ComplexType::getElementType
+    ;; ShapedType (base)
+    mlir::ShapedType::getElementType)
   (import (rnrs)
           (only (mlir IR MLIRContext) current-MLIRContext define-ctx-optional)
           (mlir IR BuiltinTypes ffi))
@@ -118,5 +156,51 @@
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Wraps %mlir::IntegerType::isUnsigned; returns boolean instead of 1/0
   (define (mlir::IntegerType::isUnsigned? t)  (not (zero? (%mlir::IntegerType::isUnsigned t))))
+
+  ;; Additional integer type constructors
+  (define-ctx-optional mlir::IntegerType::get<i8>  %mlir::IntegerType::get<i8>)
+  (define-ctx-optional mlir::IntegerType::get<i16> %mlir::IntegerType::get<i16>)
+  (define-ctx-optional mlir::IntegerType::get<i32> %mlir::IntegerType::get<i32>)
+
+  ;; General IntegerType::get(ctx, width) — not ctx-optional, width is required
+  (define mlir::IntegerType::get %mlir::IntegerType::get)
+
+  ;; Float type constructors
+  (define-ctx-optional mlir::Float16Type::get  %mlir::Float16Type::get)
+  (define-ctx-optional mlir::BFloat16Type::get %mlir::BFloat16Type::get)
+  (define-ctx-optional mlir::Float32Type::get  %mlir::Float32Type::get)
+  (define-ctx-optional mlir::Float64Type::get  %mlir::Float64Type::get)
+
+  ;; NoneType constructor
+  (define-ctx-optional mlir::NoneType::get %mlir::NoneType::get)
+
+  ;; isa<> predicates — all return #t/#f
+  (define (mlir::isa<IndexType>?          t) (not (zero? (%mlir::isa<IndexType>-isa          t))))
+  (define (mlir::isa<IntegerType>?        t) (not (zero? (%mlir::isa<IntegerType>-isa        t))))
+  (define (mlir::isa<FloatType>?          t) (not (zero? (%mlir::isa<FloatType>-isa          t))))
+  (define (mlir::isa<Float16Type>?        t) (not (zero? (%mlir::isa<Float16Type>-isa        t))))
+  (define (mlir::isa<BFloat16Type>?       t) (not (zero? (%mlir::isa<BFloat16Type>-isa       t))))
+  (define (mlir::isa<Float32Type>?        t) (not (zero? (%mlir::isa<Float32Type>-isa        t))))
+  (define (mlir::isa<Float64Type>?        t) (not (zero? (%mlir::isa<Float64Type>-isa        t))))
+  (define (mlir::isa<NoneType>?           t) (not (zero? (%mlir::isa<NoneType>-isa           t))))
+  (define (mlir::isa<MemRefType>?         t) (not (zero? (%mlir::isa<MemRefType>-isa         t))))
+  (define (mlir::isa<UnrankedMemRefType>? t) (not (zero? (%mlir::isa<UnrankedMemRefType>-isa t))))
+  (define (mlir::isa<UnrankedTensorType>? t) (not (zero? (%mlir::isa<UnrankedTensorType>-isa t))))
+  (define (mlir::isa<VectorType>?         t) (not (zero? (%mlir::isa<VectorType>-isa         t))))
+  (define (mlir::isa<ComplexType>?        t) (not (zero? (%mlir::isa<ComplexType>-isa        t))))
+
+  ;; Float type accessor
+  (define mlir::FloatType::getWidth %mlir::FloatType::getWidth)
+
+  ;; ComplexType accessor
+  (define mlir::ComplexType::getElementType %mlir::ComplexType::getElementType)
+
+  ;; VectorType accessors
+  (define mlir::VectorType::getRank        %mlir::VectorType::getRank)
+  (define mlir::VectorType::getElementType %mlir::VectorType::getElementType)
+
+  ;; MemRefType accessors
+  (define mlir::MemRefType::getElementType %mlir::MemRefType::getElementType)
+  (define mlir::MemRefType::getMemorySpace %mlir::MemRefType::getMemorySpace)
 
   ) ;; end library (mlir IR BuiltinTypes)
