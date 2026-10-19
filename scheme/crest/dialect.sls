@@ -168,32 +168,34 @@
                                         :verify-region-result-attr
                                         :get-registered-interface-for-op
                                         define-op)
+            ;; Op definitions
             [((define-op . op-rest) . rest)
              (loop #'rest name (cons #'(define-op . op-rest) ops) cbs)]
-            [(:initialize                  val . rest)
-             (begin (vector-set! cbs  0 #'val) (loop #'rest name ops cbs))]
-            [(:get-dependent-dialects      val . rest)
-             (begin (vector-set! cbs  1 #'val) (loop #'rest name ops cbs))]
-            [(:parse-attribute             val . rest)
-             (begin (vector-set! cbs  2 #'val) (loop #'rest name ops cbs))]
-            [(:print-attribute             val . rest)
-             (begin (vector-set! cbs  3 #'val) (loop #'rest name ops cbs))]
-            [(:parse-type                  val . rest)
-             (begin (vector-set! cbs  4 #'val) (loop #'rest name ops cbs))]
-            [(:print-type                  val . rest)
-             (begin (vector-set! cbs  5 #'val) (loop #'rest name ops cbs))]
-            [(:materialize-constant        val . rest)
-             (begin (vector-set! cbs  6 #'val) (loop #'rest name ops cbs))]
-            [(:get-canonicalization-patterns val . rest)
-             (begin (vector-set! cbs  7 #'val) (loop #'rest name ops cbs))]
-            [(:verify-op-attr              val . rest)
-             (begin (vector-set! cbs  8 #'val) (loop #'rest name ops cbs))]
-            [(:verify-region-arg-attr      val . rest)
-             (begin (vector-set! cbs  9 #'val) (loop #'rest name ops cbs))]
-            [(:verify-region-result-attr   val . rest)
-             (begin (vector-set! cbs 10 #'val) (loop #'rest name ops cbs))]
-            [(:get-registered-interface-for-op val . rest)
-             (begin (vector-set! cbs 11 #'val) (loop #'rest name ops cbs))]
+            ;; Callback definitions: (:keyword (args) body ...) → lambda
+            [((:initialize                  (a ...) b ...) . rest)
+             (begin (vector-set! cbs  0 #'(lambda (a ...) b ...)) (loop #'rest name ops cbs))]
+            [((:get-dependent-dialects      (a ...) b ...) . rest)
+             (begin (vector-set! cbs  1 #'(lambda (a ...) b ...)) (loop #'rest name ops cbs))]
+            [((:parse-attribute             (a ...) b ...) . rest)
+             (begin (vector-set! cbs  2 #'(lambda (a ...) b ...)) (loop #'rest name ops cbs))]
+            [((:print-attribute             (a ...) b ...) . rest)
+             (begin (vector-set! cbs  3 #'(lambda (a ...) b ...)) (loop #'rest name ops cbs))]
+            [((:parse-type                  (a ...) b ...) . rest)
+             (begin (vector-set! cbs  4 #'(lambda (a ...) b ...)) (loop #'rest name ops cbs))]
+            [((:print-type                  (a ...) b ...) . rest)
+             (begin (vector-set! cbs  5 #'(lambda (a ...) b ...)) (loop #'rest name ops cbs))]
+            [((:materialize-constant        (a ...) b ...) . rest)
+             (begin (vector-set! cbs  6 #'(lambda (a ...) b ...)) (loop #'rest name ops cbs))]
+            [((:get-canonicalization-patterns (a ...) b ...) . rest)
+             (begin (vector-set! cbs  7 #'(lambda (a ...) b ...)) (loop #'rest name ops cbs))]
+            [((:verify-op-attr              (a ...) b ...) . rest)
+             (begin (vector-set! cbs  8 #'(lambda (a ...) b ...)) (loop #'rest name ops cbs))]
+            [((:verify-region-arg-attr      (a ...) b ...) . rest)
+             (begin (vector-set! cbs  9 #'(lambda (a ...) b ...)) (loop #'rest name ops cbs))]
+            [((:verify-region-result-attr   (a ...) b ...) . rest)
+             (begin (vector-set! cbs 10 #'(lambda (a ...) b ...)) (loop #'rest name ops cbs))]
+            [((:get-registered-interface-for-op (a ...) b ...) . rest)
+             (begin (vector-set! cbs 11 #'(lambda (a ...) b ...)) (loop #'rest name ops cbs))]
             [(_ . rest)
              (loop #'rest name ops cbs)]
             [()
