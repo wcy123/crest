@@ -161,23 +161,36 @@
       (define (define-op-form? clause)
         (and (pair? clause) (eq? (car clause) 'define-op)))
 
-      ;; Extract dialect-level keyword-value pairs from the clause list,
+      ;; Extract dialect-level keyword-value pairs from the clause syntax list,
       ;; skipping :name (handled separately) and (define-op ...) forms.
-      ;; Returns a flat plist datum: (:parse-type val :print-type val ...)
-      ;; These are passed directly to register-dialect! alongside :initialize.
-      (define (dialect-cb-plist clauses)
-        (let loop ([rest clauses] [acc '()])
-          (cond
-           [(null? rest)           (reverse acc)]
-           [(pair? (car rest))     (loop (cdr rest) acc)]  ; (define-op ...) — skip
-           [(eq? (car rest) ':name)
-            (if (null? (cdr rest)) (reverse acc)
-                (loop (cddr rest) acc))]                   ; :name override — skip
-           [(symbol? (car rest))                           ; :keyword value
-            (if (null? (cdr rest)) (reverse acc)
-                (loop (cddr rest)
-                      (cons (cadr rest) (cons (car rest) acc))))]
-           [else                   (loop (cdr rest) acc)])))
+      ;; Returns a flat list of alternating syntax objects: (key-stx val-stx ...)
+      ;; Values are kept as syntax so inline lambdas retain lexical scope.
+      (define (dialect-cb-plist clause-stx-list)
+        (let loop ([rest clause-stx-list] [acc '()])
+          (if (null? rest)
+              (reverse acc)
+              (syntax-case (car rest) ()
+                ;; (define-op ...) form — op definition, skip
+                [(define-op . _)
+                 (loop (cdr rest) acc)]
+                ;; Identifier — inspect the keyword datum
+                [kw
+                 (identifier? #'kw)
+                 (let ([key (syntax->datum #'kw)])
+                   (cond
+                    ;; :name override — skip key + value
+                    [(eq? key ':name)
+                     (loop (cddr rest) acc)]
+                    ;; Other :keyword — dialect callback, collect key + value
+                    [(and (symbol? key)
+                          (char=? (string-ref (symbol->string key) 0) #\:))
+                     (if (null? (cdr rest))
+                         (reverse acc)
+                         (loop (cddr rest)
+                               (cons (cadr rest) (cons #'kw acc))))]
+                    [else (loop (cdr rest) acc)]))]
+                ;; Anything else — skip
+                [_ (loop (cdr rest) acc)]))))
 
       (syntax-case stx ()
         [(_ dialect-id clause ...)
@@ -220,14 +233,12 @@
                                              (cddr c)))
                                           op-clauses))]
 
-                ;; Dialect-level callback plist extracted from clause list
-                [extra-cbs    (dialect-cb-plist all-clauses)]
+                ;; Dialect-level callbacks as syntax list (keys + values retain scope).
+                ;; extra-cbs = (key-stx val-stx key-stx val-stx ...)
+                [extra-cbs    (dialect-cb-plist clause-stxs)]
 
-                ;; Build a flat interleaved list of quoted-key/value syntax pairs.
-                ;; (apply append (map (lambda (k v) (list quoted-k v-expr)) ...))
-                ;; gives (':k1 v1 ':k2 v2 ...) as a single pattern variable.
-                ;; Expanding with extra-kv ... splices all elements flat into
-                ;; the register-dialect! call: k1 v1 k2 v2 ...
+                ;; Separate keys and values — both are already syntax objects.
+                ;; Keys are quoted so they arrive as symbol literals at runtime.
                 [cb-keys      (let loop ([rest extra-cbs] [ks '()])
                                 (if (null? rest) (reverse ks)
                                     (loop (cddr rest) (cons (car rest) ks))))]
@@ -244,11 +255,12 @@
                                         op-names)]
                 ;; Flat interleaved list: (':k1 v1 ':k2 v2 ...) as one pattern.
                 ;; extra-kv ... splices all elements into register-dialect! call.
+                ;; Keys are syntax identifiers (:parse-type stx) — wrap in quote
+                ;; so they become symbol literals in the generated call.
+                ;; Values are already syntax with correct lexical scope.
                 [(extra-kv ...)    (apply append
                                           (map (lambda (k v)
-                                                 (list
-                                                  (datum->syntax #'dialect-id `(quote ,k))
-                                                  (datum->syntax #'dialect-id v)))
+                                                 (list #`(quote #,k) v))
                                                cb-keys cb-vals))])
              #'(begin
                  ;; Accessor and predicate definitions for each op
