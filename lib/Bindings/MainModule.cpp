@@ -9,6 +9,9 @@
 // No Core/ shim layer; each header belongs to its canonical IR/, Transforms/,
 // Dialect/, or Interfaces/ sub-tree.
 
+#include "../Crest/Dialect.h"
+#include "../Crest/Op.h"
+#include "../Crest/Trait.h"
 #include "Dialect/Shape/Shape.h"
 #include "Dialect/Tensor/Tensor.h"
 #include "IR/Block.h"
@@ -45,6 +48,9 @@ void registerMlirForeignFunctions() {
   registerDialectShapeBindings();
   registerDialectTensorBindings();
   registerInterfacesDpsBindings();
+  registerIRExtensibleDialectBindings();
+  registerCrestDynamicOpBindings();
+  registerCrestTraitBindings();
   registerIRLocationBindings();
   registerIRBlockBindings();
   registerIRRegionBindings();

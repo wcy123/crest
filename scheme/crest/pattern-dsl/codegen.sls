@@ -1,5 +1,5 @@
 #!r6rs
-(library (crest internal codegen)
+(library (crest pattern-dsl codegen)
   (export generate-debug-ast
           generate-pattern-match-and-rewrite
           generate-debug-codegen
@@ -10,18 +10,18 @@
           (only (chezscheme) syntax->list syntax->datum syntax-object->datum record-rtd record-type-field-names record-accessor identifier?
                 call-with-string-output-port display-condition)
           ;; match-logging: unified warning helper for generated debug code.
-          (only (crest internal match-logging) warn-match)
+          (only (crest pattern-dsl match-logging) warn-match)
           ;; srcloc: shared source-location utilities; cache is module-level in srcloc.sls.
-          (only (crest internal srcloc) syntax->file+line+col)
+          (only (crest pattern-dsl srcloc) syntax->file+line+col)
           (rename (rime loop) (:with :rime-with))
           (for (only (chezscheme) syntax->list syntax->datum record-rtd record-type-field-names record-accessor identifier?
                      call-with-string-output-port write) expand)
 
           (for (rename (rime loop) (:with :rime-with)) expand)
-          (for (crest internal ast) expand)
-          (for (crest internal parse) expand)
-          (for (crest internal validate) expand)
-          (for (crest internal analyze) expand)
+          (for (crest pattern-dsl ast) expand)
+          (for (crest pattern-dsl parse) expand)
+          (for (crest pattern-dsl validate) expand)
+          (for (crest pattern-dsl analyze) expand)
           (for (only (mlir support logging) crest::logging::warning) expand)
           (for (only (mlir IR PatternMatch)
                      mlir::RewriterBase::setInsertionPoint
@@ -40,9 +40,9 @@
           (for (only (mlir support array-ref) ArrayRef::size ArrayRef::at with-CrestObject) expand)
           (for (only (mlir IR MLIRContext) current-MLIRContext) expand)
           (for (only (chezscheme) parameterize) expand)
-          (for (only (crest internal rewrite) begin-mlir-code) expand)
+          (for (only (crest pattern-dsl rewrite) begin-mlir-code) expand)
           ;; keywords needed at expand time for free-identifier=? matching in %%transform-where-expr
-          (for (only (crest internal keywords) :current-op :attr :has-attr? :attr-or) expand))
+          (for (only (crest pattern-dsl keywords) :current-op :attr :has-attr? :attr-or) expand))
 
   ;;=======================================================================
   ;; Call graph
@@ -217,7 +217,7 @@
   ;;   (mlir::DenseElementsAttr::isSplat (:attr "value"))
   ;;
   ;; Uses free-identifier=? via (syntax-case s (:current-op :attr) ...) so
-  ;; only :current-op/:attr from (crest internal keywords) are substituted.
+  ;; only :current-op/:attr from (crest pattern-dsl keywords) are substituted.
 
   ;; %%transform-where-expr — syntactic substitution for :where expressions.
   ;;

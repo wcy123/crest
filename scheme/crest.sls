@@ -143,12 +143,12 @@
           :index :i64 :f32 :i32-array :i64-array :unit
           make-unbound-value unbound-value?)
   (import (except (rnrs) =)
-          (crest internal keywords)
-          (for (only (crest internal rewrite) begin-mlir-code) expand)
-          (for (crest internal keywords) expand)
-          (for (crest internal ast) expand)
-          (for (crest internal codegen) expand)
-          (for (only (crest internal codegen) make-unbound-value unbound-value?) expand))
+          (crest pattern-dsl keywords)
+          (for (only (crest pattern-dsl rewrite) begin-mlir-code) expand)
+          (for (crest pattern-dsl keywords) expand)
+          (for (crest pattern-dsl ast) expand)
+          (for (crest pattern-dsl codegen) expand)
+          (for (only (crest pattern-dsl codegen) make-unbound-value unbound-value?) expand))
 
   (define-syntax define-conversion-pattern
     (lambda (stx) (run-pipeline stx 'conversion)))

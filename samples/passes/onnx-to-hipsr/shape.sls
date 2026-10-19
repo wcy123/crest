@@ -31,7 +31,7 @@
                 mlir::shape::ShapeType::get
                 mlir::shape::SizeType::get
                 mlir::shape::WitnessType::get)
-          (crest internal rewrite)
+          (crest pattern-dsl rewrite)
           (rename (rime loop) (:with :rime-with))
           (crest)
           (only (mlir IR Operation)

@@ -6,7 +6,7 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 ;;
-;; (crest internal match-logging) — unified match-failure/exception logging.
+;; (crest pattern-dsl match-logging) — unified match-failure/exception logging.
 ;;
 ;; warn-match : msg op → void
 ;;   Logs msg at warning level, then "  actual: <mlir-op>" if op is non-zero.
@@ -14,7 +14,7 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 
-(library (crest internal match-logging)
+(library (crest pattern-dsl match-logging)
   (export warn-match)
   (import (rnrs)
           (only (mlir support logging) crest::logging::warning)
@@ -26,4 +26,4 @@
       (crest::logging::warning
        (string-append "  actual: " (mlir::Operation::print op)))))
 
-  ) ;; end library (crest internal match-logging)
+  ) ;; end library (crest pattern-dsl match-logging)

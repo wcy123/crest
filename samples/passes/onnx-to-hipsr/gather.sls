@@ -29,7 +29,7 @@
                 mlir::shape::ShapeType::get
                 mlir::shape::SizeType::get
                 mlir::shape::WitnessType::get)
-          (crest internal rewrite)
+          (crest pattern-dsl rewrite)
           (crest)
           (only (mlir IR Operation)
                 mlir::Operation::emitRemark mlir::Operation::getAttrOfType<IntegerAttr> mlir::Operation::setAttr!)

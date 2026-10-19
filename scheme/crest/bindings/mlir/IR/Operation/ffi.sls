@@ -18,6 +18,7 @@
   (export
     %get-name
     %get-context
+    %mlir::Operation::getOperand
     %get-num-operands
     %get-num-results
     %get-op-operand
@@ -78,7 +79,11 @@
   (define %get-num-results
     (foreign-procedure "mlir::Operation::getNumResults" (uptr) iptr))
 
-  ;; @brief mlir::Operation::getOperand — return the i-th operand as an opaque Value*.
+  ;; mlir::Operation::getOperand — return the i-th operand Value directly.
+  (define %mlir::Operation::getOperand
+    (foreign-procedure "mlir::Operation::getOperand" (uptr iptr) uptr))
+
+  ;; @brief mlir::Operation::getOpOperand — return the i-th operand as an opaque Value*.
   ;; @param op     Operation* uptr
   ;; @param index  0-based operand index (iptr)
   ;; @return       Opaque Value* as uptr; 0 if op is null or index out of range

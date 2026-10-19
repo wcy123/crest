@@ -1,5 +1,5 @@
 #!r6rs
-(library (crest internal actions)
+(library (crest pattern-dsl actions)
   (export action:set-current-op
           action:check-op
           action:bind-operands

@@ -6,7 +6,7 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 ;;
-;; (crest internal srcloc) — Source location utilities shared by rewrite.sls
+;; (crest pattern-dsl srcloc) — Source location utilities shared by rewrite.sls
 ;; and codegen.sls.
 ;;
 ;; %%bfp->line+col : filename bfp → (values line col)  (both 1-indexed)
@@ -22,7 +22,7 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 
-(library (crest internal srcloc)
+(library (crest pattern-dsl srcloc)
   (export syntax->file+line+col)
   (import (rnrs)
           (only (chezscheme) make-hashtable string-hash guard quotient
@@ -86,4 +86,4 @@
               (and line (list file line col))))
           #f)))
 
-  ) ;; end library (crest internal srcloc)
+  ) ;; end library (crest pattern-dsl srcloc)

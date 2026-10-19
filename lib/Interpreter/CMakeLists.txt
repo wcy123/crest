@@ -29,6 +29,7 @@ endif()
 # not the lib/Interpreter/ subdirectory, so they correctly point to scheme/.
 target_compile_definitions(CrestInterpreter PRIVATE
   SCHEME_LIBRARIES_DIR="${PROJECT_SOURCE_DIR}/scheme"
+  SCHEME_BINDINGS_DIR="${PROJECT_SOURCE_DIR}/scheme/crest/bindings"
   SCHEME_BINARY_DIR="${PROJECT_BINARY_DIR}/scheme"
   RIME_DIR="${CREST_RIME_DIR}"
 )

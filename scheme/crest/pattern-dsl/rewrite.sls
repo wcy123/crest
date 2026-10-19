@@ -6,7 +6,7 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 ;;
-;; (crest internal rewrite) — expression-level MLIR operation builder
+;; (crest pattern-dsl rewrite) — expression-level MLIR operation builder
 ;;
 ;; Provides:
 ;;
@@ -51,15 +51,15 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 
-(library (crest internal rewrite)
+(library (crest pattern-dsl rewrite)
   (export begin-mlir-code)
 
   (import (except (rnrs (6)) =)
           (only (chezscheme) syntax->list syntax->datum parameterize)
           (rename (rime loop) (:with :rime-with))
           (for (rename (rime loop) (:with :rime-with)) expand)
-          (for (only (crest internal srcloc) syntax->file+line+col) expand)
-          (for (only (crest internal keywords)
+          (for (only (crest pattern-dsl srcloc) syntax->file+line+col) expand)
+          (for (only (crest pattern-dsl keywords)
                      = : -> :region
                      :index :i64 :f32 :i32-array :i64-array :unit) expand)
           (for (mlir IR BuiltinAttributes) expand)
@@ -108,9 +108,9 @@
   ;; begin-mlir-code
   ;;===--------------------------------------------------------------------===;;
 
-  ;; NOTE: the = symbol in op-forms must be the DSL = from (crest internal keywords),
+  ;; NOTE: the = symbol in op-forms must be the DSL = from (crest pattern-dsl keywords),
   ;; not the R6RS numeric =. Libraries using (except (rnrs) =) satisfy this;
-  ;; others must import (only (crest internal keywords) =) explicitly.
+  ;; others must import (only (crest pattern-dsl keywords) =) explicitly.
   (define-syntax begin-mlir-code
     (lambda (stx)
 
@@ -451,4 +451,4 @@
       (main)))
 
 
-  ) ;; end library (crest internal rewrite)
+  ) ;; end library (crest pattern-dsl rewrite)

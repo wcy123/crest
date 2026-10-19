@@ -1,5 +1,5 @@
 #!r6rs
-(library (crest internal keywords)
+(library (crest pattern-dsl keywords)
   (export :if-match :then-let :rewrite :with :where
           :debug-parse :debug-validate :debug-analyze :debug-codegen
           = : -> :region :regions
