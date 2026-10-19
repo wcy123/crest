@@ -36,7 +36,11 @@
           :description
           :operands
           :attributes
-          :results)
+          :results
+          ;; Operand modifiers
+          :required
+          :optional
+          :variadic)
   (import (chezscheme)
           (for (crest op expand) expand)   ; expand-op-defs at macro-expansion time
           (crest dialect ffi))
@@ -68,6 +72,9 @@
   (define :operands                    ':operands)
   (define :attributes                  ':attributes)
   (define :results                     ':results)
+  (define :required                    ':required)
+  (define :optional                    ':optional)
+  (define :variadic                    ':variadic)
 
   ;; -------------------------------------------------------------------------
   ;; Dialect registration
@@ -160,20 +167,26 @@
               [cbs (make-vector 12 #f)])
 
           ;; Validate one operand field: (name type) or (name type :modifier)
-          ;; modifier ∈ {:required :optional :variadic} — default :required.
-          ;; Returns the field as datum.  Attributes and results use plain
-          ;; (name type) without a modifier — no parse-op-operand needed.
+          ;; :required/:optional/:variadic are literals (matched by binding).
+          ;; (name type) normalises to (name type :required).
+          ;; Returns the field as datum.
           (define (parse-op-operand field-stx)
-            (syntax-case field-stx ()
+            (syntax-case field-stx (:required :optional :variadic)
               [(name type)
                (identifier? #'name)
-               (syntax->datum #'(name type))]
-              [(name type modifier)
-               (and (identifier? #'name) (identifier? #'modifier))
-               (syntax->datum #'(name type modifier))]
+               (syntax->datum #'(name type :required))]
+              [(name type :required)
+               (identifier? #'name)
+               (syntax->datum #'(name type :required))]
+              [(name type :optional)
+               (identifier? #'name)
+               (syntax->datum #'(name type :optional))]
+              [(name type :variadic)
+               (identifier? #'name)
+               (syntax->datum #'(name type :variadic))]
               [_
                (syntax-violation 'define-op
-                                 "malformed operand — expected (name type) or (name type :modifier)"
+                                 "malformed operand — expected (name type) or (name type :required/:optional/:variadic)"
                                  field-stx)]))
 
           ;; Parse sub-clauses of a define-op — name already checked by caller.
