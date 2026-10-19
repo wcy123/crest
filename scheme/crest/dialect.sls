@@ -186,16 +186,20 @@
                                  clause-stx)]))
 
           (let loop ([stx clauses-stx])
-            (syntax-case stx (:initialize :get-dependent-dialects
-                                          :parse-attribute :print-attribute
-                                          :parse-type :print-type
-                                          :materialize-constant
-                                          :get-canonicalization-patterns
-                                          :verify-op-attr
-                                          :verify-region-arg-attr
-                                          :verify-region-result-attr
-                                          :get-registered-interface-for-op
-                                          define-op)
+            (syntax-case stx (:summary :description
+                                       :initialize :get-dependent-dialects
+                                       :parse-attribute :print-attribute
+                                       :parse-type :print-type
+                                       :materialize-constant
+                                       :get-canonicalization-patterns
+                                       :verify-op-attr
+                                       :verify-region-arg-attr
+                                       :verify-region-result-attr
+                                       :get-registered-interface-for-op
+                                       define-op)
+              ;; Documentation-only — same placeholder role as in define-op
+              [(:summary     _ . rest) (loop #'rest)]
+              [(:description _ . rest) (loop #'rest)]
               [((define-op . op-rest) . rest)
                (begin (parse-define-op #'(define-op . op-rest)) (loop #'rest))]
               [((:initialize                  (dialect-ptr) body ...) . rest)
