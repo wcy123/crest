@@ -158,11 +158,6 @@
                    [ops  '()]
                    [cbs  '()])
           (syntax-case stx (:name)
-            ;; Empty list — done, build result alist
-            [()
-             (list (cons 'name name)
-                   (cons 'ops  (reverse ops))
-                   (cons 'cbs  (reverse cbs)))]
             ;; :name "str" . rest — dialect name override
             [(:name name-str . rest)
              (string? (syntax->datum #'name-str))
@@ -175,9 +170,14 @@
              (and (identifier? #'kw)
                   (char=? (string-ref (symbol->string (syntax->datum #'kw)) 0) #\:))
              (loop #'rest name ops (cons #'val (cons #'kw cbs)))]
-            ;; Anything else — skip one element
+            ;; Anything else with more elements — skip one
             [(_ . rest)
-             (loop #'rest name ops cbs)])))
+             (loop #'rest name ops cbs)]
+            ;; Empty list — base case, build result alist
+            [()
+             (list (cons 'name name)
+                   (cons 'ops  (reverse ops))
+                   (cons 'cbs  (reverse cbs)))])))
 
       (syntax-case stx ()
         [(_ dialect-id clause ...)
