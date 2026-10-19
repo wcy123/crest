@@ -191,16 +191,23 @@
                   [(:description _ . rest)  (loop-sub #'rest)]
                   ;; Each field: (name type) or (name type :modifier)
                   ;; modifier ∈ {:required :optional :variadic} — default :required
+                  ;; mod ... captures 0 or more; guard enforces at most 1.
                   [(:operands    ((name type mod ...) ...) . rest)
-                   (andmap identifier? (syntax->list #'(name ...)))
+                   (and (andmap identifier? (syntax->list #'(name ...)))
+                        (andmap (lambda (ms) (<= (length ms) 1))
+                                (syntax->datum #'((mod ...) ...))))
                    (begin (set! operands (syntax->datum #'((name type mod ...) ...)))
                           (loop-sub #'rest))]
                   [(:attributes  ((name type mod ...) ...) . rest)
-                   (andmap identifier? (syntax->list #'(name ...)))
+                   (and (andmap identifier? (syntax->list #'(name ...)))
+                        (andmap (lambda (ms) (<= (length ms) 1))
+                                (syntax->datum #'((mod ...) ...))))
                    (begin (set! attributes (syntax->datum #'((name type mod ...) ...)))
                           (loop-sub #'rest))]
                   [(:results     ((name type mod ...) ...) . rest)
-                   (andmap identifier? (syntax->list #'(name ...)))
+                   (and (andmap identifier? (syntax->list #'(name ...)))
+                        (andmap (lambda (ms) (<= (length ms) 1))
+                                (syntax->datum #'((mod ...) ...))))
                    (begin (set! results (syntax->datum #'((name type mod ...) ...)))
                           (loop-sub #'rest))]
                   ;; Op callbacks — same inline-lambda syntax as dialect callbacks
