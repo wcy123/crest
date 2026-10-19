@@ -18,11 +18,34 @@
           op-parse-op-cbs)
   (import (chezscheme))
 
+  ;; Result of parse-clauses.
+  ;;   name — MLIR dialect namespace string e.g. "toy"
+  ;;   ops  — list of op-parse records (reverse order; callers must reverse)
+  ;;   cbs  — 12-slot vector of Scheme callback syntax or #f (CrestDialect slots):
+  ;;            0  :initialize                    6  :materialize-constant
+  ;;            1  :get-dependent-dialects        7  :get-canonicalization-patterns
+  ;;            2  :parse-attribute               8  :verify-op-attr
+  ;;            3  :print-attribute               9  :verify-region-arg-attr
+  ;;            4  :parse-type                   10  :verify-region-result-attr
+  ;;            5  :print-type                   11  :get-registered-interface-for-op
   (define-record-type dialect-parse
     (fields (immutable name dialect-parse-name)
             (immutable ops  dialect-parse-ops)
             (immutable cbs  dialect-parse-cbs)))
 
+  ;; Result of parse-define-op.
+  ;;   name       — op name syntax e.g. #'constant (prefix added by caller)
+  ;;   operands   — ((name type :modifier) ...) datum list
+  ;;   attributes — ((name type) ...) datum list
+  ;;   results    — ((name type) ...) datum list
+  ;;   op-cbs     — 7-slot vector of Scheme callback syntax or #f (CrestOp slots):
+  ;;                  0  :verify                        (op) → bool
+  ;;                  1  :verify-regions                (op) → bool
+  ;;                  2  :parse                         (parser state) → bool
+  ;;                  3  :print                         (op printer name) → void
+  ;;                  4  :fold                          (op) → bool
+  ;;                  5  :get-canonicalization-patterns (pattern-set) → void
+  ;;                  6  :populate-default-attrs        (op-name attrs) → void
   (define-record-type op-parse
     (fields (immutable name       op-parse-name)
             (immutable operands   op-parse-operands)
