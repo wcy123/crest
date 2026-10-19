@@ -73,18 +73,23 @@
           (mlir IR BuiltinTypes ffi))
 
   ;; ── mlir-isa ──────────────────────────────────────────────────────────────
-  ;; For singleton types, isa<T>(t) ≡ (equal? t (T::get ctx)).
-  ;; case-lambda: (mlir-isa type-ptr) → predicate; (mlir-isa type-ptr val) → bool
+  ;; get-fn is a zero-arg procedure returning the type uptr for the current
+  ;; MLIRContext. Called each time so the context is always up to date.
+  ;;   (mlir-isa get-fn)      → predicate  (curried)
+  ;;   (mlir-isa get-fn val)  → #t/#f      (direct)
   (define mlir-isa
     (case-lambda
-     [(type-ptr)       (lambda (val) (equal? val type-ptr))]
-     [(type-ptr val)   (equal? val type-ptr)]))
+     [(get-fn)      (lambda (val) (equal? val (get-fn)))]
+     [(get-fn val)  (equal? val (get-fn))]))
 
   ;; ── bind-type ─────────────────────────────────────────────────────────────
-  ;; Generates a singleton instance AND an isa<Name>? predicate from one call:
+  ;; Generates a zero-arg getter AND an isa<Name>? predicate from one call:
   ;;   (bind-type mlir::Float64Type mlir::Float64Type::get)
-  ;; → mlir::Float64Type       = (mlir::Float64Type::get)   singleton uptr
-  ;; → mlir::isa<Float64Type>? = (mlir-isa mlir::Float64Type)
+  ;; → (mlir::Float64Type)     — zero-arg proc; calls get-fn each time
+  ;; → mlir::isa<Float64Type>? — (mlir-isa mlir::Float64Type)
+  ;;
+  ;; name is a procedure, not a value, so it is always evaluated in the
+  ;; current MLIRContext — correct for per-context singleton types.
   (define-syntax bind-type
     (lambda (stx)
       (define (type-name-from s)
@@ -102,10 +107,10 @@
                                     (string->symbol
                                      (string-append "mlir::isa<" (type-name-from n) ">?")))])
            #`(begin
-               (define name (get-fn))
+               (define (name) (get-fn))      ; zero-arg proc — uses current ctx
                (define #,isa (mlir-isa name))))])))
 
-  ;; ── Singleton types (instance + isa predicate via bind-type) ──────────────
+  ;; ── Singleton types (zero-arg getter + isa predicate via bind-type) ───────
   (bind-type mlir::Float16Type  mlir::Float16Type::get)
   (bind-type mlir::BFloat16Type mlir::BFloat16Type::get)
   (bind-type mlir::Float32Type  mlir::Float32Type::get)
