@@ -2,13 +2,72 @@
 ;;
 ;; Runtime API:  register-dialect!    register-dynamic-op!
 ;; Macro API:    define-dialect
+;;
+;; Keyword exports — bound to their own symbol so users can write
+;; :initialize, :parse-type etc. without quoting in call sites:
+;;   (register-dialect! ctx "toy" :initialize my-fn)   ; works
 (library (crest dialect)
   (export register-dialect!
           register-dynamic-op!
-          define-dialect)
+          define-dialect
+          ;; Dialect callback keywords
+          :name
+          :initialize
+          :get-dependent-dialects
+          :parse-attribute
+          :print-attribute
+          :parse-type
+          :print-type
+          :materialize-constant
+          :get-canonicalization-patterns
+          :verify-op-attr
+          :verify-region-arg-attr
+          :verify-region-result-attr
+          :get-registered-interface-for-op
+          ;; Op callback keywords
+          :verify
+          :verify-regions
+          :parse
+          :print
+          :fold
+          :populate-default-attrs
+          ;; Shared / define-op keywords
+          :summary
+          :description
+          :operands
+          :attributes
+          :results)
   (import (chezscheme)
           (for (crest op expand) expand)   ; expand-op-defs at macro-expansion time
           (crest dialect ffi))
+
+  ;; Keywords — each bound to its own symbol value so it is self-evaluating.
+  ;; Without these bindings, :keyword in a call position would be an
+  ;; unbound-identifier error in Chez Scheme (unlike Common Lisp keywords).
+  (define :name                        ':name)
+  (define :initialize                  ':initialize)
+  (define :get-dependent-dialects      ':get-dependent-dialects)
+  (define :parse-attribute             ':parse-attribute)
+  (define :print-attribute             ':print-attribute)
+  (define :parse-type                  ':parse-type)
+  (define :print-type                  ':print-type)
+  (define :materialize-constant        ':materialize-constant)
+  (define :get-canonicalization-patterns ':get-canonicalization-patterns)
+  (define :verify-op-attr              ':verify-op-attr)
+  (define :verify-region-arg-attr      ':verify-region-arg-attr)
+  (define :verify-region-result-attr   ':verify-region-result-attr)
+  (define :get-registered-interface-for-op ':get-registered-interface-for-op)
+  (define :verify                      ':verify)
+  (define :verify-regions              ':verify-regions)
+  (define :parse                       ':parse)
+  (define :print                       ':print)
+  (define :fold                        ':fold)
+  (define :populate-default-attrs      ':populate-default-attrs)
+  (define :summary                     ':summary)
+  (define :description                 ':description)
+  (define :operands                    ':operands)
+  (define :attributes                  ':attributes)
+  (define :results                     ':results)
 
   ;; -------------------------------------------------------------------------
   ;; Dialect registration
@@ -86,15 +145,18 @@
   (define-syntax define-dialect
     (lambda (stx)
 
-      ;; Scan the clause list one element at a time looking for :name.
-      ;; Cannot use cddr stepping because the list mixes :keyword value pairs
-      ;; with (define-op ...) forms — cddr would skip an op form.
-      (define (dialect-name-from-clauses clauses default)
-        (let loop ([rest clauses])
-          (cond [(null? rest)              default]
-                [(eq? (car rest) ':name)
-                 (if (null? (cdr rest)) default (cadr rest))]
-                [else                      (loop (cdr rest))])))
+      ;; Use syntax-case to find an optional :name "str" clause.
+      ;; Scans one element at a time because the clause list mixes
+      ;; (define-op ...) forms with :keyword value pairs.
+      (define (dialect-name-from-clauses clause-stx-list default)
+        (let loop ([rest clause-stx-list])
+          (if (null? rest)
+              default
+              (syntax-case (car rest) (:name)
+                [(:name str)
+                 (string? (syntax->datum #'str))
+                 (syntax->datum #'str)]
+                [_ (loop (cdr rest))]))))
 
       (define (define-op-form? clause)
         (and (pair? clause) (eq? (car clause) 'define-op)))
@@ -120,8 +182,9 @@
       (syntax-case stx ()
         [(_ dialect-id clause ...)
          (let* ([all-clauses  (syntax->datum #'(clause ...))]
+                [clause-stxs  (syntax->list #'(clause ...))]
                 [dialect-sym  (syntax->datum #'dialect-id)]
-                [dialect-name (dialect-name-from-clauses all-clauses
+                [dialect-name (dialect-name-from-clauses clause-stxs
                                                          (symbol->string dialect-sym))]
                 [op-prefix    (string-append dialect-name ".")]
                 [op-clauses   (filter define-op-form? all-clauses)]
