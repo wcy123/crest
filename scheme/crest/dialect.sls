@@ -320,11 +320,11 @@
          (let* ([dialect      (parse-clauses #'(clause ...) #'dialect-id)]
                 [ops          (dialect-parse-ops dialect)]
                 [all-op-defs  (generate-all-op-defs #'dialect-id ops)]
-                [reg-def      (generate-register-dialect #'dialect-id (dialect-parse-cbs dialect))])
+                [reg-defs     (generate-register-dialect #'dialect-id (dialect-parse-cbs dialect) ops)])
            (let ([result (with-syntax
-                             ([(op-def ...)            all-op-defs]
-                              [register-<dialect-name>! reg-def])
-                           #'(begin register-<dialect-name>! op-def ...))])
+                             ([(op-def  ...) all-op-defs]
+                              [(reg-def ...) reg-defs])
+                           #'(begin reg-def ... op-def ...))])
              (when (getenv "DEBUG_DEFINE_DIALECT")
                (pretty-print (syntax->datum result)))
              result))])
