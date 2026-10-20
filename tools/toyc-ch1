@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# toyc — Toy compiler Ch1 entry point.
+# Usage: toyc <input.toy> [--emit=ast]
+#
+# Environment:
+#   CREST_BUILD_DIR  Path to cmake build directory (default: /home/build/crest-1)
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$SCRIPT_DIR/.."
+
+BUILD="${CREST_BUILD_DIR:-/home/build/crest-1}"
+SCHEME="$BUILD/ChezScheme-build/ta6le/bin/ta6le/scheme"
+
+[[ -x "$SCHEME" ]] || {
+    echo "Error: Chez Scheme not found at $SCHEME. Set CREST_BUILD_DIR." >&2
+    exit 1
+}
+
+exec "$SCHEME" \
+    --libdirs "$ROOT/samples:$ROOT/scheme" \
+    --program "$ROOT/samples/toy/ch1/toyc.sls" \
+    "$@"

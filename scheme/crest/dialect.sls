@@ -5,6 +5,7 @@
   (export register-dialect!
           register-dynamic-op!
           define-dialect
+          define-op
           :name
           :initialize
           :get-dependent-dialects
@@ -33,8 +34,8 @@
           :optional
           :variadic)
   (import (chezscheme)
-          (for (crest op expand)    expand)  ; expand-op-defs at macro-expansion time
-          (for (crest dialect ast)  expand run)  ; dialect-parse / op-parse records
+          (for (crest dialect expand) expand)        ; generate-op-defs at macro-expansion time
+          (for (crest dialect ast) expand run)    ; dialect-parse / op-parse records
           (crest dialect ffi))
 
   ;; Chez Scheme identifiers starting with ':' are not self-evaluating (unlike
@@ -116,6 +117,12 @@
      op-name
      (%%plist->vector 7 %%op-slot-index callbacks)))
 
+  ;; Auxiliary keyword — exported so define-op identifiers in user code
+  ;; are free-identifier=? to the literal in parse-clauses.
+  (define-syntax define-op
+    (lambda (stx)
+      (syntax-violation 'define-op "define-op used outside define-dialect" stx)))
+
   ;; -------------------------------------------------------------------------
   ;; define-dialect — dialect + ops in one declaration (like define-record-type)
   ;;
@@ -128,7 +135,7 @@
   ;; -------------------------------------------------------------------------
   (define-syntax define-dialect
     (lambda (stx)
-      (define (parse-clauses clauses-stx default-name)
+      (define (parse-clauses clauses-stx dialect-id-stx)
         ;; cbs slot order matches CrestDialect::Callbacks — index set directly
         ;; avoids a secondary lookup at call time.
         (let ([ops '()]
@@ -291,109 +298,21 @@
                                  "unrecognised clause — expected (define-op ...) or (:keyword (args) body ...)"
                                  #'bad)]
               [()
-               (make-dialect-parse default-name (reverse ops) cbs)]))))
+               (make-dialect-parse dialect-id-stx (reverse ops) cbs)]))))
 
       (syntax-case stx ()
         [(_ dialect-id clause ...)
-         (let* ([dialect-sym  (syntax->datum #'dialect-id)]
-                [parsed       (parse-clauses #'(clause ...)
-                                             (symbol->string dialect-sym))]
-                [dialect-name (dialect-parse-name parsed)]
-                [op-clauses   (dialect-parse-ops  parsed)]
-                [extra-cbs    (dialect-parse-cbs  parsed)]
-                [op-prefix    (string-append dialect-name ".")]
-                [make-id      (lambda (sfx)
-                                (datum->syntax #'dialect-id (string->symbol sfx)))]
-                [init-id      (make-id (string-append
-                                        "%%" (symbol->string dialect-sym)
-                                        ":initialize"))]
-                [register-id  (make-id (string-append
-                                        (symbol->string dialect-sym) ":register!"))]
-                [op-names     (map (lambda (c)
-                                     (string-append op-prefix
-                                                    (symbol->string (syntax->datum (op-parse-name c)))))
-                                   op-clauses)]
-                [all-op-defs  (apply append
-                                     (map (lambda (c)
-                                            (let* ([full-name (string-append op-prefix
-                                                                             (symbol->string (syntax->datum (op-parse-name c))))]
-                                                   ;; expand-op-defs needs datum (name type) pairs for accessor gen.
-                                                   ;; operand-field records converted here; type predicate syntax
-                                                   ;; stays in the record for future verify code generation.
-                                                   [op-datum (map (lambda (f)
-                                                                    (list (operand-field-name f)
-                                                                          (syntax->datum (operand-field-type f))))
-                                                                  (op-parse-operands c))]
-                                                   [plist (append
-                                                           (if (null? op-datum)                  '() (list ':operands   op-datum))
-                                                           (if (null? (op-parse-attributes c))   '() (list ':attributes (op-parse-attributes c)))
-                                                           (if (null? (op-parse-results    c))   '() (list ':results    (op-parse-results    c))))])
-                                              (expand-op-defs #'dialect-id full-name plist)))
-                                          op-clauses))]
-                ;; Slot 0 (:initialize) skipped — %%init is always the initializer.
-                [%%slot-keywords
-                 '#(:initialize :get-dependent-dialects
-                                :parse-attribute :print-attribute
-                                :parse-type :print-type :materialize-constant
-                                :get-canonicalization-patterns :verify-op-attr
-                                :verify-region-arg-attr :verify-region-result-attr
-                                :get-registered-interface-for-op)]
-                [%%op-slot-keywords
-                 '#(:verify :verify-regions :parse :print :fold
-                            :get-canonicalization-patterns :populate-default-attrs)]
-                [extra-kv-list
-                 (let loop ([i 1] [acc '()])   ; start at 1, skip :initialize
-                   (if (= i 12)
-                       (reverse acc)
-                       (let ([v (vector-ref extra-cbs i)])
-                         (if (not v)
-                             (loop (+ i 1) acc)
-                             (loop (+ i 1)
-                                   (cons v
-                                         (cons (datum->syntax #'dialect-id
-                                                              `(quote ,(vector-ref %%slot-keywords i)))
-                                               acc)))))))]
-                [op-register-calls
-                 (map (lambda (c op-name-str)
-                        (let* ([op-cbs (op-parse-op-cbs c)]
-                               [kv-list
-                                (let loop ([i 0] [acc '()])
-                                  (if (= i 7)
-                                      (reverse acc)
-                                      (let ([v (vector-ref op-cbs i)])
-                                        (if (not v)
-                                            (loop (+ i 1) acc)
-                                            (loop (+ i 1)
-                                                  (cons v
-                                                        (cons (datum->syntax #'dialect-id
-                                                                             `(quote ,(vector-ref %%op-slot-keywords i)))
-                                                              acc)))))))])
-                          (with-syntax ([name-str (datum->syntax #'dialect-id op-name-str)]
-                                        [(kv ...) kv-list])
-                            #'(register-dynamic-op! dialect-ptr name-str kv ...))))
-                      op-clauses
-                      op-names)])
+         (let* ([dialect      (parse-clauses #'(clause ...) #'dialect-id)]
+                [ops          (dialect-parse-ops dialect)]
+                [all-op-defs  (generate-all-op-defs #'dialect-id ops)]
+                [reg-def      (generate-register-dialect #'dialect-id (dialect-parse-cbs dialect))])
+           (let ([result (with-syntax
+                             ([(op-def ...)            all-op-defs]
+                              [register-<dialect-name>! reg-def])
+                           #'(begin register-<dialect-name>! op-def ...))])
+             (when (getenv "DEBUG_DEFINE_DIALECT")
+               (pretty-print (syntax->datum result)))
+             result))])
+      ))
 
-           (with-syntax
-               ([%%init            init-id]
-                [dialect:register! register-id]
-                [dialect-name-str  dialect-name]
-                [(op-def ...)      all-op-defs]
-                [(op-register-call ...) op-register-calls]
-                [(extra-kv ...)         extra-kv-list])
-             #'(begin
-                 op-def ...
-
-                 ;; dialect-ptr is the CrestDialect* passed by C++ as `this` when
-                 ;; the dialect is first loaded — it arrives from the C++ side,
-                 ;; not from any Scheme binding.
-                 (define (%%init dialect-ptr)
-                   op-register-call ...)
-
-                 ;; extra-kv ... splices user-provided dialect callbacks before
-                 ;; :initialize so all 12 CrestDialect slots can be populated.
-                 (define (dialect:register! ctx)
-                   (register-dialect! ctx dialect-name-str
-                                      extra-kv ...
-                                      ':initialize %%init)))))]))
-    ))
+  )

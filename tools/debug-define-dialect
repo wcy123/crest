@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# debug-define-dialect: print the define-dialect expansion for a .sls file.
+#
+# Usage: debug-define-dialect <file.sls>
+#
+# Reads the (library (mod name ...)) declaration to derive the module name,
+# sets DEBUG_DEFINE_DIALECT=1, and loads the module via crest-opt so the
+# macro expansion is pretty-printed during compilation.
+
+set -euo pipefail
+
+TARGET="$(realpath "${1:-}")"
+[[ -z "$TARGET" ]] && { echo "Usage: debug-define-dialect <file.sls|dir>" >&2; exit 1; }
+[[ -e "$TARGET" ]] || { echo "Error: not found: $TARGET" >&2; exit 1; }
+
+if [[ -d "$TARGET" ]]; then
+    for f in "$TARGET"/*.sls; do
+        [[ -f "$f" ]] && "$0" "$f"
+    done
+    exit 0
+fi
+
+FILE="$TARGET"
+
+BUILD="${CREST_BUILD_DIR:-/home/build/crest-1}"
+CREST_OPT="$BUILD/tools/crest-opt/crest-opt"
+[[ -x "$CREST_OPT" ]] || {
+    CREST_OPT="$(command -v crest-opt 2>/dev/null || true)"
+}
+[[ -x "$CREST_OPT" ]] || {
+    echo "Error: crest-opt not found. Set CREST_BUILD_DIR or add crest-opt to PATH." >&2
+    exit 1
+}
+
+# Extract module name from (library (a b c) ...) -> "a/b/c"
+MODULE_PATH=$(grep -m1 '(library' "$FILE" \
+    | sed 's/.*library[[:space:]]*(\([^)]*\)).*/\1/' \
+    | tr ' ' '/')
+
+# Derive CREST_PATH root: strip module path from file path
+# e.g. /proj/samples/toy/ch1/toy.sls with module toy/ch1/toy -> /proj/samples
+CREST_PATH="${FILE%.sls}"
+CREST_PATH="${CREST_PATH%/$MODULE_PATH}"
+
+DEBUG_DEFINE_DIALECT=1 \
+CREST_PATH="$CREST_PATH" \
+"$CREST_OPT" /dev/null --crest-pass="module=$MODULE_PATH" 2>/dev/null || true
