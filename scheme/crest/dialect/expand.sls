@@ -49,10 +49,10 @@
           (mlir::Operation::getOperand op idx))))
 
   ;; (toy.constant:value op) → mlir::Attribute  for named attribute
-  ;; field — datum (name type) pair
+  ;; field — attribute-field record
   (define (generate-attribute-accessor ctx full-name field)
-    (with-syntax ([id    (%%id ctx full-name ":" (car field))]
-                  [aname (symbol->string (car field))])
+    (with-syntax ([id    (%%id ctx full-name ":" (attribute-field-name field))]
+                  [aname (symbol->string (syntax->datum (attribute-field-name field)))])
       #'(define (id op)
           (mlir::Operation::getAttr op aname))))
 
@@ -73,11 +73,18 @@
           '()
           (with-syntax
               ([verify!          (%%id ctx "%%" full-name ":verify-attributes")]
-               [(attr-name ...)  (map (lambda (f) (symbol->string (car f))) attrs)]
-               [(attr-type ...)  (map (lambda (f) (datum->syntax ctx (cadr f))) attrs)])
+               [(attr-name ...)  (map (lambda (f)
+                                        (symbol->string (syntax->datum (attribute-field-name f))))
+                                      attrs)]
+               [(attr-type ...)  (map (lambda (f) (attribute-field-type f)) attrs)]
+               [(required? ...)  (map (lambda (f)
+                                        (eq? (attribute-field-modifier f) ':required))
+                                      attrs)])
             (list
              #'(define (verify! op)
-                 (and (attr-type (mlir::Operation::getAttr op attr-name)) ...)))))))
+                 (and (or (not required?)
+                          (attr-type (mlir::Operation::getAttr op attr-name)))
+                      ...)))))))
 
   ;; (%%toy.constant:verify-operands op) → bool  — stub until modifier logic is wired
   (define (generate-verify-operands ctx full-name op)

@@ -21,7 +21,13 @@
           operand-field?
           operand-field-name
           operand-field-type
-          operand-field-modifier)
+          operand-field-modifier
+          attribute-field
+          make-attribute-field
+          attribute-field?
+          attribute-field-name
+          attribute-field-type
+          attribute-field-modifier)
   (import (chezscheme))
 
   ;; A single operand field declaration inside (define-op ... :operands (...)).
@@ -52,10 +58,19 @@
             (immutable ops  dialect-parse-ops)
             (immutable cbs  dialect-parse-cbs)))
 
+  ;; A single attribute field declaration inside (define-op ... :attributes (...)).
+  ;;   name     — symbol e.g. 'value
+  ;;   type     — syntax: predicate (attr) → bool
+  ;;   modifier — :required (default) or :optional
+  (define-record-type attribute-field
+    (fields (immutable name     attribute-field-name)
+            (immutable type     attribute-field-type)
+            (immutable modifier attribute-field-modifier)))
+
   ;; Result of parse-define-op.
   ;;   name       — op name syntax e.g. #'constant (prefix added by caller)
-  ;;   operands   — ((name type :modifier) ...) datum list
-  ;;   attributes — ((name type) ...) datum list
+  ;;   operands   — list of operand-field records
+  ;;   attributes — list of attribute-field records
   ;;   results    — ((name type) ...) datum list
   ;;   op-cbs     — 7-slot vector of Scheme callback syntax or #f (CrestOp slots):
   ;;                  0  :verify                        (op) → bool

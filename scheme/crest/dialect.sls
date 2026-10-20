@@ -192,7 +192,19 @@
                      (loop-sub #'rest))]
                   [(:attributes  ((name type) ...) . rest)
                    (andmap identifier? (syntax->list #'(name ...)))
-                   (begin (set! attributes (syntax->datum #'((name type) ...)))
+                   (begin (set! attributes
+                                (map (lambda (n t)
+                                       (make-attribute-field n t ':required))
+                                     (syntax->list #'(name ...))
+                                     (syntax->list #'(type ...))))
+                          (loop-sub #'rest))]
+                  [(:attributes  ((name type :optional) ...) . rest)
+                   (andmap identifier? (syntax->list #'(name ...)))
+                   (begin (set! attributes
+                                (map (lambda (n t)
+                                       (make-attribute-field n t ':optional))
+                                     (syntax->list #'(name ...))
+                                     (syntax->list #'(type ...))))
                           (loop-sub #'rest))]
                   [(:results     ((name type) ...) . rest)
                    (andmap identifier? (syntax->list #'(name ...)))
