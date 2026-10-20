@@ -13,13 +13,13 @@ set -euo pipefail
 
 NAME="define-dialect"
 FILE=""
-SURFACE=""
+RAW=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         --name)    NAME="$2"; shift 2 ;;
         --file)    FILE="$(realpath "$2")"; shift 2 ;;
-        --surface) SURFACE=1; shift ;;
+        --raw)     RAW=1; shift ;;
         -h|--help)
             sed -n '2,10p' "$0" | sed 's/^# \?//'
             exit 0 ;;
@@ -46,6 +46,6 @@ SCHEME_DIR="$SCRIPT_DIR/../scheme"
 
 EXPAND_MACRO_NAME="$NAME" \
 EXPAND_MACRO_FILE="$FILE" \
-EXPAND_MACRO_SURFACE="$SURFACE" \
+EXPAND_MACRO_RAW="$RAW" \
 CREST_PATH="$SCHEME_DIR" \
 "$CREST_OPT" /dev/null --crest-pass="module=tools/expand-macro"

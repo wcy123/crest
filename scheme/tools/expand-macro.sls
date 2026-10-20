@@ -33,71 +33,73 @@
     (%%ensure-env)
     (eval `(expand ',form) (interaction-environment)))
 
-  ;; Post-process the pretty-printed string for a cleaner surface view.
-  ;; Drops $invoke-library lines and strips #N% primitive prefixes.
-  (define (%%surface-str str)
+  ;; Rewrite Chez compilation artifacts back to readable Scheme at datum level.
+  ;;
+  ;;   (set! f (lambda args body))     → (define (f . args) body)
+  ;;   (($top-level-value 'name) ...)  → (name ...)
+  ;;   ($invoke-library ...)           → dropped
+  ;;   #N%-prefixed symbols            → symbol without prefix
+  (define (%%prettify form)
 
-    ;; Split string on newline.
-    (define (%%split-lines s)
-      (let loop ([i 0] [start 0] [acc '()])
-        (cond
-         [(= i (string-length s))
-          (reverse (cons (substring s start i) acc))]
-         [(char=? (string-ref s i) #\newline)
-          (loop (+ i 1) (+ i 1) (cons (substring s start i) acc))]
-         [else
-          (loop (+ i 1) start acc)])))
-
-    ;; Find first occurrence of sub in s from position from; return index or #f.
-    (define (%%search sub s from)
-      (let ([ns (string-length s)] [nsub (string-length sub)])
-        (let loop ([i from])
+    (define (%%strip-sym s)
+      (let ([str (symbol->string s)])
+        (let loop ([i 0])
           (cond
-           [(> (+ i nsub) ns) #f]
-           [(string=? (substring s i (+ i nsub)) sub) i]
+           [(= i (string-length str)) s]
+           [(and (char=? (string-ref str i) #\%)
+                 (> i 0))
+            (string->symbol (substring str (+ i 1) (string-length str)))]
            [else (loop (+ i 1))]))))
 
-    ;; Remove lines containing $invoke-library.
-    (define (%%drop-invoke lines)
-      (filter (lambda (line) (not (%%search "$invoke-library" line 0))) lines))
+    (define (%%top-level-ref? f)
+      (and (pair? f)
+           (symbol? (car f))
+           (eq? (%%strip-sym (car f)) '$top-level-value)
+           (pair? (cdr f))
+           (pair? (cadr f))
+           (eq? (car (cadr f)) 'quote)))
 
-    ;; Join lines with newline separator.
-    (define (%%join lines)
-      (let loop ([ls lines] [acc ""])
-        (if (null? ls) acc
-            (loop (cdr ls)
-                  (if (string=? acc "") (car ls)
-                      (string-append acc "\n" (car ls)))))))
+    (define (%%invoke-library? f)
+      (and (pair? f) (symbol? (car f))
+           (eq? (%%strip-sym (car f)) '$invoke-library)))
 
-    ;; Strip #N% primitive prefixes (e.g. #2%string=? → string=?).
-    (define (%%strip s)
-      (let loop ([i 0] [out ""])
-        (if (= i (string-length s))
-            out
-            (let ([ch (string-ref s i)])
-              (if (and (char=? ch #\#)
-                       (< (+ i 1) (string-length s))
-                       (char-numeric? (string-ref s (+ i 1))))
-                  (let scan ([j (+ i 1)])
-                    (cond
-                     [(>= j (string-length s))
-                      (loop (+ i 1) (string-append out "#"))]
-                     [(char-numeric? (string-ref s j))
-                      (scan (+ j 1))]
-                     [(char=? (string-ref s j) #\%)
-                      (loop (+ j 1) out)]
-                     [else
-                      (loop (+ i 1) (string-append out "#"))]))
-                  (loop (+ i 1) (string-append out (string ch))))))))
+    (define (%%walk f)
+      (cond
+       [(symbol? f) (%%strip-sym f)]
+       [(not (pair? f)) f]
+       ;; drop ($invoke-library ...) entirely
+       [(%%invoke-library? f) #f]
+       ;; (set! name (lambda args body)) → (define (name . args) body)
+       [(and (symbol? (car f))
+             (eq? (%%strip-sym (car f)) 'set!)
+             (pair? (cddr f))
+             (pair? (caddr f))
+             (symbol? (car (caddr f)))
+             (eq? (%%strip-sym (car (caddr f))) 'lambda))
+        (let* ([name (cadr f)]
+               [lam  (caddr f)]
+               [args (cadr lam)]
+               [body (filter values (map %%walk (cddr lam)))])
+          `(define ,(cons name args) ,@body))]
+       ;; (($top-level-value 'name) arg ...) → (name arg ...)
+       [(and (pair? (car f)) (%%top-level-ref? (car f)))
+        (filter values
+                (map %%walk `(,(cadr (cadr (car f))) ,@(cdr f))))]
+       ;; ($top-level-value 'name) alone → name
+       [(%%top-level-ref? f) (cadr (cadr f))]
+       ;; (begin f ...) — filter out dropped #f entries
+       [(and (symbol? (car f)) (eq? (%%strip-sym (car f)) 'begin))
+        `(begin ,@(filter values (map %%walk (cdr f))))]
+       [else (filter values (map %%walk f))]))
 
-    (%%strip (%%join (%%drop-invoke (%%split-lines str)))))
+    (%%walk form))
 
   (define (run-pass _op)
     (let* ([name    (string->symbol
                      (or (getenv "EXPAND_MACRO_NAME") "define-dialect"))]
            [file    (or (getenv "EXPAND_MACRO_FILE")
                         (error 'expand-macro "EXPAND_MACRO_FILE not set"))]
-           [surface (getenv "EXPAND_MACRO_SURFACE")]
+           [raw     (getenv "EXPAND_MACRO_RAW")]
            [forms   (%%read-all-forms file)]
            [targets (apply append (map (lambda (f) (%%find-forms name f)) forms))])
       (if (null? targets)
@@ -107,9 +109,8 @@
             (for-each
              (lambda (form)
                (display (string-append ";; (" (symbol->string name) " ...)\n"))
-               (let* ([expanded (syntax->datum (%%expand form))]
-                      [printed  (with-output-to-string (lambda () (pretty-print expanded)))])
-                 (display (if surface (%%surface-str printed) printed)))
+               (let ([expanded (syntax->datum (%%expand form))])
+                 (pretty-print (if raw expanded (%%prettify expanded))))
                (newline))
              targets)))))
   )

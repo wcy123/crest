@@ -36,21 +36,21 @@
 
   ;; (<op>-<field> op) → mlir::Value  for operand at index
   (define (generate-operand-accessor ctx full-name field-name index)
-    (with-syntax ([id  (%%id ctx full-name "-" field-name)]
+    (with-syntax ([id  (%%id ctx full-name ":" field-name)]
                   [idx index])
       #'(define (id op)
           (mlir::Operation::getOperand op idx))))
 
   ;; (<op>-<field> op) → mlir::Attribute  for named attribute
   (define (generate-attribute-accessor ctx full-name field-name)
-    (with-syntax ([id    (%%id ctx full-name "-" field-name)]
+    (with-syntax ([id    (%%id ctx full-name ":" field-name)]
                   [aname field-name])
       #'(define (id op)
           (mlir::Operation::getAttr op aname))))
 
   ;; (<op>-<field> op) → mlir::Value  for result at index
   (define (generate-result-accessor ctx full-name field-name index)
-    (with-syntax ([id  (%%id ctx full-name "-" field-name)]
+    (with-syntax ([id  (%%id ctx full-name ":" field-name)]
                   [idx index])
       #'(define (id op)
           (mlir::Operation::getResult op idx))))
@@ -99,7 +99,7 @@
            [cb-stxs      (map (lambda (i) (or (vector-ref cbs i) #'#f))
                               '(0 1 2 3 4 5 6 7 8 9 10 11))])
       (with-syntax
-          ([register! (%%id ctx "register-" dialect-name "!")]
+          ([register! (%%id ctx dialect-name ":register!")]
            [ffi-fn    (%%id ctx "%crest::register-dialect!")]
            [name-str  (datum->syntax ctx dialect-name)]
            [(cb ...)  cb-stxs])

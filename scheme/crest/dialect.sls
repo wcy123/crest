@@ -306,8 +306,13 @@
                 [ops          (dialect-parse-ops dialect)]
                 [all-op-defs  (generate-all-op-defs #'dialect-id ops)]
                 [reg-def      (generate-register-dialect #'dialect-id (dialect-parse-cbs dialect))])
-           (with-syntax
-               ([(op-def ...)            all-op-defs]
-                [register-<dialect-name>! reg-def])
-             #'(begin register-<dialect-name>! op-def ...)))]))
-    ))
+           (let ([result (with-syntax
+                             ([(op-def ...)            all-op-defs]
+                              [register-<dialect-name>! reg-def])
+                           #'(begin register-<dialect-name>! op-def ...))])
+             (when (getenv "DEBUG_DEFINE_DIALECT")
+               (pretty-print (syntax->datum result)))
+             result))])
+      ))
+
+  )
