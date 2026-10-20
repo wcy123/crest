@@ -21,7 +21,7 @@ exec "$SCHEME" --libdirs "$ROOT/samples:$ROOT/scheme" --program "$0" "$@"
     (cond
      [(null? args)
       (values filename action)]
-     [(string=? (car args) "--emit=ast")
+     [(member (car args) (quote ("--emit=ast" "-emit=ast")))
       (loop (cdr args) filename 'dump-ast)]
      [else
       (loop (cdr args) (car args) action)])))
