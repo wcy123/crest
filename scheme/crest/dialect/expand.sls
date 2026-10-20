@@ -29,10 +29,13 @@
                                    [else (error '%%id "expected string, identifier, or symbol" p)]))
                                 parts)))))
 
+  ;; Extract the string name from a syntax identifier — same conversion %%id uses internally.
+  (define (%%id->str stx) (symbol->string (syntax->datum stx)))
+
   ;; (toy.constant? op) → bool
   (define (generate-isa ctx full-name)
     (with-syntax ([isa?   (%%id ctx full-name "?")]
-                  [name-s (symbol->string (syntax->datum full-name))])
+                  [name-s (%%id->str full-name)])
       #'(define (isa? op)
           (string=? (mlir::Operation::getName op) name-s))))
 
@@ -52,7 +55,7 @@
   ;; field — attribute-field record
   (define (generate-attribute-accessor ctx full-name field)
     (with-syntax ([id    (%%id ctx full-name ":" (attribute-field-name field))]
-                  [aname (symbol->string (syntax->datum (attribute-field-name field)))])
+                  [aname (%%id->str (attribute-field-name field))])
       #'(define (id op)
           (mlir::Operation::getAttr op aname))))
 
@@ -71,20 +74,19 @@
     (let ([attrs (op-parse-attributes op)])
       (if (null? attrs)
           '()
-          (with-syntax
-              ([verify!          (%%id ctx "%%" full-name ":verify-attributes")]
-               [(attr-name ...)  (map (lambda (f)
-                                        (symbol->string (syntax->datum (attribute-field-name f))))
-                                      attrs)]
-               [(attr-type ...)  (map (lambda (f) (attribute-field-type f)) attrs)]
-               [(required? ...)  (map (lambda (f)
-                                        (eq? (attribute-field-modifier f) ':required))
-                                      attrs)])
-            (list
-             #'(define (verify! op)
-                 (and (or (not required?)
-                          (attr-type (mlir::Operation::getAttr op attr-name)))
-                      ...)))))))
+          (let ([req (filter (lambda (f) (eq? (attribute-field-modifier f) ':required)) attrs)]
+                [opt (filter (lambda (f) (eq? (attribute-field-modifier f) ':optional)) attrs)])
+            (with-syntax
+                ([verify!          (%%id ctx "%%" full-name ":verify-attributes")]
+                 [(req-name ...)   (map (lambda (f) (%%id->str (attribute-field-name f))) req)]
+                 [(req-type ...)   (map attribute-field-type req)]
+                 [(opt-name ...)   (map (lambda (f) (%%id->str (attribute-field-name f))) opt)]
+                 [(opt-type ...)   (map attribute-field-type opt)])
+              (list
+               #'(define (verify! op)
+                   (and (req-type (mlir::Operation::getAttr op req-name)) ...
+                        (let ([%%v (mlir::Operation::getAttr op opt-name)])
+                          (or (not %%v) (opt-type %%v))) ...))))))))
 
   ;; (%%toy.constant:verify-operands op) → bool  — stub until modifier logic is wired
   (define (generate-verify-operands ctx full-name op)
@@ -123,7 +125,7 @@
       (with-syntax
           ([register! (%%id ctx ctx ":register!")]
            [ffi-fn    (%%id ctx "%crest::register-dialect!")]
-           [name-str  (symbol->string (syntax->datum ctx))]
+           [name-str  (%%id->str ctx)]
            [(cb ...)  cb-stxs])
         #'(define (register! ctx)
             (ffi-fn ctx name-str (vector cb ...))))))

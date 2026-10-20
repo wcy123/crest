@@ -161,9 +161,23 @@
                (syntax-violation 'define-op
                                  "malformed operand — expected (name type) or (name type :required/:optional/:variadic)"
                                  field-stx)]))
+          ;; Returns attribute-field record — mirrors parse-op-operand for attributes.
+          (define (parse-op-attribute field-stx)
+            (syntax-case field-stx (:required :optional)
+              [(name type)
+               (identifier? #'name)
+               (make-attribute-field #'name #'type ':required)]
+              [(name type :required)
+               (identifier? #'name)
+               (make-attribute-field #'name #'type ':required)]
+              [(name type :optional)
+               (identifier? #'name)
+               (make-attribute-field #'name #'type ':optional)]
+              [_
+               (syntax-violation 'define-op
+                                 "malformed attribute — expected (name type) or (name type :required/:optional)"
+                                 field-stx)]))
 
-          ;; name already checked by caller.
-          ;;
           ;; Op callback vector slots (mirrors CrestOp::Callbacks in lib/Crest/Op.h):
           ;;   0  verify                       (op) → bool
           ;;   1  verify-regions               (op) → bool
@@ -182,6 +196,7 @@
                                            :operands :attributes :results
                                            :verify :verify-regions
                                            :parse :print :fold
+                                           :required :optional
                                            :get-canonicalization-patterns
                                            :populate-default-attrs)
                   [(:summary     _ . rest)  (loop-sub #'rest)]
@@ -190,22 +205,10 @@
                    (begin
                      (set! operands (map parse-op-operand (syntax->list #'(field ...))))
                      (loop-sub #'rest))]
-                  [(:attributes  ((name type) ...) . rest)
-                   (andmap identifier? (syntax->list #'(name ...)))
-                   (begin (set! attributes
-                                (map (lambda (n t)
-                                       (make-attribute-field n t ':required))
-                                     (syntax->list #'(name ...))
-                                     (syntax->list #'(type ...))))
-                          (loop-sub #'rest))]
-                  [(:attributes  ((name type :optional) ...) . rest)
-                   (andmap identifier? (syntax->list #'(name ...)))
-                   (begin (set! attributes
-                                (map (lambda (n t)
-                                       (make-attribute-field n t ':optional))
-                                     (syntax->list #'(name ...))
-                                     (syntax->list #'(type ...))))
-                          (loop-sub #'rest))]
+                  [(:attributes  (field ...) . rest)
+                   (begin
+                     (set! attributes (map parse-op-attribute (syntax->list #'(field ...))))
+                     (loop-sub #'rest))]
                   [(:results     ((name type) ...) . rest)
                    (andmap identifier? (syntax->list #'(name ...)))
                    (begin (set! results (syntax->datum #'((name type) ...)))
