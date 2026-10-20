@@ -64,9 +64,28 @@
       #'(define (id op)
           (mlir::Operation::getResult op idx))))
 
-  ;; (verify-toy.constant op) → bool  — stub until type predicates are wired
-  (define (generate-verifier ctx full-name op)
+  ;; (%%toy.constant:verify-attributes op) → bool
+  ;; Checks each declared attribute is present on the op.
+  (define (generate-verify-attributes ctx full-name op)
+    (let ([attrs (op-parse-attributes op)])
+      (if (null? attrs)
+          '()
+          (with-syntax
+              ([verify!          (%%id ctx "%%" full-name ":verify-attributes")]
+               [(attr-name ...)  (map (lambda (f) (symbol->string (car f))) attrs)])
+            (list
+             #'(define (verify! op)
+                 (and (mlir::Operation::getAttr op attr-name) ...)))))))
+
+  ;; (%%toy.constant:verify-operands op) → bool  — stub until modifier logic is wired
+  (define (generate-verify-operands ctx full-name op)
     '())
+
+  ;; Aggregate all verifiers for one op.
+  (define (generate-verifier ctx full-name op)
+    (append
+     (generate-verify-attributes ctx full-name op)
+     (generate-verify-operands   ctx full-name op)))
 
   ;; All definitions for one op.
   ;; full-name is a syntax identifier built from ctx + op-parse-name.
