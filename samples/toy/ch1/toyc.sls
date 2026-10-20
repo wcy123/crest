@@ -27,20 +27,18 @@ exec "$SCHEME" --libdirs "$ROOT/samples:$ROOT/scheme" --program "$0" "$@"
       (loop (cdr args) (car args) action)])))
 
 (define (main args)
-  (call-with-values
-      (lambda () (%%parse-args args))
-    (lambda (filename action)
-      (unless filename
-        (display "Usage: toyc.sls <input.toy> [--emit=ast]\n"
-                 (current-error-port))
+  (let-values ([(filename action) (%%parse-args args)])
+    (unless filename
+      (display "Usage: toyc.sls <input.toy> [--emit=ast]\n"
+               (current-error-port))
+      (exit 1))
+    (let ([module-ast (parse-input-file filename)])
+      (unless module-ast
         (exit 1))
-      (let ([module-ast (parse-input-file filename)])
-        (unless module-ast
-          (exit 1))
-        (case action
-          [(dump-ast) (toy:dump module-ast)]
-          [else
-           (display "No action specified (parsing only?), use --emit=<action>\n"
-                    (current-error-port))])))))
+      (case action
+        [(dump-ast) (toy:dump module-ast)]
+        [else
+         (display "No action specified (parsing only?), use --emit=<action>\n"
+                  (current-error-port))]))))
 
 (main (cdr (command-line)))
