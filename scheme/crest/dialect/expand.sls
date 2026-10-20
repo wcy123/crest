@@ -1,19 +1,13 @@
 ;; Expand-phase helpers for op code generation.
 ;; Imported at (for ... expand) by (crest dialect).
 (library (crest dialect expand)
-  (export generate-isa
-          generate-operand-accessor
-          generate-attribute-accessor
-          generate-result-accessor
-          generate-verifier
-          generate-op-defs
-          generate-all-op-defs
+  (export generate-all-op-defs
           generate-register-dialect)
   (import (chezscheme)
           (rime loop)
           (crest dialect ast)
           (crest dialect expand utils)
-          (crest dialect expand verifiers)
+          (crest dialect expand verifiers)   ; generate-verifier, generate-verifier-ref
           (mlir IR Operation))
 
   ;; (toy.constant? op) → bool
@@ -61,30 +55,47 @@
   (define (generate-all-op-defs ctx ops)
     (apply append (map (lambda (op) (generate-op-defs ctx op)) ops)))
 
-  ;; (toy:register! ctx) — registers the dialect + its %%initialize callback.
-  ;; ops — list of op-parse records; each op name is registered in %%<dialect>:initialize.
-  (define (generate-register-dialect ctx cbs ops)
-    (let* ([op-prefix  (string-append (%%id->str ctx) ".")]
-           [op-names   (map (lambda (op)
-                              (string-append op-prefix (%%id->str (op-parse-name op))))
-                            ops)]
-           ;; Slot 0 always points to the generated init; override any #f.
-           [cb-stxs    (let ([v (list->vector
-                                 (map (lambda (i) (or (vector-ref cbs i) #'#f))
-                                      '(0 1 2 3 4 5 6 7 8 9 10 11)))])
-                         (vector-set! v 0 (%%id ctx "%%" ctx ":initialize"))
-                         (vector->list v))])
+  ;; Build the 7-slot op-callbacks vector: user cbs from op-parse-op-cbs,
+  ;; with the generated verifier inserted at slot 0 if no user :verify.
+  (define (%%op-cbs ctx full-name op)
+    (let* ([op-cbs (op-parse-op-cbs op)]
+           [v      (list->vector (map (lambda (i) (or (vector-ref op-cbs i) #'#f))
+                                      '(0 1 2 3 4 5 6)))])
+      (vector-set! v 0 (generate-op-verify-slot ctx full-name op (vector-ref op-cbs 0)))
+      (vector->list v)))
+
+  ;; Register call syntax for one op — passes cbs vector directly to C FFI.
+  (define (%%generate-register-op! ctx op-prefix op)
+    (let* ([full-name (%%id ctx ctx "." (op-parse-name op))]
+           [name-str  (string-append op-prefix (%%id->str (op-parse-name op)))]
+           [op-callbacks (%%op-cbs ctx full-name op)])
+      (with-syntax ([op-name name-str] [(op-callbacks ...) op-callbacks])
+        #'(%crest::register-dynamic-op! dialect-ptr op-name (vector op-callbacks ...)))))
+
+  ;; Dialect callbacks vector with slot 0 wired to %%<dialect>:initialize.
+  (define (%%dialect-cbs ctx dialect-cbs)
+    (let ([v (list->vector (map (lambda (i) (or (vector-ref dialect-cbs i) #'#f))
+                                '(0 1 2 3 4 5 6 7 8 9 10 11)))])
+      (vector-set! v 0 (%%id ctx "%%" ctx ":initialize"))
+      (vector->list v)))
+
+  ;; (toy:register! ctx) — calls %crest::register-dialect! with all 12 callbacks.
+  (define (%%generate-register! ctx dialect-cbs)
+    (with-syntax
+        ([toy.register! (%%id ctx ctx ":register!")]
+         [ffi-fn        (%%id ctx "%crest::register-dialect!")]
+         [name-str      (%%id->str ctx)]
+         [(cb ...)      (%%dialect-cbs ctx dialect-cbs)])
+      #'(define (toy.register! ctx)
+          (ffi-fn ctx name-str (vector cb ...)))))
+
+  ;; Aggregates %%<dialect>:initialize and <dialect>:register! into a list of defines.
+  (define (generate-register-dialect ctx dialect-cbs ops)
+    (let ([op-prefix (string-append (%%id->str ctx) ".")])
       (with-syntax
-          ([init!            (%%id ctx "%%" ctx ":initialize")]
-           [register!        (%%id ctx ctx ":register!")]
-           [ffi-fn           (%%id ctx "%crest::register-dialect!")]
-           [name-str         (%%id->str ctx)]
-           [(op-name-str ...) op-names]
-           [(cb ...)          cb-stxs])
-        ;; Return both defines as a list — the caller splices them into begin.
+          ([%%toy.initialize (%%id ctx "%%" ctx ":initialize")]
+           [(op-reg ...)     (map (lambda (op) (%%generate-register-op! ctx op-prefix op)) ops)])
         (list
-         #'(define (init! dialect-ptr)
-             (register-dynamic-op! dialect-ptr op-name-str) ...)
-         #'(define (register! ctx)
-             (ffi-fn ctx name-str (vector cb ...)))))))
+         #'(define (%%toy.initialize dialect-ptr) op-reg ...)
+         (%%generate-register! ctx dialect-cbs)))))
   )
