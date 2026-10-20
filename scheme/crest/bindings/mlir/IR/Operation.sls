@@ -98,12 +98,13 @@
   ;; @note         Defined in lib/Bindings/IR/Operation.cpp
   (define mlir::Operation::getResult        %get-result)
 
-  ;; @brief mlir::Operation::getParentOp — return the enclosing operation, or null.
+  ;; @brief mlir::Operation::getParentOp — return the enclosing operation, or #f.
   ;; @param op  Operation* uptr
-  ;; @return    Operation* as uptr; 0 if op is null or has no parent op
+  ;; @return    Operation* as uptr; #f if op is null or has no parent op
   ;; @see       mlir/IR/Operation.h
   ;; @note      Defined in lib/Bindings/IR/Operation.cpp
-  (define mlir::Operation::getParentOp     %get-parent-op)
+  (define (mlir::Operation::getParentOp op)
+    (let ([v (%get-parent-op op)]) (if (zero? v) #f v)))
 
   ;; @brief mlir_ir_op_operand_get_value — return the i-th operand Value* of an op.
   ;; @param op     Operation* uptr
@@ -216,10 +217,14 @@
   ;; @brief mlir::Operation::getAttr — get an attribute as opaque Attribute*.
   ;; @param op         Operation* uptr
   ;; @param attr-name  Attribute name (string)
-  ;; @return           Attribute* as uptr; 0 if absent or op is null
+  ;; @return           Attribute* as uptr; #f if absent or op is null
   ;; @see              mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note             Defined in lib/Bindings/IR/Operation.cpp
-  (define mlir::Operation::getAttr          %get-attr)
+  ;; %get-attr returns 0 (null uptr) on absence; normalised to #f here so
+  ;; callers can write (when (mlir::Operation::getAttr op name) ...) idiomatically.
+  (define (mlir::Operation::getAttr op name)
+    (let ([v (%get-attr op name)])
+      (if (zero? v) #f v)))
 
   ;; @brief mlir::Operation::setAttr! — set an attribute from an opaque Attribute*.
   ;; @param op         Operation* uptr
@@ -292,7 +297,7 @@
           ;; Has optional/variadic: operandSegmentSizes is mandatory.
           ;; Without it we cannot determine group boundaries — return #f.
           (let ([attr (mlir::Operation::getAttr op "operandSegmentSizes")])
-            (and attr (not (zero? attr)) (%%flex-path attr n-spec))))))
+            (and attr (%%flex-path attr n-spec))))))
 
   (define mlir::Operation::getAttrDictionary %mlir::Operation::getAttrDictionary)
   (define mlir::Operation::setAttrs          %mlir::Operation::setAttrs)
