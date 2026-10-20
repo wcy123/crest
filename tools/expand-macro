@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# expand-macro: pretty-print macro expansions found in a Scheme source file.
+#
+# Usage: expand-macro [--name MACRO] --file FILE
+#
+#   --name MACRO   Macro head to search for (default: define-dialect)
+#   --file FILE    Scheme source file to scan
+#
+# Environment:
+#   CREST_BUILD_DIR  Path to the cmake build directory (default: /home/build/crest-1)
+
+set -euo pipefail
+
+NAME="define-dialect"
+FILE=""
+SURFACE=""
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --name)    NAME="$2"; shift 2 ;;
+        --file)    FILE="$(realpath "$2")"; shift 2 ;;
+        --surface) SURFACE=1; shift ;;
+        -h|--help)
+            sed -n '2,10p' "$0" | sed 's/^# \?//'
+            exit 0 ;;
+        *) echo "Unknown argument: $1" >&2; exit 1 ;;
+    esac
+done
+
+[[ -z "$FILE" ]]   && { echo "Error: --file is required" >&2; exit 1; }
+[[ -f "$FILE" ]]   || { echo "Error: file not found: $FILE" >&2; exit 1; }
+
+# Locate crest-opt: prefer CREST_BUILD_DIR, then common default, then PATH.
+BUILD="${CREST_BUILD_DIR:-/home/build/crest-1}"
+CREST_OPT="$BUILD/tools/crest-opt/crest-opt"
+if [[ ! -x "$CREST_OPT" ]]; then
+    CREST_OPT="$(command -v crest-opt 2>/dev/null || true)"
+fi
+[[ -x "$CREST_OPT" ]] || {
+    echo "Error: crest-opt not found. Set CREST_BUILD_DIR or add crest-opt to PATH." >&2
+    exit 1
+}
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCHEME_DIR="$SCRIPT_DIR/../scheme"
+
+EXPAND_MACRO_NAME="$NAME" \
+EXPAND_MACRO_FILE="$FILE" \
+EXPAND_MACRO_SURFACE="$SURFACE" \
+CREST_PATH="$SCHEME_DIR" \
+"$CREST_OPT" /dev/null --crest-pass="module=tools/expand-macro"

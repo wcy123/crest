@@ -7,16 +7,25 @@
           generate-attribute-accessor
           generate-result-accessor
           generate-verifier
-          generate-op-defs)
+          generate-op-defs
+          generate-all-op-defs
+          generate-register-dialect)
   (import (chezscheme)
+          (crest dialect ast)
           (mlir IR Operation))
 
   (define (%%id ctx . parts)
     (datum->syntax ctx (string->symbol (apply string-append parts))))
 
+  (define (%%operand-names operands)
+    (map (lambda (f) (symbol->string (syntax->datum (operand-field-name f)))) operands))
+
+  (define (%%field-names fields)
+    (map (lambda (f) (symbol->string (car f))) fields))
+
   ;; (isa-<op>? op) → bool
   (define (generate-isa ctx full-name)
-    (with-syntax ([isa? (%%id ctx "isa-" full-name "?")]
+    (with-syntax ([isa? (%%id ctx full-name "?")]
                   [n    full-name])
       #'(define (isa? op)
           (string=? (mlir::Operation::getName op) n))))
@@ -67,4 +76,33 @@
            (cons (generate-result-accessor ctx full-name (car names) i)
                  (loop (cdr names) (+ i 1)))))
      (generate-verifier ctx full-name operand-names)))
+
+  ;; All op definitions for a dialect — flattened list of syntax objects.
+  ;; ctx derives the dialect name (and thus op-name prefix) from the dialect-id syntax.
+  (define (generate-all-op-defs ctx ops)
+    (let ([op-prefix (string-append (symbol->string (syntax->datum ctx)) ".")])
+      (apply append
+             (map (lambda (c)
+                    (let ([full-name (string-append op-prefix
+                                                    (symbol->string (syntax->datum (op-parse-name c))))])
+                      (generate-op-defs
+                       ctx full-name
+                       (%%operand-names (op-parse-operands c))
+                       (%%field-names   (op-parse-attributes c))
+                       (%%field-names   (op-parse-results c)))))
+                  ops))))
+
+  ;; (register-<name>! ctx) — registers the dialect with all its callbacks.
+  ;; ctx derives the dialect name; cbs — 12-slot vector of syntax-or-#f.
+  (define (generate-register-dialect ctx cbs)
+    (let* ([dialect-name (symbol->string (syntax->datum ctx))]
+           [cb-stxs      (map (lambda (i) (or (vector-ref cbs i) #'#f))
+                              '(0 1 2 3 4 5 6 7 8 9 10 11))])
+      (with-syntax
+          ([register! (%%id ctx "register-" dialect-name "!")]
+           [ffi-fn    (%%id ctx "%crest::register-dialect!")]
+           [name-str  (datum->syntax ctx dialect-name)]
+           [(cb ...)  cb-stxs])
+        #'(define (register! ctx)
+            (ffi-fn ctx name-str (vector cb ...))))))
   )

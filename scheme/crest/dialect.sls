@@ -5,6 +5,7 @@
   (export register-dialect!
           register-dynamic-op!
           define-dialect
+          define-op
           :name
           :initialize
           :get-dependent-dialects
@@ -115,6 +116,12 @@
      dialect-ptr
      op-name
      (%%plist->vector 7 %%op-slot-index callbacks)))
+
+  ;; Auxiliary keyword — exported so define-op identifiers in user code
+  ;; are free-identifier=? to the literal in parse-clauses.
+  (define-syntax define-op
+    (lambda (stx)
+      (syntax-violation 'define-op "define-op used outside define-dialect" stx)))
 
   ;; -------------------------------------------------------------------------
   ;; define-dialect — dialect + ops in one declaration (like define-record-type)
@@ -295,34 +302,12 @@
 
       (syntax-case stx ()
         [(_ dialect-id clause ...)
-         (let* ([dialect-sym      (syntax->datum #'dialect-id)]
-                [register-<name>! (datum->syntax #'dialect-id
-                                                 (string->symbol (string-append "register-" (symbol->string dialect-sym) "!")))]
-                [parsed   (parse-clauses #'(clause ...) #'dialect-id)]
-                [op-clauses (dialect-parse-ops parsed)]
-                [cbs        (dialect-parse-cbs parsed)]
-                [op-prefix  (string-append (symbol->string dialect-sym) ".")]
-                [all-op-defs
-                 (apply append
-                        (map (lambda (c)
-                               (let ([full-name (string-append op-prefix
-                                                               (symbol->string (syntax->datum (op-parse-name c))))])
-                                 (generate-op-defs
-                                  #'dialect-id full-name
-                                  (map (lambda (f) (symbol->string (syntax->datum (operand-field-name f))))
-                                       (op-parse-operands c))
-                                  (map (lambda (f) (symbol->string (car f))) (op-parse-attributes c))
-                                  (map (lambda (f) (symbol->string (car f))) (op-parse-results c)))))
-                             op-clauses))]
-                [cb-stxs  (map (lambda (i) (or (vector-ref cbs i) #'#f))
-                               '(0 1 2 3 4 5 6 7 8 9 10 11))])
+         (let* ([dialect      (parse-clauses #'(clause ...) #'dialect-id)]
+                [ops          (dialect-parse-ops dialect)]
+                [all-op-defs  (generate-all-op-defs #'dialect-id ops)]
+                [reg-def      (generate-register-dialect #'dialect-id (dialect-parse-cbs dialect))])
            (with-syntax
-               ([register-<name>! register-<name>!]
-                [name-str         (datum->syntax #'dialect-id (symbol->string dialect-sym))]
-                [(op-def ...)     all-op-defs]
-                [(cb ...)         cb-stxs])
-             #'(begin
-                 op-def ...
-                 (define (register-<name>! ctx)
-                   (%crest::register-dialect! ctx name-str (vector cb ...))))))))
-      )))
+               ([(op-def ...)            all-op-defs]
+                [register-<dialect-name>! reg-def])
+             #'(begin register-<dialect-name>! op-def ...)))]))
+    ))
