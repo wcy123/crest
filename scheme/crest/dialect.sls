@@ -34,7 +34,7 @@
           :optional
           :variadic)
   (import (chezscheme)
-          (for (crest op expand)   expand)        ; generate-op-defs at macro-expansion time
+          (for (crest dialect expand) expand)        ; generate-op-defs at macro-expansion time
           (for (crest dialect ast) expand run)    ; dialect-parse / op-parse records
           (crest dialect ffi))
 
