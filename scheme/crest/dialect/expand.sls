@@ -95,8 +95,10 @@
                        [attr-type type-stx]
                        [err-msg   (string-append "attribute '" name-str
                                                  "' must be a " type-str loc-str)])
-           #'(or (attr-type (mlir::Operation::getAttr op attr-name))
-                 (begin (mlir::Operation::emitError op err-msg) #f)))]
+           ;; Fetch once: guard against #f (absent) before calling the C predicate.
+           #'(let ([%%v (mlir::Operation::getAttr op attr-name)])
+               (or (and %%v (attr-type %%v))
+                   (begin (mlir::Operation::emitError op err-msg) #f))))]
         [(:optional)
          (with-syntax ([attr-name name-str]
                        [attr-type type-stx]
