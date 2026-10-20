@@ -20,5 +20,5 @@ SCHEME="$BUILD/ChezScheme-build/ta6le/bin/ta6le/scheme"
 
 exec "$SCHEME" \
     --libdirs "$ROOT/samples:$ROOT/scheme" \
-    --program "$ROOT/samples/toy/ch1/toyc-ch1.sls" \
+    --program "$ROOT/samples/toy/ch1/toyc.sls" \
     "$@"

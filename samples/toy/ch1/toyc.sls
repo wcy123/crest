@@ -1,8 +1,13 @@
-#!/usr/bin/env scheme --program
+#!/bin/sh
+#|
+SCHEME="${CREST_BUILD_DIR:-/home/build/crest-1}/ChezScheme-build/ta6le/bin/ta6le/scheme"
+ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+exec "$SCHEME" --libdirs "$ROOT/samples:$ROOT/scheme" --program "$0" "$@"
+|#
 ;; Toy compiler Ch1 entry point.
 ;; Mirrors mlir/examples/toy/Ch1/toyc.cpp
 ;;
-;; Usage: toyc.sls <input.toy> [--emit=ast]
+;; Usage: toyc-ch1.sls <input.toy> [--emit=ast]
 ;;
 ;; Actions:
 ;;   --emit=ast   dump the parsed AST to stdout
@@ -16,7 +21,7 @@
     (cond
      [(null? args)
       (values filename action)]
-     [(string=? (car args) "--emit=ast")
+     [(member (car args) (quote ("--emit=ast" "-emit=ast")))
       (loop (cdr args) filename 'dump-ast)]
      [else
       (loop (cdr args) (car args) action)])))
