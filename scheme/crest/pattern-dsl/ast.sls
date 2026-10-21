@@ -74,7 +74,18 @@
 
           ast-scheme-binding-expand make-ast-scheme-binding-expand ast-scheme-binding-expand?
           ast-scheme-binding-expand-var ast-scheme-binding-expand-var-set!
-          ast-scheme-binding-expand-expr ast-scheme-binding-expand-expr-set!)
+          ast-scheme-binding-expand-expr ast-scheme-binding-expand-expr-set!
+
+          ;; begin-mlir-code v2 parsed op record
+          ast-emit-op make-ast-emit-op ast-emit-op?
+          ast-emit-op-result-vars
+          ast-emit-op-op-name
+          ast-emit-op-op-name-stx
+          ast-emit-op-operands
+          ast-emit-op-attr-setters
+          ast-emit-op-region-fills
+          ast-emit-op-loc-override
+          ast-emit-op-result-types)
   (import (rnrs)
           (only (chezscheme) getenv))
 
@@ -375,4 +386,25 @@
     (fields
      (mutable var)    ;; Phase 1 (parse): syntax — %var, list of %vars, _ or void (discard)
      (mutable expr))) ;; Phase 1 (parse): syntax — the raw Scheme expression (list form)
+
+  ;;-----------------------------------------------------------------------
+  ;; EMIT-OP RECORD: ast-emit-op (used by begin-mlir-code v2 flat parser)
+  ;;-----------------------------------------------------------------------
+  ;;
+  ;; Represents one parsed op-form returned by parse-next.
+  ;; parse-next scans the flat begin-mlir-code argument list and detects:
+  ;;   r = op.name (ops) ...      single-result
+  ;;   (r0 r1) = op.name (ops)    multi-result
+  ;;   op.name (ops) ...          no-result (statement)
+  ;;
+  (define-record-type (ast-emit-op make-ast-emit-op ast-emit-op?)
+    (fields
+     (immutable result-vars)   ; list of syntax identifiers; empty for no-result ops
+     (immutable op-name)       ; string — e.g. "toy.constant"
+     (immutable op-name-stx)   ; syntax object carrying source location annotation
+     (immutable operands)      ; syntax expr — (list v1 v2 ...)
+     (immutable attr-setters)  ; list of (lambda (state-stx) → setter-stx)
+     (immutable region-fills)  ; list of (lambda (new-op-stx) → fill-stx)
+     (immutable loc-override)  ; syntax or #f
+     (immutable result-types))) ; syntax list — empty for no-result
   )
