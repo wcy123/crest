@@ -55,8 +55,10 @@
   (define (%%gen-result-count-check ctx op-stx op-record)
     (let* ([results  (op-parse-results op-record)]
            [expected (length results)]
-           ;; Use first result's name as location hint; #f if no results declared.
-           [loc-stx  (and (not (null? results)) (result-field-name (car results)))]
+           ;; Use first result's name as location; fall back to op name.
+           [loc-stx  (if (null? results)
+                         (op-parse-name op-record)
+                         (result-field-name (car results)))]
            [err-msg  (make-error-message loc-stx "expected " expected " result(s)")])
       (with-syntax ([op    op-stx]
                     [count expected]
