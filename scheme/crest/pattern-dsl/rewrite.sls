@@ -301,12 +301,34 @@
           (lambda (state-stx)
             (with-syntax ([state state-stx] [n name-str] [v val-stx])
               #'(mlir::OperationState::addAttribute state n v))))
+        ;; Dispatch on block syntax: dynamic (,@pairs-expr) vs static ((arg : type) ...).
         (define (make-block-fill blk)
-          (let ([parsed (parse-block-form blk)])
-            (if (cadr parsed)
-                (apply make-block-fill-fn parsed)
-                (make-dynamic-block-fill-fn (car parsed) (caddr parsed) (cadddr parsed)))))
-        ;; Dynamic variant: (^label builder ,@pairs-expr body ...)
+          (syntax-case blk (: unquote-splicing)
+            ;; Dynamic, no explicit builder — inject gensym
+            [(label (unquote-splicing pairs-expr) . body)
+             (with-syntax ([tmp (car (generate-temporaries '(block-builder)))])
+               (make-dynamic-block-fill-fn #'tmp #'pairs-expr (syntax->list #'body)))]
+            ;; Dynamic, explicit builder
+            [(label builder-id (unquote-splicing pairs-expr) . body)
+             (identifier? #'builder-id)
+             (make-dynamic-block-fill-fn #'builder-id #'pairs-expr (syntax->list #'body))]
+            ;; Static, no explicit builder — inject gensym
+            [(label ((arg : type) ...) . body)
+             (for-all identifier? (syntax->list #'(arg ...)))
+             (with-syntax ([tmp (car (generate-temporaries '(block-builder)))])
+               (make-block-fill-fn #'tmp
+                                   (syntax->list #'(arg ...))
+                                   (syntax->list #'(type ...))
+                                   (syntax->list #'body)))]
+            ;; Static, explicit builder
+            [(label builder-id ((arg : type) ...) . body)
+             (and (identifier? #'builder-id)
+                  (for-all identifier? (syntax->list #'(arg ...))))
+             (make-block-fill-fn #'builder-id
+                                 (syntax->list #'(arg ...))
+                                 (syntax->list #'(type ...))
+                                 (syntax->list #'body))]))
+        ;; Dynamic variant: (^label ,@pairs-expr body ...)
         ;; pairs-expr evaluates at runtime to (list (cons name type) ...).
         ;; No static arg bindings — use (:arg N) inside body to access block args
         ;; via the current-MLIRBlock parameter (parameterized over the created block).
@@ -327,8 +349,8 @@
                                               (with-current-OpBuilder block-builder
                                                                       body))))))))
         (define (make-block-fill-fn builder-id arg-vars arg-types body-ops)
-          ;; builder-id is always a valid identifier — parse-block-form
-          ;; generates a gensym when the user didn't provide an explicit name.
+          ;; builder-id is always a valid identifier — make-block-fill injects a gensym
+          ;; when the user didn't provide an explicit name.
           (let ([body-stx (with-syntax ([(body ...) body-ops]
                                         [block-builder builder-id])
                             #'(begin-mlir-code block-builder body ...))])
@@ -358,42 +380,6 @@
                              (map (lambda (fn) (fn region-id)) block-fill-fns)])
                 #`(let ([#,region-id (mlir::Operation::getRegion new-op region-idx)])
                     block-fill-stmt ...)))))
-        ;; Parse a full block stx.  Returns (list builder-id arg-vars arg-types body-ops)
-        ;; for the static case, or (list builder-id #f pairs-expr body-ops) for the
-        ;; dynamic ,@pairs-expr case.
-        ;;
-        ;; Static forms:
-        ;;   (^label ((arg : type) ...) body ...)         — no builder name
-        ;;   (^label builder-name ((arg : type) ...) ...) — explicit builder name
-        ;;
-        ;; Dynamic forms:
-        ;;   (^label ,@pairs-expr body ...)               — no builder name
-        ;;   (^label builder-name ,@pairs-expr body ...)  — explicit builder name
-        ;;
-        ;; In the dynamic case cadr = #f signals "dynamic" to make-block-fill.
-        (define (parse-block-form block-stx)
-          (let parse ([stx block-stx])
-            (syntax-case stx (: unquote-splicing)
-              ;; Dynamic, no builder-id — inject gensym and retry
-              [(label (unquote-splicing pairs-expr) . body)
-               (with-syntax ([tmp (car (generate-temporaries '(block-builder)))])
-                 (parse #'(label tmp (unquote-splicing pairs-expr) . body)))]
-              ;; Dynamic, builder-id present
-              [(label builder-id (unquote-splicing pairs-expr) . body)
-               (identifier? #'builder-id)
-               (list #'builder-id #f #'pairs-expr (syntax->list #'body))]
-              ;; Static, no builder-id — inject gensym and retry
-              [(label ((arg : type) ...) . body)
-               (for-all identifier? (syntax->list #'(arg ...)))
-               (with-syntax ([tmp (car (generate-temporaries '(block-builder)))])
-                 (parse #'(label tmp ((arg : type) ...) . body)))]
-              ;; Static, builder-id present — extract arg/type lists via pattern
-              [(label builder-id ((arg : type) ...) . body)
-               (and (identifier? #'builder-id) (for-all identifier? (syntax->list #'(arg ...))))
-               (list #'builder-id
-                     (syntax->list #'(arg ...))
-                     (syntax->list #'(type ...))
-                     (syntax->list #'body))])))
         (split-modifiers
          (loop :for m :in (syntax->list modifiers-stx) :collect (classify m)))
         )
