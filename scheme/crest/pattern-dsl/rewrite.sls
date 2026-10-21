@@ -55,7 +55,7 @@
   (export begin-mlir-code)
 
   (import (except (rnrs (6)) =)
-          (only (chezscheme) syntax->list syntax->datum make-parameter parameterize)
+          (only (chezscheme) syntax->list syntax->datum parameterize)
           (rename (rime loop) (:with :rime-with))
           (for (rename (rime loop) (:with :rime-with)) expand)
           (for (only (crest pattern-dsl srcloc) syntax->file+line+col) expand)
@@ -84,19 +84,14 @@
                      mlir::UnknownLoc::get
                      mlir::FileLineColLoc::get) expand)
           (for (only (mlir IR Region) mlir::Region::push_back<Block>) expand)
-          (for (only (mlir IR Block) mlir::Block::getArgument) expand)
+          (for (only (mlir IR Block)
+                     mlir::Block::getArgument
+                     current-MLIRBlock
+                     with-current-MLIRBlock) expand)
+          (only (mlir IR Block) current-MLIRBlock with-current-MLIRBlock)
           (for (only (mlir IR Operation) mlir::Operation::getRegion) expand)
           (for (only (mlir IR Operation) mlir::Operation::getResult) expand))
 
-
-  ;;===--------------------------------------------------------------------===;;
-  ;; Dynamic parameter for (:arg N) inside ,@-style block bodies
-  ;;===--------------------------------------------------------------------===;;
-
-  ;; Holds the current mlir::Block* when executing inside a (^label ,@pairs body)
-  ;; block form.  (:arg N) expands to (mlir::Block::getArgument (current-block) N).
-  ;; Only valid inside such a block body at runtime.
-  (define current-block (make-parameter #f))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Runtime create dispatcher
@@ -289,7 +284,7 @@
         ;; Dynamic variant: (^label builder ,@pairs-expr body ...)
         ;; pairs-expr evaluates at runtime to (list (cons name type) ...).
         ;; No static arg bindings — use (:arg N) inside body to access block args
-        ;; via the current-block parameter (parameterized over the created block).
+        ;; via the current-MLIRBlock parameter (parameterized over the created block).
         (define (make-dynamic-block-fill-fn builder-id pairs-expr body-ops)
           (let ([body-stx (with-syntax ([(body ...) body-ops]
                                         [block-builder builder-id])
@@ -302,9 +297,9 @@
                 #'(let* ([%%dyn-pairs pairs]
                          [%%dyn-block (mlir::Region::push_back<Block>
                                        region (map cdr %%dyn-pairs))])
-                    (parameterize ([current-block %%dyn-block])
-                      (with-CrestObject (block-builder (mlir::OpBuilder::atBlockEnd %%dyn-block))
-                        body)))))))
+                    (with-current-MLIRBlock %%dyn-block
+                                            (with-CrestObject (block-builder (mlir::OpBuilder::atBlockEnd %%dyn-block))
+                                              body)))))))
         (define (make-block-fill-fn builder-id arg-vars arg-types body-ops)
           ;; builder-id is always a valid identifier — parse-block-form
           ;; generates a gensym when the user didn't provide an explicit name.
@@ -494,7 +489,7 @@
         (define (convert x)
           (syntax-case x (unquote-splicing :arg)
             [(unquote-splicing expr) #'expr]  ; ,@expr → raw list (spliced in)
-            [(:arg n)  #'(list (mlir::Block::getArgument (current-block) n))]  ; block-arg shorthand
+            [(:arg n)  #'(list (mlir::Block::getArgument (current-MLIRBlock) n))]  ; block-arg shorthand
             [val       #'(list val)])) ; value → singleton list
         (with-syntax ([(chunk ...) (map convert (syntax->list operands-stx))])
           #'(append chunk ...)))

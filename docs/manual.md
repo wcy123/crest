@@ -439,7 +439,7 @@ syntax is available (nested regions, attribute shorthands, multi-result
 ops, etc.) with the block's implicit builder as the active context.
 
 Inside the block body, **`(:arg N)`** is a shorthand for
-`(mlir::Block::getArgument (current-block) N)` where `current-block` is a
+`(mlir::Block::getArgument (current-MLIRBlock) N)` where `current-MLIRBlock` is a
 dynamic parameter installed by the `^label ,@...` form. It is only valid
 inside such a dynamic block body.
 

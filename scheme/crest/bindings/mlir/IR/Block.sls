@@ -18,8 +18,12 @@
           mlir::Block::addArgument
           mlir::Block::empty?
           mlir::Block::back
-          mlir::Block::front)
-  (import (rnrs) (mlir IR Block ffi))
+          mlir::Block::front
+          current-MLIRBlock
+          with-current-MLIRBlock)
+  (import (rnrs)
+          (only (chezscheme) make-parameter parameterize)
+          (mlir IR Block ffi))
 
   ;; @brief mlir::Block::getArgument — return the idx-th block argument.
   ;; @param block  Block* uptr
@@ -52,5 +56,15 @@
   (define (mlir::Block::empty? block) (not (zero? (%mlir::Block::empty block))))
   (define mlir::Block::back  %mlir::Block::back)
   (define mlir::Block::front %mlir::Block::front)
+
+  ;; @brief current-MLIRBlock — dynamic parameter holding the ambient mlir::Block* uptr.
+  ;; Installed by with-current-MLIRBlock; used by (:arg N) in begin-mlir-code.
+  (define current-MLIRBlock (make-parameter #f))
+
+  ;; @brief with-current-MLIRBlock — install block as current-MLIRBlock for body forms.
+  (define-syntax with-current-MLIRBlock
+    (syntax-rules ()
+      [(_ block body ...)
+       (parameterize ([current-MLIRBlock block]) body ...)]))
 
   ) ;; end library (mlir IR Block)

@@ -16,8 +16,11 @@
   (export
     mlir::OpBuilder::atBlockEnd
     mlir::OpBuilder::create<OperationState>
-    crest::isa<CrestOwned<mlir::OpBuilder>>?)
+    crest::isa<CrestOwned<mlir::OpBuilder>>?
+    current-OpBuilder
+    with-current-OpBuilder)
   (import (rnrs)
+          (only (chezscheme) make-parameter parameterize)
           (mlir IR Builders ffi)
           (only (mlir IR MLIRContext) current-MLIRContext))
 
@@ -36,5 +39,15 @@
   ;; materialization callback arguments. CrestRef<OpBuilder> no longer exists.
   (define (crest::isa<CrestOwned<mlir::OpBuilder>>? ptr)
     (not (zero? (%crest::isa<CrestOwned<mlir::OpBuilder>> ptr))))
+
+  ;; @brief current-OpBuilder — dynamic parameter holding the ambient mlir::OpBuilder* uptr.
+  ;; Mirrors current-MLIRContext; see mlir/IR/Builders.h.
+  (define current-OpBuilder (make-parameter #f))
+
+  ;; @brief with-current-OpBuilder — install builder as current-OpBuilder for body forms.
+  (define-syntax with-current-OpBuilder
+    (syntax-rules ()
+      [(_ builder body ...)
+       (parameterize ([current-OpBuilder builder]) body ...)]))
 
   ) ;; end library (mlir IR Builders)
