@@ -307,7 +307,7 @@
           (syntax-case blk (: unquote-splicing)
             ;; Dynamic, no explicit builder — inject gensym and recurse
             [(label (unquote-splicing pairs-expr) . body)
-             (with-syntax ([tmp (car (generate-temporaries '(bb)))])
+             (with-syntax ([tmp (car (generate-temporaries '(block-builder)))])
                (make-block-fill #'(label tmp (unquote-splicing pairs-expr) . body)))]
             ;; Dynamic, explicit builder
             [(label builder-id (unquote-splicing pairs-expr) . body)
@@ -327,7 +327,7 @@
             ;; Static, no explicit builder — inject gensym and recurse
             [(label ((arg : type) ...) . body)
              (for-all identifier? (syntax->list #'(arg ...)))
-             (with-syntax ([tmp (car (generate-temporaries '(bb)))])
+             (with-syntax ([tmp (car (generate-temporaries '(block-builder)))])
                (make-block-fill #'(label tmp ((arg : type) ...) . body)))]
             ;; Static, explicit builder
             [(label builder-id ((arg : type) ...) . body)
