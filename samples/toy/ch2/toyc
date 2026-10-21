@@ -28,4 +28,4 @@ done
 
 TOYC_FILE="$FILE" TOYC_ACTION="$ACTION" \
 CREST_PATH="$(realpath "$SCRIPT_DIR/../..")" \
-"$CREST_OPT" /dev/null --crest-pass="module=toy/ch2/toyc"
+"$CREST_OPT" /dev/null --mlir-print-debuginfo --crest-pass="module=toy/ch2/toyc"
