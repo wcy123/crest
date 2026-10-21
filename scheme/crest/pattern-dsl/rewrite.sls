@@ -307,18 +307,18 @@
         (define (make-block-fill blk)
           (syntax-case blk (: unquote-splicing)
             ;; Dynamic, no explicit builder — gensym and recurse
-            [(label (unquote-splicing pairs-expr) . body)
+            [(label (unquote-splicing types-expr) . body)
              (with-syntax ([tmp (car (generate-temporaries '(block-builder)))])
-               (make-block-fill #'(label tmp (unquote-splicing pairs-expr) . body)))]
+               (make-block-fill #'(label tmp (unquote-splicing types-expr) . body)))]
             ;; Dynamic, explicit builder
-            [(label builder-id (unquote-splicing pairs-expr) . body)
+            [(label builder-id (unquote-splicing types-expr) . body)
              (identifier? #'builder-id)
              (with-syntax ([body-code
                             (with-syntax ([(b ...) #'body])
                               #'(begin-mlir-code builder-id b ...))])
                (lambda (region-stx)
                  (with-syntax ([region region-stx])
-                   #'(let* ([%%dyn-types pairs-expr]
+                   #'(let* ([%%dyn-types types-expr]
                             [%%dyn-block (mlir::Region::push_back<Block>
                                           region %%dyn-types)])
                        (with-current-MLIRBlock %%dyn-block
