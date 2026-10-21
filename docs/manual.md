@@ -409,7 +409,9 @@ In summary:
 | `(:region (^a ...) (^b ...))` | 1 | N | static |
 | `(:region ...) (:region ...)` | N | N each | static |
 
-Regions can be nested: an op-form inside `^bb` can itself have regions.
+The body of every `^label` block is a recursive `begin-mlir-code` call — the
+same op-form syntax, the same result variables, the same attribute and region
+modifiers. Regions can be nested arbitrarily deep.
 See `samples/passes/onnx-to-hipsr/matmul.sls` for a real-world example.
 
 ### Dynamic block arguments
@@ -431,6 +433,10 @@ The `,@` prefix is Chez Scheme's unquote-splicing — a visual marker that this
 list is computed at runtime rather than fixed at compile time. Each pair's
 `cdr` is the argument type; the `car` (a symbol or string) is documentation
 only and is not bound in the body.
+
+The block body is a recursive `begin-mlir-code` call with `builder` as the
+active builder, so the full op-form syntax is available (nested regions,
+attribute shorthands, multi-result ops, etc.).
 
 Inside the block body, **`(:arg N)`** is a shorthand for
 `(mlir::Block::getArgument (current-block) N)` where `current-block` is a
