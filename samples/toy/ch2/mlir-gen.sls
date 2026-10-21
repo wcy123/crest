@@ -16,7 +16,7 @@
           (mlir IR BuiltinOps)
           (toy ch2 ast)
           (for (only (crest pattern-dsl rewrite) begin-mlir-code) expand)
-          (for (only (crest pattern-dsl keywords) = :builder :arg) expand))
+          (for (only (crest pattern-dsl keywords) = :string :loc :builder :arg) expand))
 
   ;; toy.return? — mirrors toy::ReturnOp::classof().
   ;; Defined here (not imported from toy) to avoid library export issues
@@ -147,7 +147,7 @@
                        '() (list (%%f64-unranked-tensor)))
          0)]
        [else
-        (let ([callee-attr (mlir::StringAttr::get (current-MLIRContext) callee)])
+        (let ([callee-attr (mlir::StringAttr::get callee)])
           (mlir::Operation::getResult
            (%%create-op! builder loc "toy.generic_call" args
                          (list (cons "callee" callee-attr))
@@ -212,17 +212,18 @@
            [func-type (mlir::FunctionType::get (current-MLIRContext) arg-types '())]
            [%%fn-bld  (mlir::OpBuilder::atBlockEnd module-body)])
       (begin-mlir-code %%fn-bld
-                       (toy.func ()
-                                 ("sym_name"      = (mlir::StringAttr::get (current-MLIRContext) name))
-                                 ("function_type" = (mlir::TypeAttr::get func-type))
-                                 (^bb0 ,@arg-types
-                                       (for-each (lambda (arg-ast idx)
-                                                   (%%declare! symtab (var-expr:name arg-ast) (:arg idx)))
-                                                 args (iota (length args)))
-                                       (%%mlir-gen-block :builder symtab body)
-                                       (when (or (mlir::Block::empty? (current-MLIRBlock))
-                                                 (not (toy.return? (mlir::Block::back (current-MLIRBlock)))))
-                                         (%%create-op! :builder loc "toy.return" '() '() '())))))))
+        (toy.func ()
+                  ("sym_name"      = name :string)
+                  ("function_type" = (mlir::TypeAttr::get func-type))
+                  (^bb0 ,@arg-types
+                        (for-each (lambda (arg-ast idx)
+                                    (%%declare! symtab (var-expr:name arg-ast) (:arg idx)))
+                                  args (iota (length args)))
+                        (%%mlir-gen-block :builder symtab body)
+                        (when (or (mlir::Block::empty? (current-MLIRBlock))
+                                  (not (toy.return? (mlir::Block::back (current-MLIRBlock)))))
+                          (%%create-op! :builder loc "toy.return" '() '() '())))
+                  :loc loc))))
 
   ;; -------------------------------------------------------------------------
   ;; Module code generation — public API

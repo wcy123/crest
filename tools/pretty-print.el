@@ -55,12 +55,17 @@
     (with-raii . 1)
     (with-CrestObject . 1)
     (with-current-MLIRContext . 1)
+    (with-current-MLIRBlock . 1)
+    (with-current-OpBuilder . 1)
+    (with-current-RewriterBase . 1)
     (with-RewritePatternSet . 1)
     (with-RewriterBase . 1)
     (with-OpBuilder . 1)
     (with-TypeConverter . 1)
     (with-ConversionTarget . 1)
-    (with-ArrayRef . 1))
+    (with-ArrayRef . 1)
+    ;; begin-mlir-code: first arg is builder (like with-*), rest are op-forms
+    (begin-mlir-code . 1))
   "Alist of (symbol . indent-level) to teach scheme-mode indentation."
   :type '(alist :key-type symbol :value-type integer)
   :group 'pp)

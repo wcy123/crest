@@ -64,15 +64,15 @@
           :for dim :in (list-tail input-shape start)
           :rime-with acc := (if (dynamic-dim? dim)
                                 (begin-mlir-code builder
-                                                 (%ci     = arith.constant () ("value" = axis :index) -> index-type)
-                                                 (%d      = tensor.dim (in-val %ci) -> index-type)
-                                                 (%e      = arith.index_cast (%d) -> i64-type)
-                                                 (%slot-c = arith.constant () ("value" = slot :index) -> index-type)
-                                                 (%ins    = tensor.insert (%e acc %slot-c) -> out-host-type))
+                                  (%ci     = arith.constant () ("value" = axis :index) -> index-type)
+                                  (%d      = tensor.dim (in-val %ci) -> index-type)
+                                  (%e      = arith.index_cast (%d) -> i64-type)
+                                  (%slot-c = arith.constant () ("value" = slot :index) -> index-type)
+                                  (%ins    = tensor.insert (%e acc %slot-c) -> out-host-type))
                                 (begin-mlir-code builder
-                                                 (%e      = arith.constant () ("value" = dim :i64) -> i64-type)
-                                                 (%slot-c = arith.constant () ("value" = slot :index) -> index-type)
-                                                 (%ins    = tensor.insert (%e acc %slot-c) -> out-host-type)))
+                                  (%e      = arith.constant () ("value" = dim :i64) -> i64-type)
+                                  (%slot-c = arith.constant () ("value" = slot :index) -> index-type)
+                                  (%ins    = tensor.insert (%e acc %slot-c) -> out-host-type)))
           :finally acc))
 
   (define-conversion-pattern (onnx-shape->hipsr op operands-ref rewriter type-converter)

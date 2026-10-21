@@ -7,7 +7,9 @@
           :current-op :attr :has-attr? :attr-or
           :optional :variadic
           ;; Attr type keywords used in (name = val :type) modifier forms
-          :index :i64 :f32 :i32-array :i64-array :unit
+          :string :index :i64 :f32 :i32-array :i64-array :unit
+          ;; (:loc expr) op-level modifier — override auto-derived Scheme source location
+          :loc
           ;; (:arg N) shorthand for (mlir::Block::getArgument block N) in block bodies
           :arg
           ;; (:builder) returns the currently active builder/rewriter
@@ -58,12 +60,14 @@
   ;; Parsed but not yet implemented in analyze/codegen.
   (define-syntax :variadic   (lambda (x) (syntax-violation 'pattern-keyword "misplaced :variadic (only valid inside DDR operand list)" x)))
   ;; Attr type keywords — used as literals in (name = val :type) modifier forms.
+  (define-syntax :string   (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :string (only valid as attr type in begin-mlir-code)" x)))
   (define-syntax :index    (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :index (only valid as attr type in begin-mlir-code)" x)))
   (define-syntax :i64      (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :i64 (only valid as attr type in begin-mlir-code)" x)))
   (define-syntax :f32      (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :f32 (only valid as attr type in begin-mlir-code)" x)))
   (define-syntax :i32-array (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :i32-array (only valid as attr type in begin-mlir-code)" x)))
   (define-syntax :i64-array (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :i64-array (only valid as attr type in begin-mlir-code)" x)))
   (define-syntax :unit     (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :unit (only valid as attr type in begin-mlir-code)" x)))
+  (define-syntax :loc      (lambda (x) (syntax-violation 'begin-mlir-code "misplaced :loc (only valid as op modifier in begin-mlir-code)" x)))
   (define-syntax :arg
     (syntax-rules ()
       [(_ n) (mlir::Block::getArgument (current-MLIRBlock) n)]))
