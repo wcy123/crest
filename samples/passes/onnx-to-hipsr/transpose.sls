@@ -75,7 +75,8 @@
                                    :collect (ArrayRef::at ref i))))))])
     :rewrite %output :with
       (%placeholder = "hipsr.placeholder" (%ctx %input)
-                    (^bb0 block-builder ((%is : !shape-type))
+                    (^bb0 ((%is : !shape-type))
+                          (block-builder = :builder)
                           (%out-shape = (build-permuted-shape!
                                          block-builder perm %is !shape-type !size-type))
                           ("hipsr.shape_yield" (%out-shape)))

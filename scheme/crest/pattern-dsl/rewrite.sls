@@ -35,8 +35,8 @@
 ;;   (name = val :unit)      — construct and set UnitAttr
 ;;
 ;;   Region modifiers — each (^label ...) creates ONE region with ONE block:
-;;   (^label ((arg : !type) ...) body ...)         — unnamed builder
-;;   (^label builder-name ((arg : !type) ...) ...) — builder name in scope for body
+;;   (^label ((arg : !type) ...) body ...)   — static args; use :builder in body
+;;   (^label ,@type-list body ...)           — dynamic args; use (:arg N) in body
 ;;
 ;;   Consecutive shorthands = multiple regions (common case, no :region wrapper needed):
 ;;   (%r = "scf.if" (%c) (^then () then...) (^else () else...) -> i32)
@@ -102,8 +102,10 @@
 
   ;; Returns the currently active builder: the RewriterBase (at :rewrite level)
   ;; or the OpBuilder (inside a ^bb0 block). Error if neither is set.
+  ;; current-OpBuilder (block body) takes precedence over current-RewriterBase (:rewrite level)
+  ;; so that :builder inside a ^bb0 body gives the block's builder, not the outer rewriter.
   (define (%%current-builder)
-    (or (current-RewriterBase) (current-OpBuilder)
+    (or (current-OpBuilder) (current-RewriterBase)
         (error '%%current-builder "no active builder — use begin-mlir-code inside :rewrite :with or a ^bb0 block")))
 
   ;; Select the correct C++ create binding based on the CREST wrapper type.
@@ -301,53 +303,44 @@
           (lambda (state-stx)
             (with-syntax ([state state-stx] [n name-str] [v val-stx])
               #'(mlir::OperationState::addAttribute state n v))))
+        ;; Shared block-fill factory.
+        ;; block-id     — syntax identifier for the block (same object used in arg-bindings)
+        ;; types-stx    — expr evaluating to the list of block arg types
+        ;; arg-bindings — syntax list of let* bindings (empty for dynamic)
+        ;; body-stxs    — list of body op-form syntax objects
+        ;; Uses #,block-id directly in quasi-syntax to avoid with-syntax mark skew.
+        (define (%%make-block-fill-lambda block-id types-stx arg-bindings body-stxs)
+          (with-syntax ([bld   (car (generate-temporaries '(block-builder)))]
+                        [types types-stx]
+                        [(arg-binding ...) arg-bindings]
+                        [(b ...) body-stxs])
+            (lambda (region-stx)
+              (with-syntax ([region region-stx])
+                #`(let* ([#,block-id (mlir::Region::push_back<Block> region types)]
+                         arg-binding ...)
+                    (with-current-MLIRBlock #,block-id
+                                            (with-CrestObject (bld (mlir::OpBuilder::atBlockEnd #,block-id))
+                                              (with-current-OpBuilder bld
+                                                                      (begin-mlir-code bld b ...)))))))))
+
         ;; Returns a fill-fn: (lambda (region-stx) → syntax).
-        ;; No-builder cases use a gensym — body uses builder implicitly via begin-mlir-code.
-        ;; To access the builder by name, use (^label builder-name ...) explicitly.
+        ;; block-id extracted before syntax-case so both branches share it.
         (define (make-block-fill blk)
-          (syntax-case blk (: unquote-splicing)
-            ;; Dynamic, no explicit builder — gensym and recurse
-            [(label (unquote-splicing types-expr) . body)
-             (with-syntax ([tmp (car (generate-temporaries '(block-builder)))])
-               (make-block-fill #'(label tmp (unquote-splicing types-expr) . body)))]
-            ;; Dynamic, explicit builder
-            [(label builder-id (unquote-splicing types-expr) . body)
-             (identifier? #'builder-id)
-             (with-syntax ([body-code
-                            (with-syntax ([(b ...) #'body])
-                              #'(begin-mlir-code builder-id b ...))])
-               (lambda (region-stx)
-                 (with-syntax ([region region-stx])
-                   #'(let* ([%%dyn-types types-expr]
-                            [%%dyn-block (mlir::Region::push_back<Block>
-                                          region %%dyn-types)])
-                       (with-current-MLIRBlock %%dyn-block
-                                               (with-CrestObject (builder-id (mlir::OpBuilder::atBlockEnd %%dyn-block))
-                                                 (with-current-OpBuilder builder-id
-                                                                         body-code)))))))]
-            ;; Static, no explicit builder — gensym and recurse
-            [(label ((arg : type) ...) . body)
-             (for-all identifier? (syntax->list #'(arg ...)))
-             (with-syntax ([tmp (car (generate-temporaries '(block-builder)))])
-               (make-block-fill #'(label tmp ((arg : type) ...) . body)))]
-            ;; Static, explicit builder
-            [(label builder-id ((arg : type) ...) . body)
-             (and (identifier? #'builder-id)
-                  (for-all identifier? (syntax->list #'(arg ...))))
-             (with-syntax ([body-code
-                            (with-syntax ([(b ...) #'body])
-                              #'(begin-mlir-code builder-id b ...))]
-                           [(arg-binding ...)
-                            (loop :for var :in (syntax->list #'(arg ...))
-                                  :for i   :from 0
-                                  :collect #`(#,var (mlir::Block::getArgument block #,i)))])
-               (lambda (region-stx)
-                 (with-syntax ([region region-stx])
-                   #'(let* ([block (mlir::Region::push_back<Block> region (list type ...))]
-                            arg-binding ...)
-                       (with-CrestObject (builder-id (mlir::OpBuilder::atBlockEnd block))
-                         (with-current-OpBuilder builder-id
-                                                 body-code))))))]))
+          (let ([block-id (car (generate-temporaries '(block)))])
+            (syntax-case blk (: unquote-splicing)
+              ;; Dynamic: (^label ,@types-expr body ...) — no arg bindings
+              [(label (unquote-splicing types-expr) . body)
+               (%%make-block-fill-lambda block-id #'types-expr '() (syntax->list #'body))]
+              ;; Static: (^label ((arg : type) ...) body ...) — bind arg names
+              [(label ((arg : type) ...) . body)
+               (for-all identifier? (syntax->list #'(arg ...)))
+               (%%make-block-fill-lambda
+                block-id
+                #'(list type ...)
+                (loop :for var :in (syntax->list #'(arg ...))
+                      :for i   :from 0
+                      :collect #`(#,var (mlir::Block::getArgument #,block-id #,i)))
+                (syntax->list #'body))])))
         (define (make-region-fill-fn region-index block-fill-fns)
           (lambda (op-stx)
             ;; region-id must be in scope as a Scheme value before with-syntax
