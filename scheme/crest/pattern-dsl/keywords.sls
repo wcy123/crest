@@ -12,7 +12,9 @@
           :arg
           ;; (:builder) returns the currently active builder/rewriter
           :builder)
-  (import (except (rnrs) =))
+  (import (except (rnrs) =)
+          (only (mlir IR Block) mlir::Block::getArgument current-MLIRBlock)
+          (only (mlir IR Builders) current-OpBuilder))
 
   ;; Define keywords as syntax (for cross-library hygiene)
   (define-syntax :if-match (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
@@ -62,6 +64,11 @@
   (define-syntax :i32-array (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :i32-array (only valid as attr type in begin-mlir-code)" x)))
   (define-syntax :i64-array (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :i64-array (only valid as attr type in begin-mlir-code)" x)))
   (define-syntax :unit     (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :unit (only valid as attr type in begin-mlir-code)" x)))
-  (define-syntax :arg      (lambda (x) (syntax-violation 'begin-mlir-code "misplaced :arg (only valid as operand inside begin-mlir-code block body)" x)))
-  (define-syntax :builder  (lambda (x) (syntax-violation 'begin-mlir-code "misplaced :builder (only valid as operand or implicit builder in begin-mlir-code)" x)))
+  (define-syntax :arg
+    (syntax-rules ()
+      [(_ n) (mlir::Block::getArgument (current-MLIRBlock) n)]))
+  (define-syntax :builder
+    (lambda (stx)
+      (syntax-case stx ()
+        [id (identifier? #'id) #'(current-OpBuilder)])))
   )

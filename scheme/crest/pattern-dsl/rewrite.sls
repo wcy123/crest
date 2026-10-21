@@ -61,7 +61,6 @@
           (for (only (crest pattern-dsl srcloc) syntax->file+line+col) expand)
           (for (only (crest pattern-dsl keywords)
                      = : -> :region
-                     :arg :builder
                      :index :i64 :f32 :i32-array :i64-array :unit) expand)
           (for (mlir IR BuiltinAttributes) expand)
           ;; Runtime predicates and create bindings for %%crest:create-op! dispatch
@@ -190,15 +189,7 @@
       ;;
       ;; Statement (no result) — one pair binding the tmp to the op itself.
       (define (process-op op-stx index builder-stx)
-        (syntax-case op-stx (= -> :builder)
-          ;; :builder — bare keyword; return the active builder (useful as a Scheme binding)
-          [:builder
-           (list (cons (car (generate-temporaries #'(x)))
-                       #'(%%current-builder)))]
-          ;; (var = :builder) — bind active builder to var
-          [(var = :builder)
-           (identifier? #'var)
-           (list (cons #'var #'(%%current-builder)))]
+        (syntax-case op-stx (= ->)
           ;; Scheme escape
           [(var = expr)
            (and (identifier? #'var) (not (op-name? #'expr)))
@@ -459,9 +450,11 @@
         (with-syntax ([var (car pair)] [expr (cdr pair)]) #'(var expr)))
 
       ;; Accept both 'arith.constant and "arith.constant" as op names.
+      ;; :arg and :builder are real macros, not op names.
       (define (op-name? x)
         (let ([datum (syntax->datum x)])
-          (or (string? datum) (symbol? datum))))
+          (and (not (memq datum '(:arg :builder)))
+               (or (string? datum) (symbol? datum)))))
       (define (op-name->str x)
         (let ([datum (syntax->datum x)])
           (if (string? datum) datum (symbol->string datum))))
@@ -473,11 +466,9 @@
       ;; Each operand converts to a chunk; (append chunk ...) flattens them.
       (define (value-operands operands-stx)
         (define (convert x)
-          (syntax-case x (unquote-splicing :arg :builder)
-            [(unquote-splicing expr) #'expr]                ; ,@expr → spliced list
-            [(:arg n)     #'(list (mlir::Block::getArgument (current-MLIRBlock) n))]  ; block-arg
-            [:builder     #'(list (%%current-builder))]     ; active builder/rewriter
-            [val          #'(list val)])) ; value → singleton list
+          (syntax-case x (unquote-splicing)
+            [(unquote-splicing expr) #'expr]  ; ,@expr → spliced list
+            [val          #'(list val)]))
         (with-syntax ([(chunk ...) (map convert (syntax->list operands-stx))])
           #'(append chunk ...)))
 

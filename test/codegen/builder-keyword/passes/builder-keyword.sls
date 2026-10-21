@@ -1,5 +1,6 @@
-;; Test: :builder keyword binds the active rewriter/builder as a Scheme value.
-;; Pattern: test.copy(%v) → test.identity(%v), using (b = :builder) then b.
+;; Test: :builder and (:arg N) work as proper macros outside begin-mlir-code DSL.
+;; Pattern: test.copy(%v) → test.with_block(%v) where the block uses (:arg 0)
+;; to access the block arg and passes :builder to a Scheme helper.
 (library (passes builder-keyword)
   (export run-pass)
   (import (except (rnrs (6)) =)
@@ -12,20 +13,22 @@
           (only (mlir Transforms DialectConversion) add-rewrite-pattern)
           (crest))
 
-  ;; Helper: verifies builder is a non-null Scheme value.
-  (define (%%assert-builder-ok! bldr)
-    (when (zero? bldr) (error 'builder-keyword "builder is null")))
+  ;; Helper receives :builder — a real macro call, not a DSL form.
+  (define (%%noop-with-builder! bldr) bldr)
 
   (define-rewrite-pattern (%%pattern op rewriter)
     :if-match
       %out = test.copy (%v)
     :then-let
-      ([!t (mlir::Value::getType %v)])
+      ([!t (mlir::Value::getType %v)]
+       [arg-types (list !t)])
     :rewrite %out :with
-      ;; Bind :builder, verify it is non-null, then emit via implicit builder.
-      (b   = :builder)
-      (_   = (%%assert-builder-ok! b))
-      (%result = test.identity (%v) -> !t))  ; different op — no infinite loop
+      (%result = test.with_block (%v)
+               (^bb0 ,@arg-types
+                     ;; (:arg 0) and :builder used as real macros in Scheme context
+                     (_ = (%%noop-with-builder! :builder))
+                     (test.yield ((:arg 0))))
+               -> !t))
 
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
