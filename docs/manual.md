@@ -134,7 +134,7 @@ The five parameters map to [`matchAndRewrite(Operation* op, ArrayRef<Value> oper
     :where (hip-can-requantize-layout-op? (mlir::Value::getDefiningOp %layout) op)
   ```
 
-- `operand-list` — positional operands; each must be a bound `%var` or `%_` (wildcard, discards).
+- `operand-list` — positional operands; each must be a bound `%var` or `_` (wildcard, discards).
 
 The **root op** is the variable named in `:rewrite root :with` — the order of
 bindings in `:if-match` does not matter. The root op is what the pattern is
@@ -214,33 +214,33 @@ needed — just reuse the same `%var`:
 %b      = bar.op  (%shared ...)   ; same %shared → pointer check emitted
 ```
 
-### Wildcard `%_`
+### Wildcard `_`
 
-`%_` matches without binding a name, in both operand and result position.
-Every `%_` occurrence is independent — two `%_` in different positions are
+`_` matches without binding a name, in both operand and result position.
+Every `_` occurrence is independent — two `_` in different positions are
 never treated as a shared value.
 
 **Operand wildcard** — skip operands that are irrelevant to the rewrite:
 
 ```scheme
 ;; Match hip.quantize_linear but ignore the axis and init operands
-%q = hip.quantize_linear (%ctx %sum %scale %_ %_)
+%q = hip.quantize_linear (%ctx %sum %scale _ _)
 ```
 
 **Result wildcard** — bind only the results you need from a multi-result op:
 
 ```scheme
 ;; Match test.split but only use its second result
-(%_ %second) = test.split (%x)
+(_ %second) = test.split (%x)
 %out         = test.use   (%second)
 ```
 
-Note: two `%_` in different ops are **not** a diamond — they match
+Note: two `_` in different ops are **not** a diamond — they match
 independently even if the underlying SSA values differ:
 
 ```scheme
-%left  = test.add (%x %_)   ; %_ matches any value
-%right = test.sub (%y %_)   ; this %_ is unrelated to the one above
+%left  = test.add (%x _)   ; _ matches any value
+%right = test.sub (%y _)   ; this _ is unrelated to the one above
 %out   = test.combine (%left %right)
 ```
 
