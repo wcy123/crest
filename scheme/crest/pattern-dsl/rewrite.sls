@@ -151,10 +151,14 @@
       ;;                                    element is a list (op-form), not an identifier
       (define (main)
         (syntax-case stx ()
-          ;; Implicit builder: first element is NOT an identifier (it's a list op-form)
+          ;; Implicit builder: first element is NOT an identifier (it's a list op-form).
+          ;; Bind via let so the recursive call receives an identifier — passing
+          ;; (%%current-builder) directly would re-trigger this clause forever.
           [(_ first-op rest ...)
            (not (identifier? #'first-op))
-           #`(begin-mlir-code (%%current-builder) first-op rest ...)]
+           (with-syntax ([bld (car (generate-temporaries '(builder)))])
+             #'(let ([bld (%%current-builder)])
+                 (begin-mlir-code bld first-op rest ...)))]
           ;; Explicit builder (ctx is an identifier)
           [(_ ctx op ...)
            (let ([pairs (loop :for op-stx :in (syntax->list #'(op ...))
@@ -213,6 +217,11 @@
           [(op (operands ...) modifiers ...)
            (op-name? #'op)
            (process-op #'(() = op (operands ...) modifiers ... -> ()) index builder-stx)]
+          ;; Scheme expression statement — callee has no '.' so it's a Scheme call
+          [(callee . args)
+           (not (op-name? #'callee))
+           (list (cons (car (generate-temporaries '(%unused)))
+                       #'(callee . args)))]
           [_ (syntax-violation 'begin-mlir-code "invalid op form" op-stx)]))
 
       ;;-------------------------------------------------------------------
@@ -449,12 +458,17 @@
       (define (make-binding pair)
         (with-syntax ([var (car pair)] [expr (cdr pair)]) #'(var expr)))
 
-      ;; Accept both 'arith.constant and "arith.constant" as op names.
-      ;; :arg and :builder are real macros, not op names.
+      (define (%%string-contains string character)
+        (loop :initially := #f
+              :for x :in-string string
+              :break #t :if (char=? x character)))
+
       (define (op-name? x)
         (let ([datum (syntax->datum x)])
-          (and (not (memq datum '(:arg :builder)))
-               (or (string? datum) (symbol? datum)))))
+          (cond
+           [(string? datum) (%%string-contains datum #\.)]
+           [(symbol? datum) (%%string-contains (symbol->string datum) #\.)]
+           [#t #f])))
       (define (op-name->str x)
         (let ([datum (syntax->datum x)])
           (if (string? datum) datum (symbol->string datum))))
