@@ -181,12 +181,12 @@
                                                          (lambda (p) (display-condition exn p))))
                             #f])
                  (with-current-RewriterBase #,rw
-                                            (mlir::RewriterBase::setInsertionPoint #,rw #,op)
-                                            (let ([result (begin-mlir-code #,rw form ...)])
-                                              ;; result is a Value* uptr on success, or #f to signal failure.
-                                              (if result
-                                                  (begin (mlir::RewriterBase::replaceOp #,rw #,op result) #t)
-                                                  #f))))]))))
+                   (mlir::RewriterBase::setInsertionPoint #,rw #,op)
+                   (let ([result (begin-mlir-code #,rw form ...)])
+                     ;; result is a Value* uptr on success, or #f to signal failure.
+                     (if result
+                         (begin (mlir::RewriterBase::replaceOp #,rw #,op result) #t)
+                         #f))))]))))
 
   ;;=======================================================================
   ;; :then-let bindings

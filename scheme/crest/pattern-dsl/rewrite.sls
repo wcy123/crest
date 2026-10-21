@@ -319,9 +319,9 @@
                 #`(let* ([#,block-id (mlir::Region::push_back<Block> region types)]
                          arg-binding ...)
                     (with-current-MLIRBlock #,block-id
-                                            (with-CrestObject (bld (mlir::OpBuilder::atBlockEnd #,block-id))
-                                              (with-current-OpBuilder bld
-                                                                      (begin-mlir-code bld b ...)))))))))
+                      (with-CrestObject (bld (mlir::OpBuilder::atBlockEnd #,block-id))
+                        (with-current-OpBuilder bld
+                          (begin-mlir-code bld b ...)))))))))
 
         ;; Returns a fill-fn: (lambda (region-stx) → syntax).
         ;; block-id extracted before syntax-case so both branches share it.

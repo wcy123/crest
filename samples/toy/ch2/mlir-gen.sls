@@ -212,17 +212,17 @@
            [func-type (mlir::FunctionType::get (current-MLIRContext) arg-types '())]
            [%%fn-bld  (mlir::OpBuilder::atBlockEnd module-body)])
       (begin-mlir-code %%fn-bld
-                       (toy.func ()
-                                 ("sym_name"      = (mlir::StringAttr::get (current-MLIRContext) name))
-                                 ("function_type" = (mlir::TypeAttr::get func-type))
-                                 (^bb0 ,@arg-types
-                                       (for-each (lambda (arg-ast idx)
-                                                   (%%declare! symtab (var-expr:name arg-ast) (:arg idx)))
-                                                 args (iota (length args)))
-                                       (%%mlir-gen-block :builder symtab body)
-                                       (when (or (mlir::Block::empty? (current-MLIRBlock))
-                                                 (not (toy.return? (mlir::Block::back (current-MLIRBlock)))))
-                                         (%%create-op! :builder loc "toy.return" '() '() '())))))))
+        (toy.func ()
+                  ("sym_name"      = (mlir::StringAttr::get (current-MLIRContext) name))
+                  ("function_type" = (mlir::TypeAttr::get func-type))
+                  (^bb0 ,@arg-types
+                        (for-each (lambda (arg-ast idx)
+                                    (%%declare! symtab (var-expr:name arg-ast) (:arg idx)))
+                                  args (iota (length args)))
+                        (%%mlir-gen-block :builder symtab body)
+                        (when (or (mlir::Block::empty? (current-MLIRBlock))
+                                  (not (toy.return? (mlir::Block::back (current-MLIRBlock)))))
+                          (%%create-op! :builder loc "toy.return" '() '() '())))))))
 
   ;; -------------------------------------------------------------------------
   ;; Module code generation — public API
