@@ -28,7 +28,7 @@
        [arg-pairs (list (cons 'arg !vtype))])
     :rewrite %out :with
       (%result = test.with_block (%v)
-               (^bb0 bldr ,@arg-pairs
+               (^bb0 builder ,@arg-pairs
                      (test.yield ((:arg 0))))
                -> !vtype))
 
