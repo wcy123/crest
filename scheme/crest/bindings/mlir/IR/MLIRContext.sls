@@ -24,6 +24,7 @@
     current-MLIRContext
     with-current-MLIRContext
     define-ctx-optional
+    mlir::MLIRContext::new
     mlir::MLIRContext::allowUnregisteredDialects
     mlir::MLIRContext::allowsUnregisteredDialects?
     mlir::MLIRContext::enableMultithreading
@@ -37,6 +38,10 @@
   (import (rnrs)
           (only (chezscheme) make-parameter parameterize)
           (mlir IR MLIRContext ffi))
+
+  ;; @brief mlir::MLIRContext::new — allocate a new heap MLIRContext.
+  ;; @return  mlir::MLIRContext* as uptr (caller owns)
+  (define mlir::MLIRContext::new %mlir::MLIRContext::new)
 
   ;; @brief current-MLIRContext — dynamic parameter holding the ambient MLIRContext* uptr.
   ;; @return  MLIRContext* as uptr, or #f when no context is installed

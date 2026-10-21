@@ -21,11 +21,12 @@
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief Heap-allocate a CrestOwned<mlir::OpBuilder> positioned at end of block.
+  ;; @param ctx     MLIRContext* uptr — needed when block is not yet attached to an op
   ;; @param block   Block* uptr — target block; builder is positioned at block->end()
   ;; @return        CrestOwned<OpBuilder>* uptr — freed via with-CrestObject
   ;; @see           mlir/IR/Builders.h
   (define %mlir::OpBuilder::atBlockEnd
-    (foreign-procedure "mlir_ir_op_builder_at_block_end" (uptr) uptr))
+    (foreign-procedure "mlir_ir_op_builder_at_block_end" (uptr uptr) uptr))
 
   ;; @brief Create an op from a prepared OperationState via an OpBuilder.
   ;; @param builder     CrestOwned<OpBuilder>* or CrestRef<OpBuilder>* uptr

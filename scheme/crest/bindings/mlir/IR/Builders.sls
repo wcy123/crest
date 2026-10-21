@@ -18,13 +18,15 @@
     mlir::OpBuilder::create<OperationState>
     crest::isa<CrestOwned<mlir::OpBuilder>>?)
   (import (rnrs)
-          (mlir IR Builders ffi))
+          (mlir IR Builders ffi)
+          (only (mlir IR MLIRContext) current-MLIRContext))
 
   ;; @brief Heap-allocate a CrestOwned<mlir::OpBuilder> positioned at end of block.
-  ;; @param block   Block* uptr — target block
+  ;; @param block   Block* uptr — target block (uses current-MLIRContext for context)
   ;; @return        CrestOwned<OpBuilder>* uptr — freed via with-CrestObject
   ;; @see           mlir/IR/Builders.h
-  (define mlir::OpBuilder::atBlockEnd %mlir::OpBuilder::atBlockEnd)
+  (define (mlir::OpBuilder::atBlockEnd block)
+    (%mlir::OpBuilder::atBlockEnd (current-MLIRContext) block))
 
   (define mlir::OpBuilder::create<OperationState>
     %mlir::OpBuilder::create<OperationState>)

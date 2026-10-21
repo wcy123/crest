@@ -56,6 +56,39 @@ void registerIRBlockBindings() {
         return reinterpret_cast<uint64_t>(
             const_cast<void*>(arg.getAsOpaquePointer()));
       });
+
+  Sregister_symbol(
+      "mlir::Block::empty", (void*)+[](uint64_t block_ptr) -> int {
+        if (!block_ptr) {
+          return 1;
+        }
+        auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
+        return block->empty() ? 1 : 0;
+      });
+
+  Sregister_symbol(
+      "mlir::Block::back", (void*)+[](uint64_t block_ptr) -> uint64_t {
+        if (!block_ptr) {
+          return 0;
+        }
+        auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
+        if (block->empty()) {
+          return 0;
+        }
+        return reinterpret_cast<uint64_t>(&block->back());
+      });
+
+  Sregister_symbol(
+      "mlir::Block::front", (void*)+[](uint64_t block_ptr) -> uint64_t {
+        if (!block_ptr) {
+          return 0;
+        }
+        auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
+        if (block->empty()) {
+          return 0;
+        }
+        return reinterpret_cast<uint64_t>(&block->front());
+      });
 }
 
 } // namespace crest

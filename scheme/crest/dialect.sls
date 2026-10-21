@@ -161,9 +161,23 @@
                (syntax-violation 'define-op
                                  "malformed operand — expected (name type) or (name type :required/:optional/:variadic)"
                                  field-stx)]))
+          ;; Returns attribute-field record — mirrors parse-op-operand for attributes.
+          (define (parse-op-attribute field-stx)
+            (syntax-case field-stx (:required :optional)
+              [(name type)
+               (identifier? #'name)
+               (make-attribute-field #'name #'type ':required)]
+              [(name type :required)
+               (identifier? #'name)
+               (make-attribute-field #'name #'type ':required)]
+              [(name type :optional)
+               (identifier? #'name)
+               (make-attribute-field #'name #'type ':optional)]
+              [_
+               (syntax-violation 'define-op
+                                 "malformed attribute — expected (name type) or (name type :required/:optional)"
+                                 field-stx)]))
 
-          ;; name already checked by caller.
-          ;;
           ;; Op callback vector slots (mirrors CrestOp::Callbacks in lib/Crest/Op.h):
           ;;   0  verify                       (op) → bool
           ;;   1  verify-regions               (op) → bool
@@ -182,6 +196,7 @@
                                            :operands :attributes :results
                                            :verify :verify-regions
                                            :parse :print :fold
+                                           :required :optional
                                            :get-canonicalization-patterns
                                            :populate-default-attrs)
                   [(:summary     _ . rest)  (loop-sub #'rest)]
@@ -190,13 +205,16 @@
                    (begin
                      (set! operands (map parse-op-operand (syntax->list #'(field ...))))
                      (loop-sub #'rest))]
-                  [(:attributes  ((name type) ...) . rest)
-                   (andmap identifier? (syntax->list #'(name ...)))
-                   (begin (set! attributes (syntax->datum #'((name type) ...)))
-                          (loop-sub #'rest))]
+                  [(:attributes  (field ...) . rest)
+                   (begin
+                     (set! attributes (map parse-op-attribute (syntax->list #'(field ...))))
+                     (loop-sub #'rest))]
                   [(:results     ((name type) ...) . rest)
                    (andmap identifier? (syntax->list #'(name ...)))
-                   (begin (set! results (syntax->datum #'((name type) ...)))
+                   (begin (set! results
+                                (map make-result-field
+                                     (syntax->list #'(name ...))
+                                     (syntax->list #'(type ...))))
                           (loop-sub #'rest))]
                   [((:verify                       (op) body ...) . rest)
                    (identifier? #'op)
@@ -305,11 +323,13 @@
          (let* ([dialect      (parse-clauses #'(clause ...) #'dialect-id)]
                 [ops          (dialect-parse-ops dialect)]
                 [all-op-defs  (generate-all-op-defs #'dialect-id ops)]
-                [reg-def      (generate-register-dialect #'dialect-id (dialect-parse-cbs dialect))])
+                [reg-defs     (generate-register-dialect #'dialect-id (dialect-parse-cbs dialect) ops
+                                                         #'%crest::register-dynamic-op!
+                                                         #'%crest::register-dialect!)])
            (let ([result (with-syntax
-                             ([(op-def ...)            all-op-defs]
-                              [register-<dialect-name>! reg-def])
-                           #'(begin register-<dialect-name>! op-def ...))])
+                             ([(op-def  ...) all-op-defs]
+                              [(reg-def ...) reg-defs])
+                           #'(begin reg-def ... op-def ...))])
              (when (getenv "DEBUG_DEFINE_DIALECT")
                (pretty-print (syntax->datum result)))
              result))])

@@ -8,6 +8,7 @@
 #include "BuiltinTypes.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/BuiltinTypes.h"
+#include "mlir/IR/TypeRange.h"
 #include "mlir/IR/Types.h"
 
 namespace crest {
@@ -392,6 +393,46 @@ void registerIRBuiltinTypesBindings() {
         }
         mlir::Attribute ms = mt.getMemorySpace();
         return ms ? reinterpret_cast<uint64_t>(ms.getAsOpaquePointer()) : 0;
+      });
+
+  Sregister_symbol(
+      "mlir::RankedTensorType::get",
+      (void*)+[](ptr shape, uint64_t elem_type_ptr) -> uint64_t {
+        auto elemType = mlir::Type::getFromOpaquePointer(
+            reinterpret_cast<const void*>(elem_type_ptr));
+        llvm::SmallVector<int64_t> dims;
+        for (ptr cur = shape; cur != Snil; cur = Scdr(cur)) {
+          dims.push_back(Sfixnum_value(Scar(cur)));
+        }
+        return reinterpret_cast<uint64_t>(
+            mlir::RankedTensorType::get(dims, elemType).getAsOpaquePointer());
+      });
+
+  Sregister_symbol(
+      "mlir::UnrankedTensorType::get",
+      (void*)+[](uint64_t elem_type_ptr) -> uint64_t {
+        auto elemType = mlir::Type::getFromOpaquePointer(
+            reinterpret_cast<const void*>(elem_type_ptr));
+        return reinterpret_cast<uint64_t>(
+            mlir::UnrankedTensorType::get(elemType).getAsOpaquePointer());
+      });
+
+  Sregister_symbol(
+      "mlir::FunctionType::get",
+      (void*)+[](uint64_t ctx_ptr, ptr inputs, ptr results) -> uint64_t {
+        auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+        llvm::SmallVector<mlir::Type> inputTypes, resultTypes;
+        for (ptr cur = inputs; cur != Snil; cur = Scdr(cur)) {
+          inputTypes.push_back(mlir::Type::getFromOpaquePointer(
+              reinterpret_cast<const void*>(Sunsigned64_value(Scar(cur)))));
+        }
+        for (ptr cur = results; cur != Snil; cur = Scdr(cur)) {
+          resultTypes.push_back(mlir::Type::getFromOpaquePointer(
+              reinterpret_cast<const void*>(Sunsigned64_value(Scar(cur)))));
+        }
+        return reinterpret_cast<uint64_t>(
+            mlir::FunctionType::get(ctx, inputTypes, resultTypes)
+                .getAsOpaquePointer());
       });
 }
 

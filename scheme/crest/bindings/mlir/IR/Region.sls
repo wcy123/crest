@@ -18,6 +18,7 @@
   (export
     mlir::Region::getParentOp
     mlir::Region::push_back<Block>
+    mlir::Region::emplaceBlock
     mlir::Region::front)
   (import (rnrs)
           (mlir IR Region ffi)
@@ -53,5 +54,9 @@
       (%mlir::Region::push_back region block)
       (for-each (lambda (t) (mlir::Block::addArgument block t loc)) arg-types)
       block))
+
+  ;; @brief mlir::Region::emplaceBlock — append a new empty block to the region.
+  ;; Returns the new Block* uptr.
+  (define mlir::Region::emplaceBlock %mlir::Region::emplaceBlock)
 
   ) ;; end library (mlir IR Region)

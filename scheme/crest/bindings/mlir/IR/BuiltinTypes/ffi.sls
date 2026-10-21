@@ -49,7 +49,10 @@
     %mlir::VectorType::getRank
     %mlir::VectorType::getElementType
     %mlir::MemRefType::getElementType
-    %mlir::MemRefType::getMemorySpace)
+    %mlir::MemRefType::getMemorySpace
+    %mlir::RankedTensorType::get
+    %mlir::UnrankedTensorType::get
+    %mlir::FunctionType::get)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::IndexType::get — construct an index type in the given context.
@@ -217,5 +220,12 @@
     (foreign-procedure "mlir::MemRefType::getElementType" (uptr) uptr))
   (define %mlir::MemRefType::getMemorySpace
     (foreign-procedure "mlir::MemRefType::getMemorySpace" (uptr) uptr))
+
+  (define %mlir::RankedTensorType::get
+    (foreign-procedure "mlir::RankedTensorType::get" (scheme-object uptr) uptr))
+  (define %mlir::UnrankedTensorType::get
+    (foreign-procedure "mlir::UnrankedTensorType::get" (uptr) uptr))
+  (define %mlir::FunctionType::get
+    (foreign-procedure "mlir::FunctionType::get" (uptr scheme-object scheme-object) uptr))
 
   ) ;; end library (mlir IR BuiltinTypes ffi)

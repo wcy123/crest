@@ -15,7 +15,10 @@
 (library (mlir IR Block)
   (export mlir::Block::getArgument
           mlir::Block::getNumArguments
-          mlir::Block::addArgument)
+          mlir::Block::addArgument
+          mlir::Block::empty?
+          mlir::Block::back
+          mlir::Block::front)
   (import (rnrs) (mlir IR Block ffi))
 
   ;; @brief mlir::Block::getArgument — return the idx-th block argument.
@@ -45,5 +48,9 @@
   ;; @return       mlir::BlockArgument opaque pointer uptr (subclass of mlir::Value)
   ;; @see          mlir/IR/Block.h
   (define mlir::Block::addArgument %mlir::Block::addArgument)
+
+  (define (mlir::Block::empty? block) (not (zero? (%mlir::Block::empty block))))
+  (define mlir::Block::back  %mlir::Block::back)
+  (define mlir::Block::front %mlir::Block::front)
 
   ) ;; end library (mlir IR Block)

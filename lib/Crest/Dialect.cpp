@@ -221,8 +221,7 @@ void* CrestDialect::getRegisteredInterfaceForOp(mlir::TypeID interfaceID,
 // Helpers for Sregister_symbol bindings
 // ---------------------------------------------------------------------------
 
-static std::shared_ptr<CrestDialect::Callbacks>
-unpack_callbacks(uint64_t cbs_ptr) {
+static std::shared_ptr<CrestDialect::Callbacks> unpack_callbacks(ptr cbs_ptr) {
   auto make_cb = [](ptr slot) -> std::optional<LockedSchemeObject> {
     if (Sprocedurep(slot)) {
       return LockedSchemeObject(slot);
@@ -233,7 +232,7 @@ unpack_callbacks(uint64_t cbs_ptr) {
     }
     return std::nullopt;
   };
-  ptr v = reinterpret_cast<ptr>(cbs_ptr);
+  ptr v = cbs_ptr;
   auto cbs = std::make_shared<CrestDialect::Callbacks>();
   cbs->initialize = make_cb(Svector_ref(v, 0));
   cbs->get_dependent_dialects = make_cb(Svector_ref(v, 1));
@@ -268,8 +267,7 @@ void registerIRExtensibleDialectBindings() {
   //   5 print-type                      11 get-registered-interface-for-op
   Sregister_symbol(
       "crest::register-dialect!",
-      (void*)+[](uint64_t ctx_ptr, uint64_t name_ptr,
-                 uint64_t cbs_ptr) -> void {
+      (void*)+[](uint64_t ctx_ptr, uint64_t name_ptr, ptr cbs_ptr) -> void {
         auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
         std::string name(reinterpret_cast<const char*>(name_ptr));
 

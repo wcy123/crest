@@ -382,6 +382,14 @@ void registerIROperationBindings() {
         return attr ? attr.getValueAsDouble()
                     : std::numeric_limits<double>::quiet_NaN();
       });
+
+  Sregister_symbol(
+      "mlir::Operation::dump", (void*)+[](uint64_t op_ptr) -> void {
+        if (!op_ptr) {
+          return;
+        }
+        reinterpret_cast<mlir::Operation*>(op_ptr)->dump();
+      });
 }
 
 } // namespace crest

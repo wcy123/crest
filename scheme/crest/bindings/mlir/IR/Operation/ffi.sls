@@ -38,6 +38,7 @@
     %emit-error
     %emit-warning
     %emit-remark
+    %mlir::Operation::dump
     %mlir::Operation::print
     %erase
     %get-attr
@@ -220,6 +221,12 @@
   ;; @note       Defined in lib/Bindings/IR/Operation.cpp
   (define %emit-remark
     (foreign-procedure "mlir::Operation::emitRemark" (uptr string) void))
+
+  ;; @brief mlir::Operation::dump — print the operation to stderr.
+  ;; @param op  Operation* uptr
+  ;; @see       mlir/IR/Operation.h
+  (define %mlir::Operation::dump
+    (foreign-procedure "mlir::Operation::dump" (uptr) void))
 
   ;; @brief mlir::Operation::print — print full MLIR textual form to stderr (for debugging).
   ;; @param op  Operation* uptr

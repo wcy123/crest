@@ -149,9 +149,9 @@ void registerCrestDynamicOpBindings() {
   Sregister_symbol(
       "crest::register-dynamic-op!",
       (void*)+[](uint64_t dialect_ptr, const char* op_name,
-                 uint64_t cbs_ptr) -> void {
+                 ptr cbs_ptr) -> void {
         auto* dialect = reinterpret_cast<mlir::ExtensibleDialect*>(dialect_ptr);
-        ptr v = reinterpret_cast<ptr>(cbs_ptr);
+        ptr v = cbs_ptr;
 
         auto make_cb = [](ptr slot) -> std::optional<LockedSchemeObject> {
           if (Sprocedurep(slot)) {

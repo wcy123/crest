@@ -45,6 +45,18 @@ void registerIRRegionBindings() {
         }
         return reinterpret_cast<uint64_t>(&region->front());
       });
+
+  Sregister_symbol(
+      "mlir::Region::emplaceBlock",
+      (void*)+[](uint64_t region_ptr) -> uint64_t {
+        if (!region_ptr) {
+          return 0;
+        }
+        auto* region = reinterpret_cast<mlir::Region*>(region_ptr);
+        auto* block = new mlir::Block();
+        region->push_back(block);
+        return reinterpret_cast<uint64_t>(block);
+      });
 }
 
 } // namespace crest

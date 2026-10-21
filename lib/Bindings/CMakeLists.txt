@@ -18,6 +18,8 @@ add_library(CrestBindings STATIC
   IR/Block.h
   IR/BuiltinAttributes.cpp
   IR/BuiltinAttributes.h
+  IR/BuiltinOps.cpp
+  IR/BuiltinOps.h
   IR/BuiltinTypes.cpp
   IR/BuiltinTypes.h
   IR/Location.cpp

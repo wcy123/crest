@@ -17,13 +17,18 @@ namespace crest {
 void registerIROpBuilderBindings() {
   Sregister_symbol(
       "mlir_ir_op_builder_at_block_end",
-      (void*)+[](uint64_t block_ptr) -> uint64_t {
+      (void*)+[](uint64_t ctx_ptr, uint64_t block_ptr) -> uint64_t {
         if (!block_ptr) {
           scheme_error("mlir_ir_op_builder_at_block_end", "null block pointer");
         }
+        auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
         auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
-        return reinterpret_cast<uint64_t>(
-            new CrestOwned<mlir::OpBuilder>(block, block->end()));
+        // mlir::OpBuilder(Block*, iterator) needs the block's parent op for
+        // context. For blocks in OperationState regions (not yet materialized),
+        // we must supply the context explicitly via a two-step construction.
+        auto* owned = new CrestOwned<mlir::OpBuilder>(ctx);
+        owned->inner.setInsertionPoint(block, block->end());
+        return reinterpret_cast<uint64_t>(owned);
       });
   Sregister_symbol(
       "mlir_ir_op_builder_create_from_state",

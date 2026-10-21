@@ -17,6 +17,7 @@
     %mlir::Region::push_back
     %mlir::Region::getParentOp
     %mlir::Region::front
+    %mlir::Region::emplaceBlock
     %mlir::Block::new)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
@@ -31,5 +32,8 @@
 
   (define %mlir::Region::front
     (foreign-procedure "mlir::Region::front" (uptr) uptr))
+
+  (define %mlir::Region::emplaceBlock
+    (foreign-procedure "mlir::Region::emplaceBlock" (uptr) uptr))
 
   ) ;; end library (mlir IR Region ffi)
