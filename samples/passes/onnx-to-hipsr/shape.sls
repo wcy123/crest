@@ -112,7 +112,8 @@
       ;; Scheme control flow with MLIR op creation.
       (%result = hipsr.compute (%ctx %input %placeholder)
                (operandSegmentSizes = (list 1 1 1) :i32-array)
-               (^bb0 bldr ((%c : !ctx-type) (%in : !input-type) (%dest : !out-host))
+               (^bb0 ((%c : !ctx-type) (%in : !input-type) (%dest : !out-host))
+                     (bldr = :builder)
                      (%final = (build-compute-body!
                                 bldr %in %dest input-shape start end
                                 !index-type !i64-type !out-host))

@@ -3,7 +3,7 @@
 ;;         mlir/examples/toy/Ch2/include/toy/MLIRGen.h
 (library (toy ch2 mlir-gen)
   (export mlir-gen)
-  (import (chezscheme)
+  (import (except (chezscheme) =)
           (mlir IR MLIRContext)
           (mlir IR Builders)
           (mlir IR BuiltinTypes)
@@ -14,7 +14,9 @@
           (mlir IR Region)
           (mlir IR Block)
           (mlir IR BuiltinOps)
-          (toy ch2 ast))
+          (toy ch2 ast)
+          (for (only (crest pattern-dsl rewrite) begin-mlir-code) expand)
+          (for (only (crest pattern-dsl keywords) = :builder :arg) expand))
 
   ;; toy.return? — mirrors toy::ReturnOp::classof().
   ;; Defined here (not imported from toy) to avoid library export issues
@@ -138,7 +140,7 @@
                        (call-expr:args expr))])
       (cond
        [(string=? callee "transpose")
-        (unless (= (length args) 1)
+        (unless (fx=? (length args) 1)
           (error 'mlir-gen "transpose takes exactly one argument"))
         (mlir::Operation::getResult
          (%%create-op! builder loc "toy.transpose" args
@@ -201,46 +203,26 @@
   ;; Function code generation — mirrors MLIRGenImpl::mlirGen(FunctionAST&)
   ;; -------------------------------------------------------------------------
   (define (%%mlir-gen-function module-body symtab fn)
-    (let* ([proto   (function:proto fn)]
-           [body    (function:body  fn)]
-           [loc     (%%loc (prototype:loc proto))]
-           [name    (prototype:name proto)]
-           [args    (prototype:args proto)]
-           [n-args  (length args)]
-           ;; All arguments are unranked tensor<*xf64>
+    (let* ([proto     (function:proto fn)]
+           [body      (function:body  fn)]
+           [loc       (%%loc (prototype:loc proto))]
+           [name      (prototype:name proto)]
+           [args      (prototype:args proto)]
            [arg-types (map (lambda (_) (%%f64-unranked-tensor)) args)]
-           [func-type (mlir::FunctionType::get (current-MLIRContext)
-                                               arg-types '())])
-      ;; Create toy.func op
-      (with-OperationState (state loc "toy.func")
-                           (mlir::OperationState::addAttribute
-                            state "sym_name"
-                            (mlir::StringAttr::get (current-MLIRContext) name))
-                           (mlir::OperationState::addAttribute
-                            state "function_type"
-                            (mlir::TypeAttr::get func-type))
-                           ;; Add entry block with arguments
-                           (let* ([region (mlir::OperationState::addRegion state)]
-                                  [block  (mlir::Region::emplaceBlock region)])
-                             (for-each (lambda (t) (mlir::Block::addArgument block t loc))
-                                       arg-types)
-                             ;; Build function body
-                             (let ([fn-builder (mlir::OpBuilder::atBlockEnd block)])
-                               ;; Bind argument names in symbol table
-                               (for-each (lambda (arg-ast idx)
-                                           (%%declare! symtab
-                                                       (var-expr:name arg-ast)
-                                                       (mlir::Block::getArgument block idx)))
-                                         args
-                                         (iota n-args))
-                               ;; Codegen body
-                               (%%mlir-gen-block fn-builder symtab body)
-                               ;; Implicit return if block doesn't end with return
-                               (when (or (mlir::Block::empty? block)
-                                         (not (toy.return? (mlir::Block::back block))))
-                                 (%%create-op! fn-builder loc "toy.return" '() '() '())))
-                             (mlir::OpBuilder::create<OperationState>
-                              (mlir::OpBuilder::atBlockEnd module-body) state)))))
+           [func-type (mlir::FunctionType::get (current-MLIRContext) arg-types '())]
+           [%%fn-bld  (mlir::OpBuilder::atBlockEnd module-body)])
+      (begin-mlir-code %%fn-bld
+                       (toy.func ()
+                                 ("sym_name"      = (mlir::StringAttr::get (current-MLIRContext) name))
+                                 ("function_type" = (mlir::TypeAttr::get func-type))
+                                 (^bb0 ,@arg-types
+                                       (for-each (lambda (arg-ast idx)
+                                                   (%%declare! symtab (var-expr:name arg-ast) (:arg idx)))
+                                                 args (iota (length args)))
+                                       (%%mlir-gen-block :builder symtab body)
+                                       (when (or (mlir::Block::empty? (current-MLIRBlock))
+                                                 (not (toy.return? (mlir::Block::back (current-MLIRBlock)))))
+                                         (%%create-op! :builder loc "toy.return" '() '() '())))))))
 
   ;; -------------------------------------------------------------------------
   ;; Module code generation — public API

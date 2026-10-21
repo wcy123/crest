@@ -134,7 +134,7 @@ The five parameters map to [`matchAndRewrite(Operation* op, ArrayRef<Value> oper
     :where (hip-can-requantize-layout-op? (mlir::Value::getDefiningOp %layout) op)
   ```
 
-- `operand-list` — positional operands; each must be a bound `%var` or `%_` (wildcard, discards).
+- `operand-list` — positional operands; each must be a bound `%var` or `_` (wildcard, discards).
 
 The **root op** is the variable named in `:rewrite root :with` — the order of
 bindings in `:if-match` does not matter. The root op is what the pattern is
@@ -214,33 +214,33 @@ needed — just reuse the same `%var`:
 %b      = bar.op  (%shared ...)   ; same %shared → pointer check emitted
 ```
 
-### Wildcard `%_`
+### Wildcard `_`
 
-`%_` matches without binding a name, in both operand and result position.
-Every `%_` occurrence is independent — two `%_` in different positions are
+`_` matches without binding a name, in both operand and result position.
+Every `_` occurrence is independent — two `_` in different positions are
 never treated as a shared value.
 
 **Operand wildcard** — skip operands that are irrelevant to the rewrite:
 
 ```scheme
 ;; Match hip.quantize_linear but ignore the axis and init operands
-%q = hip.quantize_linear (%ctx %sum %scale %_ %_)
+%q = hip.quantize_linear (%ctx %sum %scale _ _)
 ```
 
 **Result wildcard** — bind only the results you need from a multi-result op:
 
 ```scheme
 ;; Match test.split but only use its second result
-(%_ %second) = test.split (%x)
+(_ %second) = test.split (%x)
 %out         = test.use   (%second)
 ```
 
-Note: two `%_` in different ops are **not** a diamond — they match
+Note: two `_` in different ops are **not** a diamond — they match
 independently even if the underlying SSA values differ:
 
 ```scheme
-%left  = test.add (%x %_)   ; %_ matches any value
-%right = test.sub (%y %_)   ; this %_ is unrelated to the one above
+%left  = test.add (%x _)   ; _ matches any value
+%right = test.sub (%y _)   ; this _ is unrelated to the one above
 %out   = test.combine (%left %right)
 ```
 
@@ -286,14 +286,24 @@ Op-form syntax — see [§5 `begin-mlir-code`](#5-begin-mlir-code) for the full 
 
 ## 5. `begin-mlir-code`
 
-`begin-mlir-code` emits MLIR ops via the current rewriter. It is used
-implicitly inside `:rewrite :with` and can also be called standalone:
+`begin-mlir-code` emits MLIR ops via the current rewriter or builder.
 
+**With explicit builder** (original form):
 ```scheme
-(begin-mlir-code
+(begin-mlir-code my-builder
+  (%sum = arith.addi (%a %b) -> (mlir::Value::getType %a)))
+```
+
+**Without explicit builder** — uses `(%%current-builder)`, i.e. whatever
+`current-RewriterBase` or `current-OpBuilder` is installed:
+```scheme
+(begin-mlir-code            ; implicit builder from current context
   (%c0  = arith.constant () ("value" = (mlir::IntegerAttr::get<i64> 0)) -> (mlir::IntegerType::get<i64>))
   (%sum = arith.addi (%a %b) -> (mlir::Value::getType %a)))
 ```
+
+The implicit form works inside `:rewrite :with` bodies (where `current-RewriterBase`
+is set) and inside `^bb0` block bodies (where `current-OpBuilder` is set).
 
 Every emitted op carries a `FileLineColLoc` from the `.sls` source line.
 
@@ -304,6 +314,24 @@ Each statement is an op-form:
 ```
 (%result-var = dialect.op-name (operand ...) ("attr" = val) ... -> !result-type)
 ```
+
+### Special forms
+
+Two special forms are available anywhere inside `begin-mlir-code`:
+
+**`:builder`** — passes the currently active builder or rewriter to a Scheme
+helper function. `current-RewriterBase` at the `:rewrite :with` level;
+`current-OpBuilder` inside a `^bb0` block body. **Not** an MLIR operand
+(builders are not `mlir::Value`s):
+
+```scheme
+;; Pass to a Scheme helper that emits further ops using the active builder
+(_ = (%%emit-prologue :builder loc))
+```
+
+**`(:arg N)`** — shorthand for `(mlir::Block::getArgument (current-MLIRBlock) N)`.
+Only valid inside a `^bb0 ,@types` dynamic block body where `current-MLIRBlock`
+is installed.
 
 ### Attributes
 
@@ -401,15 +429,64 @@ Multiple regions each with multiple blocks — use multiple `:region` wrappers:
 
 In summary:
 
-| Form | Regions | Blocks per region |
-|---|---|---|
-| `(^bb ...)` | 1 | 1 |
-| `(^bb ...) (^bb ...)` | N | 1 each |
-| `(:region (^a ...) (^b ...))` | 1 | N |
-| `(:region ...) (:region ...)` | N | N each |
+| Form | Regions | Blocks per region | Block args |
+|---|---|---|---|
+| `(^bb ...)` | 1 | 1 | static |
+| `(^bb ...) (^bb ...)` | N | 1 each | static |
+| `(^bb ,@types ...)`  | 1 | 1 | dynamic |
+| `(:region (^a ...) (^b ...))` | 1 | N | static |
+| `(:region ...) (:region ...)` | N | N each | static |
 
-Regions can be nested: an op-form inside `^bb` can itself have regions.
+The body of every `^label` block is a recursive `begin-mlir-code` call — the
+same op-form syntax, the same result variables, the same attribute and region
+modifiers. Regions can be nested arbitrarily deep.
 See `samples/passes/onnx-to-hipsr/matmul.sls` for a real-world example.
+
+### Dynamic block arguments
+
+When the number or types of block arguments are not known at compile time,
+use `,@types-expr` to splice a runtime list of `mlir::Type` values:
+
+```scheme
+;; arg-types is a Scheme list of mlir::Type values computed at match time
+(%fn = my.func ()
+      (^bb0 ,@arg-types
+        ;; (:arg N) is shorthand for the Nth block argument
+        (%r = arith.addi ((:arg 0) (:arg 1)) -> !i32)
+        (my.return (%r)))
+      -> !i32)
+```
+
+The `,@` prefix is Chez Scheme's unquote-splicing — a visual marker that this
+list is computed at runtime rather than fixed at compile time.
+
+The block body is a recursive `begin-mlir-code` call — the same op-form
+syntax is available (nested regions, attribute shorthands, multi-result
+ops, etc.) with the block's implicit builder as the active context.
+
+Inside the block body, **`(:arg N)`** is a shorthand for
+`(mlir::Block::getArgument (current-MLIRBlock) N)` where `current-MLIRBlock` is a
+dynamic parameter installed by the `^label ,@...` form.
+
+```scheme
+;; Concrete example: rewrite test.copy(%v) → test.with_block(%v) where
+;; the block arg type is determined at runtime from %v's type.
+(define-rewrite-pattern (%%pattern op rewriter)
+  :if-match
+    %out = test.copy (%v)
+  :then-let
+    ([!vtype   (mlir::Value::getType %v)]
+     [arg-types (list !vtype)])
+  :rewrite %out :with
+    (%result = test.with_block (%v)
+             (^bb0 ,@arg-types
+               (my.yield ((:arg 0))))   ; (:arg 0) → first block argument
+             -> !vtype))
+```
+
+Use dynamic block args when generating functions whose argument lists vary
+(e.g. lowering to `func.func` from an AST), and static `((arg : type) ...)`
+when the count and types are fixed.
 
 ---
 
@@ -540,14 +617,38 @@ This section lists commonly used bindings. The set is not exhaustive — binding
 are added on demand as new MLIR APIs are needed. Library names mirror MLIR header
 paths. Import only what you use.
 
+### Context parameters
+
+CREST uses Scheme dynamic parameters to thread C++ context pointers implicitly.
+Each parameter follows the `current-<C++ClassName>` / `with-current-<C++ClassName>`
+convention from CLAUDE.md Rules 10–11:
+
+| Parameter | Macro | Defined in | Set by |
+|---|---|---|---|
+| `current-MLIRContext` | `with-current-MLIRContext` | `(mlir IR MLIRContext)` | user / `with-current-MLIRContext` |
+| `current-RewriterBase` | `with-current-RewriterBase` | `(mlir IR PatternMatch)` | `:rewrite :with` code generation |
+| `current-MLIRBlock` | `with-current-MLIRBlock` | `(mlir IR Block)` | `^bb0` block bodies |
+| `current-OpBuilder` | `with-current-OpBuilder` | `(mlir IR Builders)` | `^bb0` block bodies |
+
+`%%current-builder` (internal) returns `(current-RewriterBase)` or `(current-OpBuilder)`,
+whichever is set — this is what `:builder` and the implicit `begin-mlir-code` form use.
+
+The context hierarchy during a pattern rewrite:
+
+```
+:rewrite :with                → current-RewriterBase = rw
+  ^bb0 block body             → current-MLIRBlock = block
+                                current-OpBuilder = block-builder
+```
+
 ### Core IR
 
 | Import | Key exports |
 |---|---|
-| `(mlir IR MLIRContext)` | `with-current-MLIRContext`, `current-MLIRContext`, `mlir::MLIRContext::new` |
+| `(mlir IR MLIRContext)` | `current-MLIRContext`, `with-current-MLIRContext`, `mlir::MLIRContext::new` |
 | `(mlir IR Operation)` | `mlir::Operation::getName`, `getResult`, `getRegion`, `getAttr`, `setAttr!`, `getContext`, `getNumResults`, `getNumOperands` |
 | `(mlir IR Value)` | `mlir::Value::getType`, `getDefiningOp`, `getUses` |
-| `(mlir IR Block)` | `mlir::Block::getArgument`, `getNumArguments` |
+| `(mlir IR Block)` | `mlir::Block::getArgument`, `getNumArguments`, `current-MLIRBlock`, `with-current-MLIRBlock` |
 | `(mlir IR Region)` | `mlir::Region::front`, `getParentOp` |
 | `(mlir IR OpResult)` | `mlir::OpResult::getResultNumber` |
 
@@ -564,11 +665,17 @@ paths. Import only what you use.
 |---|---|
 | `(mlir IR BuiltinAttributes)` | `mlir::IntegerAttr::get<i64>`, `mlir::FloatAttr::get<f32>`, `mlir::StringAttr::get`, `mlir::DenseElementsAttr::isSplat`, `mlir::DenseElementsAttr::getSplatValue<APFloat>`, `mlir::DenseElementsAttr::getSplatValue<APInt>`, `mlir::DenseI32ArrayAttr::get`, `mlir::DenseI64ArrayAttr::get` |
 
+### Builders
+
+| Import | Key exports |
+|---|---|
+| `(mlir IR Builders)` | `mlir::OpBuilder::atBlockEnd`, `mlir::OpBuilder::create<OperationState>`, `current-OpBuilder`, `with-current-OpBuilder` |
+
 ### Pattern matching and rewriting
 
 | Import | Key exports |
 |---|---|
-| `(mlir IR PatternMatch)` | `with-RewritePatternSet`, `with-RewriterBase`, `current-RewriterBase`, `with-OpBuilder` |
+| `(mlir IR PatternMatch)` | `with-RewritePatternSet`, `current-RewriterBase`, `with-current-RewriterBase` |
 | `(mlir Transforms GreedyPatternRewriteDriver)` | `mlir::applyPatternsGreedily` |
 | `(mlir Transforms DialectConversion)` | `with-TypeConverter`, `with-ConversionTarget`, `mlir::applyFullConversion`, `mlir::applyPartialConversion`, `mlir::ConversionTarget::addIllegalDialect!`, `mlir::ConversionTarget::addLegalDialect!`, `mlir::TypeConverter::addConversion!` |
 
@@ -586,8 +693,11 @@ paths. Import only what you use.
 
 Exports: `define-rewrite-pattern`, `define-conversion-pattern`,
 `add-rewrite-pattern`, `add-conversion-pattern`,
-`begin-mlir-code`, `unbound-value?`,
-`mlir-get-remapped-operands`.
+`begin-mlir-code`, `unbound-value?`, `mlir-get-remapped-operands`,
+`:builder`, `:arg`,
+`current-RewriterBase`, `with-current-RewriterBase`,
+`current-MLIRBlock`, `with-current-MLIRBlock`,
+`current-OpBuilder`, `with-current-OpBuilder`.
 
 ---
 

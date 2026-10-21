@@ -69,13 +69,13 @@
           (for (crest pattern-dsl keywords) expand)
           (for (crest pattern-dsl ast) expand))
 
-  ;; %%wildcard? — #t when identifier datum is exactly %_
+  ;; %%wildcard? — #t when identifier datum is exactly _
   (define-syntax %%wildcard?
     (lambda (stx)
       (syntax-case stx ()
-        [(_ id) #'(eq? (syntax->datum id) '%_)])))
+        [(_ id) #'(eq? (syntax->datum id) '_)])))
 
-  ;; %%fresh-wildcard — replace a %_ syntax identifier with a fresh unique
+  ;; %%fresh-wildcard — replace a _ syntax identifier with a fresh unique
   ;; identifier that still starts with % (so validation passes) but is
   ;; never equal to any other wildcard or user-written variable.
   (define (%%fresh-wildcard ctx)
@@ -84,7 +84,7 @@
                    (string-append "%" (symbol->string (syntax->datum tmp))))])
       (datum->syntax tmp name)))
 
-  ;; %%freshen-wildcards — replace every %_ in a list of result identifiers
+  ;; %%freshen-wildcards — replace every _ in a list of result identifiers
   ;; with a fresh unique identifier.  Non-wildcard identifiers are unchanged.
   (define (%%freshen-wildcards vars)
     (map (lambda (var)
@@ -264,7 +264,7 @@
   ;; - All identifiers start with % (semantic rule)
   ;;
   (define (%%parse-operands operands-stx)
-    ;; Freshen a single identifier: replace %_ with a fresh unique name, pass others through.
+    ;; Freshen a single identifier: replace _ with a fresh unique name, pass others through.
     (define (freshen v) (if (%%wildcard? v) (%%fresh-wildcard v) v))
     ;; #t when v is an identifier whose name starts with %
     (define (%-id? v)
@@ -276,26 +276,28 @@
     (define (parse-one operand-stx)
       (syntax-case operand-stx (:optional :variadic)
         ;; Optional group: (:optional %y %z) → flatten to multiple optional operands.
-        ;; %_ is allowed and freshened so multiple (:optional %_) never collide.
+        ;; _ is allowed and freshened so multiple (:optional _) never collide.
         [(:optional var1 var ...)
-         (for-all %-id? (syntax->list #'(var1 var ...)))
+         (for-all (lambda (v) (or (%-id? v) (%%wildcard? v)))
+                  (syntax->list #'(var1 var ...)))
          (parse-flex-group ':optional (syntax->list #'(var1 var ...)))]
 
         ;; Variadic group: (:variadic %a %b ...) → one variadic operand per variable.
         ;; Each variable corresponds to one variadic group in operandSegmentSizes
         ;; and is bound to a list of that group's values.
         [(:variadic var1 var ...)
-         (for-all %-id? (syntax->list #'(var1 var ...)))
+         (for-all (lambda (v) (or (%-id? v) (%%wildcard? v)))
+                  (syntax->list #'(var1 var ...)))
          (parse-flex-group ':variadic (syntax->list #'(var1 var ...)))]
 
-        ;; Required operand: %x or %_ (wildcard freshened by freshen)
+        ;; Required operand: %x or _ (wildcard freshened by freshen)
         [var
-         (%-id? #'var)
+         (or (%-id? #'var) (%%wildcard? #'var))
          (list (make-ast-operand ':required (freshen #'var)))]
 
         [_
          (syntax-violation '%%parse-operands
-                           "Invalid operand syntax (expected: %-prefixed identifier, (:optional %...), or (:variadic %...))"
+                           "Invalid operand syntax (expected: %-prefixed identifier, _ wildcard, (:optional %...), or (:variadic %...))"
                            operand-stx)]))
 
     (apply append (map parse-one (syntax->list operands-stx))))

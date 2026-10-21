@@ -35,8 +35,8 @@
 ;;   (name = val :unit)      — construct and set UnitAttr
 ;;
 ;;   Region modifiers — each (^label ...) creates ONE region with ONE block:
-;;   (^label ((arg : !type) ...) body ...)         — unnamed builder
-;;   (^label builder-name ((arg : !type) ...) ...) — builder name in scope for body
+;;   (^label ((arg : !type) ...) body ...)   — static args; use :builder in body
+;;   (^label ,@type-list body ...)           — dynamic args; use (:arg N) in body
 ;;
 ;;   Consecutive shorthands = multiple regions (common case, no :region wrapper needed):
 ;;   (%r = "scf.if" (%c) (^then () then...) (^else () else...) -> i32)
@@ -66,13 +66,16 @@
           ;; Runtime predicates and create bindings for %%crest:create-op! dispatch
           (only (mlir IR PatternMatch)
                 crest::isa<CrestRef<mlir::RewriterBase>>?
-                mlir::RewriterBase::create<OperationState>)
+                mlir::RewriterBase::create<OperationState>
+                current-RewriterBase)
           (only (mlir IR Builders)
                 crest::isa<CrestOwned<mlir::OpBuilder>>?
-                mlir::OpBuilder::create<OperationState>)
+                mlir::OpBuilder::create<OperationState>
+                current-OpBuilder)
           (only (mlir support array-ref) with-CrestObject)
           (for (only (mlir IR Builders)
-                     mlir::OpBuilder::atBlockEnd) expand)
+                     mlir::OpBuilder::atBlockEnd
+                     with-current-OpBuilder) expand)
           (for (only (mlir IR OperationSupport)
                      mlir::OperationState::addOperands
                      mlir::OperationState::addTypes
@@ -83,7 +86,11 @@
                      mlir::UnknownLoc::get
                      mlir::FileLineColLoc::get) expand)
           (for (only (mlir IR Region) mlir::Region::push_back<Block>) expand)
-          (for (only (mlir IR Block) mlir::Block::getArgument) expand)
+          (for (only (mlir IR Block)
+                     mlir::Block::getArgument
+                     current-MLIRBlock
+                     with-current-MLIRBlock) expand)
+          (only (mlir IR Block) current-MLIRBlock with-current-MLIRBlock)
           (for (only (mlir IR Operation) mlir::Operation::getRegion) expand)
           (for (only (mlir IR Operation) mlir::Operation::getResult) expand))
 
@@ -91,6 +98,14 @@
   ;;===--------------------------------------------------------------------===;;
   ;; Runtime create dispatcher
   ;;===--------------------------------------------------------------------===;;
+
+  ;; Returns the currently active builder: the RewriterBase (at :rewrite level)
+  ;; or the OpBuilder (inside a ^bb0 block). Error if neither is set.
+  ;; current-OpBuilder (block body) takes precedence over current-RewriterBase (:rewrite level)
+  ;; so that :builder inside a ^bb0 body gives the block's builder, not the outer rewriter.
+  (define (%%current-builder)
+    (or (current-OpBuilder) (current-RewriterBase)
+        (error '%%current-builder "no active builder — use begin-mlir-code inside :rewrite :with or a ^bb0 block")))
 
   ;; Select the correct C++ create binding based on the CREST wrapper type.
   ;; - CrestRef<RewriterBase>  → mlir::RewriterBase::create<OperationState>
@@ -130,10 +145,21 @@
       ;; Main entry
       ;;-------------------------------------------------------------------
 
-      ;; Single case: ctx is any builder (CrestRef<RewriterBase> or
-      ;; CrestOwned<OpBuilder>). %%crest:create-op! dispatches at runtime.
+      ;; Two entry points:
+      ;;   (begin-mlir-code ctx op ...)  — explicit builder/rewriter (ctx identifier)
+      ;;   (begin-mlir-code op ...)      — implicit: (%%current-builder) when first
+      ;;                                    element is a list (op-form), not an identifier
       (define (main)
         (syntax-case stx ()
+          ;; Implicit builder: first element is NOT an identifier (it's a list op-form).
+          ;; Bind via let so the recursive call receives an identifier — passing
+          ;; (%%current-builder) directly would re-trigger this clause forever.
+          [(_ first-op rest ...)
+           (not (identifier? #'first-op))
+           (with-syntax ([bld (car (generate-temporaries '(builder)))])
+             #'(let ([bld (%%current-builder)])
+                 (begin-mlir-code bld first-op rest ...)))]
+          ;; Explicit builder (ctx is an identifier)
           [(_ ctx op ...)
            (let ([pairs (loop :for op-stx :in (syntax->list #'(op ...))
                               :for index :from 0
@@ -143,7 +169,8 @@
                  (with-syntax ([(binding ...) (loop :for pair :in pairs
                                                     :collect (make-binding pair))]
                                [result        (car (car (reverse pairs)))])
-                   #'(let* (binding ...) result))))]))
+                   #'(let* (binding ...) result))))]
+          [(_) #'(if #f #f)]))
 
 
       ;;-------------------------------------------------------------------
@@ -190,6 +217,11 @@
           [(op (operands ...) modifiers ...)
            (op-name? #'op)
            (process-op #'(() = op (operands ...) modifiers ... -> ()) index builder-stx)]
+          ;; Scheme expression statement — callee has no '.' so it's a Scheme call
+          [(callee . args)
+           (not (op-name? #'callee))
+           (list (cons (car (generate-temporaries '(%unused)))
+                       #'(callee . args)))]
           [_ (syntax-violation 'begin-mlir-code "invalid op form" op-stx)]))
 
       ;;-------------------------------------------------------------------
@@ -271,27 +303,44 @@
           (lambda (state-stx)
             (with-syntax ([state state-stx] [n name-str] [v val-stx])
               #'(mlir::OperationState::addAttribute state n v))))
-        (define (make-block-fill blk)
-          (apply make-block-fill-fn (parse-block-form blk)))
-        (define (make-block-fill-fn builder-id arg-vars arg-types body-ops)
-          ;; builder-id is always a valid identifier — parse-block-form
-          ;; generates a gensym when the user didn't provide an explicit name.
-          (let ([body-stx (with-syntax ([(body ...) body-ops]
-                                        [block-builder builder-id])
-                            #'(begin-mlir-code block-builder body ...))])
+        ;; Shared block-fill factory.
+        ;; block-id     — syntax identifier for the block (same object used in arg-bindings)
+        ;; types-stx    — expr evaluating to the list of block arg types
+        ;; arg-bindings — syntax list of let* bindings (empty for dynamic)
+        ;; body-stxs    — list of body op-form syntax objects
+        ;; Uses #,block-id directly in quasi-syntax to avoid with-syntax mark skew.
+        (define (%%make-block-fill-lambda block-id types-stx arg-bindings body-stxs)
+          (with-syntax ([bld   (car (generate-temporaries '(block-builder)))]
+                        [types types-stx]
+                        [(arg-binding ...) arg-bindings]
+                        [(b ...) body-stxs])
             (lambda (region-stx)
-              (with-syntax ([(arg-type ...) arg-types]
-                            [(arg-binding ...)
-                             (loop :for var :in arg-vars
-                                   :for i   :from 0
-                                   :collect #`(#,var (mlir::Block::getArgument block #,i)))]
-                            [body          body-stx]
-                            [block-builder builder-id]
-                            [region        region-stx])
-                #'(let* ([block (mlir::Region::push_back<Block> region (list arg-type ...))]
+              (with-syntax ([region region-stx])
+                #`(let* ([#,block-id (mlir::Region::push_back<Block> region types)]
                          arg-binding ...)
-                    (with-CrestObject (block-builder (mlir::OpBuilder::atBlockEnd block))
-                      body))))))
+                    (with-current-MLIRBlock #,block-id
+                                            (with-CrestObject (bld (mlir::OpBuilder::atBlockEnd #,block-id))
+                                              (with-current-OpBuilder bld
+                                                                      (begin-mlir-code bld b ...)))))))))
+
+        ;; Returns a fill-fn: (lambda (region-stx) → syntax).
+        ;; block-id extracted before syntax-case so both branches share it.
+        (define (make-block-fill blk)
+          (let ([block-id (car (generate-temporaries '(block)))])
+            (syntax-case blk (: unquote-splicing)
+              ;; Dynamic: (^label ,@types-expr body ...) — no arg bindings
+              [(label (unquote-splicing types-expr) . body)
+               (%%make-block-fill-lambda block-id #'types-expr '() (syntax->list #'body))]
+              ;; Static: (^label ((arg : type) ...) body ...) — bind arg names
+              [(label ((arg : type) ...) . body)
+               (for-all identifier? (syntax->list #'(arg ...)))
+               (%%make-block-fill-lambda
+                block-id
+                #'(list type ...)
+                (loop :for var :in (syntax->list #'(arg ...))
+                      :for i   :from 0
+                      :collect #`(#,var (mlir::Block::getArgument #,block-id #,i)))
+                (syntax->list #'body))])))
         (define (make-region-fill-fn region-index block-fill-fns)
           (lambda (op-stx)
             ;; region-id must be in scope as a Scheme value before with-syntax
@@ -304,26 +353,6 @@
                              (map (lambda (fn) (fn region-id)) block-fill-fns)])
                 #`(let ([#,region-id (mlir::Operation::getRegion new-op region-idx)])
                     block-fill-stmt ...)))))
-        ;; Parse a full block stx of the form:
-        ;;   (^label ((arg : type) ...) body ...)         — no builder name
-        ;;   (^label builder-name ((arg : type) ...) ...) — explicit builder name
-        ;; Returns (list builder-id arg-vars arg-types body-ops).
-        ;; Uses : as a literal keyword to match (arg : type) pairs directly.
-        (define (parse-block-form block-stx)
-          (let parse ([stx block-stx])
-            (syntax-case stx (:)
-              ;; No builder-id — inject gensym and retry
-              [(label ((arg : type) ...) . body)
-               (for-all identifier? (syntax->list #'(arg ...)))
-               (with-syntax ([tmp (car (generate-temporaries '(block-builder)))])
-                 (parse #'(label tmp ((arg : type) ...) . body)))]
-              ;; Terminal: builder-id present — extract arg/type lists via pattern
-              [(label builder-id ((arg : type) ...) . body)
-               (and (identifier? #'builder-id) (for-all identifier? (syntax->list #'(arg ...))))
-               (list #'builder-id
-                     (syntax->list #'(arg ...))
-                     (syntax->list #'(type ...))
-                     (syntax->list #'body))])))
         (split-modifiers
          (loop :for m :in (syntax->list modifiers-stx) :collect (classify m)))
         )
@@ -429,22 +458,31 @@
       (define (make-binding pair)
         (with-syntax ([var (car pair)] [expr (cdr pair)]) #'(var expr)))
 
-      ;; Accept both 'arith.constant and "arith.constant" as op names.
+      (define (%%string-contains string character)
+        (loop :initially := #f
+              :for x :in-string string
+              :break #t :if (char=? x character)))
+
       (define (op-name? x)
         (let ([datum (syntax->datum x)])
-          (or (string? datum) (symbol? datum))))
+          (cond
+           [(string? datum) (%%string-contains datum #\.)]
+           [(symbol? datum) (%%string-contains (symbol->string datum) #\.)]
+           [#t #f])))
       (define (op-name->str x)
         (let ([datum (syntax->datum x)])
           (if (string? datum) datum (symbol->string datum))))
 
       ;; Build a runtime expression for the operand list from (operands ...).
       ;; ,@list splices a dynamic list: (v1 ,@%more v2) → (append (list v1) %more (list v2))
+      ;; (:arg N) is a shorthand for (mlir::Block::getArgument block N) — only valid
+      ;; when 'block' is in scope, i.e. inside the body of a (^label ...) block form.
       ;; Each operand converts to a chunk; (append chunk ...) flattens them.
       (define (value-operands operands-stx)
         (define (convert x)
           (syntax-case x (unquote-splicing)
-            [(unquote-splicing expr) #'expr]  ; ,@expr → raw list (spliced in)
-            [val                     #'(list val)])) ; value → singleton list
+            [(unquote-splicing expr) #'expr]  ; ,@expr → spliced list
+            [val          #'(list val)]))
         (with-syntax ([(chunk ...) (map convert (syntax->list operands-stx))])
           #'(append chunk ...)))
 

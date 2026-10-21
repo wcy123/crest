@@ -141,14 +141,22 @@
           :current-op :attr :has-attr? :attr-or
           :optional :variadic
           :index :i64 :f32 :i32-array :i64-array :unit
-          make-unbound-value unbound-value?)
+          :arg :builder
+          make-unbound-value unbound-value?
+          ;; Context parameters re-exported for user convenience
+          current-RewriterBase with-current-RewriterBase
+          current-MLIRBlock with-current-MLIRBlock
+          current-OpBuilder with-current-OpBuilder)
   (import (except (rnrs) =)
           (crest pattern-dsl keywords)
           (for (only (crest pattern-dsl rewrite) begin-mlir-code) expand)
           (for (crest pattern-dsl keywords) expand)
           (for (crest pattern-dsl ast) expand)
           (for (crest pattern-dsl codegen) expand)
-          (for (only (crest pattern-dsl codegen) make-unbound-value unbound-value?) expand))
+          (for (only (crest pattern-dsl codegen) make-unbound-value unbound-value?) expand)
+          (only (mlir IR PatternMatch) current-RewriterBase with-current-RewriterBase)
+          (only (mlir IR Block) current-MLIRBlock with-current-MLIRBlock)
+          (only (mlir IR Builders) current-OpBuilder with-current-OpBuilder))
 
   (define-syntax define-conversion-pattern
     (lambda (stx) (run-pipeline stx 'conversion)))

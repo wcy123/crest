@@ -1,6 +1,6 @@
 #!r6rs
-;; %_ in result position: bind only the result we care about.
-;; (%_ %second) = test.split(%x)  — discard result 0, bind result 1.
+;; _ in result position: bind only the result we care about.
+;; (_ %second) = test.split(%x)  — discard result 0, bind result 1.
 ;; test.use(%second) → test.fused(%x)
 (library (passes wildcard-result)
   (export run-pass)
@@ -11,7 +11,7 @@
 
   (define-rewrite-pattern (%%wildcard-result op rewriter)
     :if-match
-      (%_ %second) = test.split (%x)
+      (_ %second) = test.split (%x)
       %out         = test.use   (%second)
     :rewrite %out :with
       (%result = test.fused (%x) -> (mlir::Value::getType %out)))

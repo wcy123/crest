@@ -1,7 +1,7 @@
 #!r6rs
-;; Two distinct ops each have a %_ operand.  The two wildcards must NOT be
+;; Two distinct ops each have a _ operand.  The two wildcards must NOT be
 ;; treated as a shared value (diamond false-positive).  Pattern must fire
-;; even when the two %_ operands come from different SSA values.
+;; even when the two _ operands come from different SSA values.
 ;;
 ;;   test.add(%x, %ignored_a)   →  test.fused(%x, %y)
 ;;   test.sub(%y, %ignored_b)   (different values for the two wildcards)
@@ -14,8 +14,8 @@
 
   (define-rewrite-pattern (%%no-diamond-operand op rewriter)
     :if-match
-      %left  = test.add (%x %_)
-      %right = test.sub (%y %_)
+      %left  = test.add (%x _)
+      %right = test.sub (%y _)
       %out   = test.combine (%left %right)
     :rewrite %out :with
       (%result = test.fused (%x %y) -> (mlir::Value::getType %out)))

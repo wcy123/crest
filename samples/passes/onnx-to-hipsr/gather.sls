@@ -89,7 +89,8 @@
                       #f)
                #t))
       (%placeholder = "hipsr.placeholder" (%ctx %data %indices)
-                    (^bb0 builder ((%ds : !shape-type) (%is : !shape-type))
+                    (^bb0 ((%ds : !shape-type) (%is : !shape-type))
+                          (builder = :builder)
                           (%result-shape = (build-gather-shape!
                                             builder axis %ds %is !shape-type !size-type))
                           ("hipsr.shape_yield" (%result-shape)))
