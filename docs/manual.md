@@ -319,18 +319,16 @@ Each statement is an op-form:
 
 Two special forms are available anywhere inside `begin-mlir-code`:
 
-**`:builder`** — returns the currently active builder or rewriter:
+**`:builder`** — a Scheme escape returning the currently active builder or rewriter:
 `current-RewriterBase` at the `:rewrite :with` level; `current-OpBuilder` inside
-a `^bb0` block body. Use it as a bare operand or bind it to a name:
+a `^bb0` block body. Use it to bind the builder to a Scheme name or pass it
+to a Scheme helper — **not** as an MLIR operand (builders are not `mlir::Value`s):
 
 ```scheme
-;; As an operand — pass active builder to a helper
-(%result = my.op (%x :builder) -> !t)
-
-;; Bind it when needed more than once
+;; Bind to a name when needed in multiple places
 (b = :builder)
 
-;; Pass to a helper function that emits multiple ops
+;; Pass to a Scheme helper that emits further ops
 (%%emit-prologue :builder loc)
 ```
 
