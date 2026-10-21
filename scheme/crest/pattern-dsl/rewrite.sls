@@ -203,35 +203,40 @@
       ;; multi-result:   (v0 v1 ...) = op.name (ops) ...
       ;; no-result:      op.name (ops) ...
       (define (parse-op-start items)
-        (define (syntax-pair? x)
-          (pair? (syntax->datum x)))
+        ;; Match any parenthesized form including the empty operand list ().
+        ;; (pair? #'()) = #f because () is null, so we need to check both.
+        (define (syntax-list? x)
+          (let ([d (syntax->datum x)])
+            (or (pair? d) (null? d))))
+        ;; Use eq? on datum for = to avoid cross-phase free-identifier=? issues.
+        (define (syntax-eq? x sym) (eq? (syntax->datum x) sym))
         (cond
          ;; single-result: sym = op.name (ops)
          [(and (>= (length items) 4)
                (identifier? (list-ref items 0))
                (not (op-name? (list-ref items 0)))
                (identifier? (list-ref items 1))
-               (free-identifier=? (list-ref items 1) #'=)
+               (syntax-eq? (list-ref items 1) '=)
                (identifier? (list-ref items 2))
                (op-name? (list-ref items 2))
-               (syntax-pair? (list-ref items 3)))
+               (syntax-list? (list-ref items 3)))
           'single-result]
          ;; multi-result: (v0 v1) = op.name (ops)
          [(and (>= (length items) 4)
-               (syntax-pair? (list-ref items 0))
+               (syntax-list? (list-ref items 0))
                (let ([inner (syntax->list (list-ref items 0))])
                  (and inner (for-all identifier? inner)))
                (identifier? (list-ref items 1))
-               (free-identifier=? (list-ref items 1) #'=)
+               (syntax-eq? (list-ref items 1) '=)
                (identifier? (list-ref items 2))
                (op-name? (list-ref items 2))
-               (syntax-pair? (list-ref items 3)))
+               (syntax-list? (list-ref items 3)))
           'multi-result]
          ;; no-result: op.name (ops)
          [(and (>= (length items) 2)
                (identifier? (list-ref items 0))
                (op-name? (list-ref items 0))
-               (syntax-pair? (list-ref items 1)))
+               (syntax-list? (list-ref items 1)))
           'no-result]
          [else #f]))
 
@@ -244,44 +249,78 @@
       ;; Classify one modifier element for the new v2 attribute syntax.
       ;; Attribute form: (name : val) or (name : val :keyword)
       ;; Region form:    (^label ...) or (:region ...)
-      ;; Loc form:       :loc  (sentinel, followed by next item)
+      ;; Loc form:       (:loc expr)
       ;; Returns a tagged pair: (attr . setter-fn), (region . fill-fns), or (loc . stx).
+      ;;
+      ;; Uses datum comparison (eq?) instead of free-identifier=? for keywords
+      ;; to avoid cross-phase issues when call sites import keywords at different phases.
       (define (classify-attr-colon m)
         (define (make-direct-setter name-str val-stx)
           (lambda (state-stx)
             (with-syntax ([state state-stx] [n name-str] [v val-stx])
               #'(mlir::OperationState::addAttribute state n v))))
-        (syntax-case m (: :string :loc :index :i64 :f32 :i32-array :i64-array :unit :region)
-          ;; Normalise symbol name → string name
-          [(name : val . rest)
-           (symbol? (syntax->datum #'name))
-           (with-syntax ([str-name (datum->syntax #'name
-                                                  (symbol->string (syntax->datum #'name)))])
-             (classify-attr-colon #'(str-name : val . rest)))]
-          ;; Typed attribute shorthands
-          [(name : val :string)    (classify-attr-colon #'(name : (mlir::StringAttr::get val)))]
-          [(name : val :index)     (classify-attr-colon #'(name : (mlir::IntegerAttr::get<index> val)))]
-          [(name : val :i64)       (classify-attr-colon #'(name : (mlir::IntegerAttr::get<i64> val)))]
-          [(name : val :f32)       (classify-attr-colon #'(name : (mlir::FloatAttr::get<f32> val)))]
-          [(name : val :i32-array) (classify-attr-colon #'(name : (mlir::DenseI32ArrayAttr::get val)))]
-          [(name : val :i64-array) (classify-attr-colon #'(name : (mlir::DenseI64ArrayAttr::get val)))]
-          [(name : val :unit)      (classify-attr-colon #'(name : (mlir::UnitAttr::get)))]
-          ;; Block region shorthand: (^label ...)  →  wrapped in :region
-          [(label . _)
-           (block-label? #'label)
-           (classify-attr-colon #`(:region #,m))]
-          ;; :loc override — (:loc expr) parenthesized form
-          [(:loc e) (cons 'loc #'e)]
-          ;; Terminal: plain attribute
-          [(name : val)
-           (string? (syntax->datum #'name))
-           (cons 'attr (make-direct-setter (syntax->datum #'name) #'val))]
-          ;; :region with one or more blocks
-          [(:region block ...)
-           (for-all (lambda (b) (block-label? (car (syntax->list b))))
-                    (syntax->list #'(block ...)))
-           (cons 'region (map make-block-fill (syntax->list #'(block ...))))]
-          [_ (syntax-violation 'begin-mlir-code "invalid modifier" m)]))
+        (define (kw? stx sym) (eq? (syntax->datum stx) sym))
+        (define items (syntax->list m))
+        (cond
+         [(not items)
+          (syntax-violation 'begin-mlir-code "invalid modifier (not a list)" m)]
+         ;; (:loc expr)
+         [(and (eqv? (length items) 2) (kw? (car items) ':loc))
+          (cons 'loc (cadr items))]
+         ;; (:region block ...)
+         [(and (not (null? items)) (kw? (car items) ':region))
+          (let ([blocks (cdr items)])
+            (for-each (lambda (b)
+                        (let ([blist (syntax->list b)])
+                          (unless (and blist (not (null? blist))
+                                       (block-label? (car blist)))
+                            (syntax-violation 'begin-mlir-code
+                                              "expected block label in :region" b))))
+                      blocks)
+            (cons 'region (map make-block-fill blocks)))]
+         ;; (^label ...) — block region shorthand
+         [(and (not (null? items)) (block-label? (car items)))
+          (classify-attr-colon (with-syntax ([m m]) #`(:region m)))]
+         ;; (name : val ...) — attribute, name is symbol or string
+         [(and (>= (length items) 3)
+               (let ([n (syntax->datum (car items))])
+                 (or (symbol? n) (string? n)))
+               (kw? (cadr items) ':))
+          ;; Normalize symbol name to string
+          (let* ([raw-name (syntax->datum (car items))]
+                 [name-str (if (symbol? raw-name) (symbol->string raw-name) raw-name)]
+                 [val      (caddr items)]
+                 [rest     (cdddr items)])
+            ;; Check for keyword suffix: (name : val :kw)
+            (if (and (eqv? (length rest) 1) (identifier? (car rest)))
+                (let ([kw (syntax->datum (car rest))])
+                  (cond
+                   [(eq? kw ':string)
+                    (cons 'attr (make-direct-setter name-str
+                                                    (with-syntax ([v val]) #'(mlir::StringAttr::get v))))]
+                   [(eq? kw ':index)
+                    (cons 'attr (make-direct-setter name-str
+                                                    (with-syntax ([v val]) #'(mlir::IntegerAttr::get<index> v))))]
+                   [(eq? kw ':i64)
+                    (cons 'attr (make-direct-setter name-str
+                                                    (with-syntax ([v val]) #'(mlir::IntegerAttr::get<i64> v))))]
+                   [(eq? kw ':f32)
+                    (cons 'attr (make-direct-setter name-str
+                                                    (with-syntax ([v val]) #'(mlir::FloatAttr::get<f32> v))))]
+                   [(eq? kw ':i32-array)
+                    (cons 'attr (make-direct-setter name-str
+                                                    (with-syntax ([v val]) #'(mlir::DenseI32ArrayAttr::get v))))]
+                   [(eq? kw ':i64-array)
+                    (cons 'attr (make-direct-setter name-str
+                                                    (with-syntax ([v val]) #'(mlir::DenseI64ArrayAttr::get v))))]
+                   [(eq? kw ':unit)
+                    (cons 'attr (make-direct-setter name-str #'(mlir::UnitAttr::get)))]
+                   [else
+                    (syntax-violation 'begin-mlir-code "unknown attribute keyword" (car rest))]))
+                ;; No keyword suffix — val is a raw mlir::Attribute
+                (cons 'attr (make-direct-setter name-str val))))]
+         [else
+          (syntax-violation 'begin-mlir-code "invalid modifier" m)]))
 
       ;; Consume modifiers from items until we hit -> or a new op-start.
       ;; Returns (values attr-fns region-fns loc-override result-types remaining-items).
@@ -296,8 +335,9 @@
            [(null? items)
             (values (reverse attrs) regions loc (reverse types) '())]
            ;; -> result-type — consume one type (or type list) and continue
+           ;; Use datum comparison to avoid cross-phase free-identifier=? issues.
            [(and (identifier? (car items))
-                 (free-identifier=? (car items) #'->))
+                 (eq? (syntax->datum (car items)) '->))
             (let ([rest (cdr items)])
               (cond
                [(null? rest)
@@ -310,12 +350,20 @@
                ;; -> single-type
                [else
                 (lp (cdr rest) attrs regions loc (cons (car rest) types))]))]
-           ;; :loc followed by next item
+           ;; :loc followed by next item (bare :loc token, without parens)
+           ;; Use datum comparison to avoid cross-phase free-identifier=? issues.
            [(and (identifier? (car items))
-                 (free-identifier=? (car items) #':loc)
+                 (eq? (syntax->datum (car items)) ':loc)
                  (not (null? (cdr items))))
             (lp (cddr items) attrs regions (cadr items) types)]
-           ;; Parenthesized item — could be attr modifier, region block, or (:loc e)
+           ;; Parenthesized item — could be attr modifier, region block, or (:loc e).
+           ;; Check for (:loc e) first via datum comparison to avoid cross-phase
+           ;; free-identifier=? failures when :loc comes from a different phase.
+           [(let ([d (syntax->datum (car items))])
+              (and (pair? d) (eq? (car d) ':loc)))
+            ;; (:loc expr) — extract loc expr from the second element
+            (let ([loc-stx (cadr (syntax->list (car items)))])
+              (lp (cdr items) attrs regions loc-stx types))]
            [(pair? (syntax->datum (car items)))
             (let ([tagged (classify-attr-colon (car items))])
               (case (car tagged)
@@ -390,7 +438,7 @@
                                       (and (eqv? (length inner-items) 3)
                                            (identifier? (list-ref inner-items 0))
                                            (identifier? (list-ref inner-items 1))
-                                           (free-identifier=? (list-ref inner-items 1) #'=)
+                                           (eq? (syntax->datum (list-ref inner-items 1)) '=)
                                            (not (op-name? (list-ref inner-items 0))))))
                              ;; Old-style parenthesized op-form: delegate to process-op
                              (append (process-op item index builder-stx)
