@@ -33,7 +33,7 @@
 
   ;; (toy.constant:output op) → mlir::Value  for result at index
   (define (generate-result-accessor ctx full-name field index)
-    (with-syntax ([id  (%%id ctx full-name ":" (car field))]
+    (with-syntax ([id  (%%id ctx full-name ":" (result-field-name field))]
                   [idx index])
       #'(define (id op)
           (mlir::Operation::getResult op idx))))

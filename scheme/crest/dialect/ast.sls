@@ -27,7 +27,12 @@
           attribute-field?
           attribute-field-name
           attribute-field-type
-          attribute-field-modifier)
+          attribute-field-modifier
+          result-field
+          make-result-field
+          result-field?
+          result-field-name
+          result-field-type)
   (import (chezscheme))
 
   ;; A single operand field declaration inside (define-op ... :operands (...)).
@@ -67,11 +72,18 @@
             (immutable type     attribute-field-type)
             (immutable modifier attribute-field-modifier)))
 
+  ;; A single result field declaration inside (define-op ... :results (...)).
+  ;;   name — syntax: identifier (used for accessor name generation)
+  ;;   type — syntax: predicate (value) → bool
+  (define-record-type result-field
+    (fields (immutable name result-field-name)
+            (immutable type result-field-type)))
+
   ;; Result of parse-define-op.
   ;;   name       — op name syntax e.g. #'constant (prefix added by caller)
   ;;   operands   — list of operand-field records
   ;;   attributes — list of attribute-field records
-  ;;   results    — ((name type) ...) datum list
+  ;;   results    — list of result-field records
   ;;   op-cbs     — 7-slot vector of Scheme callback syntax or #f (CrestOp slots):
   ;;                  0  :verify                        (op) → bool
   ;;                  1  :verify-regions                (op) → bool

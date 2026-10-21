@@ -211,7 +211,10 @@
                      (loop-sub #'rest))]
                   [(:results     ((name type) ...) . rest)
                    (andmap identifier? (syntax->list #'(name ...)))
-                   (begin (set! results (syntax->datum #'((name type) ...)))
+                   (begin (set! results
+                                (map make-result-field
+                                     (syntax->list #'(name ...))
+                                     (syntax->list #'(type ...))))
                           (loop-sub #'rest))]
                   [((:verify                       (op) body ...) . rest)
                    (identifier? #'op)

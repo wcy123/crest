@@ -39,10 +39,11 @@
 
   ;; Check form for one result — verifies the result satisfies its type predicate.
   (define (%%gen-result-check ctx op-stx field index)
-    (let* ([name-str (symbol->string (car field))]
-           [type-stx (datum->syntax ctx (cadr field))]
-           [type-str (symbol->string (cadr field))]
-           [err-msg  (make-error-message #f "type mismatch: (" type-str " " name-str ") must be #t")])
+    (let* ([name-stx  (result-field-name field)]
+           [name-str  (%%id->str name-stx)]
+           [type-stx  (result-field-type field)]
+           [type-str  (%%id->str type-stx)]
+           [err-msg   (make-error-message name-stx "type mismatch: (" type-str " " name-str ") must be #t")])
       (with-syntax ([op          op-stx]
                     [result-type type-stx]
                     [result-idx  index]
@@ -52,8 +53,11 @@
 
   ;; Check that the number of results matches the declaration.
   (define (%%gen-result-count-check ctx op-stx op-record)
-    (let* ([expected (length (op-parse-results op-record))]
-           [err-msg  (make-error-message #f "expected " expected " result(s)")])
+    (let* ([results  (op-parse-results op-record)]
+           [expected (length results)]
+           ;; Use first result's name as location hint; #f if no results declared.
+           [loc-stx  (and (not (null? results)) (result-field-name (car results)))]
+           [err-msg  (make-error-message loc-stx "expected " expected " result(s)")])
       (with-syntax ([op    op-stx]
                     [count expected]
                     [err   err-msg])
@@ -86,7 +90,8 @@
     (let ([count (length operands)])
       (cons
        (with-syntax ([op op-stx] [n count]
-                     [err (make-error-message #f "expected " count " operand(s)")])
+                     [err (make-error-message (operand-field-name (car operands))
+                                              "expected " count " operand(s)")])
          #'(or (= (mlir::Operation::getNumOperands op) n)
                (begin (mlir::Operation::emitError op err) #f)))
        (loop :for field :in operands :for idx :from 0
