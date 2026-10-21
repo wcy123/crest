@@ -29,6 +29,9 @@
     %mlir::DenseI64ArrayAttr::get
     %mlir::parseAttribute
     %mlir::DenseResourceElementsAttr::get
+    %mlir::StringAttr::get
+    %mlir::TypeAttr::get
+    %mlir::DenseElementsAttr::get<f64>
     %mlir::isa<IntegerAttr>
     %mlir::isa<FloatAttr>
     %mlir::isa<StringAttr>
@@ -46,6 +49,26 @@
     %mlir::DenseI32ArrayAttr::toVector
     %mlir::DenseI64ArrayAttr::toVector)
   (import (rnrs) (only (chezscheme) foreign-procedure))
+
+  ;; @brief mlir::StringAttr::get — construct a StringAttr from a Scheme string.
+  ;; @param ctx    MLIRContext* uptr
+  ;; @param str    Scheme string
+  ;; @return       StringAttr opaque pointer uptr
+  ;; @see          mlir/IR/BuiltinAttributes.h
+  ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
+  (define %mlir::StringAttr::get
+    (foreign-procedure "mlir::StringAttr::get" (uptr string) uptr))
+
+  ;; @brief mlir::TypeAttr::get — wrap an mlir::Type as a TypeAttr.
+  ;; @param type   Type opaque pointer uptr
+  ;; @return       TypeAttr opaque pointer uptr
+  ;; @see          mlir/IR/BuiltinAttributes.h
+  ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
+  (define %mlir::TypeAttr::get
+    (foreign-procedure "mlir::TypeAttr::get" (uptr) uptr))
+
+  (define %mlir::DenseElementsAttr::get<f64>
+    (foreign-procedure "mlir::DenseElementsAttr::get<f64>" (uptr scheme-object) uptr))
 
   ;; @brief mlir::IntegerAttr::get — construct an IntegerAttr with i64 (integer<64>) type.
   ;; @param ctx    MLIRContext* uptr

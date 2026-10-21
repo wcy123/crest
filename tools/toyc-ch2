@@ -1,26 +1,2 @@
 #!/usr/bin/env bash
-# toyc-ch2 — Toy compiler Ch2 entry point.
-# Usage: toyc-ch2 <input.toy> [--emit=ast|--emit=mlir]
-
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="$SCRIPT_DIR/.."
-BUILD="${CREST_BUILD_DIR:-/home/build/crest-1}"
-CREST_OPT="$BUILD/tools/crest-opt/crest-opt"
-
-[[ -x "$CREST_OPT" ]] || {
-    echo "Error: crest-opt not found. Set CREST_BUILD_DIR." >&2
-    exit 1
-}
-
-# toyc-ch2 uses crest-opt (not bare scheme) because it needs MLIR FFI symbols.
-TOYC_SLS="$ROOT/samples/toy/ch2/toyc.sls"
-SCHEME="$BUILD/ChezScheme-build/ta6le/bin/ta6le/scheme"
-
-[[ -x "$SCHEME" ]] || { echo "Error: scheme not found." >&2; exit 1; }
-
-exec "$SCHEME" \
-    --libdirs "$ROOT/samples:$ROOT/scheme" \
-    --program "$TOYC_SLS" \
-    "$@"
+exec "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"/../samples/toy/ch2/toyc "$@"

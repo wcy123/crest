@@ -8,7 +8,11 @@
 (library (toy ch2 toy)
   (export toy:register!)
   (import (chezscheme)
-          (crest dialect))
+          (crest dialect)
+          (mlir IR Value)
+          (mlir IR BuiltinTypes)
+          (mlir IR BuiltinAttributes)
+          (mlir IR Operation))
 
   (define-dialect toy
     ;; ConstantOp — tensor constant from a dense attribute

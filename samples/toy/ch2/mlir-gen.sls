@@ -13,7 +13,14 @@
           (mlir IR Operation)
           (mlir IR Region)
           (mlir IR Block)
-          (toy ch1 ast))
+          (mlir IR BuiltinOps)
+          (toy ch2 ast))
+
+  ;; toy.return? — mirrors toy::ReturnOp::classof().
+  ;; Defined here (not imported from toy) to avoid library export issues
+  ;; with define-dialect-generated identifiers.
+  (define (toy.return? op)
+    (string=? (mlir::Operation::getName op) "toy.return"))
 
   ;; -------------------------------------------------------------------------
   ;; Helpers
@@ -61,13 +68,13 @@
   ;; Create a single-result op with given operands, attributes, and result types.
   (define (%%create-op! builder loc name operands attrs result-types)
     (with-OperationState (state loc name)
-                         (unless (null? operands)
-                           (mlir::OperationState::addOperands state operands))
+                         (for-each (lambda (v) (mlir::OperationState::addOperands state v))
+                                   operands)
                          (for-each (lambda (kv)
                                      (mlir::OperationState::addAttribute state (car kv) (cdr kv)))
                                    attrs)
-                         (unless (null? result-types)
-                           (mlir::OperationState::addTypes state result-types))
+                         (for-each (lambda (t) (mlir::OperationState::addTypes state t))
+                                   result-types)
                          (mlir::OpBuilder::create<OperationState> builder state)))
 
   (define (%%f64-unranked-tensor)
@@ -243,9 +250,9 @@
     (with-current-MLIRContext ctx
       (let* ([module-op   (mlir::ModuleOp::create
                            (mlir::UnknownLoc::get ctx))]
-             [module-body (mlir::Block::front (mlir::ModuleOp::getBody module-op))])
+             [module-body (mlir::ModuleOp::getBody module-op)])
         (for-each (lambda (fn)
-                    (let ([symtab (make-equal-hashtable)])
+                    (let ([symtab (make-hashtable equal-hash equal?)])
                       (%%mlir-gen-function module-body symtab fn)))
                   (module-ast:functions module))
         module-op)))

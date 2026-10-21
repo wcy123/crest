@@ -13,6 +13,11 @@
 namespace crest {
 void registerIRMLIRContextBindings() {
   Sregister_symbol(
+      "mlir::MLIRContext::new", (void*)+[]() -> uint64_t {
+        return reinterpret_cast<uint64_t>(new mlir::MLIRContext());
+      });
+
+  Sregister_symbol(
       "mlir_ir_mlir_context_allow_unregistered_dialects",
       (void*)+[](uint64_t ctx_ptr, int allow) -> void {
         reinterpret_cast<mlir::MLIRContext*>(ctx_ptr)

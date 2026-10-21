@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Toy compiler Ch2 entry point.
+# Mirrors mlir/examples/toy/Ch2/toyc.cpp
+# Usage: toyc <input.toy> [--emit=ast|--emit=mlir]
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$SCRIPT_DIR/../../.."
+BUILD="${CREST_BUILD_DIR:-/home/build/crest-1}"
+CREST_OPT="$BUILD/tools/crest-opt/crest-opt"
+
+[[ -x "$CREST_OPT" ]] || {
+    echo "Error: crest-opt not found. Set CREST_BUILD_DIR." >&2
+    exit 1
+}
+
+FILE="" ACTION=""
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --emit=ast| -emit=ast)  ACTION=ast;  shift ;;
+        --emit=mlir|-emit=mlir) ACTION=mlir; shift ;;
+        *) FILE="$(realpath "$1")"; shift ;;
+    esac
+done
+
+[[ -z "$FILE" ]] && { echo "Usage: toyc <file.toy> [--emit=ast|--emit=mlir]" >&2; exit 1; }
+
+TOYC_FILE="$FILE" TOYC_ACTION="$ACTION" \
+CREST_PATH="$(realpath "$SCRIPT_DIR/../..")" \
+"$CREST_OPT" /dev/null --crest-pass="module=toy/ch2/toyc"

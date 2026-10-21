@@ -16,7 +16,10 @@
   (export %mlir::Block::getArgument
           %mlir::Block::getNumArguments
           %mlir::Block::new
-          %mlir::Block::addArgument)
+          %mlir::Block::addArgument
+          %mlir::Block::empty
+          %mlir::Block::back
+          %mlir::Block::front)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::Block::getArgument — return the idx-th block argument.
@@ -51,5 +54,12 @@
   ;; @see          mlir/IR/Block.h
   (define %mlir::Block::addArgument
     (foreign-procedure "mlir::Block::addArgument" (uptr uptr uptr) uptr))
+
+  (define %mlir::Block::empty
+    (foreign-procedure "mlir::Block::empty" (uptr) int))
+  (define %mlir::Block::back
+    (foreign-procedure "mlir::Block::back" (uptr) uptr))
+  (define %mlir::Block::front
+    (foreign-procedure "mlir::Block::front" (uptr) uptr))
 
   ) ;; end library (mlir IR Block ffi)

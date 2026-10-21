@@ -4,10 +4,11 @@
           %crest::register-dynamic-op!)
   (import (chezscheme))
 
-  ;; (uptr ctx) (string name) (uptr scheme-vector/12) → void
+  ;; (uptr ctx) (string name) (scheme-object vector/12) → void
+  ;; The vector is a Scheme #() object; C side receives it as ptr via Svector_ref.
   (define %crest::register-dialect!
-    (foreign-procedure "crest::register-dialect!" (uptr string uptr) void))
+    (foreign-procedure "crest::register-dialect!" (uptr string scheme-object) void))
 
-  ;; (uptr dialect) (string op-name) (uptr scheme-vector/7) → void
+  ;; (uptr dialect) (string op-name) (scheme-object vector/7) → void
   (define %crest::register-dynamic-op!
-    (foreign-procedure "crest::register-dynamic-op!" (uptr string uptr) void)))
+    (foreign-procedure "crest::register-dynamic-op!" (uptr string scheme-object) void)))

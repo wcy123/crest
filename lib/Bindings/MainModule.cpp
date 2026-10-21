@@ -16,6 +16,7 @@
 #include "Dialect/Tensor/Tensor.h"
 #include "IR/Block.h"
 #include "IR/BuiltinAttributes.h"
+#include "IR/BuiltinOps.h"
 #include "IR/BuiltinTypes.h"
 #include "IR/Location.h"
 #include "IR/MLIRContext.h"
@@ -55,6 +56,7 @@ void registerMlirForeignFunctions() {
   registerIRBlockBindings();
   registerIRRegionBindings();
   registerIRBuiltinAttributesBindings();
+  registerIRBuiltinOpsBindings();
   registerIRMLIRContextBindings();
   registerIRBuiltinTypesBindings();
   registerIROpBuilderBindings();

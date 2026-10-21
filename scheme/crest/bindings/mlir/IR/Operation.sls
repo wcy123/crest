@@ -37,6 +37,7 @@
     mlir::Operation::emitError
     mlir::Operation::emitWarning
     mlir::Operation::emitRemark
+    mlir::Operation::dump
     mlir::Operation::print
     mlir::Operation::erase
     mlir::Operation::getAttr
@@ -202,6 +203,10 @@
   ;; @see        mlir/IR/Operation.h, mlir/IR/Diagnostics.h
   ;; @note       Defined in lib/Bindings/IR/Operation.cpp
   (define mlir::Operation::emitRemark      %emit-remark)
+
+  ;; @brief mlir::Operation::dump — print the operation to stderr (debugging aid).
+  (define (mlir::Operation::dump op)
+    (%mlir::Operation::dump op))
 
   ;; @brief mlir::Operation::print — return full MLIR textual form as a string (for debugging).
   ;; For debugging only — shows operands, attrs, types, regions in MLIR text format.

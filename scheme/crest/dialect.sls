@@ -323,7 +323,9 @@
          (let* ([dialect      (parse-clauses #'(clause ...) #'dialect-id)]
                 [ops          (dialect-parse-ops dialect)]
                 [all-op-defs  (generate-all-op-defs #'dialect-id ops)]
-                [reg-defs     (generate-register-dialect #'dialect-id (dialect-parse-cbs dialect) ops)])
+                [reg-defs     (generate-register-dialect #'dialect-id (dialect-parse-cbs dialect) ops
+                                                         #'%crest::register-dynamic-op!
+                                                         #'%crest::register-dialect!)])
            (let ([result (with-syntax
                              ([(op-def  ...) all-op-defs]
                               [(reg-def ...) reg-defs])

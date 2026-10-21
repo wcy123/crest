@@ -63,12 +63,14 @@
       (vector->list v)))
 
   ;; Register call syntax for one op — passes cbs vector directly to C FFI.
-  (define (%%generate-register-op! ctx op-prefix op)
+  ;; reg-op-stx — syntax for %crest::register-dynamic-op! from the macro's definition site.
+  (define (%%generate-register-op! ctx op-prefix op reg-op-stx)
     (let* ([full-name (%%id ctx ctx "." (op-parse-name op))]
            [name-str  (string-append op-prefix (%%id->str (op-parse-name op)))]
            [op-callbacks (%%op-cbs ctx full-name op)])
-      (with-syntax ([op-name name-str] [(op-callbacks ...) op-callbacks])
-        #'(%crest::register-dynamic-op! dialect-ptr op-name (vector op-callbacks ...)))))
+      (with-syntax ([reg-op reg-op-stx]
+                    [op-name name-str] [(op-callbacks ...) op-callbacks])
+        #'(reg-op dialect-ptr op-name (vector op-callbacks ...)))))
 
   ;; Dialect callbacks vector with slot 0 wired to %%<dialect>:initialize.
   (define (%%dialect-cbs ctx dialect-cbs)
@@ -78,22 +80,25 @@
       (vector->list v)))
 
   ;; (toy:register! ctx) — calls %crest::register-dialect! with all 12 callbacks.
-  (define (%%generate-register! ctx dialect-cbs)
+  ;; reg-dialect-stx — syntax for %crest::register-dialect! from the macro's definition site.
+  (define (%%generate-register! ctx dialect-cbs reg-dialect-stx)
     (with-syntax
         ([toy.register! (%%id ctx ctx ":register!")]
-         [ffi-fn        (%%id ctx "%crest::register-dialect!")]
+         [reg-dialect   reg-dialect-stx]
          [name-str      (%%id->str ctx)]
          [(cb ...)      (%%dialect-cbs ctx dialect-cbs)])
       #'(define (toy.register! ctx)
-          (ffi-fn ctx name-str (vector cb ...)))))
+          (reg-dialect ctx name-str (vector cb ...)))))
 
   ;; Aggregates %%<dialect>:initialize and <dialect>:register! into a list of defines.
-  (define (generate-register-dialect ctx dialect-cbs ops)
+  ;; reg-op-stx / reg-dialect-stx — syntax refs to FFI fns from the macro's definition site,
+  ;; passed in so the generated identifiers carry the correct (crest dialect ffi) scope.
+  (define (generate-register-dialect ctx dialect-cbs ops reg-op-stx reg-dialect-stx)
     (let ([op-prefix (string-append (%%id->str ctx) ".")])
       (with-syntax
           ([%%toy.initialize (%%id ctx "%%" ctx ":initialize")]
-           [(op-reg ...)     (map (lambda (op) (%%generate-register-op! ctx op-prefix op)) ops)])
+           [(op-reg ...)     (map (lambda (op) (%%generate-register-op! ctx op-prefix op reg-op-stx)) ops)])
         (list
          #'(define (%%toy.initialize dialect-ptr) op-reg ...)
-         (%%generate-register! ctx dialect-cbs)))))
+         (%%generate-register! ctx dialect-cbs reg-dialect-stx)))))
   )

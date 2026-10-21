@@ -47,6 +47,8 @@
     mlir::NoneType::get
     ;; RankedTensorType
     mlir::isa<RankedTensorType>?
+    mlir::RankedTensorType
+    mlir::RankedTensorType::get
     mlir::RankedTensorType::getRank
     mlir::RankedTensorType::getElementType
     mlir::RankedTensorType::getShape
@@ -54,6 +56,9 @@
     mlir::RankedTensorType::cloneWithEncoding
     ;; UnrankedTensorType
     mlir::isa<UnrankedTensorType>?
+    mlir::UnrankedTensorType::get
+    ;; FunctionType
+    mlir::FunctionType::get
     ;; MemRefType
     mlir::isa<MemRefType>?
     mlir::isa<UnrankedMemRefType>?
@@ -184,6 +189,7 @@
   ;; @note        Wraps %mlir::isa<RankedTensorType>-isa; returns boolean instead of 1/0
   (define (mlir::isa<RankedTensorType>? type)
     (not (zero? (%mlir::isa<RankedTensorType>-isa type))))
+  (define mlir::RankedTensorType mlir::isa<RankedTensorType>?)
 
   ;; @brief ShapedType::getElementType() — return the element type of a shaped type.
   ;; @param type  ShapedType opaque pointer uptr
@@ -245,5 +251,9 @@
   ;; MemRefType accessors
   (define mlir::MemRefType::getElementType %mlir::MemRefType::getElementType)
   (define mlir::MemRefType::getMemorySpace %mlir::MemRefType::getMemorySpace)
+
+  (define mlir::RankedTensorType::get   %mlir::RankedTensorType::get)
+  (define mlir::UnrankedTensorType::get %mlir::UnrankedTensorType::get)
+  (define mlir::FunctionType::get       %mlir::FunctionType::get)
 
   ) ;; end library (mlir IR BuiltinTypes)

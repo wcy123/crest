@@ -203,6 +203,43 @@ void registerIRBuiltinAttributesBindings() {
       });
 
   Sregister_symbol(
+      "mlir::StringAttr::get",
+      (void*)+[](uint64_t ctx_ptr, const char* str) -> uint64_t {
+        auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+        return reinterpret_cast<uint64_t>(
+            mlir::StringAttr::get(ctx, str).getAsOpaquePointer());
+      });
+
+  Sregister_symbol(
+      "mlir::DenseElementsAttr::get<f64>",
+      (void*)+[](uint64_t type_ptr, ptr values) -> uint64_t {
+        auto type = mlir::Type::getFromOpaquePointer(
+            reinterpret_cast<const void*>(type_ptr));
+        auto tensorType = mlir::cast<mlir::ShapedType>(type);
+        llvm::SmallVector<double> vals;
+        for (ptr cur = values; cur != Snil; cur = Scdr(cur)) {
+          ptr v = Scar(cur);
+          if (Sflonump(v)) {
+            vals.push_back(Sflonum_value(v));
+          } else {
+            vals.push_back(static_cast<double>(Sfixnum_value(v)));
+          }
+        }
+        return reinterpret_cast<uint64_t>(
+            mlir::DenseElementsAttr::get(tensorType,
+                                         llvm::ArrayRef<double>(vals))
+                .getAsOpaquePointer());
+      });
+
+  Sregister_symbol(
+      "mlir::TypeAttr::get", (void*)+[](uint64_t type_ptr) -> uint64_t {
+        auto type = mlir::Type::getFromOpaquePointer(
+            reinterpret_cast<const void*>(type_ptr));
+        return reinterpret_cast<uint64_t>(
+            mlir::TypeAttr::get(type).getAsOpaquePointer());
+      });
+
+  Sregister_symbol(
       "mlir::isa<StringAttr>", (void*)+[](uint64_t p) -> int {
         return (p && mlir::isa<mlir::StringAttr>(
                          mlir::Attribute::getFromOpaquePointer(

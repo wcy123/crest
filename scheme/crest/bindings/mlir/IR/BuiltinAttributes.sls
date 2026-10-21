@@ -33,11 +33,16 @@
     mlir::DenseI64ArrayAttr::intoArrayRef
     mlir::parseAttribute
     mlir::DenseResourceElementsAttr::get
+    mlir::StringAttr::get
+    mlir::TypeAttr::get
+    mlir::DenseElementsAttr::get<f64>
     mlir::isa<IntegerAttr>
     mlir::isa<FloatAttr>
     mlir::isa<StringAttr>
+    mlir::StringAttr
     mlir::isa<DenseI32ArrayAttr>
     mlir::isa<DenseElementsAttr>
+    mlir::DenseElementsAttr
     mlir::DenseElementsAttr::isSplat
     mlir::isa<FloatAttr.f32>
     mlir::IntegerAttr::getValue
@@ -52,6 +57,16 @@
   (import (rnrs)
           (mlir IR BuiltinAttributes ffi)
           (mlir IR MLIRContext))
+
+  ;; @brief mlir::StringAttr::get — construct a StringAttr from a Scheme string.
+  (define (mlir::StringAttr::get ctx str)
+    (%mlir::StringAttr::get ctx str))
+
+  ;; @brief mlir::TypeAttr::get — wrap a Type as a TypeAttr.
+  (define (mlir::TypeAttr::get type)
+    (%mlir::TypeAttr::get type))
+
+  (define mlir::DenseElementsAttr::get<f64> %mlir::DenseElementsAttr::get<f64>)
 
   ;; Constructors — use current-MLIRContext so callers only pass the value.
 
@@ -153,6 +168,7 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Wraps %mlir::isa<StringAttr>
   (define (mlir::isa<StringAttr> a)         (not (zero? (%mlir::isa<StringAttr> a))))
+  (define mlir::StringAttr mlir::isa<StringAttr>)
 
   ;; @brief mlir::isa<DenseI32ArrayAttr> — test whether an opaque attribute pointer is a DenseI32ArrayAttr.
   ;; @param a      mlir::Attribute opaque pointer uptr (0 treated as false)
@@ -167,6 +183,7 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Wraps %mlir::isa<DenseElementsAttr>
   (define (mlir::isa<DenseElementsAttr> a)  (not (zero? (%mlir::isa<DenseElementsAttr> a))))
+  (define mlir::DenseElementsAttr mlir::isa<DenseElementsAttr>)
 
   ;; @brief mlir::DenseElementsAttr::isSplat — test whether a DenseElementsAttr is a splat.
   ;; @param a      mlir::Attribute opaque pointer uptr (0 treated as false)
