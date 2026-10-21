@@ -7,7 +7,7 @@
           (rime loop)
           (crest dialect ast)
           (crest dialect expand utils)
-          (crest dialect expand verifiers)   ; generate-verifier, generate-verifier-ref
+          (crest dialect expand verifiers)
           (mlir IR Operation))
 
   ;; (toy.constant? op) → bool
@@ -48,15 +48,13 @@
        (loop :for field :in (op-parse-attributes op)
              :collect (generate-attribute-accessor ctx full-name field))
        (loop :for field :in (op-parse-results    op) :for idx :from 0
-             :collect (generate-result-accessor    ctx full-name field idx))
-       (generate-verifier ctx full-name op))))
+             :collect (generate-result-accessor    ctx full-name field idx)))))
 
   ;; All op definitions for a dialect — flattened list of syntax objects.
   (define (generate-all-op-defs ctx ops)
     (apply append (map (lambda (op) (generate-op-defs ctx op)) ops)))
 
-  ;; Build the 7-slot op-callbacks vector: user cbs from op-parse-op-cbs,
-  ;; with the generated verifier inserted at slot 0 if no user :verify.
+  ;; Build the 7-slot op-callbacks vector.
   (define (%%op-cbs ctx full-name op)
     (let* ([op-cbs (op-parse-op-cbs op)]
            [v      (list->vector (map (lambda (i) (or (vector-ref op-cbs i) #'#f))
