@@ -663,7 +663,7 @@ The context hierarchy during a pattern rewrite:
 
 | Import | Key exports |
 |---|---|
-| `(mlir IR PatternMatch)` | `with-RewritePatternSet` |
+| `(mlir IR PatternMatch)` | `with-RewritePatternSet`, `current-RewriterBase`, `with-current-RewriterBase` |
 | `(mlir Transforms GreedyPatternRewriteDriver)` | `mlir::applyPatternsGreedily` |
 | `(mlir Transforms DialectConversion)` | `with-TypeConverter`, `with-ConversionTarget`, `mlir::applyFullConversion`, `mlir::applyPartialConversion`, `mlir::ConversionTarget::addIllegalDialect!`, `mlir::ConversionTarget::addLegalDialect!`, `mlir::TypeConverter::addConversion!` |
 
