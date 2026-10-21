@@ -55,12 +55,13 @@
   (export begin-mlir-code)
 
   (import (except (rnrs (6)) =)
-          (only (chezscheme) syntax->list syntax->datum parameterize)
+          (only (chezscheme) syntax->list syntax->datum make-parameter parameterize)
           (rename (rime loop) (:with :rime-with))
           (for (rename (rime loop) (:with :rime-with)) expand)
           (for (only (crest pattern-dsl srcloc) syntax->file+line+col) expand)
           (for (only (crest pattern-dsl keywords)
                      = : -> :region
+                     :arg
                      :index :i64 :f32 :i32-array :i64-array :unit) expand)
           (for (mlir IR BuiltinAttributes) expand)
           ;; Runtime predicates and create bindings for %%crest:create-op! dispatch
@@ -87,6 +88,15 @@
           (for (only (mlir IR Operation) mlir::Operation::getRegion) expand)
           (for (only (mlir IR Operation) mlir::Operation::getResult) expand))
 
+
+  ;;===--------------------------------------------------------------------===;;
+  ;; Dynamic parameter for (:arg N) inside ,@-style block bodies
+  ;;===--------------------------------------------------------------------===;;
+
+  ;; Holds the current mlir::Block* when executing inside a (^label ,@pairs body)
+  ;; block form.  (:arg N) expands to (mlir::Block::getArgument (current-block) N).
+  ;; Only valid inside such a block body at runtime.
+  (define current-block (make-parameter #f))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Runtime create dispatcher
@@ -272,7 +282,29 @@
             (with-syntax ([state state-stx] [n name-str] [v val-stx])
               #'(mlir::OperationState::addAttribute state n v))))
         (define (make-block-fill blk)
-          (apply make-block-fill-fn (parse-block-form blk)))
+          (let ([parsed (parse-block-form blk)])
+            (if (cadr parsed)
+                (apply make-block-fill-fn parsed)
+                (make-dynamic-block-fill-fn (car parsed) (caddr parsed) (cadddr parsed)))))
+        ;; Dynamic variant: (^label builder ,@pairs-expr body ...)
+        ;; pairs-expr evaluates at runtime to (list (cons name type) ...).
+        ;; No static arg bindings — use (:arg N) inside body to access block args
+        ;; via the current-block parameter (parameterized over the created block).
+        (define (make-dynamic-block-fill-fn builder-id pairs-expr body-ops)
+          (let ([body-stx (with-syntax ([(body ...) body-ops]
+                                        [block-builder builder-id])
+                            #'(begin-mlir-code block-builder body ...))])
+            (lambda (region-stx)
+              (with-syntax ([pairs        pairs-expr]
+                            [body         body-stx]
+                            [block-builder builder-id]
+                            [region       region-stx])
+                #'(let* ([%%dyn-pairs pairs]
+                         [%%dyn-block (mlir::Region::push_back<Block>
+                                       region (map cdr %%dyn-pairs))])
+                    (parameterize ([current-block %%dyn-block])
+                      (with-CrestObject (block-builder (mlir::OpBuilder::atBlockEnd %%dyn-block))
+                        body)))))))
         (define (make-block-fill-fn builder-id arg-vars arg-types body-ops)
           ;; builder-id is always a valid identifier — parse-block-form
           ;; generates a gensym when the user didn't provide an explicit name.
@@ -304,20 +336,36 @@
                              (map (lambda (fn) (fn region-id)) block-fill-fns)])
                 #`(let ([#,region-id (mlir::Operation::getRegion new-op region-idx)])
                     block-fill-stmt ...)))))
-        ;; Parse a full block stx of the form:
+        ;; Parse a full block stx.  Returns (list builder-id arg-vars arg-types body-ops)
+        ;; for the static case, or (list builder-id #f pairs-expr body-ops) for the
+        ;; dynamic ,@pairs-expr case.
+        ;;
+        ;; Static forms:
         ;;   (^label ((arg : type) ...) body ...)         — no builder name
         ;;   (^label builder-name ((arg : type) ...) ...) — explicit builder name
-        ;; Returns (list builder-id arg-vars arg-types body-ops).
-        ;; Uses : as a literal keyword to match (arg : type) pairs directly.
+        ;;
+        ;; Dynamic forms:
+        ;;   (^label ,@pairs-expr body ...)               — no builder name
+        ;;   (^label builder-name ,@pairs-expr body ...)  — explicit builder name
+        ;;
+        ;; In the dynamic case cadr = #f signals "dynamic" to make-block-fill.
         (define (parse-block-form block-stx)
           (let parse ([stx block-stx])
-            (syntax-case stx (:)
-              ;; No builder-id — inject gensym and retry
+            (syntax-case stx (: unquote-splicing)
+              ;; Dynamic, no builder-id — inject gensym and retry
+              [(label (unquote-splicing pairs-expr) . body)
+               (with-syntax ([tmp (car (generate-temporaries '(block-builder)))])
+                 (parse #'(label tmp (unquote-splicing pairs-expr) . body)))]
+              ;; Dynamic, builder-id present
+              [(label builder-id (unquote-splicing pairs-expr) . body)
+               (identifier? #'builder-id)
+               (list #'builder-id #f #'pairs-expr (syntax->list #'body))]
+              ;; Static, no builder-id — inject gensym and retry
               [(label ((arg : type) ...) . body)
                (for-all identifier? (syntax->list #'(arg ...)))
                (with-syntax ([tmp (car (generate-temporaries '(block-builder)))])
                  (parse #'(label tmp ((arg : type) ...) . body)))]
-              ;; Terminal: builder-id present — extract arg/type lists via pattern
+              ;; Static, builder-id present — extract arg/type lists via pattern
               [(label builder-id ((arg : type) ...) . body)
                (and (identifier? #'builder-id) (for-all identifier? (syntax->list #'(arg ...))))
                (list #'builder-id
@@ -439,12 +487,15 @@
 
       ;; Build a runtime expression for the operand list from (operands ...).
       ;; ,@list splices a dynamic list: (v1 ,@%more v2) → (append (list v1) %more (list v2))
+      ;; (:arg N) is a shorthand for (mlir::Block::getArgument block N) — only valid
+      ;; when 'block' is in scope, i.e. inside the body of a (^label ...) block form.
       ;; Each operand converts to a chunk; (append chunk ...) flattens them.
       (define (value-operands operands-stx)
         (define (convert x)
-          (syntax-case x (unquote-splicing)
+          (syntax-case x (unquote-splicing :arg)
             [(unquote-splicing expr) #'expr]  ; ,@expr → raw list (spliced in)
-            [val                     #'(list val)])) ; value → singleton list
+            [(:arg n)  #'(list (mlir::Block::getArgument (current-block) n))]  ; block-arg shorthand
+            [val       #'(list val)])) ; value → singleton list
         (with-syntax ([(chunk ...) (map convert (syntax->list operands-stx))])
           #'(append chunk ...)))
 

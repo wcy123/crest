@@ -141,6 +141,7 @@
           :current-op :attr :has-attr? :attr-or
           :optional :variadic
           :index :i64 :f32 :i32-array :i64-array :unit
+          :arg
           make-unbound-value unbound-value?)
   (import (except (rnrs) =)
           (crest pattern-dsl keywords)

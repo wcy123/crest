@@ -401,15 +401,61 @@ Multiple regions each with multiple blocks — use multiple `:region` wrappers:
 
 In summary:
 
-| Form | Regions | Blocks per region |
-|---|---|---|
-| `(^bb ...)` | 1 | 1 |
-| `(^bb ...) (^bb ...)` | N | 1 each |
-| `(:region (^a ...) (^b ...))` | 1 | N |
-| `(:region ...) (:region ...)` | N | N each |
+| Form | Regions | Blocks per region | Block args |
+|---|---|---|---|
+| `(^bb ...)` | 1 | 1 | static |
+| `(^bb ...) (^bb ...)` | N | 1 each | static |
+| `(^bb bldr ,@pairs ...)` | 1 | 1 | dynamic |
+| `(:region (^a ...) (^b ...))` | 1 | N | static |
+| `(:region ...) (:region ...)` | N | N each | static |
 
 Regions can be nested: an op-form inside `^bb` can itself have regions.
 See `samples/passes/onnx-to-hipsr/matmul.sls` for a real-world example.
+
+### Dynamic block arguments
+
+When the number or types of block arguments are not known at compile time,
+use `,@pairs-expr` to splice a runtime list of `(name . type)` pairs:
+
+```scheme
+;; arg-types is a Scheme list of mlir::Type values computed at match time
+(%fn = my.func ()
+      (^bb0 bldr ,@(map cons arg-names arg-types)
+        ;; (:arg N) is shorthand for the Nth block argument
+        (%r = arith.addi ((:arg 0) (:arg 1)) -> !i32)
+        (my.return (%r)))
+      -> !i32)
+```
+
+The `,@` prefix is Chez Scheme's unquote-splicing — a visual marker that this
+list is computed at runtime rather than fixed at compile time. Each pair's
+`cdr` is the argument type; the `car` (a symbol or string) is documentation
+only and is not bound in the body.
+
+Inside the block body, **`(:arg N)`** is a shorthand for
+`(mlir::Block::getArgument (current-block) N)` where `current-block` is a
+dynamic parameter installed by the `^label ,@...` form. It is only valid
+inside such a dynamic block body.
+
+```scheme
+;; Concrete example: rewrite test.copy(%v) → test.with_block(%v) where
+;; the block arg type is determined at runtime from %v's type.
+(define-rewrite-pattern (%%pattern op rewriter)
+  :if-match
+    %out = test.copy (%v)
+  :then-let
+    ([!vtype   (mlir::Value::getType %v)]
+     [arg-pairs (list (cons 'arg !vtype))])  ; one (name . type) pair
+  :rewrite %out :with
+    (%result = test.with_block (%v)
+             (^bb0 bldr ,@arg-pairs
+               (my.yield ((:arg 0))))   ; (:arg 0) → first block argument
+             -> !vtype))
+```
+
+Use dynamic block args when generating functions whose argument lists vary
+(e.g. lowering to `func.func` from an AST), and static `((arg : type) ...)`
+when the count and types are fixed.
 
 ---
 
