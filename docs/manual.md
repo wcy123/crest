@@ -315,6 +315,27 @@ Each statement is an op-form:
 (%result-var = dialect.op-name (operand ...) ("attr" = val) ... -> !result-type)
 ```
 
+### Special forms
+
+Two special forms are available anywhere inside `begin-mlir-code`:
+
+**`(:builder)`** — returns the currently active builder or rewriter.
+`current-RewriterBase` at the `:rewrite :with` level; `current-OpBuilder` inside
+a `^bb0` block body. Use it to pass the active builder to a helper function, or
+bind it to a name for repeated use:
+
+```scheme
+;; Pass builder to a helper that emits multiple ops
+(%%emit-prologue (:builder) loc)
+
+;; Bind it when needed more than once
+(b = (:builder))
+```
+
+**`(:arg N)`** — shorthand for `(mlir::Block::getArgument (current-MLIRBlock) N)`.
+Only valid inside a `^bb0 ,@pairs` dynamic block body where `current-MLIRBlock`
+is installed.
+
 ### Attributes
 
 The general form `("name" = val)` sets an attribute where `val` is any Scheme
@@ -451,10 +472,6 @@ ops, etc.) with the block's implicit builder as the active context.
 Inside the block body, **`(:arg N)`** is a shorthand for
 `(mlir::Block::getArgument (current-MLIRBlock) N)` where `current-MLIRBlock` is a
 dynamic parameter installed by the `^label ,@...` form.
-
-**`(:builder)`** returns the currently active builder — `current-OpBuilder` inside a
-block body, `current-RewriterBase` at the `:rewrite :with` level. Use it when you
-need to pass the active builder as an operand or to a helper function.
 
 ```scheme
 ;; Concrete example: rewrite test.copy(%v) → test.with_block(%v) where
