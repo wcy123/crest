@@ -592,14 +592,30 @@ This section lists commonly used bindings. The set is not exhaustive — binding
 are added on demand as new MLIR APIs are needed. Library names mirror MLIR header
 paths. Import only what you use.
 
+### Context parameters
+
+CREST uses Scheme dynamic parameters to thread C++ context pointers implicitly.
+Each parameter follows the `current-<C++ClassName>` / `with-current-<C++ClassName>`
+convention from CLAUDE.md Rules 10–11:
+
+| Parameter | Macro | Defined in | Holds |
+|---|---|---|---|
+| `current-MLIRContext` | `with-current-MLIRContext` | `(mlir IR MLIRContext)` | `mlir::MLIRContext*` — ambient context for type/attr creation |
+| `current-MLIRBlock` | `with-current-MLIRBlock` | `(mlir IR Block)` | `mlir::Block*` — innermost block; used by `(:arg N)` in `^bb0 ,@pairs` bodies |
+| `current-OpBuilder` | `with-current-OpBuilder` | `(mlir IR Builders)` | `CrestOwned<mlir::OpBuilder>*` — explicit OpBuilder for standalone codegen |
+
+The rewriter inside `:rewrite :with` is passed **explicitly** as the first argument
+to `begin-mlir-code` — it is a `CrestRef<mlir::RewriterBase>`, not an `OpBuilder`.
+`%%crest:create-op!` dispatches on the runtime type so both are accepted.
+
 ### Core IR
 
 | Import | Key exports |
 |---|---|
-| `(mlir IR MLIRContext)` | `with-current-MLIRContext`, `current-MLIRContext`, `mlir::MLIRContext::new` |
+| `(mlir IR MLIRContext)` | `current-MLIRContext`, `with-current-MLIRContext`, `mlir::MLIRContext::new` |
 | `(mlir IR Operation)` | `mlir::Operation::getName`, `getResult`, `getRegion`, `getAttr`, `setAttr!`, `getContext`, `getNumResults`, `getNumOperands` |
 | `(mlir IR Value)` | `mlir::Value::getType`, `getDefiningOp`, `getUses` |
-| `(mlir IR Block)` | `mlir::Block::getArgument`, `getNumArguments` |
+| `(mlir IR Block)` | `mlir::Block::getArgument`, `getNumArguments`, `current-MLIRBlock`, `with-current-MLIRBlock` |
 | `(mlir IR Region)` | `mlir::Region::front`, `getParentOp` |
 | `(mlir IR OpResult)` | `mlir::OpResult::getResultNumber` |
 
@@ -616,11 +632,17 @@ paths. Import only what you use.
 |---|---|
 | `(mlir IR BuiltinAttributes)` | `mlir::IntegerAttr::get<i64>`, `mlir::FloatAttr::get<f32>`, `mlir::StringAttr::get`, `mlir::DenseElementsAttr::isSplat`, `mlir::DenseElementsAttr::getSplatValue<APFloat>`, `mlir::DenseElementsAttr::getSplatValue<APInt>`, `mlir::DenseI32ArrayAttr::get`, `mlir::DenseI64ArrayAttr::get` |
 
+### Builders
+
+| Import | Key exports |
+|---|---|
+| `(mlir IR Builders)` | `mlir::OpBuilder::atBlockEnd`, `mlir::OpBuilder::create<OperationState>`, `current-OpBuilder`, `with-current-OpBuilder` |
+
 ### Pattern matching and rewriting
 
 | Import | Key exports |
 |---|---|
-| `(mlir IR PatternMatch)` | `with-RewritePatternSet`, `with-RewriterBase`, `current-RewriterBase`, `with-OpBuilder` |
+| `(mlir IR PatternMatch)` | `with-RewritePatternSet` |
 | `(mlir Transforms GreedyPatternRewriteDriver)` | `mlir::applyPatternsGreedily` |
 | `(mlir Transforms DialectConversion)` | `with-TypeConverter`, `with-ConversionTarget`, `mlir::applyFullConversion`, `mlir::applyPartialConversion`, `mlir::ConversionTarget::addIllegalDialect!`, `mlir::ConversionTarget::addLegalDialect!`, `mlir::TypeConverter::addConversion!` |
 
