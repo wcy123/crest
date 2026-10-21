@@ -9,7 +9,9 @@
           ;; Attr type keywords used in (name = val :type) modifier forms
           :index :i64 :f32 :i32-array :i64-array :unit
           ;; (:arg N) shorthand for (mlir::Block::getArgument block N) in block bodies
-          :arg)
+          :arg
+          ;; (:builder) returns the currently active builder/rewriter
+          :builder)
   (import (except (rnrs) =))
 
   ;; Define keywords as syntax (for cross-library hygiene)
@@ -61,4 +63,5 @@
   (define-syntax :i64-array (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :i64-array (only valid as attr type in begin-mlir-code)" x)))
   (define-syntax :unit     (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :unit (only valid as attr type in begin-mlir-code)" x)))
   (define-syntax :arg      (lambda (x) (syntax-violation 'begin-mlir-code "misplaced :arg (only valid as operand inside begin-mlir-code block body)" x)))
+  (define-syntax :builder  (lambda (x) (syntax-violation 'begin-mlir-code "misplaced :builder (only valid as operand or implicit builder in begin-mlir-code)" x)))
   )

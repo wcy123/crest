@@ -286,14 +286,24 @@ Op-form syntax — see [§5 `begin-mlir-code`](#5-begin-mlir-code) for the full 
 
 ## 5. `begin-mlir-code`
 
-`begin-mlir-code` emits MLIR ops via the current rewriter. It is used
-implicitly inside `:rewrite :with` and can also be called standalone:
+`begin-mlir-code` emits MLIR ops via the current rewriter or builder.
 
+**With explicit builder** (original form):
 ```scheme
-(begin-mlir-code
+(begin-mlir-code my-builder
+  (%sum = arith.addi (%a %b) -> (mlir::Value::getType %a)))
+```
+
+**Without explicit builder** — uses `(%%current-builder)`, i.e. whatever
+`current-RewriterBase` or `current-OpBuilder` is installed:
+```scheme
+(begin-mlir-code            ; implicit builder from current context
   (%c0  = arith.constant () ("value" = (mlir::IntegerAttr::get<i64> 0)) -> (mlir::IntegerType::get<i64>))
   (%sum = arith.addi (%a %b) -> (mlir::Value::getType %a)))
 ```
+
+The implicit form works inside `:rewrite :with` bodies (where `current-RewriterBase`
+is set) and inside `^bb0` block bodies (where `current-OpBuilder` is set).
 
 Every emitted op carries a `FileLineColLoc` from the `.sls` source line.
 
@@ -440,8 +450,11 @@ ops, etc.) with the block's implicit builder as the active context.
 
 Inside the block body, **`(:arg N)`** is a shorthand for
 `(mlir::Block::getArgument (current-MLIRBlock) N)` where `current-MLIRBlock` is a
-dynamic parameter installed by the `^label ,@...` form. It is only valid
-inside such a dynamic block body.
+dynamic parameter installed by the `^label ,@...` form.
+
+**`(:builder)`** returns the currently active builder — `current-OpBuilder` inside a
+block body, `current-RewriterBase` at the `:rewrite :with` level. Use it when you
+need to pass the active builder as an operand or to a helper function.
 
 ```scheme
 ;; Concrete example: rewrite test.copy(%v) → test.with_block(%v) where
@@ -598,15 +611,23 @@ CREST uses Scheme dynamic parameters to thread C++ context pointers implicitly.
 Each parameter follows the `current-<C++ClassName>` / `with-current-<C++ClassName>`
 convention from CLAUDE.md Rules 10–11:
 
-| Parameter | Macro | Defined in | Holds |
+| Parameter | Macro | Defined in | Set by |
 |---|---|---|---|
-| `current-MLIRContext` | `with-current-MLIRContext` | `(mlir IR MLIRContext)` | `mlir::MLIRContext*` — ambient context for type/attr creation |
-| `current-MLIRBlock` | `with-current-MLIRBlock` | `(mlir IR Block)` | `mlir::Block*` — innermost block; used by `(:arg N)` in `^bb0 ,@pairs` bodies |
-| `current-OpBuilder` | `with-current-OpBuilder` | `(mlir IR Builders)` | `CrestOwned<mlir::OpBuilder>*` — explicit OpBuilder for standalone codegen |
+| `current-MLIRContext` | `with-current-MLIRContext` | `(mlir IR MLIRContext)` | user / `with-current-MLIRContext` |
+| `current-RewriterBase` | `with-current-RewriterBase` | `(mlir IR PatternMatch)` | `:rewrite :with` code generation |
+| `current-MLIRBlock` | `with-current-MLIRBlock` | `(mlir IR Block)` | `^bb0` block bodies |
+| `current-OpBuilder` | `with-current-OpBuilder` | `(mlir IR Builders)` | `^bb0` block bodies |
 
-The rewriter inside `:rewrite :with` is passed **explicitly** as the first argument
-to `begin-mlir-code` — it is a `CrestRef<mlir::RewriterBase>`, not an `OpBuilder`.
-`%%crest:create-op!` dispatches on the runtime type so both are accepted.
+`%%current-builder` (internal) returns `(current-RewriterBase)` or `(current-OpBuilder)`,
+whichever is set — this is what `(:builder)` and the implicit `begin-mlir-code` form use.
+
+The context hierarchy during a pattern rewrite:
+
+```
+:rewrite :with                → current-RewriterBase = rw
+  ^bb0 block body             → current-MLIRBlock = block
+                                current-OpBuilder = block-builder
+```
 
 ### Core IR
 
@@ -660,8 +681,11 @@ to `begin-mlir-code` — it is a `CrestRef<mlir::RewriterBase>`, not an `OpBuild
 
 Exports: `define-rewrite-pattern`, `define-conversion-pattern`,
 `add-rewrite-pattern`, `add-conversion-pattern`,
-`begin-mlir-code`, `unbound-value?`,
-`mlir-get-remapped-operands`.
+`begin-mlir-code`, `unbound-value?`, `mlir-get-remapped-operands`,
+`:builder`, `:arg`,
+`current-RewriterBase`, `with-current-RewriterBase`,
+`current-MLIRBlock`, `with-current-MLIRBlock`,
+`current-OpBuilder`, `with-current-OpBuilder`.
 
 ---
 

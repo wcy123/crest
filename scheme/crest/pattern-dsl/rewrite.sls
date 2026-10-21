@@ -61,19 +61,22 @@
           (for (only (crest pattern-dsl srcloc) syntax->file+line+col) expand)
           (for (only (crest pattern-dsl keywords)
                      = : -> :region
-                     :arg
+                     :arg :builder
                      :index :i64 :f32 :i32-array :i64-array :unit) expand)
           (for (mlir IR BuiltinAttributes) expand)
           ;; Runtime predicates and create bindings for %%crest:create-op! dispatch
           (only (mlir IR PatternMatch)
                 crest::isa<CrestRef<mlir::RewriterBase>>?
-                mlir::RewriterBase::create<OperationState>)
+                mlir::RewriterBase::create<OperationState>
+                current-RewriterBase)
           (only (mlir IR Builders)
                 crest::isa<CrestOwned<mlir::OpBuilder>>?
-                mlir::OpBuilder::create<OperationState>)
+                mlir::OpBuilder::create<OperationState>
+                current-OpBuilder)
           (only (mlir support array-ref) with-CrestObject)
           (for (only (mlir IR Builders)
-                     mlir::OpBuilder::atBlockEnd) expand)
+                     mlir::OpBuilder::atBlockEnd
+                     with-current-OpBuilder) expand)
           (for (only (mlir IR OperationSupport)
                      mlir::OperationState::addOperands
                      mlir::OperationState::addTypes
@@ -96,6 +99,12 @@
   ;;===--------------------------------------------------------------------===;;
   ;; Runtime create dispatcher
   ;;===--------------------------------------------------------------------===;;
+
+  ;; Returns the currently active builder: the RewriterBase (at :rewrite level)
+  ;; or the OpBuilder (inside a ^bb0 block). Error if neither is set.
+  (define (%%current-builder)
+    (or (current-RewriterBase) (current-OpBuilder)
+        (error '%%current-builder "no active builder — use begin-mlir-code inside :rewrite :with or a ^bb0 block")))
 
   ;; Select the correct C++ create binding based on the CREST wrapper type.
   ;; - CrestRef<RewriterBase>  → mlir::RewriterBase::create<OperationState>
@@ -135,10 +144,17 @@
       ;; Main entry
       ;;-------------------------------------------------------------------
 
-      ;; Single case: ctx is any builder (CrestRef<RewriterBase> or
-      ;; CrestOwned<OpBuilder>). %%crest:create-op! dispatches at runtime.
+      ;; Two entry points:
+      ;;   (begin-mlir-code ctx op ...)  — explicit builder/rewriter (ctx identifier)
+      ;;   (begin-mlir-code op ...)      — implicit: (%%current-builder) when first
+      ;;                                    element is a list (op-form), not an identifier
       (define (main)
         (syntax-case stx ()
+          ;; Implicit builder: first element is NOT an identifier (it's a list op-form)
+          [(_ first-op rest ...)
+           (not (identifier? #'first-op))
+           #`(begin-mlir-code (%%current-builder) first-op rest ...)]
+          ;; Explicit builder (ctx is an identifier)
           [(_ ctx op ...)
            (let ([pairs (loop :for op-stx :in (syntax->list #'(op ...))
                               :for index :from 0
@@ -148,7 +164,8 @@
                  (with-syntax ([(binding ...) (loop :for pair :in pairs
                                                     :collect (make-binding pair))]
                                [result        (car (car (reverse pairs)))])
-                   #'(let* (binding ...) result))))]))
+                   #'(let* (binding ...) result))))]
+          [(_) #'(if #f #f)]))
 
 
       ;;-------------------------------------------------------------------
@@ -171,7 +188,11 @@
       ;;
       ;; Statement (no result) — one pair binding the tmp to the op itself.
       (define (process-op op-stx index builder-stx)
-        (syntax-case op-stx (= ->)
+        (syntax-case op-stx (= -> :builder)
+          ;; (:builder) — return the active builder (useful as a Scheme binding)
+          [(:builder)
+           (list (cons (car (generate-temporaries #'(x)))
+                       #'(%%current-builder)))]
           ;; Scheme escape
           [(var = expr)
            (and (identifier? #'var) (not (op-name? #'expr)))
@@ -299,7 +320,8 @@
                                        region (map cdr %%dyn-pairs))])
                     (with-current-MLIRBlock %%dyn-block
                                             (with-CrestObject (block-builder (mlir::OpBuilder::atBlockEnd %%dyn-block))
-                                              body)))))))
+                                              (with-current-OpBuilder block-builder
+                                                                      body))))))))
         (define (make-block-fill-fn builder-id arg-vars arg-types body-ops)
           ;; builder-id is always a valid identifier — parse-block-form
           ;; generates a gensym when the user didn't provide an explicit name.
@@ -318,7 +340,8 @@
                 #'(let* ([block (mlir::Region::push_back<Block> region (list arg-type ...))]
                          arg-binding ...)
                     (with-CrestObject (block-builder (mlir::OpBuilder::atBlockEnd block))
-                      body))))))
+                      (with-current-OpBuilder block-builder
+                                              body)))))))
         (define (make-region-fill-fn region-index block-fill-fns)
           (lambda (op-stx)
             ;; region-id must be in scope as a Scheme value before with-syntax
@@ -487,10 +510,11 @@
       ;; Each operand converts to a chunk; (append chunk ...) flattens them.
       (define (value-operands operands-stx)
         (define (convert x)
-          (syntax-case x (unquote-splicing :arg)
-            [(unquote-splicing expr) #'expr]  ; ,@expr → raw list (spliced in)
-            [(:arg n)  #'(list (mlir::Block::getArgument (current-MLIRBlock) n))]  ; block-arg shorthand
-            [val       #'(list val)])) ; value → singleton list
+          (syntax-case x (unquote-splicing :arg :builder)
+            [(unquote-splicing expr) #'expr]                ; ,@expr → spliced list
+            [(:arg n)     #'(list (mlir::Block::getArgument (current-MLIRBlock) n))]  ; block-arg
+            [(:builder)   #'(list (%%current-builder))]     ; active builder/rewriter
+            [val          #'(list val)])) ; value → singleton list
         (with-syntax ([(chunk ...) (map convert (syntax->list operands-stx))])
           #'(append chunk ...)))
 

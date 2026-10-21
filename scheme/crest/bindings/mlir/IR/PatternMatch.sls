@@ -20,6 +20,9 @@
 
 (library (mlir IR PatternMatch)
   (export
+    ;; Context parameters
+    current-RewriterBase
+    with-current-RewriterBase
     ;; Clean-name re-exports from ffi
     mlir-create-operation
     mlir::RewriterBase::setInsertionPoint
@@ -60,6 +63,16 @@
                 mlir::OperationState::addTypes
                 mlir::OperationState::addRegion
                 with-OperationState))
+
+  ;; @brief current-RewriterBase — dynamic parameter holding the ambient mlir::RewriterBase*.
+  ;; Installed by with-current-RewriterBase; set during :rewrite :with code generation.
+  (define current-RewriterBase (make-parameter #f))
+
+  ;; @brief with-current-RewriterBase — install rw as current-RewriterBase for body forms.
+  (define-syntax with-current-RewriterBase
+    (syntax-rules ()
+      [(_ rw body ...)
+       (parameterize ([current-RewriterBase rw]) body ...)]))
 
   ;; @brief mlir::Operation::getContext — return the MLIRContext that owns this op.
   (define mlir-Operation::getContext mlir::Operation::getContext)
