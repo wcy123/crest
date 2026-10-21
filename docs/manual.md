@@ -445,12 +445,12 @@ See `samples/passes/onnx-to-hipsr/matmul.sls` for a real-world example.
 ### Dynamic block arguments
 
 When the number or types of block arguments are not known at compile time,
-use `,@pairs-expr` to splice a runtime list of `(name . type)` pairs:
+use `,@types-expr` to splice a runtime list of `mlir::Type` values:
 
 ```scheme
 ;; arg-types is a Scheme list of mlir::Type values computed at match time
 (%fn = my.func ()
-      (^bb0 ,@(map cons arg-names arg-types)
+      (^bb0 ,@arg-types
         ;; (:arg N) is shorthand for the Nth block argument
         (%r = arith.addi ((:arg 0) (:arg 1)) -> !i32)
         (my.return (%r)))
@@ -478,10 +478,10 @@ dynamic parameter installed by the `^label ,@...` form.
     %out = test.copy (%v)
   :then-let
     ([!vtype   (mlir::Value::getType %v)]
-     [arg-pairs (list (cons 'arg !vtype))])  ; one (name . type) pair
+     [arg-types (list !vtype)])
   :rewrite %out :with
     (%result = test.with_block (%v)
-             (^bb0 ,@arg-pairs
+             (^bb0 ,@arg-types
                (my.yield ((:arg 0))))   ; (:arg 0) → first block argument
              -> !vtype))
 ```

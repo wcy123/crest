@@ -302,10 +302,11 @@
             (with-syntax ([state state-stx] [n name-str] [v val-stx])
               #'(mlir::OperationState::addAttribute state n v))))
         ;; Returns a fill-fn: (lambda (region-stx) → syntax).
-        ;; No-builder cases inject a gensym and recurse.
+        ;; No-builder cases use a gensym — body uses builder implicitly via begin-mlir-code.
+        ;; To access the builder by name, use (^label builder-name ...) explicitly.
         (define (make-block-fill blk)
           (syntax-case blk (: unquote-splicing)
-            ;; Dynamic, no explicit builder — inject gensym and recurse
+            ;; Dynamic, no explicit builder — gensym and recurse
             [(label (unquote-splicing pairs-expr) . body)
              (with-syntax ([tmp (car (generate-temporaries '(block-builder)))])
                (make-block-fill #'(label tmp (unquote-splicing pairs-expr) . body)))]
@@ -317,14 +318,14 @@
                               #'(begin-mlir-code builder-id b ...))])
                (lambda (region-stx)
                  (with-syntax ([region region-stx])
-                   #'(let* ([%%dyn-pairs pairs-expr]
+                   #'(let* ([%%dyn-types pairs-expr]
                             [%%dyn-block (mlir::Region::push_back<Block>
-                                          region (map cdr %%dyn-pairs))])
+                                          region %%dyn-types)])
                        (with-current-MLIRBlock %%dyn-block
                                                (with-CrestObject (builder-id (mlir::OpBuilder::atBlockEnd %%dyn-block))
                                                  (with-current-OpBuilder builder-id
                                                                          body-code)))))))]
-            ;; Static, no explicit builder — inject gensym and recurse
+            ;; Static, no explicit builder — gensym and recurse
             [(label ((arg : type) ...) . body)
              (for-all identifier? (syntax->list #'(arg ...)))
              (with-syntax ([tmp (car (generate-temporaries '(block-builder)))])

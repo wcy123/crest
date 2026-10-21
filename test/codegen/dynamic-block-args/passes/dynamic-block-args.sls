@@ -24,11 +24,11 @@
       %out = test.copy (%v)
     :then-let
       ([!vtype   (mlir::Value::getType %v)]
-       ;; Build arg-pairs at runtime: one (name . type) per block arg.
-       [arg-pairs (list (cons 'arg !vtype))])
+       ;; Build type list at runtime: one type per block arg.
+       [arg-types (list !vtype)])
     :rewrite %out :with
       (%result = test.with_block (%v)
-               (^bb0 ,@arg-pairs
+               (^bb0 ,@arg-types
                      (test.yield ((:arg 0))))
                -> !vtype))
 
