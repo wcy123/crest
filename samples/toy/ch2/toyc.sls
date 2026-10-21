@@ -28,7 +28,8 @@
              [_          (toy:register! ctx)]
              [module-op  (mlir-gen ctx module-ast)])
         (unless module-op (exit 1))
-        (mlir::Operation::dump (mlir::ModuleOp::getOperation module-op)))))
+        (display (mlir::Operation::print (mlir::ModuleOp::getOperation module-op)))
+        (newline))))
 
   (define (run-pass _op)
     (let ([filename (getenv "TOYC_FILE")]

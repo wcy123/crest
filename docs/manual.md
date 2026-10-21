@@ -333,6 +333,28 @@ helper function. `current-RewriterBase` at the `:rewrite :with` level;
 Only valid inside a `^bb0 ,@types` dynamic block body where `current-MLIRBlock`
 is installed.
 
+### Location override
+
+**`(:loc loc-expr)`** — op-level modifier that overrides the automatically-derived
+Scheme source location with a runtime `mlir::Location` value. Place it between
+the operand list and the `->`:
+
+```scheme
+;; Without :loc — op carries the .sls file:line:col from the begin-mlir-code form
+(%r = toy.constant () ("value" = attr) -> !t)
+
+;; With :loc — op carries the Toy AST source location instead
+(%r = toy.constant () ("value" = attr) :loc toy-loc -> !t)
+
+;; Useful in codegen from a parsed AST to carry source-language locations:
+(begin-mlir-code builder
+  (toy.func ()
+    ("sym_name" = name :string)
+    (:loc proto-loc)         ; ← mlir::FileLineColLoc from the Toy prototype
+    (^bb0 ,@arg-types
+      ...)))
+```
+
 ### Attributes
 
 The general form `("name" = val)` sets an attribute where `val` is any Scheme

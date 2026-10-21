@@ -61,7 +61,7 @@
           (for (only (crest pattern-dsl srcloc) syntax->file+line+col) expand)
           (for (only (crest pattern-dsl keywords)
                      = : -> :region
-                     :string :index :i64 :f32 :i32-array :i64-array :unit) expand)
+                     :string :loc :index :i64 :f32 :i32-array :i64-array :unit) expand)
           (for (mlir IR BuiltinAttributes) expand)
           ;; Runtime predicates and create bindings for %%crest:create-op! dispatch
           (only (mlir IR PatternMatch)
@@ -208,11 +208,12 @@
                 (for-all identifier? (syntax->list #'(var ...)))
                 (eqv? (length (syntax->list #'(var ...)))
                       (length (syntax->list #'(result-type ...)))))
-           (let-values ([(attr-setter-fns region-fill-fns) (parse-modifiers #'(modifiers ...) builder-stx)])
+           (let-values ([(attr-setter-fns region-fill-fns loc-override)
+                         (parse-modifiers #'(modifiers ...) builder-stx)])
              (emit-multi (syntax->list #'(var ...)) (op-name->str #'op)
                          (value-operands #'(operands ...))
                          (syntax->list #'(result-type ...)) attr-setter-fns
-                         region-fill-fns index #'op builder-stx))]
+                         region-fill-fns index #'op builder-stx loc-override))]
           ;; Statement: no var, no ->.
           [(op (operands ...) modifiers ...)
            (op-name? #'op)
@@ -262,7 +263,7 @@
         ;; Classify one modifier: normalise symbol/typed/shorthand forms first,
         ;; then return a tagged handler at the terminal branches.
         (define (classify m)
-          (syntax-case m (= :string :index :i64 :f32 :i32-array :i64-array :unit :region)
+          (syntax-case m (= :string :loc :index :i64 :f32 :i32-array :i64-array :unit :region)
             ;; Normalise and retry
             [(name = val . rest) (symbol? (syntax->datum #'name))
              (with-syntax ([str-name (datum->syntax #'name
@@ -277,6 +278,7 @@
             [(name = val :unit)      (classify #'(name = (mlir::UnitAttr::get)))]
             [(label . _) (block-label? #'label) (classify #`(:region #,m))]
             ;; Terminals
+            [(:loc e)  (cons 'loc #'e)]
             [(name = val) (string? (syntax->datum #'name))
              (cons 'attr (make-direct-setter (syntax->datum #'name) #'val))]
             [(:region block ...)
@@ -299,7 +301,9 @@
            (loop :for e :in tagged :if (eq? (car e) 'attr) :collect (cdr e))
            (loop :for e :in (filter (lambda (e) (eq? (car e) 'region)) tagged)
                  :for idx :from 0
-                 :collect (make-region-fill-fn idx (cdr e)))))
+                 :collect (make-region-fill-fn idx (cdr e)))
+           (let ([locs (filter (lambda (e) (eq? (car e) 'loc)) tagged)])
+             (if (null? locs) #f (cdr (car locs))))))
         (define (make-direct-setter name-str val-stx)
           (lambda (state-stx)
             (with-syntax ([state state-stx] [n name-str] [v val-stx])
@@ -354,8 +358,16 @@
                              (map (lambda (fn) (fn region-id)) block-fill-fns)])
                 #`(let ([#,region-id (mlir::Operation::getRegion new-op region-idx)])
                     block-fill-stmt ...)))))
+        ;; Process modifiers left-to-right; :loc consumes the next form (no parens needed).
         (split-modifiers
-         (loop :for m :in (syntax->list modifiers-stx) :collect (classify m)))
+         (let lp ([ms (syntax->list modifiers-stx)] [acc '()])
+           (cond
+            [(null? ms) (reverse acc)]
+            [(and (identifier? (car ms))
+                  (free-identifier=? (car ms) (datum->syntax (car ms) ':loc))
+                  (not (null? (cdr ms))))
+             (lp (cddr ms) (cons (cons 'loc (cadr ms)) acc))]
+            [else (lp (cdr ms) (cons (classify (car ms)) acc))])))
         )
       ;;-------------------------------------------------------------------
       ;; Code emitters
@@ -397,7 +409,8 @@
                           region-fill-fns   ; list of (lambda (op-stx) → fill-stx)
                           index         ; integer — op position in begin-mlir-code
                           op-name-stx   ; syntax — carries source location annotation
-                          builder-stx)  ; syntax — the active builder expression
+                          builder-stx   ; syntax — the active builder expression
+                          loc-override) ; syntax or #f — runtime mlir::Location override
         (let* ([nregions  (length region-fill-fns)]  ; number of region modifiers
                [op-var   (op-tmp-id index)]           ; %op-tmp-N — outer let* binding
                [state-id (car (generate-temporaries '(state)))]  ; gensym for OperationState
@@ -422,7 +435,7 @@
                [(region-fill-stmt ...)
                 (map (lambda (fn) (fn op-var)) region-fill-fns)]
                [(addregion-call ...) addregion-calls]
-               [source-loc (syntax->mlir-loc-expr op-name-stx)])
+               [source-loc (if loc-override loc-override (syntax->mlir-loc-expr op-name-stx))])
             (cons
              ;; Binding descriptor: op-tmp bound to the created Operation*.
              ;; Attributes set in OperationState (before create);

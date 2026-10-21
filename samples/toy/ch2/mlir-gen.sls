@@ -16,7 +16,7 @@
           (mlir IR BuiltinOps)
           (toy ch2 ast)
           (for (only (crest pattern-dsl rewrite) begin-mlir-code) expand)
-          (for (only (crest pattern-dsl keywords) = :string :builder :arg) expand))
+          (for (only (crest pattern-dsl keywords) = :string :loc :builder :arg) expand))
 
   ;; toy.return? — mirrors toy::ReturnOp::classof().
   ;; Defined here (not imported from toy) to avoid library export issues
@@ -222,7 +222,8 @@
                         (%%mlir-gen-block :builder symtab body)
                         (when (or (mlir::Block::empty? (current-MLIRBlock))
                                   (not (toy.return? (mlir::Block::back (current-MLIRBlock)))))
-                          (%%create-op! :builder loc "toy.return" '() '() '())))))))
+                          (%%create-op! :builder loc "toy.return" '() '() '())))
+                  :loc loc))))
 
   ;; -------------------------------------------------------------------------
   ;; Module code generation — public API
