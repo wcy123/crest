@@ -405,7 +405,7 @@ In summary:
 |---|---|---|---|
 | `(^bb ...)` | 1 | 1 | static |
 | `(^bb ...) (^bb ...)` | N | 1 each | static |
-| `(^bb builder ,@pairs ...)` | 1 | 1 | dynamic |
+| `(^bb ,@pairs ...)`  | 1 | 1 | dynamic |
 | `(:region (^a ...) (^b ...))` | 1 | N | static |
 | `(:region ...) (:region ...)` | N | N each | static |
 
@@ -422,7 +422,7 @@ use `,@pairs-expr` to splice a runtime list of `(name . type)` pairs:
 ```scheme
 ;; arg-types is a Scheme list of mlir::Type values computed at match time
 (%fn = my.func ()
-      (^bb0 builder ,@(map cons arg-names arg-types)
+      (^bb0 ,@(map cons arg-names arg-types)
         ;; (:arg N) is shorthand for the Nth block argument
         (%r = arith.addi ((:arg 0) (:arg 1)) -> !i32)
         (my.return (%r)))
@@ -454,7 +454,7 @@ inside such a dynamic block body.
      [arg-pairs (list (cons 'arg !vtype))])  ; one (name . type) pair
   :rewrite %out :with
     (%result = test.with_block (%v)
-             (^bb0 builder ,@arg-pairs
+             (^bb0 ,@arg-pairs
                (my.yield ((:arg 0))))   ; (:arg 0) → first block argument
              -> !vtype))
 ```
