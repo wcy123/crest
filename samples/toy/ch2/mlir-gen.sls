@@ -16,7 +16,7 @@
           (mlir IR BuiltinOps)
           (toy ch2 ast)
           (for (only (crest pattern-dsl rewrite) begin-mlir-code) expand)
-          (for (only (crest pattern-dsl keywords) = :builder :arg) expand))
+          (for (only (crest pattern-dsl keywords) = :string :builder :arg) expand))
 
   ;; toy.return? — mirrors toy::ReturnOp::classof().
   ;; Defined here (not imported from toy) to avoid library export issues
