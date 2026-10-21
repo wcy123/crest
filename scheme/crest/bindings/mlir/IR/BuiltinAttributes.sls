@@ -59,8 +59,8 @@
           (mlir IR MLIRContext))
 
   ;; @brief mlir::StringAttr::get — construct a StringAttr from a Scheme string.
-  (define (mlir::StringAttr::get ctx str)
-    (%mlir::StringAttr::get ctx str))
+  ;; ctx is optional; defaults to (current-MLIRContext).
+  (define-ctx-optional mlir::StringAttr::get %mlir::StringAttr::get str)
 
   ;; @brief mlir::TypeAttr::get — wrap a Type as a TypeAttr.
   (define (mlir::TypeAttr::get type)

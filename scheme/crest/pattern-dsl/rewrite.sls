@@ -61,7 +61,7 @@
           (for (only (crest pattern-dsl srcloc) syntax->file+line+col) expand)
           (for (only (crest pattern-dsl keywords)
                      = : -> :region
-                     :index :i64 :f32 :i32-array :i64-array :unit) expand)
+                     :string :index :i64 :f32 :i32-array :i64-array :unit) expand)
           (for (mlir IR BuiltinAttributes) expand)
           ;; Runtime predicates and create bindings for %%crest:create-op! dispatch
           (only (mlir IR PatternMatch)
@@ -262,12 +262,13 @@
         ;; Classify one modifier: normalise symbol/typed/shorthand forms first,
         ;; then return a tagged handler at the terminal branches.
         (define (classify m)
-          (syntax-case m (= :index :i64 :f32 :i32-array :i64-array :unit :region)
+          (syntax-case m (= :string :index :i64 :f32 :i32-array :i64-array :unit :region)
             ;; Normalise and retry
             [(name = val . rest) (symbol? (syntax->datum #'name))
              (with-syntax ([str-name (datum->syntax #'name
                                                     (symbol->string (syntax->datum #'name)))])
                (classify #'(str-name = val . rest)))]
+            [(name = val :string)    (classify #'(name = (mlir::StringAttr::get val)))]
             [(name = val :index)     (classify #'(name = (mlir::IntegerAttr::get<index> val)))]
             [(name = val :i64)       (classify #'(name = (mlir::IntegerAttr::get<i64> val)))]
             [(name = val :f32)       (classify #'(name = (mlir::FloatAttr::get<f32> val)))]

@@ -147,7 +147,7 @@
                        '() (list (%%f64-unranked-tensor)))
          0)]
        [else
-        (let ([callee-attr (mlir::StringAttr::get (current-MLIRContext) callee)])
+        (let ([callee-attr (mlir::StringAttr::get callee)])
           (mlir::Operation::getResult
            (%%create-op! builder loc "toy.generic_call" args
                          (list (cons "callee" callee-attr))
@@ -213,7 +213,7 @@
            [%%fn-bld  (mlir::OpBuilder::atBlockEnd module-body)])
       (begin-mlir-code %%fn-bld
         (toy.func ()
-                  ("sym_name"      = (mlir::StringAttr::get (current-MLIRContext) name))
+                  ("sym_name"      = name :string)
                   ("function_type" = (mlir::TypeAttr::get func-type))
                   (^bb0 ,@arg-types
                         (for-each (lambda (arg-ast idx)
