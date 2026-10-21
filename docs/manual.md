@@ -330,7 +330,7 @@ helper function. `current-RewriterBase` at the `:rewrite :with` level;
 ```
 
 **`(:arg N)`** — shorthand for `(mlir::Block::getArgument (current-MLIRBlock) N)`.
-Only valid inside a `^bb0 ,@pairs` dynamic block body where `current-MLIRBlock`
+Only valid inside a `^bb0 ,@types` dynamic block body where `current-MLIRBlock`
 is installed.
 
 ### Attributes
@@ -433,7 +433,7 @@ In summary:
 |---|---|---|---|
 | `(^bb ...)` | 1 | 1 | static |
 | `(^bb ...) (^bb ...)` | N | 1 each | static |
-| `(^bb ,@pairs ...)`  | 1 | 1 | dynamic |
+| `(^bb ,@types ...)`  | 1 | 1 | dynamic |
 | `(:region (^a ...) (^b ...))` | 1 | N | static |
 | `(:region ...) (:region ...)` | N | N each | static |
 
@@ -458,9 +458,7 @@ use `,@types-expr` to splice a runtime list of `mlir::Type` values:
 ```
 
 The `,@` prefix is Chez Scheme's unquote-splicing — a visual marker that this
-list is computed at runtime rather than fixed at compile time. Each pair's
-`cdr` is the argument type; the `car` (a symbol or string) is documentation
-only and is not bound in the body.
+list is computed at runtime rather than fixed at compile time.
 
 The block body is a recursive `begin-mlir-code` call — the same op-form
 syntax is available (nested regions, attribute shorthands, multi-result
@@ -633,7 +631,7 @@ convention from CLAUDE.md Rules 10–11:
 | `current-OpBuilder` | `with-current-OpBuilder` | `(mlir IR Builders)` | `^bb0` block bodies |
 
 `%%current-builder` (internal) returns `(current-RewriterBase)` or `(current-OpBuilder)`,
-whichever is set — this is what `(:builder)` and the implicit `begin-mlir-code` form use.
+whichever is set — this is what `:builder` and the implicit `begin-mlir-code` form use.
 
 The context hierarchy during a pattern rewrite:
 
