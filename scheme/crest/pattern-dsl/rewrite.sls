@@ -168,9 +168,22 @@
            (with-syntax ([bld (car (generate-temporaries '(builder)))])
              #'(let ([bld (%%current-builder)])
                  (begin-mlir-code bld first-item rest ...)))]
-          ;; Explicit builder (ctx is an identifier): flat-list parse
-          [(_ ctx . rest-stx)
-           (let ([pairs (process-ops-flat (syntax->list #'rest-stx) 0 #'ctx)])
+          ;; Explicit builder (ctx is an identifier): flat-list parse (v2 + backward compat)
+          [(_ ctx op ...)
+           ;; Use process-ops-flat for v2 flat syntax; it also handles old-style
+           ;; parenthesized op-forms via process-op delegation.
+           (let* ([all-ops (syntax->list #'(op ...))]
+                  [pairs   (if (and (not (null? all-ops))
+                                    ;; v2 hint: first item is an identifier (not a paren form),
+                                    ;; meaning the flat parser is needed.
+                                    ;; Old style: every item is a parenthesized op-form.
+                                    (identifier? (car all-ops)))
+                               ;; v2 flat syntax: scan the whole flat list
+                               (process-ops-flat all-ops 0 #'ctx)
+                               ;; Old-style: each item is a complete parenthesized op-form
+                               (loop :for op-stx :in all-ops
+                                     :for index :from 0
+                                     :append (process-op op-stx index #'ctx)))])
              (if (null? pairs)
                  #'(if #f #f)
                  (with-syntax ([(binding ...) (map make-binding pairs)]
