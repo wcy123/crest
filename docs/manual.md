@@ -434,9 +434,9 @@ list is computed at runtime rather than fixed at compile time. Each pair's
 `cdr` is the argument type; the `car` (a symbol or string) is documentation
 only and is not bound in the body.
 
-The block body is a recursive `begin-mlir-code` call with `builder` as the
-active builder, so the full op-form syntax is available (nested regions,
-attribute shorthands, multi-result ops, etc.).
+The block body is a recursive `begin-mlir-code` call — the same op-form
+syntax is available (nested regions, attribute shorthands, multi-result
+ops, etc.) with the block's implicit builder as the active context.
 
 Inside the block body, **`(:arg N)`** is a shorthand for
 `(mlir::Block::getArgument (current-block) N)` where `current-block` is a
