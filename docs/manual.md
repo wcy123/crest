@@ -319,17 +319,19 @@ Each statement is an op-form:
 
 Two special forms are available anywhere inside `begin-mlir-code`:
 
-**`(:builder)`** — returns the currently active builder or rewriter.
+**`:builder`** — returns the currently active builder or rewriter:
 `current-RewriterBase` at the `:rewrite :with` level; `current-OpBuilder` inside
-a `^bb0` block body. Use it to pass the active builder to a helper function, or
-bind it to a name for repeated use:
+a `^bb0` block body. Use it as a bare operand or bind it to a name:
 
 ```scheme
-;; Pass builder to a helper that emits multiple ops
-(%%emit-prologue (:builder) loc)
+;; As an operand — pass active builder to a helper
+(%result = my.op (%x :builder) -> !t)
 
 ;; Bind it when needed more than once
-(b = (:builder))
+(b = :builder)
+
+;; Pass to a helper function that emits multiple ops
+(%%emit-prologue :builder loc)
 ```
 
 **`(:arg N)`** — shorthand for `(mlir::Block::getArgument (current-MLIRBlock) N)`.

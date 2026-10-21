@@ -189,10 +189,14 @@
       ;; Statement (no result) — one pair binding the tmp to the op itself.
       (define (process-op op-stx index builder-stx)
         (syntax-case op-stx (= -> :builder)
-          ;; (:builder) — return the active builder (useful as a Scheme binding)
-          [(:builder)
+          ;; :builder — bare keyword; return the active builder (useful as a Scheme binding)
+          [:builder
            (list (cons (car (generate-temporaries #'(x)))
                        #'(%%current-builder)))]
+          ;; (var = :builder) — bind active builder to var
+          [(var = :builder)
+           (identifier? #'var)
+           (list (cons #'var #'(%%current-builder)))]
           ;; Scheme escape
           [(var = expr)
            (and (identifier? #'var) (not (op-name? #'expr)))
@@ -513,7 +517,7 @@
           (syntax-case x (unquote-splicing :arg :builder)
             [(unquote-splicing expr) #'expr]                ; ,@expr → spliced list
             [(:arg n)     #'(list (mlir::Block::getArgument (current-MLIRBlock) n))]  ; block-arg
-            [(:builder)   #'(list (%%current-builder))]     ; active builder/rewriter
+            [:builder     #'(list (%%current-builder))]     ; active builder/rewriter
             [val          #'(list val)])) ; value → singleton list
         (with-syntax ([(chunk ...) (map convert (syntax->list operands-stx))])
           #'(append chunk ...)))
