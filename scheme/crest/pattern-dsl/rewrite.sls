@@ -237,7 +237,7 @@
                  [regions '()]
                  [loc     #f]
                  [types   '()])
-          (syntax-case items (-> :loc :region : :string :index
+          (syntax-case items (-> :region : :string :index
                                  :i8 :i16 :i32 :i64 :f32 :f64
                                  :i8-array :i16-array :i32-array :i64-array :unit)
             ;; -> type-list, continue accumulating types
@@ -246,8 +246,9 @@
             ;; -> single-type, continue accumulating types
             [(-> type . rest)
              (lp #'rest attrs regions loc (append types (list #'type)))]
-            ;; :loc loc-expr (bare :loc token)
-            [(:loc loc-expr . rest)
+            ;; :loc loc-expr (bare :loc token) — datum comparison avoids cross-phase issues
+            [(colon-loc loc-expr . rest)
+             (eq? (syntax->datum #'colon-loc) ':loc)
              (lp #'rest attrs regions #'loc-expr types)]
             ;; (^label body ...) — single-block region shorthand
             [((bb body ...) . rest)
