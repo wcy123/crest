@@ -247,6 +247,8 @@
             [(-> type . rest)
              (lp #'rest attrs regions loc (append types (list #'type)))]
             ;; :loc loc-expr — runtime mlir::Location override
+            [(:loc (filename line column) . rest)
+             (lp #'rest attrs regions #'(mlir::FileLineColLoc::get filename line column) types)]
             [(:loc loc-expr . rest)
              (lp #'rest attrs regions #'loc-expr types)]
             ;; (^label body ...) — single-block region shorthand
