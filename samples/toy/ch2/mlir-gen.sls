@@ -208,7 +208,7 @@
   (define (%%mlir-gen-function module-body symtab fn)
     (let* ([proto     (function:proto fn)]
            [body      (function:body  fn)]
-           [loc       (%%loc (prototype:loc proto))]
+           [proto-loc (prototype:loc proto)]
            [name      (prototype:name proto)]
            [args      (prototype:args proto)]
            [arg-types (map (lambda (_) (%%f64-unranked-tensor)) args)]
@@ -225,8 +225,10 @@
               (%%mlir-gen-block :builder symtab body)
               (when (or (mlir::Block::empty? (current-MLIRBlock))
                         (not (toy.return? (mlir::Block::back (current-MLIRBlock)))))
-                (%%create-op! :builder loc "toy.return" '() '() '())))
-        :loc loc)))
+                (%%create-op! :builder (%%loc proto-loc) "toy.return" '() '() '())))
+        :loc ((location:file proto-loc)
+              (location:line proto-loc)
+              (location:col  proto-loc)))))
 
   ;; -------------------------------------------------------------------------
   ;; Module code generation — public API
