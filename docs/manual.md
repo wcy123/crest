@@ -73,12 +73,12 @@ A complete greedy-rewrite pattern:
      [lhs-zp     (zp-attr %lhs_zp)])
   ;; ④  Rewrite
   :rewrite %q :with
-    (%init   = tensor.empty () -> !out-type)
-    (%result = hip.qadd (%ctx %lhs %rhs %init)
-             ("lhs_scale" = lhs-scale)
-             ("output_scale" = out-scale)
-             ("lhs_zp"    = lhs-zp)
-             -> !out-type))
+    init   = tensor.empty () -> !out-type
+    result = hip.qadd (%ctx %lhs %rhs init)
+             (lhs_scale    : lhs-scale)
+             (output_scale : out-scale)
+             (lhs_zp       : lhs-zp)
+             -> !out-type)
 ```
 
 | Section | Purpose |
@@ -268,10 +268,10 @@ independently even if the underlying SSA values differ:
 
 ```scheme
 :rewrite %q :with
-  (%init   = tensor.empty () -> !out-type)
-  (%result = hip.qadd (%ctx %lhs %rhs %init)
-           ("lhs_scale" = lhs-scale)
-           -> !out-type))
+  init   = tensor.empty () -> !out-type
+  result = hip.qadd (%ctx %lhs %rhs init)
+           (lhs_scale : lhs-scale)
+           -> !out-type
 ```
 
 Before emission starts, the insertion point is set to immediately before the
@@ -325,7 +325,6 @@ Any parenthesized item that doesn't match an op-form pattern is a Scheme express
 
 **Key design**: op-forms are NOT wrapped in their own `()` — the flat argument
 list is scanned left-to-right and op boundaries are detected syntactically.
-Old parenthesized forms `(var = op.name ...)` are still accepted for backward compatibility.
 
 ### Special forms
 
@@ -338,7 +337,7 @@ helper function. `current-RewriterBase` at the `:rewrite :with` level;
 
 ```scheme
 ;; Pass to a Scheme helper that emits further ops using the active builder
-(_ = (%%emit-prologue :builder loc))
+(%%emit-prologue :builder loc)
 ```
 
 **`(:arg N)`** — shorthand for `(mlir::Block::getArgument (current-MLIRBlock) N)`.
@@ -377,8 +376,14 @@ Common types have shorthands that construct the attribute automatically:
 |---|---|
 | `(name : val :string)` | `mlir::StringAttr::get` |
 | `(name : val :index)` | `mlir::IntegerAttr::get<index>` |
+| `(name : val :i8)` | `mlir::IntegerAttr::get<i8>` |
+| `(name : val :i16)` | `mlir::IntegerAttr::get<i16>` |
+| `(name : val :i32)` | `mlir::IntegerAttr::get<i32>` |
 | `(name : val :i64)` | `mlir::IntegerAttr::get<i64>` |
 | `(name : val :f32)` | `mlir::FloatAttr::get<f32>` |
+| `(name : val :f64)` | `mlir::FloatAttr::get<f64>` |
+| `(name : val :i8-array)` | `mlir::DenseI8ArrayAttr::get` |
+| `(name : val :i16-array)` | `mlir::DenseI16ArrayAttr::get` |
 | `(name : val :i32-array)` | `mlir::DenseI32ArrayAttr::get` |
 | `(name : val :i64-array)` | `mlir::DenseI64ArrayAttr::get` |
 | `(name : val :unit)` | `mlir::UnitAttr::get` (val ignored) |
@@ -403,8 +408,8 @@ Multi-result ops list all types in `(...)`:
 ```scheme
 ;; Single result
 r = my.op (%x) -> !out-type
-;; Multi-result — number of types must equal number of result variables
-(r0 r1) = my.op (%x) -> (!type-a !type-b)
+;; Multi-result — one -> per result type
+(r0 r1) = my.op (%x) -> !type-a -> !type-b
 ```
 
 ### Regions
@@ -511,10 +516,10 @@ dynamic parameter installed by the `^label ,@...` form.
     ([!vtype   (mlir::Value::getType %v)]
      [arg-types (list !vtype)])
   :rewrite %out :with
-    (%result = test.with_block (%v)
+    result = test.with_block (%v)
              (^bb0 ,@arg-types
-               (my.yield ((:arg 0))))   ; (:arg 0) → first block argument
-             -> !vtype))
+               my.yield ((:arg 0)))     ; (:arg 0) → first block argument
+             -> !vtype
 ```
 
 Use dynamic block args when generating functions whose argument lists vary
