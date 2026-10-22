@@ -183,7 +183,7 @@
           ;; builder is already an identifier — use it directly.
           [(_ builder op ...)
            (identifier? #'builder)
-           (let ([pairs (process-ops-flat (syntax->list #'(op ...)))])
+           (let ([pairs (process-ops-flat #'(op ...))])
              (if (null? pairs)
                  #'(if #f #f)
                  (with-syntax ([(binding ...) (map make-binding pairs)]
@@ -204,12 +204,6 @@
       ;; Flat-list parser (v2 syntax)
       ;;-------------------------------------------------------------------
 
-      ;; Detect the kind of op-start at the head of `items` (a syntax list).
-      ;; Returns 'single-result, 'multi-result, 'no-result, or #f.
-      ;;
-      ;; single-result:  var = op.name (ops) ...
-      ;; multi-result:   (v0 v1 ...) = op.name (ops) ...
-      ;; no-result:      op.name (ops) ...
       ;; True when x is a block label identifier starting with ^.
       (define (block-label? x)
         (let ([datum (syntax->datum x)])
@@ -292,112 +286,92 @@
          [else
           (syntax-violation 'begin-mlir-code "invalid modifier" m)]))
 
-      ;; Consume modifiers from items until we hit -> or a new op-start.
-      ;; Returns (values attr-fns region-fns loc-override result-types remaining-items).
+      ;; Consume modifiers from items (a syntax object) until -> or a new op-start.
+      ;; Returns (values attr-fns region-fns loc-override result-types remaining)
+      ;; where remaining is a syntax object.
       (define (parse-modifiers-flat items)
         (let lp ([items   items]
                  [attrs   '()]
                  [regions '()]
                  [loc     #f]
                  [types   '()])
-          (cond
-           ;; End of items
-           [(null? items)
-            (values (reverse attrs) regions loc (reverse types) '())]
-           ;; -> result-type — consume type(s) and STOP (return remaining items).
-           ;; After ->, do not continue looking for more modifiers. The remaining
-           ;; items (next op, Scheme escape, etc.) go back to process-ops-flat.
-           [(and (identifier? (car items))
-                 (eq? (syntax->datum (car items)) '->))
-            (let ([rest (cdr items)])
-              (cond
-               [(null? rest)
-                (values (reverse attrs) regions loc (reverse types) '())]
-               ;; -> (t0 t1 ...) or -> () — parenthesized type list
-               [(let ([d (syntax->datum (car rest))]) (or (pair? d) (null? d)))
-                (let* ([tlist (syntax->list (car rest))]
-                       [rest2 (cdr rest)])
+          (syntax-case items ()
+            [()
+             (values (reverse attrs) regions loc (reverse types) #'())]
+            [(first . rest)
+             (cond
+              ;; -> result-type — consume type(s) and STOP
+              [(and (identifier? #'first) (eq? (syntax->datum #'first) '->))
+               (syntax-case #'rest ()
+                 [()
+                  (values (reverse attrs) regions loc (reverse types) #'())]
+                 ;; -> (t ...) or -> () — parenthesized type list
+                 [((t ...) . rest2)
                   (values (reverse attrs) regions loc
-                          (append (reverse types) tlist)
-                          rest2))]
-               ;; -> single-type — stop after consuming it
-               [else
-                (values (reverse attrs) regions loc
-                        (append (reverse types) (list (car rest)))
-                        (cdr rest))]))]
-           ;; :loc followed by next item (bare :loc token, without parens)
-           ;; Use datum comparison to avoid cross-phase free-identifier=? issues.
-           [(and (identifier? (car items))
-                 (eq? (syntax->datum (car items)) ':loc)
-                 (not (null? (cdr items))))
-            (lp (cddr items) attrs regions (cadr items) types)]
-           ;; Parenthesized item — could be attr modifier, region block, or (:loc e).
-           ;; Check for (:loc e) first via datum comparison to avoid cross-phase
-           ;; free-identifier=? failures when :loc comes from a different phase.
-           [(let ([d (syntax->datum (car items))])
-              (and (pair? d) (eq? (car d) ':loc)))
-            ;; (:loc expr) — extract loc expr from the second element
-            (let ([loc-stx (cadr (syntax->list (car items)))])
-              (lp (cdr items) attrs regions loc-stx types))]
-           [(pair? (syntax->datum (car items)))
-            (let ([tagged (classify-attr-colon (car items))])
-              (case (car tagged)
-                [(attr)   (lp (cdr items) (cons (cdr tagged) attrs) regions loc types)]
-                [(loc)    (lp (cdr items) attrs regions (cdr tagged) types)]
-                [(region) (let ([region-idx (length regions)])
-                            (lp (cdr items) attrs
-                                (append regions (list (make-region-fill-fn region-idx (cdr tagged))))
-                                loc types))]
-                [else (syntax-violation 'begin-mlir-code "unexpected modifier" (car items))]))]
-           ;; Any other identifier — stop (might be start of next op)
-           [else
-            (values (reverse attrs) regions loc (reverse types) items)])))
+                          (append (reverse types) (syntax->list #'(t ...)))
+                          #'rest2)]
+                 ;; -> single-type
+                 [(t . rest2)
+                  (values (reverse attrs) regions loc
+                          (append (reverse types) (list #'t))
+                          #'rest2)])]
+              ;; :loc expr (bare token)
+              [(and (identifier? #'first) (eq? (syntax->datum #'first) ':loc))
+               (syntax-case #'rest ()
+                 [(loc-expr . rest2)
+                  (lp #'rest2 attrs regions #'loc-expr types)])]
+              ;; (:loc expr) parenthesized
+              [(and (pair? (syntax->datum #'first))
+                    (eq? (car (syntax->datum #'first)) ':loc))
+               (syntax-case #'first ()
+                 [(_ loc-expr)
+                  (lp #'rest attrs regions #'loc-expr types)])]
+              ;; parenthesized modifier (attr, region, ^label)
+              [(pair? (syntax->datum #'first))
+               (let ([tagged (classify-attr-colon #'first)])
+                 (case (car tagged)
+                   [(attr)   (lp #'rest (cons (cdr tagged) attrs) regions loc types)]
+                   [(loc)    (lp #'rest attrs regions (cdr tagged) types)]
+                   [(region) (let ([region-idx (length regions)])
+                               (lp #'rest attrs
+                                   (append regions (list (make-region-fill-fn region-idx (cdr tagged))))
+                                   loc types))]
+                   [else (syntax-violation 'begin-mlir-code "unexpected modifier" #'first)]))]
+              ;; bare identifier — stop (start of next op)
+              [else
+               (values (reverse attrs) regions loc (reverse types) items)])])))
 
-      ;; Parse one item from the front of items.
+      ;; Parse one item from the front of items (a syntax object).
       ;; Returns #f when items is empty.
       ;; Returns (ast-emit-op . remaining) when the next item(s) form an MLIR op.
-      ;; Returns (scheme-expr-stx . remaining) for any other parenthesized item.
+      ;; Returns (scheme-expr-stx . remaining) for any other item.
+      ;; remaining is always a syntax object.
       (define (parse-next items)
-        (if (null? items)
+        (if (null? (syntax->datum items))
             #f
-            (with-syntax ([(item ...) items])
-              (syntax-case #'(item ...) (=)
-                ;; single-result: var = op.name (operands) modifiers... -> type
-                [(var = op (operands ...) . rest)
-                 (and (identifier? #'var)
-                      (not (op-name? #'var))
-                      (op-name? #'op))
-                 (let-values ([(attr-fns region-fns loc types remaining)
-                               (parse-modifiers-flat (syntax->list #'rest))])
-                   (cons (make-ast-emit-op
-                          (list #'var) (op-name->str #'op) #'op
-                          (value-operands #'(operands ...))
-                          attr-fns region-fns loc types)
-                         remaining))]
-                ;; multi-result: (v ...) = op.name (operands) modifiers...
-                [((v ...) = op (operands ...) . rest)
-                 (and (for-all identifier? (syntax->list #'(v ...)))
-                      (op-name? #'op))
-                 (let-values ([(attr-fns region-fns loc types remaining)
-                               (parse-modifiers-flat (syntax->list #'rest))])
-                   (cons (make-ast-emit-op
-                          (syntax->list #'(v ...)) (op-name->str #'op) #'op
-                          (value-operands #'(operands ...))
-                          attr-fns region-fns loc types)
-                         remaining))]
-                ;; no-result: op.name (operands) modifiers...
-                [(op (operands ...) . rest)
-                 (op-name? #'op)
-                 (let-values ([(attr-fns region-fns loc types remaining)
-                               (parse-modifiers-flat (syntax->list #'rest))])
-                   (cons (make-ast-emit-op
-                          '() (op-name->str #'op) #'op
-                          (value-operands #'(operands ...))
-                          attr-fns region-fns loc types)
-                         remaining))]
-                ;; Scheme expression — consume one item
-                [(expr . rest)
-                 (cons #'expr (syntax->list #'rest))]))))
+            (syntax-case items (=)
+              ;; no-result: op.name (operands) ... — normalize to (() = op ...)
+              [(op (operands ...) . rest)
+               (op-name? #'op)
+               (parse-next #'(() = op (operands ...) . rest))]
+              ;; single-result: var = op ... — normalize to ((var) = op ...)
+              [(var = op (operands ...) . rest)
+               (and (identifier? #'var) (op-name? #'op))
+               (parse-next #'((var) = op (operands ...) . rest))]
+              ;; multi-result: (v ...) = op ... — canonical form, build ast-emit-op
+              [((v ...) = op (operands ...) . rest)
+               (and (for-all identifier? (syntax->list #'(v ...)))
+                    (op-name? #'op))
+               (let-values ([(attr-fns region-fns loc types remaining)
+                             (parse-modifiers-flat #'rest)])
+                 (cons (make-ast-emit-op
+                        (syntax->list #'(v ...)) (op-name->str #'op) #'op
+                        (value-operands #'(operands ...))
+                        attr-fns region-fns loc types)
+                       remaining))]
+              ;; Scheme expression — consume one item
+              [(expr . rest)
+               (cons #'expr #'rest)])))
 
       ;; Scan the flat item list and produce binding descriptors.
       (define (process-ops-flat items)
@@ -500,7 +474,6 @@
       ;;   result-types  — Scheme list of result-type syntax objects (may be empty)
       ;;   attr-setter-fns  — Scheme list of closures (lambda (new-op-stx) → setter-syntax)
       ;;   region-fill-fns  — Scheme list of closures (lambda (new-op-stx) → fill-stmt-syntax)
-      ;;   index            — integer op index, used to generate a unique %op-tmp-N name
       ;; Generate a unique gensym named %op-tmp-N for the Nth op in the form.
       (define (op-tmp-id) (car (generate-temporaries '(%op-tmp))))
 
