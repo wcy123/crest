@@ -26,7 +26,7 @@
       result = test.with_block (%v)
       (^bb0 ,@arg-types
             ;; (:arg 0) and :builder used as real macros in Scheme context
-            (_ = (%%noop-with-builder! :builder))
+            (%%noop-with-builder! :builder)
             test.yield ((:arg 0)))
       -> !t)
 

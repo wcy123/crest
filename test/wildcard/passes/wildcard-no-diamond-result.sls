@@ -17,8 +17,10 @@
       (_ %a) = test.split_a (%x)
       (_ %b) = test.split_b (%y)
       %out    = test.combine  (%a %b)
+    :then-let
+      ([!out-type (mlir::Value::getType %out)])
     :rewrite %out :with
-      (%result = test.fused (%x %y) -> (mlir::Value::getType %out)))
+      result = test.fused (%x %y) -> !out-type)
 
   (define run-pass (make-run-pass "test.combine" %%no-diamond-result))
 

@@ -16,8 +16,10 @@
       %b = test.mul (%a)
       %c = test.add (%b %x)
       %d = test.sub (%c %y)
+    :then-let
+      ([!out-type (mlir::Value::getType %d)])
     :rewrite %d :with
-      (%result = test.fused (%a %x %y) -> (mlir::Value::getType %d)))
+      result = test.fused (%a %x %y) -> !out-type)
 
   (define run-pass (make-run-pass "test.sub" %%chain))
 

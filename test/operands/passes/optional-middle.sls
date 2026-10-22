@@ -11,8 +11,10 @@
   (define-rewrite-pattern (%%match op rewriter)
     :if-match
       %out = test.add (%a (:optional %b) %c)
+    :then-let
+      ([!out-type (mlir::Value::getType %out)])
     :rewrite %out :with
-      (%result = test.fused (%a %c) -> (mlir::Value::getType %out)))
+      result = test.fused (%a %c) -> !out-type)
 
   (define run-pass (make-run-pass "test.add" %%match))
 

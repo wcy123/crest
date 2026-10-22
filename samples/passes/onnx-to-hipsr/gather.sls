@@ -84,16 +84,17 @@
       ;; Guard: device data only. Emit a remark so diagnostics are visible,
       ;; then return #f so the conversion framework falls through to the
       ;; fallback pattern (mlir-populate-gather-conversion-patterns).
-      (_ = (if (not ok?)
-               (begin (mlir::Operation::emitRemark op "onnx-gather->hipsr: skipping host data")
-                      #f)
-               #t))
+      (if (not ok?)
+          (begin (mlir::Operation::emitRemark op "onnx-gather->hipsr: skipping host data")
+                 #f)
+          #t)
       placeholder = "hipsr.placeholder" (%ctx %data %indices)
       (^bb0 ((%ds : !shape-type) (%is : !shape-type))
-            (builder = :builder)
-            (result-shape = (build-gather-shape!
-                             builder axis %ds %is !shape-type !size-type))
-            ("hipsr.shape_yield" (result-shape)))
+            (let* ([builder      :builder]
+                   [result-shape (build-gather-shape!
+                                  builder axis %ds %is !shape-type !size-type)])
+              (begin-mlir-code builder
+                ("hipsr.shape_yield" (result-shape)))))
       -> !out-device
       result = hipsr.gather (%ctx %data %indices placeholder)
       (operandSegmentSizes : (list 1 1 1 1) :i32-array)

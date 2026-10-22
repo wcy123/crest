@@ -105,10 +105,10 @@
       (transA       : trans-a :i64)
       (transB       : trans-b :i64)
       -> !y-type
-      (result = (let ([new-op (mlir::Value::getDefiningOp gemm-result)])
-                  (unless (nan? alpha) (mlir::Operation::setAttr! new-op "alpha" (mlir::FloatAttr::get<f32> alpha)))
-                  (unless (nan? beta)  (mlir::Operation::setAttr! new-op "beta" (mlir::FloatAttr::get<f32>  beta)))
-                  gemm-result)))
+      (let ([new-op (mlir::Value::getDefiningOp gemm-result)])
+        (unless (nan? alpha) (mlir::Operation::setAttr! new-op "alpha" (mlir::FloatAttr::get<f32> alpha)))
+        (unless (nan? beta)  (mlir::Operation::setAttr! new-op "beta" (mlir::FloatAttr::get<f32>  beta)))
+        gemm-result))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Pattern 7: QGemm per-tensor no bias  (benefit 10)
@@ -164,9 +164,9 @@
       (transA       : trans-a :i64)
       (transB       : trans-b :i64)
       -> !y-type
-      (result = (let ([new-op (mlir::Value::getDefiningOp gemm-result)])
-                  (unless (nan? alpha) (mlir::Operation::setAttr! new-op "alpha" (mlir::FloatAttr::get<f32> alpha)))
-                  gemm-result)))
+      (let ([new-op (mlir::Value::getDefiningOp gemm-result)])
+        (unless (nan? alpha) (mlir::Operation::setAttr! new-op "alpha" (mlir::FloatAttr::get<f32> alpha)))
+        gemm-result))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Pattern 8: QGemm per-channel weight with bias  (benefit 9)
@@ -228,10 +228,10 @@
       (transA       : trans-a :i64)
       (transB       : trans-b :i64)
       -> !y-type
-      (result = (let ([new-op (mlir::Value::getDefiningOp gemm-result)])
-                  (unless (nan? alpha) (mlir::Operation::setAttr! new-op "alpha" (mlir::FloatAttr::get<f32> alpha)))
-                  (unless (nan? beta)  (mlir::Operation::setAttr! new-op "beta" (mlir::FloatAttr::get<f32>  beta)))
-                  gemm-result)))
+      (let ([new-op (mlir::Value::getDefiningOp gemm-result)])
+        (unless (nan? alpha) (mlir::Operation::setAttr! new-op "alpha" (mlir::FloatAttr::get<f32> alpha)))
+        (unless (nan? beta)  (mlir::Operation::setAttr! new-op "beta" (mlir::FloatAttr::get<f32>  beta)))
+        gemm-result))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Pattern 9: QGemm per-channel no bias  (benefit 9)
@@ -281,8 +281,8 @@
       (transA       : trans-a :i64)
       (transB       : trans-b :i64)
       -> !y-type
-      (result = (let ([new-op (mlir::Value::getDefiningOp gemm-result)])
-                  (unless (nan? alpha) (mlir::Operation::setAttr! new-op "alpha" (mlir::FloatAttr::get<f32> alpha)))
-                  gemm-result)))
+      (let ([new-op (mlir::Value::getDefiningOp gemm-result)])
+        (unless (nan? alpha) (mlir::Operation::setAttr! new-op "alpha" (mlir::FloatAttr::get<f32> alpha)))
+        gemm-result))
 
   ) ;; end library (passes hip-fusion qgemm)

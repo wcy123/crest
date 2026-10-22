@@ -70,14 +70,14 @@
       (weight_axis  : 0         :i64)
       (group        : 1         :i64)
       -> !out-type
-      (result = (let ([new-op (mlir::Value::getDefiningOp qconv-result)])
-                  ;; kernel_shape/strides/pads/dilations use ArrayAttr<IntegerAttr>
-                  ;; not DenseI64ArrayAttr — must use setI64ArrayAttr helper
-                  (mlir-operation-set-i64-array-attr! new-op "kernel_shape" '(1 1))
-                  (mlir-operation-set-i64-array-attr! new-op "strides"      '(1 1))
-                  (mlir-operation-set-i64-array-attr! new-op "pads"         '(0 0 0 0))
-                  (mlir-operation-set-i64-array-attr! new-op "dilations"    '(1 1))
-                  (mlir::Operation::setAttr! new-op "packed_int4" (mlir::UnitAttr::get))
-                  qconv-result)))
+      (let ([new-op (mlir::Value::getDefiningOp qconv-result)])
+        ;; kernel_shape/strides/pads/dilations use ArrayAttr<IntegerAttr>
+        ;; not DenseI64ArrayAttr — must use setI64ArrayAttr helper
+        (mlir-operation-set-i64-array-attr! new-op "kernel_shape" '(1 1))
+        (mlir-operation-set-i64-array-attr! new-op "strides"      '(1 1))
+        (mlir-operation-set-i64-array-attr! new-op "pads"         '(0 0 0 0))
+        (mlir-operation-set-i64-array-attr! new-op "dilations"    '(1 1))
+        (mlir::Operation::setAttr! new-op "packed_int4" (mlir::UnitAttr::get))
+        qconv-result))
 
   ) ;; end library (passes hip-fusion qconv)

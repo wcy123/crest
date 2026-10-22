@@ -48,10 +48,10 @@
   (define (build-permuted-shape! builder perm input-shape shape-type size-type)
     (let ([extents (loop :for p :in-vector perm
                          :collect (begin-mlir-code builder
-                                    (%sz  = shape.const_size () ("value" = p :index) -> size-type)
-                                    (%ext = shape.get_extent (input-shape %sz) -> size-type)))])
+                                    sz  = shape.const_size () (value : p :index) -> size-type
+                                    ext = shape.get_extent (input-shape sz) -> size-type))])
       (begin-mlir-code builder
-        (%out = shape.from_extents (,@extents) -> shape-type))))
+        out = shape.from_extents (,@extents) -> shape-type)))
 
   (define-conversion-pattern (onnx-transpose->hipsr op operands-ref rewriter type-converter)
     :if-match
@@ -76,10 +76,11 @@
     :rewrite %output :with
       placeholder = "hipsr.placeholder" (%ctx %input)
       (^bb0 ((%is : !shape-type))
-            (block-builder = :builder)
-            (out-shape = (build-permuted-shape!
-                          block-builder perm %is !shape-type !size-type))
-            ("hipsr.shape_yield" (out-shape)))
+            (let* ([block-builder :builder]
+                   [out-shape     (build-permuted-shape!
+                                   block-builder perm %is !shape-type !size-type)])
+              (begin-mlir-code block-builder
+                ("hipsr.shape_yield" (out-shape)))))
       -> !out-device
       result = hipsr.transpose (%ctx %input placeholder)
       (perm : perm :i64-array)

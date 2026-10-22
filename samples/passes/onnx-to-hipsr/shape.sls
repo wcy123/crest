@@ -113,11 +113,12 @@
       result = hipsr.compute (%ctx %input placeholder)
       (operandSegmentSizes : (list 1 1 1) :i32-array)
       (^bb0 ((%c : !ctx-type) (%in : !input-type) (%dest : !out-host))
-            (bldr = :builder)
-            (final = (build-compute-body!
-                      bldr %in %dest input-shape start end
-                      !index-type !i64-type !out-host))
-            hipsr.compute_yield (final))
+            (let* ([bldr  :builder]
+                   [final (build-compute-body!
+                           bldr %in %dest input-shape start end
+                           !index-type !i64-type !out-host)])
+              (begin-mlir-code bldr
+                hipsr.compute_yield (final))))
       -> !out-host)
 
   (define (populate-shape-patterns type-converter patterns ctx)
