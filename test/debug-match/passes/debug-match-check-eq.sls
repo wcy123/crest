@@ -14,7 +14,7 @@
     :then-let
       ([!out-type (mlir::Value::getType %out)])
     :rewrite %out :with
-      result = test.mul (%shared %shared) -> !out-type)
+      result = test.mul (%shared %shared) -> !out-type) ;
 
   (define run-pass (make-run-pass "test.mul" %%check-eq-same-value))
 

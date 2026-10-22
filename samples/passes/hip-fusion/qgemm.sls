@@ -104,7 +104,7 @@
       (Y_zero_point : y-zp    :i64)
       (transA       : trans-a :i64)
       (transB       : trans-b :i64)
-      -> !y-type
+      -> !y-type ;
       (let ([new-op (mlir::Value::getDefiningOp gemm-result)])
         (unless (nan? alpha) (mlir::Operation::setAttr! new-op "alpha" (mlir::FloatAttr::get<f32> alpha)))
         (unless (nan? beta)  (mlir::Operation::setAttr! new-op "beta" (mlir::FloatAttr::get<f32>  beta)))
@@ -163,7 +163,7 @@
       (Y_zero_point : y-zp    :i64)
       (transA       : trans-a :i64)
       (transB       : trans-b :i64)
-      -> !y-type
+      -> !y-type ;
       (let ([new-op (mlir::Value::getDefiningOp gemm-result)])
         (unless (nan? alpha) (mlir::Operation::setAttr! new-op "alpha" (mlir::FloatAttr::get<f32> alpha)))
         gemm-result))
@@ -227,7 +227,7 @@
       (Y_zero_point : y-zp    :i64)
       (transA       : trans-a :i64)
       (transB       : trans-b :i64)
-      -> !y-type
+      -> !y-type ;
       (let ([new-op (mlir::Value::getDefiningOp gemm-result)])
         (unless (nan? alpha) (mlir::Operation::setAttr! new-op "alpha" (mlir::FloatAttr::get<f32> alpha)))
         (unless (nan? beta)  (mlir::Operation::setAttr! new-op "beta" (mlir::FloatAttr::get<f32>  beta)))
@@ -280,7 +280,7 @@
       (Y_zero_point : y-zp    :i64)
       (transA       : trans-a :i64)
       (transB       : trans-b :i64)
-      -> !y-type
+      -> !y-type ;
       (let ([new-op (mlir::Value::getDefiningOp gemm-result)])
         (unless (nan? alpha) (mlir::Operation::setAttr! new-op "alpha" (mlir::FloatAttr::get<f32> alpha)))
         gemm-result))

@@ -65,9 +65,9 @@
     :rewrite %output :with
       placeholder = hipsr.placeholder (%ctx %input %shape-host)
       (placeholder_type : (make-hipsr-barrier-type-attr))
-      -> !out-device
+      -> !out-device ;
       result = hipsr.expand (%ctx %input %shape-host placeholder)
-      -> !out-device)
+      -> !out-device) ;
 
   (define (populate-expand-patterns type-converter patterns ctx)
     (crest::logging::info "Registering onnx.Expand pattern")

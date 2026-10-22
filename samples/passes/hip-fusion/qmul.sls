@@ -62,6 +62,6 @@
       (lhs_zp       : lhs-zp   :i64)
       (rhs_zp       : rhs-zp   :i64)
       (output_zp    : out-zp   :i64)
-      -> !out-type)
+      -> !out-type) ;
 
   ) ;; end library (passes hip-fusion qmul)

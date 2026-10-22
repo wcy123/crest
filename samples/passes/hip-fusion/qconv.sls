@@ -69,7 +69,7 @@
       (output_zp    : out-zp    :i64)
       (weight_axis  : 0         :i64)
       (group        : 1         :i64)
-      -> !out-type
+      -> !out-type ;
       (let ([new-op (mlir::Value::getDefiningOp qconv-result)])
         ;; kernel_shape/strides/pads/dilations use ArrayAttr<IntegerAttr>
         ;; not DenseI64ArrayAttr — must use setI64ArrayAttr helper

@@ -16,7 +16,7 @@
     :then-let
       ([!out-type (mlir::Value::getType %out)])
     :rewrite %out :with
-      result = test.add (%a %b) -> !out-type)
+      result = test.add (%a %b) -> !out-type) ;
 
   (define run-pass (make-run-pass "test.add" %%require-missing-attr))
 

@@ -44,10 +44,10 @@
       ;; placeholder ins = (%data) only: scatter output has data's shape
       placeholder = hipsr.placeholder (%ctx %data)
       (^bb0 ((%data-shape : !shape-type))
-            hipsr.shape_yield (%data-shape))
-      -> !output-device
+            hipsr.shape_yield (%data-shape)) ;
+      -> !output-device ;
       result = hipsr.scatter_nd (%ctx %data %indices %updates placeholder)
-      -> !output-device)
+      -> !output-device) ;
 
   (define (populate-scatter-nd-patterns type-converter patterns ctx)
     (add-conversion-pattern patterns "onnx.ScatterND"

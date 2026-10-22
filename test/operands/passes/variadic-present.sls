@@ -15,7 +15,7 @@
     :then-let
       ([!out-type (mlir::Value::getType %out)])
     :rewrite %out :with
-      result = test.fused (%a) -> !out-type)
+      result = test.fused (%a) -> !out-type) ;
 
   (define run-pass (make-run-pass "test.add" %%match))
 

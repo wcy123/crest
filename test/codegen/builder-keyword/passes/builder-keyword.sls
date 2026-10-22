@@ -28,7 +28,7 @@
             ;; (:arg 0) and :builder used as real macros in Scheme context
             (%%noop-with-builder! :builder)
             test.yield ((:arg 0)))
-      -> !t)
+      -> !t) ;
 
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
