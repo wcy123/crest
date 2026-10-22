@@ -333,9 +333,13 @@
             [(otherwise ...)
              (values (reverse attrs) regions loc (reverse types) #'(otherwise ...))])))
 
+      ;; Returns (values head remaining):
+      ;;   (values #f #f)           — items is empty
+      ;;   (values ast-emit-op stx) — next item(s) form an MLIR op
+      ;;   (values expr-stx stx)    — next item is a Scheme expression
       (define (parse-next items)
         (syntax-case items (=)
-          [() #f]
+          [() (values #f #f)]
           ;; no-result: op.name (operands) ... — normalize to (() = op ...)
           [(op (operands ...) . rest)
            (op-name? #'op)
@@ -350,37 +354,33 @@
                 (op-name? #'op))
            (let-values ([(attr-fns region-fns loc types remaining)
                          (parse-modifiers-flat #'rest)])
-             (cons (make-ast-emit-op
-                    (syntax->list #'(v ...)) (op-name->str #'op) #'op
-                    (value-operands #'(operands ...))
-                    attr-fns region-fns loc types)
-                   remaining))]
+             (values (make-ast-emit-op
+                      (syntax->list #'(v ...)) (op-name->str #'op) #'op
+                      (value-operands #'(operands ...))
+                      attr-fns region-fns loc types)
+                     remaining))]
           ;; Scheme expression — consume one item
           [(expr . rest)
-           (cons #'expr #'rest)]))
+           (values #'expr #'rest)]))
 
       ;; Scan the flat item list and produce binding descriptors.
       (define (process-ops-flat items)
-        (let ([next (parse-next items)])
-          (if (not next)
+        (let-values ([(head remaining) (parse-next items)])
+          (if (not head)
               '()
-              (let ([head (car next)]
-                    [remaining (cdr next)])
-                (if (ast-emit-op? head)
-                    (append
-                     (emit-multi
-                      (ast-emit-op-result-vars  head)
-                      (ast-emit-op-op-name      head)
-                      (ast-emit-op-operands     head)
-                      (ast-emit-op-result-types head)
-                      (ast-emit-op-attr-setters head)
-                      (ast-emit-op-region-fills head)
-                      (ast-emit-op-op-name-stx  head)
-                      (ast-emit-op-loc-override head))
-                     (process-ops-flat remaining))
-                    (let ([tmp (car (generate-temporaries '(%unused)))])
-                      (cons (cons tmp head)
-                            (process-ops-flat remaining))))))))
+              (append
+               (if (ast-emit-op? head)
+                   (emit-multi
+                    (ast-emit-op-result-vars  head)
+                    (ast-emit-op-op-name      head)
+                    (ast-emit-op-operands     head)
+                    (ast-emit-op-result-types head)
+                    (ast-emit-op-attr-setters head)
+                    (ast-emit-op-region-fills head)
+                    (ast-emit-op-op-name-stx  head)
+                    (ast-emit-op-loc-override head))
+                   (list (cons (car (generate-temporaries '(%unused))) head)))
+               (process-ops-flat remaining)))))
 
       ;; Shared block-fill factory.
       ;; block-id     — syntax identifier for the block (same object used in arg-bindings)
