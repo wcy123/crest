@@ -249,9 +249,6 @@
             ;; :loc loc-expr (bare :loc token)
             [(:loc loc-expr . rest)
              (lp #'rest attrs regions #'loc-expr types)]
-            ;; (:loc expr) parenthesized
-            [((:loc loc-expr) . rest)
-             (lp #'rest attrs regions #'loc-expr types)]
             ;; (^label body ...) — single-block region shorthand
             [((bb body ...) . rest)
              (block-label? #'bb)

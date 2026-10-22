@@ -223,7 +223,7 @@
               (when (or (mlir::Block::empty? (current-MLIRBlock))
                         (not (toy.return? (mlir::Block::back (current-MLIRBlock)))))
                 (%%create-op! :builder loc "toy.return" '() '() '())))
-        (:loc loc))))
+        :loc loc)))
 
   ;; -------------------------------------------------------------------------
   ;; Module code generation — public API
