@@ -19,7 +19,7 @@
     :then-let
       ([!out-type (mlir::Value::getType %d)])
     :rewrite %d :with
-      result = test.fused (%a %x %y) -> !out-type)
+      result = test.fused (%a %x %y) -> !out-type) ;
 
   (define run-pass (make-run-pass "test.sub" %%chain))
 

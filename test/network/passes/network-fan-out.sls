@@ -18,7 +18,7 @@
     :then-let
       ([!out-type (mlir::Value::getType %out)])
     :rewrite %out :with
-      result = test.square (%shared) -> !out-type)
+      result = test.square (%shared) -> !out-type) ;
 
   (define run-pass (make-run-pass "test.add" %%fan-out))
 

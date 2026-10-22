@@ -44,10 +44,10 @@
     :rewrite %output :with
       placeholder = hipsr.placeholder (%ctx %input)
       (^bb0 ((%shape-in : !shape-type))
-            hipsr.shape_yield (%shape-in))
-      -> !output-device
+            hipsr.shape_yield (%shape-in)) ;
+      -> !output-device ;
       cast = hipsr.cast (%ctx %input placeholder)
-      -> !output-device)
+      -> !output-device) ;
 
   (define (populate-cast-patterns type-converter patterns ctx)
     (add-conversion-pattern patterns "onnx.Cast" onnx-cast->hipsr type-converter 1))

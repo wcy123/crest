@@ -95,11 +95,11 @@
                                   builder axis %ds %is !shape-type !size-type)])
               (begin-mlir-code builder
                 ("hipsr.shape_yield" (result-shape)))))
-      -> !out-device
+      -> !out-device ;
       result = hipsr.gather (%ctx %data %indices placeholder)
       (operandSegmentSizes : (list 1 1 1 1) :i32-array)
       (axis : axis :i64)
-      -> !out-device)
+      -> !out-device) ;
 
   (define (populate-gather-patterns type-converter patterns ctx)
     (add-conversion-pattern patterns "onnx.Gather"

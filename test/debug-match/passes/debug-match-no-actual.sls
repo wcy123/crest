@@ -17,7 +17,7 @@
     :then-let
       ([!out-type (mlir::Value::getType %out)])
     :rewrite %out :with
-      result = test.sub (%mid) -> !out-type)
+      result = test.sub (%mid) -> !out-type) ;
 
   (define run-pass (make-run-pass "test.sub" %%chain-no-actual))
 

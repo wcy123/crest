@@ -30,7 +30,7 @@
       result = test.with_block (%v)
       (^bb0 ,@arg-types
             test.yield ((:arg 0)))
-      -> !vtype)
+      -> !vtype) ;
 
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])

@@ -58,6 +58,6 @@
       (input_zp     : in-zp     :i64)
       (output_scale : out-scale :f32)
       (output_zp    : out-zp   :i64)
-      -> !out-type)
+      -> !out-type) ;
 
   ) ;; end library (passes hip-fusion qsigmoid)

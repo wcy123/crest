@@ -81,10 +81,10 @@
                                    block-builder perm %is !shape-type !size-type)])
               (begin-mlir-code block-builder
                 ("hipsr.shape_yield" (out-shape)))))
-      -> !out-device
+      -> !out-device ;
       result = hipsr.transpose (%ctx %input placeholder)
       (perm : perm :i64-array)
-      -> !out-device)
+      -> !out-device) ;
 
   (define (populate-transpose-patterns type-converter patterns ctx)
     (add-conversion-pattern patterns "onnx.Transpose"

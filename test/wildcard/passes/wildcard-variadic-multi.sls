@@ -17,7 +17,7 @@
        [%b (car %weights)]
        [!out-type (mlir::Value::getType %out)])
     :rewrite %out :with
-      result = test.fused (%a %b) -> !out-type)
+      result = test.fused (%a %b) -> !out-type) ;
 
   (define run-pass (make-run-pass "test.multi_variadic" %%multi-variadic))
 

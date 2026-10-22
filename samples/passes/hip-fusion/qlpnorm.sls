@@ -62,6 +62,6 @@
       (output_zp    : out-zp   :i64)
       (axis         : -1        :i64)
       (p            : 2         :i64)
-      -> !out-type)
+      -> !out-type) ;
 
   ) ;; end library (passes hip-fusion qlpnorm)

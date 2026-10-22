@@ -83,7 +83,7 @@
       (Y_zero_point : y-zp     :i64)
       (transA       : trans-a  :i64)
       (transB       : trans-b  :i64)
-      -> !y-type)
+      -> !y-type) ;
 
   ;;===--------------------------------------------------------------------===;;
   ;; Pattern 4: QMatMul per-column W4  (benefit 9)
@@ -130,7 +130,7 @@
       (transB       : 0       :i64)
       (B_quant_axis : 1       :i64)
       (packed_int4  : #t      :unit)
-      -> !y-type)
+      -> !y-type) ;
 
   ;;===--------------------------------------------------------------------===;;
   ;; Pattern 5: QMatMul per-column W8  (benefit 9)
@@ -176,6 +176,6 @@
       (transA       : trans-a  :i64)
       (transB       : 0        :i64)
       (B_quant_axis : 1        :i64)
-      -> !y-type)
+      -> !y-type) ;
 
   ) ;; end library (passes hip-fusion qmatmul)

@@ -20,7 +20,7 @@
     :then-let
       ([!out-type (mlir::Value::getType %out)])
     :rewrite %out :with
-      result = test.fused (%x %y) -> !out-type)
+      result = test.fused (%x %y) -> !out-type) ;
 
   (define run-pass (make-run-pass "test.combine" %%no-diamond-result))
 
