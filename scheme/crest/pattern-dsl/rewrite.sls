@@ -64,8 +64,12 @@
           (for (rename (rime loop) (:with :rime-with)) expand)
           (for (only (crest pattern-dsl srcloc) syntax->file+line+col) expand)
           (for (only (crest pattern-dsl keywords)
-                     = : -> :region
-                     :string :loc :index :i64 :f32 :i32-array :i64-array :unit) expand)
+                     = : -> :region :loc
+                     :string :index
+                     :i8 :i16 :i32 :i64
+                     :f32 :f64
+                     :i8-array :i16-array :i32-array :i64-array
+                     :unit) expand)
           (for (mlir IR BuiltinAttributes) expand)
           ;; Runtime predicates and create bindings for %%crest:create-op! dispatch
           (only (mlir IR PatternMatch)
@@ -233,8 +237,9 @@
                  [regions '()]
                  [loc     #f]
                  [types   '()])
-          (syntax-case items (-> :loc :region : :string :index :i64 :f32
-                                 :i32-array :i64-array :unit)
+          (syntax-case items (-> :loc :region : :string :index
+                                 :i8 :i16 :i32 :i64 :f32 :f64
+                                 :i8-array :i16-array :i32-array :i64-array :unit)
             ;; -> type-list, continue accumulating types
             [(-> (result-type ...) . rest)
              (lp #'rest attrs regions loc (append types (syntax->list #'(result-type ...))))]
@@ -276,6 +281,18 @@
              (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
                                                   #'(mlir::IntegerAttr::get<index> val))
                               attrs) regions loc types)]
+            [((name : val :i8) . rest)
+             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
+                                                  #'(mlir::IntegerAttr::get<i8> val))
+                              attrs) regions loc types)]
+            [((name : val :i16) . rest)
+             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
+                                                  #'(mlir::IntegerAttr::get<i16> val))
+                              attrs) regions loc types)]
+            [((name : val :i32) . rest)
+             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
+                                                  #'(mlir::IntegerAttr::get<i32> val))
+                              attrs) regions loc types)]
             [((name : val :i64) . rest)
              (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
                                                   #'(mlir::IntegerAttr::get<i64> val))
@@ -283,6 +300,18 @@
             [((name : val :f32) . rest)
              (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
                                                   #'(mlir::FloatAttr::get<f32> val))
+                              attrs) regions loc types)]
+            [((name : val :f64) . rest)
+             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
+                                                  #'(mlir::FloatAttr::get<f64> val))
+                              attrs) regions loc types)]
+            [((name : val :i8-array) . rest)
+             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
+                                                  #'(mlir::DenseI8ArrayAttr::get val))
+                              attrs) regions loc types)]
+            [((name : val :i16-array) . rest)
+             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
+                                                  #'(mlir::DenseI16ArrayAttr::get val))
                               attrs) regions loc types)]
             [((name : val :i32-array) . rest)
              (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
