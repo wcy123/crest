@@ -370,15 +370,7 @@
               '()
               (append
                (if (ast-emit-op? head)
-                   (emit-multi
-                    (ast-emit-op-result-vars  head)
-                    (ast-emit-op-op-name      head)
-                    (ast-emit-op-operands     head)
-                    (ast-emit-op-result-types head)
-                    (ast-emit-op-attr-setters head)
-                    (ast-emit-op-region-fills head)
-                    (ast-emit-op-op-name-stx  head)
-                    (ast-emit-op-loc-override head))
+                   (emit-multi head)
                    (list (cons (car (generate-temporaries '(%unused))) head)))
                (process-ops-flat remaining)))))
 
@@ -453,25 +445,19 @@
       ;; Plus one descriptor per result variable (empty for zero-result ops):
       ;;   (%var . (mlir::Operation::getResult op-tmp i))
       ;;
-      ;; Parameters:
-      ;;   result-vars   — Scheme list of result variable syntax objects
-      ;;   op-name       — string op name, e.g. "arith.constant"
-      ;;   operands      — Scheme list of value operand syntax objects
-      ;;   result-types  — Scheme list of result-type syntax objects (may be empty)
-      ;;   attr-setter-fns  — Scheme list of closures (lambda (new-op-stx) → setter-syntax)
-      ;;   region-fill-fns  — Scheme list of closures (lambda (new-op-stx) → fill-stmt-syntax)
-      ;; Generate a unique gensym named %op-tmp-N for the Nth op in the form.
+      ;; Generate a unique gensym for the Operation* temp binding.
       (define (op-tmp-id) (car (generate-temporaries '(%op-tmp))))
 
-      (define (emit-multi result-vars   ; syntax list — result variable names
-                          op-name       ; string — e.g. "arith.constant"
-                          operands      ; syntax expr — (list v1 v2 ...)
-                          result-types  ; syntax list — empty for statements
-                          attr-setter-fns   ; list of (lambda (op-stx) → setter-stx)
-                          region-fill-fns   ; list of (lambda (op-stx) → fill-stx)
-                          op-name-stx   ; syntax — carries source location annotation
-                          loc-override) ; syntax or #f — runtime mlir::Location override
-        (let* ([nregions  (length region-fill-fns)]  ; number of region modifiers
+      (define (emit-multi ast)
+        (let* ([result-vars     (ast-emit-op-result-vars  ast)]
+               [op-name         (ast-emit-op-op-name      ast)]
+               [operands        (ast-emit-op-operands     ast)]
+               [result-types    (ast-emit-op-result-types ast)]
+               [attr-setter-fns (ast-emit-op-attr-setters ast)]
+               [region-fill-fns (ast-emit-op-region-fills ast)]
+               [op-name-stx     (ast-emit-op-op-name-stx  ast)]
+               [loc-override    (ast-emit-op-loc-override ast)]
+               [nregions  (length region-fill-fns)]  ; number of region modifiers
                [op-var   (op-tmp-id)]                 ; gensym for the Operation*
                [state-id (car (generate-temporaries '(state)))]  ; gensym for OperationState
                ;; Generate N addRegion calls using state-id directly via #`
