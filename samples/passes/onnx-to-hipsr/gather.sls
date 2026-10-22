@@ -58,11 +58,11 @@
       sz1              = shape.const_size ()
       (value : (mlir::IntegerAttr::get<index> axis))
       -> size-type
-      (leading _sp1)   = shape.split_at (data-shape sz1)          -> (shape-type shape-type)
+      (leading _sp1)   = shape.split_at (data-shape sz1)          -> shape-type -> shape-type
       sz2              = shape.const_size ()
       (value : (mlir::IntegerAttr::get<index> (+ axis 1)))
       -> size-type
-      (_sp2 trailing)  = shape.split_at (data-shape sz2)          -> (shape-type shape-type)
+      (_sp2 trailing)  = shape.split_at (data-shape sz2)          -> shape-type -> shape-type
       gathered         = shape.concat   (leading idx-shape)        -> shape-type
       result           = shape.concat   (gathered trailing)        -> shape-type))
 

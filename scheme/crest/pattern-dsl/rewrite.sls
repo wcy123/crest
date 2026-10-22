@@ -295,45 +295,52 @@
                  [regions '()]
                  [loc     #f]
                  [types   '()])
-          (syntax-case items ()
-            ;; base case
-            [()
-             (values (reverse attrs) regions loc (reverse types) #'())]
-            ;; -> (t ...) — parenthesized type list, stop
-            [(arrow (t ...) . rest)
-             (eq? (syntax->datum #'arrow) '->)
-             (values (reverse attrs) regions loc
-                     (append (reverse types) (syntax->list #'(t ...)))
-                     #'rest)]
-            ;; -> single-type, stop
-            [(arrow t . rest)
-             (eq? (syntax->datum #'arrow) '->)
-             (values (reverse attrs) regions loc
-                     (append (reverse types) (list #'t))
-                     #'rest)]
-            ;; :loc loc-expr (bare :loc token followed by an expression)
-            [(colon-loc loc-expr . rest)
-             (eq? (syntax->datum #'colon-loc) ':loc)
+          (syntax-case items (-> :loc :region)
+            ;; -> type-list, continue accumulating types
+            [(-> (result-type ...) . rest)
+             (lp #'rest attrs regions loc (append types (syntax->list #'(result-type ...))))]
+            ;; -> single-type, continue accumulating types
+            [(-> type . rest)
+             (lp #'rest attrs regions loc (append types (list #'type)))]
+            ;; :loc loc-expr (bare :loc token)
+            [(:loc loc-expr . rest)
              (lp #'rest attrs regions #'loc-expr types)]
-            ;; parenthesized modifier: (name : val), (^label ...), (:region ...), (:loc expr)
+            ;; (^label body ...) — single-block region shorthand
+            [((bb body ...) . rest)
+             (block-label? #'bb)
+             (let ([region-idx (length regions)])
+               (lp #'rest attrs
+                   (append regions
+                           (list (make-region-fill-fn region-idx
+                                                      (list (make-block-fill #'(bb body ...))))))
+                   loc types))]
+            ;; (:region (^label body ...) ...) — one region, multiple blocks
+            [((:region block ...) . rest)
+             (for-all (lambda (b) (block-label? (car (syntax->list b))))
+                      (syntax->list #'(block ...)))
+             (let ([region-idx (length regions)])
+               (lp #'rest attrs
+                   (append regions
+                           (list (make-region-fill-fn region-idx
+                                                      (map make-block-fill
+                                                           (syntax->list #'(block ...))))))
+                   loc types))]
+            ;; parenthesized modifier: (name : val ...) or (:loc expr)
+            ;; Only matches (:loc ...) and (name : val ...) forms — anything else stops.
             [(modifier . rest)
-             (pair? (syntax->datum #'modifier))
+             (let ([d (syntax->datum #'modifier)])
+               (and (pair? d)
+                    (or (eq? (car d) ':loc)
+                        (and (>= (length d) 3) (eq? (cadr d) ':)))))
              (let ([tagged (classify-attr-colon #'modifier)])
                (case (car tagged)
                  [(attr)   (lp #'rest (cons (cdr tagged) attrs) regions loc types)]
                  [(loc)    (lp #'rest attrs regions (cdr tagged) types)]
-                 [(region) (lp #'rest attrs
-                               (append regions (list (make-region-fill-fn (length regions) (cdr tagged))))
-                               loc types)]
                  [else (syntax-violation 'begin-mlir-code "unexpected modifier" #'modifier)]))]
-            ;; bare identifier — stop (start of next op)
-            [_
-             (values (reverse attrs) regions loc (reverse types) items)])))
+            ;; anything else (bare identifier or end) — stop
+            [(otherwise ...)
+             (values (reverse attrs) regions loc (reverse types) #'(otherwise ...))])))
 
-      ;; Parse one item from the front of items (a syntax object).
-      ;; Returns #f when items is empty.
-      ;; Returns (ast-emit-op . remaining) when the next item(s) form an MLIR op.
-      ;; Returns (scheme-expr-stx . remaining) for any other item.
       ;; remaining is always a syntax object.
       (define (parse-next items)
         (syntax-case items (=)

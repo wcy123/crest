@@ -74,8 +74,8 @@
             ;; Batch shapes via split_at (head = batch dims)
             cab   = shape.const_size () (value : a-batch-rank :index) -> !size-type
             cbb   = shape.const_size () (value : b-batch-rank :index) -> !size-type
-            (ab at) = shape.split_at (%a-shape cab) -> (!shape-type !shape-type)
-            (bb bt) = shape.split_at (%b-shape cbb) -> (!shape-type !shape-type)
+            (ab at) = shape.split_at (%a-shape cab) -> !shape-type -> !shape-type
+            (bb bt) = shape.split_at (%b-shape cbb) -> !shape-type -> !shape-type
             wbc   = shape.cstr_broadcastable (ab bb)             -> !witness-type
             wall  = shape.assuming_all (wk wbc)                  -> !witness-type
             ;; M and N extents (used inside assuming — not IsolatedFromAbove)
