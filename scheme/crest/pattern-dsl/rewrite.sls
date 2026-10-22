@@ -176,7 +176,7 @@
       ;;   once per op and prevents infinite recursion.
       ;;
       ;; v2 flat syntax: items form a flat list that process-ops-flat scans sequentially.
-      ;; Op boundaries are detected by parse-op-start; parenthesized items that don't
+      ;; Op boundaries are detected by parse-next; parenthesized items that don't
       ;; start an op are treated as Scheme expressions.
       (define (main)
         (syntax-case stx ()
@@ -210,42 +210,6 @@
       ;; single-result:  var = op.name (ops) ...
       ;; multi-result:   (v0 v1 ...) = op.name (ops) ...
       ;; no-result:      op.name (ops) ...
-      (define (parse-op-start items)
-        ;; Match any parenthesized form including the empty operand list ().
-        ;; (pair? #'()) = #f because () is null, so we need to check both.
-        (define (syntax-list? x)
-          (let ([d (syntax->datum x)])
-            (or (pair? d) (null? d))))
-        ;; Use eq? on datum for = to avoid cross-phase free-identifier=? issues.
-        (define (syntax-eq? x sym) (eq? (syntax->datum x) sym))
-        (cond
-         ;; single-result: sym = op.name (ops)
-         ;; op.name may be a symbol identifier OR a string literal like "some.op"
-         [(and (>= (length items) 4)
-               (identifier? (list-ref items 0))
-               (not (op-name? (list-ref items 0)))
-               (identifier? (list-ref items 1))
-               (syntax-eq? (list-ref items 1) '=)
-               (op-name? (list-ref items 2))
-               (syntax-list? (list-ref items 3)))
-          'single-result]
-         ;; multi-result: (v0 v1) = op.name (ops)
-         [(and (>= (length items) 4)
-               (syntax-list? (list-ref items 0))
-               (let ([inner (syntax->list (list-ref items 0))])
-                 (and inner (for-all identifier? inner)))
-               (identifier? (list-ref items 1))
-               (syntax-eq? (list-ref items 1) '=)
-               (op-name? (list-ref items 2))
-               (syntax-list? (list-ref items 3)))
-          'multi-result]
-         ;; no-result: op.name (ops) — op.name may be symbol or string
-         [(and (>= (length items) 2)
-               (op-name? (list-ref items 0))
-               (syntax-list? (list-ref items 1)))
-          'no-result]
-         [else #f]))
-
       ;; True when x is a block label identifier starting with ^.
       (define (block-label? x)
         (let ([datum (syntax->datum x)])
@@ -389,55 +353,74 @@
            [else
             (values (reverse attrs) regions loc (reverse types) items)])))
 
-      ;; Scan the flat item list and produce binding descriptors.
-      ;; Mutually: detect op boundary, parse modifiers, call emit-multi.
-      (define (process-ops-flat items)
+      ;; Parse one item from the front of items.
+      ;; Returns #f when items is empty.
+      ;; Returns (ast-emit-op . remaining) when the next item(s) form an MLIR op.
+      ;; Returns (scheme-expr-stx . remaining) for any other parenthesized item.
+      (define (parse-next items)
         (if (null? items)
-            '()
-            (let ([kind (parse-op-start items)])
-              (case kind
-                [(single-result)
-                 (let* ([result-var   (list-ref items 0)]
-                        [op-name-stx  (list-ref items 2)]
-                        [operands-stx (list-ref items 3)]
-                        [rest         (list-tail items 4)])
-                   (let-values ([(attr-fns region-fns loc types remaining)
-                                 (parse-modifiers-flat rest)])
-                     (append
-                      (emit-multi (list result-var) (op-name->str op-name-stx)
-                                  (value-operands operands-stx)
-                                  types attr-fns region-fns op-name-stx loc)
-                      (process-ops-flat remaining))))]
-                [(multi-result)
-                 (let* ([result-vars  (syntax->list (list-ref items 0))]
-                        [op-name-stx  (list-ref items 2)]
-                        [operands-stx (list-ref items 3)]
-                        [rest         (list-tail items 4)])
-                   (let-values ([(attr-fns region-fns loc types remaining)
-                                 (parse-modifiers-flat rest)])
-                     (append
-                      (emit-multi result-vars (op-name->str op-name-stx)
-                                  (value-operands operands-stx)
-                                  types attr-fns region-fns op-name-stx loc)
-                      (process-ops-flat remaining))))]
-                [(no-result)
-                 (let* ([op-name-stx  (list-ref items 0)]
-                        [operands-stx (list-ref items 1)]
-                        [rest         (list-tail items 2)])
-                   (let-values ([(attr-fns region-fns loc types remaining)
-                                 (parse-modifiers-flat rest)])
-                     (append
-                      (emit-multi '() (op-name->str op-name-stx)
-                                  (value-operands operands-stx)
-                                  types attr-fns region-fns op-name-stx loc)
-                      (process-ops-flat remaining))))]
-                [else
-                 ;; Not an op-start: treat as a Scheme expression.
-                 (let ([item (car items)]
-                       [rest (cdr items)])
-                   (let ([tmp (car (generate-temporaries '(%unused)))])
-                     (cons (cons tmp item)
-                           (process-ops-flat rest))))]))))
+            #f
+            (with-syntax ([(item ...) items])
+              (syntax-case #'(item ...) (=)
+                ;; single-result: var = op.name (operands) modifiers... -> type
+                [(var = op (operands ...) . rest)
+                 (and (identifier? #'var)
+                      (not (op-name? #'var))
+                      (op-name? #'op))
+                 (let-values ([(attr-fns region-fns loc types remaining)
+                               (parse-modifiers-flat (syntax->list #'rest))])
+                   (cons (make-ast-emit-op
+                          (list #'var) (op-name->str #'op) #'op
+                          (value-operands #'(operands ...))
+                          attr-fns region-fns loc types)
+                         remaining))]
+                ;; multi-result: (v ...) = op.name (operands) modifiers...
+                [((v ...) = op (operands ...) . rest)
+                 (and (for-all identifier? (syntax->list #'(v ...)))
+                      (op-name? #'op))
+                 (let-values ([(attr-fns region-fns loc types remaining)
+                               (parse-modifiers-flat (syntax->list #'rest))])
+                   (cons (make-ast-emit-op
+                          (syntax->list #'(v ...)) (op-name->str #'op) #'op
+                          (value-operands #'(operands ...))
+                          attr-fns region-fns loc types)
+                         remaining))]
+                ;; no-result: op.name (operands) modifiers...
+                [(op (operands ...) . rest)
+                 (op-name? #'op)
+                 (let-values ([(attr-fns region-fns loc types remaining)
+                               (parse-modifiers-flat (syntax->list #'rest))])
+                   (cons (make-ast-emit-op
+                          '() (op-name->str #'op) #'op
+                          (value-operands #'(operands ...))
+                          attr-fns region-fns loc types)
+                         remaining))]
+                ;; Scheme expression — consume one item
+                [(expr . rest)
+                 (cons #'expr (syntax->list #'rest))]))))
+
+      ;; Scan the flat item list and produce binding descriptors.
+      (define (process-ops-flat items)
+        (let ([next (parse-next items)])
+          (if (not next)
+              '()
+              (let ([head (car next)]
+                    [remaining (cdr next)])
+                (if (ast-emit-op? head)
+                    (append
+                     (emit-multi
+                      (ast-emit-op-result-vars  head)
+                      (ast-emit-op-op-name      head)
+                      (ast-emit-op-operands     head)
+                      (ast-emit-op-result-types head)
+                      (ast-emit-op-attr-setters head)
+                      (ast-emit-op-region-fills head)
+                      (ast-emit-op-op-name-stx  head)
+                      (ast-emit-op-loc-override head))
+                     (process-ops-flat remaining))
+                    (let ([tmp (car (generate-temporaries '(%unused)))])
+                      (cons (cons tmp head)
+                            (process-ops-flat remaining))))))))
 
       ;; Shared block-fill factory.
       ;; block-id     — syntax identifier for the block (same object used in arg-bindings)
