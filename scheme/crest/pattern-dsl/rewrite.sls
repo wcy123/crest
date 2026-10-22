@@ -115,14 +115,14 @@
   ;; Select the correct C++ create binding based on the CREST wrapper type.
   ;; - CrestRef<RewriterBase>  → mlir::RewriterBase::create<OperationState>
   ;; - CrestOwned<OpBuilder>   → mlir::OpBuilder::create<OperationState>
-  (define (%%crest:create-op! ctx state)
+  (define (%%crest:create-op! builder state)
     (cond
-     [(crest::isa<CrestRef<mlir::RewriterBase>>? ctx)
-      (mlir::RewriterBase::create<OperationState> ctx state)]
-     [(crest::isa<CrestOwned<mlir::OpBuilder>>? ctx)
-      (mlir::OpBuilder::create<OperationState> ctx state)]
+     [(crest::isa<CrestRef<mlir::RewriterBase>>? builder)
+      (mlir::RewriterBase::create<OperationState> builder state)]
+     [(crest::isa<CrestOwned<mlir::OpBuilder>>? builder)
+      (mlir::OpBuilder::create<OperationState> builder state)]
      [else
-      (error '%%crest:create-op! "expected RewriterBase or OpBuilder" ctx)]))
+      (error '%%crest:create-op! "expected RewriterBase or OpBuilder" builder)]))
 
   ;;===--------------------------------------------------------------------===;;
   ;; begin-mlir-code
@@ -168,22 +168,9 @@
            (with-syntax ([bld (car (generate-temporaries '(builder)))])
              #'(let ([bld (%%current-builder)])
                  (begin-mlir-code bld first-item rest ...)))]
-          ;; Explicit builder (ctx is an identifier): flat-list parse (v2 + backward compat)
+          ;; Explicit builder (ctx is an identifier): v2 flat-list parse
           [(_ ctx op ...)
-           ;; Use process-ops-flat for v2 flat syntax; it also handles old-style
-           ;; parenthesized op-forms via process-op delegation.
-           (let* ([all-ops (syntax->list #'(op ...))]
-                  [pairs   (if (and (not (null? all-ops))
-                                    ;; v2 hint: first item is an identifier (not a paren form),
-                                    ;; meaning the flat parser is needed.
-                                    ;; Old style: every item is a parenthesized op-form.
-                                    (identifier? (car all-ops)))
-                               ;; v2 flat syntax: scan the whole flat list
-                               (process-ops-flat all-ops 0 #'ctx)
-                               ;; Old-style: each item is a complete parenthesized op-form
-                               (loop :for op-stx :in all-ops
-                                     :for index :from 0
-                                     :append (process-op op-stx index #'ctx)))])
+           (let ([pairs (process-ops-flat (syntax->list #'(op ...)) 0 #'ctx)])
              (if (null? pairs)
                  #'(if #f #f)
                  (with-syntax ([(binding ...) (map make-binding pairs)]
@@ -212,12 +199,12 @@
         (define (syntax-eq? x sym) (eq? (syntax->datum x) sym))
         (cond
          ;; single-result: sym = op.name (ops)
+         ;; op.name may be a symbol identifier OR a string literal like "some.op"
          [(and (>= (length items) 4)
                (identifier? (list-ref items 0))
                (not (op-name? (list-ref items 0)))
                (identifier? (list-ref items 1))
                (syntax-eq? (list-ref items 1) '=)
-               (identifier? (list-ref items 2))
                (op-name? (list-ref items 2))
                (syntax-list? (list-ref items 3)))
           'single-result]
@@ -228,13 +215,11 @@
                  (and inner (for-all identifier? inner)))
                (identifier? (list-ref items 1))
                (syntax-eq? (list-ref items 1) '=)
-               (identifier? (list-ref items 2))
                (op-name? (list-ref items 2))
                (syntax-list? (list-ref items 3)))
           'multi-result]
-         ;; no-result: op.name (ops)
+         ;; no-result: op.name (ops) — op.name may be symbol or string
          [(and (>= (length items) 2)
-               (identifier? (list-ref items 0))
                (op-name? (list-ref items 0))
                (syntax-list? (list-ref items 1)))
           'no-result]
@@ -334,22 +319,27 @@
            ;; End of items
            [(null? items)
             (values (reverse attrs) regions loc (reverse types) '())]
-           ;; -> result-type — consume one type (or type list) and continue
-           ;; Use datum comparison to avoid cross-phase free-identifier=? issues.
+           ;; -> result-type — consume type(s) and STOP (return remaining items).
+           ;; After ->, do not continue looking for more modifiers. The remaining
+           ;; items (next op, Scheme escape, etc.) go back to process-ops-flat.
            [(and (identifier? (car items))
                  (eq? (syntax->datum (car items)) '->))
             (let ([rest (cdr items)])
               (cond
                [(null? rest)
                 (values (reverse attrs) regions loc (reverse types) '())]
-               ;; -> (t0 t1 ...) — multi-result type list
-               [(pair? (syntax->datum (car rest)))
+               ;; -> (t0 t1 ...) or -> () — parenthesized type list
+               [(let ([d (syntax->datum (car rest))]) (or (pair? d) (null? d)))
                 (let* ([tlist (syntax->list (car rest))]
                        [rest2 (cdr rest)])
-                  (lp rest2 attrs regions loc (append (reverse tlist) types)))]
-               ;; -> single-type
+                  (values (reverse attrs) regions loc
+                          (append (reverse types) tlist)
+                          rest2))]
+               ;; -> single-type — stop after consuming it
                [else
-                (lp (cdr rest) attrs regions loc (cons (car rest) types))]))]
+                (values (reverse attrs) regions loc
+                        (append (reverse types) (list (car rest)))
+                        (cdr rest))]))]
            ;; :loc followed by next item (bare :loc token, without parens)
            ;; Use datum comparison to avoid cross-phase free-identifier=? issues.
            [(and (identifier? (car items))
@@ -365,15 +355,25 @@
             (let ([loc-stx (cadr (syntax->list (car items)))])
               (lp (cdr items) attrs regions loc-stx types))]
            [(pair? (syntax->datum (car items)))
-            (let ([tagged (classify-attr-colon (car items))])
-              (case (car tagged)
-                [(attr)   (lp (cdr items) (cons (cdr tagged) attrs) regions loc types)]
-                [(loc)    (lp (cdr items) attrs regions (cdr tagged) types)]
-                [(region) (let ([region-idx (length regions)])
-                            (lp (cdr items) attrs
-                                (append regions (list (make-region-fill-fn region-idx (cdr tagged))))
-                                loc types))]
-                [else (syntax-violation 'begin-mlir-code "unexpected modifier" (car items))]))]
+            ;; Stop if this is a parenthesized Scheme escape (var = expr) or op-form —
+            ;; those belong to process-ops-flat, not to the modifier list.
+            (let* ([inner (syntax->list (car items))]
+                   [scheme-escape?
+                    (and inner
+                         (eqv? (length inner) 3)
+                         (identifier? (car inner))
+                         (eq? (syntax->datum (cadr inner)) '=))])
+              (if scheme-escape?
+                  (values (reverse attrs) regions loc (reverse types) items)
+                  (let ([tagged (classify-attr-colon (car items))])
+                    (case (car tagged)
+                      [(attr)   (lp (cdr items) (cons (cdr tagged) attrs) regions loc types)]
+                      [(loc)    (lp (cdr items) attrs regions (cdr tagged) types)]
+                      [(region) (let ([region-idx (length regions)])
+                                  (lp (cdr items) attrs
+                                      (append regions (list (make-region-fill-fn region-idx (cdr tagged))))
+                                      loc types))]
+                      [else (syntax-violation 'begin-mlir-code "unexpected modifier" (car items))]))))]
            ;; Any other identifier — stop (might be start of next op)
            [else
             (values (reverse attrs) regions loc (reverse types) items)])))

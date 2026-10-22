@@ -55,16 +55,16 @@
   ;;   result = concat(concat(leading, indices_shape), trailing)
   (define (build-gather-shape! builder axis data-shape idx-shape shape-type size-type)
     (begin-mlir-code builder
-      (%sz1              = shape.const_size ()
-                         ("value" = (mlir::IntegerAttr::get<index> axis))
-                         -> size-type)
-      ((%leading %_sp1)  = shape.split_at (data-shape %sz1)       -> (shape-type shape-type))
-      (%sz2              = shape.const_size ()
-                         ("value" = (mlir::IntegerAttr::get<index> (+ axis 1)))
-                         -> size-type)
-      ((%_sp2 %trailing) = shape.split_at (data-shape %sz2)       -> (shape-type shape-type))
-      (%gathered         = shape.concat   (%leading idx-shape)     -> shape-type)
-      (%result           = shape.concat   (%gathered %trailing)    -> shape-type)))
+      sz1              = shape.const_size ()
+      (value : (mlir::IntegerAttr::get<index> axis))
+      -> size-type
+      (leading _sp1)   = shape.split_at (data-shape sz1)          -> (shape-type shape-type)
+      sz2              = shape.const_size ()
+      (value : (mlir::IntegerAttr::get<index> (+ axis 1)))
+      -> size-type
+      (_sp2 trailing)  = shape.split_at (data-shape sz2)          -> (shape-type shape-type)
+      gathered         = shape.concat   (leading idx-shape)        -> shape-type
+      result           = shape.concat   (gathered trailing)        -> shape-type))
 
   (define-conversion-pattern (onnx-gather->hipsr op operands-ref rewriter type-converter)
     :if-match
@@ -88,17 +88,17 @@
                (begin (mlir::Operation::emitRemark op "onnx-gather->hipsr: skipping host data")
                       #f)
                #t))
-      (%placeholder = "hipsr.placeholder" (%ctx %data %indices)
-                    (^bb0 ((%ds : !shape-type) (%is : !shape-type))
-                          (builder = :builder)
-                          (%result-shape = (build-gather-shape!
-                                            builder axis %ds %is !shape-type !size-type))
-                          ("hipsr.shape_yield" (%result-shape)))
-                    -> !out-device)
-      (%result = hipsr.gather (%ctx %data %indices %placeholder)
-               (operandSegmentSizes = (list 1 1 1 1) :i32-array)
-               ("axis" = axis :i64)
-               -> !out-device))
+      placeholder = "hipsr.placeholder" (%ctx %data %indices)
+      (^bb0 ((%ds : !shape-type) (%is : !shape-type))
+            (builder = :builder)
+            (result-shape = (build-gather-shape!
+                             builder axis %ds %is !shape-type !size-type))
+            ("hipsr.shape_yield" (result-shape)))
+      -> !out-device
+      result = hipsr.gather (%ctx %data %indices placeholder)
+      (operandSegmentSizes : (list 1 1 1 1) :i32-array)
+      (axis : axis :i64)
+      -> !out-device)
 
   (define (populate-gather-patterns type-converter patterns ctx)
     (add-conversion-pattern patterns "onnx.Gather"

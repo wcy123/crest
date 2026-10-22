@@ -49,7 +49,7 @@
       ([%dq-op     (mlir::Value::getDefiningOp %dq)]
        [%layout-op (mlir::Value::getDefiningOp %layout)])
     :rewrite %q :with
-      (%result = (hip-create-requantized-layout-op rewriter %dq-op %layout-op op)))
+      (result = (hip-create-requantized-layout-op rewriter %dq-op %layout-op op)))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Pattern 14: QdqRoundTrip — tensor layout op (no ctx)  (benefit 10)
@@ -71,7 +71,7 @@
       ([%dq-op     (mlir::Value::getDefiningOp %dq)]
        [%layout-op (mlir::Value::getDefiningOp %layout)])
     :rewrite %q :with
-      (%result = (hip-create-requantized-layout-op rewriter %dq-op %layout-op op)))
+      (result = (hip-create-requantized-layout-op rewriter %dq-op %layout-op op)))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Pattern 15: QdqRoundTrip — adjacent pair  (benefit 10)
@@ -87,6 +87,6 @@
                     (hip-identity-roundtrip?
                      (mlir::Value::getDefiningOp %dq) op))
     :rewrite %q :with
-      (%result = (begin %input)))
+      (result = (begin %input)))
 
   ) ;; end library (passes hip-fusion qdq-roundtrip)

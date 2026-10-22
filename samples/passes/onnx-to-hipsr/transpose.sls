@@ -74,16 +74,16 @@
                              (loop :for i :from 0 :below (ArrayRef::size ref)
                                    :collect (ArrayRef::at ref i))))))])
     :rewrite %output :with
-      (%placeholder = "hipsr.placeholder" (%ctx %input)
-                    (^bb0 ((%is : !shape-type))
-                          (block-builder = :builder)
-                          (%out-shape = (build-permuted-shape!
-                                         block-builder perm %is !shape-type !size-type))
-                          ("hipsr.shape_yield" (%out-shape)))
-                    -> !out-device)
-      (%result = hipsr.transpose (%ctx %input %placeholder)
-               ("perm" = perm :i64-array)
-               -> !out-device))
+      placeholder = "hipsr.placeholder" (%ctx %input)
+      (^bb0 ((%is : !shape-type))
+            (block-builder = :builder)
+            (out-shape = (build-permuted-shape!
+                          block-builder perm %is !shape-type !size-type))
+            ("hipsr.shape_yield" (out-shape)))
+      -> !out-device
+      result = hipsr.transpose (%ctx %input placeholder)
+      (perm : perm :i64-array)
+      -> !out-device)
 
   (define (populate-transpose-patterns type-converter patterns ctx)
     (add-conversion-pattern patterns "onnx.Transpose"

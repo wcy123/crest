@@ -63,11 +63,11 @@
       ;; which may fault at runtime. The C++ ExpandConversion.cpp validates rank,
       ;; element type, and static shape length — these checks are missing here.
     :rewrite %output :with
-      (%placeholder = hipsr.placeholder (%ctx %input %shape-host)
-                    ("placeholder_type" = (make-hipsr-barrier-type-attr))
-                    -> !out-device)
-      (%result = hipsr.expand (%ctx %input %shape-host %placeholder)
-               -> !out-device))
+      placeholder = hipsr.placeholder (%ctx %input %shape-host)
+      (placeholder_type : (make-hipsr-barrier-type-attr))
+      -> !out-device
+      result = hipsr.expand (%ctx %input %shape-host placeholder)
+      -> !out-device)
 
   (define (populate-expand-patterns type-converter patterns ctx)
     (crest::logging::info "Registering onnx.Expand pattern")
