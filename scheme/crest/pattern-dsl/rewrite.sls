@@ -296,50 +296,39 @@
                  [loc     #f]
                  [types   '()])
           (syntax-case items ()
+            ;; base case
             [()
              (values (reverse attrs) regions loc (reverse types) #'())]
-            [(first . rest)
-             (cond
-              ;; -> result-type — consume type(s) and STOP
-              [(and (identifier? #'first) (eq? (syntax->datum #'first) '->))
-               (syntax-case #'rest ()
-                 [()
-                  (values (reverse attrs) regions loc (reverse types) #'())]
-                 ;; -> (t ...) or -> () — parenthesized type list
-                 [((t ...) . rest2)
-                  (values (reverse attrs) regions loc
-                          (append (reverse types) (syntax->list #'(t ...)))
-                          #'rest2)]
-                 ;; -> single-type
-                 [(t . rest2)
-                  (values (reverse attrs) regions loc
-                          (append (reverse types) (list #'t))
-                          #'rest2)])]
-              ;; :loc expr (bare token)
-              [(and (identifier? #'first) (eq? (syntax->datum #'first) ':loc))
-               (syntax-case #'rest ()
-                 [(loc-expr . rest2)
-                  (lp #'rest2 attrs regions #'loc-expr types)])]
-              ;; (:loc expr) parenthesized
-              [(and (pair? (syntax->datum #'first))
-                    (eq? (car (syntax->datum #'first)) ':loc))
-               (syntax-case #'first ()
-                 [(_ loc-expr)
-                  (lp #'rest attrs regions #'loc-expr types)])]
-              ;; parenthesized modifier (attr, region, ^label)
-              [(pair? (syntax->datum #'first))
-               (let ([tagged (classify-attr-colon #'first)])
-                 (case (car tagged)
-                   [(attr)   (lp #'rest (cons (cdr tagged) attrs) regions loc types)]
-                   [(loc)    (lp #'rest attrs regions (cdr tagged) types)]
-                   [(region) (let ([region-idx (length regions)])
-                               (lp #'rest attrs
-                                   (append regions (list (make-region-fill-fn region-idx (cdr tagged))))
-                                   loc types))]
-                   [else (syntax-violation 'begin-mlir-code "unexpected modifier" #'first)]))]
-              ;; bare identifier — stop (start of next op)
-              [else
-               (values (reverse attrs) regions loc (reverse types) items)])])))
+            ;; -> (t ...) — parenthesized type list, stop
+            [(arrow (t ...) . rest)
+             (eq? (syntax->datum #'arrow) '->)
+             (values (reverse attrs) regions loc
+                     (append (reverse types) (syntax->list #'(t ...)))
+                     #'rest)]
+            ;; -> single-type, stop
+            [(arrow t . rest)
+             (eq? (syntax->datum #'arrow) '->)
+             (values (reverse attrs) regions loc
+                     (append (reverse types) (list #'t))
+                     #'rest)]
+            ;; :loc loc-expr (bare :loc token followed by an expression)
+            [(colon-loc loc-expr . rest)
+             (eq? (syntax->datum #'colon-loc) ':loc)
+             (lp #'rest attrs regions #'loc-expr types)]
+            ;; parenthesized modifier: (name : val), (^label ...), (:region ...), (:loc expr)
+            [(modifier . rest)
+             (pair? (syntax->datum #'modifier))
+             (let ([tagged (classify-attr-colon #'modifier)])
+               (case (car tagged)
+                 [(attr)   (lp #'rest (cons (cdr tagged) attrs) regions loc types)]
+                 [(loc)    (lp #'rest attrs regions (cdr tagged) types)]
+                 [(region) (lp #'rest attrs
+                               (append regions (list (make-region-fill-fn (length regions) (cdr tagged))))
+                               loc types)]
+                 [else (syntax-violation 'begin-mlir-code "unexpected modifier" #'modifier)]))]
+            ;; bare identifier — stop (start of next op)
+            [_
+             (values (reverse attrs) regions loc (reverse types) items)])))
 
       ;; Parse one item from the front of items (a syntax object).
       ;; Returns #f when items is empty.
@@ -347,31 +336,30 @@
       ;; Returns (scheme-expr-stx . remaining) for any other item.
       ;; remaining is always a syntax object.
       (define (parse-next items)
-        (if (null? (syntax->datum items))
-            #f
-            (syntax-case items (=)
-              ;; no-result: op.name (operands) ... — normalize to (() = op ...)
-              [(op (operands ...) . rest)
-               (op-name? #'op)
-               (parse-next #'(() = op (operands ...) . rest))]
-              ;; single-result: var = op ... — normalize to ((var) = op ...)
-              [(var = op (operands ...) . rest)
-               (and (identifier? #'var) (op-name? #'op))
-               (parse-next #'((var) = op (operands ...) . rest))]
-              ;; multi-result: (v ...) = op ... — canonical form, build ast-emit-op
-              [((v ...) = op (operands ...) . rest)
-               (and (for-all identifier? (syntax->list #'(v ...)))
-                    (op-name? #'op))
-               (let-values ([(attr-fns region-fns loc types remaining)
-                             (parse-modifiers-flat #'rest)])
-                 (cons (make-ast-emit-op
-                        (syntax->list #'(v ...)) (op-name->str #'op) #'op
-                        (value-operands #'(operands ...))
-                        attr-fns region-fns loc types)
-                       remaining))]
-              ;; Scheme expression — consume one item
-              [(expr . rest)
-               (cons #'expr #'rest)])))
+        (syntax-case items (=)
+          [() #f]
+          ;; no-result: op.name (operands) ... — normalize to (() = op ...)
+          [(op (operands ...) . rest)
+           (op-name? #'op)
+           (parse-next #'(() = op (operands ...) . rest))]
+          ;; single-result: var = op ... — normalize to ((var) = op ...)
+          [(var = op (operands ...) . rest)
+           (and (identifier? #'var) (op-name? #'op))
+           (parse-next #'((var) = op (operands ...) . rest))]
+          ;; multi-result: (v ...) = op ... — canonical form, build ast-emit-op
+          [((v ...) = op (operands ...) . rest)
+           (and (for-all identifier? (syntax->list #'(v ...)))
+                (op-name? #'op))
+           (let-values ([(attr-fns region-fns loc types remaining)
+                         (parse-modifiers-flat #'rest)])
+             (cons (make-ast-emit-op
+                    (syntax->list #'(v ...)) (op-name->str #'op) #'op
+                    (value-operands #'(operands ...))
+                    attr-fns region-fns loc types)
+                   remaining))]
+          ;; Scheme expression — consume one item
+          [(expr . rest)
+           (cons #'expr #'rest)]))
 
       ;; Scan the flat item list and produce binding descriptors.
       (define (process-ops-flat items)
