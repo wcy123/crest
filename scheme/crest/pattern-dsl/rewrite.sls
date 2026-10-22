@@ -239,16 +239,15 @@
                  [types   '()])
           (syntax-case items (-> :region : :string :index
                                  :i8 :i16 :i32 :i64 :f32 :f64
-                                 :i8-array :i16-array :i32-array :i64-array :unit)
+                                 :i8-array :i16-array :i32-array :i64-array :unit :loc)
             ;; -> type-list, continue accumulating types
             [(-> (result-type ...) . rest)
              (lp #'rest attrs regions loc (append types (syntax->list #'(result-type ...))))]
             ;; -> single-type, continue accumulating types
             [(-> type . rest)
              (lp #'rest attrs regions loc (append types (list #'type)))]
-            ;; :loc loc-expr (bare :loc token) — datum comparison avoids cross-phase issues
-            [(colon-loc loc-expr . rest)
-             (eq? (syntax->datum #'colon-loc) ':loc)
+            ;; :loc loc-expr — runtime mlir::Location override
+            [(:loc loc-expr . rest)
              (lp #'rest attrs regions #'loc-expr types)]
             ;; (^label body ...) — single-block region shorthand
             [((bb body ...) . rest)
