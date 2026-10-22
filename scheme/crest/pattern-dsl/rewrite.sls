@@ -259,15 +259,14 @@
                                                       (list (make-block-fill #'(bb body ...))))))
                    loc types))]
             ;; (:region (^label body ...) ...) — one region, multiple blocks
-            [((:region block ...) . rest)
-             (for-all (lambda (b) (block-label? (car (syntax->list b))))
-                      (syntax->list #'(block ...)))
+            [((:region (bb body ...) ...) . rest)
+             (for-all block-label? (syntax->list #'(bb ...)))
              (let ([region-idx (length regions)])
                (lp #'rest attrs
                    (append regions
                            (list (make-region-fill-fn region-idx
                                                       (map make-block-fill
-                                                           (syntax->list #'(block ...))))))
+                                                           (syntax->list #'((bb body ...) ...))))))
                    loc types))]
             ;; (name : val :kw) — attribute with type-constructor keyword
             [((name : val :string) . rest)
