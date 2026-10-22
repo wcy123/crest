@@ -218,84 +218,23 @@
       ;;
       ;; Uses datum comparison (eq?) instead of free-identifier=? for keywords
       ;; to avoid cross-phase issues when call sites import keywords at different phases.
-      (define (classify-attr-colon m)
-        (define (make-direct-setter name-str val-stx)
-          (lambda (state-stx)
-            (with-syntax ([state state-stx] [n name-str] [v val-stx])
-              #'(mlir::OperationState::addAttribute state n v))))
-        (define (kw? stx sym) (eq? (syntax->datum stx) sym))
-        (define items (syntax->list m))
-        (cond
-         [(not items)
-          (syntax-violation 'begin-mlir-code "invalid modifier (not a list)" m)]
-         ;; (:loc expr)
-         [(and (eqv? (length items) 2) (kw? (car items) ':loc))
-          (cons 'loc (cadr items))]
-         ;; (:region block ...)
-         [(and (not (null? items)) (kw? (car items) ':region))
-          (let ([blocks (cdr items)])
-            (for-each (lambda (b)
-                        (let ([blist (syntax->list b)])
-                          (unless (and blist (not (null? blist))
-                                       (block-label? (car blist)))
-                            (syntax-violation 'begin-mlir-code
-                                              "expected block label in :region" b))))
-                      blocks)
-            (cons 'region (map make-block-fill blocks)))]
-         ;; (^label ...) — block region shorthand
-         [(and (not (null? items)) (block-label? (car items)))
-          (classify-attr-colon (with-syntax ([m m]) #`(:region m)))]
-         ;; (name : val ...) — attribute, name is symbol or string
-         [(and (>= (length items) 3)
-               (let ([n (syntax->datum (car items))])
-                 (or (symbol? n) (string? n)))
-               (kw? (cadr items) ':))
-          ;; Normalize symbol name to string
-          (let* ([raw-name (syntax->datum (car items))]
-                 [name-str (if (symbol? raw-name) (symbol->string raw-name) raw-name)]
-                 [val      (caddr items)]
-                 [rest     (cdddr items)])
-            ;; Check for keyword suffix: (name : val :kw)
-            (if (and (eqv? (length rest) 1) (identifier? (car rest)))
-                (let ([kw (syntax->datum (car rest))])
-                  (cond
-                   [(eq? kw ':string)
-                    (cons 'attr (make-direct-setter name-str
-                                                    (with-syntax ([v val]) #'(mlir::StringAttr::get v))))]
-                   [(eq? kw ':index)
-                    (cons 'attr (make-direct-setter name-str
-                                                    (with-syntax ([v val]) #'(mlir::IntegerAttr::get<index> v))))]
-                   [(eq? kw ':i64)
-                    (cons 'attr (make-direct-setter name-str
-                                                    (with-syntax ([v val]) #'(mlir::IntegerAttr::get<i64> v))))]
-                   [(eq? kw ':f32)
-                    (cons 'attr (make-direct-setter name-str
-                                                    (with-syntax ([v val]) #'(mlir::FloatAttr::get<f32> v))))]
-                   [(eq? kw ':i32-array)
-                    (cons 'attr (make-direct-setter name-str
-                                                    (with-syntax ([v val]) #'(mlir::DenseI32ArrayAttr::get v))))]
-                   [(eq? kw ':i64-array)
-                    (cons 'attr (make-direct-setter name-str
-                                                    (with-syntax ([v val]) #'(mlir::DenseI64ArrayAttr::get v))))]
-                   [(eq? kw ':unit)
-                    (cons 'attr (make-direct-setter name-str #'(mlir::UnitAttr::get)))]
-                   [else
-                    (syntax-violation 'begin-mlir-code "unknown attribute keyword" (car rest))]))
-                ;; No keyword suffix — val is a raw mlir::Attribute
-                (cons 'attr (make-direct-setter name-str val))))]
-         [else
-          (syntax-violation 'begin-mlir-code "invalid modifier" m)]))
-
       ;; Consume modifiers from items (a syntax object) until -> or a new op-start.
       ;; Returns (values attr-fns region-fns loc-override result-types remaining)
       ;; where remaining is a syntax object.
       (define (parse-modifiers-flat items)
+        ;; Build a runtime (addAttribute state name val) setter closure.
+        (define (%%make-attr-setter name val-stx)
+          (let ([name-str (if (symbol? name) (symbol->string name) name)])
+            (lambda (state-stx)
+              (with-syntax ([state state-stx] [n name-str] [v val-stx])
+                #'(mlir::OperationState::addAttribute state n v)))))
         (let lp ([items   items]
                  [attrs   '()]
                  [regions '()]
                  [loc     #f]
                  [types   '()])
-          (syntax-case items (-> :loc :region)
+          (syntax-case items (-> :loc :region : :string :index :i64 :f32
+                                 :i32-array :i64-array :unit)
             ;; -> type-list, continue accumulating types
             [(-> (result-type ...) . rest)
              (lp #'rest attrs regions loc (append types (syntax->list #'(result-type ...))))]
@@ -304,6 +243,9 @@
              (lp #'rest attrs regions loc (append types (list #'type)))]
             ;; :loc loc-expr (bare :loc token)
             [(:loc loc-expr . rest)
+             (lp #'rest attrs regions #'loc-expr types)]
+            ;; (:loc expr) parenthesized
+            [((:loc loc-expr) . rest)
              (lp #'rest attrs regions #'loc-expr types)]
             ;; (^label body ...) — single-block region shorthand
             [((bb body ...) . rest)
@@ -325,23 +267,43 @@
                                                       (map make-block-fill
                                                            (syntax->list #'(block ...))))))
                    loc types))]
-            ;; parenthesized modifier: (name : val ...) or (:loc expr)
-            ;; Only matches (:loc ...) and (name : val ...) forms — anything else stops.
-            [(modifier . rest)
-             (let ([d (syntax->datum #'modifier)])
-               (and (pair? d)
-                    (or (eq? (car d) ':loc)
-                        (and (>= (length d) 3) (eq? (cadr d) ':)))))
-             (let ([tagged (classify-attr-colon #'modifier)])
-               (case (car tagged)
-                 [(attr)   (lp #'rest (cons (cdr tagged) attrs) regions loc types)]
-                 [(loc)    (lp #'rest attrs regions (cdr tagged) types)]
-                 [else (syntax-violation 'begin-mlir-code "unexpected modifier" #'modifier)]))]
-            ;; anything else (bare identifier or end) — stop
+            ;; (name : val :kw) — attribute with type-constructor keyword
+            [((name : val :string) . rest)
+             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
+                                                  #'(mlir::StringAttr::get val))
+                              attrs) regions loc types)]
+            [((name : val :index) . rest)
+             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
+                                                  #'(mlir::IntegerAttr::get<index> val))
+                              attrs) regions loc types)]
+            [((name : val :i64) . rest)
+             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
+                                                  #'(mlir::IntegerAttr::get<i64> val))
+                              attrs) regions loc types)]
+            [((name : val :f32) . rest)
+             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
+                                                  #'(mlir::FloatAttr::get<f32> val))
+                              attrs) regions loc types)]
+            [((name : val :i32-array) . rest)
+             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
+                                                  #'(mlir::DenseI32ArrayAttr::get val))
+                              attrs) regions loc types)]
+            [((name : val :i64-array) . rest)
+             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
+                                                  #'(mlir::DenseI64ArrayAttr::get val))
+                              attrs) regions loc types)]
+            [((name : val :unit) . rest)
+             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
+                                                  #'(mlir::UnitAttr::get))
+                              attrs) regions loc types)]
+            ;; (name : val) — raw mlir::Attribute
+            [((name : val) . rest)
+             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name) #'val)
+                              attrs) regions loc types)]
+            ;; anything else — stop
             [(otherwise ...)
              (values (reverse attrs) regions loc (reverse types) #'(otherwise ...))])))
 
-      ;; remaining is always a syntax object.
       (define (parse-next items)
         (syntax-case items (=)
           [() #f]
