@@ -14,8 +14,10 @@
     :if-match
       %mid = test.add (%x)
       %out = test.sub (%mid)
+    :then-let
+      ([!out-type (mlir::Value::getType %out)])
     :rewrite %out :with
-      (%result = test.sub (%mid) -> (mlir::Value::getType %out)))
+      result = test.sub (%mid) -> !out-type)
 
   (define run-pass (make-run-pass "test.sub" %%chain-no-actual))
 

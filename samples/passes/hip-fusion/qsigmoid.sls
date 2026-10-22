@@ -53,11 +53,11 @@
        [out-zp    (hip-extract-qdq-zeropoint-i64 op 0)]
        [%init     (hip-build-init rewriter !out-type %sigmoid_init)])
     :rewrite %q :with
-      (%result = hip.qsigmoid (%ctx %input %init)
-               ("input_scale"  = in-scale  :f32)
-               ("input_zp"     = in-zp     :i64)
-               ("output_scale" = out-scale :f32)
-               ("output_zp"    = out-zp   :i64)
-               -> !out-type))
+      result = hip.qsigmoid (%ctx %input %init)
+      (input_scale  : in-scale  :f32)
+      (input_zp     : in-zp     :i64)
+      (output_scale : out-scale :f32)
+      (output_zp    : out-zp   :i64)
+      -> !out-type)
 
   ) ;; end library (passes hip-fusion qsigmoid)

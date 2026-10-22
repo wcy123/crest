@@ -14,9 +14,10 @@
       %out = test.multi_variadic ((:variadic %inputs %weights))
     :then-let
       ([%a (car %inputs)]
-       [%b (car %weights)])
+       [%b (car %weights)]
+       [!out-type (mlir::Value::getType %out)])
     :rewrite %out :with
-      (%result = test.fused (%a %b) -> (mlir::Value::getType %out)))
+      result = test.fused (%a %b) -> !out-type)
 
   (define run-pass (make-run-pass "test.multi_variadic" %%multi-variadic))
 

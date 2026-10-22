@@ -11,8 +11,10 @@
   (define-rewrite-pattern (%%check-eq-same-value op rewriter)
     :if-match
       %out = test.mul (%shared %shared)
+    :then-let
+      ([!out-type (mlir::Value::getType %out)])
     :rewrite %out :with
-      (%result = test.mul (%shared %shared) -> (mlir::Value::getType %out)))
+      result = test.mul (%shared %shared) -> !out-type)
 
   (define run-pass (make-run-pass "test.mul" %%check-eq-same-value))
 

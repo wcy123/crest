@@ -93,14 +93,14 @@
        [rhs-zp     (zp-attr %rhs_zp)]
        [out-zp     (zp-attr %out_zp)])
     :rewrite %q :with
-      (%init   = tensor.empty () -> !out-type)
-      (%result = hip.qadd (%ctx %lhs %rhs %init)
-               ("lhs_scale"    = lhs-scale)
-               ("lhs_zp"       = lhs-zp)
-               ("rhs_scale"    = rhs-scale)
-               ("rhs_zp"       = rhs-zp)
-               ("output_scale" = out-scale)
-               ("output_zp"    = out-zp)
-               -> !out-type))
+      init   = tensor.empty () -> !out-type
+      result = hip.qadd (%ctx %lhs %rhs init)
+      (lhs_scale    : lhs-scale)
+      (lhs_zp       : lhs-zp)
+      (rhs_scale    : rhs-scale)
+      (rhs_zp       : rhs-zp)
+      (output_scale : out-scale)
+      (output_zp    : out-zp)
+      -> !out-type)
 
   ) ;; end library (passes hip-fusion qadd)

@@ -13,8 +13,10 @@
     :if-match
       (_ %second) = test.split (%x)
       %out         = test.use   (%second)
+    :then-let
+      ([!out-type (mlir::Value::getType %out)])
     :rewrite %out :with
-      (%result = test.fused (%x) -> (mlir::Value::getType %out)))
+      result = test.fused (%x) -> !out-type)
 
   (define run-pass (make-run-pass "test.use" %%wildcard-result))
 

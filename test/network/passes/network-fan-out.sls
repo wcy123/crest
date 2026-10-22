@@ -15,8 +15,10 @@
     :if-match
       %shared = test.mul (%a)
       %out    = test.add (%shared %shared)
+    :then-let
+      ([!out-type (mlir::Value::getType %out)])
     :rewrite %out :with
-      (%result = test.square (%shared) -> (mlir::Value::getType %out)))
+      result = test.square (%shared) -> !out-type)
 
   (define run-pass (make-run-pass "test.add" %%fan-out))
 

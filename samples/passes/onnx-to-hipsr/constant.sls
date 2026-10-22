@@ -82,7 +82,7 @@
        [!out-type   (mlir::Value::getType %output)]
        [$value-attr (constant-value-attr op ctx !out-type)])
     :rewrite %output :with
-      (%result = arith.constant () ("value" = $value-attr) -> !out-type))
+      result = arith.constant () (value : $value-attr) -> !out-type)
 
   ;; Pattern 2: ranked tensor → hipsr.constant (device result type)
   (define-conversion-pattern (onnx-constant-tensor->hipsr op operands-ref rewriter type-converter)
@@ -95,7 +95,7 @@
        [!out-dev    (mlir::RankedTensorType::cloneWithEncoding !out-type (make-hipsr-device-space-attr))]
        [$value-attr (constant-value-attr op ctx !out-dev)])
     :rewrite %output :with
-      (%result = hipsr.constant () ("value" = $value-attr) -> !out-dev))
+      result = hipsr.constant () (value : $value-attr) -> !out-dev)
 
   (define (populate-constant-patterns type-converter patterns ctx)
     (add-conversion-pattern patterns "onnx.Constant"

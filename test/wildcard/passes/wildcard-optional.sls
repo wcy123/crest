@@ -15,8 +15,10 @@
   (define-rewrite-pattern (%%wildcard-optional op rewriter)
     :if-match
       %out = test.op (%x (:optional _) %y)
+    :then-let
+      ([!out-type (mlir::Value::getType %out)])
     :rewrite %out :with
-      (%result = test.fused (%x %y) -> (mlir::Value::getType %out)))
+      result = test.fused (%x %y) -> !out-type)
 
   (define run-pass (make-run-pass "test.op" %%wildcard-optional))
 

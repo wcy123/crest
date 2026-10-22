@@ -11,8 +11,10 @@
     :if-match
       %out = test.add ((:optional %a) (:optional %b))
         :where (and (unbound-value? %a) (not (unbound-value? %b)))
+    :then-let
+      ([!out-type (mlir::Value::getType %out)])
     :rewrite %out :with
-      (%result = test.fused (%b) -> (mlir::Value::getType %out)))
+      result = test.fused (%b) -> !out-type)
 
   (define run-pass (make-run-pass "test.add" %%match))
 

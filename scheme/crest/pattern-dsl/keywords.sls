@@ -6,8 +6,12 @@
           :any
           :current-op :attr :has-attr? :attr-or
           :optional :variadic
-          ;; Attr type keywords used in (name = val :type) modifier forms
-          :string :index :i64 :f32 :i32-array :i64-array :unit
+          ;; Attr type keywords used in (name : val :type) modifier forms
+          :string :index
+          :i8 :i16 :i32 :i64
+          :f32 :f64
+          :i8-array :i16-array :i32-array :i64-array
+          :unit
           ;; (:loc expr) op-level modifier — override auto-derived Scheme source location
           :loc
           ;; (:arg N) shorthand for (mlir::Block::getArgument block N) in block bodies
@@ -60,13 +64,19 @@
   ;; Parsed but not yet implemented in analyze/codegen.
   (define-syntax :variadic   (lambda (x) (syntax-violation 'pattern-keyword "misplaced :variadic (only valid inside DDR operand list)" x)))
   ;; Attr type keywords — used as literals in (name = val :type) modifier forms.
-  (define-syntax :string   (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :string (only valid as attr type in begin-mlir-code)" x)))
-  (define-syntax :index    (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :index (only valid as attr type in begin-mlir-code)" x)))
-  (define-syntax :i64      (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :i64 (only valid as attr type in begin-mlir-code)" x)))
-  (define-syntax :f32      (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :f32 (only valid as attr type in begin-mlir-code)" x)))
+  (define-syntax :string    (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :string (only valid as attr type in begin-mlir-code)" x)))
+  (define-syntax :index     (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :index (only valid as attr type in begin-mlir-code)" x)))
+  (define-syntax :i8        (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :i8 (only valid as attr type in begin-mlir-code)" x)))
+  (define-syntax :i16       (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :i16 (only valid as attr type in begin-mlir-code)" x)))
+  (define-syntax :i32       (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :i32 (only valid as attr type in begin-mlir-code)" x)))
+  (define-syntax :i64       (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :i64 (only valid as attr type in begin-mlir-code)" x)))
+  (define-syntax :f32       (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :f32 (only valid as attr type in begin-mlir-code)" x)))
+  (define-syntax :f64       (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :f64 (only valid as attr type in begin-mlir-code)" x)))
+  (define-syntax :i8-array  (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :i8-array (only valid as attr type in begin-mlir-code)" x)))
+  (define-syntax :i16-array (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :i16-array (only valid as attr type in begin-mlir-code)" x)))
   (define-syntax :i32-array (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :i32-array (only valid as attr type in begin-mlir-code)" x)))
   (define-syntax :i64-array (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :i64-array (only valid as attr type in begin-mlir-code)" x)))
-  (define-syntax :unit     (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :unit (only valid as attr type in begin-mlir-code)" x)))
+  (define-syntax :unit      (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :unit (only valid as attr type in begin-mlir-code)" x)))
   (define-syntax :loc      (lambda (x) (syntax-violation 'begin-mlir-code "misplaced :loc (only valid as op modifier in begin-mlir-code)" x)))
   (define-syntax :arg
     (syntax-rules ()

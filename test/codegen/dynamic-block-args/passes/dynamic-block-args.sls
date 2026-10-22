@@ -27,10 +27,10 @@
        ;; Build type list at runtime: one type per block arg.
        [arg-types (list !vtype)])
     :rewrite %out :with
-      (%result = test.with_block (%v)
-               (^bb0 ,@arg-types
-                     (test.yield ((:arg 0))))
-               -> !vtype))
+      result = test.with_block (%v)
+      (^bb0 ,@arg-types
+            test.yield ((:arg 0)))
+      -> !vtype)
 
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])

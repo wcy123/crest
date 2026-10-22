@@ -14,8 +14,10 @@
     :if-match
       %mid = test.add (%a %b)
       %out = test.sub (%mid %c)
+    :then-let
+      ([!out-type (mlir::Value::getType %out)])
     :rewrite %out :with
-      (%result = test.sub (%mid %c) -> (mlir::Value::getType %out)))
+      result = test.sub (%mid %c) -> !out-type)
 
   (define run-pass (make-run-pass "test.sub" %%expect-test.add-then-sub))
 

@@ -13,8 +13,10 @@
     :if-match
       %out = test.add (%a %b)
         :where (eqv? 1 2)
+    :then-let
+      ([!out-type (mlir::Value::getType %out)])
     :rewrite %out :with
-      (%result = test.add (%a %b) -> (mlir::Value::getType %out)))
+      result = test.add (%a %b) -> !out-type)
 
   (define run-pass (make-run-pass "test.add" %%where-always-false))
 

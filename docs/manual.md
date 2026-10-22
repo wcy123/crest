@@ -73,12 +73,12 @@ A complete greedy-rewrite pattern:
      [lhs-zp     (zp-attr %lhs_zp)])
   ;; ④  Rewrite
   :rewrite %q :with
-    (%init   = tensor.empty () -> !out-type)
-    (%result = hip.qadd (%ctx %lhs %rhs %init)
-             ("lhs_scale" = lhs-scale)
-             ("output_scale" = out-scale)
-             ("lhs_zp"    = lhs-zp)
-             -> !out-type))
+    init   = tensor.empty () -> !out-type
+    result = hip.qadd (%ctx %lhs %rhs init)
+             (lhs_scale    : lhs-scale)
+             (output_scale : out-scale)
+             (lhs_zp       : lhs-zp)
+             -> !out-type)
 ```
 
 | Section | Purpose |
@@ -268,10 +268,10 @@ independently even if the underlying SSA values differ:
 
 ```scheme
 :rewrite %q :with
-  (%init   = tensor.empty () -> !out-type)
-  (%result = hip.qadd (%ctx %lhs %rhs %init)
-           ("lhs_scale" = lhs-scale)
-           -> !out-type))
+  init   = tensor.empty () -> !out-type
+  result = hip.qadd (%ctx %lhs %rhs init)
+           (lhs_scale : lhs-scale)
+           -> !out-type
 ```
 
 Before emission starts, the insertion point is set to immediately before the
@@ -287,19 +287,21 @@ Op-form syntax — see [§5 `begin-mlir-code`](#5-begin-mlir-code) for the full 
 ## 5. `begin-mlir-code`
 
 `begin-mlir-code` emits MLIR ops via the current rewriter or builder.
+Its argument list is a **flat sequence** — no outer parentheses around op-forms.
+This mirrors MLIR's textual format, which MLIR C++ developers will find familiar.
 
-**With explicit builder** (original form):
+**With explicit builder**:
 ```scheme
 (begin-mlir-code my-builder
-  (%sum = arith.addi (%a %b) -> (mlir::Value::getType %a)))
+  sum = arith.addi (%a %b) -> (mlir::Value::getType %a))
 ```
 
 **Without explicit builder** — uses `(%%current-builder)`, i.e. whatever
 `current-RewriterBase` or `current-OpBuilder` is installed:
 ```scheme
 (begin-mlir-code            ; implicit builder from current context
-  (%c0  = arith.constant () ("value" = (mlir::IntegerAttr::get<i64> 0)) -> (mlir::IntegerType::get<i64>))
-  (%sum = arith.addi (%a %b) -> (mlir::Value::getType %a)))
+  c0  = arith.constant () (value : 0 :i64) -> (mlir::IntegerType::get<i64>)
+  sum = arith.addi (%a %b) -> (mlir::Value::getType %a))
 ```
 
 The implicit form works inside `:rewrite :with` bodies (where `current-RewriterBase`
@@ -309,11 +311,20 @@ Every emitted op carries a `FileLineColLoc` from the `.sls` source line.
 
 ### Op-form syntax
 
-Each statement is an op-form:
+The argument list is **flat** — op boundaries are detected automatically.
+An op-form starts at a recognizable boundary pattern:
 
 ```
-(%result-var = dialect.op-name (operand ...) ("attr" = val) ... -> !result-type)
+result-var = dialect.op-name (operands...) modifiers... -> result-type
+(r0 r1) = dialect.op-name (operands...) modifiers... -> (type0 type1)
+dialect.op-name (operands...) modifiers...
 ```
+
+Op names contain `.` (e.g. `arith.constant`, `toy.func`). Result vars do not.
+Any parenthesized item that doesn't match an op-form pattern is a Scheme expression.
+
+**Key design**: op-forms are NOT wrapped in their own `()` — the flat argument
+list is scanned left-to-right and op boundaries are detected syntactically.
 
 ### Special forms
 
@@ -326,7 +337,7 @@ helper function. `current-RewriterBase` at the `:rewrite :with` level;
 
 ```scheme
 ;; Pass to a Scheme helper that emits further ops using the active builder
-(_ = (%%emit-prologue :builder loc))
+(%%emit-prologue :builder loc)
 ```
 
 **`(:arg N)`** — shorthand for `(mlir::Block::getArgument (current-MLIRBlock) N)`.
@@ -337,76 +348,82 @@ is installed.
 
 **`(:loc loc-expr)`** — op-level modifier that overrides the automatically-derived
 Scheme source location with a runtime `mlir::Location` value. Place it between
-the operand list and the `->`:
+the operand list and the `->` (by convention, at the end):
 
 ```scheme
 ;; Without :loc — op carries the .sls file:line:col from the begin-mlir-code form
-(%r = toy.constant () ("value" = attr) -> !t)
+r = toy.constant () (value : attr) -> !t
 
 ;; With :loc — op carries the Toy AST source location instead
-(%r = toy.constant () ("value" = attr) :loc toy-loc -> !t)
+r = toy.constant () (value : attr) (:loc toy-loc) -> !t
 
 ;; Useful in codegen from a parsed AST to carry source-language locations:
 (begin-mlir-code builder
-  (toy.func ()
-    ("sym_name" = name :string)
-    (:loc proto-loc)         ; ← mlir::FileLineColLoc from the Toy prototype
+  toy.func ()
+    (sym_name : name :string)
     (^bb0 ,@arg-types
-      ...)))
+      ...)
+    (:loc proto-loc))        ; ← mlir::FileLineColLoc from the Toy prototype
 ```
 
 ### Attributes
 
-The general form `("name" = val)` sets an attribute where `val` is any Scheme
-expression returning an `mlir::Attribute`. Common types have shorthands that
-construct the attribute for you:
+Attributes use `(name : val)` syntax where `name` is the attribute name
+(as a symbol or string) and `val` is any Scheme expression returning an `mlir::Attribute`.
+Common types have shorthands that construct the attribute automatically:
 
 | Shorthand | Expands to |
 |---|---|
-| `("name" = val :index)` | `mlir::IntegerAttr::get<index>` |
-| `("name" = val :i64)` | `mlir::IntegerAttr::get<i64>` |
-| `("name" = val :f32)` | `mlir::FloatAttr::get<f32>` |
-| `("name" = val :i32-array)` | `mlir::DenseI32ArrayAttr::get` |
-| `("name" = val :i64-array)` | `mlir::DenseI64ArrayAttr::get` |
-| `("name" = val :unit)` | `mlir::UnitAttr::get` (val ignored) |
+| `(name : val :string)` | `mlir::StringAttr::get` |
+| `(name : val :index)` | `mlir::IntegerAttr::get<index>` |
+| `(name : val :i8)` | `mlir::IntegerAttr::get<i8>` |
+| `(name : val :i16)` | `mlir::IntegerAttr::get<i16>` |
+| `(name : val :i32)` | `mlir::IntegerAttr::get<i32>` |
+| `(name : val :i64)` | `mlir::IntegerAttr::get<i64>` |
+| `(name : val :f32)` | `mlir::FloatAttr::get<f32>` |
+| `(name : val :f64)` | `mlir::FloatAttr::get<f64>` |
+| `(name : val :i8-array)` | `mlir::DenseI8ArrayAttr::get` |
+| `(name : val :i16-array)` | `mlir::DenseI16ArrayAttr::get` |
+| `(name : val :i32-array)` | `mlir::DenseI32ArrayAttr::get` |
+| `(name : val :i64-array)` | `mlir::DenseI64ArrayAttr::get` |
+| `(name : val :unit)` | `mlir::UnitAttr::get` (val ignored) |
 
 ```scheme
-;; Shorthand: integer tag constructs the attribute automatically
-(%c = arith.constant ()
-     ("value" = 42 :index)
-     -> (mlir::IndexType::get))
+;; Shorthand: keyword tag constructs the attribute automatically
+c = arith.constant ()
+    (value : 42 :index)
+    -> (mlir::IndexType::get)
 
 ;; General form: val is any Scheme expression returning an mlir::Attribute
-(%op = my.op ()
-      ("scale" = (mlir::FloatAttr::get<f32> 0.5))
-      ("zp"    = (mlir::IntegerAttr::get<i64> 0)))
+my.op ()
+  (scale : (mlir::FloatAttr::get<f32> 0.5))
+  (zp    : (mlir::IntegerAttr::get<i64> 0))
 ```
 
 ### Result types
 
 `-> !type` where `!type` is any Scheme expression returning an `mlir::Type`.
-Multi-result ops list all types:
+Multi-result ops list all types in `(...)`:
 
 ```scheme
 ;; Single result
-(%r = my.op (%x) -> !out-type)
-;; Multi-result — number of types must equal number of result variables
-((%r0 %r1) = my.op (%x) -> (!type-a !type-b))
+r = my.op (%x) -> !out-type
+;; Multi-result — one -> per result type
+(r0 r1) = my.op (%x) -> !type-a -> !type-b
 ```
 
 ### Regions
 
-Regions follow the attribute list. Each region is a sequence of blocks;
-each block starts with `^label` and optional block arguments, followed by
-op-forms:
+Region modifiers immediately follow the operand list (and any attribute modifiers).
+Each `(^label ...)` form creates one region with one block:
 
 ```scheme
-;; Single region, single block with arguments
-(%op = my.region_op (%x)
-      (^bb0 ((%arg0 : !i32) (%arg1 : !i32))
-            (%r = arith.addi (%arg0 %arg1) -> !i32)
-            (my.yield (%r)))
-      -> !i32)
+;; Single region, single block with static arguments
+op = my.region_op (%x)
+     (^bb0 ((arg0 : !i32) (arg1 : !i32))
+           r = arith.addi (%arg0 %arg1) -> !i32
+           my.yield (%r))
+     -> !i32
 ```
 
 Multiple single-block regions — list `^bb` shorthands consecutively
@@ -414,39 +431,39 @@ Multiple single-block regions — list `^bb` shorthands consecutively
 
 ```scheme
 ;; Two regions (e.g. scf.if: then-region and else-region)
-(%op = scf.if (%cond)
-      (^then ()
-             (%a = compute_a (%x) -> !i32)
-             (scf.yield (%a)))
-      (^else ()
-             (%b = compute_b (%y) -> !i32)
-             (scf.yield (%b)))
-      -> !i32)
+op = scf.if (%cond)
+     (^then ()
+            a = compute_a (%x) -> !i32
+            scf.yield (%a))
+     (^else ()
+            b = compute_b (%y) -> !i32
+            scf.yield (%b))
+     -> !i32
 ```
 
 One region with multiple blocks — use the explicit `:region` wrapper:
 
 ```scheme
-(%op = my.op ()
-      (:region
-        (^entry ()
-                (cf.br () ^exit))
-        (^exit ((%v : !i32))
-               (cf.return (%v))))
-      -> !i32)
+op = my.op ()
+     (:region
+       (^entry ()
+               cf.br () ^exit)
+       (^exit ((v : !i32))
+              cf.return (%v)))
+     -> !i32
 ```
 
 Multiple regions each with multiple blocks — use multiple `:region` wrappers:
 
 ```scheme
-(%op = my.op ()
-      (:region
-        (^r0-entry () (cf.br () ^r0-exit))
-        (^r0-exit  () (my.yield ())))
-      (:region
-        (^r1-entry () (cf.br () ^r1-exit))
-        (^r1-exit  () (my.yield ())))
-      -> !i32)
+op = my.op ()
+     (:region
+       (^r0-entry () cf.br () ^r0-exit)
+       (^r0-exit  () my.yield ()))
+     (:region
+       (^r1-entry () cf.br () ^r1-exit)
+       (^r1-exit  () my.yield ()))
+     -> !i32
 ```
 
 In summary:
@@ -460,8 +477,7 @@ In summary:
 | `(:region ...) (:region ...)` | N | N each | static |
 
 The body of every `^label` block is a recursive `begin-mlir-code` call — the
-same op-form syntax, the same result variables, the same attribute and region
-modifiers. Regions can be nested arbitrarily deep.
+same flat op-form syntax. Regions can be nested arbitrarily deep.
 See `samples/passes/onnx-to-hipsr/matmul.sls` for a real-world example.
 
 ### Dynamic block arguments
@@ -471,12 +487,12 @@ use `,@types-expr` to splice a runtime list of `mlir::Type` values:
 
 ```scheme
 ;; arg-types is a Scheme list of mlir::Type values computed at match time
-(%fn = my.func ()
-      (^bb0 ,@arg-types
-        ;; (:arg N) is shorthand for the Nth block argument
-        (%r = arith.addi ((:arg 0) (:arg 1)) -> !i32)
-        (my.return (%r)))
-      -> !i32)
+fn = my.func ()
+     (^bb0 ,@arg-types
+       ;; (:arg N) is shorthand for the Nth block argument
+       r = arith.addi ((:arg 0) (:arg 1)) -> !i32
+       my.return (%r))
+     -> !i32
 ```
 
 The `,@` prefix is Chez Scheme's unquote-splicing — a visual marker that this
@@ -500,10 +516,10 @@ dynamic parameter installed by the `^label ,@...` form.
     ([!vtype   (mlir::Value::getType %v)]
      [arg-types (list !vtype)])
   :rewrite %out :with
-    (%result = test.with_block (%v)
+    result = test.with_block (%v)
              (^bb0 ,@arg-types
-               (my.yield ((:arg 0))))   ; (:arg 0) → first block argument
-             -> !vtype))
+               my.yield ((:arg 0)))     ; (:arg 0) → first block argument
+             -> !vtype
 ```
 
 Use dynamic block args when generating functions whose argument lists vary
