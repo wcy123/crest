@@ -11,7 +11,13 @@
           %mlir::OpAsmPrinter::printFunctionalType
           %mlir::OpAsmPrinter::printResultTypes
           %mlir::OpAsmPrinter::printSymbolName
-          %mlir::StringAttr::getValue)
+          %mlir::StringAttr::getValue
+          %mlir::TypeAttr::getValue
+          %mlir::FunctionType::getNumInputs
+          %mlir::FunctionType::getInput
+          %mlir::FunctionType::getNumResults
+          %mlir::FunctionType::getResult
+          %mlir::OpAsmPrinter::printRegion)
   (import (chezscheme))
 
   (define %mlir::OpAsmPrinter::printString
@@ -48,5 +54,23 @@
 
   (define %mlir::StringAttr::getValue
     (foreign-procedure "mlir::StringAttr::getValue" (uptr) string))
+
+  (define %mlir::TypeAttr::getValue
+    (foreign-procedure "mlir::TypeAttr::getValue" (uptr) uptr))
+
+  (define %mlir::FunctionType::getNumInputs
+    (foreign-procedure "mlir::FunctionType::getNumInputs" (uptr) uptr))
+
+  (define %mlir::FunctionType::getInput
+    (foreign-procedure "mlir::FunctionType::getInput" (uptr uptr) uptr))
+
+  (define %mlir::FunctionType::getNumResults
+    (foreign-procedure "mlir::FunctionType::getNumResults" (uptr) uptr))
+
+  (define %mlir::FunctionType::getResult
+    (foreign-procedure "mlir::FunctionType::getResult" (uptr uptr) uptr))
+
+  (define %mlir::OpAsmPrinter::printRegion
+    (foreign-procedure "mlir::OpAsmPrinter::printRegion" (uptr uptr int int) void))
 
   ) ;; end library (mlir IR OpImplementation ffi)

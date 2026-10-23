@@ -13,17 +13,28 @@
           (mlir IR BuiltinTypes)
           (mlir IR BuiltinAttributes)
           (mlir IR Operation)
-          (mlir IR OpImplementation))
+          (mlir IR Block)
+          (mlir IR Region)
+          (mlir IR OpImplementation)
+          (mlir Interfaces FunctionInterfaces))
 
   ;; Shared printer for binary ops (add, mul).
   ;; Mirrors printBinaryOp in Dialect.cpp:
-  ;;   printer << " " << op->getOperands() << " : " << functional-type
+  ;;   if all types equal: print just that type
+  ;;   otherwise: print functional type
   (define (%%print-binary-op op printer name)
     (mlir::OpAsmPrinter::printString printer " ")
     (mlir::OpAsmPrinter::printOperands printer op)
     (mlir::OpAsmPrinter::printOptionalAttrDict printer op)
     (mlir::OpAsmPrinter::printString printer " : ")
-    (mlir::OpAsmPrinter::printFunctionalType printer op))
+    (let ([result-type (mlir::Value::getType (mlir::Operation::getResult op 0))])
+      (if (let loop ([i 0])
+            (or (>= i (mlir::Operation::getNumOperands op))
+                (and (= (mlir::Value::getType (mlir::Operation::getOperand op i))
+                        result-type)
+                     (loop (+ i 1)))))
+          (mlir::OpAsmPrinter::printType printer result-type)
+          (mlir::OpAsmPrinter::printFunctionalType printer op))))
 
   ;; Shared printer for single-input ops with explicit result type.
   ;; Format: (%input : input-type) to result-type
@@ -105,10 +116,14 @@
               (mlir::OpAsmPrinter::printString printer " : ")
               (mlir::OpAsmPrinter::printFunctionalType printer op)))
 
-    ;; FuncOp — toy function definition (body provided at codegen time).
-    ;; No custom format — generic form is acceptable for now.
+    ;; FuncOp — toy function definition.
+    ;; Format: toy.func @name(%arg0: type0, ...) -> (result_types) { body }
+    ;; Delegates to mlir::function_interface_impl::printFunctionOp via
+    ;; FunctionOpInterface implemented through getRegisteredInterfaceForOp.
     (define-op func
-      :summary    "toy function definition")
+      :summary    "toy function definition"
+      (:print (op printer name)
+              (mlir::function_interface_impl::printFunctionOp printer op)))
 
     ;; ReturnOp — return from a toy function.
     ;; Format: toy.return (%val : type)?
@@ -132,5 +147,12 @@
                 (mlir::OpAsmPrinter::printString printer " ")
                 (mlir::OpAsmPrinter::printOperand printer val)
                 (mlir::OpAsmPrinter::printString printer " : ")
-                (mlir::OpAsmPrinter::printType printer (mlir::Value::getType val))))))
+                (mlir::OpAsmPrinter::printType printer (mlir::Value::getType val)))))
+
+    ;; Implement FunctionOpInterface (and its base interfaces) for toy.func
+    ;; via the getRegisteredInterfaceForOp dialect hook.
+    (:get-registered-interface-for-op (interface-id op-name)
+                                      (if (string=? (mlir::OperationName::getStringRef op-name) "toy.func")
+                                          (crest::FunctionOpInterface::getConcept interface-id)
+                                          0)))
   )

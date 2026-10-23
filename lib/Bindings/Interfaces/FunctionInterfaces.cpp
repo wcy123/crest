@@ -239,27 +239,6 @@ void registerInterfacesFunctionInterfacesBindings() {
         return 0;
       });
 
-  // mlir::function_interface_impl::parseFunctionOp — parses a function-like op.
-  // The FuncTypeBuilder builds a FunctionType from arg/result types.
-  Sregister_symbol(
-      "mlir::function_interface_impl::parseFunctionOp",
-      (void*)+[](uint64_t parser_ptr, uint64_t state_ptr) -> int {
-        auto* p = reinterpret_cast<mlir::OpAsmParser*>(parser_ptr);
-        auto& state = *reinterpret_cast<mlir::OperationState*>(state_ptr);
-        auto typeBuilder = [](mlir::Builder& builder,
-                              llvm::ArrayRef<mlir::Type> argTypes,
-                              llvm::ArrayRef<mlir::Type> resTypes,
-                              mlir::function_interface_impl::VariadicFlag,
-                              std::string&) -> mlir::Type {
-          return builder.getFunctionType(argTypes, resTypes);
-        };
-        return !mlir::function_interface_impl::parseFunctionOp(
-            *p, state, /*allowVariadic=*/false,
-            mlir::StringAttr::get(state.getContext(), "function_type"),
-            typeBuilder, mlir::StringAttr::get(state.getContext(), "arg_attrs"),
-            mlir::StringAttr::get(state.getContext(), "res_attrs"));
-      });
-
   // mlir::function_interface_impl::printFunctionOp — pretty-prints the op.
   // Requires that the op has been looked up as a FunctionOpInterface.
   Sregister_symbol(

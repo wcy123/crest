@@ -1,8 +1,7 @@
 #!r6rs
 ;; Mirrors mlir/Interfaces/FunctionInterfaces.h
 (library (mlir Interfaces FunctionInterfaces ffi)
-  (export %mlir::function_interface_impl::parseFunctionOp
-          %mlir::OperationName::getStringRef
+  (export %mlir::OperationName::getStringRef
           %crest::FunctionOpInterface::getInterfaceID
           %crest::SymbolOpInterface::getInterfaceID
           %crest::ArgAndResultAttrsOpInterface::getInterfaceID
@@ -28,10 +27,6 @@
 
   (define %crest::FunctionOpInterface::getConcept
     (foreign-procedure "crest::FunctionOpInterface::getConcept" (uptr) uptr))
-
-  (define %mlir::function_interface_impl::parseFunctionOp
-    (foreign-procedure "mlir::function_interface_impl::parseFunctionOp"
-                       (uptr uptr) boolean))
 
   (define %mlir::function_interface_impl::printFunctionOp
     (foreign-procedure "mlir::function_interface_impl::printFunctionOp"
