@@ -25,7 +25,8 @@
     %mlir::MLIRContext::loadAllAvailableDialects
     %mlir::MLIRContext::printOpOnDiagnostic
     %mlir::MLIRContext::shouldPrintOpOnDiagnostic
-    %mlir::MLIRContext::printStackTraceOnDiagnostic)
+    %mlir::MLIRContext::printStackTraceOnDiagnostic
+    %mlir::parseSourceFile)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::MLIRContext::new — allocate a new MLIRContext on the heap.
@@ -118,5 +119,9 @@
   ;; @note         Defined in lib/Bindings/IR/MLIRContext.cpp
   (define %mlir::MLIRContext::printStackTraceOnDiagnostic
     (foreign-procedure "mlir_ir_mlir_context_print_stack_trace_on_diagnostic" (uptr int) void))
+
+
+  (define %mlir::parseSourceFile
+    (foreign-procedure "mlir::parseSourceFile" (uptr string) uptr))
 
   ) ;; end library (mlir IR MLIRContext ffi)

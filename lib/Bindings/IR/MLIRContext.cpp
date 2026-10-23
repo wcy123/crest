@@ -6,8 +6,13 @@
 
 #include "MLIRContext.h"
 #include "../Support/SchemeWrapper.h"
+#include "llvm/Support/SourceMgr.h"
+#include "mlir/IR/AsmState.h"
+#include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/Dialect.h"
 #include "mlir/IR/MLIRContext.h"
+#include "mlir/IR/OwningOpRef.h"
+#include "mlir/Parser/Parser.h"
 #include <cstdint>
 
 namespace crest {
@@ -83,6 +88,22 @@ void registerIRMLIRContextBindings() {
       (void*)+[](uint64_t ctx_ptr, int enable) -> void {
         reinterpret_cast<mlir::MLIRContext*>(ctx_ptr)
             ->printStackTraceOnDiagnostic(enable != 0);
+      });
+
+  // mlir::parseSourceFile — parse an MLIR text file; returns Operation* or 0.
+  Sregister_symbol(
+      "mlir::parseSourceFile",
+      (void*)+[](uint64_t ctx_ptr, const char* filename) -> uint64_t {
+        auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+        // verifyAfterParse=false: skip structural verification so that
+        // dynamic ops without Terminator/HasParent traits can be parsed.
+        mlir::ParserConfig config(ctx, /*verifyAfterParse=*/false);
+        mlir::OwningOpRef<mlir::ModuleOp> module =
+            mlir::parseSourceFile<mlir::ModuleOp>(filename, config);
+        if (!module) {
+          return 0;
+        }
+        return reinterpret_cast<uint64_t>(module.release().getOperation());
       });
 }
 } // namespace crest

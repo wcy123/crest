@@ -1,7 +1,8 @@
 #!r6rs
 ;; Mirrors mlir/Interfaces/FunctionInterfaces.h
 (library (mlir Interfaces FunctionInterfaces)
-  (export mlir::OperationName::getStringRef
+  (export mlir::function_interface_impl::parseFunctionOp
+          mlir::OperationName::getStringRef
           crest::FunctionOpInterface::getInterfaceID
           crest::SymbolOpInterface::getInterfaceID
           crest::ArgAndResultAttrsOpInterface::getInterfaceID
@@ -10,6 +11,9 @@
           mlir::function_interface_impl::printFunctionOp)
   (import (rnrs)
           (mlir Interfaces FunctionInterfaces ffi))
+
+  (define mlir::function_interface_impl::parseFunctionOp
+    %mlir::function_interface_impl::parseFunctionOp)
 
   (define mlir::OperationName::getStringRef
     %mlir::OperationName::getStringRef)
