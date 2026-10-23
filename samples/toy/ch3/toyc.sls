@@ -3,10 +3,11 @@
 ;;
 ;; Arguments via environment:
 ;;   TOYC_FILE    input .toy source file or .mlir file
-;;   TOYC_ACTION  ast | mlir | mlir-opt  (default: none)
+;;   TOYC_ACTION  ast | mlir  (default: none)
+;;   TOYC_OPT     1 | true  — enable canonicalization passes (mirrors --opt)
 ;;
 ;; When TOYC_FILE ends in .mlir the file is parsed directly (mirrors Ch3's -x mlir).
-;; mlir-opt runs the four canonicalization patterns before dumping MLIR.
+;; When TOYC_OPT is set, the four canonicalization patterns run before dumping MLIR.
 (library (toy ch3 toyc)
   (export run-pass)
   (import (chezscheme)
@@ -68,18 +69,18 @@
   (define (%%module-op->op m)
     (if (integer? m) m (mlir::ModuleOp::getOperation m)))
 
+  (define (%%opt-enabled?)
+    (let ([v (getenv "TOYC_OPT")])
+      (and v (not (member v '("" "0" "false"))))))
+
   (define (%%dump-mlir filename)
     (let-values ([(ctx module-op) (%%build-module filename)])
-      (display (mlir::Operation::print (%%module-op->op module-op)))
-      (newline)))
-
-  (define (%%dump-mlir-opt filename)
-    (let-values ([(ctx module-op) (%%build-module filename)])
       (let ([op (%%module-op->op module-op)])
-        (with-current-MLIRContext ctx
-          (with-RewritePatternSet (patterns ctx)
-            (toy:add-canonicalization-patterns! patterns)
-            (mlir::applyPatternsGreedily op patterns)))
+        (when (%%opt-enabled?)
+          (with-current-MLIRContext ctx
+            (with-RewritePatternSet (patterns ctx)
+              (toy:add-canonicalization-patterns! patterns)
+              (mlir::applyPatternsGreedily op patterns))))
         (display (mlir::Operation::print op))
         (newline))))
 
@@ -90,10 +91,9 @@
         (display "TOYC_FILE not set\n" (current-error-port))
         (exit 1))
       (cond
-       [(equal? action "ast")      (%%dump-ast      filename)]
-       [(equal? action "mlir")     (%%dump-mlir     filename)]
-       [(equal? action "mlir-opt") (%%dump-mlir-opt filename)]
+       [(equal? action "ast")  (%%dump-ast  filename)]
+       [(equal? action "mlir") (%%dump-mlir filename)]
        [else
-        (display "No action — set TOYC_ACTION=ast|mlir|mlir-opt\n"
+        (display "No action — set TOYC_ACTION=ast|mlir\n"
                  (current-error-port))])))
   )

@@ -391,6 +391,15 @@ void registerIROperationBindings() {
         }
         reinterpret_cast<mlir::Operation*>(op_ptr)->dump();
       });
+
+  // mlir::OperationName::getStringRef — return the fully-qualified op name.
+  // Mirrors mlir/IR/OperationSupport.h OperationName::getStringRef().
+  Sregister_symbol(
+      "mlir::OperationName::getStringRef",
+      (void*)+[](uint64_t op_name_ptr) -> const char* {
+        auto* name = reinterpret_cast<mlir::OperationName*>(op_name_ptr);
+        return name->getStringRef().data();
+      });
 }
 
 } // namespace crest
