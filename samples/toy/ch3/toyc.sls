@@ -2,11 +2,11 @@
 ;; Mirrors mlir/examples/toy/Ch3/toyc.cpp
 ;;
 ;; Arguments via environment:
-;;   TOYC_FILE    input .toy file
+;;   TOYC_FILE    input .toy source file or .mlir file
 ;;   TOYC_ACTION  ast | mlir | mlir-opt  (default: none)
 ;;
-;; mlir-opt runs the four canonicalization patterns before dumping MLIR,
-;; mirroring Ch3's --opt flag + createCanonicalizerPass().
+;; When TOYC_FILE ends in .mlir the file is parsed directly (mirrors Ch3's -x mlir).
+;; mlir-opt runs the four canonicalization patterns before dumping MLIR.
 (library (toy ch3 toyc)
   (export run-pass)
   (import (chezscheme)
@@ -33,7 +33,8 @@
       (unless module-ast (exit 1))
       (toy:dump module-ast)))
 
-  (define (%%build-module filename)
+  ;; Load a .toy file through the AST parser + mlir-gen.
+  (define (%%build-module-from-toy filename)
     (let ([module-ast (parse-input-file filename)])
       (unless module-ast (exit 1))
       (let* ([ctx       (mlir::MLIRContext::new)]
@@ -43,19 +44,44 @@
         (unless module-op (exit 1))
         (values ctx module-op))))
 
+  ;; Load a .mlir file directly via mlir::parseSourceFile (mirrors Ch3's -x mlir).
+  (define (%%build-module-from-mlir filename)
+    (let* ([ctx       (mlir::MLIRContext::new)]
+           [_         (mlir::MLIRContext::allowUnregisteredDialects ctx #t)]
+           [_         (%%load-toy! ctx)]
+           [op        (mlir::parseSourceFile ctx filename)])
+      (when (zero? op)
+        (display (string-append "Failed to parse MLIR file: " filename "\n")
+                 (current-error-port))
+        (exit 1))
+      ;; parseSourceFile returns the ModuleOp's Operation* directly
+      (values ctx op)))
+
+  (define (%%build-module filename)
+    (if (let ([n (string-length filename)])
+          (and (>= n 5)
+               (string=? (substring filename (- n 5) n) ".mlir")))
+        (%%build-module-from-mlir filename)
+        (%%build-module-from-toy  filename)))
+
+  ;; %%module-op returns the raw Operation* for either source type.
+  (define (%%module-op->op m)
+    (if (integer? m) m (mlir::ModuleOp::getOperation m)))
+
   (define (%%dump-mlir filename)
     (let-values ([(ctx module-op) (%%build-module filename)])
-      (display (mlir::Operation::print (mlir::ModuleOp::getOperation module-op)))
+      (display (mlir::Operation::print (%%module-op->op module-op)))
       (newline)))
 
   (define (%%dump-mlir-opt filename)
     (let-values ([(ctx module-op) (%%build-module filename)])
-      (with-current-MLIRContext ctx
-        (with-RewritePatternSet (patterns ctx)
-          (toy:add-canonicalization-patterns! patterns)
-          (mlir::applyPatternsGreedily (mlir::ModuleOp::getOperation module-op) patterns)))
-      (display (mlir::Operation::print (mlir::ModuleOp::getOperation module-op)))
-      (newline)))
+      (let ([op (%%module-op->op module-op)])
+        (with-current-MLIRContext ctx
+          (with-RewritePatternSet (patterns ctx)
+            (toy:add-canonicalization-patterns! patterns)
+            (mlir::applyPatternsGreedily op patterns)))
+        (display (mlir::Operation::print op))
+        (newline))))
 
   (define (run-pass _op)
     (let ([filename (getenv "TOYC_FILE")]
