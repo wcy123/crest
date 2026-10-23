@@ -207,15 +207,6 @@ void registerInterfacesFunctionInterfacesBindings() {
         return reinterpret_cast<uint64_t>(&id);
       });
 
-  // mlir::OperationName::getStringRef — get the op's fully-qualified name
-  // string.
-  Sregister_symbol(
-      "mlir::OperationName::getStringRef",
-      (void*)+[](uint64_t op_name_ptr) -> const char* {
-        auto* name = reinterpret_cast<mlir::OperationName*>(op_name_ptr);
-        return name->getStringRef().data();
-      });
-
   // crest::FunctionOpInterface::getConcept — returns void* to the static
   // FunctionOpInterface::Concept for the given interface TypeID*.
   // The Scheme :get-registered-interface-for-op callback calls this with
