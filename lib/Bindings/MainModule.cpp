@@ -21,6 +21,7 @@
 #include "IR/Location.h"
 #include "IR/MLIRContext.h"
 #include "IR/OpBuilder.h"
+#include "IR/OpImplementation.h"
 #include "IR/OpResult.h"
 #include "IR/Operation.h"
 #include "IR/OperationState.h"
@@ -53,6 +54,7 @@ void registerMlirForeignFunctions() {
   registerCrestDynamicOpBindings();
   registerCrestTraitBindings();
   registerIRLocationBindings();
+  registerIROpImplementationBindings();
   registerIRBlockBindings();
   registerIRRegionBindings();
   registerIRBuiltinAttributesBindings();

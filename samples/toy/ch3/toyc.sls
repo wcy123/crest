@@ -21,6 +21,13 @@
           (toy ch3 mlir-gen)
           (toy ch3 combine))
 
+  ;; Force the toy dialect to load so its custom printers/parsers are
+  ;; registered. allowUnregisteredDialects lets ops be created without loading
+  ;; their dialect, so we call getOrLoadDialect explicitly after registration.
+  (define (%%load-toy! ctx)
+    (toy:register! ctx)
+    (mlir::MLIRContext::getOrLoadDialect ctx "toy"))
+
   (define (%%dump-ast filename)
     (let ([module-ast (parse-input-file filename)])
       (unless module-ast (exit 1))
@@ -31,7 +38,7 @@
       (unless module-ast (exit 1))
       (let* ([ctx       (mlir::MLIRContext::new)]
              [_         (mlir::MLIRContext::allowUnregisteredDialects ctx #t)]
-             [_         (toy:register! ctx)]
+             [_         (%%load-toy! ctx)]
              [module-op (mlir-gen ctx module-ast)])
         (unless module-op (exit 1))
         (values ctx module-op))))

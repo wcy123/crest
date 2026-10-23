@@ -25,6 +25,8 @@ add_library(CrestBindings STATIC
   IR/Location.cpp
   IR/Location.h
   IR/MLIRContext.cpp
+  IR/OpImplementation.cpp
+  IR/OpImplementation.h
   IR/MLIRContext.h
   IR/OpBuilder.cpp
   IR/OpBuilder.h
