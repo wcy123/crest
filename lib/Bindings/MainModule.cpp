@@ -21,6 +21,7 @@
 #include "IR/Location.h"
 #include "IR/MLIRContext.h"
 #include "IR/OpBuilder.h"
+#include "IR/OpImplementation.h"
 #include "IR/OpResult.h"
 #include "IR/Operation.h"
 #include "IR/OperationState.h"
@@ -29,6 +30,7 @@
 #include "IR/Type.h"
 #include "IR/Value.h"
 #include "Interfaces/DestinationStyleOp.h"
+#include "Interfaces/FunctionInterfaces.h"
 #include "Support/ArrayRef.h"
 #include "Support/CrestObject.h"
 #include "Support/Logging.h"
@@ -49,10 +51,12 @@ void registerMlirForeignFunctions() {
   registerDialectShapeBindings();
   registerDialectTensorBindings();
   registerInterfacesDpsBindings();
+  registerInterfacesFunctionInterfacesBindings();
   registerIRExtensibleDialectBindings();
   registerCrestDynamicOpBindings();
   registerCrestTraitBindings();
   registerIRLocationBindings();
+  registerIROpImplementationBindings();
   registerIRBlockBindings();
   registerIRRegionBindings();
   registerIRBuiltinAttributesBindings();

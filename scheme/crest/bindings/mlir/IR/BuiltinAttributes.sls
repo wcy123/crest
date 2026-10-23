@@ -51,6 +51,8 @@
     mlir::DenseI32ArrayAttr::intoArrayRef
     mlir::DenseElementsAttr::getSplatValue<APFloat>
     mlir::DenseElementsAttr::getSplatValue<APInt>
+    mlir::DenseElementsAttr::getType
+    mlir::DenseElementsAttr::reshape
     mlir::DenseI32ArrayAttr::toVector
     mlir::DenseI64ArrayAttr::toVector
     )
@@ -255,6 +257,8 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Direct alias for %mlir::DenseElementsAttr::getSplatValue<APInt>
   (define mlir::DenseElementsAttr::getSplatValue<APInt>    %mlir::DenseElementsAttr::getSplatValue<APInt>)
+  (define mlir::DenseElementsAttr::getType    %mlir::DenseElementsAttr::getType)
+  (define mlir::DenseElementsAttr::reshape    %mlir::DenseElementsAttr::reshape)
 
   ;; @brief mlir::DenseI32ArrayAttr::toVector — convert a DenseI32ArrayAttr to a Scheme vector.
   ;; @param attr   mlir::DenseI32ArrayAttr opaque pointer uptr; raises error if null or wrong type

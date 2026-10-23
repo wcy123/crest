@@ -8,97 +8,88 @@
           (crest dialect ast)
           (crest dialect expand utils)
           (crest dialect expand verifiers)
+          (crest dialect expand interfaces)
           (mlir IR Operation))
 
-  ;; (toy.constant? op) → bool
+  ;; ── Accessor generators ────────────────────────────────────────────────────
+
   (define (generate-isa ctx full-name)
     (with-syntax ([isa?   (%%id ctx full-name "?")]
                   [name-s (%%id->str full-name)])
       #'(define (isa? op)
           (string=? (mlir::Operation::getName op) name-s))))
 
-  ;; (toy.constant:input op) → mlir::Value  for operand at index
   (define (generate-operand-accessor ctx full-name field index)
     (with-syntax ([id  (%%id ctx full-name ":" (operand-field-name field))]
                   [idx index])
-      #'(define (id op)
-          (mlir::Operation::getOperand op idx))))
+      #'(define (id op) (mlir::Operation::getOperand op idx))))
 
-  ;; (toy.constant:value op) → mlir::Attribute  for named attribute
   (define (generate-attribute-accessor ctx full-name field)
     (with-syntax ([id    (%%id ctx full-name ":" (attribute-field-name field))]
                   [aname (%%id->str (attribute-field-name field))])
-      #'(define (id op)
-          (mlir::Operation::getAttr op aname))))
+      #'(define (id op) (mlir::Operation::getAttr op aname))))
 
-  ;; (toy.constant:output op) → mlir::Value  for result at index
   (define (generate-result-accessor ctx full-name field index)
     (with-syntax ([id  (%%id ctx full-name ":" (result-field-name field))]
                   [idx index])
-      #'(define (id op)
-          (mlir::Operation::getResult op idx))))
+      #'(define (id op) (mlir::Operation::getResult op idx))))
 
-  ;; All definitions for one op.
+  ;; All accessor defines for one op (isa?, operand, attr, result accessors).
   (define (generate-op-defs ctx op)
     (let ([full-name (%%id ctx ctx "." (op-parse-name op))])
       (append
        (list (generate-isa ctx full-name))
-       (loop :for field :in (op-parse-operands  op) :for idx :from 0
-             :collect (generate-operand-accessor  ctx full-name field idx))
-       (loop :for field :in (op-parse-attributes op)
-             :collect (generate-attribute-accessor ctx full-name field))
-       (loop :for field :in (op-parse-results    op) :for idx :from 0
-             :collect (generate-result-accessor    ctx full-name field idx)))))
+       (loop :for f :in (op-parse-operands  op) :for i :from 0
+             :collect (generate-operand-accessor  ctx full-name f i))
+       (loop :for f :in (op-parse-attributes op)
+             :collect (generate-attribute-accessor ctx full-name f))
+       (loop :for f :in (op-parse-results    op) :for i :from 0
+             :collect (generate-result-accessor    ctx full-name f i)))))
 
-  ;; All op definitions for a dialect — flattened list of syntax objects.
   (define (generate-all-op-defs ctx ops)
     (apply append (map (lambda (op) (generate-op-defs ctx op)) ops)))
 
-  ;; Build the 7-slot op-callbacks vector.
+  ;; ── Registration generators ────────────────────────────────────────────────
+
+  ;; 7-slot op-callbacks vector (verify inlined, rest forwarded verbatim).
   (define (%%op-cbs ctx full-name op)
-    (let* ([op-cbs (op-parse-op-cbs op)]
-           [v      (list->vector (map (lambda (i) (or (vector-ref op-cbs i) #'#f))
-                                      '(0 1 2 3 4 5 6)))])
-      (vector-set! v 0 (generate-op-verify-slot ctx full-name op (vector-ref op-cbs 0)))
+    (let* ([cbs (op-parse-op-cbs op)]
+           [v   (list->vector (map (lambda (i) (or (vector-ref cbs i) #'#f))
+                                   '(0 1 2 3 4 5 6)))])
+      (vector-set! v 0 (generate-op-verify-slot ctx full-name op (vector-ref cbs 0)))
       (vector->list v)))
 
-  ;; Register call syntax for one op — passes cbs vector directly to C FFI.
-  ;; reg-op-stx — syntax for %crest::register-dynamic-op! from the macro's definition site.
+  ;; (reg-op dialect-ptr "toy.constant" (vector ...)) call for one op.
   (define (%%generate-register-op! ctx op-prefix op reg-op-stx)
-    (let* ([full-name (%%id ctx ctx "." (op-parse-name op))]
-           [name-str  (string-append op-prefix (%%id->str (op-parse-name op)))]
-           [op-callbacks (%%op-cbs ctx full-name op)])
+    (let ([full-name    (%%id ctx ctx "." (op-parse-name op))]
+          [name-str     (string-append op-prefix (%%id->str (op-parse-name op)))])
       (with-syntax ([reg-op reg-op-stx]
-                    [op-name name-str] [(op-callbacks ...) op-callbacks])
-        #'(reg-op dialect-ptr op-name (vector op-callbacks ...)))))
+                    [op-name name-str]
+                    [(cb ...) (%%op-cbs ctx full-name op)])
+        #'(reg-op dialect-ptr op-name (vector cb ...)))))
 
-  ;; Dialect callbacks vector with slot 0 wired to %%<dialect>:initialize.
-  (define (%%dialect-cbs ctx dialect-cbs)
-    (let ([v (list->vector (map (lambda (i) (or (vector-ref dialect-cbs i) #'#f))
-                                '(0 1 2 3 4 5 6 7 8 9 10 11)))])
-      (vector-set! v 0 (%%id ctx "%%" ctx ":initialize"))
-      (vector->list v)))
-
-  ;; (toy:register! ctx) — calls %crest::register-dialect! with all 12 callbacks.
-  ;; reg-dialect-stx — syntax for %crest::register-dialect! from the macro's definition site.
-  (define (%%generate-register! ctx dialect-cbs reg-dialect-stx)
-    (with-syntax
-        ([toy.register! (%%id ctx ctx ":register!")]
-         [reg-dialect   reg-dialect-stx]
-         [name-str      (%%id->str ctx)]
-         [(cb ...)      (%%dialect-cbs ctx dialect-cbs)])
+  ;; (toy:register! ctx) form — registers the dialect with all 12 callbacks.
+  (define (%%generate-register! ctx dialect-cbs ops reg-dialect-stx)
+    (with-syntax ([toy.register! (%%id ctx ctx ":register!")]
+                  [reg-dialect   reg-dialect-stx]
+                  [name-str      (%%id->str ctx)]
+                  [(cb ...)      (dialect-cbs-with-interfaces ctx dialect-cbs ops)])
       #'(define (toy.register! ctx)
           (reg-dialect ctx name-str (vector cb ...)))))
 
-  ;; Aggregates %%<dialect>:initialize and <dialect>:register! into a list of defines.
-  ;; reg-op-stx / reg-dialect-stx — syntax refs to FFI fns from the macro's definition site,
-  ;; passed in so the generated identifiers carry the correct (crest dialect ffi) scope.
+  ;; Top-level: %%<dialect>:initialize + optional interface dispatch + <dialect>:register!
   (define (generate-register-dialect ctx dialect-cbs ops reg-op-stx reg-dialect-stx)
-    (let ([op-prefix (string-append (%%id->str ctx) ".")])
-      (with-syntax
-          ([%%toy.initialize (%%id ctx "%%" ctx ":initialize")]
-           [(op-reg ...)     (map (lambda (op) (%%generate-register-op! ctx op-prefix op reg-op-stx)) ops)])
-        (list
-         #'(define (%%toy.initialize dialect-ptr) op-reg ...)
-         (%%generate-register! ctx dialect-cbs reg-dialect-stx)))))
-  )
+    (let ([op-prefix  (string-append (%%id->str ctx) ".")]
+          [auto-iface (generate-interface-dispatch ctx ops)])
+      (let ([base-defs
+             (with-syntax
+                 ([%%toy.initialize (%%id ctx "%%" ctx ":initialize")]
+                  [(op-reg ...)     (map (lambda (op)
+                                           (%%generate-register-op! ctx op-prefix op reg-op-stx))
+                                         ops)])
+               (list
+                #'(define (%%toy.initialize dialect-ptr) op-reg ...)
+                (%%generate-register! ctx dialect-cbs ops reg-dialect-stx)))])
+        (if auto-iface (cons auto-iface base-defs) base-defs))))
+
+  ) ;; end library (crest dialect expand)

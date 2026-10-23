@@ -45,9 +45,17 @@ make_parse_fn(LockedSchemeObject cb) {
 static mlir::OperationName::PrintAssemblyFn
 make_print_fn(LockedSchemeObject cb) {
   return [cb = std::move(cb)](mlir::Operation* op, mlir::OpAsmPrinter& printer,
-                              llvm::StringRef name) {
-    std::string name_str = name.str();
-    scheme_call(cb.get(), op, &printer, name_str.c_str());
+                              llvm::StringRef defaultDialect) {
+    // printAssembly must print the op name first, then the rest.
+    llvm::StringRef opName = op->getName().getStringRef();
+    if (!defaultDialect.empty() &&
+        opName.starts_with((defaultDialect + ".").str())) {
+      opName = opName.drop_front(defaultDialect.size() + 1);
+    }
+    printer << opName;
+    // Scheme callback prints the rest: operands, attrs, result types.
+    std::string op_name_str = op->getName().getStringRef().str();
+    scheme_call(cb.get(), op, &printer, op_name_str.c_str());
   };
 }
 
@@ -103,12 +111,20 @@ void CrestOp::registerInto(mlir::ExtensibleDialect* dialect,
   auto verify_fn = make_verify_fn(std::move(cbs.verify));
   auto verify_region_fn = make_verify_fn(std::move(cbs.verify_regions));
 
+  // DynamicOpDefinition::get adds "dialect_namespace." prefix internally.
+  // op_name arrives as "toy.constant" (fully qualified); strip the prefix.
+  llvm::StringRef unqualified = op_name;
+  llvm::StringRef ns = dialect->getNamespace();
+  if (unqualified.starts_with((ns + ".").str())) {
+    unqualified = unqualified.drop_front(ns.size() + 1);
+  }
+
   // Use the 2-arg get() so MLIR installs its own generic assembly format
   // defaults (printGenericOp for print, parse-error for parse).
   // Then override each slot individually via set*() if the user provided
   // a callback — no branching on combinations of slots.
   auto def = mlir::DynamicOpDefinition::get(
-      op_name, dialect, std::move(verify_fn), std::move(verify_region_fn));
+      unqualified, dialect, std::move(verify_fn), std::move(verify_region_fn));
   if (cbs.parse) {
     def->setParseFn(make_parse_fn(std::move(*cbs.parse)));
   }

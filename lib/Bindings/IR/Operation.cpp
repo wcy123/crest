@@ -258,7 +258,8 @@ void registerIROperationBindings() {
         }
         std::string str;
         llvm::raw_string_ostream os(str);
-        reinterpret_cast<mlir::Operation*>(op_ptr)->print(os);
+        reinterpret_cast<mlir::Operation*>(op_ptr)->print(
+            os, mlir::OpPrintingFlags().assumeVerified());
         return Sstring(str.c_str());
       });
   Sregister_symbol(

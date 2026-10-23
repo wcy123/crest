@@ -352,6 +352,13 @@
                 (op-name? #'op))
            (let-values ([(attr-fns region-fns loc types remaining)
                          (parse-modifiers-flat #'rest)])
+             (let ([nvars  (length (syntax->list #'(v ...)))]
+                   [ntypes (length types)])
+               (unless (eqv? nvars ntypes)
+                 (syntax-violation 'begin-mlir-code
+                                   (string-append "result variable count (" (number->string nvars)
+                                                  ") does not match result type count (" (number->string ntypes) ")")
+                                   #'op)))
              (values (make-ast-emit-op
                       (syntax->list #'(v ...)) (op-name->str #'op) #'op
                       (value-operands #'(operands ...))

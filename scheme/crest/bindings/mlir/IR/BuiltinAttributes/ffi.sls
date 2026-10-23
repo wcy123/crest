@@ -46,6 +46,8 @@
     %mlir::DenseI32ArrayAttr::intoArrayRef
     %mlir::DenseElementsAttr::getSplatValue<APFloat>
     %mlir::DenseElementsAttr::getSplatValue<APInt>
+    %mlir::DenseElementsAttr::getType
+    %mlir::DenseElementsAttr::reshape
     %mlir::DenseI32ArrayAttr::toVector
     %mlir::DenseI64ArrayAttr::toVector)
   (import (rnrs) (only (chezscheme) foreign-procedure))
@@ -284,5 +286,12 @@
   ;; @see        mlir/IR/BuiltinAttributes.h
   (define %mlir::UnitAttr::get
     (foreign-procedure "mlir::UnitAttr::get" (uptr) uptr))
+
+
+  (define %mlir::DenseElementsAttr::getType
+    (foreign-procedure "mlir::DenseElementsAttr::getType" (uptr) uptr))
+
+  (define %mlir::DenseElementsAttr::reshape
+    (foreign-procedure "mlir::DenseElementsAttr::reshape" (uptr uptr) uptr))
 
   ) ;; end library (mlir IR BuiltinAttributes ffi)

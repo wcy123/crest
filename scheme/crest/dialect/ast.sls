@@ -16,6 +16,7 @@
           op-parse-attributes
           op-parse-results
           op-parse-op-cbs
+          op-parse-interfaces
           operand-field
           make-operand-field
           operand-field?
@@ -92,9 +93,13 @@
   ;;                  4  :fold                          (op) → bool
   ;;                  5  :get-canonicalization-patterns (pattern-set) → void
   ;;                  6  :populate-default-attrs        (op-name attrs) → void
+  ;; interfaces — list of concept-provider syntax objects.
+  ;; Each provider is a Scheme expression (uptr interface-id) → uptr (concept* or 0).
+  ;; Auto-generated :get-registered-interface-for-op dispatches through these.
   (define-record-type op-parse
     (fields (immutable name       op-parse-name)
             (immutable operands   op-parse-operands)
             (immutable attributes op-parse-attributes)
             (immutable results    op-parse-results)
-            (immutable op-cbs     op-parse-op-cbs))))
+            (immutable op-cbs     op-parse-op-cbs)
+            (immutable interfaces op-parse-interfaces))))

@@ -8,6 +8,7 @@
           (crest dialect expand utils)
           (crest pattern-dsl srcloc)
           (mlir IR Operation)
+          (only (mlir IR Value) mlir::Value::getType)
           (mlir IR BuiltinAttributes))
 
   ;; Single attribute check — returns a CHECK FORM (not a define).
@@ -48,7 +49,9 @@
                     [result-type type-stx]
                     [result-idx  index]
                     [err         err-msg])
-        #'(or (result-type (mlir::Operation::getResult op result-idx))
+        ;; Type predicates take a mlir::Type*, not a Value*.
+        ;; Wrap the result Value with mlir::Value::getType before checking.
+        #'(or (result-type (mlir::Value::getType (mlir::Operation::getResult op result-idx)))
               (begin (mlir::Operation::emitError op err) #f)))))
 
   ;; Check that the number of results matches the declaration.

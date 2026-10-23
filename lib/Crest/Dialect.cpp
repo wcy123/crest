@@ -62,7 +62,9 @@ static void insertDialectFactory(mlir::MLIRContext* ctx, mlir::TypeID id,
 
 CrestDialect::CrestDialect(llvm::StringRef name, mlir::MLIRContext* ctx,
                            mlir::TypeID id, Callbacks cbs)
-    : mlir::ExtensibleDialect(name, ctx, id), cbs_(std::move(cbs)) {}
+    : mlir::ExtensibleDialect(name, ctx, id), cbs_(std::move(cbs)) {
+  initialize();
+}
 
 bool CrestDialect::classof(const mlir::Dialect* d) {
   // Limitation: returns true for any ExtensibleDialect, not just CrestDialect.

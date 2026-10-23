@@ -462,6 +462,32 @@ void registerIRBuiltinAttributesBindings() {
         }
         return v;
       });
+
+  // mlir::DenseElementsAttr::getType — return the ShapedType of a
+  // DenseElementsAttr.
+  Sregister_symbol(
+      "mlir::DenseElementsAttr::getType",
+      (void*)+[](uint64_t attr_ptr) -> uint64_t {
+        auto attr = mlir::cast<mlir::DenseElementsAttr>(
+            mlir::Attribute::getFromOpaquePointer(
+                reinterpret_cast<void*>(attr_ptr)));
+        return reinterpret_cast<uint64_t>(attr.getType().getAsOpaquePointer());
+      });
+
+  // mlir::DenseElementsAttr::reshape — reshape a dense attr to a new
+  // ShapedType.
+  Sregister_symbol(
+      "mlir::DenseElementsAttr::reshape",
+      (void*)+[](uint64_t attr_ptr, uint64_t type_ptr) -> uint64_t {
+        auto attr = mlir::cast<mlir::DenseElementsAttr>(
+            mlir::Attribute::getFromOpaquePointer(
+                reinterpret_cast<void*>(attr_ptr)));
+        auto shaped =
+            mlir::cast<mlir::ShapedType>(mlir::Type::getFromOpaquePointer(
+                reinterpret_cast<void*>(type_ptr)));
+        return reinterpret_cast<uint64_t>(
+            attr.reshape(shaped).getAsOpaquePointer());
+      });
 }
 
 } // namespace crest

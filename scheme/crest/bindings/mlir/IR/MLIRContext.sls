@@ -34,7 +34,8 @@
     mlir::MLIRContext::loadAllAvailableDialects
     mlir::MLIRContext::printOpOnDiagnostic
     mlir::MLIRContext::shouldPrintOpOnDiagnostic?
-    mlir::MLIRContext::printStackTraceOnDiagnostic)
+    mlir::MLIRContext::printStackTraceOnDiagnostic
+    mlir::parseSourceFile)
   (import (rnrs)
           (only (chezscheme) make-parameter parameterize)
           (mlir IR MLIRContext ffi))
@@ -158,5 +159,9 @@
          (case-lambda
           [(arg ...)     (raw (current-MLIRContext) arg ...)]
           [(ctx arg ...) (raw ctx arg ...)]))]))
+
+  ;; mlir::parseSourceFile — parse an MLIR text file; returns Operation* (ModuleOp) or 0.
+  (define (mlir::parseSourceFile ctx filename)
+    (%mlir::parseSourceFile ctx filename))
 
   ) ;; end library (mlir IR MLIRContext)
