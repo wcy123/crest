@@ -7,8 +7,11 @@
 
 #include "OpImplementation.h"
 #include "../Support/SchemeWrapper.h"
+#include "mlir/IR/BuiltinAttributes.h"
+#include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/Operation.h"
+#include "mlir/IR/Region.h"
 #include "mlir/IR/Value.h"
 
 namespace crest {
@@ -119,6 +122,71 @@ void registerIROpImplementationBindings() {
         auto attr = mlir::Attribute::getFromOpaquePointer(
             reinterpret_cast<void*>(attr_ptr));
         return mlir::cast<mlir::StringAttr>(attr).getValue().data();
+      });
+
+  // mlir::TypeAttr::getValue — extract the underlying Type from a TypeAttr.
+  Sregister_symbol(
+      "mlir::TypeAttr::getValue", (void*)+[](uint64_t attr_ptr) -> uint64_t {
+        auto attr = mlir::Attribute::getFromOpaquePointer(
+            reinterpret_cast<void*>(attr_ptr));
+        return reinterpret_cast<uint64_t>(
+            mlir::cast<mlir::TypeAttr>(attr).getValue().getAsOpaquePointer());
+      });
+
+  // mlir::FunctionType::getNumInputs — number of input types.
+  Sregister_symbol(
+      "mlir::FunctionType::getNumInputs",
+      (void*)+[](uint64_t type_ptr) -> uint64_t {
+        auto t =
+            mlir::Type::getFromOpaquePointer(reinterpret_cast<void*>(type_ptr));
+        return mlir::cast<mlir::FunctionType>(t).getNumInputs();
+      });
+
+  // mlir::FunctionType::getInput — i-th input type.
+  Sregister_symbol(
+      "mlir::FunctionType::getInput",
+      (void*)+[](uint64_t type_ptr, uint64_t i) -> uint64_t {
+        auto t =
+            mlir::Type::getFromOpaquePointer(reinterpret_cast<void*>(type_ptr));
+        return reinterpret_cast<uint64_t>(
+            mlir::cast<mlir::FunctionType>(t)
+                .getInput(static_cast<unsigned>(i))
+                .getAsOpaquePointer());
+      });
+
+  // mlir::FunctionType::getNumResults — number of result types.
+  Sregister_symbol(
+      "mlir::FunctionType::getNumResults",
+      (void*)+[](uint64_t type_ptr) -> uint64_t {
+        auto t =
+            mlir::Type::getFromOpaquePointer(reinterpret_cast<void*>(type_ptr));
+        return mlir::cast<mlir::FunctionType>(t).getNumResults();
+      });
+
+  // mlir::FunctionType::getResult — i-th result type.
+  Sregister_symbol(
+      "mlir::FunctionType::getResult",
+      (void*)+[](uint64_t type_ptr, uint64_t i) -> uint64_t {
+        auto t =
+            mlir::Type::getFromOpaquePointer(reinterpret_cast<void*>(type_ptr));
+        return reinterpret_cast<uint64_t>(
+            mlir::cast<mlir::FunctionType>(t)
+                .getResult(static_cast<unsigned>(i))
+                .getAsOpaquePointer());
+      });
+
+  // mlir::OpAsmPrinter::printRegion — print a region with its blocks and ops.
+  // skip_entry_block_args: if #t, don't print the block label for the first
+  // block.
+  Sregister_symbol(
+      "mlir::OpAsmPrinter::printRegion",
+      (void*)+[](uint64_t printer_ptr, uint64_t region_ptr,
+                 int skip_entry_block_args,
+                 int print_block_terminators) -> void {
+        auto* p = reinterpret_cast<mlir::OpAsmPrinter*>(printer_ptr);
+        auto* r = reinterpret_cast<mlir::Region*>(region_ptr);
+        p->printRegion(*r, static_cast<bool>(skip_entry_block_args),
+                       static_cast<bool>(print_block_terminators));
       });
 }
 

@@ -11,7 +11,13 @@
           mlir::OpAsmPrinter::printFunctionalType
           mlir::OpAsmPrinter::printResultTypes
           mlir::OpAsmPrinter::printSymbolName
-          mlir::StringAttr::getValue)
+          mlir::OpAsmPrinter::printRegion
+          mlir::StringAttr::getValue
+          mlir::TypeAttr::getValue
+          mlir::FunctionType::getNumInputs
+          mlir::FunctionType::getInput
+          mlir::FunctionType::getNumResults
+          mlir::FunctionType::getResult)
   (import (rnrs)
           (mlir IR OpImplementation ffi))
 
@@ -47,5 +53,23 @@
 
   (define mlir::StringAttr::getValue
     %mlir::StringAttr::getValue)
+
+  (define mlir::TypeAttr::getValue
+    %mlir::TypeAttr::getValue)
+
+  (define mlir::FunctionType::getNumInputs
+    %mlir::FunctionType::getNumInputs)
+
+  (define mlir::FunctionType::getInput
+    %mlir::FunctionType::getInput)
+
+  (define mlir::FunctionType::getNumResults
+    %mlir::FunctionType::getNumResults)
+
+  (define mlir::FunctionType::getResult
+    %mlir::FunctionType::getResult)
+
+  (define mlir::OpAsmPrinter::printRegion
+    %mlir::OpAsmPrinter::printRegion)
 
   ) ;; end library (mlir IR OpImplementation)

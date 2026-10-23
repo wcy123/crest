@@ -14,6 +14,8 @@ add_library(CrestBindings STATIC
   Dialect/Tensor/Tensor.h
   Interfaces/DestinationStyleOp.cpp
   Interfaces/DestinationStyleOp.h
+  Interfaces/FunctionInterfaces.cpp
+  Interfaces/FunctionInterfaces.h
   IR/Block.cpp
   IR/Block.h
   IR/BuiltinAttributes.cpp
@@ -74,6 +76,7 @@ target_link_libraries(CrestBindings
   PUBLIC
     MLIRIR
     MLIRFuncDialect
+    MLIRFunctionInterfaces
     MLIRTensorDialect
     MLIRShapeDialect
     MLIRTransforms

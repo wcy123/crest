@@ -30,6 +30,7 @@
 #include "IR/Type.h"
 #include "IR/Value.h"
 #include "Interfaces/DestinationStyleOp.h"
+#include "Interfaces/FunctionInterfaces.h"
 #include "Support/ArrayRef.h"
 #include "Support/CrestObject.h"
 #include "Support/Logging.h"
@@ -50,6 +51,7 @@ void registerMlirForeignFunctions() {
   registerDialectShapeBindings();
   registerDialectTensorBindings();
   registerInterfacesDpsBindings();
+  registerInterfacesFunctionInterfacesBindings();
   registerIRExtensibleDialectBindings();
   registerCrestDynamicOpBindings();
   registerCrestTraitBindings();
