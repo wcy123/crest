@@ -8,7 +8,7 @@
           (crest dialect ast)
           (crest dialect expand utils)
           (crest dialect expand verifiers)
-          (crest dialect expand interfaces)
+          (crest dialect ffi)
           (mlir IR Operation))
 
   ;; ── Accessor generators ────────────────────────────────────────────────────
@@ -68,28 +68,84 @@
                     [(cb ...) (%%op-cbs ctx full-name op)])
         #'(reg-op dialect-ptr op-name (vector cb ...)))))
 
-  ;; (toy:register! ctx) form — registers the dialect with all 12 callbacks.
+  ;; Generate the auto interface-dispatch function from ops' :interfaces lists.
+  ;; Returns a syntax object for the define, or #f if no op has :interfaces.
+  (define (%%generate-interface-dispatch ctx ops)
+    (let* ([op-prefix (string-append (%%id->str ctx) ".")]
+           ;; Collect (full-op-name . providers) pairs for ops that declare interfaces
+           [entries   (filter (lambda (pair) (not (null? (cdr pair))))
+                              (map (lambda (op)
+                                     (cons (string-append op-prefix (%%id->str (op-parse-name op)))
+                                           (op-parse-interfaces op)))
+                                   ops))])
+      (if (null? entries)
+          #f
+          (with-syntax
+              ([auto-fn   (%%id ctx "%%" ctx ":get-registered-interface-for-op-auto")]
+               [getref    #'%mlir::OperationName::getStringRef]
+               [(clause ...)
+                (map (lambda (entry)
+                       (let ([op-name-str (car entry)]
+                             [providers   (cdr entry)])
+                         (with-syntax
+                             ([name-str op-name-str]
+                              [(prov ...) providers])
+                           #'[(string=? op-name name-str)
+                              (let try ([ps (list prov ...)])
+                                (if (null? ps) 0
+                                    (let ([r ((car ps) iface-id)])
+                                      (if (zero? r) (try (cdr ps)) r))))])))
+                     entries)])
+            #'(define (auto-fn iface-id op-name)
+                (let ([op-name (getref op-name)])
+                  (cond clause ... [else 0])))))))
+
+  ;; Dialect callbacks vector with slot 0 wired to %%<dialect>:initialize,
+  ;; and slot 11 combining auto-dispatch (from :interfaces) with user-provided.
+  (define (%%dialect-cbs ctx dialect-cbs ops)
+    (let* ([v            (list->vector (map (lambda (i) (or (vector-ref dialect-cbs i) #'#f))
+                                            '(0 1 2 3 4 5 6 7 8 9 10 11)))]
+           [auto-fn-stx  (%%id ctx "%%" ctx ":get-registered-interface-for-op-auto")]
+           ;; Check the raw vector for user-provided slot 11 (before (or ... #'#f) wrapping).
+           [user-iface   (vector-ref dialect-cbs 11)]
+           [has-ifaces   (exists (lambda (op) (not (null? (op-parse-interfaces op)))) ops)])
+      (vector-set! v 0 (%%id ctx "%%" ctx ":initialize"))
+      (when has-ifaces
+        (vector-set! v 11
+                     (if user-iface
+                         ;; auto first, user's callback as fallback
+                         (with-syntax ([auto auto-fn-stx] [user user-iface])
+                           #'(lambda (iface-id op-name)
+                               (let ([r (auto iface-id op-name)])
+                                 (if (zero? r) (user iface-id op-name) r))))
+                         ;; auto only — no user callback
+                         auto-fn-stx)))
+      (vector->list v)))
+
+  ;; (toy:register! ctx) — calls %crest::register-dialect! with all 12 callbacks.
+  ;; reg-dialect-stx — syntax for %crest::register-dialect! from the macro's definition site.
   (define (%%generate-register! ctx dialect-cbs ops reg-dialect-stx)
-    (with-syntax ([toy.register! (%%id ctx ctx ":register!")]
-                  [reg-dialect   reg-dialect-stx]
-                  [name-str      (%%id->str ctx)]
-                  [(cb ...)      (dialect-cbs-with-interfaces ctx dialect-cbs ops)])
+    (with-syntax
+        ([toy.register! (%%id ctx ctx ":register!")]
+         [reg-dialect   reg-dialect-stx]
+         [name-str      (%%id->str ctx)]
+         [(cb ...)      (%%dialect-cbs ctx dialect-cbs ops)])
       #'(define (toy.register! ctx)
           (reg-dialect ctx name-str (vector cb ...)))))
 
-  ;; Top-level: %%<dialect>:initialize + optional interface dispatch + <dialect>:register!
+  ;; Aggregates %%<dialect>:initialize, auto interface-dispatch, and
+  ;; <dialect>:register! into a list of defines.
   (define (generate-register-dialect ctx dialect-cbs ops reg-op-stx reg-dialect-stx)
-    (let ([op-prefix  (string-append (%%id->str ctx) ".")]
-          [auto-iface (generate-interface-dispatch ctx ops)])
-      (let ([base-defs
-             (with-syntax
-                 ([%%toy.initialize (%%id ctx "%%" ctx ":initialize")]
-                  [(op-reg ...)     (map (lambda (op)
-                                           (%%generate-register-op! ctx op-prefix op reg-op-stx))
-                                         ops)])
-               (list
-                #'(define (%%toy.initialize dialect-ptr) op-reg ...)
-                (%%generate-register! ctx dialect-cbs ops reg-dialect-stx)))])
-        (if auto-iface (cons auto-iface base-defs) base-defs))))
-
-  ) ;; end library (crest dialect expand)
+    (let* ([op-prefix   (string-append (%%id->str ctx) ".")]
+           [auto-iface  (%%generate-interface-dispatch ctx ops)]
+           [base-defs
+            (with-syntax
+                ([%%toy.initialize (%%id ctx "%%" ctx ":initialize")]
+                 [(op-reg ...)     (map (lambda (op) (%%generate-register-op! ctx op-prefix op reg-op-stx)) ops)])
+              (list
+               #'(define (%%toy.initialize dialect-ptr) op-reg ...)
+               (%%generate-register! ctx dialect-cbs ops reg-dialect-stx)))])
+      (if auto-iface
+          (cons auto-iface base-defs)
+          base-defs)))
+  )
