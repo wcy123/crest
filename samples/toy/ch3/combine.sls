@@ -7,7 +7,8 @@
 ;;   ReshapeReshapeOpt           — reshape(reshape(x)) → reshape(x)
 ;;   RedundantReshape            — reshape(x) → x  when types are identical
 ;;
-;; Four patterns from ToyCombine.cpp/td:
+;; FoldConstantReshape (reshape(constant(x)) → constant(x')) is omitted:
+;; it requires mlir::DenseElementsAttr::reshape which is not yet bound.
 (library (toy ch3 combine)
   (export toy:add-canonicalization-patterns!)
   (import (except (rnrs) =)
@@ -17,11 +18,6 @@
           (only (mlir IR Operation)
                 mlir::Operation::getResult
                 mlir::Operation::getName)
-          (only (mlir IR BuiltinAttributes)
-                mlir::DenseElementsAttr::reshape
-                mlir::DenseElementsAttr::getType)
-          (only (mlir IR Operation)
-                mlir::Operation::getAttr)
           (only (mlir Transforms DialectConversion)
                 add-rewrite-pattern)
           (crest))
@@ -69,30 +65,10 @@
     :rewrite %out :with
       %in)
 
-  ;; FoldConstantReshape: reshape(constant(x)) → constant(x')
-  ;; Mirrors FoldConstantReshapeOptPattern in ToyCombine.td
-  (define-rewrite-pattern (%%fold-constant-reshape op rewriter)
-    :if-match
-      %out = toy.reshape (%const)
-        :where
-      (string=? (mlir::Operation::getName
-                 (mlir::Value::getDefiningOp %const))
-                "toy.constant")
-    :then-let
-      ([!out-type  (mlir::Value::getType %out)]
-       [const-op   (mlir::Value::getDefiningOp %const)]
-       [old-attr   (mlir::Operation::getAttr const-op "value")]
-       [new-attr   (mlir::DenseElementsAttr::reshape old-attr !out-type)])
-    :rewrite %out :with
-      result = toy.constant ()
-      (value : new-attr)
-      -> !out-type)
-
-  ;; Register all four patterns into a RewritePatternSet.
+  ;; Register all three patterns into a RewritePatternSet.
   (define (toy:add-canonicalization-patterns! patterns)
     (add-rewrite-pattern patterns "toy.transpose" %%simplify-redundant-transpose 1)
     (add-rewrite-pattern patterns "toy.reshape"   %%reshape-reshape              1)
-    (add-rewrite-pattern patterns "toy.reshape"   %%redundant-reshape            2)
-    (add-rewrite-pattern patterns "toy.reshape"   %%fold-constant-reshape        1))
+    (add-rewrite-pattern patterns "toy.reshape"   %%redundant-reshape            2))
 
   ) ;; end library (toy ch3 combine)
