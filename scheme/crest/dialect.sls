@@ -30,6 +30,7 @@
           :operands
           :attributes
           :results
+          :interfaces
           :required
           :optional
           :variadic)
@@ -68,6 +69,7 @@
   (define :required                    ':required)
   (define :optional                    ':optional)
   (define :variadic                    ':variadic)
+  (define :interfaces                  ':interfaces)
 
 
   (define (%%dialect-slot-index key)
@@ -190,10 +192,12 @@
             (let ([operands   '()]
                   [attributes '()]
                   [results    '()]
+                  [interfaces '()]
                   [op-cbs     (make-vector 7 #f)])
               (let loop-sub ([stx sub-clauses-stx])
                 (syntax-case stx (:summary :description
                                            :operands :attributes :results
+                                           :interfaces
                                            :verify :verify-regions
                                            :parse :print :fold
                                            :required :optional
@@ -201,6 +205,10 @@
                                            :populate-default-attrs)
                   [(:summary     _ . rest)  (loop-sub #'rest)]
                   [(:description _ . rest)  (loop-sub #'rest)]
+                  [(:interfaces  (provider ...) . rest)
+                   (begin
+                     (set! interfaces (syntax->list #'(provider ...)))
+                     (loop-sub #'rest))]
                   [(:operands    (field ...) . rest)
                    (begin
                      (set! operands (map parse-op-operand (syntax->list #'(field ...))))
@@ -249,7 +257,7 @@
                                      "unknown clause — expected :operands, :attributes, :results, :summary, :description, or (:callback (args) body ...)"
                                      #'bad)]
                   [()
-                   (make-op-parse op-name-stx operands attributes results op-cbs)]))))
+                   (make-op-parse op-name-stx operands attributes results op-cbs interfaces)]))))
 
 
           (let loop ([stx clauses-stx])

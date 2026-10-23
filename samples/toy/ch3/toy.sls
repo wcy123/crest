@@ -16,7 +16,9 @@
           (mlir IR Block)
           (mlir IR Region)
           (mlir IR OpImplementation)
-          (mlir Interfaces FunctionInterfaces))
+          (only (mlir Interfaces FunctionInterfaces)
+                crest::FunctionOpInterface::getConcept
+                mlir::function_interface_impl::printFunctionOp))
 
   ;; Shared printer for binary ops (add, mul).
   ;; Mirrors printBinaryOp in Dialect.cpp:
@@ -118,10 +120,11 @@
 
     ;; FuncOp — toy function definition.
     ;; Format: toy.func @name(%arg0: type0, ...) -> (result_types) { body }
-    ;; Delegates to mlir::function_interface_impl::printFunctionOp via
-    ;; FunctionOpInterface implemented through getRegisteredInterfaceForOp.
+    ;; :interfaces wires FunctionOpInterface via the auto-generated
+    ;; getRegisteredInterfaceForOp dialect hook.
     (define-op func
       :summary    "toy function definition"
+      :interfaces (crest::FunctionOpInterface::getConcept)
       (:print (op printer name)
               (mlir::function_interface_impl::printFunctionOp printer op)))
 
@@ -149,10 +152,5 @@
                 (mlir::OpAsmPrinter::printString printer " : ")
                 (mlir::OpAsmPrinter::printType printer (mlir::Value::getType val)))))
 
-    ;; Implement FunctionOpInterface (and its base interfaces) for toy.func
-    ;; via the getRegisteredInterfaceForOp dialect hook.
-    (:get-registered-interface-for-op (interface-id op-name)
-                                      (if (string=? (mlir::OperationName::getStringRef op-name) "toy.func")
-                                          (crest::FunctionOpInterface::getConcept interface-id)
-                                          0)))
+    )
   )
