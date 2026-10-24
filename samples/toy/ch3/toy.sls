@@ -18,6 +18,9 @@
           (mlir IR OpImplementation)
           (only (mlir Interfaces FunctionInterfaces)
                 crest::FunctionOpInterface::getConcept
+                crest::FunctionOpInterface::getSchemeConceptPtr
+                crest::FunctionOpInterface::setSchemeDispatch
+                mlir::FunctionOpInterface
                 mlir::function_interface_impl::printFunctionOp
                 mlir::function_interface_impl::parseFunctionOp))
 
@@ -186,7 +189,7 @@
     ;; Format: toy.func @name(%arg0: type, ...) { body }
     (define-op func
       :summary    "toy function definition"
-      :interfaces (crest::FunctionOpInterface::getConcept)
+      :interfaces ((mlir::FunctionOpInterface))
       (:parse (parser state)
               (mlir::function_interface_impl::parseFunctionOp parser state))
       (:print (op printer name)

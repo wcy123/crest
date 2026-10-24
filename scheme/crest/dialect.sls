@@ -205,9 +205,31 @@
                                            :populate-default-attrs)
                   [(:summary     _ . rest)  (loop-sub #'rest)]
                   [(:description _ . rest)  (loop-sub #'rest)]
-                  [(:interfaces  (provider ...) . rest)
+                  [(:interfaces  (iface-spec ...) . rest)
                    (begin
-                     (set! interfaces (syntax->list #'(provider ...)))
+                     (set! interfaces
+                           (map (lambda (spec-stx)
+                                  (syntax-case spec-stx ()
+                                    [(iface-name method-clause ...)
+                                     (identifier? #'iface-name)
+                                     (make-interface-entry
+                                      #'iface-name
+                                      (map (lambda (mc)
+                                             (syntax-case mc ()
+                                               [(mname formals body ...)
+                                                (identifier? #'mname)
+                                                (make-interface-method
+                                                 (syntax->datum #'mname)
+                                                 #'formals
+                                                 #'(body ...))]
+                                               [_
+                                                (syntax-violation ':interfaces
+                                                                  "expected (method-name (formals...) body...)" mc)]))
+                                           (syntax->list #'(method-clause ...))))]
+                                    [_
+                                     (syntax-violation ':interfaces
+                                                       "expected (interface-name method-clause ...)" spec-stx)]))
+                                (syntax->list #'(iface-spec ...))))
                      (loop-sub #'rest))]
                   [(:operands    (field ...) . rest)
                    (begin

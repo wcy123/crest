@@ -81,15 +81,18 @@
   (define (generate-register-dialect ctx dialect-cbs ops reg-op-stx reg-dialect-stx)
     (let ([op-prefix  (string-append (%%id->str ctx) ".")]
           [auto-iface (generate-interface-dispatch ctx ops)])
-      (let ([base-defs
-             (with-syntax
-                 ([%%toy.initialize (%%id ctx "%%" ctx ":initialize")]
-                  [(op-reg ...)     (map (lambda (op)
-                                           (%%generate-register-op! ctx op-prefix op reg-op-stx))
-                                         ops)])
-               (list
-                #'(define (%%toy.initialize dialect-ptr) op-reg ...)
-                (%%generate-register! ctx dialect-cbs ops reg-dialect-stx)))])
-        (if auto-iface (cons auto-iface base-defs) base-defs))))
+      (let-values ([(scheme-defs scheme-calls) (generate-scheme-dispatch-defs ctx ops)])
+        (let ([base-defs
+               (with-syntax
+                   ([%%toy.initialize (%%id ctx "%%" ctx ":initialize")]
+                    [(op-reg ...)     (map (lambda (op)
+                                             (%%generate-register-op! ctx op-prefix op reg-op-stx))
+                                           ops)]
+                    [(scheme-call ...) scheme-calls])
+                 (list
+                  #'(define (%%toy.initialize dialect-ptr) op-reg ... scheme-call ...)
+                  (%%generate-register! ctx dialect-cbs ops reg-dialect-stx)))])
+          (let ([all-defs (if auto-iface (cons auto-iface base-defs) base-defs)])
+            (append scheme-defs all-defs))))))
 
   ) ;; end library (crest dialect expand)

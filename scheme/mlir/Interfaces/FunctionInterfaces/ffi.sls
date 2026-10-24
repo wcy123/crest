@@ -7,6 +7,12 @@
           %crest::ArgAndResultAttrsOpInterface::getInterfaceID
           %crest::CallableOpInterface::getInterfaceID
           %crest::FunctionOpInterface::getConcept
+          %crest::FunctionOpInterface::setSchemeDispatch
+          %crest::FunctionOpInterface::getSchemeConceptPtr
+          %crest::FunctionOpInterface::default::getFunctionType
+          %crest::FunctionOpInterface::default::setFunctionTypeAttr
+          %crest::FunctionOpInterface::default::verifyBody
+          %crest::FunctionOpInterface::default::verifyType
           %mlir::function_interface_impl::printFunctionOp)
   (import (chezscheme))
 
@@ -24,6 +30,28 @@
 
   (define %crest::FunctionOpInterface::getConcept
     (foreign-procedure "crest::FunctionOpInterface::getConcept" (uptr) uptr))
+
+  ;; Register a Scheme dispatch procedure for an op's FunctionOpInterface methods.
+  ;; op-name: string, proc: uptr (Scheme procedure value).
+  (define %crest::FunctionOpInterface::setSchemeDispatch
+    (foreign-procedure "crest::FunctionOpInterface::setSchemeDispatch" (string uptr) void))
+
+  ;; Returns the g_scheme_fop_concept pointer for the given interface TypeID.
+  (define %crest::FunctionOpInterface::getSchemeConceptPtr
+    (foreign-procedure "crest::FunctionOpInterface::getSchemeConceptPtr" (uptr) uptr))
+
+  ;; Default C++ implementations — called by mlir::FunctionOpInterface Scheme procedure.
+  (define %crest::FunctionOpInterface::default::getFunctionType
+    (foreign-procedure "crest::FunctionOpInterface::default::getFunctionType" (uptr) uptr))
+
+  (define %crest::FunctionOpInterface::default::setFunctionTypeAttr
+    (foreign-procedure "crest::FunctionOpInterface::default::setFunctionTypeAttr" (uptr uptr) void))
+
+  (define %crest::FunctionOpInterface::default::verifyBody
+    (foreign-procedure "crest::FunctionOpInterface::default::verifyBody" (uptr) boolean))
+
+  (define %crest::FunctionOpInterface::default::verifyType
+    (foreign-procedure "crest::FunctionOpInterface::default::verifyType" (uptr) boolean))
 
   (define %mlir::function_interface_impl::parseFunctionOp
     (foreign-procedure "mlir::function_interface_impl::parseFunctionOp"

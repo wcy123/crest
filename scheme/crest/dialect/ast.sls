@@ -33,7 +33,18 @@
           make-result-field
           result-field?
           result-field-name
-          result-field-type)
+          result-field-type
+          interface-entry
+          make-interface-entry
+          interface-entry?
+          interface-entry-name
+          interface-entry-methods
+          interface-method
+          make-interface-method
+          interface-method?
+          interface-method-name
+          interface-method-formals
+          interface-method-body)
   (import (chezscheme))
 
   ;; A single operand field declaration inside (define-op ... :operands (...)).
@@ -93,13 +104,30 @@
   ;;                  4  :fold                          (op) → bool
   ;;                  5  :get-canonicalization-patterns (pattern-set) → void
   ;;                  6  :populate-default-attrs        (op-name attrs) → void
-  ;; interfaces — list of concept-provider syntax objects.
-  ;; Each provider is a Scheme expression (uptr interface-id) → uptr (concept* or 0).
-  ;; Auto-generated :get-registered-interface-for-op dispatches through these.
+  ;; interfaces — list of interface-entry records (one per :interfaces entry).
+  ;; Each interface-entry carries the interface name syntax and a list of
+  ;; interface-method records for any overridden methods.  An empty methods list
+  ;; means "use the default C++ concept."
   (define-record-type op-parse
     (fields (immutable name       op-parse-name)
             (immutable operands   op-parse-operands)
             (immutable attributes op-parse-attributes)
             (immutable results    op-parse-results)
             (immutable op-cbs     op-parse-op-cbs)
-            (immutable interfaces op-parse-interfaces))))
+            (immutable interfaces op-parse-interfaces)))
+
+  ;; One entry in an op's :interfaces list.
+  ;;   name    — identifier syntax for the interface, e.g. #'mlir::FunctionOpInterface
+  ;;   methods — list of interface-method records; empty = use default C++ concept
+  (define-record-type interface-entry
+    (fields (immutable name    interface-entry-name)
+            (immutable methods interface-entry-methods)))
+
+  ;; One method override inside an interface-entry.
+  ;;   name    — symbol, e.g. 'getFunctionType
+  ;;   formals — syntax for the formal parameter list, e.g. #'(self)
+  ;;   body    — syntax for the method body, e.g. #'(begin ...)
+  (define-record-type interface-method
+    (fields (immutable name    interface-method-name)
+            (immutable formals interface-method-formals)
+            (immutable body    interface-method-body))))
