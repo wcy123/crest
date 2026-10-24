@@ -240,6 +240,14 @@ void registerIRBuiltinAttributesBindings() {
       });
 
   Sregister_symbol(
+      "mlir::TypeAttr::getValue", (void*)+[](uint64_t attr_ptr) -> uint64_t {
+        auto ta =
+            mlir::cast<mlir::TypeAttr>(mlir::Attribute::getFromOpaquePointer(
+                reinterpret_cast<const void*>(attr_ptr)));
+        return reinterpret_cast<uint64_t>(ta.getValue().getAsOpaquePointer());
+      });
+
+  Sregister_symbol(
       "mlir::isa<StringAttr>", (void*)+[](uint64_t p) -> int {
         return (p && mlir::isa<mlir::StringAttr>(
                          mlir::Attribute::getFromOpaquePointer(

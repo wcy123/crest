@@ -31,6 +31,7 @@
     %mlir::DenseResourceElementsAttr::get
     %mlir::StringAttr::get
     %mlir::TypeAttr::get
+    %mlir::TypeAttr::getValue
     %mlir::DenseElementsAttr::get<f64>
     %mlir::isa<IntegerAttr>
     %mlir::isa<FloatAttr>
@@ -68,6 +69,12 @@
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
   (define %mlir::TypeAttr::get
     (foreign-procedure "mlir::TypeAttr::get" (uptr) uptr))
+
+  ;; @brief mlir::TypeAttr::getValue — extract the mlir::Type wrapped in a TypeAttr.
+  ;; @param attr  TypeAttr opaque pointer uptr
+  ;; @return      Type opaque pointer uptr
+  (define %mlir::TypeAttr::getValue
+    (foreign-procedure "mlir::TypeAttr::getValue" (uptr) uptr))
 
   (define %mlir::DenseElementsAttr::get<f64>
     (foreign-procedure "mlir::DenseElementsAttr::get<f64>" (uptr scheme-object) uptr))
