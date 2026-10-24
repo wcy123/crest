@@ -56,23 +56,19 @@
   ;;   is handled directly in g_scheme_fop_concept and never reaches Scheme; it
   ;;   is listed under required above to prevent silent wrong behaviour if the
   ;;   routing ever changes.
-  (define (mlir::FunctionOpInterface method)
-    (case method
-      ((getFunctionType)
-       (error "mlir::FunctionOpInterface"
-              "getFunctionType is required — override it in :interfaces"))
-      ((setFunctionTypeAttr)
-       (error "mlir::FunctionOpInterface"
-              "setFunctionTypeAttr is required — override it in :interfaces"))
-      ((cloneTypeWith)
-       (error "mlir::FunctionOpInterface"
-              "cloneTypeWith cannot be implemented in Scheme (TypeRange boundary)"))
-      ((verifyBody)
-       (lambda (self) (%crest::FunctionOpInterface::default::verifyBody self)))
-      ((verifyType)
-       (lambda (self) (%crest::FunctionOpInterface::default::verifyType self)))
-      (else
-       (error "mlir::FunctionOpInterface" "unknown method" method))))
+  (define (mlir::FunctionOpInterface method . args)
+    (let ([method-impl
+           (case method
+             ;; Optional methods — MLIR default: always succeeds.
+             ((verifyBody) (lambda (self) (%crest::FunctionOpInterface::default::verifyBody self)))
+             ((verifyType) (lambda (self) (%crest::FunctionOpInterface::default::verifyType self)))
+             ;; Required and C++-only methods have no Scheme default → #f.
+             ;; getFunctionType, setFunctionTypeAttr: required, must be overridden.
+             ;; cloneTypeWith: TypeRange cannot cross the FFI boundary.
+             (else #f))])
+      (unless method-impl
+        (error "mlir::FunctionOpInterface" "method not implemented" method))
+      (apply method-impl args)))
 
   (define mlir::function_interface_impl::printFunctionOp
     %mlir::function_interface_impl::printFunctionOp)

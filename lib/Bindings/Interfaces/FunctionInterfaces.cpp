@@ -186,20 +186,19 @@ static mlir::FunctionOpInterface::Concept g_function_concept{
 static std::unordered_map<std::string, SValue> g_scheme_fop_dispatch;
 
 static mlir::FunctionOpInterface::Concept g_scheme_fop_concept{
-    // getFunctionType
+    // getFunctionType — single call: (proc 'getFunctionType op)
     [](const mlir::FunctionOpInterface::Concept*,
        mlir::Operation* op) -> mlir::Type {
       auto it = g_scheme_fop_dispatch.find(op->getName().getStringRef().str());
       if (it == g_scheme_fop_dispatch.end()) {
         return g_function_concept.getFunctionType(nullptr, op);
       }
-      SValue handler =
-          scheme_call(it->second, Sstring_to_symbol("getFunctionType"));
-      SValue r = scheme_call(handler, reinterpret_cast<uint64_t>(op));
+      SValue r = scheme_call(it->second, Sstring_to_symbol("getFunctionType"),
+                             reinterpret_cast<uint64_t>(op));
       return mlir::Type::getFromOpaquePointer(
           reinterpret_cast<const void*>(Sunsigned64_value(r)));
     },
-    // setFunctionTypeAttr
+    // setFunctionTypeAttr — single call: (proc 'setFunctionTypeAttr op attr)
     [](const mlir::FunctionOpInterface::Concept*, mlir::Operation* op,
        mlir::TypeAttr t) {
       auto it = g_scheme_fop_dispatch.find(op->getName().getStringRef().str());
@@ -207,9 +206,8 @@ static mlir::FunctionOpInterface::Concept g_scheme_fop_concept{
         g_function_concept.setFunctionTypeAttr(nullptr, op, t);
         return;
       }
-      SValue handler =
-          scheme_call(it->second, Sstring_to_symbol("setFunctionTypeAttr"));
-      scheme_call(handler, reinterpret_cast<uint64_t>(op),
+      scheme_call(it->second, Sstring_to_symbol("setFunctionTypeAttr"),
+                  reinterpret_cast<uint64_t>(op),
                   reinterpret_cast<uint64_t>(t.getAsOpaquePointer()));
     },
     // cloneTypeWith — TypeRange cannot be trivially passed to Scheme; fall back
@@ -217,26 +215,26 @@ static mlir::FunctionOpInterface::Concept g_scheme_fop_concept{
        mlir::TypeRange inputs, mlir::TypeRange results) -> mlir::Type {
       return mlir::FunctionType::get(op->getContext(), inputs, results);
     },
-    // verifyBody
+    // verifyBody — single call: (proc 'verifyBody op)
     [](const mlir::FunctionOpInterface::Concept*,
        mlir::Operation* op) -> llvm::LogicalResult {
       auto it = g_scheme_fop_dispatch.find(op->getName().getStringRef().str());
       if (it == g_scheme_fop_dispatch.end()) {
         return mlir::success();
       }
-      SValue handler = scheme_call(it->second, Sstring_to_symbol("verifyBody"));
-      SValue r = scheme_call(handler, reinterpret_cast<uint64_t>(op));
+      SValue r = scheme_call(it->second, Sstring_to_symbol("verifyBody"),
+                             reinterpret_cast<uint64_t>(op));
       return r == Strue ? mlir::success() : mlir::failure();
     },
-    // verifyType
+    // verifyType — single call: (proc 'verifyType op)
     [](const mlir::FunctionOpInterface::Concept*,
        mlir::Operation* op) -> llvm::LogicalResult {
       auto it = g_scheme_fop_dispatch.find(op->getName().getStringRef().str());
       if (it == g_scheme_fop_dispatch.end()) {
         return mlir::success();
       }
-      SValue handler = scheme_call(it->second, Sstring_to_symbol("verifyType"));
-      SValue r = scheme_call(handler, reinterpret_cast<uint64_t>(op));
+      SValue r = scheme_call(it->second, Sstring_to_symbol("verifyType"),
+                             reinterpret_cast<uint64_t>(op));
       return r == Strue ? mlir::success() : mlir::failure();
     },
     // base interface pointers — shared with g_function_concept

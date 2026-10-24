@@ -96,30 +96,20 @@
                                                               iface-stx))]
                                [methods   (interface-entry-methods entry)]
                                [declared  (map interface-method-name methods)]
-                               ;; Validate required methods are all declared.
                                ;; cloneTypeWith is C++-only and cannot be overridden.
-                               [_         (for-each
-                                           (lambda (req)
-                                             (unless (memq req declared)
-                                               (syntax-violation
-                                                ':interfaces
-                                                (string-append
-                                                 iface-name ": required method '"
-                                                 (symbol->string req)
-                                                 "' must be declared in :interfaces")
-                                                iface-stx)))
-                                           '(getFunctionType setFunctionTypeAttr))]
                                [_         (when (memq 'cloneTypeWith declared)
                                             (syntax-violation
                                              ':interfaces
                                              "cloneTypeWith cannot be overridden from Scheme (TypeRange cannot cross the FFI boundary)"
                                              iface-stx))]
                                ;; %%toy.func:mlir::FunctionOpInterface
-                               [proc-id  (%%id ctx "%%" op-name-str ":" iface-stx)])
+                               [proc-id  (%%id ctx "%%" op-name-str ":" iface-stx)]
+                               ;; Error tag embeds op-name and interface for runtime messages.
+                               [err-tag  (string-append op-name-str ":" iface-name)])
                           (with-syntax
                               ([dispatch-proc proc-id]
-                               [parent-iface  iface-stx]
                                [op-name-s     op-name-str]
+                               [err-tag-s     err-tag]
                                [set-dispatch  (%%id ctx 'crest::FunctionOpInterface::setSchemeDispatch)]
                                [(method-clause ...)
                                 (map (lambda (m)
@@ -131,10 +121,15 @@
                                      methods)])
                             (per-iface
                              (cdr entries)
-                             (cons #'(define (dispatch-proc method)
-                                       (case method
-                                         method-clause ...
-                                         (else (parent-iface method))))
+                             (cons #'(define (dispatch-proc method . args)
+                                       (let ([method-impl
+                                              (case method
+                                                method-clause ...
+                                                (else #f))])
+                                         (unless method-impl
+                                           (error err-tag-s
+                                                  "method not implemented" method))
+                                         (apply method-impl args)))
                                    defs)
                              (cons #'(set-dispatch op-name-s dispatch-proc)
                                    calls))))))))))))
