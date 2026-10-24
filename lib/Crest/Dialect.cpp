@@ -6,6 +6,7 @@
 
 #include "Dialect.h"
 #include "../Bindings/Support/SchemeWrapper.h"
+#include "Interface.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/DialectImplementation.h"
 #include "mlir/IR/DialectRegistry.h"
@@ -14,8 +15,30 @@
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Support/TypeID.h"
 #include <memory>
+#include <unordered_map>
 
 namespace crest {
+
+// ---------------------------------------------------------------------------
+// Global op-interface registry
+// ---------------------------------------------------------------------------
+
+static std::unordered_map<std::string, std::unordered_map<mlir::TypeID, void*>>
+    g_op_interface_registry;
+
+void registerOpInterface(const std::string& op_name, mlir::TypeID id,
+                         void* concept_ptr) {
+  g_op_interface_registry[op_name][id] = concept_ptr;
+}
+
+void* lookupOpInterface(const std::string& op_name, mlir::TypeID id) {
+  auto op_it = g_op_interface_registry.find(op_name);
+  if (op_it == g_op_interface_registry.end()) {
+    return nullptr;
+  }
+  auto iface_it = op_it->second.find(id);
+  return iface_it != op_it->second.end() ? iface_it->second : nullptr;
+}
 
 // ---------------------------------------------------------------------------
 // Scheme dialects have no C++ class, so MLIR_DECLARE_EXPLICIT_TYPE_ID is
@@ -211,6 +234,12 @@ mlir::LogicalResult CrestDialect::verifyRegionResultAttribute(
 
 void* CrestDialect::getRegisteredInterfaceForOp(mlir::TypeID interfaceID,
                                                 mlir::OperationName opName) {
+  // Fast path: C++ registry populated at dialect initialisation.
+  if (void* c =
+          crest::lookupOpInterface(opName.getStringRef().str(), interfaceID)) {
+    return c;
+  }
+  // Escape hatch: user-provided Scheme callback (slot 11).
   if (cbs_.get_registered_interface_for_op) {
     return ptr_from_scheme<void>(scheme_call(
         cbs_.get_registered_interface_for_op->get(), &interfaceID, &opName));

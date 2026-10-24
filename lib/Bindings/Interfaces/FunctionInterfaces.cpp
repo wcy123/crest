@@ -6,6 +6,8 @@
 // Mirrors mlir/Interfaces/FunctionInterfaces.h
 
 #include "FunctionInterfaces.h"
+#include "../../Crest/Interface.h"
+#include "../Support/SchemeConceptHolder.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinTypes.h"
@@ -17,8 +19,6 @@
 #include "mlir/Interfaces/FunctionImplementation.h"
 #include "mlir/Interfaces/FunctionInterfaces.h"
 #include "mlir/Support/InterfaceSupport.h"
-#include <string>
-#include <unordered_map>
 
 namespace crest {
 
@@ -174,132 +174,126 @@ static mlir::FunctionOpInterface::Concept g_function_concept{
 };
 
 // ---------------------------------------------------------------------------
-// Scheme-dispatch concept — used when an op declares :interfaces with method
-// bodies.  Each lambda looks up a locked Scheme procedure in
-// g_scheme_fop_dispatch (keyed by fully-qualified op name, e.g. "toy.func") and
-// calls it via scheme_call.  Falls back to the static g_function_concept when
-// no override is registered for the op.
+// DefaultConcept specialisations — one per interface covered by
+// FunctionOpInterface.  Each returns a pointer to the static default concept.
 // ---------------------------------------------------------------------------
 
-// Map op-name → locked Scheme procedure (SValue, protected from GC).
-// Populated by crest::FunctionOpInterface::setSchemeDispatch at dialect init.
-static std::unordered_map<std::string, SValue> g_scheme_fop_dispatch;
+template <>
+mlir::FunctionOpInterface::Concept*
+crest::DefaultConcept<mlir::FunctionOpInterface>::get() {
+  return &g_function_concept;
+}
+template <>
+mlir::SymbolOpInterface::Concept*
+crest::DefaultConcept<mlir::SymbolOpInterface>::get() {
+  return &g_symbol_concept;
+}
+template <>
+mlir::ArgAndResultAttrsOpInterface::Concept*
+crest::DefaultConcept<mlir::ArgAndResultAttrsOpInterface>::get() {
+  return &g_arg_result_attrs_concept;
+}
+template <>
+mlir::CallableOpInterface::Concept*
+crest::DefaultConcept<mlir::CallableOpInterface>::get() {
+  return &g_callable_concept;
+}
 
-static mlir::FunctionOpInterface::Concept g_scheme_fop_concept{
-    // getFunctionType — single call: (proc 'getFunctionType op)
-    [](const mlir::FunctionOpInterface::Concept*,
-       mlir::Operation* op) -> mlir::Type {
-      auto it = g_scheme_fop_dispatch.find(op->getName().getStringRef().str());
-      if (it == g_scheme_fop_dispatch.end()) {
-        return g_function_concept.getFunctionType(nullptr, op);
-      }
-      SValue r = scheme_call(it->second, Sstring_to_symbol("getFunctionType"),
-                             reinterpret_cast<uint64_t>(op));
-      return mlir::Type::getFromOpaquePointer(
-          reinterpret_cast<const void*>(Sunsigned64_value(r)));
-    },
-    // setFunctionTypeAttr — single call: (proc 'setFunctionTypeAttr op attr)
-    [](const mlir::FunctionOpInterface::Concept*, mlir::Operation* op,
-       mlir::TypeAttr t) {
-      auto it = g_scheme_fop_dispatch.find(op->getName().getStringRef().str());
-      if (it == g_scheme_fop_dispatch.end()) {
-        g_function_concept.setFunctionTypeAttr(nullptr, op, t);
-        return;
-      }
-      scheme_call(it->second, Sstring_to_symbol("setFunctionTypeAttr"),
-                  reinterpret_cast<uint64_t>(op),
-                  reinterpret_cast<uint64_t>(t.getAsOpaquePointer()));
-    },
-    // cloneTypeWith — TypeRange cannot be trivially passed to Scheme; fall back
-    [](const mlir::FunctionOpInterface::Concept*, mlir::Operation* op,
-       mlir::TypeRange inputs, mlir::TypeRange results) -> mlir::Type {
-      return mlir::FunctionType::get(op->getContext(), inputs, results);
-    },
-    // verifyBody — single call: (proc 'verifyBody op)
-    [](const mlir::FunctionOpInterface::Concept*,
-       mlir::Operation* op) -> llvm::LogicalResult {
-      auto it = g_scheme_fop_dispatch.find(op->getName().getStringRef().str());
-      if (it == g_scheme_fop_dispatch.end()) {
-        return mlir::success();
-      }
-      SValue r = scheme_call(it->second, Sstring_to_symbol("verifyBody"),
-                             reinterpret_cast<uint64_t>(op));
-      return r == Strue ? mlir::success() : mlir::failure();
-    },
-    // verifyType — single call: (proc 'verifyType op)
-    [](const mlir::FunctionOpInterface::Concept*,
-       mlir::Operation* op) -> llvm::LogicalResult {
-      auto it = g_scheme_fop_dispatch.find(op->getName().getStringRef().str());
-      if (it == g_scheme_fop_dispatch.end()) {
-        return mlir::success();
-      }
-      SValue r = scheme_call(it->second, Sstring_to_symbol("verifyType"),
-                             reinterpret_cast<uint64_t>(op));
-      return r == Strue ? mlir::success() : mlir::failure();
-    },
-    // base interface pointers — shared with g_function_concept
-    &g_symbol_concept,
-    &g_arg_result_attrs_concept,
-    &g_callable_concept,
-};
+// ---------------------------------------------------------------------------
+// SupportedInterfacesRegistry for FunctionOpInterface and its sub-interfaces.
+// ---------------------------------------------------------------------------
+static crest::SupportedInterfacesRegistry<
+    mlir::FunctionOpInterface, mlir::SymbolOpInterface,
+    mlir::ArgAndResultAttrsOpInterface, mlir::CallableOpInterface>
+    g_function_op_interface_registry;
+
+// ---------------------------------------------------------------------------
+// SchemeConceptHolder<FunctionOpInterface> constructor specialisation.
+//
+// Initialises the concept with per-op Scheme dispatch lambdas.  Each lambda
+// casts `self` back to SchemeConceptHolder* to reach scheme_proc — no
+// hash-table lookup; the concept pointer IS the per-op identity.
+//
+// cloneTypeWith is left as a C++ default because TypeRange cannot cross the
+// FFI boundary.  The default_concept parameter is unused here (all needed
+// values are either from Scheme or from the file-scope static concepts).
+// ---------------------------------------------------------------------------
+template <>
+crest::SchemeConceptHolder<mlir::FunctionOpInterface>::SchemeConceptHolder(
+    SValue proc, const Concept& /*default_concept*/)
+    : concept {
+          // getFunctionType: (proc 'getFunctionType op) → type-ptr
+          [](const mlir::FunctionOpInterface::Concept* self,
+             mlir::Operation* op) -> mlir::Type {
+            const auto* h = reinterpret_cast<const SchemeConceptHolder*>(self);
+            SValue r = scheme_call(h->scheme_proc,
+                                   Sstring_to_symbol("getFunctionType"),
+                                   reinterpret_cast<uint64_t>(op));
+            return mlir::Type::getFromOpaquePointer(
+                reinterpret_cast<const void*>(Sunsigned64_value(r)));
+          },
+          // setFunctionTypeAttr: (proc 'setFunctionTypeAttr op attr)
+          [](const mlir::FunctionOpInterface::Concept* self,
+             mlir::Operation* op, mlir::TypeAttr t) {
+            const auto* h = reinterpret_cast<const SchemeConceptHolder*>(self);
+            scheme_call(h->scheme_proc,
+                        Sstring_to_symbol("setFunctionTypeAttr"),
+                        reinterpret_cast<uint64_t>(op),
+                        reinterpret_cast<uint64_t>(t.getAsOpaquePointer()));
+          },
+          // cloneTypeWith — TypeRange cannot cross FFI boundary; C++ default
+          [](const mlir::FunctionOpInterface::Concept*, mlir::Operation* op,
+             mlir::TypeRange inputs, mlir::TypeRange results) -> mlir::Type {
+            return mlir::FunctionType::get(op->getContext(), inputs, results);
+          },
+          // verifyBody: (proc 'verifyBody op) → bool
+          [](const mlir::FunctionOpInterface::Concept* self,
+             mlir::Operation* op) -> llvm::LogicalResult {
+            const auto* h = reinterpret_cast<const SchemeConceptHolder*>(self);
+            SValue r =
+                scheme_call(h->scheme_proc, Sstring_to_symbol("verifyBody"),
+                            reinterpret_cast<uint64_t>(op));
+            return r == Strue ? mlir::success() : mlir::failure();
+          },
+          // verifyType: (proc 'verifyType op) → bool
+          [](const mlir::FunctionOpInterface::Concept* self,
+             mlir::Operation* op) -> llvm::LogicalResult {
+            const auto* h = reinterpret_cast<const SchemeConceptHolder*>(self);
+            SValue r =
+                scheme_call(h->scheme_proc, Sstring_to_symbol("verifyType"),
+                            reinterpret_cast<uint64_t>(op));
+            return r == Strue ? mlir::success() : mlir::failure();
+          },
+          // base interface pointers — shared static defaults
+          &g_symbol_concept,
+          &g_arg_result_attrs_concept,
+          &g_callable_concept,
+      },
+      scheme_proc{proc} {}
 
 // ---------------------------------------------------------------------------
 // Sregister_symbol bindings
 // ---------------------------------------------------------------------------
 
 void registerInterfacesFunctionInterfacesBindings() {
-  // crest::FunctionOpInterface::getInterfaceID — TypeID* for comparison in
-  // Scheme.
+  // crest::FunctionOpInterface::registerConcept — register the interface
+  // concept for one op.  If scheme_proc is non-zero a SchemeConceptHolder is
+  // created (Scheme dispatch); otherwise the C++ default concept is used.
+  // All sub-interfaces (SymbolOpInterface, etc.) are registered in the same
+  // call via SupportedInterfacesRegistry::registerForOp.
   Sregister_symbol(
-      "crest::FunctionOpInterface::getInterfaceID", (void*)+[]() -> uint64_t {
-        static mlir::TypeID id = mlir::FunctionOpInterface::getInterfaceID();
-        return reinterpret_cast<uint64_t>(&id);
-      });
-
-  // crest::SymbolOpInterface::getInterfaceID
-  Sregister_symbol(
-      "crest::SymbolOpInterface::getInterfaceID", (void*)+[]() -> uint64_t {
-        static mlir::TypeID id = mlir::SymbolOpInterface::getInterfaceID();
-        return reinterpret_cast<uint64_t>(&id);
-      });
-
-  // crest::ArgAndResultAttrsOpInterface::getInterfaceID
-  Sregister_symbol(
-      "crest::ArgAndResultAttrsOpInterface::getInterfaceID",
-      (void*)+[]() -> uint64_t {
-        static mlir::TypeID id =
-            mlir::ArgAndResultAttrsOpInterface::getInterfaceID();
-        return reinterpret_cast<uint64_t>(&id);
-      });
-
-  // crest::CallableOpInterface::getInterfaceID
-  Sregister_symbol(
-      "crest::CallableOpInterface::getInterfaceID", (void*)+[]() -> uint64_t {
-        static mlir::TypeID id = mlir::CallableOpInterface::getInterfaceID();
-        return reinterpret_cast<uint64_t>(&id);
-      });
-
-  // crest::FunctionOpInterface::getConcept — returns void* to the static
-  // FunctionOpInterface::Concept for the given interface TypeID*.
-  // The Scheme :get-registered-interface-for-op callback calls this with
-  // the interface-id pointer and the op-name string.
-  Sregister_symbol(
-      "crest::FunctionOpInterface::getConcept",
-      (void*)+[](uint64_t iface_id_ptr) -> uint64_t {
-        auto* iface_id = reinterpret_cast<mlir::TypeID*>(iface_id_ptr);
-        if (*iface_id == mlir::FunctionOpInterface::getInterfaceID()) {
-          return reinterpret_cast<uint64_t>(&g_function_concept);
+      "crest::FunctionOpInterface::registerConcept",
+      (void*)+[](const char* op_name, uint64_t scheme_proc_val) -> void {
+        if (scheme_proc_val) {
+          SValue proc = static_cast<SValue>(scheme_proc_val);
+          crest::SchemeConceptHolder<mlir::FunctionOpInterface>::
+              getOrCreateConcept(op_name, proc,
+                                 g_function_op_interface_registry);
+        } else {
+          g_function_op_interface_registry.registerForOp(
+              op_name, mlir::FunctionOpInterface::getInterfaceID(),
+              crest::DefaultConcept<mlir::FunctionOpInterface>::get());
         }
-        if (*iface_id == mlir::SymbolOpInterface::getInterfaceID()) {
-          return reinterpret_cast<uint64_t>(&g_symbol_concept);
-        }
-        if (*iface_id == mlir::ArgAndResultAttrsOpInterface::getInterfaceID()) {
-          return reinterpret_cast<uint64_t>(&g_arg_result_attrs_concept);
-        }
-        if (*iface_id == mlir::CallableOpInterface::getInterfaceID()) {
-          return reinterpret_cast<uint64_t>(&g_callable_concept);
-        }
-        return 0;
       });
 
   // mlir::function_interface_impl::parseFunctionOp — parses a function-like op.
@@ -336,41 +330,6 @@ void registerInterfacesFunctionInterfacesBindings() {
             *p, fn, /*isVariadic=*/false, "function_type",
             mlir::StringAttr::get(ctx, "arg_attrs"),
             mlir::StringAttr::get(ctx, "res_attrs"));
-      });
-
-  // crest::FunctionOpInterface::setSchemeDispatch — store a locked Scheme
-  // procedure as the dispatch handler for the given op name.  Called once at
-  // dialect initialisation for each op that declares method bodies.
-  // op_name: char* (Chez Scheme foreign-type "string"), scheme_proc: SValue as
-  // uptr.
-  Sregister_symbol(
-      "crest::FunctionOpInterface::setSchemeDispatch",
-      (void*)+[](const char* op_name, uint64_t scheme_proc) -> void {
-        SValue proc = static_cast<SValue>(scheme_proc);
-        Slock_object(proc);
-        g_scheme_fop_dispatch[std::string(op_name)] = proc;
-      });
-
-  // crest::FunctionOpInterface::getSchemeConceptPtr — returns
-  // &g_scheme_fop_concept. Used as the concept provider for ops that have
-  // Scheme method bodies.
-  Sregister_symbol(
-      "crest::FunctionOpInterface::getSchemeConceptPtr",
-      (void*)+[](uint64_t iface_id_ptr) -> uint64_t {
-        auto* iface_id = reinterpret_cast<mlir::TypeID*>(iface_id_ptr);
-        if (*iface_id == mlir::FunctionOpInterface::getInterfaceID()) {
-          return reinterpret_cast<uint64_t>(&g_scheme_fop_concept);
-        }
-        if (*iface_id == mlir::SymbolOpInterface::getInterfaceID()) {
-          return reinterpret_cast<uint64_t>(&g_symbol_concept);
-        }
-        if (*iface_id == mlir::ArgAndResultAttrsOpInterface::getInterfaceID()) {
-          return reinterpret_cast<uint64_t>(&g_arg_result_attrs_concept);
-        }
-        if (*iface_id == mlir::CallableOpInterface::getInterfaceID()) {
-          return reinterpret_cast<uint64_t>(&g_callable_concept);
-        }
-        return 0;
       });
 
   // crest::FunctionOpInterface::default::* — expose each default lambda from

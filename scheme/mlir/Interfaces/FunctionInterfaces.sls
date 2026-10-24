@@ -2,13 +2,7 @@
 ;; Mirrors mlir/Interfaces/FunctionInterfaces.h
 (library (mlir Interfaces FunctionInterfaces)
   (export mlir::function_interface_impl::parseFunctionOp
-          crest::FunctionOpInterface::getInterfaceID
-          crest::SymbolOpInterface::getInterfaceID
-          crest::ArgAndResultAttrsOpInterface::getInterfaceID
-          crest::CallableOpInterface::getInterfaceID
-          crest::FunctionOpInterface::getConcept
-          crest::FunctionOpInterface::setSchemeDispatch
-          crest::FunctionOpInterface::getSchemeConceptPtr
+          crest::FunctionOpInterface::registerConcept
           mlir::FunctionOpInterface
           mlir::function_interface_impl::printFunctionOp)
   (import (rnrs)
@@ -17,26 +11,8 @@
   (define mlir::function_interface_impl::parseFunctionOp
     %mlir::function_interface_impl::parseFunctionOp)
 
-  (define crest::FunctionOpInterface::getInterfaceID
-    %crest::FunctionOpInterface::getInterfaceID)
-
-  (define crest::SymbolOpInterface::getInterfaceID
-    %crest::SymbolOpInterface::getInterfaceID)
-
-  (define crest::ArgAndResultAttrsOpInterface::getInterfaceID
-    %crest::ArgAndResultAttrsOpInterface::getInterfaceID)
-
-  (define crest::CallableOpInterface::getInterfaceID
-    %crest::CallableOpInterface::getInterfaceID)
-
-  (define crest::FunctionOpInterface::getConcept
-    %crest::FunctionOpInterface::getConcept)
-
-  (define crest::FunctionOpInterface::setSchemeDispatch
-    %crest::FunctionOpInterface::setSchemeDispatch)
-
-  (define crest::FunctionOpInterface::getSchemeConceptPtr
-    %crest::FunctionOpInterface::getSchemeConceptPtr)
+  (define crest::FunctionOpInterface::registerConcept
+    %crest::FunctionOpInterface::registerConcept)
 
   ;; mlir::FunctionOpInterface — interface specification as a Scheme procedure.
   ;;
