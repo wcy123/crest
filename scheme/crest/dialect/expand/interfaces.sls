@@ -107,14 +107,14 @@
                                            ([mname   (datum->syntax ctx (interface-method-name m))]
                                             [formals (interface-method-formals m)]
                                             [body    (interface-method-body m)])
-                                         #'((mname) (apply (lambda formals . body) args))))
+                                         #'((mname) (lambda formals . body))))
                                      methods)])
                             (per-iface
                              (cdr entries)
-                             (cons #'(define (dispatch-proc method . args)
+                             (cons #'(define (dispatch-proc method)
                                        (case method
                                          method-clause ...
-                                         (else (apply parent-iface method args))))
+                                         (else (parent-iface method))))
                                    defs)
                              (cons #'(set-dispatch op-name-s dispatch-proc)
                                    calls))))))))))))

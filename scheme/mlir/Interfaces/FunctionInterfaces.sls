@@ -56,7 +56,7 @@
   ;;   is handled directly in g_scheme_fop_concept and never reaches Scheme; it
   ;;   is listed under required above to prevent silent wrong behaviour if the
   ;;   routing ever changes.
-  (define (mlir::FunctionOpInterface method . args)
+  (define (mlir::FunctionOpInterface method)
     (case method
       ((getFunctionType)
        (error "mlir::FunctionOpInterface"
@@ -68,9 +68,9 @@
        (error "mlir::FunctionOpInterface"
               "cloneTypeWith cannot be implemented in Scheme (TypeRange boundary)"))
       ((verifyBody)
-       (apply %crest::FunctionOpInterface::default::verifyBody args))
+       (lambda (self) (%crest::FunctionOpInterface::default::verifyBody self)))
       ((verifyType)
-       (apply %crest::FunctionOpInterface::default::verifyType args))
+       (lambda (self) (%crest::FunctionOpInterface::default::verifyType self)))
       (else
        (error "mlir::FunctionOpInterface" "unknown method" method))))
 

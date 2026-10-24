@@ -193,8 +193,9 @@ static mlir::FunctionOpInterface::Concept g_scheme_fop_concept{
       if (it == g_scheme_fop_dispatch.end()) {
         return g_function_concept.getFunctionType(nullptr, op);
       }
-      SValue r = scheme_call(it->second, Sstring_to_symbol("getFunctionType"),
-                             reinterpret_cast<uint64_t>(op));
+      SValue handler =
+          scheme_call(it->second, Sstring_to_symbol("getFunctionType"));
+      SValue r = scheme_call(handler, reinterpret_cast<uint64_t>(op));
       return mlir::Type::getFromOpaquePointer(
           reinterpret_cast<const void*>(Sunsigned64_value(r)));
     },
@@ -206,8 +207,9 @@ static mlir::FunctionOpInterface::Concept g_scheme_fop_concept{
         g_function_concept.setFunctionTypeAttr(nullptr, op, t);
         return;
       }
-      scheme_call(it->second, Sstring_to_symbol("setFunctionTypeAttr"),
-                  reinterpret_cast<uint64_t>(op),
+      SValue handler =
+          scheme_call(it->second, Sstring_to_symbol("setFunctionTypeAttr"));
+      scheme_call(handler, reinterpret_cast<uint64_t>(op),
                   reinterpret_cast<uint64_t>(t.getAsOpaquePointer()));
     },
     // cloneTypeWith — TypeRange cannot be trivially passed to Scheme; fall back
@@ -222,8 +224,8 @@ static mlir::FunctionOpInterface::Concept g_scheme_fop_concept{
       if (it == g_scheme_fop_dispatch.end()) {
         return mlir::success();
       }
-      SValue r = scheme_call(it->second, Sstring_to_symbol("verifyBody"),
-                             reinterpret_cast<uint64_t>(op));
+      SValue handler = scheme_call(it->second, Sstring_to_symbol("verifyBody"));
+      SValue r = scheme_call(handler, reinterpret_cast<uint64_t>(op));
       return r == Strue ? mlir::success() : mlir::failure();
     },
     // verifyType
@@ -233,8 +235,8 @@ static mlir::FunctionOpInterface::Concept g_scheme_fop_concept{
       if (it == g_scheme_fop_dispatch.end()) {
         return mlir::success();
       }
-      SValue r = scheme_call(it->second, Sstring_to_symbol("verifyType"),
-                             reinterpret_cast<uint64_t>(op));
+      SValue handler = scheme_call(it->second, Sstring_to_symbol("verifyType"));
+      SValue r = scheme_call(handler, reinterpret_cast<uint64_t>(op));
       return r == Strue ? mlir::success() : mlir::failure();
     },
     // base interface pointers — shared with g_function_concept
