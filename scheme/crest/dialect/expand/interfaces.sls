@@ -88,12 +88,32 @@
                         (loop (cdr ops) defs calls)
                         (let* ([entry     (car entries)]
                                [iface-stx (interface-entry-name entry)]
-                               [_         (unless (string=? (%%id->str iface-stx)
+                               [iface-name (%%id->str iface-stx)]
+                               [_         (unless (string=? iface-name
                                                             "mlir::FunctionOpInterface")
                                             (syntax-violation ':interfaces
                                                               "method bodies only supported for mlir::FunctionOpInterface"
                                                               iface-stx))]
-                               [methods  (interface-entry-methods entry)]
+                               [methods   (interface-entry-methods entry)]
+                               [declared  (map interface-method-name methods)]
+                               ;; Validate required methods are all declared.
+                               ;; cloneTypeWith is C++-only and cannot be overridden.
+                               [_         (for-each
+                                           (lambda (req)
+                                             (unless (memq req declared)
+                                               (syntax-violation
+                                                ':interfaces
+                                                (string-append
+                                                 iface-name ": required method '"
+                                                 (symbol->string req)
+                                                 "' must be declared in :interfaces")
+                                                iface-stx)))
+                                           '(getFunctionType setFunctionTypeAttr))]
+                               [_         (when (memq 'cloneTypeWith declared)
+                                            (syntax-violation
+                                             ':interfaces
+                                             "cloneTypeWith cannot be overridden from Scheme (TypeRange cannot cross the FFI boundary)"
+                                             iface-stx))]
                                ;; %%toy.func:mlir::FunctionOpInterface
                                [proc-id  (%%id ctx "%%" op-name-str ":" iface-stx)])
                           (with-syntax
