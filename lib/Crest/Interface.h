@@ -34,6 +34,14 @@ bool RegisterInterfaceForOp(mlir::TypeID id, const std::string& op_name,
 // interface covers (primary + sub-interfaces).
 // ---------------------------------------------------------------------------
 template <typename Interface> struct SupportedInterfaces {
+  // Return the default concept value for this interface (no allocation,
+  // no registration).  CreateConcept copies this and overrides specific
+  // function-pointer slots based on what the Scheme dispatcher provides.
+  static typename Interface::Concept
+  CreateDefaultConcept(); // undefined by design
+
+  // Copy the default concept, override the slots the dispatcher provides,
+  // then call RegisterInterfaceForOp.
   static void CreateConcept(ptr dispatcher); // undefined by design
 };
 
