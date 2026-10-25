@@ -1,8 +1,7 @@
 ;; Interface registration code generator for define-dialect ops.
-;; Replaces the old Scheme-side getRegisteredInterfaceForOp cond chain with
-;; calls to crest::Interface::registerConcept at dialect initialisation time.
-;; The C++ global op-interface registry in Dialect.cpp handles lookups at
-;; runtime — no Scheme callback needed for slot 11.
+;; Generates per-op dispatcher functions and crest::registerInterfaceForOperation
+;; calls at dialect initialisation time.
+;; The C++ global op-interface registry in Dialect.cpp handles lookups at runtime.
 (library (crest dialect expand interfaces)
   (export generate-interface-registrations
           dialect-cbs-with-interfaces)
@@ -11,28 +10,35 @@
           (crest dialect expand utils)
           (crest dialect ffi))
 
-  ;; Map interface name → registerConcept symbol in client scope.
+  ;; Map interface name → TypeID accessor symbol in client scope.
   ;; Validates that the interface is supported; errors at expansion time otherwise.
-  (define (%%register-symbol-for ctx entry)
+  (define (%%iface-id-sym-for ctx entry)
     (let ([name (%%id->str (interface-entry-name entry))])
       (cond
        [(string=? name "mlir::FunctionOpInterface")
-        (%%id ctx 'crest::FunctionOpInterface::registerConcept)]
+        (%%id ctx 'crest::FunctionOpInterface::getInterfaceID)]
        [else
         (syntax-violation ':interfaces
                           (string-append "unsupported interface — only mlir::FunctionOpInterface is supported: " name)
                           (interface-entry-name entry))])))
 
-  ;; Generate per-op Scheme dispatch procedure defines and registerConcept calls
-  ;; for ALL ops that declare :interfaces entries.
+  ;; Generate per-op dispatcher defines and crest::registerInterfaceForOperation
+  ;; calls for ALL ops that declare :interfaces entries.
   ;;
   ;; Returns (values (list define-stx ...) (list setup-call-stx ...)).
   ;; define-stxs go at top level; setup-calls go into %%<dialect>:initialize.
   ;;
-  ;; For entries with method bodies: generates %%op:interface dispatch proc +
-  ;;   (registerConcept op-name dispatch-proc).
-  ;; For entries without method bodies: generates
-  ;;   (registerConcept op-name #f) — C++ default concept is used.
+  ;; Generated dispatcher shape:
+  ;;   (define (%%toy.func:mlir::FunctionOpInterface method)
+  ;;     (case method
+  ;;       ((id)             (crest::FunctionOpInterface::getInterfaceID))
+  ;;       ((operation_name) "toy.func")
+  ;;       ((getFunctionType) (lambda (self) ...))   ; if declared
+  ;;       ...
+  ;;       (else #f)))
+  ;;
+  ;; The C++ registerInterfaceForOperation calls the dispatcher with each
+  ;; symbol at registration time to build the concept.
   (define (generate-interface-registrations ctx ops)
     (let ([op-prefix (string-append (%%id->str ctx) ".")])
       (let loop ([ops ops] [defs '()] [calls '()])
@@ -51,50 +57,38 @@
                                [iface-name (%%id->str iface-stx)]
                                [methods   (interface-entry-methods entry)]
                                [declared  (map interface-method-name methods)]
-                               ;; cloneTypeWith cannot be overridden from Scheme.
                                [_         (when (memq 'cloneTypeWith declared)
                                             (syntax-violation ':interfaces
                                                               "cloneTypeWith cannot be overridden from Scheme (TypeRange cannot cross the FFI boundary)"
                                                               iface-stx))]
-                               [reg-sym   (%%register-symbol-for ctx entry)]
                                ;; %%toy.func:mlir::FunctionOpInterface
                                [proc-id   (%%id ctx "%%" op-name-str ":" iface-stx)]
-                               [err-tag   (string-append op-name-str ":" iface-name)])
-                          (if (null? methods)
-                              ;; No method bodies — use C++ default concept.
-                              (with-syntax ([register reg-sym]
-                                            [op-name-s op-name-str])
-                                (per-iface
-                                 (cdr entries) defs
-                                 (cons #'(register op-name-s #f) calls)))
-                              ;; Method bodies — generate dispatch proc + registerConcept.
-                              (with-syntax
-                                  ([dispatch-proc proc-id]
-                                   [op-name-s     op-name-str]
-                                   [err-tag-s     err-tag]
-                                   [register      reg-sym]
-                                   [(method-clause ...)
-                                    (map (lambda (m)
-                                           (with-syntax
-                                               ([mname   (datum->syntax ctx (interface-method-name m))]
-                                                [formals (interface-method-formals m)]
-                                                [body    (interface-method-body m)])
-                                             #'((mname) (lambda formals . body))))
-                                         methods)])
-                                (per-iface
-                                 (cdr entries)
-                                 (cons #'(define (dispatch-proc method . args)
-                                           (let ([method-impl
-                                                  (case method
-                                                    method-clause ...
-                                                    (else #f))])
-                                             (unless method-impl
-                                               (error err-tag-s
-                                                      "method not implemented" method))
-                                             (apply method-impl args)))
-                                       defs)
-                                 (cons #'(register op-name-s dispatch-proc)
-                                       calls)))))))))))))
+                               [id-sym    (%%iface-id-sym-for ctx entry)]
+                               [register  (%%id ctx 'crest::registerInterfaceForOperation)])
+                          (with-syntax
+                              ([dispatch-proc proc-id]
+                               [get-id        id-sym]
+                               [op-name-s     op-name-str]
+                               [reg           register]
+                               [(method-clause ...)
+                                (map (lambda (m)
+                                       (with-syntax
+                                           ([mname   (datum->syntax ctx (interface-method-name m))]
+                                            [formals (interface-method-formals m)]
+                                            [body    (interface-method-body m)])
+                                         #'((mname) (lambda formals . body))))
+                                     methods)])
+                            (per-iface
+                             (cdr entries)
+                             (cons #'(define (dispatch-proc method)
+                                       (case method
+                                         ((id)             (get-id))
+                                         ((operation_name) op-name-s)
+                                         method-clause ...
+                                         (else #f)))
+                                   defs)
+                             (cons #'(reg dispatch-proc)
+                                   calls))))))))))))
 
   ;; Build the 12-slot dialect callbacks vector.
   ;; Slot 0 → %%<dialect>:initialize.

@@ -2,7 +2,8 @@
 ;; Mirrors mlir/Interfaces/FunctionInterfaces.h
 (library (mlir Interfaces FunctionInterfaces)
   (export mlir::function_interface_impl::parseFunctionOp
-          crest::FunctionOpInterface::registerConcept
+          crest::FunctionOpInterface::getInterfaceID
+          crest::registerInterfaceForOperation
           mlir::FunctionOpInterface
           mlir::function_interface_impl::printFunctionOp)
   (import (rnrs)
@@ -11,8 +12,11 @@
   (define mlir::function_interface_impl::parseFunctionOp
     %mlir::function_interface_impl::parseFunctionOp)
 
-  (define crest::FunctionOpInterface::registerConcept
-    %crest::FunctionOpInterface::registerConcept)
+  (define crest::FunctionOpInterface::getInterfaceID
+    %crest::FunctionOpInterface::getInterfaceID)
+
+  (define crest::registerInterfaceForOperation
+    %crest::registerInterfaceForOperation)
 
   ;; mlir::FunctionOpInterface — interface specification as a Scheme procedure.
   ;;

@@ -2,7 +2,8 @@
 ;; Mirrors mlir/Interfaces/FunctionInterfaces.h
 (library (mlir Interfaces FunctionInterfaces ffi)
   (export %mlir::function_interface_impl::parseFunctionOp
-          %crest::FunctionOpInterface::registerConcept
+          %crest::FunctionOpInterface::getInterfaceID
+          %crest::registerInterfaceForOperation
           %crest::FunctionOpInterface::default::getFunctionType
           %crest::FunctionOpInterface::default::setFunctionTypeAttr
           %crest::FunctionOpInterface::default::verifyBody
@@ -10,13 +11,16 @@
           %mlir::function_interface_impl::printFunctionOp)
   (import (chezscheme))
 
-  ;; Register the interface concept for an op.
-  ;; op-name: string, scheme-proc: uptr (dispatch procedure or 0 for C++ default).
-  (define %crest::FunctionOpInterface::registerConcept
-    (foreign-procedure "crest::FunctionOpInterface::registerConcept" (string uptr) void))
+  ;; TypeID* for FunctionOpInterface — used in the dispatcher 'id clause.
+  (define %crest::FunctionOpInterface::getInterfaceID
+    (foreign-procedure "crest::FunctionOpInterface::getInterfaceID" () uptr))
 
-  ;; Default C++ implementations — called by the mlir::FunctionOpInterface
-  ;; Scheme procedure for optional methods.
+  ;; Register an interface for one op via a Scheme dispatcher procedure.
+  ;; dispatcher: scheme-object (procedure).
+  (define %crest::registerInterfaceForOperation
+    (foreign-procedure "crest::registerInterfaceForOperation" (scheme-object) scheme-object))
+
+  ;; Default C++ implementations — called by mlir::FunctionOpInterface fallback.
   (define %crest::FunctionOpInterface::default::getFunctionType
     (foreign-procedure "crest::FunctionOpInterface::default::getFunctionType" (uptr) uptr))
 

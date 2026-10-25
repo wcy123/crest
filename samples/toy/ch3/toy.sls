@@ -17,7 +17,8 @@
           (mlir IR Region)
           (mlir IR OpImplementation)
           (only (mlir Interfaces FunctionInterfaces)
-                crest::FunctionOpInterface::registerConcept
+                crest::FunctionOpInterface::getInterfaceID
+                crest::registerInterfaceForOperation
                 mlir::FunctionOpInterface
                 mlir::function_interface_impl::printFunctionOp
                 mlir::function_interface_impl::parseFunctionOp)
