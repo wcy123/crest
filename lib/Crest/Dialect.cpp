@@ -251,13 +251,17 @@ void* CrestDialect::getRegisteredInterfaceForOp(mlir::TypeID interfaceID,
                                                 mlir::OperationName opName) {
   // TypeID-first two-level lookup: few interfaces → fast miss on outer map.
   auto it = g_op_interface_registry.find(interfaceID);
-  if (it != g_op_interface_registry.end()) {
-    auto it2 = it->second.find(opName.getStringRef().str());
-    if (it2 != it->second.end()) {
-      return it2->second.get();
-    }
+  if (it == g_op_interface_registry.end()) {
+    return nullptr;
   }
-  return nullptr;
+  // Try op-specific entry first.
+  auto it2 = it->second.find(opName.getStringRef().str());
+  if (it2 != it->second.end()) {
+    return it2->second.get();
+  }
+  // Fall back to "." — the sentinel key for the registered default concept.
+  auto def = it->second.find(".");
+  return def != it->second.end() ? def->second.get() : nullptr;
 }
 
 // ---------------------------------------------------------------------------

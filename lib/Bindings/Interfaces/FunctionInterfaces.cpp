@@ -275,7 +275,6 @@ void crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
       (getFunctionType != Sfalse || setFunctionTypeAttr != Sfalse ||
        cloneTypeWith != Sfalse || verifyBody != Sfalse || verifyType != Sfalse);
 
-  auto no_del = [](void*) {};
   if (has_override) {
     // Copy default; override only the provided slots by field name.
     auto* data = new FunctionConceptData{
@@ -317,21 +316,9 @@ void crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
           }
           delete d;
         }));
-  } else {
-    crest::RegisterInterfaceForOp(
-        mlir::FunctionOpInterface::getInterfaceID(), op_name,
-        std::shared_ptr<void>(&g_function_concept, no_del));
   }
-  // Sub-interfaces always use their static defaults.
-  crest::RegisterInterfaceForOp(
-      mlir::SymbolOpInterface::getInterfaceID(), op_name,
-      std::shared_ptr<void>(&g_symbol_concept, no_del));
-  crest::RegisterInterfaceForOp(
-      mlir::ArgAndResultAttrsOpInterface::getInterfaceID(), op_name,
-      std::shared_ptr<void>(&g_arg_result_attrs_concept, no_del));
-  crest::RegisterInterfaceForOp(
-      mlir::CallableOpInterface::getInterfaceID(), op_name,
-      std::shared_ptr<void>(&g_callable_concept, no_del));
+  // No-override case: nothing to register — "." fallback handles all
+  // interfaces for this op via getRegisteredInterfaceForOp.
 }
 
 // Sregister_symbol bindings
@@ -350,6 +337,23 @@ void registerInterfacesFunctionInterfacesBindings() {
   crest::registerConceptCreator(
       mlir::FunctionOpInterface::getInterfaceID(),
       &crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept);
+
+  // Register default concepts under the sentinel key ".".
+  // getRegisteredInterfaceForOp falls back to "." when no op-specific entry
+  // exists, so ops that declare no Scheme overrides need no per-op entry.
+  auto no_del = [](void*) {};
+  crest::RegisterInterfaceForOp(
+      mlir::FunctionOpInterface::getInterfaceID(), ".",
+      std::shared_ptr<void>(&g_function_concept, no_del));
+  crest::RegisterInterfaceForOp(
+      mlir::SymbolOpInterface::getInterfaceID(), ".",
+      std::shared_ptr<void>(&g_symbol_concept, no_del));
+  crest::RegisterInterfaceForOp(
+      mlir::ArgAndResultAttrsOpInterface::getInterfaceID(), ".",
+      std::shared_ptr<void>(&g_arg_result_attrs_concept, no_del));
+  crest::RegisterInterfaceForOp(
+      mlir::CallableOpInterface::getInterfaceID(), ".",
+      std::shared_ptr<void>(&g_callable_concept, no_del));
 
   // mlir::function_interface_impl::parseFunctionOp — parses a function-like op.
   // The FuncTypeBuilder builds a FunctionType from arg/result types.
