@@ -12,85 +12,78 @@
 
 namespace crest {
 
-// ---------------------------------------------------------------------------
-// SupportedInterfaces<SymbolOpInterface>::getOrCreateDefaultConcept
-//
-// Lazily creates the default SymbolOpInterface concept on first call.
-// printFunctionOp dispatches to getNameAttr; other methods are stubs.
-// ---------------------------------------------------------------------------
 template <>
 mlir::SymbolOpInterface::Concept*
 SupportedInterfaces<mlir::SymbolOpInterface>::getOrCreateDefaultConcept() {
-  static mlir::SymbolOpInterface::Concept concept{
-      // getNameAttr
-      [](const mlir::SymbolOpInterface::Concept*,
-         mlir::Operation* op) -> mlir::StringAttr {
-        return mlir::cast<mlir::StringAttr>(op->getAttr("sym_name"));
-      },
-      // setName
-      [](const mlir::SymbolOpInterface::Concept*, mlir::Operation* op,
-         mlir::StringAttr name) { op->setAttr("sym_name", name); },
-      // getVisibility
-      [](const mlir::SymbolOpInterface::Concept*,
-         mlir::Operation*) -> mlir::SymbolTable::Visibility {
-        return mlir::SymbolTable::Visibility::Public;
-      },
-      // isNested / isPrivate / isPublic
-      [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*) -> bool {
-        return false;
-      },
-      [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*) -> bool {
-        return false;
-      },
-      [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*) -> bool {
-        return true;
-      },
-      // setVisibility / setNested / setPrivate / setPublic (stubs)
-      [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*,
-         mlir::SymbolTable::Visibility) {},
-      [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*) {},
-      [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*) {},
-      [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*) {},
-      // getSymbolUses
-      [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*,
-         mlir::Operation*) -> std::optional<mlir::SymbolTable::UseRange> {
-        return std::nullopt;
-      },
-      // symbolKnownUseEmpty
-      [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*,
-         mlir::Operation*) -> bool { return true; },
-      // replaceAllSymbolUses
-      [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*,
-         mlir::StringAttr,
-         mlir::Operation*) -> llvm::LogicalResult { return mlir::failure(); },
-      // isOptionalSymbol / canDiscardOnUseEmpty / isDeclaration
-      [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*) -> bool {
-        return false;
-      },
-      [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*) -> bool {
-        return false;
-      },
-      [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*) -> bool {
-        return false;
-      },
-  };
-  return &concept;
+  // Thread-safe (C++11): initialised once; registry owns the concept.
+  static mlir::SymbolOpInterface::Concept* ptr = [] {
+    auto* c = new mlir::SymbolOpInterface::Concept{
+        // getNameAttr
+        [](const mlir::SymbolOpInterface::Concept*,
+           mlir::Operation* op) -> mlir::StringAttr {
+          return mlir::cast<mlir::StringAttr>(op->getAttr("sym_name"));
+        },
+        // setName
+        [](const mlir::SymbolOpInterface::Concept*, mlir::Operation* op,
+           mlir::StringAttr name) { op->setAttr("sym_name", name); },
+        // getVisibility
+        [](const mlir::SymbolOpInterface::Concept*,
+           mlir::Operation*) -> mlir::SymbolTable::Visibility {
+          return mlir::SymbolTable::Visibility::Public;
+        },
+        // isNested / isPrivate / isPublic
+        [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*) -> bool {
+          return false;
+        },
+        [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*) -> bool {
+          return false;
+        },
+        [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*) -> bool {
+          return true;
+        },
+        // setVisibility / setNested / setPrivate / setPublic (stubs)
+        [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*,
+           mlir::SymbolTable::Visibility) {},
+        [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*) {},
+        [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*) {},
+        [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*) {},
+        // getSymbolUses
+        [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*,
+           mlir::Operation*) -> std::optional<mlir::SymbolTable::UseRange> {
+          return std::nullopt;
+        },
+        // symbolKnownUseEmpty
+        [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*,
+           mlir::Operation*) -> bool { return true; },
+        // replaceAllSymbolUses
+        [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*,
+           mlir::StringAttr,
+           mlir::Operation*) -> llvm::LogicalResult { return mlir::failure(); },
+        // isOptionalSymbol / canDiscardOnUseEmpty / isDeclaration
+        [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*) -> bool {
+          return false;
+        },
+        [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*) -> bool {
+          return false;
+        },
+        [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*) -> bool {
+          return false;
+        },
+    };
+    RegisterInterfaceForOp(
+        mlir::SymbolOpInterface::getInterfaceID(), ".",
+        std::shared_ptr<void>(c, [](void* p) {
+          delete static_cast<mlir::SymbolOpInterface::Concept*>(p);
+        }));
+    return c;
+  }();
+  return ptr;
 }
 
-// ---------------------------------------------------------------------------
-// Sregister_symbol bindings
-// ---------------------------------------------------------------------------
-
 void registerIRSymbolTableBindings() {
-  // Register the default concept under "." so getRegisteredInterfaceForOp
-  // falls back to it for any op that implements SymbolOpInterface without
-  // a Scheme override.
-  auto no_del = [](void*) {};
-  RegisterInterfaceForOp(
-      mlir::SymbolOpInterface::getInterfaceID(), ".",
-      std::shared_ptr<void>(
-          SupportedInterfaces<mlir::SymbolOpInterface>::getOrCreateDefaultConcept(),
-          no_del));
+  // Trigger initialisation -- registration happens inside
+  // getOrCreateDefaultConcept() on first call.
+  SupportedInterfaces<mlir::SymbolOpInterface>::getOrCreateDefaultConcept();
 }
 
 } // namespace crest

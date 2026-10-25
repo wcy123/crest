@@ -16,85 +16,79 @@
 
 namespace crest {
 
-// ---------------------------------------------------------------------------
-// SupportedInterfaces<CallableOpInterface>::getOrCreateDefaultConcept
-//
-// Lazily creates the default CallableOpInterface concept on first call.
-// printFunctionOp uses the argument and result types extracted from the
-// "function_type" attribute; getCallableRegion returns region 0.
-// ---------------------------------------------------------------------------
 template <>
 mlir::CallableOpInterface::Concept*
 SupportedInterfaces<mlir::CallableOpInterface>::getOrCreateDefaultConcept() {
-  static mlir::CallableOpInterface::Concept concept {
-      // getCallableRegion
-      [](const mlir::CallableOpInterface::Concept*,
-         mlir::Operation* op) -> mlir::Region* { return &op->getRegion(0); },
-      // getArgumentTypes: from "function_type" attr
-      [](const mlir::CallableOpInterface::Concept*,
-         mlir::Operation* op) -> llvm::ArrayRef<mlir::Type> {
-        return mlir::cast<mlir::FunctionType>(
-                   mlir::cast<mlir::TypeAttr>(op->getAttr("function_type"))
-                       .getValue())
-            .getInputs();
-      },
-      // getResultTypes: from "function_type" attr
-      [](const mlir::CallableOpInterface::Concept*,
-         mlir::Operation* op) -> llvm::ArrayRef<mlir::Type> {
-        return mlir::cast<mlir::FunctionType>(
-                   mlir::cast<mlir::TypeAttr>(op->getAttr("function_type"))
-                       .getValue())
-            .getResults();
-      },
-  };
-  return &concept;
+  // Thread-safe (C++11): initialised once; registry owns the concept.
+  static mlir::CallableOpInterface::Concept* ptr = [] {
+    auto* c = new mlir::CallableOpInterface::Concept{
+        // getCallableRegion
+        [](const mlir::CallableOpInterface::Concept*,
+           mlir::Operation* op) -> mlir::Region* { return &op->getRegion(0); },
+        // getArgumentTypes: from "function_type" attr
+        [](const mlir::CallableOpInterface::Concept*,
+           mlir::Operation* op) -> llvm::ArrayRef<mlir::Type> {
+          return mlir::cast<mlir::FunctionType>(
+                     mlir::cast<mlir::TypeAttr>(op->getAttr("function_type"))
+                         .getValue())
+              .getInputs();
+        },
+        // getResultTypes: from "function_type" attr
+        [](const mlir::CallableOpInterface::Concept*,
+           mlir::Operation* op) -> llvm::ArrayRef<mlir::Type> {
+          return mlir::cast<mlir::FunctionType>(
+                     mlir::cast<mlir::TypeAttr>(op->getAttr("function_type"))
+                         .getValue())
+              .getResults();
+        },
+    };
+    RegisterInterfaceForOp(
+        mlir::CallableOpInterface::getInterfaceID(), ".",
+        std::shared_ptr<void>(c, [](void* p) {
+          delete static_cast<mlir::CallableOpInterface::Concept*>(p);
+        }));
+    return c;
+  }();
+  return ptr;
 }
 
-// ---------------------------------------------------------------------------
-// SupportedInterfaces<ArgAndResultAttrsOpInterface>::getOrCreateDefaultConcept
-//
-// ArgAndResultAttrsOpInterface is defined in mlir/Interfaces/CallInterfaces.td
-// so its specialisation lives here.  printFunctionOp only calls
-// getArgAttrsAttr/getResAttrsAttr; returning nullptr is safe.
-// ---------------------------------------------------------------------------
 template <>
 mlir::ArgAndResultAttrsOpInterface::Concept* SupportedInterfaces<
     mlir::ArgAndResultAttrsOpInterface>::getOrCreateDefaultConcept() {
-  static mlir::ArgAndResultAttrsOpInterface::Concept concept {
-      [](const mlir::ArgAndResultAttrsOpInterface::Concept*,
-         mlir::Operation*) -> mlir::ArrayAttr { return nullptr; },
-      [](const mlir::ArgAndResultAttrsOpInterface::Concept*,
-         mlir::Operation*) -> mlir::ArrayAttr { return nullptr; },
-      [](const mlir::ArgAndResultAttrsOpInterface::Concept*, mlir::Operation*,
-         mlir::ArrayAttr) {},
-      [](const mlir::ArgAndResultAttrsOpInterface::Concept*, mlir::Operation*,
-         mlir::ArrayAttr) {},
-      [](const mlir::ArgAndResultAttrsOpInterface::Concept*,
-         mlir::Operation*) -> mlir::Attribute { return nullptr; },
-      [](const mlir::ArgAndResultAttrsOpInterface::Concept*,
-         mlir::Operation*) -> mlir::Attribute { return nullptr; },
-  };
-  return &concept;
+  // Thread-safe (C++11): initialised once; registry owns the concept.
+  // printFunctionOp only calls getArgAttrsAttr/getResAttrsAttr; returning
+  // nullptr is safe.
+  static mlir::ArgAndResultAttrsOpInterface::Concept* ptr = [] {
+    auto* c = new mlir::ArgAndResultAttrsOpInterface::Concept{
+        [](const mlir::ArgAndResultAttrsOpInterface::Concept*,
+           mlir::Operation*) -> mlir::ArrayAttr { return nullptr; },
+        [](const mlir::ArgAndResultAttrsOpInterface::Concept*,
+           mlir::Operation*) -> mlir::ArrayAttr { return nullptr; },
+        [](const mlir::ArgAndResultAttrsOpInterface::Concept*, mlir::Operation*,
+           mlir::ArrayAttr) {},
+        [](const mlir::ArgAndResultAttrsOpInterface::Concept*, mlir::Operation*,
+           mlir::ArrayAttr) {},
+        [](const mlir::ArgAndResultAttrsOpInterface::Concept*,
+           mlir::Operation*) -> mlir::Attribute { return nullptr; },
+        [](const mlir::ArgAndResultAttrsOpInterface::Concept*,
+           mlir::Operation*) -> mlir::Attribute { return nullptr; },
+    };
+    RegisterInterfaceForOp(
+        mlir::ArgAndResultAttrsOpInterface::getInterfaceID(), ".",
+        std::shared_ptr<void>(c, [](void* p) {
+          delete static_cast<mlir::ArgAndResultAttrsOpInterface::Concept*>(p);
+        }));
+    return c;
+  }();
+  return ptr;
 }
 
-// ---------------------------------------------------------------------------
-// Sregister_symbol bindings
-// ---------------------------------------------------------------------------
-
 void registerInterfacesCallInterfacesBindings() {
-  auto no_del = [](void*) {};
-  RegisterInterfaceForOp(
-      mlir::CallableOpInterface::getInterfaceID(), ".",
-      std::shared_ptr<void>(
-          SupportedInterfaces<
-              mlir::CallableOpInterface>::getOrCreateDefaultConcept(),
-          no_del));
-  RegisterInterfaceForOp(
-      mlir::ArgAndResultAttrsOpInterface::getInterfaceID(), ".",
-      std::shared_ptr<void>(
-          SupportedInterfaces<
-              mlir::ArgAndResultAttrsOpInterface>::getOrCreateDefaultConcept(),
-          no_del));
+  // Trigger initialisation — registration happens inside
+  // getOrCreateDefaultConcept() on first call.
+  SupportedInterfaces<mlir::CallableOpInterface>::getOrCreateDefaultConcept();
+  SupportedInterfaces<
+      mlir::ArgAndResultAttrsOpInterface>::getOrCreateDefaultConcept();
 }
 
 } // namespace crest
