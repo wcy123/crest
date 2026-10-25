@@ -78,7 +78,7 @@ mlir::FunctionOpInterface::Concept* crest::SupportedInterfaces<
 // Static override lambdas - non-capturing; use self == FunctionConceptData*
 // to reach the per-op Scheme lambdas stored alongside the concept.
 namespace {
-using FopConcept = mlir::FunctionOpInterface::Concept;
+using FunctionOpInterfaceConcept = mlir::FunctionOpInterface::Concept;
 
 // Marshal a TypeRange to a Scheme list of uptr (one per mlir::Type opaque ptr).
 ptr typeRangeToSchemeList(mlir::TypeRange range) {
@@ -91,27 +91,30 @@ ptr typeRangeToSchemeList(mlir::TypeRange range) {
   return list;
 }
 const auto k_override_getFunctionType =
-    +[](const FopConcept* self, mlir::Operation* op) -> mlir::Type {
+    +[](const FunctionOpInterfaceConcept* self,
+        mlir::Operation* op) -> mlir::Type {
   const auto* d = reinterpret_cast<const FunctionConceptData*>(self);
   ptr r = scheme_call(d->get_function_type, reinterpret_cast<uint64_t>(op));
   return mlir::Type::getFromOpaquePointer(
       reinterpret_cast<const void*>(Sunsigned64_value(r)));
 };
 const auto k_override_setFunctionTypeAttr =
-    +[](const FopConcept* self, mlir::Operation* op, mlir::TypeAttr t) {
+    +[](const FunctionOpInterfaceConcept* self, mlir::Operation* op,
+        mlir::TypeAttr t) {
       const auto* d = reinterpret_cast<const FunctionConceptData*>(self);
       scheme_call(d->set_function_type_attr, reinterpret_cast<uint64_t>(op),
                   reinterpret_cast<uint64_t>(t.getAsOpaquePointer()));
     };
 const auto k_override_verifyBody =
-    +[](const FopConcept* self, mlir::Operation* op) -> llvm::LogicalResult {
+    +[](const FunctionOpInterfaceConcept* self,
+        mlir::Operation* op) -> llvm::LogicalResult {
   const auto* d = reinterpret_cast<const FunctionConceptData*>(self);
   ptr r = scheme_call(d->verify_body, reinterpret_cast<uint64_t>(op));
   return r == Strue ? mlir::success() : mlir::failure();
 };
 const auto k_override_cloneTypeWith =
-    +[](const FopConcept* self, mlir::Operation* op, mlir::TypeRange inputs,
-        mlir::TypeRange results) -> mlir::Type {
+    +[](const FunctionOpInterfaceConcept* self, mlir::Operation* op,
+        mlir::TypeRange inputs, mlir::TypeRange results) -> mlir::Type {
   const auto* d = reinterpret_cast<const FunctionConceptData*>(self);
   ptr r = scheme_call(d->clone_type_with, reinterpret_cast<uint64_t>(op),
                       typeRangeToSchemeList(inputs),
@@ -120,7 +123,8 @@ const auto k_override_cloneTypeWith =
       reinterpret_cast<const void*>(Sunsigned64_value(r)));
 };
 const auto k_override_verifyType =
-    +[](const FopConcept* self, mlir::Operation* op) -> llvm::LogicalResult {
+    +[](const FunctionOpInterfaceConcept* self,
+        mlir::Operation* op) -> llvm::LogicalResult {
   const auto* d = reinterpret_cast<const FunctionConceptData*>(self);
   ptr r = scheme_call(d->verify_type, reinterpret_cast<uint64_t>(op));
   return r == Strue ? mlir::success() : mlir::failure();
