@@ -24,35 +24,6 @@
 namespace crest {
 
 // ---------------------------------------------------------------------------
-// SupportedInterfaces<ArgAndResultAttrsOpInterface>::getOrCreateDefaultConcept
-//
-// ArgAndResultAttrsOpInterface is declared in
-// mlir/Interfaces/FunctionInterfaces.h alongside FunctionOpInterface, so its
-// specialisation lives in this file. printFunctionOp only calls
-// getArgAttrsAttr/getResAttrsAttr; returning nullptr means no per-arg/result
-// attributes are printed.
-// ---------------------------------------------------------------------------
-template <>
-mlir::ArgAndResultAttrsOpInterface::Concept* crest::SupportedInterfaces<
-    mlir::ArgAndResultAttrsOpInterface>::getOrCreateDefaultConcept() {
-  static mlir::ArgAndResultAttrsOpInterface::Concept concept {
-      [](const mlir::ArgAndResultAttrsOpInterface::Concept*,
-         mlir::Operation*) -> mlir::ArrayAttr { return nullptr; },
-      [](const mlir::ArgAndResultAttrsOpInterface::Concept*,
-         mlir::Operation*) -> mlir::ArrayAttr { return nullptr; },
-      [](const mlir::ArgAndResultAttrsOpInterface::Concept*, mlir::Operation*,
-         mlir::ArrayAttr) {},
-      [](const mlir::ArgAndResultAttrsOpInterface::Concept*, mlir::Operation*,
-         mlir::ArrayAttr) {},
-      [](const mlir::ArgAndResultAttrsOpInterface::Concept*,
-         mlir::Operation*) -> mlir::Attribute { return nullptr; },
-      [](const mlir::ArgAndResultAttrsOpInterface::Concept*,
-         mlir::Operation*) -> mlir::Attribute { return nullptr; },
-  };
-  return &concept;
-}
-
-// ---------------------------------------------------------------------------
 // SupportedInterfaces<FunctionOpInterface>::getOrCreateDefaultConcept
 //
 // User-facing interface - declared in Interface.h, specialised here.
@@ -234,12 +205,6 @@ void registerInterfacesFunctionInterfacesBindings() {
   crest::RegisterInterfaceForOp(
       mlir::FunctionOpInterface::getInterfaceID(), ".",
       std::shared_ptr<void>(getOrCreateDefaultConcept(), no_del));
-  crest::RegisterInterfaceForOp(
-      mlir::ArgAndResultAttrsOpInterface::getInterfaceID(), ".",
-      std::shared_ptr<void>(
-          SupportedInterfaces<
-              mlir::ArgAndResultAttrsOpInterface>::getOrCreateDefaultConcept(),
-          no_del));
 
   // mlir::function_interface_impl::parseFunctionOp - parses a function-like op.
   // The FuncTypeBuilder builds a FunctionType from arg/result types.
