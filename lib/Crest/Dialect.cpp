@@ -25,6 +25,22 @@ namespace crest {
 crest::InterfaceRegistry crest::g_interface_registry;
 
 // ---------------------------------------------------------------------------
+// Concept-creator dispatch table
+// ---------------------------------------------------------------------------
+
+static std::unordered_map<mlir::TypeID, crest::ConceptCreatorFn>
+    g_concept_creators;
+
+void crest::registerConceptCreator(mlir::TypeID id, ConceptCreatorFn fn) {
+  g_concept_creators[id] = fn;
+}
+
+crest::ConceptCreatorFn crest::lookupConceptCreator(mlir::TypeID id) {
+  auto it = g_concept_creators.find(id);
+  return it != g_concept_creators.end() ? it->second : nullptr;
+}
+
+// ---------------------------------------------------------------------------
 // Scheme dialects have no C++ class, so MLIR_DECLARE_EXPLICIT_TYPE_ID is
 // unavailable (it requires a static variable per class, established at link
 // time). TypeIDAllocator lets us mint a stable TypeID before the Dialect
@@ -326,6 +342,25 @@ void registerIRExtensibleDialectBindings() {
               }
               return new CrestDialect(name, load_ctx, id, std::move(*cbs_ptr2));
             });
+      });
+
+  // crest::registerInterfaceForOperation — generic dispatcher.
+  // Receives a Scheme dispatcher procedure, looks up the concept creator for
+  // the interface TypeID it returns, and delegates concept construction.
+  Sregister_symbol(
+      "crest::registerInterfaceForOperation",
+      (void*)+[](ptr dispatcher) -> ptr {
+        SValue id_val = scheme_call(dispatcher, Sstring_to_symbol("id"));
+        auto* type_id =
+            reinterpret_cast<mlir::TypeID*>(Sunsigned64_value(id_val));
+        auto fn = crest::lookupConceptCreator(*type_id);
+        if (!fn) {
+          scheme_error("crest::registerInterfaceForOperation",
+                       "no concept creator registered for this interface TypeID"
+                       " — call registerConceptCreator during binding init");
+        }
+        fn(dispatcher);
+        return Strue;
       });
 }
 
