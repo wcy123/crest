@@ -239,37 +239,39 @@ void crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
   std::string op_name{Sstring_value(
       scheme_call(dispatcher, Sstring_to_symbol("operation_name")))};
 
-  SValue get_ft = scheme_call(dispatcher, Sstring_to_symbol("getFunctionType"));
-  SValue set_fta =
+  SValue getFunctionType =
+      scheme_call(dispatcher, Sstring_to_symbol("getFunctionType"));
+  SValue setFunctionTypeAttr =
       scheme_call(dispatcher, Sstring_to_symbol("setFunctionTypeAttr"));
-  SValue vbody = scheme_call(dispatcher, Sstring_to_symbol("verifyBody"));
-  SValue vtype = scheme_call(dispatcher, Sstring_to_symbol("verifyType"));
-  bool has_override = (get_ft != Sfalse || set_fta != Sfalse ||
-                       vbody != Sfalse || vtype != Sfalse);
+  SValue verifyBody = scheme_call(dispatcher, Sstring_to_symbol("verifyBody"));
+  SValue verifyType = scheme_call(dispatcher, Sstring_to_symbol("verifyType"));
+  bool has_override =
+      (getFunctionType != Sfalse || setFunctionTypeAttr != Sfalse ||
+       verifyBody != Sfalse || verifyType != Sfalse);
 
   auto no_del = [](void*) {};
   if (has_override) {
     // Copy default; override only the provided slots by field name.
     auto* data = new FunctionConceptData{CreateDefaultConcept(), Sfalse, Sfalse,
                                          Sfalse, Sfalse};
-    if (get_ft != Sfalse) {
-      Slock_object(get_ft);
-      data->get_function_type = get_ft;
+    if (getFunctionType != Sfalse) {
+      Slock_object(getFunctionType);
+      data->get_function_type = getFunctionType;
       data->concept.getFunctionType = k_override_getFunctionType;
     }
-    if (set_fta != Sfalse) {
-      Slock_object(set_fta);
-      data->set_function_type_attr = set_fta;
+    if (setFunctionTypeAttr != Sfalse) {
+      Slock_object(setFunctionTypeAttr);
+      data->set_function_type_attr = setFunctionTypeAttr;
       data->concept.setFunctionTypeAttr = k_override_setFunctionTypeAttr;
     }
-    if (vbody != Sfalse) {
-      Slock_object(vbody);
-      data->verify_body = vbody;
+    if (verifyBody != Sfalse) {
+      Slock_object(verifyBody);
+      data->verify_body = verifyBody;
       data->concept.verifyBody = k_override_verifyBody;
     }
-    if (vtype != Sfalse) {
-      Slock_object(vtype);
-      data->verify_type = vtype;
+    if (verifyType != Sfalse) {
+      Slock_object(verifyType);
+      data->verify_type = verifyType;
       data->concept.verifyType = k_override_verifyType;
     }
     crest::RegisterInterfaceForOp(
