@@ -226,13 +226,7 @@ void* CrestDialect::getRegisteredInterfaceForOp(mlir::TypeID interfaceID,
       return it2->second.get();
     }
   }
-  // Escape hatch: user-provided Scheme callback (slot 11).
-  if (cbs_.get_registered_interface_for_op) {
-    return ptr_from_scheme<void>(scheme_call(
-        cbs_.get_registered_interface_for_op->get(), &interfaceID, &opName));
-  }
-  return mlir::ExtensibleDialect::getRegisteredInterfaceForOp(interfaceID,
-                                                              opName);
+  return nullptr;
 }
 
 // ---------------------------------------------------------------------------
