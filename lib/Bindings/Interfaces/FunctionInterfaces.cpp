@@ -183,6 +183,9 @@ struct FunctionConceptData {
   mlir::FunctionOpInterface::Concept concept; // MUST be first — self == data
   ptr get_function_type;
   ptr set_function_type_attr;
+  // cloneTypeWith is intentionally absent: TypeRange cannot be serialised into
+  // a Scheme value, so this slot can never be overridden from Scheme.
+  // CreateConcept errors at registration time if the dispatcher provides one.
   ptr verify_body;
   ptr verify_type;
 };
