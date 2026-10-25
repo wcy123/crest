@@ -57,10 +57,6 @@
                                [iface-name (%%id->str iface-stx)]
                                [methods   (interface-entry-methods entry)]
                                [declared  (map interface-method-name methods)]
-                               [_         (when (memq 'cloneTypeWith declared)
-                                            (syntax-violation ':interfaces
-                                                              "cloneTypeWith cannot be overridden from Scheme (TypeRange cannot cross the FFI boundary)"
-                                                              iface-stx))]
                                ;; %%toy.func:mlir::FunctionOpInterface
                                [proc-id   (%%id ctx "%%" op-name-str ":" iface-stx)]
                                [id-sym    (%%iface-id-sym-for ctx entry)]
