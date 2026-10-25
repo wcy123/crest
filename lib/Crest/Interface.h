@@ -7,22 +7,20 @@
 #include "mlir/Support/TypeID.h"
 #include <memory>
 #include <string>
-#include <unordered_map>
 
 namespace crest {
 
 // ---------------------------------------------------------------------------
-// Global op-interface registry.
+// RegisterInterfaceForOp — insert a concept into the op-interface registry.
 //
-// Two levels: TypeID outer (few interfaces → fast miss on unknown interface),
-// op_name inner.  Values are shared_ptr<void> managing concept lifetime;
-// the custom deleter unlocks any locked Scheme objects before freeing.
+// Returns true on success, false if an entry for (id, op_name) already exists
+// (no overwrite — first registration wins).
+//
+// The registry is a file-local static in Dialect.cpp; callers never touch it
+// directly.
 // ---------------------------------------------------------------------------
-using InterfaceRegistry =
-    std::unordered_map<mlir::TypeID,
-                       std::unordered_map<std::string, std::shared_ptr<void>>>;
-
-extern InterfaceRegistry g_interface_registry;
+bool RegisterInterfaceForOp(mlir::TypeID id, const std::string& op_name,
+                            std::shared_ptr<void> concept_ptr);
 
 // ---------------------------------------------------------------------------
 // SupportedInterfaces<Interface>
@@ -31,11 +29,9 @@ extern InterfaceRegistry g_interface_registry;
 // an explicit specialisation of CreateConcept.  A missing specialisation is
 // a link error caught at build time.
 //
-// CreateConcept(dispatcher) is responsible for:
-//   1. Querying the Scheme dispatcher for per-method lambdas.
-//   2. Allocating a heap concept (or reusing a static default).
-//   3. Storing shared_ptr<void> entries in g_interface_registry keyed by
-//      the op name returned by dispatcher('operation_name).
+// CreateConcept(dispatcher) collects method lambdas from the Scheme dispatcher,
+// builds the concept, and calls RegisterInterfaceForOp for each TypeID the
+// interface covers (primary + sub-interfaces).
 // ---------------------------------------------------------------------------
 template <typename Interface> struct SupportedInterfaces {
   static void CreateConcept(ptr dispatcher); // undefined by design

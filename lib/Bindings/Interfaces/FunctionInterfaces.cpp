@@ -294,36 +294,33 @@ void crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
         data->*(slots[i].field) = lambdas[i];
       }
     }
-    crest::g_interface_registry[mlir::FunctionOpInterface::getInterfaceID()]
-                               [op_name] =
-                                   std::shared_ptr<void>(data, [](void* p) {
-                                     auto* d =
-                                         static_cast<FunctionConceptData*>(p);
-                                     for (SValue sv :
-                                          {d->get_function_type,
-                                           d->set_function_type_attr,
-                                           d->verify_body, d->verify_type}) {
-                                       if (sv != Sfalse) {
-                                         Sunlock_object(sv);
-                                       }
-                                     }
-                                     delete d;
-                                   });
+    crest::RegisterInterfaceForOp(
+        mlir::FunctionOpInterface::getInterfaceID(), op_name,
+        std::shared_ptr<void>(data, [](void* p) {
+          auto* d = static_cast<FunctionConceptData*>(p);
+          for (SValue sv : {d->get_function_type, d->set_function_type_attr,
+                            d->verify_body, d->verify_type}) {
+            if (sv != Sfalse) {
+              Sunlock_object(sv);
+            }
+          }
+          delete d;
+        }));
   } else {
-    crest::g_interface_registry[mlir::FunctionOpInterface::getInterfaceID()]
-                               [op_name] = std::shared_ptr<void>(
-                                   &g_function_concept, no_del);
+    crest::RegisterInterfaceForOp(
+        mlir::FunctionOpInterface::getInterfaceID(), op_name,
+        std::shared_ptr<void>(&g_function_concept, no_del));
   }
   // Sub-interfaces always use their static defaults.
-  crest::g_interface_registry[mlir::SymbolOpInterface::getInterfaceID()]
-                             [op_name] = std::shared_ptr<void>(
-                                 &g_symbol_concept, no_del);
-  crest::g_interface_registry
-      [mlir::ArgAndResultAttrsOpInterface::getInterfaceID()][op_name] =
-          std::shared_ptr<void>(&g_arg_result_attrs_concept, no_del);
-  crest::g_interface_registry[mlir::CallableOpInterface::getInterfaceID()]
-                             [op_name] = std::shared_ptr<void>(
-                                 &g_callable_concept, no_del);
+  crest::RegisterInterfaceForOp(
+      mlir::SymbolOpInterface::getInterfaceID(), op_name,
+      std::shared_ptr<void>(&g_symbol_concept, no_del));
+  crest::RegisterInterfaceForOp(
+      mlir::ArgAndResultAttrsOpInterface::getInterfaceID(), op_name,
+      std::shared_ptr<void>(&g_arg_result_attrs_concept, no_del));
+  crest::RegisterInterfaceForOp(
+      mlir::CallableOpInterface::getInterfaceID(), op_name,
+      std::shared_ptr<void>(&g_callable_concept, no_del));
 }
 
 // ---------------------------------------------------------------------------

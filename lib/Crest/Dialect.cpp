@@ -15,14 +15,29 @@
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Support/TypeID.h"
 #include <memory>
+#include <unordered_map>
 
 namespace crest {
 
 // ---------------------------------------------------------------------------
-// Global op-interface registry (defined here, declared in Interface.h)
+// Op-interface registry — file-local; accessed only via RegisterInterfaceForOp
+// and getRegisteredInterfaceForOp.
 // ---------------------------------------------------------------------------
 
-crest::InterfaceRegistry crest::g_interface_registry;
+using OpInterfaceRegistry =
+    std::unordered_map<mlir::TypeID,
+                       std::unordered_map<std::string, std::shared_ptr<void>>>;
+static OpInterfaceRegistry g_op_interface_registry;
+
+bool crest::RegisterInterfaceForOp(mlir::TypeID id, const std::string& op_name,
+                                   std::shared_ptr<void> concept_ptr) {
+  auto& inner = g_op_interface_registry[id];
+  if (inner.count(op_name)) {
+    return false; // already registered — first wins
+  }
+  inner[op_name] = std::move(concept_ptr);
+  return true;
+}
 
 // ---------------------------------------------------------------------------
 // Concept-creator dispatch table
@@ -235,8 +250,8 @@ mlir::LogicalResult CrestDialect::verifyRegionResultAttribute(
 void* CrestDialect::getRegisteredInterfaceForOp(mlir::TypeID interfaceID,
                                                 mlir::OperationName opName) {
   // TypeID-first two-level lookup: few interfaces → fast miss on outer map.
-  auto it = crest::g_interface_registry.find(interfaceID);
-  if (it != crest::g_interface_registry.end()) {
+  auto it = g_op_interface_registry.find(interfaceID);
+  if (it != g_op_interface_registry.end()) {
     auto it2 = it->second.find(opName.getStringRef().str());
     if (it2 != it->second.end()) {
       return it2->second.get();
