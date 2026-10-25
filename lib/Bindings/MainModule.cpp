@@ -3,34 +3,36 @@
  * Licensed under the MIT License.
  */
 
-// Registration hub — no MLIR header mirror.
+// Registration hub - no MLIR header mirror.
 
-// Registration hub — calls every canonical register*Bindings() directly.
+// Registration hub - calls every canonical register*Bindings() directly.
 // No Core/ shim layer; each header belongs to its canonical IR/, Transforms/,
 // Dialect/, or Interfaces/ sub-tree.
 
 #include "../Crest/Dialect.h"
 #include "../Crest/Op.h"
 #include "../Crest/Trait.h"
-#include "Dialect/Shape/Shape.h"
-#include "Dialect/Tensor/Tensor.h"
+
+#include "Dialect/Tensor/IR/Tensor.h"
 #include "IR/Block.h"
 #include "IR/BuiltinAttributes.h"
 #include "IR/BuiltinOps.h"
 #include "IR/BuiltinTypes.h"
 #include "IR/Location.h"
 #include "IR/MLIRContext.h"
-#include "IR/OpBuilder.h"
+#include "IR/Builders.h"
 #include "IR/OpImplementation.h"
-#include "IR/OpResult.h"
+
 #include "IR/Operation.h"
-#include "IR/OperationState.h"
+#include "IR/OperationSupport.h"
 #include "IR/PatternMatch.h"
 #include "IR/Region.h"
-#include "IR/Type.h"
+#include "IR/Types.h"
 #include "IR/Value.h"
-#include "Interfaces/DestinationStyleOp.h"
+#include "Interfaces/CallInterfaces.h"
+#include "Interfaces/DestinationStyleOpInterface.h"
 #include "Interfaces/FunctionInterfaces.h"
+#include "IR/SymbolTable.h"
 #include "Support/ArrayRef.h"
 #include "Support/CrestObject.h"
 #include "Support/Logging.h"
@@ -51,7 +53,9 @@ void registerMlirForeignFunctions() {
   registerDialectShapeBindings();
   registerDialectTensorBindings();
   registerInterfacesDpsBindings();
+  registerInterfacesCallInterfacesBindings();
   registerInterfacesFunctionInterfacesBindings();
+  registerIRSymbolTableBindings();
   registerIRExtensibleDialectBindings();
   registerCrestDynamicOpBindings();
   registerCrestTraitBindings();

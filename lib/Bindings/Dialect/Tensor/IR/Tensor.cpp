@@ -3,10 +3,10 @@
  * Licensed under the MIT License.
  */
 
-// Mirrors mlir/Dialect/Tensor/IR/Tensor.h — tensor op bindings.
+// Mirrors mlir/Dialect/Tensor/IR/Tensor.h - tensor op bindings.
 
 #include "Tensor.h"
-#include "../../Support/SchemeWrapper.h"
+#include "../../../Support/SchemeWrapper.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinTypes.h"
