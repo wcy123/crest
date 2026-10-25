@@ -26,22 +26,21 @@ bool RegisterInterfaceForOp(mlir::TypeID id, const std::string& op_name,
 // SupportedInterfaces<Interface>
 //
 // Declared but not defined here — each interface binding file must provide
-// an explicit specialisation of CreateConcept.  A missing specialisation is
-// a link error caught at build time.
+// explicit specialisations.  Missing specialisations are link errors.
 //
-// CreateConcept(dispatcher) collects method lambdas from the Scheme dispatcher,
-// builds the concept, and calls RegisterInterfaceForOp for each TypeID the
-// interface covers (primary + sub-interfaces).
+// getOrCreateDefaultConcept() lazily creates the default concept on first
+// call (C++11 function-local static, thread-safe) and returns a stable
+// pointer to it.  No file-scope static globals needed.
+//
+// CreateConcept(dispatcher) copies the default concept, overrides the slots
+// the Scheme dispatcher provides, and calls RegisterInterfaceForOp.
 // ---------------------------------------------------------------------------
 template <typename Interface> struct SupportedInterfaces {
-  // Return the default concept value for this interface (no allocation,
-  // no registration).  CreateConcept copies this and overrides specific
-  // function-pointer slots based on what the Scheme dispatcher provides.
-  static typename Interface::Concept
-  CreateDefaultConcept(); // undefined by design
+  // Return a stable pointer to the (lazily created) default concept.
+  static typename Interface::Concept*
+  getOrCreateDefaultConcept(); // undefined by design
 
-  // Copy the default concept, override the slots the dispatcher provides,
-  // then call RegisterInterfaceForOp.
+  // Copy the default concept, override provided slots, then register.
   static void CreateConcept(ptr dispatcher); // undefined by design
 };
 
