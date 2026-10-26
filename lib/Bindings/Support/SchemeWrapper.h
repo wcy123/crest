@@ -88,16 +88,13 @@ template <typename From, typename To> struct Conversion {
   To operator()(const From& from); // undefined by design
 };
 
-template <typename From> inline ptr convert_to_scheme(const From& v) {
-  return Conversion<From, ptr>{}(v);
-}
-
-// Generic pointer overload — more specialised than convert_to_scheme(const From&),
-// so it is chosen for any raw pointer type without instantiating Conversion<T*,ptr>.
-template <typename T>
-inline ptr convert_to_scheme(T* p) {
-  return Sunsigned64(reinterpret_cast<uint64_t>(p));
-}
+// Partial specialisation for raw pointer types: any T* → uptr.
+// Inline class body avoids multiple-definition errors across TUs.
+template <typename T> struct Conversion<T*, ptr> {
+  inline ptr operator()(T* const& p) const {
+    return Sunsigned64(reinterpret_cast<uint64_t>(p));
+  }
+};
 
 template <typename To> inline To convert_to_cpp(ptr v) {
   return Conversion<ptr, To>{}(v);
@@ -106,7 +103,7 @@ template <typename To> inline To convert_to_cpp(ptr v) {
 // ---- make_scheme_list ----
 template <typename... Ts> inline ptr make_scheme_list(Ts&&... args) {
   std::array<ptr, sizeof...(Ts)> items = {
-      convert_to_scheme(std::forward<Ts>(args))...};
+      Conversion<std::decay_t<Ts>, ptr>{}(std::forward<Ts>(args))...};
   ptr list = Snil;
   for (auto it = items.rbegin(); it != items.rend(); ++it) {
     list = Scons(*it, list);
@@ -126,17 +123,17 @@ template <typename F> inline ptr scheme_call(F f) {
   return Scall0(convert_to_scheme_func(f));
 }
 template <typename F, typename T1> inline ptr scheme_call(F f, const T1& a1) {
-  return Scall1(convert_to_scheme_func(f), convert_to_scheme(a1));
+  return Scall1(convert_to_scheme_func(f), Conversion<T1, ptr>{}(a1));
 }
 template <typename F, typename T1, typename T2>
 inline ptr scheme_call(F f, const T1& a1, const T2& a2) {
-  return Scall2(convert_to_scheme_func(f), convert_to_scheme(a1),
-                convert_to_scheme(a2));
+  return Scall2(convert_to_scheme_func(f), Conversion<T1, ptr>{}(a1),
+                Conversion<T2, ptr>{}(a2));
 }
 template <typename F, typename T1, typename T2, typename T3>
 inline ptr scheme_call(F f, const T1& a1, const T2& a2, const T3& a3) {
-  return Scall3(convert_to_scheme_func(f), convert_to_scheme(a1),
-                convert_to_scheme(a2), convert_to_scheme(a3));
+  return Scall3(convert_to_scheme_func(f), Conversion<T1, ptr>{}(a1),
+                Conversion<T2, ptr>{}(a2), Conversion<T3, ptr>{}(a3));
 }
 // N=4: fall back to (apply f args)
 template <typename F, typename T1, typename T2, typename T3, typename T4>
@@ -144,10 +141,10 @@ inline ptr scheme_call(F f, const T1& a1, const T2& a2, const T3& a3,
                        const T4& a4) {
   ptr apply = Stop_level_value(Sstring_to_symbol("apply"));
   return Scall2(apply, convert_to_scheme_func(f),
-                Scons(convert_to_scheme(a1),
-                      Scons(convert_to_scheme(a2),
-                            Scons(convert_to_scheme(a3),
-                                  Scons(convert_to_scheme(a4), Snil)))));
+                Scons(Conversion<T1, ptr>{}(a1),
+                      Scons(Conversion<T2, ptr>{}(a2),
+                            Scons(Conversion<T3, ptr>{}(a3),
+                                  Scons(Conversion<T4, ptr>{}(a4), Snil)))));
 }
 
 // ---------------------------------------------------------------------------
@@ -189,7 +186,8 @@ inline ptr Conversion<long long, ptr>::operator()(const long long& v) {
   return Sfixnum(static_cast<long>(v));
 }
 template <>
-inline ptr Conversion<unsigned short, ptr>::operator()(const unsigned short& v) {
+inline ptr
+Conversion<unsigned short, ptr>::operator()(const unsigned short& v) {
   return Sfixnum(static_cast<long>(v));
 }
 template <>
@@ -201,8 +199,8 @@ inline ptr Conversion<unsigned long, ptr>::operator()(const unsigned long& v) {
   return Sfixnum(static_cast<long>(v));
 }
 template <>
-inline ptr Conversion<unsigned long long, ptr>::operator()(
-    const unsigned long long& v) {
+inline ptr
+Conversion<unsigned long long, ptr>::operator()(const unsigned long long& v) {
   return Sunsigned64(v);
 }
 template <> inline ptr Conversion<float, ptr>::operator()(const float& v) {
@@ -215,26 +213,28 @@ template <>
 inline ptr Conversion<long double, ptr>::operator()(const long double& v) {
   return Sflonum(static_cast<double>(v));
 }
-template <>
-inline ptr Conversion<const char*, ptr>::operator()(const char* const& v) {
-  return Sstring(v ? v : "");
-}
-template <> inline ptr Conversion<char*, ptr>::operator()(char* const& v) {
-  return Sstring(v ? v : "");
-}
+template <> struct Conversion<const char*, ptr> {
+  inline ptr operator()(const char* const& v) const {
+    return Sstring(v ? v : "");
+  }
+};
+template <> struct Conversion<char*, ptr> {
+  inline ptr operator()(char* const& v) const { return Sstring(v ? v : ""); }
+};
 template <>
 inline ptr Conversion<std::string, ptr>::operator()(const std::string& v) {
   return Sstring(v.c_str());
 }
 template <>
-inline ptr Conversion<std::string_view, ptr>::operator()(const std::string_view& v) {
+inline ptr
+Conversion<std::string_view, ptr>::operator()(const std::string_view& v) {
   std::string tmp(v);
   return Sstring(tmp.c_str());
 }
-// ptr identity
-template <> inline ptr Conversion<ptr, ptr>::operator()(const ptr& v) {
-  return v;
-}
+// ptr identity — full class spec takes precedence over Conversion<T*, ptr>
+template <> struct Conversion<ptr, ptr> {
+  inline ptr operator()(const ptr& v) const { return v; }
+};
 
 // ---------------------------------------------------------------------------
 // Scheme → C++ (From = ptr, To = C++ type)
@@ -253,7 +253,8 @@ template <>
 inline unsigned int Conversion<ptr, unsigned int>::operator()(const ptr& v) {
   return static_cast<unsigned int>(Sunsigned64_value(v));
 }
-template <> inline uint64_t Conversion<ptr, uint64_t>::operator()(const ptr& v) {
+template <>
+inline uint64_t Conversion<ptr, uint64_t>::operator()(const ptr& v) {
   return Sunsigned64_value(v);
 }
 template <> inline double Conversion<ptr, double>::operator()(const ptr& v) {
@@ -269,8 +270,9 @@ inline std::string Conversion<ptr, std::string>::operator()(const ptr& v) {
   iptr len = Sstring_length(v);
   std::string result;
   result.reserve(static_cast<std::size_t>(len));
-  for (iptr i = 0; i < len; ++i)
+  for (iptr i = 0; i < len; ++i) {
     result += static_cast<char>(Sstring_ref(v, i) & 0xFF);
+  }
   return result;
 }
 
