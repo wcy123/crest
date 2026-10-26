@@ -6,6 +6,8 @@
 
 #include "Dialect.h"
 #include "../Bindings/Support/SchemeWrapper.h"
+#include "Interface.h"
+#include "llvm/ADT/DenseMap.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/DialectImplementation.h"
 #include "mlir/IR/DialectRegistry.h"
@@ -16,6 +18,43 @@
 #include <memory>
 
 namespace crest {
+
+// ---------------------------------------------------------------------------
+// Op-interface registry — file-local; accessed only via RegisterInterfaceForOp
+// and getRegisteredInterfaceForOp.
+// DenseMap is used because std::unordered_map requires std::hash<mlir::TypeID>
+// which is not provided; llvm::DenseMapInfo<mlir::TypeID> is.
+// ---------------------------------------------------------------------------
+
+using OpInterfaceRegistry =
+    llvm::DenseMap<mlir::TypeID,
+                   std::unordered_map<std::string, std::shared_ptr<void>>>;
+static OpInterfaceRegistry g_op_interface_registry;
+
+bool RegisterInterfaceForOp(mlir::TypeID id, const std::string& op_name,
+                            std::shared_ptr<void> concept_ptr) {
+  auto& inner = g_op_interface_registry[id];
+  if (inner.count(op_name)) {
+    return false; // already registered — first wins
+  }
+  inner[op_name] = std::move(concept_ptr);
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Concept-creator dispatch table
+// ---------------------------------------------------------------------------
+
+static llvm::DenseMap<mlir::TypeID, ConceptCreatorFn> g_concept_creators;
+
+void registerConceptCreator(mlir::TypeID id, ConceptCreatorFn fn) {
+  g_concept_creators[id] = fn;
+}
+
+ConceptCreatorFn lookupConceptCreator(mlir::TypeID id) {
+  auto it = g_concept_creators.find(id);
+  return it != g_concept_creators.end() ? it->second : nullptr;
+}
 
 // ---------------------------------------------------------------------------
 // Scheme dialects have no C++ class, so MLIR_DECLARE_EXPLICIT_TYPE_ID is
@@ -211,12 +250,19 @@ mlir::LogicalResult CrestDialect::verifyRegionResultAttribute(
 
 void* CrestDialect::getRegisteredInterfaceForOp(mlir::TypeID interfaceID,
                                                 mlir::OperationName opName) {
-  if (cbs_.get_registered_interface_for_op) {
-    return ptr_from_scheme<void>(scheme_call(
-        cbs_.get_registered_interface_for_op->get(), &interfaceID, &opName));
+  // TypeID-first two-level lookup: few interfaces → fast miss on outer map.
+  auto it = g_op_interface_registry.find(interfaceID);
+  if (it == g_op_interface_registry.end()) {
+    return nullptr;
   }
-  return mlir::ExtensibleDialect::getRegisteredInterfaceForOp(interfaceID,
-                                                              opName);
+  // Try op-specific entry first.
+  auto it2 = it->second.find(opName.getStringRef().str());
+  if (it2 != it->second.end()) {
+    return it2->second.get();
+  }
+  // Fall back to "." — the sentinel key for the registered default concept.
+  auto def = it->second.find(".");
+  return def != it->second.end() ? def->second.get() : nullptr;
 }
 
 // ---------------------------------------------------------------------------
@@ -316,6 +362,25 @@ void registerIRExtensibleDialectBindings() {
               }
               return new CrestDialect(name, load_ctx, id, std::move(*cbs_ptr2));
             });
+      });
+
+  // crest::registerInterfaceForOperation — generic dispatcher.
+  // Receives a Scheme dispatcher procedure, looks up the concept creator for
+  // the interface TypeID it returns, and delegates concept construction.
+  Sregister_symbol(
+      "crest::registerInterfaceForOperation",
+      (void*)+[](ptr dispatcher) -> ptr {
+        ptr id_val = scheme_call(dispatcher, Sstring_to_symbol("id"));
+        auto* type_id =
+            reinterpret_cast<mlir::TypeID*>(Sunsigned64_value(id_val));
+        auto fn = crest::lookupConceptCreator(*type_id);
+        if (!fn) {
+          scheme_error("crest::registerInterfaceForOperation",
+                       "no concept creator registered for this interface TypeID"
+                       " — call registerConceptCreator during binding init");
+        }
+        fn(dispatcher);
+        return Strue;
       });
 }
 

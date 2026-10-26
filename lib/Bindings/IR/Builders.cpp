@@ -3,9 +3,9 @@
  * Licensed under the MIT License.
  */
 
-// Mirrors mlir/IR/Builders.h — OpBuilder bindings.
+// Mirrors mlir/IR/Builders.h
 
-#include "OpBuilder.h"
+#include "Builders.h"
 #include "../Support/CrestObject.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/Builders.h"

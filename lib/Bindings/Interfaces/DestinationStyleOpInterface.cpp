@@ -5,7 +5,7 @@
 
 // Mirrors mlir/Interfaces/DestinationStyleOpInterface.h
 
-#include "DestinationStyleOp.h"
+#include "DestinationStyleOpInterface.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/Interfaces/DestinationStyleOpInterface.h"

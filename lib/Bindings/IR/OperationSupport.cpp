@@ -7,9 +7,9 @@
 
 // Thin C wrappers around mlir::OperationState via
 // CrestOwned<mlir::OperationState>. The CrestObject deletor handles destruction
-// — no explicit ~OperationState binding.
+// - no explicit ~OperationState binding.
 
-#include "OperationState.h"
+#include "OperationSupport.h"
 #include "../Support/CrestObject.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/Location.h"

@@ -17,9 +17,13 @@
           (mlir IR Region)
           (mlir IR OpImplementation)
           (only (mlir Interfaces FunctionInterfaces)
-                crest::FunctionOpInterface::getConcept
+                crest::FunctionOpInterface::getInterfaceID
+                crest::registerInterfaceForOperation
+                mlir::FunctionOpInterface
                 mlir::function_interface_impl::printFunctionOp
-                mlir::function_interface_impl::parseFunctionOp))
+                mlir::function_interface_impl::parseFunctionOp)
+          (only (mlir IR BuiltinAttributes)
+                mlir::TypeAttr::getValue))
 
   ;; Handle-returning parser functions return 0 on failure (not #f),
   ;; so we need an explicit zero check rather than relying on Scheme truthiness.
@@ -186,7 +190,12 @@
     ;; Format: toy.func @name(%arg0: type, ...) { body }
     (define-op func
       :summary    "toy function definition"
-      :interfaces (crest::FunctionOpInterface::getConcept)
+      :interfaces ((mlir::FunctionOpInterface
+                    (getFunctionType (self)
+                                     (mlir::TypeAttr::getValue
+                                      (mlir::Operation::getAttr self "function_type")))
+                    (setFunctionTypeAttr (self attr)
+                                         (mlir::Operation::setAttr! self "function_type" attr))))
       (:parse (parser state)
               (mlir::function_interface_impl::parseFunctionOp parser state))
       (:print (op printer name)

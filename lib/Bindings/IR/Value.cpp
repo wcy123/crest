@@ -63,3 +63,27 @@ void registerIRValueBindings() {
 }
 
 } // namespace crest
+
+// ---------------------------------------------------------------------------
+// mlir::OpResult - defined in mlir/IR/Value.h alongside mlir::Value.
+// ---------------------------------------------------------------------------
+namespace crest {
+void registerIROpResultBindings() {
+  Sregister_symbol(
+      "mlir::OpResult::getResultNumber",
+      (void*)+[](uint64_t value) -> uint64_t {
+        if (!value) {
+          scheme_error("mlir::OpResult::getResultNumber",
+                       "value must not be null");
+        }
+        auto val = mlir::Value::getFromOpaquePointer(
+            reinterpret_cast<const void*>(value));
+        auto result = mlir::dyn_cast<mlir::OpResult>(val);
+        if (!result) {
+          scheme_error("mlir::OpResult::getResultNumber",
+                       "value is not an OpResult");
+        }
+        return static_cast<uint64_t>(result.getResultNumber());
+      });
+}
+} // namespace crest

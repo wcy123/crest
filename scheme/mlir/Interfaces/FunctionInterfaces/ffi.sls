@@ -2,32 +2,36 @@
 ;; Mirrors mlir/Interfaces/FunctionInterfaces.h
 (library (mlir Interfaces FunctionInterfaces ffi)
   (export %mlir::function_interface_impl::parseFunctionOp
-          %mlir::OperationName::getStringRef
           %crest::FunctionOpInterface::getInterfaceID
-          %crest::SymbolOpInterface::getInterfaceID
-          %crest::ArgAndResultAttrsOpInterface::getInterfaceID
-          %crest::CallableOpInterface::getInterfaceID
-          %crest::FunctionOpInterface::getConcept
+          %crest::registerInterfaceForOperation
+          %crest::FunctionOpInterface::default::getFunctionType
+          %crest::FunctionOpInterface::default::setFunctionTypeAttr
+          %crest::FunctionOpInterface::default::verifyBody
+          %crest::FunctionOpInterface::default::verifyType
           %mlir::function_interface_impl::printFunctionOp)
   (import (chezscheme))
 
-  (define %mlir::OperationName::getStringRef
-    (foreign-procedure "mlir::OperationName::getStringRef" (uptr) string))
-
+  ;; TypeID* for FunctionOpInterface — used in the dispatcher 'id clause.
   (define %crest::FunctionOpInterface::getInterfaceID
     (foreign-procedure "crest::FunctionOpInterface::getInterfaceID" () uptr))
 
-  (define %crest::SymbolOpInterface::getInterfaceID
-    (foreign-procedure "crest::SymbolOpInterface::getInterfaceID" () uptr))
+  ;; Register an interface for one op via a Scheme dispatcher procedure.
+  ;; dispatcher: scheme-object (procedure).
+  (define %crest::registerInterfaceForOperation
+    (foreign-procedure "crest::registerInterfaceForOperation" (scheme-object) scheme-object))
 
-  (define %crest::ArgAndResultAttrsOpInterface::getInterfaceID
-    (foreign-procedure "crest::ArgAndResultAttrsOpInterface::getInterfaceID" () uptr))
+  ;; Default C++ implementations — called by mlir::FunctionOpInterface fallback.
+  (define %crest::FunctionOpInterface::default::getFunctionType
+    (foreign-procedure "crest::FunctionOpInterface::default::getFunctionType" (uptr) uptr))
 
-  (define %crest::CallableOpInterface::getInterfaceID
-    (foreign-procedure "crest::CallableOpInterface::getInterfaceID" () uptr))
+  (define %crest::FunctionOpInterface::default::setFunctionTypeAttr
+    (foreign-procedure "crest::FunctionOpInterface::default::setFunctionTypeAttr" (uptr uptr) void))
 
-  (define %crest::FunctionOpInterface::getConcept
-    (foreign-procedure "crest::FunctionOpInterface::getConcept" (uptr) uptr))
+  (define %crest::FunctionOpInterface::default::verifyBody
+    (foreign-procedure "crest::FunctionOpInterface::default::verifyBody" (uptr) boolean))
+
+  (define %crest::FunctionOpInterface::default::verifyType
+    (foreign-procedure "crest::FunctionOpInterface::default::verifyType" (uptr) boolean))
 
   (define %mlir::function_interface_impl::parseFunctionOp
     (foreign-procedure "mlir::function_interface_impl::parseFunctionOp"

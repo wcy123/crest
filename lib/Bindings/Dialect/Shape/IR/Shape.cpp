@@ -5,7 +5,7 @@
 
 // Mirrors mlir/Dialect/Shape/IR/Shape.h — type factory bindings.
 
-#include "../Shape.h"
+#include "Shape.h"
 #include "../../../Support/SchemeWrapper.h"
 #include "mlir/Dialect/Shape/IR/Shape.h"
 #include "mlir/IR/MLIRContext.h"

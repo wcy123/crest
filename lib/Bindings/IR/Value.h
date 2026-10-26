@@ -8,6 +8,7 @@
 
 namespace crest {
 void registerIRValueBindings();
+void registerIROpResultBindings();
 } // namespace crest
 
 #endif // CREST_BINDINGS_IR_VALUE_H

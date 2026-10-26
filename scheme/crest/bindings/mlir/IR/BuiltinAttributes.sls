@@ -35,6 +35,7 @@
     mlir::DenseResourceElementsAttr::get
     mlir::StringAttr::get
     mlir::TypeAttr::get
+    mlir::TypeAttr::getValue
     mlir::DenseElementsAttr::get<f64>
     mlir::isa<IntegerAttr>
     mlir::isa<FloatAttr>
@@ -67,6 +68,9 @@
   ;; @brief mlir::TypeAttr::get — wrap a Type as a TypeAttr.
   (define (mlir::TypeAttr::get type)
     (%mlir::TypeAttr::get type))
+
+  ;; @brief mlir::TypeAttr::getValue — extract the mlir::Type from a TypeAttr.
+  (define mlir::TypeAttr::getValue %mlir::TypeAttr::getValue)
 
   (define mlir::DenseElementsAttr::get<f64> %mlir::DenseElementsAttr::get<f64>)
 

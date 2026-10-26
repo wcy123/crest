@@ -8,7 +8,7 @@
           (crest dialect ast)
           (crest dialect expand utils)
           (crest dialect expand verifiers)
-          (crest dialect expand interfaces)
+          (crest dialect expand interfaces)  ; generate-interface-registrations, dialect-cbs-with-interfaces
           (mlir IR Operation))
 
   ;; ── Accessor generators ────────────────────────────────────────────────────
@@ -77,19 +77,23 @@
       #'(define (toy.register! ctx)
           (reg-dialect ctx name-str (vector cb ...)))))
 
-  ;; Top-level: %%<dialect>:initialize + optional interface dispatch + <dialect>:register!
+  ;; Top-level: %%<dialect>:initialize + <dialect>:register!
+  ;; Interface concepts are registered at C++ level via registerConcept calls
+  ;; inside %%<dialect>:initialize — no Scheme-side cond chain is generated.
   (define (generate-register-dialect ctx dialect-cbs ops reg-op-stx reg-dialect-stx)
-    (let ([op-prefix  (string-append (%%id->str ctx) ".")]
-          [auto-iface (generate-interface-dispatch ctx ops)])
-      (let ([base-defs
-             (with-syntax
-                 ([%%toy.initialize (%%id ctx "%%" ctx ":initialize")]
-                  [(op-reg ...)     (map (lambda (op)
-                                           (%%generate-register-op! ctx op-prefix op reg-op-stx))
-                                         ops)])
-               (list
-                #'(define (%%toy.initialize dialect-ptr) op-reg ...)
-                (%%generate-register! ctx dialect-cbs ops reg-dialect-stx)))])
-        (if auto-iface (cons auto-iface base-defs) base-defs))))
+    (let ([op-prefix (string-append (%%id->str ctx) ".")])
+      (let-values ([(iface-defs iface-calls)
+                    (generate-interface-registrations ctx ops)])
+        (let ([base-defs
+               (with-syntax
+                   ([%%toy.initialize (%%id ctx "%%" ctx ":initialize")]
+                    [(op-reg ...)     (map (lambda (op)
+                                             (%%generate-register-op! ctx op-prefix op reg-op-stx))
+                                           ops)]
+                    [(iface-call ...) iface-calls])
+                 (list
+                  #'(define (%%toy.initialize dialect-ptr) op-reg ... iface-call ...)
+                  (%%generate-register! ctx dialect-cbs ops reg-dialect-stx)))])
+          (append iface-defs base-defs)))))
 
   ) ;; end library (crest dialect expand)

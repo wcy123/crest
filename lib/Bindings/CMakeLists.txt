@@ -1,5 +1,5 @@
 ##
-# CREST Bindings — Chez Scheme / MLIR integration
+# CREST Bindings - Chez Scheme / MLIR integration
 #
 # CrestBindings owns the Chez Scheme build artifacts (scheme.h, libkernel.a,
 # liblz4.a, libz.a). CrestInterpreter and other targets get them transitively.
@@ -8,14 +8,20 @@
 add_library(CrestBindings STATIC
   MainModule.cpp
   $<TARGET_OBJECTS:CrestCore>
-  Dialect/Shape/Shape.cpp
-  Dialect/Shape/Shape.h
-  Dialect/Tensor/Tensor.cpp
-  Dialect/Tensor/Tensor.h
-  Interfaces/DestinationStyleOp.cpp
-  Interfaces/DestinationStyleOp.h
+
+
+  Dialect/Shape/IR/Shape.cpp
+  Dialect/Shape/IR/Shape.h
+  Dialect/Tensor/IR/Tensor.cpp
+  Dialect/Tensor/IR/Tensor.h
+  Interfaces/CallInterfaces.cpp
+  Interfaces/CallInterfaces.h
+  Interfaces/DestinationStyleOpInterface.cpp
+  Interfaces/DestinationStyleOpInterface.h
   Interfaces/FunctionInterfaces.cpp
   Interfaces/FunctionInterfaces.h
+  IR/SymbolTable.cpp
+  IR/SymbolTable.h
   IR/Block.cpp
   IR/Block.h
   IR/BuiltinAttributes.cpp
@@ -30,20 +36,20 @@ add_library(CrestBindings STATIC
   IR/OpImplementation.cpp
   IR/OpImplementation.h
   IR/MLIRContext.h
-  IR/OpBuilder.cpp
-  IR/OpBuilder.h
+  IR/Builders.cpp
+  IR/Builders.h
   IR/Operation.cpp
   IR/Operation.h
-  IR/OperationState.cpp
-  IR/OperationState.h
-  IR/OpResult.cpp
-  IR/OpResult.h
+  IR/OperationSupport.cpp
+  IR/OperationSupport.h
+
+
   IR/PatternMatch.cpp
   IR/PatternMatch.h
   IR/Region.cpp
   IR/Region.h
-  IR/Type.cpp
-  IR/Type.h
+  IR/Types.cpp
+  IR/Types.h
   IR/Value.cpp
   IR/Value.h
   Support/ArrayRef.cpp
@@ -69,13 +75,14 @@ target_include_directories(CrestBindings
     ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}  # scheme.h
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/..            # lib/ — allows Crest/ to include Bindings/Support/
+    ${CMAKE_CURRENT_SOURCE_DIR}/..            # lib/ - allows Crest/ to include Bindings/Support/
 )
 
 target_link_libraries(CrestBindings
   PUBLIC
     MLIRIR
     MLIRFuncDialect
+    MLIRCallInterfaces
     MLIRFunctionInterfaces
     MLIRTensorDialect
     MLIRShapeDialect

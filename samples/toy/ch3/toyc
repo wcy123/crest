@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
 # Toy compiler Ch3 entry point.
 # Mirrors mlir/examples/toy/Ch3/toyc.cpp
-# Usage: toyc <input.toy> [--emit=ast|--emit=mlir|--emit=mlir-opt]
-#
-# --emit=mlir-opt  runs canonicalization patterns before dumping MLIR
-#                  (mirrors Ch3's --opt flag + createCanonicalizerPass())
+# Usage: toyc <input.toy> [--emit=ast|--emit=mlir] [--opt]
 
 set -euo pipefail
 
@@ -17,22 +14,21 @@ CREST_OPT="$BUILD/tools/crest-opt/crest-opt"
     exit 1
 }
 
-FILE="" ACTION=""
+FILE="" ACTION="" OPT=""
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --emit=ast|     -emit=ast)      ACTION=ast;      shift ;;
-        --emit=mlir|    -emit=mlir)     ACTION=mlir;     shift ;;
-        --emit=mlir-opt|-emit=mlir-opt) ACTION=mlir-opt; shift ;;
-        --opt|-opt)                     ACTION=mlir-opt; shift ;;
+        --emit=ast| -emit=ast)  ACTION=ast;  shift ;;
+        --emit=mlir|-emit=mlir) ACTION=mlir; shift ;;
+        --opt|-opt)             OPT=1;       shift ;;
         *) FILE="$(realpath "$1")"; shift ;;
     esac
 done
 
 [[ -z "$FILE" ]] && {
-    echo "Usage: toyc <file.toy> [--emit=ast|--emit=mlir|--emit=mlir-opt]" >&2
+    echo "Usage: toyc <file.toy> [--emit=ast|--emit=mlir] [--opt]" >&2
     exit 1
 }
 
-TOYC_FILE="$FILE" TOYC_ACTION="$ACTION" \
+TOYC_FILE="$FILE" TOYC_ACTION="$ACTION" TOYC_OPT="$OPT" \
 CREST_PATH="$(realpath "$SCRIPT_DIR/../..")" \
 "$CREST_OPT" /dev/null --mlir-print-debuginfo --crest-pass="module=toy/ch3/toyc"

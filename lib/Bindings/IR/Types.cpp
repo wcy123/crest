@@ -3,9 +3,9 @@
  * Licensed under the MIT License.
  */
 
-// Mirrors mlir/IR/Types.h — mlir::Type base class bindings.
+// Mirrors mlir/IR/Types.h
 
-#include "Type.h"
+#include "Types.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/Types.h"
 
