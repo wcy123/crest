@@ -8,8 +8,8 @@
 add_library(CrestBindings STATIC
   MainModule.cpp
   $<TARGET_OBJECTS:CrestCore>
-  
-  
+
+
   Dialect/Shape/IR/Shape.cpp
   Dialect/Shape/IR/Shape.h
   Dialect/Tensor/IR/Tensor.cpp
@@ -42,8 +42,8 @@ add_library(CrestBindings STATIC
   IR/Operation.h
   IR/OperationSupport.cpp
   IR/OperationSupport.h
-  
-  
+
+
   IR/PatternMatch.cpp
   IR/PatternMatch.h
   IR/Region.cpp
