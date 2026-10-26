@@ -7,6 +7,7 @@
 #include "Dialect.h"
 #include "../Bindings/Support/SchemeWrapper.h"
 #include "Interface.h"
+#include "llvm/ADT/DenseMap.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/DialectImplementation.h"
 #include "mlir/IR/DialectRegistry.h"
@@ -14,7 +15,6 @@
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Support/TypeID.h"
-#include "llvm/ADT/DenseMap.h"
 #include <memory>
 
 namespace crest {
@@ -32,10 +32,11 @@ using OpInterfaceRegistry =
 static OpInterfaceRegistry g_op_interface_registry;
 
 bool RegisterInterfaceForOp(mlir::TypeID id, const std::string& op_name,
-                             std::shared_ptr<void> concept_ptr) {
+                            std::shared_ptr<void> concept_ptr) {
   auto& inner = g_op_interface_registry[id];
-  if (inner.count(op_name))
+  if (inner.count(op_name)) {
     return false; // already registered — first wins
+  }
   inner[op_name] = std::move(concept_ptr);
   return true;
 }
