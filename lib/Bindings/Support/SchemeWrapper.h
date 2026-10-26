@@ -31,7 +31,6 @@ extern "C" {
 }
 // Define your Scheme object handle type once.
 // This assumes Sstring_to_symbol returns the standard Scheme value type.
-using SValue = decltype(Sstring_to_symbol("x"));
 
 // Portable unreachable hint. Needed because Scall2 (which invokes Scheme's
 // error procedure via longjmp) is not declared [[noreturn]], so the compiler
@@ -95,41 +94,41 @@ template <typename T>
 // ---- convert_to_scheme: explicit return types via overloads ----
 
 // booleans
-inline SValue convert_to_scheme(bool b) { return b ? Strue : Sfalse; }
+inline ptr convert_to_scheme(bool b) { return b ? Strue : Sfalse; }
 
 // characters (encoded as single-character Scheme string)
-inline SValue convert_to_scheme(char c) {
+inline ptr convert_to_scheme(char c) {
   char buf[2] = {c, '\0'};
   return Sstring(buf);
 }
 
 // Handle signed/unsigned char explicitly (treat as small integers)
-inline SValue convert_to_scheme(signed char v) {
+inline ptr convert_to_scheme(signed char v) {
   return Sfixnum(static_cast<long>(v));
 }
-inline SValue convert_to_scheme(unsigned char v) {
+inline ptr convert_to_scheme(unsigned char v) {
   return Sfixnum(static_cast<long>(v));
 }
 
 // Raw C++ pointer types → Scheme uptr (unsigned tagged integer).
 // Non-template overloads (const char*, void*) take precedence in overload
-// resolution, so char* → Sstring and SValue → identity are unaffected.
+// resolution, so char* → Sstring and ptr → identity are unaffected.
 // WARNING: MLIR Op wrappers (ModuleOp, FuncOp, …) are NOT pointers — they
 // convert to bool via operator bool(), not to Operation*. Always extract
 // the underlying Operation* explicitly: op.getOperation().
-template <typename T> inline SValue convert_to_scheme(T* p) {
+template <typename T> inline ptr convert_to_scheme(T* p) {
   return Sunsigned64(reinterpret_cast<uint64_t>(p));
 }
 
 // C strings
-inline SValue convert_to_scheme(const char* s) { return Sstring(s ? s : ""); }
-inline SValue convert_to_scheme(char* s) { return Sstring(s ? s : ""); }
+inline ptr convert_to_scheme(const char* s) { return Sstring(s ? s : ""); }
+inline ptr convert_to_scheme(char* s) { return Sstring(s ? s : ""); }
 
 // std::string / string_view
-inline SValue convert_to_scheme(const std::string& s) {
+inline ptr convert_to_scheme(const std::string& s) {
   return Sstring(s.c_str());
 }
-inline SValue convert_to_scheme(std::string_view sv) {
+inline ptr convert_to_scheme(std::string_view sv) {
   // If your runtime supports length-aware creation, prefer that.
   // Otherwise, materialize to a std::string so Sstring can copy it.
   std::string tmp(sv);
@@ -137,62 +136,58 @@ inline SValue convert_to_scheme(std::string_view sv) {
 }
 
 // signed integers
-inline SValue convert_to_scheme(short v) {
-  return Sfixnum(static_cast<long>(v));
-}
-inline SValue convert_to_scheme(int v) { return Sfixnum(static_cast<long>(v)); }
-inline SValue convert_to_scheme(long v) {
-  return Sfixnum(static_cast<long>(v));
-}
-inline SValue convert_to_scheme(long long v) {
+inline ptr convert_to_scheme(short v) { return Sfixnum(static_cast<long>(v)); }
+inline ptr convert_to_scheme(int v) { return Sfixnum(static_cast<long>(v)); }
+inline ptr convert_to_scheme(long v) { return Sfixnum(static_cast<long>(v)); }
+inline ptr convert_to_scheme(long long v) {
   return Sfixnum(static_cast<long>(v));
 }
 
 // unsigned integers
-inline SValue convert_to_scheme(unsigned short v) {
+inline ptr convert_to_scheme(unsigned short v) {
   return Sfixnum(static_cast<long>(v));
 }
-inline SValue convert_to_scheme(unsigned int v) {
+inline ptr convert_to_scheme(unsigned int v) {
   return Sfixnum(static_cast<long>(v));
 }
-inline SValue convert_to_scheme(unsigned long v) {
+inline ptr convert_to_scheme(unsigned long v) {
   return Sfixnum(static_cast<long>(v));
 }
-inline SValue convert_to_scheme(unsigned long long v) {
+inline ptr convert_to_scheme(unsigned long long v) {
   return Sfixnum(static_cast<long>(v));
 }
 
 // floating point
-inline SValue convert_to_scheme(float v) {
+inline ptr convert_to_scheme(float v) {
   return Sflonum(static_cast<double>(v));
 }
-inline SValue convert_to_scheme(double v) { return Sflonum(v); }
-inline SValue convert_to_scheme(long double v) {
+inline ptr convert_to_scheme(double v) { return Sflonum(v); }
+inline ptr convert_to_scheme(long double v) {
   return Sflonum(static_cast<double>(v));
 }
 
 // Optional: delete the catch-all to force adding a new overload for unsupported
-// types. template <typename T> SValue convert_to_scheme(const T&) = delete;
+// types. template <typename T> ptr convert_to_scheme(const T&) = delete;
 
 // ---- list builder (returns a Scheme list; explicit return type) ----
-template <typename... Ts> inline SValue make_scheme_list(Ts&&... args) {
-  std::array<SValue, sizeof...(Ts)> items = {
+template <typename... Ts> inline ptr make_scheme_list(Ts&&... args) {
+  std::array<ptr, sizeof...(Ts)> items = {
       convert_to_scheme(std::forward<Ts>(args))...};
 
-  SValue list = Snil;
+  ptr list = Snil;
   for (auto it = items.rbegin(); it != items.rend(); ++it) {
     list = Scons(*it, list);
   }
   return list;
 }
 
-// SValue identity — lets make_scheme_list accept already-converted args.
-inline SValue convert_to_scheme(SValue v) { return v; }
+// ptr identity — lets make_scheme_list accept already-converted args.
+inline ptr convert_to_scheme(ptr v) { return v; }
 
 // ---- scheme_call: direct Scall<N> for N ≤ 3; apply+Scons for N = 4 ----
 //
 // The first argument is either:
-//   SValue proc   — an already-resolved Scheme procedure (e.g. from
+//   ptr proc   — an already-resolved Scheme procedure (e.g. from
 //   LockedSchemeObject) const char*   — a top-level name (symbol lookup fires
 //   on each call; avoid in hot paths)
 //
@@ -202,36 +197,65 @@ inline SValue convert_to_scheme(SValue v) { return v; }
 // Resolve a top-level Scheme name to its procedure value.
 // Logs to stderr and aborts if the name is unbound — defined in
 // SchemeWrapper.cpp.
-SValue convert_to_scheme_func(const char* fname);
-inline SValue convert_to_scheme_func(SValue f) { return f; }
+ptr convert_to_scheme_func(const char* fname);
+inline ptr convert_to_scheme_func(ptr f) { return f; }
 
-template <typename F> inline SValue scheme_call(F f) {
+template <typename F> inline ptr scheme_call(F f) {
   return Scall0(convert_to_scheme_func(f));
 }
-template <typename F, typename T1>
-inline SValue scheme_call(F f, const T1& a1) {
+template <typename F, typename T1> inline ptr scheme_call(F f, const T1& a1) {
   return Scall1(convert_to_scheme_func(f), convert_to_scheme(a1));
 }
 template <typename F, typename T1, typename T2>
-inline SValue scheme_call(F f, const T1& a1, const T2& a2) {
+inline ptr scheme_call(F f, const T1& a1, const T2& a2) {
   return Scall2(convert_to_scheme_func(f), convert_to_scheme(a1),
                 convert_to_scheme(a2));
 }
 template <typename F, typename T1, typename T2, typename T3>
-inline SValue scheme_call(F f, const T1& a1, const T2& a2, const T3& a3) {
+inline ptr scheme_call(F f, const T1& a1, const T2& a2, const T3& a3) {
   return Scall3(convert_to_scheme_func(f), convert_to_scheme(a1),
                 convert_to_scheme(a2), convert_to_scheme(a3));
 }
 // N = 4 — no Scall4; fall back to (apply f args) via Scons.
 template <typename F, typename T1, typename T2, typename T3, typename T4>
-inline SValue scheme_call(F f, const T1& a1, const T2& a2, const T3& a3,
-                          const T4& a4) {
-  SValue apply = Stop_level_value(Sstring_to_symbol("apply"));
+inline ptr scheme_call(F f, const T1& a1, const T2& a2, const T3& a3,
+                       const T4& a4) {
+  ptr apply = Stop_level_value(Sstring_to_symbol("apply"));
   return Scall2(apply, convert_to_scheme_func(f),
                 Scons(convert_to_scheme(a1),
                       Scons(convert_to_scheme(a2),
                             Scons(convert_to_scheme(a3),
                                   Scons(convert_to_scheme(a4), Snil)))));
 }
+
+// ---- convert_to_cpp: extract a C++ value from a Scheme ptr ----
+//
+// These are the symmetric counterparts of convert_to_scheme.
+// Each overload selects the right Chez Scheme accessor for the target type.
+
+template <typename T> T convert_to_cpp(ptr v) = delete;
+
+template <> inline bool convert_to_cpp<bool>(ptr v) { return v != Sfalse; }
+template <> inline int convert_to_cpp<int>(ptr v) {
+  return static_cast<int>(Sfixnum_value(v));
+}
+template <> inline long convert_to_cpp<long>(ptr v) { return Sfixnum_value(v); }
+template <> inline unsigned int convert_to_cpp<unsigned int>(ptr v) {
+  return static_cast<unsigned int>(Sunsigned64_value(v));
+}
+template <> inline uint64_t convert_to_cpp<uint64_t>(ptr v) {
+  return Sunsigned64_value(v);
+}
+template <> inline double convert_to_cpp<double>(ptr v) {
+  return Sflonum_value(v);
+}
+template <> inline const char* convert_to_cpp<const char*>(ptr v) {
+  return Sstring_value(v);
+}
+template <> inline std::string convert_to_cpp<std::string>(ptr v) {
+  return std::string(Sstring_value(v));
+}
+// ptr identity -- a Scheme ptr is already a ptr.
+template <> inline ptr convert_to_cpp<ptr>(ptr v) { return v; }
 
 #endif // CREST_BINDINGS_SCHEME_WRAPPER_H

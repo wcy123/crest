@@ -31,7 +31,7 @@ template <typename Interface> struct SchemeConceptHolder {
   using Concept = typename Interface::Concept;
 
   Concept concept; // MUST be first — &holder == &holder->concept
-  SValue scheme_proc;
+  ptr scheme_proc;
 
   SchemeConceptHolder(const SchemeConceptHolder&) = delete;
   SchemeConceptHolder(SchemeConceptHolder&&) = delete;
@@ -39,14 +39,14 @@ template <typename Interface> struct SchemeConceptHolder {
   // Constructor body is specialised per interface in the binding .cpp file.
   // It initialises the concept function pointers so that each lambda casts
   // `self` back to SchemeConceptHolder* and calls scheme_proc.
-  explicit SchemeConceptHolder(SValue proc, const Concept& default_concept);
+  explicit SchemeConceptHolder(ptr proc, const Concept& default_concept);
 
   // Return the Concept* for op_name.  Creates a new holder (intentional leak)
   // if one does not already exist, and registers all related interfaces in the
   // global op-interface registry via registry.registerForOp.
   template <typename... SupportedInterfaces>
   static Concept* getOrCreateConcept(
-      const char* op_name, SValue scheme_proc,
+      const char* op_name, ptr scheme_proc,
       SupportedInterfacesRegistry<SupportedInterfaces...>& registry) {
     auto it = g_store_.find(op_name);
     if (it == g_store_.end()) {

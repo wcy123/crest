@@ -5,8 +5,8 @@
 
 #include "SchemeWrapper.h"
 
-SValue convert_to_scheme_func(const char* fname) {
-  SValue f = Stop_level_value(Sstring_to_symbol(fname));
+ptr convert_to_scheme_func(const char* fname) {
+  ptr f = Stop_level_value(Sstring_to_symbol(fname));
   if (f == Sfalse) {
     fprintf(stderr, "error: scheme_call: unbound Scheme function '%s'\n",
             fname);

@@ -369,7 +369,7 @@ void registerIRExtensibleDialectBindings() {
   Sregister_symbol(
       "crest::registerInterfaceForOperation",
       (void*)+[](ptr dispatcher) -> ptr {
-        SValue id_val = scheme_call(dispatcher, Sstring_to_symbol("id"));
+        ptr id_val = scheme_call(dispatcher, Sstring_to_symbol("id"));
         auto* type_id =
             reinterpret_cast<mlir::TypeID*>(Sunsigned64_value(id_val));
         auto fn = crest::lookupConceptCreator(*type_id);
