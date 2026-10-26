@@ -247,7 +247,7 @@ template <> inline int Conversion<ptr, int>::operator()(const ptr& v) {
   return static_cast<int>(Sfixnum_value(v));
 }
 template <> inline long Conversion<ptr, long>::operator()(const ptr& v) {
-  return Sfixnum_value(v);
+  return static_cast<long>(Sfixnum_value(v));
 }
 template <>
 inline unsigned int Conversion<ptr, unsigned int>::operator()(const ptr& v) {
