@@ -92,6 +92,13 @@ template <typename From> inline ptr convert_to_scheme(const From& v) {
   return Conversion<From, ptr>{}(v);
 }
 
+// Generic pointer overload — more specialised than convert_to_scheme(const From&),
+// so it is chosen for any raw pointer type without instantiating Conversion<T*,ptr>.
+template <typename T>
+inline ptr convert_to_scheme(T* p) {
+  return Sunsigned64(reinterpret_cast<uint64_t>(p));
+}
+
 template <typename To> inline To convert_to_cpp(ptr v) {
   return Conversion<ptr, To>{}(v);
 }
@@ -165,7 +172,7 @@ inline ptr Conversion<signed char, ptr>::operator()(const signed char& v) {
   return Sfixnum(static_cast<long>(v));
 }
 template <>
-ptr Conversion<unsigned char, ptr>::operator()(const unsigned char& v) {
+inline ptr Conversion<unsigned char, ptr>::operator()(const unsigned char& v) {
   return Sfixnum(static_cast<long>(v));
 }
 template <> inline ptr Conversion<short, ptr>::operator()(const short& v) {
@@ -182,19 +189,19 @@ inline ptr Conversion<long long, ptr>::operator()(const long long& v) {
   return Sfixnum(static_cast<long>(v));
 }
 template <>
-ptr Conversion<unsigned short, ptr>::operator()(const unsigned short& v) {
+inline ptr Conversion<unsigned short, ptr>::operator()(const unsigned short& v) {
   return Sfixnum(static_cast<long>(v));
 }
 template <>
-ptr Conversion<unsigned int, ptr>::operator()(const unsigned int& v) {
+inline ptr Conversion<unsigned int, ptr>::operator()(const unsigned int& v) {
   return Sfixnum(static_cast<long>(v));
 }
 template <>
-ptr Conversion<unsigned long, ptr>::operator()(const unsigned long& v) {
+inline ptr Conversion<unsigned long, ptr>::operator()(const unsigned long& v) {
   return Sfixnum(static_cast<long>(v));
 }
 template <>
-ptr Conversion<unsigned long long, ptr>::operator()(
+inline ptr Conversion<unsigned long long, ptr>::operator()(
     const unsigned long long& v) {
   return Sunsigned64(v);
 }
@@ -220,7 +227,7 @@ inline ptr Conversion<std::string, ptr>::operator()(const std::string& v) {
   return Sstring(v.c_str());
 }
 template <>
-ptr Conversion<std::string_view, ptr>::operator()(const std::string_view& v) {
+inline ptr Conversion<std::string_view, ptr>::operator()(const std::string_view& v) {
   std::string tmp(v);
   return Sstring(tmp.c_str());
 }
@@ -243,23 +250,28 @@ template <> inline long Conversion<ptr, long>::operator()(const ptr& v) {
   return Sfixnum_value(v);
 }
 template <>
-unsigned int Conversion<ptr, unsigned int>::operator()(const ptr& v) {
+inline unsigned int Conversion<ptr, unsigned int>::operator()(const ptr& v) {
   return static_cast<unsigned int>(Sunsigned64_value(v));
 }
-template <>
-inline uint64_t Conversion<ptr, uint64_t>::operator()(const ptr& v) {
+template <> inline uint64_t Conversion<ptr, uint64_t>::operator()(const ptr& v) {
   return Sunsigned64_value(v);
 }
 template <> inline double Conversion<ptr, double>::operator()(const ptr& v) {
   return Sflonum_value(v);
 }
-template <>
-inline const char* Conversion<ptr, const char*>::operator()(const ptr& v) {
-  return Sstring_value(v);
-}
+// Conversion<ptr, const char*>: omitted -- Chez Scheme strings use 32-bit
+// chars internally; no stable char* can be returned.  Use std::string instead.
+
+// Conversion<ptr, std::string>: extract via Sstring_length + Sstring_ref.
+// Chez Scheme string_char is unsigned int; take the low byte for ASCII.
 template <>
 inline std::string Conversion<ptr, std::string>::operator()(const ptr& v) {
-  return std::string(Sstring_value(v));
+  iptr len = Sstring_length(v);
+  std::string result;
+  result.reserve(static_cast<std::size_t>(len));
+  for (iptr i = 0; i < len; ++i)
+    result += static_cast<char>(Sstring_ref(v, i) & 0xFF);
+  return result;
 }
 
 #endif // CREST_BINDINGS_SCHEME_WRAPPER_H

@@ -5,7 +5,7 @@
 
 // Mirrors mlir/IR/Types.h
 
-#include "Type.h"
+#include "Types.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/Types.h"
 

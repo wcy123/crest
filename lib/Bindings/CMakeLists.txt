@@ -10,6 +10,8 @@ add_library(CrestBindings STATIC
   $<TARGET_OBJECTS:CrestCore>
   
   
+  Dialect/Shape/IR/Shape.cpp
+  Dialect/Shape/IR/Shape.h
   Dialect/Tensor/IR/Tensor.cpp
   Dialect/Tensor/IR/Tensor.h
   Interfaces/CallInterfaces.cpp

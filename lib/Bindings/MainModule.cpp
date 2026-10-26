@@ -13,6 +13,7 @@
 #include "../Crest/Op.h"
 #include "../Crest/Trait.h"
 
+#include "Dialect/Shape/IR/Shape.h"
 #include "Dialect/Tensor/IR/Tensor.h"
 #include "IR/Block.h"
 #include "IR/BuiltinAttributes.h"
