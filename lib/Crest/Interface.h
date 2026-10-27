@@ -29,22 +29,27 @@ void* LookupInterfaceForOp(mlir::TypeID id, const std::string& op_name);
 
 // ---------------------------------------------------------------------------
 // SupportedInterfaces<Interface>
-//
-// Declared but not defined here — each interface binding file must provide
-// explicit specialisations.  Missing specialisations are link errors.
-//
-// getOrCreateDefaultConcept() lazily creates the default concept on first
-// call (C++11 function-local static, thread-safe) and returns a stable
-// pointer to it.  No file-scope static globals needed.
-//
-// CreateConcept(dispatcher) copies the default concept, overrides the slots
-// the Scheme dispatcher provides, and calls RegisterInterfaceForOp.
 // ---------------------------------------------------------------------------
 template <typename Interface> struct SupportedInterfaces {
+  struct ConcreteConceptType; // undefined by design
   using ConceptType = typename Interface::Concept;
-  // Lazily create the default concept, register it under ".", and return it.
-  static ConceptType* getOrCreateDefaultConcept(); // undefined by design
-
+  // Lazily create the default concept, register it under ".", and return
+  // it. why it it register under ".", because the raw pointer need an
+  // owner, the registry is the owner.
+  template <typename ConcreateConceptType>
+  static ConceptType*
+  getOrCreateDefaultConcept(std::unique_ptr<ConcreateConceptType> data) {
+    auto ret = data.release();
+    if (!RegisterInterfaceForOp(Interface::getInterfaceID(), ".",
+                                std::shared_ptr<void>(ret, [](void* p) {
+                                  delete static_cast<ConcreateConceptType*>(p);
+                                }))) {
+      assert(false && "no reason to fail");
+    }
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+    return reinterpret_cast<ConceptType*>(ret);
+  }
+  static ConceptType* getOrCreateDefaultConcept(); // undefined by design.
   // Clone the concept pointed to by `from` into a new owning allocation.
   // Returns shared_ptr<void> to propagate the concrete type's custom deleter.
   static std::shared_ptr<void>
@@ -85,6 +90,8 @@ typename Interface::Concept* getOrCreateConcept(const std::string& op_name) {
 // ---------------------------------------------------------------------------
 using ConceptCreatorFn = void (*)(ptr dispatcher);
 void registerConceptCreator(mlir::TypeID id, ConceptCreatorFn fn);
+// Also register by interface name string for use from macro-generated code.
+void registerConceptCreatorByName(const std::string& name, ConceptCreatorFn fn);
 ConceptCreatorFn lookupConceptCreator(mlir::TypeID id); // nullptr if not found
 
 } // namespace crest
