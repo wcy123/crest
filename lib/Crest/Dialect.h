@@ -8,10 +8,10 @@
 #define CREST_DIALECT_H
 
 #include "../Bindings/Support/LockedSchemeObject.h"
+#include "Interface.h"
 #include "mlir/IR/Dialect.h"
 #include "mlir/IR/ExtensibleDialect.h"
 #include "mlir/Support/TypeID.h"
-#include <optional>
 
 namespace crest {
 
@@ -61,21 +61,22 @@ namespace crest {
 /// request for even basic per-dialect registration from pure Python.
 class CrestDialect : public mlir::ExtensibleDialect {
 public:
-  /// One optional locked callback per virtual method.
-  /// Absent (std::nullopt) → fall through to ExtensibleDialect default.
+  /// One locked callback per virtual method; Sfalse means absent (fall through
+  /// to ExtensibleDialect default).
   struct Callbacks {
-    std::optional<LockedSchemeObject> initialize;
-    std::optional<LockedSchemeObject> get_dependent_dialects;
-    std::optional<LockedSchemeObject> parse_attribute;
-    std::optional<LockedSchemeObject> print_attribute;
-    std::optional<LockedSchemeObject> parse_type;
-    std::optional<LockedSchemeObject> print_type;
-    std::optional<LockedSchemeObject> materialize_constant;
-    std::optional<LockedSchemeObject> get_canonicalization_patterns;
-    std::optional<LockedSchemeObject> verify_op_attr;
-    std::optional<LockedSchemeObject> verify_region_arg_attr;
-    std::optional<LockedSchemeObject> verify_region_result_attr;
-    std::optional<LockedSchemeObject> get_registered_interface_for_op;
+    LockedSchemeObject initialize;
+    LockedSchemeObject get_dependent_dialects;
+    LockedSchemeObject parse_attribute;
+    LockedSchemeObject print_attribute;
+    LockedSchemeObject parse_type;
+    LockedSchemeObject print_type;
+    LockedSchemeObject materialize_constant;
+    LockedSchemeObject get_canonicalization_patterns;
+    LockedSchemeObject verify_op_attr;
+    LockedSchemeObject verify_region_arg_attr;
+    LockedSchemeObject verify_region_result_attr;
+    void* (*register_op_interfaces)(mlir::TypeID,
+                                    const std::string&) = &LookupInterfaceForOp;
   };
 
   /// id must be pre-allocated from the global TypeIDAllocator in
@@ -116,9 +117,6 @@ public:
   verifyRegionResultAttribute(mlir::Operation* op, unsigned regionIndex,
                               unsigned resultIndex,
                               mlir::NamedAttribute attr) override;
-
-  void* getRegisteredInterfaceForOp(mlir::TypeID interfaceID,
-                                    mlir::OperationName opName) override;
 
 private:
   Callbacks cbs_;

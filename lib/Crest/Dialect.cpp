@@ -41,6 +41,18 @@ bool RegisterInterfaceForOp(mlir::TypeID id, const std::string& op_name,
   return true;
 }
 
+void* LookupInterfaceForOp(mlir::TypeID id, const std::string& op_name) {
+  void* ret = nullptr;
+  auto it = g_op_interface_registry.find(id);
+  if (it != g_op_interface_registry.end()) {
+    auto it2 = it->second.find(op_name);
+    if (it2 != it->second.end()) {
+      ret = it2->second.get();
+    }
+  }
+  return ret;
+}
+
 // ---------------------------------------------------------------------------
 // Concept-creator dispatch table
 // ---------------------------------------------------------------------------
@@ -136,8 +148,8 @@ void CrestDialect::initialize() {
   // For CrestDialects, this means register-dialect! must be called for all
   // dependencies before any dialect that needs them is loaded. The Scheme-side
   // load-dialect! wrapper enforces this ordering.
-  if (cbs_.get_dependent_dialects) {
-    ptr deps = scheme_call(cbs_.get_dependent_dialects->get());
+  if (cbs_.get_dependent_dialects.get() != Sfalse) {
+    ptr deps = scheme_call(cbs_.get_dependent_dialects.get());
     for (; deps != Snil; deps = Scdr(deps)) {
       auto* ns = reinterpret_cast<const char*>(
           static_cast<uint64_t>(Sinteger64_value(Scar(deps))));
@@ -147,16 +159,16 @@ void CrestDialect::initialize() {
       }
     }
   }
-  if (cbs_.initialize) {
-    scheme_call(cbs_.initialize->get(), this);
+  if (cbs_.initialize.get() != Sfalse) {
+    scheme_call(cbs_.initialize.get(), this);
   }
 }
 
 mlir::Attribute CrestDialect::parseAttribute(mlir::DialectAsmParser& parser,
                                              mlir::Type type) const {
-  if (cbs_.parse_attribute) {
+  if (cbs_.parse_attribute.get() != Sfalse) {
     return mlir::Attribute::getFromOpaquePointer(
-        ptr_from_scheme<void>(scheme_call(cbs_.parse_attribute->get(), &parser,
+        ptr_from_scheme<void>(scheme_call(cbs_.parse_attribute.get(), &parser,
                                           type.getAsOpaquePointer())));
   }
   return mlir::ExtensibleDialect::parseAttribute(parser, type);
@@ -164,25 +176,25 @@ mlir::Attribute CrestDialect::parseAttribute(mlir::DialectAsmParser& parser,
 
 void CrestDialect::printAttribute(mlir::Attribute attr,
                                   mlir::DialectAsmPrinter& os) const {
-  if (cbs_.print_attribute) {
-    scheme_call(cbs_.print_attribute->get(), attr.getAsOpaquePointer(), &os);
+  if (cbs_.print_attribute.get() != Sfalse) {
+    scheme_call(cbs_.print_attribute.get(), attr.getAsOpaquePointer(), &os);
   } else {
     mlir::ExtensibleDialect::printAttribute(attr, os);
   }
 }
 
 mlir::Type CrestDialect::parseType(mlir::DialectAsmParser& parser) const {
-  if (cbs_.parse_type) {
+  if (cbs_.parse_type.get() != Sfalse) {
     return mlir::Type::getFromOpaquePointer(
-        ptr_from_scheme<void>(scheme_call(cbs_.parse_type->get(), &parser)));
+        ptr_from_scheme<void>(scheme_call(cbs_.parse_type.get(), &parser)));
   }
   return mlir::ExtensibleDialect::parseType(parser);
 }
 
 void CrestDialect::printType(mlir::Type type,
                              mlir::DialectAsmPrinter& os) const {
-  if (cbs_.print_type) {
-    scheme_call(cbs_.print_type->get(), type.getAsOpaquePointer(), &os);
+  if (cbs_.print_type.get() != Sfalse) {
+    scheme_call(cbs_.print_type.get(), type.getAsOpaquePointer(), &os);
   } else {
     mlir::ExtensibleDialect::printType(type, os);
   }
@@ -192,9 +204,9 @@ mlir::Operation* CrestDialect::materializeConstant(mlir::OpBuilder& builder,
                                                    mlir::Attribute value,
                                                    mlir::Type type,
                                                    mlir::Location loc) {
-  if (cbs_.materialize_constant) {
+  if (cbs_.materialize_constant.get() != Sfalse) {
     return ptr_from_scheme<mlir::Operation>(scheme_call(
-        cbs_.materialize_constant->get(), &builder, value.getAsOpaquePointer(),
+        cbs_.materialize_constant.get(), &builder, value.getAsOpaquePointer(),
         type.getAsOpaquePointer(), loc.getAsOpaquePointer()));
   }
   return mlir::ExtensibleDialect::materializeConstant(builder, value, type,
@@ -203,8 +215,8 @@ mlir::Operation* CrestDialect::materializeConstant(mlir::OpBuilder& builder,
 
 void CrestDialect::getCanonicalizationPatterns(
     mlir::RewritePatternSet& results) const {
-  if (cbs_.get_canonicalization_patterns) {
-    scheme_call(cbs_.get_canonicalization_patterns->get(), &results);
+  if (cbs_.get_canonicalization_patterns.get() != Sfalse) {
+    scheme_call(cbs_.get_canonicalization_patterns.get(), &results);
   } else {
     mlir::ExtensibleDialect::getCanonicalizationPatterns(results);
   }
@@ -213,8 +225,8 @@ void CrestDialect::getCanonicalizationPatterns(
 mlir::LogicalResult
 CrestDialect::verifyOperationAttribute(mlir::Operation* op,
                                        mlir::NamedAttribute attr) {
-  if (cbs_.verify_op_attr) {
-    return Sboolean_value(scheme_call(cbs_.verify_op_attr->get(), op, &attr))
+  if (cbs_.verify_op_attr.get() != Sfalse) {
+    return Sboolean_value(scheme_call(cbs_.verify_op_attr.get(), op, &attr))
                ? mlir::success()
                : mlir::failure();
   }
@@ -225,8 +237,8 @@ mlir::LogicalResult
 CrestDialect::verifyRegionArgAttribute(mlir::Operation* op,
                                        unsigned regionIndex, unsigned argIndex,
                                        mlir::NamedAttribute attr) {
-  if (cbs_.verify_region_arg_attr) {
-    return Sboolean_value(scheme_call(cbs_.verify_region_arg_attr->get(), op,
+  if (cbs_.verify_region_arg_attr.get() != Sfalse) {
+    return Sboolean_value(scheme_call(cbs_.verify_region_arg_attr.get(), op,
                                       regionIndex, argIndex, &attr))
                ? mlir::success()
                : mlir::failure();
@@ -238,8 +250,8 @@ CrestDialect::verifyRegionArgAttribute(mlir::Operation* op,
 mlir::LogicalResult CrestDialect::verifyRegionResultAttribute(
     mlir::Operation* op, unsigned regionIndex, unsigned resultIndex,
     mlir::NamedAttribute attr) {
-  if (cbs_.verify_region_result_attr) {
-    return Sboolean_value(scheme_call(cbs_.verify_region_result_attr->get(), op,
+  if (cbs_.verify_region_result_attr.get() != Sfalse) {
+    return Sboolean_value(scheme_call(cbs_.verify_region_result_attr.get(), op,
                                       regionIndex, resultIndex, &attr))
                ? mlir::success()
                : mlir::failure();
@@ -248,29 +260,12 @@ mlir::LogicalResult CrestDialect::verifyRegionResultAttribute(
       op, regionIndex, resultIndex, attr);
 }
 
-void* CrestDialect::getRegisteredInterfaceForOp(mlir::TypeID interfaceID,
-                                                mlir::OperationName opName) {
-  // TypeID-first two-level lookup: few interfaces → fast miss on outer map.
-  auto it = g_op_interface_registry.find(interfaceID);
-  if (it == g_op_interface_registry.end()) {
-    return nullptr;
-  }
-  // Try op-specific entry first.
-  auto it2 = it->second.find(opName.getStringRef().str());
-  if (it2 != it->second.end()) {
-    return it2->second.get();
-  }
-  // Fall back to "." — the sentinel key for the registered default concept.
-  auto def = it->second.find(".");
-  return def != it->second.end() ? def->second.get() : nullptr;
-}
-
 // ---------------------------------------------------------------------------
 // Helpers for Sregister_symbol bindings
 // ---------------------------------------------------------------------------
 
 static std::shared_ptr<CrestDialect::Callbacks> unpack_callbacks(ptr cbs_ptr) {
-  auto make_cb = [](ptr slot) -> std::optional<LockedSchemeObject> {
+  auto make_cb = [](ptr slot) -> LockedSchemeObject {
     if (Sprocedurep(slot)) {
       return LockedSchemeObject(slot);
     }
@@ -278,7 +273,7 @@ static std::shared_ptr<CrestDialect::Callbacks> unpack_callbacks(ptr cbs_ptr) {
       scheme_error("crest::register-dialect!",
                    "callback slot must be a procedure or #f");
     }
-    return std::nullopt;
+    return LockedSchemeObject();
   };
   ptr v = cbs_ptr;
   auto cbs = std::make_shared<CrestDialect::Callbacks>();
@@ -293,7 +288,7 @@ static std::shared_ptr<CrestDialect::Callbacks> unpack_callbacks(ptr cbs_ptr) {
   cbs->verify_op_attr = make_cb(Svector_ref(v, 8));
   cbs->verify_region_arg_attr = make_cb(Svector_ref(v, 9));
   cbs->verify_region_result_attr = make_cb(Svector_ref(v, 10));
-  cbs->get_registered_interface_for_op = make_cb(Svector_ref(v, 11));
+  cbs->register_op_interfaces = LookupInterfaceForOp;
   return cbs;
 }
 
@@ -312,7 +307,7 @@ void registerIRExtensibleDialectBindings() {
   //   2 parse-attribute                  8 verify-op-attr
   //   3 print-attribute                  9 verify-region-arg-attr
   //   4 parse-type                      10 verify-region-result-attr
-  //   5 print-type                      11 get-registered-interface-for-op
+  //   5 print-type
   Sregister_symbol(
       "crest::register-dialect!",
       (void*)+[](uint64_t ctx_ptr, uint64_t name_ptr, ptr cbs_ptr) -> void {
@@ -362,25 +357,6 @@ void registerIRExtensibleDialectBindings() {
               }
               return new CrestDialect(name, load_ctx, id, std::move(*cbs_ptr2));
             });
-      });
-
-  // crest::registerInterfaceForOperation — generic dispatcher.
-  // Receives a Scheme dispatcher procedure, looks up the concept creator for
-  // the interface TypeID it returns, and delegates concept construction.
-  Sregister_symbol(
-      "crest::registerInterfaceForOperation",
-      (void*)+[](ptr dispatcher) -> ptr {
-        ptr id_val = scheme_call(dispatcher, Sstring_to_symbol("id"));
-        auto* type_id =
-            reinterpret_cast<mlir::TypeID*>(Sunsigned64_value(id_val));
-        auto fn = crest::lookupConceptCreator(*type_id);
-        if (!fn) {
-          scheme_error("crest::registerInterfaceForOperation",
-                       "no concept creator registered for this interface TypeID"
-                       " — call registerConceptCreator during binding init");
-        }
-        fn(dispatcher);
-        return Strue;
       });
 }
 
