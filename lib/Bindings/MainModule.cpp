@@ -28,7 +28,7 @@
 #include "IR/OperationSupport.h"
 #include "IR/PatternMatch.h"
 #include "IR/Region.h"
-#include "IR/SymbolTable.h"
+#include "IR/SymbolInterfaces.h"
 #include "IR/Types.h"
 #include "IR/Value.h"
 #include "Interfaces/CallInterfaces.h"
@@ -56,7 +56,7 @@ void registerMlirForeignFunctions() {
   registerInterfacesDpsBindings();
   registerInterfacesCallInterfacesBindings();
   registerInterfacesFunctionInterfacesBindings();
-  registerIRSymbolTableBindings();
+  registerIRSymbolInterfacesBindings();
   registerIRExtensibleDialectBindings();
   registerCrestDynamicOpBindings();
   registerCrestTraitBindings();

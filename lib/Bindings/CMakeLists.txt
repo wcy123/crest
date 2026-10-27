@@ -20,8 +20,8 @@ add_library(CrestBindings STATIC
   Interfaces/DestinationStyleOpInterface.h
   Interfaces/FunctionInterfaces.cpp
   Interfaces/FunctionInterfaces.h
-  IR/SymbolTable.cpp
-  IR/SymbolTable.h
+  IR/SymbolInterfaces.cpp
+  IR/SymbolInterfaces.h
   IR/Block.cpp
   IR/Block.h
   IR/BuiltinAttributes.cpp

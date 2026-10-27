@@ -1,26 +1,24 @@
 #!r6rs
 ;; Mirrors mlir/Interfaces/FunctionInterfaces.h
 (library (mlir Interfaces FunctionInterfaces ffi)
-  (export %mlir::function_interface_impl::parseFunctionOp
-          %crest::FunctionOpInterface::getInterfaceID
-          %crest::registerInterfaceForOperation
+  (export %mlir::FunctionOpInterface
+          %mlir::function_interface_impl::parseFunctionOp
+          %mlir::function_interface_impl::printFunctionOp
           %crest::FunctionOpInterface::default::getFunctionType
           %crest::FunctionOpInterface::default::setFunctionTypeAttr
           %crest::FunctionOpInterface::default::verifyBody
           %crest::FunctionOpInterface::default::verifyType
-          %mlir::function_interface_impl::printFunctionOp)
+          %mlir::FunctionOpInterface::getFunctionType
+          %mlir::FunctionOpInterface::setFunctionTypeAttr
+          %mlir::FunctionOpInterface::verifyBody
+          %mlir::FunctionOpInterface::verifyType)
   (import (chezscheme))
 
-  ;; TypeID* for FunctionOpInterface — used in the dispatcher 'id clause.
-  (define %crest::FunctionOpInterface::getInterfaceID
-    (foreign-procedure "crest::FunctionOpInterface::getInterfaceID" () uptr))
+  ;; Register an interface concept for one op via a Scheme dispatcher procedure.
+  (define %mlir::FunctionOpInterface
+    (foreign-procedure "mlir::FunctionOpInterface" (scheme-object) void))
 
-  ;; Register an interface for one op via a Scheme dispatcher procedure.
-  ;; dispatcher: scheme-object (procedure).
-  (define %crest::registerInterfaceForOperation
-    (foreign-procedure "crest::registerInterfaceForOperation" (scheme-object) scheme-object))
-
-  ;; Default C++ implementations — called by mlir::FunctionOpInterface fallback.
+  ;; Default C++ implementations — callable from Scheme fallback dispatch.
   (define %crest::FunctionOpInterface::default::getFunctionType
     (foreign-procedure "crest::FunctionOpInterface::default::getFunctionType" (uptr) uptr))
 
@@ -32,6 +30,19 @@
 
   (define %crest::FunctionOpInterface::default::verifyType
     (foreign-procedure "crest::FunctionOpInterface::default::verifyType" (uptr) boolean))
+
+  ;; Interface method calls — look up registered concept and dispatch.
+  (define %mlir::FunctionOpInterface::getFunctionType
+    (foreign-procedure "mlir::FunctionOpInterface::getFunctionType" (uptr) uptr))
+
+  (define %mlir::FunctionOpInterface::setFunctionTypeAttr
+    (foreign-procedure "mlir::FunctionOpInterface::setFunctionTypeAttr" (uptr uptr) void))
+
+  (define %mlir::FunctionOpInterface::verifyBody
+    (foreign-procedure "mlir::FunctionOpInterface::verifyBody" (uptr) boolean))
+
+  (define %mlir::FunctionOpInterface::verifyType
+    (foreign-procedure "mlir::FunctionOpInterface::verifyType" (uptr) boolean))
 
   (define %mlir::function_interface_impl::parseFunctionOp
     (foreign-procedure "mlir::function_interface_impl::parseFunctionOp"
