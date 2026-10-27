@@ -58,9 +58,16 @@ void* LookupInterfaceForOp(mlir::TypeID id, const std::string& op_name) {
 // ---------------------------------------------------------------------------
 
 static llvm::DenseMap<mlir::TypeID, ConceptCreatorFn> g_concept_creators;
+static std::unordered_map<std::string, ConceptCreatorFn>
+    g_concept_creators_by_name;
 
 void registerConceptCreator(mlir::TypeID id, ConceptCreatorFn fn) {
   g_concept_creators[id] = fn;
+}
+
+void registerConceptCreatorByName(const std::string& name,
+                                  ConceptCreatorFn fn) {
+  g_concept_creators_by_name[name] = fn;
 }
 
 ConceptCreatorFn lookupConceptCreator(mlir::TypeID id) {
@@ -357,6 +364,22 @@ void registerIRExtensibleDialectBindings() {
               }
               return new CrestDialect(name, load_ctx, id, std::move(*cbs_ptr2));
             });
+      });
+
+  // crest::register-interface! — call the concept creator for a named
+  // interface. Takes the interface name as a C string and the Scheme dispatcher
+  // procedure. Used by :interfaces DSL generated code to avoid hygiene issues
+  // with interface-specific identifiers in macro output.
+  Sregister_symbol(
+      "crest::register-interface!",
+      (void*)+[](uint64_t name_ptr, ptr dispatcher) -> void {
+        std::string name(reinterpret_cast<const char*>(name_ptr));
+        auto it = g_concept_creators_by_name.find(name);
+        if (it == g_concept_creators_by_name.end()) {
+          scheme_error("crest::register-interface!",
+                       "unknown interface:", name.c_str());
+        }
+        it->second(dispatcher);
       });
 }
 

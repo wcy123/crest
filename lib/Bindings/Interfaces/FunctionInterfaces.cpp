@@ -219,12 +219,15 @@ crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
 // ---------------------------------------------------------------------------
 
 void registerInterfacesFunctionInterfacesBindings() {
-  // Register the concept creator so crest::registerInterfaceForOperation
-  // (in Dialect.cpp) can dispatch to it by TypeID.
+  // Register concept creator by TypeID and by name (for macro-generated code).
   Sregister_symbol(
       "mlir::FunctionOpInterface", (void*)+[](ptr dispatcher) {
         crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
             dispatcher);
+      });
+  crest::registerConceptCreatorByName(
+      "mlir::FunctionOpInterface", +[](ptr d) {
+        crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(d);
       });
 
   // Trigger initialisation of the default concept — registration under "."

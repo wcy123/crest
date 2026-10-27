@@ -11,8 +11,10 @@
   (import (rnrs)
           (mlir Interfaces FunctionInterfaces ffi))
 
-  (define mlir::FunctionOpInterface
-    %mlir::FunctionOpInterface)
+  ;; Wrapped in a lambda so callers in macro-generated code get a regular
+  ;; Scheme procedure rather than a raw void-returning foreign-procedure.
+  (define (mlir::FunctionOpInterface dispatcher)
+    (%mlir::FunctionOpInterface dispatcher))
 
   (define mlir::FunctionOpInterface::getFunctionType
     %mlir::FunctionOpInterface::getFunctionType)

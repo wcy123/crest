@@ -8,13 +8,7 @@
           (crest dialect)
           (mlir IR Operation)
           (mlir IR MLIRContext)
-          (mlir IR BuiltinTypes)
-          (mlir IR BuiltinAttributes)
-          (only (mlir Interfaces FunctionInterfaces)
-                mlir::FunctionOpInterface
-                mlir::FunctionOpInterface::getFunctionType
-                mlir::FunctionOpInterface::verifyBody
-                mlir::FunctionOpInterface::verifyType))
+          (mlir Interfaces FunctionInterfaces))
 
   (define-dialect ifacetest
     (define-op func
@@ -26,5 +20,4 @@
       (with-current-MLIRContext ctx
         (ifacetest:register! ctx)))
     module)
-
-  ) ;; end library (passes interface-dsl)
+  )

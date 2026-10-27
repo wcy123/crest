@@ -11,7 +11,8 @@
           dialect-cbs-with-interfaces)
   (import (chezscheme)
           (crest dialect ast)
-          (crest dialect expand utils))
+          (crest dialect expand utils)
+          (crest dialect ffi))  ; for %crest::register-interface!
 
   ;; Generate per-op dispatcher defines and interface registration calls
   ;; for ALL ops that declare :interfaces entries.
@@ -46,14 +47,12 @@
                                [iface-stx (interface-entry-name entry)]
                                [methods   (interface-entry-methods entry)]
                                ;; %%toy.func:mlir::FunctionOpInterface
-                               [proc-id   (%%id ctx "%%" op-name-str ":" iface-stx)]
-                               ;; Create a fresh identifier in ctx's scope so the
-                               ;; generated call resolves in the client module.
-                               [iface-fn-id (%%id ctx iface-stx)])
+                               [proc-id   (%%id ctx "%%" op-name-str ":" iface-stx)])
                           (with-syntax
-                              ([dispatch-proc proc-id]
-                               [iface-fn      iface-fn-id]
-                               [op-name-s     op-name-str]
+                              ([dispatch-proc  proc-id]
+                               [iface-name-str (%%id->str iface-stx)]
+                               [op-name-s      op-name-str]
+                               [register!      #'%crest::register-interface!]
                                [(method-clause ...)
                                 (map (lambda (m)
                                        (with-syntax
@@ -70,7 +69,10 @@
                                          method-clause ...
                                          (else #f)))
                                    defs)
-                             (cons #'(iface-fn dispatch-proc)
+                             ;; Use %crest::register-interface! with the name as a
+                             ;; string literal to avoid macro hygiene issues with
+                             ;; interface-specific identifiers in macro-generated code.
+                             (cons #'(register! iface-name-str dispatch-proc)
                                    calls))))))))))))
 
   ;; Build the 12-slot dialect callbacks vector.

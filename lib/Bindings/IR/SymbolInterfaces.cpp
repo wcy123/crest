@@ -161,6 +161,10 @@ void registerIRSymbolInterfacesBindings() {
         crest::SupportedInterfaces<mlir::SymbolOpInterface>::CreateConcept(
             dispatcher);
       });
+  crest::registerConceptCreatorByName(
+      "mlir::SymbolOpInterface", +[](ptr d) {
+        crest::SupportedInterfaces<mlir::SymbolOpInterface>::CreateConcept(d);
+      });
 
   // ---- SymbolOpInterface method bindings ----------------------------------
 
