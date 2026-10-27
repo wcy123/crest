@@ -8,6 +8,7 @@
 #include "FunctionInterfaces.h"
 #include "../../Crest/Interface.h"
 #include "../IR/SymbolTable.h"
+#include "../Support/LockedSchemeObject.h"
 #include "../Support/SchemeWrapper.h"
 #include "CallInterfaces.h"
 #include "mlir/IR/BuiltinAttributes.h"
@@ -20,142 +21,102 @@
 #include "mlir/Interfaces/FunctionImplementation.h"
 #include "mlir/Interfaces/FunctionInterfaces.h"
 #include "mlir/Support/InterfaceSupport.h"
-
-namespace crest {
-
-// ---------------------------------------------------------------------------
-// SupportedInterfaces<FunctionOpInterface>::getOrCreateDefaultConcept
-//
-// User-facing interface - declared in Interface.h, specialised here.
-// Stores base-interface pointers from the three helpers above.
-// ---------------------------------------------------------------------------
-template <>
-mlir::FunctionOpInterface::Concept* crest::SupportedInterfaces<
-    mlir::FunctionOpInterface>::getOrCreateDefaultConcept() {
-  // Thread-safe (C++11): initialised once; registry owns the concept.
-  // Sub-interface getOrCreateDefaultConcept() calls trigger their own
-  // registration before this concept is stored.
-  static mlir::FunctionOpInterface::Concept* ptr = [] {
-    auto* c = new mlir::FunctionOpInterface::Concept{
-        // getFunctionType: read "function_type" TypeAttr
-        [](const mlir::FunctionOpInterface::Concept*,
-           mlir::Operation* op) -> mlir::Type {
-          return mlir::cast<mlir::TypeAttr>(op->getAttr("function_type"))
-              .getValue();
-        },
-        // setFunctionTypeAttr
-        [](const mlir::FunctionOpInterface::Concept*, mlir::Operation* op,
-           mlir::TypeAttr t) { op->setAttr("function_type", t); },
-        // cloneTypeWith
-        [](const mlir::FunctionOpInterface::Concept*, mlir::Operation* op,
-           mlir::TypeRange inputs, mlir::TypeRange results) -> mlir::Type {
-          return mlir::FunctionType::get(op->getContext(), inputs, results);
-        },
-        // verifyBody / verifyType: always succeed
-        [](const mlir::FunctionOpInterface::Concept*,
-           mlir::Operation*) -> llvm::LogicalResult { return mlir::success(); },
-        [](const mlir::FunctionOpInterface::Concept*,
-           mlir::Operation*) -> llvm::LogicalResult { return mlir::success(); },
-        // base interface pointers - set directly (initializeInterfaceConcept
-        // is not called via getRegisteredInterfaceForOp)
-        SupportedInterfaces<
-            mlir::SymbolOpInterface>::getOrCreateDefaultConcept(),
-        SupportedInterfaces<
-            mlir::ArgAndResultAttrsOpInterface>::getOrCreateDefaultConcept(),
-        SupportedInterfaces<
-            mlir::CallableOpInterface>::getOrCreateDefaultConcept(),
-    };
-    RegisterInterfaceForOp(
-        mlir::FunctionOpInterface::getInterfaceID(), ".",
-        std::shared_ptr<void>(c, [](void* p) {
-          delete static_cast<mlir::FunctionOpInterface::Concept*>(p);
-        }));
-    return c;
-  }();
-  return ptr;
-}
+#include <memory>
 
 // ---------------------------------------------------------------------------
 // FunctionConceptData — file-local; no template, no header.
 //
 // Stores the concept struct (byte 0, layout trick: self == data) alongside
-// per-method locked Scheme lambdas.  Sfalse means "use C++ default."
-// cloneTypeWith: TypeRange is marshalled to a Scheme list of uptr values.
+// per-method locked Scheme lambdas.  Default-constructed fields hold Sfalse.
 // ---------------------------------------------------------------------------
 namespace {
 struct FunctionConceptData {
-  mlir::FunctionOpInterface::Concept concept; // MUST be first — self == data
-  ptr get_function_type;
-  ptr set_function_type_attr;
-  ptr clone_type_with;
-  ptr verify_body;
-  ptr verify_type;
-};
-} // anonymous namespace
+  mlir::FunctionOpInterface::Concept concept_; // MUST be first — self == data
+  crest::LockedSchemeObject get_function_type;
+  crest::LockedSchemeObject set_function_type_attr;
+  crest::LockedSchemeObject clone_type_with;
+  crest::LockedSchemeObject verify_body;
+  crest::LockedSchemeObject verify_type;
 
-// Static override lambdas - non-capturing; use self == FunctionConceptData*
-// to reach the per-op Scheme lambdas stored alongside the concept.
-namespace {
-using FunctionOpInterfaceConcept = mlir::FunctionOpInterface::Concept;
-
-// Marshal a TypeRange to a Scheme list of uptr (one per mlir::Type opaque ptr).
-ptr typeRangeToSchemeList(mlir::TypeRange range) {
-  ptr list = Snil;
-  // Build in reverse so the resulting list has forward order.
-  for (size_t i = range.size(); i-- > 0;) {
-    list = Scons(
-        Sunsigned64(reinterpret_cast<uint64_t>(range[i].getAsOpaquePointer())),
-        list);
+  FunctionConceptData()
+      : concept_{
+            [](const mlir::FunctionOpInterface::Concept*,
+               mlir::Operation* op) -> mlir::Type {
+              return mlir::cast<mlir::TypeAttr>(op->getAttr("function_type"))
+                  .getValue();
+            },
+            [](const mlir::FunctionOpInterface::Concept*, mlir::Operation* op,
+               mlir::TypeAttr t) { op->setAttr("function_type", t); },
+            [](const mlir::FunctionOpInterface::Concept*, mlir::Operation* op,
+               mlir::TypeRange inputs, mlir::TypeRange results) -> mlir::Type {
+              return mlir::FunctionType::get(op->getContext(), inputs, results);
+            },
+            [](const mlir::FunctionOpInterface::Concept*, mlir::Operation*)
+                -> llvm::LogicalResult { return mlir::success(); },
+            [](const mlir::FunctionOpInterface::Concept*, mlir::Operation*)
+                -> llvm::LogicalResult { return mlir::success(); },
+            crest::SupportedInterfaces<
+                mlir::SymbolOpInterface>::getOrCreateDefaultConcept(),
+            crest::SupportedInterfaces<mlir::ArgAndResultAttrsOpInterface>::
+                getOrCreateDefaultConcept(),
+            crest::SupportedInterfaces<
+                mlir::CallableOpInterface>::getOrCreateDefaultConcept()} {
+    assert(get_function_type.get() == Sfalse);
+    assert(set_function_type_attr.get() == Sfalse);
+    assert(clone_type_with.get() == Sfalse);
+    assert(verify_body.get() == Sfalse);
+    assert(verify_type.get() == Sfalse);
   }
-  return list;
-}
-const auto k_override_getFunctionType =
-    +[](const FunctionOpInterfaceConcept* self,
-        mlir::Operation* op) -> mlir::Type {
-  const auto* d = reinterpret_cast<const FunctionConceptData*>(self);
-  ptr r = scheme_call(d->get_function_type, reinterpret_cast<uint64_t>(op));
-  return mlir::Type::getFromOpaquePointer(
-      reinterpret_cast<const void*>(Sunsigned64_value(r)));
-};
-const auto k_override_setFunctionTypeAttr =
-    +[](const FunctionOpInterfaceConcept* self, mlir::Operation* op,
-        mlir::TypeAttr t) {
-      const auto* d = reinterpret_cast<const FunctionConceptData*>(self);
-      scheme_call(d->set_function_type_attr, reinterpret_cast<uint64_t>(op),
-                  reinterpret_cast<uint64_t>(t.getAsOpaquePointer()));
-    };
-const auto k_override_verifyBody =
-    +[](const FunctionOpInterfaceConcept* self,
-        mlir::Operation* op) -> llvm::LogicalResult {
-  const auto* d = reinterpret_cast<const FunctionConceptData*>(self);
-  ptr r = scheme_call(d->verify_body, reinterpret_cast<uint64_t>(op));
-  return r == Strue ? mlir::success() : mlir::failure();
-};
-const auto k_override_cloneTypeWith =
-    +[](const FunctionOpInterfaceConcept* self, mlir::Operation* op,
-        mlir::TypeRange inputs, mlir::TypeRange results) -> mlir::Type {
-  const auto* d = reinterpret_cast<const FunctionConceptData*>(self);
-  ptr r = scheme_call(d->clone_type_with, reinterpret_cast<uint64_t>(op),
-                      typeRangeToSchemeList(inputs),
-                      typeRangeToSchemeList(results));
-  return mlir::Type::getFromOpaquePointer(
-      reinterpret_cast<const void*>(Sunsigned64_value(r)));
-};
-const auto k_override_verifyType =
-    +[](const FunctionOpInterfaceConcept* self,
-        mlir::Operation* op) -> llvm::LogicalResult {
-  const auto* d = reinterpret_cast<const FunctionConceptData*>(self);
-  ptr r = scheme_call(d->verify_type, reinterpret_cast<uint64_t>(op));
-  return r == Strue ? mlir::success() : mlir::failure();
+
+  FunctionConceptData(const FunctionConceptData& other)
+      : concept_(other.concept_) {
+    assert(other.get_function_type.get() == Sfalse);
+    assert(other.set_function_type_attr.get() == Sfalse);
+    assert(other.clone_type_with.get() == Sfalse);
+    assert(other.verify_body.get() == Sfalse);
+    assert(other.verify_type.get() == Sfalse);
+  }
 };
 } // anonymous namespace
 
+namespace crest {
+
+// ---------------------------------------------------------------------------
+// SupportedInterfaces<FunctionOpInterface>::getOrCreateDefaultConcept
+// ---------------------------------------------------------------------------
+template <>
+mlir::FunctionOpInterface::Concept* crest::SupportedInterfaces<
+    mlir::FunctionOpInterface>::getOrCreateDefaultConcept() {
+  // Thread-safe (C++11): initialised once; registry owns the concept.
+  static mlir::FunctionOpInterface::Concept* ptr = [] {
+    auto data = std::make_unique<FunctionConceptData>();
+    auto raw = data.get();
+    RegisterInterfaceForOp(mlir::FunctionOpInterface::getInterfaceID(), ".",
+                           std::shared_ptr<void>(data.release(), [](void* p) {
+                             delete static_cast<FunctionConceptData*>(p);
+                           }));
+    return &raw->concept_;
+  }();
+  return ptr;
+}
+template <>
+std::shared_ptr<void>
+crest::SupportedInterfaces<mlir::FunctionOpInterface>::CloneConcept(
+    const mlir::FunctionOpInterface::Concept* from) {
+  const auto* src = reinterpret_cast<const FunctionConceptData*>(from);
+  auto new_data = std::make_unique<FunctionConceptData>(*src);
+  return std::shared_ptr<void>(new_data.release(), [](void* p) {
+    delete static_cast<FunctionConceptData*>(p);
+  });
+}
 // CreateConcept - copies the default concept, overrides named slots for each
 // method the dispatcher provides, then registers via RegisterInterfaceForOp.
 template <>
-void crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
+mlir::FunctionOpInterface::Concept*
+crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
     ptr dispatcher) {
-  std::string op_name = convert_to_cpp<std::string>(
+  using Concept = mlir::FunctionOpInterface::Concept;
+  std::string op_name = Conversion<ptr, std::string>{}(
       scheme_call(dispatcher, Sstring_to_symbol("operation_name")));
 
   ptr getFunctionType =
@@ -166,60 +127,98 @@ void crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
       scheme_call(dispatcher, Sstring_to_symbol("cloneTypeWith"));
   ptr verifyBody = scheme_call(dispatcher, Sstring_to_symbol("verifyBody"));
   ptr verifyType = scheme_call(dispatcher, Sstring_to_symbol("verifyType"));
-  bool has_override =
-      (getFunctionType != Sfalse || setFunctionTypeAttr != Sfalse ||
-       cloneTypeWith != Sfalse || verifyBody != Sfalse || verifyType != Sfalse);
 
-  if (has_override) {
-    // Copy default; override only the provided slots by field name.
-    auto* data = new FunctionConceptData{
-        *SupportedInterfaces<
-            mlir::FunctionOpInterface>::getOrCreateDefaultConcept(),
-        Sfalse,
-        Sfalse,
-        Sfalse,
-        Sfalse,
-        Sfalse};
-    if (getFunctionType != Sfalse) {
-      Slock_object(getFunctionType);
-      data->get_function_type = getFunctionType;
-      data->concept.getFunctionType = k_override_getFunctionType;
-    }
-    if (setFunctionTypeAttr != Sfalse) {
-      Slock_object(setFunctionTypeAttr);
-      data->set_function_type_attr = setFunctionTypeAttr;
-      data->concept.setFunctionTypeAttr = k_override_setFunctionTypeAttr;
-    }
-    if (cloneTypeWith != Sfalse) {
-      Slock_object(cloneTypeWith);
-      data->clone_type_with = cloneTypeWith;
-      data->concept.cloneTypeWith = k_override_cloneTypeWith;
-    }
-    if (verifyBody != Sfalse) {
-      Slock_object(verifyBody);
-      data->verify_body = verifyBody;
-      data->concept.verifyBody = k_override_verifyBody;
-    }
-    if (verifyType != Sfalse) {
-      Slock_object(verifyType);
-      data->verify_type = verifyType;
-      data->concept.verifyType = k_override_verifyType;
-    }
-    crest::RegisterInterfaceForOp(
-        mlir::FunctionOpInterface::getInterfaceID(), op_name,
-        std::shared_ptr<void>(data, [](void* p) {
-          auto* d = static_cast<FunctionConceptData*>(p);
-          for (ptr sv : {d->get_function_type, d->set_function_type_attr,
-                         d->clone_type_with, d->verify_body, d->verify_type}) {
-            if (sv != Sfalse) {
-              Sunlock_object(sv);
-            }
-          }
-          delete d;
-        }));
+  // Copy default; override only the provided slots by field name.
+  auto data = std::make_unique<FunctionConceptData>();
+
+  // Set base interface pointers: get-or-create per-op concepts from the
+  // registry.
+  data->concept_.implSymbolOpInterface =
+      getOrCreateConcept<mlir::SymbolOpInterface>(op_name);
+  data->concept_.implArgAndResultAttrsOpInterface =
+      getOrCreateConcept<mlir::ArgAndResultAttrsOpInterface>(op_name);
+  data->concept_.implCallableOpInterface =
+      getOrCreateConcept<mlir::CallableOpInterface>(op_name);
+
+  if (getFunctionType != Sfalse) {
+    data->get_function_type = crest::LockedSchemeObject(getFunctionType);
+    data->concept_.getFunctionType =
+        +[](const Concept* self, mlir::Operation* op) -> mlir::Type {
+      const auto* d = reinterpret_cast<const FunctionConceptData*>(self);
+      ptr r = scheme_call(d->get_function_type.get(),
+                          reinterpret_cast<uint64_t>(op));
+      return mlir::Type::getFromOpaquePointer(
+          reinterpret_cast<const void*>(Sunsigned64_value(r)));
+    };
   }
-  // No-override case: nothing to register - "." fallback handles all
-  // interfaces for this op via getRegisteredInterfaceForOp.
+  if (setFunctionTypeAttr != Sfalse) {
+    data->set_function_type_attr =
+        crest::LockedSchemeObject(setFunctionTypeAttr);
+    data->concept_.setFunctionTypeAttr =
+        +[](const Concept* self, mlir::Operation* op, mlir::TypeAttr t) {
+          const auto* d = reinterpret_cast<const FunctionConceptData*>(self);
+          scheme_call(d->set_function_type_attr.get(),
+                      reinterpret_cast<uint64_t>(op),
+                      reinterpret_cast<uint64_t>(t.getAsOpaquePointer()));
+        };
+  }
+  if (cloneTypeWith != Sfalse) {
+    data->clone_type_with = crest::LockedSchemeObject(cloneTypeWith);
+    data->concept_.cloneTypeWith =
+        +[](const Concept* self, mlir::Operation* op, mlir::TypeRange inputs,
+            mlir::TypeRange results) -> mlir::Type {
+      const auto* d = reinterpret_cast<const FunctionConceptData*>(self);
+      ptr r = scheme_call(d->clone_type_with.get(),
+                          reinterpret_cast<uint64_t>(op), inputs, results);
+      return mlir::Type::getFromOpaquePointer(
+          reinterpret_cast<const void*>(Sunsigned64_value(r)));
+    };
+  }
+  if (verifyBody != Sfalse) {
+    data->verify_body = crest::LockedSchemeObject(verifyBody);
+    data->concept_.verifyBody =
+        +[](const Concept* self, mlir::Operation* op) -> llvm::LogicalResult {
+      const auto* d = reinterpret_cast<const FunctionConceptData*>(self);
+      ptr r = scheme_call(d->verify_body.get(), reinterpret_cast<uint64_t>(op));
+      return r == Strue ? mlir::success() : mlir::failure();
+    };
+  }
+  if (verifyType != Sfalse) {
+    data->verify_type = crest::LockedSchemeObject(verifyType);
+    data->concept_.verifyType =
+        +[](const Concept* self, mlir::Operation* op) -> llvm::LogicalResult {
+      const auto* d = reinterpret_cast<const FunctionConceptData*>(self);
+      ptr r = scheme_call(d->verify_type.get(), reinterpret_cast<uint64_t>(op));
+      return r == Strue ? mlir::success() : mlir::failure();
+    };
+  }
+  if (!data->concept_.getFunctionType) {
+    scheme_error("FunctionOpInterface::CreateConcept", op_name,
+                 ": getFunctionType is null");
+  }
+  if (!data->concept_.setFunctionTypeAttr) {
+    scheme_error("FunctionOpInterface::CreateConcept", op_name,
+                 ": setFunctionTypeAttr is null");
+  }
+  if (!data->concept_.cloneTypeWith) {
+    scheme_error("FunctionOpInterface::CreateConcept", op_name,
+                 ": cloneTypeWith is null");
+  }
+  if (!data->concept_.verifyBody) {
+    scheme_error("FunctionOpInterface::CreateConcept", op_name,
+                 ": verifyBody is null");
+  }
+  if (!data->concept_.verifyType) {
+    scheme_error("FunctionOpInterface::CreateConcept", op_name,
+                 ": verifyType is null");
+  }
+  auto* raw = &data->concept_;
+  crest::RegisterInterfaceForOp(
+      mlir::FunctionOpInterface::getInterfaceID(), op_name,
+      std::shared_ptr<void>(data.release(), [](void* p) {
+        delete static_cast<FunctionConceptData*>(p);
+      }));
+  return raw;
 }
 
 // Sregister_symbol bindings
@@ -236,8 +235,10 @@ void registerInterfacesFunctionInterfacesBindings() {
   // Register the concept creator so crest::registerInterfaceForOperation
   // (in Dialect.cpp) can dispatch to it by TypeID.
   crest::registerConceptCreator(
-      mlir::FunctionOpInterface::getInterfaceID(),
-      &crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept);
+      mlir::FunctionOpInterface::getInterfaceID(), +[](ptr dispatcher) {
+        crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
+            dispatcher);
+      });
 
   // Trigger initialisation of the default concept — registration under "."
   // happens inside

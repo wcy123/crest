@@ -18,6 +18,7 @@ namespace crest {
 /// call.
 class LockedSchemeObject {
 public:
+  LockedSchemeObject() : obj_(Sfalse) {}
   explicit LockedSchemeObject(ptr obj);
   ~LockedSchemeObject();
 

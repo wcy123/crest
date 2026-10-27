@@ -5,6 +5,7 @@
 #pragma once
 #include "../Bindings/Support/SchemeWrapper.h"
 #include "mlir/Support/TypeID.h"
+#include <cassert>
 #include <memory>
 #include <string>
 
@@ -22,6 +23,10 @@ namespace crest {
 bool RegisterInterfaceForOp(mlir::TypeID id, const std::string& op_name,
                             std::shared_ptr<void> concept_ptr);
 
+// Look up a registered concept by (interface TypeID, op name).
+// Returns nullptr if absent.
+void* LookupInterfaceForOp(mlir::TypeID id, const std::string& op_name);
+
 // ---------------------------------------------------------------------------
 // SupportedInterfaces<Interface>
 //
@@ -36,13 +41,40 @@ bool RegisterInterfaceForOp(mlir::TypeID id, const std::string& op_name,
 // the Scheme dispatcher provides, and calls RegisterInterfaceForOp.
 // ---------------------------------------------------------------------------
 template <typename Interface> struct SupportedInterfaces {
-  // Return a stable pointer to the (lazily created) default concept.
-  static typename Interface::Concept*
-  getOrCreateDefaultConcept(); // undefined by design
+  using ConceptType = typename Interface::Concept;
+  // Lazily create the default concept, register it under ".", and return it.
+  static ConceptType* getOrCreateDefaultConcept(); // undefined by design
+
+  // Clone the concept pointed to by `from` into a new owning allocation.
+  // Returns shared_ptr<void> to propagate the concrete type's custom deleter.
+  static std::shared_ptr<void>
+  CloneConcept(const ConceptType* from); // undefined by design
 
   // Copy the default concept, override provided slots, then register.
-  static void CreateConcept(ptr dispatcher); // undefined by design
+  static ConceptType* CreateConcept(ptr dispatcher); // undefined by design
 };
+
+// Return the typed concept for (Interface, op_name).
+// If no op-specific entry exists, copy the default concept, register it under
+// op_name, and return the new pointer.
+template <typename Interface>
+typename Interface::Concept* getOrCreateConcept(const std::string& op_name) {
+  using ConceptType = typename Interface::Concept;
+  mlir::TypeID id = Interface::getInterfaceID();
+  if (void* existing = LookupInterfaceForOp(id, op_name)) {
+    return static_cast<ConceptType*>(existing);
+  }
+  ConceptType* def =
+      SupportedInterfaces<Interface>::getOrCreateDefaultConcept();
+  auto cloned = SupportedInterfaces<Interface>::CloneConcept(def);
+  ConceptType* cloned_ptr = static_cast<ConceptType*>(cloned.get());
+  RegisterInterfaceForOp(id, op_name, std::move(cloned));
+  ConceptType* registered =
+      static_cast<ConceptType*>(LookupInterfaceForOp(id, op_name));
+  assert(registered == cloned_ptr);
+  (void)cloned_ptr;
+  return registered;
+}
 
 // ---------------------------------------------------------------------------
 // Concept-creator dispatch table.

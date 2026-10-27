@@ -83,6 +83,26 @@ mlir::ArgAndResultAttrsOpInterface::Concept* SupportedInterfaces<
   return ptr;
 }
 
+template <>
+std::shared_ptr<void>
+SupportedInterfaces<mlir::CallableOpInterface>::CloneConcept(
+    const mlir::CallableOpInterface::Concept* from) {
+  return std::shared_ptr<void>(
+      new mlir::CallableOpInterface::Concept(*from), [](void* p) {
+        delete static_cast<mlir::CallableOpInterface::Concept*>(p);
+      });
+}
+
+template <>
+std::shared_ptr<void>
+SupportedInterfaces<mlir::ArgAndResultAttrsOpInterface>::CloneConcept(
+    const mlir::ArgAndResultAttrsOpInterface::Concept* from) {
+  return std::shared_ptr<void>(
+      new mlir::ArgAndResultAttrsOpInterface::Concept(*from), [](void* p) {
+        delete static_cast<mlir::ArgAndResultAttrsOpInterface::Concept*>(p);
+      });
+}
+
 void registerInterfacesCallInterfacesBindings() {
   // Trigger initialisation — registration happens inside
   // getOrCreateDefaultConcept() on first call.

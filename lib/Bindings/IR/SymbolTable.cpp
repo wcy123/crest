@@ -80,6 +80,16 @@ SupportedInterfaces<mlir::SymbolOpInterface>::getOrCreateDefaultConcept() {
   return ptr;
 }
 
+template <>
+std::shared_ptr<void>
+SupportedInterfaces<mlir::SymbolOpInterface>::CloneConcept(
+    const mlir::SymbolOpInterface::Concept* from) {
+  return std::shared_ptr<void>(
+      new mlir::SymbolOpInterface::Concept(*from), [](void* p) {
+        delete static_cast<mlir::SymbolOpInterface::Concept*>(p);
+      });
+}
+
 void registerIRSymbolTableBindings() {
   // Trigger initialisation -- registration happens inside
   // getOrCreateDefaultConcept() on first call.
