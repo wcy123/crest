@@ -90,8 +90,6 @@ typename Interface::Concept* getOrCreateConcept(const std::string& op_name) {
 // ---------------------------------------------------------------------------
 using ConceptCreatorFn = void (*)(ptr dispatcher);
 void registerConceptCreator(mlir::TypeID id, ConceptCreatorFn fn);
-// Also register by interface name string for use from macro-generated code.
-void registerConceptCreatorByName(const std::string& name, ConceptCreatorFn fn);
 ConceptCreatorFn lookupConceptCreator(mlir::TypeID id); // nullptr if not found
 
 } // namespace crest
