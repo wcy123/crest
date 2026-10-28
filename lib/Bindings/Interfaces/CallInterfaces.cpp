@@ -244,19 +244,10 @@ void registerInterfacesCallInterfacesBindings() {
         crest::SupportedInterfaces<mlir::CallableOpInterface>::CreateConcept(
             dispatcher);
       });
-  crest::registerConceptCreatorByName(
-      "mlir::CallableOpInterface", +[](ptr d) {
-        crest::SupportedInterfaces<mlir::CallableOpInterface>::CreateConcept(d);
-      });
   Sregister_symbol(
       "mlir::ArgAndResultAttrsOpInterface", (void*)+[](ptr dispatcher) {
         crest::SupportedInterfaces<
             mlir::ArgAndResultAttrsOpInterface>::CreateConcept(dispatcher);
-      });
-  crest::registerConceptCreatorByName(
-      "mlir::ArgAndResultAttrsOpInterface", +[](ptr d) {
-        crest::SupportedInterfaces<
-            mlir::ArgAndResultAttrsOpInterface>::CreateConcept(d);
       });
 
   // ---- CallableOpInterface method bindings --------------------------------
