@@ -16,10 +16,6 @@
   (define (mlir::FunctionOpInterface dispatcher)
     (%mlir::FunctionOpInterface dispatcher))
 
-  ;; Use eval to break the compile-time import chain through the ffi module:
-  ;; Chez Scheme crashes when imported foreign-procedure bindings are referenced
-  ;; in compiled code via the import chain. eval creates the procedures at
-  ;; runtime, avoiding the compile-time analysis.
   (define mlir::FunctionOpInterface::getFunctionType
     %mlir::FunctionOpInterface::getFunctionType)
 

@@ -1,11 +1,5 @@
 #!r6rs
 ;; Unit test for the :interfaces DSL.
-;;
-;; NOTE: Interface method foreign-procedures must be defined locally in the
-;; library that uses them. Chez Scheme's compiler crashes when imported
-;; foreign-procedure bindings are referenced in compiled code (a Chez Scheme
-;; compiler bug with cross-module foreign-procedure binding references).
-;; Defining them locally with canonical names is the correct workaround.
 (library (passes interface-dsl)
   (export run-pass)
   (import (chezscheme)
@@ -19,7 +13,11 @@
           (only (mlir IR SymbolInterfaces) mlir::SymbolOpInterface)
           (only (mlir Interfaces CallInterfaces) mlir::CallableOpInterface))
 
-  ;; Local foreign-procedure definitions with canonical names.
+  ;; Method bindings defined locally. Importing them from the public modules
+  ;; (e.g. mlir::FunctionOpInterface::getFunctionType from FunctionInterfaces)
+  ;; causes the interface registration in %%ifacetest:initialize to silently
+  ;; fail to persist in the C++ registry — root cause not yet identified.
+  ;; Local foreign-procedure definitions are a reliable workaround.
   (define mlir::FunctionOpInterface::getFunctionType
     (foreign-procedure "mlir::FunctionOpInterface::getFunctionType" (uptr) uptr))
   (define mlir::FunctionOpInterface::verifyBody

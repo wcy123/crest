@@ -4,10 +4,6 @@
   (export %mlir::FunctionOpInterface
           %mlir::function_interface_impl::parseFunctionOp
           %mlir::function_interface_impl::printFunctionOp
-          %crest::FunctionOpInterface::default::getFunctionType
-          %crest::FunctionOpInterface::default::setFunctionTypeAttr
-          %crest::FunctionOpInterface::default::verifyBody
-          %crest::FunctionOpInterface::default::verifyType
           %mlir::FunctionOpInterface::getFunctionType
           %mlir::FunctionOpInterface::setFunctionTypeAttr
           %mlir::FunctionOpInterface::verifyBody
@@ -17,19 +13,6 @@
   ;; Register an interface concept for one op via a Scheme dispatcher procedure.
   (define %mlir::FunctionOpInterface
     (foreign-procedure "mlir::FunctionOpInterface" (scheme-object) void))
-
-  ;; Default C++ implementations — callable from Scheme fallback dispatch.
-  (define %crest::FunctionOpInterface::default::getFunctionType
-    (foreign-procedure "crest::FunctionOpInterface::default::getFunctionType" (uptr) uptr))
-
-  (define %crest::FunctionOpInterface::default::setFunctionTypeAttr
-    (foreign-procedure "crest::FunctionOpInterface::default::setFunctionTypeAttr" (uptr uptr) void))
-
-  (define %crest::FunctionOpInterface::default::verifyBody
-    (foreign-procedure "crest::FunctionOpInterface::default::verifyBody" (uptr) boolean))
-
-  (define %crest::FunctionOpInterface::default::verifyType
-    (foreign-procedure "crest::FunctionOpInterface::default::verifyType" (uptr) boolean))
 
   ;; Interface method calls — look up registered concept and dispatch.
   (define %mlir::FunctionOpInterface::getFunctionType

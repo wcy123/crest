@@ -291,6 +291,8 @@ void registerInterfacesFunctionInterfacesBindings() {
         auto* c = static_cast<mlir::FunctionOpInterface::Concept*>(
             LookupInterfaceForOp(mlir::FunctionOpInterface::getInterfaceID(),
                                  name_str));
+        auto fn = mlir::dyn_cast<mlir::FunctionOpInterface>(op);
+        llvm::errs() << "fn=" << (void*)fn << "  c=" << (void*)c << "\n";
         if (!c) {
           scheme_error(
               "mlir::FunctionOpInterface::getFunctionType",
