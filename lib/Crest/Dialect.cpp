@@ -41,6 +41,11 @@ bool RegisterInterfaceForOp(mlir::TypeID id, const std::string& op_name,
   return true;
 }
 
+void* CrestDialect::getRegisteredInterfaceForOp(mlir::TypeID interfaceID,
+                                                mlir::OperationName opName) {
+  return cbs_.register_op_interfaces(interfaceID, opName.getStringRef().str());
+}
+
 void* LookupInterfaceForOp(mlir::TypeID id, const std::string& op_name) {
   void* ret = nullptr;
   auto it = g_op_interface_registry.find(id);

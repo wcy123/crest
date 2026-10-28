@@ -109,6 +109,10 @@ template <>
 mlir::FunctionOpInterface::Concept*
 crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
     ptr dispatcher) {
+  // Lock dispatcher to pin it in memory: Sstring_to_symbol() and scheme_call()
+  // can trigger GC which would move the dispatcher closure, leaving the C local
+  // variable stale. Locking prevents GC from relocating it.
+  Slock_object(dispatcher);
   using Concept = mlir::FunctionOpInterface::Concept;
   std::string op_name = Conversion<ptr, std::string>{}(
       scheme_call(dispatcher, Sstring_to_symbol("operation_name")));
@@ -212,6 +216,7 @@ crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
       std::shared_ptr<void>(data.release(), [](void* p) {
         delete static_cast<FunctionConceptData*>(p);
       }));
+  Sunlock_object(dispatcher);
   return raw;
 }
 
@@ -282,13 +287,14 @@ void registerInterfacesFunctionInterfacesBindings() {
       "mlir::FunctionOpInterface::getFunctionType",
       (void*)+[](uint64_t op_ptr) -> uint64_t {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
+        auto name_str = op->getName().getStringRef().str();
         auto* c = static_cast<mlir::FunctionOpInterface::Concept*>(
             LookupInterfaceForOp(mlir::FunctionOpInterface::getInterfaceID(),
-                                 op->getName().getStringRef().str()));
+                                 name_str));
         if (!c) {
-          scheme_error("mlir::FunctionOpInterface::getFunctionType",
-                       "op does not implement FunctionOpInterface:",
-                       op->getName().getStringRef().str().c_str());
+          scheme_error(
+              "mlir::FunctionOpInterface::getFunctionType",
+              "op does not implement FunctionOpInterface:", name_str.c_str());
         }
         return reinterpret_cast<uint64_t>(
             c->getFunctionType(c, op).getAsOpaquePointer());

@@ -156,6 +156,7 @@ SupportedInterfaces<mlir::ArgAndResultAttrsOpInterface>::CloneConcept(
 template <>
 mlir::CallableOpInterface::Concept*
 SupportedInterfaces<mlir::CallableOpInterface>::CreateConcept(ptr dispatcher) {
+  Slock_object(dispatcher);
   using Concept = mlir::CallableOpInterface::Concept;
   std::string op_name = Conversion<ptr, std::string>{}(
       scheme_call(dispatcher, Sstring_to_symbol("operation_name")));
@@ -208,6 +209,7 @@ SupportedInterfaces<mlir::CallableOpInterface>::CreateConcept(ptr dispatcher) {
                            delete static_cast<CallableConceptData*>(p);
                          }));
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+  Sunlock_object(dispatcher);
   return reinterpret_cast<mlir::CallableOpInterface::Concept*>(raw);
 }
 
@@ -215,6 +217,7 @@ template <>
 mlir::ArgAndResultAttrsOpInterface::Concept*
 SupportedInterfaces<mlir::ArgAndResultAttrsOpInterface>::CreateConcept(
     ptr dispatcher) {
+  Slock_object(dispatcher);
   std::string op_name = Conversion<ptr, std::string>{}(
       scheme_call(dispatcher, Sstring_to_symbol("operation_name")));
 
@@ -227,6 +230,7 @@ SupportedInterfaces<mlir::ArgAndResultAttrsOpInterface>::CreateConcept(
                            delete static_cast<ArgAndResultAttrsConceptData*>(p);
                          }));
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+  Sunlock_object(dispatcher);
   return reinterpret_cast<mlir::ArgAndResultAttrsOpInterface::Concept*>(raw);
 }
 

@@ -118,6 +118,9 @@ public:
                               unsigned resultIndex,
                               mlir::NamedAttribute attr) override;
 
+  void* getRegisteredInterfaceForOp(mlir::TypeID interfaceID,
+                                    mlir::OperationName opName) override;
+
 private:
   Callbacks cbs_;
 };
