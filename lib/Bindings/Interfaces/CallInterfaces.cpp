@@ -156,21 +156,24 @@ SupportedInterfaces<mlir::ArgAndResultAttrsOpInterface>::CloneConcept(
 template <>
 mlir::CallableOpInterface::Concept*
 SupportedInterfaces<mlir::CallableOpInterface>::CreateConcept(ptr dispatcher) {
+  crest::LockedSchemeObject locked_dispatcher(dispatcher);
   using Concept = mlir::CallableOpInterface::Concept;
   std::string op_name = Conversion<ptr, std::string>{}(
       scheme_call(dispatcher, Sstring_to_symbol("operation_name")));
 
-  ptr getCallableRegion =
-      scheme_call(dispatcher, Sstring_to_symbol("getCallableRegion"));
-  ptr getArgumentTypes =
-      scheme_call(dispatcher, Sstring_to_symbol("getArgumentTypes"));
-  ptr getResultTypes =
-      scheme_call(dispatcher, Sstring_to_symbol("getResultTypes"));
+  // Lock each returned ptr immediately — each scheme_call is a GC point.
+  crest::LockedSchemeObject getCallableRegion(
+      scheme_call(dispatcher, Sstring_to_symbol("getCallableRegion")));
+  crest::LockedSchemeObject getArgumentTypes(
+      scheme_call(dispatcher, Sstring_to_symbol("getArgumentTypes")));
+  crest::LockedSchemeObject getResultTypes(
+      scheme_call(dispatcher, Sstring_to_symbol("getResultTypes")));
 
   auto data = std::make_unique<CallableConceptData>();
 
-  if (getCallableRegion != Sfalse) {
-    data->get_callable_region = crest::LockedSchemeObject(getCallableRegion);
+  if (getCallableRegion.get() != Sfalse) {
+    data->get_callable_region =
+        crest::LockedSchemeObject(getCallableRegion.get());
     data->getCallableRegion =
         +[](const Concept* self, mlir::Operation* op) -> mlir::Region* {
       const auto* d = static_cast<const CallableConceptData*>(self);
@@ -179,8 +182,9 @@ SupportedInterfaces<mlir::CallableOpInterface>::CreateConcept(ptr dispatcher) {
       return reinterpret_cast<mlir::Region*>(Sunsigned64_value(r));
     };
   }
-  if (getArgumentTypes != Sfalse) {
-    data->get_argument_types = crest::LockedSchemeObject(getArgumentTypes);
+  if (getArgumentTypes.get() != Sfalse) {
+    data->get_argument_types =
+        crest::LockedSchemeObject(getArgumentTypes.get());
     data->getArgumentTypes =
         +[](const Concept* self,
             mlir::Operation* op) -> llvm::ArrayRef<mlir::Type> {
@@ -190,8 +194,8 @@ SupportedInterfaces<mlir::CallableOpInterface>::CreateConcept(ptr dispatcher) {
       return {};
     };
   }
-  if (getResultTypes != Sfalse) {
-    data->get_result_types = crest::LockedSchemeObject(getResultTypes);
+  if (getResultTypes.get() != Sfalse) {
+    data->get_result_types = crest::LockedSchemeObject(getResultTypes.get());
     data->getResultTypes =
         +[](const Concept* self,
             mlir::Operation* op) -> llvm::ArrayRef<mlir::Type> {
@@ -215,6 +219,7 @@ template <>
 mlir::ArgAndResultAttrsOpInterface::Concept*
 SupportedInterfaces<mlir::ArgAndResultAttrsOpInterface>::CreateConcept(
     ptr dispatcher) {
+  crest::LockedSchemeObject locked_dispatcher(dispatcher);
   std::string op_name = Conversion<ptr, std::string>{}(
       scheme_call(dispatcher, Sstring_to_symbol("operation_name")));
 

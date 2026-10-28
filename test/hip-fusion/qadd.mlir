@@ -1,8 +1,8 @@
 // Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 // Licensed under the MIT License.
 
-// RUN: %crest-opt -allow-unregistered-dialect --crest-pass="module=passes/hip-fusion" --split-input-file %s | %FileCheck %s
-// RUN: %crest-opt -allow-unregistered-dialect --crest-pass="module=passes/hip-fusion" --split-input-file --mlir-print-debuginfo %s | %FileCheck %s --check-prefix=LOC
+// RUN: %crest-opt -allow-unregistered-dialect --crest-pass="passes=passes/hip-fusion" --split-input-file %s | %FileCheck %s
+// RUN: %crest-opt -allow-unregistered-dialect --crest-pass="passes=passes/hip-fusion" --split-input-file --mlir-print-debuginfo %s | %FileCheck %s --check-prefix=LOC
 // LOC: loc({{.*}}qadd.sls":{{[0-9]+}}:
 
 // Tests the QAdd fusion pattern: DQ + DQ → hip.add → hip.quantize_linear → hip.qadd

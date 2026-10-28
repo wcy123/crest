@@ -6,7 +6,7 @@
 
 // RUN: env CREST_DEBUG_MATCH=1 CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
 // RUN:   %crest-opt -allow-unregistered-dialect \
-// RUN:   --crest-pass="module=passes/debug-match-check-op" --mlir-print-debuginfo %s 2>&1 \
+// RUN:   --crest-pass="passes=passes/debug-match-check-op" --mlir-print-debuginfo %s 2>&1 \
 // RUN:   | %FileCheck %s
 
 // FAILED: line — warning from the debug-match system

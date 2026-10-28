@@ -11,7 +11,7 @@
 // The result aliases the input, so it keeps the input's memory space.
 //===----------------------------------------------------------------------===//
 
-// RUN: %crest-opt %s -allow-unregistered-dialect --crest-pass="module=passes/onnx-to-hipsr" --split-input-file | %FileCheck %s
+// RUN: %crest-opt %s -allow-unregistered-dialect --crest-pass="passes=passes/onnx-to-hipsr dialects=func,shape" --split-input-file | %FileCheck %s
 
 // CHECK: module {
 // CHECK:   func.func @trailing_axis(%arg0: !hipsr.context, %arg1: tensor<?x?xi1>) -> tensor<?x?x1xi1> {

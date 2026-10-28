@@ -11,11 +11,14 @@
 
   (define mlir::CallableOpInterface %mlir::CallableOpInterface)
   (define mlir::ArgAndResultAttrsOpInterface %mlir::ArgAndResultAttrsOpInterface)
-  (define mlir::CallableOpInterface::getCallableRegion
-    %mlir::CallableOpInterface::getCallableRegion)
-  (define mlir::ArgAndResultAttrsOpInterface::getArgAttrsAttr
-    %mlir::ArgAndResultAttrsOpInterface::getArgAttrsAttr)
-  (define mlir::ArgAndResultAttrsOpInterface::getResAttrsAttr
-    %mlir::ArgAndResultAttrsOpInterface::getResAttrsAttr)
+
+  (define (mlir::CallableOpInterface::getCallableRegion op)
+    (%mlir::CallableOpInterface::getCallableRegion op))
+
+  (define (mlir::ArgAndResultAttrsOpInterface::getArgAttrsAttr op)
+    (%mlir::ArgAndResultAttrsOpInterface::getArgAttrsAttr op))
+
+  (define (mlir::ArgAndResultAttrsOpInterface::getResAttrsAttr op)
+    (%mlir::ArgAndResultAttrsOpInterface::getResAttrsAttr op))
 
   ) ;; end library (mlir Interfaces CallInterfaces)

@@ -18,7 +18,7 @@
   ;; Calls the concept creator for the named interface with the dispatcher.
   ;; Used by :interfaces DSL generated code to avoid macro hygiene issues.
   (define %crest::register-interface!
-    (foreign-procedure "crest::register-interface!" (uptr scheme-object) void))
+    (foreign-procedure "crest::register-interface!" (scheme-object scheme-object) void))
 
   ;; (uptr op-name) → string — get fully-qualified name of an OperationName.
   (define %mlir::OperationName::getStringRef

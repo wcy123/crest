@@ -15,12 +15,14 @@
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/IR/DialectRegistry.h"
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
+#include "mlir/Transforms/Passes.h"
 
 int main(int argc, char** argv) {
   mlir::DialectRegistry registry;
   registry.insert<mlir::func::FuncDialect, mlir::shape::ShapeDialect,
                   mlir::tensor::TensorDialect>();
   crest::registerCrestPass();
+  mlir::registerTransformsPasses(); // --canonicalize, --cse, --inliner, etc.
   return mlir::asMainReturnCode(
       mlir::MlirOptMain(argc, argv, "CREST optimizer driver\n", registry));
 }

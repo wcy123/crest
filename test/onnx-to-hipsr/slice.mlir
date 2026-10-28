@@ -8,7 +8,7 @@
 // Rejected forms are in slice-invalid.mlir.
 //===----------------------------------------------------------------------===//
 
-// RUN: %crest-opt %s -allow-unregistered-dialect --crest-pass="module=passes/onnx-to-hipsr" --split-input-file | %FileCheck %s
+// RUN: %crest-opt %s -allow-unregistered-dialect --crest-pass="passes=passes/onnx-to-hipsr dialects=func,shape" --split-input-file | %FileCheck %s
 
 // CHECK: module {
 // CHECK:   func.func @strided_window(%arg0: !hipsr.context, %arg1: tensor<8x4xf16>) -> tensor<3x4xf16> {

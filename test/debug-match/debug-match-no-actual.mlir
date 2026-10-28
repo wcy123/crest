@@ -8,7 +8,7 @@
 
 // RUN: env CREST_DEBUG_MATCH=1 CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
 // RUN:   %crest-opt -allow-unregistered-dialect \
-// RUN:   --crest-pass="module=passes/debug-match-no-actual" %s 2>&1 \
+// RUN:   --crest-pass="passes=passes/debug-match-no-actual" %s 2>&1 \
 // RUN:   | %FileCheck %s
 
 // CHECK: {{\[%%chain-no-actual\]}} :check-op FAILED: (and (string=? (mlir::Operation::getName (vector-ref all-operations 0)) "test.add") (= (mlir::Operation::getNumResults (vector-ref all-operations 0)) 1))

@@ -141,6 +141,7 @@ SupportedInterfaces<mlir::SymbolOpInterface>::CloneConcept(
 template <>
 mlir::SymbolOpInterface::Concept*
 SupportedInterfaces<mlir::SymbolOpInterface>::CreateConcept(ptr dispatcher) {
+  crest::LockedSchemeObject locked_dispatcher(dispatcher);
   std::string op_name = Conversion<ptr, std::string>{}(
       scheme_call(dispatcher, Sstring_to_symbol("operation_name")));
 

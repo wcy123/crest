@@ -196,11 +196,13 @@ SchemeLogLevel ChezSchemeInterpreter::getLogLevel() const { return logLevel_; }
 
 void ChezSchemeInterpreter::addLibraryPath(const char* src_path,
                                            const char* bin_path) {
-  ptr lib_dirs_param =
-      Stop_level_value(Sstring_to_symbol("library-directories"));
-  ptr current_dirs = Scall0(lib_dirs_param);
+  // Re-fetch lib_dirs_param before each Scall: Scall0 can trigger GC which
+  // would move the parameter object, leaving the raw ptr stale.
+  ptr current_dirs =
+      Scall0(Stop_level_value(Sstring_to_symbol("library-directories")));
   ptr pair = Scons(Sstring(src_path), Sstring(bin_path));
-  Scall1(lib_dirs_param, Scons(pair, current_dirs));
+  Scall1(Stop_level_value(Sstring_to_symbol("library-directories")),
+         Scons(pair, current_dirs));
 
   libraryPaths_.emplace_back(src_path, bin_path);
   if (logLevel_ <= SchemeLogLevel::Debug) {

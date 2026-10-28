@@ -1,7 +1,7 @@
 // Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 // Licensed under the MIT License.
 
-// RUN: %crest-opt %s -allow-unregistered-dialect --crest-pass="module=passes/onnx-to-hipsr" --split-input-file | %FileCheck %s
+// RUN: %crest-opt %s -allow-unregistered-dialect --crest-pass="passes=passes/onnx-to-hipsr dialects=func,shape" --split-input-file | %FileCheck %s
 
 // CHECK: module {
 // CHECK:   func.func @min_two_inputs(%arg0: !hipsr.context, %arg1: tensor<4x1024xf16, #hipsr.mem<device>>, %arg2: tensor<4x1024xf16, #hipsr.mem<device>>) -> tensor<4x1024xf16, #hipsr.mem<device>> {

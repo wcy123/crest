@@ -41,6 +41,11 @@ bool RegisterInterfaceForOp(mlir::TypeID id, const std::string& op_name,
   return true;
 }
 
+void* CrestDialect::getRegisteredInterfaceForOp(mlir::TypeID interfaceID,
+                                                mlir::OperationName opName) {
+  return cbs_.register_op_interfaces(interfaceID, opName.getStringRef().str());
+}
+
 void* LookupInterfaceForOp(mlir::TypeID id, const std::string& op_name) {
   void* ret = nullptr;
   auto it = g_op_interface_registry.find(id);
@@ -99,19 +104,27 @@ template <typename T> static T* ptr_from_scheme(ptr val) {
   return reinterpret_cast<T*>(static_cast<uint64_t>(Sinteger64_value(val)));
 }
 
-// MLIRContext::getDialectRegistry() returns const DialectRegistry& by design.
-// Mutable access was deliberately removed (commit 2996a8d, reviewed in D96331)
-// to enable safe delayed dialect interface registration: appendDialectRegistry
-// calls applyExtensions(ctx) on already-loaded dialects as a side effect,
-// which raw mutable insertion would bypass. The two-step pattern
-// (build a DialectRegistry, then appendDialectRegistry) is the intended idiom.
-// We wrap it in a helper to keep call sites readable.
+// Register a dialect factory and immediately load the dialect.
+//
+// appendDialectRegistry asserts multiThreadedExecutionContext == 0, which the
+// pass manager increments before any pass runs. We bracket the call with
+// exit/enter so the assertion passes. This is safe because CrestPass is
+// single-threaded.
+//
+// We must NOT use getOrLoadDialect here: it immediately replaces existing
+// UnregisteredOpModel entries in the context, freeing the Impl objects that
+// already-parsed Operation::name fields point to. That causes use-after-free
+// when op->getName() is called after the dialect is loaded.
+// appendDialectRegistry only registers a factory — loading is lazy — so
+// existing Operation::name pointers remain valid.
 static void insertDialectFactory(mlir::MLIRContext* ctx, mlir::TypeID id,
                                  llvm::StringRef name,
                                  mlir::DialectAllocatorFunction factory) {
+  ctx->exitMultiThreadedExecution();
   mlir::DialectRegistry tmp;
   tmp.insert(id, name, std::move(factory));
   ctx->appendDialectRegistry(tmp);
+  ctx->enterMultiThreadedExecution();
 }
 
 // ---------------------------------------------------------------------------
@@ -303,6 +316,15 @@ static std::shared_ptr<CrestDialect::Callbacks> unpack_callbacks(ptr cbs_ptr) {
 // Sregister_symbol bindings
 // ---------------------------------------------------------------------------
 
+void loadDialectByName(mlir::MLIRContext* ctx, llvm::StringRef ns) {
+  if (ctx->getLoadedDialect(ns)) {
+    return; // already loaded — fast path, no assertion
+  }
+  ctx->exitMultiThreadedExecution();
+  ctx->getOrLoadDialect(ns); // safe: counter is 0 now
+  ctx->enterMultiThreadedExecution();
+}
+
 void registerIRExtensibleDialectBindings() {
   // crest::register-dialect! (uptr ctx) (uptr name-cstr) (uptr vector/12)
   // Registers a factory in the DialectRegistry so getOrLoadDialect("name")
@@ -372,8 +394,13 @@ void registerIRExtensibleDialectBindings() {
   // with interface-specific identifiers in macro output.
   Sregister_symbol(
       "crest::register-interface!",
-      (void*)+[](uint64_t name_ptr, ptr dispatcher) -> void {
-        std::string name(reinterpret_cast<const char*>(name_ptr));
+      (void*)+[](ptr name_obj, ptr dispatcher) -> void {
+        iptr len = Sstring_length(name_obj);
+        std::string name;
+        name.reserve(static_cast<size_t>(len));
+        for (iptr i = 0; i < len; ++i) {
+          name += static_cast<char>(Sstring_ref(name_obj, i) & 0xFF);
+        }
         auto it = g_concept_creators_by_name.find(name);
         if (it == g_concept_creators_by_name.end()) {
           scheme_error("crest::register-interface!",
