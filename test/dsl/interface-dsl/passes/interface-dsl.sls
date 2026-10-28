@@ -4,7 +4,6 @@
   (export run-pass)
   (import (chezscheme)
           (crest dialect)
-          (crest dialect ffi)
           (mlir IR Operation)
           (mlir IR Region)
           (mlir IR Block)
@@ -13,11 +12,6 @@
           (only (mlir IR SymbolInterfaces) mlir::SymbolOpInterface)
           (only (mlir Interfaces CallInterfaces) mlir::CallableOpInterface))
 
-  ;; Method bindings defined locally. Importing them from the public modules
-  ;; (e.g. mlir::FunctionOpInterface::getFunctionType from FunctionInterfaces)
-  ;; causes the interface registration in %%ifacetest:initialize to silently
-  ;; fail to persist in the C++ registry — root cause not yet identified.
-  ;; Local foreign-procedure definitions are a reliable workaround.
   (define mlir::FunctionOpInterface::getFunctionType
     (foreign-procedure "mlir::FunctionOpInterface::getFunctionType" (uptr) uptr))
   (define mlir::FunctionOpInterface::verifyBody
@@ -37,8 +31,6 @@
     (let ([ctx (mlir::Operation::getContext module)])
       (with-current-MLIRContext ctx
         (ifacetest:register! ctx)
-        (%crest::register-interface! "mlir::FunctionOpInterface"
-                                     %%ifacetest.func:mlir::FunctionOpInterface)
         (let* ([body-region (mlir::Operation::getRegion module 0)]
                [body-block  (mlir::Region::front body-region)]
                [func-op     (mlir::Block::front body-block)])

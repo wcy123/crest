@@ -2,17 +2,12 @@
 ;; Generates per-op dispatcher functions and interface registration calls
 ;; at dialect initialisation time.
 ;; The C++ global op-interface registry in Dialect.cpp handles lookups at runtime.
-;;
-;; An interface is a function that accepts a dispatch function (dispatcher).
-;; The interface name in the DSL (e.g. mlir::FunctionOpInterface) IS the
-;; Scheme function that takes the dispatcher and registers the C++ concept.
 (library (crest dialect expand interfaces)
   (export generate-interface-registrations
           dialect-cbs-with-interfaces)
   (import (chezscheme)
           (crest dialect ast)
-          (crest dialect expand utils)
-          (crest dialect ffi))  ; for %crest::register-interface!
+          (crest dialect expand utils))
 
   ;; Generate per-op dispatcher defines and interface registration calls
   ;; for ALL ops that declare :interfaces entries.
@@ -28,8 +23,10 @@
   ;;       ...
   ;;       (else #f)))                               ; #f → use C++ default
   ;;
-  ;; Registration call (interface name IS the registration function):
-  ;;   (mlir::FunctionOpInterface %%toy.func:mlir::FunctionOpInterface)
+  ;; Registration call — inline foreign-procedure so no Scheme identifier for
+  ;; the interface function is needed at the define-dialect call site:
+  ;;   ((foreign-procedure "mlir::FunctionOpInterface" (scheme-object) void)
+  ;;    %%toy.func:mlir::FunctionOpInterface)
   (define (generate-interface-registrations ctx ops)
     (let ([op-prefix (string-append (%%id->str ctx) ".")])
       (let loop ([ops ops] [defs '()] [calls '()])
@@ -43,16 +40,16 @@
                   (let per-iface ([entries iface-entries] [defs defs] [calls calls])
                     (if (null? entries)
                         (loop (cdr ops) defs calls)
-                        (let* ([entry     (car entries)]
-                               [iface-stx (interface-entry-name entry)]
-                               [methods   (interface-entry-methods entry)]
+                        (let* ([entry          (car entries)]
+                               [iface-stx      (interface-entry-name entry)]
+                               [iface-name-str (%%id->str iface-stx)]
+                               [methods        (interface-entry-methods entry)]
                                ;; %%toy.func:mlir::FunctionOpInterface
-                               [proc-id   (%%id ctx "%%" op-name-str ":" iface-stx)])
+                               [proc-id        (%%id ctx "%%" op-name-str ":" iface-stx)])
                           (with-syntax
                               ([dispatch-proc  proc-id]
-                               [iface-name-str (%%id->str iface-stx)]
+                               [iface-sym      iface-name-str]
                                [op-name-s      op-name-str]
-                               [register!      #'%crest::register-interface!]
                                [(method-clause ...)
                                 (map (lambda (m)
                                        (with-syntax
@@ -69,10 +66,8 @@
                                          method-clause ...
                                          (else #f)))
                                    defs)
-                             ;; Use %crest::register-interface! with the name as a
-                             ;; string literal to avoid macro hygiene issues with
-                             ;; interface-specific identifiers in macro-generated code.
-                             (cons #'(register! iface-name-str dispatch-proc)
+                             (cons #'((foreign-procedure iface-sym (scheme-object) void)
+                                      dispatch-proc)
                                    calls))))))))))))
 
   ;; Build the 12-slot dialect callbacks vector.
