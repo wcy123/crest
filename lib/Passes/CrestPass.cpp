@@ -27,17 +27,8 @@
 // E.g. "passes=a,b dialects=func,shape" has passes=[a,b] and
 // dialects=[func,shape].
 //
-// Design note — dialect loading during pass execution:
-//   MLIR's pass manager sets multiThreadedExecutionContext > 0 before running
-//   any pass, which blocks both appendDialectRegistry and getOrLoadDialect.
-//   CrestPass uses crest::loadDialectByName (which brackets with
-//   exit/enterMultiThreadedExecution) to safely load dialects at pass run time.
-//   This is correct because CrestPass is inherently single-threaded — it drives
-//   the Chez Scheme interpreter which has no concurrent execution context.
-//
 //===----------------------------------------------------------------------===//
 
-#include "../Crest/Dialect.h"
 #include "../Interpreter/ChezSchemeInterpreter.h"
 #include "crest/Passes/Passes.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -102,6 +93,13 @@ struct CrestPass : public mlir::OperationPass<mlir::ModuleOp> {
 
   llvm::StringRef getName() const override { return "crest-pass"; }
 
+  mlir::LogicalResult initialize(mlir::MLIRContext* ctx) override {
+    for (const auto& ns : dialects_) {
+      ctx->getOrLoadDialect(ns);
+    }
+    return mlir::success();
+  }
+
   std::unique_ptr<mlir::Pass> clonePass() const override {
     return std::make_unique<CrestPass>(*this);
   }
@@ -112,15 +110,6 @@ struct CrestPass : public mlir::OperationPass<mlir::ModuleOp> {
           "No Scheme passes specified. "
           "Use --crest-pass=\"passes=<slash/separated/name>\"");
       return signalPassFailure();
-    }
-
-    auto* ctx = getOperation().getContext();
-
-    // Pre-load dialects listed in dialects= before importing any Scheme code.
-    // Uses exit/enterMultiThreadedExecution because the PM sets the execution
-    // context counter > 0 before calling runOnOperation.
-    for (const auto& ns : dialects_) {
-      crest::loadDialectByName(ctx, ns);
     }
 
     auto level = parseLogLevel(logLevel_);
