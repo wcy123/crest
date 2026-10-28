@@ -117,14 +117,18 @@ crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
   std::string op_name = Conversion<ptr, std::string>{}(
       scheme_call(dispatcher, Sstring_to_symbol("operation_name")));
 
-  ptr getFunctionType =
-      scheme_call(dispatcher, Sstring_to_symbol("getFunctionType"));
-  ptr setFunctionTypeAttr =
-      scheme_call(dispatcher, Sstring_to_symbol("setFunctionTypeAttr"));
-  ptr cloneTypeWith =
-      scheme_call(dispatcher, Sstring_to_symbol("cloneTypeWith"));
-  ptr verifyBody = scheme_call(dispatcher, Sstring_to_symbol("verifyBody"));
-  ptr verifyType = scheme_call(dispatcher, Sstring_to_symbol("verifyType"));
+  // Each scheme_call can trigger GC. Lock every returned ptr immediately so
+  // subsequent scheme_calls cannot invalidate earlier values.
+  crest::LockedSchemeObject getFunctionType(
+      scheme_call(dispatcher, Sstring_to_symbol("getFunctionType")));
+  crest::LockedSchemeObject setFunctionTypeAttr(
+      scheme_call(dispatcher, Sstring_to_symbol("setFunctionTypeAttr")));
+  crest::LockedSchemeObject cloneTypeWith(
+      scheme_call(dispatcher, Sstring_to_symbol("cloneTypeWith")));
+  crest::LockedSchemeObject verifyBody(
+      scheme_call(dispatcher, Sstring_to_symbol("verifyBody")));
+  crest::LockedSchemeObject verifyType(
+      scheme_call(dispatcher, Sstring_to_symbol("verifyType")));
 
   // Copy default; override only the provided slots by field name.
   auto data = std::make_unique<FunctionConceptData>();
@@ -138,8 +142,8 @@ crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
   data->implCallableOpInterface =
       getOrCreateConcept<mlir::CallableOpInterface>(op_name);
 
-  if (getFunctionType != Sfalse) {
-    data->get_function_type = crest::LockedSchemeObject(getFunctionType);
+  if (getFunctionType.get() != Sfalse) {
+    data->get_function_type = crest::LockedSchemeObject(getFunctionType.get());
     data->getFunctionType =
         +[](const Concept* self, mlir::Operation* op) -> mlir::Type {
       const auto* d = static_cast<const FunctionConceptData*>(self);
@@ -149,9 +153,9 @@ crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
           reinterpret_cast<const void*>(Sunsigned64_value(r)));
     };
   }
-  if (setFunctionTypeAttr != Sfalse) {
+  if (setFunctionTypeAttr.get() != Sfalse) {
     data->set_function_type_attr =
-        crest::LockedSchemeObject(setFunctionTypeAttr);
+        crest::LockedSchemeObject(setFunctionTypeAttr.get());
     data->setFunctionTypeAttr =
         +[](const Concept* self, mlir::Operation* op, mlir::TypeAttr t) {
           const auto* d = static_cast<const FunctionConceptData*>(self);
@@ -160,8 +164,8 @@ crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
                       reinterpret_cast<uint64_t>(t.getAsOpaquePointer()));
         };
   }
-  if (cloneTypeWith != Sfalse) {
-    data->clone_type_with = crest::LockedSchemeObject(cloneTypeWith);
+  if (cloneTypeWith.get() != Sfalse) {
+    data->clone_type_with = crest::LockedSchemeObject(cloneTypeWith.get());
     data->cloneTypeWith =
         +[](const Concept* self, mlir::Operation* op, mlir::TypeRange inputs,
             mlir::TypeRange results) -> mlir::Type {
@@ -172,8 +176,8 @@ crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
           reinterpret_cast<const void*>(Sunsigned64_value(r)));
     };
   }
-  if (verifyBody != Sfalse) {
-    data->verify_body = crest::LockedSchemeObject(verifyBody);
+  if (verifyBody.get() != Sfalse) {
+    data->verify_body = crest::LockedSchemeObject(verifyBody.get());
     data->verifyBody =
         +[](const Concept* self, mlir::Operation* op) -> llvm::LogicalResult {
       const auto* d = static_cast<const FunctionConceptData*>(self);
@@ -181,8 +185,8 @@ crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
       return r == Strue ? mlir::success() : mlir::failure();
     };
   }
-  if (verifyType != Sfalse) {
-    data->verify_type = crest::LockedSchemeObject(verifyType);
+  if (verifyType.get() != Sfalse) {
+    data->verify_type = crest::LockedSchemeObject(verifyType.get());
     data->verifyType =
         +[](const Concept* self, mlir::Operation* op) -> llvm::LogicalResult {
       const auto* d = static_cast<const FunctionConceptData*>(self);
