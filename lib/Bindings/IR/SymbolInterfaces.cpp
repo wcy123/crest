@@ -141,7 +141,7 @@ SupportedInterfaces<mlir::SymbolOpInterface>::CloneConcept(
 template <>
 mlir::SymbolOpInterface::Concept*
 SupportedInterfaces<mlir::SymbolOpInterface>::CreateConcept(ptr dispatcher) {
-  Slock_object(dispatcher);
+  crest::LockedSchemeObject locked_dispatcher(dispatcher);
   std::string op_name = Conversion<ptr, std::string>{}(
       scheme_call(dispatcher, Sstring_to_symbol("operation_name")));
 
@@ -153,7 +153,6 @@ SupportedInterfaces<mlir::SymbolOpInterface>::CreateConcept(ptr dispatcher) {
                            delete static_cast<SymbolConceptData*>(p);
                          }));
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-  Sunlock_object(dispatcher);
   return reinterpret_cast<mlir::SymbolOpInterface::Concept*>(raw);
 }
 

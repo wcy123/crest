@@ -112,7 +112,7 @@ crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
   // Lock dispatcher to pin it in memory: Sstring_to_symbol() and scheme_call()
   // can trigger GC which would move the dispatcher closure, leaving the C local
   // variable stale. Locking prevents GC from relocating it.
-  Slock_object(dispatcher);
+  crest::LockedSchemeObject locked_dispatcher(dispatcher);
   using Concept = mlir::FunctionOpInterface::Concept;
   std::string op_name = Conversion<ptr, std::string>{}(
       scheme_call(dispatcher, Sstring_to_symbol("operation_name")));
@@ -216,7 +216,6 @@ crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
       std::shared_ptr<void>(data.release(), [](void* p) {
         delete static_cast<FunctionConceptData*>(p);
       }));
-  Sunlock_object(dispatcher);
   return raw;
 }
 
