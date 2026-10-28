@@ -14,6 +14,10 @@ config.test_exec_root = os.path.join(config.crest_obj_root, "test")
 llvm_config.with_system_environment(["HOME", "PATH", "CREST_PATH",
                                      "CREST_DEBUG_MATCH",
                                      "CREST_SCHEME_BINARY_DIR"])
+# Fall back to the source tree samples/ if CREST_PATH is not set in the
+# environment (CI sets it explicitly; local builds get it for free this way).
+if not os.environ.get("CREST_PATH"):
+    llvm_config.with_environment("CREST_PATH", config.crest_samples_dir)
 
 # %t — per-test temp directory used by debug-match tests to isolate the
 # Scheme binary cache so patterns are always compiled fresh with CREST_DEBUG_MATCH=1.

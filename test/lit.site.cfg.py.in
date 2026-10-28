@@ -12,6 +12,7 @@ config.llvm_build_mode   = "@LLVM_BUILD_MODE@"
 config.crest_obj_root    = "@CMAKE_BINARY_DIR@"
 config.crest_src_root    = "@CMAKE_SOURCE_DIR@"
 config.crest_tools_dir   = "@CMAKE_BINARY_DIR@/tools/crest-opt"
+config.crest_samples_dir = "@CMAKE_SOURCE_DIR@/samples"
 
 # Let the main config do the real work.
 lit_config.load_config(config, "@CMAKE_SOURCE_DIR@/test/lit.cfg.py")
