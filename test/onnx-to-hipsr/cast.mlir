@@ -6,7 +6,7 @@
 // pass populates it).
 //===----------------------------------------------------------------------===//
 
-// RUN: %crest-opt %s -allow-unregistered-dialect --crest-pass="module=passes/onnx-to-hipsr" | %FileCheck %s
+// RUN: %crest-opt %s -allow-unregistered-dialect --crest-pass="passes=passes/onnx-to-hipsr dialects=func,shape" | %FileCheck %s
 
 // CHECK: module {
 // CHECK-NEXT:   func.func @cast_chain(%arg0: !hipsr.context, %arg1: tensor<?x8xf32, #hipsr.mem<device>>) -> tensor<?x8xf32, #hipsr.mem<device>> {

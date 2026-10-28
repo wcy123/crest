@@ -6,7 +6,7 @@
 
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
 // RUN:   %crest-opt -allow-unregistered-dialect \
-// RUN:   --crest-pass="module=passes/debug-match-exception" %s 2>&1 \
+// RUN:   --crest-pass="passes=passes/debug-match-exception" %s 2>&1 \
 // RUN:   | %FileCheck %s
 
 // CHECK: debug-match-exception.sls:{{[0-9]+}}:{{[0-9]+}}: {{\[%%always-throws\]}} :check-where exception: Exception in /:

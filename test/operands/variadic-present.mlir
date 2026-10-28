@@ -4,7 +4,7 @@
 
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
 // RUN:   %crest-opt -allow-unregistered-dialect \
-// RUN:   --crest-pass="module=passes/variadic-present" %s \
+// RUN:   --crest-pass="passes=passes/variadic-present" %s \
 // RUN:   | %FileCheck %s
 
 // CHECK: "test.fused"(%arg0) : (i32) -> i32

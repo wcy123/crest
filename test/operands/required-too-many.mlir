@@ -6,7 +6,7 @@
 
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
 // RUN:   %crest-opt -allow-unregistered-dialect \
-// RUN:   --crest-pass="module=passes/required-too-many" %s \
+// RUN:   --crest-pass="passes=passes/required-too-many" %s \
 // RUN:   | %FileCheck %s
 
 // Pattern fires: binds %a=%arg0, %b=%arg1, ignores %arg2.

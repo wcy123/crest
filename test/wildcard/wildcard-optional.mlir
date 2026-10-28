@@ -4,7 +4,7 @@
 
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
 // RUN:   %crest-opt -allow-unregistered-dialect \
-// RUN:   --crest-pass="module=passes/wildcard-optional" %s \
+// RUN:   --crest-pass="passes=passes/wildcard-optional" %s \
 // RUN:   | %FileCheck %s
 
 // CHECK-LABEL: func.func @optional_absent

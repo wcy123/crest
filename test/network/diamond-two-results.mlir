@@ -11,7 +11,7 @@
 
 // RUN: env CREST_DEBUG_MATCH=1 CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
 // RUN:   %crest-opt -allow-unregistered-dialect \
-// RUN:   --crest-pass="module=passes/network-diamond" %s 2>&1 \
+// RUN:   --crest-pass="passes=passes/network-diamond" %s 2>&1 \
 // RUN:   | %FileCheck %s
 
 // eqv? fails: result 1 (operand of test.sub) != result 0 (%shared from test.add)

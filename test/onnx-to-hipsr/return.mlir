@@ -6,7 +6,7 @@
 // operands it carries. Rejected forms live in return-invalid.mlir.
 //===----------------------------------------------------------------------===//
 
-// RUN: %crest-opt %s -allow-unregistered-dialect --crest-pass="module=passes/onnx-to-hipsr" --split-input-file | %FileCheck %s
+// RUN: %crest-opt %s -allow-unregistered-dialect --crest-pass="passes=passes/onnx-to-hipsr dialects=func,shape" --split-input-file | %FileCheck %s
 
 // CHECK: module {
 // CHECK:   func.func @imported_graph(%arg0: !hipsr.context, %arg1: tensor<?x4096xf16, #hipsr.mem<device>>) -> tensor<?x4096xf16, #hipsr.mem<device>> {

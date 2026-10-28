@@ -7,7 +7,7 @@
 // destination. Rejected forms live in nonzero-invalid.mlir.
 //===----------------------------------------------------------------------===//
 
-// RUN: %crest-opt %s -allow-unregistered-dialect --crest-pass="module=passes/onnx-to-hipsr" --split-input-file | %FileCheck %s
+// RUN: %crest-opt %s -allow-unregistered-dialect --crest-pass="passes=passes/onnx-to-hipsr dialects=func,shape" --split-input-file | %FileCheck %s
 
 // CHECK: module {
 // CHECK:   func.func @nonzero_mask(%arg0: !hipsr.context, %arg1: tensor<?x?xi8>) -> tensor<2x?xi64> {

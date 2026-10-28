@@ -127,6 +127,12 @@ private:
 
 void registerIRExtensibleDialectBindings();
 
+/// Load a dialect into the context by namespace string, safe to call from
+/// inside a running pass (works around the multiThreadedExecutionContext
+/// assertion by bracketing with exit/enterMultiThreadedExecution).
+/// No-ops if the dialect is already loaded.
+void loadDialectByName(mlir::MLIRContext* ctx, llvm::StringRef ns);
+
 } // namespace crest
 
 #endif // CREST_DIALECT_H

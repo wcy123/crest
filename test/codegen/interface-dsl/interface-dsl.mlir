@@ -4,7 +4,7 @@
 // RUN: rm -rf %t/iface-scheme && mkdir -p %t/iface-scheme
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/iface-scheme \
 // RUN:   %crest-opt -allow-unregistered-dialect \
-// RUN:   --crest-pass="module=passes/interface-dsl" %s \
+// RUN:   --crest-pass="passes=passes/interface-dsl dialects=ifacetest" %s \
 // RUN:   | %FileCheck %s
 
 // CHECK: dispatcher-op-name: ifacetest.func

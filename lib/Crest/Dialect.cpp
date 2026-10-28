@@ -316,6 +316,15 @@ static std::shared_ptr<CrestDialect::Callbacks> unpack_callbacks(ptr cbs_ptr) {
 // Sregister_symbol bindings
 // ---------------------------------------------------------------------------
 
+void loadDialectByName(mlir::MLIRContext* ctx, llvm::StringRef ns) {
+  if (ctx->getLoadedDialect(ns)) {
+    return; // already loaded — fast path, no assertion
+  }
+  ctx->exitMultiThreadedExecution();
+  ctx->getOrLoadDialect(ns); // safe: counter is 0 now
+  ctx->enterMultiThreadedExecution();
+}
+
 void registerIRExtensibleDialectBindings() {
   // crest::register-dialect! (uptr ctx) (uptr name-cstr) (uptr vector/12)
   // Registers a factory in the DialectRegistry so getOrLoadDialect("name")
