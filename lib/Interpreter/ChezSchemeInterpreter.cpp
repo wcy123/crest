@@ -245,15 +245,12 @@ bool ChezSchemeInterpreter::importLibrary(
   }
   std::string lib = slashSeparatedName;
   std::replace(lib.begin(), lib.end(), '/', ' ');
-  // call/cc + with-exception-handler: catches "library not found" before it
-  // reaches the top-level abort handler. On failure returns #f; the caller
-  // (CrestPass) logs the library search directories at error level.
-  std::string importCode = "(call-with-current-continuation"
-                           " (lambda (k)"
-                           "  (with-exception-handler"
-                           "   (lambda (c) (k #f))"
-                           "   (lambda () (eval '(import (" +
-                           lib + "))) #t))))";
+  // guard catches "library not found" before it reaches the top-level abort
+  // handler. On failure returns #f; the caller (CrestPass) logs the library
+  // search directories at error level.
+  std::string importCode = "(guard (c (#t #f))"
+                           " (eval '(import (" +
+                           lib + "))) #t)";
   ptr port = scheme_call("open-string-input-port", Sstring(importCode.c_str()));
   ptr expr = scheme_call("read", port);
   ptr result = scheme_call("eval", expr);
