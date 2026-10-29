@@ -70,16 +70,14 @@
 
   ;; Generates at library-load time:
   ;;   (define <dialect>:dialect-callbacks (vector cb ...))
-  ;;   (<stash-fn> "<dialect>" <dialect>:dialect-callbacks)
-  ;; Generates crest:get-<dialect>-callbacks() using datum->syntax so it is
-  ;; accessible by datum name from C++ via scheme_call after import.
-  ;; The "crest:" prefix avoids collisions with user-defined names.
+  ;; Generates (define testd (vector ...)) — binds the dialect name itself to
+  ;; the callbacks vector.  Uses ctx (the call-site identifier) so the binding
+  ;; has the same scope as the user's (export testd), making it accessible from
+  ;; C++ via Stop_level_value(Sstring_to_symbol("testd")) after import.
   (define (%%generate-dialect-callbacks ctx dialect-cbs ops stash-stx)
-    (with-syntax ([get-cbs (datum->syntax ctx
-                                          (string->symbol
-                                           (string-append "crest:get-" (%%id->str ctx) "-callbacks")))]
+    (with-syntax ([dialect-value ctx]
                   [(cb ...) (dialect-cbs-with-interfaces ctx dialect-cbs ops)])
-      (list #'(define (get-cbs) (vector cb ...)))))
+      (list #'(define dialect-value (vector cb ...)))))
 
   ;; Top-level: %%<dialect>:initialize + <dialect>:dialect-callbacks
   ;; <dialect>:register! is gone — use load-scheme-dialect! or
