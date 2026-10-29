@@ -45,7 +45,7 @@ bool RegisterInterfaceForOp(mlir::TypeID id, const std::string& op_name,
 
 void* CrestDialect::getRegisteredInterfaceForOp(mlir::TypeID interfaceID,
                                                 mlir::OperationName opName) {
-  return cbs_.register_op_interfaces(interfaceID, opName.getStringRef().str());
+  return LookupInterfaceForOp(interfaceID, opName.getStringRef().str());
 }
 
 void* LookupInterfaceForOp(mlir::TypeID id, const std::string& op_name) {
@@ -269,7 +269,6 @@ static std::shared_ptr<CrestDialect::Callbacks> unpack_callbacks(ptr cbs_ptr) {
   cbs->verify_op_attr = make_cb(Svector_ref(v, 8));
   cbs->verify_region_arg_attr = make_cb(Svector_ref(v, 9));
   cbs->verify_region_result_attr = make_cb(Svector_ref(v, 10));
-  cbs->register_op_interfaces = LookupInterfaceForOp;
   return cbs;
 }
 

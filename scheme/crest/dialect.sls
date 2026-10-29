@@ -17,7 +17,6 @@
           :verify-op-attr
           :verify-region-arg-attr
           :verify-region-result-attr
-          :get-registered-interface-for-op
           :verify
           :verify-regions
           :parse
@@ -53,7 +52,6 @@
   (define :verify-op-attr              ':verify-op-attr)
   (define :verify-region-arg-attr      ':verify-region-arg-attr)
   (define :verify-region-result-attr   ':verify-region-result-attr)
-  (define :get-registered-interface-for-op ':get-registered-interface-for-op)
   (define :verify                      ':verify)
   (define :verify-regions              ':verify-regions)
   (define :parse                       ':parse)
@@ -125,7 +123,7 @@
         ;; cbs slot order matches CrestDialect::Callbacks — index set directly
         ;; avoids a secondary lookup at call time.
         (let ([ops '()]
-              [cbs (make-vector 12 #f)])
+              [cbs (make-vector 11 #f)])
 
           ;; Returns operand-field record.  type is kept as syntax so it resolves
           ;; correctly when used in generated verify code (a predicate, not a symbol).
@@ -276,7 +274,6 @@
                                        :verify-op-attr
                                        :verify-region-arg-attr
                                        :verify-region-result-attr
-                                       :get-registered-interface-for-op
                                        define-op)
               ;; :summary/:description accepted but produce no runtime effect —
               ;; same placeholder role as in define-op.
@@ -322,9 +319,6 @@
                (and (identifier? #'op)           (identifier? #'region-index)
                     (identifier? #'result-index) (identifier? #'attr))
                (begin (vector-set! cbs 10 #'(lambda (op region-index result-index attr) body ...)) (loop #'rest))]
-              [((:get-registered-interface-for-op (interface-id op-name) body ...) . rest)
-               (and (identifier? #'interface-id) (identifier? #'op-name))
-               (begin (vector-set! cbs 11 #'(lambda (interface-id op-name) body ...)) (loop #'rest))]
               [(bad . _)
                (syntax-violation 'define-dialect
                                  "unrecognised clause — expected (define-op ...) or (:keyword (args) body ...)"

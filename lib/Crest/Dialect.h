@@ -79,8 +79,6 @@ public:
     LockedSchemeObject verify_op_attr;
     LockedSchemeObject verify_region_arg_attr;
     LockedSchemeObject verify_region_result_attr;
-    void* (*register_op_interfaces)(mlir::TypeID,
-                                    const std::string&) = &LookupInterfaceForOp;
   };
 
   /// Existing constructor — used by %crest::register-dialect! (toyc.sls style).
