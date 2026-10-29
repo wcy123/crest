@@ -1,15 +1,12 @@
 #!r6rs
 ;; Minimal Scheme-defined dialect used by dialects-in-scheme.mlir.
-;; Exports register-dialects per the dialects-in-scheme= convention.
+;; define-dialect testd binds `testd` to the callbacks vector.
+;; CrestDialect retrieves it via Stop_level_value("testd") after import.
 (library (passes test-dialect)
-  (export register-dialects)
+  (export testd)
   (import (chezscheme)
           (crest dialect))
 
   (define-dialect testd
     (define-op noop
-      :summary "no-op test op"))
-
-  (define (register-dialects ctx)
-    (testd:register! ctx)
-    #t))
+      :summary "no-op test op")))

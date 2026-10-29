@@ -68,23 +68,22 @@
                     [(cb ...) (%%op-cbs ctx full-name op)])
         #'(reg-op dialect-ptr op-name (vector cb ...)))))
 
-  ;; (toy:register! ctx) form — registers the dialect and then immediately
-  ;; installs interface concepts (which must run after the factory is registered).
-  (define (%%generate-register! ctx dialect-cbs ops reg-dialect-stx iface-calls)
-    (with-syntax ([toy.register! (%%id ctx ctx ":register!")]
-                  [reg-dialect   reg-dialect-stx]
-                  [name-str      (%%id->str ctx)]
-                  [(cb ...)      (dialect-cbs-with-interfaces ctx dialect-cbs ops)]
-                  [(iface-call ...) iface-calls])
-      #'(define (toy.register! ctx)
-          (reg-dialect ctx name-str (vector cb ...))
-          iface-call ...)))
+  ;; Generates at library-load time:
+  ;;   (define <dialect>:dialect-callbacks (vector cb ...))
+  ;; Generates (define testd (vector ...)) — binds the dialect name itself to
+  ;; the callbacks vector.  Uses ctx (the call-site identifier) so the binding
+  ;; has the same scope as the user's (export testd), making it accessible from
+  ;; C++ via Stop_level_value(Sstring_to_symbol("testd")) after import.
+  (define (%%generate-dialect-callbacks ctx dialect-cbs ops stash-stx)
+    (with-syntax ([dialect-value ctx]
+                  [(cb ...) (dialect-cbs-with-interfaces ctx dialect-cbs ops)])
+      (list #'(define dialect-value (vector cb ...)))))
 
-  ;; Top-level: %%<dialect>:initialize + <dialect>:register!
-  ;; Interface concepts are registered directly in <dialect>:register! after
-  ;; the dialect factory is installed, so they run immediately on registration
-  ;; rather than lazily on dialect load.
-  (define (generate-register-dialect ctx dialect-cbs ops reg-op-stx reg-dialect-stx)
+  ;; Top-level: %%<dialect>:initialize + <dialect>:dialect-callbacks
+  ;; <dialect>:register! is gone — use load-scheme-dialect! or
+  ;; --crest-scheme-dialect= for standalone / pass-pipeline use respectively.
+  ;; Interface concepts are registered at library-load time via toplevel-iface-calls.
+  (define (generate-register-dialect ctx dialect-cbs ops reg-op-stx stash-stx)
     (let ([op-prefix (string-append (%%id->str ctx) ".")])
       (let-values ([(iface-defs iface-calls)
                     (generate-interface-registrations ctx ops)])
@@ -95,8 +94,18 @@
                                              (%%generate-register-op! ctx op-prefix op reg-op-stx))
                                            ops)])
                  (list
-                  #'(define (%%toy.initialize dialect-ptr) op-reg ...)
-                  (%%generate-register! ctx dialect-cbs ops reg-dialect-stx iface-calls)))])
-          (append iface-defs base-defs)))))
+                  #'(define (%%toy.initialize dialect-ptr) op-reg ...)))]
+              ;; stash-stx kept in signature for forward compat but unused now
+              [dialect-cbs-defs (%%generate-dialect-callbacks ctx dialect-cbs ops stash-stx)]
+              ;; Emit iface-calls at library-load time so interface concepts are
+              ;; registered when the library is imported.
+              ;; Wrapped as a define to avoid "invalid context" in R6RS library bodies.
+              [toplevel-iface-calls
+               (if (null? iface-calls)
+                   '()
+                   (with-syntax ([%%iface-marker (%%id ctx "%%" ctx "-iface-init")]
+                                 [(iface-call ...) iface-calls])
+                     (list #'(define %%iface-marker (begin iface-call ... #t)))))])
+          (append iface-defs base-defs dialect-cbs-defs toplevel-iface-calls)))))
 
   ) ;; end library (crest dialect expand)

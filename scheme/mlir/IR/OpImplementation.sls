@@ -33,7 +33,6 @@
           mlir::OpAsmParser::parseSymbolName
           mlir::isa<FunctionType>
           mlir::OperationState::addType
-          mlir::TypeAttr::getValue
           mlir::FunctionType::getNumInputs
           mlir::FunctionType::getInput
           mlir::FunctionType::getNumResults
@@ -73,9 +72,6 @@
 
   (define mlir::StringAttr::getValue
     %mlir::StringAttr::getValue)
-
-  (define mlir::TypeAttr::getValue
-    %mlir::TypeAttr::getValue)
 
   (define mlir::FunctionType::getNumInputs
     %mlir::FunctionType::getNumInputs)

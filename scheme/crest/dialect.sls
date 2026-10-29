@@ -1,8 +1,7 @@
 ;; Keyword exports — bound to their own symbol so users can write
-;; :initialize, :parse-type etc. without quoting in call sites:
-;;   (register-dialect! ctx "toy" :initialize my-fn)   ; works
+;; :initialize, :parse-type etc. without quoting in call sites.
 (library (crest dialect)
-  (export register-dialect!
+  (export load-scheme-dialect!
           register-dynamic-op!
           define-dialect
           define-op
@@ -18,7 +17,6 @@
           :verify-op-attr
           :verify-region-arg-attr
           :verify-region-result-attr
-          :get-registered-interface-for-op
           :verify
           :verify-regions
           :parse
@@ -54,7 +52,6 @@
   (define :verify-op-attr              ':verify-op-attr)
   (define :verify-region-arg-attr      ':verify-region-arg-attr)
   (define :verify-region-result-attr   ':verify-region-result-attr)
-  (define :get-registered-interface-for-op ':get-registered-interface-for-op)
   (define :verify                      ':verify)
   (define :verify-regions              ':verify-regions)
   (define :parse                       ':parse)
@@ -72,21 +69,12 @@
   (define :interfaces                  ':interfaces)
 
 
-  (define (%%dialect-slot-index key)
-    (case key
-      [(:initialize)                        0]
-      [(:get-dependent-dialects)            1]
-      [(:parse-attribute)                   2]
-      [(:print-attribute)                   3]
-      [(:parse-type)                        4]
-      [(:print-type)                        5]
-      [(:materialize-constant)              6]
-      [(:get-canonicalization-patterns)     7]
-      [(:verify-op-attr)                    8]
-      [(:verify-region-arg-attr)            9]
-      [(:verify-region-result-attr)        10]
-      [(:get-registered-interface-for-op)  11]
-      [else (error "register-dialect!" "unknown callback keyword" key)]))
+  ;; Load a Scheme-defined dialect into an existing MLIRContext.
+  ;; dialect-name: the dialect namespace string (e.g. "toy").
+  ;; module-name:  the Scheme library path (e.g. "toy/ch3/toy").
+  ;; Safe to call outside the pass pipeline (multiThreadedExecutionContext == 0).
+  (define (load-scheme-dialect! ctx dialect-name module-name)
+    (%crest::load-scheme-dialect! ctx dialect-name module-name))
 
   (define (%%plist->vector n index-fn plist)
     (let ([v (make-vector n #f)])
@@ -95,12 +83,6 @@
           (vector-set! v (index-fn (car rest)) (cadr rest))
           (loop (cddr rest))))
       v))
-
-  (define (register-dialect! ctx name . callbacks)
-    (%crest::register-dialect!
-     ctx
-     name
-     (%%plist->vector 12 %%dialect-slot-index callbacks)))
 
   (define (%%op-slot-index key)
     (case key
@@ -141,7 +123,7 @@
         ;; cbs slot order matches CrestDialect::Callbacks — index set directly
         ;; avoids a secondary lookup at call time.
         (let ([ops '()]
-              [cbs (make-vector 12 #f)])
+              [cbs (make-vector 11 #f)])
 
           ;; Returns operand-field record.  type is kept as syntax so it resolves
           ;; correctly when used in generated verify code (a predicate, not a symbol).
@@ -292,7 +274,6 @@
                                        :verify-op-attr
                                        :verify-region-arg-attr
                                        :verify-region-result-attr
-                                       :get-registered-interface-for-op
                                        define-op)
               ;; :summary/:description accepted but produce no runtime effect —
               ;; same placeholder role as in define-op.
@@ -338,9 +319,6 @@
                (and (identifier? #'op)           (identifier? #'region-index)
                     (identifier? #'result-index) (identifier? #'attr))
                (begin (vector-set! cbs 10 #'(lambda (op region-index result-index attr) body ...)) (loop #'rest))]
-              [((:get-registered-interface-for-op (interface-id op-name) body ...) . rest)
-               (and (identifier? #'interface-id) (identifier? #'op-name))
-               (begin (vector-set! cbs 11 #'(lambda (interface-id op-name) body ...)) (loop #'rest))]
               [(bad . _)
                (syntax-violation 'define-dialect
                                  "unrecognised clause — expected (define-op ...) or (:keyword (args) body ...)"
@@ -355,7 +333,7 @@
                 [all-op-defs  (generate-all-op-defs #'dialect-id ops)]
                 [reg-defs     (generate-register-dialect #'dialect-id (dialect-parse-cbs dialect) ops
                                                          #'%crest::register-dynamic-op!
-                                                         #'%crest::register-dialect!)])
+                                                         #f)])
            (let ([result (with-syntax
                              ([(op-def  ...) all-op-defs]
                               [(reg-def ...) reg-defs])

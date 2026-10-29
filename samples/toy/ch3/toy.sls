@@ -6,7 +6,7 @@
 ;; Ch3 adds no new ops vs Ch2, but adds custom assembly formats.
 ;; Canonicalization patterns live in combine.sls.
 (library (toy ch3 toy)
-  (export toy:register!)
+  (export toy)
   (import (chezscheme)
           (crest dialect)
           (mlir IR Value)
@@ -20,8 +20,7 @@
                 mlir::FunctionOpInterface
                 mlir::function_interface_impl::printFunctionOp
                 mlir::function_interface_impl::parseFunctionOp)
-          (only (mlir IR BuiltinAttributes)
-                mlir::TypeAttr::getValue))
+          )
 
   ;; Handle-returning parser functions return 0 on failure (not #f),
   ;; so we need an explicit zero check rather than relying on Scheme truthiness.

@@ -70,11 +70,13 @@
                                       dispatch-proc)
                                    calls))))))))))))
 
-  ;; Build the 12-slot dialect callbacks vector.
+  ;; Build the 11-slot dialect callbacks vector (slots 0-10).
+  ;; Slot 11 (:get-registered-interface-for-op) is removed — LookupInterfaceForOp
+  ;; is now called directly in CrestDialect::getRegisteredInterfaceForOp.
   ;; Slot 0 → %%<dialect>:initialize (registers interface concepts).
   (define (dialect-cbs-with-interfaces ctx dialect-cbs ops)
     (let ([v (list->vector (map (lambda (i) (or (vector-ref dialect-cbs i) #'#f))
-                                '(0 1 2 3 4 5 6 7 8 9 10 11)))])
+                                '(0 1 2 3 4 5 6 7 8 9 10)))])
       (vector-set! v 0 (%%id ctx "%%" ctx ":initialize"))
       (vector->list v)))
 
