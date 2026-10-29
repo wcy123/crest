@@ -3,7 +3,8 @@
 ;; does not interact with MLIR interface method imports.
 (library (passes ifacetest)
   (export ifacetest:register!
-          %%ifacetest.func:mlir::FunctionOpInterface)
+          %%ifacetest.func:mlir::FunctionOpInterface
+          ifacetest:dialect-callbacks)
   (import (chezscheme) (crest dialect))
 
   (define-dialect ifacetest

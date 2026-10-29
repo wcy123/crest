@@ -143,10 +143,7 @@ void CrestOp::registerInto(mlir::ExtensibleDialect* dialect,
         make_default_attrs_fn(std::move(cbs.populate_default_attrs)));
   }
 
-  mlir::MLIRContext* ctx = dialect->getContext();
-  ctx->exitMultiThreadedExecution();
   dialect->registerDynamicOp(std::move(def));
-  ctx->enterMultiThreadedExecution();
 }
 
 // ---------------------------------------------------------------------------

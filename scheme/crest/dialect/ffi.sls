@@ -15,4 +15,6 @@
 
   ;; (uptr op-name) → string — get fully-qualified name of an OperationName.
   (define %mlir::OperationName::getStringRef
-    (foreign-procedure "mlir::OperationName::getStringRef" (uptr) string)))
+    (foreign-procedure "mlir::OperationName::getStringRef" (uptr) string))
+
+  )

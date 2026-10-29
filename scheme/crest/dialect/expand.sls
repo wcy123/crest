@@ -80,10 +80,21 @@
           (reg-dialect ctx name-str (vector cb ...))
           iface-call ...)))
 
-  ;; Top-level: %%<dialect>:initialize + <dialect>:register!
+  ;; Generates (define <dialect>:dialect-callbacks <cbs-vector>) at library-load
+  ;; time. This is the sole Scheme export needed by the new CrestDialect
+  ;; 4-arg constructor, which retrieves it via scheme_call("<dialect>:dialect-callbacks").
+  (define (%%generate-dialect-callbacks ctx dialect-cbs ops)
+    (with-syntax ([cb-name (%%id ctx ctx ":dialect-callbacks")]
+                  [(cb ...) (dialect-cbs-with-interfaces ctx dialect-cbs ops)])
+      (list #'(define cb-name (vector cb ...)))))
+
+  ;; Top-level: %%<dialect>:initialize + <dialect>:register! + <dialect>:dialect-callbacks
   ;; Interface concepts are registered directly in <dialect>:register! after
   ;; the dialect factory is installed, so they run immediately on registration
   ;; rather than lazily on dialect load.
+  ;; <dialect>:dialect-callbacks is also emitted at library-load time so that
+  ;; the new CrestDialect constructor can retrieve callbacks without any
+  ;; Scheme-side API call from the user.
   (define (generate-register-dialect ctx dialect-cbs ops reg-op-stx reg-dialect-stx)
     (let ([op-prefix (string-append (%%id->str ctx) ".")])
       (let-values ([(iface-defs iface-calls)
@@ -96,7 +107,18 @@
                                            ops)])
                  (list
                   #'(define (%%toy.initialize dialect-ptr) op-reg ...)
-                  (%%generate-register! ctx dialect-cbs ops reg-dialect-stx iface-calls)))])
-          (append iface-defs base-defs)))))
+                  (%%generate-register! ctx dialect-cbs ops reg-dialect-stx iface-calls)))]
+              [dialect-cbs-defs (%%generate-dialect-callbacks ctx dialect-cbs ops)]
+              ;; Emit iface-calls at library-load time so interface concepts are
+              ;; registered when the library is imported. crest::register-interface-concept!
+              ;; is idempotent so the duplicate call inside register! is a safe no-op.
+              ;; Wrapped as a define to avoid "invalid context" in R6RS library bodies.
+              [toplevel-iface-calls
+               (if (null? iface-calls)
+                   '()
+                   (with-syntax ([%%iface-marker (%%id ctx "%%" ctx "-iface-init")]
+                                 [(iface-call ...) iface-calls])
+                     (list #'(define %%iface-marker (begin iface-call ... #t)))))])
+          (append iface-defs base-defs dialect-cbs-defs toplevel-iface-calls)))))
 
   ) ;; end library (crest dialect expand)
