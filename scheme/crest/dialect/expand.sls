@@ -71,18 +71,13 @@
   ;; Generates at library-load time:
   ;;   (define <dialect>:dialect-callbacks (vector cb ...))
   ;;   (<stash-fn> "<dialect>" <dialect>:dialect-callbacks)
-  ;; The stash call pushes the callbacks into a C++ global map so that
-  ;; CrestDialect's 4-arg constructor can retrieve them by name without any
-  ;; symbol-lookup hygiene issues.
-  ;; stash-stx is the syntax object for %crest::stash-dialect-callbacks!,
-  ;; threaded in from (crest dialect) which imports it from (crest dialect ffi).
-  ;; Generates a 0-arg function (get-<dialect>-callbacks) using datum->syntax
-  ;; so it is accessible by datum name from C++ via scheme_call after import.
-  ;; Returns the callbacks vector when called. No stash, no C++ globals needed.
+  ;; Generates crest:get-<dialect>-callbacks() using datum->syntax so it is
+  ;; accessible by datum name from C++ via scheme_call after import.
+  ;; The "crest:" prefix avoids collisions with user-defined names.
   (define (%%generate-dialect-callbacks ctx dialect-cbs ops stash-stx)
     (with-syntax ([get-cbs (datum->syntax ctx
                                           (string->symbol
-                                           (string-append "get-" (%%id->str ctx) "-callbacks")))]
+                                           (string-append "crest:get-" (%%id->str ctx) "-callbacks")))]
                   [(cb ...) (dialect-cbs-with-interfaces ctx dialect-cbs ops)])
       (list #'(define (get-cbs) (vector cb ...)))))
 
