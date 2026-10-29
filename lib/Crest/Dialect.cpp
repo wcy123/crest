@@ -61,21 +61,6 @@ void* LookupInterfaceForOp(mlir::TypeID id, const std::string& op_name) {
 }
 
 // ---------------------------------------------------------------------------
-// Concept-creator dispatch table
-// ---------------------------------------------------------------------------
-
-static llvm::DenseMap<mlir::TypeID, ConceptCreatorFn> g_concept_creators;
-
-void registerConceptCreator(mlir::TypeID id, ConceptCreatorFn fn) {
-  g_concept_creators[id] = fn;
-}
-
-ConceptCreatorFn lookupConceptCreator(mlir::TypeID id) {
-  auto it = g_concept_creators.find(id);
-  return it != g_concept_creators.end() ? it->second : nullptr;
-}
-
-// ---------------------------------------------------------------------------
 // Scheme dialects have no C++ class, so MLIR_DECLARE_EXPLICIT_TYPE_ID is
 // unavailable (it requires a static variable per class, established at link
 // time). TypeIDAllocator lets us mint a stable TypeID before the Dialect

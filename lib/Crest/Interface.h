@@ -81,15 +81,4 @@ typename Interface::Concept* getOrCreateConcept(const std::string& op_name) {
   return registered;
 }
 
-// ---------------------------------------------------------------------------
-// Concept-creator dispatch table.
-//
-// Maps TypeID → SupportedInterfaces<Interface>::CreateConcept.
-// Populated by registerConceptCreator() in each binding's init function.
-// Looked up by crest::registerInterfaceForOperation (in Dialect.cpp).
-// ---------------------------------------------------------------------------
-using ConceptCreatorFn = void (*)(ptr dispatcher);
-void registerConceptCreator(mlir::TypeID id, ConceptCreatorFn fn);
-ConceptCreatorFn lookupConceptCreator(mlir::TypeID id); // nullptr if not found
-
 } // namespace crest
