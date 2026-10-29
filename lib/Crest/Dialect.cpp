@@ -303,7 +303,11 @@ CrestDialect::CrestDialect(mlir::TypeID id, const std::string& module_name,
     : mlir::ExtensibleDialect(dialect_name, ctx, id),
       interp_(ChezSchemeInterpreter::instance(
           SchemeLogLevel::Warning, crest::registerMlirForeignFunctions)) {
-  interp_->importLibrary(module_name);
+  if (!interp_->importLibrary(module_name)) {
+    llvm::report_fatal_error(
+        llvm::Twine("CrestDialect: failed to import Scheme library '") +
+        module_name + "' for dialect '" + dialect_name + "'");
+  }
   // The dialect name (e.g. "testd") is bound to the callbacks vector by
   // define-dialect using the call-site identifier, so it has the same scope
   // as the user's (export testd). Stop_level_value finds it after import.

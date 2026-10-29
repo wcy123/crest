@@ -20,8 +20,7 @@
                 mlir::FunctionOpInterface
                 mlir::function_interface_impl::printFunctionOp
                 mlir::function_interface_impl::parseFunctionOp)
-          (only (mlir IR BuiltinAttributes)
-                mlir::TypeAttr::getValue))
+          )
 
   ;; Handle-returning parser functions return 0 on failure (not #f),
   ;; so we need an explicit zero check rather than relying on Scheme truthiness.
