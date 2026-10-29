@@ -6,7 +6,7 @@
 ;; In C++, ~400 lines of ODS + Dialect.cpp + generated code.
 ;; Here: define-dialect generates toy:register! and all accessors.
 (library (toy ch2 toy)
-  (export toy:register!)
+  (export get-toy-callbacks)
   (import (chezscheme)
           (crest dialect)
           (mlir IR Value)

@@ -3,7 +3,7 @@
 ;; define-dialect auto-generates testd:dialect-callbacks, which is retrieved
 ;; by the new CrestDialect 4-arg constructor via scheme_call("testd:dialect-callbacks").
 (library (passes test-dialect)
-  (export testd:dialect-callbacks)
+  (export get-testd-callbacks)
   (import (chezscheme)
           (crest dialect))
 

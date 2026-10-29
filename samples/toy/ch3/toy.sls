@@ -6,7 +6,7 @@
 ;; Ch3 adds no new ops vs Ch2, but adds custom assembly formats.
 ;; Canonicalization patterns live in combine.sls.
 (library (toy ch3 toy)
-  (export toy:register!)
+  (export get-toy-callbacks)
   (import (chezscheme)
           (crest dialect)
           (mlir IR Value)

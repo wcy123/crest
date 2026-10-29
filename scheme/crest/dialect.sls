@@ -1,8 +1,7 @@
 ;; Keyword exports — bound to their own symbol so users can write
-;; :initialize, :parse-type etc. without quoting in call sites:
-;;   (register-dialect! ctx "toy" :initialize my-fn)   ; works
+;; :initialize, :parse-type etc. without quoting in call sites.
 (library (crest dialect)
-  (export register-dialect!
+  (export load-scheme-dialect!
           register-dynamic-op!
           define-dialect
           define-op
@@ -72,21 +71,12 @@
   (define :interfaces                  ':interfaces)
 
 
-  (define (%%dialect-slot-index key)
-    (case key
-      [(:initialize)                        0]
-      [(:get-dependent-dialects)            1]
-      [(:parse-attribute)                   2]
-      [(:print-attribute)                   3]
-      [(:parse-type)                        4]
-      [(:print-type)                        5]
-      [(:materialize-constant)              6]
-      [(:get-canonicalization-patterns)     7]
-      [(:verify-op-attr)                    8]
-      [(:verify-region-arg-attr)            9]
-      [(:verify-region-result-attr)        10]
-      [(:get-registered-interface-for-op)  11]
-      [else (error "register-dialect!" "unknown callback keyword" key)]))
+  ;; Load a Scheme-defined dialect into an existing MLIRContext.
+  ;; dialect-name: the dialect namespace string (e.g. "toy").
+  ;; module-name:  the Scheme library path (e.g. "toy/ch3/toy").
+  ;; Safe to call outside the pass pipeline (multiThreadedExecutionContext == 0).
+  (define (load-scheme-dialect! ctx dialect-name module-name)
+    (%crest::load-scheme-dialect! ctx dialect-name module-name))
 
   (define (%%plist->vector n index-fn plist)
     (let ([v (make-vector n #f)])
@@ -95,12 +85,6 @@
           (vector-set! v (index-fn (car rest)) (cadr rest))
           (loop (cddr rest))))
       v))
-
-  (define (register-dialect! ctx name . callbacks)
-    (%crest::register-dialect!
-     ctx
-     name
-     (%%plist->vector 12 %%dialect-slot-index callbacks)))
 
   (define (%%op-slot-index key)
     (case key
@@ -355,7 +339,7 @@
                 [all-op-defs  (generate-all-op-defs #'dialect-id ops)]
                 [reg-defs     (generate-register-dialect #'dialect-id (dialect-parse-cbs dialect) ops
                                                          #'%crest::register-dynamic-op!
-                                                         #'%crest::register-dialect!)])
+                                                         #f)])
            (let ([result (with-syntax
                              ([(op-def  ...) all-op-defs]
                               [(reg-def ...) reg-defs])

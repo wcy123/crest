@@ -30,7 +30,6 @@
   (define (run-pass module)
     (let ([ctx (mlir::Operation::getContext module)])
       (with-current-MLIRContext ctx
-        (ifacetest:register! ctx)
         (let* ([body-region (mlir::Operation::getRegion module 0)]
                [body-block  (mlir::Region::front body-region)]
                [func-op     (mlir::Block::front body-block)])

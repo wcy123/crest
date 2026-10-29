@@ -11,6 +11,7 @@
 (library (toy ch3 toyc)
   (export run-pass)
   (import (chezscheme)
+          (crest dialect)
           (mlir IR MLIRContext)
           (mlir IR Operation)
           (mlir IR BuiltinOps)
@@ -22,12 +23,9 @@
           (toy ch3 mlir-gen)
           (toy ch3 combine))
 
-  ;; Force the toy dialect to load so its custom printers/parsers are
-  ;; registered. allowUnregisteredDialects lets ops be created without loading
-  ;; their dialect, so we call getOrLoadDialect explicitly after registration.
+  ;; Load the toy dialect and activate its custom printers/parsers.
   (define (%%load-toy! ctx)
-    (toy:register! ctx)
-    (mlir::MLIRContext::getOrLoadDialect ctx "toy"))
+    (load-scheme-dialect! ctx "toy" "toy/ch3/toy"))
 
   (define (%%dump-ast filename)
     (let ([module-ast (parse-input-file filename)])

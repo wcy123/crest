@@ -68,34 +68,29 @@
                     [(cb ...) (%%op-cbs ctx full-name op)])
         #'(reg-op dialect-ptr op-name (vector cb ...)))))
 
-  ;; (toy:register! ctx) form — registers the dialect and then immediately
-  ;; installs interface concepts (which must run after the factory is registered).
-  (define (%%generate-register! ctx dialect-cbs ops reg-dialect-stx iface-calls)
-    (with-syntax ([toy.register! (%%id ctx ctx ":register!")]
-                  [reg-dialect   reg-dialect-stx]
-                  [name-str      (%%id->str ctx)]
-                  [(cb ...)      (dialect-cbs-with-interfaces ctx dialect-cbs ops)]
-                  [(iface-call ...) iface-calls])
-      #'(define (toy.register! ctx)
-          (reg-dialect ctx name-str (vector cb ...))
-          iface-call ...)))
-
-  ;; Generates (define <dialect>:dialect-callbacks <cbs-vector>) at library-load
-  ;; time. This is the sole Scheme export needed by the new CrestDialect
-  ;; 4-arg constructor, which retrieves it via scheme_call("<dialect>:dialect-callbacks").
-  (define (%%generate-dialect-callbacks ctx dialect-cbs ops)
-    (with-syntax ([cb-name (%%id ctx ctx ":dialect-callbacks")]
+  ;; Generates at library-load time:
+  ;;   (define <dialect>:dialect-callbacks (vector cb ...))
+  ;;   (<stash-fn> "<dialect>" <dialect>:dialect-callbacks)
+  ;; The stash call pushes the callbacks into a C++ global map so that
+  ;; CrestDialect's 4-arg constructor can retrieve them by name without any
+  ;; symbol-lookup hygiene issues.
+  ;; stash-stx is the syntax object for %crest::stash-dialect-callbacks!,
+  ;; threaded in from (crest dialect) which imports it from (crest dialect ffi).
+  ;; Generates a 0-arg function (get-<dialect>-callbacks) using datum->syntax
+  ;; so it is accessible by datum name from C++ via scheme_call after import.
+  ;; Returns the callbacks vector when called. No stash, no C++ globals needed.
+  (define (%%generate-dialect-callbacks ctx dialect-cbs ops stash-stx)
+    (with-syntax ([get-cbs (datum->syntax ctx
+                                          (string->symbol
+                                           (string-append "get-" (%%id->str ctx) "-callbacks")))]
                   [(cb ...) (dialect-cbs-with-interfaces ctx dialect-cbs ops)])
-      (list #'(define cb-name (vector cb ...)))))
+      (list #'(define (get-cbs) (vector cb ...)))))
 
-  ;; Top-level: %%<dialect>:initialize + <dialect>:register! + <dialect>:dialect-callbacks
-  ;; Interface concepts are registered directly in <dialect>:register! after
-  ;; the dialect factory is installed, so they run immediately on registration
-  ;; rather than lazily on dialect load.
-  ;; <dialect>:dialect-callbacks is also emitted at library-load time so that
-  ;; the new CrestDialect constructor can retrieve callbacks without any
-  ;; Scheme-side API call from the user.
-  (define (generate-register-dialect ctx dialect-cbs ops reg-op-stx reg-dialect-stx)
+  ;; Top-level: %%<dialect>:initialize + <dialect>:dialect-callbacks
+  ;; <dialect>:register! is gone — use load-scheme-dialect! or
+  ;; --crest-scheme-dialect= for standalone / pass-pipeline use respectively.
+  ;; Interface concepts are registered at library-load time via toplevel-iface-calls.
+  (define (generate-register-dialect ctx dialect-cbs ops reg-op-stx stash-stx)
     (let ([op-prefix (string-append (%%id->str ctx) ".")])
       (let-values ([(iface-defs iface-calls)
                     (generate-interface-registrations ctx ops)])
@@ -106,12 +101,11 @@
                                              (%%generate-register-op! ctx op-prefix op reg-op-stx))
                                            ops)])
                  (list
-                  #'(define (%%toy.initialize dialect-ptr) op-reg ...)
-                  (%%generate-register! ctx dialect-cbs ops reg-dialect-stx iface-calls)))]
-              [dialect-cbs-defs (%%generate-dialect-callbacks ctx dialect-cbs ops)]
+                  #'(define (%%toy.initialize dialect-ptr) op-reg ...)))]
+              ;; stash-stx kept in signature for forward compat but unused now
+              [dialect-cbs-defs (%%generate-dialect-callbacks ctx dialect-cbs ops stash-stx)]
               ;; Emit iface-calls at library-load time so interface concepts are
-              ;; registered when the library is imported. crest::register-interface-concept!
-              ;; is idempotent so the duplicate call inside register! is a safe no-op.
+              ;; registered when the library is imported.
               ;; Wrapped as a define to avoid "invalid context" in R6RS library bodies.
               [toplevel-iface-calls
                (if (null? iface-calls)

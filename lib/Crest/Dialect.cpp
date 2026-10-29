@@ -16,6 +16,8 @@
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Support/TypeID.h"
 #include <memory>
+#include <string>
+#include <unordered_map>
 
 namespace crest {
 
@@ -95,28 +97,6 @@ static mlir::TypeIDAllocator g_crest_type_id_allocator;
 
 template <typename T> static T* ptr_from_scheme(ptr val) {
   return reinterpret_cast<T*>(static_cast<uint64_t>(Sinteger64_value(val)));
-}
-
-// Register a dialect factory without loading it.
-//
-// Must be called before PassManager::run() enters the multi-threaded execution
-// context. appendDialectRegistry asserts multiThreadedExecutionContext == 0.
-// Callers from user code (e.g. toyc.sls calling <dialect>:register!) are
-// outside any pass pipeline and therefore safe. For pass-pipeline use,
-// register dialects via CrestPass::getDependentDialects instead.
-//
-// We must NOT use getOrLoadDialect here: it immediately replaces existing
-// UnregisteredOpModel entries in the context, freeing the Impl objects that
-// already-parsed Operation::name fields point to. That causes use-after-free
-// when op->getName() is called after the dialect is loaded.
-// appendDialectRegistry only registers a factory — loading is lazy — so
-// existing Operation::name pointers remain valid.
-static void insertDialectFactory(mlir::MLIRContext* ctx, mlir::TypeID id,
-                                 llvm::StringRef name,
-                                 mlir::DialectAllocatorFunction factory) {
-  mlir::DialectRegistry tmp;
-  tmp.insert(id, name, std::move(factory));
-  ctx->appendDialectRegistry(tmp);
 }
 
 // ---------------------------------------------------------------------------
@@ -313,66 +293,19 @@ static std::shared_ptr<CrestDialect::Callbacks> unpack_callbacks(ptr cbs_ptr) {
 // ---------------------------------------------------------------------------
 
 void registerIRExtensibleDialectBindings() {
-  // crest::register-dialect! (uptr ctx) (uptr name-cstr) (uptr vector/12)
-  // Registers a factory in the DialectRegistry so getOrLoadDialect("name")
-  // instantiates the CrestDialect on demand.  Loading is deferred.
-  //
-  // Callback vector slots (#f = use ExtensibleDialect default):
-  //   0 initialize                       6 materialize-constant
-  //   1 get-dependent-dialects           7 get-canonicalization-patterns
-  //   2 parse-attribute                  8 verify-op-attr
-  //   3 print-attribute                  9 verify-region-arg-attr
-  //   4 parse-type                      10 verify-region-result-attr
-  //   5 print-type
+  // crest::load-scheme-dialect! (uptr ctx) (string dialect-name) (string
+  // module-name) → void Loads a Scheme-defined dialect into an existing
+  // MLIRContext by delegating to dialectFactory. Safe to call when
+  // multiThreadedExecutionContext == 0 (e.g. standalone tools, toyc.sls).
+  // Replaces the old crest::register-dialect!.
   Sregister_symbol(
-      "crest::register-dialect!",
-      (void*)+[](uint64_t ctx_ptr, uint64_t name_ptr, ptr cbs_ptr) -> void {
+      "crest::load-scheme-dialect!",
+      (void*)+[](uint64_t ctx_ptr, const char* dialect_name,
+                 const char* module_name) -> void {
         auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
-        std::string name(reinterpret_cast<const char*>(name_ptr));
-
-        // Already registered? Do nothing — idempotent.
-        if (ctx->getDialectRegistry().getDialectAllocator(name)) {
-          return;
-        }
-
-        // shared_ptr from unpack_callbacks: keeps LockedSchemeObject GC locks
-        // alive for the factory's lifetime; also makes the lambda copyable for
-        // std::function (Callbacks is move-only, shared_ptr is copyable).
-        auto cbs_ptr2 = unpack_callbacks(cbs_ptr);
-
-        // Allocate id before registering the factory so the factory lambda and
-        // the CrestDialect constructor both receive the same TypeID.
-        //
-        // MLIRContext maintains two indexes for loaded dialects: one keyed by
-        // namespace string and one keyed by TypeID. The TypeID stored in the
-        // Dialect object (via Dialect::getTypeID(), set in the constructor)
-        // must match the TypeID recorded in the DialectRegistry entry.
-        // A mismatch leaves the TypeID index stale — getOrLoadDialect(TypeID)
-        // would not find the dialect, breaking any code path that looks up a
-        // dialect by type rather than by name.
-        //
-        // Scope: id is permanent for the life of the process, matching the
-        // lifetime of static C++ dialect TypeIDs.
-        //
-        // Uniqueness: each call to crest::register-dialect! allocates a fresh
-        // id. Within one context the name check above (getDialectAllocator)
-        // ensures only one id is ever allocated per dialect name. Across
-        // contexts the same name gets a different id — this is intentional,
-        // since MLIR contexts are isolated and cross-context TypeID comparison
-        // is not supported.
-        mlir::TypeID id = g_crest_type_id_allocator.allocate();
-
-        insertDialectFactory(
-            ctx, id, name,
-            [id, name,
-             cbs_ptr2](mlir::MLIRContext* load_ctx) -> mlir::Dialect* {
-              if (!cbs_ptr2.get()) {
-                llvm::report_fatal_error(
-                    "crest::register-dialect!: factory called more than once "
-                    "— getOrLoadDialect guarantees at-most-once per context");
-              }
-              return new CrestDialect(name, load_ctx, id, std::move(*cbs_ptr2));
-            });
+        auto [type_id, factory] =
+            dialectFactory(std::string(dialect_name), std::string(module_name));
+        factory(ctx);
       });
 }
 
@@ -387,11 +320,11 @@ CrestDialect::CrestDialect(mlir::TypeID id, const std::string& module_name,
       interp_(ChezSchemeInterpreter::instance(
           SchemeLogLevel::Warning, crest::registerMlirForeignFunctions)) {
   interp_->importLibrary(module_name);
-  // "<dialect>:dialect-callbacks" is a vector auto-generated by define-dialect.
-  // Use Stop_level_value to retrieve the variable directly — scheme_call would
-  // incorrectly try to invoke the vector as a 0-arg procedure.
-  std::string cb_sym = dialect_name + ":dialect-callbacks";
-  ptr cbs_vec = Stop_level_value(Sstring_to_symbol(cb_sym.c_str()));
+  // Call get-<dialect>-callbacks() — a 0-arg function auto-generated by
+  // define-dialect via datum->syntax (user scope, not macro scope), so it
+  // is accessible by datum name from C++ via scheme_call after import.
+  std::string get_fn = "get-" + dialect_name + "-callbacks";
+  ptr cbs_vec = scheme_call(get_fn.c_str());
   cbs_ = std::move(*unpack_callbacks(cbs_vec));
   initialize();
 }

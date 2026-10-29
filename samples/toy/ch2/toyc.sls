@@ -7,6 +7,7 @@
 (library (toy ch2 toyc)
   (export run-pass)
   (import (chezscheme)
+          (crest dialect)
           (mlir IR MLIRContext)
           (mlir IR Operation)
           (mlir IR BuiltinOps)
@@ -25,7 +26,7 @@
       (unless module-ast (exit 1))
       (let* ([ctx        (mlir::MLIRContext::new)]
              [_          (mlir::MLIRContext::allowUnregisteredDialects ctx #t)]
-             [_          (toy:register! ctx)]
+             [_          (load-scheme-dialect! ctx "toy" "toy/ch2/toy")]
              [module-op  (mlir-gen ctx module-ast)])
         (unless module-op (exit 1))
         (display (mlir::Operation::print (mlir::ModuleOp::getOperation module-op)))
