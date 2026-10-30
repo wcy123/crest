@@ -103,7 +103,7 @@
   ;; @see        mlir/IR/MLIRContext.h
   ;; @note       Defined in lib/Bindings/IR/MLIRContext.cpp
   (define (mlir::MLIRContext::isMultithreadingEnabled? ctx)
-    (not (zero? (%mlir-context-is-multithreading-enabled ctx))))
+    (not (zero? (%mlir::MLIRContext::isMultithreadingEnabled ctx))))
 
   ;; @brief mlir::MLIRContext::getOrLoadDialect — load a dialect by namespace and return it.
   ;; @param ctx  MLIRContext* as uptr
