@@ -43,6 +43,4 @@ target_include_directories(CrestCore
 target_link_libraries(CrestCore
   PRIVATE
     MLIRIR
-    MLIRPass
-    MLIRTransforms
 )

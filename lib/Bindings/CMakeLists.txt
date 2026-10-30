@@ -68,6 +68,10 @@ add_library(CrestBindings STATIC
   Transforms/DialectConversion.h
   Transforms/GreedyPatternRewriteDriver.cpp
   Transforms/GreedyPatternRewriteDriver.h
+  Transforms/InliningUtils.cpp
+  Transforms/InliningUtils.h
+  Pass/PassManager.cpp
+  Pass/PassManager.h
 )
 
 add_dependencies(CrestBindings ChezScheme ChezBootHeaders)
@@ -92,6 +96,7 @@ target_link_libraries(CrestBindings
     MLIRTransforms
     MLIRDialectUtils
     MLIRTransformUtils
+    MLIRPass
     ${CHEZ_KERNEL_LIB}
     ${CHEZ_ZLIB_LIB}
     ${CHEZ_LZ4_LIB}

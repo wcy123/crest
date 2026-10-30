@@ -264,67 +264,99 @@
                    (make-op-parse op-name-stx operands attributes results op-cbs interfaces)]))))
 
 
-          (let loop ([stx clauses-stx])
-            (syntax-case stx (:summary :description
-                                       :initialize :get-dependent-dialects
-                                       :parse-attribute :print-attribute
-                                       :parse-type :print-type
-                                       :materialize-constant
-                                       :get-canonicalization-patterns
-                                       :verify-op-attr
-                                       :verify-region-arg-attr
-                                       :verify-region-result-attr
-                                       define-op)
-              ;; :summary/:description accepted but produce no runtime effect —
-              ;; same placeholder role as in define-op.
-              [(:summary     _ . rest) (loop #'rest)]
-              [(:description _ . rest) (loop #'rest)]
-              [((define-op op-name . op-sub) . rest)
-               (identifier? #'op-name)
-               (begin
-                 (set! ops (cons (parse-define-op #'op-name #'op-sub) ops))
-                 (loop #'rest))]
-              [((:initialize                  (dialect-ptr) body ...) . rest)
-               (identifier? #'dialect-ptr)
-               (begin (vector-set! cbs  0 #'(lambda (dialect-ptr) body ...)) (loop #'rest))]
-              [((:get-dependent-dialects      () body ...) . rest)
-               (begin (vector-set! cbs  1 #'(lambda () body ...)) (loop #'rest))]
-              [((:parse-attribute             (parser type) body ...) . rest)
-               (and (identifier? #'parser) (identifier? #'type))
-               (begin (vector-set! cbs  2 #'(lambda (parser type) body ...)) (loop #'rest))]
-              [((:print-attribute             (attr printer) body ...) . rest)
-               (and (identifier? #'attr) (identifier? #'printer))
-               (begin (vector-set! cbs  3 #'(lambda (attr printer) body ...)) (loop #'rest))]
-              [((:parse-type                  (parser) body ...) . rest)
-               (identifier? #'parser)
-               (begin (vector-set! cbs  4 #'(lambda (parser) body ...)) (loop #'rest))]
-              [((:print-type                  (type printer) body ...) . rest)
-               (and (identifier? #'type) (identifier? #'printer))
-               (begin (vector-set! cbs  5 #'(lambda (type printer) body ...)) (loop #'rest))]
-              [((:materialize-constant        (builder value type loc) body ...) . rest)
-               (and (identifier? #'builder) (identifier? #'value)
-                    (identifier? #'type)    (identifier? #'loc))
-               (begin (vector-set! cbs  6 #'(lambda (builder value type loc) body ...)) (loop #'rest))]
-              [((:get-canonicalization-patterns (pattern-set) body ...) . rest)
-               (identifier? #'pattern-set)
-               (begin (vector-set! cbs  7 #'(lambda (pattern-set) body ...)) (loop #'rest))]
-              [((:verify-op-attr              (op attr) body ...) . rest)
-               (and (identifier? #'op) (identifier? #'attr))
-               (begin (vector-set! cbs  8 #'(lambda (op attr) body ...)) (loop #'rest))]
-              [((:verify-region-arg-attr      (op region-index arg-index attr) body ...) . rest)
-               (and (identifier? #'op)           (identifier? #'region-index)
-                    (identifier? #'arg-index)    (identifier? #'attr))
-               (begin (vector-set! cbs  9 #'(lambda (op region-index arg-index attr) body ...)) (loop #'rest))]
-              [((:verify-region-result-attr   (op region-index result-index attr) body ...) . rest)
-               (and (identifier? #'op)           (identifier? #'region-index)
-                    (identifier? #'result-index) (identifier? #'attr))
-               (begin (vector-set! cbs 10 #'(lambda (op region-index result-index attr) body ...)) (loop #'rest))]
-              [(bad . _)
-               (syntax-violation 'define-dialect
-                                 "unrecognised clause — expected (define-op ...) or (:keyword (args) body ...)"
-                                 #'bad)]
-              [()
-               (make-dialect-parse dialect-id-stx (reverse ops) cbs)]))))
+          (let ([dialect-ifaces '()])
+            (let loop ([stx clauses-stx])
+              (syntax-case stx (:summary :description
+                                         :initialize :get-dependent-dialects
+                                         :parse-attribute :print-attribute
+                                         :parse-type :print-type
+                                         :materialize-constant
+                                         :get-canonicalization-patterns
+                                         :verify-op-attr
+                                         :verify-region-arg-attr
+                                         :verify-region-result-attr
+                                         :interfaces
+                                         define-op)
+                ;; :summary/:description accepted but produce no runtime effect —
+                ;; same placeholder role as in define-op.
+                [(:summary     _ . rest) (loop #'rest)]
+                [(:description _ . rest) (loop #'rest)]
+                [((define-op op-name . op-sub) . rest)
+                 (identifier? #'op-name)
+                 (begin
+                   (set! ops (cons (parse-define-op #'op-name #'op-sub) ops))
+                   (loop #'rest))]
+                [((:initialize                  (dialect-ptr) body ...) . rest)
+                 (identifier? #'dialect-ptr)
+                 (begin (vector-set! cbs  0 #'(lambda (dialect-ptr) body ...)) (loop #'rest))]
+                [((:get-dependent-dialects      () body ...) . rest)
+                 (begin (vector-set! cbs  1 #'(lambda () body ...)) (loop #'rest))]
+                [((:parse-attribute             (parser type) body ...) . rest)
+                 (and (identifier? #'parser) (identifier? #'type))
+                 (begin (vector-set! cbs  2 #'(lambda (parser type) body ...)) (loop #'rest))]
+                [((:print-attribute             (attr printer) body ...) . rest)
+                 (and (identifier? #'attr) (identifier? #'printer))
+                 (begin (vector-set! cbs  3 #'(lambda (attr printer) body ...)) (loop #'rest))]
+                [((:parse-type                  (parser) body ...) . rest)
+                 (identifier? #'parser)
+                 (begin (vector-set! cbs  4 #'(lambda (parser) body ...)) (loop #'rest))]
+                [((:print-type                  (type printer) body ...) . rest)
+                 (and (identifier? #'type) (identifier? #'printer))
+                 (begin (vector-set! cbs  5 #'(lambda (type printer) body ...)) (loop #'rest))]
+                [((:materialize-constant        (builder value type loc) body ...) . rest)
+                 (and (identifier? #'builder) (identifier? #'value)
+                      (identifier? #'type)    (identifier? #'loc))
+                 (begin (vector-set! cbs  6 #'(lambda (builder value type loc) body ...)) (loop #'rest))]
+                [((:get-canonicalization-patterns (pattern-set) body ...) . rest)
+                 (identifier? #'pattern-set)
+                 (begin (vector-set! cbs  7 #'(lambda (pattern-set) body ...)) (loop #'rest))]
+                [((:verify-op-attr              (op attr) body ...) . rest)
+                 (and (identifier? #'op) (identifier? #'attr))
+                 (begin (vector-set! cbs  8 #'(lambda (op attr) body ...)) (loop #'rest))]
+                [((:verify-region-arg-attr      (op region-index arg-index attr) body ...) . rest)
+                 (and (identifier? #'op)           (identifier? #'region-index)
+                      (identifier? #'arg-index)    (identifier? #'attr))
+                 (begin (vector-set! cbs  9 #'(lambda (op region-index arg-index attr) body ...)) (loop #'rest))]
+                [((:verify-region-result-attr   (op region-index result-index attr) body ...) . rest)
+                 (and (identifier? #'op)           (identifier? #'region-index)
+                      (identifier? #'result-index) (identifier? #'attr))
+                 (begin (vector-set! cbs 10 #'(lambda (op region-index result-index attr) body ...)) (loop #'rest))]
+                ;; Dialect-level interfaces — same structure as op-level :interfaces.
+                ;; Each spec is (interface-name method-clause ...) where method-clause
+                ;; is (method-name (formals) body ...).
+                [((:interfaces (iface-spec ...)) . rest)
+                 (begin
+                   (set! dialect-ifaces
+                         (append dialect-ifaces
+                                 (map (lambda (spec-stx)
+                                        (syntax-case spec-stx ()
+                                          [(iface-name method-clause ...)
+                                           (identifier? #'iface-name)
+                                           (make-interface-entry
+                                            #'iface-name
+                                            (map (lambda (mc)
+                                                   (syntax-case mc ()
+                                                     [(mname formals body ...)
+                                                      (identifier? #'mname)
+                                                      (make-interface-method
+                                                       (syntax->datum #'mname)
+                                                       #'formals
+                                                       #'(body ...))]
+                                                     [_
+                                                      (syntax-violation ':interfaces
+                                                                        "expected (method-name (formals...) body...)" mc)]))
+                                                 (syntax->list #'(method-clause ...))))]
+                                          [_
+                                           (syntax-violation ':interfaces
+                                                             "expected (interface-name method-clause ...)" spec-stx)]))
+                                      (syntax->list #'(iface-spec ...)))))
+                   (loop #'rest))]
+                [(bad . _)
+                 (syntax-violation 'define-dialect
+                                   "unrecognised clause — expected (define-op ...) or (:keyword (args) body ...)"
+                                   #'bad)]
+                [()
+                 (make-dialect-parse dialect-id-stx (reverse ops) cbs dialect-ifaces)])))))
 
       (syntax-case stx ()
         [(_ dialect-id clause ...)
@@ -333,7 +365,8 @@
                 [all-op-defs  (generate-all-op-defs #'dialect-id ops)]
                 [reg-defs     (generate-register-dialect #'dialect-id (dialect-parse-cbs dialect) ops
                                                          #'%crest::register-dynamic-op!
-                                                         #f)])
+                                                         #f
+                                                         (dialect-parse-dialect-ifaces dialect))])
            (let ([result (with-syntax
                              ([(op-def  ...) all-op-defs]
                               [(reg-def ...) reg-defs])

@@ -35,11 +35,13 @@
 #include "Interfaces/CallInterfaces.h"
 #include "Interfaces/DestinationStyleOpInterface.h"
 #include "Interfaces/FunctionInterfaces.h"
+#include "Pass/PassManager.h"
 #include "Support/ArrayRef.h"
 #include "Support/CrestObject.h"
 #include "Support/Logging.h"
 #include "Transforms/DialectConversion.h"
 #include "Transforms/GreedyPatternRewriteDriver.h"
+#include "Transforms/InliningUtils.h"
 
 namespace crest {
 
@@ -60,7 +62,8 @@ void registerMlirForeignFunctions() {
   registerIRSymbolInterfacesBindings();
   registerIRDialectRegistryBindings();
   registerIRExtensibleDialectBindings();
-  registerCrestInlinerBindings();
+  registerTransformsInliningUtilsBindings();
+  registerPassPassManagerBindings();
   registerCrestDynamicOpBindings();
   registerCrestTraitBindings();
   registerIRLocationBindings();

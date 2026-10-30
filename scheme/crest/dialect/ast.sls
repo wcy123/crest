@@ -8,6 +8,7 @@
           dialect-parse-name
           dialect-parse-ops
           dialect-parse-cbs
+          dialect-parse-dialect-ifaces
           op-parse
           make-op-parse
           op-parse?
@@ -71,9 +72,10 @@
   ;;            4  :parse-type                   10  :verify-region-result-attr
   ;;            5  :print-type                   11  :get-registered-interface-for-op
   (define-record-type dialect-parse
-    (fields (immutable name dialect-parse-name)
-            (immutable ops  dialect-parse-ops)
-            (immutable cbs  dialect-parse-cbs)))
+    (fields (immutable name          dialect-parse-name)
+            (immutable ops           dialect-parse-ops)
+            (immutable cbs           dialect-parse-cbs)
+            (immutable dialect-ifaces dialect-parse-dialect-ifaces)))
 
   ;; A single attribute field declaration inside (define-op ... :attributes (...)).
   ;;   name     — symbol e.g. 'value

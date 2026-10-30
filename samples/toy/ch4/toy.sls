@@ -22,10 +22,6 @@
                 mlir::function_interface_impl::printFunctionOp
                 mlir::function_interface_impl::parseFunctionOp))
 
-  (define %%add-inliner-interface!
-    (foreign-procedure "crest::add-inliner-interface!"
-                       (uptr scheme-object scheme-object) void))
-
   (define (%%parsed? h) (not (zero? h)))
 
   (define (%%parse-binary-op parser state)
@@ -99,28 +95,23 @@
       (mlir::OpAsmPrinter::printString printer " to ")
       (mlir::OpAsmPrinter::printResultTypes printer op)))
 
-  ;; -------------------------------------------------------------------------
-  ;; Inliner interface callbacks
-  ;; -------------------------------------------------------------------------
-
-  ;; toy.return terminator: replace each valuesToRepl[i] with return operand[i].
-  (define (%%toy-handle-terminator op n-replacements replacements)
-    (let loop ([i 0] [repls replacements])
-      (when (< i n-replacements)
-        (let ([return-operand (mlir::Operation::getOperand op i)]
-              [replacement    (car repls)])
-          (mlir::Value::replaceAllUsesWith replacement return-operand))
-        (loop (+ i 1) (cdr repls)))))
-
-  ;; Insert a toy.cast to bridge type mismatch at call boundaries.
-  ;; Returns the Operation* (not the Value) as expected by materializeCallConversion.
-  (define (%%toy-materialize-call-conversion builder input result-type loc)
-    (with-OperationState (s loc "toy.cast")
-                         (mlir::OperationState::addOperands s input)
-                         (mlir::OperationState::addTypes s result-type)
-                         (mlir::OpBuilder::create<OperationState> builder s)))
-
   (define-dialect toy
+    (:interfaces ((mlir::DialectInlinerInterface
+                   (isLegalToInline/call   (call callable wouldBeCloned) #t)
+                   (isLegalToInline/region (dest src wouldBeCloned) #t)
+                   (isLegalToInline/op     (op dest wouldBeCloned) #t)
+                   (handleTerminator (op n-replacements replacements)
+                                     (let loop ([i 0] [repls replacements])
+                                       (when (< i n-replacements)
+                                         (mlir::Value::replaceAllUsesWith
+                                          (car repls)
+                                          (mlir::Operation::getOperand op i))
+                                         (loop (+ i 1) (cdr repls)))))
+                   (materializeCallConversion (builder input result-type loc)
+                                              (with-OperationState (s loc "toy.cast")
+                                                                   (mlir::OperationState::addOperands s input)
+                                                                   (mlir::OperationState::addTypes s result-type)
+                                                                   (mlir::OpBuilder::create<OperationState> builder s))))))
     (define-op constant
       :summary    "constant tensor"
       :attributes ((value mlir::DenseElementsAttr))
@@ -246,16 +237,5 @@
                 (mlir::OpAsmPrinter::printOperand printer val)
                 (mlir::OpAsmPrinter::printString printer " : ")
                 (mlir::OpAsmPrinter::printType printer (mlir::Value::getType val))))))
-
-  ;; Register the inliner interface after define-dialect has generated
-  ;; the callbacks vector. The vector is mutable so we wrap slot 0.
-  (let ([%%original-init (vector-ref toy 0)])
-    (vector-set! toy 0
-                 (lambda (dialect-ptr)
-                   (%%original-init dialect-ptr)
-                   (%%add-inliner-interface!
-                    dialect-ptr
-                    %%toy-handle-terminator
-                    %%toy-materialize-call-conversion))))
 
   ) ;; end library (toy ch4 toy)

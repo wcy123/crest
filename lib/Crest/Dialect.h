@@ -144,7 +144,6 @@ private:
 };
 
 void registerIRExtensibleDialectBindings();
-void registerCrestInlinerBindings();
 
 /// Build a (TypeID, factory) pair for a Scheme-defined dialect.
 ///
