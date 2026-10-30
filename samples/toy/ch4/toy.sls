@@ -22,8 +22,8 @@
                 mlir::function_interface_impl::printFunctionOp
                 mlir::function_interface_impl::parseFunctionOp))
 
-  (define %%add-toy-inliner-interface!
-    (foreign-procedure "crest::add-toy-inliner-interface!"
+  (define %%add-inliner-interface!
+    (foreign-procedure "crest::add-inliner-interface!"
                        (uptr scheme-object scheme-object) void))
 
   (define (%%parsed? h) (not (zero? h)))
@@ -253,7 +253,7 @@
     (vector-set! toy 0
                  (lambda (dialect-ptr)
                    (%%original-init dialect-ptr)
-                   (%%add-toy-inliner-interface!
+                   (%%add-inliner-interface!
                     dialect-ptr
                     %%toy-handle-terminator
                     %%toy-materialize-call-conversion))))

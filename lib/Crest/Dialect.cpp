@@ -335,10 +335,10 @@ dialectFactory(std::string dialect_name, std::string module_name) {
 }
 
 // ---------------------------------------------------------------------------
-// CrestToyInlinerInterface — DialectInlinerInterface backed by Scheme
+// CrestInlinerInterface — DialectInlinerInterface backed by Scheme
 // callbacks.
 //
-// Registered on a CrestDialect via crest::add-toy-inliner-interface! so the
+// Registered on a CrestDialect via crest::add-inliner-interface! so the
 // MLIR inliner can inline toy.generic_call ops. All isLegalToInline overloads
 // return true (toy allows inlining everything). handleTerminator and
 // materializeCallConversion dispatch to Scheme.
@@ -346,7 +346,7 @@ dialectFactory(std::string dialect_name, std::string module_name) {
 
 namespace {
 
-struct CrestToyInlinerInterface : public mlir::DialectInlinerInterface {
+struct CrestInlinerInterface : public mlir::DialectInlinerInterface {
   using mlir::DialectInlinerInterface::DialectInlinerInterface;
 
   crest::LockedSchemeObject handleTerminatorFn;
@@ -407,11 +407,11 @@ struct CrestToyInlinerInterface : public mlir::DialectInlinerInterface {
 
 void registerCrestInlinerBindings() {
   Sregister_symbol(
-      "crest::add-toy-inliner-interface!",
+      "crest::add-inliner-interface!",
       (void*)+[](uint64_t dialect_ptr, ptr handle_fn,
                  ptr materialize_fn) -> void {
         auto* dialect = reinterpret_cast<crest::CrestDialect*>(dialect_ptr);
-        auto iface = std::make_unique<CrestToyInlinerInterface>(dialect);
+        auto iface = std::make_unique<CrestInlinerInterface>(dialect);
         iface->handleTerminatorFn = crest::LockedSchemeObject(handle_fn);
         iface->materializeCallConversionFn =
             crest::LockedSchemeObject(materialize_fn);
