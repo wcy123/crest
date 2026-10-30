@@ -119,7 +119,7 @@
     (define-op constant
       :summary    "constant tensor"
       :attributes ((value mlir::DenseElementsAttr))
-      :results    ((output mlir::RankedTensorType))
+      :results    ((output mlir::isa<RankedTensorType>?))
       (:parse (parser state)
               (let ([attr (mlir::OpAsmParser::parseAttribute parser state "value")])
                 (and (%%parsed? attr) (begin (mlir::OperationState::addType state
@@ -136,7 +136,7 @@
       :summary    "element-wise addition"
       :operands   ((lhs mlir::Value)
                    (rhs mlir::Value))
-      :results    ((output mlir::RankedTensorType))
+      :results    ((output mlir::isa<RankedTensorType>?))
       (:parse (parser state) (%%parse-binary-op parser state))
       (:print (op printer name) (%%print-binary-op op printer name)))
 
@@ -145,7 +145,7 @@
       :summary    "element-wise multiplication"
       :operands   ((lhs mlir::Value)
                    (rhs mlir::Value))
-      :results    ((output mlir::RankedTensorType))
+      :results    ((output mlir::isa<RankedTensorType>?))
       (:parse (parser state) (%%parse-binary-op parser state))
       (:print (op printer name) (%%print-binary-op op printer name)))
 
@@ -153,7 +153,7 @@
     (define-op transpose
       :summary    "transpose a 2D tensor"
       :operands   ((input mlir::Value))
-      :results    ((output mlir::RankedTensorType))
+      :results    ((output mlir::isa<RankedTensorType>?))
       (:parse (parser state) (%%parse-unary-to-type parser state))
       (:print (op printer name) (%%print-unary-to-type op printer name)))
 
@@ -161,7 +161,7 @@
     (define-op reshape
       :summary    "reshape a tensor"
       :operands   ((input mlir::Value))
-      :results    ((output mlir::RankedTensorType))
+      :results    ((output mlir::isa<RankedTensorType>?))
       (:parse (parser state) (%%parse-unary-to-type parser state))
       (:print (op printer name) (%%print-unary-to-type op printer name)))
 
@@ -169,7 +169,7 @@
     (define-op generic_call
       :summary    "generic function call"
       :attributes ((callee mlir::StringAttr))
-      :results    ((output mlir::RankedTensorType))
+      :results    ((output mlir::isa<RankedTensorType>?))
       (:parse (parser state)
               (%%parse-generic-call parser state))
       (:print (op printer name)
