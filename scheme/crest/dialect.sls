@@ -112,6 +112,36 @@
   ;; clause reference, and worked examples.
   (define-syntax define-dialect
     (lambda (stx)
+
+      ;; Parse a list of (interface-name method-clause ...) syntax objects into
+      ;; a list of interface-entry records. Shared by op-level and dialect-level
+      ;; :interfaces clauses.
+      (define (%%parse-iface-specs iface-specs-stx)
+        (map (lambda (spec-stx)
+               (syntax-case spec-stx ()
+                 [(iface-name method-clause ...)
+                  (identifier? #'iface-name)
+                  (make-interface-entry
+                   #'iface-name
+                   (map (lambda (mc)
+                          (syntax-case mc ()
+                            [(mname formals body ...)
+                             (identifier? #'mname)
+                             (make-interface-method
+                              (syntax->datum #'mname)
+                              #'formals
+                              #'(body ...))]
+                            [_
+                             (syntax-violation ':interfaces
+                                               "expected (method-name (formals...) body...)"
+                                               mc)]))
+                        (syntax->list #'(method-clause ...))))]
+                 [_
+                  (syntax-violation ':interfaces
+                                    "expected (interface-name method-clause ...)"
+                                    spec-stx)]))
+             (syntax->list iface-specs-stx)))
+
       (define (parse-clauses clauses-stx dialect-id-stx)
         ;; cbs slot order matches CrestDialect::Callbacks — index set directly
         ;; avoids a secondary lookup at call time.
@@ -182,29 +212,7 @@
                   [(:description _ . rest)  (loop-sub #'rest)]
                   [(:interfaces  (iface-spec ...) . rest)
                    (begin
-                     (set! interfaces
-                           (map (lambda (spec-stx)
-                                  (syntax-case spec-stx ()
-                                    [(iface-name method-clause ...)
-                                     (identifier? #'iface-name)
-                                     (make-interface-entry
-                                      #'iface-name
-                                      (map (lambda (mc)
-                                             (syntax-case mc ()
-                                               [(mname formals body ...)
-                                                (identifier? #'mname)
-                                                (make-interface-method
-                                                 (syntax->datum #'mname)
-                                                 #'formals
-                                                 #'(body ...))]
-                                               [_
-                                                (syntax-violation ':interfaces
-                                                                  "expected (method-name (formals...) body...)" mc)]))
-                                           (syntax->list #'(method-clause ...))))]
-                                    [_
-                                     (syntax-violation ':interfaces
-                                                       "expected (interface-name method-clause ...)" spec-stx)]))
-                                (syntax->list #'(iface-spec ...))))
+                     (set! interfaces (%%parse-iface-specs #'(iface-spec ...)))
                      (loop-sub #'rest))]
                   [(:operands    (field ...) . rest)
                    (begin
@@ -321,28 +329,7 @@
                  (begin
                    (set! dialect-ifaces
                          (append dialect-ifaces
-                                 (map (lambda (spec-stx)
-                                        (syntax-case spec-stx ()
-                                          [(iface-name method-clause ...)
-                                           (identifier? #'iface-name)
-                                           (make-interface-entry
-                                            #'iface-name
-                                            (map (lambda (mc)
-                                                   (syntax-case mc ()
-                                                     [(mname formals body ...)
-                                                      (identifier? #'mname)
-                                                      (make-interface-method
-                                                       (syntax->datum #'mname)
-                                                       #'formals
-                                                       #'(body ...))]
-                                                     [_
-                                                      (syntax-violation ':interfaces
-                                                                        "expected (method-name (formals...) body...)" mc)]))
-                                                 (syntax->list #'(method-clause ...))))]
-                                          [_
-                                           (syntax-violation ':interfaces
-                                                             "expected (interface-name method-clause ...)" spec-stx)]))
-                                      (syntax->list #'(iface-spec ...)))))
+                                 (%%parse-iface-specs #'(iface-spec ...))))
                    (loop #'rest))]
                 [(bad . _)
                  (syntax-violation 'define-dialect
