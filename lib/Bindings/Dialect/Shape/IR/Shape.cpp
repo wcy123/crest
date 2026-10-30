@@ -20,7 +20,7 @@ void registerDialectShapeBindings() {
         }
         return reinterpret_cast<uint64_t>(
             mlir::shape::ShapeType::get(
-                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr))
+                crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__))
                 .getAsOpaquePointer());
       });
   Sregister_symbol(
@@ -30,7 +30,7 @@ void registerDialectShapeBindings() {
         }
         return reinterpret_cast<uint64_t>(
             mlir::shape::SizeType::get(
-                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr))
+                crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__))
                 .getAsOpaquePointer());
       });
   Sregister_symbol(
@@ -41,7 +41,7 @@ void registerDialectShapeBindings() {
         }
         return reinterpret_cast<uint64_t>(
             mlir::shape::WitnessType::get(
-                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr))
+                crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__))
                 .getAsOpaquePointer());
       });
 }

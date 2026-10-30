@@ -15,6 +15,7 @@
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinTypes.h"
+#include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/Operation.h"
 #include <limits>
 
@@ -38,7 +39,8 @@ void registerIROperationBindings() {
                        "operation must not be null");
         }
         return reinterpret_cast<uint64_t>(
-            reinterpret_cast<mlir::Operation*>(op)->getContext());
+            new crest::CrestRef<mlir::MLIRContext>(
+                reinterpret_cast<mlir::Operation*>(op)->getContext()));
       });
   Sregister_symbol(
       "mlir::Operation::getNumOperands", (void*)+[](uint64_t op) -> int64_t {

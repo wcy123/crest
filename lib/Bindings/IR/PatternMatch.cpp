@@ -109,7 +109,7 @@ void registerIRRewriterBaseBindings() {
           scheme_error("mlir::RewritePatternSet::RewritePatternSet",
                        "ctx must not be null");
         }
-        auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
         return reinterpret_cast<uint64_t>(
             new CrestOwned<mlir::RewritePatternSet>(ctx));
       });

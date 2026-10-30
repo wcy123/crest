@@ -132,7 +132,7 @@ void registerTransformsDialectConversionBindings() {
           scheme_error("mlir::ConversionTarget::ConversionTarget",
                        "ctx must not be null");
         }
-        auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
         return reinterpret_cast<uint64_t>(
             new CrestOwned<mlir::ConversionTarget>(*ctx));
       });
@@ -163,7 +163,7 @@ void registerTransformsDialectConversionBindings() {
         if (!ctx_ptr || !op_name) {
           return;
         }
-        auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
         crest::as_ref<mlir::ConversionTarget>(
             target_ptr, "mlir::ConversionTarget::addLegalOp")
             .addLegalOp(mlir::OperationName(op_name, ctx));
@@ -177,7 +177,7 @@ void registerTransformsDialectConversionBindings() {
         }
         auto& target = crest::as_ref<mlir::ConversionTarget>(
             target_ptr, "mlir::ConversionTarget::addDynamicallyLegalOp");
-        auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
         auto locked = std::make_shared<crest::LockedSchemeObject>(callback);
         target.addDynamicallyLegalOp(
             mlir::OperationName(op_name, ctx),
@@ -442,7 +442,7 @@ void registerTransformsDialectConversionBindings() {
         if (!ctx_ptr || !op_name) {
           return;
         }
-        auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
         crest::as_ref<mlir::ConversionTarget>(
             target_ptr, "mlir_conversion_target_add_legal_op")
             .addLegalOp(mlir::OperationName(op_name, ctx));
@@ -456,7 +456,7 @@ void registerTransformsDialectConversionBindings() {
         }
         auto& target = crest::as_ref<mlir::ConversionTarget>(
             target_ptr, "mlir_conversion_target_add_dynamically_legal_op");
-        auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
         auto locked = std::make_shared<crest::LockedSchemeObject>(callback);
         target.addDynamicallyLegalOp(
             mlir::OperationName(op_name, ctx),

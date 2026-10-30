@@ -20,7 +20,8 @@ void registerIRBuiltinTypesBindings() {
           scheme_error("mlir::IndexType::get", "null MLIRContext pointer");
         }
         return reinterpret_cast<uint64_t>(
-            mlir::IndexType::get(reinterpret_cast<mlir::MLIRContext*>(ctx_ptr))
+            mlir::IndexType::get(
+                crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__))
                 .getAsOpaquePointer());
       });
   Sregister_symbol(
@@ -31,7 +32,7 @@ void registerIRBuiltinTypesBindings() {
         }
         return reinterpret_cast<uint64_t>(
             mlir::IntegerType::get(
-                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr), 64)
+                crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__), 64)
                 .getAsOpaquePointer());
       });
   Sregister_symbol(
@@ -42,7 +43,7 @@ void registerIRBuiltinTypesBindings() {
         }
         return reinterpret_cast<uint64_t>(
             mlir::IntegerType::get(
-                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr), 1)
+                crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__), 1)
                 .getAsOpaquePointer());
       });
   Sregister_symbol(
@@ -195,7 +196,7 @@ void registerIRBuiltinTypesBindings() {
         }
         return reinterpret_cast<uint64_t>(
             mlir::IntegerType::get(
-                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr), 8)
+                crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__), 8)
                 .getAsOpaquePointer());
       });
   Sregister_symbol(
@@ -206,7 +207,7 @@ void registerIRBuiltinTypesBindings() {
         }
         return reinterpret_cast<uint64_t>(
             mlir::IntegerType::get(
-                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr), 16)
+                crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__), 16)
                 .getAsOpaquePointer());
       });
   Sregister_symbol(
@@ -217,7 +218,7 @@ void registerIRBuiltinTypesBindings() {
         }
         return reinterpret_cast<uint64_t>(
             mlir::IntegerType::get(
-                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr), 32)
+                crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__), 32)
                 .getAsOpaquePointer());
       });
   // General IntegerType::get(ctx, width)
@@ -229,7 +230,7 @@ void registerIRBuiltinTypesBindings() {
         }
         return reinterpret_cast<uint64_t>(
             mlir::IntegerType::get(
-                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr),
+                crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__),
                 static_cast<unsigned>(width))
                 .getAsOpaquePointer());
       });
@@ -242,7 +243,7 @@ void registerIRBuiltinTypesBindings() {
         }
         return reinterpret_cast<uint64_t>(
             mlir::Float16Type::get(
-                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr))
+                crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__))
                 .getAsOpaquePointer());
       });
   Sregister_symbol(
@@ -252,7 +253,7 @@ void registerIRBuiltinTypesBindings() {
         }
         return reinterpret_cast<uint64_t>(
             mlir::BFloat16Type::get(
-                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr))
+                crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__))
                 .getAsOpaquePointer());
       });
   Sregister_symbol(
@@ -262,7 +263,7 @@ void registerIRBuiltinTypesBindings() {
         }
         return reinterpret_cast<uint64_t>(
             mlir::Float32Type::get(
-                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr))
+                crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__))
                 .getAsOpaquePointer());
       });
   Sregister_symbol(
@@ -272,7 +273,7 @@ void registerIRBuiltinTypesBindings() {
         }
         return reinterpret_cast<uint64_t>(
             mlir::Float64Type::get(
-                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr))
+                crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__))
                 .getAsOpaquePointer());
       });
 
@@ -283,7 +284,8 @@ void registerIRBuiltinTypesBindings() {
           scheme_error("mlir::NoneType::get", "null MLIRContext pointer");
         }
         return reinterpret_cast<uint64_t>(
-            mlir::NoneType::get(reinterpret_cast<mlir::MLIRContext*>(ctx_ptr))
+            mlir::NoneType::get(
+                crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__))
                 .getAsOpaquePointer());
       });
 
@@ -420,7 +422,7 @@ void registerIRBuiltinTypesBindings() {
   Sregister_symbol(
       "mlir::FunctionType::get",
       (void*)+[](uint64_t ctx_ptr, ptr inputs, ptr results) -> uint64_t {
-        auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
         llvm::SmallVector<mlir::Type> inputTypes, resultTypes;
         for (ptr cur = inputs; cur != Snil; cur = Scdr(cur)) {
           inputTypes.push_back(mlir::Type::getFromOpaquePointer(

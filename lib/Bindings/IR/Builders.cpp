@@ -21,7 +21,7 @@ void registerIROpBuilderBindings() {
         if (!block_ptr) {
           scheme_error("mlir_ir_op_builder_at_block_end", "null block pointer");
         }
-        auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
         auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
         // mlir::OpBuilder(Block*, iterator) needs the block's parent op for
         // context. For blocks in OperationState regions (not yet materialized),

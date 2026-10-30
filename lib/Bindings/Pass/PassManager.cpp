@@ -21,7 +21,7 @@ void registerPassPassManagerBindings() {
           scheme_error("mlir::PassManager::new", "null MLIRContext pointer");
         }
         return reinterpret_cast<uint64_t>(new CrestOwned<mlir::PassManager>(
-            reinterpret_cast<mlir::MLIRContext*>(ctx_ptr)));
+            crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__)));
       });
 
   // Moves the pass out of the CrestPassHolder into the PassManager.
