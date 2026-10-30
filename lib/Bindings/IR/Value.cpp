@@ -52,8 +52,9 @@ void registerIRValueBindings() {
       });
   // Intended for type-inference passes that refine a placeholder type
   // (e.g. tensor<*xf64> → tensor<2x3xf64>) after all operand shapes are
-  // known. Calling this with an incompatible type corrupts the IR — but
-  // the verifier will catch the inconsistency the next time it runs.
+  // known. Calling this with an incompatible type corrupts the IR silently;
+  // the verifier may catch the inconsistency if it runs, but this is not
+  // guaranteed.
   Sregister_symbol(
       "mlir::Value::setType",
       (void*)+[](uint64_t value_ptr, uint64_t type_ptr) -> void {
