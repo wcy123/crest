@@ -21,10 +21,6 @@ namespace crest {
 
 void registerIRBuiltinAttributesBindings() {
 
-  //===--------------------------------------------------------------------===//
-  // Attr construction
-  //===--------------------------------------------------------------------===//
-
   Sregister_symbol(
       "mlir::IntegerAttr::get<i64>",
       (void*)+[](uint64_t ctx_ptr, ptr value) -> uint64_t {
@@ -146,7 +142,6 @@ void registerIRBuiltinAttributesBindings() {
       "mlir::DenseResourceElementsAttr::get",
       (void*)+[](uint64_t /*ctx_ptr*/, ptr value) -> uint64_t {
         auto result_type_ptr = Sunsigned64_value(Scar(value));
-        // Inline schemeStringToStd for the key string
         ptr skey = Scar(Scdr(value));
         iptr klen = Sstring_length(skey);
         std::string key_str(static_cast<size_t>(klen), '\0');
@@ -180,10 +175,6 @@ void registerIRBuiltinAttributesBindings() {
                 crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__))
                 .getAsOpaquePointer());
       });
-
-  //===--------------------------------------------------------------------===//
-  // Attribute type predicates
-  //===--------------------------------------------------------------------===//
 
   Sregister_symbol(
       "mlir::isa<IntegerAttr>", (void*)+[](uint64_t p) -> int {
@@ -296,10 +287,6 @@ void registerIRBuiltinAttributesBindings() {
                    : 0;
       });
 
-  //===--------------------------------------------------------------------===//
-  // Scalar extraction
-  //===--------------------------------------------------------------------===//
-
   Sregister_symbol(
       "mlir::IntegerAttr::getValue", (void*)+[](uint64_t p) -> ptr {
         if (!p) {
@@ -347,10 +334,6 @@ void registerIRBuiltinAttributesBindings() {
         }
         return Sflonum(fattr.getValueAsDouble());
       });
-
-  //===--------------------------------------------------------------------===//
-  // Array ref / vector conversion
-  //===--------------------------------------------------------------------===//
 
   Sregister_symbol(
       "mlir::DenseI64ArrayAttr::intoArrayRef",
@@ -472,8 +455,6 @@ void registerIRBuiltinAttributesBindings() {
         return v;
       });
 
-  // mlir::DenseElementsAttr::getType — return the ShapedType of a
-  // DenseElementsAttr.
   Sregister_symbol(
       "mlir::DenseElementsAttr::getType",
       (void*)+[](uint64_t attr_ptr) -> uint64_t {
@@ -483,8 +464,6 @@ void registerIRBuiltinAttributesBindings() {
         return reinterpret_cast<uint64_t>(attr.getType().getAsOpaquePointer());
       });
 
-  // mlir::DenseElementsAttr::reshape — reshape a dense attr to a new
-  // ShapedType.
   Sregister_symbol(
       "mlir::DenseElementsAttr::reshape",
       (void*)+[](uint64_t attr_ptr, uint64_t type_ptr) -> uint64_t {

@@ -53,7 +53,6 @@ make_print_fn(LockedSchemeObject cb) {
       opName = opName.drop_front(defaultDialect.size() + 1);
     }
     printer << opName;
-    // Scheme callback prints the rest: operands, attrs, result types.
     std::string op_name_str = op->getName().getStringRef().str();
     scheme_call(cb.get(), op, &printer, op_name_str.c_str());
   };
@@ -82,8 +81,6 @@ make_canon_fn(std::optional<LockedSchemeObject> cb) {
   if (!cb) {
     return [](mlir::RewritePatternSet&, mlir::MLIRContext*) {};
   }
-  // Scheme callback: (pattern-set-ptr ctx-ptr) → void.
-  // The Scheme side calls add-rewrite-pattern on the pattern set.
   return [cb = std::move(*cb)](mlir::RewritePatternSet& patterns,
                                mlir::MLIRContext* ctx) {
     scheme_call(cb.get(), &patterns, ctx);
@@ -95,7 +92,6 @@ make_default_attrs_fn(std::optional<LockedSchemeObject> cb) {
   if (!cb) {
     return [](const mlir::OperationName&, mlir::NamedAttrList&) {};
   }
-  // Scheme callback: (op-name-ptr attr-list-ptr) → void.
   return [cb = std::move(*cb)](const mlir::OperationName& name,
                                mlir::NamedAttrList& attrs) {
     scheme_call(cb.get(), &name, &attrs);

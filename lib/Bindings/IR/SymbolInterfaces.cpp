@@ -14,9 +14,6 @@
 #include <cassert>
 #include <memory>
 
-// ---------------------------------------------------------------------------
-// SymbolConceptData — file-local.
-// ---------------------------------------------------------------------------
 namespace {
 struct SymbolConceptData : public mlir::SymbolOpInterface::Concept {
   crest::LockedSchemeObject get_name_attr;
@@ -162,8 +159,6 @@ void registerIRSymbolInterfacesBindings() {
         crest::SupportedInterfaces<mlir::SymbolOpInterface>::CreateConcept(
             dispatcher);
       });
-
-  // ---- SymbolOpInterface method bindings ----------------------------------
 
   Sregister_symbol(
       "mlir::SymbolOpInterface::getNameAttr",

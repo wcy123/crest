@@ -82,9 +82,6 @@ struct FunctionConceptData : public mlir::FunctionOpInterface::Concept {
 
 namespace crest {
 
-// ---------------------------------------------------------------------------
-// SupportedInterfaces<FunctionOpInterface>::getOrCreateDefaultConcept
-// ---------------------------------------------------------------------------
 template <>
 mlir::FunctionOpInterface::Concept* crest::SupportedInterfaces<
     mlir::FunctionOpInterface>::getOrCreateDefaultConcept() {
@@ -103,8 +100,6 @@ crest::SupportedInterfaces<mlir::FunctionOpInterface>::CloneConcept(
     delete static_cast<FunctionConceptData*>(p);
   });
 }
-// CreateConcept - copies the default concept, overrides named slots for each
-// method the dispatcher provides, then registers via RegisterInterfaceForOp.
 template <>
 mlir::FunctionOpInterface::Concept*
 crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
@@ -130,11 +125,8 @@ crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
   crest::LockedSchemeObject verifyType(
       scheme_call(dispatcher, Sstring_to_symbol("verifyType")));
 
-  // Copy default; override only the provided slots by field name.
   auto data = std::make_unique<FunctionConceptData>();
 
-  // Set base interface pointers: get-or-create per-op concepts from the
-  // registry.
   data->implSymbolOpInterface =
       getOrCreateConcept<mlir::SymbolOpInterface>(op_name);
   data->implArgAndResultAttrsOpInterface =
@@ -213,9 +205,6 @@ crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
   return raw;
 }
 
-// Sregister_symbol bindings
-// ---------------------------------------------------------------------------
-
 void registerInterfacesFunctionInterfacesBindings() {
   Sregister_symbol(
       "mlir::FunctionOpInterface", (void*)+[](ptr dispatcher) {
@@ -229,8 +218,6 @@ void registerInterfacesFunctionInterfacesBindings() {
   // on first call.
   SupportedInterfaces<mlir::FunctionOpInterface>::getOrCreateDefaultConcept();
 
-  // mlir::function_interface_impl::parseFunctionOp - parses a function-like op.
-  // The FuncTypeBuilder builds a FunctionType from arg/result types.
   Sregister_symbol(
       "mlir::function_interface_impl::parseFunctionOp",
       (void*)+[](uint64_t parser_ptr, uint64_t state_ptr) -> int {
@@ -250,8 +237,6 @@ void registerInterfacesFunctionInterfacesBindings() {
             mlir::StringAttr::get(state.getContext(), "res_attrs"));
       });
 
-  // mlir::function_interface_impl::printFunctionOp - pretty-prints the op.
-  // Requires that the op has been looked up as a FunctionOpInterface.
   Sregister_symbol(
       "mlir::function_interface_impl::printFunctionOp",
       (void*)+[](uint64_t printer_ptr, uint64_t op_ptr) -> void {
@@ -266,10 +251,6 @@ void registerInterfacesFunctionInterfacesBindings() {
             mlir::StringAttr::get(ctx, "arg_attrs"),
             mlir::StringAttr::get(ctx, "res_attrs"));
       });
-
-  // ---- FunctionOpInterface method bindings --------------------------------
-  // Each binding looks up the concept for the op, errors if not found, then
-  // calls the appropriate concept function pointer.
 
   Sregister_symbol(
       "mlir::FunctionOpInterface::getFunctionType",

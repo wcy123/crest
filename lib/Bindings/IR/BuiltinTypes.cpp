@@ -143,7 +143,6 @@ void registerIRBuiltinTypesBindings() {
         return reinterpret_cast<uint64_t>(
             t.cloneWithEncoding(attr).getAsOpaquePointer());
       });
-  // ── Type query functions (moved from BuiltinAttributes.cpp) ─────────────
   Sregister_symbol(
       "mlir::ShapedType::getElementType",
       (void*)+[](uint64_t type_ptr) -> uint64_t {
@@ -187,7 +186,6 @@ void registerIRBuiltinTypesBindings() {
         return it.isUnsigned() ? 1 : 0;
       });
 
-  // ── Additional integer type constructors ─────────────────────────────────
   Sregister_symbol(
       "mlir::IntegerType::get<i8>", (void*)+[](uint64_t ctx_ptr) -> uint64_t {
         if (!ctx_ptr) {
@@ -221,7 +219,6 @@ void registerIRBuiltinTypesBindings() {
                 crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__), 32)
                 .getAsOpaquePointer());
       });
-  // General IntegerType::get(ctx, width)
   Sregister_symbol(
       "mlir::IntegerType::get",
       (void*)+[](uint64_t ctx_ptr, int64_t width) -> uint64_t {
@@ -235,7 +232,6 @@ void registerIRBuiltinTypesBindings() {
                 .getAsOpaquePointer());
       });
 
-  // ── Float type constructors ───────────────────────────────────────────────
   Sregister_symbol(
       "mlir::Float16Type::get", (void*)+[](uint64_t ctx_ptr) -> uint64_t {
         if (!ctx_ptr) {
@@ -277,7 +273,6 @@ void registerIRBuiltinTypesBindings() {
                 .getAsOpaquePointer());
       });
 
-  // ── NoneType constructor ──────────────────────────────────────────────────
   Sregister_symbol(
       "mlir::NoneType::get", (void*)+[](uint64_t ctx_ptr) -> uint64_t {
         if (!ctx_ptr) {
@@ -289,7 +284,6 @@ void registerIRBuiltinTypesBindings() {
                 .getAsOpaquePointer());
       });
 
-  // ── isa<> predicates ─────────────────────────────────────────────────────
 #define CREST_ISA(TypeName)                                                    \
   Sregister_symbol(                                                            \
       "mlir::isa<" #TypeName ">", (void*)+[](uint64_t p) -> int {              \
@@ -311,7 +305,6 @@ void registerIRBuiltinTypesBindings() {
   CREST_ISA(ComplexType);
 #undef CREST_ISA
 
-  // ── Float type accessor ───────────────────────────────────────────────────
   Sregister_symbol(
       "mlir::FloatType::getWidth", (void*)+[](uint64_t p) -> int64_t {
         if (!p) {
@@ -325,7 +318,6 @@ void registerIRBuiltinTypesBindings() {
         return static_cast<int64_t>(ft.getWidth());
       });
 
-  // ── ComplexType accessor ──────────────────────────────────────────────────
   Sregister_symbol(
       "mlir::ComplexType::getElementType", (void*)+[](uint64_t p) -> uint64_t {
         if (!p) {
@@ -342,7 +334,6 @@ void registerIRBuiltinTypesBindings() {
             ct.getElementType().getAsOpaquePointer());
       });
 
-  // ── VectorType accessors ──────────────────────────────────────────────────
   Sregister_symbol(
       "mlir::VectorType::getRank", (void*)+[](uint64_t p) -> int64_t {
         if (!p) {
@@ -369,7 +360,6 @@ void registerIRBuiltinTypesBindings() {
             vt.getElementType().getAsOpaquePointer());
       });
 
-  // ── MemRefType accessors ──────────────────────────────────────────────────
   Sregister_symbol(
       "mlir::MemRefType::getElementType", (void*)+[](uint64_t p) -> uint64_t {
         if (!p) {

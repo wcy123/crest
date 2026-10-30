@@ -3,9 +3,6 @@
  * Licensed under the MIT License.
  */
 
-// Bindings for crest::CrestObject — generic foreign object base.
-// See lib/Bindings/Support/CrestObject.h.
-//
 // Note: CrestObject::deletor is NOT a C binding — it is just a foreign-ref
 // at offset 0, implemented directly in Scheme as:
 //   (define (CrestObject::deletor obj) (foreign-ref 'uptr obj 0))

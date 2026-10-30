@@ -103,7 +103,6 @@ void registerIRMLIRContextBindings() {
             ->printStackTraceOnDiagnostic(enable != 0);
       });
 
-  // mlir::parseSourceFile — parse an MLIR text file; returns Operation* or 0.
   Sregister_symbol(
       "mlir::parseSourceFile",
       (void*)+[](uint64_t ctx_ptr, const char* filename) -> uint64_t {

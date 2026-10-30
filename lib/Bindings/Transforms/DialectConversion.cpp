@@ -356,9 +356,6 @@ void registerTransformsDialectConversionBindings() {
             [locked](mlir::OpBuilder& builder, mlir::Type resultType,
                      mlir::ValueRange inputs,
                      mlir::Location loc) -> mlir::Value {
-              // Copy builder into CrestOwned — OpBuilder is copyable (context
-              // ptr + insertion point). No CrestRef<OpBuilder> needed; Scheme
-              // always sees CrestOwned<OpBuilder>.
               auto builderShell =
                   std::make_unique<CrestOwned<mlir::OpBuilder>>(builder);
               ptr builder_arg =
@@ -376,9 +373,6 @@ void registerTransformsDialectConversionBindings() {
                   reinterpret_cast<uint64_t>(loc.getAsOpaquePointer()));
               ptr result = scheme_call(locked->get(), builder_arg,
                                        result_type_arg, inputs_list, loc_arg);
-              // Sync cursor back: the callback may have advanced the insertion
-              // point on the copy. Cheap assignment; removes dependency on
-              // whether MLIR uses the builder cursor after the callback.
               builder = builderShell->inner;
               if (result == Sfalse || result == Sfixnum(0)) {
                 return nullptr;
@@ -412,145 +406,6 @@ void registerTransformsDialectConversionBindings() {
                        ->isa<CrestOwned<mlir::ConversionTarget>>()
                    ? 1
                    : 0;
-      });
-
-  // ── Backward-compat aliases (old names) ──────────────────────────────────
-  Sregister_symbol(
-      "mlir_conversion_target_add_illegal_dialect",
-      (void*)+[](uint64_t target_ptr, const char* dialect_name) -> void {
-        if (!dialect_name) {
-          return;
-        }
-        crest::as_ref<mlir::ConversionTarget>(
-            target_ptr, "mlir_conversion_target_add_illegal_dialect")
-            .addIllegalDialect(dialect_name);
-      });
-  Sregister_symbol(
-      "mlir_conversion_target_add_legal_dialect",
-      (void*)+[](uint64_t target_ptr, const char* dialect_name) -> void {
-        if (!dialect_name) {
-          return;
-        }
-        crest::as_ref<mlir::ConversionTarget>(
-            target_ptr, "mlir_conversion_target_add_legal_dialect")
-            .addLegalDialect(dialect_name);
-      });
-  Sregister_symbol(
-      "mlir_conversion_target_add_legal_op",
-      (void*)+[](uint64_t target_ptr, uint64_t ctx_ptr,
-                 const char* op_name) -> void {
-        if (!ctx_ptr || !op_name) {
-          return;
-        }
-        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
-        crest::as_ref<mlir::ConversionTarget>(
-            target_ptr, "mlir_conversion_target_add_legal_op")
-            .addLegalOp(mlir::OperationName(op_name, ctx));
-      });
-  Sregister_symbol(
-      "mlir_conversion_target_add_dynamically_legal_op",
-      (void*)+[](uint64_t target_ptr, uint64_t ctx_ptr, const char* op_name,
-                 ptr callback) -> void {
-        if (!ctx_ptr || !op_name) {
-          return;
-        }
-        auto& target = crest::as_ref<mlir::ConversionTarget>(
-            target_ptr, "mlir_conversion_target_add_dynamically_legal_op");
-        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
-        auto locked = std::make_shared<crest::LockedSchemeObject>(callback);
-        target.addDynamicallyLegalOp(
-            mlir::OperationName(op_name, ctx),
-            [locked](mlir::Operation* op) -> bool {
-              ptr op_arg = Sunsigned64(reinterpret_cast<uint64_t>(op));
-              ptr result = scheme_call(locked->get(), op_arg);
-              return result != Sfalse && result != Sfixnum(0);
-            });
-      });
-  Sregister_symbol(
-      "mlir_conversion_target_mark_unknown_ops_dynamically_legal",
-      (void*)+[](uint64_t target_ptr, ptr callback) -> void {
-        auto locked = std::make_shared<crest::LockedSchemeObject>(callback);
-        crest::as_ref<mlir::ConversionTarget>(
-            target_ptr,
-            "mlir_conversion_target_mark_unknown_ops_dynamically_legal")
-            .markUnknownOpDynamicallyLegal(
-                [locked](mlir::Operation* op) -> bool {
-                  ptr op_arg = Sunsigned64(reinterpret_cast<uint64_t>(op));
-                  ptr result = scheme_call(locked->get(), op_arg);
-                  return result != Sfalse && result != Sfixnum(0);
-                });
-      });
-  Sregister_symbol(
-      "mlir_type_converter_add_conversion",
-      (void*)+[](uint64_t converter_ptr, ptr callback) -> void {
-        auto& converter = crest::as_ref<mlir::TypeConverter>(
-            converter_ptr, "mlir_type_converter_add_conversion");
-        auto locked = std::make_shared<crest::LockedSchemeObject>(callback);
-        converter.addConversion(
-            [locked](mlir::Type type) -> std::optional<mlir::Type> {
-              ptr type_arg = Sunsigned64(
-                  reinterpret_cast<uint64_t>(type.getAsOpaquePointer()));
-              ptr result = scheme_call(locked->get(), type_arg);
-              if (result == Sfalse) {
-                return std::nullopt;
-              }
-              uint64_t result_val = Sunsigned64_value(result);
-              if (result_val == 0) {
-                return std::nullopt;
-              }
-              return mlir::Type::getFromOpaquePointer(
-                  reinterpret_cast<const void*>(result_val));
-            });
-      });
-  Sregister_symbol(
-      "mlir_type_converter_is_legal_type",
-      (void*)+[](uint64_t converter_ptr, uint64_t type_ptr) -> int {
-        if (!type_ptr) {
-          scheme_error("mlir_type_converter_is_legal_type", "null type");
-        }
-        auto& converter = crest::as_ref<mlir::TypeConverter>(
-            converter_ptr, "mlir_type_converter_is_legal_type");
-        mlir::Type type = mlir::Type::getFromOpaquePointer(
-            reinterpret_cast<const void*>(type_ptr));
-        return converter.isLegal(type) ? 1 : 0;
-      });
-  Sregister_symbol(
-      "mlir_type_converter_is_legal",
-      (void*)+[](uint64_t converter_ptr, uint64_t op_ptr) -> int {
-        if (!op_ptr) {
-          scheme_error("mlir_type_converter_is_legal", "null op");
-        }
-        auto& converter = crest::as_ref<mlir::TypeConverter>(
-            converter_ptr, "mlir_type_converter_is_legal");
-        auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-        return converter.isLegal(op) ? 1 : 0;
-      });
-  Sregister_symbol(
-      "mlir_type_converter_is_signature_legal",
-      (void*)+[](uint64_t converter_ptr, uint64_t func_op_ptr) -> int {
-        if (!func_op_ptr) {
-          scheme_error("mlir_type_converter_is_signature_legal",
-                       "null func-op");
-        }
-        auto& converter = crest::as_ref<mlir::TypeConverter>(
-            converter_ptr, "mlir_type_converter_is_signature_legal");
-        auto func_op = mlir::dyn_cast<mlir::func::FuncOp>(
-            reinterpret_cast<mlir::Operation*>(func_op_ptr));
-        if (!func_op) {
-          scheme_error("mlir_type_converter_is_signature_legal",
-                       "op is not a func.func operation");
-        }
-        return converter.isSignatureLegal(func_op.getFunctionType()) ? 1 : 0;
-      });
-  Sregister_symbol(
-      "mlir_populate_func_type_conversion_pattern",
-      (void*)+[](uint64_t patterns_ptr, uint64_t converter_ptr) -> void {
-        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
-            patterns_ptr, "mlir_populate_func_type_conversion_pattern");
-        auto& converter = crest::as_ref<mlir::TypeConverter>(
-            converter_ptr, "mlir_populate_func_type_conversion_pattern");
-        mlir::populateFunctionOpInterfaceTypeConversionPattern<
-            mlir::func::FuncOp>(patterns, converter);
       });
 }
 
