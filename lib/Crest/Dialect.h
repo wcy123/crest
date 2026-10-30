@@ -150,22 +150,18 @@ void registerCrestInlinerBindings();
 ///
 /// @param dialect_name  The MLIR dialect namespace, e.g. "toy".
 /// @param module_name   The Scheme library path in slash-separated form,
-///                      e.g. "toy/ch4/toy" (equivalent to importing
-///                      the R6RS library (toy ch4 toy)).  This is the
-///                      same string accepted by
-///                      ChezSchemeInterpreter::importLibrary.
+///                      e.g. "toy/ch4/toy" (equivalent to the R6RS library
+///                      name (toy ch4 toy), the same format accepted by
+///                      ChezSchemeInterpreter::importLibrary).
 ///
-/// The returned factory, when called with an MLIRContext*, imports the
-/// Scheme library via the interpreter, reads the dialect callbacks vector
-/// bound to `dialect_name` at the top level, and constructs a CrestDialect.
-/// Registration happens lazily: the factory is only invoked by
-/// MLIRContext::getOrLoadDialect on first encounter of the dialect's ops
-/// during parsing.
+/// Insert the result into a DialectRegistry before creating any MLIRContext.
+/// The dialect is loaded lazily: when the parser first encounters an op
+/// whose namespace matches dialect_name, it imports module_name and
+/// initializes the dialect.
 ///
-/// Insert the result into a DialectRegistry before creating any MLIRContext
-/// so the parser can lazy-load the dialect without an UnregisteredOpModel
-/// use-after-free (see tech-note.md: "Dialect Registration Must Happen
-/// Before Parsing").
+/// This lazy registration avoids the UnregisteredOpModel use-after-free
+/// that occurs when a dialect is registered after parsing has already begun
+/// (see tech-note.md: "Dialect Registration Must Happen Before Parsing").
 std::pair<mlir::TypeID, mlir::DialectAllocatorFunction>
 dialectFactory(std::string dialect_name, std::string module_name);
 
