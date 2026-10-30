@@ -134,8 +134,8 @@
     ;; Format: toy.add %lhs, %rhs {attrs} : type
     (define-op add
       :summary    "element-wise addition"
-      :operands   ((lhs mlir::Value)
-                   (rhs mlir::Value))
+      :operands   ((lhs mlir::Value?)
+                   (rhs mlir::Value?))
       :results    ((output mlir::isa<RankedTensorType>?))
       (:parse (parser state) (%%parse-binary-op parser state))
       (:print (op printer name) (%%print-binary-op op printer name)))
@@ -143,8 +143,8 @@
     ;; Format: toy.mul %lhs, %rhs {attrs} : type
     (define-op mul
       :summary    "element-wise multiplication"
-      :operands   ((lhs mlir::Value)
-                   (rhs mlir::Value))
+      :operands   ((lhs mlir::Value?)
+                   (rhs mlir::Value?))
       :results    ((output mlir::isa<RankedTensorType>?))
       (:parse (parser state) (%%parse-binary-op parser state))
       (:print (op printer name) (%%print-binary-op op printer name)))
@@ -152,7 +152,7 @@
     ;; Format: toy.transpose(%input : type) to result-type
     (define-op transpose
       :summary    "transpose a 2D tensor"
-      :operands   ((input mlir::Value))
+      :operands   ((input mlir::Value?))
       :results    ((output mlir::isa<RankedTensorType>?))
       (:parse (parser state) (%%parse-unary-to-type parser state))
       (:print (op printer name) (%%print-unary-to-type op printer name)))
@@ -160,7 +160,7 @@
     ;; Format: toy.reshape(%input : type) to result-type
     (define-op reshape
       :summary    "reshape a tensor"
-      :operands   ((input mlir::Value))
+      :operands   ((input mlir::Value?))
       :results    ((output mlir::isa<RankedTensorType>?))
       (:parse (parser state) (%%parse-unary-to-type parser state))
       (:print (op printer name) (%%print-unary-to-type op printer name)))
@@ -222,7 +222,7 @@
     ;; Format: toy.print %input : type
     (define-op print
       :summary    "print a tensor"
-      :operands   ((input mlir::Value))
+      :operands   ((input mlir::Value?))
       (:parse (parser state)
         (let ([ops (mlir::OpAsmParser::parseOperand parser)])
           (and (%%parsed? ops)

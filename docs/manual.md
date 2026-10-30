@@ -646,7 +646,7 @@ The op's full MLIR name is `dialect-name.op-name` (e.g. `toy.constant`).
 **Type predicates** in `:operands`, `:attributes`, `:results` are Scheme
 procedures called at verification time. For example:
 - `:results ((output mlir::isa<RankedTensorType>?))` — result must be ranked
-- `:operands ((lhs mlir::Value))` — any non-null value (`mlir::Value` is `(lambda (v) (not (zero? v)))`)
+- `:operands ((lhs mlir::Value?))` — any non-null value (`mlir::Value?` is `(lambda (v) (not (zero? v)))`)
 
 ### Op-level `:interfaces`
 
