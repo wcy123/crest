@@ -287,7 +287,8 @@ void registerIRExtensibleDialectBindings() {
       "crest::load-scheme-dialect!",
       (void*)+[](uint64_t ctx_ptr, const char* dialect_name,
                  const char* module_name) -> void {
-        auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(
+            ctx_ptr, "crest::load-scheme-dialect!");
         auto [type_id, factory] =
             dialectFactory(std::string(dialect_name), std::string(module_name));
         factory(ctx);
