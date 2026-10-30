@@ -638,7 +638,7 @@ The op's full MLIR name is `dialect-name.op-name` (e.g. `toy.constant`).
 | `:operands ((name predicate) ...)` | Operand fields — default `:required`; append `:optional` or `:variadic` to change cardinality: `(name predicate :optional)` |
 | `:attributes ((name predicate) ...)` | Attribute fields — default `:required`; append `:optional` to allow absence: `(name predicate :optional)` |
 | `:results ((name predicate) ...)` | Result fields; `predicate` is called on the result's `mlir::Type` uptr |
-| `(:parse (parser state) body ...)` | Custom assembly parser; like `when` — one formals arg then body |
+| `(:parse (parser state) body ...)` | Custom assembly parser |
 | `(:print (op printer name) body ...)` | Custom assembly printer |
 | `(:verify (op) body ...)` | Extra verifier called after attribute/type checks |
 | `(:fold (op) body ...)` | Constant-fold hook; return `#t` if folded |
