@@ -19,7 +19,7 @@
 
 (library (mlir IR Value)
   (export
-    mlir::Value?
+    mlir::Value
     mlir::Value::getDefiningOp
     mlir::isa<BlockArgument>?
     mlir::Value::getUses
@@ -72,6 +72,6 @@
   (define mlir::OpResult::getResultNumber %mlir::OpResult::getResultNumber)
 
   ;; Predicate alias — all mlir operands are Values; non-zero uptr = valid value.
-  (define (mlir::Value? v) (not (zero? v)))
+  (define (mlir::Value v) (not (zero? v)))
 
   ) ;; end library (mlir IR Value)

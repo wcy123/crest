@@ -24,27 +24,27 @@
     ;; AddOp — element-wise addition (f64 tensors)
     (define-op add
       :summary    "element-wise addition"
-      :operands   ((lhs mlir::Value?)
-                   (rhs mlir::Value?))
+      :operands   ((lhs mlir::Value)
+                   (rhs mlir::Value))
       :results    ((output mlir::RankedTensorType)))
 
     ;; MulOp — element-wise multiplication (f64 tensors)
     (define-op mul
       :summary    "element-wise multiplication"
-      :operands   ((lhs mlir::Value?)
-                   (rhs mlir::Value?))
+      :operands   ((lhs mlir::Value)
+                   (rhs mlir::Value))
       :results    ((output mlir::RankedTensorType)))
 
     ;; TransposeOp — transpose a 2D tensor
     (define-op transpose
       :summary    "transpose a 2D tensor"
-      :operands   ((input mlir::Value?))
+      :operands   ((input mlir::Value))
       :results    ((output mlir::RankedTensorType)))
 
     ;; ReshapeOp — reshape a tensor to a given type
     (define-op reshape
       :summary    "reshape a tensor"
-      :operands   ((input mlir::Value?))
+      :operands   ((input mlir::Value))
       :results    ((output mlir::RankedTensorType)))
 
     ;; GenericCallOp — call to a user-defined function
@@ -64,5 +64,5 @@
     ;; PrintOp — print a tensor to stdout
     (define-op print
       :summary    "print a tensor"
-      :operands   ((input mlir::Value?))))
+      :operands   ((input mlir::Value))))
   )
