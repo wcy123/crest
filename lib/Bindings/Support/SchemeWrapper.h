@@ -66,15 +66,19 @@ template <typename T>
   return reinterpret_cast<T*>(ptr_val);
 }
 
+namespace crest {
+
 template <typename T>
-[[nodiscard]] inline T& crest_owned(uint64_t ptr_val, const char* who) {
+[[nodiscard]] inline T& as_ref(uint64_t ptr_val, const char* who) {
   return crest_cast<crest::CrestOwned<T>>(ptr_val, who)->inner;
 }
 
 template <typename T>
-[[nodiscard]] inline T* crest_ref(uint64_t ptr_val, const char* who) {
+[[nodiscard]] inline T* as_ptr(uint64_t ptr_val, const char* who) {
   return crest_cast<crest::CrestRef<T>>(ptr_val, who)->ptr;
 }
+
+} // namespace crest
 
 // ---------------------------------------------------------------------------
 // Conversion<From, To>

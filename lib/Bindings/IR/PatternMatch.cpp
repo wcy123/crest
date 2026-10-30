@@ -23,8 +23,8 @@ void registerIRRewriterBaseBindings() {
           scheme_error("mlir::RewriterBase::setInsertionPoint",
                        "null op pointer");
         }
-        crest_ref<mlir::RewriterBase>(rewriter_ptr,
-                                      "mlir::RewriterBase::setInsertionPoint")
+        crest::as_ptr<mlir::RewriterBase>(
+            rewriter_ptr, "mlir::RewriterBase::setInsertionPoint")
             ->setInsertionPoint(reinterpret_cast<mlir::Operation*>(op_ptr));
       });
   Sregister_symbol(
@@ -34,7 +34,7 @@ void registerIRRewriterBaseBindings() {
           scheme_error("mlir::RewriterBase::setInsertionPointToEnd",
                        "null block pointer");
         }
-        crest_ref<mlir::RewriterBase>(
+        crest::as_ptr<mlir::RewriterBase>(
             rewriter_ptr, "mlir::RewriterBase::setInsertionPointToEnd")
             ->setInsertionPointToEnd(reinterpret_cast<mlir::Block*>(block_ptr));
       });
@@ -46,7 +46,7 @@ void registerIRRewriterBaseBindings() {
           scheme_error("mlir::RewriterBase::createBlock",
                        "null region pointer");
         }
-        auto* rewriter = crest_ref<mlir::RewriterBase>(
+        auto* rewriter = crest::as_ptr<mlir::RewriterBase>(
             rewriter_ptr, "mlir::RewriterBase::createBlock");
         auto* region = reinterpret_cast<mlir::Region*>(region_ptr);
         mlir::Operation* parent = region->getParentOp();
@@ -75,8 +75,8 @@ void registerIRRewriterBaseBindings() {
         if (!old_op_ptr) {
           scheme_error("mlir::RewriterBase::replaceOp", "null op pointer");
         }
-        crest_ref<mlir::RewriterBase>(rewriter_ptr,
-                                      "mlir::RewriterBase::replaceOp")
+        crest::as_ptr<mlir::RewriterBase>(rewriter_ptr,
+                                          "mlir::RewriterBase::replaceOp")
             ->replaceOp(reinterpret_cast<mlir::Operation*>(old_op_ptr),
                         mlir::Value::getFromOpaquePointer(
                             reinterpret_cast<void*>(new_value_ptr)));
@@ -85,8 +85,8 @@ void registerIRRewriterBaseBindings() {
   Sregister_symbol(
       "mlir::RewriterBase::eraseOp",
       (void*)+[](uint64_t rewriter_ptr, uint64_t op_ptr) -> int {
-        crest_ref<mlir::RewriterBase>(rewriter_ptr,
-                                      "mlir::RewriterBase::eraseOp")
+        crest::as_ptr<mlir::RewriterBase>(rewriter_ptr,
+                                          "mlir::RewriterBase::eraseOp")
             ->eraseOp(reinterpret_cast<mlir::Operation*>(op_ptr));
         return 1;
       });
@@ -96,9 +96,9 @@ void registerIRRewriterBaseBindings() {
   Sregister_symbol(
       "mlir::RewriterBase::create<OperationState>",
       (void*)+[](uint64_t rw_ptr, uint64_t state_ptr) -> uint64_t {
-        auto* rw = crest_ref<mlir::RewriterBase>(
+        auto* rw = crest::as_ptr<mlir::RewriterBase>(
             rw_ptr, "mlir::RewriterBase::create<OperationState>");
-        auto& state = crest_owned<mlir::OperationState>(
+        auto& state = crest::as_ref<mlir::OperationState>(
             state_ptr, "mlir::RewriterBase::create<OperationState>");
         return reinterpret_cast<uint64_t>(rw->create(state));
       });

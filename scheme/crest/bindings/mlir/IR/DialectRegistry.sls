@@ -17,7 +17,7 @@
 
 (library (mlir IR DialectRegistry)
   (export mlir::DialectRegistry::new
-          mlir::DialectRegistry::insertSchemeDialect
+          mlir::DialectRegistry::insert
           mlir::MLIRContext::new/registry
           with-DialectRegistry)
   (import (rnrs)
@@ -27,8 +27,8 @@
   (define mlir::DialectRegistry::new
     %mlir::DialectRegistry::new)
 
-  (define mlir::DialectRegistry::insertSchemeDialect
-    %mlir::DialectRegistry::insertSchemeDialect)
+  (define mlir::DialectRegistry::insert
+    %mlir::DialectRegistry::insert)
 
   (define mlir::MLIRContext::new/registry
     %mlir::MLIRContext::new/registry)

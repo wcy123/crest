@@ -22,7 +22,7 @@ void registerTransformsGreedyPatternRewriteDriverBindings() {
                        "null op");
         }
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-        auto& patterns = crest_owned<mlir::RewritePatternSet>(
+        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
             patterns_ptr,
             "mlir_transforms_greedy_pattern_rewrite_driver_apply");
         return mlir::succeeded(

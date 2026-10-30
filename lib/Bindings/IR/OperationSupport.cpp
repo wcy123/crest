@@ -29,23 +29,23 @@ void registerIROperationStateBindings() {
   Sregister_symbol(
       "mlir::OperationState::addOperands",
       (void*)+[](uint64_t state_ptr, uint64_t value_ptr) -> void {
-        crest_owned<mlir::OperationState>(state_ptr,
-                                          "mlir::OperationState::addOperands")
+        crest::as_ref<mlir::OperationState>(state_ptr,
+                                            "mlir::OperationState::addOperands")
             .addOperands(mlir::Value::getFromOpaquePointer(
                 reinterpret_cast<void*>(value_ptr)));
       });
   Sregister_symbol(
       "mlir::OperationState::addTypes",
       (void*)+[](uint64_t state_ptr, uint64_t type_ptr) -> void {
-        crest_owned<mlir::OperationState>(state_ptr,
-                                          "mlir::OperationState::addTypes")
+        crest::as_ref<mlir::OperationState>(state_ptr,
+                                            "mlir::OperationState::addTypes")
             .addTypes(mlir::Type::getFromOpaquePointer(
                 reinterpret_cast<const void*>(type_ptr)));
       });
   Sregister_symbol(
       "mlir::OperationState::addRegion",
       (void*)+[](uint64_t state_ptr) -> uint64_t {
-        mlir::Region* region = crest_owned<mlir::OperationState>(
+        mlir::Region* region = crest::as_ref<mlir::OperationState>(
                                    state_ptr, "mlir::OperationState::addRegion")
                                    .addRegion();
         return reinterpret_cast<uint64_t>(region);
@@ -57,8 +57,8 @@ void registerIROperationStateBindings() {
         if (!name || !attr_ptr) {
           return;
         }
-        crest_owned<mlir::OperationState>(state_ptr,
-                                          "mlir::OperationState::addAttribute")
+        crest::as_ref<mlir::OperationState>(
+            state_ptr, "mlir::OperationState::addAttribute")
             .addAttribute(name, mlir::Attribute::getFromOpaquePointer(
                                     reinterpret_cast<const void*>(attr_ptr)));
       });

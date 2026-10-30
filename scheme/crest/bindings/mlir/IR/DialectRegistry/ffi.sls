@@ -8,7 +8,7 @@
 ;; Mirrors mlir/IR/DialectRegistry.h
 (library (mlir IR DialectRegistry ffi)
   (export %mlir::DialectRegistry::new
-          %mlir::DialectRegistry::insertSchemeDialect
+          %mlir::DialectRegistry::insert
           %mlir::MLIRContext::new/registry
           %CrestObject::delete)
   (import (chezscheme))
@@ -16,8 +16,8 @@
   (define %mlir::DialectRegistry::new
     (foreign-procedure "mlir::DialectRegistry::new" () uptr))
 
-  (define %mlir::DialectRegistry::insertSchemeDialect
-    (foreign-procedure "mlir::DialectRegistry::insertSchemeDialect"
+  (define %mlir::DialectRegistry::insert
+    (foreign-procedure "mlir::DialectRegistry::insert"
                        (uptr string string) void))
 
   (define %mlir::MLIRContext::new/registry
