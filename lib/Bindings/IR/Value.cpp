@@ -55,7 +55,7 @@ void registerIRValueBindings() {
   // known. Calling this with an incompatible type corrupts the IR silently;
   // the verifier may catch the inconsistency if it runs, but this is not
   // guaranteed.
-  /// value_ptr: mlir::Value* (opaque), type_ptr: mlir::Type* (opaque)
+  /// value_ptr: mlir::Value (opaque), type_ptr: mlir::Type (opaque)
   Sregister_symbol(
       "mlir::Value::setType",
       (void*)+[](uint64_t value_ptr, uint64_t type_ptr) -> void {
@@ -68,7 +68,7 @@ void registerIRValueBindings() {
             reinterpret_cast<const void*>(type_ptr));
         val.setType(type);
       });
-  /// value_ptr: mlir::Value* (opaque), replacement_ptr: mlir::Value* (opaque)
+  /// value_ptr: mlir::Value (opaque), replacement_ptr: mlir::Value (opaque)
   Sregister_symbol(
       "mlir::Value::replaceAllUsesWith",
       (void*)+[](uint64_t value_ptr, uint64_t replacement_ptr) -> void {
