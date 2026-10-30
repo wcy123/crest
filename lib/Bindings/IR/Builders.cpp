@@ -39,6 +39,7 @@ void registerIROpBuilderBindings() {
             state_ptr, "mlir_ir_op_builder_create_from_state");
         return reinterpret_cast<uint64_t>(builder.create(state));
       });
+  /// builder_ptr: CrestOwned<mlir::OpBuilder>*, op_ptr: mlir::Operation*
   Sregister_symbol(
       "mlir::OpBuilder::setInsertionPoint",
       (void*)+[](uint64_t builder_ptr, uint64_t op_ptr) -> void {

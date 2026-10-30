@@ -14,12 +14,15 @@
 namespace crest {
 
 void registerIRDialectRegistryBindings() {
+  /// → CrestOwned<mlir::DialectRegistry>*
   Sregister_symbol(
       "mlir::DialectRegistry::new", (void*)+[]() -> uint64_t {
         return reinterpret_cast<uint64_t>(
             new CrestOwned<mlir::DialectRegistry>());
       });
 
+  /// registry_ptr: CrestOwned<mlir::DialectRegistry>*, dialect_name: string,
+  /// module_name: string
   Sregister_symbol(
       "mlir::DialectRegistry::insert",
       (void*)+[](uint64_t registry_ptr, const char* dialect_name,

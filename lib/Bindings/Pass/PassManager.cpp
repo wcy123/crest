@@ -15,6 +15,8 @@
 namespace crest {
 
 void registerPassPassManagerBindings() {
+  /// ctx_ptr: CrestOwned<MLIRContext>* | MLIRContext* →
+  /// CrestOwned<mlir::PassManager>*
   Sregister_symbol(
       "mlir::PassManager::new", (void*)+[](uint64_t ctx_ptr) -> uint64_t {
         if (!ctx_ptr) {
@@ -26,6 +28,7 @@ void registerPassPassManagerBindings() {
 
   // Moves the pass out of the CrestPassHolder into the PassManager.
   // Calling addPass twice with the same holder is an error.
+  /// pm_ptr: CrestOwned<mlir::PassManager>*, pass_ptr: CrestPassHolder*
   Sregister_symbol(
       "mlir::PassManager::addPass",
       (void*)+[](uint64_t pm_ptr, uint64_t pass_ptr) -> void {
@@ -40,6 +43,8 @@ void registerPassPassManagerBindings() {
         pm.addPass(std::move(holder->pass));
       });
 
+  /// pm_ptr: CrestOwned<mlir::PassManager>*, module_ptr: mlir::Operation* → 1
+  /// (success) | 0 (failure)
   Sregister_symbol(
       "mlir::PassManager::run!",
       (void*)+[](uint64_t pm_ptr, uint64_t module_ptr) -> int {
@@ -49,6 +54,7 @@ void registerPassPassManagerBindings() {
         return mlir::succeeded(pm.run(op)) ? 1 : 0;
       });
 
+  /// pm_ptr: CrestOwned<mlir::PassManager>*, enabled: bool (non-zero = true)
   Sregister_symbol(
       "mlir::PassManager::enableVerifier",
       (void*)+[](uint64_t pm_ptr, int enabled) -> void {

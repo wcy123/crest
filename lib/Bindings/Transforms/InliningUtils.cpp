@@ -105,6 +105,8 @@ struct CrestInlinerInterface : public mlir::DialectInlinerInterface {
 namespace crest {
 
 void registerTransformsInliningUtilsBindings() {
+  /// dialect_ptr: CrestDialect*, dispatcher: Scheme procedure (method → lambda
+  /// | #f)
   Sregister_symbol(
       "mlir::DialectInlinerInterface",
       (void*)+[](uint64_t dialect_ptr, ptr dispatcher) -> void {
@@ -143,6 +145,7 @@ void registerTransformsInliningUtilsBindings() {
         dialect->addInterface(std::move(iface));
       });
 
+  /// → CrestPassHolder* (consumed by mlir::PassManager::addPass)
   Sregister_symbol(
       "mlir::createInlinerPass", (void*)+[]() -> uint64_t {
         return reinterpret_cast<uint64_t>(
