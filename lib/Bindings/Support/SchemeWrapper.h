@@ -106,6 +106,23 @@ template <typename T>
 
 } // namespace crest
 
+// Forward declaration so the as_ptr<mlir::MLIRContext> specialization can
+// be declared without pulling in all of mlir/IR/MLIRContext.h.
+namespace mlir {
+class MLIRContext;
+}
+
+namespace crest {
+// Explicit specialisation for mlir::MLIRContext: accepts
+// CrestOwned<MLIRContext>* (user-created) or a raw MLIRContext* returned by
+// MLIR APIs such as op->getContext() and type.getContext(). Raw pointers are
+// valid MLIR-managed memory and need no CrestObject wrapper — they are never
+// freed by Scheme.
+template <>
+[[nodiscard]] mlir::MLIRContext* as_ptr<mlir::MLIRContext>(uint64_t ptr_val,
+                                                           const char* who);
+} // namespace crest
+
 // ---------------------------------------------------------------------------
 // Conversion<From, To>
 //

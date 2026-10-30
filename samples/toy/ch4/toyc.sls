@@ -8,6 +8,7 @@
 ;;   2. Shape inference (resolves tensor<*xf64> to concrete ranked types)
 ;;   3. Canonicalization (fold transpose/reshape pairs)
 (import (chezscheme)
+        (only (mlir support array-ref) with-CrestObject)
         (mlir IR DialectRegistry)
         (mlir IR MLIRContext)
         (mlir IR Operation)
@@ -60,11 +61,15 @@
     (toy:dump module-ast)))
 
 (define (%%dump-mlir filename opt?)
-  (let-values ([(ctx module-op) (%%build-module filename)])
-    (when opt?
-      (%%run-opt-pipeline! module-op ctx))
-    (display (mlir::Operation::print module-op))
-    (newline)))
+  (with-DialectRegistry (reg)
+                        (mlir::DialectRegistry::insert reg "toy" "toy/ch4/toy")
+                        (with-MLIRContext (ctx reg)
+                                          (mlir::MLIRContext::getOrLoadDialect ctx "toy")
+                                          (let ([module-op (%%build-module filename ctx)])
+                                            (when opt?
+                                              (%%run-opt-pipeline! module-op ctx))
+                                            (display (mlir::Operation::print module-op))
+                                            (newline)))))
 
 (define (%%run-opt-pipeline! module-op ctx)
   ;; Step 1: inline all toy.generic_call ops, eliminating private functions.
@@ -146,36 +151,27 @@
                                                          "shape inference failed: operand types not fully resolved")
                              (exit 1)))))
 
-(define (%%build-module filename)
+(define (%%build-module filename ctx)
   (if (let ([n (string-length filename)])
         (and (>= n 5)
              (string=? (substring filename (- n 5) n) ".mlir")))
-      (%%build-module-from-mlir filename)
-      (%%build-module-from-toy  filename)))
+      (%%build-module-from-mlir filename ctx)
+      (%%build-module-from-toy  filename ctx)))
 
-(define (%%build-module-from-toy filename)
+(define (%%build-module-from-toy filename ctx)
   (let ([module-ast (parse-input-file filename)])
     (unless module-ast (exit 1))
-    (let* ([ctx       (%%make-ctx)]
-           [module-op (mlir-gen ctx module-ast)])
+    (let ([module-op (mlir-gen ctx module-ast)])
       (unless module-op (exit 1))
-      (values ctx module-op))))
+      module-op)))
 
-(define (%%build-module-from-mlir filename)
-  (let* ([ctx (%%make-ctx)]
-         [op  (mlir::parseSourceFile ctx filename)])
+(define (%%build-module-from-mlir filename ctx)
+  (let ([op (mlir::parseSourceFile ctx filename)])
     (when (zero? op)
       (display (string-append "Failed to parse MLIR file: " filename "\n")
                (current-error-port))
       (exit 1))
-    (values ctx op)))
-
-(define (%%make-ctx)
-  (with-DialectRegistry (reg)
-                        (mlir::DialectRegistry::insert reg "toy" "toy/ch4/toy")
-                        (let ([ctx (mlir::MLIRContext::new reg)])
-                          (mlir::MLIRContext::getOrLoadDialect ctx "toy")
-                          ctx)))
+    op))
 
 ;; ---------------------------------------------------------------------------
 ;; Scheme-level function inliner for toy.generic_call ops.
@@ -233,53 +229,53 @@
       (hashtable-set! val-map
                       (mlir::Block::getArgument entry-block i)
                       (mlir::Operation::getOperand call-op i)))
-    ;; Create a builder positioned just before the call op.
-    (let* ([builder-obj (with-current-MLIRContext ctx
-                          (mlir::OpBuilder::atBlockEnd entry-block))]
-           [return-op #f])
-      ;; Walk callee body, cloning each op before the call.
-      (mlir::Operation::walk callee
-                             (lambda (op)
-                               (let ([name (mlir::Operation::getName op)])
-                                 (cond
-                                  ;; Skip the func op itself and the entry block (walk visits them).
-                                  [(string=? name "toy.func") (void)]
-                                  [(string=? name "toy.return")
-                                   (set! return-op op)]
-                                  [else
-                                   ;; Clone op before call-op: set builder insertion point.
-                                   (mlir::OpBuilder::setInsertionPoint builder-obj call-op)
-                                   (let* ([n-ops     (mlir::Operation::getNumOperands op)]
-                                          [n-res     (mlir::Operation::getNumResults op)]
-                                          [new-ops   (map (lambda (i)
-                                                            (let ([old (mlir::Operation::getOperand op i)])
-                                                              (hashtable-ref val-map old old)))
-                                                          (iota n-ops))]
-                                          [res-types (map (lambda (i)
-                                                            (mlir::Value::getType
-                                                             (mlir::Operation::getResult op i)))
-                                                          (iota n-res))]
-                                          [attrs     (%%collect-attrs op)]
-                                          [new-op    (with-OperationState (s (mlir::Operation::getLoc op) name)
-                                                                          (for-each (lambda (v) (mlir::OperationState::addOperands s v)) new-ops)
-                                                                          (for-each (lambda (t) (mlir::OperationState::addTypes s t)) res-types)
-                                                                          (for-each (lambda (kv)
-                                                                                      (mlir::OperationState::addAttribute s (car kv) (cdr kv)))
-                                                                                    attrs)
-                                                                          (mlir::OpBuilder::create<OperationState> builder-obj s))])
-                                     ;; Map old results to new results.
-                                     (do ([i 0 (+ i 1)]) ((= i n-res))
-                                       (hashtable-set! val-map
-                                                       (mlir::Operation::getResult op i)
-                                                       (mlir::Operation::getResult new-op i))))]))))
-      ;; Replace call result with the (mapped) return operand.
-      (when (and return-op (> (mlir::Operation::getNumOperands return-op) 0))
-        (let* ([ret-val     (mlir::Operation::getOperand return-op 0)]
-               [mapped-val  (hashtable-ref val-map ret-val ret-val)])
-          (mlir::Value::replaceAllUsesWith
-           (mlir::Operation::getResult call-op 0)
-           mapped-val)))
-      (mlir::Operation::erase call-op))))
+    ;; Create a builder positioned just before the call op, freed on exit.
+    (with-CrestObject (builder-obj (with-current-MLIRContext ctx
+                                     (mlir::OpBuilder::atBlockEnd entry-block)))
+      (let ([return-op #f])
+        ;; Walk callee body, cloning each op before the call.
+        (mlir::Operation::walk callee
+                               (lambda (op)
+                                 (let ([name (mlir::Operation::getName op)])
+                                   (cond
+                                    ;; Skip the func op itself and the entry block (walk visits them).
+                                    [(string=? name "toy.func") (void)]
+                                    [(string=? name "toy.return")
+                                     (set! return-op op)]
+                                    [else
+                                     ;; Clone op before call-op: set builder insertion point.
+                                     (mlir::OpBuilder::setInsertionPoint builder-obj call-op)
+                                     (let* ([n-ops     (mlir::Operation::getNumOperands op)]
+                                            [n-res     (mlir::Operation::getNumResults op)]
+                                            [new-ops   (map (lambda (i)
+                                                              (let ([old (mlir::Operation::getOperand op i)])
+                                                                (hashtable-ref val-map old old)))
+                                                            (iota n-ops))]
+                                            [res-types (map (lambda (i)
+                                                              (mlir::Value::getType
+                                                               (mlir::Operation::getResult op i)))
+                                                            (iota n-res))]
+                                            [attrs     (%%collect-attrs op)]
+                                            [new-op    (with-OperationState (s (mlir::Operation::getLoc op) name)
+                                                                            (for-each (lambda (v) (mlir::OperationState::addOperands s v)) new-ops)
+                                                                            (for-each (lambda (t) (mlir::OperationState::addTypes s t)) res-types)
+                                                                            (for-each (lambda (kv)
+                                                                                        (mlir::OperationState::addAttribute s (car kv) (cdr kv)))
+                                                                                      attrs)
+                                                                            (mlir::OpBuilder::create<OperationState> builder-obj s))])
+                                       ;; Map old results to new results.
+                                       (do ([i 0 (+ i 1)]) ((= i n-res))
+                                         (hashtable-set! val-map
+                                                         (mlir::Operation::getResult op i)
+                                                         (mlir::Operation::getResult new-op i))))]))))
+        ;; Replace call result with the (mapped) return operand.
+        (when (and return-op (> (mlir::Operation::getNumOperands return-op) 0))
+          (let* ([ret-val     (mlir::Operation::getOperand return-op 0)]
+                 [mapped-val  (hashtable-ref val-map ret-val ret-val)])
+            (mlir::Value::replaceAllUsesWith
+             (mlir::Operation::getResult call-op 0)
+             mapped-val)))
+        (mlir::Operation::erase call-op)))))
 
 ;; Collect op attributes as an alist of (name-string . attr-uptr).
 ;; Reads known attribute keys: "value" (constant), "callee".

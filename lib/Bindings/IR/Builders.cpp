@@ -9,7 +9,6 @@
 #include "../Support/CrestObject.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/Builders.h"
-#include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/IR/OperationSupport.h"
 
@@ -52,8 +51,7 @@ void registerIROpBuilderBindings() {
       (void*)+[](uint64_t builder_ptr) -> uint64_t {
         auto& builder = crest::as_ref<mlir::OpBuilder>(
             builder_ptr, "mlir::OpBuilder::getContext");
-        return reinterpret_cast<uint64_t>(
-            new crest::CrestRef<mlir::MLIRContext>(builder.getContext()));
+        return reinterpret_cast<uint64_t>(builder.getContext());
       });
   Sregister_symbol(
       "crest::isa<CrestOwned<mlir::OpBuilder>>",

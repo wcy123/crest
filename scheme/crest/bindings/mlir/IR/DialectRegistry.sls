@@ -18,9 +18,11 @@
 (library (mlir IR DialectRegistry)
   (export mlir::DialectRegistry::new
           mlir::DialectRegistry::insert
-          with-DialectRegistry)
+          with-DialectRegistry
+          with-MLIRContext)
   (import (rnrs)
           (mlir IR DialectRegistry ffi)
+          (mlir IR MLIRContext ffi)
           (mlir support RAII))
 
   (define mlir::DialectRegistry::new
@@ -37,6 +39,14 @@
     (syntax-rules ()
       [(_ (reg) body ...)
        (with-raii (reg (mlir::DialectRegistry::new) %%crest-object-delete)
+         body ...)]))
+
+  ;; RAII macro: binds CTX to a new MLIRContext created from REG, then frees
+  ;; it on exit. The context owns all ops and dialects built inside BODY.
+  (define-syntax with-MLIRContext
+    (syntax-rules ()
+      [(_ (ctx reg) body ...)
+       (with-raii (ctx (%mlir::MLIRContext::new/registry reg) %%crest-object-delete)
          body ...)]))
 
   ) ;; end library (mlir IR DialectRegistry)

@@ -6,9 +6,7 @@
 // Mirrors mlir/IR/Types.h
 
 #include "Types.h"
-#include "../Support/CrestObject.h"
 #include "../Support/SchemeWrapper.h"
-#include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/Types.h"
 
 namespace crest {
@@ -20,10 +18,9 @@ void registerIRTypeBindings() {
           scheme_error("mlir::Type::getContext", "type pointer is null");
         }
         return reinterpret_cast<uint64_t>(
-            new crest::CrestRef<mlir::MLIRContext>(
-                mlir::Type::getFromOpaquePointer(
-                    reinterpret_cast<const void*>(type_ptr))
-                    .getContext()));
+            mlir::Type::getFromOpaquePointer(
+                reinterpret_cast<const void*>(type_ptr))
+                .getContext());
       });
 }
 

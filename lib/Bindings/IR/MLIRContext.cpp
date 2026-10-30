@@ -116,4 +116,22 @@ void registerIRMLIRContextBindings() {
         return reinterpret_cast<uint64_t>(module.release().getOperation());
       });
 }
+// Specialisation of as_ptr<mlir::MLIRContext>: accepts CrestOwned<MLIRContext>*
+// from mlir::MLIRContext::new, or a raw MLIRContext* from MLIR API getters
+// (op->getContext(), type.getContext(), etc.). Raw pointers are MLIR-managed
+// and need no CrestObject wrapper.
+template <>
+mlir::MLIRContext* as_ptr<mlir::MLIRContext>(uint64_t ptr_val,
+                                             const char* who) {
+  if (!ptr_val) {
+    scheme_error(who, "null MLIRContext pointer");
+  }
+  auto* obj = reinterpret_cast<crest::CrestObject*>(ptr_val);
+  if (obj->isa<crest::CrestOwned<mlir::MLIRContext>>()) {
+    return &static_cast<crest::CrestOwned<mlir::MLIRContext>*>(obj)->inner;
+  }
+  // Raw MLIRContext* from MLIR APIs — valid MLIR-managed pointer, no wrapper.
+  return reinterpret_cast<mlir::MLIRContext*>(ptr_val);
+}
+
 } // namespace crest
