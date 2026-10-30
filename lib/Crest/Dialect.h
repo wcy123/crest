@@ -154,14 +154,9 @@ void registerCrestInlinerBindings();
 ///                      name (toy ch4 toy), the same format accepted by
 ///                      ChezSchemeInterpreter::importLibrary).
 ///
-/// Insert the result into a DialectRegistry before creating any MLIRContext.
-/// The dialect is loaded lazily: when the parser first encounters an op
-/// whose namespace matches dialect_name, it imports module_name and
-/// initializes the dialect.
-///
-/// This lazy registration avoids the UnregisteredOpModel use-after-free
-/// that occurs when a dialect is registered after parsing has already begun
-/// (see tech-note.md: "Dialect Registration Must Happen Before Parsing").
+/// Insert the result into a DialectRegistry before creating any MLIRContext
+/// to avoid the UnregisteredOpModel use-after-free described in
+/// tech-note.md ("Dialect Registration Must Happen Before Parsing").
 ///
 /// Example:
 /// @code
