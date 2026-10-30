@@ -12,15 +12,6 @@
 #include "mlir/Pass/Pass.h"
 #include "mlir/Pass/PassManager.h"
 
-namespace {
-
-struct OwnedPassManager : public crest::AsCrest<OwnedPassManager> {
-  mlir::PassManager pm;
-  explicit OwnedPassManager(mlir::MLIRContext* ctx) : pm(ctx) {}
-};
-
-} // anonymous namespace
-
 namespace crest {
 
 void registerPassPassManagerBindings() {
@@ -29,7 +20,7 @@ void registerPassPassManagerBindings() {
         if (!ctx_ptr) {
           scheme_error("mlir::PassManager::new", "null MLIRContext pointer");
         }
-        return reinterpret_cast<uint64_t>(new OwnedPassManager(
+        return reinterpret_cast<uint64_t>(new CrestOwned<mlir::PassManager>(
             reinterpret_cast<mlir::MLIRContext*>(ctx_ptr)));
       });
 
@@ -38,9 +29,8 @@ void registerPassPassManagerBindings() {
   Sregister_symbol(
       "mlir::PassManager::addPass",
       (void*)+[](uint64_t pm_ptr, uint64_t pass_ptr) -> void {
-        auto& pm =
-            crest_cast<OwnedPassManager>(pm_ptr, "mlir::PassManager::addPass")
-                ->pm;
+        auto& pm = crest::as_ref<mlir::PassManager>(
+            pm_ptr, "mlir::PassManager::addPass");
         auto* holder = crest_cast<crest::CrestPassHolder>(
             pass_ptr, "mlir::PassManager::addPass");
         if (!holder->pass) {
@@ -54,7 +44,7 @@ void registerPassPassManagerBindings() {
       "mlir::PassManager::run!",
       (void*)+[](uint64_t pm_ptr, uint64_t module_ptr) -> int {
         auto& pm =
-            crest_cast<OwnedPassManager>(pm_ptr, "mlir::PassManager::run!")->pm;
+            crest::as_ref<mlir::PassManager>(pm_ptr, "mlir::PassManager::run!");
         auto* op = reinterpret_cast<mlir::Operation*>(module_ptr);
         return mlir::succeeded(pm.run(op)) ? 1 : 0;
       });
@@ -62,9 +52,9 @@ void registerPassPassManagerBindings() {
   Sregister_symbol(
       "mlir::PassManager::enableVerifier",
       (void*)+[](uint64_t pm_ptr, int enabled) -> void {
-        crest_cast<OwnedPassManager>(pm_ptr,
-                                     "mlir::PassManager::enableVerifier")
-            ->pm.enableVerifier(enabled != 0);
+        crest::as_ref<mlir::PassManager>(pm_ptr,
+                                         "mlir::PassManager::enableVerifier")
+            .enableVerifier(enabled != 0);
       });
 }
 
