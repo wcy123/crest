@@ -50,6 +50,10 @@ void registerIRValueBindings() {
             reinterpret_cast<const void*>(value_ptr));
         return reinterpret_cast<uint64_t>(val.getType().getAsOpaquePointer());
       });
+  // Intended for type-inference passes that refine a placeholder type
+  // (e.g. tensor<*xf64> → tensor<2x3xf64>) after all operand shapes are
+  // known. Calling this with an incompatible type corrupts the IR — but
+  // the verifier will catch the inconsistency the next time it runs.
   Sregister_symbol(
       "mlir::Value::setType",
       (void*)+[](uint64_t value_ptr, uint64_t type_ptr) -> void {
