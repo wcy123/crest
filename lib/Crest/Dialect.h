@@ -163,7 +163,7 @@ void registerCrestInlinerBindings();
 ///   mlir::DialectRegistry registry;
 ///   auto [type_id, factory] = crest::dialectFactory("toy", "toy/ch4/toy");
 ///   registry.insert(type_id, "toy", factory);
-///   mlir::MLIRContext ctx(registry);  // parser lazy-loads "toy" on demand
+///   mlir::MLIRContext ctx(registry);
 /// @endcode
 std::pair<mlir::TypeID, mlir::DialectAllocatorFunction>
 dialectFactory(std::string dialect_name, std::string module_name);
