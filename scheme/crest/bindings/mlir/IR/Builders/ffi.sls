@@ -27,7 +27,7 @@
   ;; @return        CrestOwned<OpBuilder>* uptr — freed via with-CrestObject
   ;; @see           mlir/IR/Builders.h
   (define %mlir::OpBuilder::atBlockEnd
-    (foreign-procedure "mlir_ir_op_builder_at_block_end" (uptr uptr) uptr))
+    (foreign-procedure "mlir::OpBuilder::atBlockEnd" (uptr uptr) uptr))
 
   ;; @brief Create an op from a prepared OperationState via an OpBuilder.
   ;; @param builder     CrestOwned<OpBuilder>* or CrestRef<OpBuilder>* uptr
@@ -35,7 +35,7 @@
   ;; @return            Operation* uptr of the created op
   ;; @see               mlir/IR/Builders.h, mlir/IR/OperationSupport.h
   (define %mlir::OpBuilder::create<OperationState>
-    (foreign-procedure "mlir_ir_op_builder_create_from_state" (uptr uptr) uptr))
+    (foreign-procedure "mlir::OpBuilder::create<OperationState>" (uptr uptr) uptr))
 
   ;; @brief Return the MLIRContext* associated with this OpBuilder.
   ;; @param builder  CrestOwned<OpBuilder>* or CrestRef<OpBuilder>* uptr
