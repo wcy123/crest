@@ -50,6 +50,31 @@ void registerIRValueBindings() {
             reinterpret_cast<const void*>(value_ptr));
         return reinterpret_cast<uint64_t>(val.getType().getAsOpaquePointer());
       });
+  Sregister_symbol(
+      "mlir::Value::setType",
+      (void*)+[](uint64_t value_ptr, uint64_t type_ptr) -> void {
+        if (!value_ptr) {
+          scheme_error("mlir::Value::setType", "value pointer is null");
+        }
+        auto val = mlir::Value::getFromOpaquePointer(
+            reinterpret_cast<const void*>(value_ptr));
+        auto type = mlir::Type::getFromOpaquePointer(
+            reinterpret_cast<const void*>(type_ptr));
+        val.setType(type);
+      });
+  Sregister_symbol(
+      "mlir::Value::replaceAllUsesWith",
+      (void*)+[](uint64_t value_ptr, uint64_t replacement_ptr) -> void {
+        if (!value_ptr) {
+          scheme_error("mlir::Value::replaceAllUsesWith",
+                       "value pointer is null");
+        }
+        auto val = mlir::Value::getFromOpaquePointer(
+            reinterpret_cast<const void*>(value_ptr));
+        auto repl = mlir::Value::getFromOpaquePointer(
+            reinterpret_cast<const void*>(replacement_ptr));
+        val.replaceAllUsesWith(repl);
+      });
   // Alias with ? suffix (Scheme predicate convention)
   Sregister_symbol(
       "mlir::isa<BlockArgument>?", (void*)+[](uint64_t value) -> int {

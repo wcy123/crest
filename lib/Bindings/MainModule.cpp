@@ -20,6 +20,7 @@
 #include "IR/BuiltinAttributes.h"
 #include "IR/BuiltinOps.h"
 #include "IR/BuiltinTypes.h"
+#include "IR/DialectRegistry.h"
 #include "IR/Location.h"
 #include "IR/MLIRContext.h"
 #include "IR/OpImplementation.h"
@@ -57,7 +58,9 @@ void registerMlirForeignFunctions() {
   registerInterfacesCallInterfacesBindings();
   registerInterfacesFunctionInterfacesBindings();
   registerIRSymbolInterfacesBindings();
+  registerIRDialectRegistryBindings();
   registerIRExtensibleDialectBindings();
+  registerCrestInlinerBindings();
   registerCrestDynamicOpBindings();
   registerCrestTraitBindings();
   registerIRLocationBindings();

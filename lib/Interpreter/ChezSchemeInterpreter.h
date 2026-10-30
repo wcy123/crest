@@ -73,6 +73,10 @@ public:
   // "passes/my-rewrite" → (import (passes my-rewrite))
   // Returns false if the import fails.
   bool importLibrary(const std::string& slashSeparatedName);
+
+  // Load a Scheme source file by path — equivalent to (load path).
+  void loadFile(const std::string& path);
+
   void addLibraryPath(const char* src_path, const char* bin_path);
 
   // For debugging only — returns a human-readable string of all (src . bin)

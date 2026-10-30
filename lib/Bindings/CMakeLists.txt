@@ -24,6 +24,8 @@ add_library(CrestBindings STATIC
   IR/SymbolInterfaces.h
   IR/Block.cpp
   IR/Block.h
+  IR/DialectRegistry.cpp
+  IR/DialectRegistry.h
   IR/BuiltinAttributes.cpp
   IR/BuiltinAttributes.h
   IR/BuiltinOps.cpp
@@ -81,6 +83,7 @@ target_include_directories(CrestBindings
 target_link_libraries(CrestBindings
   PUBLIC
     MLIRIR
+    MLIRParser
     MLIRFuncDialect
     MLIRCallInterfaces
     MLIRFunctionInterfaces

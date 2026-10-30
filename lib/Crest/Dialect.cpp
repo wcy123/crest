@@ -5,6 +5,7 @@
 // CrestDialect bridge — lib/Crest/Dialect.cpp
 
 #include "Dialect.h"
+#include "../Bindings/Support/LockedSchemeObject.h"
 #include "../Bindings/Support/SchemeWrapper.h"
 #include "Interface.h"
 #include "llvm/ADT/DenseMap.h"
@@ -14,7 +15,10 @@
 #include "mlir/IR/ExtensibleDialect.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/PatternMatch.h"
+#include "mlir/Pass/PassManager.h"
 #include "mlir/Support/TypeID.h"
+#include "mlir/Transforms/InliningUtils.h"
+#include "mlir/Transforms/Passes.h"
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -328,6 +332,104 @@ dialectFactory(std::string dialect_name, std::string module_name) {
                                                         dialect_name, ctx);
                 });
           }};
+}
+
+// ---------------------------------------------------------------------------
+// CrestToyInlinerInterface — DialectInlinerInterface backed by Scheme
+// callbacks.
+//
+// Registered on a CrestDialect via crest::add-toy-inliner-interface! so the
+// MLIR inliner can inline toy.generic_call ops. All isLegalToInline overloads
+// return true (toy allows inlining everything). handleTerminator and
+// materializeCallConversion dispatch to Scheme.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+struct CrestToyInlinerInterface : public mlir::DialectInlinerInterface {
+  using mlir::DialectInlinerInterface::DialectInlinerInterface;
+
+  crest::LockedSchemeObject handleTerminatorFn;
+  crest::LockedSchemeObject materializeCallConversionFn;
+
+  bool isLegalToInline(mlir::Operation*, mlir::Region*, bool,
+                       mlir::IRMapping&) const final {
+    return true;
+  }
+  bool isLegalToInline(mlir::Region*, mlir::Region*, bool,
+                       mlir::IRMapping&) const final {
+    return true;
+  }
+  bool isLegalToInline(mlir::Operation*, mlir::Operation*, bool) const final {
+    return true;
+  }
+
+  // toy.return: replace each use of valuesToRepl[i] with the i-th return
+  // operand.
+  void handleTerminator(mlir::Operation* op,
+                        mlir::ValueRange valuesToRepl) const final {
+    ptr repl_list = Snil;
+    for (int i = static_cast<int>(valuesToRepl.size()) - 1; i >= 0; --i) {
+      repl_list =
+          Scons(Sunsigned64(reinterpret_cast<uint64_t>(
+                    valuesToRepl[static_cast<size_t>(i)].getAsOpaquePointer())),
+                repl_list);
+    }
+    scheme_call(
+        handleTerminatorFn.get(), Sunsigned64(reinterpret_cast<uint64_t>(op)),
+        Sunsigned64(static_cast<uint64_t>(valuesToRepl.size())), repl_list);
+  }
+
+  // Insert a toy.cast op to bridge type mismatches at call boundaries.
+  // Returns the created Operation*, or nullptr if conversion is not possible.
+  mlir::Operation* materializeCallConversion(mlir::OpBuilder& builder,
+                                             mlir::Value input,
+                                             mlir::Type resultType,
+                                             mlir::Location loc) const final {
+    auto builderShell =
+        std::make_unique<crest::CrestOwned<mlir::OpBuilder>>(builder);
+    ptr result = scheme_call(
+        materializeCallConversionFn.get(),
+        Sunsigned64(reinterpret_cast<uint64_t>(builderShell.get())),
+        Sunsigned64(reinterpret_cast<uint64_t>(input.getAsOpaquePointer())),
+        Sunsigned64(
+            reinterpret_cast<uint64_t>(resultType.getAsOpaquePointer())),
+        Sunsigned64(reinterpret_cast<uint64_t>(loc.getAsOpaquePointer())));
+    builder = builderShell->inner;
+    if (result == Sfalse || !Sunsigned64_value(result)) {
+      return nullptr;
+    }
+    return reinterpret_cast<mlir::Operation*>(Sunsigned64_value(result));
+  }
+};
+
+} // anonymous namespace
+
+void registerCrestInlinerBindings() {
+  Sregister_symbol(
+      "crest::add-toy-inliner-interface!",
+      (void*)+[](uint64_t dialect_ptr, ptr handle_fn,
+                 ptr materialize_fn) -> void {
+        auto* dialect = reinterpret_cast<crest::CrestDialect*>(dialect_ptr);
+        auto iface = std::make_unique<CrestToyInlinerInterface>(dialect);
+        iface->handleTerminatorFn = crest::LockedSchemeObject(handle_fn);
+        iface->materializeCallConversionFn =
+            crest::LockedSchemeObject(materialize_fn);
+        dialect->addInterface(std::move(iface));
+      });
+
+  Sregister_symbol(
+      "crest::runInlinerPass!", (void*)+[](uint64_t module_ptr) -> int {
+        auto* op = reinterpret_cast<mlir::Operation*>(module_ptr);
+        mlir::PassManager pm(op->getContext());
+        // Disable verifier: dynamic ops in CREST lack the Terminator trait,
+        // so MLIR's verifier would reject toy.return as a non-terminator. The
+        // toy inliner handles terminators via the Scheme handleTerminator
+        // callback and shape inference resolves types post-inlining.
+        pm.enableVerifier(false);
+        pm.addPass(mlir::createInlinerPass());
+        return mlir::succeeded(pm.run(op)) ? 1 : 0;
+      });
 }
 
 } // namespace crest

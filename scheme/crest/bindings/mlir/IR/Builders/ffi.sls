@@ -16,6 +16,7 @@
   (export
     %mlir::OpBuilder::atBlockEnd
     %mlir::OpBuilder::create<OperationState>
+    %mlir::OpBuilder::setInsertionPoint
     %mlir::OpBuilder::getContext
     %crest::isa<CrestOwned<mlir::OpBuilder>>)
   (import (rnrs) (only (chezscheme) foreign-procedure))
@@ -41,6 +42,9 @@
   ;; @return         MLIRContext* uptr
   (define %mlir::OpBuilder::getContext
     (foreign-procedure "mlir::OpBuilder::getContext" (uptr) uptr))
+
+  (define %mlir::OpBuilder::setInsertionPoint
+    (foreign-procedure "mlir::OpBuilder::setInsertionPoint" (uptr uptr) void))
 
   ;; @brief Type predicate — CrestObject::isa<CrestOwned<OpBuilder>>.
   (define %crest::isa<CrestOwned<mlir::OpBuilder>>

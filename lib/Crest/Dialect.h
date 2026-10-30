@@ -144,6 +144,7 @@ private:
 };
 
 void registerIRExtensibleDialectBindings();
+void registerCrestInlinerBindings();
 
 /// Returns the (TypeID, DialectAllocatorFunction) pair needed by
 /// DialectRegistry::insert. The factory lazily imports module_name and
