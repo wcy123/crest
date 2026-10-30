@@ -162,6 +162,14 @@ void registerCrestInlinerBindings();
 /// This lazy registration avoids the UnregisteredOpModel use-after-free
 /// that occurs when a dialect is registered after parsing has already begun
 /// (see tech-note.md: "Dialect Registration Must Happen Before Parsing").
+///
+/// Example:
+/// @code
+///   mlir::DialectRegistry registry;
+///   auto [type_id, factory] = crest::dialectFactory("toy", "toy/ch4/toy");
+///   registry.insert(type_id, "toy", factory);
+///   mlir::MLIRContext ctx(registry);  // parser lazy-loads "toy" on demand
+/// @endcode
 std::pair<mlir::TypeID, mlir::DialectAllocatorFunction>
 dialectFactory(std::string dialect_name, std::string module_name);
 
