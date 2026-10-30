@@ -10,7 +10,6 @@
 #include "../Support/CrestObject.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/DialectRegistry.h"
-#include "mlir/IR/MLIRContext.h"
 
 namespace crest {
 
@@ -30,14 +29,6 @@ void registerIRDialectRegistryBindings() {
         auto [type_id, factory] = crest::dialectFactory(
             std::string(dialect_name), std::string(module_name));
         registry.insert(type_id, std::string(dialect_name), factory);
-      });
-
-  Sregister_symbol(
-      "mlir::MLIRContext::new/registry",
-      (void*)+[](uint64_t registry_ptr) -> uint64_t {
-        auto& registry = crest::as_ref<mlir::DialectRegistry>(
-            registry_ptr, "mlir::MLIRContext::new/registry");
-        return reinterpret_cast<uint64_t>(new mlir::MLIRContext(registry));
       });
 }
 

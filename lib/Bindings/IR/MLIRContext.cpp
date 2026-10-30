@@ -10,6 +10,7 @@
 #include "mlir/IR/AsmState.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/Dialect.h"
+#include "mlir/IR/DialectRegistry.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/OwningOpRef.h"
 #include "mlir/Parser/Parser.h"
@@ -20,6 +21,14 @@ void registerIRMLIRContextBindings() {
   Sregister_symbol(
       "mlir::MLIRContext::new", (void*)+[]() -> uint64_t {
         return reinterpret_cast<uint64_t>(new mlir::MLIRContext());
+      });
+
+  Sregister_symbol(
+      "mlir::MLIRContext::new/registry",
+      (void*)+[](uint64_t registry_ptr) -> uint64_t {
+        auto& registry = crest::as_ref<mlir::DialectRegistry>(
+            registry_ptr, "mlir::MLIRContext::new/registry");
+        return reinterpret_cast<uint64_t>(new mlir::MLIRContext(registry));
       });
 
   Sregister_symbol(

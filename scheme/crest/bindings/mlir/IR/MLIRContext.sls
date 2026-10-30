@@ -42,7 +42,10 @@
 
   ;; @brief mlir::MLIRContext::new — allocate a new heap MLIRContext.
   ;; @return  mlir::MLIRContext* as uptr (caller owns)
-  (define mlir::MLIRContext::new %mlir::MLIRContext::new)
+  (define mlir::MLIRContext::new
+    (case-lambda
+     [()         (%mlir::MLIRContext::new)]
+     [(registry) (%mlir::MLIRContext::new/registry registry)]))
 
   ;; @brief current-MLIRContext — dynamic parameter holding the ambient MLIRContext* uptr.
   ;; @return  MLIRContext* as uptr, or #f when no context is installed

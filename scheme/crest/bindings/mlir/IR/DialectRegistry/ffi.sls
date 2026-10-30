@@ -9,7 +9,6 @@
 (library (mlir IR DialectRegistry ffi)
   (export %mlir::DialectRegistry::new
           %mlir::DialectRegistry::insert
-          %mlir::MLIRContext::new/registry
           %CrestObject::delete)
   (import (chezscheme))
 
@@ -19,9 +18,6 @@
   (define %mlir::DialectRegistry::insert
     (foreign-procedure "mlir::DialectRegistry::insert"
                        (uptr string string) void))
-
-  (define %mlir::MLIRContext::new/registry
-    (foreign-procedure "mlir::MLIRContext::new/registry" (uptr) uptr))
 
   (define %CrestObject::delete
     (foreign-procedure "CrestObject::delete" (uptr) void))

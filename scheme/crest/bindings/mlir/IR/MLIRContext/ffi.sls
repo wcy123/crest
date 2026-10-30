@@ -16,6 +16,7 @@
 (library (mlir IR MLIRContext ffi)
   (export
     %mlir::MLIRContext::new
+    %mlir::MLIRContext::new/registry
     %mlir::MLIRContext::allowUnregisteredDialects
     %mlir::MLIRContext::allowsUnregisteredDialects
     %mlir::MLIRContext::enableMultithreading
@@ -33,6 +34,9 @@
   ;; @return  mlir::MLIRContext* opaque pointer uptr (caller owns; do not free in toy examples)
   (define %mlir::MLIRContext::new
     (foreign-procedure "mlir::MLIRContext::new" () uptr))
+
+  (define %mlir::MLIRContext::new/registry
+    (foreign-procedure "mlir::MLIRContext::new/registry" (uptr) uptr))
 
   ;; @brief mlir::MLIRContext::allowUnregisteredDialects — enable or disable unregistered dialects.
   ;; @param ctx    MLIRContext* as uptr

@@ -173,7 +173,7 @@
 (define (%%make-ctx)
   (with-DialectRegistry (reg)
                         (mlir::DialectRegistry::insert reg "toy" "toy/ch4/toy")
-                        (let ([ctx (mlir::MLIRContext::new/registry reg)])
+                        (let ([ctx (mlir::MLIRContext::new reg)])
                           (mlir::MLIRContext::getOrLoadDialect ctx "toy")
                           ctx)))
 

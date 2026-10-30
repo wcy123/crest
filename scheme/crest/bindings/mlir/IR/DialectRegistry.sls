@@ -18,7 +18,6 @@
 (library (mlir IR DialectRegistry)
   (export mlir::DialectRegistry::new
           mlir::DialectRegistry::insert
-          mlir::MLIRContext::new/registry
           with-DialectRegistry)
   (import (rnrs)
           (mlir IR DialectRegistry ffi)
@@ -29,9 +28,6 @@
 
   (define mlir::DialectRegistry::insert
     %mlir::DialectRegistry::insert)
-
-  (define mlir::MLIRContext::new/registry
-    %mlir::MLIRContext::new/registry)
 
   (define %%crest-object-delete %CrestObject::delete)
 
