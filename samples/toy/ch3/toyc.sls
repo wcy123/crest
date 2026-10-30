@@ -1,97 +1,97 @@
-;; Toy compiler Ch3 — pass run by crest-opt.
+;; Toy compiler Ch3 — top-level program for scheme-mlir.
 ;; Mirrors mlir/examples/toy/Ch3/toyc.cpp
 ;;
-;; Arguments via environment:
-;;   TOYC_FILE    input .toy source file or .mlir file
-;;   TOYC_ACTION  ast | mlir  (default: none)
-;;   TOYC_OPT     1 | true  — enable canonicalization passes (mirrors --opt)
+;; Usage: scheme-mlir samples/toy/ch3/toyc.sls <file> [--emit=ast|--emit=mlir] [--opt]
 ;;
-;; When TOYC_FILE ends in .mlir the file is parsed directly (mirrors Ch3's -x mlir).
-;; When TOYC_OPT is set, the four canonicalization patterns run before dumping MLIR.
-(library (toy ch3 toyc)
-  (export run-pass)
-  (import (chezscheme)
-          (crest dialect)
-          (mlir IR MLIRContext)
-          (mlir IR Operation)
-          (mlir IR BuiltinOps)
-          (mlir IR PatternMatch)
-          (mlir Transforms GreedyPatternRewriteDriver)
-          (toy ch3 parser)
-          (toy ch3 ast)
-          (toy ch3 toy)
-          (toy ch3 mlir-gen)
-          (toy ch3 combine))
+;; When the input file ends in .mlir it is parsed directly (mirrors Ch3's -x mlir).
+;; --opt enables canonicalization passes before emitting MLIR.
+(import (chezscheme)
+        (mlir IR DialectRegistry)
+        (mlir IR MLIRContext)
+        (mlir IR Operation)
+        (mlir IR BuiltinOps)
+        (mlir IR PatternMatch)
+        (mlir Transforms GreedyPatternRewriteDriver)
+        (toy ch3 parser)
+        (toy ch3 ast)
+        (toy ch3 toy)
+        (toy ch3 mlir-gen)
+        (toy ch3 combine))
 
-  ;; Load the toy dialect and activate its custom printers/parsers.
-  (define (%%load-toy! ctx)
-    (load-scheme-dialect! ctx "toy" "toy/ch3/toy"))
+(define (main)
+  (let-values ([(filename action opt?) (%%parse-args (command-line-arguments))])
+    (unless filename
+      (display "Usage: toyc <file> [--emit=ast|--emit=mlir] [--opt]\n"
+               (current-error-port))
+      (exit 1))
+    (cond
+     [(equal? action "ast")  (%%dump-ast  filename)]
+     [(equal? action "mlir") (%%dump-mlir filename opt?)]
+     [else
+      (display "No action — use --emit=ast or --emit=mlir\n"
+               (current-error-port))])))
 
-  (define (%%dump-ast filename)
-    (let ([module-ast (parse-input-file filename)])
-      (unless module-ast (exit 1))
-      (toy:dump module-ast)))
+(define (%%parse-args args)
+  (let loop ([args args] [file #f] [action #f] [opt #f])
+    (cond
+     [(null? args) (values file action opt)]
+     [(member (car args) '("--emit=ast" "-emit=ast"))
+      (loop (cdr args) file "ast" opt)]
+     [(member (car args) '("--emit=mlir" "-emit=mlir"))
+      (loop (cdr args) file "mlir" opt)]
+     [(member (car args) '("--opt" "-opt"))
+      (loop (cdr args) file action #t)]
+     [else
+      (loop (cdr args) (car args) action opt)])))
 
-  ;; Load a .toy file through the AST parser + mlir-gen.
-  (define (%%build-module-from-toy filename)
-    (let ([module-ast (parse-input-file filename)])
-      (unless module-ast (exit 1))
-      (let* ([ctx       (mlir::MLIRContext::new)]
-             [_         (mlir::MLIRContext::allowUnregisteredDialects ctx #t)]
-             [_         (%%load-toy! ctx)]
-             [module-op (mlir-gen ctx module-ast)])
-        (unless module-op (exit 1))
-        (values ctx module-op))))
+(define (%%dump-ast filename)
+  (let ([module-ast (parse-input-file filename)])
+    (unless module-ast (exit 1))
+    (toy:dump module-ast)))
 
-  ;; Load a .mlir file directly via mlir::parseSourceFile (mirrors Ch3's -x mlir).
-  (define (%%build-module-from-mlir filename)
-    (let* ([ctx       (mlir::MLIRContext::new)]
-           [_         (mlir::MLIRContext::allowUnregisteredDialects ctx #t)]
-           [_         (%%load-toy! ctx)]
-           [op        (mlir::parseSourceFile ctx filename)])
-      (when (zero? op)
-        (display (string-append "Failed to parse MLIR file: " filename "\n")
-                 (current-error-port))
-        (exit 1))
-      ;; parseSourceFile returns the ModuleOp's Operation* directly
-      (values ctx op)))
+(define (%%dump-mlir filename opt?)
+  (let-values ([(ctx module-op) (%%build-module filename)])
+    (let ([op (%%module-op->op module-op)])
+      (when opt?
+        (with-current-MLIRContext ctx
+          (with-RewritePatternSet (patterns ctx)
+            (toy:add-canonicalization-patterns! patterns)
+            (mlir::applyPatternsGreedily op patterns))))
+      (display (mlir::Operation::print op))
+      (newline))))
 
-  (define (%%build-module filename)
-    (if (let ([n (string-length filename)])
-          (and (>= n 5)
-               (string=? (substring filename (- n 5) n) ".mlir")))
-        (%%build-module-from-mlir filename)
-        (%%build-module-from-toy  filename)))
+(define (%%build-module filename)
+  (if (let ([n (string-length filename)])
+        (and (>= n 5)
+             (string=? (substring filename (- n 5) n) ".mlir")))
+      (%%build-module-from-mlir filename)
+      (%%build-module-from-toy  filename)))
 
-  ;; %%module-op returns the raw Operation* for either source type.
-  (define (%%module-op->op m)
-    (if (integer? m) m (mlir::ModuleOp::getOperation m)))
+(define (%%module-op->op m)
+  (if (integer? m) m (mlir::ModuleOp::getOperation m)))
 
-  (define (%%opt-enabled?)
-    (let ([v (getenv "TOYC_OPT")])
-      (and v (not (member v '("" "0" "false"))))))
+(define (%%make-ctx)
+  (with-DialectRegistry (reg)
+                        (mlir::DialectRegistry::insertSchemeDialect reg "toy" "toy/ch3/toy")
+                        (let ([ctx (mlir::MLIRContext::new/registry reg)])
+                          (mlir::MLIRContext::getOrLoadDialect ctx "toy")
+                          ctx)))
 
-  (define (%%dump-mlir filename)
-    (let-values ([(ctx module-op) (%%build-module filename)])
-      (let ([op (%%module-op->op module-op)])
-        (when (%%opt-enabled?)
-          (with-current-MLIRContext ctx
-            (with-RewritePatternSet (patterns ctx)
-              (toy:add-canonicalization-patterns! patterns)
-              (mlir::applyPatternsGreedily op patterns))))
-        (display (mlir::Operation::print op))
-        (newline))))
+(define (%%build-module-from-toy filename)
+  (let ([module-ast (parse-input-file filename)])
+    (unless module-ast (exit 1))
+    (let* ([ctx       (%%make-ctx)]
+           [module-op (mlir-gen ctx module-ast)])
+      (unless module-op (exit 1))
+      (values ctx module-op))))
 
-  (define (run-pass _op)
-    (let ([filename (getenv "TOYC_FILE")]
-          [action   (getenv "TOYC_ACTION")])
-      (unless filename
-        (display "TOYC_FILE not set\n" (current-error-port))
-        (exit 1))
-      (cond
-       [(equal? action "ast")  (%%dump-ast  filename)]
-       [(equal? action "mlir") (%%dump-mlir filename)]
-       [else
-        (display "No action — set TOYC_ACTION=ast|mlir\n"
-                 (current-error-port))])))
-  )
+(define (%%build-module-from-mlir filename)
+  (let* ([ctx (%%make-ctx)]
+         [op  (mlir::parseSourceFile ctx filename)])
+    (when (zero? op)
+      (display (string-append "Failed to parse MLIR file: " filename "\n")
+               (current-error-port))
+      (exit 1))
+    (values ctx op)))
+
+(main)

@@ -195,6 +195,99 @@ extern "C" ::mlir::DialectPluginLibraryInfo mlirGetDialectPluginInfo() {
 
 **Both patterns share the same requirement:** the dialect factory must reach the `DialectRegistry` **before** `MLIRContext` is constructed, so the parser can find and lazily load the dialect by name during parsing.
 
+---
+
+## Interface Dispatch: why bindings call `LookupInterfaceForOp` directly
+
+When a CREST binding calls an MLIR interface method such as `FunctionOpInterface::getFunctionType`, there are two apparent paths. Understanding why we take the direct path — and why the indirect path exists at all — requires tracing how MLIR resolves interface concepts for static vs. dynamic ops.
+
+### Background: how MLIR resolves interfaces for static ops
+
+For a static C++ op like `mlir::func::FuncOp`, every interface it implements is registered at compile time via TableGen. At program startup, `RegisteredOperationName::insert` builds an `AbstractOperation` whose `interfaceMap` already contains a pointer to each concept. A concept is a struct of function pointers — the vtable for the interface.
+
+`mlir::dyn_cast<FunctionOpInterface>(op)` is therefore a cheap O(1) lookup:
+
+```
+op → AbstractOperation::interfaceMap.lookup(FunctionOpInterface::getInterfaceID())
+   → FunctionOpInterface::Concept*   (pre-populated at startup)
+```
+
+The returned `mlir::FunctionOpInterface` wrapper bundles `(Operation*, Concept*)`. Calling `fn.getFunctionType()` dispatches through `concept->getFunctionType(concept, op)`.
+
+### Why the same path is slower for Crest dynamic ops
+
+Crest ops are registered at runtime via `DynamicOpDefinition::get` + `registerDynamicOp`. Their `AbstractOperation::interfaceMap` is **empty** — concepts are not known at C++ compile time. They are registered later, when the Scheme library is imported:
+
+```
+import (passes ifacetest)
+  → %%ifacetest-iface-init runs   (library-load-time define)
+  → (foreign-procedure "mlir::FunctionOpInterface" ...) ifacetest.func dispatcher
+  → FunctionOpInterface::CreateConcept
+  → RegisterInterfaceForOp(FunctionOpInterface::getInterfaceID(),
+                           "ifacetest.func",
+                           concept_ptr)     ← stored in g_op_interface_registry
+```
+
+`g_op_interface_registry` is a `DenseMap<TypeID, unordered_map<string, shared_ptr<void>>>` in `Dialect.cpp` — entirely separate from MLIR's `AbstractOperation::interfaceMap`.
+
+When `mlir::dyn_cast<FunctionOpInterface>(op)` is called on a Crest op:
+
+```
+op → AbstractOperation::interfaceMap.lookup(...)
+   → miss (empty for dynamic ops)
+   → dialect->getRegisteredInterfaceForOp(FunctionOpInterface::getInterfaceID(), op->getName())
+   → CrestDialect::getRegisteredInterfaceForOp
+   → LookupInterfaceForOp(id, op_name_string)
+   → g_op_interface_registry DenseMap lookup + unordered_map string lookup
+   → FunctionOpInterface::Concept*
+```
+
+`getRegisteredInterfaceForOp` is MLIR's extension hook for `ExtensibleDialect` — it exists precisely so that dynamic ops can participate in interface dispatch without pre-populated interface maps. Without it, `dyn_cast` would always return null for our ops.
+
+### The `c` path used in CREST bindings
+
+The `mlir::FunctionOpInterface::getFunctionType` binding in `FunctionInterfaces.cpp`:
+
+```cpp
+Sregister_symbol(
+    "mlir::FunctionOpInterface::getFunctionType",
+    (void*)+[](uint64_t op_ptr) -> uint64_t {
+      auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
+      auto name_str = op->getName().getStringRef().str();
+      auto* c = static_cast<mlir::FunctionOpInterface::Concept*>(
+          LookupInterfaceForOp(mlir::FunctionOpInterface::getInterfaceID(),
+                               name_str));
+      if (!c) { scheme_error(...); }
+      return reinterpret_cast<uint64_t>(
+          c->getFunctionType(c, op).getAsOpaquePointer());
+    });
+```
+
+This calls `LookupInterfaceForOp` directly — skipping the `dyn_cast` wrapper entirely. The `fn` path (via `dyn_cast`) would do the same lookup but with extra steps:
+
+| Step | `fn` path (`dyn_cast`) | `c` path (direct) |
+|---|---|---|
+| AbstractOperation interfaceMap lookup | yes → miss | no |
+| virtual call `dialect->getRegisteredInterfaceForOp` | yes | no |
+| `LookupInterfaceForOp` DenseMap + string lookup | yes | yes |
+| construct `FunctionOpInterface(op, concept)` wrapper | yes | no |
+| dispatch `concept->getFunctionType(concept, op)` | yes | yes |
+
+Both paths arrive at the same concept pointer and make the same final dispatch. The `c` path skips the interfaceMap miss, the virtual dispatch through the dialect, and the construction of the interface wrapper object. The dominant cost in both paths is the `std::string` allocation in `op->getName().getStringRef().str()` used as the map key.
+
+### Role of `getRegisteredInterfaceForOp`
+
+`CrestDialect::getRegisteredInterfaceForOp` is kept because MLIR code outside CREST's own bindings can call `dyn_cast<SomeInterface>(op)` on a Crest op — for example, MLIR's own pass infrastructure, verifier, or printer. Without the override, those calls would silently return null and MLIR would treat the op as not implementing the interface. The override ensures that Crest ops participate correctly in MLIR's generic interface dispatch even when the caller uses `dyn_cast` rather than our direct bindings.
+
+### Summary
+
+- For **static MLIR ops**: `dyn_cast` → `AbstractOperation::interfaceMap` → concept (fast, one lookup).
+- For **Crest dynamic ops**: `dyn_cast` → interfaceMap miss → `getRegisteredInterfaceForOp` → `LookupInterfaceForOp` → concept (slower, two lookups + virtual call).
+- **CREST's own bindings** use `LookupInterfaceForOp` directly, skipping the `dyn_cast` wrapper overhead.
+- `getRegisteredInterfaceForOp` is retained so that MLIR-internal callers using `dyn_cast` on Crest ops still work correctly.
+
+---
+
 ### Implication for CREST's `dialects-in-scheme=` option
 
 `dialects-in-scheme=` registers a Scheme-defined dialect via `getDependentDialects` — **correct for ops that the pass creates** during `runOnOperation`. The dialect is in the registry before any pass runs; new ops created by the pass see it as registered.

@@ -1,9 +1,9 @@
 #!r6rs
 ;; Unit test for the :interfaces DSL.
 (library (passes interface-dsl)
-  (export run-pass)
+  (export run-pass main)
   (import (chezscheme)
-          (crest dialect)
+          (passes ifacetest)
           (mlir IR Operation)
           (mlir IR Region)
           (mlir IR Block)
@@ -23,9 +23,21 @@
   (define mlir::SymbolOpInterface::getNameAttr
     (foreign-procedure "mlir::SymbolOpInterface::getNameAttr" (uptr) uptr))
 
-  (define-dialect ifacetest
-    (define-op func
-      :interfaces ((mlir::FunctionOpInterface))))
+  ;; Entry point for scheme-mlir: reads input file from (command-line-arguments).
+  (define (main)
+    (let ([args (command-line-arguments)])
+      (when (null? args)
+        (display "Usage: scheme-mlir passes/interface-dsl -- <file.mlir>\n"
+                 (current-error-port))
+        (exit 1))
+      (let* ([ctx (mlir::MLIRContext::new)]
+             [_   (mlir::MLIRContext::allowUnregisteredDialects ctx #t)]
+             [op  (mlir::parseSourceFile ctx (car args))])
+        (when (zero? op)
+          (display (string-append "Failed to parse: " (car args) "\n")
+                   (current-error-port))
+          (exit 1))
+        (run-pass op))))
 
   (define (run-pass module)
     (let ([ctx (mlir::Operation::getContext module)])
