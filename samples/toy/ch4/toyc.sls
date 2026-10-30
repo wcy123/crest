@@ -62,14 +62,14 @@
 
 (define (%%dump-mlir filename opt?)
   (with-DialectRegistry (reg)
-                        (mlir::DialectRegistry::insert reg "toy" "toy/ch4/toy")
-                        (with-MLIRContext (ctx reg)
-                                          (mlir::MLIRContext::getOrLoadDialect ctx "toy")
-                                          (let ([module-op (%%build-module filename ctx)])
-                                            (when opt?
-                                              (%%run-opt-pipeline! module-op ctx))
-                                            (display (mlir::Operation::print module-op))
-                                            (newline)))))
+    (mlir::DialectRegistry::insert reg "toy" "toy/ch4/toy")
+    (with-MLIRContext (ctx reg)
+      (mlir::MLIRContext::getOrLoadDialect ctx "toy")
+      (let ([module-op (%%build-module filename ctx)])
+        (when opt?
+          (%%run-opt-pipeline! module-op ctx))
+        (display (mlir::Operation::print module-op))
+        (newline)))))
 
 (define (%%run-opt-pipeline! module-op ctx)
   ;; Step 1: inline all toy.generic_call ops, eliminating private functions.

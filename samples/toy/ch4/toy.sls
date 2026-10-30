@@ -101,31 +101,31 @@
                    (isLegalToInline/region (dest src wouldBeCloned) #t)
                    (isLegalToInline/op     (op dest wouldBeCloned) #t)
                    (handleTerminator (op n-replacements replacements)
-                                     (let loop ([i 0] [repls replacements])
-                                       (when (< i n-replacements)
-                                         (mlir::Value::replaceAllUsesWith
-                                          (car repls)
-                                          (mlir::Operation::getOperand op i))
-                                         (loop (+ i 1) (cdr repls)))))
+                     (let loop ([i 0] [repls replacements])
+                       (when (< i n-replacements)
+                         (mlir::Value::replaceAllUsesWith
+                          (car repls)
+                          (mlir::Operation::getOperand op i))
+                         (loop (+ i 1) (cdr repls)))))
                    (materializeCallConversion (builder input result-type loc)
-                                              (with-OperationState (s loc "toy.cast")
-                                                                   (mlir::OperationState::addOperands s input)
-                                                                   (mlir::OperationState::addTypes s result-type)
-                                                                   (mlir::OpBuilder::create<OperationState> builder s))))))
+                     (with-OperationState (s loc "toy.cast")
+                                          (mlir::OperationState::addOperands s input)
+                                          (mlir::OperationState::addTypes s result-type)
+                                          (mlir::OpBuilder::create<OperationState> builder s))))))
     (define-op constant
       :summary    "constant tensor"
       :attributes ((value mlir::DenseElementsAttr))
       :results    ((output mlir::isa<RankedTensorType>?))
       (:parse (parser state)
-              (let ([attr (mlir::OpAsmParser::parseAttribute parser state "value")])
-                (and (%%parsed? attr) (begin (mlir::OperationState::addType state
-                                                                            (mlir::DenseElementsAttr::getType attr))
-                                             #t))))
+        (let ([attr (mlir::OpAsmParser::parseAttribute parser state "value")])
+          (and (%%parsed? attr) (begin (mlir::OperationState::addType state
+                                                                      (mlir::DenseElementsAttr::getType attr))
+                                       #t))))
       (:print (op printer name)
-              (mlir::OpAsmPrinter::printString printer " ")
-              (mlir::OpAsmPrinter::printOptionalAttrDictExcept printer op "value")
-              (mlir::OpAsmPrinter::printAttribute
-               printer (mlir::Operation::getAttr op "value"))))
+        (mlir::OpAsmPrinter::printString printer " ")
+        (mlir::OpAsmPrinter::printOptionalAttrDictExcept printer op "value")
+        (mlir::OpAsmPrinter::printAttribute
+         printer (mlir::Operation::getAttr op "value"))))
 
     ;; add/mul/transpose/reshape/cast: result type is mlir::Value (any tensor)
     ;; because mlir-gen produces unranked results that shape inference resolves.
@@ -175,18 +175,18 @@
       :attributes ((callee mlir::StringAttr))
       :results    ((output mlir::isa<RankedTensorType>?))
       (:parse (parser state)
-              (%%parse-generic-call parser state))
+        (%%parse-generic-call parser state))
       (:print (op printer name)
-              (mlir::OpAsmPrinter::printString printer " ")
-              (mlir::OpAsmPrinter::printSymbolName
-               printer
-               (mlir::StringAttr::getValue (mlir::Operation::getAttr op "callee")))
-              (mlir::OpAsmPrinter::printString printer "(")
-              (mlir::OpAsmPrinter::printOperands printer op)
-              (mlir::OpAsmPrinter::printString printer ")")
-              (mlir::OpAsmPrinter::printOptionalAttrDictExcept printer op "callee")
-              (mlir::OpAsmPrinter::printString printer " : ")
-              (mlir::OpAsmPrinter::printFunctionalType printer op)))
+        (mlir::OpAsmPrinter::printString printer " ")
+        (mlir::OpAsmPrinter::printSymbolName
+         printer
+         (mlir::StringAttr::getValue (mlir::Operation::getAttr op "callee")))
+        (mlir::OpAsmPrinter::printString printer "(")
+        (mlir::OpAsmPrinter::printOperands printer op)
+        (mlir::OpAsmPrinter::printString printer ")")
+        (mlir::OpAsmPrinter::printOptionalAttrDictExcept printer op "callee")
+        (mlir::OpAsmPrinter::printString printer " : ")
+        (mlir::OpAsmPrinter::printFunctionalType printer op)))
 
     (define-op func
       :summary    "toy function definition"
@@ -197,45 +197,45 @@
                     (setFunctionTypeAttr (self attr)
                                          (mlir::Operation::setAttr! self "function_type" attr))))
       (:parse (parser state)
-              (mlir::function_interface_impl::parseFunctionOp parser state))
+        (mlir::function_interface_impl::parseFunctionOp parser state))
       (:print (op printer name)
-              (mlir::function_interface_impl::printFunctionOp printer op)))
+        (mlir::function_interface_impl::printFunctionOp printer op)))
 
     (define-op return
       :summary    "return from toy.func"
       (:parse (parser state)
-              (let ([ops (mlir::OpAsmParser::parseOptionalOperand parser)])
-                (if (%%parsed? ops)
-                    (and (mlir::OpAsmParser::parseColon parser)
-                         (let ([t (mlir::OpAsmParser::parseType parser)])
-                           (and (%%parsed? t)
-                                (mlir::OpAsmParser::resolveOperands
-                                 parser ops t state))))
-                    #t)))
+        (let ([ops (mlir::OpAsmParser::parseOptionalOperand parser)])
+          (if (%%parsed? ops)
+              (and (mlir::OpAsmParser::parseColon parser)
+                   (let ([t (mlir::OpAsmParser::parseType parser)])
+                     (and (%%parsed? t)
+                          (mlir::OpAsmParser::resolveOperands
+                           parser ops t state))))
+              #t)))
       (:print (op printer name)
-              (when (> (mlir::Operation::getNumOperands op) 0)
-                (let ([val (mlir::Operation::getOperand op 0)])
-                  (mlir::OpAsmPrinter::printString printer " ")
-                  (mlir::OpAsmPrinter::printOperand printer val)
-                  (mlir::OpAsmPrinter::printString printer " : ")
-                  (mlir::OpAsmPrinter::printType printer (mlir::Value::getType val))))))
+        (when (> (mlir::Operation::getNumOperands op) 0)
+          (let ([val (mlir::Operation::getOperand op 0)])
+            (mlir::OpAsmPrinter::printString printer " ")
+            (mlir::OpAsmPrinter::printOperand printer val)
+            (mlir::OpAsmPrinter::printString printer " : ")
+            (mlir::OpAsmPrinter::printType printer (mlir::Value::getType val))))))
 
     (define-op print
       :summary    "print a tensor"
       :operands   ((input mlir::Value))
       (:parse (parser state)
-              (let ([ops (mlir::OpAsmParser::parseOperand parser)])
-                (and (%%parsed? ops)
-                     (mlir::OpAsmParser::parseColon parser)
-                     (let ([t (mlir::OpAsmParser::parseType parser)])
-                       (and (%%parsed? t)
-                            (mlir::OpAsmParser::resolveOperands
-                             parser ops t state))))))
+        (let ([ops (mlir::OpAsmParser::parseOperand parser)])
+          (and (%%parsed? ops)
+               (mlir::OpAsmParser::parseColon parser)
+               (let ([t (mlir::OpAsmParser::parseType parser)])
+                 (and (%%parsed? t)
+                      (mlir::OpAsmParser::resolveOperands
+                       parser ops t state))))))
       (:print (op printer name)
-              (let ([val (mlir::Operation::getOperand op 0)])
-                (mlir::OpAsmPrinter::printString printer " ")
-                (mlir::OpAsmPrinter::printOperand printer val)
-                (mlir::OpAsmPrinter::printString printer " : ")
-                (mlir::OpAsmPrinter::printType printer (mlir::Value::getType val))))))
+        (let ([val (mlir::Operation::getOperand op 0)])
+          (mlir::OpAsmPrinter::printString printer " ")
+          (mlir::OpAsmPrinter::printOperand printer val)
+          (mlir::OpAsmPrinter::printString printer " : ")
+          (mlir::OpAsmPrinter::printType printer (mlir::Value::getType val))))))
 
   ) ;; end library (toy ch4 toy)
