@@ -16,12 +16,12 @@ namespace crest {
 
 void registerIROpBuilderBindings() {
   Sregister_symbol(
-      "mlir_ir_op_builder_at_block_end",
+      "mlir::OpBuilder::atBlockEnd",
       (void*)+[](uint64_t ctx_ptr, uint64_t block_ptr) -> uint64_t {
         if (!block_ptr) {
-          scheme_error("mlir_ir_op_builder_at_block_end", "null block pointer");
+          scheme_error("mlir::OpBuilder::atBlockEnd", "null block pointer");
         }
-        auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
         auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
         // mlir::OpBuilder(Block*, iterator) needs the block's parent op for
         // context. For blocks in OperationState regions (not yet materialized),
@@ -31,18 +31,26 @@ void registerIROpBuilderBindings() {
         return reinterpret_cast<uint64_t>(owned);
       });
   Sregister_symbol(
-      "mlir_ir_op_builder_create_from_state",
+      "mlir::OpBuilder::create<OperationState>",
       (void*)+[](uint64_t builder_ptr, uint64_t state_ptr) -> uint64_t {
-        auto& builder = crest_owned<mlir::OpBuilder>(
-            builder_ptr, "mlir_ir_op_builder_create_from_state");
-        auto& state = crest_owned<mlir::OperationState>(
-            state_ptr, "mlir_ir_op_builder_create_from_state");
+        auto& builder = crest::as_ref<mlir::OpBuilder>(
+            builder_ptr, "mlir::OpBuilder::create<OperationState>");
+        auto& state = crest::as_ref<mlir::OperationState>(
+            state_ptr, "mlir::OpBuilder::create<OperationState>");
         return reinterpret_cast<uint64_t>(builder.create(state));
+      });
+  /// builder_ptr: CrestOwned<mlir::OpBuilder>*, op_ptr: mlir::Operation*
+  Sregister_symbol(
+      "mlir::OpBuilder::setInsertionPoint",
+      (void*)+[](uint64_t builder_ptr, uint64_t op_ptr) -> void {
+        auto& builder = crest::as_ref<mlir::OpBuilder>(
+            builder_ptr, "mlir::OpBuilder::setInsertionPoint");
+        builder.setInsertionPoint(reinterpret_cast<mlir::Operation*>(op_ptr));
       });
   Sregister_symbol(
       "mlir::OpBuilder::getContext",
       (void*)+[](uint64_t builder_ptr) -> uint64_t {
-        auto& builder = crest_owned<mlir::OpBuilder>(
+        auto& builder = crest::as_ref<mlir::OpBuilder>(
             builder_ptr, "mlir::OpBuilder::getContext");
         return reinterpret_cast<uint64_t>(builder.getContext());
       });

@@ -83,29 +83,73 @@
   ;; <dialect>:register! is gone — use load-scheme-dialect! or
   ;; --crest-scheme-dialect= for standalone / pass-pipeline use respectively.
   ;; Interface concepts are registered at library-load time via toplevel-iface-calls.
-  (define (generate-register-dialect ctx dialect-cbs ops reg-op-stx stash-stx)
-    (let ([op-prefix (string-append (%%id->str ctx) ".")])
-      (let-values ([(iface-defs iface-calls)
-                    (generate-interface-registrations ctx ops)])
-        (let ([base-defs
-               (with-syntax
-                   ([%%toy.initialize (%%id ctx "%%" ctx ":initialize")]
-                    [(op-reg ...)     (map (lambda (op)
-                                             (%%generate-register-op! ctx op-prefix op reg-op-stx))
-                                           ops)])
-                 (list
-                  #'(define (%%toy.initialize dialect-ptr) op-reg ...)))]
-              ;; stash-stx kept in signature for forward compat but unused now
-              [dialect-cbs-defs (%%generate-dialect-callbacks ctx dialect-cbs ops stash-stx)]
-              ;; Emit iface-calls at library-load time so interface concepts are
-              ;; registered when the library is imported.
-              ;; Wrapped as a define to avoid "invalid context" in R6RS library bodies.
-              [toplevel-iface-calls
-               (if (null? iface-calls)
-                   '()
-                   (with-syntax ([%%iface-marker (%%id ctx "%%" ctx "-iface-init")]
-                                 [(iface-call ...) iface-calls])
-                     (list #'(define %%iface-marker (begin iface-call ... #t)))))])
-          (append iface-defs base-defs dialect-cbs-defs toplevel-iface-calls)))))
+  ;; Generate (define (%%<dialect>:<iface-name> method) (case method ...)) and
+  ;; the registration call inside %%<dialect>:initialize for each dialect-level
+  ;; interface entry.  Returns (values (list define-stx ...) (list init-call-stx ...)).
+  (define (%%generate-dialect-iface-defs ctx dialect-ifaces)
+    (let loop ([entries dialect-ifaces] [defs '()] [init-calls '()])
+      (if (null? entries)
+          (values (reverse defs) (reverse init-calls))
+          (let* ([entry     (car entries)]
+                 [iface-stx (interface-entry-name entry)]
+                 [iface-str (%%id->str iface-stx)]
+                 [methods   (interface-entry-methods entry)]
+                 ;; %%<dialect>:<iface-name>  e.g. %%toy:mlir::DialectInlinerInterface
+                 [proc-id   (%%id ctx "%%" ctx ":" iface-stx)])
+            (with-syntax
+                ([dispatch-proc proc-id]
+                 [iface-sym     iface-str]
+                 [(method-clause ...)
+                  (map (lambda (m)
+                         (with-syntax
+                             ([mname   (datum->syntax ctx (interface-method-name m))]
+                              [formals (interface-method-formals m)]
+                              [body    (interface-method-body m)])
+                           #'((mname) (lambda formals . body))))
+                       methods)])
+              (loop
+               (cdr entries)
+               (cons #'(define (dispatch-proc method)
+                         (case method
+                           method-clause ...
+                           (else #f)))
+                     defs)
+               ;; Registration call: inside %%<dialect>:initialize it has access to
+               ;; dialect-ptr, so emit as a form to be spliced into the body.
+               (cons #'((foreign-procedure iface-sym (uptr scheme-object) void)
+                        dialect-ptr dispatch-proc)
+                     init-calls)))))))
+
+  (define (generate-register-dialect ctx dialect-cbs ops reg-op-stx stash-stx
+                                     . rest)
+    ;; dialect-ifaces is an optional 6th argument (default empty list) so that
+    ;; callers compiled before this change continue to work.
+    (let ([dialect-ifaces (if (null? rest) '() (car rest))])
+      (let ([op-prefix (string-append (%%id->str ctx) ".")])
+        (let-values ([(iface-defs iface-calls)
+                      (generate-interface-registrations ctx ops)]
+                     [(diface-defs diface-init-calls)
+                      (%%generate-dialect-iface-defs ctx dialect-ifaces)])
+          (let ([base-defs
+                 (with-syntax
+                     ([%%toy.initialize (%%id ctx "%%" ctx ":initialize")]
+                      [(op-reg ...)     (map (lambda (op)
+                                               (%%generate-register-op! ctx op-prefix op reg-op-stx))
+                                             ops)]
+                      [(diface-call ...) diface-init-calls])
+                   (list
+                    #'(define (%%toy.initialize dialect-ptr) op-reg ... diface-call ...)))]
+                ;; stash-stx kept in signature for forward compat but unused now
+                [dialect-cbs-defs (%%generate-dialect-callbacks ctx dialect-cbs ops stash-stx)]
+                ;; Emit op iface-calls at library-load time so interface concepts are
+                ;; registered when the library is imported.
+                ;; Wrapped as a define to avoid "invalid context" in R6RS library bodies.
+                [toplevel-iface-calls
+                 (if (null? iface-calls)
+                     '()
+                     (with-syntax ([%%iface-marker (%%id ctx "%%" ctx "-iface-init")]
+                                   [(iface-call ...) iface-calls])
+                       (list #'(define %%iface-marker (begin iface-call ... #t)))))])
+            (append diface-defs iface-defs base-defs dialect-cbs-defs toplevel-iface-calls))))))
 
   ) ;; end library (crest dialect expand)

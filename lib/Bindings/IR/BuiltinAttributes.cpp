@@ -28,7 +28,7 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::IntegerAttr::get<i64>",
       (void*)+[](uint64_t ctx_ptr, ptr value) -> uint64_t {
-        auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
         return reinterpret_cast<uint64_t>(
             mlir::IntegerAttr::get(mlir::IntegerType::get(ctx, 64),
                                    Sinteger64_value(value))
@@ -38,7 +38,7 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::IntegerAttr::get<index>",
       (void*)+[](uint64_t ctx_ptr, ptr value) -> uint64_t {
-        auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
         return reinterpret_cast<uint64_t>(
             mlir::IntegerAttr::get(mlir::IndexType::get(ctx),
                                    Sinteger64_value(value))
@@ -48,7 +48,7 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::FloatAttr::get<f32>",
       (void*)+[](uint64_t ctx_ptr, ptr value) -> uint64_t {
-        auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
         return reinterpret_cast<uint64_t>(
             mlir::FloatAttr::get(mlir::Float32Type::get(ctx),
                                  static_cast<float>(Sflonum_value(value)))
@@ -58,7 +58,7 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::DenseI32ArrayAttr::get",
       (void*)+[](uint64_t ctx_ptr, ptr value) -> uint64_t {
-        auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
         llvm::SmallVector<int32_t> vec;
         if (Svectorp(value)) {
           iptr n = Svector_length(value);
@@ -97,7 +97,7 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::DenseI64ArrayAttr::get",
       (void*)+[](uint64_t ctx_ptr, ptr value) -> uint64_t {
-        auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
         llvm::SmallVector<int64_t> vec;
         if (Svectorp(value)) {
           iptr n = Svector_length(value);
@@ -132,7 +132,7 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::parseAttribute",
       (void*)+[](uint64_t ctx_ptr, const char* spec) -> uint64_t {
-        auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
         mlir::Attribute attr = mlir::parseAttribute(spec, ctx);
         if (!attr) {
           scheme_error("mlir::parseAttribute",
@@ -176,7 +176,8 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::UnitAttr::get", (void*)+[](uint64_t ctx_ptr) -> uint64_t {
         return reinterpret_cast<uint64_t>(
-            mlir::UnitAttr::get(reinterpret_cast<mlir::MLIRContext*>(ctx_ptr))
+            mlir::UnitAttr::get(
+                crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__))
                 .getAsOpaquePointer());
       });
 
@@ -205,7 +206,7 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::StringAttr::get",
       (void*)+[](uint64_t ctx_ptr, const char* str) -> uint64_t {
-        auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
         return reinterpret_cast<uint64_t>(
             mlir::StringAttr::get(ctx, str).getAsOpaquePointer());
       });

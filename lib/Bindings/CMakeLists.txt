@@ -24,6 +24,8 @@ add_library(CrestBindings STATIC
   IR/SymbolInterfaces.h
   IR/Block.cpp
   IR/Block.h
+  IR/DialectRegistry.cpp
+  IR/DialectRegistry.h
   IR/BuiltinAttributes.cpp
   IR/BuiltinAttributes.h
   IR/BuiltinOps.cpp
@@ -66,6 +68,10 @@ add_library(CrestBindings STATIC
   Transforms/DialectConversion.h
   Transforms/GreedyPatternRewriteDriver.cpp
   Transforms/GreedyPatternRewriteDriver.h
+  Transforms/InliningUtils.cpp
+  Transforms/InliningUtils.h
+  Pass/PassManager.cpp
+  Pass/PassManager.h
 )
 
 add_dependencies(CrestBindings ChezScheme ChezBootHeaders)
@@ -81,6 +87,7 @@ target_include_directories(CrestBindings
 target_link_libraries(CrestBindings
   PUBLIC
     MLIRIR
+    MLIRParser
     MLIRFuncDialect
     MLIRCallInterfaces
     MLIRFunctionInterfaces
@@ -89,6 +96,7 @@ target_link_libraries(CrestBindings
     MLIRTransforms
     MLIRDialectUtils
     MLIRTransformUtils
+    MLIRPass
     ${CHEZ_KERNEL_LIB}
     ${CHEZ_ZLIB_LIB}
     ${CHEZ_LZ4_LIB}

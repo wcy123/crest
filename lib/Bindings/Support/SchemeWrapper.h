@@ -66,15 +66,62 @@ template <typename T>
   return reinterpret_cast<T*>(ptr_val);
 }
 
+namespace crest {
+
+// True when `delete std::declval<T*>()` is well-formed — i.e. T has a
+// public, non-deleted destructor. Used to guard CrestOwned<T> instantiation
+// in as_ptr: types with inaccessible destructors (e.g. protected) cannot be
+// stored in CrestOwned<T> (whose type_deletor calls delete on the inner T).
+template <typename T, typename = void> constexpr bool kIsDeletable = false;
 template <typename T>
-[[nodiscard]] inline T& crest_owned(uint64_t ptr_val, const char* who) {
+constexpr bool
+    kIsDeletable<T, std::void_t<decltype(delete std::declval<T*>())>> = true;
+
+template <typename T>
+[[nodiscard]] inline T& as_ref(uint64_t ptr_val, const char* who) {
   return crest_cast<crest::CrestOwned<T>>(ptr_val, who)->inner;
 }
 
+// Returns T* from CrestRef<T>* (non-owning) or, when T is deletable,
+// CrestOwned<T>* (owned). The CrestOwned branch is compile-time disabled for
+// types whose destructor is inaccessible (e.g. protected), which would make
+// CrestOwned<T>::type_deletor ill-formed.
 template <typename T>
-[[nodiscard]] inline T* crest_ref(uint64_t ptr_val, const char* who) {
-  return crest_cast<crest::CrestRef<T>>(ptr_val, who)->ptr;
+[[nodiscard]] inline T* as_ptr(uint64_t ptr_val, const char* who) {
+  if (!ptr_val) {
+    scheme_error(who, "null pointer");
+  }
+  auto* obj = reinterpret_cast<crest::CrestObject*>(ptr_val);
+  if (obj->isa<crest::CrestRef<T>>()) {
+    return static_cast<crest::CrestRef<T>*>(obj)->ptr;
+  }
+  if constexpr (kIsDeletable<T> && !std::is_abstract_v<T>) {
+    if (obj->isa<crest::CrestOwned<T>>()) {
+      return &static_cast<crest::CrestOwned<T>*>(obj)->inner;
+    }
+  }
+  scheme_error(who, "wrong CrestObject type");
+  crest_unreachable();
 }
+
+} // namespace crest
+
+// Forward declaration so the as_ptr<mlir::MLIRContext> specialization can
+// be declared without pulling in all of mlir/IR/MLIRContext.h.
+namespace mlir {
+class MLIRContext;
+}
+
+namespace crest {
+// Explicit specialisation for mlir::MLIRContext: accepts
+// CrestOwned<MLIRContext>* (user-created) or a raw MLIRContext* returned by
+// MLIR APIs such as op->getContext() and type.getContext(). Raw pointers are
+// valid MLIR-managed memory and need no CrestObject wrapper — they are never
+// freed by Scheme.
+template <>
+[[nodiscard]] mlir::MLIRContext* as_ptr<mlir::MLIRContext>(uint64_t ptr_val,
+                                                           const char* who);
+} // namespace crest
 
 // ---------------------------------------------------------------------------
 // Conversion<From, To>

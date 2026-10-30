@@ -145,11 +145,25 @@ private:
 
 void registerIRExtensibleDialectBindings();
 
-/// Returns the (TypeID, DialectAllocatorFunction) pair needed by
-/// DialectRegistry::insert. The factory lazily imports module_name and
-/// constructs a CrestDialect on first parse encounter of the dialect's ops.
-/// Use in crest-opt.cpp before MlirOptMain, or in getDependentDialects for
-/// pass-produced dialects.
+/// Build a (TypeID, factory) pair for a Scheme-defined dialect.
+///
+/// @param dialect_name  The MLIR dialect namespace, e.g. "toy".
+/// @param module_name   The Scheme library path in slash-separated form,
+///                      e.g. "toy/ch4/toy" (equivalent to the R6RS library
+///                      name (toy ch4 toy), the same format accepted by
+///                      ChezSchemeInterpreter::importLibrary).
+///
+/// Insert the result into a DialectRegistry before creating any MLIRContext
+/// to avoid the UnregisteredOpModel use-after-free described in
+/// tech-note.md ("Dialect Registration Must Happen Before Parsing").
+///
+/// Example:
+/// @code
+///   mlir::DialectRegistry registry;
+///   auto [type_id, factory] = crest::dialectFactory("toy", "toy/ch4/toy");
+///   registry.insert(type_id, "toy", factory);
+///   mlir::MLIRContext ctx(registry);
+/// @endcode
 std::pair<mlir::TypeID, mlir::DialectAllocatorFunction>
 dialectFactory(std::string dialect_name, std::string module_name);
 

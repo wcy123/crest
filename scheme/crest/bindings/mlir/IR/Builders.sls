@@ -16,6 +16,7 @@
   (export
     mlir::OpBuilder::atBlockEnd
     mlir::OpBuilder::create<OperationState>
+    mlir::OpBuilder::setInsertionPoint
     crest::isa<CrestOwned<mlir::OpBuilder>>?
     current-OpBuilder
     with-current-OpBuilder)
@@ -30,6 +31,9 @@
   ;; @see           mlir/IR/Builders.h
   (define (mlir::OpBuilder::atBlockEnd block)
     (%mlir::OpBuilder::atBlockEnd (current-MLIRContext) block))
+
+  (define mlir::OpBuilder::setInsertionPoint
+    %mlir::OpBuilder::setInsertionPoint)
 
   (define mlir::OpBuilder::create<OperationState>
     %mlir::OpBuilder::create<OperationState>)

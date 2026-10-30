@@ -13,6 +13,8 @@
 namespace crest {
 
 void registerDialectShapeBindings() {
+  /// ctx_ptr: CrestOwned<MLIRContext>* | MLIRContext* → mlir::shape::ShapeType
+  /// (opaque)
   Sregister_symbol(
       "mlir::shape::ShapeType::get", (void*)+[](uint64_t ctx_ptr) -> uint64_t {
         if (!ctx_ptr) {
@@ -20,9 +22,11 @@ void registerDialectShapeBindings() {
         }
         return reinterpret_cast<uint64_t>(
             mlir::shape::ShapeType::get(
-                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr))
+                crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__))
                 .getAsOpaquePointer());
       });
+  /// ctx_ptr: CrestOwned<MLIRContext>* | MLIRContext* → mlir::shape::SizeType
+  /// (opaque)
   Sregister_symbol(
       "mlir::shape::SizeType::get", (void*)+[](uint64_t ctx_ptr) -> uint64_t {
         if (!ctx_ptr) {
@@ -30,9 +34,11 @@ void registerDialectShapeBindings() {
         }
         return reinterpret_cast<uint64_t>(
             mlir::shape::SizeType::get(
-                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr))
+                crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__))
                 .getAsOpaquePointer());
       });
+  /// ctx_ptr: CrestOwned<MLIRContext>* | MLIRContext* →
+  /// mlir::shape::WitnessType (opaque)
   Sregister_symbol(
       "mlir::shape::WitnessType::get",
       (void*)+[](uint64_t ctx_ptr) -> uint64_t {
@@ -41,7 +47,7 @@ void registerDialectShapeBindings() {
         }
         return reinterpret_cast<uint64_t>(
             mlir::shape::WitnessType::get(
-                reinterpret_cast<mlir::MLIRContext*>(ctx_ptr))
+                crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__))
                 .getAsOpaquePointer());
       });
 }

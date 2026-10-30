@@ -21,6 +21,8 @@
     %mlir::isa<BlockArgument>?
     %mlir::Value::getUses
     %mlir::Value::getType
+    %mlir::Value::setType
+    %mlir::Value::replaceAllUsesWith
     %mlir::OpResult::getResultNumber)
 
   (import (rnrs)
@@ -57,6 +59,12 @@
   ;; @note         Defined in lib/Bindings/IR/Value.cpp
   (define %mlir::Value::getType
     (foreign-procedure "mlir::Value::getType" (uptr) uptr))
+
+  (define %mlir::Value::setType
+    (foreign-procedure "mlir::Value::setType" (uptr uptr) void))
+
+  (define %mlir::Value::replaceAllUsesWith
+    (foreign-procedure "mlir::Value::replaceAllUsesWith" (uptr uptr) void))
 
   ;; @brief mlir::OpResult::getResultNumber — return the result index within the defining op.
   ;; @param value  Opaque Value* (mlir::OpResult) as uptr

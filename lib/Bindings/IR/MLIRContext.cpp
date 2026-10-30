@@ -10,6 +10,7 @@
 #include "mlir/IR/AsmState.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/Dialect.h"
+#include "mlir/IR/DialectRegistry.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/OwningOpRef.h"
 #include "mlir/Parser/Parser.h"
@@ -17,76 +18,88 @@
 
 namespace crest {
 void registerIRMLIRContextBindings() {
+  /// → CrestOwned<mlir::MLIRContext>*
   Sregister_symbol(
       "mlir::MLIRContext::new", (void*)+[]() -> uint64_t {
-        return reinterpret_cast<uint64_t>(new mlir::MLIRContext());
+        return reinterpret_cast<uint64_t>(new CrestOwned<mlir::MLIRContext>());
+      });
+
+  /// registry_ptr: CrestOwned<mlir::DialectRegistry>* →
+  /// CrestOwned<mlir::MLIRContext>*
+  Sregister_symbol(
+      "mlir::MLIRContext::new/registry",
+      (void*)+[](uint64_t registry_ptr) -> uint64_t {
+        auto& registry = crest::as_ref<mlir::DialectRegistry>(
+            registry_ptr, "mlir::MLIRContext::new/registry");
+        return reinterpret_cast<uint64_t>(
+            new CrestOwned<mlir::MLIRContext>(registry));
       });
 
   Sregister_symbol(
-      "mlir_ir_mlir_context_allow_unregistered_dialects",
+      "mlir::MLIRContext::allowUnregisteredDialects",
       (void*)+[](uint64_t ctx_ptr, int allow) -> void {
-        reinterpret_cast<mlir::MLIRContext*>(ctx_ptr)
+        crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__)
             ->allowUnregisteredDialects(allow != 0);
       });
   Sregister_symbol(
-      "mlir_ir_mlir_context_allows_unregistered_dialects",
+      "mlir::MLIRContext::allowsUnregisteredDialects",
       (void*)+[](uint64_t ctx_ptr) -> int {
-        return reinterpret_cast<mlir::MLIRContext*>(ctx_ptr)
+        return crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__)
                        ->allowsUnregisteredDialects()
                    ? 1
                    : 0;
       });
   Sregister_symbol(
-      "mlir_ir_mlir_context_enable_multithreading",
+      "mlir::MLIRContext::enableMultithreading",
       (void*)+[](uint64_t ctx_ptr, int enable) -> void {
-        reinterpret_cast<mlir::MLIRContext*>(ctx_ptr)->enableMultithreading(
-            enable != 0);
+        crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__)
+            ->enableMultithreading(enable != 0);
       });
   Sregister_symbol(
-      "mlir_ir_mlir_context_disable_multithreading",
+      "mlir::MLIRContext::disableMultithreading",
       (void*)+[](uint64_t ctx_ptr, int disable) -> void {
-        reinterpret_cast<mlir::MLIRContext*>(ctx_ptr)->disableMultithreading(
-            disable != 0);
+        crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__)
+            ->disableMultithreading(disable != 0);
       });
   Sregister_symbol(
-      "mlir_ir_mlir_context_is_multithreading_enabled",
+      "mlir::MLIRContext::isMultithreadingEnabled",
       (void*)+[](uint64_t ctx_ptr) -> int {
-        return reinterpret_cast<mlir::MLIRContext*>(ctx_ptr)
+        return crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__)
                        ->isMultithreadingEnabled()
                    ? 1
                    : 0;
       });
   Sregister_symbol(
-      "mlir_ir_mlir_context_get_or_load_dialect",
+      "mlir::MLIRContext::getOrLoadDialect",
       (void*)+[](uint64_t ctx_ptr, const char* ns) -> uint64_t {
         return reinterpret_cast<uint64_t>(
-            reinterpret_cast<mlir::MLIRContext*>(ctx_ptr)->getOrLoadDialect(
-                ns));
+            crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__)
+                ->getOrLoadDialect(ns));
       });
   Sregister_symbol(
-      "mlir_ir_mlir_context_load_all_available_dialects",
+      "mlir::MLIRContext::loadAllAvailableDialects",
       (void*)+[](uint64_t ctx_ptr) -> void {
-        reinterpret_cast<mlir::MLIRContext*>(ctx_ptr)
+        crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__)
             ->loadAllAvailableDialects();
       });
   Sregister_symbol(
-      "mlir_ir_mlir_context_print_op_on_diagnostic",
+      "mlir::MLIRContext::printOpOnDiagnostic",
       (void*)+[](uint64_t ctx_ptr, int enable) -> void {
-        reinterpret_cast<mlir::MLIRContext*>(ctx_ptr)->printOpOnDiagnostic(
-            enable != 0);
+        crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__)
+            ->printOpOnDiagnostic(enable != 0);
       });
   Sregister_symbol(
-      "mlir_ir_mlir_context_should_print_op_on_diagnostic",
+      "mlir::MLIRContext::shouldPrintOpOnDiagnostic",
       (void*)+[](uint64_t ctx_ptr) -> int {
-        return reinterpret_cast<mlir::MLIRContext*>(ctx_ptr)
+        return crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__)
                        ->shouldPrintOpOnDiagnostic()
                    ? 1
                    : 0;
       });
   Sregister_symbol(
-      "mlir_ir_mlir_context_print_stack_trace_on_diagnostic",
+      "mlir::MLIRContext::printStackTraceOnDiagnostic",
       (void*)+[](uint64_t ctx_ptr, int enable) -> void {
-        reinterpret_cast<mlir::MLIRContext*>(ctx_ptr)
+        crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__)
             ->printStackTraceOnDiagnostic(enable != 0);
       });
 
@@ -94,7 +107,7 @@ void registerIRMLIRContextBindings() {
   Sregister_symbol(
       "mlir::parseSourceFile",
       (void*)+[](uint64_t ctx_ptr, const char* filename) -> uint64_t {
-        auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
         // verifyAfterParse=false: skip structural verification so that
         // dynamic ops without Terminator/HasParent traits can be parsed.
         mlir::ParserConfig config(ctx, /*verifyAfterParse=*/false);
@@ -106,4 +119,22 @@ void registerIRMLIRContextBindings() {
         return reinterpret_cast<uint64_t>(module.release().getOperation());
       });
 }
+// Specialisation of as_ptr<mlir::MLIRContext>: accepts CrestOwned<MLIRContext>*
+// from mlir::MLIRContext::new, or a raw MLIRContext* from MLIR API getters
+// (op->getContext(), type.getContext(), etc.). Raw pointers are MLIR-managed
+// and need no CrestObject wrapper.
+template <>
+mlir::MLIRContext* as_ptr<mlir::MLIRContext>(uint64_t ptr_val,
+                                             const char* who) {
+  if (!ptr_val) {
+    scheme_error(who, "null MLIRContext pointer");
+  }
+  auto* obj = reinterpret_cast<crest::CrestObject*>(ptr_val);
+  if (obj->isa<crest::CrestOwned<mlir::MLIRContext>>()) {
+    return &static_cast<crest::CrestOwned<mlir::MLIRContext>*>(obj)->inner;
+  }
+  // Raw MLIRContext* from MLIR APIs — valid MLIR-managed pointer, no wrapper.
+  return reinterpret_cast<mlir::MLIRContext*>(ptr_val);
+}
+
 } // namespace crest

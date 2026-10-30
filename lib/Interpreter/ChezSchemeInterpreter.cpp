@@ -226,6 +226,10 @@ std::string ChezSchemeInterpreter::getLibraryDirectories() const {
 // ─── Script / eval
 // ────────────────────────────────────────────────────────────
 
+void ChezSchemeInterpreter::loadFile(const std::string& path) {
+  scheme_call("load", Sstring(path.c_str()));
+}
+
 bool ChezSchemeInterpreter::importLibrary(
     const std::string& slashSeparatedName) {
   // Validate before string-building Scheme code — reject names with characters

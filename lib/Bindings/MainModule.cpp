@@ -20,6 +20,7 @@
 #include "IR/BuiltinAttributes.h"
 #include "IR/BuiltinOps.h"
 #include "IR/BuiltinTypes.h"
+#include "IR/DialectRegistry.h"
 #include "IR/Location.h"
 #include "IR/MLIRContext.h"
 #include "IR/OpImplementation.h"
@@ -34,11 +35,13 @@
 #include "Interfaces/CallInterfaces.h"
 #include "Interfaces/DestinationStyleOpInterface.h"
 #include "Interfaces/FunctionInterfaces.h"
+#include "Pass/PassManager.h"
 #include "Support/ArrayRef.h"
 #include "Support/CrestObject.h"
 #include "Support/Logging.h"
 #include "Transforms/DialectConversion.h"
 #include "Transforms/GreedyPatternRewriteDriver.h"
+#include "Transforms/InliningUtils.h"
 
 namespace crest {
 
@@ -57,7 +60,10 @@ void registerMlirForeignFunctions() {
   registerInterfacesCallInterfacesBindings();
   registerInterfacesFunctionInterfacesBindings();
   registerIRSymbolInterfacesBindings();
+  registerIRDialectRegistryBindings();
   registerIRExtensibleDialectBindings();
+  registerTransformsInliningUtilsBindings();
+  registerPassPassManagerBindings();
   registerCrestDynamicOpBindings();
   registerCrestTraitBindings();
   registerIRLocationBindings();

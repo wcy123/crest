@@ -42,7 +42,10 @@
 
   ;; @brief mlir::MLIRContext::new — allocate a new heap MLIRContext.
   ;; @return  mlir::MLIRContext* as uptr (caller owns)
-  (define mlir::MLIRContext::new %mlir::MLIRContext::new)
+  (define mlir::MLIRContext::new
+    (case-lambda
+     [()         (%mlir::MLIRContext::new)]
+     [(registry) (%mlir::MLIRContext::new/registry registry)]))
 
   ;; @brief current-MLIRContext — dynamic parameter holding the ambient MLIRContext* uptr.
   ;; @return  MLIRContext* as uptr, or #f when no context is installed
@@ -100,7 +103,7 @@
   ;; @see        mlir/IR/MLIRContext.h
   ;; @note       Defined in lib/Bindings/IR/MLIRContext.cpp
   (define (mlir::MLIRContext::isMultithreadingEnabled? ctx)
-    (not (zero? (%mlir-context-is-multithreading-enabled ctx))))
+    (not (zero? (%mlir::MLIRContext::isMultithreadingEnabled ctx))))
 
   ;; @brief mlir::MLIRContext::getOrLoadDialect — load a dialect by namespace and return it.
   ;; @param ctx  MLIRContext* as uptr
