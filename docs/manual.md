@@ -39,7 +39,7 @@ rebuild required.
 
 ```bash
 export CREST_PATH=/my-project/passes:/path/to/crest/samples
-build/tools/crest-opt/crest-opt --crest-pass="module=passes/my-pass" input.mlir
+build/tools/crest-opt/crest-opt --crest-pass="passes=passes/my-pass" input.mlir
 ```
 
 ### CREST_PATH
@@ -532,7 +532,7 @@ when the count and types are fixed.
 ## 6. Pass entry points
 
 A pass is an ordinary R6RS `library` that exports a function named `run-pass`.
-`run-pass` is a convention — it is the name that `--crest-pass="module=passes/my-pass"`
+`run-pass` is a convention — it is the name that `--crest-pass="passes=passes/my-pass"`
 calls at runtime. Everything else in the library is plain Scheme: helper
 functions, type predicates, constants — no CREST macros required.
 
@@ -624,8 +624,8 @@ in one place, with no C++ code required.
         printer (mlir::Operation::getAttr op "value")))))
 ```
 
-`(define-dialect toy ...)` binds `toy` to the dialect's callback vector and
-registers each op into the MLIR context when the dialect is loaded.
+`(define-dialect toy ...)` defines the dialect named `toy`. All ops become
+available as `toy.op-name` in MLIR IR once the dialect is loaded into a context.
 
 ### `define-op` clauses
 
@@ -764,7 +764,7 @@ the match code with per-step diagnostics. Every failed check prints:
 CREST_DEBUG_MATCH=1 CREST_PATH=$(pwd)/samples \
   build/tools/crest-opt/crest-opt \
   -allow-unregistered-dialect \
-  --crest-pass="module=passes/hip-fusion" \
+  --crest-pass="passes=passes/hip-fusion" \
   test/hip-fusion/qadd.mlir 2>&1 | grep warning
 ```
 
@@ -788,7 +788,7 @@ Every op emitted by `begin-mlir-code` (inside `:rewrite :with`) carries a
 CREST_PATH=$(pwd)/samples \
   build/tools/crest-opt/crest-opt \
   -allow-unregistered-dialect \
-  --crest-pass="module=passes/onnx-to-hipsr" \
+  --crest-pass="passes=passes/onnx-to-hipsr" \
   --mlir-print-debuginfo \
   test/onnx-to-hipsr/matmul.mlir 2>/dev/null | head -5
 ```
@@ -904,7 +904,7 @@ compiled version — a mismatch fails at runtime.
 
 ```bash
 export CREST_PATH=/deploy/passes
-./crest-opt --crest-pass="module=passes/my-pass" input.mlir
+./crest-opt --crest-pass="passes=passes/my-pass" input.mlir
 ```
 
 ### Boot mode (embedded)
