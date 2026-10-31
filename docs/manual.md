@@ -12,10 +12,11 @@ Patterns are Scheme macros — edit a `.sls` file and re-run: no rebuild, no rel
 4. [Rewrite DSL reference](#4-rewrite-dsl-reference)
 5. [`begin-mlir-code`](#5-begin-mlir-code)
 6. [Pass entry points](#6-pass-entry-points)
-7. [Debugging](#7-debugging)
-8. [MLIR bindings reference](#8-mlir-bindings-reference)
-9. [Deployment](#9-deployment)
-10. [Extending with custom C++ bindings](#10-extending-with-custom-c-bindings)
+7. [`define-dialect` reference](#7-define-dialect-reference)
+8. [Debugging](#8-debugging)
+9. [MLIR bindings reference](#9-mlir-bindings-reference)
+10. [Deployment](#10-deployment)
+11. [Extending with custom C++ bindings](#11-extending-with-custom-c-bindings)
 
 ---
 
@@ -38,7 +39,7 @@ rebuild required.
 
 ```bash
 export CREST_PATH=/my-project/passes:/path/to/crest/samples
-build/tools/crest-opt/crest-opt --crest-pass="module=passes/my-pass" input.mlir
+build/tools/crest-opt/crest-opt --crest-pass="passes=passes/my-pass" input.mlir
 ```
 
 ### CREST_PATH
@@ -531,7 +532,7 @@ when the count and types are fixed.
 ## 6. Pass entry points
 
 A pass is an ordinary R6RS `library` that exports a function named `run-pass`.
-`run-pass` is a convention — it is the name that `--crest-pass="module=passes/my-pass"`
+`run-pass` is a convention — it is the name that `--crest-pass="passes=passes/my-pass"`
 calls at runtime. Everything else in the library is plain Scheme: helper
 functions, type predicates, constants — no CREST macros required.
 
@@ -596,7 +597,160 @@ functions, type predicates, constants — no CREST macros required.
 
 ---
 
-## 7. Debugging
+## 7. `define-dialect` reference
+
+`define-dialect` is CREST's core abstraction for defining MLIR dialects entirely
+in Scheme. A dialect definition declares its ops, their parse/print formats, type
+predicates, interface implementations, and optional dialect-level callbacks — all
+in one place, with no C++ code required.
+
+### Minimal example
+
+```scheme
+(define-dialect toy
+  (define-op constant
+    :summary    "tensor constant from a dense attribute"
+    :attributes ((value mlir::DenseElementsAttr))
+    :results    ((output mlir::isa<RankedTensorType>?))
+    (:parse (parser state)
+      (let ([attr (mlir::OpAsmParser::parseAttribute parser state "value")])
+        (and attr
+             (begin (mlir::OperationState::addType
+                      state (mlir::DenseElementsAttr::getType attr))
+                    #t))))
+    (:print (op printer name)
+      (mlir::OpAsmPrinter::printString printer " ")
+      (mlir::OpAsmPrinter::printAttribute
+        printer (mlir::Operation::getAttr op "value")))))
+```
+
+`(define-dialect toy ...)` defines the dialect named `toy`. All ops become
+available as `toy.op-name` in MLIR IR once the dialect is loaded into a context.
+
+### `define-op` clauses
+
+Each `(define-op name clause ...)` inside `define-dialect` defines one MLIR op.
+The op's full MLIR name is `dialect-name.op-name` (e.g. `toy.constant`).
+
+| Clause | Purpose |
+|---|---|
+| `:summary "text"` | Human-readable description (documentation only) |
+| `:operands ((name predicate) ...)` | Operand fields — default `:required`; append `:optional` or `:variadic` to change cardinality: `(name predicate :optional)` |
+| `:attributes ((name predicate) ...)` | Attribute fields — default `:required`; append `:optional` to allow absence: `(name predicate :optional)` |
+| `:results ((name predicate) ...)` | Result fields; `predicate` is called on the result's `mlir::Type` uptr |
+| `(:parse (parser state) body ...)` | Custom assembly parser |
+| `(:print (op printer name) body ...)` | Custom assembly printer |
+| `(:verify (op) body ...)` | Extra verifier called after attribute/type checks |
+| `(:fold (op) body ...)` | Constant-fold hook; return `#t` if folded |
+
+**Type predicates** in `:operands`, `:attributes`, `:results` are Scheme
+procedures called at verification time. For example:
+- `:results ((output mlir::isa<RankedTensorType>?))` — result must be ranked
+- `:operands ((lhs mlir::Value))` — any non-null value (`mlir::Value` is `(lambda (v) (not (zero? v)))`)
+
+### Op-level `:interfaces`
+
+An op can implement MLIR op interfaces (like `FunctionOpInterface`) by listing
+them inside `define-op`. Each method clause is `(method-name (formals) body ...)`.
+Methods not listed use the default C++ concept implementation.
+
+```scheme
+(define-op func
+  :summary "function definition"
+  :interfaces ((mlir::FunctionOpInterface
+                (getFunctionType (self)
+                  (mlir::TypeAttr::getValue
+                    (mlir::Operation::getAttr self "function_type")))
+                (setFunctionTypeAttr (self attr)
+                  (mlir::Operation::setAttr! self "function_type" attr)))))
+```
+
+### Dialect-level `:interfaces`
+
+A dialect can implement MLIR dialect interfaces (like `mlir::DialectInlinerInterface`)
+by placing an `:interfaces` clause directly inside `define-dialect`, before any
+`define-op`:
+
+```scheme
+(define-dialect toy
+  (:interfaces ((mlir::DialectInlinerInterface
+                  ;; Required: all three isLegalToInline overloads
+                  (isLegalToInline/call   (call callable wouldBeCloned) #t)
+                  (isLegalToInline/region (dest src wouldBeCloned) #t)
+                  (isLegalToInline/op     (op dest wouldBeCloned) #t)
+                  ;; Optional: handle toy.return terminators during inlining
+                  (handleTerminator (op n replacements)
+                    (let loop ([i 0] [repls replacements])
+                      (when (< i n)
+                        (mlir::Value::replaceAllUsesWith
+                          (car repls)
+                          (mlir::Operation::getOperand op i))
+                        (loop (+ i 1) (cdr repls)))))
+                  ;; Optional: insert a cast op at type-mismatched call boundaries
+                  (materializeCallConversion (builder input result-type loc)
+                    (with-OperationState (s loc "toy.cast")
+                      (mlir::OperationState::addOperands s input)
+                      (mlir::OperationState::addTypes s result-type)
+                      (mlir::OpBuilder::create<OperationState> builder s))))))
+  (define-op constant ...) ...)
+```
+
+The expander generates a dispatcher function `%%toy:mlir::DialectInlinerInterface`
+and splices a registration call into the dialect's initialize callback. Any dialect
+interface following this dispatcher protocol can be registered the same way.
+
+### Dialect-level callbacks
+
+Less common hooks are placed as `(:keyword (formals) body ...)` clauses directly
+inside `define-dialect`:
+
+| Clause | C++ virtual | Use case |
+|---|---|---|
+| `(:parse-type (parser) body)` | `parseType` | Custom type assembly syntax |
+| `(:print-type (type printer) body)` | `printType` | Custom type printing |
+| `(:parse-attribute (parser type) body)` | `parseAttribute` | Custom attribute syntax |
+| `(:print-attribute (attr printer) body)` | `printAttribute` | Custom attribute printing |
+| `(:materialize-constant (builder value type loc) body)` | `materializeConstant` | Constant materialization |
+| `(:get-canonicalization-patterns (pattern-set) body)` | `getCanonicalizationPatterns` | Dialect-wide canonicalization |
+| `(:verify-op-attr (op attr) body)` | `verifyOperationAttribute` | Attribute attachment rules |
+
+### Loading the dialect
+
+A dialect is loaded from Scheme via the `mlir::DialectRegistry`:
+
+```scheme
+;; Preferred: pre-register before MLIRContext is created (parser-safe)
+(with-DialectRegistry (reg)
+  (mlir::DialectRegistry::insert reg "toy" "toy/ch4/toy")
+  (with-MLIRContext (ctx reg)
+    (mlir::MLIRContext::getOrLoadDialect ctx "toy")
+    ...))
+```
+
+Or lazily via `crest::load-scheme-dialect!` after the context is created (safe
+only when no ops of this dialect appear in input IR yet):
+
+```scheme
+(load-scheme-dialect! ctx "toy" "toy/ch4/toy")
+```
+
+### Inspecting the expansion
+
+```bash
+DEBUG_DEFINE_DIALECT=1 \
+CREST_PATH=samples \
+  crest-opt /dev/null --crest-pass="passes=toy/ch4/toy" 2>/dev/null
+```
+
+Or use the helper script:
+
+```bash
+tools/debug-define-dialect samples/toy/ch4/toy.sls
+```
+
+---
+
+## 8. Debugging
 
 ### `CREST_DEBUG_MATCH=1`
 
@@ -610,7 +764,7 @@ the match code with per-step diagnostics. Every failed check prints:
 CREST_DEBUG_MATCH=1 CREST_PATH=$(pwd)/samples \
   build/tools/crest-opt/crest-opt \
   -allow-unregistered-dialect \
-  --crest-pass="module=passes/hip-fusion" \
+  --crest-pass="passes=passes/hip-fusion" \
   test/hip-fusion/qadd.mlir 2>&1 | grep warning
 ```
 
@@ -634,7 +788,7 @@ Every op emitted by `begin-mlir-code` (inside `:rewrite :with`) carries a
 CREST_PATH=$(pwd)/samples \
   build/tools/crest-opt/crest-opt \
   -allow-unregistered-dialect \
-  --crest-pass="module=passes/onnx-to-hipsr" \
+  --crest-pass="passes=passes/onnx-to-hipsr" \
   --mlir-print-debuginfo \
   test/onnx-to-hipsr/matmul.mlir 2>/dev/null | head -5
 ```
@@ -649,7 +803,7 @@ exact `.sls` line automatically.
 
 ---
 
-## 8. MLIR bindings reference
+## 9. MLIR bindings reference
 
 This section lists commonly used bindings. The set is not exhaustive — bindings
 are added on demand as new MLIR APIs are needed. Library names mirror MLIR header
@@ -739,7 +893,7 @@ Exports: `define-rewrite-pattern`, `define-conversion-pattern`,
 
 ---
 
-## 9. Deployment
+## 10. Deployment
 
 ### Development mode (default)
 
@@ -750,7 +904,7 @@ compiled version — a mismatch fails at runtime.
 
 ```bash
 export CREST_PATH=/deploy/passes
-./crest-opt --crest-pass="module=passes/my-pass" input.mlir
+./crest-opt --crest-pass="passes=passes/my-pass" input.mlir
 ```
 
 ### Boot mode (embedded)
@@ -775,7 +929,7 @@ add_subdirectory(crest)
 
 ---
 
-## 10. Extending with custom C++ bindings
+## 11. Extending with custom C++ bindings
 
 Register additional MLIR APIs from a downstream project without modifying CREST:
 

@@ -54,6 +54,9 @@
     ;; CREST RAII macros — body indented 2 from opening paren
     (with-raii . 1)
     (with-CrestObject . 1)
+    (with-MLIRContext . 1)
+    (with-DialectRegistry . 1)
+    (with-PassManager . 1)
     (with-current-MLIRContext . 1)
     (with-current-MLIRBlock . 1)
     (with-current-OpBuilder . 1)
@@ -65,7 +68,32 @@
     (with-ConversionTarget . 1)
     (with-ArrayRef . 1)
     ;; begin-mlir-code: first arg is builder (like with-*), rest are op-forms
-    (begin-mlir-code . 1))
+    (begin-mlir-code . 1)
+    ;; define-op DSL callbacks: (:keyword (formals) body ...) — like when
+    (:parse . 1)
+    (:print . 1)
+    (:fold . 1)
+    (:verify . 1)
+    (:verify-regions . 1)
+    (:get-canonicalization-patterns . 1)
+    (:populate-default-attrs . 1)
+    ;; define-dialect DSL callbacks
+    (:initialize . 1)
+    (:get-dependent-dialects . 1)
+    (:parse-attribute . 1)
+    (:print-attribute . 1)
+    (:parse-type . 1)
+    (:print-type . 1)
+    (:materialize-constant . 1)
+    (:verify-op-attr . 1)
+    (:verify-region-arg-attr . 1)
+    (:verify-region-result-attr . 1)
+    ;; dialect interface method bodies inside :interfaces clauses
+    (isLegalToInline/call . 1)
+    (isLegalToInline/region . 1)
+    (isLegalToInline/op . 1)
+    (handleTerminator . 1)
+    (materializeCallConversion . 1))
   "Alist of (symbol . indent-level) to teach scheme-mode indentation."
   :type '(alist :key-type symbol :value-type integer)
   :group 'pp)

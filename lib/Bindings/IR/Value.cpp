@@ -7,8 +7,6 @@
 
 #include "mlir/IR/Value.h"
 #include "Support/SchemeWrapper.h"
-#include "mlir/CAPI/IR.h"
-#include "mlir/CAPI/Wrap.h"
 #include "mlir/IR/Operation.h"
 
 namespace crest {
@@ -19,17 +17,9 @@ void registerIRValueBindings() {
         if (!value) {
           scheme_error("mlir::Value::getDefiningOp", "value pointer is null");
         }
-        MlirValue cVal{reinterpret_cast<const void*>(value)};
-        return reinterpret_cast<uint64_t>(unwrap(cVal).getDefiningOp());
-      });
-  Sregister_symbol(
-      "mlir::isa<BlockArgument>", (void*)+[](uint64_t value) -> int {
-        if (!value) {
-          scheme_error("mlir::isa<BlockArgument>", "value pointer is null");
-        }
-        mlir::Value val =
-            unwrap(MlirValue{reinterpret_cast<const void*>(value)});
-        return mlir::isa<mlir::BlockArgument>(val) ? 1 : 0;
+        auto val = mlir::Value::getFromOpaquePointer(
+            reinterpret_cast<const void*>(value));
+        return reinterpret_cast<uint64_t>(val.getDefiningOp());
       });
   Sregister_symbol(
       "mlir::Value::getUses", (void*)+[](uint64_t val_ptr) -> uint64_t {
@@ -82,14 +72,13 @@ void registerIRValueBindings() {
             reinterpret_cast<const void*>(replacement_ptr));
         val.replaceAllUsesWith(repl);
       });
-  // Alias with ? suffix (Scheme predicate convention)
   Sregister_symbol(
-      "mlir::isa<BlockArgument>?", (void*)+[](uint64_t value) -> int {
+      "mlir::BlockArgument?", (void*)+[](uint64_t value) -> int {
         if (!value) {
-          scheme_error("mlir::isa<BlockArgument>?", "value pointer is null");
+          return 0;
         }
-        mlir::Value val =
-            unwrap(MlirValue{reinterpret_cast<const void*>(value)});
+        auto val = mlir::Value::getFromOpaquePointer(
+            reinterpret_cast<const void*>(value));
         return mlir::isa<mlir::BlockArgument>(val) ? 1 : 0;
       });
 }
