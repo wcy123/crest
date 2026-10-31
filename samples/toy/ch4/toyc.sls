@@ -257,12 +257,12 @@
                                                             (iota n-res))]
                                             [attrs     (%%collect-attrs op)]
                                             [new-op    (with-OperationState (s (mlir::Operation::getLoc op) name)
-                                                                            (for-each (lambda (v) (mlir::OperationState::addOperands s v)) new-ops)
-                                                                            (for-each (lambda (t) (mlir::OperationState::addTypes s t)) res-types)
-                                                                            (for-each (lambda (kv)
-                                                                                        (mlir::OperationState::addAttribute s (car kv) (cdr kv)))
-                                                                                      attrs)
-                                                                            (mlir::OpBuilder::create<OperationState> builder-obj s))])
+                                                         (for-each (lambda (v) (mlir::OperationState::addOperands s v)) new-ops)
+                                                         (for-each (lambda (t) (mlir::OperationState::addTypes s t)) res-types)
+                                                         (for-each (lambda (kv)
+                                                                     (mlir::OperationState::addAttribute s (car kv) (cdr kv)))
+                                                                   attrs)
+                                                         (mlir::OpBuilder::create<OperationState> builder-obj s))])
                                        ;; Map old results to new results.
                                        (do ([i 0 (+ i 1)]) ((= i n-res))
                                          (hashtable-set! val-map

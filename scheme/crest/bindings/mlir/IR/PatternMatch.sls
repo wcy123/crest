@@ -112,13 +112,13 @@
   (define mlir-create-operation
     (let ([build (lambda (rw name operands types source-loc nregions)
                    (with-OperationState (state source-loc name)
-                                        (for-each (lambda (v) (mlir::OperationState::addOperands state v)) operands)
-                                        (for-each (lambda (t) (mlir::OperationState::addTypes state t)) types)
-                                        (let loop ([i 0])
-                                          (when (< i nregions)
-                                            (mlir::OperationState::addRegion state)
-                                            (loop (+ i 1))))
-                                        (mlir::RewriterBase::create<OperationState> rw state)))])
+                     (for-each (lambda (v) (mlir::OperationState::addOperands state v)) operands)
+                     (for-each (lambda (t) (mlir::OperationState::addTypes state t)) types)
+                     (let loop ([i 0])
+                       (when (< i nregions)
+                         (mlir::OperationState::addRegion state)
+                         (loop (+ i 1))))
+                     (mlir::RewriterBase::create<OperationState> rw state)))])
       (case-lambda
        [(rw name operands types)
         (build rw name operands types (mlir::UnknownLoc::get) 0)]

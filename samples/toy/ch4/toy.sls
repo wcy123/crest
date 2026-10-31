@@ -109,9 +109,9 @@
                                 (mlir::Operation::getOperand op i))))
                    (materializeCallConversion (builder input result-type loc)
                      (with-OperationState (s loc "toy.cast")
-                                          (mlir::OperationState::addOperands s input)
-                                          (mlir::OperationState::addTypes s result-type)
-                                          (mlir::OpBuilder::create<OperationState> builder s))))))
+                       (mlir::OperationState::addOperands s input)
+                       (mlir::OperationState::addTypes s result-type)
+                       (mlir::OpBuilder::create<OperationState> builder s))))))
     (define-op constant
       :summary    "constant tensor"
       :attributes ((value mlir::DenseElementsAttr))
