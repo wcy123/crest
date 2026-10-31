@@ -256,7 +256,7 @@
                                                                (mlir::Operation::getResult op i)))
                                                             (iota n-res))]
                                             [attrs     (%%collect-attrs op)]
-                                            [new-op    (with-OperationState (s (mlir::Operation::getLoc op) name)
+                                            [new-op    (with-OperationState s ((mlir::Operation::getLoc op) name)
                                                          (for-each (lambda (v) (mlir::OperationState::addOperands s v)) new-ops)
                                                          (for-each (lambda (t) (mlir::OperationState::addTypes s t)) res-types)
                                                          (for-each (lambda (kv)

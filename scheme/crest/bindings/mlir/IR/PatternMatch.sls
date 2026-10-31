@@ -111,7 +111,7 @@
   ;; subobject offset differs from OpBuilder — these bindings are NOT interchangeable.
   (define mlir-create-operation
     (let ([build (lambda (rw name operands types source-loc nregions)
-                   (with-OperationState (state source-loc name)
+                   (with-OperationState state (source-loc name)
                      (for-each (lambda (v) (mlir::OperationState::addOperands state v)) operands)
                      (for-each (lambda (t) (mlir::OperationState::addTypes state t)) types)
                      (let loop ([i 0])

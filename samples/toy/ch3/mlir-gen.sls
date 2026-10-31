@@ -72,7 +72,7 @@
 
   ;; Create a single-result op with given operands, attributes, and result types.
   (define (%%create-op! builder loc name operands attrs result-types)
-    (with-OperationState (state loc name)
+    (with-OperationState state (loc name)
       (for-each (lambda (v) (mlir::OperationState::addOperands state v))
                 operands)
       (for-each (lambda (kv)

@@ -492,8 +492,7 @@
              ;; region slots pre-allocated in OperationState, filled post-create.
              (cons #'op-tmp
                    #'(let ([op-tmp
-                            (with-OperationState
-                                (state source-loc name)
+                            (with-OperationState state (source-loc name)
                               (for-each
                                (lambda (v) (mlir::OperationState::addOperands state v))
                                operands-expr)
