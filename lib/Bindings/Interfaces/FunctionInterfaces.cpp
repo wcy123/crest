@@ -242,9 +242,14 @@ void registerInterfacesFunctionInterfacesBindings() {
       (void*)+[](uint64_t printer_ptr, uint64_t op_ptr) -> void {
         auto* p = reinterpret_cast<mlir::OpAsmPrinter*>(printer_ptr);
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-        mlir::FunctionOpInterface fn(
-            op, SupportedInterfaces<
-                    mlir::FunctionOpInterface>::getOrCreateDefaultConcept());
+        auto* c = static_cast<mlir::FunctionOpInterface::Concept*>(
+            LookupInterfaceForOp(mlir::FunctionOpInterface::getInterfaceID(),
+                                 op->getName().getStringRef().str()));
+        if (!c) {
+          c = SupportedInterfaces<
+              mlir::FunctionOpInterface>::getOrCreateDefaultConcept();
+        }
+        mlir::FunctionOpInterface fn(op, c);
         auto* ctx = op->getContext();
         mlir::function_interface_impl::printFunctionOp(
             *p, fn, /*isVariadic=*/false, "function_type",
@@ -260,8 +265,6 @@ void registerInterfacesFunctionInterfacesBindings() {
         auto* c = static_cast<mlir::FunctionOpInterface::Concept*>(
             LookupInterfaceForOp(mlir::FunctionOpInterface::getInterfaceID(),
                                  name_str));
-        auto fn = mlir::dyn_cast<mlir::FunctionOpInterface>(op);
-        llvm::errs() << "fn=" << (void*)fn << "  c=" << (void*)c << "\n";
         if (!c) {
           scheme_error(
               "mlir::FunctionOpInterface::getFunctionType",
