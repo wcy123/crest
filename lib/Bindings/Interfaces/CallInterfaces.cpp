@@ -18,9 +18,6 @@
 #include <cassert>
 #include <memory>
 
-// ---------------------------------------------------------------------------
-// CallableConceptData — file-local.
-// ---------------------------------------------------------------------------
 namespace {
 struct CallableConceptData : public mlir::CallableOpInterface::Concept {
   crest::LockedSchemeObject get_callable_region;
@@ -61,9 +58,6 @@ struct CallableConceptData : public mlir::CallableOpInterface::Concept {
   }
 };
 
-// ---------------------------------------------------------------------------
-// ArgAndResultAttrsConceptData — file-local.
-// ---------------------------------------------------------------------------
 struct ArgAndResultAttrsConceptData
     : public mlir::ArgAndResultAttrsOpInterface::Concept {
   crest::LockedSchemeObject get_arg_attrs_attr;
@@ -250,8 +244,6 @@ void registerInterfacesCallInterfacesBindings() {
             mlir::ArgAndResultAttrsOpInterface>::CreateConcept(dispatcher);
       });
 
-  // ---- CallableOpInterface method bindings --------------------------------
-
   Sregister_symbol(
       "mlir::CallableOpInterface::getCallableRegion",
       (void*)+[](uint64_t op_ptr) -> uint64_t {
@@ -266,8 +258,6 @@ void registerInterfacesCallInterfacesBindings() {
         }
         return reinterpret_cast<uint64_t>(c->getCallableRegion(c, op));
       });
-
-  // ---- ArgAndResultAttrsOpInterface method bindings -----------------------
 
   Sregister_symbol(
       "mlir::ArgAndResultAttrsOpInterface::getArgAttrsAttr",

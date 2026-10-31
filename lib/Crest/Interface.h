@@ -33,19 +33,16 @@ void* LookupInterfaceForOp(mlir::TypeID id, const std::string& op_name);
 template <typename Interface> struct SupportedInterfaces {
   struct ConcreteConceptType; // undefined by design
   using ConceptType = typename Interface::Concept;
-  // Lazily create the default concept, register it under ".", and return
-  // it. why it it register under ".", because the raw pointer need an
-  // owner, the registry is the owner.
+  // Lazily create the default concept, register it under "." — the registry
+  // takes ownership of the raw pointer.
   template <typename ConcreateConceptType>
   static ConceptType*
   getOrCreateDefaultConcept(std::unique_ptr<ConcreateConceptType> data) {
     auto ret = data.release();
-    if (!RegisterInterfaceForOp(Interface::getInterfaceID(), ".",
-                                std::shared_ptr<void>(ret, [](void* p) {
-                                  delete static_cast<ConcreateConceptType*>(p);
-                                }))) {
-      assert(false && "no reason to fail");
-    }
+    RegisterInterfaceForOp(Interface::getInterfaceID(), ".",
+                           std::shared_ptr<void>(ret, [](void* p) {
+                             delete static_cast<ConcreateConceptType*>(p);
+                           }));
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     return reinterpret_cast<ConceptType*>(ret);
   }

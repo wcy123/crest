@@ -52,18 +52,16 @@ These mirror `mlir/examples/toy/Ch3/mlir/ToyCombine.cpp` and `ToyCombine.td`:
 
 ## Inspecting macro expansions
 
-`tools/expand-macro` pretty-prints what `define-dialect` expands to.  It is
-useful for understanding what the DSL generates and for debugging macro issues.
+`tools/debug-define-dialect` pretty-prints what `define-dialect` expands to.
+It is useful for understanding what the DSL generates and for debugging macro
+issues.
 
 ```sh
 # From the repository root — expand define-dialect in toy.sls
-tools/expand-macro --file samples/toy/ch3/toy.sls
+tools/debug-define-dialect samples/toy/ch3/toy.sls
 
 # Save to a file
-tools/expand-macro --file samples/toy/ch3/toy.sls > /tmp/toy3.sls
-
-# Expand a different macro head
-tools/expand-macro --name define-op --file samples/toy/ch3/toy.sls
+tools/debug-define-dialect samples/toy/ch3/toy.sls > /tmp/toy3.sls
 ```
 
 ### Key structures in the expanded output
@@ -72,56 +70,58 @@ tools/expand-macro --name define-op --file samples/toy/ch3/toy.sls
 
 **`%%toy.func:mlir::FunctionOpInterface`** — the generated per-op dispatch
 procedure for `toy.func`'s `FunctionOpInterface` overrides.  Methods declared
-in `:interfaces` are dispatched here; everything else falls back to
-`mlir::FunctionOpInterface` (which errors on required methods, enforcing that
-the dialect author has overridden them):
+in `:interfaces` are dispatched via `case`; unrecognised methods return `#f`:
 
 ```scheme
-(set! %%toy.func:mlir::FunctionOpInterface
-  (lambda (method . args)
-    (case method
-      ((getFunctionType)
-       (apply (lambda (self)
-                (mlir::TypeAttr::getValue
-                 (mlir::Operation::getAttr self "function_type")))
-              args))
-      ((setFunctionTypeAttr)
-       (apply (lambda (self attr)
-                (mlir::Operation::setAttr! self "function_type" attr))
-              args))
-      (else (apply mlir::FunctionOpInterface method args)))))
+(define (%%toy.func:mlir::FunctionOpInterface method)
+  (case method
+    [(operation_name) "toy.func"]
+    [(getFunctionType)
+     (lambda (self)
+       (mlir::TypeAttr::getValue
+        (mlir::Operation::getAttr self "function_type")))]
+    [(setFunctionTypeAttr)
+     (lambda (self attr)
+       (mlir::Operation::setAttr! self "function_type" attr))]
+    [else #f]))
 ```
 
-**`%%toy:get-registered-interface-for-op-auto`** — routes MLIR's
-`getRegisteredInterfaceForOp` calls to the right concept pointer.  Because
-`toy.func` has method bodies, the Scheme-dispatch concept is used
-(`crest::FunctionOpInterface::getSchemeConceptPtr`) rather than the static C++
-concept:
+**`%%toy:initialize`** — called at dialect registration time; registers every
+op via `%crest::register-dynamic-op!`:
 
 ```scheme
-(set! %%toy:get-registered-interface-for-op-auto
-  (lambda (iface-id op-name)
-    (let ([op-name (%mlir::OperationName::getStringRef op-name)])
-      (cond
-        [(string=? op-name "toy.func")
-         (let try ([ps (list crest::FunctionOpInterface::getSchemeConceptPtr)])
-           (if (null? ps) 0
-               (let ([r ((car ps) iface-id)])
-                 (if (zero? r) (try (cdr ps)) r))))]
-        [else 0]))))
+(define (%%toy:initialize dialect-ptr)
+  (%crest::register-dynamic-op! dialect-ptr "toy.constant" ...)
+  ...
+  (%crest::register-dynamic-op! dialect-ptr "toy.func" ...)
+  ...)
 ```
 
-**`%%toy:initialize`** — called at dialect registration time.  Registers all
-ops and, for ops with Scheme method overrides, calls
-`crest::FunctionOpInterface::setSchemeDispatch` to wire the dispatch procedure
-into the C++ concept:
+**`toy`** — the dialect descriptor vector passed to CREST's dialect registry:
 
 ```scheme
-(set! %%toy:initialize
-  (lambda (dialect-ptr)
-    (%crest::register-dynamic-op! dialect-ptr "toy.constant" ...)
-    ...
-    (%crest::register-dynamic-op! dialect-ptr "toy.func" ...)
-    (crest::FunctionOpInterface::setSchemeDispatch
-     "toy.func" %%toy.func:mlir::FunctionOpInterface)))
+(define toy
+  (vector %%toy:initialize #f #f #f #f #f #f #f #f #f #f))
+```
+
+**`%%toy-iface-init`** — eagerly wires the Scheme dispatch procedure into the
+C++ `FunctionOpInterface` concept at library load time:
+
+```scheme
+(define %%toy-iface-init
+  (begin
+    ((foreign-procedure "mlir::FunctionOpInterface"
+       (scheme-object) void)
+     %%toy.func:mlir::FunctionOpInterface)
+    #t))
+```
+
+**Accessor predicates and field getters** — one `?` predicate and one getter
+per operand/attribute/result for every op, e.g.:
+
+```scheme
+(define (toy.constant? op)
+  (string=? (mlir::Operation::getName op) "toy.constant"))
+(define (toy.constant:value op) (mlir::Operation::getAttr op "value"))
+(define (toy.constant:output op) (mlir::Operation::getResult op 0))
 ```

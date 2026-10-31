@@ -13,8 +13,6 @@ namespace crest {
 
 void registerIRBuiltinOpsBindings() {
 
-  // mlir::ModuleOp::create(location) → operation uptr
-  // Returns the underlying mlir::Operation* so all Operation::* methods work.
   Sregister_symbol(
       "mlir::ModuleOp::create", (void*)+[](uint64_t loc_ptr) -> uint64_t {
         auto loc = mlir::Location::getFromOpaquePointer(
@@ -23,14 +21,11 @@ void registerIRBuiltinOpsBindings() {
             mlir::ModuleOp::create(loc).getOperation());
       });
 
-  // mlir::ModuleOp::getOperation(module-op) → operation uptr
   // Identity: mlir::ModuleOp::create already returns Operation*.
   Sregister_symbol(
       "mlir::ModuleOp::getOperation",
       (void*)+[](uint64_t op_ptr) -> uint64_t { return op_ptr; });
 
-  // mlir::ModuleOp::getBody(module-op) → block uptr
-  // Returns the single body block of the module.
   Sregister_symbol(
       "mlir::ModuleOp::getBody", (void*)+[](uint64_t op_ptr) -> uint64_t {
         if (!op_ptr) {

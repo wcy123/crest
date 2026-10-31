@@ -48,4 +48,4 @@ EXPAND_MACRO_NAME="$NAME" \
 EXPAND_MACRO_FILE="$FILE" \
 EXPAND_MACRO_RAW="$RAW" \
 CREST_PATH="$SCHEME_DIR" \
-"$CREST_OPT" /dev/null --crest-pass="module=tools/expand-macro"
+"$CREST_OPT" /dev/null --crest-pass="passes=tools/expand-macro"

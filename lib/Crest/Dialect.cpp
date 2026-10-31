@@ -38,7 +38,9 @@ bool RegisterInterfaceForOp(mlir::TypeID id, const std::string& op_name,
                             std::shared_ptr<void> concept_ptr) {
   auto& inner = g_op_interface_registry[id];
   if (inner.count(op_name)) {
-    return false; // already registered — first wins
+    llvm::report_fatal_error(
+        llvm::Twine("RegisterInterfaceForOp: duplicate registration for op '") +
+        op_name + "'");
   }
   inner[op_name] = std::move(concept_ptr);
   return true;

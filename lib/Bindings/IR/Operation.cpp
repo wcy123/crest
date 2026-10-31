@@ -56,7 +56,6 @@ void registerIROperationBindings() {
         }
         return reinterpret_cast<mlir::Operation*>(op)->getNumResults();
       });
-  // mlir::Operation::getOperand — return the i-th operand Value directly.
   Sregister_symbol(
       "mlir::Operation::getOperand",
       (void*)+[](uint64_t op, int64_t index) -> uint64_t {
@@ -392,8 +391,6 @@ void registerIROperationBindings() {
         reinterpret_cast<mlir::Operation*>(op_ptr)->dump();
       });
 
-  // mlir::OperationName::getStringRef — return the fully-qualified op name.
-  // Mirrors mlir/IR/OperationSupport.h OperationName::getStringRef().
   Sregister_symbol(
       "mlir::OperationName::getStringRef",
       (void*)+[](uint64_t op_name_ptr) -> const char* {

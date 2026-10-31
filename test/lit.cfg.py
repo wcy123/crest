@@ -42,4 +42,6 @@ def find_tool(name):
 
 config.substitutions.append(("%crest-opt",
     os.path.join(config.crest_tools_dir, "crest-opt")))
+config.substitutions.append(("%scheme-mlir",
+    os.path.join(os.path.dirname(config.crest_tools_dir), "scheme-mlir", "scheme-mlir")))
 config.substitutions.append(("%FileCheck", find_tool("FileCheck")))

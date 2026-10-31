@@ -44,4 +44,4 @@ CREST_PATH="${CREST_PATH%/$MODULE_PATH}"
 
 DEBUG_DEFINE_DIALECT=1 \
 CREST_PATH="$CREST_PATH" \
-"$CREST_OPT" /dev/null --crest-pass="module=$MODULE_PATH" 2>/dev/null || true
+"$CREST_OPT" /dev/null --crest-pass="passes=$MODULE_PATH" 2>&1 | grep -v '^Exception:' || true
