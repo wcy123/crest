@@ -169,9 +169,9 @@ current-OpBuilder      ; mlir::OpBuilder*    (mlir/IR/Builders.h)
 
 ## Rule 16 — Prefer `(rime loop)` for iterations
 
-Use `(for (only (rime loop) loop) expand)` and the `loop` macro instead of named `let`
-for numeric ranges, list walks, and accumulation. Use `(only ...)` to avoid importing
-rime's keyword exports (`:name`, etc.) which conflict with `(crest dialect)`.
+Use `(for (rime loop) expand)` and the `loop` macro instead of named `let` for numeric
+ranges, list walks, and accumulation. When the library also imports `(crest dialect)`,
+use `(for (except (rime loop) :name) expand)` to avoid the `:name` conflict.
 Full reference: https://github.com/wcy123/rime/blob/main/doc/loop.md
 
 ```scheme
