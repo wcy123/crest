@@ -72,10 +72,10 @@
 
 (define (%%make-ctx)
   (with-DialectRegistry (reg)
-                        (mlir::DialectRegistry::insertSchemeDialect reg "toy" "toy/ch3/toy")
-                        (let ([ctx (mlir::MLIRContext::new/registry reg)])
-                          (mlir::MLIRContext::getOrLoadDialect ctx "toy")
-                          ctx)))
+    (mlir::DialectRegistry::insertSchemeDialect reg "toy" "toy/ch3/toy")
+    (let ([ctx (mlir::MLIRContext::new/registry reg)])
+      (mlir::MLIRContext::getOrLoadDialect ctx "toy")
+      ctx)))
 
 (define (%%build-module-from-toy filename)
   (let ([module-ast (parse-input-file filename)])
