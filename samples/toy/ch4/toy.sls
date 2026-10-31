@@ -21,7 +21,7 @@
                 mlir::FunctionOpInterface
                 mlir::function_interface_impl::printFunctionOp
                 mlir::function_interface_impl::parseFunctionOp)
-          (for (rime loop) expand))
+          (for (only (rime loop) loop) expand))
 
   (define (%%parsed? h) (not (zero? h)))
 
