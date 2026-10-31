@@ -67,6 +67,7 @@
     (with-TypeConverter . 1)
     (with-ConversionTarget . 1)
     (with-ArrayRef . 1)
+    (with-OperationState . 1)
     ;; begin-mlir-code: first arg is builder (like with-*), rest are op-forms
     (begin-mlir-code . 1)
     ;; define-op DSL callbacks: (:keyword (formals) body ...) — like when
