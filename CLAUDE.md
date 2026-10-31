@@ -167,6 +167,27 @@ current-OpBuilder      ; mlir::OpBuilder*    (mlir/IR/Builders.h)
 
 ---
 
+## Rule 16 — Prefer `(rime loop)` for iterations
+
+Use `(for (rime loop) expand)` and the `loop` macro instead of named `let` for numeric
+ranges, list walks, and accumulation. When the library also imports `(crest dialect)`,
+use `(for (except (rime loop) :name) expand)` to avoid the `:name` conflict.
+Full reference: https://github.com/wcy123/rime/blob/main/doc/loop.md
+
+```scheme
+;; PREFER
+(loop :for i :from 0 :below n :do (f i))
+
+;; AVOID
+(let lp ([i 0]) (when (< i n) (f i) (lp (+ i 1))))
+```
+
+Key keywords: `:for :from :to :below :in :on :collect :do :if :when :unless :recur :break :finally`.
+
+Named `let` is still fine for irregular recursion (mutual, non-linear stepping).
+
+---
+
 ## Checklist for a new binding
 
 - [ ] `lib/Bindings/<Path>/<Name>.cpp` with `// Mirrors mlir/<Path>/<Name>.h` on line 6

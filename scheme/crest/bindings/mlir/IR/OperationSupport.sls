@@ -43,9 +43,11 @@
   ;; @note        Destroys the OperationState on exit (normal or non-local) via
   ;;              CrestObject deletor — no explicit destructor binding needed.
   (define-syntax with-OperationState
-    (syntax-rules ()
-      [(_ (var loc name) body ...)
-       (with-CrestObject (var (mlir::OperationState::create loc name))
-         body ...)]))
+    (lambda (stx)
+      (syntax-case stx ()
+        [(_ var (loc name) body ...)
+         (identifier? #'var)
+         #'(with-CrestObject (var (mlir::OperationState::create loc name))
+             body ...)])))
 
   ) ;; end library (mlir IR OperationSupport)

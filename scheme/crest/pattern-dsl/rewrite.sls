@@ -492,17 +492,16 @@
              ;; region slots pre-allocated in OperationState, filled post-create.
              (cons #'op-tmp
                    #'(let ([op-tmp
-                            (with-OperationState
-                             (state source-loc name)
-                             (for-each
-                              (lambda (v) (mlir::OperationState::addOperands state v))
-                              operands-expr)
-                             (for-each
-                              (lambda (t) (mlir::OperationState::addTypes state t))
-                              (list result-type ...))
-                             setter ...           ; addAttribute — before create
-                             addregion-call ...   ; addRegion — pre-allocate slots
-                             (%%crest:create-op! (%%current-builder) state))])
+                            (with-OperationState state (source-loc name)
+                              (for-each
+                               (lambda (v) (mlir::OperationState::addOperands state v))
+                               operands-expr)
+                              (for-each
+                               (lambda (t) (mlir::OperationState::addTypes state t))
+                               (list result-type ...))
+                              setter ...           ; addAttribute — before create
+                              addregion-call ...   ; addRegion — pre-allocate slots
+                              (%%crest:create-op! (%%current-builder) state))])
                        region-fill-stmt ...        ; fill regions — after create
                        op-tmp))
              ;; Bindings for result variables — loop returns '() when result-vars is empty,

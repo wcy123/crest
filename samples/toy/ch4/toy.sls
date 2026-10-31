@@ -20,7 +20,8 @@
           (only (mlir Interfaces FunctionInterfaces)
                 mlir::FunctionOpInterface
                 mlir::function_interface_impl::printFunctionOp
-                mlir::function_interface_impl::parseFunctionOp))
+                mlir::function_interface_impl::parseFunctionOp)
+          (for (except (rime loop) :name) expand))
 
   (define (%%parsed? h) (not (zero? h)))
 
@@ -101,17 +102,16 @@
                    (isLegalToInline/region (dest src wouldBeCloned) #t)
                    (isLegalToInline/op     (op dest wouldBeCloned) #t)
                    (handleTerminator (op n-replacements replacements)
-                     (let loop ([i 0] [repls replacements])
-                       (when (< i n-replacements)
-                         (mlir::Value::replaceAllUsesWith
-                          (car repls)
-                          (mlir::Operation::getOperand op i))
-                         (loop (+ i 1) (cdr repls)))))
+                     (loop :for i :from 0 :below n-replacements
+                           :for repl :in replacements
+                           :do (mlir::Value::replaceAllUsesWith
+                                repl
+                                (mlir::Operation::getOperand op i))))
                    (materializeCallConversion (builder input result-type loc)
-                     (with-OperationState (s loc "toy.cast")
-                                          (mlir::OperationState::addOperands s input)
-                                          (mlir::OperationState::addTypes s result-type)
-                                          (mlir::OpBuilder::create<OperationState> builder s))))))
+                     (with-OperationState s (loc "toy.cast")
+                       (mlir::OperationState::addOperands s input)
+                       (mlir::OperationState::addTypes s result-type)
+                       (mlir::OpBuilder::create<OperationState> builder s))))))
     (define-op constant
       :summary    "constant tensor"
       :attributes ((value mlir::DenseElementsAttr))
