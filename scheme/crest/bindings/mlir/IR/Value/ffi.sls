@@ -18,7 +18,7 @@
 (library (mlir IR Value ffi)
   (export
     %mlir::Value::getDefiningOp
-    %mlir::isa<BlockArgument>?
+    %mlir::BlockArgument?
     %mlir::Value::getUses
     %mlir::Value::getType
     %mlir::Value::setType
@@ -36,13 +36,13 @@
   (define %mlir::Value::getDefiningOp
     (foreign-procedure "mlir::Value::getDefiningOp" (uptr) uptr))
 
-  ;; @brief mlir::isa<BlockArgument>(val) — check if value is a block argument.
+  ;; mlir::BlockArgument? — check if value is a block argument.
   ;; @param value  Value opaque pointer uptr
   ;; @return       1 if BlockArgument, 0 otherwise
   ;; @see          mlir/IR/Value.h
   ;; @note         Defined in lib/Bindings/IR/Value.cpp
-  (define %mlir::isa<BlockArgument>?
-    (foreign-procedure "mlir::isa<BlockArgument>" (uptr) int))
+  (define %mlir::BlockArgument?
+    (foreign-procedure "mlir::BlockArgument?" (uptr) int))
 
   ;; @brief mlir::Value::use_begin/use_end — count the number of uses of this value.
   ;; @param value  Value opaque pointer uptr

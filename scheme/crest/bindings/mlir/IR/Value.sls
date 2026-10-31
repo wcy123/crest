@@ -21,7 +21,7 @@
   (export
     mlir::Value?
     mlir::Value::getDefiningOp
-    mlir::isa<BlockArgument>?
+    mlir::BlockArgument?
     mlir::Value::getUses
     mlir::Value::getType
     mlir::Value::setType
@@ -38,13 +38,13 @@
   ;; @note         Defined in lib/Bindings/IR/Value.cpp
   (define mlir::Value::getDefiningOp %mlir::Value::getDefiningOp)
 
-  ;; @brief mlir::isa<BlockArgument>(val) — predicate: is the value a block argument?
+  ;; mlir::BlockArgument? — predicate: is the value a block argument?
   ;; @param value  Value opaque pointer uptr
   ;; @return       #t if BlockArgument, #f otherwise
   ;; @see          mlir/IR/Value.h
-  ;; @note         Wraps %mlir::isa<BlockArgument>?; returns boolean instead of 1/0
-  (define (mlir::isa<BlockArgument>? val)
-    (= 1 (%mlir::isa<BlockArgument>? val)))
+  ;; @note         Wraps %mlir::BlockArgument?; returns boolean instead of 1/0
+  (define (mlir::BlockArgument? val)
+    (= 1 (%mlir::BlockArgument? val)))
 
   ;; @brief mlir::Value::use_begin/use_end — count the number of uses of this value.
   ;; @param value  Value opaque pointer uptr
@@ -60,8 +60,17 @@
   ;; @note         Defined in lib/Bindings/IR/Value.cpp
   (define mlir::Value::getType %mlir::Value::getType)
 
+  ;; @brief mlir::Value::setType() — overwrite the type of this value in place.
+  ;; @param value  Value opaque pointer uptr
+  ;; @param type   Type opaque pointer uptr
+  ;; @note         Only safe in type-inference passes that refine placeholder
+  ;;               types (e.g. tensor<*xf64> → tensor<2x3xf64>); passing an
+  ;;               incompatible type corrupts the IR silently.
   (define mlir::Value::setType %mlir::Value::setType)
 
+  ;; @brief mlir::Value::replaceAllUsesWith() — redirect all uses of this value.
+  ;; @param value        Value opaque pointer uptr (the old value)
+  ;; @param replacement  Value opaque pointer uptr (the new value)
   (define mlir::Value::replaceAllUsesWith %mlir::Value::replaceAllUsesWith)
 
   ;; @brief mlir::OpResult::getResultNumber — return the result index within the defining op.
@@ -71,7 +80,7 @@
   ;; @note         Defined in lib/Bindings/IR/OpResult.cpp
   (define mlir::OpResult::getResultNumber %mlir::OpResult::getResultNumber)
 
-  ;; Predicate alias — all mlir operands are Values; non-zero uptr = valid value.
+  ;; mlir::Value? : uptr -> boolean — non-null value test
   (define (mlir::Value? v) (not (zero? v)))
 
   ) ;; end library (mlir IR Value)

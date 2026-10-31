@@ -32,7 +32,7 @@
           (only (mlir IR Value)
                 mlir::Value::getDefiningOp
                 mlir::Value::getType
-                mlir::isa<BlockArgument>?
+                mlir::BlockArgument?
                 mlir::Value::getUses
                 mlir::OpResult::getResultNumber)
           (mlir support array-ref)
@@ -93,7 +93,7 @@
   ;; Post-processing: rewire placeholder inputs to follow the shape graph
   ;;===--------------------------------------------------------------------===;;
   (define (shape-graph-counterpart value)
-    (if (mlir::isa<BlockArgument>? value)
+    (if (mlir::BlockArgument? value)
         value
         (let* ((def-op  (mlir::Value::getDefiningOp value))
                (op-name (if (zero? def-op) "" (mlir::Operation::getName def-op))))

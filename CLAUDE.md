@@ -100,6 +100,24 @@ headers that require external linkage by definition.
 Only apply `%%` to library-level private functions. Local helpers inside a function body
 do not need it.
 
+### Rule 15 — Scheme predicates derived from C++ class names append `?`
+
+When a binding tests membership or validity — rather than constructing or querying a value —
+append `?` to the C++ name in both `Sregister_symbol` and the Scheme export:
+
+```cpp
+Sregister_symbol("mlir::Value?", ...);          // non-null value test
+Sregister_symbol("mlir::BlockArgument?", ...); // type test
+```
+
+```scheme
+(define (mlir::Value? v) (not (zero? v)))
+(define mlir::BlockArgument? %mlir::BlockArgument?)
+```
+
+This keeps the Scheme `?` predicate convention while the `::` prefix still signals C++ origin.
+Non-predicate bindings never get `?` even if their C++ counterpart returns `bool`.
+
 ### Rule 14 — Every `foreign-procedure` must have a matching `Sregister_symbol`
 
 Chez Scheme resolves **all** `foreign-procedure` bindings at library load time — including
