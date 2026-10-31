@@ -68,14 +68,12 @@ template <typename T>
 
 namespace crest {
 
-// True when `delete std::declval<T*>()` is well-formed — i.e. T has a
-// public, non-deleted destructor. Used to guard CrestOwned<T> instantiation
-// in as_ptr: types with inaccessible destructors (e.g. protected) cannot be
-// stored in CrestOwned<T> (whose type_deletor calls delete on the inner T).
-template <typename T, typename = void> constexpr bool kIsDeletable = false;
-template <typename T>
-constexpr bool
-    kIsDeletable<T, std::void_t<decltype(delete std::declval<T*>())>> = true;
+// True when T has a public, non-deleted destructor (i.e. CrestOwned<T> can
+// call delete on its inner T).  std::is_destructible_v<T> returns false for
+// types with protected or private destructors (e.g. mlir::RewriterBase) and
+// is always SFINAE-safe, unlike decltype(delete ...) which some GCC versions
+// treat as a hard access error rather than a substitution failure.
+template <typename T> constexpr bool kIsDeletable = std::is_destructible_v<T>;
 
 template <typename T>
 [[nodiscard]] inline T& as_ref(uint64_t ptr_val, const char* who) {
