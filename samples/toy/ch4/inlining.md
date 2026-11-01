@@ -37,10 +37,24 @@ or cloning cost.
 isLegalToInline(Region* dest, Region* src, bool wouldBeCloned, IRMapping&)
 ```
 
-Relevant when the callee has nested regions (loops, conditionals). Checks
-whether the source region's ops are structurally compatible with the
-destination region. A dialect can refuse if `dest` has invariants that
-`src` ops would violate.
+Example: an `affine.for` body region requires every memory access inside it
+to use an affine index expression. If the call site is inside such a loop:
+
+```
+affine.for %i = 0 to 10 {
+  %r = call @foo(%mem, %i)        // inlining this
+}
+func @foo(%mem, %idx) {
+  %0 = memref.load %mem[%idx]     // non-affine — index is a runtime value
+  return %0
+}
+```
+
+`isLegalToInline(dest=affine.for body, src=@foo body)` returns `false`:
+inlining would place `memref.load` inside the affine region, breaking the
+structural invariant the affine dialect relies on for polyhedral analysis.
+It is up to the dialect to decide — `wouldBeCloned` and loop bounds are
+irrelevant to the structural constraint.
 
 **3. Per-op gate** — asked for every individual op in the callee body:
 
