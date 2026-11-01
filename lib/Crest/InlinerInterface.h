@@ -47,4 +47,6 @@ struct CrestInlinerInterface : public mlir::DialectInlinerInterface {
                                              mlir::Location loc) const final;
 };
 
+void registerCrestInlinerInterfaceBindings();
+
 } // namespace crest

@@ -5,6 +5,7 @@
 
 #include "InlinerInterface.h"
 #include "../Bindings/Support/SchemeWrapper.h"
+#include "Dialect.h"
 #include "mlir/IR/Builders.h"
 
 namespace crest {
@@ -90,6 +91,46 @@ mlir::Operation* CrestInlinerInterface::materializeCallConversion(
     return nullptr;
   }
   return reinterpret_cast<mlir::Operation*>(Sunsigned64_value(result));
+}
+
+void registerCrestInlinerInterfaceBindings() {
+  Sregister_symbol(
+      "mlir::DialectInlinerInterface",
+      (void*)+[](uint64_t dialect_ptr, ptr dispatch_fn) -> void {
+        crest::LockedSchemeObject locked(dispatch_fn);
+
+        auto get = [&](const char* name) -> crest::LockedSchemeObject {
+          return crest::LockedSchemeObject(
+              scheme_call(locked.get(), Sstring_to_symbol(name)));
+        };
+
+        auto isLegalCall = get("isLegalToInline/call");
+        auto isLegalRegion = get("isLegalToInline/region");
+        auto isLegalOp = get("isLegalToInline/op");
+
+        if (isLegalCall.get() == Sfalse) {
+          scheme_error("mlir::DialectInlinerInterface",
+                       "isLegalToInline/call is required but not provided");
+        }
+        if (isLegalRegion.get() == Sfalse) {
+          scheme_error("mlir::DialectInlinerInterface",
+                       "isLegalToInline/region is required but not provided");
+        }
+        if (isLegalOp.get() == Sfalse) {
+          scheme_error("mlir::DialectInlinerInterface",
+                       "isLegalToInline/op is required but not provided");
+        }
+
+        auto* dialect = reinterpret_cast<CrestDialect*>(dialect_ptr);
+        auto iface = std::make_unique<CrestInlinerInterface>(dialect);
+        iface->isLegalToInlineCallFn = std::move(isLegalCall);
+        iface->isLegalToInlineRegionFn = std::move(isLegalRegion);
+        iface->isLegalToInlineOpFn = std::move(isLegalOp);
+        iface->handleTerminatorValueFn = get("handleTerminator/value");
+        iface->handleTerminatorBlockFn = get("handleTerminator/block");
+        iface->materializeCallConversionFn = get("materializeCallConversion");
+        dialect->addInterface(std::move(iface));
+      });
 }
 
 } // namespace crest
