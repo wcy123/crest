@@ -18,14 +18,7 @@ the five inlining steps and the two dialect callbacks that implement them.
 
 ## How the Inliner Works
 
-Given a call site:
-
-```
-%r = toy.generic_call @multiply_transpose(%A, %B)
-toy.print %r
-```
-
-and callee:
+**Before** — two functions, one call site:
 
 ```
 toy.func @multiply_transpose(%a, %b) {
@@ -34,43 +27,59 @@ toy.func @multiply_transpose(%a, %b) {
   %result = toy.mul %t0, %t1
   toy.return %result
 }
+toy.func @main() {
+  ...
+  %r = toy.generic_call @multiply_transpose(%A, %B)
+  toy.print %r
+  toy.return
+}
 ```
 
-The inliner performs five steps:
+**Step 1 — copy**: clone the callee body right after the call op, substituting
+`%a→%A`, `%b→%B`. Fresh SSA values (`%t0_c`, `%result_c`) are produced.
 
-1. **Copy** — clone the callee's body (including the terminator) into the
-   caller immediately after the call op, substituting call arguments for
-   block arguments (`%a → %A`, `%b → %B`). Cloned ops produce fresh SSA
-   values (`%result_c`, etc.).
+```
+toy.func @main() {
+  ...
+  %r      = toy.generic_call @multiply_transpose(%A, %B)  ← still here
+  %t0_c   = toy.transpose(%A)
+  %t1_c   = toy.transpose(%B)
+  %result_c = toy.mul %t0_c, %t1_c
+  toy.return %result_c                                     ← cloned terminator
+  toy.print %r                                             ← still uses %r
+  toy.return
+}
+```
 
-2. **Dangling** — the call op still exists; `%r` is still defined by it and
-   still consumed by `toy.print`. But the call op is about to be erased, so
-   `%r`'s definition will disappear while its uses remain — a pending SSA
-   violation.
+`%r` is **dangling**: defined by the call op (about to be erased), still
+consumed by `toy.print`.
 
-3. **`handleTerminator`** — the inliner calls this callback with the cloned
-   `toy.return` op and the list of dangling call results (`[%r]`).  The
-   callback zips return operands with call results and calls
-   `replaceAllUsesWith` for each pair:
+**Step 2 — `handleTerminator`**: called with `(toy.return %result_c, [%r])`.
+Redirects every use of `%r` to `%result_c`:
 
-   ```scheme
-   (loop :for i    :from 0 :below n-replacements
-         :for repl :in replacements
-         :do (mlir::Value::replaceAllUsesWith
-              repl                                  ; %r
-              (mlir::Operation::getOperand op i)))  ; %result_c
-   ```
+```
+toy.print %r   →   toy.print %result_c
+```
 
-   After this, `toy.print %r` becomes `toy.print %result_c` and `%r` has
-   zero uses.
+`%r` now has zero uses.
 
-4. **`materializeCallConversion`** — if the return type and call-result type
-   differ (ranked vs. unranked tensor), the inliner calls this callback to
-   insert a `toy.cast` op bridging the mismatch. Shape inference resolves the
-   cast later.
+**Step 3 — cleanup**: erase the call op (`%r` unused) and the cloned
+`toy.return`. Done:
 
-5. **Cleanup** — the inliner erases the call op (safe: `%r` has no uses) and
-   the cloned `toy.return` (safe: `handleTerminator` consumed it).
+```
+toy.func @main() {
+  ...
+  %t0_c     = toy.transpose(%A)
+  %t1_c     = toy.transpose(%B)
+  %result_c = toy.mul %t0_c, %t1_c
+  toy.print %result_c
+  toy.return
+}
+```
+
+`materializeCallConversion` runs between steps 1 and 2 when the return type
+and call-result type differ (ranked vs. unranked tensor): it inserts a
+`toy.cast` so `handleTerminator` has a type-compatible value to substitute.
 
 ## Why `handleTerminator` Is Dialect-Specific
 
