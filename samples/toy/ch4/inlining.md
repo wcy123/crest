@@ -62,9 +62,39 @@ irrelevant to the structural constraint.
 isLegalToInline(Operation* op, Region* dest, bool wouldBeCloned, IRMapping&)
 ```
 
-The finest-grained check. Lets the dialect allow most ops but block
-specific ones — for example, an op valid only at function top-level but
-not inside a loop body.
+`op` is each individual op from the callee being considered for placement;
+`dest` is the destination region it would land in.
+
+Example: `memref.alloca` (stack allocation) — a dialect that lowers it to a
+bare `llvm.alloca` without `stacksave`/`stackrestore` can only place it
+in a function entry block. If the call site is inside a loop:
+
+```
+func.func @bar() {
+  scf.for %i = 0 to 100 step 1 {
+    call @foo()                         // inlining this
+  }
+}
+func.func @foo() {
+  %buf = memref.alloca() : memref<64xf32>   // stack allocation
+  // use %buf
+}
+```
+
+For `memref.alloca` the inliner calls:
+
+```
+op   = memref.alloca
+dest = scf.for body region
+```
+
+The dialect returns `false` — placing a bare `alloca` inside the loop body
+would grow the stack on every iteration with no release until the function
+returns. A dialect that lowers `alloca` with `stacksave`/`stackrestore`
+could return `true` for the same op. It is up to the dialect to decide.
+
+Other ops in `@foo` (non-alloca) would pass; only `memref.alloca` blocks
+inlining here.
 
 In Toy all three always return `true` — no placement restrictions.
 
