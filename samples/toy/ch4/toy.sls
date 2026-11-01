@@ -21,6 +21,7 @@
                 mlir::FunctionOpInterface
                 mlir::function_interface_impl::printFunctionOp
                 mlir::function_interface_impl::parseFunctionOp)
+          (only (mlir support array-ref) ArrayRef::size ArrayRef::at)
           (for (except (rime loop) :name) expand))
 
   (define (%%parsed? h) (not (zero? h)))
@@ -101,12 +102,12 @@
                    (isLegalToInline/call   (call callable wouldBeCloned) #t)
                    (isLegalToInline/region (dest src wouldBeCloned) #t)
                    (isLegalToInline/op     (op dest wouldBeCloned) #t)
-                   (handleTerminator (op n-replacements replacements)
-                     (loop :for i :from 0 :below n-replacements
-                           :for repl :in replacements
-                           :do (mlir::Value::replaceAllUsesWith
-                                repl
-                                (mlir::Operation::getOperand op i))))
+                   (handleTerminator/value (op replacements)
+                                           (loop :for i :from 0 :below (ArrayRef::size replacements)
+                                                 :do (mlir::Value::replaceAllUsesWith
+                                                      (ArrayRef::at replacements i)
+                                                      (mlir::Operation::getOperand op i))))
+                   (handleTerminator/block (op new-dest) #f)
                    (materializeCallConversion (builder input result-type loc)
                      (with-OperationState s (loc "toy.cast")
                        (mlir::OperationState::addOperands s input)
