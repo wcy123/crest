@@ -15,15 +15,15 @@
 
   (define %mlir::affine::buildAffineLoopNest
     (foreign-procedure "mlir::affine::buildAffineLoopNest"
-                       (uptr uptr uptr scheme-object) void))
+                       (uptr uptr scheme-object scheme-object) void))
 
   (define %mlir::affine::AffineLoadOp::create
     (foreign-procedure "mlir::affine::AffineLoadOp::create"
-                       (uptr uptr uptr uptr) uptr))
+                       (uptr uptr uptr scheme-object) uptr))
 
   (define %mlir::affine::AffineStoreOp::create
     (foreign-procedure "mlir::affine::AffineStoreOp::create"
-                       (uptr uptr uptr uptr uptr) void))
+                       (uptr uptr uptr uptr scheme-object) void))
 
   (define %mlir::affine::AffineDialect
     (foreign-procedure "mlir::affine::AffineDialect" (uptr) void))
