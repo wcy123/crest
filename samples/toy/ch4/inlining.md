@@ -37,24 +37,25 @@ toy.func @main() {
 
 **Step 1 — copy**: clone the callee body right after the call op, substituting
 `%a→%A`, `%b→%B`. Fresh SSA values (`%t0_c`, `%result_c`) are produced.
+`%r` is still valid — the call op still defines it.
 
 ```
 toy.func @main() {
   ...
-  %r      = toy.generic_call @multiply_transpose(%A, %B)  ← still here
-  %t0_c   = toy.transpose(%A)
-  %t1_c   = toy.transpose(%B)
+  %r        = toy.generic_call @multiply_transpose(%A, %B)  ← still here
+  %t0_c     = toy.transpose(%A)
+  %t1_c     = toy.transpose(%B)
   %result_c = toy.mul %t0_c, %t1_c
-  toy.return %result_c                                     ← cloned terminator
-  toy.print %r                                             ← still uses %r
+  toy.return %result_c                                       ← cloned terminator
+  toy.print %r                                               ← uses %r (valid)
   toy.return
 }
 ```
 
-`%r` is **dangling**: defined by the call op (about to be erased), still
-consumed by `toy.print`.
+**Step 2 — erase the call op**: `%r`'s definition disappears. `toy.print %r`
+now has a **dangling** use — `%r` is consumed but no longer defined.
 
-**Step 2 — `handleTerminator`**: called with `(toy.return %result_c, [%r])`.
+**Step 3 — `handleTerminator`**: called with `(toy.return %result_c, [%r])`.
 Redirects every use of `%r` to `%result_c`:
 
 ```
