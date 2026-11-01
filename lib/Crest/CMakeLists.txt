@@ -27,6 +27,8 @@ endif()
 add_library(CrestCore OBJECT
   Dialect.cpp
   Dialect.h
+  InlinerInterface.cpp
+  InlinerInterface.h
   Op.cpp
   Op.h
   ${CREST_TRAIT_SOURCE}
