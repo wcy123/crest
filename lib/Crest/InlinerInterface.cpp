@@ -47,19 +47,18 @@ void CrestInlinerInterface::handleTerminator(
   if (handleTerminatorValueFn.get() == Sfalse) {
     return;
   }
-  // Pack the ValueRange into a heap-allocated CArrayRef<uintptr_t>.
-  // The Scheme callback reads it via ArrayRef::size / ArrayRef::at;
-  // it does not own or delete the object.
+  // Pack the ValueRange into a CArrayRef<uintptr_t> for the Scheme callback.
+  // unique_ptr ensures deletion even if scheme_call exits via
+  // longjmp/exception.
   std::vector<uintptr_t> ptrs;
   ptrs.reserve(valuesToRepl.size());
   for (auto v : valuesToRepl) {
     ptrs.push_back(reinterpret_cast<uintptr_t>(v.getAsOpaquePointer()));
   }
-  auto* arr = new CArrayRef<uintptr_t>(ptrs.data(), ptrs.size());
+  auto arr = std::make_unique<CArrayRef<uintptr_t>>(ptrs.data(), ptrs.size());
   scheme_call(handleTerminatorValueFn.get(),
               Sunsigned64(reinterpret_cast<uint64_t>(op)),
-              Sunsigned64(reinterpret_cast<uint64_t>(arr)));
-  delete arr;
+              Sunsigned64(reinterpret_cast<uint64_t>(arr.get())));
 }
 
 void CrestInlinerInterface::handleTerminator(mlir::Operation* op,
