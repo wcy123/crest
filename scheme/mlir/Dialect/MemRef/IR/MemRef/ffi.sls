@@ -20,7 +20,7 @@
     (foreign-procedure "mlir::memref::AllocOp::create" (uptr uptr uptr) uptr))
 
   (define %mlir::memref::DeallocOp::create
-    (foreign-procedure "mlir::memref::DeallocOp::create" (uptr uptr uptr) void))
+    (foreign-procedure "mlir::memref::DeallocOp::create" (uptr uptr uptr) uptr))
 
   (define %mlir::memref::MemRefDialect
     (foreign-procedure "mlir::memref::MemRefDialect" (uptr) void))

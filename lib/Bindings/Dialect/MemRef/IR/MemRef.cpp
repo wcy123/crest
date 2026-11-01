@@ -58,18 +58,19 @@ void registerDialectMemRefIRMemRefBindings() {
       });
 
   // memref::DeallocOp::create: free a memref allocation.
-  // (builder-ptr loc-ptr memref-val-ptr) → void
+  // (builder-ptr loc-ptr memref-val-ptr) → Operation* uptr
   Sregister_symbol(
       "mlir::memref::DeallocOp::create",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr,
-                 uint64_t memref_ptr) -> void {
+                 uint64_t memref_ptr) -> uint64_t {
         auto& builder =
             get_builder(builder_ptr, "mlir::memref::DeallocOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto memref = mlir::Value::getFromOpaquePointer(
             reinterpret_cast<const void*>(memref_ptr));
-        mlir::memref::DeallocOp::create(builder, loc, memref);
+        auto dealloc = mlir::memref::DeallocOp::create(builder, loc, memref);
+        return reinterpret_cast<uint64_t>(dealloc.getOperation());
       });
 
   // Register MemRefDialect into a DialectRegistry.
