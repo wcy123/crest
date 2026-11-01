@@ -53,8 +53,16 @@ toy.func @main() {
 **Step 2 — erase the call op**: `%r`'s definition disappears. `toy.print %r`
 now has a **dangling** use — `%r` is consumed but no longer defined.
 
-**Step 3 — `handleTerminator`**: called with `(toy.return %result_c, [%r])`.
-Redirects every use of `%r` to `%result_c`:
+**Step 3 — `handleTerminator`**:
+
+```
+op              = toy.return %result_c   ; the cloned terminator
+n-replacements  = 1                      ; one call result to fix
+replacements    = [%r]                   ; the dangling call result
+```
+
+For each `i`: `replaceAllUsesWith(replacements[i], operand(op, i))`,
+i.e. `replaceAllUsesWith(%r, %result_c)`:
 
 ```
 toy.print %r   →   toy.print %result_c
