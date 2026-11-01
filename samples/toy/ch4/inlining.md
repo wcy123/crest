@@ -170,9 +170,30 @@ toy.func @main() {
 }
 ```
 
-`materializeCallConversion` runs between steps 2 and 3 when the return type
-and call-result type differ (ranked vs. unranked tensor): it inserts a
-`toy.cast` so `handleTerminator` has a type-compatible value to substitute.
+**Step 2b — `materializeCallConversion`** (only when types differ):
+
+If the return value type inside the callee doesn't match the call-site result
+type, `replaceAllUsesWith` would be type-unsafe. The inliner calls:
+
+```
+materializeCallConversion(
+  builder,
+  input       = %result_c,      ; tensor<3x2xf64> — what the callee produced
+  result-type = tensor<*xf64>,  ; what the call site expects
+  loc)
+```
+
+This happens when shape inference has already run inside the callee
+(resolving `tensor<*xf64>` → `tensor<3x2xf64>`) but the call site still
+expects the unranked type. The toy dialect inserts a `toy.cast`:
+
+```
+%cast = toy.cast(%result_c : tensor<3x2xf64>) to tensor<*xf64>
+```
+
+`handleTerminator` then uses `%cast` (not `%result_c`) as the replacement
+for `%r`. Shape inference (the next pipeline step) resolves and removes the
+cast.
 
 ## Why `handleTerminator(op, ValueRange)` Is Dialect-Specific
 
