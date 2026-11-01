@@ -93,8 +93,10 @@ would grow the stack on every iteration with no release until the function
 returns. A dialect that lowers `alloca` with `stacksave`/`stackrestore`
 could return `true` for the same op. It is up to the dialect to decide.
 
-Other ops in `@foo` (non-alloca) would pass; only `memref.alloca` blocks
-inlining here.
+The inliner walks every op in `@foo`'s body before copying anything.
+If any single op returns `false`, the entire inlining is aborted — nothing
+is copied. Other ops in `@foo` (non-alloca) would pass; only `memref.alloca`
+blocks it, and the call site keeps its `call @foo()` unchanged.
 
 In Toy all three always return `true` — no placement restrictions.
 
