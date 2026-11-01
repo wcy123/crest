@@ -13,8 +13,92 @@ Licensed under the MIT License.
 ## Overview
 
 Ch4 adds `DialectInlinerInterface` to the toy dialect so MLIR's generic
-inliner can inline `toy.generic_call` into its callers. This note explains
-the five inlining steps and the two dialect callbacks that implement them.
+inliner can inline `toy.generic_call` into its callers.
+
+## `isLegalToInline` — three-level gate
+
+Before copying anything, the inliner calls three predicates in order.
+All must return `true`; any `false` aborts inlining.
+
+**1. Call-site gate** — asked once per call site:
+
+```cpp
+isLegalToInline(Operation* call, Operation* callable, bool wouldBeCloned)
+```
+
+`call` is the call op; `callable` is the function definition.
+`wouldBeCloned` is `true` for multi-use callees (cloned), `false` for
+single-use callees (moved). Guards coarse decisions such as call metadata
+or cloning cost.
+
+**2. Region gate** — asked once per region pair:
+
+```cpp
+isLegalToInline(Region* dest, Region* src, bool wouldBeCloned, IRMapping&)
+```
+
+Example: an `affine.for` body region requires every memory access inside it
+to use an affine index expression. If the call site is inside such a loop:
+
+```
+affine.for %i = 0 to 10 {
+  %r = call @foo(%mem, %i)        // inlining this
+}
+func @foo(%mem, %idx) {
+  %0 = memref.load %mem[%idx]     // non-affine — index is a runtime value
+  return %0
+}
+```
+
+`isLegalToInline(dest=affine.for body, src=@foo body)` returns `false`:
+inlining would place `memref.load` inside the affine region, breaking the
+structural invariant the affine dialect relies on for polyhedral analysis.
+It is up to the dialect to decide — `wouldBeCloned` and loop bounds are
+irrelevant to the structural constraint.
+
+**3. Per-op gate** — asked for every individual op in the callee body:
+
+```cpp
+isLegalToInline(Operation* op, Region* dest, bool wouldBeCloned, IRMapping&)
+```
+
+`op` is each individual op from the callee being considered for placement;
+`dest` is the destination region it would land in.
+
+Example: `memref.alloca` (stack allocation) — a dialect that lowers it to a
+bare `llvm.alloca` without `stacksave`/`stackrestore` can only place it
+in a function entry block. If the call site is inside a loop:
+
+```
+func.func @bar() {
+  scf.for %i = 0 to 100 step 1 {
+    call @foo()                         // inlining this
+  }
+}
+func.func @foo() {
+  %buf = memref.alloca() : memref<64xf32>   // stack allocation
+  // use %buf
+}
+```
+
+For `memref.alloca` the inliner calls:
+
+```
+op   = memref.alloca
+dest = scf.for body region
+```
+
+The dialect returns `false` — placing a bare `alloca` inside the loop body
+would grow the stack on every iteration with no release until the function
+returns. A dialect that lowers `alloca` with `stacksave`/`stackrestore`
+could return `true` for the same op. It is up to the dialect to decide.
+
+The inliner walks every op in `@foo`'s body before copying anything.
+If any single op returns `false`, the entire inlining is aborted — nothing
+is copied. Other ops in `@foo` (non-alloca) would pass; only `memref.alloca`
+blocks it, and the call site keeps its `call @foo()` unchanged.
+
+In Toy all three always return `true` — no placement restrictions.
 
 ## How the Inliner Works
 
@@ -56,13 +140,12 @@ now has a **dangling** use — `%r` is consumed but no longer defined.
 **Step 3 — `handleTerminator`**:
 
 ```
-op              = toy.return %result_c   ; the cloned terminator
-n-replacements  = 1                      ; one call result to fix
-replacements    = [%r]                   ; the dangling call result
+op             = toy.return %result_c   ; the cloned terminator
+replacements   = [%r]                   ; the dangling call result
 ```
 
 Invariant (enforced by MLIR's type system):
-`n-replacements == len(operands of op) == len(results of toy.generic_call) == len(return types of toy.func)`
+`len(replacements) == len(operands of op) == len(results of toy.generic_call) == len(return types of toy.func)`
 
 For each `i`: `replaceAllUsesWith(replacements[i], operand(op, i))`,
 i.e. `replaceAllUsesWith(%r, %result_c)`:
@@ -73,7 +156,7 @@ toy.print %r   →   toy.print %result_c
 
 `%r` now has zero uses.
 
-**Step 3 — cleanup**: erase the call op (`%r` unused) and the cloned
+**Step 4 — cleanup**: erase the call op (`%r` unused) and the cloned
 `toy.return`. Done:
 
 ```
@@ -87,20 +170,46 @@ toy.func @main() {
 }
 ```
 
-`materializeCallConversion` runs between steps 1 and 2 when the return type
-and call-result type differ (ranked vs. unranked tensor): it inserts a
-`toy.cast` so `handleTerminator` has a type-compatible value to substitute.
+**Step 2b — `materializeCallConversion`** (only when types differ):
 
-## Why `handleTerminator` Is Dialect-Specific
+If the return value type inside the callee doesn't match the call-site result
+type, `replaceAllUsesWith` would be type-unsafe. The inliner calls:
 
-The inliner cannot provide a default because:
+```
+materializeCallConversion(
+  builder,
+  input       = %result_c,      ; tensor<3x2xf64> — what the callee produced
+  result-type = tensor<*xf64>,  ; what the call site expects
+  loc)
+```
 
-- The mapping from terminator operands to call results is dialect-defined.
-  Positional for `toy.return`; different for `scf.yield`, `affine.yield`, etc.
-- Non-exit blocks have a second overload, `handleTerminator(op, Block*)`, that
-  redirects internal branches — the branch instruction is dialect-specific.
-- When types mismatch, `handleTerminator` and `materializeCallConversion` work
-  together; a default implementation cannot know the dialect's type algebra.
+This happens when shape inference has already run inside the callee
+(resolving `tensor<*xf64>` → `tensor<3x2xf64>`) but the call site still
+expects the unranked type. The toy dialect inserts a `toy.cast`:
+
+```
+%cast = toy.cast(%result_c : tensor<3x2xf64>) to tensor<*xf64>
+```
+
+`handleTerminator` then uses `%cast` (not `%result_c`) as the replacement
+for `%r`. Shape inference (the next pipeline step) resolves and removes the
+cast.
+
+## Why `handleTerminator(op, ValueRange)` Is Dialect-Specific
+
+For the common case the behavior is always the same: positional
+`replaceAllUsesWith(valuesToRepl[i], op.getOperand(i))`. MLIR could
+provide this as a default, and `DialectInlinerInterface` would be better
+designed if it did. The reason a dialect needs a custom implementation:
+
+- **Non-positional operand layout** — a return op with interleaved
+  side-channel operands (e.g. `my.return %value, %token`). Only `%value`
+  maps to a call result; the dialect must skip `%token`.
+- **Aggregated returns** — one physical return operand holds N logical
+  values as a struct. The dialect must extract each field before calling
+  `replaceAllUsesWith`.
+- **Post-replacement side effects** — symbol-table updates, cache
+  invalidation, or runtime notifications after use redirection.
 
 ## How `toy.return` Is Recognised as a Terminator
 
