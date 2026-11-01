@@ -61,6 +61,9 @@ n-replacements  = 1                      ; one call result to fix
 replacements    = [%r]                   ; the dangling call result
 ```
 
+Invariant (enforced by MLIR's type system):
+`n-replacements == len(operands of op) == len(results of toy.generic_call) == len(return types of toy.func)`
+
 For each `i`: `replaceAllUsesWith(replacements[i], operand(op, i))`,
 i.e. `replaceAllUsesWith(%r, %result_c)`:
 
