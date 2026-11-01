@@ -407,6 +407,46 @@ void registerTransformsDialectConversionBindings() {
                    ? 1
                    : 0;
       });
+
+  // applyPartialConversion: partially lower ops, leaving unregistered ops.
+  // (op-ptr target-ptr patterns-ptr) → 1 success | 0 failure
+  Sregister_symbol(
+      "mlir::applyPartialConversion",
+      (void*)+[](uint64_t op_ptr, uint64_t target_ptr,
+                 uint64_t patterns_ptr) -> int {
+        auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
+        auto& target = crest::as_ref<mlir::ConversionTarget>(
+            target_ptr, "mlir::applyPartialConversion");
+        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
+            patterns_ptr, "mlir::applyPartialConversion");
+        return mlir::succeeded(mlir::applyPartialConversion(
+                   op, target, std::move(patterns)))
+                   ? 1
+                   : 0;
+      });
+
+  // modifyOpInPlace: mutate an op inside a rewriter notification.
+  // (rw-ptr op-ptr fn) → void  where fn is a Scheme thunk () → void
+  Sregister_symbol(
+      "mlir::RewriterBase::modifyOpInPlace",
+      (void*)+[](uint64_t rw_ptr, uint64_t op_ptr, ptr fn) -> void {
+        auto* rw = crest::as_ptr<mlir::RewriterBase>(
+            rw_ptr, "mlir::RewriterBase::modifyOpInPlace");
+        auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
+        rw->modifyOpInPlace(op, [&] { scheme_call(fn); });
+      });
+
+  // inlineRegionBefore: move all blocks from src region into dest region front.
+  // (rw-ptr src-region-ptr dest-region-ptr) → void
+  Sregister_symbol(
+      "mlir::RewriterBase::inlineRegionBefore",
+      (void*)+[](uint64_t rw_ptr, uint64_t src_ptr, uint64_t dest_ptr) -> void {
+        auto* rw = crest::as_ptr<mlir::RewriterBase>(
+            rw_ptr, "mlir::RewriterBase::inlineRegionBefore");
+        auto* src = reinterpret_cast<mlir::Region*>(src_ptr);
+        auto* dest = reinterpret_cast<mlir::Region*>(dest_ptr);
+        rw->inlineRegionBefore(*src, *dest, dest->begin());
+      });
 }
 
 } // namespace crest

@@ -28,6 +28,9 @@
     %mlir::OpResult::getOwner
     %mlir::Operation::getLoc
     %mlir::Operation::getRegion
+    %mlir::Operation::getBlock
+    %mlir::Operation::moveBefore
+    %mlir::Operation::setOperands
     %walk
     %set-operand
     %use-empty
@@ -287,5 +290,14 @@
   ;; @see         mlir/IR/Operation.h
   (define %mlir::Operation::setAttrs
     (foreign-procedure "mlir::Operation::setAttrs" (uptr uptr) void))
+
+  (define %mlir::Operation::getBlock
+    (foreign-procedure "mlir::Operation::getBlock" (uptr) uptr))
+
+  (define %mlir::Operation::moveBefore
+    (foreign-procedure "mlir::Operation::moveBefore" (uptr uptr) void))
+
+  (define %mlir::Operation::setOperands
+    (foreign-procedure "mlir::Operation::setOperands" (uptr uptr) void))
 
   ) ;; end library (mlir IR Operation ffi)

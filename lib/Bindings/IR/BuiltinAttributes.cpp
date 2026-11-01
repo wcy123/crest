@@ -476,6 +476,36 @@ void registerIRBuiltinAttributesBindings() {
         return reinterpret_cast<uint64_t>(
             attr.reshape(shaped).getAsOpaquePointer());
       });
+
+  Sregister_symbol(
+      "mlir::FloatAttr::get<f64>",
+      (void*)+[](uint64_t ctx_ptr, double val) -> uint64_t {
+        auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+        auto attr = mlir::FloatAttr::get(mlir::Float64Type::get(ctx), val);
+        return reinterpret_cast<uint64_t>(attr.getAsOpaquePointer());
+      });
+
+  Sregister_symbol(
+      "mlir::DenseElementsAttr::getNumElements",
+      (void*)+[](uint64_t attr_ptr) -> uint64_t {
+        auto attr = mlir::cast<mlir::DenseElementsAttr>(
+            mlir::Attribute::getFromOpaquePointer(
+                reinterpret_cast<void*>(attr_ptr)));
+        return static_cast<uint64_t>(attr.getNumElements());
+      });
+
+  // Returns the FloatAttr at linear index idx from a f64 DenseElementsAttr.
+  Sregister_symbol(
+      "mlir::DenseElementsAttr::getValueAt<f64>",
+      (void*)+[](uint64_t attr_ptr, uint64_t idx) -> uint64_t {
+        auto attr = mlir::cast<mlir::DenseElementsAttr>(
+            mlir::Attribute::getFromOpaquePointer(
+                reinterpret_cast<void*>(attr_ptr)));
+        auto it = attr.value_begin<mlir::FloatAttr>();
+        std::advance(it, static_cast<ptrdiff_t>(idx));
+        mlir::FloatAttr fa = *it;
+        return reinterpret_cast<uint64_t>(fa.getAsOpaquePointer());
+      });
 }
 
 } // namespace crest

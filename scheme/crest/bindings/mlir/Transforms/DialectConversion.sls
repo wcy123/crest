@@ -33,6 +33,9 @@
     target-mark-unknown-ops-dynamically-legal
     pattern-set-create
     apply-full-conversion
+    mlir::applyPartialConversion
+    mlir::RewriterBase::modifyOpInPlace
+    mlir::RewriterBase::inlineRegionBefore
     add-conversion-pattern
     add-rewrite-pattern
     populate-func-type-conversion
@@ -113,6 +116,10 @@
   ;; @brief mlir::applyFullConversion.
   (define apply-full-conversion
     %apply-full-conversion)
+
+  (define mlir::applyPartialConversion  %mlir::applyPartialConversion)
+  (define mlir::RewriterBase::modifyOpInPlace  %mlir::RewriterBase::modifyOpInPlace)
+  (define mlir::RewriterBase::inlineRegionBefore %mlir::RewriterBase::inlineRegionBefore)
 
   ;; @brief Register a Scheme ConversionPattern.
   (define add-conversion-pattern

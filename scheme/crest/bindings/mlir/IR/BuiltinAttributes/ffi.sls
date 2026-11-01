@@ -50,7 +50,10 @@
     %mlir::DenseElementsAttr::getType
     %mlir::DenseElementsAttr::reshape
     %mlir::DenseI32ArrayAttr::toVector
-    %mlir::DenseI64ArrayAttr::toVector)
+    %mlir::DenseI64ArrayAttr::toVector
+    %mlir::FloatAttr::get<f64>
+    %mlir::DenseElementsAttr::getNumElements
+    %mlir::DenseElementsAttr::getValueAt<f64>)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::StringAttr::get — construct a StringAttr from a Scheme string.
@@ -300,5 +303,14 @@
 
   (define %mlir::DenseElementsAttr::reshape
     (foreign-procedure "mlir::DenseElementsAttr::reshape" (uptr uptr) uptr))
+
+  (define %mlir::FloatAttr::get<f64>
+    (foreign-procedure "mlir::FloatAttr::get<f64>" (uptr double) uptr))
+
+  (define %mlir::DenseElementsAttr::getNumElements
+    (foreign-procedure "mlir::DenseElementsAttr::getNumElements" (uptr) uptr))
+
+  (define %mlir::DenseElementsAttr::getValueAt<f64>
+    (foreign-procedure "mlir::DenseElementsAttr::getValueAt<f64>" (uptr uptr) uptr))
 
   ) ;; end library (mlir IR BuiltinAttributes ffi)

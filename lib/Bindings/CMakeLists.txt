@@ -10,6 +10,16 @@ add_library(CrestBindings STATIC
   $<TARGET_OBJECTS:CrestCore>
 
 
+  Dialect/Affine/IR/AffineOps.cpp
+  Dialect/Affine/IR/AffineOps.h
+  Dialect/Affine/Transforms/Passes.cpp
+  Dialect/Affine/Transforms/Passes.h
+  Dialect/Arith/IR/Arith.cpp
+  Dialect/Arith/IR/Arith.h
+  Dialect/Func/IR/FuncOps.cpp
+  Dialect/Func/IR/FuncOps.h
+  Dialect/MemRef/IR/MemRef.cpp
+  Dialect/MemRef/IR/MemRef.h
   Dialect/Shape/IR/Shape.cpp
   Dialect/Shape/IR/Shape.h
   Dialect/Tensor/IR/Tensor.cpp
@@ -70,6 +80,8 @@ add_library(CrestBindings STATIC
   Transforms/GreedyPatternRewriteDriver.h
   Transforms/InliningUtils.cpp
   Transforms/InliningUtils.h
+  Transforms/Passes.cpp
+  Transforms/Passes.h
   Pass/PassManager.cpp
   Pass/PassManager.h
 )
@@ -88,7 +100,13 @@ target_link_libraries(CrestBindings
   PUBLIC
     MLIRIR
     MLIRParser
+    MLIRAffineDialect
+    MLIRAffineAnalysis
+    MLIRAffineTransforms
+    MLIRAffineUtils
+    MLIRArithDialect
     MLIRFuncDialect
+    MLIRMemRefDialect
     MLIRCallInterfaces
     MLIRFunctionInterfaces
     MLIRTensorDialect

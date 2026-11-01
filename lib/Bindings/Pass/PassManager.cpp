@@ -63,6 +63,32 @@ void registerPassPassManagerBindings() {
                                          "mlir::PassManager::enableVerifier")
             .enableVerifier(enabled != 0);
       });
+
+  // Nest a PassManager on the given op name; returns raw OpPassManager* (not
+  // owned). pm_ptr: CrestOwned<mlir::PassManager>*, op_name: string →
+  // OpPassManager* uptr
+  Sregister_symbol(
+      "mlir::PassManager::nest",
+      (void*)+[](uint64_t pm_ptr, const char* op_name) -> uint64_t {
+        auto& pm =
+            crest::as_ref<mlir::PassManager>(pm_ptr, "mlir::PassManager::nest");
+        return reinterpret_cast<uint64_t>(&pm.nest(op_name));
+      });
+
+  // Add a pass to a nested OpPassManager (raw ptr, not owned).
+  // nested_pm_ptr: OpPassManager*, pass_ptr: CrestOwned<unique_ptr<Pass>>*
+  Sregister_symbol(
+      "mlir::OpPassManager::addPass",
+      (void*)+[](uint64_t nested_pm_ptr, uint64_t pass_ptr) -> void {
+        auto* nested = reinterpret_cast<mlir::OpPassManager*>(nested_pm_ptr);
+        auto& pass = crest::as_ref<std::unique_ptr<mlir::Pass>>(
+            pass_ptr, "mlir::OpPassManager::addPass");
+        if (!pass) {
+          scheme_error("mlir::OpPassManager::addPass",
+                       "pass already consumed by a previous addPass call");
+        }
+        nested->addPass(std::move(pass));
+      });
 }
 
 } // namespace crest

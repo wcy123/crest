@@ -56,6 +56,9 @@
     mlir::DenseElementsAttr::reshape
     mlir::DenseI32ArrayAttr::toVector
     mlir::DenseI64ArrayAttr::toVector
+    mlir::FloatAttr::get<f64>
+    mlir::DenseElementsAttr::getNumElements
+    mlir::DenseElementsAttr::getValueAt<f64>
     )
   (import (rnrs)
           (mlir IR BuiltinAttributes ffi)
@@ -275,5 +278,9 @@
   ;; @return       Scheme vector of integers, one per element
   ;; @see          mlir/IR/BuiltinAttributes.h
   (define mlir::DenseI64ArrayAttr::toVector  %mlir::DenseI64ArrayAttr::toVector)
+
+  (define mlir::FloatAttr::get<f64>               %mlir::FloatAttr::get<f64>)
+  (define mlir::DenseElementsAttr::getNumElements %mlir::DenseElementsAttr::getNumElements)
+  (define mlir::DenseElementsAttr::getValueAt<f64> %mlir::DenseElementsAttr::getValueAt<f64>)
 
   ) ;; end library (mlir IR BuiltinAttributes)

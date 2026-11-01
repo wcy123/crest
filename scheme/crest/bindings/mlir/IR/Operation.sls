@@ -45,6 +45,9 @@
     mlir::Operation::getAttrOfType<FloatAttr>
     mlir::Operation::getAttrDictionary
     mlir::Operation::setAttrs
+    mlir::Operation::getBlock
+    mlir::Operation::moveBefore
+    mlir::Operation::setOperands
     operation-get-operands)
   (import (rnrs)
           (mlir IR Operation ffi)
@@ -306,5 +309,8 @@
 
   (define mlir::Operation::getAttrDictionary %mlir::Operation::getAttrDictionary)
   (define mlir::Operation::setAttrs          %mlir::Operation::setAttrs)
+  (define mlir::Operation::getBlock          %mlir::Operation::getBlock)
+  (define mlir::Operation::moveBefore        %mlir::Operation::moveBefore)
+  (define mlir::Operation::setOperands       %mlir::Operation::setOperands)
 
   ) ;; end library (mlir IR Operation)
