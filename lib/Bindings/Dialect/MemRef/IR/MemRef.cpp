@@ -17,14 +17,6 @@
 
 namespace crest {
 
-static mlir::OpBuilder& get_builder(uint64_t ptr_val, const char* who) {
-  auto* obj = reinterpret_cast<crest::CrestObject*>(ptr_val);
-  if (obj->isa<crest::CrestRef<mlir::RewriterBase>>()) {
-    return *static_cast<crest::CrestRef<mlir::RewriterBase>*>(obj)->ptr;
-  }
-  return crest::as_ref<mlir::OpBuilder>(ptr_val, who);
-}
-
 void registerDialectMemRefIRMemRefBindings() {
   // MemRefType::get: create a MemRefType from a RankedTensorType.
   // (ranked-tensor-type-ptr) → Type uptr
@@ -45,8 +37,8 @@ void registerDialectMemRefIRMemRefBindings() {
       "mlir::memref::AllocOp::create",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr,
                  uint64_t memref_type_ptr) -> uint64_t {
-        auto& builder =
-            get_builder(builder_ptr, "mlir::memref::AllocOp::create");
+        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
+            builder_ptr, "mlir::memref::AllocOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto memref_type =
@@ -63,8 +55,8 @@ void registerDialectMemRefIRMemRefBindings() {
       "mlir::memref::DeallocOp::create",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr,
                  uint64_t memref_ptr) -> uint64_t {
-        auto& builder =
-            get_builder(builder_ptr, "mlir::memref::DeallocOp::create");
+        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
+            builder_ptr, "mlir::memref::DeallocOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto memref = mlir::Value::getFromOpaquePointer(

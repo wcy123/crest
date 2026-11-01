@@ -104,11 +104,11 @@ template <typename T>
 
 } // namespace crest
 
-// Forward declaration so the as_ptr<mlir::MLIRContext> specialization can
-// be declared without pulling in all of mlir/IR/MLIRContext.h.
+// Forward declarations for as_ptr specializations.
 namespace mlir {
 class MLIRContext;
-}
+class OpBuilder;
+} // namespace mlir
 
 namespace crest {
 // Explicit specialisation for mlir::MLIRContext: accepts
@@ -119,6 +119,14 @@ namespace crest {
 template <>
 [[nodiscard]] mlir::MLIRContext* as_ptr<mlir::MLIRContext>(uint64_t ptr_val,
                                                            const char* who);
+
+// Explicit specialisation for mlir::OpBuilder: accepts
+// CrestOwned<OpBuilder>* (from begin-mlir-code / buildAffineLoopNest) or
+// CrestRef<RewriterBase>* (from conversion pattern callbacks — RewriterBase
+// inherits OpBuilder so the pointer is safely reinterpreted).
+template <>
+[[nodiscard]] mlir::OpBuilder* as_ptr<mlir::OpBuilder>(uint64_t ptr_val,
+                                                       const char* who);
 } // namespace crest
 
 // ---------------------------------------------------------------------------

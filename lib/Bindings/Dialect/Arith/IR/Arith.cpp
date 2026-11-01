@@ -17,14 +17,6 @@
 
 namespace crest {
 
-static mlir::OpBuilder& get_builder(uint64_t ptr_val, const char* who) {
-  auto* obj = reinterpret_cast<crest::CrestObject*>(ptr_val);
-  if (obj->isa<crest::CrestRef<mlir::RewriterBase>>()) {
-    return *static_cast<crest::CrestRef<mlir::RewriterBase>*>(obj)->ptr;
-  }
-  return crest::as_ref<mlir::OpBuilder>(ptr_val, who);
-}
-
 void registerDialectArithIRArithBindings() {
   // arith::AddFOp::create: floating-point addition.
   // (builder-ptr loc-ptr lhs-ptr rhs-ptr) → Value uptr
@@ -32,7 +24,8 @@ void registerDialectArithIRArithBindings() {
       "mlir::arith::AddFOp::create",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, uint64_t lhs_ptr,
                  uint64_t rhs_ptr) -> uint64_t {
-        auto& builder = get_builder(builder_ptr, "mlir::arith::AddFOp::create");
+        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
+            builder_ptr, "mlir::arith::AddFOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto lhs = mlir::Value::getFromOpaquePointer(
@@ -50,7 +43,8 @@ void registerDialectArithIRArithBindings() {
       "mlir::arith::MulFOp::create",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, uint64_t lhs_ptr,
                  uint64_t rhs_ptr) -> uint64_t {
-        auto& builder = get_builder(builder_ptr, "mlir::arith::MulFOp::create");
+        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
+            builder_ptr, "mlir::arith::MulFOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto lhs = mlir::Value::getFromOpaquePointer(
@@ -68,8 +62,8 @@ void registerDialectArithIRArithBindings() {
       "mlir::arith::ConstantIndexOp::create",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr,
                  uint64_t int_val) -> uint64_t {
-        auto& builder =
-            get_builder(builder_ptr, "mlir::arith::ConstantIndexOp::create");
+        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
+            builder_ptr, "mlir::arith::ConstantIndexOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto op = mlir::arith::ConstantIndexOp::create(
@@ -83,8 +77,8 @@ void registerDialectArithIRArithBindings() {
       "mlir::arith::ConstantOp::create<f64>",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr,
                  uint64_t attr_ptr) -> uint64_t {
-        auto& builder =
-            get_builder(builder_ptr, "mlir::arith::ConstantOp::create<f64>");
+        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
+            builder_ptr, "mlir::arith::ConstantOp::create<f64>");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto typed_attr =

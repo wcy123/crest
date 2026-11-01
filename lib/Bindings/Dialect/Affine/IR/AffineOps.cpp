@@ -17,16 +17,6 @@
 
 namespace crest {
 
-// Accept either CrestRef<RewriterBase> (from conversion patterns) or
-// CrestOwned<OpBuilder> (from begin-mlir-code / buildAffineLoopNest callbacks).
-static mlir::OpBuilder& get_affine_builder(uint64_t ptr_val, const char* who) {
-  auto* obj = reinterpret_cast<crest::CrestObject*>(ptr_val);
-  if (obj->isa<crest::CrestRef<mlir::RewriterBase>>()) {
-    return *static_cast<crest::CrestRef<mlir::RewriterBase>*>(obj)->ptr;
-  }
-  return crest::as_ref<mlir::OpBuilder>(ptr_val, who);
-}
-
 // Extract a SmallVector<int64_t> from a Scheme list of fixnums.
 static llvm::SmallVector<int64_t> scheme_list_to_i64(ptr list) {
   llvm::SmallVector<int64_t> v;
@@ -57,7 +47,8 @@ void registerDialectAffineIRAffineOpsBindings() {
       "mlir::affine::buildAffineLoopNest",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, ptr shape_list,
                  ptr body_fn) -> void {
-        auto& builder = get_affine_builder(builder_ptr, "buildAffineLoopNest");
+        auto& builder =
+            *crest::as_ptr<mlir::OpBuilder>(builder_ptr, "buildAffineLoopNest");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto ubs = scheme_list_to_i64(shape_list);
@@ -93,7 +84,7 @@ void registerDialectAffineIRAffineOpsBindings() {
       "mlir::affine::AffineLoadOp::create",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, uint64_t memref_ptr,
                  ptr ivs_list) -> uint64_t {
-        auto& builder = get_affine_builder(
+        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
             builder_ptr, "mlir::affine::AffineLoadOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
@@ -113,7 +104,7 @@ void registerDialectAffineIRAffineOpsBindings() {
       "mlir::affine::AffineStoreOp::create",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, uint64_t value_ptr,
                  uint64_t memref_ptr, ptr ivs_list) -> void {
-        auto& builder = get_affine_builder(
+        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
             builder_ptr, "mlir::affine::AffineStoreOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));

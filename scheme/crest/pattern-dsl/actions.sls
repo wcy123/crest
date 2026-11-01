@@ -1,6 +1,7 @@
 #!r6rs
 (library (crest pattern-dsl actions)
   (export action:set-current-op
+          action:set-root-op
           action:check-op
           action:bind-operands
           action:bind-argument-operand
@@ -21,6 +22,10 @@
     (list ':set-current-op
           (cons 'op-idx op-idx)
           (cons 'var var)))
+
+  ;; For zero-result root ops: directly set the op slot to the raw op parameter.
+  (define (action:set-root-op op-idx)
+    (list ':set-root-op (cons 'op-idx op-idx)))
 
   (define (action:check-op op-idx)
     (list ':check-op

@@ -206,23 +206,23 @@
   ;; toy.return → func.return (void only)
   ;;===--------------------------------------------------------------------===;;
 
-  (define (%%return-lower! op operands-ref rw tc)
-    (if (> (mlir::Operation::getNumOperands op) 0)
-        #f
-        (begin
-          (mlir::func::ReturnOp::create rw (mlir::Operation::getLoc op))
-          (mlir::RewriterBase::eraseOp rw op)
-          #t)))
+  (define-conversion-pattern (%%return-lower! op operands-ref rw tc)
+    :if-match
+      toy.return ()
+        :where (eqv? 0 (mlir::Operation::getNumOperands op))
+    :rewrite op :with
+      func.return ())
 
   ;;===--------------------------------------------------------------------===;;
   ;; toy.print → update operands (tensor → memref); op stays
+  ;; %in is bound to the type-converted operand via operands-ref.
   ;;===--------------------------------------------------------------------===;;
 
-  (define (%%print-lower! op operands-ref rw tc)
-    (mlir::RewriterBase::modifyOpInPlace rw op
-                                         (lambda ()
-                                           (mlir::Operation::setOperands op operands-ref)))
-    #t)
+  (define-conversion-pattern (%%print-lower! op operands-ref rw tc)
+    :if-match
+      toy.print (%in)
+    :rewrite op :with
+      toy.print (%in))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Registration
