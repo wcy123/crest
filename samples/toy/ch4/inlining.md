@@ -35,9 +35,7 @@ toy.func @main() {
 }
 ```
 
-**Step 1 — copy**: clone the callee body right after the call op, substituting
-`%a→%A`, `%b→%B`. Fresh SSA values (`%t0_c`, `%result_c`) are produced.
-`%r` is still valid — the call op still defines it.
+**Step 1 — copy** (`%a→%A`, `%b→%B`):
 
 ```
 toy.func @main() {
