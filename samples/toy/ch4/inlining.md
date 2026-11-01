@@ -13,8 +13,46 @@ Licensed under the MIT License.
 ## Overview
 
 Ch4 adds `DialectInlinerInterface` to the toy dialect so MLIR's generic
-inliner can inline `toy.generic_call` into its callers. This note explains
-the five inlining steps and the two dialect callbacks that implement them.
+inliner can inline `toy.generic_call` into its callers.
+
+## `isLegalToInline` — three-level gate
+
+Before copying anything, the inliner calls three predicates in order.
+All must return `true`; any `false` aborts inlining.
+
+**1. Call-site gate** — asked once per call site:
+
+```cpp
+isLegalToInline(Operation* call, Operation* callable, bool wouldBeCloned)
+```
+
+`call` is the call op; `callable` is the function definition.
+`wouldBeCloned` is `true` for multi-use callees (cloned), `false` for
+single-use callees (moved). Guards coarse decisions such as call metadata
+or cloning cost.
+
+**2. Region gate** — asked once per region pair:
+
+```cpp
+isLegalToInline(Region* dest, Region* src, bool wouldBeCloned, IRMapping&)
+```
+
+Relevant when the callee has nested regions (loops, conditionals). Checks
+whether the source region's ops are structurally compatible with the
+destination region. A dialect can refuse if `dest` has invariants that
+`src` ops would violate.
+
+**3. Per-op gate** — asked for every individual op in the callee body:
+
+```cpp
+isLegalToInline(Operation* op, Region* dest, bool wouldBeCloned, IRMapping&)
+```
+
+The finest-grained check. Lets the dialect allow most ops but block
+specific ones — for example, an op valid only at function top-level but
+not inside a loop body.
+
+In Toy all three always return `true` — no placement restrictions.
 
 ## How the Inliner Works
 
@@ -56,13 +94,12 @@ now has a **dangling** use — `%r` is consumed but no longer defined.
 **Step 3 — `handleTerminator`**:
 
 ```
-op              = toy.return %result_c   ; the cloned terminator
-n-replacements  = 1                      ; one call result to fix
-replacements    = [%r]                   ; the dangling call result
+op             = toy.return %result_c   ; the cloned terminator
+replacements   = [%r]                   ; the dangling call result
 ```
 
 Invariant (enforced by MLIR's type system):
-`n-replacements == len(operands of op) == len(results of toy.generic_call) == len(return types of toy.func)`
+`len(replacements) == len(operands of op) == len(results of toy.generic_call) == len(return types of toy.func)`
 
 For each `i`: `replaceAllUsesWith(replacements[i], operand(op, i))`,
 i.e. `replaceAllUsesWith(%r, %result_c)`:
@@ -73,7 +110,7 @@ toy.print %r   →   toy.print %result_c
 
 `%r` now has zero uses.
 
-**Step 3 — cleanup**: erase the call op (`%r` unused) and the cloned
+**Step 4 — cleanup**: erase the call op (`%r` unused) and the cloned
 `toy.return`. Done:
 
 ```
@@ -87,20 +124,25 @@ toy.func @main() {
 }
 ```
 
-`materializeCallConversion` runs between steps 1 and 2 when the return type
+`materializeCallConversion` runs between steps 2 and 3 when the return type
 and call-result type differ (ranked vs. unranked tensor): it inserts a
 `toy.cast` so `handleTerminator` has a type-compatible value to substitute.
 
-## Why `handleTerminator` Is Dialect-Specific
+## Why `handleTerminator(op, ValueRange)` Is Dialect-Specific
 
-The inliner cannot provide a default because:
+For the common case the behavior is always the same: positional
+`replaceAllUsesWith(valuesToRepl[i], op.getOperand(i))`. MLIR could
+provide this as a default, and `DialectInlinerInterface` would be better
+designed if it did. The reason a dialect needs a custom implementation:
 
-- The mapping from terminator operands to call results is dialect-defined.
-  Positional for `toy.return`; different for `scf.yield`, `affine.yield`, etc.
-- Non-exit blocks have a second overload, `handleTerminator(op, Block*)`, that
-  redirects internal branches — the branch instruction is dialect-specific.
-- When types mismatch, `handleTerminator` and `materializeCallConversion` work
-  together; a default implementation cannot know the dialect's type algebra.
+- **Non-positional operand layout** — a return op with interleaved
+  side-channel operands (e.g. `my.return %value, %token`). Only `%value`
+  maps to a call result; the dialect must skip `%token`.
+- **Aggregated returns** — one physical return operand holds N logical
+  values as a struct. The dialect must extract each field before calling
+  `replaceAllUsesWith`.
+- **Post-replacement side effects** — symbol-table updates, cache
+  invalidation, or runtime notifications after use redirection.
 
 ## How `toy.return` Is Recognised as a Terminator
 
