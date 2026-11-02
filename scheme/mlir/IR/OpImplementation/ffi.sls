@@ -34,7 +34,12 @@
           %mlir::OpAsmParser::parseRParen
           %mlir::OpAsmParser::parseColon
           %mlir::OpAsmParser::parseComma
+          %mlir::OpAsmParser::parseOptionalComma
           %mlir::OpAsmParser::parseArrow
+          %mlir::OpAsmParser::parseLess
+          %mlir::OpAsmParser::parseGreater
+          %mlir::OpAsmParser::parseLSquare
+          %mlir::OpAsmParser::parseRSquare
           %mlir::OpAsmParser::parseSymbolName
           %mlir::isa<FunctionType>
           %mlir::OperationState::addType)
@@ -141,6 +146,9 @@
   (define %mlir::OpAsmParser::parseComma
     (foreign-procedure "mlir::OpAsmParser::parseComma" (uptr) boolean))
 
+  (define %mlir::OpAsmParser::parseOptionalComma
+    (foreign-procedure "mlir::OpAsmParser::parseOptionalComma" (uptr) boolean))
+
   (define %mlir::OpAsmParser::parseArrow
     (foreign-procedure "mlir::OpAsmParser::parseArrow" (uptr) boolean))
 
@@ -152,5 +160,14 @@
 
   (define %mlir::OperationState::addType
     (foreign-procedure "mlir::OperationState::addType" (uptr uptr) void))
+
+  (define %mlir::OpAsmParser::parseLess
+    (foreign-procedure "mlir::OpAsmParser::parseLess" (uptr) boolean))
+  (define %mlir::OpAsmParser::parseGreater
+    (foreign-procedure "mlir::OpAsmParser::parseGreater" (uptr) boolean))
+  (define %mlir::OpAsmParser::parseLSquare
+    (foreign-procedure "mlir::OpAsmParser::parseLSquare" (uptr) boolean))
+  (define %mlir::OpAsmParser::parseRSquare
+    (foreign-procedure "mlir::OpAsmParser::parseRSquare" (uptr) boolean))
 
   ) ;; end library (mlir IR OpImplementation ffi)

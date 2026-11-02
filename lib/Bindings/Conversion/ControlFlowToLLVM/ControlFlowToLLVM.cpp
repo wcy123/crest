@@ -27,6 +27,18 @@ void registerConversionControlFlowToLLVMBindings() {
             "mlir::cf::populateControlFlowToLLVMConversionPatterns");
         mlir::cf::populateControlFlowToLLVMConversionPatterns(tc, patterns);
       });
+
+  // mlir::cf::populateAssertToLLVMConversionPattern (Ch7 addition)
+  // (type-converter-ptr patterns-ptr) → void
+  Sregister_symbol(
+      "mlir::cf::populateAssertToLLVMConversionPattern",
+      (void*)+[](uint64_t tc_ptr, uint64_t patterns_ptr) -> void {
+        auto& tc = crest::as_ref<mlir::LLVMTypeConverter>(
+            tc_ptr, "mlir::cf::populateAssertToLLVMConversionPattern");
+        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
+            patterns_ptr, "mlir::cf::populateAssertToLLVMConversionPattern");
+        mlir::cf::populateAssertToLLVMConversionPattern(tc, patterns);
+      });
 }
 
 } // namespace crest
