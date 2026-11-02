@@ -201,6 +201,15 @@ void registerIRBuiltinAttributesBindings() {
         return reinterpret_cast<uint64_t>(
             mlir::StringAttr::get(ctx, str).getAsOpaquePointer());
       });
+  // Variant with explicit length — required when the string contains NUL bytes.
+  Sregister_symbol(
+      "mlir::StringAttr::get/len",
+      (void*)+[](uint64_t ctx_ptr, const char* str, uint64_t len) -> uint64_t {
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
+        return reinterpret_cast<uint64_t>(
+            mlir::StringAttr::get(ctx, llvm::StringRef(str, len))
+                .getAsOpaquePointer());
+      });
 
   Sregister_symbol(
       "mlir::DenseElementsAttr::get<f64>",

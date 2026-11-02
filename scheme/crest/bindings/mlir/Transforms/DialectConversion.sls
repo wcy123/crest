@@ -37,6 +37,7 @@
     mlir::RewriterBase::modifyOpInPlace
     mlir::RewriterBase::inlineRegionBefore
     add-conversion-pattern
+    add-conversion-pattern/ctx
     add-rewrite-pattern
     populate-func-type-conversion
     crest::isa<CrestOwned<mlir::TypeConverter>>?
@@ -124,6 +125,12 @@
   ;; @brief Register a Scheme ConversionPattern.
   (define add-conversion-pattern
     %add-conversion-pattern)
+
+  ;; @brief Register a Scheme ConversionPattern with no TypeConverter.
+  ;; Operands passed as original (unconverted) values. Use when the pattern
+  ;; reads the original operand types directly (e.g. memref.load on the input).
+  (define add-conversion-pattern/ctx
+    %add-conversion-pattern/ctx)
 
   ;; @brief Register a Scheme RewritePattern (no TypeConverter).
   (define add-rewrite-pattern

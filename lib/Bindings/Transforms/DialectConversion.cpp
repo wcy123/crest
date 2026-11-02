@@ -26,6 +26,7 @@
 // opaquely.
 class SchemeConversionPattern : public mlir::ConversionPattern {
 public:
+  // With TypeConverter: operands are remapped before matchAndRewrite.
   SchemeConversionPattern(mlir::TypeConverter* typeConverter,
                           mlir::MLIRContext* ctx, ptr schemeCallback,
                           llvm::StringRef opName, int benefit,
@@ -33,6 +34,13 @@ public:
       : ConversionPattern(*typeConverter, opName, benefit, ctx),
         callback_(schemeCallback), targetOpName(opName.str()),
         schemeTypeConverterPtr_(schemeConverterPtr) {}
+
+  // Without TypeConverter: operands are passed as-is (no type remapping).
+  SchemeConversionPattern(mlir::MLIRContext* ctx, ptr schemeCallback,
+                          llvm::StringRef opName, int benefit)
+      : ConversionPattern(opName, static_cast<unsigned>(benefit), ctx),
+        callback_(schemeCallback), targetOpName(opName.str()),
+        schemeTypeConverterPtr_(0) {}
 
   mlir::LogicalResult
   matchAndRewrite(mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
@@ -105,6 +113,21 @@ void registerTransformsDialectConversionBindings() {
         patterns.add<SchemeConversionPattern>(
             &typeConverter, patterns.getContext(), static_cast<ptr>(callback),
             llvm::StringRef(op_name), benefit, type_converter_ptr);
+      });
+  // Variant with no TypeConverter: operands are passed as original values.
+  // Use for patterns that consume original (unconverted) operand types.
+  Sregister_symbol(
+      "crest::DialectConversion::addConversionPattern/ctx",
+      (void*)+[](uint64_t patterns_ptr, const char* op_name, ptr callback,
+                 int benefit) -> void {
+        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
+            patterns_ptr, "crest::DialectConversion::addConversionPattern/ctx");
+        mlir_support_logging_info(
+            (std::string("Registering Scheme pattern (no TC) for ") + op_name)
+                .c_str());
+        patterns.add<SchemeConversionPattern>(
+            patterns.getContext(), static_cast<ptr>(callback),
+            llvm::StringRef(op_name), benefit);
       });
   Sregister_symbol(
       "crest::DialectConversion::addRewritePattern",

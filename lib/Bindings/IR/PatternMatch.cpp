@@ -135,6 +135,16 @@ void registerIRRewriterBaseBindings() {
                    ? 1
                    : 0;
       });
+
+  // mlir::RewriterBase::setInsertionPointToStart: set insertion before first op
+  // in block. (rw-ptr block-ptr) → void
+  Sregister_symbol(
+      "mlir::RewriterBase::setInsertionPointToStart",
+      (void*)+[](uint64_t rw_ptr, uint64_t block_ptr) -> void {
+        auto* rw = crest::as_ptr<mlir::RewriterBase>(
+            rw_ptr, "mlir::RewriterBase::setInsertionPointToStart");
+        rw->setInsertionPointToStart(reinterpret_cast<mlir::Block*>(block_ptr));
+      });
 }
 
 // as_ptr<mlir::OpBuilder> specialisation: handles both

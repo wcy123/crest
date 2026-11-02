@@ -34,6 +34,7 @@
     mlir::parseAttribute
     mlir::DenseResourceElementsAttr::get
     mlir::StringAttr::get
+    mlir::StringAttr::get/len
     mlir::TypeAttr::get
     mlir::TypeAttr::getValue
     mlir::DenseElementsAttr::get<f64>
@@ -69,6 +70,11 @@
   ;; @brief mlir::StringAttr::get — construct a StringAttr from a Scheme string.
   ;; ctx is optional; defaults to (current-MLIRContext).
   (define-ctx-optional mlir::StringAttr::get %mlir::StringAttr::get str)
+
+  ;; @brief mlir::StringAttr::get/len — construct a StringAttr with explicit byte count.
+  ;; Use when the string contains embedded NUL bytes (e.g. C format strings like "%f \0").
+  (define (mlir::StringAttr::get/len ctx str len)
+    (%mlir::StringAttr::get/len ctx str len))
 
   ;; @brief mlir::TypeAttr::get — wrap a Type as a TypeAttr.
   (define (mlir::TypeAttr::get type)

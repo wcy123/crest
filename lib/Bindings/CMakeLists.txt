@@ -32,6 +32,8 @@ add_library(CrestBindings STATIC
   Dialect/ControlFlow/IR/ControlFlow.h
   Dialect/SCF/IR/SCFDialect.cpp
   Dialect/SCF/IR/SCFDialect.h
+  Dialect/SCF/IR/SCFOps.cpp
+  Dialect/SCF/IR/SCFOps.h
   Dialect/Affine/Transforms/Passes.cpp
   Dialect/Affine/Transforms/Passes.h
   Dialect/Arith/IR/Arith.cpp
@@ -42,6 +44,8 @@ add_library(CrestBindings STATIC
   Dialect/MemRef/IR/MemRef.h
   Dialect/LLVMIR/IR/LLVMDialect.cpp
   Dialect/LLVMIR/IR/LLVMDialect.h
+  Dialect/LLVMIR/IR/LLVMOps.cpp
+  Dialect/LLVMIR/IR/LLVMOps.h
   Dialect/LLVMIR/Transforms/Passes.cpp
   Dialect/LLVMIR/Transforms/Passes.h
   Dialect/Toy/ToyStructType.cpp

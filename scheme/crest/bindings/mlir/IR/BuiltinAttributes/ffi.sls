@@ -30,6 +30,7 @@
     %mlir::parseAttribute
     %mlir::DenseResourceElementsAttr::get
     %mlir::StringAttr::get
+    %mlir::StringAttr::get/len
     %mlir::TypeAttr::get
     %mlir::TypeAttr::getValue
     %mlir::DenseElementsAttr::get<f64>
@@ -66,6 +67,11 @@
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
   (define %mlir::StringAttr::get
     (foreign-procedure "mlir::StringAttr::get" (uptr string) uptr))
+
+  ;; @brief mlir::StringAttr::get/len — construct a StringAttr with explicit byte count.
+  ;; Required when the string contains embedded NUL bytes (e.g. C format strings).
+  (define %mlir::StringAttr::get/len
+    (foreign-procedure "mlir::StringAttr::get/len" (uptr string uptr) uptr))
 
   ;; @brief mlir::TypeAttr::get — wrap an mlir::Type as a TypeAttr.
   ;; @param type   Type opaque pointer uptr

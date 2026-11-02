@@ -39,6 +39,7 @@
         (mlir Dialect ControlFlow IR ControlFlow)
         (mlir Dialect LLVMIR IR LLVMDialect)
         (mlir Dialect LLVMIR Transforms Passes)
+        (mlir Conversion ReconcileUnrealizedCasts ReconcileUnrealizedCasts)
         (mlir Target LLVMIR Export)
         (mlir ExecutionEngine ExecutionEngine)
         (toy ch7 parser)
@@ -217,7 +218,12 @@
   ;; Step 5: LLVM lowering + reconcile unrealized casts + DI scope.
   (when emit-llvm?
     (%%toy-to-llvm-lower! module-op ctx)
-    ))
+    (with-PassManager (pm2 ctx)
+      (mlir::PassManager::addPass pm2 (mlir::createReconcileUnrealizedCastsPass))
+      (mlir::PassManager::addPass pm2 (mlir::LLVM::createDIScopeForLLVMFuncOpPass))
+      (unless (mlir::PassManager::run! pm2 module-op)
+        (display "Post-LLVM pipeline failed\n" (current-error-port))
+        (exit 1)))))
 
 ;; ---------------------------------------------------------------------------
 ;; Shape inference and inliner — identical to ch5

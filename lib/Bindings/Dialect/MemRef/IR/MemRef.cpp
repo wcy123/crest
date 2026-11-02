@@ -65,6 +65,30 @@ void registerDialectMemRefIRMemRefBindings() {
         return reinterpret_cast<uint64_t>(dealloc.getOperation());
       });
 
+  // memref::LoadOp::create: load from a memref at given indices.
+  // (builder-ptr loc-ptr memref-val-ptr indices-list) → Value uptr
+  // indices-list: Scheme list of Value uptrss
+  Sregister_symbol(
+      "mlir::memref::LoadOp::create",
+      (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, uint64_t memref_ptr,
+                 ptr indices_list) -> uint64_t {
+        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
+            builder_ptr, "mlir::memref::LoadOp::create");
+        auto loc = mlir::Location::getFromOpaquePointer(
+            reinterpret_cast<const void*>(loc_ptr));
+        auto memref = mlir::Value::getFromOpaquePointer(
+            reinterpret_cast<const void*>(memref_ptr));
+        llvm::SmallVector<mlir::Value> indices;
+        for (ptr p = indices_list; p != Snil; p = Scdr(p)) {
+          auto uval = Sunsigned64_value(Scar(p));
+          indices.push_back(mlir::Value::getFromOpaquePointer(
+              reinterpret_cast<const void*>(uval)));
+        }
+        auto load = mlir::memref::LoadOp::create(builder, loc, memref, indices);
+        return reinterpret_cast<uint64_t>(
+            load.getResult().getAsOpaquePointer());
+      });
+
   // Register MemRefDialect into a DialectRegistry.
   Sregister_symbol(
       "mlir::memref::MemRefDialect", (void*)+[](uint64_t registry_ptr) -> void {

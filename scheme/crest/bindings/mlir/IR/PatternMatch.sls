@@ -27,6 +27,7 @@
     mlir-create-operation
     mlir::RewriterBase::setInsertionPoint
     mlir::RewriterBase::setInsertionPointToEnd
+    mlir::RewriterBase::setInsertionPointToStart
     mlir::RewriterBase::createBlock
     mlir::RewriterBase::replaceOp
     mlir::RewriterBase::eraseOp
@@ -46,6 +47,7 @@
           (only (mlir IR PatternMatch ffi)
                 %mlir::RewriterBase::setInsertionPoint
                 %mlir::RewriterBase::setInsertionPointToEnd
+                %mlir::RewriterBase::setInsertionPointToStart
                 %mlir::RewriterBase::createBlock
                 %mlir::RewriterBase::replaceOp
                 %mlir::RewriterBase::eraseOp
@@ -80,6 +82,7 @@
   ;; @brief mlir::RewriterBase::setInsertionPoint(op) — move IP to before op.
   (define mlir::RewriterBase::setInsertionPoint    %mlir::RewriterBase::setInsertionPoint)
   (define mlir::RewriterBase::setInsertionPointToEnd %mlir::RewriterBase::setInsertionPointToEnd)
+  (define mlir::RewriterBase::setInsertionPointToStart %mlir::RewriterBase::setInsertionPointToStart)
 
   ;; @brief mlir::RewriterBase::createBlock — append a new block to region.
   (define mlir::RewriterBase::createBlock             %mlir::RewriterBase::createBlock)

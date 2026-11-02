@@ -15,6 +15,7 @@
 #include "mlir/CAPI/Wrap.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/BuiltinAttributes.h"
+#include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Operation.h"
 #include <limits>
@@ -424,6 +425,19 @@ void registerIROperationBindings() {
               reinterpret_cast<const void*>(arr->data[i])));
         }
         op->setOperands(values);
+      });
+
+  // mlir::Operation::getParentOfType<ModuleOp>: get enclosing module.
+  // (op-ptr) → Operation* uptr (or 0)
+  Sregister_symbol(
+      "mlir::Operation::getParentOfType<ModuleOp>",
+      (void*)+[](uint64_t op_ptr) -> uint64_t {
+        auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
+        auto parent = op->getParentOfType<mlir::ModuleOp>();
+        if (!parent) {
+          return 0;
+        }
+        return reinterpret_cast<uint64_t>(parent.getOperation());
       });
 }
 

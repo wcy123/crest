@@ -104,6 +104,23 @@ void registerIRBuiltinTypesBindings() {
         return list;
       });
   Sregister_symbol(
+      "mlir::ShapedType::getShape", (void*)+[](ptr p) -> ptr {
+        if (!p) {
+          scheme_error("mlir::ShapedType::getShape", "null type pointer");
+        }
+        auto t = mlir::dyn_cast<mlir::ShapedType>(
+            mlir::Type::getFromOpaquePointer(p));
+        if (!t) {
+          scheme_error("mlir::ShapedType::getShape", "not a ShapedType");
+        }
+        ptr list = Snil;
+        auto shape = t.getShape();
+        for (int i = static_cast<int>(shape.size()) - 1; i >= 0; --i) {
+          list = Scons(Sinteger(shape[static_cast<size_t>(i)]), list);
+        }
+        return list;
+      });
+  Sregister_symbol(
       "mlir::RankedTensorType::getEncoding",
       (void*)+[](uint64_t type_ptr) -> uint64_t {
         if (!type_ptr) {
