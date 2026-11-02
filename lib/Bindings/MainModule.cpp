@@ -17,8 +17,10 @@
 #include "Dialect/Affine/IR/AffineOps.h"
 #include "Dialect/Affine/Transforms/Passes.h"
 #include "Dialect/Arith/IR/Arith.h"
+#include "Dialect/ControlFlow/IR/ControlFlow.h"
 #include "Dialect/Func/IR/FuncOps.h"
 #include "Dialect/MemRef/IR/MemRef.h"
+#include "Dialect/SCF/IR/SCFDialect.h"
 #include "Dialect/Shape/IR/Shape.h"
 #include "Dialect/Tensor/IR/Tensor.h"
 #include "IR/Block.h"
@@ -32,6 +34,16 @@
 #include "IR/OpImplementation.h"
 #include "Transforms/Passes.h"
 
+#include "Conversion/AffineToStandard/AffineToStandard.h"
+#include "Conversion/ArithToLLVM/ArithToLLVM.h"
+#include "Conversion/ControlFlowToLLVM/ControlFlowToLLVM.h"
+#include "Conversion/FuncToLLVM/ConvertFuncToLLVM.h"
+#include "Conversion/LLVMCommon/TypeConverter.h"
+#include "Conversion/MemRefToLLVM/MemRefToLLVM.h"
+#include "Conversion/SCFToControlFlow/SCFToControlFlow.h"
+#include "Dialect/LLVMIR/IR/LLVMDialect.h"
+#include "Dialect/LLVMIR/Transforms/Passes.h"
+#include "ExecutionEngine/ExecutionEngine.h"
 #include "IR/Operation.h"
 #include "IR/OperationSupport.h"
 #include "IR/PatternMatch.h"
@@ -46,6 +58,8 @@
 #include "Support/ArrayRef.h"
 #include "Support/CrestObject.h"
 #include "Support/Logging.h"
+#include "Target/LLVMIR/Export.h"
+#include "Toy/Ch6/LowerToLLVM.h"
 #include "Transforms/DialectConversion.h"
 #include "Transforms/GreedyPatternRewriteDriver.h"
 #include "Transforms/InliningUtils.h"
@@ -97,9 +111,23 @@ void registerMlirForeignFunctions() {
   registerTransformsPassesBindings();
   registerDialectAffineIRAffineOpsBindings();
   registerDialectAffineTransformsPassesBindings();
+  registerDialectControlFlowIRControlFlowBindings();
+  registerDialectSCFIRSCFDialectBindings();
   registerDialectArithIRArithBindings();
   registerDialectFuncIRFuncOpsBindings();
   registerDialectMemRefIRMemRefBindings();
+  registerConversionAffineToStandardBindings();
+  registerConversionSCFToControlFlowBindings();
+  registerConversionArithToLLVMBindings();
+  registerConversionMemRefToLLVMBindings();
+  registerConversionControlFlowToLLVMBindings();
+  registerConversionFuncToLLVMBindings();
+  registerConversionLLVMCommonTypeConverterBindings();
+  registerDialectLLVMIRIRLLVMDialectBindings();
+  registerDialectLLVMIRTransformsPassesBindings();
+  registerTargetLLVMIRExportBindings();
+  registerExecutionEngineBindings();
+  registerToyCh6LowerToLLVMBindings();
   if (g_extra_bindings_fn) {
     g_extra_bindings_fn();
   }
