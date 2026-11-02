@@ -31,6 +31,7 @@
     %mlir::Operation::getBlock
     %mlir::Operation::moveBefore
     %mlir::Operation::setOperands
+    %mlir::Operation::getParentOfType<ModuleOp>
     %walk
     %set-operand
     %use-empty
@@ -299,5 +300,8 @@
 
   (define %mlir::Operation::setOperands
     (foreign-procedure "mlir::Operation::setOperands" (uptr uptr) void))
+
+  (define %mlir::Operation::getParentOfType<ModuleOp>
+    (foreign-procedure "mlir::Operation::getParentOfType<ModuleOp>" (uptr) uptr))
 
   ) ;; end library (mlir IR Operation ffi)

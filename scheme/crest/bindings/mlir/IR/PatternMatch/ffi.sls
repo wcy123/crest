@@ -19,6 +19,7 @@
   (export
     %mlir::RewriterBase::setInsertionPoint
     %mlir::RewriterBase::setInsertionPointToEnd
+    %mlir::RewriterBase::setInsertionPointToStart
     %mlir::RewriterBase::createBlock
     %mlir::RewriterBase::replaceOp
     %mlir::RewriterBase::eraseOp
@@ -34,6 +35,10 @@
 
   (define %mlir::RewriterBase::setInsertionPointToEnd
     (foreign-procedure "mlir::RewriterBase::setInsertionPointToEnd"
+                       (uptr uptr) void))
+
+  (define %mlir::RewriterBase::setInsertionPointToStart
+    (foreign-procedure "mlir::RewriterBase::setInsertionPointToStart"
                        (uptr uptr) void))
 
   (define %mlir::RewriterBase::createBlock

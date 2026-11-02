@@ -10,7 +10,8 @@
   (export %mlir::MemRefType::get
           %mlir::memref::AllocOp::create
           %mlir::memref::DeallocOp::create
-          %mlir::memref::MemRefDialect)
+          %mlir::memref::MemRefDialect
+          %mlir::memref::LoadOp::create)
   (import (chezscheme))
 
   (define %mlir::MemRefType::get
@@ -24,5 +25,8 @@
 
   (define %mlir::memref::MemRefDialect
     (foreign-procedure "mlir::memref::MemRefDialect" (uptr) void))
+
+  (define %mlir::memref::LoadOp::create
+    (foreign-procedure "mlir::memref::LoadOp::create" (uptr uptr uptr scheme-object) uptr))
 
   ) ;; end library (mlir Dialect MemRef IR MemRef ffi)

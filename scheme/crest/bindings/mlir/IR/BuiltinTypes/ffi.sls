@@ -41,6 +41,7 @@
     %mlir::RankedTensorType::getShape
     %mlir::RankedTensorType::getEncoding
     %mlir::RankedTensorType::cloneWithEncoding
+    %mlir::ShapedType::getShape
     %mlir::ShapedType::getElementType
     %mlir::IntegerType::getWidth
     %mlir::IntegerType::isUnsigned
@@ -133,6 +134,12 @@
     (foreign-procedure
      "mlir::RankedTensorType::cloneWithEncoding"
      (uptr uptr) uptr))
+
+  ;; @brief ShapedType::getShape() — return the shape as a Scheme list of integers.
+  ;; Works for MemRefType, RankedTensorType, and any other ShapedType.
+  (define %mlir::ShapedType::getShape
+    (foreign-procedure "mlir::ShapedType::getShape"
+                       (uptr) scheme-object))
 
   ;; @brief ShapedType::getElementType() — return the element type of a shaped type.
   ;; @param type  ShapedType opaque pointer uptr

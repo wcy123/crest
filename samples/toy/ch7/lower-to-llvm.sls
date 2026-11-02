@@ -1,19 +1,34 @@
-;; Toy Ch6 — full lowering to LLVM dialect.
-;; Mirrors mlir/examples/toy/Ch6/mlir/LowerToLLVM.cpp
+;; Toy Ch7 — full lowering to LLVM dialect.
+;; Mirrors mlir/examples/toy/Ch7/mlir/LowerToLLVM.cpp
 ;;
-;; Lowers the combination of Affine+SCF+Arith+Func+MemRef dialects to the
-;; LLVM dialect. toy.print is silenced (kept as dynamically legal) since the
-;; full printf lowering requires additional SCF+LLVM work.
+;; Lowers the combination of Affine+SCF+Arith+Func+MemRef+Toy dialects to the
+;; LLVM dialect, including toy.print → printf calls via SCF loop nests.
 (library (toy ch7 lower-to-llvm)
   (export %%toy-to-llvm-lower!)
   (import (except (rnrs) =)
           (mlir IR MLIRContext)
-          (mlir IR Operation)
+          (only (mlir IR Operation)
+                mlir::Operation::getLoc
+                mlir::Operation::getContext
+                mlir::Operation::getOperand
+                mlir::Operation::getParentOfType<ModuleOp>)
           (mlir IR BuiltinOps)
+          (only (mlir IR Value) mlir::Value::getType)
+          (only (mlir IR Block) mlir::Block::front)
+          (only (mlir IR BuiltinTypes)
+                mlir::IntegerType::get<i8>
+                mlir::IntegerType::get<i32>
+                mlir::ShapedType::getShape)
+          (only (mlir IR BuiltinAttributes)
+                mlir::StringAttr::get/len)
           (mlir Pass PassManager)
           (mlir Transforms Passes)
           (mlir Dialect LLVMIR IR LLVMDialect)
+          (mlir Dialect LLVMIR IR LLVMOps)
           (mlir Dialect LLVMIR Transforms Passes)
+          (mlir Dialect SCF IR SCFOps)
+          (mlir Dialect Arith IR Arith)
+          (mlir Dialect MemRef IR MemRef)
           (mlir Conversion LLVMCommon TypeConverter)
           (mlir Conversion AffineToStandard AffineToStandard)
           (mlir Conversion SCFToControlFlow SCFToControlFlow)
@@ -21,22 +36,130 @@
           (mlir Conversion MemRefToLLVM MemRefToLLVM)
           (mlir Conversion ControlFlowToLLVM ControlFlowToLLVM)
           (mlir Conversion FuncToLLVM ConvertFuncToLLVM)
-          (mlir Transforms DialectConversion)
-          (mlir IR PatternMatch)
+          (only (mlir Transforms DialectConversion)
+                target-add-legal-dialect
+                target-add-legal-op
+                target-add-illegal-dialect
+                apply-full-conversion
+                add-conversion-pattern/ctx
+                with-ConversionTarget)
+          (only (mlir IR PatternMatch)
+                mlir::RewriterBase::eraseOp
+                mlir::RewriterBase::setInsertionPoint
+                mlir::RewriterBase::setInsertionPointToStart
+                mlir::RewriterBase::setInsertionPointToEnd
+                with-RewritePatternSet)
           (crest))
 
+  ;;===--------------------------------------------------------------------===;;
+  ;; Helpers for toy.print → printf lowering
+  ;;===--------------------------------------------------------------------===;;
+
+  ;; Get-or-insert @printf declaration in the module.
+  ;; Temporarily moves rw IP to module body start; caller must restore IP afterward.
+  (define (%%get-or-insert-printf! rw module-op ctx)
+    (if (not (zero? (mlir::ModuleOp::lookupSymbol module-op "printf")))
+        (mlir::FlatSymbolRefAttr::get ctx "printf")
+        (let* ([i32ty (mlir::IntegerType::get<i32> ctx)]
+               [ptrty (mlir::LLVM::LLVMPointerType::get ctx)]
+               [fnty  (mlir::LLVM::LLVMFunctionType::get ctx i32ty ptrty 1)]
+               [body  (mlir::ModuleOp::getBody module-op)])
+          (mlir::RewriterBase::setInsertionPointToStart rw body)
+          (mlir::LLVM::LLVMFuncOp::create rw (mlir::Operation::getLoc module-op) "printf" fnty)
+          (mlir::FlatSymbolRefAttr::get ctx "printf"))))
+
+  ;; Get-or-create a global string constant; returns the global op.
+  ;; Temporarily moves rw IP to module body start; caller must restore IP afterward.
+  (define (%%get-or-create-global-string! rw loc name value module-op ctx)
+    (let ([existing (mlir::ModuleOp::lookupSymbol module-op name)])
+      (if (not (zero? existing))
+          existing
+          (let* ([len   (string-length value)]  ; includes embedded NUL
+                 [i8ty  (mlir::IntegerType::get<i8> ctx)]
+                 [arrty (mlir::LLVM::LLVMArrayType::get i8ty len)]
+                 ;; Use get/len so embedded NUL bytes are preserved in the StringAttr.
+                 [attr  (mlir::StringAttr::get/len ctx value len)]
+                 [body  (mlir::ModuleOp::getBody module-op)])
+            (mlir::RewriterBase::setInsertionPointToStart rw body)
+            (mlir::LLVM::GlobalOp::create rw loc arrty 1 8 name attr)))))
+
+  ;; Get-or-create a global string and return GEP to its first char.
+  ;; Restores rw IP to op after module-level insertions.
+  (define (%%global-string-ptr! rw loc name value module-op ctx op)
+    (let* ([global (%%get-or-create-global-string! rw loc name value module-op ctx)])
+      ;; Restore IP to just before op so loop-body ops go in the right place.
+      (mlir::RewriterBase::setInsertionPoint rw op)
+      (let* ([ptrty (mlir::LLVM::LLVMPointerType::get ctx)]
+             [arrty (mlir::LLVM::GlobalOp::getType global)]
+             [addr  (mlir::LLVM::AddressOfOp::create rw loc global)]
+             [c0    (mlir::LLVM::ConstantOp::create<i64> rw loc 0)])
+        (mlir::LLVM::GEPOp::create rw loc ptrty arrty addr c0 c0))))
+
+  ;; Lower toy.print → SCF loops calling @printf on each element.
+  ;; Called via add-conversion-pattern/ctx (no TypeConverter) so operands are
+  ;; the original unconverted values; tc arg is 0 (unused).
+  (define (%%print-lower! op operands-ref rw tc)
+    (let* ([loc       (mlir::Operation::getLoc op)]
+           [ctx       (mlir::Operation::getContext op)]
+           [module-op (mlir::Operation::getParentOfType<ModuleOp> op)]
+           ;; Get original memref type (operand before conversion)
+           [orig-in   (mlir::Operation::getOperand op 0)]
+           [mtype     (mlir::Value::getType orig-in)]
+           [shape     (mlir::ShapedType::getShape mtype)]
+           ;; Declare @printf; inserts at module start and leaves IP there.
+           [printf-ref (%%get-or-insert-printf! rw module-op ctx)]
+           ;; Create global format strings; each restores IP to op afterward.
+           [fmt-val  (%%global-string-ptr! rw loc "frmt_spec" "%f \x00;" module-op ctx op)]
+           [nl-val   (%%global-string-ptr! rw loc "nl" "\n\x00;" module-op ctx op)]
+           ;; printf function type for calls
+           [i32ty    (mlir::IntegerType::get<i32> ctx)]
+           [ptrty    (mlir::LLVM::LLVMPointerType::get ctx)]
+           [fnty     (mlir::LLVM::LLVMFunctionType::get ctx i32ty ptrty 1)]
+           [in       orig-in])
+      ;; Build nested SCF for loops over the memref shape
+      (let loop ([dims shape] [dim-idx 0] [ivs '()])
+        (if (null? dims)
+            ;; Innermost: load element and call printf
+            (let* ([elem (mlir::memref::LoadOp::create rw loc in (reverse ivs))]
+                   [_ (mlir::LLVM::CallOp::create rw loc fnty printf-ref
+                                                  (list fmt-val elem))])
+              'done)
+            ;; Emit scf.for for this dimension
+            (let* ([lb   (mlir::arith::ConstantIndexOp::create rw loc 0)]
+                   [ub   (mlir::arith::ConstantIndexOp::create rw loc (car dims))]
+                   [step (mlir::arith::ConstantIndexOp::create rw loc 1)]
+                   [for-op (mlir::scf::ForOp::create rw loc lb ub step)]
+                   [body   (mlir::scf::ForOp::getBody for-op)]
+                   [iv     (mlir::scf::ForOp::getInductionVar for-op)])
+              ;; Remove default yield from body
+              (mlir::RewriterBase::eraseOp rw (mlir::Block::front body))
+              ;; Set insertion to body start
+              (mlir::RewriterBase::setInsertionPointToEnd rw body)
+              ;; Between outer dims: newline
+              (when (not (null? (cdr dims)))
+                (mlir::LLVM::CallOp::create rw loc fnty printf-ref (list nl-val)))
+              ;; Recurse into inner dims
+              (mlir::RewriterBase::setInsertionPointToStart rw body)
+              (loop (cdr dims) (+ dim-idx 1) (cons iv ivs))
+              ;; Emit yield
+              (mlir::RewriterBase::setInsertionPointToEnd rw body)
+              (mlir::scf::YieldOp::create rw loc))))
+      (mlir::RewriterBase::eraseOp rw op)
+      #t))
+
+  ;;===--------------------------------------------------------------------===;;
+  ;; LLVM lowering pass
+  ;;===--------------------------------------------------------------------===;;
+
   ;; Perform full lowering to LLVM dialect on module-op.
-  ;; toy.print is kept as dynamically legal (silenced).
   (define (%%toy-to-llvm-lower! module-op ctx)
     (with-LLVMTypeConverter (tc ctx)
                             (with-ConversionTarget (target ctx)
-                              ;; LLVM dialect is legal; builtin.module and unrealized casts also.
+                              ;; LLVM dialect is legal; builtin.module too.
                               (target-add-legal-dialect target "llvm")
-                              (target-add-legal-op target ctx "builtin.unrealized_conversion_cast")
                               (target-add-legal-op target ctx "builtin.module")
-                              ;; toy.print is kept as dynamically legal — silenced at this level.
-                              (target-add-dynamically-legal-op target ctx "toy.print"
-                                                               (lambda (op) #t))
+                              ;; Toy dialect is illegal — everything must be lowered.
+                              (target-add-illegal-dialect target "toy")
                               (with-RewritePatternSet (patterns ctx)
                                 ;; Populate all dialect-to-LLVM conversion patterns.
                                 (mlir::populateAffineToStdConversionPatterns patterns)
@@ -45,7 +168,10 @@
                                 (mlir::populateFinalizeMemRefToLLVMConversionPatterns tc patterns)
                                 (mlir::cf::populateControlFlowToLLVMConversionPatterns tc patterns)
                                 (mlir::populateFuncToLLVMConversionPatterns tc patterns)
-                                ;; Full conversion — toy.print stays (dynamically legal above).
+                                ;; toy.print → printf loop nest.
+                                ;; No TypeConverter: pattern reads original memref operand types directly.
+                                (add-conversion-pattern/ctx patterns "toy.print" %%print-lower! 1)
+                                ;; Full conversion — everything must lower.
                                 (apply-full-conversion module-op target patterns)))))
 
   ) ;; end library (toy ch7 lower-to-llvm)

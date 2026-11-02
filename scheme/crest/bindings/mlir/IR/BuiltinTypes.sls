@@ -72,6 +72,7 @@
     mlir::isa<ComplexType>?
     mlir::ComplexType::getElementType
     ;; ShapedType (base)
+    mlir::ShapedType::getShape
     mlir::ShapedType::getElementType)
   (import (rnrs)
           (only (mlir IR MLIRContext) current-MLIRContext define-ctx-optional)
@@ -190,6 +191,9 @@
   (define (mlir::isa<RankedTensorType>? type)
     (not (zero? (%mlir::isa<RankedTensorType>-isa type))))
   (define mlir::RankedTensorType mlir::isa<RankedTensorType>?)
+
+  ;; @brief ShapedType::getShape() — shape as Scheme list; works for MemRefType and RankedTensorType.
+  (define mlir::ShapedType::getShape         %mlir::ShapedType::getShape)
 
   ;; @brief ShapedType::getElementType() — return the element type of a shaped type.
   ;; @param type  ShapedType opaque pointer uptr

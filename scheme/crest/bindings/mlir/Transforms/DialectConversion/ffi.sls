@@ -33,6 +33,7 @@
     %target-mark-unknown-ops-dynamically-legal
     %apply-full-conversion
     %add-conversion-pattern
+    %add-conversion-pattern/ctx
     %add-rewrite-pattern
     %populate-func-type-conversion
     %crest::isa<CrestOwned<mlir::TypeConverter>>
@@ -123,6 +124,11 @@
   (define %add-conversion-pattern
     (foreign-procedure "crest::DialectConversion::addConversionPattern"
                        (uptr string scheme-object uptr int) void))
+
+  ;; @brief Register a Scheme ConversionPattern with no TypeConverter (original operands).
+  (define %add-conversion-pattern/ctx
+    (foreign-procedure "crest::DialectConversion::addConversionPattern/ctx"
+                       (uptr string scheme-object int) void))
 
   ;; @brief Register a Scheme RewritePattern (no TypeConverter) for a named op.
   (define %add-rewrite-pattern

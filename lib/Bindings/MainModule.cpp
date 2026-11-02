@@ -21,6 +21,7 @@
 #include "Dialect/Func/IR/FuncOps.h"
 #include "Dialect/MemRef/IR/MemRef.h"
 #include "Dialect/SCF/IR/SCFDialect.h"
+#include "Dialect/SCF/IR/SCFOps.h"
 #include "Dialect/Shape/IR/Shape.h"
 #include "Dialect/Tensor/IR/Tensor.h"
 #include "IR/Block.h"
@@ -43,6 +44,7 @@
 #include "Conversion/ReconcileUnrealizedCasts/ReconcileUnrealizedCasts.h"
 #include "Conversion/SCFToControlFlow/SCFToControlFlow.h"
 #include "Dialect/LLVMIR/IR/LLVMDialect.h"
+#include "Dialect/LLVMIR/IR/LLVMOps.h"
 #include "Dialect/LLVMIR/Transforms/Passes.h"
 #include "Dialect/Toy/ToyStructType.h"
 #include "ExecutionEngine/ExecutionEngine.h"
@@ -115,6 +117,7 @@ void registerMlirForeignFunctions() {
   registerDialectAffineTransformsPassesBindings();
   registerDialectControlFlowIRControlFlowBindings();
   registerDialectSCFIRSCFDialectBindings();
+  registerDialectSCFIRSCFOpsBindings();
   registerDialectArithIRArithBindings();
   registerDialectFuncIRFuncOpsBindings();
   registerDialectMemRefIRMemRefBindings();
@@ -127,6 +130,7 @@ void registerMlirForeignFunctions() {
   registerConversionFuncToLLVMBindings();
   registerConversionLLVMCommonTypeConverterBindings();
   registerDialectLLVMIRIRLLVMDialectBindings();
+  registerDialectLLVMIRIRLLVMOpsBindings();
   registerDialectLLVMIRTransformsPassesBindings();
   registerToyStructTypeBindings();
   registerTargetLLVMIRExportBindings();
