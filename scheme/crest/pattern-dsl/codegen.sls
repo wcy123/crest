@@ -26,6 +26,7 @@
           (for (only (mlir IR PatternMatch)
                      mlir::RewriterBase::setInsertionPoint
                      mlir::RewriterBase::replaceOp
+                     mlir::RewriterBase::eraseOp
                      current-RewriterBase
                      with-current-RewriterBase) expand)
           (for (only (mlir IR Operation)
@@ -100,8 +101,11 @@
 
         ;; Computed values — each may depend on earlier bindings in this block.
         (let* ([num-ops          (vector-length match-vec)]
+               ;; For zero-result root ops, %%find-root-op returns #f (root-var
+               ;; is the raw op parameter, not a result variable).  In that case
+               ;; root-result-vars is empty — no result-setters are generated.
                [root-op             (%%find-root-op match-vec root-var-stx)]
-               [root-result-vars    (ast-match-expand-result-var root-op)]
+               [root-result-vars    (if root-op (ast-match-expand-result-var root-op) '())]
                [root-result-setters (%%generate-root-result-setters root-result-vars op)]
                ;; :rewrite :with body kept as raw syntax — forwarded to begin-mlir-code.
                ;; Rewrite vars are NOT pre-declared in the outer let; begin-mlir-code
@@ -114,8 +118,10 @@
           ;; Code generation — the two halves are independent of each other.
           (let ([check-code  (%%generate-check-code actions match-vec operands-ref
                                                     (ast-pattern-expand-debug-matching? ast-rec)
-                                                    (ast-pattern-expand-function-name ast-rec))]
-                [rewrite-code (%%generate-rewrite-code raw-rewrite pattern-type rewriter op)])
+                                                    (ast-pattern-expand-function-name ast-rec)
+                                                    op)]
+                [rewrite-code (%%generate-rewrite-code raw-rewrite pattern-type rewriter op
+                                                       (null? root-result-vars))])
 
             ;; Build param list: 4 params for conversion, 2 for rewrite (no operands-ref/type-converter)
             (let ([params (if operands-ref
@@ -165,7 +171,9 @@
   ;; begin-mlir-code handles op-forms, :attrs, :regions, and :scheme escapes.
   ;; with-RewriterBase calls setInsertionPoint so
   ;; dispatches through the active rewriter or block-builder.
-  (define (%%generate-rewrite-code raw-body pattern-type rw op)
+  ;; zero-result? — #t when the root op has no results; eraseOp replaces replaceOp.
+  (define (%%generate-rewrite-code raw-body pattern-type rw op . zero-result?-opt)
+    (define zero-result? (if (pair? zero-result?-opt) (car zero-result?-opt) #f))
     (if (null? raw-body)
         #'#t
         (with-syntax ([(form ...) raw-body])
@@ -183,10 +191,13 @@
                  (with-current-RewriterBase #,rw
                    (mlir::RewriterBase::setInsertionPoint #,rw #,op)
                    (let ([result (begin-mlir-code #,rw form ...)])
-                     ;; result is a Value* uptr on success, or #f to signal failure.
-                     (if result
-                         (begin (mlir::RewriterBase::replaceOp #,rw #,op result) #t)
-                         #f))))]))))
+                     ;; Zero-result root: erase the old op (no uses to redirect).
+                     ;; Result-producing root: replaceOp redirects uses then erases.
+                     #,(if zero-result?
+                           #`(begin (mlir::RewriterBase::eraseOp #,rw #,op) #t)
+                           #`(if result
+                                 (begin (mlir::RewriterBase::replaceOp #,rw #,op result) #t)
+                                 #f)))))]))))
 
   ;;=======================================================================
   ;; :then-let bindings
@@ -261,10 +272,12 @@
   (define (%%action->source-stx action match-vec)
     (let ([tag (car action)] [fields (cdr action)])
       (case tag
-        [(:check-op)
-         ;; op-name is now a plain string; use the first result-var for source location.
-         (let ([match-op (vector-ref match-vec (cdr (assq 'op-idx fields)))])
-           (car (ast-match-expand-result-var match-op)))]
+        [(:check-op :set-root-op)
+         ;; Use the first result-var for source location if available;
+         ;; for zero-result ops the list is empty so fall back to #f.
+         (let* ([match-op (vector-ref match-vec (cdr (assq 'op-idx fields)))]
+                [rvars    (ast-match-expand-result-var match-op)])
+           (and (pair? rvars) (car rvars)))]
         [(:check-where)
          (cdr (assq 'expr fields))]
         [(:bind-argument-operand :bind-result)
@@ -288,7 +301,7 @@
   ;; <pattern> is the Scheme function name of the define-rewrite-pattern.
   ;; <file>:<line>:<col> points to the failing op in the pattern .sls source.
   ;;=======================================================================
-  (define (%%generate-check-code actions match-vec operands-ref debug? fname-stx)
+  (define (%%generate-check-code actions match-vec operands-ref debug? fname-stx op-param-stx)
     ;; Exceptions during matching are always unexpected — always log them.
     ;; debug? only controls per-check FAILED: messages for normal #f returns.
     (define fname-sym (symbol->string (syntax->datum fname-stx)))
@@ -345,7 +358,7 @@
               body-of-checks))))
     (define (%%make-checks)
       ;; Always wrap each check in a per-check guard (always-on exception loc).
-      (let* ([raw-checks  (map (lambda (act) (%%action->check-code act match-vec operands-ref)) actions)]
+      (let* ([raw-checks  (map (lambda (act) (%%action->check-code act match-vec operands-ref op-param-stx)) actions)]
              [src-stxs    (map (lambda (act) (%%action->source-stx act match-vec)) actions)]
              [actual-stxs (map %%action->actual-op-stx actions)]
              [tags        (map car actions)])
@@ -355,9 +368,18 @@
         (with-syntax ([(check-form ...) (%%make-checks)])
           #'(and check-form ...))))
 
-  (define (%%action->check-code action match-vec operands-ref)
+  (define (%%action->check-code action match-vec operands-ref op-param-stx)
     (let ([tag (car action)])
       (case tag
+        [(:set-root-op)
+         ;; Zero-result root op: set the op slot directly to the raw op param.
+         ;; No getDefiningOp — there is no result Value to navigate through.
+         (let* ([fields (cdr action)]
+                [op-idx (cdr (assq 'op-idx fields))])
+           #`(begin
+               (vector-set! all-operations #,op-idx #,op-param-stx)
+               #t))]
+
         [(:set-current-op)
          (let* ([fields (cdr action)]
                 [op-idx (cdr (assq 'op-idx fields))]

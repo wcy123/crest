@@ -91,6 +91,19 @@
            (if (%%wildcard? var) (%%fresh-wildcard var) var))
          vars))
 
+  ;; %%zero-result-op-name? — #t when stx is a dialect.op-name (contains a dot).
+  ;; Used to guard zero-result :if-match patterns so they don't accidentally
+  ;; consume %result identifiers (which never contain dots).
+  (define (%%zero-result-op-name? stx)
+    (let ([d (syntax->datum stx)])
+      (and (or (string? d) (symbol? d))
+           (let ([s (if (string? d) d (symbol->string d))])
+             ;; Op names follow dialect.op-name convention — must contain a dot.
+             (let loop ([i 0])
+               (and (< i (string-length s))
+                    (or (char=? (string-ref s i) #\.)
+                        (loop (+ i 1)))))))))
+
   ;;=======================================================================
   ;; SECTION 1: Entry Points
   ;;=======================================================================
@@ -235,6 +248,26 @@
               [operands (%%parse-operands #'(operand ...))]
               [results  (%%freshen-wildcards (syntax->list #'(result ...)))]
               [match-op (make-ast-match-expand results op-norm operands #f)])
+         (%%parse-match-ops-recursive #'rest (cons match-op acc-ops) ast))]
+
+      ;; Zero-result op with :where guard: dialect.op-name (operands ...) :where guard
+      ;; The op-name must contain a dot (dialect.op convention) to avoid
+      ;; ambiguity with identifiers like %out in single-result patterns.
+      [(op-name (operand ...) :where guard-expr . rest)
+       (%%zero-result-op-name? #'op-name)
+       (let* ([d       (syntax->datum #'op-name)]
+              [op-norm (if (string? d) d (symbol->string d))]
+              [operands (%%parse-operands #'(operand ...))]
+              [match-op (make-ast-match-expand '() op-norm operands #'guard-expr)])
+         (%%parse-match-ops-recursive #'rest (cons match-op acc-ops) ast))]
+
+      ;; Zero-result op: dialect.op-name (operands ...) — no result variable
+      [(op-name (operand ...) . rest)
+       (%%zero-result-op-name? #'op-name)
+       (let* ([d       (syntax->datum #'op-name)]
+              [op-norm (if (string? d) d (symbol->string d))]
+              [operands (%%parse-operands #'(operand ...))]
+              [match-op (make-ast-match-expand '() op-norm operands #f)])
          (%%parse-match-ops-recursive #'rest (cons match-op acc-ops) ast))]
 
       [_ (syntax-violation '%%parse-match-ops-recursive

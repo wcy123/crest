@@ -28,7 +28,10 @@
     ;; Phase 2 validation guarantees: root variable exists as a result in some match operation
     (let* ([match-vec   (ast-pattern-expand-match ast-rec)]
            [root-var    (ast-pattern-expand-root-var ast-rec)]
-           [root-op-idx (%%find-root-op-idx match-vec root-var)])
+           ;; For zero-result root ops, root-var is the raw op parameter (not a
+           ;; result variable), so %%find-root-op-idx returns #f.  Fall back to
+           ;; index 0 — valid for single-op patterns like toy.return/toy.print.
+           [root-op-idx (or (%%find-root-op-idx match-vec root-var) 0)])
 
       ;; Build match actions starting from root operation
       (let* ([bindings-and-actions (%%build-bindings-and-actions ast-rec match-vec root-op-idx root-var)]
@@ -64,8 +67,15 @@
                  ;; Extract var field from ast-operand for lookup
                  [entries (map (lambda (op) (%%find-binding-entry binding-mgr (ast-operand-var op))) operands)])
 
-            ;; Emit header actions (building backwards, will reverse at end)
-            (set! acc (cons (action:set-current-op op-idx result-var) acc))
+            ;; Emit header actions (building backwards, will reverse at end).
+            ;; For zero-result root ops, result-var is the raw op parameter
+            ;; (not a Value) — use action:set-root-op to avoid calling
+            ;; getDefiningOp on a non-Value.
+            (set! acc (cons (if (and (= op-idx root-op-idx)
+                                     (null? (ast-match-expand-result-var (vector-ref match-vec op-idx))))
+                                (action:set-root-op op-idx)
+                                (action:set-current-op op-idx result-var))
+                            acc))
             ;; Skip :check-op for :any ops — they match any op name at runtime.
             ;; Use :where to filter which ops are acceptable.
             ;; validate.sls normalizes symbol op-names to strings, so :any

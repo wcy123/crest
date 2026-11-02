@@ -6,6 +6,7 @@
 // Mirrors mlir/IR/Operation.h
 
 #include "Operation.h"
+#include "../Support/ArrayRef.h"
 #include "../Support/LockedSchemeObject.h"
 #include "../Support/Logging.h"
 #include "../Support/SchemeWrapper.h"
@@ -396,6 +397,33 @@ void registerIROperationBindings() {
       (void*)+[](uint64_t op_name_ptr) -> const char* {
         auto* name = reinterpret_cast<mlir::OperationName*>(op_name_ptr);
         return name->getStringRef().data();
+      });
+
+  Sregister_symbol(
+      "mlir::Operation::getBlock", (void*)+[](uint64_t op_ptr) -> uint64_t {
+        return reinterpret_cast<uint64_t>(
+            reinterpret_cast<mlir::Operation*>(op_ptr)->getBlock());
+      });
+
+  Sregister_symbol(
+      "mlir::Operation::moveBefore",
+      (void*)+[](uint64_t op_ptr, uint64_t other_ptr) -> void {
+        reinterpret_cast<mlir::Operation*>(op_ptr)->moveBefore(
+            reinterpret_cast<mlir::Operation*>(other_ptr));
+      });
+
+  Sregister_symbol(
+      "mlir::Operation::setOperands",
+      (void*)+[](uint64_t op_ptr, uint64_t arr_ptr) -> void {
+        auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
+        auto* arr = reinterpret_cast<CArrayRef<uintptr_t>*>(arr_ptr);
+        llvm::SmallVector<mlir::Value> values;
+        values.reserve(arr->size);
+        for (size_t i = 0; i < arr->size; ++i) {
+          values.push_back(mlir::Value::getFromOpaquePointer(
+              reinterpret_cast<const void*>(arr->data[i])));
+        }
+        op->setOperands(values);
       });
 }
 

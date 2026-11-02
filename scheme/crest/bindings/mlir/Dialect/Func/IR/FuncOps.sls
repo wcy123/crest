@@ -14,7 +14,11 @@
 ;;===----------------------------------------------------------------------===;;
 (library (mlir Dialect Func IR FuncOps)
   (export
-    mlir-populate-func-type-conversion-pattern)
+    mlir-populate-func-type-conversion-pattern
+    mlir::func::FuncOp::create
+    mlir::func::ReturnOp::create
+    mlir::func::FuncOp::getBody
+    mlir::func::FuncDialect)
   (import (rnrs) (mlir Dialect Func IR FuncOps ffi))
 
   ;; @brief mlir::populateFunctionOpInterfaceTypeConversionPattern<FuncOp> —
@@ -26,5 +30,10 @@
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
   (define mlir-populate-func-type-conversion-pattern
     %populate-func-type-conversion-pattern)
+
+  (define mlir::func::FuncOp::create   %mlir::func::FuncOp::create)
+  (define mlir::func::ReturnOp::create %mlir::func::ReturnOp::create)
+  (define mlir::func::FuncOp::getBody  %mlir::func::FuncOp::getBody)
+  (define mlir::func::FuncDialect      %mlir::func::FuncDialect)
 
   ) ;; end library (mlir Dialect Func IR FuncOps)

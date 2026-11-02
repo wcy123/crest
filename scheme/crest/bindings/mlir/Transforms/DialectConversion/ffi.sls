@@ -36,7 +36,10 @@
     %add-rewrite-pattern
     %populate-func-type-conversion
     %crest::isa<CrestOwned<mlir::TypeConverter>>
-    %crest::isa<CrestOwned<mlir::ConversionTarget>>)
+    %crest::isa<CrestOwned<mlir::ConversionTarget>>
+    %mlir::applyPartialConversion
+    %mlir::RewriterBase::modifyOpInPlace
+    %mlir::RewriterBase::inlineRegionBefore)
 
   (import (chezscheme))
 
@@ -137,5 +140,15 @@
 
   (define %crest::isa<CrestOwned<mlir::ConversionTarget>>
     (foreign-procedure "crest::isa<CrestOwned<mlir::ConversionTarget>>" (uptr) int))
+
+  (define %mlir::applyPartialConversion
+    (foreign-procedure "mlir::applyPartialConversion" (uptr uptr uptr) int))
+
+  (define %mlir::RewriterBase::modifyOpInPlace
+    (foreign-procedure "mlir::RewriterBase::modifyOpInPlace"
+                       (uptr uptr scheme-object) void))
+
+  (define %mlir::RewriterBase::inlineRegionBefore
+    (foreign-procedure "mlir::RewriterBase::inlineRegionBefore" (uptr uptr uptr) void))
 
   ) ;; end library (mlir Transforms DialectConversion ffi)

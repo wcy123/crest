@@ -14,6 +14,11 @@
 #include "../Crest/Op.h"
 #include "../Crest/Trait.h"
 
+#include "Dialect/Affine/IR/AffineOps.h"
+#include "Dialect/Affine/Transforms/Passes.h"
+#include "Dialect/Arith/IR/Arith.h"
+#include "Dialect/Func/IR/FuncOps.h"
+#include "Dialect/MemRef/IR/MemRef.h"
 #include "Dialect/Shape/IR/Shape.h"
 #include "Dialect/Tensor/IR/Tensor.h"
 #include "IR/Block.h"
@@ -25,6 +30,7 @@
 #include "IR/Location.h"
 #include "IR/MLIRContext.h"
 #include "IR/OpImplementation.h"
+#include "Transforms/Passes.h"
 
 #include "IR/Operation.h"
 #include "IR/OperationSupport.h"
@@ -88,6 +94,12 @@ void registerMlirForeignFunctions() {
   registerLoggingBindings();
   registerTransformsDialectConversionBindings();
   registerTransformsGreedyPatternRewriteDriverBindings();
+  registerTransformsPassesBindings();
+  registerDialectAffineIRAffineOpsBindings();
+  registerDialectAffineTransformsPassesBindings();
+  registerDialectArithIRArithBindings();
+  registerDialectFuncIRFuncOpsBindings();
+  registerDialectMemRefIRMemRefBindings();
   if (g_extra_bindings_fn) {
     g_extra_bindings_fn();
   }

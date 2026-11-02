@@ -15,7 +15,11 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir Dialect Func IR FuncOps ffi)
-  (export %populate-func-type-conversion-pattern)
+  (export %populate-func-type-conversion-pattern
+          %mlir::func::FuncOp::create
+          %mlir::func::ReturnOp::create
+          %mlir::func::FuncOp::getBody
+          %mlir::func::FuncDialect)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::populateFunctionOpInterfaceTypeConversionPattern<FuncOp> —
@@ -27,5 +31,17 @@
   ;; @note  Defined in lib/Bindings/Transforms/DialectConversion.cpp
   (define %populate-func-type-conversion-pattern
     (foreign-procedure "mlir::populateFunctionOpInterfaceTypeConversionPattern<FuncOp>" (uptr uptr) void))
+
+  (define %mlir::func::FuncOp::create
+    (foreign-procedure "mlir::func::FuncOp::create" (uptr uptr string uptr) uptr))
+
+  (define %mlir::func::ReturnOp::create
+    (foreign-procedure "mlir::func::ReturnOp::create" (uptr uptr) uptr))
+
+  (define %mlir::func::FuncOp::getBody
+    (foreign-procedure "mlir::func::FuncOp::getBody" (uptr) uptr))
+
+  (define %mlir::func::FuncDialect
+    (foreign-procedure "mlir::func::FuncDialect" (uptr) void))
 
   ) ;; end library (mlir Dialect Func IR FuncOps ffi)

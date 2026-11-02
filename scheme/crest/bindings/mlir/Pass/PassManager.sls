@@ -25,6 +25,8 @@
           mlir::PassManager::addPass
           mlir::PassManager::run!
           mlir::PassManager::enableVerifier
+          mlir::PassManager::nest
+          mlir::OpPassManager::addPass
           with-PassManager)
   (import (rnrs)
           (mlir Pass PassManager ffi)
@@ -33,6 +35,10 @@
   (define mlir::PassManager::new %mlir::PassManager::new)
 
   (define mlir::PassManager::addPass %mlir::PassManager::addPass)
+
+  (define mlir::PassManager::nest %mlir::PassManager::nest)
+
+  (define mlir::OpPassManager::addPass %mlir::OpPassManager::addPass)
 
   (define (mlir::PassManager::run! pm module-op)
     (= 1 (%mlir::PassManager::run! pm module-op)))

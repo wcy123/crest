@@ -11,6 +11,8 @@
           %mlir::PassManager::addPass
           %mlir::PassManager::run!
           %mlir::PassManager::enableVerifier
+          %mlir::PassManager::nest
+          %mlir::OpPassManager::addPass
           %CrestObject::delete)
   (import (chezscheme))
 
@@ -25,6 +27,12 @@
 
   (define %mlir::PassManager::enableVerifier
     (foreign-procedure "mlir::PassManager::enableVerifier" (uptr int) void))
+
+  (define %mlir::PassManager::nest
+    (foreign-procedure "mlir::PassManager::nest" (uptr string) uptr))
+
+  (define %mlir::OpPassManager::addPass
+    (foreign-procedure "mlir::OpPassManager::addPass" (uptr uptr) void))
 
   (define %CrestObject::delete
     (foreign-procedure "CrestObject::delete" (uptr) void))

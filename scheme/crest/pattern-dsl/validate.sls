@@ -117,7 +117,11 @@
                                                         :break idx)
                          :when result-idx
                          :break (cons op-idx result-idx))])
-        (unless found
+        (unless (or found
+                    ;; Zero-result root op: root-var is the raw op parameter
+                    ;; (not a result variable of any match-op).  This is valid
+                    ;; when all matched ops have 0 results.
+                    (bound-identifier=? root-var (ast-pattern-expand-param-op ast-rec)))
           (syntax-violation '%%validate-and-cache-root-var
                             "Root variable not found in any match operation result" root-var)))))
 

@@ -137,4 +137,24 @@ void registerIRRewriterBaseBindings() {
       });
 }
 
+// as_ptr<mlir::OpBuilder> specialisation: handles both
+//   CrestRef<mlir::RewriterBase>* — from conversion pattern callbacks;
+//                                   RewriterBase inherits OpBuilder.
+//   CrestOwned<mlir::OpBuilder>*  — from begin-mlir-code / buildAffineLoopNest.
+template <>
+mlir::OpBuilder* as_ptr<mlir::OpBuilder>(uint64_t ptr_val, const char* who) {
+  if (!ptr_val) {
+    scheme_error(who, "null builder pointer");
+  }
+  auto* obj = reinterpret_cast<crest::CrestObject*>(ptr_val);
+  if (obj->isa<crest::CrestRef<mlir::RewriterBase>>()) {
+    return static_cast<crest::CrestRef<mlir::RewriterBase>*>(obj)->ptr;
+  }
+  if (obj->isa<crest::CrestOwned<mlir::OpBuilder>>()) {
+    return &static_cast<crest::CrestOwned<mlir::OpBuilder>*>(obj)->inner;
+  }
+  scheme_error(who, "expected CrestRef<RewriterBase> or CrestOwned<OpBuilder>");
+  crest_unreachable();
+}
+
 } // namespace crest

@@ -29,9 +29,9 @@
   (let loop ([args args] [file #f] [action #f])
     (cond
      [(null? args) (values file action)]
-     [(member (car args) '("--emit=ast" "-emit=ast"))
+     [(equal? (car args) "--emit=ast")
       (loop (cdr args) file "ast")]
-     [(member (car args) '("--emit=mlir" "-emit=mlir"))
+     [(equal? (car args) "--emit=mlir")
       (loop (cdr args) file "mlir")]
      [else
       (loop (cdr args) (car args) action)])))
