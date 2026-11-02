@@ -35,7 +35,8 @@ void registerExecutionEngineBindings() {
         mlir::registerLLVMDialectTranslation(*ctx);
 
         mlir::ExecutionEngineOptions opts;
-        opts.transformer = mlir::makeOptimizingTransformer(0, 0, nullptr);
+        auto transformer = mlir::makeOptimizingTransformer(0, 0, nullptr);
+        opts.transformer = transformer;
         auto maybeEngine = mlir::ExecutionEngine::create(module, opts);
         if (!maybeEngine) {
           llvm::consumeError(maybeEngine.takeError());
