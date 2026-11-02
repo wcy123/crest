@@ -29,7 +29,12 @@
           mlir::OpAsmParser::parseRParen
           mlir::OpAsmParser::parseColon
           mlir::OpAsmParser::parseComma
+          mlir::OpAsmParser::parseOptionalComma
           mlir::OpAsmParser::parseArrow
+          mlir::OpAsmParser::parseLess
+          mlir::OpAsmParser::parseGreater
+          mlir::OpAsmParser::parseLSquare
+          mlir::OpAsmParser::parseRSquare
           mlir::OpAsmParser::parseSymbolName
           mlir::isa<FunctionType>
           mlir::OperationState::addType
@@ -105,7 +110,12 @@
   (define mlir::OpAsmParser::parseRParen         %mlir::OpAsmParser::parseRParen)
   (define mlir::OpAsmParser::parseColon          %mlir::OpAsmParser::parseColon)
   (define mlir::OpAsmParser::parseComma          %mlir::OpAsmParser::parseComma)
+  (define mlir::OpAsmParser::parseOptionalComma %mlir::OpAsmParser::parseOptionalComma)
   (define mlir::OpAsmParser::parseArrow          %mlir::OpAsmParser::parseArrow)
+  (define mlir::OpAsmParser::parseLess           %mlir::OpAsmParser::parseLess)
+  (define mlir::OpAsmParser::parseGreater        %mlir::OpAsmParser::parseGreater)
+  (define mlir::OpAsmParser::parseLSquare        %mlir::OpAsmParser::parseLSquare)
+  (define mlir::OpAsmParser::parseRSquare        %mlir::OpAsmParser::parseRSquare)
   (define mlir::OpAsmParser::parseSymbolName     %mlir::OpAsmParser::parseSymbolName)
   (define mlir::isa<FunctionType>                %mlir::isa<FunctionType>)
   (define mlir::OperationState::addType          %mlir::OperationState::addType)

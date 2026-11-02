@@ -59,6 +59,8 @@
     mlir::FloatAttr::get<f64>
     mlir::DenseElementsAttr::getNumElements
     mlir::DenseElementsAttr::getValueAt<f64>
+    mlir::ArrayAttr::get
+    mlir::ArrayAttr::getElement
     )
   (import (rnrs)
           (mlir IR BuiltinAttributes ffi)
@@ -282,5 +284,11 @@
   (define mlir::FloatAttr::get<f64>               %mlir::FloatAttr::get<f64>)
   (define mlir::DenseElementsAttr::getNumElements %mlir::DenseElementsAttr::getNumElements)
   (define mlir::DenseElementsAttr::getValueAt<f64> %mlir::DenseElementsAttr::getValueAt<f64>)
+
+  ;; @brief mlir::ArrayAttr::get — create an ArrayAttr from a Scheme list of Attr uptrss.
+  (define-ctx-optional mlir::ArrayAttr::get %mlir::ArrayAttr::get value)
+
+  ;; @brief mlir::ArrayAttr::getElement — (attr-ptr idx) → Attr uptr
+  (define mlir::ArrayAttr::getElement %mlir::ArrayAttr::getElement)
 
   ) ;; end library (mlir IR BuiltinAttributes)
