@@ -214,9 +214,10 @@
       (unless (mlir::PassManager::run! pm module-op)
         (display "Post-affine pipeline failed\n" (current-error-port))
         (exit 1))))
-  ;; Step 5: LLVM lowering.
+  ;; Step 5: LLVM lowering + reconcile unrealized casts + DI scope.
   (when emit-llvm?
-    (%%toy-to-llvm-lower! module-op ctx)))
+    (%%toy-to-llvm-lower! module-op ctx)
+    ))
 
 ;; ---------------------------------------------------------------------------
 ;; Shape inference and inliner — identical to ch5
