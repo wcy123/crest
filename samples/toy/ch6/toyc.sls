@@ -29,6 +29,7 @@
         (mlir Transforms GreedyPatternRewriteDriver)
         (mlir Pass PassManager)
         (mlir Transforms Passes)
+        (mlir Conversion ReconcileUnrealizedCasts ReconcileUnrealizedCasts)
         (mlir Transforms InliningUtils)
         (mlir Dialect Affine Transforms Passes)
         (mlir Dialect Affine IR AffineOps)
@@ -202,6 +203,8 @@
   (when emit-llvm?
     (%%toy-to-llvm-lower! module-op ctx)
     (with-PassManager (pm2 ctx)
+      ;; Reconcile unrealized casts left by LLVMTypeConverter (e.g. for struct types).
+      (mlir::PassManager::addPass pm2 (mlir::createReconcileUnrealizedCastsPass))
       (mlir::PassManager::addPass pm2 (mlir::LLVM::createDIScopeForLLVMFuncOpPass))
       (unless (mlir::PassManager::run! pm2 module-op)
         (display "Post-LLVM pipeline failed\n" (current-error-port))

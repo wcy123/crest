@@ -40,6 +40,7 @@
 #include "Conversion/FuncToLLVM/ConvertFuncToLLVM.h"
 #include "Conversion/LLVMCommon/TypeConverter.h"
 #include "Conversion/MemRefToLLVM/MemRefToLLVM.h"
+#include "Conversion/ReconcileUnrealizedCasts/ReconcileUnrealizedCasts.h"
 #include "Conversion/SCFToControlFlow/SCFToControlFlow.h"
 #include "Dialect/LLVMIR/IR/LLVMDialect.h"
 #include "Dialect/LLVMIR/Transforms/Passes.h"
@@ -118,6 +119,7 @@ void registerMlirForeignFunctions() {
   registerDialectFuncIRFuncOpsBindings();
   registerDialectMemRefIRMemRefBindings();
   registerConversionAffineToStandardBindings();
+  registerConversionReconcileUnrealizedCastsBindings();
   registerConversionSCFToControlFlowBindings();
   registerConversionArithToLLVMBindings();
   registerConversionMemRefToLLVMBindings();

@@ -12,6 +12,8 @@ add_library(CrestBindings STATIC
 
   Conversion/AffineToStandard/AffineToStandard.cpp
   Conversion/AffineToStandard/AffineToStandard.h
+  Conversion/ReconcileUnrealizedCasts/ReconcileUnrealizedCasts.cpp
+  Conversion/ReconcileUnrealizedCasts/ReconcileUnrealizedCasts.h
   Conversion/ArithToLLVM/ArithToLLVM.cpp
   Conversion/ArithToLLVM/ArithToLLVM.h
   Conversion/ControlFlowToLLVM/ControlFlowToLLVM.cpp
@@ -131,6 +133,7 @@ target_link_libraries(CrestBindings
     MLIRIR
     MLIRParser
     MLIRAffineToStandard
+    MLIRReconcileUnrealizedCasts
     MLIRSCFToControlFlow
     MLIRArithToLLVM
     MLIRMemRefToLLVM
