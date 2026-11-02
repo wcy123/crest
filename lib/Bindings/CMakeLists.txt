@@ -10,8 +10,26 @@ add_library(CrestBindings STATIC
   $<TARGET_OBJECTS:CrestCore>
 
 
+  Conversion/AffineToStandard/AffineToStandard.cpp
+  Conversion/AffineToStandard/AffineToStandard.h
+  Conversion/ArithToLLVM/ArithToLLVM.cpp
+  Conversion/ArithToLLVM/ArithToLLVM.h
+  Conversion/ControlFlowToLLVM/ControlFlowToLLVM.cpp
+  Conversion/ControlFlowToLLVM/ControlFlowToLLVM.h
+  Conversion/FuncToLLVM/ConvertFuncToLLVM.cpp
+  Conversion/FuncToLLVM/ConvertFuncToLLVM.h
+  Conversion/LLVMCommon/TypeConverter.cpp
+  Conversion/LLVMCommon/TypeConverter.h
+  Conversion/MemRefToLLVM/MemRefToLLVM.cpp
+  Conversion/MemRefToLLVM/MemRefToLLVM.h
+  Conversion/SCFToControlFlow/SCFToControlFlow.cpp
+  Conversion/SCFToControlFlow/SCFToControlFlow.h
   Dialect/Affine/IR/AffineOps.cpp
   Dialect/Affine/IR/AffineOps.h
+  Dialect/ControlFlow/IR/ControlFlow.cpp
+  Dialect/ControlFlow/IR/ControlFlow.h
+  Dialect/SCF/IR/SCFDialect.cpp
+  Dialect/SCF/IR/SCFDialect.h
   Dialect/Affine/Transforms/Passes.cpp
   Dialect/Affine/Transforms/Passes.h
   Dialect/Arith/IR/Arith.cpp
@@ -20,6 +38,10 @@ add_library(CrestBindings STATIC
   Dialect/Func/IR/FuncOps.h
   Dialect/MemRef/IR/MemRef.cpp
   Dialect/MemRef/IR/MemRef.h
+  Dialect/LLVMIR/IR/LLVMDialect.cpp
+  Dialect/LLVMIR/IR/LLVMDialect.h
+  Dialect/LLVMIR/Transforms/Passes.cpp
+  Dialect/LLVMIR/Transforms/Passes.h
   Dialect/Shape/IR/Shape.cpp
   Dialect/Shape/IR/Shape.h
   Dialect/Tensor/IR/Tensor.cpp
@@ -84,6 +106,12 @@ add_library(CrestBindings STATIC
   Transforms/Passes.h
   Pass/PassManager.cpp
   Pass/PassManager.h
+  Target/LLVMIR/Export.cpp
+  Target/LLVMIR/Export.h
+  ExecutionEngine/ExecutionEngine.cpp
+  ExecutionEngine/ExecutionEngine.h
+  Toy/Ch6/LowerToLLVM.cpp
+  Toy/Ch6/LowerToLLVM.h
 )
 
 add_dependencies(CrestBindings ChezScheme ChezBootHeaders)
@@ -100,6 +128,21 @@ target_link_libraries(CrestBindings
   PUBLIC
     MLIRIR
     MLIRParser
+    MLIRAffineToStandard
+    MLIRSCFToControlFlow
+    MLIRArithToLLVM
+    MLIRMemRefToLLVM
+    MLIRControlFlowDialect
+    MLIRControlFlowToLLVM
+    MLIRFuncToLLVM
+    MLIRLLVMCommonConversion
+    MLIRLLVMDialect
+    MLIRLLVMIRTransforms
+    MLIRBuiltinToLLVMIRTranslation
+    MLIRLLVMToLLVMIRTranslation
+    MLIRExecutionEngine
+    MLIRExecutionEngineUtils
+    MLIRSCFDialect
     MLIRAffineDialect
     MLIRAffineAnalysis
     MLIRAffineTransforms
