@@ -372,9 +372,39 @@ void registerIROpImplementationBindings() {
       "mlir::OpAsmParser::parseComma", (void*)+[](uint64_t parser_ptr) -> int {
         return !reinterpret_cast<mlir::OpAsmParser*>(parser_ptr)->parseComma();
       });
+  // parseOptionalComma — succeeds silently if no comma; returns 1 if comma
+  // found.
+  Sregister_symbol(
+      "mlir::OpAsmParser::parseOptionalComma",
+      (void*)+[](uint64_t parser_ptr) -> int {
+        return !reinterpret_cast<mlir::OpAsmParser*>(parser_ptr)
+                    ->parseOptionalComma();
+      });
   Sregister_symbol(
       "mlir::OpAsmParser::parseArrow", (void*)+[](uint64_t parser_ptr) -> int {
         return !reinterpret_cast<mlir::OpAsmParser*>(parser_ptr)->parseArrow();
+      });
+  Sregister_symbol(
+      "mlir::OpAsmParser::parseLess", (void*)+[](uint64_t parser_ptr) -> int {
+        return !reinterpret_cast<mlir::OpAsmParser*>(parser_ptr)->parseLess();
+      });
+  Sregister_symbol(
+      "mlir::OpAsmParser::parseGreater",
+      (void*)+[](uint64_t parser_ptr) -> int {
+        return !reinterpret_cast<mlir::OpAsmParser*>(parser_ptr)
+                    ->parseGreater();
+      });
+  Sregister_symbol(
+      "mlir::OpAsmParser::parseLSquare",
+      (void*)+[](uint64_t parser_ptr) -> int {
+        return !reinterpret_cast<mlir::OpAsmParser*>(parser_ptr)
+                    ->parseLSquare();
+      });
+  Sregister_symbol(
+      "mlir::OpAsmParser::parseRSquare",
+      (void*)+[](uint64_t parser_ptr) -> int {
+        return !reinterpret_cast<mlir::OpAsmParser*>(parser_ptr)
+                    ->parseRSquare();
       });
 
   Sregister_symbol(

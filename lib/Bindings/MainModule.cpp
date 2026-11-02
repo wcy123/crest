@@ -43,6 +43,7 @@
 #include "Conversion/SCFToControlFlow/SCFToControlFlow.h"
 #include "Dialect/LLVMIR/IR/LLVMDialect.h"
 #include "Dialect/LLVMIR/Transforms/Passes.h"
+#include "Dialect/Toy/ToyStructType.h"
 #include "ExecutionEngine/ExecutionEngine.h"
 #include "IR/Operation.h"
 #include "IR/OperationSupport.h"
@@ -125,6 +126,7 @@ void registerMlirForeignFunctions() {
   registerConversionLLVMCommonTypeConverterBindings();
   registerDialectLLVMIRIRLLVMDialectBindings();
   registerDialectLLVMIRTransformsPassesBindings();
+  registerToyStructTypeBindings();
   registerTargetLLVMIRExportBindings();
   registerExecutionEngineBindings();
   registerToyCh6LowerToLLVMBindings();

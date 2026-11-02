@@ -506,6 +506,37 @@ void registerIRBuiltinAttributesBindings() {
         mlir::FloatAttr fa = *it;
         return reinterpret_cast<uint64_t>(fa.getAsOpaquePointer());
       });
+
+  // mlir::ArrayAttr::get — create an ArrayAttr from a Scheme list of Attr
+  // uptrss. (ctx-ptr attr-list) → Attr uptr
+  Sregister_symbol(
+      "mlir::ArrayAttr::get",
+      (void*)+[](uint64_t ctx_ptr, ptr attr_list) -> uint64_t {
+        auto* ctx =
+            crest::as_ptr<mlir::MLIRContext>(ctx_ptr, "mlir::ArrayAttr::get");
+        llvm::SmallVector<mlir::Attribute> attrs;
+        for (ptr p = attr_list; p != Snil; p = Scdr(p)) {
+          uint64_t uv = Sunsigned64_value(Scar(p));
+          attrs.push_back(mlir::Attribute::getFromOpaquePointer(
+              reinterpret_cast<const void*>(uv)));
+        }
+        return reinterpret_cast<uint64_t>(
+            mlir::ArrayAttr::get(ctx, attrs).getAsOpaquePointer());
+      });
+
+  // mlir::ArrayAttr::getElement — (attr-ptr idx) → Attr uptr
+  Sregister_symbol(
+      "mlir::ArrayAttr::getElement",
+      (void*)+[](uint64_t attr_ptr, uint64_t idx) -> uint64_t {
+        auto attr = mlir::Attribute::getFromOpaquePointer(
+            reinterpret_cast<const void*>(attr_ptr));
+        auto arr = mlir::cast<mlir::ArrayAttr>(attr);
+        if (idx >= arr.size()) {
+          return 0;
+        }
+        return reinterpret_cast<uint64_t>(
+            arr[static_cast<unsigned>(idx)].getAsOpaquePointer());
+      });
 }
 
 } // namespace crest
