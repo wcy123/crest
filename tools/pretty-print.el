@@ -51,22 +51,8 @@
     (let*-values . 1)
     (guard . 1)
     (parameterize . 1)
-    ;; CREST RAII macros — body indented 2 from opening paren
-    (with-raii . 1)
-    (with-CrestObject . 1)
-    (with-MLIRContext . 1)
-    (with-DialectRegistry . 1)
-    (with-PassManager . 1)
-    (with-current-MLIRContext . 1)
-    (with-current-MLIRBlock . 1)
-    (with-current-OpBuilder . 1)
-    (with-current-RewriterBase . 1)
-    (with-RewritePatternSet . 1)
-    (with-RewriterBase . 1)
-    (with-OpBuilder . 1)
-    (with-TypeConverter . 1)
-    (with-ConversionTarget . 1)
-    (with-ArrayRef . 1)
+    ;; CREST RAII macros: every `with-*' form is covered by pp/indent-prefix-spec.
+    ;; Only list one here if it needs a level other than the prefix default.
     (with-OperationState . 2)
     ;; begin-mlir-code: first arg is builder (like with-*), rest are op-forms
     (begin-mlir-code . 1)
@@ -99,6 +85,16 @@
   :type '(alist :key-type symbol :value-type integer)
   :group 'pp)
 
+(defcustom pp/indent-prefix-spec
+  '(("with-" . 1))
+  "Alist of (PREFIX . indent-level) for operators matched by name prefix.
+Applies to every operator symbol in the buffer that starts with PREFIX and has
+no explicit entry in `pp/indent-spec' and no indentation rule already set by
+Emacs.  This indents all RAII macros (`with-LLVMTypeConverter',
+`with-current-MLIRContext', ...) like `when', including ones added later."
+  :type '(alist :key-type string :value-type integer)
+  :group 'pp)
+
 ;; DDR keywords appear as bare atoms (not as car of a list), so
 ;; scheme-indent-function is never consulted for them.  Instead, the
 ;; indent function for define-*-pattern checks the current line: if it
@@ -122,10 +118,23 @@
        (t
         (+ form-col 4))))))
 
+(defun pp--apply-prefix-indent-spec ()
+  "Give operators in the current buffer matching `pp/indent-prefix-spec' a rule."
+  (save-excursion
+    (goto-char (point-min))
+    (while (re-search-forward "(\\(\\(?:\\sw\\|\\s_\\)+\\)" nil t)
+      (let* ((name (match-string-no-properties 1))
+             (sym (intern name)))
+        (unless (get sym 'scheme-indent-function)
+          (dolist (pair pp/indent-prefix-spec)
+            (when (string-prefix-p (car pair) name)
+              (put sym 'scheme-indent-function (cdr pair)))))))))
+
 (defun pp--apply-indent-spec ()
   "Apply pp/indent-spec and DDR-specific rules to current Emacs session."
   (dolist (pair pp/indent-spec)
     (put (car pair) 'scheme-indent-function (cdr pair)))
+  (pp--apply-prefix-indent-spec)
   ;; DDR macros: body at the same column as the opening paren.
   (put 'define-rewrite-pattern   'scheme-indent-function #'pp--ddr-indent)
   (put 'define-conversion-pattern 'scheme-indent-function #'pp--ddr-indent))

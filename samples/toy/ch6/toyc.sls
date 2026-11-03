@@ -163,11 +163,11 @@
       (let ([module-op (%%build-module filename ctx)])
         (%%run-pipeline! module-op ctx opt? #t #t)
         (with-ExecutionEngine (engine module-op)
-                              (when (not (zero? engine))
-                                (let ([rc (mlir::ExecutionEngine::invoke engine "main")])
-                                  (when (not (zero? rc))
-                                    (display "JIT invocation failed\n" (current-error-port))
-                                    (exit 1)))))))))
+          (when (not (zero? engine))
+            (let ([rc (mlir::ExecutionEngine::invoke engine "main")])
+              (when (not (zero? rc))
+                (display "JIT invocation failed\n" (current-error-port))
+                (exit 1)))))))))
 
 ;; ---------------------------------------------------------------------------
 ;; Optimization pipeline
