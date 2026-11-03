@@ -214,22 +214,21 @@
            [arg-types (map (lambda (_) (%%f64-unranked-tensor)) args)]
            [func-type (mlir::FunctionType::get (current-MLIRContext) arg-types '())]
            [%%fn-bld  (crest::as_ptr<mlir::OpBuilder> (mlir::OpBuilder::atBlockEnd module-body))])
-      (with-current-OpBuilder %%fn-bld
-        (begin-mlir-code
-            toy.func ()
-            (sym_name      : name :string)
-            (function_type : (mlir::TypeAttr::get func-type))
-            (^bb0 ,@arg-types
-                  (for-each (lambda (arg-ast idx)
-                              (%%declare! symtab (var-expr:name arg-ast) (:arg idx)))
-                            args (iota (length args)))
-                  (%%mlir-gen-block :builder symtab body)
-                  (when (or (mlir::Block::empty? (current-MLIRBlock))
-                            (not (toy.return? (mlir::Block::back (current-MLIRBlock)))))
-                    (%%create-op! :builder (%%loc proto-loc) "toy.return" '() '() '())))
-            :loc ((location:file proto-loc)
-                  (location:line proto-loc)
-                  (location:col  proto-loc))))))
+      (begin-mlir-code (:builder %%fn-bld)
+        toy.func ()
+        (sym_name      : name :string)
+        (function_type : (mlir::TypeAttr::get func-type))
+        (^bb0 ,@arg-types
+              (for-each (lambda (arg-ast idx)
+                          (%%declare! symtab (var-expr:name arg-ast) (:arg idx)))
+                        args (iota (length args)))
+              (%%mlir-gen-block :builder symtab body)
+              (when (or (mlir::Block::empty? (current-MLIRBlock))
+                        (not (toy.return? (mlir::Block::back (current-MLIRBlock)))))
+                (%%create-op! :builder (%%loc proto-loc) "toy.return" '() '() '())))
+        :loc ((location:file proto-loc)
+              (location:line proto-loc)
+              (location:col  proto-loc)))))
 
   ;; -------------------------------------------------------------------------
   ;; Module code generation — public API

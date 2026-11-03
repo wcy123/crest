@@ -1,5 +1,5 @@
 #!r6rs
-;; Test: begin-mlir-code has no builder argument; it uses the ambient current-OpBuilder.
+;; Test: begin-mlir-code uses the ambient current-OpBuilder, or an explicit (:builder expr).
 (library (passes ambient-builder)
   (export run-pass)
   (import (except (rnrs) =)
@@ -66,6 +66,19 @@
                (mlir::RewriterBase::replaceOp rw op r)
                #t)))))
 
+  ;; test.four(%v): explicit builder. (:builder bld) is a literal keyword; it also installs
+  ;; bld as the ambient builder, so %%emit-pair emits with it.
+  (define (%%four op rw)
+    (let* ([bld (crest::as_ptr<mlir::OpBuilder> rw)]
+           [v   (mlir::Operation::getOperand op 0)]
+           [ty  (mlir::Value::getType (mlir::Operation::getResult op 0))])
+      (mlir::RewriterBase::setInsertionPoint rw op)
+      (let ([r (begin-mlir-code (:builder bld)
+                 x = test.four_out (v) -> ty
+                 (%%emit-pair x ty))])
+        (mlir::RewriterBase::replaceOp rw op r)
+        #t)))
+
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
@@ -73,6 +86,7 @@
           (add-rewrite-pattern ps "test.one" %%one 10)
           (add-rewrite-pattern ps "test.two" %%two 10)
           (add-rewrite-pattern ps "test.three" %%three 10)
+          (add-rewrite-pattern ps "test.four" %%four 10)
           (mlir::applyPatternsGreedily module-op ps)))))
 
   ) ;; end library
