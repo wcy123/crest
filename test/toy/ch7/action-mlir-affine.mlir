@@ -1,14 +1,15 @@
-// Ch7 after affine lowering: struct types are folded and erased;
-// tensor ops are lowered to affine loops on memref; toy.print remains.
-// RUN: %scheme-mlir %samples/toy/ch7/toyc.sls %S/example.toy --emit=mlir-affine \
-// RUN:   | %FileCheck %s
+// RUN: %scheme-mlir %samples/toy/ch7/toyc.sls %S/example.toy --emit=mlir-affine --opt \
+// RUN:   | FileCheck %s
 
-// CHECK:      module {
-// CHECK-NEXT:   func.func @main() {
-// CHECK:          arith.constant 6.000000e+00 : f64
-// CHECK:          memref.alloc() : memref<3x2xf64>
-// CHECK:          affine.store
-// CHECK:          affine.for
-// CHECK:          toy.print
-// CHECK:          memref.dealloc
-// CHECK:          return
+// CHECK-LABEL: module {
+// CHECK:         func.func @main() {
+// CHECK-DAG:       {{%.*}} = arith.constant 1.000000e+00 : f64
+// CHECK-DAG:       {{%.*}} = arith.constant 6.000000e+00 : f64
+// CHECK:           {{%.*}} = memref.alloc() : memref<{{.*}}xf64>
+// CHECK:           affine.store {{%.*}}, {{%.*}}[{{.*}}] : memref<{{.*}}xf64>
+// CHECK:           affine.for {{%.*}} = 0 to {{[0-9]+}} {
+// CHECK-NEXT:        affine.for {{%.*}} = 0 to {{[0-9]+}} {
+// CHECK:           arith.mulf
+// CHECK:           toy.print {{%.*}} : memref<{{.*}}xf64>
+// CHECK:           memref.dealloc {{%.*}} : memref<{{.*}}xf64>
+// CHECK:           return
