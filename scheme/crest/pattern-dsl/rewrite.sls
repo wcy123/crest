@@ -152,19 +152,20 @@
       ;; Main entry
       ;;-------------------------------------------------------------------
 
-      ;; (begin-mlir-code op ...)                    ambient builder
-      ;; (begin-mlir-code (:builder builder-expr) op ...)   explicit builder
-      ;;   :builder is a literal keyword (listed in the syntax-case literals below), so the
-      ;;   first clause matches only a first argument headed by it. It must be bound the same
-      ;;   way here and in the caller: rewrite.sls imports it from (crest pattern-dsl
-      ;;   keywords), and callers import it too (it is exported by (crest)).
-      ;;   builder-expr is evaluated once, and installed as the ambient builder for the body.
-      ;;   Without it, the ambient builder (current-OpBuilder) is read once and used as the
-      ;;   explicit builder.
+      ;; Which builder creates the ops?
       ;;
-      ;; v2 flat syntax: items form a flat list that process-ops-flat scans sequentially.
-      ;; Op boundaries are detected by parse-next; parenthesized items that don't
-      ;; start an op are treated as Scheme expressions.
+      ;; By default, the current builder (current-OpBuilder). Inside a :rewrite :with or
+      ;; ^bb body it is already set, so a helper called there needs no builder argument.
+      ;;
+      ;; To use a different builder, write (:builder b) as the first argument. A helper
+      ;; called in the body then uses b as well.
+      ;;
+      ;; Import :builder, or you get "unbound identifier :builder" ((crest) exports it).
+      ;; A builder written without (:builder ...) is not a builder: it is evaluated like
+      ;; any other expression and ignored.
+      ;;
+      ;; With no builder at all, the first op raises "no active builder".
+      ;;
       (define (main)
         (let loop ((stx stx))
           (syntax-case stx (:builder)
