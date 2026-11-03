@@ -37,7 +37,7 @@ void registerDialectMemRefIRMemRefBindings() {
       "mlir::memref::AllocOp::create",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr,
                  uint64_t memref_type_ptr) -> uint64_t {
-        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
+        auto& builder = *crest::as_raw<mlir::OpBuilder>(
             builder_ptr, "mlir::memref::AllocOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
@@ -55,7 +55,7 @@ void registerDialectMemRefIRMemRefBindings() {
       "mlir::memref::DeallocOp::create",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr,
                  uint64_t memref_ptr) -> uint64_t {
-        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
+        auto& builder = *crest::as_raw<mlir::OpBuilder>(
             builder_ptr, "mlir::memref::DeallocOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
@@ -72,7 +72,7 @@ void registerDialectMemRefIRMemRefBindings() {
       "mlir::memref::LoadOp::create",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, uint64_t memref_ptr,
                  ptr indices_list) -> uint64_t {
-        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
+        auto& builder = *crest::as_raw<mlir::OpBuilder>(
             builder_ptr, "mlir::memref::LoadOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));

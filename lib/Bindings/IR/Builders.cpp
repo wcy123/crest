@@ -17,53 +17,65 @@ namespace crest {
 void registerIROpBuilderBindings() {
   Sregister_symbol(
       "mlir::OpBuilder::atBlockEnd",
-      (void*)+[](uint64_t ctx_ptr, uint64_t block_ptr) -> uint64_t {
+      (void*)+[](uint64_t ctx_ptr, uint64_t block_ptr,
+                 uint64_t listener_ptr) -> uint64_t {
         if (!block_ptr) {
           scheme_error("mlir::OpBuilder::atBlockEnd", "null block pointer");
         }
         auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
         auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
+        // listener_ptr: raw OpBuilder::Listener*, 0 for none. A builder that
+        // shares the listener of the builder that created the enclosing op
+        // reports its insertions to the same driver (dialect conversion,
+        // greedy rewriter).
+        auto* listener =
+            reinterpret_cast<mlir::OpBuilder::Listener*>(listener_ptr);
         // mlir::OpBuilder(Block*, iterator) needs the block's parent op for
         // context. For blocks in OperationState regions (not yet materialized),
         // we must supply the context explicitly via a two-step construction.
-        auto* owned = new CrestOwned<mlir::OpBuilder>(ctx);
+        auto* owned = new CrestOwned<mlir::OpBuilder>(ctx, listener);
         owned->inner.setInsertionPoint(block, block->end());
         return reinterpret_cast<uint64_t>(owned);
       });
   Sregister_symbol(
       "mlir::OpBuilder::create<OperationState>",
       (void*)+[](uint64_t builder_ptr, uint64_t state_ptr) -> uint64_t {
-        auto& builder = crest::as_ref<mlir::OpBuilder>(
+        auto& builder = *crest::as_raw<mlir::OpBuilder>(
             builder_ptr, "mlir::OpBuilder::create<OperationState>");
         auto& state = crest::as_ref<mlir::OperationState>(
             state_ptr, "mlir::OpBuilder::create<OperationState>");
         return reinterpret_cast<uint64_t>(builder.create(state));
       });
-  /// builder_ptr: CrestOwned<mlir::OpBuilder>*, op_ptr: mlir::Operation*
+  /// builder_ptr: raw mlir::OpBuilder*, op_ptr: mlir::Operation*
   Sregister_symbol(
       "mlir::OpBuilder::setInsertionPoint",
       (void*)+[](uint64_t builder_ptr, uint64_t op_ptr) -> void {
-        auto& builder = crest::as_ref<mlir::OpBuilder>(
+        auto& builder = *crest::as_raw<mlir::OpBuilder>(
             builder_ptr, "mlir::OpBuilder::setInsertionPoint");
         builder.setInsertionPoint(reinterpret_cast<mlir::Operation*>(op_ptr));
+      });
+  // builder_ptr: raw mlir::OpBuilder*. Returns the raw Listener* (0 if none).
+  Sregister_symbol(
+      "mlir::OpBuilder::getListener",
+      (void*)+[](uint64_t builder_ptr) -> uint64_t {
+        auto& builder = *crest::as_raw<mlir::OpBuilder>(
+            builder_ptr, "mlir::OpBuilder::getListener");
+        return reinterpret_cast<uint64_t>(builder.getListener());
       });
   Sregister_symbol(
       "mlir::OpBuilder::getContext",
       (void*)+[](uint64_t builder_ptr) -> uint64_t {
-        auto& builder = crest::as_ref<mlir::OpBuilder>(
+        auto& builder = *crest::as_raw<mlir::OpBuilder>(
             builder_ptr, "mlir::OpBuilder::getContext");
         return reinterpret_cast<uint64_t>(builder.getContext());
       });
+  // Unwrap a builder shell (CrestOwned<OpBuilder> or CrestRef<RewriterBase>) to
+  // the raw OpBuilder* that current-OpBuilder holds and every builder binding
+  // takes. Not idempotent: a raw pointer is an error.
   Sregister_symbol(
-      "crest::isa<CrestOwned<mlir::OpBuilder>>",
-      (void*)+[](uint64_t ptr) -> int {
-        if (!ptr) {
-          return 0;
-        }
-        return reinterpret_cast<CrestObject*>(ptr)
-                       ->isa<CrestOwned<mlir::OpBuilder>>()
-                   ? 1
-                   : 0;
+      "crest::as_ptr<mlir::OpBuilder>", (void*)+[](uint64_t ptr) -> uint64_t {
+        return reinterpret_cast<uint64_t>(crest::as_ptr<mlir::OpBuilder>(
+            ptr, "crest::as_ptr<mlir::OpBuilder>"));
       });
 }
 

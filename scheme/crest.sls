@@ -80,9 +80,8 @@
 ;;
 ;;   (begin-mlir-code ctx op-form ...)
 ;;
-;; ctx may be a CrestRef<RewriterBase> (from a pattern callback) or a
-;; CrestOwned<OpBuilder> (from with-OpBuilder or a ^bb0 block). The correct
-;; C++ create binding is selected automatically at runtime.
+;; ctx is a raw mlir::OpBuilder* (from with-OpBuilder, :builder, or
+;; (crest::as_ptr<mlir::OpBuilder> rw) for a pattern's rewriter).
 ;;
 ;; op-form syntax:
 ;;
@@ -145,7 +144,6 @@
           :arg :builder
           make-unbound-value unbound-value?
           ;; Context parameters re-exported for user convenience
-          current-RewriterBase with-current-RewriterBase
           current-MLIRBlock with-current-MLIRBlock
           current-OpBuilder with-current-OpBuilder)
   (import (except (rnrs) =)
@@ -155,7 +153,6 @@
           (for (crest pattern-dsl ast) expand)
           (for (crest pattern-dsl codegen) expand)
           (for (only (crest pattern-dsl codegen) make-unbound-value unbound-value?) expand)
-          (only (mlir IR PatternMatch) current-RewriterBase with-current-RewriterBase)
           (only (mlir IR Block) current-MLIRBlock with-current-MLIRBlock)
           (only (mlir IR Builders) current-OpBuilder with-current-OpBuilder))
 

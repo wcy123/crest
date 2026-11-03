@@ -149,16 +149,20 @@ Generic ctor/dtor helper with no C++ class name: `with-raii`.
 
 ```scheme
 current-MLIRContext    ; mlir::MLIRContext*  (mlir/IR/MLIRContext.h)
-current-RewriterBase   ; mlir::RewriterBase* (mlir/IR/PatternMatch.h)
 current-OpBuilder      ; mlir::OpBuilder*    (mlir/IR/Builders.h)
 ```
+
+`current-OpBuilder` holds a **raw** `OpBuilder*` (or `#f`), never a CrestObject shell. A pattern's
+rewriter is a `CrestRef<RewriterBase>` shell: unwrap it with `(crest::as_ptr<mlir::OpBuilder> rw)`
+(the C++ upcast adjusts the address; `RewriterBase` is polymorphic, so its `OpBuilder` base is not
+at offset 0). Bindings that take a builder take that raw pointer; rewriter-only operations
+(`replaceOp`, `eraseOp`, `inlineRegionBefore`, ...) keep taking the shell.
 
 ### Rule 12 — RAII macro placement follows the C++ header
 
 | Macro | Module | C++ header |
 |---|---|---|
 | `with-current-MLIRContext` | `(mlir IR MLIRContext)` | `mlir/IR/MLIRContext.h` |
-| `with-RewriterBase` | `(mlir IR PatternMatch)` | `mlir/IR/PatternMatch.h` |
 | `with-RewritePatternSet` | `(mlir IR PatternMatch)` | `mlir/IR/PatternMatch.h` |
 | `with-OpBuilder` | `(mlir IR Builders)` | `mlir/IR/Builders.h` |
 | `with-TypeConverter` | `(mlir Transforms DialectConversion)` | `mlir/Transforms/DialectConversion.h` |

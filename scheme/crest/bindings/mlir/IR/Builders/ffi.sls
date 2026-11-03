@@ -18,27 +18,34 @@
     %mlir::OpBuilder::create<OperationState>
     %mlir::OpBuilder::setInsertionPoint
     %mlir::OpBuilder::getContext
-    %crest::isa<CrestOwned<mlir::OpBuilder>>)
+    %mlir::OpBuilder::getListener
+    %crest::as_ptr<mlir::OpBuilder>)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief Heap-allocate a CrestOwned<mlir::OpBuilder> positioned at end of block.
-  ;; @param ctx     MLIRContext* uptr — needed when block is not yet attached to an op
-  ;; @param block   Block* uptr — target block; builder is positioned at block->end()
+  ;; @param ctx       MLIRContext* uptr — needed when block is not yet attached to an op
+  ;; @param block     Block* uptr — target block; builder is positioned at block->end()
+  ;; @param listener  raw OpBuilder::Listener* uptr, 0 for none
   ;; @return        CrestOwned<OpBuilder>* uptr — freed via with-CrestObject
   ;; @see           mlir/IR/Builders.h
   (define %mlir::OpBuilder::atBlockEnd
-    (foreign-procedure "mlir::OpBuilder::atBlockEnd" (uptr uptr) uptr))
+    (foreign-procedure "mlir::OpBuilder::atBlockEnd" (uptr uptr uptr) uptr))
 
   ;; @brief Create an op from a prepared OperationState via an OpBuilder.
-  ;; @param builder     CrestOwned<OpBuilder>* or CrestRef<OpBuilder>* uptr
+  ;; @param builder     raw OpBuilder* uptr
   ;; @param state       CrestOwned<OperationState>* uptr
   ;; @return            Operation* uptr of the created op
   ;; @see               mlir/IR/Builders.h, mlir/IR/OperationSupport.h
   (define %mlir::OpBuilder::create<OperationState>
     (foreign-procedure "mlir::OpBuilder::create<OperationState>" (uptr uptr) uptr))
 
+  ;; @brief Return the raw OpBuilder::Listener* of a builder, 0 if none.
+  ;; @param builder  raw OpBuilder* uptr
+  (define %mlir::OpBuilder::getListener
+    (foreign-procedure "mlir::OpBuilder::getListener" (uptr) uptr))
+
   ;; @brief Return the MLIRContext* associated with this OpBuilder.
-  ;; @param builder  CrestOwned<OpBuilder>* or CrestRef<OpBuilder>* uptr
+  ;; @param builder  raw OpBuilder* uptr
   ;; @return         MLIRContext* uptr
   (define %mlir::OpBuilder::getContext
     (foreign-procedure "mlir::OpBuilder::getContext" (uptr) uptr))
@@ -46,8 +53,10 @@
   (define %mlir::OpBuilder::setInsertionPoint
     (foreign-procedure "mlir::OpBuilder::setInsertionPoint" (uptr uptr) void))
 
-  ;; @brief Type predicate — CrestObject::isa<CrestOwned<OpBuilder>>.
-  (define %crest::isa<CrestOwned<mlir::OpBuilder>>
-    (foreign-procedure "crest::isa<CrestOwned<mlir::OpBuilder>>" (uptr) int))
+  ;; @brief Unwrap a builder shell to a raw OpBuilder*.
+  ;; @param ptr  CrestOwned<OpBuilder>* or CrestRef<RewriterBase>* shell uptr
+  ;; @return     raw mlir::OpBuilder* uptr
+  (define %crest::as_ptr<mlir::OpBuilder>
+    (foreign-procedure "crest::as_ptr<mlir::OpBuilder>" (uptr) uptr))
 
   ) ;; end library (mlir IR Builders ffi)

@@ -298,15 +298,15 @@ This mirrors MLIR's textual format, which MLIR C++ developers will find familiar
 ```
 
 **Without explicit builder** — uses `(%%current-builder)`, i.e. whatever
-`current-RewriterBase` or `current-OpBuilder` is installed:
+`current-OpBuilder` holds:
 ```scheme
 (begin-mlir-code            ; implicit builder from current context
   c0  = arith.constant () (value : 0 :i64) -> (mlir::IntegerType::get<i64>)
   sum = arith.addi (%a %b) -> (mlir::Value::getType %a))
 ```
 
-The implicit form works inside `:rewrite :with` bodies (where `current-RewriterBase`
-is set) and inside `^bb0` block bodies (where `current-OpBuilder` is set).
+The implicit form works inside `:rewrite :with` bodies and `^bb0` block bodies, where
+`begin-mlir-code` has installed `current-OpBuilder`.
 
 Every emitted op carries a `FileLineColLoc` from the `.sls` source line.
 
@@ -332,8 +332,8 @@ list is scanned left-to-right and op boundaries are detected syntactically.
 Two special forms are available anywhere inside `begin-mlir-code`:
 
 **`:builder`** — passes the currently active builder or rewriter to a Scheme
-helper function. `current-RewriterBase` at the `:rewrite :with` level;
-`current-OpBuilder` inside a `^bb0` block body. **Not** an MLIR operand
+helper function: the raw `OpBuilder*` in `current-OpBuilder` (the pattern's builder at the
+`:rewrite :with` level, the block's builder inside a `^bb0` body). **Not** an MLIR operand
 (builders are not `mlir::Value`s):
 
 ```scheme
@@ -818,17 +818,21 @@ convention from CLAUDE.md Rules 10–11:
 | Parameter | Macro | Defined in | Set by |
 |---|---|---|---|
 | `current-MLIRContext` | `with-current-MLIRContext` | `(mlir IR MLIRContext)` | user / `with-current-MLIRContext` |
-| `current-RewriterBase` | `with-current-RewriterBase` | `(mlir IR PatternMatch)` | `:rewrite :with` code generation |
 | `current-MLIRBlock` | `with-current-MLIRBlock` | `(mlir IR Block)` | `^bb0` block bodies |
-| `current-OpBuilder` | `with-current-OpBuilder` | `(mlir IR Builders)` | `^bb0` block bodies |
+| `current-OpBuilder` | `with-current-OpBuilder` | `(mlir IR Builders)` | `begin-mlir-code` (so `:rewrite :with` and `^bb0` bodies) |
 
-`%%current-builder` (internal) returns `(current-RewriterBase)` or `(current-OpBuilder)`,
-whichever is set — this is what `:builder` and the implicit `begin-mlir-code` form use.
+`current-OpBuilder` holds a **raw** `mlir::OpBuilder*`, never a CrestObject shell. A pattern's
+rewriter is a `CrestRef<RewriterBase>` shell; `(crest::as_ptr<mlir::OpBuilder> rw)` unwraps it
+(the C++ upcast adjusts the address). Rewriter-only operations (`replaceOp`, `eraseOp`, ...)
+keep taking the shell. `with-OpBuilder` creates a builder and binds the raw pointer.
+
+`%%current-builder` (internal) returns `(current-OpBuilder)` — this is what `:builder` and the
+implicit `begin-mlir-code` form use.
 
 The context hierarchy during a pattern rewrite:
 
 ```
-:rewrite :with                → current-RewriterBase = rw
+:rewrite :with                → current-OpBuilder = (as_ptr<OpBuilder> rw)
   ^bb0 block body             → current-MLIRBlock = block
                                 current-OpBuilder = block-builder
 ```
@@ -861,13 +865,13 @@ The context hierarchy during a pattern rewrite:
 
 | Import | Key exports |
 |---|---|
-| `(mlir IR Builders)` | `mlir::OpBuilder::atBlockEnd`, `mlir::OpBuilder::create<OperationState>`, `current-OpBuilder`, `with-current-OpBuilder` |
+| `(mlir IR Builders)` | `mlir::OpBuilder::atBlockEnd`, `mlir::OpBuilder::create<OperationState>`, `crest::as_ptr<mlir::OpBuilder>`, `current-OpBuilder`, `with-current-OpBuilder`, `with-OpBuilder` |
 
 ### Pattern matching and rewriting
 
 | Import | Key exports |
 |---|---|
-| `(mlir IR PatternMatch)` | `with-RewritePatternSet`, `current-RewriterBase`, `with-current-RewriterBase` |
+| `(mlir IR PatternMatch)` | `with-RewritePatternSet` |
 | `(mlir Transforms GreedyPatternRewriteDriver)` | `mlir::applyPatternsGreedily` |
 | `(mlir Transforms DialectConversion)` | `with-TypeConverter`, `with-ConversionTarget`, `mlir::applyFullConversion`, `mlir::applyPartialConversion`, `mlir::ConversionTarget::addIllegalDialect!`, `mlir::ConversionTarget::addLegalDialect!`, `mlir::TypeConverter::addConversion!` |
 
@@ -887,7 +891,6 @@ Exports: `define-rewrite-pattern`, `define-conversion-pattern`,
 `add-rewrite-pattern`, `add-conversion-pattern`,
 `begin-mlir-code`, `unbound-value?`, `mlir-get-remapped-operands`,
 `:builder`, `:arg`,
-`current-RewriterBase`, `with-current-RewriterBase`,
 `current-MLIRBlock`, `with-current-MLIRBlock`,
 `current-OpBuilder`, `with-current-OpBuilder`.
 

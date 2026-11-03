@@ -24,7 +24,7 @@ void registerDialectArithIRArithBindings() {
       "mlir::arith::AddFOp::create",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, uint64_t lhs_ptr,
                  uint64_t rhs_ptr) -> uint64_t {
-        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
+        auto& builder = *crest::as_raw<mlir::OpBuilder>(
             builder_ptr, "mlir::arith::AddFOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
@@ -43,7 +43,7 @@ void registerDialectArithIRArithBindings() {
       "mlir::arith::MulFOp::create",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, uint64_t lhs_ptr,
                  uint64_t rhs_ptr) -> uint64_t {
-        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
+        auto& builder = *crest::as_raw<mlir::OpBuilder>(
             builder_ptr, "mlir::arith::MulFOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
@@ -62,7 +62,7 @@ void registerDialectArithIRArithBindings() {
       "mlir::arith::ConstantIndexOp::create",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr,
                  uint64_t int_val) -> uint64_t {
-        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
+        auto& builder = *crest::as_raw<mlir::OpBuilder>(
             builder_ptr, "mlir::arith::ConstantIndexOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
@@ -77,7 +77,7 @@ void registerDialectArithIRArithBindings() {
       "mlir::arith::ConstantOp::create<f64>",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr,
                  uint64_t attr_ptr) -> uint64_t {
-        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
+        auto& builder = *crest::as_raw<mlir::OpBuilder>(
             builder_ptr, "mlir::arith::ConstantOp::create<f64>");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));

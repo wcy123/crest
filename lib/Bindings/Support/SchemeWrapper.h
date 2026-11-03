@@ -75,6 +75,17 @@ namespace crest {
 // treat as a hard access error rather than a substitution failure.
 template <typename T> constexpr bool kIsDeletable = std::is_destructible_v<T>;
 
+// Raw pointer argument: Scheme passes the address of an object MLIR (or C++)
+// owns, with no CrestObject shell around it, e.g. a mlir::OpBuilder* obtained
+// from crest::as_ptr<mlir::OpBuilder>. Only the null check is possible.
+template <typename T>
+[[nodiscard]] inline T* as_raw(uint64_t ptr_val, const char* who) {
+  if (!ptr_val) {
+    scheme_error(who, "null pointer");
+  }
+  return reinterpret_cast<T*>(ptr_val);
+}
+
 template <typename T>
 [[nodiscard]] inline T& as_ref(uint64_t ptr_val, const char* who) {
   return crest_cast<crest::CrestOwned<T>>(ptr_val, who)->inner;
@@ -120,10 +131,12 @@ template <>
 [[nodiscard]] mlir::MLIRContext* as_ptr<mlir::MLIRContext>(uint64_t ptr_val,
                                                            const char* who);
 
-// Explicit specialisation for mlir::OpBuilder: accepts
-// CrestOwned<OpBuilder>* (from begin-mlir-code / buildAffineLoopNest) or
-// CrestRef<RewriterBase>* (from conversion pattern callbacks — RewriterBase
-// inherits OpBuilder so the pointer is safely reinterpreted).
+// Explicit specialisation for mlir::OpBuilder: unwraps a CrestObject shell —
+// CrestOwned<OpBuilder>* (from atBlockEnd) or CrestRef<RewriterBase>* (from
+// conversion pattern callbacks; upcast to OpBuilder* statically, which adjusts
+// the address because RewriterBase is polymorphic and its OpBuilder base is not
+// at offset 0). Anything else is an error: bindings that take a builder take a
+// raw OpBuilder* (as_raw<mlir::OpBuilder>), never a shell.
 template <>
 [[nodiscard]] mlir::OpBuilder* as_ptr<mlir::OpBuilder>(uint64_t ptr_val,
                                                        const char* who);

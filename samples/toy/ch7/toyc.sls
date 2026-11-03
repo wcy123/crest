@@ -325,8 +325,8 @@
       (hashtable-set! val-map
                       (mlir::Block::getArgument entry-block i)
                       (mlir::Operation::getOperand call-op i)))
-    (with-CrestObject (builder-obj (with-current-MLIRContext ctx
-                                     (mlir::OpBuilder::atBlockEnd entry-block)))
+    (with-OpBuilder (builder-obj (with-current-MLIRContext ctx
+                                   (mlir::OpBuilder::atBlockEnd entry-block)))
       (let ([return-op #f])
         (mlir::Operation::walk callee
                                (lambda (op)

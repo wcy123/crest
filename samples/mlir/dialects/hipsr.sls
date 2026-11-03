@@ -84,7 +84,7 @@
   (define (mlir-get-hipsr-context-arg op)
     (let loop ((cur op))
       (cond
-       ((= 0 cur) 0)
+       ((not cur) 0)
        ((string=? (mlir::Operation::getName cur) "func.func")
         (let* ((region (mlir::Operation::getRegion cur 0))
                (block  (if (= 0 region) 0 (mlir::Region::front region))))
@@ -98,7 +98,7 @@
   (define (has-ancestor-named? op name)
     (let loop ((parent (mlir::Operation::getParentOp op)))
       (cond
-       ((= 0 parent) #f)
+       ((not parent) #f)
        ((string=? (mlir::Operation::getName parent) name) #t)
        (else (loop (mlir::Operation::getParentOp parent))))))
 

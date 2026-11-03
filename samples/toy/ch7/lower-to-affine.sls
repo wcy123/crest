@@ -75,6 +75,7 @@
                 with-TypeConverter
                 with-ConversionTarget)
           (only (mlir IR PatternMatch) with-RewritePatternSet)
+          (only (mlir IR Builders) crest::as_ptr<mlir::OpBuilder>)
           (only (mlir support array-ref) ArrayRef::at ArrayRef::size)
           (crest))
 
@@ -88,10 +89,10 @@
 
   ;; Allocate a memref before the first op of block; dealloc before the last.
   ;; Returns the alloc Value.
-  (define (%%insert-alloc-and-dealloc! rw loc memref-type block)
-    (let* ([alloc-val  (mlir::memref::AllocOp::create rw loc memref-type)]
+  (define (%%insert-alloc-and-dealloc! bld loc memref-type block)
+    (let* ([alloc-val  (mlir::memref::AllocOp::create bld loc memref-type)]
            [alloc-op   (mlir::Value::getDefiningOp alloc-val)]
-           [dealloc-op (mlir::memref::DeallocOp::create rw loc alloc-val)])
+           [dealloc-op (mlir::memref::DeallocOp::create bld loc alloc-val)])
       (mlir::Operation::moveBefore alloc-op  (mlir::Block::front block))
       (mlir::Operation::moveBefore dealloc-op (mlir::Block::back  block))
       alloc-val))
@@ -99,14 +100,14 @@
   ;; Lower op to a nest of affine loops over tensor-type's shape.
   ;; body-fn: (nested-builder ivs-list) → Value to store
   ;; Returns the alloc Value.
-  (define (%%lower-op-to-loops! op rw tensor-type body-fn)
+  (define (%%lower-op-to-loops! op bld tensor-type body-fn)
     (let* ([loc         (mlir::Operation::getLoc op)]
            [memref-type (%%tensor->memref-type tensor-type)]
            [block       (mlir::Operation::getBlock op)]
-           [alloc       (%%insert-alloc-and-dealloc! rw loc memref-type block)]
+           [alloc       (%%insert-alloc-and-dealloc! bld loc memref-type block)]
            [shape       (mlir::RankedTensorType::getShape tensor-type)])
       (mlir::affine::buildAffineLoopNest
-       rw loc shape
+       bld loc shape
        (lambda (nb ivs)
          (let ([val (body-fn nb loc ivs)])
            (mlir::affine::AffineStoreOp::create nb loc val alloc ivs))))
@@ -117,14 +118,14 @@
   ;;===--------------------------------------------------------------------===;;
 
   ;; Walk all elements of a DenseElementsAttr and store each as an arith.constant.
-  (define (%%store-const-elements! rw loc const-attr shape alloc idx-consts ctx)
+  (define (%%store-const-elements! bld loc const-attr shape alloc idx-consts ctx)
     (define (store! dim elem-idx indices)
       (if (eqv? dim (length shape))
           (let* ([fa    (mlir::DenseElementsAttr::getValueAt<f64> const-attr elem-idx)]
                  [dval  (mlir::FloatAttr::getValueAsDouble fa)]
                  [fattr (mlir::FloatAttr::get<f64> ctx dval)]
-                 [cval  (mlir::arith::ConstantOp::create<f64> rw loc fattr)])
-            (mlir::affine::AffineStoreOp::create rw loc cval alloc indices)
+                 [cval  (mlir::arith::ConstantOp::create<f64> bld loc fattr)])
+            (mlir::affine::AffineStoreOp::create bld loc cval alloc indices)
             (+ elem-idx 1))
           (let loop ([i 0] [ei elem-idx])
             (if (eqv? i (list-ref shape dim))
@@ -135,19 +136,20 @@
     (store! 0 0 '()))
 
   (define (%%constant-lower! op operands-ref rw tc)
-    (let* ([result      (mlir::Operation::getResult op 0)]
+    (let* ([bld         (crest::as_ptr<mlir::OpBuilder> rw)]
+           [result      (mlir::Operation::getResult op 0)]
            [tensor-type (mlir::Value::getType result)]
            [loc         (mlir::Operation::getLoc op)]
            [const-attr  (mlir::Operation::getAttr op "value")]
            [shape       (mlir::RankedTensorType::getShape tensor-type)]
            [memref-type (%%tensor->memref-type tensor-type)]
            [block       (mlir::Operation::getBlock op)]
-           [alloc       (%%insert-alloc-and-dealloc! rw loc memref-type block)]
+           [alloc       (%%insert-alloc-and-dealloc! bld loc memref-type block)]
            [ctx         (mlir::Operation::getContext op)]
            [max-dim     (apply max 0 shape)]
-           [idx-consts  (map (lambda (i) (mlir::arith::ConstantIndexOp::create rw loc i))
+           [idx-consts  (map (lambda (i) (mlir::arith::ConstantIndexOp::create bld loc i))
                              (iota max-dim))])
-      (%%store-const-elements! rw loc const-attr shape alloc idx-consts ctx)
+      (%%store-const-elements! bld loc const-attr shape alloc idx-consts ctx)
       (mlir::RewriterBase::replaceOp rw op alloc)
       #t))
 
@@ -159,7 +161,7 @@
     (let* ([lhs         (ArrayRef::at operands-ref 0)]
            [rhs         (ArrayRef::at operands-ref 1)]
            [tensor-type (mlir::Value::getType (mlir::Operation::getResult op 0))]
-           [alloc       (%%lower-op-to-loops! op rw tensor-type
+           [alloc       (%%lower-op-to-loops! op (crest::as_ptr<mlir::OpBuilder> rw) tensor-type
                                               (lambda (nb loc ivs)
                                                 (let ([l (mlir::affine::AffineLoadOp::create nb loc lhs ivs)]
                                                       [r (mlir::affine::AffineLoadOp::create nb loc rhs ivs)])
@@ -177,7 +179,7 @@
   (define (%%transpose-lower! op operands-ref rw tc)
     (let* ([input       (ArrayRef::at operands-ref 0)]
            [tensor-type (mlir::Value::getType (mlir::Operation::getResult op 0))]
-           [alloc       (%%lower-op-to-loops! op rw tensor-type
+           [alloc       (%%lower-op-to-loops! op (crest::as_ptr<mlir::OpBuilder> rw) tensor-type
                                               (lambda (nb loc ivs)
                                                 (mlir::affine::AffineLoadOp::create
                                                  nb loc input (reverse ivs))))])

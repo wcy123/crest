@@ -334,13 +334,10 @@ void registerTransformsDialectConversionBindings() {
             [locked](mlir::OpBuilder& builder, mlir::Type resultType,
                      mlir::ValueRange inputs,
                      mlir::Location loc) -> mlir::Value {
-              // Copy builder into CrestOwned — OpBuilder is copyable (context
-              // ptr + insertion point). No CrestRef<OpBuilder> needed; Scheme
-              // always sees CrestOwned<OpBuilder>.
-              auto builderShell =
-                  std::make_unique<CrestOwned<mlir::OpBuilder>>(builder);
+              // Scheme sees the builder as a raw OpBuilder*; insertion point
+              // changes are made on the builder itself, so nothing is copied.
               ptr builder_arg =
-                  Sunsigned64(reinterpret_cast<uint64_t>(builderShell.get()));
+                  Sunsigned64(reinterpret_cast<uint64_t>(&builder));
               ptr result_type_arg = Sunsigned64(
                   reinterpret_cast<uint64_t>(resultType.getAsOpaquePointer()));
               ptr inputs_list = Snil;
@@ -354,10 +351,6 @@ void registerTransformsDialectConversionBindings() {
                   reinterpret_cast<uint64_t>(loc.getAsOpaquePointer()));
               ptr result = scheme_call(locked->get(), builder_arg,
                                        result_type_arg, inputs_list, loc_arg);
-              // Sync cursor back: the callback may have advanced the insertion
-              // point on the copy. Cheap assignment; removes dependency on
-              // whether MLIR uses the builder cursor after the callback.
-              builder = builderShell->inner;
               if (result == Sfalse || result == Sfixnum(0)) {
                 return nullptr;
               }
@@ -379,10 +372,10 @@ void registerTransformsDialectConversionBindings() {
             [locked](mlir::OpBuilder& builder, mlir::Type resultType,
                      mlir::ValueRange inputs,
                      mlir::Location loc) -> mlir::Value {
-              auto builderShell =
-                  std::make_unique<CrestOwned<mlir::OpBuilder>>(builder);
+              // Scheme sees the builder as a raw OpBuilder*; insertion point
+              // changes are made on the builder itself, so nothing is copied.
               ptr builder_arg =
-                  Sunsigned64(reinterpret_cast<uint64_t>(builderShell.get()));
+                  Sunsigned64(reinterpret_cast<uint64_t>(&builder));
               ptr result_type_arg = Sunsigned64(
                   reinterpret_cast<uint64_t>(resultType.getAsOpaquePointer()));
               ptr inputs_list = Snil;
@@ -396,7 +389,6 @@ void registerTransformsDialectConversionBindings() {
                   reinterpret_cast<uint64_t>(loc.getAsOpaquePointer()));
               ptr result = scheme_call(locked->get(), builder_arg,
                                        result_type_arg, inputs_list, loc_arg);
-              builder = builderShell->inner;
               if (result == Sfalse || result == Sfixnum(0)) {
                 return nullptr;
               }
