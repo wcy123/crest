@@ -13,14 +13,6 @@
 
 namespace crest {
 
-static mlir::OpBuilder& get_builder(uint64_t ptr_val, const char* who) {
-  auto* obj = reinterpret_cast<crest::CrestObject*>(ptr_val);
-  if (obj->isa<crest::CrestRef<mlir::RewriterBase>>()) {
-    return *static_cast<crest::CrestRef<mlir::RewriterBase>*>(obj)->ptr;
-  }
-  return crest::as_ref<mlir::OpBuilder>(ptr_val, who);
-}
-
 void registerDialectSCFIRSCFOpsBindings() {
   // scf::ForOp::create: create an SCF for loop.
   // (builder-ptr loc-ptr lb-ptr ub-ptr step-ptr) → Operation* uptr
@@ -28,7 +20,8 @@ void registerDialectSCFIRSCFOpsBindings() {
       "mlir::scf::ForOp::create",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, uint64_t lb_ptr,
                  uint64_t ub_ptr, uint64_t step_ptr) -> uint64_t {
-        auto& builder = get_builder(builder_ptr, "mlir::scf::ForOp::create");
+        auto& builder = *crest::as_raw<mlir::OpBuilder>(
+            builder_ptr, "mlir::scf::ForOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto lb = mlir::Value::getFromOpaquePointer(
@@ -66,7 +59,8 @@ void registerDialectSCFIRSCFOpsBindings() {
   Sregister_symbol(
       "mlir::scf::YieldOp::create",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr) -> void {
-        auto& builder = get_builder(builder_ptr, "mlir::scf::YieldOp::create");
+        auto& builder = *crest::as_raw<mlir::OpBuilder>(
+            builder_ptr, "mlir::scf::YieldOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         mlir::scf::YieldOp::create(builder, loc);

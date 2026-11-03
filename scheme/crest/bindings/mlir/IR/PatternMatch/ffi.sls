@@ -25,8 +25,7 @@
     %mlir::RewriterBase::eraseOp
     %mlir::RewriterBase::create<OperationState>
     %mlir::RewritePatternSet::RewritePatternSet
-    %crest::isa<CrestOwned<mlir::RewritePatternSet>>
-    %crest::isa<CrestRef<mlir::RewriterBase>>)
+    %crest::isa<CrestOwned<mlir::RewritePatternSet>>)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   (define %mlir::RewriterBase::setInsertionPoint
@@ -67,8 +66,5 @@
   ;; @brief Type predicates via CrestObject::isa<T>.
   (define %crest::isa<CrestOwned<mlir::RewritePatternSet>>
     (foreign-procedure "crest::isa<CrestOwned<mlir::RewritePatternSet>>" (uptr) int))
-
-  (define %crest::isa<CrestRef<mlir::RewriterBase>>
-    (foreign-procedure "crest::isa<CrestRef<mlir::RewriterBase>>" (uptr) int))
 
   ) ;; end library (mlir IR PatternMatch ffi)

@@ -10,19 +10,17 @@
 ;;
 ;; Mirrors mlir/IR/PatternMatch.h RewriterBase.
 ;; Re-exports clean names from (mlir IR PatternMatch ffi).
-;; Also provides RAII macros for builder context.
+;; Also provides RAII macros.
 ;;
-;; Builder threading: the RewriterBase* is passed explicitly to
-;; mlir-create-operation. Insertion point is set by the caller via
-;; mlir::RewriterBase::setInsertionPoint before emitting ops.
+;; The pattern's rewriter is a CrestRef<RewriterBase> shell passed explicitly to
+;; these bindings (replaceOp, eraseOp, setInsertionPoint, ...). To create ops with
+;; the DSL or an OpBuilder binding, unwrap it with
+;; (crest::as_ptr<mlir::OpBuilder> rw) from (mlir IR Builders).
 ;;
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir IR PatternMatch)
   (export
-    ;; Context parameters
-    current-RewriterBase
-    with-current-RewriterBase
     ;; Clean-name re-exports from ffi
     mlir-create-operation
     mlir::RewriterBase::setInsertionPoint
@@ -34,7 +32,6 @@
     mlir::RewriterBase::create<OperationState>
     mlir::RewritePatternSet::RewritePatternSet
     ;; Type predicates
-    crest::isa<CrestRef<mlir::RewriterBase>>?
     crest::isa<CrestOwned<mlir::RewritePatternSet>>?
     ;; RAII macros
     with-raii
@@ -43,7 +40,7 @@
   (import (rnrs)
           (only (mlir support RAII) with-raii)
           (only (mlir support array-ref) with-CrestObject)
-          (only (chezscheme) make-parameter parameterize void)
+          (only (chezscheme) void)
           (only (mlir IR PatternMatch ffi)
                 %mlir::RewriterBase::setInsertionPoint
                 %mlir::RewriterBase::setInsertionPointToEnd
@@ -53,8 +50,7 @@
                 %mlir::RewriterBase::eraseOp
                 %mlir::RewriterBase::create<OperationState>
                 %mlir::RewritePatternSet::RewritePatternSet
-                %crest::isa<CrestOwned<mlir::RewritePatternSet>>
-                %crest::isa<CrestRef<mlir::RewriterBase>>)
+                %crest::isa<CrestOwned<mlir::RewritePatternSet>>)
           (only (mlir IR MLIRContext) current-MLIRContext)
           (only (mlir IR Location) mlir::UnknownLoc::get)
           (only (mlir IR Operation)
@@ -65,16 +61,6 @@
                 mlir::OperationState::addTypes
                 mlir::OperationState::addRegion
                 with-OperationState))
-
-  ;; @brief current-RewriterBase — dynamic parameter holding the ambient mlir::RewriterBase*.
-  ;; Installed by with-current-RewriterBase; set during :rewrite :with code generation.
-  (define current-RewriterBase (make-parameter #f))
-
-  ;; @brief with-current-RewriterBase — install rw as current-RewriterBase for body forms.
-  (define-syntax with-current-RewriterBase
-    (syntax-rules ()
-      [(_ rw body ...)
-       (parameterize ([current-RewriterBase rw]) body ...)]))
 
   ;; @brief mlir::Operation::getContext — return the MLIRContext that owns this op.
   (define mlir-Operation::getContext mlir::Operation::getContext)
@@ -95,10 +81,6 @@
 
   (define mlir::RewriterBase::create<OperationState> %mlir::RewriterBase::create<OperationState>)
   (define mlir::RewritePatternSet::RewritePatternSet  %mlir::RewritePatternSet::RewritePatternSet)
-
-  ;; @brief crest::isa<CrestRef<mlir::RewriterBase>>? — is this ptr a CrestRef<mlir::RewriterBase>?
-  (define (crest::isa<CrestRef<mlir::RewriterBase>>? ptr)
-    (not (zero? (%crest::isa<CrestRef<mlir::RewriterBase>> ptr))))
 
   ;; @brief crest::isa<CrestOwned<mlir::RewritePatternSet>>? — is this ptr a CrestOwned<mlir::RewritePatternSet>?
   (define (crest::isa<CrestOwned<mlir::RewritePatternSet>>? ptr)

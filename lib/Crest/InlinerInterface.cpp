@@ -77,15 +77,12 @@ mlir::Operation* CrestInlinerInterface::materializeCallConversion(
   if (materializeCallConversionFn.get() == Sfalse) {
     return nullptr;
   }
-  auto builderShell =
-      std::make_unique<crest::CrestOwned<mlir::OpBuilder>>(builder);
   ptr result = scheme_call(
       materializeCallConversionFn.get(),
-      Sunsigned64(reinterpret_cast<uint64_t>(builderShell.get())),
+      Sunsigned64(reinterpret_cast<uint64_t>(&builder)),
       Sunsigned64(reinterpret_cast<uint64_t>(input.getAsOpaquePointer())),
       Sunsigned64(reinterpret_cast<uint64_t>(resultType.getAsOpaquePointer())),
       Sunsigned64(reinterpret_cast<uint64_t>(loc.getAsOpaquePointer())));
-  builder = builderShell->inner;
   if (result == Sfalse || !Sunsigned64_value(result)) {
     return nullptr;
   }

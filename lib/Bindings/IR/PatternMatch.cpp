@@ -124,17 +124,6 @@ void registerIRRewriterBaseBindings() {
                    ? 1
                    : 0;
       });
-  Sregister_symbol(
-      "crest::isa<CrestRef<mlir::RewriterBase>>",
-      (void*)+[](uint64_t ptr) -> int {
-        if (!ptr) {
-          return 0;
-        }
-        return reinterpret_cast<CrestObject*>(ptr)
-                       ->isa<CrestRef<mlir::RewriterBase>>()
-                   ? 1
-                   : 0;
-      });
 
   // mlir::RewriterBase::setInsertionPointToStart: set insertion before first op
   // in block. (rw-ptr block-ptr) → void
@@ -147,10 +136,14 @@ void registerIRRewriterBaseBindings() {
       });
 }
 
-// as_ptr<mlir::OpBuilder> specialisation: handles both
-//   CrestRef<mlir::RewriterBase>* — from conversion pattern callbacks;
-//                                   RewriterBase inherits OpBuilder.
-//   CrestOwned<mlir::OpBuilder>*  — from begin-mlir-code / buildAffineLoopNest.
+// as_ptr<mlir::OpBuilder> specialisation: unwraps a shell to a raw OpBuilder*.
+//   CrestRef<mlir::RewriterBase>* — from conversion pattern callbacks. The
+//       returned RewriterBase* is converted to OpBuilder* statically, which
+//       adjusts the address (RewriterBase is polymorphic, OpBuilder is not, so
+//       the OpBuilder base is not at offset 0).
+//   CrestOwned<mlir::OpBuilder>*  — from atBlockEnd.
+// Anything else is a bug: a raw pointer must not be unwrapped again, and a raw
+// RewriterBase* is not an OpBuilder*.
 template <>
 mlir::OpBuilder* as_ptr<mlir::OpBuilder>(uint64_t ptr_val, const char* who) {
   if (!ptr_val) {

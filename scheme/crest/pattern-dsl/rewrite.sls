@@ -12,9 +12,8 @@
 ;;
 ;;   (begin-mlir-code builder op-form ...)
 ;;     Sequences MLIR op-forms using builder as the active builder.
-;;     builder may be a CrestRef<RewriterBase> (from a pattern callback) or
-;;     a CrestOwned<OpBuilder> (from with-OpBuilder or a ^bb0 block).
-;;     The correct C++ create binding is selected at runtime via %%crest:create-op!.
+;;     builder is a raw mlir::OpBuilder* (from with-OpBuilder, :builder, or
+;;     (crest::as_ptr<mlir::OpBuilder> rw) for a pattern's rewriter).
 ;;     Returns the last result (like Scheme's begin).
 ;;
 ;; v2 flat-list syntax — items are scanned sequentially without outer parens per op:
@@ -71,18 +70,13 @@
                      :i8-array :i16-array :i32-array :i64-array
                      :unit) expand)
           (for (mlir IR BuiltinAttributes) expand)
-          ;; Runtime predicates and create bindings for %%crest:create-op! dispatch
-          (only (mlir IR PatternMatch)
-                crest::isa<CrestRef<mlir::RewriterBase>>?
-                mlir::RewriterBase::create<OperationState>
-                current-RewriterBase)
           (only (mlir IR Builders)
-                crest::isa<CrestOwned<mlir::OpBuilder>>?
                 mlir::OpBuilder::create<OperationState>
                 current-OpBuilder)
-          (only (mlir support array-ref) with-CrestObject)
           (for (only (mlir IR Builders)
                      mlir::OpBuilder::atBlockEnd
+                     mlir::OpBuilder::getListener
+                     with-OpBuilder
                      with-current-OpBuilder) expand)
           (for (only (mlir IR OperationSupport)
                      mlir::OperationState::addOperands
@@ -112,37 +106,21 @@
   ;; Runtime create dispatcher
   ;;===--------------------------------------------------------------------===;;
 
-  ;; Returns the currently active builder: the RewriterBase (at :rewrite level)
-  ;; or the OpBuilder (inside a ^bb0 block). Error if neither is set.
-  ;; current-OpBuilder (block body) takes precedence over current-RewriterBase (:rewrite level)
-  ;; so that :builder inside a ^bb0 body gives the block's builder, not the outer rewriter.
+  ;; Returns the active builder: the raw OpBuilder* in current-OpBuilder, installed by
+  ;; begin-mlir-code (and so by :rewrite :with and ^bb0 bodies). Error if none is set.
   (define (%%current-builder)
-    (or (current-OpBuilder) (current-RewriterBase)
+    (or (current-OpBuilder)
         (error '%%current-builder "no active builder — use begin-mlir-code inside :rewrite :with or a ^bb0 block")))
 
-  ;; Select the correct C++ create binding based on the CREST wrapper type.
-  ;; - CrestRef<RewriterBase>  → mlir::RewriterBase::create<OperationState>
-  ;; - CrestOwned<OpBuilder>   → mlir::OpBuilder::create<OperationState>
+  ;; Create an op from a prepared OperationState with a raw OpBuilder*.
   (define (%%crest:create-op! builder state)
-    (cond
-     [(crest::isa<CrestRef<mlir::RewriterBase>>? builder)
-      (mlir::RewriterBase::create<OperationState> builder state)]
-     [(crest::isa<CrestOwned<mlir::OpBuilder>>? builder)
-      (mlir::OpBuilder::create<OperationState> builder state)]
-     [else
-      (error '%%crest:create-op! "expected RewriterBase or OpBuilder" builder)]))
+    (mlir::OpBuilder::create<OperationState> builder state))
 
-  ;; Install builder into the appropriate dynamic parameter, then call thunk.
+  ;; Install builder (a raw OpBuilder*) as current-OpBuilder, then call thunk.
   ;; This ensures (%%current-builder) works inside the op sequence and that
   ;; :builder in block bodies resolves correctly even for direct begin-mlir-code calls.
   (define (%%with-active-builder builder thunk)
-    (cond
-     [(crest::isa<CrestRef<mlir::RewriterBase>>? builder)
-      (parameterize ([current-RewriterBase builder]) (thunk))]
-     [(crest::isa<CrestOwned<mlir::OpBuilder>>? builder)
-      (parameterize ([current-OpBuilder builder]) (thunk))]
-     [else
-      (error '%%with-active-builder "expected RewriterBase or OpBuilder" builder)]))
+    (parameterize ([current-OpBuilder builder]) (thunk)))
 
   ;;===--------------------------------------------------------------------===;;
   ;; begin-mlir-code
@@ -395,7 +373,9 @@
               #`(let* ([#,block-id (mlir::Region::push_back<Block> region types)]
                        arg-binding ...)
                   (with-current-MLIRBlock #,block-id
-                    (with-CrestObject (builder (mlir::OpBuilder::atBlockEnd #,block-id))
+                    (with-OpBuilder (builder (mlir::OpBuilder::atBlockEnd
+                                              #,block-id
+                                              (mlir::OpBuilder::getListener (%%current-builder))))
                       (with-current-OpBuilder builder
                         (begin-mlir-code builder b ...)))))))))
 

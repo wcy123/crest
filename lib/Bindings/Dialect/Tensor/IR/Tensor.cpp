@@ -37,7 +37,8 @@ void registerDialectTensorBindings() {
         if (!builder_ptr || !loc_ptr || !result_type_ptr || !input_value_ptr) {
           return 0;
         }
-        auto* builder = reinterpret_cast<mlir::OpBuilder*>(builder_ptr);
+        auto* builder = crest::as_raw<mlir::OpBuilder>(
+            builder_ptr, "mlir::tensor::CastOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto resultType = mlir::Type::getFromOpaquePointer(

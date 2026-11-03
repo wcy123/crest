@@ -16,14 +16,6 @@
 
 namespace crest {
 
-static mlir::OpBuilder& get_builder(uint64_t ptr_val, const char* who) {
-  auto* obj = reinterpret_cast<crest::CrestObject*>(ptr_val);
-  if (obj->isa<crest::CrestRef<mlir::RewriterBase>>()) {
-    return *static_cast<crest::CrestRef<mlir::RewriterBase>*>(obj)->ptr;
-  }
-  return crest::as_ref<mlir::OpBuilder>(ptr_val, who);
-}
-
 // Extract SmallVector<Value> from a Scheme list of Value uptrss.
 static llvm::SmallVector<mlir::Value> scheme_list_to_values(ptr list) {
   llvm::SmallVector<mlir::Value> v;
@@ -80,8 +72,8 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
       "mlir::LLVM::LLVMFuncOp::create",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, const char* name,
                  uint64_t ftype_ptr) -> uint64_t {
-        auto& builder =
-            get_builder(builder_ptr, "mlir::LLVM::LLVMFuncOp::create");
+        auto& builder = *crest::as_raw<mlir::OpBuilder>(
+            builder_ptr, "mlir::LLVM::LLVMFuncOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto ftype = mlir::cast<mlir::LLVM::LLVMFunctionType>(
@@ -99,8 +91,8 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, uint64_t type_ptr,
                  int is_constant, int linkage_int, const char* name,
                  uint64_t value_attr_ptr) -> uint64_t {
-        auto& builder =
-            get_builder(builder_ptr, "mlir::LLVM::GlobalOp::create");
+        auto& builder = *crest::as_raw<mlir::OpBuilder>(
+            builder_ptr, "mlir::LLVM::GlobalOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto type = mlir::Type::getFromOpaquePointer(
@@ -131,8 +123,8 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
       "mlir::LLVM::AddressOfOp::create",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr,
                  uint64_t global_op_ptr) -> uint64_t {
-        auto& builder =
-            get_builder(builder_ptr, "mlir::LLVM::AddressOfOp::create");
+        auto& builder = *crest::as_raw<mlir::OpBuilder>(
+            builder_ptr, "mlir::LLVM::AddressOfOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto* op = reinterpret_cast<mlir::Operation*>(global_op_ptr);
@@ -151,7 +143,8 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, uint64_t res_type_ptr,
                  uint64_t elem_type_ptr, uint64_t ptr_val, uint64_t idx0,
                  uint64_t idx1) -> uint64_t {
-        auto& builder = get_builder(builder_ptr, "mlir::LLVM::GEPOp::create");
+        auto& builder = *crest::as_raw<mlir::OpBuilder>(
+            builder_ptr, "mlir::LLVM::GEPOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto res_type = mlir::Type::getFromOpaquePointer(
@@ -177,8 +170,8 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
       "mlir::LLVM::ConstantOp::create<i64>",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr,
                  int64_t val) -> uint64_t {
-        auto& builder =
-            get_builder(builder_ptr, "mlir::LLVM::ConstantOp::create<i64>");
+        auto& builder = *crest::as_raw<mlir::OpBuilder>(
+            builder_ptr, "mlir::LLVM::ConstantOp::create<i64>");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto i64ty = mlir::IntegerType::get(builder.getContext(), 64);
@@ -194,7 +187,8 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
       "mlir::LLVM::CallOp::create",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, uint64_t ftype_ptr,
                  uint64_t callee_ptr, ptr operands_list) -> uint64_t {
-        auto& builder = get_builder(builder_ptr, "mlir::LLVM::CallOp::create");
+        auto& builder = *crest::as_raw<mlir::OpBuilder>(
+            builder_ptr, "mlir::LLVM::CallOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto ftype = mlir::cast<mlir::LLVM::LLVMFunctionType>(

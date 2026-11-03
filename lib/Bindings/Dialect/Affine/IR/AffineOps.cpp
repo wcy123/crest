@@ -48,7 +48,7 @@ void registerDialectAffineIRAffineOpsBindings() {
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, ptr shape_list,
                  ptr body_fn) -> void {
         auto& builder =
-            *crest::as_ptr<mlir::OpBuilder>(builder_ptr, "buildAffineLoopNest");
+            *crest::as_raw<mlir::OpBuilder>(builder_ptr, "buildAffineLoopNest");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto ubs = scheme_list_to_i64(shape_list);
@@ -69,11 +69,8 @@ void registerDialectAffineIRAffineOpsBindings() {
                         ivs[static_cast<size_t>(i)].getAsOpaquePointer())),
                     iv_list);
               }
-              crest::CrestOwned<mlir::OpBuilder> nb_shell(nb);
-              scheme_call(body_fn,
-                          Sunsigned64(reinterpret_cast<uint64_t>(&nb_shell)),
+              scheme_call(body_fn, Sunsigned64(reinterpret_cast<uint64_t>(&nb)),
                           iv_list);
-              nb = nb_shell.inner;
             });
       });
 
@@ -84,7 +81,7 @@ void registerDialectAffineIRAffineOpsBindings() {
       "mlir::affine::AffineLoadOp::create",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, uint64_t memref_ptr,
                  ptr ivs_list) -> uint64_t {
-        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
+        auto& builder = *crest::as_raw<mlir::OpBuilder>(
             builder_ptr, "mlir::affine::AffineLoadOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
@@ -104,7 +101,7 @@ void registerDialectAffineIRAffineOpsBindings() {
       "mlir::affine::AffineStoreOp::create",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, uint64_t value_ptr,
                  uint64_t memref_ptr, ptr ivs_list) -> void {
-        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
+        auto& builder = *crest::as_raw<mlir::OpBuilder>(
             builder_ptr, "mlir::affine::AffineStoreOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));

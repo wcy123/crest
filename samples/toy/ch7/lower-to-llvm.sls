@@ -12,6 +12,7 @@
                 mlir::Operation::getContext
                 mlir::Operation::getOperand
                 mlir::Operation::getParentOfType<ModuleOp>)
+          (only (mlir IR Builders) crest::as_ptr<mlir::OpBuilder>)
           (mlir IR BuiltinOps)
           (only (mlir IR Value) mlir::Value::getType)
           (only (mlir IR Block) mlir::Block::front)
@@ -57,7 +58,7 @@
 
   ;; Get-or-insert @printf declaration in the module.
   ;; Temporarily moves rw IP to module body start; caller must restore IP afterward.
-  (define (%%get-or-insert-printf! rw module-op ctx)
+  (define (%%get-or-insert-printf! rw bld module-op ctx)
     (if (not (zero? (mlir::ModuleOp::lookupSymbol module-op "printf")))
         (mlir::FlatSymbolRefAttr::get ctx "printf")
         (let* ([i32ty (mlir::IntegerType::get<i32> ctx)]
@@ -65,12 +66,12 @@
                [fnty  (mlir::LLVM::LLVMFunctionType::get ctx i32ty ptrty 1)]
                [body  (mlir::ModuleOp::getBody module-op)])
           (mlir::RewriterBase::setInsertionPointToStart rw body)
-          (mlir::LLVM::LLVMFuncOp::create rw (mlir::Operation::getLoc module-op) "printf" fnty)
+          (mlir::LLVM::LLVMFuncOp::create bld (mlir::Operation::getLoc module-op) "printf" fnty)
           (mlir::FlatSymbolRefAttr::get ctx "printf"))))
 
   ;; Get-or-create a global string constant; returns the global op.
   ;; Temporarily moves rw IP to module body start; caller must restore IP afterward.
-  (define (%%get-or-create-global-string! rw loc name value module-op ctx)
+  (define (%%get-or-create-global-string! rw bld loc name value module-op ctx)
     (let ([existing (mlir::ModuleOp::lookupSymbol module-op name)])
       (if (not (zero? existing))
           existing
@@ -81,25 +82,26 @@
                  [attr  (mlir::StringAttr::get/len ctx value len)]
                  [body  (mlir::ModuleOp::getBody module-op)])
             (mlir::RewriterBase::setInsertionPointToStart rw body)
-            (mlir::LLVM::GlobalOp::create rw loc arrty 1 8 name attr)))))
+            (mlir::LLVM::GlobalOp::create bld loc arrty 1 8 name attr)))))
 
   ;; Get-or-create a global string and return GEP to its first char.
   ;; Restores rw IP to op after module-level insertions.
-  (define (%%global-string-ptr! rw loc name value module-op ctx op)
-    (let* ([global (%%get-or-create-global-string! rw loc name value module-op ctx)])
+  (define (%%global-string-ptr! rw bld loc name value module-op ctx op)
+    (let* ([global (%%get-or-create-global-string! rw bld loc name value module-op ctx)])
       ;; Restore IP to just before op so loop-body ops go in the right place.
       (mlir::RewriterBase::setInsertionPoint rw op)
       (let* ([ptrty (mlir::LLVM::LLVMPointerType::get ctx)]
              [arrty (mlir::LLVM::GlobalOp::getType global)]
-             [addr  (mlir::LLVM::AddressOfOp::create rw loc global)]
-             [c0    (mlir::LLVM::ConstantOp::create<i64> rw loc 0)])
-        (mlir::LLVM::GEPOp::create rw loc ptrty arrty addr c0 c0))))
+             [addr  (mlir::LLVM::AddressOfOp::create bld loc global)]
+             [c0    (mlir::LLVM::ConstantOp::create<i64> bld loc 0)])
+        (mlir::LLVM::GEPOp::create bld loc ptrty arrty addr c0 c0))))
 
   ;; Lower toy.print → SCF loops calling @printf on each element.
   ;; Called via add-conversion-pattern/ctx (no TypeConverter) so operands are
   ;; the original unconverted values; tc arg is 0 (unused).
   (define (%%print-lower! op operands-ref rw tc)
-    (let* ([loc       (mlir::Operation::getLoc op)]
+    (let* ([bld       (crest::as_ptr<mlir::OpBuilder> rw)]
+           [loc       (mlir::Operation::getLoc op)]
            [ctx       (mlir::Operation::getContext op)]
            [module-op (mlir::Operation::getParentOfType<ModuleOp> op)]
            ;; Get original memref type (operand before conversion)
@@ -107,10 +109,10 @@
            [mtype     (mlir::Value::getType orig-in)]
            [shape     (mlir::ShapedType::getShape mtype)]
            ;; Declare @printf; inserts at module start and leaves IP there.
-           [printf-ref (%%get-or-insert-printf! rw module-op ctx)]
+           [printf-ref (%%get-or-insert-printf! rw bld module-op ctx)]
            ;; Create global format strings; each restores IP to op afterward.
-           [fmt-val  (%%global-string-ptr! rw loc "frmt_spec" "%f \x00;" module-op ctx op)]
-           [nl-val   (%%global-string-ptr! rw loc "nl" "\n\x00;" module-op ctx op)]
+           [fmt-val  (%%global-string-ptr! rw bld loc "frmt_spec" "%f \x00;" module-op ctx op)]
+           [nl-val   (%%global-string-ptr! rw bld loc "nl" "\n\x00;" module-op ctx op)]
            ;; printf function type for calls
            [i32ty    (mlir::IntegerType::get<i32> ctx)]
            [ptrty    (mlir::LLVM::LLVMPointerType::get ctx)]
@@ -120,15 +122,15 @@
       (let loop ([dims shape] [dim-idx 0] [ivs '()])
         (if (null? dims)
             ;; Innermost: load element and call printf
-            (let* ([elem (mlir::memref::LoadOp::create rw loc in (reverse ivs))]
-                   [_ (mlir::LLVM::CallOp::create rw loc fnty printf-ref
+            (let* ([elem (mlir::memref::LoadOp::create bld loc in (reverse ivs))]
+                   [_ (mlir::LLVM::CallOp::create bld loc fnty printf-ref
                                                   (list fmt-val elem))])
               'done)
             ;; Emit scf.for for this dimension
-            (let* ([lb   (mlir::arith::ConstantIndexOp::create rw loc 0)]
-                   [ub   (mlir::arith::ConstantIndexOp::create rw loc (car dims))]
-                   [step (mlir::arith::ConstantIndexOp::create rw loc 1)]
-                   [for-op (mlir::scf::ForOp::create rw loc lb ub step)]
+            (let* ([lb   (mlir::arith::ConstantIndexOp::create bld loc 0)]
+                   [ub   (mlir::arith::ConstantIndexOp::create bld loc (car dims))]
+                   [step (mlir::arith::ConstantIndexOp::create bld loc 1)]
+                   [for-op (mlir::scf::ForOp::create bld loc lb ub step)]
                    [body   (mlir::scf::ForOp::getBody for-op)]
                    [iv     (mlir::scf::ForOp::getInductionVar for-op)])
               ;; Remove default yield from body
@@ -137,13 +139,13 @@
               (mlir::RewriterBase::setInsertionPointToEnd rw body)
               ;; Between outer dims: newline
               (when (not (null? (cdr dims)))
-                (mlir::LLVM::CallOp::create rw loc fnty printf-ref (list nl-val)))
+                (mlir::LLVM::CallOp::create bld loc fnty printf-ref (list nl-val)))
               ;; Recurse into inner dims
               (mlir::RewriterBase::setInsertionPointToStart rw body)
               (loop (cdr dims) (+ dim-idx 1) (cons iv ivs))
               ;; Emit yield
               (mlir::RewriterBase::setInsertionPointToEnd rw body)
-              (mlir::scf::YieldOp::create rw loc))))
+              (mlir::scf::YieldOp::create bld loc))))
       (mlir::RewriterBase::eraseOp rw op)
       #t))
 
