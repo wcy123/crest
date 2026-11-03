@@ -23,7 +23,7 @@
                 mlir::Value::getType)
           (mlir support array-ref)
           (only (mlir IR PatternMatch) mlir::RewriterBase::replaceOp mlir::RewriterBase::setInsertionPoint)
-          (only (mlir IR Builders) crest::as_ptr<mlir::OpBuilder>)
+          (only (mlir IR Builders) crest::as_ptr<mlir::OpBuilder> with-current-OpBuilder)
           (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
           (mlir Dialect Tensor IR)
@@ -66,13 +66,14 @@
   (define (make-binary-min! rewriter loc-op ctx lhs rhs out-type)
     (let ([!shape-type (mlir::shape::ShapeType::get)])
       (mlir::RewriterBase::setInsertionPoint rewriter loc-op)
-      (begin-mlir-code (crest::as_ptr<mlir::OpBuilder> rewriter)
-        ph = hipsr.placeholder (ctx lhs rhs)
-        (^bb0 ((%ls : !shape-type) (%rs : !shape-type))
-              bc = shape.broadcast (%ls %rs) -> !shape-type
-              hipsr.shape_yield (bc))
-        -> out-type
-        r = hipsr.min (ctx lhs rhs ph) -> out-type)))
+      (with-current-OpBuilder (crest::as_ptr<mlir::OpBuilder> rewriter)
+        (begin-mlir-code
+            ph = hipsr.placeholder (ctx lhs rhs)
+            (^bb0 ((%ls : !shape-type) (%rs : !shape-type))
+                  bc = shape.broadcast (%ls %rs) -> !shape-type
+                  hipsr.shape_yield (bc))
+            -> out-type
+            r = hipsr.min (ctx lhs rhs ph) -> out-type))))
 
   (define (onnx-min-general->hipsr op operands-ref rewriter type-converter)
     (let ([n (ArrayRef::size operands-ref)])

@@ -76,11 +76,14 @@
 ;;
 ;; begin-mlir-code
 ;; ───────────────
-;; Inline DSL for emitting MLIR operations. Takes an explicit builder context:
+;; Inline DSL for emitting MLIR operations. Ops are created with the ambient
+;; builder, the raw mlir::OpBuilder* in current-OpBuilder:
 ;;
-;;   (begin-mlir-code ctx op-form ...)
+;;   (begin-mlir-code op-form ...)
 ;;
-;; ctx is a raw mlir::OpBuilder* (from with-OpBuilder, :builder, or
+;; :rewrite :with and ^bb bodies install it. Elsewhere wrap the call:
+;;   (with-current-OpBuilder b (begin-mlir-code op-form ...))
+;; where b is a raw OpBuilder* (from with-OpBuilder, or
 ;; (crest::as_ptr<mlir::OpBuilder> rw) for a pattern's rewriter).
 ;;
 ;; op-form syntax:
@@ -117,15 +120,15 @@
 ;; op name identifier, enabling precise error messages in MLIR diagnostics.
 ;;
 ;; Example:
-;;   (begin-mlir-code rw
+;;   (begin-mlir-code
 ;;     (%init   = tensor.empty () -> !out-type)
 ;;     (%result = hip.qadd (%ctx %a %b %init)
 ;;       ("output_scale" = scale :f32)
 ;;       ("output_zp"    = zp    :i64)
 ;;       -> !out-type))
 ;;
-;; Inside :rewrite :with, begin-mlir-code is implicit — the codegen wraps
-;; the body automatically with the active rewriter.
+;; Inside :rewrite :with the codegen installs the pattern's builder
+;; automatically.
 ;;
 ;;===----------------------------------------------------------------------===;;
 

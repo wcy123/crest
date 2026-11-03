@@ -10,10 +10,12 @@
 ;;
 ;; Provides:
 ;;
-;;   (begin-mlir-code builder op-form ...)
-;;     Sequences MLIR op-forms using builder as the active builder.
-;;     builder is a raw mlir::OpBuilder* (from with-OpBuilder, :builder, or
-;;     (crest::as_ptr<mlir::OpBuilder> rw) for a pattern's rewriter).
+;;   (begin-mlir-code op-form ...)
+;;     Sequences MLIR op-forms, creating each op with the ambient builder: the raw
+;;     mlir::OpBuilder* in current-OpBuilder. :rewrite :with and ^bb bodies install
+;;     it; anywhere else wrap the call in (with-current-OpBuilder b ...), where b is
+;;     a raw OpBuilder* (from with-OpBuilder, or (crest::as_ptr<mlir::OpBuilder> rw)
+;;     for a pattern's rewriter). There is no explicit builder argument.
 ;;     Returns the last result (like Scheme's begin).
 ;;
 ;; v2 flat-list syntax — items are scanned sequentially without outer parens per op:
@@ -58,7 +60,7 @@
   (export begin-mlir-code)
 
   (import (except (rnrs (6)) =)
-          (only (chezscheme) syntax->list syntax->datum parameterize)
+          (only (chezscheme) syntax->list syntax->datum)
           (rename (rime loop) (:with :rime-with))
           (for (rename (rime loop) (:with :rime-with)) expand)
           (for (only (crest pattern-dsl srcloc) syntax->file+line+col) expand)
@@ -107,20 +109,16 @@
   ;;===--------------------------------------------------------------------===;;
 
   ;; Returns the active builder: the raw OpBuilder* in current-OpBuilder, installed by
-  ;; begin-mlir-code (and so by :rewrite :with and ^bb0 bodies). Error if none is set.
+  ;; :rewrite :with and ^bb bodies, or by the caller with (with-current-OpBuilder b ...).
+  ;; Error if none is set.
   (define (%%current-builder)
     (or (current-OpBuilder)
-        (error '%%current-builder "no active builder — use begin-mlir-code inside :rewrite :with or a ^bb0 block")))
+        (error '%%current-builder
+               "no active builder — use begin-mlir-code inside :rewrite :with or a ^bb block, or wrap it in (with-current-OpBuilder builder ...)")))
 
   ;; Create an op from a prepared OperationState with a raw OpBuilder*.
   (define (%%crest:create-op! builder state)
     (mlir::OpBuilder::create<OperationState> builder state))
-
-  ;; Install builder (a raw OpBuilder*) as current-OpBuilder, then call thunk.
-  ;; This ensures (%%current-builder) works inside the op sequence and that
-  ;; :builder in block bodies resolves correctly even for direct begin-mlir-code calls.
-  (define (%%with-active-builder builder thunk)
-    (parameterize ([current-OpBuilder builder]) (thunk)))
 
   ;;===--------------------------------------------------------------------===;;
   ;; begin-mlir-code
@@ -148,38 +146,33 @@
       ;; Main entry
       ;;-------------------------------------------------------------------
 
-      ;; (begin-mlir-code builder-expr op ...)
-      ;;   builder-expr — any expression yielding a CrestRef<RewriterBase> or
-      ;;                  CrestOwned<OpBuilder>, e.g. an identifier, (%%current-builder),
-      ;;                  or (current-OpBuilder).
-      ;;   If builder-expr is already an identifier it is used directly.
-      ;;   Otherwise it is bound to a fresh gensym so the flat-list parse always
-      ;;   receives a stable identifier — this avoids re-evaluating the expression
-      ;;   once per op and prevents infinite recursion.
+      ;; (begin-mlir-code op ...)
+      ;;   Ops are created with the ambient builder, (%%current-builder), looked up when
+      ;;   each op is created: the raw OpBuilder* in current-OpBuilder.
       ;;
       ;; v2 flat syntax: items form a flat list that process-ops-flat scans sequentially.
       ;; Op boundaries are detected by parse-next; parenthesized items that don't
       ;; start an op are treated as Scheme expressions.
       (define (main)
         (syntax-case stx ()
-          ;; builder is already an identifier — use it directly.
-          [(_ builder op ...)
-           (identifier? #'builder)
+          [(_ op ...)
            (let ([pairs (process-ops-flat #'(op ...))])
+             ;; A bare identifier followed by more items is the removed explicit builder
+             ;; argument: it would be evaluated and discarded, and the ambient builder used
+             ;; silently instead. (A body that is only an identifier is legitimate: it names
+             ;; an existing value to replace the root with, as in `:rewrite %out :with %in`.)
+             (when (and (pair? pairs)
+                        (pair? (cdr pairs))
+                        (identifier? (cdr (car pairs))))
+               (syntax-violation
+                'begin-mlir-code
+                "begin-mlir-code takes no builder argument; use (with-current-OpBuilder builder (begin-mlir-code op-form ...))"
+                (cdr (car pairs))))
              (if (null? pairs)
                  #'(if #f #f)
                  (with-syntax ([(binding ...) (map make-binding pairs)]
                                [result        (car (car (reverse pairs)))])
-                   #'(%%with-active-builder builder
-                                            (lambda () (let* (binding ...) result))))))]
-          ;; builder-expr is a non-identifier expression — bind to a gensym so the
-          ;; recursive call always receives a stable identifier.  This avoids both
-          ;; re-evaluating the expression once per op and infinite recursion.
-          [(_ builder-expr op ...)
-           (with-syntax ([builder (car (generate-temporaries '(builder)))])
-             #'(let ([builder builder-expr])
-                 (begin-mlir-code builder op ...)))]
-          [(_) (syntax-violation 'begin-mlir-code "expected (begin-mlir-code builder op ...)" stx)]))
+                   #'(let* (binding ...) result))))]))
 
 
       ;;-------------------------------------------------------------------
@@ -377,7 +370,7 @@
                                               #,block-id
                                               (mlir::OpBuilder::getListener (%%current-builder))))
                       (with-current-OpBuilder builder
-                        (begin-mlir-code builder b ...)))))))))
+                        (begin-mlir-code b ...)))))))))
 
       ;; Returns a fill-fn: (lambda (region-stx) → syntax).
       ;; block-id extracted before syntax-case so both branches share it.
