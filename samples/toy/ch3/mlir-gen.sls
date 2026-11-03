@@ -214,7 +214,7 @@
            [arg-types (map (lambda (_) (%%f64-unranked-tensor)) args)]
            [func-type (mlir::FunctionType::get (current-MLIRContext) arg-types '())]
            [%%fn-bld  (crest::as_ptr<mlir::OpBuilder> (mlir::OpBuilder::atBlockEnd module-body))])
-      (begin-mlir-code %%fn-bld
+      (begin-mlir-code (:builder %%fn-bld)
         toy.func ()
         (sym_name      : name :string)
         (function_type : (mlir::TypeAttr::get func-type))

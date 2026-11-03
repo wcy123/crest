@@ -56,23 +56,23 @@
   ;; Build the compute body: for each axis in [start, end), insert the extent
   ;; into the destination tensor via tensor.insert. Returns the final tensor Value*.
   ;; Mirrors ShapeConversion.cpp::populateComputeBody.
-  (define (build-compute-body! builder in-val dest-val input-shape start end
+  (define (build-compute-body! in-val dest-val input-shape start end
                                index-type i64-type out-host-type)
     (loop :for axis :from start :below end
           :for slot :from 0
           :rime-with acc := dest-val
           :for dim :in (list-tail input-shape start)
           :rime-with acc := (if (dynamic-dim? dim)
-                                (begin-mlir-code builder
-                                  ci     = arith.constant () (value : axis :index) -> index-type
-                                  d      = tensor.dim (in-val ci)                  -> index-type
-                                  e      = arith.index_cast (d)                    -> i64-type
-                                  slot-c = arith.constant () (value : slot :index) -> index-type
-                                  ins    = tensor.insert (e acc slot-c)            -> out-host-type)
-                                (begin-mlir-code builder
-                                  e      = arith.constant () (value : dim :i64)   -> i64-type
-                                  slot-c = arith.constant () (value : slot :index) -> index-type
-                                  ins    = tensor.insert (e acc slot-c)            -> out-host-type))
+                                (begin-mlir-code
+                                    ci     = arith.constant () (value : axis :index) -> index-type
+                                    d      = tensor.dim (in-val ci)                  -> index-type
+                                    e      = arith.index_cast (d)                    -> i64-type
+                                    slot-c = arith.constant () (value : slot :index) -> index-type
+                                    ins    = tensor.insert (e acc slot-c)            -> out-host-type)
+                                (begin-mlir-code
+                                    e      = arith.constant () (value : dim :i64)   -> i64-type
+                                    slot-c = arith.constant () (value : slot :index) -> index-type
+                                    ins    = tensor.insert (e acc slot-c)            -> out-host-type))
           :finally acc))
 
   (define-conversion-pattern (onnx-shape->hipsr op operands-ref rewriter type-converter)
@@ -113,12 +113,11 @@
       result = hipsr.compute (%ctx %input placeholder)
       (operandSegmentSizes : (list 1 1 1) :i32-array)
       (^bb0 ((%c : !ctx-type) (%in : !input-type) (%dest : !out-host))
-            (let* ([bldr  :builder]
-                   [final (build-compute-body!
-                           bldr %in %dest input-shape start end
-                           !index-type !i64-type !out-host)])
-              (begin-mlir-code bldr
-                hipsr.compute_yield (final))))
+            (let ([final (build-compute-body!
+                          %in %dest input-shape start end
+                          !index-type !i64-type !out-host)])
+              (begin-mlir-code
+                  hipsr.compute_yield (final))))
       -> !out-host) ;
 
   (define (populate-shape-patterns type-converter patterns ctx)

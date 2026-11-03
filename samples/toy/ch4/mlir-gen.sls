@@ -178,7 +178,7 @@
            [func-type (mlir::FunctionType::get (current-MLIRContext) arg-types '())]
            [%%fn-bld  (crest::as_ptr<mlir::OpBuilder> (mlir::OpBuilder::atBlockEnd module-body))])
       (let ([func-op
-             (begin-mlir-code %%fn-bld
+             (begin-mlir-code (:builder %%fn-bld)
                toy.func ()
                (sym_name      : name :string)
                (function_type : (mlir::TypeAttr::get func-type))

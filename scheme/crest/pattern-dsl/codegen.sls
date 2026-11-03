@@ -44,7 +44,7 @@
           (for (only (chezscheme) parameterize) expand)
           (for (only (crest pattern-dsl rewrite) begin-mlir-code) expand)
           ;; keywords needed at expand time for free-identifier=? matching in %%transform-where-expr
-          (for (only (crest pattern-dsl keywords) :current-op :attr :has-attr? :attr-or) expand))
+          (for (only (crest pattern-dsl keywords) :current-op :attr :has-attr? :attr-or :builder) expand))
 
   ;;=======================================================================
   ;; Call graph
@@ -164,7 +164,7 @@
   ;; Generated shape ('conversion):
   ;;   (let ([bld (crest::as_ptr<mlir::OpBuilder> rw)])   ; rw: CrestRef<RewriterBase> shell
   ;;     (mlir::RewriterBase::setInsertionPoint rw op)
-  ;;     (let ([result (begin-mlir-code bld form ...)])
+  ;;     (let ([result (begin-mlir-code (:builder bld) form ...)])
   ;;       (mlir::RewriterBase::replaceOp rw op result)
   ;;       #t))
   ;;
@@ -189,7 +189,7 @@
                             #f])
                  (let ([bld (crest::as_ptr<mlir::OpBuilder> #,rw)])
                    (mlir::RewriterBase::setInsertionPoint #,rw #,op)
-                   (let ([result (begin-mlir-code bld form ...)])
+                   (let ([result (begin-mlir-code (:builder bld) form ...)])
                      ;; Zero-result root: erase the old op (no uses to redirect).
                      ;; Result-producing root: replaceOp redirects uses then erases.
                      #,(if zero-result?
