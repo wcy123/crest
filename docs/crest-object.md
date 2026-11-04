@@ -116,9 +116,6 @@ Layouts on a 64-bit target:
        +----------------+
 ```
 
-`CArrayRef<T>` is a third kind of shell. It has a `data` pointer at +8 and a `size` at +16.
-You free the shell like any other (`with-ArrayRef`), but it never owns the elements.
-
 ### Memory diagrams
 
 #### `CrestOwned<OpBuilder>`, from `mlir::OpBuilder::atBlockEnd`
