@@ -121,26 +121,52 @@ Layouts on a 64-bit target:
 #### `CrestOwned<OpBuilder>`, from `mlir::OpBuilder::atBlockEnd`
 
 ```
- Scheme                         C++ heap                                   code
- ------                         --------                                   ----
+ Scheme (Chez Scheme)                        FFI call                    C++ heap
+ --------------------                        --------                    --------
 
- shell = 0x55d0c8a04e10 ---+
- (an exact integer)        |
-                           v
-                       +0  +------------------------------+
-                           | deletor ---------------------------------> AsCrest<CrestOwned<OpBuilder>>
-                       +8  +------------------------------+                 ::type_deletor
-                           | context                      |  \
-                      +16  +------------------------------+   |
-                           | listener                     |   |  inner : mlir::OpBuilder
-                      +24  +------------------------------+   |  (32 bytes)
-                           | block                        |   |
-                      +32  +------------------------------+   |
-                           | insertPoint                  |  /
-                      +40  +------------------------------+
+ variable `shell`
+ +---------------------------+
+ | 0x14C9DE900               |   foreign-procedure, argument type `uptr`:
+ | low 3 bits = 000          |   shift right by 3 (remove the fixnum tag)
+ | (a fixnum)                |               |
+ +---------------------------+               v
+  one machine word;                    0x2993BD20  = the shell address
+  no heap object behind it             (C `uptr`; our bindings take it as uint64_t)
+                                               |
+                                               v
+                                           +0  +------------------------------+
+                                               | deletor ---------------------------------> AsCrest<CrestOwned<OpBuilder>>
+                                           +8  +------------------------------+                 ::type_deletor
+                                               | context                      |  \
+                                          +16  +------------------------------+   |
+                                               | listener                     |   |  inner : mlir::OpBuilder
+                                          +24  +------------------------------+   |  (32 bytes)
+                                               | block                        |   |
+                                          +32  +------------------------------+   |
+                                               | insertPoint                  |  /
+                                          +40  +------------------------------+
 
-                           CrestOwned<OpBuilder> = 40 bytes
+                                               CrestOwned<OpBuilder> = 40 bytes
 ```
+
+The Scheme variable does not point at a Scheme object that points at the shell. It holds the
+address itself, as a **fixnum**. In Chez Scheme's C header, a Scheme value has the C type
+`ptr`, and `uptr` is `unsigned long`. A fixnum `n` is stored as the machine word `n * 8`, so
+its low 3 bits are the tag `000`. The garbage collector sees a fixnum, not a pointer, so it
+never moves or frees the shell. At an FFI call, the stub shifts the word right by 3 to get
+the `uptr`.
+
+An address is read from the `uptr` as follows:
+
+| Integer value | How Chez Scheme stores it | Extra memory access |
+|---|---|---|
+| below 2^60 | fixnum: one word, the value times 8 | none |
+| 2^60 or above | bignum: a pointer to a heap object, a header word (type, length, sign) followed by 32-bit digits | one |
+
+User-space addresses on x86-64 are below 2^47, so a shell address is always a fixnum. The
+shell address `0x2993BD20` in the diagram was measured on a `CrestOwned<MLIRContext>`: it is
+a fixnum, and `most-positive-fixnum` is `0xFFFFFFFFFFFFFFF` (2^60 - 1). The word
+`0x14C9DE900` is that address times 8.
 
 `with-OpBuilder` binds the **raw** address of `inner` (shell + 8) to its variable. It frees
 the whole shell when the body exits. Code that only creates ops uses the raw pointer.
