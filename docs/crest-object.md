@@ -355,7 +355,7 @@ For this reason, each shell type that is accepted is listed by name.
 `CrestOwned<T>` needs a public destructor on `T`, because its deletor runs `delete`.
 `RewriterBase` has a protected destructor, so Scheme can hold it only through `CrestRef`.
 
-The Scheme side, in `(mlir support array-ref)`:
+The Scheme side, in `(mlir support CrestObject)`:
 
 | Binding | What it does |
 |---|---|
