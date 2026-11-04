@@ -230,31 +230,36 @@ void ChezSchemeInterpreter::loadFile(const std::string& path) {
   scheme_call("load", Sstring(path.c_str()));
 }
 
-bool ChezSchemeInterpreter::importLibrary(
-    const std::string& slashSeparatedName) {
+std::optional<std::string>
+ChezSchemeInterpreter::importLibrary(const std::string& slashSeparatedName) {
   // Validate before string-building Scheme code — reject names with characters
   // outside [a-zA-Z0-9/_-] to prevent injection of arbitrary Scheme
   // expressions.
   for (char c : slashSeparatedName) {
     if (!std::isalnum(static_cast<unsigned char>(c)) && c != '/' && c != '_' &&
         c != '-' && c != '.') {
-      llvm::errs() << "[error] invalid module name character '" << c
-                   << "' in: " << slashSeparatedName << "\n";
-      return false;
+      return "invalid module name character '" + std::string(1, c) +
+             "' in: " + slashSeparatedName;
     }
   }
   std::string lib = slashSeparatedName;
   std::replace(lib.begin(), lib.end(), '/', ' ');
-  // guard catches "library not found" before it reaches the top-level abort
-  // handler. On failure returns #f; the caller (CrestPass) logs the library
-  // search directories at error level.
-  std::string importCode = "(guard (c (#t #f))"
-                           " (eval '(import (" +
-                           lib + "))) #t)";
+  // guard catches "library not found" and any error raised while expanding the
+  // library before it reaches the top-level abort handler. It returns the
+  // condition as a string (#f on success), so the caller can show why the
+  // import failed. A raised object that is not a condition is written as is.
+  std::string importCode =
+      "(guard (c (#t (call-with-string-output-port"
+      " (lambda (p) (if (condition? c) (display-condition c p) (write c p))))))"
+      " (eval '(import (" +
+      lib + "))) #f)";
   ptr port = scheme_call("open-string-input-port", Sstring(importCode.c_str()));
   ptr expr = scheme_call("read", port);
   ptr result = scheme_call("eval", expr);
-  return result != Sfalse;
+  if (result == Sfalse) {
+    return std::nullopt;
+  }
+  return convert_to_cpp<std::string>(result);
 }
 
 bool ChezSchemeInterpreter::eval(const char* code) {

@@ -354,6 +354,23 @@ Any parenthesized item that doesn't match an op-form pattern is a Scheme express
 **Key design**: op-forms are NOT wrapped in their own `()` — the flat argument
 list is scanned left-to-right and op boundaries are detected syntactically.
 
+### Scheme expressions and the value of the form
+
+```scheme
+(begin-mlir-code
+  elem    = test.load (v) -> ty
+  stepped = (%%step elem ty)        ; bind the value of a Scheme expression
+  (log stepped)                     ; run for effect; the value is dropped
+  next    = test.use (stepped) -> ty)
+```
+
+- `var = (expr)` binds `var` to the value of `expr`. Later items can use it as an operand, in
+  a `-> var` result type, or in any other expression.
+- A bare `(expr)` runs for effect and its value is dropped, unless it is the last item.
+- The value of `begin-mlir-code` is the value of its **last item**, like Scheme's `begin`:
+  an op-form with results gives the result `Value` (the last one for `(a b) = ...`), an op-form
+  with no results gives the `Operation*`, and an expression gives its own value.
+
 ### Special forms
 
 Two special forms are available anywhere inside `begin-mlir-code`:
@@ -810,6 +827,38 @@ warning: samples/passes/hip-fusion/qadd.sls:83:20: [hip-qadd-fusion]
 ```
 
 No C++ changes, no rebuild — just set the variable, re-run, debug, unset, re-run.
+
+### `CREST_DEBUG_BEGIN_MLIR_CODE=<file>`
+
+Set it to a file path to see what each `begin-mlir-code` form expands to. Every expansion is
+appended to the file under a header with the form's source position, so a library with many
+forms ends up in one file:
+
+```bash
+CREST_DEBUG_BEGIN_MLIR_CODE=/tmp/expanded.scm CREST_SCHEME_BINARY_DIR=$(mktemp -d) \
+  CREST_PATH=$(pwd)/samples build/tools/crest-opt/crest-opt \
+  -allow-unregistered-dialect --crest-pass="passes=passes/hip-fusion" test/hip-fusion/qadd.mlir
+```
+
+```
+;; begin-mlir-code at /path/to/crest/samples/passes/hip-fusion/qadd.sls:96:7
+(let* ([g0 (let ([g0 (with-OperationState g1
+                       ((apply mlir::FileLineColLoc::get
+                               '("/path/to/crest/samples/passes/hip-fusion/qadd.sls" 96 16))
+                        "tensor.empty")
+                       ...
+                       (%%crest:create-op! (%%current-builder) g1))])
+             g0)]
+       [init (mlir::Operation::getResult g0 0)]
+       ...
+       [result (mlir::Operation::getResult g2 0)])
+  result)
+```
+
+The block above is abridged. The dump is the `let*` that `begin-mlir-code` produces, with the op-creation code left as
+`with-OperationState` and friends. The file is never truncated: delete it between runs.
+The expansion happens when a library is compiled, so use a fresh `CREST_SCHEME_BINARY_DIR`
+or a library that is not cached yet, or nothing is written.
 
 ### Source locations on emitted ops
 
