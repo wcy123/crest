@@ -236,7 +236,24 @@ Scheme only has `obj`. The deletor was set when the object was built, so it know
 | Type tag at +0 | no | yes | yes |
 | What a binding checks | not null | type tag | type tag |
 | Freed by Scheme | never | yes, with `with-CrestObject` | never |
+| Memory loads to reach the `T` | 0 | 1 (the type tag, then `T` is inline) | 2 (the type tag, then `ptr`, then the `T` is elsewhere) |
 | Examples | `Operation*`, `Block*`, raw `OpBuilder*`, raw `MLIRContext*` | `OpBuilder` from `atBlockEnd`, `RewritePatternSet` | the pattern's rewriter |
+
+### Cost of the extra level
+
+A shell is one more level between Scheme and the object. A raw pointer has none. The shell
+costs work in two places:
+
+- **Every use.** A binding reads the type tag at +0 and compares it. For a `CrestRef` it
+  then reads `ptr` at +8, and the `T` is in another place in memory. For a `CrestOwned` the
+  `T` is right after the tag.
+- **Every creation.** Each shell is one heap allocation. For example, C++ allocates one
+  `CrestRef<RewriterBase>` each time a pattern matches an op name and calls its Scheme
+  callback.
+
+This is why `current-OpBuilder` holds the raw `OpBuilder*`. The shell is unwrapped once, and
+then every op that `begin-mlir-code` creates uses the raw pointer with no further check.
+The per-call cost has not been measured.
 
 ### Using a shell in a binding
 
