@@ -129,13 +129,8 @@ Scheme object
                   +------------------------------+
                        |
                        |  FFI call: shift right by 3
-                       v
-Shell address
-(`uptr`)          +------------------------------+
-                  | 0x2993BD20                   |
-                  +------------------------------+
-                       |
-                       |  this number is an address in C++ memory
+                       |  gives the shell address (`uptr`) 0x2993BD20,
+                       |  which is the address of the shell below
                        v
 address      offset
 0x2993BD20   +0   +------------------------------+   CrestOwned<OpBuilder>, 40 bytes
@@ -158,7 +153,7 @@ address is a `uptr` (`unsigned long`). Here:
 
 | Name | Value | Meaning |
 |---|---|---|
-| `uptr` | `0x2993BD20` | the shell address; the C++ bindings receive it as `uint64_t` |
+| `uptr` | `0x2993BD20` | the shell address; the C++ bindings receive it as a `uint64_t` argument, and it is not stored anywhere else |
 | `ptr` | `0x14C9DE900` | the same number shifted left by 3; this is what the Scheme variable holds |
 
 A fixnum is not a pointer. There is no heap object behind it, and the garbage collector does
