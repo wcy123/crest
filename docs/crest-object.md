@@ -308,7 +308,6 @@ body. The list is `()` when there are no arguments.
 | `with-ArrayRef v (ref)` or `v (data size)` | a `CArrayRef`; the elements are never freed |
 | `with-OpBuilder v (create-call)` | frees the shell that `(create-call)` makes, but binds `v` to the **raw** `OpBuilder*` inside it |
 | `with-DialectRegistry v ()`, `with-MLIRContext v (registry)`, `with-PassManager v (ctx)` | a `DialectRegistry`, an `MLIRContext` made from a registry, a `PassManager` |
-| `with-raii (v ctor dtor)` | any resource: calls `(dtor v)` on exit, also with `dynamic-wind`; it does not follow the shape above |
 
 Nested macros free in reverse order: the innermost shell is freed first.
 

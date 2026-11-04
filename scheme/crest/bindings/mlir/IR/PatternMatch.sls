@@ -34,11 +34,9 @@
     ;; Type predicates
     crest::isa<CrestOwned<mlir::RewritePatternSet>>?
     ;; RAII macros
-    with-raii
     with-RewritePatternSet)
 
   (import (rnrs)
-          (only (mlir support RAII) with-raii)
           (only (mlir support CrestObject) with-CrestObject)
           (only (chezscheme) void)
           (only (mlir IR PatternMatch ffi)

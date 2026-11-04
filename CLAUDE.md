@@ -149,8 +149,6 @@ then the creation arguments in a list (empty when there are none):
 `(with-<C++ClassName> variable (arguments ...) body ...)`. The variable is never grouped with
 the arguments.
 
-Generic ctor/dtor helper with no C++ class name: `with-raii`.
-
 ### Rule 11 — Dynamic parameters: `current-<C++ClassName>`
 
 ```scheme
@@ -174,7 +172,6 @@ at offset 0). Bindings that take a builder take that raw pointer; rewriter-only 
 | `with-TypeConverter` | `(mlir Transforms DialectConversion)` | `mlir/Transforms/DialectConversion.h` |
 | `with-ConversionTarget` | `(mlir Transforms DialectConversion)` | `mlir/Transforms/DialectConversion.h` |
 | `with-CrestObject` | `(mlir support CrestObject)` | `lib/Bindings/Support/CrestObject.h` (CREST-specific) |
-| `with-raii` | `(mlir support RAII)` | (generic, no C++ counterpart) |
 
 ---
 
