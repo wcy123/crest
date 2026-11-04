@@ -23,7 +23,8 @@
 ;;   var = op.name (operands...) modifiers... -> result-type      single-result
 ;;   (v0 v1) = op.name (operands...) modifiers... -> (t0 t1)     multi-result
 ;;   op.name (operands...) modifiers...                           statement (no result)
-;;   (scheme-expr ...)                                            Scheme expression
+;;   (scheme-expr ...)                                            Scheme expression (value dropped)
+;;   var = (scheme-expr ...)                                      bind the expression's value to var
 ;;
 ;; Modifiers (any order, between operands and ->):
 ;;
@@ -327,6 +328,7 @@
       ;; Returns (values head remaining):
       ;;   (values #f #f)           — items is empty
       ;;   (values ast-emit-op stx) — next item(s) form an MLIR op
+      ;;   (values (var . expr) stx) — `var = (expr)`: bind the value of a Scheme expression
       ;;   (values expr-stx stx)    — next item is a Scheme expression
       (define (parse-next items)
         (syntax-case items (=)
@@ -357,6 +359,10 @@
                       (value-operands #'(operands ...))
                       attr-fns region-fns loc types)
                      remaining))]
+          ;; var = (scheme-expr ...) — name the value of a Scheme expression
+          [(v = expression . rest)
+           (identifier? #'v)
+           (values (cons #'v #'expression) #'rest)]
           ;; Scheme expression — consume one item
           [(expr . rest)
            (values #'expr #'rest)]))
@@ -367,9 +373,10 @@
           (if (not head)
               '()
               (append
-               (if (ast-emit-op? head)
-                   (emit-multi head)
-                   (list (cons (car (generate-temporaries '(%unused))) head)))
+               (cond
+                [(ast-emit-op? head) (emit-multi head)]
+                [(and (pair? head) (identifier? (car head))) (list head)]
+                [else (list (cons (car (generate-temporaries '(%unused))) head))])
                (process-ops-flat remaining)))))
 
       ;; Shared block-fill factory.

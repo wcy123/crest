@@ -354,6 +354,23 @@ Any parenthesized item that doesn't match an op-form pattern is a Scheme express
 **Key design**: op-forms are NOT wrapped in their own `()` — the flat argument
 list is scanned left-to-right and op boundaries are detected syntactically.
 
+### Scheme expressions and the value of the form
+
+```scheme
+(begin-mlir-code
+  elem    = test.load (v) -> ty
+  stepped = (%%step elem ty)        ; bind the value of a Scheme expression
+  (log stepped)                     ; run for effect; the value is dropped
+  next    = test.use (stepped) -> ty)
+```
+
+- `var = (expr)` binds `var` to the value of `expr`. Later items can use it as an operand, in
+  a `-> var` result type, or in any other expression.
+- A bare `(expr)` runs for effect and its value is dropped, unless it is the last item.
+- The value of `begin-mlir-code` is the value of its **last item**, like Scheme's `begin`:
+  an op-form with results gives the result `Value` (the last one for `(a b) = ...`), an op-form
+  with no results gives the `Operation*`, and an expression gives its own value.
+
 ### Special forms
 
 Two special forms are available anywhere inside `begin-mlir-code`:
