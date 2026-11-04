@@ -121,32 +121,34 @@ Layouts on a 64-bit target:
 #### `CrestOwned<OpBuilder>`, from `mlir::OpBuilder::atBlockEnd`
 
 ```
- Scheme (Chez Scheme)                        FFI call                    C++ heap
- --------------------                        --------                    --------
-
- variable `shell`
- +---------------------------+
- | 0x14C9DE900               |   foreign-procedure, argument type `uptr`:
- | low 3 bits = 000          |   shift right by 3 (remove the fixnum tag)
- | (a fixnum)                |               |
- +---------------------------+               v
-  one machine word;                    0x2993BD20  = the shell address
-  no heap object behind it             (C `uptr`; our bindings take it as uint64_t)
-                                               |
-                                               v
-                                           +0  +------------------------------+
-                                               | deletor ---------------------------------> AsCrest<CrestOwned<OpBuilder>>
-                                           +8  +------------------------------+                 ::type_deletor
-                                               | context                      |  \
-                                          +16  +------------------------------+   |
-                                               | listener                     |   |  inner : mlir::OpBuilder
-                                          +24  +------------------------------+   |  (32 bytes)
-                                               | block                        |   |
-                                          +32  +------------------------------+   |
-                                               | insertPoint                  |  /
-                                          +40  +------------------------------+
-
-                                               CrestOwned<OpBuilder> = 40 bytes
+                   variable `shell` (Chez Scheme: one machine word, no heap object)
+                   +------------------------------+
+   Scheme          | 0x2993BD20  | 000            |   = 0x14C9DE900, the address * 8
+                   +------------------------------+
+                     address       fixnum tag (binary)
+                     |
+                     |  FFI call, argument type `uptr`:
+                     |  shift right by 3, which drops the tag
+                     v
+                   `uptr` (C `unsigned long`; our bindings take it as uint64_t)
+                   +------------------------------+
+   C++ call        | 0x2993BD20                   |   the shell address
+                   +------------------------------+
+                     |
+                     |  points to
+                     v
+   address
+   0x2993BD20  +0  +------------------------------+   CrestOwned<OpBuilder>, 40 bytes
+                   | deletor ---------------------------------> AsCrest<CrestOwned<OpBuilder>>
+   0x2993BD28  +8  +------------------------------+                 ::type_deletor
+                   | context                      |  \
+   0x2993BD30  +16 +------------------------------+   |
+                   | listener                     |   |  inner : mlir::OpBuilder
+   0x2993BD38  +24 +------------------------------+   |  (32 bytes)
+                   | block                        |   |
+   0x2993BD40  +32 +------------------------------+   |
+                   | insertPoint                  |  /
+   0x2993BD48  +40 +------------------------------+
 ```
 
 The Scheme variable does not point at a Scheme object that points at the shell. It holds the
@@ -166,7 +168,8 @@ An address is read from the `uptr` as follows:
 User-space addresses on x86-64 are below 2^47, so a shell address is always a fixnum. The
 shell address `0x2993BD20` in the diagram was measured on a `CrestOwned<MLIRContext>`: it is
 a fixnum, and `most-positive-fixnum` is `0xFFFFFFFFFFFFFFF` (2^60 - 1). The word
-`0x14C9DE900` is that address times 8.
+`0x14C9DE900` is that address times 8. The other addresses in the heap box are that base
+address plus the field offsets.
 
 `with-OpBuilder` binds the **raw** address of `inner` (shell + 8) to its variable. It frees
 the whole shell when the body exits. Code that only creates ops uses the raw pointer.
