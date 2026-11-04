@@ -84,7 +84,7 @@ example, `as_ptr<mlir::OpBuilder>` accepts a `CrestOwned<OpBuilder>` or a
 
 **The object frees itself.** Scheme does not know the C++ type of the object it holds. We
 also do not want a separate "free" binding for every type. So each shell carries its own
-free function. `with-CrestObject` calls one C function, `CrestObject::delete`, which calls
+free function. `with-CrestObject` calls one C function, `crest::CrestObject::delete`, which calls
 the function stored in the shell. That function knows the real type. One macro works for
 every object, and the object is freed exactly when the body ends. It is not freed later,
 when the garbage collector happens to run.
@@ -218,13 +218,13 @@ the builder's `context`. For this reason the conversion is done in C++
 ```
  (with-CrestObject b (mlir::OpBuilder::atBlockEnd blk) body ...)
 
- Scheme                      C function                    function stored in the shell
- ------                      ----------                    ----------------------------
- CrestObject::delete b  -->  obj->deletor(obj)  ------->  type_deletor<CrestOwned<OpBuilder>>(self)
-                                                              |
-                                                              v
-                                                          delete static_cast<CrestOwned<OpBuilder>*>(self)
-                                                          (runs ~OpBuilder, then frees the shell)
+ Scheme                         C function                function stored in the shell
+ ------                         ----------                ----------------------------
+ crest::CrestObject::delete b   -->  obj->deletor(obj)  ------->  type_deletor<CrestOwned<OpBuilder>>(self)
+                                                                      |
+                                                                      v
+                                                                  delete static_cast<CrestOwned<OpBuilder>*>(self)
+                                                                  (runs ~OpBuilder, then frees the shell)
 ```
 
 Scheme only has `obj`. The deletor was set when the object was built, so it knows the type.
@@ -271,14 +271,14 @@ and the `with-*` macros are how you do it.
 ```
 
 It binds `name` to the shell that `init-expr` creates, runs the body, and then calls
-`CrestObject::delete` on the shell. It expands to this:
+`crest::CrestObject::delete` on the shell. It expands to this:
 
 ```scheme
 (let ([name init-expr])
   (dynamic-wind
     (lambda () #f)
     (lambda () body ...)
-    (lambda () (CrestObject::delete name))))
+    (lambda () (crest::CrestObject::delete name))))
 ```
 
 Because of `dynamic-wind`, the shell is freed in all three ways the body can end: it returns
@@ -301,7 +301,7 @@ Each of these creates one shell, binds it, and frees it when the body ends.
 | `with-ArrayRef (v ref)` or `(v data size)` | a `CArrayRef`; the elements are never freed |
 | `with-OpBuilder v init` | frees the shell that `init` creates, but binds `v` to the **raw** `OpBuilder*` inside it |
 | `with-raii (v ctor dtor)` | any resource: calls `(dtor v)` on exit, also with `dynamic-wind` |
-| `with-DialectRegistry (v)`, `with-MLIRContext (v registry)`, `with-PassManager (v ctx)` | built on `with-raii`, with `CrestObject::delete` as the `dtor` |
+| `with-DialectRegistry (v)`, `with-MLIRContext (v registry)`, `with-PassManager (v ctx)` | a `DialectRegistry`, an `MLIRContext` made from a registry, a `PassManager` |
 
 Nested macros free in reverse order: the innermost shell is freed first.
 
@@ -317,7 +317,7 @@ often nested inside one of the macros above, for example `with-OpBuilder` for th
 
 - **Create a `CrestOwned` shell only inside a `with-*` macro.** If you call a binding that
   returns a shell (`mlir::OpBuilder::atBlockEnd`, `mlir::MLIRContext::new`, and so on) and
-  do not pass the result to one of these macros or to `CrestObject::delete`, it leaks.
+  do not pass the result to one of these macros or to `crest::CrestObject::delete`, it leaks.
 - **Do not return the shell out of the body.** It is freed when the body ends, so the
   returned address would point at freed memory. Return what you need from it instead, for
   example the new op or value, which MLIR owns.
@@ -360,8 +360,8 @@ The Scheme side, in `(mlir support CrestObject)`:
 | Binding | What it does |
 |---|---|
 | `with-CrestObject` | frees any shell when the body exits |
-| `CrestObject::delete` | calls the deletor now |
-| `CrestObject::deletor` | reads the type tag: `(foreign-ref 'uptr obj 0)` |
+| `crest::CrestObject::delete` | calls the deletor now |
+| `crest::CrestObject::deletor` | reads the type tag: `(foreign-ref 'uptr obj 0)` |
 
 ### Pitfalls
 
