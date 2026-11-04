@@ -25,6 +25,8 @@ and frees the object.
 - [Why we need it](#why-we-need-it)
 - [CrestOwned and CrestRef](#crestowned-and-crestref)
 - [Memory diagrams](#memory-diagrams)
+- [Cost of the extra level](#cost-of-the-extra-level)
+- [Freeing shells](#freeing-shells)
 - [Using a shell in a binding](#using-a-shell-in-a-binding)
 - [Pitfalls](#pitfalls)
 
@@ -253,6 +255,75 @@ costs work in two places:
 This is why `current-OpBuilder` holds the raw `OpBuilder*`. The shell is unwrapped once, and
 then every op that `begin-mlir-code` creates uses the raw pointer with no further check.
 The per-call cost has not been measured.
+
+### Freeing shells
+
+The Scheme garbage collector does not know about a `CrestOwned` shell, because Scheme holds
+only an integer. If Scheme drops that integer without freeing the shell, the memory is
+**leaked** for the rest of the run. So every `CrestOwned` shell must be freed exactly once,
+and the `with-*` macros are how you do it.
+
+#### `with-CrestObject`
+
+```scheme
+(with-CrestObject (name init-expr)
+  body ...)
+```
+
+It binds `name` to the shell that `init-expr` creates, runs the body, and then calls
+`CrestObject::delete` on the shell. It expands to this:
+
+```scheme
+(let ([name init-expr])
+  (dynamic-wind
+    (lambda () #f)
+    (lambda () body ...)
+    (lambda () (CrestObject::delete name))))
+```
+
+Because of `dynamic-wind`, the shell is freed in all three ways the body can end: it returns
+normally, it raises a Scheme error, or it jumps out with a continuation. The value of the
+form is the value of the body.
+
+#### Macros built on it
+
+Each of these creates one shell, binds it, and frees it when the body ends.
+
+| Macro | What it creates |
+|---|---|
+| `with-CrestObject (v init)` | any shell: the general form |
+| `with-OperationState (v (loc name))` | a `CrestOwned<OperationState>` |
+| `with-RewritePatternSet (v)` or `(v ctx)` | a `RewritePatternSet` |
+| `with-TypeConverter (v)` | a `TypeConverter` |
+| `with-LLVMTypeConverter (v)` or `(v ctx)` | an `LLVMTypeConverter` |
+| `with-ConversionTarget (v)` or `(v ctx)` | a `ConversionTarget` |
+| `with-ExecutionEngine (v module-op)` | an `ExecutionEngine` |
+| `with-ArrayRef (v ref)` or `(v data size)` | a `CArrayRef`; the elements are never freed |
+| `with-OpBuilder (v init)` | frees the shell that `init` creates, but binds `v` to the **raw** `OpBuilder*` inside it |
+| `with-raii (v ctor dtor)` | any resource: calls `(dtor v)` on exit, also with `dynamic-wind` |
+| `with-DialectRegistry (v)`, `with-MLIRContext (v registry)`, `with-PassManager (v ctx)` | built on `with-raii`, with `CrestObject::delete` as the `dtor` |
+
+Nested macros free in reverse order: the innermost shell is freed first.
+
+#### Macros that free nothing
+
+`with-current-MLIRContext`, `with-current-MLIRBlock` and `with-current-OpBuilder` only set a
+dynamic variable for the length of the body (see
+[manual.md](manual.md#context-parameters)). They do not create or free anything. They are
+often nested inside one of the macros above, for example `with-OpBuilder` for the shell and
+`with-current-OpBuilder` to make its raw pointer the ambient builder.
+
+#### How to avoid a leak
+
+- **Create a `CrestOwned` shell only inside a `with-*` macro.** If you call a binding that
+  returns a shell (`mlir::OpBuilder::atBlockEnd`, `mlir::MLIRContext::new`, and so on) and
+  do not pass the result to one of these macros or to `CrestObject::delete`, it leaks.
+- **Do not return the shell out of the body.** It is freed when the body ends, so the
+  returned address would point at freed memory. Return what you need from it instead, for
+  example the new op or value, which MLIR owns.
+- **Do not free a `CrestRef`.** C++ frees it. A `with-CrestObject` around it frees it twice.
+- **Do not re-enter a body with a saved continuation after it ended.** The shell is already
+  freed.
 
 ### Using a shell in a binding
 
