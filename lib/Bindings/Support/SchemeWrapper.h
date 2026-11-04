@@ -55,17 +55,6 @@ template <typename... Ts>
   crest_unreachable();
 }
 
-template <typename T>
-[[nodiscard]] inline T* crest_cast(uint64_t ptr_val, const char* who) {
-  if (!ptr_val) {
-    scheme_error(who, "null pointer");
-  }
-  if (!reinterpret_cast<crest::CrestObject*>(ptr_val)->isa<T>()) {
-    scheme_error(who, "wrong CrestObject type");
-  }
-  return reinterpret_cast<T*>(ptr_val);
-}
-
 namespace crest {
 
 // True when T has a public, non-deleted destructor (i.e. CrestOwned<T> can
@@ -88,7 +77,14 @@ template <typename T>
 
 template <typename T>
 [[nodiscard]] inline T& as_ref(uint64_t ptr_val, const char* who) {
-  return crest_cast<crest::CrestOwned<T>>(ptr_val, who)->inner;
+  if (!ptr_val) {
+    scheme_error(who, "null pointer");
+  }
+  auto* obj = reinterpret_cast<crest::CrestObject*>(ptr_val);
+  if (!obj->isa<crest::CrestOwned<T>>()) {
+    scheme_error(who, "wrong CrestObject type");
+  }
+  return static_cast<crest::CrestOwned<T>*>(obj)->inner;
 }
 
 // Returns T* from CrestRef<T>* (non-owning) or, when T is deletable,
