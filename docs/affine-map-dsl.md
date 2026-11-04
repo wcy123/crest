@@ -17,7 +17,8 @@ Licensed under the MIT License.
 An `mlir::AffineMap` is built from `AffineExpr` values with C++ operators, or parsed from the
 text `affine_map<(d0, d1)[s0] -> (d0 + s0, d1)>`. In Scheme the first is a list of binding calls
 and the second is a string. `affine-map` is a macro that writes the same map as an expression,
-so the structure can depend on Scheme values and mistakes are reported when the library compiles.
+so the structure can depend on Scheme values, and a wrong or misspelled name is reported when the
+library compiles.
 
 ```scheme
 (affine-map (d0 d1) (s0)        ; dimensions, symbols
@@ -30,7 +31,7 @@ so the structure can depend on Scheme values and mistakes are reported when the 
 - [Syntax](#syntax)
 - [Meaning of the names](#meaning-of-the-names)
 - [Expansion](#expansion)
-- [Operands: expression or constant](#operands-expression-or-constant)
+- [Operands](#operands)
 - [Bindings it needs](#bindings-it-needs)
 - [Errors](#errors)
 - [Tests](#tests)
@@ -52,14 +53,8 @@ so the structure can depend on Scheme values and mistakes are reported when the 
 | `(sym ...)` | identifiers naming the symbols, in order |
 | `result ...` | zero or more result expressions, in order |
 
-A result expression is one of:
-
-| Form | Value |
-|---|---|
-| a `dim` or `sym` name | that dimension or symbol |
-| an integer literal | a constant |
-| `,expr` | the Scheme integer `expr`, as a constant |
-| `(op operand ...)` | the operator applied to its operands |
+Each result is an ordinary Scheme expression, evaluated where the names and operators below are
+in scope. It yields an `AffineExpr` or an integer. An integer is taken as a constant.
 
 The operators are `+`, `-`, `*`, `floordiv`, `ceildiv` and `mod`. `+` and `*` take two or more
 operands and fold to the left. `-` with one operand is negation, and with two or more it
@@ -81,17 +76,19 @@ written with different names are the same map.
 
 ### Expansion
 
-The body runs in a scope where the names are bound and the operators mean the `AffineExpr`
-operations (points 1 to 3 of the design):
+The body runs in a scope where the dimension and symbol names are `let`-bound (points 2 and 3 of
+the design) and the operator names are rebound to the `AffineExpr` bindings (point 1):
 
 ```scheme
 (affine-map (d0 d1) (s0) (+ d0 s0) d1)
 ;; expands to
 (let ([d0 (mlir::getAffineDimExpr 0)]
       [d1 (mlir::getAffineDimExpr 1)]
-      [s0 (mlir::getAffineSymbolExpr 0)])
+      [s0 (mlir::getAffineSymbolExpr 0)]
+      [+  mlir::AffineExpr::operator+]            ; likewise -, *, floordiv, ceildiv, mod
+      ...)
   (mlir::AffineMap::get 2 1                       ; dimension count, symbol count
-    (list (mlir::AffineExpr::operator+ d0 s0)     ; (+ d0 s0)
+    (list (+ d0 s0)                               ; calls the AffineExpr operator
           d1)))
 ```
 
@@ -99,47 +96,46 @@ operations (points 1 to 3 of the design):
  (affine-map (d0 d1) (s0) (+ d0 s0) d1)
         |
         |  dims and symbols -> one let binding each, by position
-        |  operators        -> AffineExpr bindings
+        |  + - * ...        -> let-bound to the AffineExpr bindings
         |  lengths          -> dimension count 2, symbol count 1
         v
- let ([d0 dim 0] [d1 dim 1] [s0 sym 0])  AffineMap::get 2 1 (list expr0 expr1)
+ let ([d0 dim 0] [d1 dim 1] [s0 sym 0] [+ ...])  AffineMap::get 2 1 (list expr0 expr1)
         |
         v
  affine_map<(d0, d1)[s0] -> (d0 + s0, d1)>
 ```
 
+The operator names are introduced in the lexical context of the `affine-map` form, so a `+`
+written by the caller inside the body is the affine operator, and outside the body nothing
+changes. The body is plain Scheme, so any Scheme variable is visible in it:
+
+```scheme
+(affine-map (i) ()                  ; t is a Scheme integer in scope
+  (floordiv i t)
+  (mod i t))
+```
+
 The context is `(current-MLIRContext)`, as for the other constructors. To use another context,
 wrap the form in `with-current-MLIRContext`.
 
-### Operands: expression or constant
+### Operands
 
-An `AffineExpr` and an integer are both Scheme integers: an `AffineExpr` crosses the FFI as an
-opaque pointer. The two cannot be told apart at run time, and the C++ operators have a different
-overload for each. So each operator classifies its operands **when the macro expands**:
+An operator accepts an `AffineExpr` or an integer for each operand. An integer becomes
+`getAffineConstantExpr`. When every operand is an integer, the operator does ordinary integer
+arithmetic and returns an integer, so `(* 2 t)` inside the body is just a number. A result that
+is an integer is a constant. This is what lets a runtime value enter with no marking.
 
-| Operand | Treated as | Built with |
-|---|---|---|
-| integer literal, or `,expr` | constant | `getAffineConstantExpr` |
-| anything else | an `AffineExpr` | used as is |
+The operators can only do this if an `AffineExpr` and an integer can be told apart at run time.
+A raw `AffineExpr` handle is an opaque pointer, which is a Scheme integer. So in the public
+library an `AffineExpr` is a distinct Scheme value that holds the pointer. The raw `%` bindings
+still return and take the pointer. The public bindings box the pointer on the way out, unbox it on
+the way in, and add the predicate `mlir::AffineExpr?`. A value that is neither an integer nor an
+`AffineExpr` raises a Scheme error naming the operator.
 
-Every operator is then applied in its `AffineExpr` by `AffineExpr` form. The overloads that
-take an `int64_t` are not bound, because MLIR defines `d0 + 1` as `d0 + getAffineConstantExpr(1)`.
-`-` is not bound either. MLIR defines negation as `e * getAffineConstantExpr(-1)` and `a - b` as
-`a + (-b)`, so the macro expands `(- e)` to `(* e -1)` and `(- a b)` to `(+ a (* b -1))`.
-
-The operators are bound by the macro as syntax, introduced in the body's own lexical context, so
-a `+` written in the body is the affine operator and not Scheme's. Outside the body nothing
-changes. This is also how a runtime value enters:
-
-```scheme
-(affine-map (i) ()                  ; tile size t is a Scheme integer
-  (floordiv i ,t)
-  (mod i ,t))
-```
-
-An `AffineExpr` built elsewhere is used by naming the variable that holds it, with no `,`.
-A Scheme variable that holds an integer must be written `,x`. Writing `x` treats the integer as
-an expression pointer.
+The `int64_t` overloads of the C++ operators are not bound, because MLIR defines `d0 + 1` as
+`d0 + getAffineConstantExpr(1)`. `-` is not bound either. MLIR defines negation as
+`e * getAffineConstantExpr(-1)` and `a - b` as `a + (-b)`, so the public `-` is built from `+` and
+`*`.
 
 ### Bindings it needs
 
@@ -154,9 +150,10 @@ private library, an optional context where the C++ API takes one.
 | `mlir::AffineExpr::operator+(AffineExpr)`, `operator*(AffineExpr)` | `+`, `*`, and `-` through them |
 | `mlir::AffineExpr::floorDiv(AffineExpr)`, `ceilDiv(AffineExpr)`, `operator%(AffineExpr)` | `floordiv`, `ceildiv`, `mod` |
 | `mlir::AffineMap::get(unsigned, unsigned, ArrayRef<AffineExpr>, MLIRContext*)` | the result |
+| `mlir::AffineExpr?` (Scheme predicate, no C++ call) | tells an `AffineExpr` from an integer |
 
-An `AffineExpr` and an `AffineMap` are context-owned opaque pointers: valid for the context's
-lifetime, never freed by Scheme. The three leaf constructors need the context; the operators do
+An `AffineExpr` and an `AffineMap` are context-owned: valid for the context's lifetime, never
+freed by Scheme. An `AffineMap` is an opaque pointer. An `AffineExpr` is the boxed pointer above. The three leaf constructors need the context; the operators do
 not, because it is inside their operands.
 
 ### Errors
@@ -164,11 +161,10 @@ not, because it is inside their operands.
 | Mistake | Reported |
 |---|---|
 | a dimension or symbol name repeated, or the same in both lists | at expansion, at the name |
-| a name that is an operator keyword | at expansion, at the name |
-| wrong operand count (`(mod i)`, `(floordiv i 2 3)`) | at expansion, at the operator |
-| `-` or `+` with no operand | at expansion, at the operator |
+| a name that is an operator name | at expansion, at the name |
 | an identifier bound nowhere | at expansion, as an unbound identifier with its line and column |
-| a non-integer `,expr` | at run time, in the constant constructor |
+| wrong operand count (`(mod i)`, `(floordiv i 2 3)`) | at run time, as a procedure arity error |
+| an operand that is neither an integer nor an `AffineExpr` | at run time, naming the operator |
 
 MLIR accepts maps that are not pure affine, such as `d0 * d1`. The macro does not reject them,
 and a later verifier may. `AffineExpr::isPureAffine` can check a result if needed.
@@ -177,13 +173,20 @@ and a later verifier may. `AffineExpr::isPureAffine` can check a result if neede
 
 - Every operator, with expression and constant operands, compared with the text form through the
   printed map.
-- A `,expr` constant, and an `AffineExpr` variable used as an operand.
+- A Scheme integer variable as an operand, integer-only arithmetic inside the body, and an
+  `AffineExpr` variable built elsewhere.
 - Dimensions only, symbols only, and zero results.
-- Each error in the table above, as a library that must fail to compile with the message.
+- Each error in the table above: the expansion errors as libraries that must fail to compile,
+  the run-time ones as a call that must raise.
 - One op that needs the map, an `affine.load` with its `map` attribute.
 
 ### Open questions
 
+- **`AffineExpr` representation.** The design boxes it so `+` can tell it from an integer. The
+  other way is to keep the raw pointer and give up the tell: an integer then has to be wrapped
+  explicitly at each use, as `(+ d0 (constant 1))`, because a bare `1` and a pointer cannot be
+  told apart. The boxed form keeps the body readable and turns a wrong operand into a Scheme error,
+  and the cost is one small allocation per expression. This should be settled first.
 - **Overload naming.** `mlir::AffineMap::get` is already bound as the context-only overload. The
   general overload needs a distinct raw symbol, and CLAUDE.md Rule 4 gives the full C++ qualified
   name but no rule for overloads. A suffix naming the argument kinds is one option. The rule should
