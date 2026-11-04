@@ -93,13 +93,13 @@
   ;; @brief with-ArrayRef — RAII for CArrayRef; calls crest::CrestObject::delete on exit.
   ;;
   ;; Two forms:
-  ;;   (with-ArrayRef (name existing-ref) body ...)  — adopt existing CArrayRef
-  ;;   (with-ArrayRef (name data-ptr size) body ...)  — allocate + adopt
+  ;;   (with-ArrayRef name (existing-ref) body ...)  — adopt existing CArrayRef
+  ;;   (with-ArrayRef name (data-ptr size) body ...)  — allocate + adopt
   (define-syntax with-ArrayRef
     (syntax-rules ()
-      [(_ (name ref-expr) body ...)
+      [(_ name (ref-expr) body ...)
        (with-CrestObject name ref-expr body ...)]
-      [(_ (name data-ptr size) body ...)
+      [(_ name (data-ptr size) body ...)
        (with-CrestObject name (make-array-ref data-ptr size) body ...)]))
 
   ) ;; end library (mlir support array-ref)

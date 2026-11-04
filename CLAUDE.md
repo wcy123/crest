@@ -140,8 +140,14 @@ C symbol referenced from Scheme; each must appear in a `Sregister_symbol` call i
 
 ```scheme
 (with-current-MLIRContext ctx body ...)    ; installs a dynamic parameter
-(with-TypeConverter (tc) body ...)         ; manages lifetime, no dynamic param
+(with-TypeConverter tc () body ...)        ; manages lifetime, no dynamic param
+(with-ConversionTarget target (ctx) body ...)
 ```
+
+A macro that creates an object, binds it to a variable and frees it takes the variable first,
+then the creation arguments in a list (empty when there are none):
+`(with-<C++ClassName> variable (arguments ...) body ...)`. The variable is never grouped with
+the arguments.
 
 Generic ctor/dtor helper with no C++ class name: `with-raii`.
 

@@ -231,14 +231,14 @@
   ;;===--------------------------------------------------------------------===;;
 
   (define (%%toy-to-affine-lower! module-op ctx)
-    (with-TypeConverter (tc)
+    (with-TypeConverter tc ()
       ;; Tensor types lower to MemRef types; everything else passes through.
       (type-converter-add-conversion tc
                                      (lambda (type)
                                        (if (mlir::isa<RankedTensorType>? type)
                                            (%%tensor->memref-type type)
                                            type)))
-      (with-ConversionTarget (target ctx)
+      (with-ConversionTarget target (ctx)
         (target-add-legal-dialect target "affine")
         (target-add-legal-dialect target "arith")
         (target-add-legal-dialect target "func")
@@ -251,7 +251,7 @@
                                            (not (mlir::isa<RankedTensorType>?
                                                  (mlir::Value::getType
                                                   (mlir::Operation::getOperand print-op 0))))))
-        (with-RewritePatternSet (patterns ctx)
+        (with-RewritePatternSet patterns (ctx)
           (add-conversion-pattern patterns "toy.constant" %%constant-lower!  tc 1)
           (add-conversion-pattern patterns "toy.add"      %%add-lower!       tc 1)
           (add-conversion-pattern patterns "toy.mul"      %%mul-lower!       tc 1)

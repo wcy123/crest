@@ -11,5 +11,5 @@
   (define mlir::ExecutionEngine::invoke %mlir::ExecutionEngine::invoke)
   (define-syntax with-ExecutionEngine
     (syntax-rules ()
-      [(_ (var module-op) body ...)
+      [(_ var (module-op) body ...)
        (with-CrestObject var (mlir::ExecutionEngine::create module-op) body ...)])))

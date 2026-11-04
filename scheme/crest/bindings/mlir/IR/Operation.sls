@@ -268,7 +268,7 @@
   (define (operation-get-operands op . spec)
     (define (read-op i) (mlir::OpOperand::get op i))
     (define (%%flex-path attr n-spec)
-      (with-ArrayRef (segs (mlir::DenseI32ArrayAttr::intoArrayRef attr))
+      (with-ArrayRef segs ((mlir::DenseI32ArrayAttr::intoArrayRef attr))
         (let ([n (ArrayRef::size segs)])
           (and (= n n-spec)
                (let* ([sizes (loop :for i :from 0 :below n

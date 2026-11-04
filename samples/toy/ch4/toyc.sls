@@ -61,9 +61,9 @@
     (toy:dump module-ast)))
 
 (define (%%dump-mlir filename opt?)
-  (with-DialectRegistry (reg)
+  (with-DialectRegistry reg ()
     (mlir::DialectRegistry::insert reg "toy" "toy/ch4/toy")
-    (with-MLIRContext (ctx reg)
+    (with-MLIRContext ctx (reg)
       (mlir::MLIRContext::getOrLoadDialect ctx "toy")
       (let ([module-op (%%build-module filename ctx)])
         (when opt?
@@ -81,7 +81,7 @@
                              (%%run-shape-inference! op))))
   ;; Step 3: canonicalize (fold transpose/reshape patterns from combine.sls).
   (with-current-MLIRContext ctx
-    (with-RewritePatternSet (patterns ctx)
+    (with-RewritePatternSet patterns (ctx)
       (toy:add-canonicalization-patterns! patterns)
       (mlir::applyPatternsGreedily module-op patterns))))
 

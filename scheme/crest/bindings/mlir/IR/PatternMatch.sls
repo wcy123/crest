@@ -116,10 +116,10 @@
   ;; @note  Lifetime managed by CrestObject deletor; no explicit destructor needed.
   (define-syntax with-RewritePatternSet
     (syntax-rules ()
-      [(_ (var) body ...)
+      [(_ var () body ...)
        (with-CrestObject var (mlir::RewritePatternSet::RewritePatternSet (current-MLIRContext))
          body ...)]
-      [(_ (var ctx) body ...)
+      [(_ var (ctx) body ...)
        (with-CrestObject var (mlir::RewritePatternSet::RewritePatternSet ctx)
          body ...)]))
 

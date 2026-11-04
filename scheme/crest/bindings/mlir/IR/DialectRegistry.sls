@@ -35,7 +35,7 @@
   ;; The registry can be freed after the MLIRContext is created from it.
   (define-syntax with-DialectRegistry
     (syntax-rules ()
-      [(_ (reg) body ...)
+      [(_ reg () body ...)
        (with-CrestObject reg (mlir::DialectRegistry::new)
          body ...)]))
 
@@ -43,7 +43,7 @@
   ;; it on exit. The context owns all ops and dialects built inside BODY.
   (define-syntax with-MLIRContext
     (syntax-rules ()
-      [(_ (ctx reg) body ...)
+      [(_ ctx (reg) body ...)
        (with-CrestObject ctx (%mlir::MLIRContext::new/registry reg)
          body ...)]))
 

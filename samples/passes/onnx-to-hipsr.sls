@@ -140,11 +140,11 @@
     (crest::logging::info "Starting ONNX to HipSR Conversion (Scheme)")
     (let ((ctx (mlir::Operation::getContext module-op)))
       (with-current-MLIRContext ctx
-        (with-TypeConverter (type-converter)
+        (with-TypeConverter type-converter ()
           (hipsr-type-converter-add-device-memory-conversions! type-converter)
-          (with-ConversionTarget (target ctx)
+          (with-ConversionTarget target (ctx)
             (hipsr-configure-conversion-target! target ctx type-converter)
-            (with-RewritePatternSet (patterns ctx)
+            (with-RewritePatternSet patterns (ctx)
               ;; Scheme DSL patterns
               (populate-cast-patterns       type-converter patterns ctx)
               (populate-scatter-nd-patterns type-converter patterns ctx)

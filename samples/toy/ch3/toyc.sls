@@ -54,7 +54,7 @@
     (let ([op (%%module-op->op module-op)])
       (when opt?
         (with-current-MLIRContext ctx
-          (with-RewritePatternSet (patterns ctx)
+          (with-RewritePatternSet patterns (ctx)
             (toy:add-canonicalization-patterns! patterns)
             (mlir::applyPatternsGreedily op patterns))))
       (display (mlir::Operation::print op))
@@ -71,7 +71,7 @@
   (if (integer? m) m (mlir::ModuleOp::getOperation m)))
 
 (define (%%make-ctx)
-  (with-DialectRegistry (reg)
+  (with-DialectRegistry reg ()
     (mlir::DialectRegistry::insert reg "toy" "toy/ch3/toy")
     (let ([ctx (mlir::MLIRContext::new reg)])
       (mlir::MLIRContext::getOrLoadDialect ctx "toy")

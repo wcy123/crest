@@ -16,7 +16,7 @@
   ;; RAII: create an LLVMTypeConverter, execute body, free it.
   (define-syntax with-LLVMTypeConverter
     (syntax-rules ()
-      [(_ (var) body ...)
+      [(_ var () body ...)
        (with-CrestObject var (mlir::LLVMTypeConverter::LLVMTypeConverter) body ...)]
-      [(_ (var ctx) body ...)
+      [(_ var (ctx) body ...)
        (with-CrestObject var (mlir::LLVMTypeConverter::LLVMTypeConverter ctx) body ...)])))

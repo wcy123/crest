@@ -35,7 +35,7 @@
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
-        (with-RewritePatternSet (patterns ctx)
+        (with-RewritePatternSet patterns (ctx)
           (add-rewrite-pattern patterns "test.copy" %%pattern 10)
           (mlir::applyPatternsGreedily module-op patterns)))))
 

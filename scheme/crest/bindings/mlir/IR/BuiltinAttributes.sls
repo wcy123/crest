@@ -243,7 +243,7 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Caller owns the returned CArrayRef; always use with-ArrayRef for automatic cleanup:
   ;;
-  ;;   (with-ArrayRef (ref (mlir::DenseI64ArrayAttr::intoArrayRef attr))
+  ;;   (with-ArrayRef ref ((mlir::DenseI64ArrayAttr::intoArrayRef attr))
   ;;     (loop :for i :from 0 :below (ArrayRef::size ref)
   ;;           :collect (ArrayRef::at ref i :i64)))
   (define mlir::DenseI64ArrayAttr::intoArrayRef        %mlir::DenseI64ArrayAttr::intoArrayRef)
@@ -254,7 +254,7 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Caller owns the returned CArrayRef; always use with-ArrayRef for automatic cleanup:
   ;;
-  ;;   (with-ArrayRef (ref (mlir::DenseI32ArrayAttr::intoArrayRef attr))
+  ;;   (with-ArrayRef ref ((mlir::DenseI32ArrayAttr::intoArrayRef attr))
   ;;     (loop :for i :from 0 :below (ArrayRef::size ref)
   ;;           :collect (ArrayRef::at ref i :i32)))
   (define mlir::DenseI32ArrayAttr::intoArrayRef        %mlir::DenseI32ArrayAttr::intoArrayRef)

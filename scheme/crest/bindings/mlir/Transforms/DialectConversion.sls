@@ -151,12 +151,12 @@
   ;; @brief RAII macro — create a TypeConverter, execute BODY, then destroy on exit.
   ;; @param var  identifier bound to the CrestOwned<TypeConverter>* uptr for BODY
   ;; @example
-  ;;   (with-TypeConverter (tc)
+  ;;   (with-TypeConverter tc ()
   ;;     (type-converter-add-conversion tc my-fn)
   ;;     ...)
   (define-syntax with-TypeConverter
     (syntax-rules ()
-      [(_ (var) body ...)
+      [(_ var () body ...)
        (with-CrestObject var (type-converter-create)
          body ...)]))
 
@@ -164,15 +164,15 @@
   ;; @param var identifier bound to the CrestOwned<ConversionTarget>* uptr for BODY
   ;; @param ctx MLIRContext* uptr (optional; defaults to current-MLIRContext)
   ;; @example
-  ;;   (with-ConversionTarget (tgt)
+  ;;   (with-ConversionTarget tgt ()
   ;;     (target-add-illegal-dialect tgt "onnx")
   ;;     ...)
   (define-syntax with-ConversionTarget
     (syntax-rules ()
-      [(_ (var) body ...)
+      [(_ var () body ...)
        (with-CrestObject var (target-create (current-MLIRContext))
          body ...)]
-      [(_ (var ctx) body ...)
+      [(_ var (ctx) body ...)
        (with-CrestObject var (target-create ctx)
          body ...)]))
 

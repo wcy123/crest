@@ -287,21 +287,27 @@ form is the value of the body.
 
 #### Macros built on it
 
-Each of these creates one shell, binds it, and frees it when the body ends.
+Each of these creates one shell, binds it to a variable, and frees it when the body ends.
+They share one shape: the variable first, then the creation arguments in a list, then the
+body. The list is `()` when there are no arguments.
+
+```scheme
+(with-<Class> variable (arguments ...) body ...)
+```
 
 | Macro | What it creates |
 |---|---|
-| `with-CrestObject v init` | any shell: the general form |
-| `with-OperationState (v (loc name))` | a `CrestOwned<OperationState>` |
-| `with-RewritePatternSet (v)` or `(v ctx)` | a `RewritePatternSet` |
-| `with-TypeConverter (v)` | a `TypeConverter` |
-| `with-LLVMTypeConverter (v)` or `(v ctx)` | an `LLVMTypeConverter` |
-| `with-ConversionTarget (v)` or `(v ctx)` | a `ConversionTarget` |
-| `with-ExecutionEngine (v module-op)` | an `ExecutionEngine` |
-| `with-ArrayRef (v ref)` or `(v data size)` | a `CArrayRef`; the elements are never freed |
-| `with-OpBuilder v init` | frees the shell that `init` creates, but binds `v` to the **raw** `OpBuilder*` inside it |
-| `with-raii (v ctor dtor)` | any resource: calls `(dtor v)` on exit, also with `dynamic-wind` |
-| `with-DialectRegistry (v)`, `with-MLIRContext (v registry)`, `with-PassManager (v ctx)` | a `DialectRegistry`, an `MLIRContext` made from a registry, a `PassManager` |
+| `with-CrestObject v (create-call)` | any shell: the general form, where `(create-call)` is the call that makes it |
+| `with-OperationState v (loc name)` | a `CrestOwned<OperationState>` |
+| `with-RewritePatternSet v ()` or `v (ctx)` | a `RewritePatternSet` |
+| `with-TypeConverter v ()` | a `TypeConverter` |
+| `with-LLVMTypeConverter v ()` or `v (ctx)` | an `LLVMTypeConverter` |
+| `with-ConversionTarget v ()` or `v (ctx)` | a `ConversionTarget` |
+| `with-ExecutionEngine v (module-op)` | an `ExecutionEngine` |
+| `with-ArrayRef v (ref)` or `v (data size)` | a `CArrayRef`; the elements are never freed |
+| `with-OpBuilder v (create-call)` | frees the shell that `(create-call)` makes, but binds `v` to the **raw** `OpBuilder*` inside it |
+| `with-DialectRegistry v ()`, `with-MLIRContext v (registry)`, `with-PassManager v (ctx)` | a `DialectRegistry`, an `MLIRContext` made from a registry, a `PassManager` |
+| `with-raii (v ctor dtor)` | any resource: calls `(dtor v)` on exit, also with `dynamic-wind`; it does not follow the shape above |
 
 Nested macros free in reverse order: the innermost shell is freed first.
 

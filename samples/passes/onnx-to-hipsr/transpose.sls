@@ -69,7 +69,7 @@
                           (let ([rank (mlir::RankedTensorType::getRank !in-type)])
                             (let loop ([i 0] [acc '()])
                               (if (eqv? i rank) acc (loop (+ i 1) (cons i acc)))))
-                          (with-ArrayRef (ref (mlir::DenseI64ArrayAttr::intoArrayRef attr))
+                          (with-ArrayRef ref ((mlir::DenseI64ArrayAttr::intoArrayRef attr))
                             (list->vector
                              (loop :for i :from 0 :below (ArrayRef::size ref)
                                    :collect (ArrayRef::at ref i))))))])

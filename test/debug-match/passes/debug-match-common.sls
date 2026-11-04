@@ -15,7 +15,7 @@
     (lambda (module-op)
       (let ([ctx (mlir::Operation::getContext module-op)])
         (with-current-MLIRContext ctx
-          (with-RewritePatternSet (patterns ctx)
+          (with-RewritePatternSet patterns (ctx)
             (add-rewrite-pattern patterns root-op-name pattern 1)
             (mlir::applyPatternsGreedily module-op patterns))))))
 

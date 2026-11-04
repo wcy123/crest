@@ -584,7 +584,7 @@ functions, type predicates, constants — no CREST macros required.
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
-        (with-RewritePatternSet (ps ctx)
+        (with-RewritePatternSet ps (ctx)
           (add-rewrite-pattern ps "root.op-name" my-pattern 10)
           (mlir::applyPatternsGreedily module-op ps))))))
 ```
@@ -614,9 +614,9 @@ functions, type predicates, constants — no CREST macros required.
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
-        (with-TypeConverter (tc)
-          (with-ConversionTarget (target)
-            (with-RewritePatternSet (ps)
+        (with-TypeConverter tc ()
+          (with-ConversionTarget target ()
+            (with-RewritePatternSet ps ()
               ;; Mark source dialect illegal, target dialect legal
               (mlir::ConversionTarget::addIllegalDialect! target "onnx")
               (mlir::ConversionTarget::addLegalDialect!   target "hipsr")
@@ -752,9 +752,9 @@ A dialect is loaded from Scheme via the `mlir::DialectRegistry`:
 
 ```scheme
 ;; Preferred: pre-register before MLIRContext is created (parser-safe)
-(with-DialectRegistry (reg)
+(with-DialectRegistry reg ()
   (mlir::DialectRegistry::insert reg "toy" "toy/ch4/toy")
-  (with-MLIRContext (ctx reg)
+  (with-MLIRContext ctx (reg)
     (mlir::MLIRContext::getOrLoadDialect ctx "toy")
     ...))
 ```

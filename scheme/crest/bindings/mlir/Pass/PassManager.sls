@@ -13,7 +13,7 @@
 ;;
 ;; Example:
 ;; @code
-;;   (with-PassManager (pm ctx)
+;;   (with-PassManager pm (ctx)
 ;;     (mlir::PassManager::addPass pm (mlir::createInlinerPass))
 ;;     (mlir::PassManager::run! pm module-op))
 ;; @endcode
@@ -49,7 +49,7 @@
   ;; RAII macro: binds PM to a fresh PassManager for BODY, then frees it.
   (define-syntax with-PassManager
     (syntax-rules ()
-      [(_ (pm ctx) body ...)
+      [(_ pm (ctx) body ...)
        (with-CrestObject pm (mlir::PassManager::new ctx)
          body ...)]))
 
