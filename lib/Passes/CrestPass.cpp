@@ -191,9 +191,9 @@ struct CrestPass : public mlir::OperationPass<mlir::ModuleOp> {
     interp->setLogLevel(level);
 
     for (const auto& pass : passes_) {
-      if (!interp->importLibrary(pass)) {
+      if (auto importError = interp->importLibrary(pass)) {
         auto err = getOperation().emitError(
-            "Failed to import Scheme library: " + pass);
+            "Failed to import Scheme library: " + pass + ": " + *importError);
         auto dirs = interp->getLibraryDirectories();
         if (!dirs.empty()) {
           err << " (library-directories: " << dirs << ")";
