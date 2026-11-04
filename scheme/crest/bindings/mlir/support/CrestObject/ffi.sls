@@ -14,11 +14,11 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir support CrestObject ffi)
-  (export %CrestObject::delete)
+  (export %crest::CrestObject::delete)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief Call the deletor stored in a CrestObject, freeing it.
-  (define %CrestObject::delete
-    (foreign-procedure "CrestObject::delete" (uptr) void))
+  (define %crest::CrestObject::delete
+    (foreign-procedure "crest::CrestObject::delete" (uptr) void))
 
   ) ;; end library (mlir support CrestObject ffi)

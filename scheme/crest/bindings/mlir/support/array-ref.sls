@@ -15,9 +15,9 @@
 ;;   offset 16: size    (8B) — number of elements
 ;;
 ;; Three typed instantiations:
-;;   CArrayRef<i32>  — int32_t elements (stride 4B); CArrayRef<i32>?
-;;   CArrayRef<i64>  — int64_t elements (stride 8B); CArrayRef<i64>?
-;;   CArrayRef<uptr> — uintptr_t elements (stride 8B); CArrayRef<uptr>?
+;;   CArrayRef<i32>  — int32_t elements (stride 4B); crest::CArrayRef<i32>?
+;;   CArrayRef<i64>  — int64_t elements (stride 8B); crest::CArrayRef<i64>?
+;;   CArrayRef<uptr> — uintptr_t elements (stride 8B); crest::CArrayRef<uptr>?
 ;;
 ;; Each has a unique deletor address (type tag). ArrayRef::at dispatches on
 ;; the runtime type — no explicit element-type keyword needed.
@@ -27,10 +27,10 @@
 (library (mlir support array-ref)
   (export
     ;; Typed CArrayRef predicates
-    CArrayRef<i32>?         ; (obj) → boolean
-    CArrayRef<i64>?         ; (obj) → boolean
-    CArrayRef<uptr>?        ; (obj) → boolean
-    CArrayRef?              ; (obj) → boolean: any CArrayRef<T>
+    crest::CArrayRef<i32>?         ; (obj) → boolean
+    crest::CArrayRef<i64>?         ; (obj) → boolean
+    crest::CArrayRef<uptr>?        ; (obj) → boolean
+    crest::CArrayRef?              ; (obj) → boolean: any CArrayRef<T>
     ;; CArrayRef accessors
     ArrayRef::size          ; (ref) → fixnum: element count
     ArrayRef::at            ; (ref index) → element value (type inferred)
@@ -44,18 +44,18 @@
 
   ;;===--------------------------------------------------------------------===;;
   ;; Typed CArrayRef predicates.
-  ;; The isa logic (deletor comparison) is in C++ via %CArrayRef<T>::isa.
+  ;; The isa logic (deletor comparison) is in C++ via %crest::CArrayRef<T>?.
   ;;===--------------------------------------------------------------------===;;
 
-  ;; @brief CArrayRef<i32>? — is this a CArrayRef<int32_t>?
-  (define (CArrayRef<i32>?  obj) (not (zero? (%CArrayRef<i32>::isa  obj))))
-  ;; @brief CArrayRef<i64>? — is this a CArrayRef<int64_t>?
-  (define (CArrayRef<i64>?  obj) (not (zero? (%CArrayRef<i64>::isa  obj))))
-  ;; @brief CArrayRef<uptr>? — is this a CArrayRef<uintptr_t>?
-  (define (CArrayRef<uptr>? obj) (not (zero? (%CArrayRef<uptr>::isa obj))))
-  ;; @brief CArrayRef? — is this any typed CArrayRef<T>?
-  (define (CArrayRef? obj)
-    (or (CArrayRef<i32>? obj) (CArrayRef<i64>? obj) (CArrayRef<uptr>? obj)))
+  ;; @brief crest::CArrayRef<i32>? — is this a CArrayRef<int32_t>?
+  (define (crest::CArrayRef<i32>?  obj) (not (zero? (%crest::CArrayRef<i32>?  obj))))
+  ;; @brief crest::CArrayRef<i64>? — is this a CArrayRef<int64_t>?
+  (define (crest::CArrayRef<i64>?  obj) (not (zero? (%crest::CArrayRef<i64>?  obj))))
+  ;; @brief crest::CArrayRef<uptr>? — is this a CArrayRef<uintptr_t>?
+  (define (crest::CArrayRef<uptr>? obj) (not (zero? (%crest::CArrayRef<uptr>? obj))))
+  ;; @brief crest::CArrayRef? — is this any typed CArrayRef<T>?
+  (define (crest::CArrayRef? obj)
+    (or (crest::CArrayRef<i32>? obj) (crest::CArrayRef<i64>? obj) (crest::CArrayRef<uptr>? obj)))
 
   ;;===--------------------------------------------------------------------===;;
   ;; CArrayRef accessors.
@@ -79,9 +79,9 @@
       (unless (and (>= index 0) (< index n))
         (error 'ArrayRef::at "index out of range" index n))
       (cond
-       [(CArrayRef<i32>?  ref) (foreign-ref 'integer-32 data (* index 4))]
-       [(CArrayRef<i64>?  ref) (foreign-ref 'integer-64 data (* index 8))]
-       [(CArrayRef<uptr>? ref) (foreign-ref 'uptr       data (* index 8))]
+       [(crest::CArrayRef<i32>?  ref) (foreign-ref 'integer-32 data (* index 4))]
+       [(crest::CArrayRef<i64>?  ref) (foreign-ref 'integer-64 data (* index 8))]
+       [(crest::CArrayRef<uptr>? ref) (foreign-ref 'uptr       data (* index 8))]
        [else (error 'ArrayRef::at "unknown CArrayRef element type")])))
 
   ;; @brief make-array-ref — allocate a CArrayRef<uintptr_t> on the C heap.
@@ -90,7 +90,7 @@
   ;; @return          uptr — new CArrayRef<uptr>; use with-ArrayRef for cleanup
   (define make-array-ref %make)
 
-  ;; @brief with-ArrayRef — RAII for CArrayRef; calls CrestObject::delete on exit.
+  ;; @brief with-ArrayRef — RAII for CArrayRef; calls crest::CrestObject::delete on exit.
   ;;
   ;; Two forms:
   ;;   (with-ArrayRef (name existing-ref) body ...)  — adopt existing CArrayRef

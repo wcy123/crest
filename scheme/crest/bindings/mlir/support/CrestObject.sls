@@ -16,23 +16,23 @@
 
 (library (mlir support CrestObject)
   (export
-    CrestObject::deletor    ; (obj) → uptr: read deletor address (type tag)
-    CrestObject::delete     ; (obj) → void: call deletor, freeing the object
+    crest::CrestObject::deletor    ; (obj) → uptr: read deletor address (type tag)
+    crest::CrestObject::delete     ; (obj) → void: call deletor, freeing the object
     with-CrestObject)       ; (syntax) RAII for any CrestObject
 
   (import (rnrs)
           (only (chezscheme) foreign-ref)
           (mlir support CrestObject ffi))
 
-  ;; @brief CrestObject::deletor — read the deletor (type tag) from a CrestObject.
+  ;; @brief crest::CrestObject::deletor — read the deletor (type tag) from a CrestObject.
   ;; @param obj  uptr — pointer to any CrestObject
   ;; @return     uptr — address of the deletor function (unique per concrete type)
-  (define (CrestObject::deletor obj)
+  (define (crest::CrestObject::deletor obj)
     (foreign-ref 'uptr obj 0))
 
-  ;; @brief CrestObject::delete — call the stored deletor, freeing the object.
+  ;; @brief crest::CrestObject::delete — call the stored deletor, freeing the object.
   ;; @param obj  uptr — pointer to any CrestObject
-  (define CrestObject::delete %CrestObject::delete)
+  (define crest::CrestObject::delete %crest::CrestObject::delete)
 
   ;; @brief with-CrestObject — RAII for any CrestObject: binds NAME to the shell that INIT
   ;; creates, runs BODY, then frees the shell on exit (normal return, error, or escape).
@@ -46,6 +46,6 @@
          (dynamic-wind
              (lambda () #f)
              (lambda () body ...)
-             (lambda () (CrestObject::delete name))))]))
+             (lambda () (crest::CrestObject::delete name))))]))
 
   ) ;; end library (mlir support CrestObject)
