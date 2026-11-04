@@ -289,24 +289,25 @@
            [func-type (mlir::FunctionType::get (current-MLIRContext) arg-types '())]
            [%%fn-bld  (crest::as_ptr<mlir::OpBuilder> (mlir::OpBuilder::atBlockEnd module-body))])
       (let ([func-op
-             (begin-mlir-code (:builder %%fn-bld)
-               toy.func ()
-               (sym_name      : name :string)
-               (function_type : (mlir::TypeAttr::get func-type))
-               (^bb0 ,@arg-types
-                     (for-each (lambda (arg-ast idx)
-                                 (let ([arg-name (if (var-decl-expr? arg-ast)
-                                                     (var-decl-expr:name arg-ast)
-                                                     (var-expr:name arg-ast))])
-                                   (%%declare! symtab arg-name (:arg idx))))
-                               args (iota (length args)))
-                     (%%mlir-gen-block :builder symtab struct-map body)
-                     (when (or (mlir::Block::empty? (current-MLIRBlock))
-                               (not (toy.return? (mlir::Block::back (current-MLIRBlock)))))
-                       (%%create-op! :builder (%%loc proto-loc) "toy.return" '() '() '())))
-               :loc ((location:file proto-loc)
-                     (location:line proto-loc)
-                     (location:col  proto-loc)))])
+             (with-current-OpBuilder %%fn-bld
+               (begin-mlir-code
+                   toy.func ()
+                   (sym_name      : name :string)
+                   (function_type : (mlir::TypeAttr::get func-type))
+                   (^bb0 ,@arg-types
+                         (for-each (lambda (arg-ast idx)
+                                     (let ([arg-name (if (var-decl-expr? arg-ast)
+                                                         (var-decl-expr:name arg-ast)
+                                                         (var-expr:name arg-ast))])
+                                       (%%declare! symtab arg-name (:arg idx))))
+                                   args (iota (length args)))
+                         (%%mlir-gen-block :builder symtab struct-map body)
+                         (when (or (mlir::Block::empty? (current-MLIRBlock))
+                                   (not (toy.return? (mlir::Block::back (current-MLIRBlock)))))
+                           (%%create-op! :builder (%%loc proto-loc) "toy.return" '() '() '())))
+                   :loc ((location:file proto-loc)
+                         (location:line proto-loc)
+                         (location:col  proto-loc))))])
         (unless (string=? name "main")
           (mlir::Operation::setAttr! func-op "sym_visibility"
                                      (mlir::StringAttr::get "private")))

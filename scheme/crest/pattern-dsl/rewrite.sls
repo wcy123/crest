@@ -11,14 +11,12 @@
 ;; Provides:
 ;;
 ;;   (begin-mlir-code op-form ...)
-;;   (begin-mlir-code (:builder builder-expr) op-form ...)
-;;     Sequences MLIR op-forms. Without (:builder ...), each op is created with the
-;;     ambient builder: the raw mlir::OpBuilder* in current-OpBuilder, installed by
-;;     :rewrite :with and ^bb bodies. With (:builder builder-expr), builder-expr (a raw
-;;     OpBuilder*: from with-OpBuilder, or (crest::as_ptr<mlir::OpBuilder> rw) for a
-;;     pattern's rewriter) is evaluated once and installed as the ambient builder for the
-;;     body. :builder is a literal keyword: import it, as for = : -> (it is exported by
-;;     (crest)). Returns the last result (like Scheme's begin).
+;;     Sequences MLIR op-forms, creating each op with the ambient builder: the raw
+;;     mlir::OpBuilder* in current-OpBuilder. :rewrite :with and ^bb bodies install
+;;     it; anywhere else wrap the call in (with-current-OpBuilder b ...), where b is
+;;     a raw OpBuilder* (from with-OpBuilder, or (crest::as_ptr<mlir::OpBuilder> rw)
+;;     for a pattern's rewriter). There is no explicit builder argument.
+;;     Returns the last result (like Scheme's begin).
 ;;
 ;; v2 flat-list syntax — items are scanned sequentially without outer parens per op:
 ;;
@@ -62,12 +60,12 @@
   (export begin-mlir-code)
 
   (import (except (rnrs (6)) =)
-          (only (chezscheme) syntax->list syntax->datum parameterize)
+          (only (chezscheme) syntax->list syntax->datum)
           (rename (rime loop) (:with :rime-with))
           (for (rename (rime loop) (:with :rime-with)) expand)
           (for (only (crest pattern-dsl srcloc) syntax->file+line+col) expand)
           (for (only (crest pattern-dsl keywords)
-                     = : -> :region :loc :builder
+                     = : -> :region :loc
                      :string :index
                      :i8 :i16 :i32 :i64
                      :f32 :f64
@@ -80,7 +78,8 @@
           (for (only (mlir IR Builders)
                      mlir::OpBuilder::atBlockEnd
                      mlir::OpBuilder::getListener
-                     with-OpBuilder) expand)
+                     with-OpBuilder
+                     with-current-OpBuilder) expand)
           (for (only (mlir IR OperationSupport)
                      mlir::OperationState::addOperands
                      mlir::OperationState::addTypes
@@ -110,21 +109,16 @@
   ;;===--------------------------------------------------------------------===;;
 
   ;; Returns the active builder: the raw OpBuilder* in current-OpBuilder, installed by
-  ;; :rewrite :with and ^bb bodies, by (begin-mlir-code (:builder b) ...), or by the caller
-  ;; with (with-current-OpBuilder b ...). Error if none is set.
+  ;; :rewrite :with and ^bb bodies, or by the caller with (with-current-OpBuilder b ...).
+  ;; Error if none is set.
   (define (%%current-builder)
     (or (current-OpBuilder)
         (error '%%current-builder
-               "no active builder — use begin-mlir-code inside :rewrite :with or a ^bb block, or pass (:builder builder)")))
+               "no active builder — use begin-mlir-code inside :rewrite :with or a ^bb block, or wrap it in (with-current-OpBuilder builder ...)")))
 
   ;; Create an op from a prepared OperationState with a raw OpBuilder*.
   (define (%%crest:create-op! builder state)
     (mlir::OpBuilder::create<OperationState> builder state))
-
-  ;; Install builder (a raw OpBuilder*) as current-OpBuilder, then call thunk, so that
-  ;; (%%current-builder) and :builder resolve to it inside the op sequence.
-  (define (%%with-active-builder builder thunk)
-    (parameterize ([current-OpBuilder builder]) (thunk)))
 
   ;;===--------------------------------------------------------------------===;;
   ;; begin-mlir-code
@@ -152,34 +146,22 @@
       ;; Main entry
       ;;-------------------------------------------------------------------
 
-      ;; Which builder creates the ops?
+      ;; (begin-mlir-code op ...)
+      ;;   Ops are created with the ambient builder, (%%current-builder), looked up when
+      ;;   each op is created: the raw OpBuilder* in current-OpBuilder.
       ;;
-      ;; By default, the current builder (current-OpBuilder). Inside a :rewrite :with or
-      ;; ^bb body it is already set, so a helper called there needs no builder argument.
-      ;;
-      ;; To use a different builder, write (:builder b) as the first argument. A helper
-      ;; called in the body then uses b as well.
-      ;;
-      ;; Import :builder, or you get "unbound identifier :builder" ((crest) exports it).
-      ;; A builder written without (:builder ...) is not a builder: it is evaluated like
-      ;; any other expression and ignored.
-      ;;
-      ;; With no builder at all, the first op raises "no active builder".
-      ;;
+      ;; v2 flat syntax: items form a flat list that process-ops-flat scans sequentially.
+      ;; Op boundaries are detected by parse-next; parenthesized items that don't
+      ;; start an op are treated as Scheme expressions.
       (define (main)
-        (let loop ((stx stx))
-          (syntax-case stx (:builder)
-            [(_ (:builder builder-expr) op ...)
-             (let ([pairs (process-ops-flat #'(op ...))])
-               (if (null? pairs)
-                   #'(if #f #f)
-                   (with-syntax ([(binding ...) (map make-binding pairs)]
-                                 [result        (car (car (reverse pairs)))])
-                     #'(%%with-active-builder builder-expr
-                                              (lambda () (let* (binding ...) result))))))]
-            [(_ op ...)
-             (loop #'(begin-mlir-code (:builder (current-OpBuilder)) op ...))]
-            )))
+        (syntax-case stx ()
+          [(_ op ...)
+           (let ([pairs (process-ops-flat #'(op ...))])
+             (if (null? pairs)
+                 #'(if #f #f)
+                 (with-syntax ([(binding ...) (map make-binding pairs)]
+                               [result        (car (car (reverse pairs)))])
+                   #'(let* (binding ...) result))))]))
 
 
       ;;-------------------------------------------------------------------
@@ -376,7 +358,8 @@
                     (with-OpBuilder (builder (mlir::OpBuilder::atBlockEnd
                                               #,block-id
                                               (mlir::OpBuilder::getListener (%%current-builder))))
-                      (begin-mlir-code (:builder builder) b ...))))))))
+                      (with-current-OpBuilder builder
+                        (begin-mlir-code b ...)))))))))
 
       ;; Returns a fill-fn: (lambda (region-stx) → syntax).
       ;; block-id extracted before syntax-case so both branches share it.

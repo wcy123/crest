@@ -27,7 +27,9 @@
                      mlir::RewriterBase::setInsertionPoint
                      mlir::RewriterBase::replaceOp
                      mlir::RewriterBase::eraseOp) expand)
-          (for (only (mlir IR Builders) crest::as_ptr<mlir::OpBuilder>) expand)
+          (for (only (mlir IR Builders)
+                     crest::as_ptr<mlir::OpBuilder>
+                     with-current-OpBuilder) expand)
           (for (only (mlir IR Operation)
                      mlir::Operation::getContext
                      mlir::Operation::getNumResults
@@ -44,7 +46,7 @@
           (for (only (chezscheme) parameterize) expand)
           (for (only (crest pattern-dsl rewrite) begin-mlir-code) expand)
           ;; keywords needed at expand time for free-identifier=? matching in %%transform-where-expr
-          (for (only (crest pattern-dsl keywords) :current-op :attr :has-attr? :attr-or :builder) expand))
+          (for (only (crest pattern-dsl keywords) :current-op :attr :has-attr? :attr-or) expand))
 
   ;;=======================================================================
   ;; Call graph
@@ -162,14 +164,15 @@
   ;; rw / op      — syntax identifiers for the rewriter and matched operation
   ;;
   ;; Generated shape ('conversion):
-  ;;   (let ([bld (crest::as_ptr<mlir::OpBuilder> rw)])   ; rw: CrestRef<RewriterBase> shell
+  ;;   ;; rw: CrestRef<RewriterBase> shell; the ambient builder is its raw OpBuilder*
+  ;;   (with-current-OpBuilder (crest::as_ptr<mlir::OpBuilder> rw)
   ;;     (mlir::RewriterBase::setInsertionPoint rw op)
-  ;;     (let ([result (begin-mlir-code (:builder bld) form ...)])
+  ;;     (let ([result (begin-mlir-code form ...)])
   ;;       (mlir::RewriterBase::replaceOp rw op result)
   ;;       #t))
   ;;
   ;; begin-mlir-code handles op-forms, :attrs, :regions, and :scheme escapes, creating ops
-  ;; through the raw OpBuilder* bld, which it installs as current-OpBuilder.
+  ;; with the ambient builder installed above.
   ;; zero-result? — #t when the root op has no results; eraseOp replaces replaceOp.
   (define (%%generate-rewrite-code raw-body pattern-type rw op . zero-result?-opt)
     (define zero-result? (if (pair? zero-result?-opt) (car zero-result?-opt) #f))
@@ -187,9 +190,9 @@
                                                         (call-with-string-output-port
                                                          (lambda (p) (display-condition exn p))))
                             #f])
-                 (let ([bld (crest::as_ptr<mlir::OpBuilder> #,rw)])
+                 (with-current-OpBuilder (crest::as_ptr<mlir::OpBuilder> #,rw)
                    (mlir::RewriterBase::setInsertionPoint #,rw #,op)
-                   (let ([result (begin-mlir-code (:builder bld) form ...)])
+                   (let ([result (begin-mlir-code form ...)])
                      ;; Zero-result root: erase the old op (no uses to redirect).
                      ;; Result-producing root: replaceOp redirects uses then erases.
                      #,(if zero-result?
