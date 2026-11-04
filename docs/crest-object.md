@@ -34,8 +34,10 @@ and frees the object.
 
 ### What a CrestObject is
 
-Across the FFI, a pointer is an `uptr`: a Scheme integer that holds an address. The Scheme
-garbage collector does not manage what it points to.
+Scheme holds a C++ address as an ordinary integer. The C++ side sees the same address as a
+`uptr` (`unsigned long`). The Scheme garbage collector does not manage what it points to.
+[The first diagram below](#crestownedopbuilder-from-mliropbuilderatblockend) shows how Scheme
+stores the integer.
 
 An address can point at one of two things:
 
@@ -121,54 +123,57 @@ Layouts on a 64-bit target:
 #### `CrestOwned<OpBuilder>`, from `mlir::OpBuilder::atBlockEnd`
 
 ```
-Where the value is kept       What is stored there
-
-Scheme variable `shell`       +------------------------------+
-(a register or stack slot)    | 0x14C9DE900                  |   a fixnum: 0x2993BD20 * 8
-                              +------------------------------+   (binary: the address bits, then 000)
-                                   |
-                                   |  FFI call, argument type `uptr`:
-                                   |  shift right by 3, which drops the 000
-                                   v
-C argument `uptr`             +------------------------------+
-(a register or stack slot)    | 0x2993BD20                   |   a number; it is the address of the shell
-                              +------------------------------+
-                                   |
-                                   |  go to that address
-                                   v
-C++ heap, starting at 0x2993BD20
-  0x2993BD20  +0              +------------------------------+   CrestOwned<OpBuilder>, 40 bytes
-                              | deletor ---------------------------------> AsCrest<CrestOwned<OpBuilder>>
-  0x2993BD28  +8              +------------------------------+                 ::type_deletor
-                              | context                      |  \
-  0x2993BD30  +16             +------------------------------+   |
-                              | listener                     |   |  inner : mlir::OpBuilder
-  0x2993BD38  +24             +------------------------------+   |  (32 bytes)
-                              | block                        |   |
-  0x2993BD40  +32             +------------------------------+   |
-                              | insertPoint                  |  /
-  0x2993BD48  +40             +------------------------------+
+Scheme object
+(`ptr`)           +------------------------------+
+                  | 0x14C9DE900                  |   = 0x2993BD20 << 3
+                  +------------------------------+
+                       |
+                       |  FFI call: shift right by 3
+                       v
+Shell address
+(`uptr`)          +------------------------------+
+                  | 0x2993BD20                   |
+                  +------------------------------+
+                       |
+                       |  this number is an address in C++ memory
+                       v
+address      offset
+0x2993BD20   +0   +------------------------------+   CrestOwned<OpBuilder>, 40 bytes
+                  | deletor ---------------------------------> AsCrest<CrestOwned<OpBuilder>>::type_deletor
+0x2993BD28   +8   +------------------------------+
+                  | context                      |  \
+0x2993BD30   +16  +------------------------------+   |
+                  | listener                     |   |  inner : mlir::OpBuilder
+0x2993BD38   +24  +------------------------------+   |  (32 bytes)
+                  | block                        |   |
+0x2993BD40   +32  +------------------------------+   |
+                  | insertPoint                  |  /
+0x2993BD48   +40  +------------------------------+
 ```
 
-The Scheme variable does not point at a Scheme object that points at the shell. It holds the
-address itself, as a **fixnum**. In Chez Scheme's C header, a Scheme value has the C type
-`ptr`, and `uptr` is `unsigned long`. A fixnum `n` is stored as the machine word `n * 8`, so
-its low 3 bits are the tag `000`. The garbage collector sees a fixnum, not a pointer, so it
-never moves or frees the shell. At an FFI call, the stub shifts the word right by 3 to get
-the `uptr`.
+The Scheme variable holds the shell address as a Scheme integer. Chez Scheme stores an integer
+that fits in 61 bits as a **fixnum**: the number shifted left by 3, so the low 3 bits are
+`000`. In the C header of Chez Scheme, this stored word is called a `ptr`, and the plain
+address is a `uptr` (`unsigned long`). Here:
 
-An address is read from the `uptr` as follows:
-
-| Integer value | How Chez Scheme stores it | Extra memory access |
+| Name | Value | Meaning |
 |---|---|---|
-| below 2^60 | fixnum: one word, the value times 8 | none |
-| 2^60 or above | bignum: a pointer to a heap object, a header word (type, length, sign) followed by 32-bit digits | one |
+| `uptr` | `0x2993BD20` | the shell address; the C++ bindings receive it as `uint64_t` |
+| `ptr` | `0x14C9DE900` | the same number shifted left by 3; this is what the Scheme variable holds |
 
-User-space addresses on x86-64 are below 2^47, so a shell address is always a fixnum. The
-shell address `0x2993BD20` in the diagram was measured on a `CrestOwned<MLIRContext>`: it is
-a fixnum, and `most-positive-fixnum` is `0xFFFFFFFFFFFFFFF` (2^60 - 1). The word
-`0x14C9DE900` is that address times 8. The other addresses in the heap box are that base
-address plus the field offsets.
+A fixnum is not a pointer. There is no heap object behind it, and the garbage collector does
+not follow it, so it never moves or frees the shell. When Scheme calls a binding, the FFI
+shifts the `ptr` right by 3 and passes the `uptr`.
+
+There is one case with an extra memory access: an integer of 2^60 or more does not fit in a
+fixnum. Chez Scheme stores it as a **bignum**, a heap object that holds a header word (type,
+length, sign) followed by 32-bit digits. User-space addresses on x86-64 are below 2^47, so a
+shell address is always a fixnum.
+
+The shell address `0x2993BD20` was measured on a `CrestOwned<MLIRContext>`, and
+`most-positive-fixnum` is `0xFFFFFFFFFFFFFFF` (2^60 - 1). The `ptr` value `0x14C9DE900` is
+computed with the shift, not read from the running program. The other addresses in the shell
+box are the shell address plus the field offsets.
 
 `with-OpBuilder` binds the **raw** address of `inner` (shell + 8) to its variable. It frees
 the whole shell when the body exits. Code that only creates ops uses the raw pointer.
