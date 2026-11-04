@@ -287,9 +287,10 @@ Op-form syntax — see [§5 `begin-mlir-code`](#5-begin-mlir-code) for the full 
 
 ## 5. `begin-mlir-code`
 
-`begin-mlir-code` emits MLIR ops through a builder. Its argument list is a **flat
-sequence** — no outer parentheses around op-forms. This mirrors MLIR's textual format,
-which MLIR C++ developers will find familiar.
+`begin-mlir-code` emits MLIR ops with the **ambient builder**: the raw
+`mlir::OpBuilder*` held by `current-OpBuilder`. Its argument list is a **flat
+sequence** — no builder argument and no outer parentheses around op-forms.
+This mirrors MLIR's textual format, which MLIR C++ developers will find familiar.
 
 ```scheme
 (begin-mlir-code
@@ -297,14 +298,12 @@ which MLIR C++ developers will find familiar.
   sum = arith.addi (%a %b) -> (mlir::Value::getType %a))
 ```
 
-### Choosing the builder
+### Supplying the builder
 
-**Ambient builder (default).** Without a builder argument, each op is created with the
-**ambient builder**: the raw `mlir::OpBuilder*` held by `current-OpBuilder`. Inside
-`:rewrite :with` bodies and `^bb` block bodies it is already installed — the pattern's
-builder at the `:rewrite :with` level, a block-local builder inside a `^bb` body. A Scheme
-helper called from those bodies can therefore call `begin-mlir-code` directly, with no
-builder parameter:
+Inside `:rewrite :with` bodies and `^bb` block bodies the builder is already installed:
+the pattern's builder at the `:rewrite :with` level, a block-local builder inside a `^bb`
+body. A Scheme helper called from those bodies can therefore call `begin-mlir-code`
+directly, with no builder parameter:
 
 ```scheme
 (define (%%emit-pair v ty)                 ; called from a :rewrite :with body
@@ -313,40 +312,28 @@ builder parameter:
     b = test.step_b (a) -> ty))
 ```
 
-Anywhere else, install a builder for the dynamic extent with `with-current-OpBuilder`:
+Anywhere else, install a builder for the dynamic extent with `with-current-OpBuilder`.
+The builder must be a **raw** `mlir::OpBuilder*`:
 
 ```scheme
+;; A pattern's rewriter `rw` is a CrestRef<RewriterBase> shell: unwrap it first.
 (with-current-OpBuilder (crest::as_ptr<mlir::OpBuilder> rw)
+  (mlir::RewriterBase::setInsertionPoint rw op)
   (begin-mlir-code
     r = my.op (v) -> ty))
-```
 
-**Explicit builder.** Write the builder as the first argument, wrapped in `(:builder ...)`:
-
-```scheme
-;; A pattern's rewriter `rw` is a CrestRef<RewriterBase> shell: unwrap it to a raw OpBuilder*.
-(begin-mlir-code (:builder (crest::as_ptr<mlir::OpBuilder> rw))
-  r = my.op (v) -> ty)
-
-;; A builder you create yourself: with-OpBuilder binds the raw pointer and frees the
-;; underlying shell on exit.
+;; A builder you create yourself: with-OpBuilder binds the raw pointer and frees
+;; the underlying shell on exit; with-current-OpBuilder installs it.
 (with-OpBuilder (b (mlir::OpBuilder::atBlockEnd block))
-  (begin-mlir-code (:builder b)
-    r = my.op (v) -> ty))
+  (with-current-OpBuilder b
+    (begin-mlir-code
+      r = my.op (v) -> ty)))
 ```
 
-The expression is evaluated once and must yield a raw `mlir::OpBuilder*`. It is also
-installed as the ambient builder for the body, so a helper called in the body that uses the
-ambient form emits with it too.
-
-`:builder` here is a **literal keyword**, matched by name. Import it like the other DSL
-keywords (`=`, `:`, `->`); `(crest)` exports it. A library that does not import it gets
-`unbound identifier :builder`.
-
-With no builder installed and none given, `begin-mlir-code` raises `no active builder`
-when it creates its first op. A builder must be wrapped as `(:builder bld)`: a bare
-`(begin-mlir-code bld op-form ...)` is **not** an error — `bld` is read as a Scheme expression,
-evaluated and discarded, and the ambient builder is used instead.
+With no builder installed, `begin-mlir-code` raises `no active builder` when it creates its
+first op. There is no explicit builder argument: to use a particular builder, install it with
+`with-current-OpBuilder` as above. A builder written as the first argument is not a builder; it
+is evaluated like any other expression and ignored.
 
 Every emitted op carries a `FileLineColLoc` from the `.sls` source line.
 
@@ -371,13 +358,11 @@ list is scanned left-to-right and op boundaries are detected syntactically.
 
 Two special forms are available anywhere inside `begin-mlir-code`:
 
-**`:builder`** — as a bare expression, the ambient builder, i.e. `(current-OpBuilder)`: the
-raw `OpBuilder*` (the pattern's builder at the `:rewrite :with` level, the block's builder
-inside a `^bb` body). Use it to pass the builder to a Scheme helper that calls a typed binding
-such as `mlir::LLVM::CallOp::create`; a helper that only calls `begin-mlir-code` needs no
-builder parameter. As the head of the first argument, `(:builder expr)` selects an explicit
-builder for `begin-mlir-code` (see above). **Not** an MLIR operand (builders are not
-`mlir::Value`s):
+**`:builder`** — the ambient builder, i.e. `(current-OpBuilder)`: the raw `OpBuilder*` (the
+pattern's builder at the `:rewrite :with` level, the block's builder inside a `^bb` body).
+Use it to pass the builder to a Scheme helper that calls a typed binding such as
+`mlir::LLVM::CallOp::create`; a helper that only calls `begin-mlir-code` needs no builder
+parameter. **Not** an MLIR operand (builders are not `mlir::Value`s):
 
 ```scheme
 ;; Pass to a Scheme helper that emits further ops using the active builder
@@ -406,7 +391,7 @@ r = toy.constant () (value : attr) :loc toy-loc -> !t
 r = toy.constant () (value : attr) :loc ("example.toy" 7 3) -> !t
 
 ;; Useful in codegen from a parsed AST to carry source-language locations:
-(begin-mlir-code (:builder builder)
+(begin-mlir-code
   toy.func ()
     (sym_name : name :string)
     (^bb0 ,@arg-types
@@ -866,7 +851,7 @@ convention from CLAUDE.md Rules 10–11:
 |---|---|---|---|
 | `current-MLIRContext` | `with-current-MLIRContext` | `(mlir IR MLIRContext)` | user / `with-current-MLIRContext` |
 | `current-MLIRBlock` | `with-current-MLIRBlock` | `(mlir IR Block)` | `^bb0` block bodies |
-| `current-OpBuilder` | `with-current-OpBuilder` | `(mlir IR Builders)` | `:rewrite :with` and `^bb` bodies; `(begin-mlir-code (:builder b) ...)`; user code via `with-current-OpBuilder` |
+| `current-OpBuilder` | `with-current-OpBuilder` | `(mlir IR Builders)` | `:rewrite :with` and `^bb` bodies; user code via `with-current-OpBuilder` |
 
 `current-OpBuilder` holds a **raw** `mlir::OpBuilder*`, never a CrestObject shell. A pattern's
 rewriter is a `CrestRef<RewriterBase>` shell; `(crest::as_ptr<mlir::OpBuilder> rw)` unwraps it
@@ -875,7 +860,7 @@ keep taking the shell. `with-OpBuilder` creates a builder and binds the raw poin
 install it (CLAUDE.md Rule 10) — wrap the body in `with-current-OpBuilder` for that.
 
 `%%current-builder` (internal) is what `begin-mlir-code` uses to create each op: it returns
-`(current-OpBuilder)` or raises `no active builder` if that is `#f`. A bare `:builder` returns
+`(current-OpBuilder)` or raises `no active builder` if that is `#f`. `:builder` returns
 `(current-OpBuilder)` as is.
 
 The context hierarchy during a pattern rewrite:
