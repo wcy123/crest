@@ -21,6 +21,7 @@
     with-CrestObject)       ; (syntax) RAII for any CrestObject
 
   (import (rnrs)
+          (for (rnrs) expand)
           (only (chezscheme) foreign-ref)
           (mlir support CrestObject ffi))
 
@@ -40,12 +41,14 @@
   ;;   (with-CrestObject state (mlir::OperationState::create loc "my.op")
   ;;     ...)
   (define-syntax with-CrestObject
-    (syntax-rules ()
-      [(_ name init body ...)
-       (let ([name init])
-         (dynamic-wind
-             (lambda () #f)
-             (lambda () body ...)
-             (lambda () (crest::CrestObject::delete name))))]))
+    (lambda (stx)
+      (syntax-case stx ()
+        [(_ name init body ...)
+         (identifier? #'name)
+         #'(let ([name init])
+             (dynamic-wind
+                 (lambda () #f)
+                 (lambda () body ...)
+                 (lambda () (crest::CrestObject::delete name))))])))
 
   ) ;; end library (mlir support CrestObject)

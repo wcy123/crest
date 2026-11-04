@@ -324,6 +324,11 @@ often nested inside one of the macros above, for example `with-OpBuilder` for th
 - **Do not free a `CrestRef`.** C++ frees it. A `with-CrestObject` around it frees it twice.
 - **Do not re-enter a body with a saved continuation after it ended.** The shell is already
   freed.
+- **A `guard` with no matching clause frees the shell twice.** It re-raises the error from
+  inside the body, which re-enters the `dynamic-wind`, so the free runs a second time. Use a
+  catch-all clause (`[#t ...]`) around a `with-CrestObject` body, as the pattern code does.
+- **An error that nothing catches does not free the shell.** The free runs only when control
+  leaves the body, and an uncaught error stops the process without unwinding.
 
 ### Using a shell in a binding
 
