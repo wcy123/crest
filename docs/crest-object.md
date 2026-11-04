@@ -90,7 +90,7 @@ every object, and the object is freed exactly when the body ends. It is not free
 when the garbage collector happens to run.
 
 ```scheme
-(with-CrestObject (state (mlir::OperationState::create loc "my.op"))
+(with-CrestObject state (mlir::OperationState::create loc "my.op")
   ...)            ; leaving the body, normally or by exception, deletes `state`
 ```
 
@@ -216,7 +216,7 @@ the builder's `context`. For this reason the conversion is done in C++
 #### What happens when `with-CrestObject` ends
 
 ```
- (with-CrestObject (b (mlir::OpBuilder::atBlockEnd blk)) body ...)
+ (with-CrestObject b (mlir::OpBuilder::atBlockEnd blk) body ...)
 
  Scheme                      C function                    function stored in the shell
  ------                      ----------                    ----------------------------
@@ -266,7 +266,7 @@ and the `with-*` macros are how you do it.
 #### `with-CrestObject`
 
 ```scheme
-(with-CrestObject (name init-expr)
+(with-CrestObject name init-expr
   body ...)
 ```
 
@@ -291,7 +291,7 @@ Each of these creates one shell, binds it, and frees it when the body ends.
 
 | Macro | What it creates |
 |---|---|
-| `with-CrestObject (v init)` | any shell: the general form |
+| `with-CrestObject v init` | any shell: the general form |
 | `with-OperationState (v (loc name))` | a `CrestOwned<OperationState>` |
 | `with-RewritePatternSet (v)` or `(v ctx)` | a `RewritePatternSet` |
 | `with-TypeConverter (v)` | a `TypeConverter` |
@@ -299,7 +299,7 @@ Each of these creates one shell, binds it, and frees it when the body ends.
 | `with-ConversionTarget (v)` or `(v ctx)` | a `ConversionTarget` |
 | `with-ExecutionEngine (v module-op)` | an `ExecutionEngine` |
 | `with-ArrayRef (v ref)` or `(v data size)` | a `CArrayRef`; the elements are never freed |
-| `with-OpBuilder (v init)` | frees the shell that `init` creates, but binds `v` to the **raw** `OpBuilder*` inside it |
+| `with-OpBuilder v init` | frees the shell that `init` creates, but binds `v` to the **raw** `OpBuilder*` inside it |
 | `with-raii (v ctor dtor)` | any resource: calls `(dtor v)` on exit, also with `dynamic-wind` |
 | `with-DialectRegistry (v)`, `with-MLIRContext (v registry)`, `with-PassManager (v ctx)` | built on `with-raii`, with `CrestObject::delete` as the `dtor` |
 
