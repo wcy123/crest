@@ -47,7 +47,7 @@
       (syntax-case stx ()
         [(_ var (loc name) body ...)
          (identifier? #'var)
-         #'(with-CrestObject (var (mlir::OperationState::create loc name))
+         #'(with-CrestObject var (mlir::OperationState::create loc name)
              body ...)])))
 
   ) ;; end library (mlir IR OperationSupport)

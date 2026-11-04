@@ -59,11 +59,15 @@
   ;; @param obj  uptr — pointer to any CrestObject
   (define CrestObject::delete %CrestObject::delete)
 
-  ;; @brief with-CrestObject — RAII for any CrestObject.
+  ;; @brief with-CrestObject — RAII for any CrestObject: binds NAME to the shell that INIT
+  ;; creates, runs BODY, then frees the shell on exit (normal return, error, or escape).
+  ;; @example
+  ;;   (with-CrestObject state (mlir::OperationState::create loc "my.op")
+  ;;     ...)
   (define-syntax with-CrestObject
     (syntax-rules ()
-      [(_ (name expr) body ...)
-       (let ([name expr])
+      [(_ name init body ...)
+       (let ([name init])
          (dynamic-wind
              (lambda () #f)
              (lambda () body ...)
@@ -125,8 +129,8 @@
   (define-syntax with-ArrayRef
     (syntax-rules ()
       [(_ (name ref-expr) body ...)
-       (with-CrestObject (name ref-expr) body ...)]
+       (with-CrestObject name ref-expr body ...)]
       [(_ (name data-ptr size) body ...)
-       (with-CrestObject (name (make-array-ref data-ptr size)) body ...)]))
+       (with-CrestObject name (make-array-ref data-ptr size) body ...)]))
 
   ) ;; end library (mlir support array-ref)

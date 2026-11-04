@@ -79,12 +79,12 @@
   ;; @brief with-OpBuilder — RAII for a builder created by INIT (e.g. atBlockEnd): binds VAR to
   ;; the raw mlir::OpBuilder* for BODY and frees the shell on exit.
   ;; @example
-  ;;   (with-OpBuilder (builder (mlir::OpBuilder::atBlockEnd block))
+  ;;   (with-OpBuilder builder (mlir::OpBuilder::atBlockEnd block)
   ;;     (mlir::OpBuilder::create<OperationState> builder state))
   (define-syntax with-OpBuilder
     (syntax-rules ()
-      [(_ (var init) body ...)
-       (with-CrestObject (shell init)
+      [(_ var init body ...)
+       (with-CrestObject shell init
          (let ([var (crest::as_ptr<mlir::OpBuilder> shell)])
            body ...))]))
 

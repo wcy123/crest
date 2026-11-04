@@ -230,8 +230,8 @@
                       (mlir::Block::getArgument entry-block i)
                       (mlir::Operation::getOperand call-op i)))
     ;; Create a builder positioned just before the call op, freed on exit.
-    (with-OpBuilder (builder-obj (with-current-MLIRContext ctx
-                                   (mlir::OpBuilder::atBlockEnd entry-block)))
+    (with-OpBuilder builder-obj (with-current-MLIRContext ctx
+                                  (mlir::OpBuilder::atBlockEnd entry-block))
       (let ([return-op #f])
         ;; Walk callee body, cloning each op before the call.
         (mlir::Operation::walk callee

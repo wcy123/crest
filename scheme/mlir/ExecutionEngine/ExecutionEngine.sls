@@ -12,4 +12,4 @@
   (define-syntax with-ExecutionEngine
     (syntax-rules ()
       [(_ (var module-op) body ...)
-       (with-CrestObject (var (mlir::ExecutionEngine::create module-op)) body ...)])))
+       (with-CrestObject var (mlir::ExecutionEngine::create module-op) body ...)])))

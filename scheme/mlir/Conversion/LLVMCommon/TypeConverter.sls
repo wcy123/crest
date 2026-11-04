@@ -17,6 +17,6 @@
   (define-syntax with-LLVMTypeConverter
     (syntax-rules ()
       [(_ (var) body ...)
-       (with-CrestObject (var (mlir::LLVMTypeConverter::LLVMTypeConverter)) body ...)]
+       (with-CrestObject var (mlir::LLVMTypeConverter::LLVMTypeConverter) body ...)]
       [(_ (var ctx) body ...)
-       (with-CrestObject (var (mlir::LLVMTypeConverter::LLVMTypeConverter ctx)) body ...)])))
+       (with-CrestObject var (mlir::LLVMTypeConverter::LLVMTypeConverter ctx) body ...)])))

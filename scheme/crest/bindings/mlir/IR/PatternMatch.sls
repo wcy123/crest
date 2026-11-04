@@ -117,10 +117,10 @@
   (define-syntax with-RewritePatternSet
     (syntax-rules ()
       [(_ (var) body ...)
-       (with-CrestObject (var (mlir::RewritePatternSet::RewritePatternSet (current-MLIRContext)))
+       (with-CrestObject var (mlir::RewritePatternSet::RewritePatternSet (current-MLIRContext))
          body ...)]
       [(_ (var ctx) body ...)
-       (with-CrestObject (var (mlir::RewritePatternSet::RewritePatternSet ctx))
+       (with-CrestObject var (mlir::RewritePatternSet::RewritePatternSet ctx)
          body ...)]))
 
   ) ;; end library (mlir IR PatternMatch)
