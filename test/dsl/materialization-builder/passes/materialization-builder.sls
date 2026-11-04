@@ -33,17 +33,17 @@
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
-        (with-TypeConverter (tc)
+        (with-TypeConverter tc ()
           (type-converter-add-conversion tc (lambda (type) type))
           (type-converter-add-conversion tc %%convert)
           (mlir::TypeConverter::addSourceMaterialization tc %%materialize)
           (mlir::TypeConverter::addTargetMaterialization tc %%materialize)
-          (with-ConversionTarget (target ctx)
+          (with-ConversionTarget target (ctx)
             (target-add-dynamically-legal-op target ctx "func.func"
                                              (lambda (op)
                                                (eqv? 1 (type-converter-is-signature-legal tc op))))
             (target-mark-unknown-ops-dynamically-legal target (lambda (op) #t))
-            (with-RewritePatternSet (patterns ctx)
+            (with-RewritePatternSet patterns (ctx)
               (populate-func-type-conversion patterns tc)
               (apply-full-conversion module-op target patterns)))))))
 

@@ -8,7 +8,7 @@
 ;;   2. Shape inference (resolves tensor<*xf64> to concrete ranked types)
 ;;   3. Canonicalization (fold transpose/reshape pairs)
 (import (chezscheme)
-        (only (mlir support array-ref) with-CrestObject)
+        (only (mlir support CrestObject) with-CrestObject)
         (mlir IR DialectRegistry)
         (mlir IR MLIRContext)
         (mlir IR Operation)
@@ -61,9 +61,9 @@
     (toy:dump module-ast)))
 
 (define (%%dump-mlir filename opt?)
-  (with-DialectRegistry (reg)
+  (with-DialectRegistry reg ()
     (mlir::DialectRegistry::insert reg "toy" "toy/ch4/toy")
-    (with-MLIRContext (ctx reg)
+    (with-MLIRContext ctx (reg)
       (mlir::MLIRContext::getOrLoadDialect ctx "toy")
       (let ([module-op (%%build-module filename ctx)])
         (when opt?
@@ -81,7 +81,7 @@
                              (%%run-shape-inference! op))))
   ;; Step 3: canonicalize (fold transpose/reshape patterns from combine.sls).
   (with-current-MLIRContext ctx
-    (with-RewritePatternSet (patterns ctx)
+    (with-RewritePatternSet patterns (ctx)
       (toy:add-canonicalization-patterns! patterns)
       (mlir::applyPatternsGreedily module-op patterns))))
 
@@ -230,8 +230,8 @@
                       (mlir::Block::getArgument entry-block i)
                       (mlir::Operation::getOperand call-op i)))
     ;; Create a builder positioned just before the call op, freed on exit.
-    (with-OpBuilder (builder-obj (with-current-MLIRContext ctx
-                                   (mlir::OpBuilder::atBlockEnd entry-block)))
+    (with-OpBuilder builder-obj (with-current-MLIRContext ctx
+                                  (mlir::OpBuilder::atBlockEnd entry-block))
       (let ([return-op #f])
         ;; Walk callee body, cloning each op before the call.
         (mlir::Operation::walk callee

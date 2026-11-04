@@ -53,7 +53,7 @@
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
-        (with-RewritePatternSet (patterns ctx)
+        (with-RewritePatternSet patterns (ctx)
           (add-rewrite-pattern patterns "hip.quantize_linear"
                                hip-qadd-fusion 10)
           (add-rewrite-pattern patterns "hip.quantize_linear"

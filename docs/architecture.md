@@ -102,14 +102,13 @@ namespace structure:
 | `(mlir Transforms DialectConversion)` | [`TypeConverter`](https://mlir.llvm.org/docs/DialectConversion/#type-converter), `ConversionTarget`, `applyFullConversion` |
 | `(mlir Transforms GreedyPatternRewriteDriver)` | `mlir::applyPatternsGreedily` |
 | `(mlir Dialect/*)` | Per-dialect op constructors and type predicates |
-| `(mlir support RAII)` | Generic `with-raii` helper |
 
 Library names mirror MLIR header paths (e.g. `mlir/IR/PatternMatch.h` →
 `(mlir IR PatternMatch)`). Each library has a companion `ffi` sub-library with
 `%`-prefixed raw `foreign-procedure` bindings; the public library re-exports
 clean names and provides `case-lambda` ctx-optional wrappers where applicable.
 
-Dynamic parameters (`current-MLIRContext`, `current-OpBuilder`, `current-MLIRBlock`)
+Dynamic parameters (`current-MLIRContext`, `current-OpBuilder`, `current-Block`)
 follow the same pattern as
 [MLIR's thread-local `OpBuilder` state](https://mlir.llvm.org/docs/Tutorials/Toy/Ch-3/).
 `parameterize` (via `with-current-MLIRContext`, `with-current-OpBuilder`, etc.) installs

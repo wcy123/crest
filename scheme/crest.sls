@@ -147,7 +147,7 @@
           :arg :builder
           make-unbound-value unbound-value?
           ;; Context parameters re-exported for user convenience
-          current-MLIRBlock with-current-MLIRBlock
+          current-Block with-current-Block
           current-OpBuilder with-current-OpBuilder)
   (import (except (rnrs) =)
           (crest pattern-dsl keywords)
@@ -156,7 +156,7 @@
           (for (crest pattern-dsl ast) expand)
           (for (crest pattern-dsl codegen) expand)
           (for (only (crest pattern-dsl codegen) make-unbound-value unbound-value?) expand)
-          (only (mlir IR Block) current-MLIRBlock with-current-MLIRBlock)
+          (only (mlir IR Block) current-Block with-current-Block)
           (only (mlir IR Builders) current-OpBuilder with-current-OpBuilder))
 
   (define-syntax define-conversion-pattern

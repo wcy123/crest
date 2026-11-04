@@ -14,10 +14,10 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir support array-ref ffi)
-  (export %make %CrestObject::delete
-          %CArrayRef<i32>::isa
-          %CArrayRef<i64>::isa
-          %CArrayRef<uptr>::isa)
+  (export %crest::CArrayRef<uptr>::CArrayRef
+          %crest::CArrayRef<i32>?
+          %crest::CArrayRef<i64>?
+          %crest::CArrayRef<uptr>?)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief Allocate a CArrayRef<uintptr_t> on the C heap.
@@ -25,20 +25,16 @@
   ;; @param size      uptr — number of elements
   ;; @return          uptr — address of newly allocated CArrayRef<uintptr_t>
   ;;                  Layout: { deletor@0, data@8, size@16 }
-  (define %make
-    (foreign-procedure "mlir_support_array_ref_make" (uptr uptr) uptr))
-
-  ;; @brief Call the deletor stored in a CrestObject, freeing it.
-  (define %CrestObject::delete
-    (foreign-procedure "CrestObject::delete" (uptr) void))
+  (define %crest::CArrayRef<uptr>::CArrayRef
+    (foreign-procedure "crest::CArrayRef<uptr>::CArrayRef" (uptr uptr) uptr))
 
   ;; @brief Type predicates — is this CrestObject a CArrayRef<T>?
   ;; Returns 1 (true) or 0 (false). The isa logic (deletor comparison) is in C++.
-  (define %CArrayRef<i32>::isa
-    (foreign-procedure "CArrayRef<i32>::isa" (uptr) int))
-  (define %CArrayRef<i64>::isa
-    (foreign-procedure "CArrayRef<i64>::isa" (uptr) int))
-  (define %CArrayRef<uptr>::isa
-    (foreign-procedure "CArrayRef<uptr>::isa" (uptr) int))
+  (define %crest::CArrayRef<i32>?
+    (foreign-procedure "crest::CArrayRef<i32>?" (uptr) int))
+  (define %crest::CArrayRef<i64>?
+    (foreign-procedure "crest::CArrayRef<i64>?" (uptr) int))
+  (define %crest::CArrayRef<uptr>?
+    (foreign-procedure "crest::CArrayRef<uptr>?" (uptr) int))
 
   ) ;; end library (mlir support array-ref ffi)

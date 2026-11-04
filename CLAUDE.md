@@ -140,10 +140,14 @@ C symbol referenced from Scheme; each must appear in a `Sregister_symbol` call i
 
 ```scheme
 (with-current-MLIRContext ctx body ...)    ; installs a dynamic parameter
-(with-TypeConverter (tc) body ...)         ; manages lifetime, no dynamic param
+(with-TypeConverter tc () body ...)        ; manages lifetime, no dynamic param
+(with-ConversionTarget target (ctx) body ...)
 ```
 
-Generic ctor/dtor helper with no C++ class name: `with-raii`.
+A macro that creates an object, binds it to a variable and frees it takes the variable first,
+then the creation arguments in a list (empty when there are none):
+`(with-<C++ClassName> variable (arguments ...) body ...)`. The variable is never grouped with
+the arguments.
 
 ### Rule 11 — Dynamic parameters: `current-<C++ClassName>`
 
@@ -167,7 +171,7 @@ at offset 0). Bindings that take a builder take that raw pointer; rewriter-only 
 | `with-OpBuilder` | `(mlir IR Builders)` | `mlir/IR/Builders.h` |
 | `with-TypeConverter` | `(mlir Transforms DialectConversion)` | `mlir/Transforms/DialectConversion.h` |
 | `with-ConversionTarget` | `(mlir Transforms DialectConversion)` | `mlir/Transforms/DialectConversion.h` |
-| `with-raii` | `(mlir support RAII)` | (generic, no C++ counterpart) |
+| `with-CrestObject` | `(mlir support CrestObject)` | `lib/Bindings/Support/CrestObject.h` (CREST-specific) |
 
 ---
 

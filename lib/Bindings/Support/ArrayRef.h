@@ -18,7 +18,8 @@
 //   CArrayRef<uintptr_t> — mlir::Value* operands-ref  (stride 8B)
 //
 // Each instantiation has a distinct type_deletor address, enabling typed
-// predicates CArrayRef<i32>?, CArrayRef<i64>?, CArrayRef<uptr>? in Scheme.
+// predicates crest::CArrayRef<i32>?, crest::CArrayRef<i64>?,
+// crest::CArrayRef<uptr>? in Scheme.
 template <typename T> struct CArrayRef : public crest::AsCrest<CArrayRef<T>> {
   const T* data; // offset 8  — non-owning, do NOT free
   size_t size;   // offset 16

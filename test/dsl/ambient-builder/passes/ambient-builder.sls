@@ -69,7 +69,7 @@
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
-        (with-RewritePatternSet (ps ctx)
+        (with-RewritePatternSet ps (ctx)
           (add-rewrite-pattern ps "test.one" %%one 10)
           (add-rewrite-pattern ps "test.two" %%two 10)
           (add-rewrite-pattern ps "test.three" %%three 10)

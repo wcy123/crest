@@ -76,7 +76,7 @@
                 with-ConversionTarget)
           (only (mlir IR PatternMatch) with-RewritePatternSet)
           (only (mlir IR Builders) crest::as_ptr<mlir::OpBuilder>)
-          (only (mlir support array-ref) ArrayRef::at ArrayRef::size)
+          (only (mlir support array-ref) crest::CArrayRef::at crest::CArrayRef::size)
           (crest))
 
   ;;===--------------------------------------------------------------------===;;
@@ -158,8 +158,8 @@
   ;;===--------------------------------------------------------------------===;;
 
   (define (%%binary-lower! op operands-ref rw tc arith-create)
-    (let* ([lhs         (ArrayRef::at operands-ref 0)]
-           [rhs         (ArrayRef::at operands-ref 1)]
+    (let* ([lhs         (crest::CArrayRef::at operands-ref 0)]
+           [rhs         (crest::CArrayRef::at operands-ref 1)]
            [tensor-type (mlir::Value::getType (mlir::Operation::getResult op 0))]
            [alloc       (%%lower-op-to-loops! op (crest::as_ptr<mlir::OpBuilder> rw) tensor-type
                                               (lambda (nb loc ivs)
@@ -177,7 +177,7 @@
   ;;===--------------------------------------------------------------------===;;
 
   (define (%%transpose-lower! op operands-ref rw tc)
-    (let* ([input       (ArrayRef::at operands-ref 0)]
+    (let* ([input       (crest::CArrayRef::at operands-ref 0)]
            [tensor-type (mlir::Value::getType (mlir::Operation::getResult op 0))]
            [alloc       (%%lower-op-to-loops! op (crest::as_ptr<mlir::OpBuilder> rw) tensor-type
                                               (lambda (nb loc ivs)
@@ -231,14 +231,14 @@
   ;;===--------------------------------------------------------------------===;;
 
   (define (%%toy-to-affine-lower! module-op ctx)
-    (with-TypeConverter (tc)
+    (with-TypeConverter tc ()
       ;; Tensor types lower to MemRef types; everything else passes through.
       (type-converter-add-conversion tc
                                      (lambda (type)
                                        (if (mlir::isa<RankedTensorType>? type)
                                            (%%tensor->memref-type type)
                                            type)))
-      (with-ConversionTarget (target ctx)
+      (with-ConversionTarget target (ctx)
         (target-add-legal-dialect target "affine")
         (target-add-legal-dialect target "arith")
         (target-add-legal-dialect target "func")
@@ -251,7 +251,7 @@
                                            (not (mlir::isa<RankedTensorType>?
                                                  (mlir::Value::getType
                                                   (mlir::Operation::getOperand print-op 0))))))
-        (with-RewritePatternSet (patterns ctx)
+        (with-RewritePatternSet patterns (ctx)
           (add-conversion-pattern patterns "toy.constant" %%constant-lower!  tc 1)
           (add-conversion-pattern patterns "toy.add"      %%add-lower!       tc 1)
           (add-conversion-pattern patterns "toy.mul"      %%mul-lower!       tc 1)

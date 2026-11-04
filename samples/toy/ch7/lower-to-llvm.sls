@@ -155,14 +155,14 @@
 
   ;; Perform full lowering to LLVM dialect on module-op.
   (define (%%toy-to-llvm-lower! module-op ctx)
-    (with-LLVMTypeConverter (tc ctx)
-      (with-ConversionTarget (target ctx)
+    (with-LLVMTypeConverter tc (ctx)
+      (with-ConversionTarget target (ctx)
         ;; LLVM dialect is legal; builtin.module too.
         (target-add-legal-dialect target "llvm")
         (target-add-legal-op target ctx "builtin.module")
         ;; Toy dialect is illegal — everything must be lowered.
         (target-add-illegal-dialect target "toy")
-        (with-RewritePatternSet (patterns ctx)
+        (with-RewritePatternSet patterns (ctx)
           ;; Populate all dialect-to-LLVM conversion patterns.
           (mlir::populateAffineToStdConversionPatterns patterns)
           (mlir::populateSCFToControlFlowConversionPatterns patterns)

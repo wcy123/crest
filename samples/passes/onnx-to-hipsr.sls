@@ -66,8 +66,8 @@
   ;; Populate return-conversion patterns in Scheme.
   ;; onnx.Return → func.return, forwarding the (already type-converted) operands.
   (define (onnx-return->func-return op operands-ref rewriter type-converter)
-    (let ((operands (loop :for i :from 0 :below (ArrayRef::size operands-ref)
-                          :collect (ArrayRef::at operands-ref i))))
+    (let ((operands (loop :for i :from 0 :below (crest::CArrayRef::size operands-ref)
+                          :collect (crest::CArrayRef::at operands-ref i))))
       (mlir::RewriterBase::setInsertionPoint rewriter op)
       (mlir-create-operation rewriter "func.return" operands '() (mlir::Operation::getLoc op) 0)
       (mlir::RewriterBase::eraseOp rewriter op)
@@ -140,11 +140,11 @@
     (crest::logging::info "Starting ONNX to HipSR Conversion (Scheme)")
     (let ((ctx (mlir::Operation::getContext module-op)))
       (with-current-MLIRContext ctx
-        (with-TypeConverter (type-converter)
+        (with-TypeConverter type-converter ()
           (hipsr-type-converter-add-device-memory-conversions! type-converter)
-          (with-ConversionTarget (target ctx)
+          (with-ConversionTarget target (ctx)
             (hipsr-configure-conversion-target! target ctx type-converter)
-            (with-RewritePatternSet (patterns ctx)
+            (with-RewritePatternSet patterns (ctx)
               ;; Scheme DSL patterns
               (populate-cast-patterns       type-converter patterns ctx)
               (populate-scatter-nd-patterns type-converter patterns ctx)

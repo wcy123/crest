@@ -324,7 +324,7 @@ The builder must be a **raw** `mlir::OpBuilder*`:
 
 ;; A builder you create yourself: with-OpBuilder binds the raw pointer and frees
 ;; the underlying shell on exit; with-current-OpBuilder installs it.
-(with-OpBuilder (b (mlir::OpBuilder::atBlockEnd block))
+(with-OpBuilder b (mlir::OpBuilder::atBlockEnd block)
   (with-current-OpBuilder b
     (begin-mlir-code
       r = my.op (v) -> ty)))
@@ -369,8 +369,8 @@ parameter. **Not** an MLIR operand (builders are not `mlir::Value`s):
 (%%emit-prologue :builder loc)
 ```
 
-**`(:arg N)`** — shorthand for `(mlir::Block::getArgument (current-MLIRBlock) N)`.
-Only valid inside a `^bb0 ,@types` dynamic block body where `current-MLIRBlock`
+**`(:arg N)`** — shorthand for `(mlir::Block::getArgument (current-Block) N)`.
+Only valid inside a `^bb0 ,@types` dynamic block body where `current-Block`
 is installed.
 
 ### Location override
@@ -536,7 +536,7 @@ syntax is available (nested regions, attribute shorthands, multi-result
 ops, etc.) with the block's own builder as the ambient builder.
 
 Inside the block body, **`(:arg N)`** is a shorthand for
-`(mlir::Block::getArgument (current-MLIRBlock) N)` where `current-MLIRBlock` is a
+`(mlir::Block::getArgument (current-Block) N)` where `current-Block` is a
 dynamic parameter installed by the `^label ,@...` form.
 
 ```scheme
@@ -584,7 +584,7 @@ functions, type predicates, constants — no CREST macros required.
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
-        (with-RewritePatternSet (ps ctx)
+        (with-RewritePatternSet ps (ctx)
           (add-rewrite-pattern ps "root.op-name" my-pattern 10)
           (mlir::applyPatternsGreedily module-op ps))))))
 ```
@@ -614,9 +614,9 @@ functions, type predicates, constants — no CREST macros required.
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
-        (with-TypeConverter (tc)
-          (with-ConversionTarget (target)
-            (with-RewritePatternSet (ps)
+        (with-TypeConverter tc ()
+          (with-ConversionTarget target ()
+            (with-RewritePatternSet ps ()
               ;; Mark source dialect illegal, target dialect legal
               (mlir::ConversionTarget::addIllegalDialect! target "onnx")
               (mlir::ConversionTarget::addLegalDialect!   target "hipsr")
@@ -752,9 +752,9 @@ A dialect is loaded from Scheme via the `mlir::DialectRegistry`:
 
 ```scheme
 ;; Preferred: pre-register before MLIRContext is created (parser-safe)
-(with-DialectRegistry (reg)
+(with-DialectRegistry reg ()
   (mlir::DialectRegistry::insert reg "toy" "toy/ch4/toy")
-  (with-MLIRContext (ctx reg)
+  (with-MLIRContext ctx (reg)
     (mlir::MLIRContext::getOrLoadDialect ctx "toy")
     ...))
 ```
@@ -850,7 +850,7 @@ convention from CLAUDE.md Rules 10–11:
 | Parameter | Macro | Defined in | Set by |
 |---|---|---|---|
 | `current-MLIRContext` | `with-current-MLIRContext` | `(mlir IR MLIRContext)` | user / `with-current-MLIRContext` |
-| `current-MLIRBlock` | `with-current-MLIRBlock` | `(mlir IR Block)` | `^bb0` block bodies |
+| `current-Block` | `with-current-Block` | `(mlir IR Block)` | `^bb0` block bodies |
 | `current-OpBuilder` | `with-current-OpBuilder` | `(mlir IR Builders)` | `:rewrite :with` and `^bb` bodies; user code via `with-current-OpBuilder` |
 
 `current-OpBuilder` holds a **raw** `mlir::OpBuilder*`, never a CrestObject shell. A pattern's
@@ -867,7 +867,7 @@ The context hierarchy during a pattern rewrite:
 
 ```
 :rewrite :with                → current-OpBuilder = (as_ptr<OpBuilder> rw)
-  ^bb0 block body             → current-MLIRBlock = block
+  ^bb0 block body             → current-Block = block
                                 current-OpBuilder = block-builder
 ```
 
@@ -878,7 +878,7 @@ The context hierarchy during a pattern rewrite:
 | `(mlir IR MLIRContext)` | `current-MLIRContext`, `with-current-MLIRContext`, `mlir::MLIRContext::new` |
 | `(mlir IR Operation)` | `mlir::Operation::getName`, `getResult`, `getRegion`, `getAttr`, `setAttr!`, `getContext`, `getNumResults`, `getNumOperands` |
 | `(mlir IR Value)` | `mlir::Value::getType`, `getDefiningOp`, `getUses` |
-| `(mlir IR Block)` | `mlir::Block::getArgument`, `getNumArguments`, `current-MLIRBlock`, `with-current-MLIRBlock` |
+| `(mlir IR Block)` | `mlir::Block::getArgument`, `getNumArguments`, `current-Block`, `with-current-Block` |
 | `(mlir IR Region)` | `mlir::Region::front`, `getParentOp` |
 | `(mlir IR OpResult)` | `mlir::OpResult::getResultNumber` |
 
@@ -925,7 +925,7 @@ Exports: `define-rewrite-pattern`, `define-conversion-pattern`,
 `add-rewrite-pattern`, `add-conversion-pattern`,
 `begin-mlir-code`, `unbound-value?`, `mlir-get-remapped-operands`,
 `:builder`, `:arg`,
-`current-MLIRBlock`, `with-current-MLIRBlock`,
+`current-Block`, `with-current-Block`,
 `current-OpBuilder`, `with-current-OpBuilder`.
 
 ---

@@ -268,11 +268,11 @@
   (define (operation-get-operands op . spec)
     (define (read-op i) (mlir::OpOperand::get op i))
     (define (%%flex-path attr n-spec)
-      (with-ArrayRef (segs (mlir::DenseI32ArrayAttr::intoArrayRef attr))
-        (let ([n (ArrayRef::size segs)])
+      (with-ArrayRef segs ((mlir::DenseI32ArrayAttr::intoArrayRef attr))
+        (let ([n (crest::CArrayRef::size segs)])
           (and (= n n-spec)
                (let* ([sizes (loop :for i :from 0 :below n
-                                   :collect (ArrayRef::at segs i))]
+                                   :collect (crest::CArrayRef::at segs i))]
                       ;; fold-left guarantees left-to-right; map/:rime-with do not.
                       [starts (reverse
                                (car (fold-left (lambda (acc size)

@@ -12,7 +12,7 @@
 ;;   5. (affine) Canonicalize + CSE on func.func (MLIR PassManager)
 ;;   6. (affine+opt) Loop fusion + affine scalar replacement (MLIR PassManager)
 (import (chezscheme)
-        (only (mlir support array-ref) with-CrestObject)
+        (only (mlir support CrestObject) with-CrestObject)
         (mlir IR DialectRegistry)
         (mlir IR MLIRContext)
         (mlir IR Operation)
@@ -81,13 +81,13 @@
     (toy:dump module-ast)))
 
 (define (%%dump-mlir filename opt? emit-affine?)
-  (with-DialectRegistry (reg)
+  (with-DialectRegistry reg ()
     (mlir::DialectRegistry::insert reg "toy" "toy/ch5/toy")
     (mlir::affine::AffineDialect reg)
     (mlir::arith::ArithDialect  reg)
     (mlir::memref::MemRefDialect reg)
     (mlir::func::FuncDialect    reg)
-    (with-MLIRContext (ctx reg)
+    (with-MLIRContext ctx (reg)
       (mlir::MLIRContext::getOrLoadDialect ctx "toy")
       (mlir::MLIRContext::getOrLoadDialect ctx "affine")
       (mlir::MLIRContext::getOrLoadDialect ctx "arith")
@@ -113,7 +113,7 @@
                              (%%run-shape-inference! op))))
   ;; Step 3: Canonicalize (fold transpose/reshape patterns).
   (with-current-MLIRContext ctx
-    (with-RewritePatternSet (patterns ctx)
+    (with-RewritePatternSet patterns (ctx)
       (toy:add-canonicalization-patterns! patterns)
       (mlir::applyPatternsGreedily module-op patterns)))
   ;; Steps 4-6: Affine-specific lowering.
@@ -121,7 +121,7 @@
     ;; Step 4: Partial lowering to Affine+Arith+MemRef+Func.
     (%%toy-to-affine-lower! module-op ctx)
     ;; Steps 5-6: Post-lowering cleanup.
-    (with-PassManager (pm2 ctx)
+    (with-PassManager pm2 (ctx)
       (let ([func-pm (mlir::PassManager::nest pm2 "func.func")])
         (mlir::OpPassManager::addPass func-pm (mlir::createCanonicalizerPass))
         (mlir::OpPassManager::addPass func-pm (mlir::createCSEPass)))
@@ -238,8 +238,8 @@
       (hashtable-set! val-map
                       (mlir::Block::getArgument entry-block i)
                       (mlir::Operation::getOperand call-op i)))
-    (with-OpBuilder (builder-obj (with-current-MLIRContext ctx
-                                   (mlir::OpBuilder::atBlockEnd entry-block)))
+    (with-OpBuilder builder-obj (with-current-MLIRContext ctx
+                                  (mlir::OpBuilder::atBlockEnd entry-block))
       (let ([return-op #f])
         (mlir::Operation::walk callee
                                (lambda (op)

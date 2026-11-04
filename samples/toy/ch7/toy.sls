@@ -21,7 +21,7 @@
                 mlir::FunctionOpInterface
                 mlir::function_interface_impl::printFunctionOp
                 mlir::function_interface_impl::parseFunctionOp)
-          (only (mlir support array-ref) ArrayRef::size ArrayRef::at)
+          (only (mlir support array-ref) crest::CArrayRef::size crest::CArrayRef::at)
           (only (mlir IR OpImplementation) mlir::OpAsmParser::parseOptionalComma
                 mlir::OpAsmParser::parseLess
                 mlir::OpAsmParser::parseGreater
@@ -156,9 +156,9 @@
                    (isLegalToInline/region (dest src wouldBeCloned) #t)
                    (isLegalToInline/op     (op dest wouldBeCloned) #t)
                    (handleTerminator/value (op replacements)
-                                           (loop :for i :from 0 :below (ArrayRef::size replacements)
+                                           (loop :for i :from 0 :below (crest::CArrayRef::size replacements)
                                                  :do (mlir::Value::replaceAllUsesWith
-                                                      (ArrayRef::at replacements i)
+                                                      (crest::CArrayRef::at replacements i)
                                                       (mlir::Operation::getOperand op i))))
                    (handleTerminator/block (op new-dest) #f)
                    (materializeCallConversion (builder input result-type loc)

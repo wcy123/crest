@@ -76,10 +76,10 @@
             r = hipsr.min (ctx lhs rhs ph) -> out-type))))
 
   (define (onnx-min-general->hipsr op operands-ref rewriter type-converter)
-    (let ([n (ArrayRef::size operands-ref)])
+    (let ([n (crest::CArrayRef::size operands-ref)])
       (cond
        [(eqv? n 1)
-        (mlir::RewriterBase::replaceOp rewriter op (ArrayRef::at operands-ref 0))
+        (mlir::RewriterBase::replaceOp rewriter op (crest::CArrayRef::at operands-ref 0))
         #t]
        [(> n 2)
         (let* ([ctx      (mlir-get-hipsr-context-arg op)]
@@ -88,14 +88,14 @@
                                                                     (make-hipsr-device-space-attr))])
           (let loop ([i 2]
                      [acc (make-binary-min! rewriter op ctx
-                                            (ArrayRef::at operands-ref 0)
-                                            (ArrayRef::at operands-ref 1)
+                                            (crest::CArrayRef::at operands-ref 0)
+                                            (crest::CArrayRef::at operands-ref 1)
                                             out-type)])
             (if (eqv? i n)
                 (begin (mlir::RewriterBase::replaceOp rewriter op acc) #t)
                 (loop (+ i 1)
                       (make-binary-min! rewriter op ctx acc
-                                        (ArrayRef::at operands-ref i) out-type)))))]
+                                        (crest::CArrayRef::at operands-ref i) out-type)))))]
        [else #f])))
 
   (define (populate-min-patterns type-converter patterns ctx)

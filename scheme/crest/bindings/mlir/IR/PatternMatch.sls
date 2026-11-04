@@ -34,12 +34,10 @@
     ;; Type predicates
     crest::isa<CrestOwned<mlir::RewritePatternSet>>?
     ;; RAII macros
-    with-raii
     with-RewritePatternSet)
 
   (import (rnrs)
-          (only (mlir support RAII) with-raii)
-          (only (mlir support array-ref) with-CrestObject)
+          (only (mlir support CrestObject) with-CrestObject)
           (only (chezscheme) void)
           (only (mlir IR PatternMatch ffi)
                 %mlir::RewriterBase::setInsertionPoint
@@ -116,11 +114,11 @@
   ;; @note  Lifetime managed by CrestObject deletor; no explicit destructor needed.
   (define-syntax with-RewritePatternSet
     (syntax-rules ()
-      [(_ (var) body ...)
-       (with-CrestObject (var (mlir::RewritePatternSet::RewritePatternSet (current-MLIRContext)))
+      [(_ var () body ...)
+       (with-CrestObject var (mlir::RewritePatternSet::RewritePatternSet (current-MLIRContext))
          body ...)]
-      [(_ (var ctx) body ...)
-       (with-CrestObject (var (mlir::RewritePatternSet::RewritePatternSet ctx))
+      [(_ var (ctx) body ...)
+       (with-CrestObject var (mlir::RewritePatternSet::RewritePatternSet ctx)
          body ...)]))
 
   ) ;; end library (mlir IR PatternMatch)

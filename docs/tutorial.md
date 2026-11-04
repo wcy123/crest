@@ -68,7 +68,7 @@ Create `passes/tutorial-step1.sls`:
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
-        (with-RewritePatternSet (ps)
+        (with-RewritePatternSet ps ()
           (add-rewrite-pattern ps "source.add" step1 1)
           (mlir::applyPatternsGreedily module-op ps)))))
 

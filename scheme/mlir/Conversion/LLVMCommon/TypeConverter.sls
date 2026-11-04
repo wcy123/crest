@@ -5,7 +5,7 @@
           with-LLVMTypeConverter)
   (import (rnrs)
           (mlir Conversion LLVMCommon TypeConverter ffi)
-          (only (mlir support array-ref) with-CrestObject)
+          (only (mlir support CrestObject) with-CrestObject)
           (only (mlir IR MLIRContext) current-MLIRContext))
 
   (define mlir::LLVMTypeConverter::LLVMTypeConverter
@@ -16,7 +16,7 @@
   ;; RAII: create an LLVMTypeConverter, execute body, free it.
   (define-syntax with-LLVMTypeConverter
     (syntax-rules ()
-      [(_ (var) body ...)
-       (with-CrestObject (var (mlir::LLVMTypeConverter::LLVMTypeConverter)) body ...)]
-      [(_ (var ctx) body ...)
-       (with-CrestObject (var (mlir::LLVMTypeConverter::LLVMTypeConverter ctx)) body ...)])))
+      [(_ var () body ...)
+       (with-CrestObject var (mlir::LLVMTypeConverter::LLVMTypeConverter) body ...)]
+      [(_ var (ctx) body ...)
+       (with-CrestObject var (mlir::LLVMTypeConverter::LLVMTypeConverter ctx) body ...)])))

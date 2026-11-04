@@ -13,7 +13,7 @@
 ;;
 ;; Example:
 ;; @code
-;;   (with-PassManager (pm ctx)
+;;   (with-PassManager pm (ctx)
 ;;     (mlir::PassManager::addPass pm (mlir::createInlinerPass))
 ;;     (mlir::PassManager::run! pm module-op))
 ;; @endcode
@@ -30,7 +30,7 @@
           with-PassManager)
   (import (rnrs)
           (mlir Pass PassManager ffi)
-          (mlir support RAII))
+          (only (mlir support CrestObject) with-CrestObject))
 
   (define mlir::PassManager::new %mlir::PassManager::new)
 
@@ -46,13 +46,11 @@
   (define (mlir::PassManager::enableVerifier pm enabled?)
     (%mlir::PassManager::enableVerifier pm (if enabled? 1 0)))
 
-  (define %%pm-delete %CrestObject::delete)
-
   ;; RAII macro: binds PM to a fresh PassManager for BODY, then frees it.
   (define-syntax with-PassManager
     (syntax-rules ()
-      [(_ (pm ctx) body ...)
-       (with-raii (pm (mlir::PassManager::new ctx) %%pm-delete)
+      [(_ pm (ctx) body ...)
+       (with-CrestObject pm (mlir::PassManager::new ctx)
          body ...)]))
 
   ) ;; end library (mlir Pass PassManager)
