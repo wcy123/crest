@@ -6,7 +6,7 @@
           with-ExecutionEngine)
   (import (rnrs)
           (mlir ExecutionEngine ExecutionEngine ffi)
-          (only (mlir support array-ref) with-CrestObject))
+          (only (mlir support CrestObject) with-CrestObject))
   (define mlir::ExecutionEngine::create %mlir::ExecutionEngine::create)
   (define mlir::ExecutionEngine::invoke %mlir::ExecutionEngine::invoke)
   (define-syntax with-ExecutionEngine

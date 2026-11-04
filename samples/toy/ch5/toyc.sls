@@ -12,7 +12,7 @@
 ;;   5. (affine) Canonicalize + CSE on func.func (MLIR PassManager)
 ;;   6. (affine+opt) Loop fusion + affine scalar replacement (MLIR PassManager)
 (import (chezscheme)
-        (only (mlir support array-ref) with-CrestObject)
+        (only (mlir support CrestObject) with-CrestObject)
         (mlir IR DialectRegistry)
         (mlir IR MLIRContext)
         (mlir IR Operation)

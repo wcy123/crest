@@ -41,7 +41,8 @@
                      mlir::Operation::emitError
                      operation-get-operands) expand)
           (for (only (mlir IR Value) mlir::Value::getDefiningOp) expand)
-          (for (only (mlir support array-ref) ArrayRef::size ArrayRef::at with-CrestObject) expand)
+          (for (only (mlir support array-ref) ArrayRef::size ArrayRef::at) expand)
+          (for (only (mlir support CrestObject) with-CrestObject) expand)
           (for (only (mlir IR MLIRContext) current-MLIRContext) expand)
           (for (only (chezscheme) parameterize) expand)
           (for (only (crest pattern-dsl rewrite) begin-mlir-code) expand)

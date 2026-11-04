@@ -30,7 +30,7 @@
   (import (rnrs)
           (only (chezscheme) make-parameter parameterize)
           (mlir IR Builders ffi)
-          (only (mlir support array-ref) with-CrestObject)
+          (only (mlir support CrestObject) with-CrestObject)
           (only (mlir IR MLIRContext) current-MLIRContext))
 
   ;; @brief Heap-allocate a CrestOwned<mlir::OpBuilder> positioned at end of block.

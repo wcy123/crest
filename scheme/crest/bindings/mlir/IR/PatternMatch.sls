@@ -39,7 +39,7 @@
 
   (import (rnrs)
           (only (mlir support RAII) with-raii)
-          (only (mlir support array-ref) with-CrestObject)
+          (only (mlir support CrestObject) with-CrestObject)
           (only (chezscheme) void)
           (only (mlir IR PatternMatch ffi)
                 %mlir::RewriterBase::setInsertionPoint

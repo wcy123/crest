@@ -50,7 +50,7 @@
           (mlir Transforms DialectConversion ffi)
           (only (mlir IR PatternMatch)
                 mlir::RewritePatternSet::RewritePatternSet)
-          (only (mlir support array-ref) with-CrestObject)
+          (only (mlir support CrestObject) with-CrestObject)
           (only (mlir IR MLIRContext) current-MLIRContext))
 
   ;; @brief mlir::TypeConverter constructor — allocate a new TypeConverter.

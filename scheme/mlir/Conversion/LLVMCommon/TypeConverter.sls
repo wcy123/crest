@@ -5,7 +5,7 @@
           with-LLVMTypeConverter)
   (import (rnrs)
           (mlir Conversion LLVMCommon TypeConverter ffi)
-          (only (mlir support array-ref) with-CrestObject)
+          (only (mlir support CrestObject) with-CrestObject)
           (only (mlir IR MLIRContext) current-MLIRContext))
 
   (define mlir::LLVMTypeConverter::LLVMTypeConverter

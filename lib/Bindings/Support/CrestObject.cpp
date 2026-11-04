@@ -3,6 +3,8 @@
  * Licensed under the MIT License.
  */
 
+// Mirrors lib/Bindings/Support/CrestObject.h (CREST-specific).
+
 // Note: CrestObject::deletor is NOT a C binding — it is just a foreign-ref
 // at offset 0, implemented directly in Scheme as:
 //   (define (CrestObject::deletor obj) (foreign-ref 'uptr obj 0))

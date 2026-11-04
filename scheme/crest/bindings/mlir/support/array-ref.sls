@@ -7,7 +7,7 @@
 ;; Mirrors lib/Bindings/Support/ArrayRef.h (CREST-specific, no MLIR counterpart).
 ;;===----------------------------------------------------------------------===;;
 ;;
-;; (mlir support array-ref) — C ABI helpers for CArrayRef and CrestObject.
+;; (mlir support array-ref) — C ABI helpers for CArrayRef.
 ;;
 ;; CArrayRef<T> layout (64-bit), from lib/Bindings/Support/ArrayRef.h:
 ;;   offset 0:  deletor (8B) — function pointer (type tag + destructor)
@@ -26,10 +26,6 @@
 
 (library (mlir support array-ref)
   (export
-    ;; CrestObject — generic base for all CREST-managed foreign objects
-    CrestObject::deletor    ; (obj) → uptr: read deletor address (type tag)
-    CrestObject::delete     ; (obj) → void: call deletor, freeing the object
-    with-CrestObject        ; (syntax) RAII for any CrestObject
     ;; Typed CArrayRef predicates
     CArrayRef<i32>?         ; (obj) → boolean
     CArrayRef<i64>?         ; (obj) → boolean
@@ -43,35 +39,8 @@
 
   (import (rnrs)
           (only (chezscheme) foreign-ref)
+          (only (mlir support CrestObject) with-CrestObject)
           (mlir support array-ref ffi))
-
-  ;;===--------------------------------------------------------------------===;;
-  ;; CrestObject — generic base for heap-allocated CREST foreign objects.
-  ;;===--------------------------------------------------------------------===;;
-
-  ;; @brief CrestObject::deletor — read the deletor (type tag) from a CrestObject.
-  ;; @param obj  uptr — pointer to any CrestObject
-  ;; @return     uptr — address of the deletor function (unique per concrete type)
-  (define (CrestObject::deletor obj)
-    (foreign-ref 'uptr obj 0))
-
-  ;; @brief CrestObject::delete — call the stored deletor, freeing the object.
-  ;; @param obj  uptr — pointer to any CrestObject
-  (define CrestObject::delete %CrestObject::delete)
-
-  ;; @brief with-CrestObject — RAII for any CrestObject: binds NAME to the shell that INIT
-  ;; creates, runs BODY, then frees the shell on exit (normal return, error, or escape).
-  ;; @example
-  ;;   (with-CrestObject state (mlir::OperationState::create loc "my.op")
-  ;;     ...)
-  (define-syntax with-CrestObject
-    (syntax-rules ()
-      [(_ name init body ...)
-       (let ([name init])
-         (dynamic-wind
-             (lambda () #f)
-             (lambda () body ...)
-             (lambda () (CrestObject::delete name))))]))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Typed CArrayRef predicates.

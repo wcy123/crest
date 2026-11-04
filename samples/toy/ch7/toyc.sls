@@ -12,7 +12,7 @@
 ;;   5. (llvm) lower-to-llvm (toy.print → printf, all → LLVM dialect)
 ;;   6. (llvm) DIScopeForLLVMFuncOp pass
 (import (chezscheme)
-        (only (mlir support array-ref) with-CrestObject)
+        (only (mlir support CrestObject) with-CrestObject)
         (mlir IR DialectRegistry)
         (mlir IR MLIRContext)
         (mlir IR Operation)
