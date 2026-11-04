@@ -81,12 +81,10 @@
 ;;
 ;;   (begin-mlir-code op-form ...)
 ;;
-;; :rewrite :with and ^bb bodies install it. An explicit builder is written as a
-;; literal (:builder expr) first argument:
-;;   (begin-mlir-code (:builder b) op-form ...)
+;; :rewrite :with and ^bb bodies install it. Elsewhere wrap the call:
+;;   (with-current-OpBuilder b (begin-mlir-code op-form ...))
 ;; where b is a raw OpBuilder* (from with-OpBuilder, or
-;; (crest::as_ptr<mlir::OpBuilder> rw) for a pattern's rewriter); it is also installed as
-;; the ambient builder for the body. :builder is exported here: import it with (crest).
+;; (crest::as_ptr<mlir::OpBuilder> rw) for a pattern's rewriter).
 ;;
 ;; op-form syntax:
 ;;
