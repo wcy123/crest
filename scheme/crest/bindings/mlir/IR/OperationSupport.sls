@@ -22,7 +22,7 @@
     crest::isa<CrestOwned<mlir::OperationState>>?
     with-OperationState)
   (import (rnrs)
-          (only (mlir support array-ref) with-CrestObject)
+          (only (mlir support CrestObject) with-CrestObject)
           (mlir IR OperationSupport ffi))
 
   ;; @brief crest::isa<CrestOwned<mlir::OperationState>>? — is this ptr a CrestOwned<mlir::OperationState>?
@@ -47,7 +47,7 @@
       (syntax-case stx ()
         [(_ var (loc name) body ...)
          (identifier? #'var)
-         #'(with-CrestObject (var (mlir::OperationState::create loc name))
+         #'(with-CrestObject var (mlir::OperationState::create loc name)
              body ...)])))
 
   ) ;; end library (mlir IR OperationSupport)

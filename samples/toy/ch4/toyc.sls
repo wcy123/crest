@@ -8,7 +8,7 @@
 ;;   2. Shape inference (resolves tensor<*xf64> to concrete ranked types)
 ;;   3. Canonicalization (fold transpose/reshape pairs)
 (import (chezscheme)
-        (only (mlir support array-ref) with-CrestObject)
+        (only (mlir support CrestObject) with-CrestObject)
         (mlir IR DialectRegistry)
         (mlir IR MLIRContext)
         (mlir IR Operation)
@@ -230,8 +230,8 @@
                       (mlir::Block::getArgument entry-block i)
                       (mlir::Operation::getOperand call-op i)))
     ;; Create a builder positioned just before the call op, freed on exit.
-    (with-OpBuilder (builder-obj (with-current-MLIRContext ctx
-                                   (mlir::OpBuilder::atBlockEnd entry-block)))
+    (with-OpBuilder builder-obj (with-current-MLIRContext ctx
+                                  (mlir::OpBuilder::atBlockEnd entry-block))
       (let ([return-op #f])
         ;; Walk callee body, cloning each op before the call.
         (mlir::Operation::walk callee

@@ -12,7 +12,7 @@
 ;;   5. (llvm) lower-to-llvm (toy.print → printf, all → LLVM dialect)
 ;;   6. (llvm) DIScopeForLLVMFuncOp pass
 (import (chezscheme)
-        (only (mlir support array-ref) with-CrestObject)
+        (only (mlir support CrestObject) with-CrestObject)
         (mlir IR DialectRegistry)
         (mlir IR MLIRContext)
         (mlir IR Operation)
@@ -325,8 +325,8 @@
       (hashtable-set! val-map
                       (mlir::Block::getArgument entry-block i)
                       (mlir::Operation::getOperand call-op i)))
-    (with-OpBuilder (builder-obj (with-current-MLIRContext ctx
-                                   (mlir::OpBuilder::atBlockEnd entry-block)))
+    (with-OpBuilder builder-obj (with-current-MLIRContext ctx
+                                  (mlir::OpBuilder::atBlockEnd entry-block))
       (let ([return-op #f])
         (mlir::Operation::walk callee
                                (lambda (op)

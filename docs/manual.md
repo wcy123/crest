@@ -324,7 +324,7 @@ The builder must be a **raw** `mlir::OpBuilder*`:
 
 ;; A builder you create yourself: with-OpBuilder binds the raw pointer and frees
 ;; the underlying shell on exit; with-current-OpBuilder installs it.
-(with-OpBuilder (b (mlir::OpBuilder::atBlockEnd block))
+(with-OpBuilder b (mlir::OpBuilder::atBlockEnd block)
   (with-current-OpBuilder b
     (begin-mlir-code
       r = my.op (v) -> ty)))

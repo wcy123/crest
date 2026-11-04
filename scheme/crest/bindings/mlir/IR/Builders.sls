@@ -30,7 +30,7 @@
   (import (rnrs)
           (only (chezscheme) make-parameter parameterize)
           (mlir IR Builders ffi)
-          (only (mlir support array-ref) with-CrestObject)
+          (only (mlir support CrestObject) with-CrestObject)
           (only (mlir IR MLIRContext) current-MLIRContext))
 
   ;; @brief Heap-allocate a CrestOwned<mlir::OpBuilder> positioned at end of block.
@@ -79,12 +79,12 @@
   ;; @brief with-OpBuilder — RAII for a builder created by INIT (e.g. atBlockEnd): binds VAR to
   ;; the raw mlir::OpBuilder* for BODY and frees the shell on exit.
   ;; @example
-  ;;   (with-OpBuilder (builder (mlir::OpBuilder::atBlockEnd block))
+  ;;   (with-OpBuilder builder (mlir::OpBuilder::atBlockEnd block)
   ;;     (mlir::OpBuilder::create<OperationState> builder state))
   (define-syntax with-OpBuilder
     (syntax-rules ()
-      [(_ (var init) body ...)
-       (with-CrestObject (shell init)
+      [(_ var init body ...)
+       (with-CrestObject shell init
          (let ([var (crest::as_ptr<mlir::OpBuilder> shell)])
            body ...))]))
 

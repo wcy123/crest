@@ -54,6 +54,8 @@
     ;; CREST RAII macros: every `with-*' form is covered by pp/indent-prefix-spec.
     ;; Only list one here if it needs a level other than the prefix default.
     (with-OperationState . 2)
+    (with-CrestObject . 2)
+    (with-OpBuilder . 2)
     ;; begin-mlir-code: first arg is builder (like with-*), rest are op-forms
     (begin-mlir-code . 1)
     ;; define-op DSL callbacks: (:keyword (formals) body ...) — like when

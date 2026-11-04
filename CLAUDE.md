@@ -167,6 +167,7 @@ at offset 0). Bindings that take a builder take that raw pointer; rewriter-only 
 | `with-OpBuilder` | `(mlir IR Builders)` | `mlir/IR/Builders.h` |
 | `with-TypeConverter` | `(mlir Transforms DialectConversion)` | `mlir/Transforms/DialectConversion.h` |
 | `with-ConversionTarget` | `(mlir Transforms DialectConversion)` | `mlir/Transforms/DialectConversion.h` |
+| `with-CrestObject` | `(mlir support CrestObject)` | `lib/Bindings/Support/CrestObject.h` (CREST-specific) |
 | `with-raii` | `(mlir support RAII)` | (generic, no C++ counterpart) |
 
 ---

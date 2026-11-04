@@ -355,9 +355,9 @@
               #`(let* ([#,block-id (mlir::Region::push_back<Block> region types)]
                        arg-binding ...)
                   (with-current-MLIRBlock #,block-id
-                    (with-OpBuilder (builder (mlir::OpBuilder::atBlockEnd
-                                              #,block-id
-                                              (mlir::OpBuilder::getListener (%%current-builder))))
+                    (with-OpBuilder builder (mlir::OpBuilder::atBlockEnd
+                                             #,block-id
+                                             (mlir::OpBuilder::getListener (%%current-builder)))
                       (with-current-OpBuilder builder
                         (begin-mlir-code b ...)))))))))
 
