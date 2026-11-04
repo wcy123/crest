@@ -121,34 +121,33 @@ Layouts on a 64-bit target:
 #### `CrestOwned<OpBuilder>`, from `mlir::OpBuilder::atBlockEnd`
 
 ```
-                   variable `shell` (Chez Scheme: one machine word, no heap object)
-                   +------------------------------+
-   Scheme          | 0x2993BD20  | 000            |   = 0x14C9DE900, the address * 8
-                   +------------------------------+
-                     address       fixnum tag (binary)
-                     |
-                     |  FFI call, argument type `uptr`:
-                     |  shift right by 3, which drops the tag
-                     v
-                   `uptr` (C `unsigned long`; our bindings take it as uint64_t)
-                   +------------------------------+
-   C++ call        | 0x2993BD20                   |   the shell address
-                   +------------------------------+
-                     |
-                     |  points to
-                     v
-   address
-   0x2993BD20  +0  +------------------------------+   CrestOwned<OpBuilder>, 40 bytes
-                   | deletor ---------------------------------> AsCrest<CrestOwned<OpBuilder>>
-   0x2993BD28  +8  +------------------------------+                 ::type_deletor
-                   | context                      |  \
-   0x2993BD30  +16 +------------------------------+   |
-                   | listener                     |   |  inner : mlir::OpBuilder
-   0x2993BD38  +24 +------------------------------+   |  (32 bytes)
-                   | block                        |   |
-   0x2993BD40  +32 +------------------------------+   |
-                   | insertPoint                  |  /
-   0x2993BD48  +40 +------------------------------+
+Where the value is kept       What is stored there
+
+Scheme variable `shell`       +------------------------------+
+(a register or stack slot)    | 0x14C9DE900                  |   a fixnum: 0x2993BD20 * 8
+                              +------------------------------+   (binary: the address bits, then 000)
+                                   |
+                                   |  FFI call, argument type `uptr`:
+                                   |  shift right by 3, which drops the 000
+                                   v
+C argument `uptr`             +------------------------------+
+(a register or stack slot)    | 0x2993BD20                   |   a number; it is the address of the shell
+                              +------------------------------+
+                                   |
+                                   |  go to that address
+                                   v
+C++ heap, starting at 0x2993BD20
+  0x2993BD20  +0              +------------------------------+   CrestOwned<OpBuilder>, 40 bytes
+                              | deletor ---------------------------------> AsCrest<CrestOwned<OpBuilder>>
+  0x2993BD28  +8              +------------------------------+                 ::type_deletor
+                              | context                      |  \
+  0x2993BD30  +16             +------------------------------+   |
+                              | listener                     |   |  inner : mlir::OpBuilder
+  0x2993BD38  +24             +------------------------------+   |  (32 bytes)
+                              | block                        |   |
+  0x2993BD40  +32             +------------------------------+   |
+                              | insertPoint                  |  /
+  0x2993BD48  +40             +------------------------------+
 ```
 
 The Scheme variable does not point at a Scheme object that points at the shell. It holds the
