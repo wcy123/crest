@@ -259,20 +259,25 @@ The per-call cost has not been measured.
 The binding helpers have one function for each kind of argument. Pick the one that matches
 what Scheme passes.
 
-| Function | Accepts | Returns | Use it when |
-|---|---|---|---|
-| `as_raw<T>(p, who)` | a raw `T*` | `T*` | MLIR owns the object and there is no shell. Only checks for null. |
-| `as_ptr<T>(p, who)` | `CrestRef<T>*` or `CrestOwned<T>*` | `T*` | either kind of shell is fine |
-| `as_ref<T>(p, who)` | `CrestOwned<T>*` | `T&` | the argument must be an owned object |
-| `crest_cast<X>(p, who)` | a shell of exactly type `X` | `X*` | the argument is one specific shell type |
+| Function | Accepts | Returns | Type safety | Use it when |
+|---|---|---|---|---|
+| `as_raw<T>(p, who)` | a raw `T*` | `T*` | **none.** It only checks for null. Any address is cast to `T*`, so a wrong object gives undefined behavior, often a crash inside MLIR. | MLIR owns the object and there is no shell |
+| `as_ptr<T>(p, who)` | `CrestRef<T>*` or `CrestOwned<T>*` | `T*` | **checked.** The type tag must match exactly one of the two shells; otherwise a Scheme error, `wrong CrestObject type`. | either kind of shell is fine |
+| `as_ref<T>(p, who)` | `CrestOwned<T>*` | `T&` | **checked.** The type tag must be `CrestOwned<T>`. | the argument must be an owned object |
+| `crest_cast<X>(p, who)` | a shell of exactly type `X` | `X*` | **checked.** The type tag must be `X`. | the argument is one specific shell type |
+
+Only `as_raw` skips the check. The other three read the type tag first, which is the cost
+described in [the cost section](#cost-of-the-extra-level).
 
 Two types have a special `as_ptr`, because their objects arrive in more than one form:
 
 - `as_ptr<mlir::MLIRContext>` also accepts a raw `MLIRContext*`, such as the one from
-  `op->getContext()`.
+  `op->getContext()`. **It is not type-safe**: if the argument is not a
+  `CrestOwned<MLIRContext>`, it is cast to `MLIRContext*` with no check, like `as_raw`.
 - `as_ptr<mlir::OpBuilder>` accepts `CrestOwned<OpBuilder>` and `CrestRef<RewriterBase>`,
-  and adds the 8 bytes described above. It rejects a raw pointer. A binding that takes a
-  builder takes the raw `OpBuilder*` and calls `as_raw`.
+  and adds the 8 bytes described above. It is type-safe: it rejects a raw pointer and any
+  other shell with a Scheme error. A binding that takes a builder takes the raw `OpBuilder*`
+  and calls `as_raw`.
 
 The `isa` check is **exact**. A `CrestRef<RewriterBase>` is not a `CrestRef<PatternRewriter>`.
 For this reason, each shell type that is accepted is listed by name.
