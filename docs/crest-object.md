@@ -266,15 +266,16 @@ and the `with-*` macros are how you do it.
 #### `with-CrestObject`
 
 ```scheme
-(with-CrestObject name init-expr
+(with-CrestObject name (create-call)
   body ...)
 ```
 
-It binds `name` to the shell that `init-expr` creates, runs the body, and then calls
-`crest::CrestObject::delete` on the shell. It expands to this:
+`(create-call)` is the whole call that makes the shell, for example
+`(mlir::OperationState::create loc "my.op")`. The macro binds `name` to that shell, runs the
+body, and then calls `crest::CrestObject::delete` on the shell. It expands to this:
 
 ```scheme
-(let ([name init-expr])
+(let ([name (create-call)])
   (dynamic-wind
     (lambda () #f)
     (lambda () body ...)
