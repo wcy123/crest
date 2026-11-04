@@ -313,7 +313,7 @@ Nested macros free in reverse order: the innermost shell is freed first.
 
 #### Macros that free nothing
 
-`with-current-MLIRContext`, `with-current-MLIRBlock` and `with-current-OpBuilder` only set a
+`with-current-MLIRContext`, `with-current-Block` and `with-current-OpBuilder` only set a
 dynamic variable for the length of the body (see
 [manual.md](manual.md#context-parameters)). They do not create or free anything. They are
 often nested inside one of the macros above, for example `with-OpBuilder` for the shell and

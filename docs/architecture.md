@@ -108,7 +108,7 @@ Library names mirror MLIR header paths (e.g. `mlir/IR/PatternMatch.h` →
 `%`-prefixed raw `foreign-procedure` bindings; the public library re-exports
 clean names and provides `case-lambda` ctx-optional wrappers where applicable.
 
-Dynamic parameters (`current-MLIRContext`, `current-OpBuilder`, `current-MLIRBlock`)
+Dynamic parameters (`current-MLIRContext`, `current-OpBuilder`, `current-Block`)
 follow the same pattern as
 [MLIR's thread-local `OpBuilder` state](https://mlir.llvm.org/docs/Tutorials/Toy/Ch-3/).
 `parameterize` (via `with-current-MLIRContext`, `with-current-OpBuilder`, etc.) installs

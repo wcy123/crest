@@ -76,7 +76,7 @@
                 with-ConversionTarget)
           (only (mlir IR PatternMatch) with-RewritePatternSet)
           (only (mlir IR Builders) crest::as_ptr<mlir::OpBuilder>)
-          (only (mlir support array-ref) ArrayRef::at ArrayRef::size)
+          (only (mlir support array-ref) crest::CArrayRef::at crest::CArrayRef::size)
           (crest))
 
   ;;===--------------------------------------------------------------------===;;
@@ -158,8 +158,8 @@
   ;;===--------------------------------------------------------------------===;;
 
   (define (%%binary-lower! op operands-ref rw tc arith-create)
-    (let* ([lhs         (ArrayRef::at operands-ref 0)]
-           [rhs         (ArrayRef::at operands-ref 1)]
+    (let* ([lhs         (crest::CArrayRef::at operands-ref 0)]
+           [rhs         (crest::CArrayRef::at operands-ref 1)]
            [tensor-type (mlir::Value::getType (mlir::Operation::getResult op 0))]
            [alloc       (%%lower-op-to-loops! op (crest::as_ptr<mlir::OpBuilder> rw) tensor-type
                                               (lambda (nb loc ivs)
@@ -177,7 +177,7 @@
   ;;===--------------------------------------------------------------------===;;
 
   (define (%%transpose-lower! op operands-ref rw tc)
-    (let* ([input       (ArrayRef::at operands-ref 0)]
+    (let* ([input       (crest::CArrayRef::at operands-ref 0)]
            [tensor-type (mlir::Value::getType (mlir::Operation::getResult op 0))]
            [alloc       (%%lower-op-to-loops! op (crest::as_ptr<mlir::OpBuilder> rw) tensor-type
                                               (lambda (nb loc ivs)

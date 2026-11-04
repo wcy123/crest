@@ -19,7 +19,7 @@
           ;; (:builder) returns the currently active builder/rewriter
           :builder)
   (import (except (rnrs) =)
-          (only (mlir IR Block) mlir::Block::getArgument current-MLIRBlock)
+          (only (mlir IR Block) mlir::Block::getArgument current-Block)
           (only (mlir IR Builders) current-OpBuilder))
 
   ;; Define keywords as syntax (for cross-library hygiene)
@@ -80,7 +80,7 @@
   (define-syntax :loc      (lambda (x) (syntax-violation 'begin-mlir-code "misplaced :loc (only valid as op modifier in begin-mlir-code)" x)))
   (define-syntax :arg
     (syntax-rules ()
-      [(_ n) (mlir::Block::getArgument (current-MLIRBlock) n)]))
+      [(_ n) (mlir::Block::getArgument (current-Block) n)]))
   (define-syntax :builder
     (lambda (stx)
       (syntax-case stx ()

@@ -19,8 +19,8 @@
           mlir::Block::empty?
           mlir::Block::back
           mlir::Block::front
-          current-MLIRBlock
-          with-current-MLIRBlock)
+          current-Block
+          with-current-Block)
   (import (rnrs)
           (only (chezscheme) make-parameter parameterize)
           (mlir IR Block ffi))
@@ -57,14 +57,14 @@
   (define mlir::Block::back  %mlir::Block::back)
   (define mlir::Block::front %mlir::Block::front)
 
-  ;; @brief current-MLIRBlock — dynamic parameter holding the ambient mlir::Block* uptr.
-  ;; Installed by with-current-MLIRBlock; used by (:arg N) in begin-mlir-code.
-  (define current-MLIRBlock (make-parameter #f))
+  ;; @brief current-Block — dynamic parameter holding the ambient mlir::Block* uptr.
+  ;; Installed by with-current-Block; used by (:arg N) in begin-mlir-code.
+  (define current-Block (make-parameter #f))
 
-  ;; @brief with-current-MLIRBlock — install block as current-MLIRBlock for body forms.
-  (define-syntax with-current-MLIRBlock
+  ;; @brief with-current-Block — install block as current-Block for body forms.
+  (define-syntax with-current-Block
     (syntax-rules ()
       [(_ block body ...)
-       (parameterize ([current-MLIRBlock block]) body ...)]))
+       (parameterize ([current-Block block]) body ...)]))
 
   ) ;; end library (mlir IR Block)

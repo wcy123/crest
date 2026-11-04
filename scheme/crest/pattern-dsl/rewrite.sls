@@ -92,9 +92,9 @@
           (for (only (mlir IR Region) mlir::Region::push_back<Block>) expand)
           (for (only (mlir IR Block)
                      mlir::Block::getArgument
-                     current-MLIRBlock
-                     with-current-MLIRBlock) expand)
-          (only (mlir IR Block) current-MLIRBlock with-current-MLIRBlock)
+                     current-Block
+                     with-current-Block) expand)
+          (only (mlir IR Block) current-Block with-current-Block)
           (for (only (mlir IR Operation) mlir::Operation::getRegion) expand)
           (for (only (mlir IR Operation) mlir::Operation::getResult) expand)
           (for (only (crest pattern-dsl ast)
@@ -354,7 +354,7 @@
             (with-syntax ([region region-stx])
               #`(let* ([#,block-id (mlir::Region::push_back<Block> region types)]
                        arg-binding ...)
-                  (with-current-MLIRBlock #,block-id
+                  (with-current-Block #,block-id
                     (with-OpBuilder builder (mlir::OpBuilder::atBlockEnd
                                              #,block-id
                                              (mlir::OpBuilder::getListener (%%current-builder)))

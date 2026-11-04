@@ -12,7 +12,7 @@ namespace crest {
 
 void registerArrayRefBindings() {
   Sregister_symbol(
-      "mlir_support_array_ref_make",
+      "crest::CArrayRef<uptr>::CArrayRef",
       (void*)+[](uint64_t data_ptr, uint64_t size) -> uint64_t {
         return reinterpret_cast<uint64_t>(new CArrayRef<uintptr_t>(
             reinterpret_cast<const uintptr_t*>(data_ptr), size));

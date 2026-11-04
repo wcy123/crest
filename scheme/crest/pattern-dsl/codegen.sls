@@ -41,7 +41,7 @@
                      mlir::Operation::emitError
                      operation-get-operands) expand)
           (for (only (mlir IR Value) mlir::Value::getDefiningOp) expand)
-          (for (only (mlir support array-ref) ArrayRef::size ArrayRef::at) expand)
+          (for (only (mlir support array-ref) crest::CArrayRef::size crest::CArrayRef::at) expand)
           (for (only (mlir support CrestObject) with-CrestObject) expand)
           (for (only (mlir IR MLIRContext) current-MLIRContext) expand)
           (for (only (chezscheme) parameterize) expand)
@@ -415,8 +415,8 @@
          (let* ([fields      (cdr action)]
                 [var         (cdr (assq 'var fields))]
                 [operand-idx (cdr (assq 'operand-idx fields))])
-           #`(if (< #,operand-idx (ArrayRef::size #,operands-ref))
-                 (let ([val (ArrayRef::at #,operands-ref #,operand-idx)])
+           #`(if (< #,operand-idx (crest::CArrayRef::size #,operands-ref))
+                 (let ([val (crest::CArrayRef::at #,operands-ref #,operand-idx)])
                    (and (not (zero? val))
                         (begin (set! #,var val) #t)))
                  #f))]

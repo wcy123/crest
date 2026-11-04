@@ -14,7 +14,7 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir support array-ref ffi)
-  (export %make
+  (export %crest::CArrayRef<uptr>::CArrayRef
           %crest::CArrayRef<i32>?
           %crest::CArrayRef<i64>?
           %crest::CArrayRef<uptr>?)
@@ -25,8 +25,8 @@
   ;; @param size      uptr — number of elements
   ;; @return          uptr — address of newly allocated CArrayRef<uintptr_t>
   ;;                  Layout: { deletor@0, data@8, size@16 }
-  (define %make
-    (foreign-procedure "mlir_support_array_ref_make" (uptr uptr) uptr))
+  (define %crest::CArrayRef<uptr>::CArrayRef
+    (foreign-procedure "crest::CArrayRef<uptr>::CArrayRef" (uptr uptr) uptr))
 
   ;; @brief Type predicates — is this CrestObject a CArrayRef<T>?
   ;; Returns 1 (true) or 0 (false). The isa logic (deletor comparison) is in C++.
