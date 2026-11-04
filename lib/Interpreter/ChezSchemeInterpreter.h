@@ -7,6 +7,7 @@
 #define CREST_INTERPRETER_CHEZSCHEMEINTERPRETER_H
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -71,8 +72,11 @@ public:
 
   // Import a Scheme library by its slash-separated name.
   // "passes/my-rewrite" → (import (passes my-rewrite))
-  // Returns false if the import fails.
-  bool importLibrary(const std::string& slashSeparatedName);
+  // Returns std::nullopt on success. If the import fails, returns the Scheme
+  // condition as text (message, irritants and, for a syntax error in the
+  // library, the source line and column).
+  std::optional<std::string>
+  importLibrary(const std::string& slashSeparatedName);
 
   // Load a Scheme source file by path — equivalent to (load path).
   void loadFile(const std::string& path);
