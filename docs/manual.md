@@ -811,6 +811,38 @@ warning: samples/passes/hip-fusion/qadd.sls:83:20: [hip-qadd-fusion]
 
 No C++ changes, no rebuild — just set the variable, re-run, debug, unset, re-run.
 
+### `CREST_DEBUG_BEGIN_MLIR_CODE=<file>`
+
+Set it to a file path to see what each `begin-mlir-code` form expands to. Every expansion is
+appended to the file under a header with the form's source position, so a library with many
+forms ends up in one file:
+
+```bash
+CREST_DEBUG_BEGIN_MLIR_CODE=/tmp/expanded.scm CREST_SCHEME_BINARY_DIR=$(mktemp -d) \
+  CREST_PATH=$(pwd)/samples build/tools/crest-opt/crest-opt \
+  -allow-unregistered-dialect --crest-pass="passes=passes/hip-fusion" test/hip-fusion/qadd.mlir
+```
+
+```
+;; begin-mlir-code at /path/to/crest/samples/passes/hip-fusion/qadd.sls:96:7
+(let* ([g0 (let ([g0 (with-OperationState g1
+                       ((apply mlir::FileLineColLoc::get
+                               '("/path/to/crest/samples/passes/hip-fusion/qadd.sls" 96 16))
+                        "tensor.empty")
+                       ...
+                       (%%crest:create-op! (%%current-builder) g1))])
+             g0)]
+       [init (mlir::Operation::getResult g0 0)]
+       ...
+       [result (mlir::Operation::getResult g2 0)])
+  result)
+```
+
+The block above is abridged. The dump is the `let*` that `begin-mlir-code` produces, with the op-creation code left as
+`with-OperationState` and friends. The file is never truncated: delete it between runs.
+The expansion happens when a library is compiled, so use a fresh `CREST_SCHEME_BINARY_DIR`
+or a library that is not cached yet, or nothing is written.
+
 ### Source locations on emitted ops
 
 Every op emitted by `begin-mlir-code` (inside `:rewrite :with`) carries a
