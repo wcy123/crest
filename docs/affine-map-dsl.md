@@ -35,7 +35,7 @@ library compiles.
 - [Bindings it needs](#bindings-it-needs)
 - [Errors](#errors)
 - [Tests](#tests)
-- [Open questions](#open-questions)
+- [Decisions](#decisions)
 
 ---
 
@@ -61,7 +61,8 @@ operands and fold to the left. `-` with one operand is negation, and with two or
 subtracts left to right. `floordiv`, `ceildiv` and `mod` take exactly two. The value of the whole
 form is an `AffineMap`, as an opaque pointer like every other binding.
 
-The text form `affine_map<(d0, d1)[s0] -> (d0 + s0, d1)>` is written
+`affine-map` is defined in `(crest affine-map)` and exported by `(crest)`. The text form
+`affine_map<(d0, d1)[s0] -> (d0 + s0, d1)>` is written
 `(affine-map (d0 d1) (s0) (+ d0 s0) d1)`.
 
 ### Meaning of the names
@@ -149,7 +150,7 @@ private library, an optional context where the C++ API takes one.
 | `mlir::getAffineConstantExpr(int64_t, MLIRContext*)` | a constant |
 | `mlir::AffineExpr::operator+(AffineExpr)`, `operator*(AffineExpr)` | `+`, `*`, and `-` through them |
 | `mlir::AffineExpr::floorDiv(AffineExpr)`, `ceilDiv(AffineExpr)`, `operator%(AffineExpr)` | `floordiv`, `ceildiv`, `mod` |
-| `mlir::AffineMap::get(unsigned, unsigned, ArrayRef<AffineExpr>, MLIRContext*)` | the result |
+| `mlir::AffineMap::get(unsigned, unsigned, ArrayRef<AffineExpr>, MLIRContext*)` | the result; the only `get` overload bound |
 | `mlir::AffineExpr?` (Scheme predicate, no C++ call) | tells an `AffineExpr` from an integer |
 
 An `AffineExpr` and an `AffineMap` are context-owned: valid for the context's lifetime, never
@@ -180,17 +181,13 @@ and a later verifier may. `AffineExpr::isPureAffine` can check a result if neede
   the run-time ones as a call that must raise.
 - One op that needs the map, an `affine.load` with its `map` attribute.
 
-### Open questions
+### Decisions
 
-- **`AffineExpr` representation.** The design boxes it so `+` can tell it from an integer. The
-  other way is to keep the raw pointer and give up the tell: an integer then has to be wrapped
-  explicitly at each use, as `(+ d0 (constant 1))`, because a bare `1` and a pointer cannot be
-  told apart. The boxed form keeps the body readable and turns a wrong operand into a Scheme error,
-  and the cost is one small allocation per expression. This should be settled first.
-- **Overload naming.** `mlir::AffineMap::get` is already bound as the context-only overload. The
-  general overload needs a distinct raw symbol, and CLAUDE.md Rule 4 gives the full C++ qualified
-  name but no rule for overloads. A suffix naming the argument kinds is one option. The rule should
-  be decided and written into Rule 4 before the second `get` is bound.
+- **`AffineExpr` representation.** Boxed, as in [Operands](#operands). The alternative, raw
+  pointers with an explicit `(constant 1)` for each constant, was not taken.
+- **Overload naming.** One overload is bound per name. `mlir::AffineMap::get` is the general
+  `(dims, symbols, results, ctx)` form, so CLAUDE.md Rule 4 needs no overload suffix. A map with no
+  results is `(mlir::AffineMap::get 0 0 '())` or `(affine-map () ())`.
 
 ---
 

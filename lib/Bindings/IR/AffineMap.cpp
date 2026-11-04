@@ -7,6 +7,8 @@
 
 #include "AffineMap.h"
 #include "../Support/SchemeWrapper.h"
+#include "llvm/ADT/SmallVector.h"
+#include "mlir/IR/AffineExpr.h"
 #include "mlir/IR/AffineMap.h"
 #include "mlir/IR/MLIRContext.h"
 
@@ -38,15 +40,25 @@ void registerIRAffineMapBindings() {
             mlir::AffineMap::getConstantMap(val, ctx).getAsOpaquePointer());
       });
 
-  /// The zero-dimension, zero-result map `() -> ()`:
-  /// AffineMap::get(MLIRContext*). ctx_ptr: CrestOwned<MLIRContext>* |
-  /// MLIRContext*
+  /// AffineMap::get(dimCount, symbolCount, results, ctx).
+  /// ctx_ptr: CrestOwned<MLIRContext>* | MLIRContext*, results: Scheme list of
+  /// AffineExpr opaque pointers (empty for a map with no results).
   Sregister_symbol(
-      "mlir::AffineMap::get", (void*)+[](uint64_t ctx_ptr) -> uint64_t {
+      "mlir::AffineMap::get",
+      (void*)+[](uint64_t ctx_ptr, uint64_t dim_count, uint64_t symbol_count,
+                 ptr results) -> uint64_t {
         auto* ctx =
             crest::as_ptr<mlir::MLIRContext>(ctx_ptr, "mlir::AffineMap::get");
+        llvm::SmallVector<mlir::AffineExpr> exprs;
+        for (ptr cur = results; cur != Snil; cur = Scdr(cur)) {
+          exprs.push_back(mlir::AffineExpr::getFromOpaquePointer(
+              reinterpret_cast<const void*>(Sunsigned64_value(Scar(cur)))));
+        }
         return reinterpret_cast<uint64_t>(
-            mlir::AffineMap::get(ctx).getAsOpaquePointer());
+            mlir::AffineMap::get(static_cast<unsigned>(dim_count),
+                                 static_cast<unsigned>(symbol_count), exprs,
+                                 ctx)
+                .getAsOpaquePointer());
       });
 }
 

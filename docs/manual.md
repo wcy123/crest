@@ -942,7 +942,8 @@ The context hierarchy during a pattern rewrite:
 
 | Import | Key exports |
 |---|---|
-| `(mlir IR AffineMap)` | `mlir::AffineMap::getMultiDimIdentityMap`, `mlir::AffineMap::getConstantMap`, `mlir::AffineMap::get` |
+| `(mlir IR AffineMap)` | `mlir::AffineMap::get`, `mlir::AffineMap::getMultiDimIdentityMap`, `mlir::AffineMap::getConstantMap` |
+| `(mlir IR AffineExpr)` | `mlir::getAffineDimExpr`, `mlir::getAffineSymbolExpr`, `mlir::getAffineConstantExpr`, `mlir::AffineExpr::operator+`, `operator-`, `operator*`, `floorDiv`, `ceilDiv`, `operator%`, `mlir::AffineExpr?` |
 | `(mlir IR BuiltinAttributes)` | `mlir::IntegerAttr::get<i64>`, `mlir::AffineMapAttr::get`, `mlir::FloatAttr::get<f32>`, `mlir::StringAttr::get`, `mlir::DenseElementsAttr::isSplat`, `mlir::DenseElementsAttr::getSplatValue<APFloat>`, `mlir::DenseElementsAttr::getSplatValue<APInt>`, `mlir::DenseI32ArrayAttr::get`, `mlir::DenseI64ArrayAttr::get` |
 
 ### Builders
@@ -973,7 +974,8 @@ The context hierarchy during a pattern rewrite:
 
 Exports: `define-rewrite-pattern`, `define-conversion-pattern`,
 `add-rewrite-pattern`, `add-conversion-pattern`,
-`begin-mlir-code`, `unbound-value?`, `mlir-get-remapped-operands`,
+`begin-mlir-code`, `affine-map` (see [affine-map-dsl.md](affine-map-dsl.md)),
+`unbound-value?`, `mlir-get-remapped-operands`,
 `:builder`, `:arg`,
 `current-Block`, `with-current-Block`,
 `current-OpBuilder`, `with-current-OpBuilder`.

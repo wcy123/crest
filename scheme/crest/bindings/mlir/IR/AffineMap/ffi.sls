@@ -34,10 +34,13 @@
   (define %mlir::AffineMap::getConstantMap
     (foreign-procedure "mlir::AffineMap::getConstantMap" (uptr integer-64) uptr))
 
-  ;; @brief AffineMap::get(MLIRContext*) — the zero-dimension, zero-result map.
-  ;; @param ctx  mlir::MLIRContext* uptr
-  ;; @return     AffineMap opaque pointer uptr: () -> ()
+  ;; @brief AffineMap::get(dimCount, symbolCount, results, ctx).
+  ;; @param ctx           mlir::MLIRContext* uptr
+  ;; @param dim-count     number of dimensions
+  ;; @param symbol-count  number of symbols
+  ;; @param results       Scheme list of AffineExpr opaque pointers (empty: no results)
+  ;; @return              AffineMap opaque pointer uptr
   (define %mlir::AffineMap::get
-    (foreign-procedure "mlir::AffineMap::get" (uptr) uptr))
+    (foreign-procedure "mlir::AffineMap::get" (uptr uptr uptr scheme-object) uptr))
 
   ) ;; end library (mlir IR AffineMap ffi)

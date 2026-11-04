@@ -24,6 +24,7 @@
     mlir::AffineMap::get)
   (import (rnrs)
           (mlir IR AffineMap ffi)
+          (mlir IR AffineExpr)
           (mlir IR MLIRContext))
 
   ;; @brief mlir::AffineMap::getMultiDimIdentityMap — (d0, ..., dn-1) -> (d0, ..., dn-1).
@@ -38,9 +39,23 @@
   (define-ctx-optional mlir::AffineMap::getConstantMap
     %mlir::AffineMap::getConstantMap val)
 
-  ;; @brief mlir::AffineMap::get — the zero-dimension, zero-result map () -> ().
-  ;; @param ctx  mlir::MLIRContext* uptr (optional; defaults to current-MLIRContext)
-  (define-ctx-optional mlir::AffineMap::get
-    %mlir::AffineMap::get)
+  ;; @brief mlir::AffineMap::get — a map with `dim-count` dimensions, `symbol-count` symbols
+  ;; and the given results.
+  ;; @param ctx           mlir::MLIRContext* uptr (optional; defaults to current-MLIRContext)
+  ;; @param dim-count     number of dimensions
+  ;; @param symbol-count  number of symbols
+  ;; @param results       list of AffineExprs (from (mlir IR AffineExpr)); an integer is a
+  ;;                      constant. The empty list gives a map with no results.
+  (define mlir::AffineMap::get
+    (case-lambda
+     [(dim-count symbol-count results)
+      (mlir::AffineMap::get (current-MLIRContext) dim-count symbol-count results)]
+     [(ctx dim-count symbol-count results)
+      (%mlir::AffineMap::get
+       ctx dim-count symbol-count
+       (map (lambda (r)
+              (mlir::AffineExpr::getAsOpaquePointer
+               (if (mlir::AffineExpr? r) r (mlir::getAffineConstantExpr ctx r))))
+            results))]))
 
   ) ;; end library (mlir IR AffineMap)

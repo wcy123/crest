@@ -136,6 +136,7 @@
   (export define-conversion-pattern
           define-rewrite-pattern
           begin-mlir-code
+          affine-map
           :if-match :then-let :rewrite :with :where
           :debug-parse :debug-validate :debug-analyze :debug-codegen
           = : -> :region :regions
@@ -152,6 +153,7 @@
   (import (except (rnrs) =)
           (crest pattern-dsl keywords)
           (for (only (crest pattern-dsl rewrite) begin-mlir-code) expand)
+          (crest affine-map)
           (for (crest pattern-dsl keywords) expand)
           (for (crest pattern-dsl ast) expand)
           (for (crest pattern-dsl codegen) expand)

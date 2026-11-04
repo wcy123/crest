@@ -24,6 +24,7 @@
 #include "Dialect/SCF/IR/SCFOps.h"
 #include "Dialect/Shape/IR/Shape.h"
 #include "Dialect/Tensor/IR/Tensor.h"
+#include "IR/AffineExpr.h"
 #include "IR/AffineMap.h"
 #include "IR/Block.h"
 #include "IR/Builders.h"
@@ -95,6 +96,7 @@ void registerMlirForeignFunctions() {
   registerCrestTraitBindings();
   registerIRLocationBindings();
   registerIROpImplementationBindings();
+  registerIRAffineExprBindings();
   registerIRAffineMapBindings();
   registerIRBlockBindings();
   registerIRRegionBindings();
