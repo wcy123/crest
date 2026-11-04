@@ -37,6 +37,8 @@
     mlir::StringAttr::get/len
     mlir::TypeAttr::get
     mlir::TypeAttr::getValue
+    mlir::AffineMapAttr::get
+    mlir::AffineMapAttr::getValue
     mlir::DenseElementsAttr::get<f64>
     mlir::isa<IntegerAttr>
     mlir::isa<FloatAttr>
@@ -82,6 +84,12 @@
 
   ;; @brief mlir::TypeAttr::getValue — extract the mlir::Type from a TypeAttr.
   (define mlir::TypeAttr::getValue %mlir::TypeAttr::getValue)
+
+  ;; @brief mlir::AffineMapAttr::get — wrap an AffineMap (from (mlir IR AffineMap)) as an attribute.
+  (define mlir::AffineMapAttr::get %mlir::AffineMapAttr::get)
+
+  ;; @brief mlir::AffineMapAttr::getValue — extract the AffineMap from an AffineMapAttr.
+  (define mlir::AffineMapAttr::getValue %mlir::AffineMapAttr::getValue)
 
   (define mlir::DenseElementsAttr::get<f64> %mlir::DenseElementsAttr::get<f64>)
 

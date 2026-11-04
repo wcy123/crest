@@ -942,7 +942,8 @@ The context hierarchy during a pattern rewrite:
 
 | Import | Key exports |
 |---|---|
-| `(mlir IR BuiltinAttributes)` | `mlir::IntegerAttr::get<i64>`, `mlir::FloatAttr::get<f32>`, `mlir::StringAttr::get`, `mlir::DenseElementsAttr::isSplat`, `mlir::DenseElementsAttr::getSplatValue<APFloat>`, `mlir::DenseElementsAttr::getSplatValue<APInt>`, `mlir::DenseI32ArrayAttr::get`, `mlir::DenseI64ArrayAttr::get` |
+| `(mlir IR AffineMap)` | `mlir::AffineMap::getMultiDimIdentityMap`, `mlir::AffineMap::getConstantMap`, `mlir::AffineMap::get` |
+| `(mlir IR BuiltinAttributes)` | `mlir::IntegerAttr::get<i64>`, `mlir::AffineMapAttr::get`, `mlir::FloatAttr::get<f32>`, `mlir::StringAttr::get`, `mlir::DenseElementsAttr::isSplat`, `mlir::DenseElementsAttr::getSplatValue<APFloat>`, `mlir::DenseElementsAttr::getSplatValue<APInt>`, `mlir::DenseI32ArrayAttr::get`, `mlir::DenseI64ArrayAttr::get` |
 
 ### Builders
 

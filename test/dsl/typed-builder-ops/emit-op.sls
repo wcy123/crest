@@ -2,16 +2,16 @@
 ;; emitted by begin-mlir-code, then runs the verifier (through a pass manager) and prints
 ;; the module.
 ;;
-;; affine.load needs a `map` attribute; it is built from its textual form with
-;; mlir::parseAttribute, which works for any attribute that has a textual syntax in a
-;; loaded dialect.
+;; affine.load needs a `map` attribute: an AffineMapAttr built from an AffineMap with the
+;; typed bindings mlir::AffineMap::getMultiDimIdentityMap and mlir::AffineMapAttr::get. The
+;; MLIRContext argument is optional and defaults to (current-MLIRContext).
 ;;
-;; Usage: scheme-mlir emit-op.sls <input.mlir> <memref.load|affine.load>
+;; Usage: scheme-mlir emit-op.sls <input.mlir> <memref.load|affine.load|maps>
 (import (except (chezscheme) =)
         (mlir IR DialectRegistry) (mlir IR MLIRContext) (mlir IR Operation) (mlir IR Value)
         (mlir IR PatternMatch) (mlir IR Builders)
         (mlir Transforms GreedyPatternRewriteDriver) (mlir Transforms DialectConversion)
-        (mlir Transforms Passes) (mlir Pass PassManager) (mlir IR BuiltinAttributes)
+        (mlir Transforms Passes) (mlir Pass PassManager) (mlir IR BuiltinAttributes) (mlir IR AffineMap)
         (mlir Dialect Affine IR AffineOps) (mlir Dialect Arith IR Arith)
         (mlir Dialect MemRef IR MemRef) (mlir Dialect Func IR FuncOps)
         (crest))
@@ -31,8 +31,20 @@
                   [(string=? which "affine.load")
                    (begin-mlir-code
                        r = affine.load (m i)
-                       (map : (mlir::parseAttribute "affine_map<(d0) -> (d0)>"))
+                       (map : (mlir::AffineMapAttr::get (mlir::AffineMap::getMultiDimIdentityMap 1)))
                        -> ty)]
+                  ;; The other AffineMap and AffineMapAttr bindings, as attributes on an
+                  ;; unregistered op: a constant map, the empty map, and a map read back
+                  ;; from an AffineMapAttr with getValue.
+                  [(string=? which "maps")
+                   (let ([attr (mlir::AffineMapAttr::get
+                                (mlir::AffineMap::getMultiDimIdentityMap 2))])
+                     (begin-mlir-code
+                         r = test.maps (m i)
+                         (c : (mlir::AffineMapAttr::get (mlir::AffineMap::getConstantMap 7)))
+                         (e : (mlir::AffineMapAttr::get (mlir::AffineMap::get)))
+                         (rt : (mlir::AffineMapAttr::get (mlir::AffineMapAttr::getValue attr)))
+                         -> ty))]
                   [else (error 'emit-op "unknown op" which)]))])
         (mlir::RewriterBase::replaceOp rw op r)
         #t))))
