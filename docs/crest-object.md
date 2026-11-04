@@ -264,9 +264,8 @@ what Scheme passes.
 | `as_raw<T>(p, who)` | a raw `T*` | `T*` | **none.** It only checks for null. Any address is cast to `T*`, so a wrong object gives undefined behavior, often a crash inside MLIR. | MLIR owns the object and there is no shell |
 | `as_ptr<T>(p, who)` | `CrestRef<T>*` or `CrestOwned<T>*` | `T*` | **checked.** The type tag must match exactly one of the two shells; otherwise a Scheme error, `wrong CrestObject type`. | either kind of shell is fine |
 | `as_ref<T>(p, who)` | `CrestOwned<T>*` | `T&` | **checked.** The type tag must be `CrestOwned<T>`. | the argument must be an owned object |
-| `crest_cast<X>(p, who)` | a shell of exactly type `X` | `X*` | **checked.** The type tag must be `X`. | the argument is one specific shell type |
 
-Only `as_raw` skips the check. The other three read the type tag first, which is the cost
+Only `as_raw` skips the check. The other two read the type tag first, which is the cost
 described in [the cost section](#cost-of-the-extra-level).
 
 Two types have a special `as_ptr`, because their objects arrive in more than one form:
