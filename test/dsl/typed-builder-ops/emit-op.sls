@@ -2,12 +2,16 @@
 ;; emitted by begin-mlir-code, then runs the verifier (through a pass manager) and prints
 ;; the module.
 ;;
+;; affine.load needs a `map` attribute; it is built from its textual form with
+;; mlir::parseAttribute, which works for any attribute that has a textual syntax in a
+;; loaded dialect.
+;;
 ;; Usage: scheme-mlir emit-op.sls <input.mlir> <memref.load|affine.load>
 (import (except (chezscheme) =)
         (mlir IR DialectRegistry) (mlir IR MLIRContext) (mlir IR Operation) (mlir IR Value)
         (mlir IR PatternMatch) (mlir IR Builders)
         (mlir Transforms GreedyPatternRewriteDriver) (mlir Transforms DialectConversion)
-        (mlir Transforms Passes) (mlir Pass PassManager)
+        (mlir Transforms Passes) (mlir Pass PassManager) (mlir IR BuiltinAttributes)
         (mlir Dialect Affine IR AffineOps) (mlir Dialect Arith IR Arith)
         (mlir Dialect MemRef IR MemRef) (mlir Dialect Func IR FuncOps)
         (crest))
@@ -25,7 +29,10 @@
                   [(string=? which "memref.load")
                    (begin-mlir-code r = memref.load (m i) -> ty)]
                   [(string=? which "affine.load")
-                   (begin-mlir-code r = affine.load (m i) -> ty)]
+                   (begin-mlir-code
+                       r = affine.load (m i)
+                       (map : (mlir::parseAttribute "affine_map<(d0) -> (d0)>"))
+                       -> ty)]
                   [else (error 'emit-op "unknown op" which)]))])
         (mlir::RewriterBase::replaceOp rw op r)
         #t))))
