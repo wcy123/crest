@@ -60,7 +60,7 @@
   (export begin-mlir-code)
 
   (import (except (rnrs (6)) =)
-          (only (chezscheme) syntax->list syntax->datum)
+          (only (chezscheme) syntax->list syntax->datum getenv pretty-print print-gensym parameterize)
           (rename (rime loop) (:with :rime-with))
           (for (rename (rime loop) (:with :rime-with)) expand)
           (for (only (crest pattern-dsl srcloc) syntax->file+line+col) expand)
@@ -143,6 +143,37 @@
               #'(mlir::UnknownLoc::get))))
 
       ;;-------------------------------------------------------------------
+      ;; Debug dump
+      ;;-------------------------------------------------------------------
+
+      ;; When the environment variable CREST_DEBUG_BEGIN_MLIR_CODE names a file, append
+      ;; the expansion of every begin-mlir-code form to it, each under a header with the
+      ;; form's source position (the first item's, for a form that a macro generated).
+      ;; One source file can have many forms, so the file is appended to, never
+      ;; truncated. Expansion runs when a library is compiled, so a library that is
+      ;; already cached in CREST_SCHEME_BINARY_DIR is not dumped again.
+      (define (dump-expansion! form items expanded)
+        (let ([path (getenv "CREST_DEBUG_BEGIN_MLIR_CODE")])
+          (when (and path (not (string=? path "")))
+            (let ([loc (or (syntax->file+line+col form)
+                           (and (pair? items) (syntax->file+line+col (car items))))])
+              (call-with-port
+                  (open-file-output-port path (file-options no-fail no-truncate append)
+                                         (buffer-mode block) (native-transcoder))
+                (lambda (port)
+                  (display ";; begin-mlir-code at " port)
+                  (display (if loc
+                               (string-append (car loc) ":"
+                                              (number->string (cadr loc)) ":"
+                                              (number->string (caddr loc)))
+                               "<unknown source>")
+                           port)
+                  (newline port)
+                  (parameterize ([print-gensym #f])
+                    (pretty-print (syntax->datum expanded) port))
+                  (newline port)))))))
+
+      ;;-------------------------------------------------------------------
       ;; Main entry
       ;;-------------------------------------------------------------------
 
@@ -156,12 +187,14 @@
       (define (main)
         (syntax-case stx ()
           [(_ op ...)
-           (let ([pairs (process-ops-flat #'(op ...))])
-             (if (null? pairs)
-                 #'(if #f #f)
-                 (with-syntax ([(binding ...) (map make-binding pairs)]
-                               [result        (car (car (reverse pairs)))])
-                   #'(let* (binding ...) result))))]))
+           (let* ([pairs    (process-ops-flat #'(op ...))]
+                  [expanded (if (null? pairs)
+                                #'(if #f #f)
+                                (with-syntax ([(binding ...) (map make-binding pairs)]
+                                              [result        (car (car (reverse pairs)))])
+                                  #'(let* (binding ...) result)))])
+             (dump-expansion! stx (syntax->list #'(op ...)) expanded)
+             expanded)]))
 
 
       ;;-------------------------------------------------------------------
