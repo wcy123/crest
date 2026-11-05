@@ -974,7 +974,7 @@ The context hierarchy during a pattern rewrite:
 
 Exports: `define-rewrite-pattern`, `define-conversion-pattern`,
 `add-rewrite-pattern`, `add-conversion-pattern`,
-`begin-mlir-code`, `affine-map` (see [affine-map-dsl.md](affine-map-dsl.md)),
+`begin-mlir-code`, `affine-map`, `affine-map-attr` (see [affine-map-dsl.md](affine-map-dsl.md)),
 `unbound-value?`, `mlir-get-remapped-operands`,
 `:builder`, `:arg`,
 `current-Block`, `with-current-Block`,

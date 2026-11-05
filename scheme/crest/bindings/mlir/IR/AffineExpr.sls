@@ -65,10 +65,21 @@
   (define-ctx-expr mlir::getAffineDimExpr %mlir::getAffineDimExpr position)
   ;; @brief mlir::getAffineSymbolExpr — symbol `position`.
   (define-ctx-expr mlir::getAffineSymbolExpr %mlir::getAffineSymbolExpr position)
-  ;; @brief mlir::getAffineConstantExpr — the constant `value`.
-  (define-ctx-expr mlir::getAffineConstantExpr %mlir::getAffineConstantExpr value)
+  ;; @brief mlir::getAffineConstantExpr — the constant `value`, an exact integer that fits int64_t.
+  (define mlir::getAffineConstantExpr
+    (case-lambda
+     [(value) (mlir::getAffineConstantExpr (current-MLIRContext) value)]
+     [(ctx value)
+      (%%check-int64 'mlir::getAffineConstantExpr value)
+      (%%box (%mlir::getAffineConstantExpr ctx value))]))
 
   (define (%%integer? x) (and (integer? x) (exact? x)))
+
+  ;; The constant is passed to C++ as an int64_t, so reject an integer outside that range here,
+  ;; with the operator's name, instead of failing inside the foreign call.
+  (define (%%check-int64 who x)
+    (unless (and (%%integer? x) (<= (- (expt 2 63)) x (- (expt 2 63) 1)))
+      (error who "the integer is outside the int64_t range" x)))
 
   ;; The context of the first AffineExpr among the operands, or #f when there is none.
   (define (%%context-of operands)
@@ -81,7 +92,7 @@
   (define (%%operand who ctx x)
     (cond
      [(mlir::AffineExpr? x) (%%unbox x)]
-     [(%%integer? x) (%mlir::getAffineConstantExpr ctx x)]
+     [(%%integer? x) (%%check-int64 who x) (%mlir::getAffineConstantExpr ctx x)]
      [else (error who "operand must be an integer or an AffineExpr" x)]))
 
   ;; A binary operator: the AffineExpr form when an operand is an AffineExpr, otherwise the

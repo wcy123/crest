@@ -1,25 +1,23 @@
 // begin-mlir-code creates every op generically, through OperationState, so an op that
 // needs a dialect-defined attribute needs that attribute supplied. A raw mlir::Attribute
 // can be written `(name : value)`. Attributes are built with typed bindings that mirror the
-// MLIR C++ API, for example the AffineMapAttr of an affine.load. See plans/06-g6.
+// MLIR C++ API; for an affine map, the affine-map-attr macro. See plans/06-g6 and
+// docs/affine-map-dsl.md.
 //
 // Facts from running each op through emit-op.sls with the dialects registered:
 //   memref.load, memref.alloc, memref.dealloc   work
 //   llvm.mlir.addressof                         works with (global_name : (FlatSymbolRefAttr::get ctx "g"))
 //   llvm.call                                   works with callee, operandSegmentSizes and
 //                                               op_bundle_sizes given
-//   affine.load                                 works with (map : (mlir::AffineMapAttr::get
-//                                               (mlir::AffineMap::getMultiDimIdentityMap 1))).
+//   affine.load                                 works with (map : (affine-map-attr (d0) () d0)).
 //                                               Without a map the op is created malformed and the
 //                                               process crashes with "invalid memory reference"
 //                                               when the verifier or canonicalizer reads it.
 //
-// The affine.load and exprs cases build their maps with the affine-map macro (see
-// docs/affine-map-dsl.md); the maps case calls the bindings directly.
-//
 // The first RUN line is the control, memref.load. The second emits affine.load with its map.
-// The third builds the other AffineMap and AffineMapAttr bindings as attributes of an
-// unregistered op and prints them. The fourth builds maps with affine-map and prints them.
+// The third builds maps with the macro as attributes of an unregistered op and prints them,
+// including a getValue round trip. The fourth calls the C++-mirroring factories directly. The
+// fifth builds every operator of affine-map and prints the maps.
 //
 // RUN: env CREST_SCHEME_BINARY_DIR=%t/scheme %scheme-mlir %S/emit-op.sls %s memref.load \
 // RUN:   | %FileCheck %s --check-prefix=CONTROL
@@ -27,6 +25,8 @@
 // RUN:   | %FileCheck %s --check-prefix=AFFINE
 // RUN: env CREST_SCHEME_BINARY_DIR=%t/scheme %scheme-mlir %S/emit-op.sls %s maps \
 // RUN:   | %FileCheck %s --check-prefix=MAPS
+// RUN: env CREST_SCHEME_BINARY_DIR=%t/scheme %scheme-mlir %S/emit-op.sls %s factories \
+// RUN:   | %FileCheck %s --check-prefix=FACTORIES
 // RUN: env CREST_SCHEME_BINARY_DIR=%t/scheme %scheme-mlir %S/emit-op.sls %s exprs \
 // RUN:   | %FileCheck %s --check-prefix=EXPRS
 
@@ -36,6 +36,11 @@
 // MAPS-DAG: [[E:#map[0-9]*]] = affine_map<() -> ()>
 // MAPS-DAG: [[RT:#map[0-9]*]] = affine_map<(d0, d1) -> (d0, d1)>
 // MAPS:     "test.maps"(%arg0, %arg1) {c = [[C]], e = [[E]], rt = [[RT]]}
+
+// FACTORIES-DAG: [[I2:#map[0-9]*]] = affine_map<(d0, d1) -> (d0, d1)>
+// FACTORIES-DAG: [[K:#map[0-9]*]] = affine_map<() -> (7)>
+// FACTORIES-DAG: [[G:#map[0-9]*]] = affine_map<() -> ()>
+// FACTORIES:     "test.factories"(%arg0, %arg1) {g = [[G]], i2 = [[I2]], k = [[K]]}
 
 // EXPRS-DAG: [[A:#map[0-9]*]] = affine_map<(d0, d1)[s0] -> (d0 + s0, d1)>
 // EXPRS-DAG: [[B:#map[0-9]*]] = affine_map<(d0) -> (d0 floordiv 4, d0 mod 4)>

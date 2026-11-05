@@ -61,7 +61,12 @@ operands and fold to the left. `-` with one operand is negation, and with two or
 subtracts left to right. `floordiv`, `ceildiv` and `mod` take exactly two. The value of the whole
 form is an `AffineMap`, as an opaque pointer like every other binding.
 
-`affine-map` is defined in `(crest affine-map)` and exported by `(crest)`. The text form
+`(affine-map-attr (dim ...) (sym ...) result ...)` is
+`(mlir::AffineMapAttr::get (affine-map (dim ...) (sym ...) result ...))`: the same map as an
+`AffineMapAttr`, for an attribute position such as `(map : (affine-map-attr (d0) () d0))`.
+`affine-map` returns the `AffineMap`, which the typed C++ builders and the map queries take.
+
+`affine-map` and `affine-map-attr` are defined in `(crest affine-map)` and exported by `(crest)`. The text form
 `affine_map<(d0, d1)[s0] -> (d0 + s0, d1)>` is written
 `(affine-map (d0 d1) (s0) (+ d0 s0) d1)`.
 
@@ -166,6 +171,7 @@ not, because it is inside their operands.
 | an identifier bound nowhere | at expansion, as an unbound identifier with its line and column |
 | wrong operand count (`(mod i)`, `(floordiv i 2 3)`) | at run time, as a procedure arity error |
 | an operand that is neither an integer nor an `AffineExpr` | at run time, naming the operator |
+| an integer outside the `int64_t` range, as an operand or as a result | at run time, naming the operator |
 
 MLIR accepts maps that are not pure affine, such as `d0 * d1`. The macro does not reject them,
 and a later verifier may. `AffineExpr::isPureAffine` can check a result if needed.

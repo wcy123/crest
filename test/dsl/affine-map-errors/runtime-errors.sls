@@ -19,6 +19,9 @@
       (try (lambda () (affine-map (d0) () (floordiv d0))))
       ;; integer-only arithmetic with a bad operand
       (try (lambda () (affine-map () () (+ 1 "x"))))
+      ;; an integer outside the int64_t range, as an operand and as a result
+      (try (lambda () (affine-map (d0) () (+ d0 (expt 2 70)))))
+      (try (lambda () (affine-map () () (expt 2 70))))
       ;; the rebound operators are local to the body: outside it + and mod are Scheme's
       (affine-map (d0) () (+ d0 1))
       (display (list (+ 1 2) (mod 7 3)))

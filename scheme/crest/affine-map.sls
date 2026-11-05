@@ -8,7 +8,8 @@
 ;;
 ;; (crest affine-map) — the affine-map macro.
 ;;
-;;   (affine-map (dim ...) (sym ...) result ...)
+;;   (affine-map (dim ...) (sym ...) result ...)        an AffineMap
+;;   (affine-map-attr (dim ...) (sym ...) result ...)   the same map as an AffineMapAttr
 ;;
 ;; Builds an mlir::AffineMap. Inside the body each dim is let-bound to its dimension
 ;; expression and each sym to its symbol expression, by position, and + - * floordiv ceildiv
@@ -19,7 +20,7 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (crest affine-map)
-  (export affine-map)
+  (export affine-map affine-map-attr)
   (import (rnrs)
           (for (rnrs) expand)
           (for (only (chezscheme) syntax->list) expand)
@@ -32,7 +33,8 @@
                 mlir::AffineExpr::floorDiv
                 mlir::AffineExpr::ceilDiv
                 mlir::AffineExpr::operator%)
-          (only (mlir IR AffineMap) mlir::AffineMap::get))
+          (only (mlir IR AffineMap) mlir::AffineMap::get)
+          (only (mlir IR BuiltinAttributes) mlir::AffineMapAttr::get))
 
   (define-syntax affine-map
     (lambda (stx)
@@ -81,5 +83,15 @@
                      [op-ceildiv mlir::AffineExpr::ceilDiv]
                      [op-mod mlir::AffineExpr::operator%])
                  (mlir::AffineMap::get ndims nsyms (list result ...)))))])))
+
+  ;; (affine-map-attr (dim ...) (sym ...) result ...) is
+  ;; (mlir::AffineMapAttr::get (affine-map (dim ...) (sym ...) result ...)). The inner keyword is
+  ;; made in the caller's context, so affine-map rebinds the caller's operators.
+  (define-syntax affine-map-attr
+    (lambda (stx)
+      (syntax-case stx ()
+        [(k dims syms result ...)
+         (with-syntax ([affine-map (datum->syntax #'k 'affine-map)])
+           #'(mlir::AffineMapAttr::get (affine-map dims syms result ...)))])))
 
   ) ;; end library (crest affine-map)

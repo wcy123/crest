@@ -20,6 +20,8 @@
 // RUNTIME:      operand must be an integer or an AffineExpr
 // RUNTIME-NEXT: incorrect number of arguments
 // RUNTIME-NEXT: operands must be integers or AffineExprs
+// RUNTIME-NEXT: the integer is outside the int64_t range
+// RUNTIME-NEXT: the integer is outside the int64_t range
 // RUNTIME-NEXT: (3 1)
 
 module {}

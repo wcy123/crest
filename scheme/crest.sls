@@ -136,7 +136,7 @@
   (export define-conversion-pattern
           define-rewrite-pattern
           begin-mlir-code
-          affine-map
+          affine-map affine-map-attr
           :if-match :then-let :rewrite :with :where
           :debug-parse :debug-validate :debug-analyze :debug-codegen
           = : -> :region :regions
