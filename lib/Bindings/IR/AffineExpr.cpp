@@ -18,7 +18,7 @@ namespace crest {
 // AffineExpr form of each operator is bound; the int64_t forms are the same
 // operation on getAffineConstantExpr(v).
 void registerIRAffineExprBindings() {
-  /// ctx_ptr: CrestOwned<MLIRContext>* | MLIRContext*, position: unsigned
+  /// ctx_ptr: CrestBox<MLIRContext>* | MLIRContext*, position: unsigned
   Sregister_symbol(
       "mlir::getAffineDimExpr",
       (void*)+[](uint64_t ctx_ptr, uint64_t position) -> uint64_t {
@@ -39,7 +39,7 @@ void registerIRAffineExprBindings() {
                 .getAsOpaquePointer());
       });
 
-  /// ctx_ptr: CrestOwned<MLIRContext>* | MLIRContext*, constant: int64_t
+  /// ctx_ptr: CrestBox<MLIRContext>* | MLIRContext*, constant: int64_t
   Sregister_symbol(
       "mlir::getAffineConstantExpr",
       (void*)+[](uint64_t ctx_ptr, int64_t constant) -> uint64_t {

@@ -18,7 +18,7 @@ namespace crest {
 // (AffineMap::getAsOpaquePointer). It is context-owned and valid for the
 // MLIRContext lifetime; Scheme must not free it.
 void registerIRAffineMapBindings() {
-  /// ctx_ptr: CrestOwned<MLIRContext>* | MLIRContext*, num_dims: unsigned
+  /// ctx_ptr: CrestBox<MLIRContext>* | MLIRContext*, num_dims: unsigned
   Sregister_symbol(
       "mlir::AffineMap::getMultiDimIdentityMap",
       (void*)+[](uint64_t ctx_ptr, uint64_t num_dims) -> uint64_t {
@@ -30,7 +30,7 @@ void registerIRAffineMapBindings() {
                 .getAsOpaquePointer());
       });
 
-  /// ctx_ptr: CrestOwned<MLIRContext>* | MLIRContext*, val: int64_t
+  /// ctx_ptr: CrestBox<MLIRContext>* | MLIRContext*, val: int64_t
   Sregister_symbol(
       "mlir::AffineMap::getConstantMap",
       (void*)+[](uint64_t ctx_ptr, int64_t val) -> uint64_t {
@@ -41,7 +41,7 @@ void registerIRAffineMapBindings() {
       });
 
   /// AffineMap::get(dimCount, symbolCount, results, ctx).
-  /// ctx_ptr: CrestOwned<MLIRContext>* | MLIRContext*, results: Scheme list of
+  /// ctx_ptr: CrestBox<MLIRContext>* | MLIRContext*, results: Scheme list of
   /// AffineExpr opaque pointers (empty for a map with no results).
   Sregister_symbol(
       "mlir::AffineMap::get",
