@@ -40,8 +40,8 @@
     add-conversion-pattern/ctx
     add-rewrite-pattern
     populate-func-type-conversion
-    crest::isa<CrestOwned<mlir::TypeConverter>>?
-    crest::isa<CrestOwned<mlir::ConversionTarget>>?
+    crest::isa<CrestBox<mlir::TypeConverter>>?
+    crest::isa<CrestBox<mlir::ConversionTarget>>?
     with-TypeConverter
     with-ConversionTarget
     )
@@ -54,7 +54,7 @@
           (only (mlir IR MLIRContext) current-MLIRContext))
 
   ;; @brief mlir::TypeConverter constructor — allocate a new TypeConverter.
-  ;; @return CrestOwned<TypeConverter>* uptr — freed via with-CrestObject
+  ;; @return CrestBox<TypeConverter>* uptr — freed via with-CrestObject
   (define type-converter-create
     %type-converter-create)
 
@@ -84,7 +84,7 @@
 
   ;; @brief mlir::ConversionTarget constructor.
   ;; @param ctx MLIRContext* uptr
-  ;; @return    CrestOwned<ConversionTarget>* uptr — freed via with-CrestObject
+  ;; @return    CrestBox<ConversionTarget>* uptr — freed via with-CrestObject
   (define target-create
     %target-create)
 
@@ -110,7 +110,7 @@
 
   ;; @brief mlir::RewritePatternSet constructor.
   ;; @param ctx MLIRContext* uptr
-  ;; @return    CrestOwned<RewritePatternSet>* uptr — freed via with-CrestObject
+  ;; @return    CrestBox<RewritePatternSet>* uptr — freed via with-CrestObject
   (define pattern-set-create
     mlir::RewritePatternSet::RewritePatternSet)
 
@@ -140,16 +140,16 @@
   (define populate-func-type-conversion
     %populate-func-type-conversion)
 
-  ;; @brief crest::isa<CrestOwned<mlir::TypeConverter>>? — is this ptr a CrestOwned<mlir::TypeConverter>?
-  (define (crest::isa<CrestOwned<mlir::TypeConverter>>? ptr)
-    (not (zero? (%crest::isa<CrestOwned<mlir::TypeConverter>> ptr))))
+  ;; @brief crest::isa<CrestBox<mlir::TypeConverter>>? — is this ptr a CrestBox<mlir::TypeConverter>?
+  (define (crest::isa<CrestBox<mlir::TypeConverter>>? ptr)
+    (not (zero? (%crest::isa<CrestBox<mlir::TypeConverter>> ptr))))
 
-  ;; @brief crest::isa<CrestOwned<mlir::ConversionTarget>>? — is this ptr a CrestOwned<mlir::ConversionTarget>?
-  (define (crest::isa<CrestOwned<mlir::ConversionTarget>>? ptr)
-    (not (zero? (%crest::isa<CrestOwned<mlir::ConversionTarget>> ptr))))
+  ;; @brief crest::isa<CrestBox<mlir::ConversionTarget>>? — is this ptr a CrestBox<mlir::ConversionTarget>?
+  (define (crest::isa<CrestBox<mlir::ConversionTarget>>? ptr)
+    (not (zero? (%crest::isa<CrestBox<mlir::ConversionTarget>> ptr))))
 
   ;; @brief RAII macro — create a TypeConverter, execute BODY, then destroy on exit.
-  ;; @param var  identifier bound to the CrestOwned<TypeConverter>* uptr for BODY
+  ;; @param var  identifier bound to the CrestBox<TypeConverter>* uptr for BODY
   ;; @example
   ;;   (with-TypeConverter tc ()
   ;;     (type-converter-add-conversion tc my-fn)
@@ -161,7 +161,7 @@
          body ...)]))
 
   ;; @brief RAII macro — create a ConversionTarget, execute BODY, then destroy on exit.
-  ;; @param var identifier bound to the CrestOwned<ConversionTarget>* uptr for BODY
+  ;; @param var identifier bound to the CrestBox<ConversionTarget>* uptr for BODY
   ;; @param ctx MLIRContext* uptr (optional; defaults to current-MLIRContext)
   ;; @example
   ;;   (with-ConversionTarget tgt ()

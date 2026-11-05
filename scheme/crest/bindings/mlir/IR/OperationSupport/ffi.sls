@@ -20,7 +20,7 @@
     %mlir::OperationState::addTypes
     %mlir::OperationState::addRegion
     %mlir::OperationState::addAttribute
-    %crest::isa<CrestOwned<mlir::OperationState>>
+    %crest::isa<CrestBox<mlir::OperationState>>
     %operation-state-create
     %operation-state-add-operands          ;; canonical: mlir::OperationState::addOperands
     %operation-state-add-operand           ;; backward-compat alias
@@ -30,10 +30,10 @@
     %operation-state-add-attribute)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
-  ;; @brief mlir::OperationState constructor — heap-allocate a CrestOwned<OperationState>.
+  ;; @brief mlir::OperationState constructor — heap-allocate a CrestBox<OperationState>.
   ;; @param loc-ptr   Location opaque ptr as uptr
   ;; @param name      Registered MLIR op name string (e.g. "arith.constant")
-  ;; @return          CrestOwned<OperationState>* as uptr — freed via with-CrestObject
+  ;; @return          CrestBox<OperationState>* as uptr — freed via with-CrestObject
   ;; @see             mlir/IR/OperationSupport.h
   (define %operation-state-create
     (foreign-procedure "mlir::OperationState::create" (uptr string) uptr))
@@ -60,9 +60,9 @@
   (define %operation-state-add-attribute
     (foreign-procedure "mlir::OperationState::addAttribute" (uptr string uptr) void))
 
-  ;; @brief Type predicate — is this ptr a CrestOwned<mlir::OperationState>?
-  (define %crest::isa<CrestOwned<mlir::OperationState>>
-    (foreign-procedure "crest::isa<CrestOwned<mlir::OperationState>>" (uptr) int))
+  ;; @brief Type predicate — is this ptr a CrestBox<mlir::OperationState>?
+  (define %crest::isa<CrestBox<mlir::OperationState>>
+    (foreign-procedure "crest::isa<CrestBox<mlir::OperationState>>" (uptr) int))
 
   (define %mlir::OperationState::create        %operation-state-create)
   (define %mlir::OperationState::addOperands   %operation-state-add-operands)

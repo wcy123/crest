@@ -174,7 +174,7 @@ void registerIROpImplementationBindings() {
   // ===========================================================================
 
   using UnresolvedOperands =
-      CrestOwned<llvm::SmallVector<mlir::OpAsmParser::UnresolvedOperand, 4>>;
+      CrestBox<llvm::SmallVector<mlir::OpAsmParser::UnresolvedOperand, 4>>;
 
   Sregister_symbol(
       "mlir::OpAsmParser::parseOperandList",

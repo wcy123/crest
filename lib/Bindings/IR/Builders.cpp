@@ -33,7 +33,7 @@ void registerIROpBuilderBindings() {
         // mlir::OpBuilder(Block*, iterator) needs the block's parent op for
         // context. For blocks in OperationState regions (not yet materialized),
         // we must supply the context explicitly via a two-step construction.
-        auto* owned = new CrestOwned<mlir::OpBuilder>(ctx, listener);
+        auto* owned = new CrestBox<mlir::OpBuilder>(ctx, listener);
         owned->inner.setInsertionPoint(block, block->end());
         return reinterpret_cast<uint64_t>(owned);
       });
@@ -69,7 +69,7 @@ void registerIROpBuilderBindings() {
             builder_ptr, "mlir::OpBuilder::getContext");
         return reinterpret_cast<uint64_t>(builder.getContext());
       });
-  // Unwrap a builder shell (CrestOwned<OpBuilder> or CrestRef<RewriterBase>) to
+  // Unwrap a builder shell (CrestBox<OpBuilder> or CrestRef<RewriterBase>) to
   // the raw OpBuilder* that current-OpBuilder holds and every builder binding
   // takes. Not idempotent: a raw pointer is an error.
   Sregister_symbol(

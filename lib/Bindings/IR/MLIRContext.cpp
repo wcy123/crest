@@ -18,21 +18,21 @@
 
 namespace crest {
 void registerIRMLIRContextBindings() {
-  /// → CrestOwned<mlir::MLIRContext>*
+  /// → CrestBox<mlir::MLIRContext>*
   Sregister_symbol(
       "mlir::MLIRContext::new", (void*)+[]() -> uint64_t {
-        return reinterpret_cast<uint64_t>(new CrestOwned<mlir::MLIRContext>());
+        return reinterpret_cast<uint64_t>(new CrestBox<mlir::MLIRContext>());
       });
 
-  /// registry_ptr: CrestOwned<mlir::DialectRegistry>* →
-  /// CrestOwned<mlir::MLIRContext>*
+  /// registry_ptr: CrestBox<mlir::DialectRegistry>* →
+  /// CrestBox<mlir::MLIRContext>*
   Sregister_symbol(
       "mlir::MLIRContext::new/registry",
       (void*)+[](uint64_t registry_ptr) -> uint64_t {
         auto& registry = crest::as_ref<mlir::DialectRegistry>(
             registry_ptr, "mlir::MLIRContext::new/registry");
         return reinterpret_cast<uint64_t>(
-            new CrestOwned<mlir::MLIRContext>(registry));
+            new CrestBox<mlir::MLIRContext>(registry));
       });
 
   Sregister_symbol(
@@ -118,7 +118,7 @@ void registerIRMLIRContextBindings() {
         return reinterpret_cast<uint64_t>(module.release().getOperation());
       });
 }
-// Specialisation of as_ptr<mlir::MLIRContext>: accepts CrestOwned<MLIRContext>*
+// Specialisation of as_ptr<mlir::MLIRContext>: accepts CrestBox<MLIRContext>*
 // from mlir::MLIRContext::new, or a raw MLIRContext* from MLIR API getters
 // (op->getContext(), type.getContext(), etc.). Raw pointers are MLIR-managed
 // and need no CrestObject wrapper.
@@ -129,8 +129,8 @@ mlir::MLIRContext* as_ptr<mlir::MLIRContext>(uint64_t ptr_val,
     scheme_error(who, "null MLIRContext pointer");
   }
   auto* obj = reinterpret_cast<crest::CrestObject*>(ptr_val);
-  if (obj->isa<crest::CrestOwned<mlir::MLIRContext>>()) {
-    return &static_cast<crest::CrestOwned<mlir::MLIRContext>*>(obj)->inner;
+  if (obj->isa<crest::CrestBox<mlir::MLIRContext>>()) {
+    return &static_cast<crest::CrestBox<mlir::MLIRContext>*>(obj)->inner;
   }
   // Raw MLIRContext* from MLIR APIs — valid MLIR-managed pointer, no wrapper.
   return reinterpret_cast<mlir::MLIRContext*>(ptr_val);

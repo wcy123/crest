@@ -32,7 +32,7 @@
     mlir::RewriterBase::create<OperationState>
     mlir::RewritePatternSet::RewritePatternSet
     ;; Type predicates
-    crest::isa<CrestOwned<mlir::RewritePatternSet>>?
+    crest::isa<CrestBox<mlir::RewritePatternSet>>?
     ;; RAII macros
     with-RewritePatternSet)
 
@@ -48,7 +48,7 @@
                 %mlir::RewriterBase::eraseOp
                 %mlir::RewriterBase::create<OperationState>
                 %mlir::RewritePatternSet::RewritePatternSet
-                %crest::isa<CrestOwned<mlir::RewritePatternSet>>)
+                %crest::isa<CrestBox<mlir::RewritePatternSet>>)
           (only (mlir IR MLIRContext) current-MLIRContext)
           (only (mlir IR Location) mlir::UnknownLoc::get)
           (only (mlir IR Operation)
@@ -80,9 +80,9 @@
   (define mlir::RewriterBase::create<OperationState> %mlir::RewriterBase::create<OperationState>)
   (define mlir::RewritePatternSet::RewritePatternSet  %mlir::RewritePatternSet::RewritePatternSet)
 
-  ;; @brief crest::isa<CrestOwned<mlir::RewritePatternSet>>? — is this ptr a CrestOwned<mlir::RewritePatternSet>?
-  (define (crest::isa<CrestOwned<mlir::RewritePatternSet>>? ptr)
-    (not (zero? (%crest::isa<CrestOwned<mlir::RewritePatternSet>> ptr))))
+  ;; @brief crest::isa<CrestBox<mlir::RewritePatternSet>>? — is this ptr a CrestBox<mlir::RewritePatternSet>?
+  (define (crest::isa<CrestBox<mlir::RewritePatternSet>>? ptr)
+    (not (zero? (%crest::isa<CrestBox<mlir::RewritePatternSet>> ptr))))
 
   ;; @brief Create an op via a RewriterBase*.
   ;; (rw name operands types)                     — UnknownLoc, 0 regions

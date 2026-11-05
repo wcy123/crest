@@ -1,6 +1,6 @@
 #pragma once
 
-#include <utility> // std::forward for CrestOwned<T> constructor
+#include <utility> // std::forward for CrestBox<T> constructor
 
 // Symbol-visibility macro for type_deletor.
 // Forces default (exported) visibility so the dynamic linker can unify copies
@@ -57,16 +57,16 @@ template <typename T> inline bool CrestObject::isa() const {
   return deletor == AsCrest<T>::type_deletor;
 }
 
-// CrestOwned<T> — heap-allocates T by value inside a CrestObject shell.
-// The AsCrest<CrestOwned<T>> type_deletor frees the whole struct (including T).
+// CrestBox<T> — heap-allocates T by value inside a CrestObject shell.
+// The AsCrest<CrestBox<T>> type_deletor frees the whole struct (including T).
 // Use for objects that CREST creates and owns:
 //   OperationState, RewritePatternSet, TypeConverter, ConversionTarget,
 //   OpBuilder.
-template <typename T> struct CrestOwned : public AsCrest<CrestOwned<T>> {
+template <typename T> struct CrestBox : public AsCrest<CrestBox<T>> {
   T inner;
   template <typename... Args>
-  explicit CrestOwned(Args&&... args)
-      : AsCrest<CrestOwned<T>>(), inner(std::forward<Args>(args)...) {}
+  explicit CrestBox(Args&&... args)
+      : AsCrest<CrestBox<T>>(), inner(std::forward<Args>(args)...) {}
 };
 
 // CrestRef<T> — heap-allocates a non-owning shell holding T*.

@@ -16,14 +16,14 @@ void registerTransformsPassesBindings() {
   Sregister_symbol(
       "mlir::createCanonicalizerPass", (void*)+[]() -> uint64_t {
         return reinterpret_cast<uint64_t>(
-            new CrestOwned<std::unique_ptr<mlir::Pass>>(
+            new CrestBox<std::unique_ptr<mlir::Pass>>(
                 mlir::createCanonicalizerPass()));
       });
 
   Sregister_symbol(
       "mlir::createCSEPass", (void*)+[]() -> uint64_t {
         return reinterpret_cast<uint64_t>(
-            new CrestOwned<std::unique_ptr<mlir::Pass>>(mlir::createCSEPass()));
+            new CrestBox<std::unique_ptr<mlir::Pass>>(mlir::createCSEPass()));
       });
 }
 

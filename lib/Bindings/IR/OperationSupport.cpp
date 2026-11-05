@@ -6,7 +6,7 @@
 // Mirrors mlir/IR/OperationSupport.h
 
 // Thin C wrappers around mlir::OperationState via
-// CrestOwned<mlir::OperationState>. The CrestObject deletor handles destruction
+// CrestBox<mlir::OperationState>. The CrestObject deletor handles destruction
 // - no explicit ~OperationState binding.
 
 #include "OperationSupport.h"
@@ -24,7 +24,7 @@ void registerIROperationStateBindings() {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         return reinterpret_cast<uint64_t>(
-            new CrestOwned<mlir::OperationState>(loc, name));
+            new CrestBox<mlir::OperationState>(loc, name));
       });
   Sregister_symbol(
       "mlir::OperationState::addOperands",
@@ -63,13 +63,13 @@ void registerIROperationStateBindings() {
                                     reinterpret_cast<const void*>(attr_ptr)));
       });
   Sregister_symbol(
-      "crest::isa<CrestOwned<mlir::OperationState>>",
+      "crest::isa<CrestBox<mlir::OperationState>>",
       (void*)+[](uint64_t ptr) -> int {
         if (!ptr) {
           return 0;
         }
         return reinterpret_cast<CrestObject*>(ptr)
-                       ->isa<CrestOwned<mlir::OperationState>>()
+                       ->isa<CrestBox<mlir::OperationState>>()
                    ? 1
                    : 0;
       });

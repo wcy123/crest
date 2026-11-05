@@ -111,16 +111,16 @@ void registerIRRewriterBaseBindings() {
         }
         auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
         return reinterpret_cast<uint64_t>(
-            new CrestOwned<mlir::RewritePatternSet>(ctx));
+            new CrestBox<mlir::RewritePatternSet>(ctx));
       });
   Sregister_symbol(
-      "crest::isa<CrestOwned<mlir::RewritePatternSet>>",
+      "crest::isa<CrestBox<mlir::RewritePatternSet>>",
       (void*)+[](uint64_t ptr) -> int {
         if (!ptr) {
           return 0;
         }
         return reinterpret_cast<CrestObject*>(ptr)
-                       ->isa<CrestOwned<mlir::RewritePatternSet>>()
+                       ->isa<CrestBox<mlir::RewritePatternSet>>()
                    ? 1
                    : 0;
       });
@@ -141,7 +141,7 @@ void registerIRRewriterBaseBindings() {
 //       returned RewriterBase* is converted to OpBuilder* statically, which
 //       adjusts the address (RewriterBase is polymorphic, OpBuilder is not, so
 //       the OpBuilder base is not at offset 0).
-//   CrestOwned<mlir::OpBuilder>*  — from atBlockEnd.
+//   CrestBox<mlir::OpBuilder>*  — from atBlockEnd.
 // Anything else is a bug: a raw pointer must not be unwrapped again, and a raw
 // RewriterBase* is not an OpBuilder*.
 template <>
@@ -153,10 +153,10 @@ mlir::OpBuilder* as_ptr<mlir::OpBuilder>(uint64_t ptr_val, const char* who) {
   if (obj->isa<crest::CrestRef<mlir::RewriterBase>>()) {
     return static_cast<crest::CrestRef<mlir::RewriterBase>*>(obj)->ptr;
   }
-  if (obj->isa<crest::CrestOwned<mlir::OpBuilder>>()) {
-    return &static_cast<crest::CrestOwned<mlir::OpBuilder>*>(obj)->inner;
+  if (obj->isa<crest::CrestBox<mlir::OpBuilder>>()) {
+    return &static_cast<crest::CrestBox<mlir::OpBuilder>*>(obj)->inner;
   }
-  scheme_error(who, "expected CrestRef<RewriterBase> or CrestOwned<OpBuilder>");
+  scheme_error(who, "expected CrestRef<RewriterBase> or CrestBox<OpBuilder>");
   crest_unreachable();
 }
 

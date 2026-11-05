@@ -57,7 +57,7 @@ template <typename... Ts>
 
 namespace crest {
 
-// True when T has a public, non-deleted destructor (i.e. CrestOwned<T> can
+// True when T has a public, non-deleted destructor (i.e. CrestBox<T> can
 // call delete on its inner T).  std::is_destructible_v<T> returns false for
 // types with protected or private destructors (e.g. mlir::RewriterBase) and
 // is always SFINAE-safe, unlike decltype(delete ...) which some GCC versions
@@ -81,16 +81,16 @@ template <typename T>
     scheme_error(who, "null pointer");
   }
   auto* obj = reinterpret_cast<crest::CrestObject*>(ptr_val);
-  if (!obj->isa<crest::CrestOwned<T>>()) {
+  if (!obj->isa<crest::CrestBox<T>>()) {
     scheme_error(who, "wrong CrestObject type");
   }
-  return static_cast<crest::CrestOwned<T>*>(obj)->inner;
+  return static_cast<crest::CrestBox<T>*>(obj)->inner;
 }
 
 // Returns T* from CrestRef<T>* (non-owning) or, when T is deletable,
-// CrestOwned<T>* (owned). The CrestOwned branch is compile-time disabled for
+// CrestBox<T>* (owned). The CrestBox branch is compile-time disabled for
 // types whose destructor is inaccessible (e.g. protected), which would make
-// CrestOwned<T>::type_deletor ill-formed.
+// CrestBox<T>::type_deletor ill-formed.
 template <typename T>
 [[nodiscard]] inline T* as_ptr(uint64_t ptr_val, const char* who) {
   if (!ptr_val) {
@@ -101,8 +101,8 @@ template <typename T>
     return static_cast<crest::CrestRef<T>*>(obj)->ptr;
   }
   if constexpr (kIsDeletable<T> && !std::is_abstract_v<T>) {
-    if (obj->isa<crest::CrestOwned<T>>()) {
-      return &static_cast<crest::CrestOwned<T>*>(obj)->inner;
+    if (obj->isa<crest::CrestBox<T>>()) {
+      return &static_cast<crest::CrestBox<T>*>(obj)->inner;
     }
   }
   scheme_error(who, "wrong CrestObject type");
@@ -119,7 +119,7 @@ class OpBuilder;
 
 namespace crest {
 // Explicit specialisation for mlir::MLIRContext: accepts
-// CrestOwned<MLIRContext>* (user-created) or a raw MLIRContext* returned by
+// CrestBox<MLIRContext>* (user-created) or a raw MLIRContext* returned by
 // MLIR APIs such as op->getContext() and type.getContext(). Raw pointers are
 // valid MLIR-managed memory and need no CrestObject wrapper — they are never
 // freed by Scheme.
@@ -128,7 +128,7 @@ template <>
                                                            const char* who);
 
 // Explicit specialisation for mlir::OpBuilder: unwraps a CrestObject shell —
-// CrestOwned<OpBuilder>* (from atBlockEnd) or CrestRef<RewriterBase>* (from
+// CrestBox<OpBuilder>* (from atBlockEnd) or CrestRef<RewriterBase>* (from
 // conversion pattern callbacks; upcast to OpBuilder* statically, which adjusts
 // the address because RewriterBase is polymorphic and its OpBuilder base is not
 // at offset 0). Anything else is an error: bindings that take a builder take a

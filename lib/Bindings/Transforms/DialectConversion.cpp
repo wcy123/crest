@@ -22,7 +22,7 @@
 // → #t/#f.
 // rewriter is a heap-allocated CrestRef<mlir::RewriterBase> shell; Scheme frees
 // it via with-CrestObject.
-// type-converter is the CrestOwned<mlir::TypeConverter>* — Scheme uses it
+// type-converter is the CrestBox<mlir::TypeConverter>* — Scheme uses it
 // opaquely.
 class SchemeConversionPattern : public mlir::ConversionPattern {
 public:
@@ -145,8 +145,7 @@ void registerTransformsDialectConversionBindings() {
       });
   Sregister_symbol(
       "mlir::TypeConverter::TypeConverter", (void*)+[]() -> uint64_t {
-        return reinterpret_cast<uint64_t>(
-            new CrestOwned<mlir::TypeConverter>());
+        return reinterpret_cast<uint64_t>(new CrestBox<mlir::TypeConverter>());
       });
   Sregister_symbol(
       "mlir::ConversionTarget::ConversionTarget",
@@ -157,7 +156,7 @@ void registerTransformsDialectConversionBindings() {
         }
         auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
         return reinterpret_cast<uint64_t>(
-            new CrestOwned<mlir::ConversionTarget>(*ctx));
+            new CrestBox<mlir::ConversionTarget>(*ctx));
       });
   Sregister_symbol(
       "mlir::ConversionTarget::addIllegalDialect",
@@ -401,24 +400,24 @@ void registerTransformsDialectConversionBindings() {
             });
       });
   Sregister_symbol(
-      "crest::isa<CrestOwned<mlir::TypeConverter>>",
+      "crest::isa<CrestBox<mlir::TypeConverter>>",
       (void*)+[](uint64_t ptr) -> int {
         if (!ptr) {
           return 0;
         }
         return reinterpret_cast<CrestObject*>(ptr)
-                       ->isa<CrestOwned<mlir::TypeConverter>>()
+                       ->isa<CrestBox<mlir::TypeConverter>>()
                    ? 1
                    : 0;
       });
   Sregister_symbol(
-      "crest::isa<CrestOwned<mlir::ConversionTarget>>",
+      "crest::isa<CrestBox<mlir::ConversionTarget>>",
       (void*)+[](uint64_t ptr) -> int {
         if (!ptr) {
           return 0;
         }
         return reinterpret_cast<CrestObject*>(ptr)
-                       ->isa<CrestOwned<mlir::ConversionTarget>>()
+                       ->isa<CrestBox<mlir::ConversionTarget>>()
                    ? 1
                    : 0;
       });
