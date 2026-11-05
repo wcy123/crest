@@ -92,8 +92,8 @@ void registerDialectMemRefIRMemRefBindings() {
   // Register MemRefDialect into a DialectRegistry.
   Sregister_symbol(
       "mlir::memref::MemRefDialect", (void*)+[](uint64_t registry_ptr) -> void {
-        crest::as_ref<mlir::DialectRegistry>(registry_ptr,
-                                             "mlir::memref::MemRefDialect")
+        crest::CrestBox<mlir::DialectRegistry>::inner(
+            registry_ptr, "mlir::memref::MemRefDialect")
             .insert<mlir::memref::MemRefDialect>();
       });
 }

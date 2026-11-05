@@ -23,7 +23,7 @@ and frees the object.
 
 - [What a CrestObject is](#what-a-crestobject-is)
 - [Why we need it](#why-we-need-it)
-- [CrestBox and CrestRef](#crestbox-and-crestref)
+- [Two kinds of shell](#two-kinds-of-shell)
 - [Memory diagrams](#memory-diagrams)
 - [Cost of the extra level](#cost-of-the-extra-level)
 - [Freeing shells](#freeing-shells)
@@ -80,7 +80,7 @@ binding checks the tag before it uses the shell. If you pass the wrong object, y
 clear Scheme error, `wrong CrestObject type`. Without the tag, the program would crash
 deep inside MLIR. The tag also lets one function accept more than one kind of object. For
 example, `as_ptr<mlir::OpBuilder>` accepts a `CrestBox<OpBuilder>` or a
-`CrestRef<RewriterBase>`.
+`CrestBox<RewriterBase*>`.
 
 **The object frees itself.** Scheme does not know the C++ type of the object it holds. We
 also do not want a separate "free" binding for every type. So each shell carries its own
@@ -94,11 +94,13 @@ when the garbage collector happens to run.
   ...)            ; leaving the body, normally or by exception, deletes `state`
 ```
 
-### CrestBox and CrestRef
+### Two kinds of shell
 
-Two templates cover almost every case.
+`CrestBox<T>` covers almost every case. It has two forms: it holds a `T` itself, or, when its
+argument is a pointer type `CrestBox<T*>`, it holds a pointer to a `T` that someone else
+owns.
 
-| | `CrestBox<T>` | `CrestRef<T>` |
+| | `CrestBox<T>` | `CrestBox<T*>` |
 |---|---|---|
 | What the shell holds | a whole `T`, stored inside it | a pointer `T*` |
 | Size | 8 + `sizeof(T)`, plus padding | 16 bytes |
@@ -111,7 +113,7 @@ Two templates cover almost every case.
 Layouts on a 64-bit target:
 
 ```
-   CrestBox<T>                          CrestRef<T>
+   CrestBox<T>                          CrestBox<T*>
    +0  +----------------+                 +0  +----------------+
        | deletor        |                     | deletor        |
    +8  +----------------+                 +8  +----------------+
@@ -175,9 +177,9 @@ box are the shell address plus the field offsets.
 `with-OpBuilder` binds the **raw** address of `inner` (shell + 8) to its variable. It frees
 the whole shell when the body exits. Code that only creates ops uses the raw pointer.
 
-#### `CrestRef<RewriterBase>`, the rewriter in a pattern callback
+#### `CrestBox<RewriterBase*>`, the rewriter in a pattern callback
 
-MLIR passes the rewriter to the pattern. The C++ code wraps it in a `CrestRef` and calls the
+MLIR passes the rewriter to the pattern. The C++ code wraps it in a `CrestBox<RewriterBase*>` and calls the
 Scheme callback with that shell.
 
 ```
@@ -185,11 +187,11 @@ Scheme callback with that shell.
  ------              --------------------------------         ---------------------------
 
  rw = 0x7f3a...  --> +0  +-------------------+
-                         | deletor ---------------> CrestRef<RewriterBase>::type_deletor
+                         | deletor ---------------> CrestBox<RewriterBase*>::type_deletor
                      +8  +-------------------+
                          | ptr  ---------------+
                      +16 +-------------------+ |
-                      CrestRef<RewriterBase>   |
+                      CrestBox<RewriterBase*>  |
                       16 bytes                 |
                                                v
                                            +0  +-------------------------+  RewriterBase
@@ -231,7 +233,7 @@ Scheme only has `obj`. The deletor was set when the object was built, so it know
 
 #### The three kinds of address
 
-| | raw pointer | `CrestBox<T>` | `CrestRef<T>` |
+| | raw pointer | `CrestBox<T>` | `CrestBox<T*>` |
 |---|---|---|---|
 | What Scheme holds | address of the `T` | address of the shell | address of the shell |
 | Type tag at +0 | no | yes | yes |
@@ -245,11 +247,11 @@ Scheme only has `obj`. The deletor was set when the object was built, so it know
 A shell is one more level between Scheme and the object. A raw pointer has none. The shell
 costs work in two places:
 
-- **Every use.** A binding reads the type tag at +0 and compares it. For a `CrestRef` it
+- **Every use.** A binding reads the type tag at +0 and compares it. For a `CrestBox<T*>` it
   then reads `ptr` at +8, and the `T` is in another place in memory. For a `CrestBox` the
   `T` is right after the tag.
 - **Every creation.** Each shell is one heap allocation. For example, C++ allocates one
-  `CrestRef<RewriterBase>` each time a pattern matches an op name and calls its Scheme
+  `CrestBox<RewriterBase*>` each time a pattern matches an op name and calls its Scheme
   callback.
 
 This is why `current-OpBuilder` holds the raw `OpBuilder*`. The shell is unwrapped once, and
@@ -327,7 +329,7 @@ often nested inside one of the macros above, for example `with-OpBuilder` for th
 - **Do not return the shell out of the body.** It is freed when the body ends, so the
   returned address would point at freed memory. Return what you need from it instead, for
   example the new op or value, which MLIR owns.
-- **Do not free a `CrestRef`.** C++ frees it. A `with-CrestObject` around it frees it twice.
+- **Do not free a `CrestBox<T*>`.** C++ frees it. A `with-CrestObject` around it frees it twice.
 - **Do not re-enter a body with a saved continuation after it ended.** The shell is already
   freed.
 - **A `guard` with no matching clause frees the shell twice.** It re-raises the error from
@@ -344,27 +346,34 @@ what Scheme passes.
 | Function | Accepts | Returns | Type safety | Use it when |
 |---|---|---|---|---|
 | `as_raw<T>(p, who)` | a raw `T*` | `T*` | **none.** It only checks for null. Any address is cast to `T*`, so a wrong object gives undefined behavior, often a crash inside MLIR. | MLIR owns the object and there is no shell |
-| `as_ptr<T>(p, who)` | `CrestRef<T>*` or `CrestBox<T>*` | `T*` | **checked.** The type tag must match exactly one of the two shells; otherwise a Scheme error, `wrong CrestObject type`. | either kind of shell is fine |
-| `as_ref<T>(p, who)` | `CrestBox<T>*` | `T&` | **checked.** The type tag must be `CrestBox<T>`. | the argument must be an owned object |
+| `CrestBox<T>::inner(p, who)` | `CrestBox<T>*` | `T&` | **checked.** Null is a Scheme error, `null pointer`. The type tag must be `CrestBox<T>`; otherwise a Scheme error, `wrong CrestObject type`. | Scheme owns the object |
+| `CrestBox<T*>::inner(p, who)` | `CrestBox<T*>*` | `T&` | **checked**, in the same way, against the tag of `CrestBox<T*>`. | C++ passes in an object MLIR owns, such as the `RewriterBase` of a pattern |
 
 Only `as_raw` skips the check. The other two read the type tag first, which is the cost
-described in [the cost section](#cost-of-the-extra-level).
+described in [the cost section](#cost-of-the-extra-level). A binding names the shell type it
+expects, so a `CrestBox<RewriterBase*>` is not accepted where a `CrestBox<RewriterBase>`
+is expected.
+
+On a typed shell (one that C++ created or already checked), the member `inner()` returns the
+`T&` with no check.
 
 Two types have a special `as_ptr`, because their objects arrive in more than one form:
 
 - `as_ptr<mlir::MLIRContext>` also accepts a raw `MLIRContext*`, such as the one from
   `op->getContext()`. **It is not type-safe**: if the argument is not a
   `CrestBox<MLIRContext>`, it is cast to `MLIRContext*` with no check, like `as_raw`.
-- `as_ptr<mlir::OpBuilder>` accepts `CrestBox<OpBuilder>` and `CrestRef<RewriterBase>`,
+- `as_ptr<mlir::OpBuilder>` accepts `CrestBox<OpBuilder>` and `CrestBox<RewriterBase*>`,
   and adds the 8 bytes described above. It is type-safe: it rejects a raw pointer and any
   other shell with a Scheme error. A binding that takes a builder takes the raw `OpBuilder*`
   and calls `as_raw`.
 
-The `isa` check is **exact**. A `CrestRef<RewriterBase>` is not a `CrestRef<PatternRewriter>`.
-For this reason, each shell type that is accepted is listed by name.
+The `isa` check is **exact**. A `CrestBox<RewriterBase*>` is not a
+`CrestBox<PatternRewriter*>`. For this reason, each shell type that is accepted is listed by
+name.
 
 `CrestBox<T>` needs a public destructor on `T`, because its deletor runs `delete`.
-`RewriterBase` has a protected destructor, so Scheme can hold it only through `CrestRef`.
+`RewriterBase` has a protected destructor, so Scheme can hold it only through
+`CrestBox<RewriterBase*>`.
 
 The Scheme side, in `(mlir support CrestObject)`:
 
@@ -376,9 +385,9 @@ The Scheme side, in `(mlir support CrestObject)`:
 
 ### Pitfalls
 
-- **Never free a `CrestRef`.** C++ owns it. Calling `with-CrestObject` on the rewriter
+- **Never free a `CrestBox<T*>`.** C++ owns it. Calling `with-CrestObject` on the rewriter
   shell frees the shell twice.
-- **A `CrestRef` is valid only inside the callback.** The C++ code destroys the shell when
+- **A `CrestBox<T*>` is valid only inside the callback.** The C++ code destroys the shell when
   the callback returns, and MLIR owns the object behind it. Do not store either one.
 - **A shell address is not an `OpBuilder*`.** If you pass a `CrestBox<OpBuilder>` where a
   raw `OpBuilder*` is expected, the binding reads the deletor as the builder's `context`.

@@ -99,7 +99,7 @@ void registerToyCh6LowerToLLVMBindings() {
       (void*)+[](uint64_t ctx_ptr, uint64_t patterns_ptr) -> void {
         auto* ctx = crest::as_ptr<mlir::MLIRContext>(
             ctx_ptr, "mlir::toy::ch6::populatePrintOpLoweringPatterns");
-        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
+        auto& patterns = crest::CrestBox<mlir::RewritePatternSet>::inner(
             patterns_ptr, "mlir::toy::ch6::populatePrintOpLoweringPatterns");
         patterns.add<PrintOpLowering>(ctx);
       });
@@ -126,8 +126,8 @@ void registerToyCh6SimpleErasePrintBindings() {
       "mlir::toy::ch6::populateSimpleErasePrintPatterns",
       (void*)+[](uint64_t ctx_ptr, uint64_t patterns_ptr) -> void {
         auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, "...");
-        auto& patterns =
-            crest::as_ref<mlir::RewritePatternSet>(patterns_ptr, "...");
+        auto& patterns = crest::CrestBox<mlir::RewritePatternSet>::inner(
+            patterns_ptr, "...");
         patterns.add<SimpleErasePrintOp>(ctx);
       });
 }

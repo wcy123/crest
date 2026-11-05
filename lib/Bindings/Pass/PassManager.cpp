@@ -33,9 +33,9 @@ void registerPassPassManagerBindings() {
   Sregister_symbol(
       "mlir::PassManager::addPass",
       (void*)+[](uint64_t pm_ptr, uint64_t pass_ptr) -> void {
-        auto& pm = crest::as_ref<mlir::PassManager>(
+        auto& pm = crest::CrestBox<mlir::PassManager>::inner(
             pm_ptr, "mlir::PassManager::addPass");
-        auto& pass = crest::as_ref<std::unique_ptr<mlir::Pass>>(
+        auto& pass = crest::CrestBox<std::unique_ptr<mlir::Pass>>::inner(
             pass_ptr, "mlir::PassManager::addPass");
         if (!pass) {
           scheme_error("mlir::PassManager::addPass",
@@ -49,8 +49,8 @@ void registerPassPassManagerBindings() {
   Sregister_symbol(
       "mlir::PassManager::run!",
       (void*)+[](uint64_t pm_ptr, uint64_t module_ptr) -> int {
-        auto& pm =
-            crest::as_ref<mlir::PassManager>(pm_ptr, "mlir::PassManager::run!");
+        auto& pm = crest::CrestBox<mlir::PassManager>::inner(
+            pm_ptr, "mlir::PassManager::run!");
         auto* op = reinterpret_cast<mlir::Operation*>(module_ptr);
         return mlir::succeeded(pm.run(op)) ? 1 : 0;
       });
@@ -59,8 +59,8 @@ void registerPassPassManagerBindings() {
   Sregister_symbol(
       "mlir::PassManager::enableVerifier",
       (void*)+[](uint64_t pm_ptr, int enabled) -> void {
-        crest::as_ref<mlir::PassManager>(pm_ptr,
-                                         "mlir::PassManager::enableVerifier")
+        crest::CrestBox<mlir::PassManager>::inner(
+            pm_ptr, "mlir::PassManager::enableVerifier")
             .enableVerifier(enabled != 0);
       });
 
@@ -70,8 +70,8 @@ void registerPassPassManagerBindings() {
   Sregister_symbol(
       "mlir::PassManager::nest",
       (void*)+[](uint64_t pm_ptr, const char* op_name) -> uint64_t {
-        auto& pm =
-            crest::as_ref<mlir::PassManager>(pm_ptr, "mlir::PassManager::nest");
+        auto& pm = crest::CrestBox<mlir::PassManager>::inner(
+            pm_ptr, "mlir::PassManager::nest");
         return reinterpret_cast<uint64_t>(&pm.nest(op_name));
       });
 
@@ -81,7 +81,7 @@ void registerPassPassManagerBindings() {
       "mlir::OpPassManager::addPass",
       (void*)+[](uint64_t nested_pm_ptr, uint64_t pass_ptr) -> void {
         auto* nested = reinterpret_cast<mlir::OpPassManager*>(nested_pm_ptr);
-        auto& pass = crest::as_ref<std::unique_ptr<mlir::Pass>>(
+        auto& pass = crest::CrestBox<std::unique_ptr<mlir::Pass>>::inner(
             pass_ptr, "mlir::OpPassManager::addPass");
         if (!pass) {
           scheme_error("mlir::OpPassManager::addPass",

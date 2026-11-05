@@ -316,7 +316,7 @@ Anywhere else, install a builder for the dynamic extent with `with-current-OpBui
 The builder must be a **raw** `mlir::OpBuilder*`:
 
 ```scheme
-;; A pattern's rewriter `rw` is a CrestRef<RewriterBase> shell: unwrap it first.
+;; A pattern's rewriter `rw` is a CrestBox<RewriterBase*> shell: unwrap it first.
 (with-current-OpBuilder (crest::as_ptr<mlir::OpBuilder> rw)
   (mlir::RewriterBase::setInsertionPoint rw op)
   (begin-mlir-code
@@ -903,7 +903,7 @@ convention from CLAUDE.md Rules 10–11:
 | `current-OpBuilder` | `with-current-OpBuilder` | `(mlir IR Builders)` | `:rewrite :with` and `^bb` bodies; user code via `with-current-OpBuilder` |
 
 `current-OpBuilder` holds a **raw** `mlir::OpBuilder*`, never a CrestObject shell. A pattern's
-rewriter is a `CrestRef<RewriterBase>` shell; `(crest::as_ptr<mlir::OpBuilder> rw)` unwraps it
+rewriter is a `CrestBox<RewriterBase*>` shell; `(crest::as_ptr<mlir::OpBuilder> rw)` unwraps it
 (the C++ upcast adjusts the address). Rewriter-only operations (`replaceOp`, `eraseOp`, ...)
 keep taking the shell. `with-OpBuilder` creates a builder and binds the raw pointer; it does not
 install it (CLAUDE.md Rule 10) — wrap the body in `with-current-OpBuilder` for that.

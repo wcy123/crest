@@ -12,7 +12,7 @@
 ;; Re-exports clean names from (mlir IR PatternMatch ffi).
 ;; Also provides RAII macros.
 ;;
-;; The pattern's rewriter is a CrestRef<RewriterBase> shell passed explicitly to
+;; The pattern's rewriter is a CrestBox<RewriterBase*> shell passed explicitly to
 ;; these bindings (replaceOp, eraseOp, setInsertionPoint, ...). To create ops with
 ;; the DSL or an OpBuilder binding, unwrap it with
 ;; (crest::as_ptr<mlir::OpBuilder> rw) from (mlir IR Builders).
@@ -89,7 +89,7 @@
   ;; (rw name operands types nregions)            — UnknownLoc, N regions
   ;; (rw name operands types source-loc nregions) — explicit mlir::Location
   ;;
-  ;; NOTE: rw is a CrestRef<RewriterBase>*; %mlir::RewriterBase::create<OperationState>
+  ;; NOTE: rw is a CrestBox<RewriterBase*>*; %mlir::RewriterBase::create<OperationState>
   ;; extracts ->ptr internally. RewriterBase introduces the first vtable, so its
   ;; subobject offset differs from OpBuilder — these bindings are NOT interchangeable.
   (define mlir-create-operation

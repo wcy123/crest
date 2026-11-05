@@ -52,7 +52,7 @@
     (foreign-procedure "mlir::RewriterBase::eraseOp"
                        (uptr uptr) int))
 
-  ;; Accepts CrestRef<RewriterBase>* and CrestBox<OperationState>*; extracts
+  ;; Accepts CrestBox<RewriterBase*>* and CrestBox<OperationState>*; extracts
   ;; inner pointers in C++. See lib/Bindings/IR/PatternMatch.cpp.
   (define %mlir::RewriterBase::create<OperationState>
     (foreign-procedure "mlir::RewriterBase::create<OperationState>" (uptr uptr) uptr))

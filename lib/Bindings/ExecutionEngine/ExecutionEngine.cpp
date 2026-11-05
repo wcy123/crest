@@ -54,7 +54,7 @@ void registerExecutionEngineBindings() {
       "mlir::ExecutionEngine::invoke",
       (void*)+[](uint64_t engine_ptr, const char* name) -> int {
         auto& engine_uptr =
-            crest::as_ref<std::unique_ptr<mlir::ExecutionEngine>>(
+            crest::CrestBox<std::unique_ptr<mlir::ExecutionEngine>>::inner(
                 engine_ptr, "mlir::ExecutionEngine::invoke");
         auto result = engine_uptr->invokePacked(name);
         if (result) {

@@ -54,7 +54,7 @@
     (foreign-procedure "mlir::OpBuilder::setInsertionPoint" (uptr uptr) void))
 
   ;; @brief Unwrap a builder shell to a raw OpBuilder*.
-  ;; @param ptr  CrestBox<OpBuilder>* or CrestRef<RewriterBase>* shell uptr
+  ;; @param ptr  CrestBox<OpBuilder>* or CrestBox<RewriterBase*>* shell uptr
   ;; @return     raw mlir::OpBuilder* uptr
   (define %crest::as_ptr<mlir::OpBuilder>
     (foreign-procedure "crest::as_ptr<mlir::OpBuilder>" (uptr) uptr))

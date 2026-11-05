@@ -157,7 +157,7 @@ current-OpBuilder      ; mlir::OpBuilder*    (mlir/IR/Builders.h)
 ```
 
 `current-OpBuilder` holds a **raw** `OpBuilder*` (or `#f`), never a CrestObject shell. A pattern's
-rewriter is a `CrestRef<RewriterBase>` shell: unwrap it with `(crest::as_ptr<mlir::OpBuilder> rw)`
+rewriter is a `CrestBox<RewriterBase*>` shell: unwrap it with `(crest::as_ptr<mlir::OpBuilder> rw)`
 (the C++ upcast adjusts the address; `RewriterBase` is polymorphic, so its `OpBuilder` base is not
 at offset 0). Bindings that take a builder take that raw pointer; rewriter-only operations
 (`replaceOp`, `eraseOp`, `inlineRegionBefore`, ...) keep taking the shell.

@@ -57,13 +57,6 @@ template <typename... Ts>
 
 namespace crest {
 
-// True when T has a public, non-deleted destructor (i.e. CrestBox<T> can
-// call delete on its inner T).  std::is_destructible_v<T> returns false for
-// types with protected or private destructors (e.g. mlir::RewriterBase) and
-// is always SFINAE-safe, unlike decltype(delete ...) which some GCC versions
-// treat as a hard access error rather than a substitution failure.
-template <typename T> constexpr bool kIsDeletable = std::is_destructible_v<T>;
-
 // Raw pointer argument: Scheme passes the address of an object MLIR (or C++)
 // owns, with no CrestObject shell around it, e.g. a mlir::OpBuilder* obtained
 // from crest::as_ptr<mlir::OpBuilder>. Only the null check is possible.
@@ -75,43 +68,16 @@ template <typename T>
   return reinterpret_cast<T*>(ptr_val);
 }
 
+// Pointer-returning lookup, only for the types whose objects arrive in more
+// than one form (specialised below). Everything else casts the address to its
+// shell type and calls inner(who), e.g.
+// reinterpret_cast<CrestBox<T>*>(addr)->inner(who).
 template <typename T>
-[[nodiscard]] inline T& as_ref(uint64_t ptr_val, const char* who) {
-  if (!ptr_val) {
-    scheme_error(who, "null pointer");
-  }
-  auto* obj = reinterpret_cast<crest::CrestObject*>(ptr_val);
-  if (!obj->isa<crest::CrestBox<T>>()) {
-    scheme_error(who, "wrong CrestObject type");
-  }
-  return static_cast<crest::CrestBox<T>*>(obj)->inner;
-}
-
-// Returns T* from CrestRef<T>* (non-owning) or, when T is deletable,
-// CrestBox<T>* (owned). The CrestBox branch is compile-time disabled for
-// types whose destructor is inaccessible (e.g. protected), which would make
-// CrestBox<T>::type_deletor ill-formed.
-template <typename T>
-[[nodiscard]] inline T* as_ptr(uint64_t ptr_val, const char* who) {
-  if (!ptr_val) {
-    scheme_error(who, "null pointer");
-  }
-  auto* obj = reinterpret_cast<crest::CrestObject*>(ptr_val);
-  if (obj->isa<crest::CrestRef<T>>()) {
-    return static_cast<crest::CrestRef<T>*>(obj)->ptr;
-  }
-  if constexpr (kIsDeletable<T> && !std::is_abstract_v<T>) {
-    if (obj->isa<crest::CrestBox<T>>()) {
-      return &static_cast<crest::CrestBox<T>*>(obj)->inner;
-    }
-  }
-  scheme_error(who, "wrong CrestObject type");
-  crest_unreachable();
-}
+[[nodiscard]] T* as_ptr(uint64_t ptr_val, const char* who) = delete;
 
 } // namespace crest
 
-// Forward declarations for as_ptr specializations.
+// Forward declarations for the as_ptr specializations.
 namespace mlir {
 class MLIRContext;
 class OpBuilder;
@@ -128,7 +94,7 @@ template <>
                                                            const char* who);
 
 // Explicit specialisation for mlir::OpBuilder: unwraps a CrestObject shell —
-// CrestBox<OpBuilder>* (from atBlockEnd) or CrestRef<RewriterBase>* (from
+// CrestBox<OpBuilder>* (from atBlockEnd) or CrestBox<RewriterBase*>* (from
 // conversion pattern callbacks; upcast to OpBuilder* statically, which adjusts
 // the address because RewriterBase is polymorphic and its OpBuilder base is not
 // at offset 0). Anything else is an error: bindings that take a builder take a

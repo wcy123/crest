@@ -116,8 +116,8 @@ void registerDialectAffineIRAffineOpsBindings() {
   // Register AffineDialect into a DialectRegistry.
   Sregister_symbol(
       "mlir::affine::AffineDialect", (void*)+[](uint64_t registry_ptr) -> void {
-        crest::as_ref<mlir::DialectRegistry>(registry_ptr,
-                                             "mlir::affine::AffineDialect")
+        crest::CrestBox<mlir::DialectRegistry>::inner(
+            registry_ptr, "mlir::affine::AffineDialect")
             .insert<mlir::affine::AffineDialect>();
       });
 }

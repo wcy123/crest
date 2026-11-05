@@ -23,9 +23,9 @@ void registerIRRewriterBaseBindings() {
           scheme_error("mlir::RewriterBase::setInsertionPoint",
                        "null op pointer");
         }
-        crest::as_ptr<mlir::RewriterBase>(
+        crest::CrestBox<mlir::RewriterBase*>::inner(
             rewriter_ptr, "mlir::RewriterBase::setInsertionPoint")
-            ->setInsertionPoint(reinterpret_cast<mlir::Operation*>(op_ptr));
+            .setInsertionPoint(reinterpret_cast<mlir::Operation*>(op_ptr));
       });
   Sregister_symbol(
       "mlir::RewriterBase::setInsertionPointToEnd",
@@ -34,9 +34,9 @@ void registerIRRewriterBaseBindings() {
           scheme_error("mlir::RewriterBase::setInsertionPointToEnd",
                        "null block pointer");
         }
-        crest::as_ptr<mlir::RewriterBase>(
+        crest::CrestBox<mlir::RewriterBase*>::inner(
             rewriter_ptr, "mlir::RewriterBase::setInsertionPointToEnd")
-            ->setInsertionPointToEnd(reinterpret_cast<mlir::Block*>(block_ptr));
+            .setInsertionPointToEnd(reinterpret_cast<mlir::Block*>(block_ptr));
       });
   Sregister_symbol(
       "mlir::RewriterBase::createBlock",
@@ -46,14 +46,14 @@ void registerIRRewriterBaseBindings() {
           scheme_error("mlir::RewriterBase::createBlock",
                        "null region pointer");
         }
-        auto* rewriter = crest::as_ptr<mlir::RewriterBase>(
+        auto& rewriter = crest::CrestBox<mlir::RewriterBase*>::inner(
             rewriter_ptr, "mlir::RewriterBase::createBlock");
         auto* region = reinterpret_cast<mlir::Region*>(region_ptr);
         mlir::Operation* parent = region->getParentOp();
-        mlir::Location loc =
-            parent ? parent->getLoc()
-                   : mlir::UnknownLoc::get(rewriter->getContext());
-        mlir::Block* block = rewriter->createBlock(region);
+        mlir::Location loc = parent
+                                 ? parent->getLoc()
+                                 : mlir::UnknownLoc::get(rewriter.getContext());
+        mlir::Block* block = rewriter.createBlock(region);
         for (ptr cur = static_cast<ptr>(arg_types_list); cur != Snil;
              cur = Scdr(cur)) {
           if (!Spairp(cur)) {
@@ -65,7 +65,7 @@ void registerIRRewriterBaseBindings() {
                   reinterpret_cast<const void*>(Sunsigned64_value(Scar(cur)))),
               loc);
         }
-        rewriter->setInsertionPointToEnd(block);
+        rewriter.setInsertionPointToEnd(block);
         return reinterpret_cast<uint64_t>(block);
       });
   Sregister_symbol(
@@ -75,32 +75,32 @@ void registerIRRewriterBaseBindings() {
         if (!old_op_ptr) {
           scheme_error("mlir::RewriterBase::replaceOp", "null op pointer");
         }
-        crest::as_ptr<mlir::RewriterBase>(rewriter_ptr,
-                                          "mlir::RewriterBase::replaceOp")
-            ->replaceOp(reinterpret_cast<mlir::Operation*>(old_op_ptr),
-                        mlir::Value::getFromOpaquePointer(
-                            reinterpret_cast<void*>(new_value_ptr)));
+        crest::CrestBox<mlir::RewriterBase*>::inner(
+            rewriter_ptr, "mlir::RewriterBase::replaceOp")
+            .replaceOp(reinterpret_cast<mlir::Operation*>(old_op_ptr),
+                       mlir::Value::getFromOpaquePointer(
+                           reinterpret_cast<void*>(new_value_ptr)));
         return 1;
       });
   Sregister_symbol(
       "mlir::RewriterBase::eraseOp",
       (void*)+[](uint64_t rewriter_ptr, uint64_t op_ptr) -> int {
-        crest::as_ptr<mlir::RewriterBase>(rewriter_ptr,
-                                          "mlir::RewriterBase::eraseOp")
-            ->eraseOp(reinterpret_cast<mlir::Operation*>(op_ptr));
+        crest::CrestBox<mlir::RewriterBase*>::inner(
+            rewriter_ptr, "mlir::RewriterBase::eraseOp")
+            .eraseOp(reinterpret_cast<mlir::Operation*>(op_ptr));
         return 1;
       });
-  // RewriterBase IS-A OpBuilder (single inheritance).
-  // CrestRef<RewriterBase>->ptr gives the raw RewriterBase* which can be safely
-  // used with RewriterBase::create.
+  // RewriterBase IS-A OpBuilder (single inheritance). The shell's inner() is
+  // the RewriterBase itself, which can be safely used with
+  // RewriterBase::create.
   Sregister_symbol(
       "mlir::RewriterBase::create<OperationState>",
       (void*)+[](uint64_t rw_ptr, uint64_t state_ptr) -> uint64_t {
-        auto* rw = crest::as_ptr<mlir::RewriterBase>(
+        auto& rw = crest::CrestBox<mlir::RewriterBase*>::inner(
             rw_ptr, "mlir::RewriterBase::create<OperationState>");
-        auto& state = crest::as_ref<mlir::OperationState>(
+        auto& state = crest::CrestBox<mlir::OperationState>::inner(
             state_ptr, "mlir::RewriterBase::create<OperationState>");
-        return reinterpret_cast<uint64_t>(rw->create(state));
+        return reinterpret_cast<uint64_t>(rw.create(state));
       });
   Sregister_symbol(
       "mlir::RewritePatternSet::RewritePatternSet",
@@ -130,15 +130,15 @@ void registerIRRewriterBaseBindings() {
   Sregister_symbol(
       "mlir::RewriterBase::setInsertionPointToStart",
       (void*)+[](uint64_t rw_ptr, uint64_t block_ptr) -> void {
-        auto* rw = crest::as_ptr<mlir::RewriterBase>(
+        auto& rw = crest::CrestBox<mlir::RewriterBase*>::inner(
             rw_ptr, "mlir::RewriterBase::setInsertionPointToStart");
-        rw->setInsertionPointToStart(reinterpret_cast<mlir::Block*>(block_ptr));
+        rw.setInsertionPointToStart(reinterpret_cast<mlir::Block*>(block_ptr));
       });
 }
 
 // as_ptr<mlir::OpBuilder> specialisation: unwraps a shell to a raw OpBuilder*.
-//   CrestRef<mlir::RewriterBase>* — from conversion pattern callbacks. The
-//       returned RewriterBase* is converted to OpBuilder* statically, which
+//   CrestBox<mlir::RewriterBase*>* — from conversion pattern callbacks. The
+//       RewriterBase is converted to OpBuilder* statically, which
 //       adjusts the address (RewriterBase is polymorphic, OpBuilder is not, so
 //       the OpBuilder base is not at offset 0).
 //   CrestBox<mlir::OpBuilder>*  — from atBlockEnd.
@@ -150,13 +150,13 @@ mlir::OpBuilder* as_ptr<mlir::OpBuilder>(uint64_t ptr_val, const char* who) {
     scheme_error(who, "null builder pointer");
   }
   auto* obj = reinterpret_cast<crest::CrestObject*>(ptr_val);
-  if (obj->isa<crest::CrestRef<mlir::RewriterBase>>()) {
-    return static_cast<crest::CrestRef<mlir::RewriterBase>*>(obj)->ptr;
+  if (obj->isa<crest::CrestBox<mlir::RewriterBase*>>()) {
+    return &static_cast<crest::CrestBox<mlir::RewriterBase*>*>(obj)->inner();
   }
   if (obj->isa<crest::CrestBox<mlir::OpBuilder>>()) {
-    return &static_cast<crest::CrestBox<mlir::OpBuilder>*>(obj)->inner;
+    return &static_cast<crest::CrestBox<mlir::OpBuilder>*>(obj)->inner();
   }
-  scheme_error(who, "expected CrestRef<RewriterBase> or CrestBox<OpBuilder>");
+  scheme_error(who, "expected CrestBox<RewriterBase*> or CrestBox<OpBuilder>");
   crest_unreachable();
 }
 

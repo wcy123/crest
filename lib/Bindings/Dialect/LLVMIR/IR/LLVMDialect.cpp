@@ -19,8 +19,8 @@ void registerDialectLLVMIRIRLLVMDialectBindings() {
   // (registry-ptr) → void
   Sregister_symbol(
       "mlir::LLVM::LLVMDialect", (void*)+[](uint64_t registry_ptr) -> void {
-        crest::as_ref<mlir::DialectRegistry>(registry_ptr,
-                                             "mlir::LLVM::LLVMDialect")
+        crest::CrestBox<mlir::DialectRegistry>::inner(registry_ptr,
+                                                      "mlir::LLVM::LLVMDialect")
             .insert<mlir::LLVM::LLVMDialect>();
       });
 
@@ -30,7 +30,7 @@ void registerDialectLLVMIRIRLLVMDialectBindings() {
       "mlir::LLVM::registerInlinerInterface",
       (void*)+[](uint64_t registry_ptr) -> void {
         mlir::LLVM::registerInlinerInterface(
-            crest::as_ref<mlir::DialectRegistry>(
+            crest::CrestBox<mlir::DialectRegistry>::inner(
                 registry_ptr, "mlir::LLVM::registerInlinerInterface"));
       });
 }

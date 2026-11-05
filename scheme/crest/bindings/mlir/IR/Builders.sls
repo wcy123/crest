@@ -12,7 +12,7 @@
 ;;
 ;; Handle convention: every binding that takes an OpBuilder takes a RAW
 ;; mlir::OpBuilder* uptr. CrestObject shells (CrestBox<OpBuilder> from
-;; atBlockEnd, CrestRef<RewriterBase> for a pattern's rw) are unwrapped once
+;; atBlockEnd, CrestBox<RewriterBase*> for a pattern's rw) are unwrapped once
 ;; with crest::as_ptr<mlir::OpBuilder>, or by with-OpBuilder.
 ;;
 ;;===----------------------------------------------------------------------===;;
@@ -57,11 +57,11 @@
     %mlir::OpBuilder::create<OperationState>)
 
   ;; @brief crest::as_ptr<mlir::OpBuilder> — unwrap a builder shell to a raw mlir::OpBuilder*.
-  ;; Accepts a CrestBox<OpBuilder> shell or a CrestRef<RewriterBase> shell (the rewriter
+  ;; Accepts a CrestBox<OpBuilder> shell or a CrestBox<RewriterBase*> shell (the rewriter
   ;; of a pattern callback). The C++ side upcasts statically, which adjusts the address:
   ;; RewriterBase is polymorphic and its OpBuilder base is not at offset 0. Anything that is
   ;; not a shell (including an already-raw pointer) is an error.
-  ;; @param shell  CrestBox<OpBuilder>* or CrestRef<RewriterBase>* uptr
+  ;; @param shell  CrestBox<OpBuilder>* or CrestBox<RewriterBase*>* uptr
   ;; @return       raw mlir::OpBuilder* uptr
   (define crest::as_ptr<mlir::OpBuilder> %crest::as_ptr<mlir::OpBuilder>)
 

@@ -20,10 +20,9 @@
 
 // Calls a Scheme callback as (callback op operands-ref rewriter type-converter)
 // → #t/#f.
-// rewriter is a heap-allocated CrestRef<mlir::RewriterBase> shell; Scheme frees
-// it via with-CrestObject.
-// type-converter is the CrestBox<mlir::TypeConverter>* — Scheme uses it
-// opaquely.
+// rewriter is a heap-allocated CrestBox<mlir::RewriterBase*> shell; Scheme
+// frees it via with-CrestObject. type-converter is the
+// CrestBox<mlir::TypeConverter>* — Scheme uses it opaquely.
 class SchemeConversionPattern : public mlir::ConversionPattern {
 public:
   // With TypeConverter: operands are remapped before matchAndRewrite.
@@ -54,7 +53,7 @@ public:
     auto operandsWrapped = std::make_unique<CArrayRef<uintptr_t>>(
         reinterpret_cast<const uintptr_t*>(operands.data()), operands.size());
     auto rwShell =
-        std::make_unique<crest::CrestRef<mlir::RewriterBase>>(&rewriter);
+        std::make_unique<crest::CrestBox<mlir::RewriterBase*>>(&rewriter);
     ptr result = scheme_call(
         callback_.get(), op, operandsWrapped.get(), rwShell.get(),
         reinterpret_cast<crest::CrestObject*>(schemeTypeConverterPtr_));
@@ -68,8 +67,8 @@ private:
 };
 
 // Calls a Scheme callback as (callback op rewriter) → #t/#f.
-// rewriter is a heap-allocated CrestRef<mlir::RewriterBase> shell; Scheme frees
-// it.
+// rewriter is a heap-allocated CrestBox<mlir::RewriterBase*> shell; Scheme
+// frees it.
 class SchemeRewritePattern : public mlir::RewritePattern {
 public:
   SchemeRewritePattern(mlir::MLIRContext* ctx,
@@ -86,7 +85,7 @@ public:
     }
     // C++ owns rwShell; Scheme uses it during scheme_call without freeing it.
     auto rwShell =
-        std::make_unique<crest::CrestRef<mlir::RewriterBase>>(&rewriter);
+        std::make_unique<crest::CrestBox<mlir::RewriterBase*>>(&rewriter);
     ptr result = scheme_call(callback_.get(), op, rwShell.get());
     return result == Strue ? mlir::success() : mlir::failure();
   }
@@ -103,9 +102,9 @@ void registerTransformsDialectConversionBindings() {
       "crest::DialectConversion::addConversionPattern",
       (void*)+[](uint64_t patterns_ptr, const char* op_name, ptr callback,
                  uint64_t type_converter_ptr, int benefit) -> void {
-        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
+        auto& patterns = crest::CrestBox<mlir::RewritePatternSet>::inner(
             patterns_ptr, "crest::DialectConversion::addConversionPattern");
-        auto& typeConverter = crest::as_ref<mlir::TypeConverter>(
+        auto& typeConverter = crest::CrestBox<mlir::TypeConverter>::inner(
             type_converter_ptr,
             "crest::DialectConversion::addConversionPattern");
         mlir_support_logging_info(
@@ -120,7 +119,7 @@ void registerTransformsDialectConversionBindings() {
       "crest::DialectConversion::addConversionPattern/ctx",
       (void*)+[](uint64_t patterns_ptr, const char* op_name, ptr callback,
                  int benefit) -> void {
-        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
+        auto& patterns = crest::CrestBox<mlir::RewritePatternSet>::inner(
             patterns_ptr, "crest::DialectConversion::addConversionPattern/ctx");
         mlir_support_logging_info(
             (std::string("Registering Scheme pattern (no TC) for ") + op_name)
@@ -133,7 +132,7 @@ void registerTransformsDialectConversionBindings() {
       "crest::DialectConversion::addRewritePattern",
       (void*)+[](uint64_t patterns_ptr, const char* op_name, ptr callback,
                  int benefit) -> void {
-        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
+        auto& patterns = crest::CrestBox<mlir::RewritePatternSet>::inner(
             patterns_ptr, "crest::DialectConversion::addRewritePattern");
         crest::LockedSchemeObject lockedCallback(callback);
         mlir_support_logging_info(
@@ -164,7 +163,7 @@ void registerTransformsDialectConversionBindings() {
         if (!dialect_name) {
           return;
         }
-        crest::as_ref<mlir::ConversionTarget>(
+        crest::CrestBox<mlir::ConversionTarget>::inner(
             target_ptr, "mlir::ConversionTarget::addIllegalDialect")
             .addIllegalDialect(dialect_name);
       });
@@ -174,7 +173,7 @@ void registerTransformsDialectConversionBindings() {
         if (!dialect_name) {
           return;
         }
-        crest::as_ref<mlir::ConversionTarget>(
+        crest::CrestBox<mlir::ConversionTarget>::inner(
             target_ptr, "mlir::ConversionTarget::addLegalDialect")
             .addLegalDialect(dialect_name);
       });
@@ -186,7 +185,7 @@ void registerTransformsDialectConversionBindings() {
           return;
         }
         auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
-        crest::as_ref<mlir::ConversionTarget>(
+        crest::CrestBox<mlir::ConversionTarget>::inner(
             target_ptr, "mlir::ConversionTarget::addLegalOp")
             .addLegalOp(mlir::OperationName(op_name, ctx));
       });
@@ -197,7 +196,7 @@ void registerTransformsDialectConversionBindings() {
         if (!ctx_ptr || !op_name) {
           return;
         }
-        auto& target = crest::as_ref<mlir::ConversionTarget>(
+        auto& target = crest::CrestBox<mlir::ConversionTarget>::inner(
             target_ptr, "mlir::ConversionTarget::addDynamicallyLegalOp");
         auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
         auto locked = std::make_shared<crest::LockedSchemeObject>(callback);
@@ -213,7 +212,7 @@ void registerTransformsDialectConversionBindings() {
       "mlir::ConversionTarget::markUnknownOpsDynamicallyLegal",
       (void*)+[](uint64_t target_ptr, ptr callback) -> void {
         auto locked = std::make_shared<crest::LockedSchemeObject>(callback);
-        crest::as_ref<mlir::ConversionTarget>(
+        crest::CrestBox<mlir::ConversionTarget>::inner(
             target_ptr,
             "mlir::ConversionTarget::markUnknownOpsDynamicallyLegal")
             .markUnknownOpDynamicallyLegal(
@@ -226,7 +225,7 @@ void registerTransformsDialectConversionBindings() {
   Sregister_symbol(
       "mlir::TypeConverter::addConversion",
       (void*)+[](uint64_t converter_ptr, ptr callback) -> void {
-        auto& converter = crest::as_ref<mlir::TypeConverter>(
+        auto& converter = crest::CrestBox<mlir::TypeConverter>::inner(
             converter_ptr, "mlir::TypeConverter::addConversion");
         auto locked = std::make_shared<crest::LockedSchemeObject>(callback);
         converter.addConversion(
@@ -251,7 +250,7 @@ void registerTransformsDialectConversionBindings() {
         if (!type_ptr) {
           scheme_error("mlir::TypeConverter::isLegal<Type>", "null type");
         }
-        auto& converter = crest::as_ref<mlir::TypeConverter>(
+        auto& converter = crest::CrestBox<mlir::TypeConverter>::inner(
             converter_ptr, "mlir::TypeConverter::isLegal<Type>");
         mlir::Type type = mlir::Type::getFromOpaquePointer(
             reinterpret_cast<const void*>(type_ptr));
@@ -263,7 +262,7 @@ void registerTransformsDialectConversionBindings() {
         if (!op_ptr) {
           scheme_error("mlir::TypeConverter::isLegal<Operation>", "null op");
         }
-        auto& converter = crest::as_ref<mlir::TypeConverter>(
+        auto& converter = crest::CrestBox<mlir::TypeConverter>::inner(
             converter_ptr, "mlir::TypeConverter::isLegal<Operation>");
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         return converter.isLegal(op) ? 1 : 0;
@@ -274,7 +273,7 @@ void registerTransformsDialectConversionBindings() {
         if (!func_op_ptr) {
           scheme_error("mlir::TypeConverter::isSignatureLegal", "null func-op");
         }
-        auto& converter = crest::as_ref<mlir::TypeConverter>(
+        auto& converter = crest::CrestBox<mlir::TypeConverter>::inner(
             converter_ptr, "mlir::TypeConverter::isSignatureLegal");
         auto func_op = mlir::dyn_cast<mlir::func::FuncOp>(
             reinterpret_cast<mlir::Operation*>(func_op_ptr));
@@ -300,10 +299,10 @@ void registerTransformsDialectConversionBindings() {
               "mlir_transforms_dialect_conversion_apply_full_conversion",
               "op is not a module op");
         }
-        auto& target = crest::as_ref<mlir::ConversionTarget>(
+        auto& target = crest::CrestBox<mlir::ConversionTarget>::inner(
             target_ptr,
             "mlir_transforms_dialect_conversion_apply_full_conversion");
-        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
+        auto& patterns = crest::CrestBox<mlir::RewritePatternSet>::inner(
             patterns_ptr,
             "mlir_transforms_dialect_conversion_apply_full_conversion");
         return mlir::succeeded(mlir::applyFullConversion(module, target,
@@ -314,10 +313,10 @@ void registerTransformsDialectConversionBindings() {
   Sregister_symbol(
       "mlir::populateFunctionOpInterfaceTypeConversionPattern<FuncOp>",
       (void*)+[](uint64_t patterns_ptr, uint64_t converter_ptr) -> void {
-        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
+        auto& patterns = crest::CrestBox<mlir::RewritePatternSet>::inner(
             patterns_ptr,
             "mlir::populateFunctionOpInterfaceTypeConversionPattern<FuncOp>");
-        auto& converter = crest::as_ref<mlir::TypeConverter>(
+        auto& converter = crest::CrestBox<mlir::TypeConverter>::inner(
             converter_ptr,
             "mlir::populateFunctionOpInterfaceTypeConversionPattern<FuncOp>");
         mlir::populateFunctionOpInterfaceTypeConversionPattern<
@@ -326,7 +325,7 @@ void registerTransformsDialectConversionBindings() {
   Sregister_symbol(
       "mlir::TypeConverter::addSourceMaterialization",
       (void*)+[](uint64_t converter_ptr, ptr callback) -> void {
-        auto& converter = crest::as_ref<mlir::TypeConverter>(
+        auto& converter = crest::CrestBox<mlir::TypeConverter>::inner(
             converter_ptr, "mlir::TypeConverter::addSourceMaterialization");
         auto locked = std::make_shared<crest::LockedSchemeObject>(callback);
         converter.addSourceMaterialization(
@@ -364,7 +363,7 @@ void registerTransformsDialectConversionBindings() {
   Sregister_symbol(
       "mlir::TypeConverter::addTargetMaterialization",
       (void*)+[](uint64_t converter_ptr, ptr callback) -> void {
-        auto& converter = crest::as_ref<mlir::TypeConverter>(
+        auto& converter = crest::CrestBox<mlir::TypeConverter>::inner(
             converter_ptr, "mlir::TypeConverter::addTargetMaterialization");
         auto locked = std::make_shared<crest::LockedSchemeObject>(callback);
         converter.addTargetMaterialization(
@@ -429,9 +428,9 @@ void registerTransformsDialectConversionBindings() {
       (void*)+[](uint64_t op_ptr, uint64_t target_ptr,
                  uint64_t patterns_ptr) -> int {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-        auto& target = crest::as_ref<mlir::ConversionTarget>(
+        auto& target = crest::CrestBox<mlir::ConversionTarget>::inner(
             target_ptr, "mlir::applyPartialConversion");
-        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
+        auto& patterns = crest::CrestBox<mlir::RewritePatternSet>::inner(
             patterns_ptr, "mlir::applyPartialConversion");
         return mlir::succeeded(mlir::applyPartialConversion(
                    op, target, std::move(patterns)))
@@ -444,10 +443,10 @@ void registerTransformsDialectConversionBindings() {
   Sregister_symbol(
       "mlir::RewriterBase::modifyOpInPlace",
       (void*)+[](uint64_t rw_ptr, uint64_t op_ptr, ptr fn) -> void {
-        auto* rw = crest::as_ptr<mlir::RewriterBase>(
+        auto& rw = crest::CrestBox<mlir::RewriterBase*>::inner(
             rw_ptr, "mlir::RewriterBase::modifyOpInPlace");
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-        rw->modifyOpInPlace(op, [&] { scheme_call(fn); });
+        rw.modifyOpInPlace(op, [&] { scheme_call(fn); });
       });
 
   // inlineRegionBefore: move all blocks from src region into dest region front.
@@ -455,11 +454,11 @@ void registerTransformsDialectConversionBindings() {
   Sregister_symbol(
       "mlir::RewriterBase::inlineRegionBefore",
       (void*)+[](uint64_t rw_ptr, uint64_t src_ptr, uint64_t dest_ptr) -> void {
-        auto* rw = crest::as_ptr<mlir::RewriterBase>(
+        auto& rw = crest::CrestBox<mlir::RewriterBase*>::inner(
             rw_ptr, "mlir::RewriterBase::inlineRegionBefore");
         auto* src = reinterpret_cast<mlir::Region*>(src_ptr);
         auto* dest = reinterpret_cast<mlir::Region*>(dest_ptr);
-        rw->inlineRegionBefore(*src, *dest, dest->begin());
+        rw.inlineRegionBefore(*src, *dest, dest->begin());
       });
 }
 

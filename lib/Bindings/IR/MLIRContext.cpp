@@ -29,7 +29,7 @@ void registerIRMLIRContextBindings() {
   Sregister_symbol(
       "mlir::MLIRContext::new/registry",
       (void*)+[](uint64_t registry_ptr) -> uint64_t {
-        auto& registry = crest::as_ref<mlir::DialectRegistry>(
+        auto& registry = crest::CrestBox<mlir::DialectRegistry>::inner(
             registry_ptr, "mlir::MLIRContext::new/registry");
         return reinterpret_cast<uint64_t>(
             new CrestBox<mlir::MLIRContext>(registry));
@@ -130,7 +130,7 @@ mlir::MLIRContext* as_ptr<mlir::MLIRContext>(uint64_t ptr_val,
   }
   auto* obj = reinterpret_cast<crest::CrestObject*>(ptr_val);
   if (obj->isa<crest::CrestBox<mlir::MLIRContext>>()) {
-    return &static_cast<crest::CrestBox<mlir::MLIRContext>*>(obj)->inner;
+    return &static_cast<crest::CrestBox<mlir::MLIRContext>*>(obj)->inner();
   }
   // Raw MLIRContext* from MLIR APIs — valid MLIR-managed pointer, no wrapper.
   return reinterpret_cast<mlir::MLIRContext*>(ptr_val);

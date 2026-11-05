@@ -27,7 +27,7 @@ void registerIRDialectRegistryBindings() {
       "mlir::DialectRegistry::insert",
       (void*)+[](uint64_t registry_ptr, const char* dialect_name,
                  const char* module_name) -> void {
-        auto& registry = crest::as_ref<mlir::DialectRegistry>(
+        auto& registry = crest::CrestBox<mlir::DialectRegistry>::inner(
             registry_ptr, "mlir::DialectRegistry::insert");
         auto [type_id, factory] = crest::dialectFactory(
             std::string(dialect_name), std::string(module_name));
