@@ -33,6 +33,8 @@
     %mlir::StringAttr::get/len
     %mlir::TypeAttr::get
     %mlir::TypeAttr::getValue
+    %mlir::AffineMapAttr::get
+    %mlir::AffineMapAttr::getValue
     %mlir::DenseElementsAttr::get<f64>
     %mlir::isa<IntegerAttr>
     %mlir::isa<FloatAttr>
@@ -86,6 +88,18 @@
   ;; @return      Type opaque pointer uptr
   (define %mlir::TypeAttr::getValue
     (foreign-procedure "mlir::TypeAttr::getValue" (uptr) uptr))
+
+  ;; @brief mlir::AffineMapAttr::get — wrap an AffineMap as an AffineMapAttr.
+  ;; @param map  AffineMap opaque pointer uptr (see (mlir IR AffineMap))
+  ;; @return     AffineMapAttr opaque pointer uptr
+  (define %mlir::AffineMapAttr::get
+    (foreign-procedure "mlir::AffineMapAttr::get" (uptr) uptr))
+
+  ;; @brief mlir::AffineMapAttr::getValue — extract the AffineMap wrapped in an AffineMapAttr.
+  ;; @param attr  AffineMapAttr opaque pointer uptr
+  ;; @return      AffineMap opaque pointer uptr
+  (define %mlir::AffineMapAttr::getValue
+    (foreign-procedure "mlir::AffineMapAttr::getValue" (uptr) uptr))
 
   (define %mlir::DenseElementsAttr::get<f64>
     (foreign-procedure "mlir::DenseElementsAttr::get<f64>" (uptr scheme-object) uptr))

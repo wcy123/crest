@@ -248,6 +248,24 @@ void registerIRBuiltinAttributesBindings() {
         return reinterpret_cast<uint64_t>(ta.getValue().getAsOpaquePointer());
       });
 
+  /// map_ptr: AffineMap opaque pointer (see mlir/IR/AffineMap.h)
+  Sregister_symbol(
+      "mlir::AffineMapAttr::get", (void*)+[](uint64_t map_ptr) -> uint64_t {
+        auto map = mlir::AffineMap::getFromOpaquePointer(
+            reinterpret_cast<const void*>(map_ptr));
+        return reinterpret_cast<uint64_t>(
+            mlir::AffineMapAttr::get(map).getAsOpaquePointer());
+      });
+
+  Sregister_symbol(
+      "mlir::AffineMapAttr::getValue",
+      (void*)+[](uint64_t attr_ptr) -> uint64_t {
+        auto ama = mlir::cast<mlir::AffineMapAttr>(
+            mlir::Attribute::getFromOpaquePointer(
+                reinterpret_cast<const void*>(attr_ptr)));
+        return reinterpret_cast<uint64_t>(ama.getValue().getAsOpaquePointer());
+      });
+
   Sregister_symbol(
       "mlir::isa<StringAttr>", (void*)+[](uint64_t p) -> int {
         return (p && mlir::isa<mlir::StringAttr>(

@@ -62,6 +62,10 @@ add_library(CrestBindings STATIC
   Interfaces/FunctionInterfaces.h
   IR/SymbolInterfaces.cpp
   IR/SymbolInterfaces.h
+  IR/AffineExpr.cpp
+  IR/AffineExpr.h
+  IR/AffineMap.cpp
+  IR/AffineMap.h
   IR/Block.cpp
   IR/Block.h
   IR/DialectRegistry.cpp
