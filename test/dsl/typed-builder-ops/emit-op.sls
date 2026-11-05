@@ -29,21 +29,29 @@
                  (cond
                   [(string=? which "memref.load")
                    (begin-mlir-code r = memref.load (m i) -> ty)]
+                  ;; affine.load with its map. The AffineMap is kept so the map stored on the new
+                  ;; op can be read back with getValue and compared: maps are uniqued, so the
+                  ;; stored map is the same value.
                   [(string=? which "affine.load")
-                   (begin-mlir-code
-                       r = affine.load (m i)
-                       (map : (affine-map-attr (d0) () d0))
-                       -> ty)]
-                  ;; Maps built with the macro, as attributes on an unregistered op: a constant map,
-                  ;; a map with no results, and a map read back from an AffineMapAttr with getValue.
+                   (let* ([expected (affine-map (d0) () d0)]
+                          [r (begin-mlir-code
+                                 r = affine.load (m i)
+                                 (map : (mlir::AffineMapAttr::get expected))
+                                 -> ty)]
+                          [stored (mlir::AffineMapAttr::getValue
+                                   (mlir::Operation::getAttr (mlir::Value::getDefiningOp r) "map"))])
+                     (display (list 'map-read-back-equals-written (eqv? stored expected)))
+                     (newline)
+                     r)]
+                  ;; Maps built with the macro, as attributes on an unregistered op: a constant
+                  ;; map, a map with no results, and a two-dimension identity map.
                   [(string=? which "maps")
-                   (let ([attr (affine-map-attr (d0 d1) () d0 d1)])
-                     (begin-mlir-code
-                         r = test.maps (m i)
-                         (c : (affine-map-attr () () 7))
-                         (e : (affine-map-attr () ()))
-                         (rt : (mlir::AffineMapAttr::get (mlir::AffineMapAttr::getValue attr)))
-                         -> ty))]
+                   (begin-mlir-code
+                       r = test.maps (m i)
+                       (c : (affine-map-attr () () 7))
+                       (e : (affine-map-attr () ()))
+                       (id : (affine-map-attr (d0 d1) () d0 d1))
+                       -> ty)]
                   ;; The C++-mirroring factories, called directly.
                   [(string=? which "factories")
                    (begin-mlir-code

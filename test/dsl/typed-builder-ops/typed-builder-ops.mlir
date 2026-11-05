@@ -15,8 +15,9 @@
 //                                               when the verifier or canonicalizer reads it.
 //
 // The first RUN line is the control, memref.load. The second emits affine.load with its map.
-// The third builds maps with the macro as attributes of an unregistered op and prints them,
-// including a getValue round trip. The fourth calls the C++-mirroring factories directly. The
+// The affine.load case also reads the map back from the op it created with getValue and
+// checks that it is the map that was written. The third builds maps with the macro as
+// attributes of an unregistered op and prints them. The fourth calls the C++-mirroring factories directly. The
 // fifth builds every operator of affine-map and prints the maps.
 //
 // RUN: env CREST_SCHEME_BINARY_DIR=%t/scheme %scheme-mlir %S/emit-op.sls %s memref.load \
@@ -31,11 +32,12 @@
 // RUN:   | %FileCheck %s --check-prefix=EXPRS
 
 // CONTROL: %{{.*}} = memref.load %arg0[%arg1] : memref<4xf32>
+// AFFINE:  (map-read-back-equals-written #t)
 // AFFINE:  %{{.*}} = affine.load %arg0[{{.*}}%arg1{{.*}}] : memref<4xf32>
 // MAPS-DAG: [[C:#map[0-9]*]] = affine_map<() -> (7)>
 // MAPS-DAG: [[E:#map[0-9]*]] = affine_map<() -> ()>
-// MAPS-DAG: [[RT:#map[0-9]*]] = affine_map<(d0, d1) -> (d0, d1)>
-// MAPS:     "test.maps"(%arg0, %arg1) {c = [[C]], e = [[E]], rt = [[RT]]}
+// MAPS-DAG: [[ID:#map[0-9]*]] = affine_map<(d0, d1) -> (d0, d1)>
+// MAPS:     "test.maps"(%arg0, %arg1) {c = [[C]], e = [[E]], id = [[ID]]}
 
 // FACTORIES-DAG: [[I2:#map[0-9]*]] = affine_map<(d0, d1) -> (d0, d1)>
 // FACTORIES-DAG: [[K:#map[0-9]*]] = affine_map<() -> (7)>
