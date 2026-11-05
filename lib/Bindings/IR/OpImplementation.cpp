@@ -174,7 +174,7 @@ void registerIROpImplementationBindings() {
   // ===========================================================================
 
   using UnresolvedOperands =
-      CrestOwned<llvm::SmallVector<mlir::OpAsmParser::UnresolvedOperand, 4>>;
+      CrestBox<llvm::SmallVector<mlir::OpAsmParser::UnresolvedOperand, 4>>;
 
   Sregister_symbol(
       "mlir::OpAsmParser::parseOperandList",
@@ -183,9 +183,9 @@ void registerIROpImplementationBindings() {
         auto* ops = new UnresolvedOperands;
         bool failed =
             required >= 0
-                ? p->parseOperandList(ops->inner, static_cast<int>(required))
+                ? p->parseOperandList(ops->inner(), static_cast<int>(required))
                       .failed()
-                : p->parseOperandList(ops->inner).failed();
+                : p->parseOperandList(ops->inner()).failed();
         if (failed) {
           delete ops;
           return 0;
@@ -198,8 +198,8 @@ void registerIROpImplementationBindings() {
       (void*)+[](uint64_t parser_ptr) -> uint64_t {
         auto* p = reinterpret_cast<mlir::OpAsmParser*>(parser_ptr);
         auto* ops = new UnresolvedOperands;
-        ops->inner.resize(1);
-        if (p->parseOperand(ops->inner[0]).failed()) {
+        ops->inner().resize(1);
+        if (p->parseOperand(ops->inner()[0]).failed()) {
           delete ops;
           return 0;
         }
@@ -211,8 +211,8 @@ void registerIROpImplementationBindings() {
       (void*)+[](uint64_t parser_ptr) -> uint64_t {
         auto* p = reinterpret_cast<mlir::OpAsmParser*>(parser_ptr);
         auto* ops = new UnresolvedOperands;
-        ops->inner.resize(1);
-        auto result = p->parseOptionalOperand(ops->inner[0]);
+        ops->inner().resize(1);
+        auto result = p->parseOptionalOperand(ops->inner()[0]);
         // OptionalParseResult: nullopt = not present, else success/failure
         if (!result.has_value() || result.value().failed()) {
           delete ops;
@@ -230,7 +230,7 @@ void registerIROpImplementationBindings() {
         auto type = mlir::Type::getFromOpaquePointer(
             reinterpret_cast<const void*>(type_ptr));
         auto& state = *reinterpret_cast<mlir::OperationState*>(state_ptr);
-        return !p->resolveOperands(ops->inner, type, state.operands);
+        return !p->resolveOperands(ops->inner(), type, state.operands);
       });
 
   Sregister_symbol(
@@ -243,8 +243,8 @@ void registerIROpImplementationBindings() {
             mlir::cast<mlir::FunctionType>(mlir::Type::getFromOpaquePointer(
                 reinterpret_cast<const void*>(func_type_ptr)));
         auto& state = *reinterpret_cast<mlir::OperationState*>(state_ptr);
-        return !p->resolveOperands(ops->inner, ft.getInputs(), p->getNameLoc(),
-                                   state.operands);
+        return !p->resolveOperands(ops->inner(), ft.getInputs(),
+                                   p->getNameLoc(), state.operands);
       });
 
   Sregister_symbol(

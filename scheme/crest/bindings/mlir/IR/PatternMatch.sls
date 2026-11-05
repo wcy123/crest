@@ -12,7 +12,7 @@
 ;; Re-exports clean names from (mlir IR PatternMatch ffi).
 ;; Also provides RAII macros.
 ;;
-;; The pattern's rewriter is a CrestRef<RewriterBase> shell passed explicitly to
+;; The pattern's rewriter is a CrestBox<RewriterBase*> shell passed explicitly to
 ;; these bindings (replaceOp, eraseOp, setInsertionPoint, ...). To create ops with
 ;; the DSL or an OpBuilder binding, unwrap it with
 ;; (crest::as_ptr<mlir::OpBuilder> rw) from (mlir IR Builders).
@@ -32,7 +32,7 @@
     mlir::RewriterBase::create<OperationState>
     mlir::RewritePatternSet::RewritePatternSet
     ;; Type predicates
-    crest::isa<CrestOwned<mlir::RewritePatternSet>>?
+    crest::isa<CrestBox<mlir::RewritePatternSet>>?
     ;; RAII macros
     with-RewritePatternSet)
 
@@ -48,7 +48,7 @@
                 %mlir::RewriterBase::eraseOp
                 %mlir::RewriterBase::create<OperationState>
                 %mlir::RewritePatternSet::RewritePatternSet
-                %crest::isa<CrestOwned<mlir::RewritePatternSet>>)
+                %crest::isa<CrestBox<mlir::RewritePatternSet>>)
           (only (mlir IR MLIRContext) current-MLIRContext)
           (only (mlir IR Location) mlir::UnknownLoc::get)
           (only (mlir IR Operation)
@@ -80,16 +80,16 @@
   (define mlir::RewriterBase::create<OperationState> %mlir::RewriterBase::create<OperationState>)
   (define mlir::RewritePatternSet::RewritePatternSet  %mlir::RewritePatternSet::RewritePatternSet)
 
-  ;; @brief crest::isa<CrestOwned<mlir::RewritePatternSet>>? — is this ptr a CrestOwned<mlir::RewritePatternSet>?
-  (define (crest::isa<CrestOwned<mlir::RewritePatternSet>>? ptr)
-    (not (zero? (%crest::isa<CrestOwned<mlir::RewritePatternSet>> ptr))))
+  ;; @brief crest::isa<CrestBox<mlir::RewritePatternSet>>? — is this ptr a CrestBox<mlir::RewritePatternSet>?
+  (define (crest::isa<CrestBox<mlir::RewritePatternSet>>? ptr)
+    (not (zero? (%crest::isa<CrestBox<mlir::RewritePatternSet>> ptr))))
 
   ;; @brief Create an op via a RewriterBase*.
   ;; (rw name operands types)                     — UnknownLoc, 0 regions
   ;; (rw name operands types nregions)            — UnknownLoc, N regions
   ;; (rw name operands types source-loc nregions) — explicit mlir::Location
   ;;
-  ;; NOTE: rw is a CrestRef<RewriterBase>*; %mlir::RewriterBase::create<OperationState>
+  ;; NOTE: rw is a CrestBox<RewriterBase*>*; %mlir::RewriterBase::create<OperationState>
   ;; extracts ->ptr internally. RewriterBase introduces the first vtable, so its
   ;; subobject offset differs from OpBuilder — these bindings are NOT interchangeable.
   (define mlir-create-operation

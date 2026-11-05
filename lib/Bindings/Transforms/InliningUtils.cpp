@@ -17,7 +17,7 @@ void registerTransformsInliningUtilsBindings() {
   Sregister_symbol(
       "mlir::createInlinerPass", (void*)+[]() -> uint64_t {
         return reinterpret_cast<uint64_t>(
-            new CrestOwned<std::unique_ptr<mlir::Pass>>(
+            new CrestBox<std::unique_ptr<mlir::Pass>>(
                 mlir::createInlinerPass()));
       });
 }

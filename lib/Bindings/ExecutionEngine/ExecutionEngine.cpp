@@ -20,7 +20,7 @@ namespace crest {
 
 void registerExecutionEngineBindings() {
   // mlir::ExecutionEngine::create: JIT-compile an MLIR module.
-  // (module-ptr) → CrestOwned<unique_ptr<ExecutionEngine>>* uptr
+  // (module-ptr) → CrestBox<unique_ptr<ExecutionEngine>>* uptr
   Sregister_symbol(
       "mlir::ExecutionEngine::create",
       (void*)+[](uint64_t module_ptr) -> uint64_t {
@@ -42,8 +42,8 @@ void registerExecutionEngineBindings() {
           llvm::consumeError(maybeEngine.takeError());
           return 0;
         }
-        // Store the unique_ptr inside CrestOwned<unique_ptr<ExecutionEngine>>.
-        auto* owned = new CrestOwned<std::unique_ptr<mlir::ExecutionEngine>>(
+        // Store the unique_ptr inside CrestBox<unique_ptr<ExecutionEngine>>.
+        auto* owned = new CrestBox<std::unique_ptr<mlir::ExecutionEngine>>(
             std::move(*maybeEngine));
         return reinterpret_cast<uint64_t>(owned);
       });
@@ -54,7 +54,7 @@ void registerExecutionEngineBindings() {
       "mlir::ExecutionEngine::invoke",
       (void*)+[](uint64_t engine_ptr, const char* name) -> int {
         auto& engine_uptr =
-            crest::as_ref<std::unique_ptr<mlir::ExecutionEngine>>(
+            crest::CrestBox<std::unique_ptr<mlir::ExecutionEngine>>::inner(
                 engine_ptr, "mlir::ExecutionEngine::invoke");
         auto result = engine_uptr->invokePacked(name);
         if (result) {

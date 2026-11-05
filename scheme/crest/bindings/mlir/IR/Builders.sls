@@ -11,8 +11,8 @@
 ;; Mirrors mlir/IR/Builders.h OpBuilder.
 ;;
 ;; Handle convention: every binding that takes an OpBuilder takes a RAW
-;; mlir::OpBuilder* uptr. CrestObject shells (CrestOwned<OpBuilder> from
-;; atBlockEnd, CrestRef<RewriterBase> for a pattern's rw) are unwrapped once
+;; mlir::OpBuilder* uptr. CrestObject shells (CrestBox<OpBuilder> from
+;; atBlockEnd, CrestBox<RewriterBase*> for a pattern's rw) are unwrapped once
 ;; with crest::as_ptr<mlir::OpBuilder>, or by with-OpBuilder.
 ;;
 ;;===----------------------------------------------------------------------===;;
@@ -33,12 +33,12 @@
           (only (mlir support CrestObject) with-CrestObject)
           (only (mlir IR MLIRContext) current-MLIRContext))
 
-  ;; @brief Heap-allocate a CrestOwned<mlir::OpBuilder> positioned at end of block.
+  ;; @brief Heap-allocate a CrestBox<mlir::OpBuilder> positioned at end of block.
   ;; Mirrors `static OpBuilder atBlockEnd(Block*, Listener* = nullptr)`.
   ;; @param block     Block* uptr — target block (uses current-MLIRContext for context)
   ;; @param listener  optional raw OpBuilder::Listener* uptr (see mlir::OpBuilder::getListener);
   ;;                  the builder reports its insertions to it. Default: none.
-  ;; @return          CrestOwned<OpBuilder>* shell uptr — free it via with-CrestObject, or use
+  ;; @return          CrestBox<OpBuilder>* shell uptr — free it via with-CrestObject, or use
   ;;                  with-OpBuilder, which also unwraps it
   ;; @see             mlir/IR/Builders.h
   (define mlir::OpBuilder::atBlockEnd
@@ -57,11 +57,11 @@
     %mlir::OpBuilder::create<OperationState>)
 
   ;; @brief crest::as_ptr<mlir::OpBuilder> — unwrap a builder shell to a raw mlir::OpBuilder*.
-  ;; Accepts a CrestOwned<OpBuilder> shell or a CrestRef<RewriterBase> shell (the rewriter
+  ;; Accepts a CrestBox<OpBuilder> shell or a CrestBox<RewriterBase*> shell (the rewriter
   ;; of a pattern callback). The C++ side upcasts statically, which adjusts the address:
   ;; RewriterBase is polymorphic and its OpBuilder base is not at offset 0. Anything that is
   ;; not a shell (including an already-raw pointer) is an error.
-  ;; @param shell  CrestOwned<OpBuilder>* or CrestRef<RewriterBase>* uptr
+  ;; @param shell  CrestBox<OpBuilder>* or CrestBox<RewriterBase*>* uptr
   ;; @return       raw mlir::OpBuilder* uptr
   (define crest::as_ptr<mlir::OpBuilder> %crest::as_ptr<mlir::OpBuilder>)
 

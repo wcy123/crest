@@ -19,7 +19,7 @@ void registerConversionSCFToControlFlowBindings() {
   Sregister_symbol(
       "mlir::populateSCFToControlFlowConversionPatterns",
       (void*)+[](uint64_t patterns_ptr) -> void {
-        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
+        auto& patterns = crest::CrestBox<mlir::RewritePatternSet>::inner(
             patterns_ptr, "mlir::populateSCFToControlFlowConversionPatterns");
         mlir::populateSCFToControlFlowConversionPatterns(patterns);
       });

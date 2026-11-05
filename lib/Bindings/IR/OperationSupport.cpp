@@ -6,7 +6,7 @@
 // Mirrors mlir/IR/OperationSupport.h
 
 // Thin C wrappers around mlir::OperationState via
-// CrestOwned<mlir::OperationState>. The CrestObject deletor handles destruction
+// CrestBox<mlir::OperationState>. The CrestObject deletor handles destruction
 // - no explicit ~OperationState binding.
 
 #include "OperationSupport.h"
@@ -24,28 +24,28 @@ void registerIROperationStateBindings() {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         return reinterpret_cast<uint64_t>(
-            new CrestOwned<mlir::OperationState>(loc, name));
+            new CrestBox<mlir::OperationState>(loc, name));
       });
   Sregister_symbol(
       "mlir::OperationState::addOperands",
       (void*)+[](uint64_t state_ptr, uint64_t value_ptr) -> void {
-        crest::as_ref<mlir::OperationState>(state_ptr,
-                                            "mlir::OperationState::addOperands")
+        crest::CrestBox<mlir::OperationState>::inner(
+            state_ptr, "mlir::OperationState::addOperands")
             .addOperands(mlir::Value::getFromOpaquePointer(
                 reinterpret_cast<void*>(value_ptr)));
       });
   Sregister_symbol(
       "mlir::OperationState::addTypes",
       (void*)+[](uint64_t state_ptr, uint64_t type_ptr) -> void {
-        crest::as_ref<mlir::OperationState>(state_ptr,
-                                            "mlir::OperationState::addTypes")
+        crest::CrestBox<mlir::OperationState>::inner(
+            state_ptr, "mlir::OperationState::addTypes")
             .addTypes(mlir::Type::getFromOpaquePointer(
                 reinterpret_cast<const void*>(type_ptr)));
       });
   Sregister_symbol(
       "mlir::OperationState::addRegion",
       (void*)+[](uint64_t state_ptr) -> uint64_t {
-        mlir::Region* region = crest::as_ref<mlir::OperationState>(
+        mlir::Region* region = crest::CrestBox<mlir::OperationState>::inner(
                                    state_ptr, "mlir::OperationState::addRegion")
                                    .addRegion();
         return reinterpret_cast<uint64_t>(region);
@@ -57,19 +57,19 @@ void registerIROperationStateBindings() {
         if (!name || !attr_ptr) {
           return;
         }
-        crest::as_ref<mlir::OperationState>(
+        crest::CrestBox<mlir::OperationState>::inner(
             state_ptr, "mlir::OperationState::addAttribute")
             .addAttribute(name, mlir::Attribute::getFromOpaquePointer(
                                     reinterpret_cast<const void*>(attr_ptr)));
       });
   Sregister_symbol(
-      "crest::isa<CrestOwned<mlir::OperationState>>",
+      "crest::isa<CrestBox<mlir::OperationState>>",
       (void*)+[](uint64_t ptr) -> int {
         if (!ptr) {
           return 0;
         }
         return reinterpret_cast<CrestObject*>(ptr)
-                       ->isa<CrestOwned<mlir::OperationState>>()
+                       ->isa<CrestBox<mlir::OperationState>>()
                    ? 1
                    : 0;
       });

@@ -69,7 +69,7 @@
   (define :interfaces                  ':interfaces)
 
 
-  ;; ctx: CrestOwned<MLIRContext>* | MLIRContext*
+  ;; ctx: CrestBox<MLIRContext>* | MLIRContext*
   ;; module-name: slash-separated library path (e.g. "toy/ch3/toy")
   ;; Safe outside the pass pipeline (multiThreadedExecutionContext == 0).
   (define (load-scheme-dialect! ctx dialect-name module-name)

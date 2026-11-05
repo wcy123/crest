@@ -36,16 +36,16 @@
     %add-conversion-pattern/ctx
     %add-rewrite-pattern
     %populate-func-type-conversion
-    %crest::isa<CrestOwned<mlir::TypeConverter>>
-    %crest::isa<CrestOwned<mlir::ConversionTarget>>
+    %crest::isa<CrestBox<mlir::TypeConverter>>
+    %crest::isa<CrestBox<mlir::ConversionTarget>>
     %mlir::applyPartialConversion
     %mlir::RewriterBase::modifyOpInPlace
     %mlir::RewriterBase::inlineRegionBefore)
 
   (import (chezscheme))
 
-  ;; @brief mlir::TypeConverter constructor — allocate a new CrestOwned<TypeConverter>.
-  ;; @return CrestOwned<TypeConverter>* uptr — freed via with-CrestObject
+  ;; @brief mlir::TypeConverter constructor — allocate a new CrestBox<TypeConverter>.
+  ;; @return CrestBox<TypeConverter>* uptr — freed via with-CrestObject
   (define %type-converter-create
     (foreign-procedure "mlir::TypeConverter::TypeConverter"
                        () uptr))
@@ -82,9 +82,9 @@
     (foreign-procedure "mlir::TypeConverter::isSignatureLegal"
                        (uptr uptr) int))
 
-  ;; @brief mlir::ConversionTarget constructor — allocate a new CrestOwned<ConversionTarget>.
+  ;; @brief mlir::ConversionTarget constructor — allocate a new CrestBox<ConversionTarget>.
   ;; @param ctx MLIRContext* uptr
-  ;; @return    CrestOwned<ConversionTarget>* uptr — freed via with-CrestObject
+  ;; @return    CrestBox<ConversionTarget>* uptr — freed via with-CrestObject
   (define %target-create
     (foreign-procedure "mlir::ConversionTarget::ConversionTarget"
                        (uptr) uptr))
@@ -141,11 +141,11 @@
                        (uptr uptr) void))
 
   ;; @brief Type predicates.
-  (define %crest::isa<CrestOwned<mlir::TypeConverter>>
-    (foreign-procedure "crest::isa<CrestOwned<mlir::TypeConverter>>" (uptr) int))
+  (define %crest::isa<CrestBox<mlir::TypeConverter>>
+    (foreign-procedure "crest::isa<CrestBox<mlir::TypeConverter>>" (uptr) int))
 
-  (define %crest::isa<CrestOwned<mlir::ConversionTarget>>
-    (foreign-procedure "crest::isa<CrestOwned<mlir::ConversionTarget>>" (uptr) int))
+  (define %crest::isa<CrestBox<mlir::ConversionTarget>>
+    (foreign-procedure "crest::isa<CrestBox<mlir::ConversionTarget>>" (uptr) int))
 
   (define %mlir::applyPartialConversion
     (foreign-procedure "mlir::applyPartialConversion" (uptr uptr uptr) int))

@@ -1,4 +1,4 @@
-// A pattern's rewriter is a CrestRef<RewriterBase> shell. crest::as_ptr<mlir::OpBuilder>
+// A pattern's rewriter is a CrestBox<RewriterBase*> shell. crest::as_ptr<mlir::OpBuilder>
 // unwraps it to a raw OpBuilder* (the C++ upcast adjusts the address: RewriterBase is
 // polymorphic, so its OpBuilder base is not at offset 0). Builder bindings take that raw
 // pointer. Unwrapping a raw pointer again is an error.

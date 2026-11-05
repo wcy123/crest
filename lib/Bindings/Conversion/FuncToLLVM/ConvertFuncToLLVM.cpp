@@ -20,9 +20,9 @@ void registerConversionFuncToLLVMBindings() {
   Sregister_symbol(
       "mlir::populateFuncToLLVMConversionPatterns",
       (void*)+[](uint64_t tc_ptr, uint64_t patterns_ptr) -> void {
-        auto& tc = crest::as_ref<mlir::LLVMTypeConverter>(
+        auto& tc = crest::CrestBox<mlir::LLVMTypeConverter>::inner(
             tc_ptr, "mlir::populateFuncToLLVMConversionPatterns");
-        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
+        auto& patterns = crest::CrestBox<mlir::RewritePatternSet>::inner(
             patterns_ptr, "mlir::populateFuncToLLVMConversionPatterns");
         mlir::populateFuncToLLVMConversionPatterns(tc, patterns);
       });

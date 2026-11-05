@@ -165,7 +165,7 @@
   ;; rw / op      — syntax identifiers for the rewriter and matched operation
   ;;
   ;; Generated shape ('conversion):
-  ;;   ;; rw: CrestRef<RewriterBase> shell; the ambient builder is its raw OpBuilder*
+  ;;   ;; rw: CrestBox<RewriterBase*> shell; the ambient builder is its raw OpBuilder*
   ;;   (with-current-OpBuilder (crest::as_ptr<mlir::OpBuilder> rw)
   ;;     (mlir::RewriterBase::setInsertionPoint rw op)
   ;;     (let ([result (begin-mlir-code form ...)])

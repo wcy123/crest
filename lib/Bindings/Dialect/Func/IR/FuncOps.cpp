@@ -23,14 +23,14 @@ void registerDialectFuncIRFuncOpsBindings() {
       "mlir::func::FuncOp::create",
       (void*)+[](uint64_t rw_ptr, uint64_t loc_ptr, const char* name,
                  uint64_t functype_ptr) -> uint64_t {
-        auto* rw = crest::as_ptr<mlir::RewriterBase>(
+        auto& rw = crest::CrestBox<mlir::RewriterBase*>::inner(
             rw_ptr, "mlir::func::FuncOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto functype =
             mlir::cast<mlir::FunctionType>(mlir::Type::getFromOpaquePointer(
                 reinterpret_cast<const void*>(functype_ptr)));
-        auto func = mlir::func::FuncOp::create(*rw, loc, name, functype);
+        auto func = mlir::func::FuncOp::create(rw, loc, name, functype);
         return reinterpret_cast<uint64_t>(func.getOperation());
       });
 
@@ -39,11 +39,11 @@ void registerDialectFuncIRFuncOpsBindings() {
   Sregister_symbol(
       "mlir::func::ReturnOp::create",
       (void*)+[](uint64_t rw_ptr, uint64_t loc_ptr) -> uint64_t {
-        auto* rw = crest::as_ptr<mlir::RewriterBase>(
+        auto& rw = crest::CrestBox<mlir::RewriterBase*>::inner(
             rw_ptr, "mlir::func::ReturnOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
-        auto ret = mlir::func::ReturnOp::create(*rw, loc);
+        auto ret = mlir::func::ReturnOp::create(rw, loc);
         return reinterpret_cast<uint64_t>(ret.getOperation());
       });
 
@@ -59,8 +59,8 @@ void registerDialectFuncIRFuncOpsBindings() {
   // Register FuncDialect into a DialectRegistry.
   Sregister_symbol(
       "mlir::func::FuncDialect", (void*)+[](uint64_t registry_ptr) -> void {
-        crest::as_ref<mlir::DialectRegistry>(registry_ptr,
-                                             "mlir::func::FuncDialect")
+        crest::CrestBox<mlir::DialectRegistry>::inner(registry_ptr,
+                                                      "mlir::func::FuncDialect")
             .insert<mlir::func::FuncDialect>();
       });
 }

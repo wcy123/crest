@@ -14,20 +14,20 @@
 namespace crest {
 
 void registerIRDialectRegistryBindings() {
-  /// → CrestOwned<mlir::DialectRegistry>*
+  /// → CrestBox<mlir::DialectRegistry>*
   Sregister_symbol(
       "mlir::DialectRegistry::new", (void*)+[]() -> uint64_t {
         return reinterpret_cast<uint64_t>(
-            new CrestOwned<mlir::DialectRegistry>());
+            new CrestBox<mlir::DialectRegistry>());
       });
 
-  /// registry_ptr: CrestOwned<mlir::DialectRegistry>*, dialect_name: string,
+  /// registry_ptr: CrestBox<mlir::DialectRegistry>*, dialect_name: string,
   /// module_name: string
   Sregister_symbol(
       "mlir::DialectRegistry::insert",
       (void*)+[](uint64_t registry_ptr, const char* dialect_name,
                  const char* module_name) -> void {
-        auto& registry = crest::as_ref<mlir::DialectRegistry>(
+        auto& registry = crest::CrestBox<mlir::DialectRegistry>::inner(
             registry_ptr, "mlir::DialectRegistry::insert");
         auto [type_id, factory] = crest::dialectFactory(
             std::string(dialect_name), std::string(module_name));
