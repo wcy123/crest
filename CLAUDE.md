@@ -100,23 +100,26 @@ headers that require external linkage by definition.
 Only apply `%%` to library-level private functions. Local helpers inside a function body
 do not need it.
 
-### Rule 15 — Scheme predicates derived from C++ class names append `?`
+### Rule 15 — Scheme names of bool-returning bindings end in `?`
 
-When a binding tests membership or validity — rather than constructing or querying a value —
-append `?` to the C++ name in both `Sregister_symbol` and the Scheme export:
-
-```cpp
-Sregister_symbol("mlir::Value?", ...);          // non-null value test
-Sregister_symbol("mlir::BlockArgument?", ...); // type test
-```
+`?` is a Scheme naming convention. When a C++ function returns `true`/`false` (a membership,
+type or validity test), the Scheme export is encouraged to end in `?`:
 
 ```scheme
 (define (mlir::Value? v) (not (zero? v)))
 (define mlir::BlockArgument? %mlir::BlockArgument?)
+(define (crest::isa<CrestBox<mlir::OperationState>>? ptr)
+  (not (zero? (%crest::isa<CrestBox<mlir::OperationState>> ptr))))
 ```
 
-This keeps the Scheme `?` predicate convention while the `::` prefix still signals C++ origin.
-Non-predicate bindings never get `?` even if their C++ counterpart returns `bool`.
+The `Sregister_symbol` key follows Rule 4 and needs no `?`. Append `?` to the key only when it
+would otherwise be a bare class name, so the predicate stays distinct from other bindings of
+that class:
+
+```cpp
+Sregister_symbol("mlir::BlockArgument?", ...);                  // bare class name
+Sregister_symbol("crest::isa<CrestBox<mlir::OperationState>>", ...); // already a predicate
+```
 
 ### Rule 14 — Every `foreign-procedure` must have a matching `Sregister_symbol`
 
