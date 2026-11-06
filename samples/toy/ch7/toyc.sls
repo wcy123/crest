@@ -29,7 +29,6 @@
         (mlir Transforms GreedyPatternRewriteDriver)
         (mlir Pass PassManager)
         (mlir Transforms Passes)
-        (mlir Transforms InliningUtils)
         (mlir Dialect Affine Transforms Passes)
         (mlir Dialect Affine IR AffineOps)
         (mlir Dialect Arith IR Arith)

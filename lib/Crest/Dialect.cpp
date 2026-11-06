@@ -5,6 +5,7 @@
 // CrestDialect bridge — lib/Crest/Dialect.cpp
 
 #include "Dialect.h"
+#include "../Bindings/Support/CrestObject.h"
 #include "../Bindings/Support/LockedSchemeObject.h"
 #include "../Bindings/Support/SchemeWrapper.h"
 #include "Interface.h"
@@ -189,9 +190,12 @@ mlir::Operation* CrestDialect::materializeConstant(mlir::OpBuilder& builder,
                                                    mlir::Type type,
                                                    mlir::Location loc) {
   if (cbs_.materialize_constant.get() != Sfalse) {
-    return ptr_from_scheme<mlir::Operation>(scheme_call(
-        cbs_.materialize_constant.get(), &builder, value.getAsOpaquePointer(),
-        type.getAsOpaquePointer(), loc.getAsOpaquePointer()));
+    // Scheme sees the builder as a borrowed shell that lives for this call.
+    crest::CrestBox<mlir::OpBuilder*> builder_shell(&builder);
+    return ptr_from_scheme<mlir::Operation>(
+        scheme_call(cbs_.materialize_constant.get(), &builder_shell,
+                    value.getAsOpaquePointer(), type.getAsOpaquePointer(),
+                    loc.getAsOpaquePointer()));
   }
   return mlir::ExtensibleDialect::materializeConstant(builder, value, type,
                                                       loc);

@@ -4,6 +4,7 @@
  */
 
 #include "InlinerInterface.h"
+#include "../Bindings/Support/CrestObject.h"
 #include "../Bindings/Support/SchemeWrapper.h"
 #include "Dialect.h"
 #include "mlir/IR/Builders.h"
@@ -77,9 +78,11 @@ mlir::Operation* CrestInlinerInterface::materializeCallConversion(
   if (materializeCallConversionFn.get() == Sfalse) {
     return nullptr;
   }
+  // Scheme sees the builder as a borrowed shell that lives for this call.
+  crest::CrestBox<mlir::OpBuilder*> builder_shell(&builder);
   ptr result = scheme_call(
       materializeCallConversionFn.get(),
-      Sunsigned64(reinterpret_cast<uint64_t>(&builder)),
+      Sunsigned64(reinterpret_cast<uint64_t>(&builder_shell)),
       Sunsigned64(reinterpret_cast<uint64_t>(input.getAsOpaquePointer())),
       Sunsigned64(reinterpret_cast<uint64_t>(resultType.getAsOpaquePointer())),
       Sunsigned64(reinterpret_cast<uint64_t>(loc.getAsOpaquePointer())));

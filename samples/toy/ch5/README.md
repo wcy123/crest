@@ -8,7 +8,7 @@ combination of `affine`, `arith`, `memref`, and `func` dialects.
 | Feature | Ch4 | Ch5 |
 |---|---|---|
 | Actions | `ast`, `mlir` | `ast`, `mlir`, `mlir-affine` |
-| Inliner | Scheme-level walk | `mlir::createInlinerPass` (MLIR PassManager) |
+| Inliner | Scheme-level walk | Scheme-level walk (unchanged) |
 | `--emit=mlir-affine` | — | partial lowering to Affine+Arith+MemRef+Func |
 | Post-lowering passes | — | canonicalize + CSE on `func.func` |
 | `--opt` additions | canonicalize | + loop fusion + affine scalar replacement |
@@ -27,7 +27,7 @@ combination of `affine`, `arith`, `memref`, and `func` dialects.
 
 ### `--emit=mlir-affine` pipeline (`toyc.sls`)
 
-1. **Inline** — `mlir::createInlinerPass` via MLIR PassManager
+1. **Inline** — Scheme-level `%%inline-calls!`, as in Ch4
 2. **Shape inference** — Scheme walk per `toy.func`
 3. **Canonicalize** — greedy rewrite (Ch3/Ch4 patterns)
 4. **Partial lowering** — Scheme-level `%%toy-to-affine-lower!`
