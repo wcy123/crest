@@ -1,7 +1,7 @@
 #!r6rs
 ;; Mirrors mlir/Dialect/ControlFlow/IR/ControlFlow.h
 (library (mlir Dialect ControlFlow IR ControlFlow ffi)
-  (export %mlir::cf::ControlFlowDialect)
+  (export %mlir::DialectRegistry::insert<mlir::cf::ControlFlowDialect>)
   (import (chezscheme))
-  (define %mlir::cf::ControlFlowDialect
-    (foreign-procedure "mlir::cf::ControlFlowDialect" (uptr) void)))
+  (define %mlir::DialectRegistry::insert<mlir::cf::ControlFlowDialect>
+    (foreign-procedure "mlir::DialectRegistry::insert<mlir::cf::ControlFlowDialect>" (uptr) void)))

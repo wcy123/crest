@@ -58,9 +58,11 @@ void registerDialectFuncIRFuncOpsBindings() {
 
   // Register FuncDialect into a DialectRegistry.
   Sregister_symbol(
-      "mlir::func::FuncDialect", (void*)+[](uint64_t registry_ptr) -> void {
-        crest::CrestBox<mlir::DialectRegistry>::inner(registry_ptr,
-                                                      "mlir::func::FuncDialect")
+      "mlir::DialectRegistry::insert<mlir::func::FuncDialect>",
+      (void*)+[](uint64_t registry_ptr) -> void {
+        crest::CrestBox<mlir::DialectRegistry>::inner(
+            registry_ptr,
+            "mlir::DialectRegistry::insert<mlir::func::FuncDialect>")
             .insert<mlir::func::FuncDialect>();
       });
 }

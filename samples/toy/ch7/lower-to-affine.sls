@@ -21,7 +21,6 @@
                 mlir::Operation::getOperand
                 mlir::Operation::getResult
                 mlir::Operation::getNumOperands
-                mlir::Operation::getRegion
                 mlir::Operation::getAttr
                 mlir::Operation::getBlock
                 mlir::Operation::moveBefore
@@ -35,7 +34,6 @@
                 mlir::RankedTensorType::getElementType
                 mlir::isa<RankedTensorType>?)
           (only (mlir IR BuiltinAttributes)
-                mlir::TypeAttr::getValue
                 mlir::FloatAttr::get<f64>
                 mlir::DenseElementsAttr::getNumElements
                 mlir::DenseElementsAttr::getValueAt<f64>
@@ -58,10 +56,6 @@
                 mlir::MemRefType::get
                 mlir::memref::AllocOp::create
                 mlir::memref::DeallocOp::create)
-          (only (mlir Dialect Func IR FuncOps)
-                mlir::func::FuncOp::create
-                mlir::func::ReturnOp::create
-                mlir::func::FuncOp::getBody)
           (only (mlir Transforms DialectConversion)
                 target-create
                 target-add-illegal-dialect
@@ -73,7 +67,7 @@
                 add-conversion-pattern
                 with-TypeConverter
                 with-ConversionTarget)
-          (only (mlir IR PatternMatch) with-RewritePatternSet mlir::RewriterBase::inlineRegionBefore)
+          (only (mlir IR PatternMatch) with-RewritePatternSet)
           (only (mlir support array-ref) crest::CArrayRef::at crest::CArrayRef::size)
           (crest))
 
@@ -105,8 +99,11 @@
            [alloc       (%%insert-alloc-and-dealloc! bld loc memref-type block)]
            [shape       (mlir::RankedTensorType::getShape tensor-type)])
       (mlir::affine::buildAffineLoopNest
-       bld loc shape
-       (lambda (nb ivs)
+       bld loc
+       (map (lambda (extent) 0) shape)   ; lower bounds
+       shape                             ; upper bounds
+       (map (lambda (extent) 1) shape)   ; steps
+       (lambda (nb loc ivs)
          (let ([val (body-fn nb loc ivs)])
            (mlir::affine::AffineStoreOp::create nb loc val alloc ivs))))
       alloc))
@@ -188,19 +185,16 @@
   ;; toy.func @main → func.func @main
   ;;===--------------------------------------------------------------------===;;
 
-  (define (%%func-lower! op operands-ref rw tc)
-    (let ([name (mlir::StringAttr::getValue (mlir::Operation::getAttr op "sym_name"))])
-      (if (not (string=? name "main"))
-          #f
-          (let* ([loc      (mlir::Operation::getLoc op)]
-                 [ftype    (mlir::TypeAttr::getValue
-                            (mlir::Operation::getAttr op "function_type"))]
-                 [new-func (mlir::func::FuncOp::create rw loc name ftype)]
-                 [body     (mlir::func::FuncOp::getBody new-func)]
-                 [src-reg  (mlir::Operation::getRegion op 0)])
-            (mlir::RewriterBase::inlineRegionBefore rw src-reg body)
-            (mlir::RewriterBase::eraseOp rw op)
-            #t))))
+  (define-conversion-pattern (%%func-lower! op operands-ref rw tc)
+    :if-match
+      toy.func ()
+        :where (string=? "main" (mlir::StringAttr::getValue (:attr "sym_name")))
+    :rewrite op :with
+      func.func ()
+      (sym_name : (mlir::Operation::getAttr op "sym_name"))
+      (function_type : (mlir::Operation::getAttr op "function_type"))
+      (:move-region op)
+    :loc (mlir::Operation::getLoc op))
 
   ;;===--------------------------------------------------------------------===;;
   ;; toy.return → func.return (void only)

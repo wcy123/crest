@@ -83,9 +83,11 @@ void registerDialectArithIRArithBindings() {
 
   // Register ArithDialect into a DialectRegistry.
   Sregister_symbol(
-      "mlir::arith::ArithDialect", (void*)+[](uint64_t registry_ptr) -> void {
+      "mlir::DialectRegistry::insert<mlir::arith::ArithDialect>",
+      (void*)+[](uint64_t registry_ptr) -> void {
         crest::CrestBox<mlir::DialectRegistry>::inner(
-            registry_ptr, "mlir::arith::ArithDialect")
+            registry_ptr,
+            "mlir::DialectRegistry::insert<mlir::arith::ArithDialect>")
             .insert<mlir::arith::ArithDialect>();
       });
 }

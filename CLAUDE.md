@@ -46,6 +46,12 @@ arguments. C++ registers the three with `register_builder_binding("mlir::arith::
 [](mlir::OpBuilder& builder, ...) { ... })`; Scheme writes one
 `(define-builder-binding %mlir::arith::AddFOp::create "mlir::arith::AddFOp::create" (uptr ...) uptr)`.
 
+An overloaded C++ function binds each overload under its own name. The first keeps the plain
+name; any other puts the parameter types that tell it apart in angle brackets, before the builder
+kind: `mlir::affine::AffineLoadOp::create` is `create(OpBuilder&, Location, Value, ValueRange)`
+and `mlir::affine::AffineLoadOp::create<AffineMap>` is `create(OpBuilder&, Location, Value,
+AffineMap, ValueRange)`; with a builder, the symbol is `...create<AffineMap,OpBuilder>`.
+
 ### Rule 5 — Raw FFI binding has `%` prefix
 
 ```scheme

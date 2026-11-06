@@ -16,10 +16,11 @@ void registerDialectControlFlowIRControlFlowBindings() {
   // Register ControlFlowDialect into a DialectRegistry.
   // (registry-ptr) → void
   Sregister_symbol(
-      "mlir::cf::ControlFlowDialect",
+      "mlir::DialectRegistry::insert<mlir::cf::ControlFlowDialect>",
       (void*)+[](uint64_t registry_ptr) -> void {
         crest::CrestBox<mlir::DialectRegistry>::inner(
-            registry_ptr, "mlir::cf::ControlFlowDialect")
+            registry_ptr,
+            "mlir::DialectRegistry::insert<mlir::cf::ControlFlowDialect>")
             .insert<mlir::cf::ControlFlowDialect>();
       });
 }

@@ -16,9 +16,11 @@ void registerDialectSCFIRSCFDialectBindings() {
   // Register SCFDialect into a DialectRegistry.
   // (registry-ptr) → void
   Sregister_symbol(
-      "mlir::scf::SCFDialect", (void*)+[](uint64_t registry_ptr) -> void {
-        crest::CrestBox<mlir::DialectRegistry>::inner(registry_ptr,
-                                                      "mlir::scf::SCFDialect")
+      "mlir::DialectRegistry::insert<mlir::scf::SCFDialect>",
+      (void*)+[](uint64_t registry_ptr) -> void {
+        crest::CrestBox<mlir::DialectRegistry>::inner(
+            registry_ptr,
+            "mlir::DialectRegistry::insert<mlir::scf::SCFDialect>")
             .insert<mlir::scf::SCFDialect>();
       });
 }

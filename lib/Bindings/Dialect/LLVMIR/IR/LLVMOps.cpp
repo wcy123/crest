@@ -17,17 +17,6 @@
 
 namespace crest {
 
-// Extract SmallVector<Value> from a Scheme list of Value uptrss.
-static llvm::SmallVector<mlir::Value> scheme_list_to_values(ptr list) {
-  llvm::SmallVector<mlir::Value> v;
-  for (ptr p = list; p != Snil; p = Scdr(p)) {
-    auto uval = Sunsigned64_value(Scar(p));
-    v.push_back(
-        mlir::Value::getFromOpaquePointer(reinterpret_cast<const void*>(uval)));
-  }
-  return v;
-}
-
 void registerDialectLLVMIRIRLLVMOpsBindings() {
   // mlir::LLVM::LLVMFunctionType::get: create LLVM function type i32(ptr, ...).
   // (ctx-ptr return-type-ptr param-type-ptr is-var-arg) → Type uptr
@@ -185,7 +174,8 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
         auto callee = mlir::cast<mlir::FlatSymbolRefAttr>(
             mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<const void*>(callee_ptr)));
-        auto operands = scheme_list_to_values(operands_list);
+        auto operands =
+            convert_to_cpp<llvm::SmallVector<mlir::Value>>(operands_list);
         auto op =
             mlir::LLVM::CallOp::create(builder, loc, ftype, callee, operands);
         return reinterpret_cast<uint64_t>(op.getOperation());

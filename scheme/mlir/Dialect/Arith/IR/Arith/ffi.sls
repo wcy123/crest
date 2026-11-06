@@ -11,7 +11,7 @@
           %mlir::arith::MulFOp::create
           %mlir::arith::ConstantIndexOp::create
           %mlir::arith::ConstantOp::create<f64>
-          %mlir::arith::ArithDialect)
+          %mlir::DialectRegistry::insert<mlir::arith::ArithDialect>)
   (import (chezscheme) (mlir support BuilderBinding))
 
   (define-builder-binding %mlir::arith::AddFOp::create
@@ -26,7 +26,7 @@
   (define-builder-binding %mlir::arith::ConstantOp::create<f64>
     "mlir::arith::ConstantOp::create<f64>" (uptr uptr uptr) uptr)
 
-  (define %mlir::arith::ArithDialect
-    (foreign-procedure "mlir::arith::ArithDialect" (uptr) void))
+  (define %mlir::DialectRegistry::insert<mlir::arith::ArithDialect>
+    (foreign-procedure "mlir::DialectRegistry::insert<mlir::arith::ArithDialect>" (uptr) void))
 
   ) ;; end library (mlir Dialect Arith IR Arith ffi)

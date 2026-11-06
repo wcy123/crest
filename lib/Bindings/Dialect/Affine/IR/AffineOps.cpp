@@ -8,113 +8,129 @@
 #include "AffineOps.h"
 #include "../../../Support/BuilderBinding.h"
 #include "../../../Support/CrestObject.h"
-#include "../../../Support/LockedSchemeObject.h"
 #include "../../../Support/SchemeWrapper.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Affine/Utils.h"
+#include "mlir/IR/AffineMap.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/DialectRegistry.h"
-#include "mlir/IR/PatternMatch.h"
 
 namespace crest {
 
-// Extract a SmallVector<int64_t> from a Scheme list of fixnums.
-static llvm::SmallVector<int64_t> scheme_list_to_i64(ptr list) {
-  llvm::SmallVector<int64_t> v;
-  for (ptr p = list; p != Snil; p = Scdr(p)) {
-    v.push_back(static_cast<int64_t>(Sinteger_value(Scar(p))));
-  }
-  return v;
-}
-
-// Extract a SmallVector<mlir::Value> from a Scheme list of Value uptrss.
-static llvm::SmallVector<mlir::Value> scheme_list_to_values(ptr list) {
-  llvm::SmallVector<mlir::Value> v;
-  for (ptr p = list; p != Snil; p = Scdr(p)) {
-    auto uval = Sunsigned64_value(Scar(p));
-    v.push_back(
-        mlir::Value::getFromOpaquePointer(reinterpret_cast<const void*>(uval)));
-  }
-  return v;
-}
-
 void registerDialectAffineIRAffineOpsBindings() {
-  // buildAffineLoopNest: create a nest of affine.for loops.
-  // (builder-ptr loc-ptr shape-list body-fn) → void
-  //   shape-list: Scheme list of int64 dimension sizes (lbs=0, steps=1)
-  //   body-fn: (nested-builder-ptr ivs-list) → void
-  //     ivs-list: Scheme list of Value uptrss (loop induction variables)
+  // mlir::affine::buildAffineLoopNest(OpBuilder&, Location, lbs, ubs, steps,
+  // body) (builder loc lbs ubs steps body-fn) → void
+  //   lbs, ubs, steps: Scheme lists of integers
+  //   body-fn: (nested-builder loc ivs) → void, the callback of the C++
+  //   function
+  //     nested-builder: builder shell, valid only during the call
+  //     ivs: Scheme list of Value uptrs (the induction variables)
   register_builder_binding(
       "mlir::affine::buildAffineLoopNest",
-      [](mlir::OpBuilder& builder, uint64_t loc_ptr, ptr shape_list,
-         ptr body_fn) -> void {
+      [](mlir::OpBuilder& builder, uint64_t loc_ptr, ptr lbs, ptr ubs,
+         ptr steps, ptr body_fn) -> void {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
-        auto ubs = scheme_list_to_i64(shape_list);
-        size_t rank = ubs.size();
-        llvm::SmallVector<int64_t> lbs(rank, 0);
-        llvm::SmallVector<int64_t> steps(rank, 1);
-
         mlir::affine::buildAffineLoopNest(
-            builder, loc, lbs, ubs, steps,
-            [&](mlir::OpBuilder& nb, mlir::Location /*nbLoc*/,
+            builder, loc, convert_to_cpp<llvm::SmallVector<int64_t>>(lbs),
+            convert_to_cpp<llvm::SmallVector<int64_t>>(ubs),
+            convert_to_cpp<llvm::SmallVector<int64_t>>(steps),
+            [&](mlir::OpBuilder& nb, mlir::Location nb_loc,
                 mlir::ValueRange ivs) {
-              // Pack IVs into a Scheme list of Sunsigned64-wrapped Value
-              // uptrss.
-              ptr iv_list = Snil;
-              for (int i = static_cast<int>(ivs.size()) - 1; i >= 0; --i) {
-                iv_list = Scons(
-                    Sunsigned64(reinterpret_cast<uint64_t>(
-                        ivs[static_cast<size_t>(i)].getAsOpaquePointer())),
-                    iv_list);
-              }
               // Borrowed shell, valid for the duration of the call.
               crest::CrestBox<mlir::OpBuilder*> nb_shell(&nb);
-              scheme_call(body_fn,
-                          Sunsigned64(reinterpret_cast<uint64_t>(&nb_shell)),
-                          iv_list);
+              scheme_call(
+                  body_fn, reinterpret_cast<uint64_t>(&nb_shell),
+                  reinterpret_cast<uint64_t>(nb_loc.getAsOpaquePointer()), ivs);
             });
       });
 
-  // AffineLoadOp::create: load from memref at affine indices.
-  // (builder-ptr loc-ptr memref-val-ptr ivs-list) → Value uptr
-  //   ivs-list: Scheme list of Value uptrss (affine index variables)
-  register_builder_binding("mlir::affine::AffineLoadOp::create",
-                           [](mlir::OpBuilder& builder, uint64_t loc_ptr,
-                              uint64_t memref_ptr, ptr ivs_list) -> uint64_t {
-                             auto loc = mlir::Location::getFromOpaquePointer(
-                                 reinterpret_cast<const void*>(loc_ptr));
-                             auto memref = mlir::Value::getFromOpaquePointer(
-                                 reinterpret_cast<const void*>(memref_ptr));
-                             auto ivs = scheme_list_to_values(ivs_list);
-                             auto loaded = mlir::affine::AffineLoadOp::create(
-                                 builder, loc, memref, ivs);
-                             return reinterpret_cast<uint64_t>(
-                                 loaded.getResult().getAsOpaquePointer());
-                           });
+  // AffineLoadOp::create(OpBuilder&, Location, Value memref, ValueRange
+  // indices) (builder loc memref indices) → Value uptr
+  //   indices: Scheme list of Value uptrs
+  register_builder_binding(
+      "mlir::affine::AffineLoadOp::create",
+      [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t memref_ptr,
+         ptr indices) -> uint64_t {
+        auto loc = mlir::Location::getFromOpaquePointer(
+            reinterpret_cast<const void*>(loc_ptr));
+        auto memref = mlir::Value::getFromOpaquePointer(
+            reinterpret_cast<const void*>(memref_ptr));
+        auto loaded = mlir::affine::AffineLoadOp::create(
+            builder, loc, memref,
+            convert_to_cpp<llvm::SmallVector<mlir::Value>>(indices));
+        return reinterpret_cast<uint64_t>(
+            loaded.getResult().getAsOpaquePointer());
+      });
 
-  // AffineStoreOp::create: store value into memref at affine indices.
-  // (builder-ptr loc-ptr value-ptr memref-val-ptr ivs-list) → void
-  //   ivs-list: Scheme list of Value uptrss (affine index variables)
+  // AffineStoreOp::create(OpBuilder&, Location, Value value, Value memref,
+  //                       ValueRange indices)
+  // (builder loc value memref indices) → void
+  //   indices: Scheme list of Value uptrs
   register_builder_binding(
       "mlir::affine::AffineStoreOp::create",
       [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t value_ptr,
-         uint64_t memref_ptr, ptr ivs_list) -> void {
+         uint64_t memref_ptr, ptr indices) -> void {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto value = mlir::Value::getFromOpaquePointer(
             reinterpret_cast<const void*>(value_ptr));
         auto memref = mlir::Value::getFromOpaquePointer(
             reinterpret_cast<const void*>(memref_ptr));
-        auto ivs = scheme_list_to_values(ivs_list);
-        mlir::affine::AffineStoreOp::create(builder, loc, value, memref, ivs);
+        mlir::affine::AffineStoreOp::create(
+            builder, loc, value, memref,
+            convert_to_cpp<llvm::SmallVector<mlir::Value>>(indices));
+      });
+
+  // AffineLoadOp::create(OpBuilder&, Location, Value memref, AffineMap map,
+  //                      ValueRange mapOperands)
+  // (builder loc memref map map-operands) → Value uptr
+  //   map: AffineMap opaque pointer; map-operands: Scheme list of Value uptrs
+  register_builder_binding(
+      "mlir::affine::AffineLoadOp::create<AffineMap>",
+      [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t memref_ptr,
+         uint64_t map_ptr, ptr map_operands) -> uint64_t {
+        auto loc = mlir::Location::getFromOpaquePointer(
+            reinterpret_cast<const void*>(loc_ptr));
+        auto memref = mlir::Value::getFromOpaquePointer(
+            reinterpret_cast<const void*>(memref_ptr));
+        auto map = mlir::AffineMap::getFromOpaquePointer(
+            reinterpret_cast<const void*>(map_ptr));
+        auto loaded = mlir::affine::AffineLoadOp::create(
+            builder, loc, memref, map,
+            convert_to_cpp<llvm::SmallVector<mlir::Value>>(map_operands));
+        return reinterpret_cast<uint64_t>(
+            loaded.getResult().getAsOpaquePointer());
+      });
+
+  // AffineStoreOp::create(OpBuilder&, Location, Value value, Value memref,
+  //                       AffineMap map, ValueRange mapOperands)
+  // (builder loc value memref map map-operands) → void
+  //   map: AffineMap opaque pointer; map-operands: Scheme list of Value uptrs
+  register_builder_binding(
+      "mlir::affine::AffineStoreOp::create<AffineMap>",
+      [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t value_ptr,
+         uint64_t memref_ptr, uint64_t map_ptr, ptr map_operands) -> void {
+        auto loc = mlir::Location::getFromOpaquePointer(
+            reinterpret_cast<const void*>(loc_ptr));
+        auto value = mlir::Value::getFromOpaquePointer(
+            reinterpret_cast<const void*>(value_ptr));
+        auto memref = mlir::Value::getFromOpaquePointer(
+            reinterpret_cast<const void*>(memref_ptr));
+        auto map = mlir::AffineMap::getFromOpaquePointer(
+            reinterpret_cast<const void*>(map_ptr));
+        mlir::affine::AffineStoreOp::create(
+            builder, loc, value, memref, map,
+            convert_to_cpp<llvm::SmallVector<mlir::Value>>(map_operands));
       });
 
   // Register AffineDialect into a DialectRegistry.
   Sregister_symbol(
-      "mlir::affine::AffineDialect", (void*)+[](uint64_t registry_ptr) -> void {
+      "mlir::DialectRegistry::insert<mlir::affine::AffineDialect>",
+      (void*)+[](uint64_t registry_ptr) -> void {
         crest::CrestBox<mlir::DialectRegistry>::inner(
-            registry_ptr, "mlir::affine::AffineDialect")
+            registry_ptr,
+            "mlir::DialectRegistry::insert<mlir::affine::AffineDialect>")
             .insert<mlir::affine::AffineDialect>();
       });
 }
