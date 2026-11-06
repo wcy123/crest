@@ -123,6 +123,15 @@ Running `example.toy` with `--emit=jit` prints the 2x3 result of the last
 256.000000 625.000000 1296.000000
 ```
 
+## What is written with the DSL
+
+| Part | Written with | Why |
+|---|---|---|
+| Everything in Ch5 | as in the Ch5 README | `lower-to-affine.sls` is unchanged |
+| `toy.print` lowered to a `printf` loop nest | `define-conversion-pattern`, with every op a `begin-mlir-code` form | see the section above: no typed builder is left |
+| Registering the LLVM conversion | `apply-conversion` (`:type-converter llvm`, `:legal-dialects`, `:legal-ops`, `:illegal-dialects`, `:patterns` with `:no-type-converter`, `:populate`) | the six `populate...Patterns` calls go in `:populate` |
+| Inlining and shape inference | Scheme, as in Ch4 | the reasons are in the Ch4 README |
+
 ## Related Documents
 
 - [../ch5/README.md](../ch5/README.md) — Ch5 partial lowering to Affine

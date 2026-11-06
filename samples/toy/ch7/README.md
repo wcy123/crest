@@ -170,6 +170,17 @@ Running the struct example with `--emit=jit` prints:
 9.000000 36.000000
 ```
 
+## What is written with the DSL
+
+| Part | Written with | Why |
+|---|---|---|
+| The dialect, with struct types and ops | `define-dialect` | the type and `toy.struct_constant`, `toy.struct_access` are declared in it |
+| The `:materialize-constant` callback | `begin-mlir-code` with `with-current-OpBuilder` | it returns the op, not its result |
+| Every op `mlir-gen.sls` creates, including the struct ops | `begin-mlir-code` | as in Ch2 |
+| The canonicalization patterns, including `fold-struct-access` | `define-rewrite-pattern` | as in Ch3 |
+| The lowerings and their registration | as in Ch5 and Ch6 | `apply-conversion`, `define-conversion-pattern`, `begin-mlir-code` |
+| Inlining and shape inference | Scheme, as in Ch4 | the reasons are in the Ch4 README; the inliner also copies the attributes `toy.struct_access` needs |
+
 ## Related Documents
 
 - [../ch6/README.md](../ch6/README.md) — Ch6 LLVM lowering and `toy.print` → `printf`
