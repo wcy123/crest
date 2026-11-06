@@ -65,7 +65,7 @@
 
   ;; Parser for generic_call: @callee(%args) attr-dict : functional-type
   (define (%%parse-generic-call parser state)
-    (and (string<? "" (mlir::OpAsmParser::parseSymbolName parser state))
+    (and (string<? "" (mlir::OpAsmParser::parseSymbolName parser state "callee"))
          (mlir::OpAsmParser::parseLParen parser)
          (let ([ops (mlir::OpAsmParser::parseOperandList parser -1)])
            (and (%%parsed? ops)

@@ -153,7 +153,7 @@
     (foreign-procedure "mlir::OpAsmParser::parseArrow" (uptr) boolean))
 
   (define %mlir::OpAsmParser::parseSymbolName
-    (foreign-procedure "mlir::OpAsmParser::parseSymbolName" (uptr uptr) scheme-object))
+    (foreign-procedure "mlir::OpAsmParser::parseSymbolName" (uptr uptr string) scheme-object))
 
   (define %mlir::isa<FunctionType>
     (foreign-procedure "mlir::isa<FunctionType>" (uptr) boolean))

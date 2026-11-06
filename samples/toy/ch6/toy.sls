@@ -63,7 +63,7 @@
                               (begin (mlir::OperationState::addType state res-type) #t)))))))))
 
   (define (%%parse-generic-call parser state)
-    (and (string<? "" (mlir::OpAsmParser::parseSymbolName parser state))
+    (and (string<? "" (mlir::OpAsmParser::parseSymbolName parser state "callee"))
          (mlir::OpAsmParser::parseLParen parser)
          (let ([ops (mlir::OpAsmParser::parseOperandList parser -1)])
            (and (%%parsed? ops)
