@@ -157,7 +157,6 @@ the arguments.
 ```scheme
 current-MLIRContext    ; mlir::MLIRContext*  (mlir/IR/MLIRContext.h)
 current-OpBuilder      ; mlir::OpBuilder*    (mlir/IR/Builders.h)
-current-RewriterBase   ; CrestBox<RewriterBase*> shell (mlir/IR/PatternMatch.h)
 ```
 
 `current-OpBuilder` holds a **raw** `OpBuilder*` (or `#f`), never a CrestObject shell. A pattern's
@@ -173,7 +172,6 @@ at offset 0). Bindings that take a builder take that raw pointer; rewriter-only 
 | `with-current-MLIRContext` | `(mlir IR MLIRContext)` | `mlir/IR/MLIRContext.h` |
 | `with-RewritePatternSet` | `(mlir IR PatternMatch)` | `mlir/IR/PatternMatch.h` |
 | `with-OpBuilder` | `(mlir IR Builders)` | `mlir/IR/Builders.h` |
-| `with-current-RewriterBase` | `(mlir IR PatternMatch)` | `mlir/IR/PatternMatch.h` |
 | `with-TypeConverter` | `(mlir Transforms DialectConversion)` | `mlir/Transforms/DialectConversion.h` |
 | `with-ConversionTarget` | `(mlir Transforms DialectConversion)` | `mlir/Transforms/DialectConversion.h` |
 | `with-CrestObject` | `(mlir support CrestObject)` | `lib/Bindings/Support/CrestObject.h` (CREST-specific) |

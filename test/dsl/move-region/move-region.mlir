@@ -9,6 +9,8 @@
 //   adopt-by-hand  the control: the move written by hand (works today)
 //   move-region    the DSL form (:move-region op)
 //   move-ordered   (:move-region op 1) between two other region modifiers (second function)
+//   move-conversion  (:move-region op) in a conversion pattern, third function: the moved ops are
+//                    still legalized by the driver
 //
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
 // RUN:   %crest-opt -allow-unregistered-dialect \
@@ -20,6 +22,10 @@
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme3 \
 // RUN:   %crest-opt -allow-unregistered-dialect \
 // RUN:   --crest-pass="passes=passes/move-ordered" %s | %FileCheck %s --check-prefix=ORDER
+
+// RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme4 \
+// RUN:   %crest-opt -allow-unregistered-dialect \
+// RUN:   --crest-pass="passes=passes/move-conversion" %s | %FileCheck %s --check-prefix=CONV
 
 // CHECK-LABEL: func.func @f
 // CHECK:         "test.dst"() ({
@@ -39,6 +45,13 @@
 // ORDER-NOT:     test.two
 // ORDER-NOT:     test.first
 
+// CONV-LABEL: func.func @h
+// CONV:         "test.dst"() ({
+// CONV-NEXT:      "test.done"() : () -> ()
+// CONV-NEXT:    }) : () -> ()
+// CONV-NOT:     test.inner
+// CONV-NOT:     test.src
+
 func.func @f() {
   "test.src"() ({
   ^bb0(%a: i32):
@@ -53,6 +66,13 @@ func.func @g() {
   }, {
   ^bb0(%b: i32):
     "test.second"(%b) : (i32) -> ()
+  }) : () -> ()
+  return
+}
+
+func.func @h() {
+  "test.src"() ({
+    "test.inner"() : () -> ()
   }) : () -> ()
   return
 }

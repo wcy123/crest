@@ -79,6 +79,7 @@
           (for (only (mlir IR Builders)
                      mlir::OpBuilder::atBlockEnd
                      mlir::OpBuilder::getListener
+                     crest::OpBuilder::inlineRegionBefore
                      with-OpBuilder
                      with-current-OpBuilder) expand)
           (for (only (mlir IR OperationSupport)
@@ -97,9 +98,6 @@
                      with-current-Block) expand)
           (only (mlir IR Block) current-Block with-current-Block)
           (for (only (mlir IR Operation) mlir::Operation::getRegion) expand)
-          (for (only (mlir IR PatternMatch) current-RewriterBase) expand)
-          (only (mlir IR PatternMatch) current-RewriterBase)
-          (for (only (mlir Transforms DialectConversion) mlir::RewriterBase::inlineRegionBefore) expand)
           (for (only (mlir IR Operation) mlir::Operation::getResult) expand)
           (for (only (crest pattern-dsl ast)
                      make-ast-emit-op ast-emit-op?
@@ -119,13 +117,6 @@
     (or (current-OpBuilder)
         (error '%%current-builder
                "no active builder — use begin-mlir-code inside :rewrite :with or a ^bb block, or wrap it in (with-current-OpBuilder builder ...)")))
-
-  ;; Returns the active rewriter: the CrestBox<RewriterBase*> shell in current-RewriterBase,
-  ;; installed by :rewrite :with. Error if none is set.
-  (define (%%current-rewriter)
-    (or (current-RewriterBase)
-        (error '%%current-rewriter
-               ":move-region needs the pattern's rewriter — use it inside :rewrite :with, or wrap the call in (with-current-RewriterBase rewriter ...)")))
 
   ;; Create an op from a prepared OperationState with a raw OpBuilder*.
   (define (%%crest:create-op! builder state)
@@ -472,7 +463,7 @@
       ;; @brief Build the code that moves an existing region into the op being created.
       ;;
       ;; The slot is reserved with addRegion like any region modifier. After the op exists, the
-      ;; blocks of region idx of src-op are moved into it with the rewriter's inlineRegionBefore,
+      ;; blocks of region idx of src-op are moved into it with the ambient builder's listener,
       ;; which leaves the source region empty. The caller owns what that does to src-op: it is
       ;; normally the op the pattern replaces.
       ;;
@@ -486,8 +477,8 @@
                         [region-idx region-index]
                         [src-op     src-op-stx]
                         [src-idx    idx-stx])
-            #'(mlir::RewriterBase::inlineRegionBefore
-               (%%current-rewriter)
+            #'(crest::OpBuilder::inlineRegionBefore
+               (%%current-builder)
                (mlir::Operation::getRegion src-op src-idx)
                (mlir::Operation::getRegion new-op region-idx)))))
 

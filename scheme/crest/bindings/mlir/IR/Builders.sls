@@ -23,6 +23,7 @@
     mlir::OpBuilder::getListener
     mlir::OpBuilder::create<OperationState>
     mlir::OpBuilder::setInsertionPoint
+    crest::OpBuilder::inlineRegionBefore
     crest::as_ptr<mlir::OpBuilder>
     current-OpBuilder
     with-current-OpBuilder
@@ -52,6 +53,15 @@
 
   (define mlir::OpBuilder::setInsertionPoint
     %mlir::OpBuilder::setInsertionPoint)
+
+  ;; @brief crest::OpBuilder::inlineRegionBefore — move all blocks of a region to the front of
+  ;; another region, reporting each move to the builder's listener, as
+  ;; RewriterBase::inlineRegionBefore does. Takes the raw builder, so it also works inside ^bb
+  ;; bodies, where the ambient builder is not a RewriterBase.
+  ;; @param builder  raw OpBuilder* uptr
+  ;; @param src      Region* uptr; empty afterwards
+  ;; @param dest     Region* uptr
+  (define crest::OpBuilder::inlineRegionBefore %crest::OpBuilder::inlineRegionBefore)
 
   (define mlir::OpBuilder::create<OperationState>
     %mlir::OpBuilder::create<OperationState>)
