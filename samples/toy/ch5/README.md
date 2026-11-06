@@ -37,7 +37,7 @@ lowering reads as the IR it produces.
 ### `--emit=mlir-affine` pipeline (`toyc.sls`)
 
 1. **Inline** — Scheme-level `%%inline-calls!`, as in Ch4
-2. **Shape inference** — Scheme walk per `toy.func`
+2. **Shape inference** — rewrite patterns (`shape-inference.sls`), as in Ch4
 3. **Canonicalize** — greedy rewrite (Ch3/Ch4 patterns)
 4. **Partial lowering** — Scheme-level `%%toy-to-affine-lower!`
 5. **Canonicalize + CSE** — on `func.func` bodies
@@ -70,7 +70,8 @@ lowering reads as the IR it produces.
 | The affine lowering of `toy.constant`, `toy.add`, `toy.mul`, `toy.transpose`, `toy.func`, `toy.return`, `toy.print` | `define-conversion-pattern`, with every op a `begin-mlir-code` form | see the section above |
 | Registering the conversion | `apply-conversion` (`:mode partial`, `:type-converter`, `:legal-dialects`, `:illegal-dialects`, `:dynamically-legal`, `:patterns`) | one declaration instead of a type converter, a target and a pattern set created and freed by hand |
 | Moving the body of `toy.func` into `func.func` | `(:move-region op)` | the region moves, it is not rebuilt |
-| Inlining and shape inference | Scheme, as in Ch4 | the reasons are in the Ch4 README |
+| Shape inference | `define-rewrite-pattern`, as in Ch4 | |
+| Inlining | Scheme, as in Ch4 | the reasons are in the Ch4 README |
 
 ## Related Documents
 

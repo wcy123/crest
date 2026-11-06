@@ -46,6 +46,7 @@
         (toy ch6 toy)
         (toy ch6 mlir-gen)
         (toy ch6 combine)
+        (toy ch6 shape-inference)
         (toy ch6 lower-to-affine)
         (toy ch6 lower-to-llvm))
 
@@ -175,10 +176,11 @@
 (define (%%run-pipeline! module-op ctx opt? emit-affine? emit-llvm?)
   ;; Step 1: Inline + shape inference + canonicalize+CSE (toy.func level).
   (%%inline-calls! module-op ctx)
-  (mlir::Operation::walk module-op
-                         (lambda (op)
-                           (when (string=? (mlir::Operation::getName op) "toy.func")
-                             (%%run-shape-inference! op))))
+  (with-current-MLIRContext ctx
+    (with-RewritePatternSet patterns (ctx)
+      (toy:add-shape-inference-patterns! patterns)
+      (mlir::applyPatternsGreedily module-op patterns)))
+  (toy:check-shapes-inferred! module-op)
   (with-current-MLIRContext ctx
     (with-RewritePatternSet patterns (ctx)
       (toy:add-canonicalization-patterns! patterns)
@@ -210,58 +212,8 @@
         (exit 1)))))
 
 ;; ---------------------------------------------------------------------------
-;; Shape inference and inliner — identical to ch5
+;; Inliner — identical to ch5
 ;; ---------------------------------------------------------------------------
-
-(define (%%run-shape-inference! func-op)
-  (define (%%ranked? type) (mlir::isa<RankedTensorType>? type))
-  (define (%%all-operands-ranked? op)
-    (let loop ([i 0] [n (mlir::Operation::getNumOperands op)])
-      (or (>= i n)
-          (and (%%ranked? (mlir::Value::getType (mlir::Operation::getOperand op i)))
-               (loop (+ i 1) n)))))
-  (define (%%infer-shape! op)
-    (let ([name (mlir::Operation::getName op)])
-      (cond
-       [(or (string=? name "toy.add") (string=? name "toy.mul"))
-        (mlir::Value::setType
-         (mlir::Operation::getResult op 0)
-         (mlir::Value::getType (mlir::Operation::getOperand op 0))) #t]
-       [(string=? name "toy.cast")
-        (mlir::Value::setType
-         (mlir::Operation::getResult op 0)
-         (mlir::Value::getType (mlir::Operation::getOperand op 0))) #t]
-       [(string=? name "toy.transpose")
-        (let* ([input-type (mlir::Value::getType (mlir::Operation::getOperand op 0))]
-               [shape      (mlir::RankedTensorType::getShape input-type)]
-               [rev-shape  (reverse shape)]
-               [elem-type  (mlir::RankedTensorType::getElementType input-type)])
-          (mlir::Value::setType
-           (mlir::Operation::getResult op 0)
-           (mlir::RankedTensorType::get rev-shape elem-type)) #t)]
-       [else #f])))
-  (define (%%needs-inference? op)
-    (and (> (mlir::Operation::getNumResults op) 0)
-         (not (%%ranked? (mlir::Value::getType (mlir::Operation::getResult op 0))))
-         (let ([name (mlir::Operation::getName op)])
-           (or (string=? name "toy.add") (string=? name "toy.mul")
-               (string=? name "toy.cast") (string=? name "toy.transpose")))))
-  (let loop ([changed #t])
-    (when changed
-      (let ([still-changed #f])
-        (mlir::Operation::walk func-op
-                               (lambda (op)
-                                 (when (and (%%needs-inference? op)
-                                            (%%all-operands-ranked? op))
-                                   (%%infer-shape! op)
-                                   (set! still-changed #t))))
-        (loop still-changed))))
-  (mlir::Operation::walk func-op
-                         (lambda (op)
-                           (when (%%needs-inference? op)
-                             (mlir::Operation::emitError op
-                                                         "shape inference failed")
-                             (exit 1)))))
 
 (define (%%inline-calls! module-op ctx)
   (let loop ()

@@ -55,9 +55,11 @@ Three steps run in order when `--opt` is passed:
 1. **Inline** — the Scheme-level `%%inline-calls!` clones each callee body in
    front of its call, consuming all `toy.generic_call` ops, and then removes
    the private functions.
-2. **Shape inference** — walks each `toy.func` body; for every op with
-   unranked result types whose operands are all ranked, infers and sets the
-   result type. Repeats to fixed point.
+2. **Shape inference** — four rewrite patterns (`shape-inference.sls`) for
+   `toy.add`, `toy.mul`, `toy.cast` and `toy.transpose`. Each fires on an op
+   with an unranked result whose operands are ranked and replaces it with the
+   same op with the inferred result type; the greedy rewriter applies them to
+   a fixed point.
 3. **Canonicalize** — applies the same four patterns from Ch3
    (`SimplifyRedundantTranspose`, `ReshapeReshapeOpt`, `RedundantReshape`,
    `FoldConstantReshape`). After inlining and shape inference, transpositions
@@ -85,7 +87,7 @@ Three steps run in order when `--opt` is passed:
 | Every op `mlir-gen.sls` creates | `begin-mlir-code` | as in Ch2 |
 | The canonicalization patterns | `define-rewrite-pattern` | as in Ch3 |
 | Inlining | Scheme (`%%inline-calls!` in `toyc.sls`) | it clones ops whose name, operands and attributes are data, so each op is built with an `OperationState`. MLIR's inliner cannot replace it: it needs call interfaces on `toy.generic_call` and `toy.func`, which the dialect DSL cannot declare, and a terminator trait on `toy.return`, which needs LLVM 23 |
-| Shape inference | Scheme walk (`%%run-shape-inference!`) | it changes result types in place and creates no op |
+| Shape inference | `define-rewrite-pattern` (`shape-inference.sls`), applied by the greedy rewriter | one pattern per op; the C++ pass does it with an op interface |
 
 ## Related Documents
 
