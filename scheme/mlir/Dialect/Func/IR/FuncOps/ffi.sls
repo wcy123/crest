@@ -10,7 +10,7 @@
   (export %mlir::func::FuncOp::create
           %mlir::func::ReturnOp::create
           %mlir::func::FuncOp::getBody
-          %mlir::func::FuncDialect)
+          %mlir::DialectRegistry::insert<mlir::func::FuncDialect>)
   (import (chezscheme))
 
   (define %mlir::func::FuncOp::create
@@ -22,7 +22,7 @@
   (define %mlir::func::FuncOp::getBody
     (foreign-procedure "mlir::func::FuncOp::getBody" (uptr) uptr))
 
-  (define %mlir::func::FuncDialect
-    (foreign-procedure "mlir::func::FuncDialect" (uptr) void))
+  (define %mlir::DialectRegistry::insert<mlir::func::FuncDialect>
+    (foreign-procedure "mlir::DialectRegistry::insert<mlir::func::FuncDialect>" (uptr) void))
 
   ) ;; end library (mlir Dialect Func IR FuncOps ffi)

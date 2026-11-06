@@ -7,7 +7,7 @@
 ;; C++-mirroring bindings directly. The MLIRContext argument is optional and defaults to
 ;; (current-MLIRContext).
 ;;
-;; Usage: scheme-mlir emit-op.sls <input.mlir> <memref.load|affine.load|maps|factories|exprs>
+;; Usage: scheme-mlir emit-op.sls <input.mlir> <memref.load|affine.load|affine.load-map|maps|factories|exprs>
 (import (except (chezscheme) =)
         (mlir IR DialectRegistry) (mlir IR MLIRContext) (mlir IR Operation) (mlir IR Value)
         (mlir IR PatternMatch) (mlir IR Builders)
@@ -75,6 +75,14 @@
                          (neg : (affine-map-attr (d0) () (- d0)))
                          (z : (affine-map-attr (d0 d1) (s0)))
                          -> ty))]
+                  ;; The AffineMap overloads of the C++ builders, called directly: store the
+                  ;; loaded value back with the same map.
+                  [(string=? which "affine.load-map")
+                   (let* ([loc (mlir::Operation::getLoc op)]
+                          [map (affine-map (d0) () d0)]
+                          [v   (mlir::affine::AffineLoadOp::create<AffineMap> bld loc m map (list i))])
+                     (mlir::affine::AffineStoreOp::create<AffineMap> bld loc v m map (list i))
+                     v)]
                   [else (error 'emit-op "unknown op" which)]))])
         (mlir::RewriterBase::replaceOp rw op r)
         #t))))
@@ -83,10 +91,10 @@
        [file  (car args)]
        [which (cadr args)])
   (with-DialectRegistry reg ()
-    (mlir::affine::AffineDialect reg)
-    (mlir::arith::ArithDialect reg)
-    (mlir::memref::MemRefDialect reg)
-    (mlir::func::FuncDialect reg)
+    (mlir::DialectRegistry::insert<mlir::affine::AffineDialect> reg)
+    (mlir::DialectRegistry::insert<mlir::arith::ArithDialect> reg)
+    (mlir::DialectRegistry::insert<mlir::memref::MemRefDialect> reg)
+    (mlir::DialectRegistry::insert<mlir::func::FuncDialect> reg)
     (with-MLIRContext ctx (reg)
       (mlir::MLIRContext::allowUnregisteredDialects ctx #t)
       (for-each (lambda (d) (mlir::MLIRContext::getOrLoadDialect ctx d))

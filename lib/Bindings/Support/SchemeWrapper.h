@@ -12,7 +12,10 @@
 #ifndef CREST_BINDINGS_SCHEME_WRAPPER_H
 #define CREST_BINDINGS_SCHEME_WRAPPER_H
 #include "CrestObject.h"
+#include "llvm/ADT/SmallVector.h"
 #include "mlir/IR/TypeRange.h"
+#include "mlir/IR/Value.h"
+#include "mlir/IR/ValueRange.h"
 #include <array>
 #include <functional>
 #include <sstream>
@@ -305,6 +308,43 @@ template <> struct Conversion<mlir::TypeRange, ptr> {
                    list);
     }
     return list;
+  }
+};
+
+// mlir::ValueRange → Scheme list of uptr (one per mlir::Value opaque pointer).
+template <> struct Conversion<mlir::ValueRange, ptr> {
+  inline ptr operator()(const mlir::ValueRange& range) const {
+    ptr list = Snil;
+    for (size_t i = range.size(); i-- > 0;) {
+      list = Scons(Sunsigned64(reinterpret_cast<uintptr_t>(
+                       range[i].getAsOpaquePointer())),
+                   list);
+    }
+    return list;
+  }
+};
+
+// Scheme list of integers → llvm::SmallVector<int64_t>.
+template <> struct Conversion<ptr, llvm::SmallVector<int64_t>> {
+  inline llvm::SmallVector<int64_t> operator()(const ptr& list) const {
+    llvm::SmallVector<int64_t> result;
+    for (ptr p = list; p != Snil; p = Scdr(p)) {
+      result.push_back(static_cast<int64_t>(Sinteger_value(Scar(p))));
+    }
+    return result;
+  }
+};
+
+// Scheme list of uptr (mlir::Value opaque pointers) →
+// llvm::SmallVector<mlir::Value>.
+template <> struct Conversion<ptr, llvm::SmallVector<mlir::Value>> {
+  inline llvm::SmallVector<mlir::Value> operator()(const ptr& list) const {
+    llvm::SmallVector<mlir::Value> result;
+    for (ptr p = list; p != Snil; p = Scdr(p)) {
+      result.push_back(mlir::Value::getFromOpaquePointer(
+          reinterpret_cast<const void*>(Sunsigned64_value(Scar(p)))));
+    }
+    return result;
   }
 };
 

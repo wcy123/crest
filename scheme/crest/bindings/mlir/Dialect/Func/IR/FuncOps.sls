@@ -18,7 +18,7 @@
     mlir::func::FuncOp::create
     mlir::func::ReturnOp::create
     mlir::func::FuncOp::getBody
-    mlir::func::FuncDialect)
+    mlir::DialectRegistry::insert<mlir::func::FuncDialect>)
   (import (rnrs) (mlir Dialect Func IR FuncOps ffi))
 
   ;; @brief mlir::populateFunctionOpInterfaceTypeConversionPattern<FuncOp> —
@@ -34,6 +34,6 @@
   (define mlir::func::FuncOp::create   %mlir::func::FuncOp::create)
   (define mlir::func::ReturnOp::create %mlir::func::ReturnOp::create)
   (define mlir::func::FuncOp::getBody  %mlir::func::FuncOp::getBody)
-  (define mlir::func::FuncDialect      %mlir::func::FuncDialect)
+  (define mlir::DialectRegistry::insert<mlir::func::FuncDialect>      %mlir::DialectRegistry::insert<mlir::func::FuncDialect>)
 
   ) ;; end library (mlir Dialect Func IR FuncOps)

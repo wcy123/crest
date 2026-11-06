@@ -15,7 +15,7 @@
           mlir::arith::MulFOp::create
           mlir::arith::ConstantIndexOp::create
           mlir::arith::ConstantOp::create<f64>
-          mlir::arith::ArithDialect)
+          mlir::DialectRegistry::insert<mlir::arith::ArithDialect>)
   (import (rnrs)
           (mlir Dialect Arith IR Arith ffi))
 
@@ -23,6 +23,6 @@
   (define mlir::arith::MulFOp::create          %mlir::arith::MulFOp::create)
   (define mlir::arith::ConstantIndexOp::create %mlir::arith::ConstantIndexOp::create)
   (define mlir::arith::ConstantOp::create<f64> %mlir::arith::ConstantOp::create<f64>)
-  (define mlir::arith::ArithDialect            %mlir::arith::ArithDialect)
+  (define mlir::DialectRegistry::insert<mlir::arith::ArithDialect>            %mlir::DialectRegistry::insert<mlir::arith::ArithDialect>)
 
   ) ;; end library (mlir Dialect Arith IR Arith)

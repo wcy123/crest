@@ -15,7 +15,9 @@
   (export mlir::affine::buildAffineLoopNest
           mlir::affine::AffineLoadOp::create
           mlir::affine::AffineStoreOp::create
-          mlir::affine::AffineDialect)
+          mlir::affine::AffineLoadOp::create<AffineMap>
+          mlir::affine::AffineStoreOp::create<AffineMap>
+          mlir::DialectRegistry::insert<mlir::affine::AffineDialect>)
   (import (rnrs)
           (mlir Dialect Affine IR AffineOps ffi))
 
@@ -28,7 +30,13 @@
   (define mlir::affine::AffineStoreOp::create
     %mlir::affine::AffineStoreOp::create)
 
-  (define mlir::affine::AffineDialect
-    %mlir::affine::AffineDialect)
+  (define mlir::affine::AffineLoadOp::create<AffineMap>
+    %mlir::affine::AffineLoadOp::create<AffineMap>)
+
+  (define mlir::affine::AffineStoreOp::create<AffineMap>
+    %mlir::affine::AffineStoreOp::create<AffineMap>)
+
+  (define mlir::DialectRegistry::insert<mlir::affine::AffineDialect>
+    %mlir::DialectRegistry::insert<mlir::affine::AffineDialect>)
 
   ) ;; end library (mlir Dialect Affine IR AffineOps)
