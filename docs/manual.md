@@ -287,8 +287,8 @@ Op-form syntax — see [§5 `begin-mlir-code`](#5-begin-mlir-code) for the full 
 
 ## 5. `begin-mlir-code`
 
-`begin-mlir-code` emits MLIR ops with the **ambient builder**: the raw
-`mlir::OpBuilder*` held by `current-OpBuilder`. Its argument list is a **flat
+`begin-mlir-code` emits MLIR ops with the **ambient builder**: the builder shell held by
+`current-OpBuilder`, either a `CrestBox<OpBuilder>` or the pattern's `CrestBox<RewriterBase*>`. Its argument list is a **flat
 sequence** — no builder argument and no outer parentheses around op-forms.
 This mirrors MLIR's textual format, which MLIR C++ developers will find familiar.
 
@@ -301,8 +301,8 @@ This mirrors MLIR's textual format, which MLIR C++ developers will find familiar
 ### Supplying the builder
 
 Inside `:rewrite :with` bodies and `^bb` block bodies the builder is already installed:
-the pattern's builder at the `:rewrite :with` level, a block-local builder inside a `^bb`
-body. A Scheme helper called from those bodies can therefore call `begin-mlir-code`
+the pattern's rewriter at the `:rewrite :with` level. A `^bb` body keeps the same object and
+moves its insertion point to the end of the new block, restoring it afterwards. A Scheme helper called from those bodies can therefore call `begin-mlir-code`
 directly, with no builder parameter:
 
 ```scheme
@@ -313,17 +313,17 @@ directly, with no builder parameter:
 ```
 
 Anywhere else, install a builder for the dynamic extent with `with-current-OpBuilder`.
-The builder must be a **raw** `mlir::OpBuilder*`:
+The builder is a shell:
 
 ```scheme
-;; A pattern's rewriter `rw` is a CrestBox<RewriterBase*> shell: unwrap it first.
-(with-current-OpBuilder (crest::as_ptr<mlir::OpBuilder> rw)
+;; A pattern's rewriter `rw` is a CrestBox<RewriterBase*> shell: install it as it is.
+(with-current-OpBuilder rw
   (mlir::RewriterBase::setInsertionPoint rw op)
   (begin-mlir-code
     r = my.op (v) -> ty))
 
-;; A builder you create yourself: with-OpBuilder binds the raw pointer and frees
-;; the underlying shell on exit; with-current-OpBuilder installs it.
+;; A builder you create yourself: with-OpBuilder binds the shell and frees it on
+;; exit; with-current-OpBuilder installs it.
 (with-OpBuilder b (mlir::OpBuilder::atBlockEnd block)
   (with-current-OpBuilder b
     (begin-mlir-code
@@ -375,8 +375,8 @@ list is scanned left-to-right and op boundaries are detected syntactically.
 
 Two special forms are available anywhere inside `begin-mlir-code`:
 
-**`:builder`** — the ambient builder, i.e. `(current-OpBuilder)`: the raw `OpBuilder*` (the
-pattern's builder at the `:rewrite :with` level, the block's builder inside a `^bb` body).
+**`:builder`** — the ambient builder, i.e. `(current-OpBuilder)`: the builder shell (the
+pattern's rewriter, in `:rewrite :with` and in `^bb` bodies).
 Use it to pass the builder to a Scheme helper that calls a typed binding such as
 `mlir::LLVM::CallOp::create`; a helper that only calls `begin-mlir-code` needs no builder
 parameter. **Not** an MLIR operand (builders are not `mlir::Value`s):
@@ -528,8 +528,9 @@ To keep the body of an existing op instead of building one, use `:move-region`:
 `(:move-region src-op [idx])` takes any expression that yields an operation, and `idx` defaults
 to 0. It reserves a region slot like `(^bb ...)`, so the order among region modifiers is kept.
 After the new op is created, the blocks of region `idx` of `src-op` are moved into the slot with
-`mlir::RewriterBase::inlineRegionBefore` on the ambient builder; the block arguments and ops
-are the same ones, not copies.
+the pattern's `mlir::RewriterBase::inlineRegionBefore`; the block arguments and ops are the same
+ones, not copies. It needs the pattern's rewriter: if the ambient builder is a plain `OpBuilder`
+(installed by hand with `with-current-OpBuilder`), it raises an error that says so.
 
 The move leaves the source region empty. That is fine when `src-op` is erased afterwards, which
 is the op the pattern replaces. Taking the region of an op that stays, when that op requires its
@@ -927,11 +928,13 @@ convention from CLAUDE.md Rules 10–11:
 | `current-Block` | `with-current-Block` | `(mlir IR Block)` | `^bb0` block bodies |
 | `current-OpBuilder` | `with-current-OpBuilder` | `(mlir IR Builders)` | `:rewrite :with` and `^bb` bodies; user code via `with-current-OpBuilder` |
 
-`current-OpBuilder` holds a **raw** `mlir::OpBuilder*`, never a CrestObject shell. A pattern's
-rewriter is a `CrestBox<RewriterBase*>` shell; `(crest::as_ptr<mlir::OpBuilder> rw)` unwraps it
-(the C++ upcast adjusts the address). Rewriter-only operations (`replaceOp`, `eraseOp`, ...)
-keep taking the shell. `with-OpBuilder` creates a builder and binds the raw pointer; it does not
-install it (CLAUDE.md Rule 10) — wrap the body in `with-current-OpBuilder` for that.
+`current-OpBuilder` holds a builder shell: a `CrestBox<OpBuilder>` or the pattern's
+`CrestBox<RewriterBase*>`. Every binding that takes a builder takes either kind, and C++ tells
+them apart by type tag. Because the real rewriter is kept, rewriter-only operations (`replaceOp`,
+`eraseOp`, `inlineRegionBefore`, ...) work on the same handle and reach the real rewriter,
+including what the conversion rewriter overrides. `with-OpBuilder` creates a builder and binds
+the shell; it does not install it (CLAUDE.md Rule 10) — wrap the body in `with-current-OpBuilder`
+for that. `with-InsertionGuard` saves a builder's insertion point and restores it on exit.
 
 `%%current-builder` (internal) is what `begin-mlir-code` uses to create each op: it returns
 `(current-OpBuilder)` or raises `no active builder` if that is `#f`. `:builder` returns
@@ -975,7 +978,7 @@ The context hierarchy during a pattern rewrite:
 
 | Import | Key exports |
 |---|---|
-| `(mlir IR Builders)` | `mlir::OpBuilder::atBlockEnd`, `mlir::OpBuilder::create<OperationState>`, `crest::as_ptr<mlir::OpBuilder>`, `current-OpBuilder`, `with-current-OpBuilder`, `with-OpBuilder` |
+| `(mlir IR Builders)` | `mlir::OpBuilder::atBlockEnd`, `mlir::OpBuilder::create<OperationState>`, `mlir::OpBuilder::setInsertionPointToEnd`, `current-OpBuilder`, `with-current-OpBuilder`, `with-OpBuilder`, `with-InsertionGuard` |
 
 ### Pattern matching and rewriting
 

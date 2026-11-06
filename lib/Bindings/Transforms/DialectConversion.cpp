@@ -332,10 +332,12 @@ void registerTransformsDialectConversionBindings() {
             [locked](mlir::OpBuilder& builder, mlir::Type resultType,
                      mlir::ValueRange inputs,
                      mlir::Location loc) -> mlir::Value {
-              // Scheme sees the builder as a raw OpBuilder*; insertion point
-              // changes are made on the builder itself, so nothing is copied.
+              // Scheme sees the builder as a borrowed shell that lives for this
+              // call; insertion point changes are made on the builder itself,
+              // so nothing is copied.
+              crest::CrestBox<mlir::OpBuilder*> builder_shell(&builder);
               ptr builder_arg =
-                  Sunsigned64(reinterpret_cast<uint64_t>(&builder));
+                  Sunsigned64(reinterpret_cast<uint64_t>(&builder_shell));
               ptr result_type_arg = Sunsigned64(
                   reinterpret_cast<uint64_t>(resultType.getAsOpaquePointer()));
               ptr inputs_list = Snil;
@@ -370,10 +372,12 @@ void registerTransformsDialectConversionBindings() {
             [locked](mlir::OpBuilder& builder, mlir::Type resultType,
                      mlir::ValueRange inputs,
                      mlir::Location loc) -> mlir::Value {
-              // Scheme sees the builder as a raw OpBuilder*; insertion point
-              // changes are made on the builder itself, so nothing is copied.
+              // Scheme sees the builder as a borrowed shell that lives for this
+              // call; insertion point changes are made on the builder itself,
+              // so nothing is copied.
+              crest::CrestBox<mlir::OpBuilder*> builder_shell(&builder);
               ptr builder_arg =
-                  Sunsigned64(reinterpret_cast<uint64_t>(&builder));
+                  Sunsigned64(reinterpret_cast<uint64_t>(&builder_shell));
               ptr result_type_arg = Sunsigned64(
                   reinterpret_cast<uint64_t>(resultType.getAsOpaquePointer()));
               ptr inputs_list = Snil;

@@ -74,7 +74,6 @@
                 with-TypeConverter
                 with-ConversionTarget)
           (only (mlir IR PatternMatch) with-RewritePatternSet mlir::RewriterBase::inlineRegionBefore)
-          (only (mlir IR Builders) crest::as_ptr<mlir::OpBuilder>)
           (only (mlir support array-ref) crest::CArrayRef::at crest::CArrayRef::size)
           (crest))
 
@@ -135,7 +134,7 @@
     (store! 0 0 '()))
 
   (define (%%constant-lower! op operands-ref rw tc)
-    (let* ([bld         (crest::as_ptr<mlir::OpBuilder> rw)]
+    (let* ([bld         rw]
            [result      (mlir::Operation::getResult op 0)]
            [tensor-type (mlir::Value::getType result)]
            [loc         (mlir::Operation::getLoc op)]
@@ -160,7 +159,7 @@
     (let* ([lhs         (crest::CArrayRef::at operands-ref 0)]
            [rhs         (crest::CArrayRef::at operands-ref 1)]
            [tensor-type (mlir::Value::getType (mlir::Operation::getResult op 0))]
-           [alloc       (%%lower-op-to-loops! op (crest::as_ptr<mlir::OpBuilder> rw) tensor-type
+           [alloc       (%%lower-op-to-loops! op rw tensor-type
                                               (lambda (nb loc ivs)
                                                 (let ([l (mlir::affine::AffineLoadOp::create nb loc lhs ivs)]
                                                       [r (mlir::affine::AffineLoadOp::create nb loc rhs ivs)])
@@ -178,7 +177,7 @@
   (define (%%transpose-lower! op operands-ref rw tc)
     (let* ([input       (crest::CArrayRef::at operands-ref 0)]
            [tensor-type (mlir::Value::getType (mlir::Operation::getResult op 0))]
-           [alloc       (%%lower-op-to-loops! op (crest::as_ptr<mlir::OpBuilder> rw) tensor-type
+           [alloc       (%%lower-op-to-loops! op rw tensor-type
                                               (lambda (nb loc ivs)
                                                 (mlir::affine::AffineLoadOp::create
                                                  nb loc input (reverse ivs))))])
@@ -199,7 +198,7 @@
                  [new-func (mlir::func::FuncOp::create rw loc name ftype)]
                  [body     (mlir::func::FuncOp::getBody new-func)]
                  [src-reg  (mlir::Operation::getRegion op 0)])
-            (mlir::RewriterBase::inlineRegionBefore (crest::as_ptr<mlir::OpBuilder> rw) src-reg body)
+            (mlir::RewriterBase::inlineRegionBefore rw src-reg body)
             (mlir::RewriterBase::eraseOp rw op)
             #t))))
 

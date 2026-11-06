@@ -20,7 +20,7 @@ void registerDialectSCFIRSCFOpsBindings() {
       "mlir::scf::ForOp::create",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, uint64_t lb_ptr,
                  uint64_t ub_ptr, uint64_t step_ptr) -> uint64_t {
-        auto& builder = *crest::as_raw<mlir::OpBuilder>(
+        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
             builder_ptr, "mlir::scf::ForOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
@@ -59,7 +59,7 @@ void registerDialectSCFIRSCFOpsBindings() {
   Sregister_symbol(
       "mlir::scf::YieldOp::create",
       (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr) -> void {
-        auto& builder = *crest::as_raw<mlir::OpBuilder>(
+        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
             builder_ptr, "mlir::scf::YieldOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));

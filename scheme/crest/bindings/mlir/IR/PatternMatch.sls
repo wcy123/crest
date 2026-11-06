@@ -13,9 +13,8 @@
 ;; Also provides RAII macros.
 ;;
 ;; The pattern's rewriter is a CrestBox<RewriterBase*> shell passed explicitly to
-;; these bindings (replaceOp, eraseOp, setInsertionPoint, ...). To create ops with
-;; the DSL or an OpBuilder binding, unwrap it with
-;; (crest::as_ptr<mlir::OpBuilder> rw) from (mlir IR Builders).
+;; these bindings (replaceOp, eraseOp, setInsertionPoint, ...). The OpBuilder bindings and
+;; the DSL accept the same shell.
 ;;
 ;;===----------------------------------------------------------------------===;;
 
@@ -33,6 +32,7 @@
     mlir::RewriterBase::inlineRegionBefore
     mlir::RewritePatternSet::RewritePatternSet
     ;; Type predicates
+    crest::isa<CrestBox<mlir::RewriterBase*>>?
     crest::isa<CrestBox<mlir::RewritePatternSet>>?
     ;; RAII macros
     with-RewritePatternSet)
@@ -50,6 +50,7 @@
                 %mlir::RewriterBase::create<OperationState>
                 %mlir::RewriterBase::inlineRegionBefore
                 %mlir::RewritePatternSet::RewritePatternSet
+                %crest::isa<CrestBox<mlir::RewriterBase*>>
                 %crest::isa<CrestBox<mlir::RewritePatternSet>>)
           (only (mlir IR MLIRContext) current-MLIRContext)
           (only (mlir IR Location) mlir::UnknownLoc::get)
@@ -82,14 +83,16 @@
   (define mlir::RewriterBase::create<OperationState> %mlir::RewriterBase::create<OperationState>)
 
   ;; @brief mlir::RewriterBase::inlineRegionBefore — move all blocks of a region to the front of
-  ;; another region. Unlike the other RewriterBase bindings it takes the raw OpBuilder* (use
-  ;; crest::as_ptr<mlir::OpBuilder> on a rewriter shell), because only the builder's listener is
-  ;; needed; that also makes it work inside ^bb bodies.
-  ;; @param builder  raw OpBuilder* uptr
-  ;; @param src      Region* uptr; empty afterwards
-  ;; @param dest     Region* uptr
+  ;; another region. Rewriter-only: rw must be the pattern's CrestBox<RewriterBase*> shell.
+  ;; @param rw    rewriter shell
+  ;; @param src   Region* uptr; empty afterwards
+  ;; @param dest  Region* uptr
   (define mlir::RewriterBase::inlineRegionBefore %mlir::RewriterBase::inlineRegionBefore)
   (define mlir::RewritePatternSet::RewritePatternSet  %mlir::RewritePatternSet::RewritePatternSet)
+
+  ;; @brief crest::isa<CrestBox<mlir::RewriterBase*>>? — is this ptr the pattern's rewriter shell?
+  (define (crest::isa<CrestBox<mlir::RewriterBase*>>? ptr)
+    (not (zero? (%crest::isa<CrestBox<mlir::RewriterBase*>> ptr))))
 
   ;; @brief crest::isa<CrestBox<mlir::RewritePatternSet>>? — is this ptr a CrestBox<mlir::RewritePatternSet>?
   (define (crest::isa<CrestBox<mlir::RewritePatternSet>>? ptr)

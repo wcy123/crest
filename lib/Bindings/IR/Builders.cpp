@@ -40,42 +40,57 @@ void registerIROpBuilderBindings() {
   Sregister_symbol(
       "mlir::OpBuilder::create<OperationState>",
       (void*)+[](uint64_t builder_ptr, uint64_t state_ptr) -> uint64_t {
-        auto& builder = *crest::as_raw<mlir::OpBuilder>(
+        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
             builder_ptr, "mlir::OpBuilder::create<OperationState>");
         auto& state = crest::CrestBox<mlir::OperationState>::inner(
             state_ptr, "mlir::OpBuilder::create<OperationState>");
         return reinterpret_cast<uint64_t>(builder.create(state));
       });
-  /// builder_ptr: raw mlir::OpBuilder*, op_ptr: mlir::Operation*
+  /// builder_ptr: builder shell, op_ptr: mlir::Operation*
   Sregister_symbol(
       "mlir::OpBuilder::setInsertionPoint",
       (void*)+[](uint64_t builder_ptr, uint64_t op_ptr) -> void {
-        auto& builder = *crest::as_raw<mlir::OpBuilder>(
+        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
             builder_ptr, "mlir::OpBuilder::setInsertionPoint");
         builder.setInsertionPoint(reinterpret_cast<mlir::Operation*>(op_ptr));
       });
-  // builder_ptr: raw mlir::OpBuilder*. Returns the raw Listener* (0 if none).
+  // builder_ptr: builder shell. Returns the raw Listener* (0 if none).
   Sregister_symbol(
       "mlir::OpBuilder::getListener",
       (void*)+[](uint64_t builder_ptr) -> uint64_t {
-        auto& builder = *crest::as_raw<mlir::OpBuilder>(
+        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
             builder_ptr, "mlir::OpBuilder::getListener");
         return reinterpret_cast<uint64_t>(builder.getListener());
       });
   Sregister_symbol(
       "mlir::OpBuilder::getContext",
       (void*)+[](uint64_t builder_ptr) -> uint64_t {
-        auto& builder = *crest::as_raw<mlir::OpBuilder>(
+        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
             builder_ptr, "mlir::OpBuilder::getContext");
         return reinterpret_cast<uint64_t>(builder.getContext());
       });
-  // Unwrap a builder shell (CrestBox<OpBuilder> or CrestBox<RewriterBase*>) to
-  // the raw OpBuilder* that current-OpBuilder holds and every builder binding
-  // takes. Not idempotent: a raw pointer is an error.
+  // builder_ptr: builder shell, block_ptr: mlir::Block*
   Sregister_symbol(
-      "crest::as_ptr<mlir::OpBuilder>", (void*)+[](uint64_t ptr) -> uint64_t {
-        return reinterpret_cast<uint64_t>(crest::as_ptr<mlir::OpBuilder>(
-            ptr, "crest::as_ptr<mlir::OpBuilder>"));
+      "mlir::OpBuilder::setInsertionPointToEnd",
+      (void*)+[](uint64_t builder_ptr, uint64_t block_ptr) -> void {
+        if (!block_ptr) {
+          scheme_error("mlir::OpBuilder::setInsertionPointToEnd",
+                       "null block pointer");
+        }
+        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
+            builder_ptr, "mlir::OpBuilder::setInsertionPointToEnd");
+        builder.setInsertionPointToEnd(
+            reinterpret_cast<mlir::Block*>(block_ptr));
+      });
+  // Saves the builder's insertion point; deleting the shell restores it.
+  // builder_ptr: builder shell. Returns CrestBox<InsertionGuard>* uptr.
+  Sregister_symbol(
+      "mlir::OpBuilder::InsertionGuard::InsertionGuard",
+      (void*)+[](uint64_t builder_ptr) -> uint64_t {
+        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
+            builder_ptr, "mlir::OpBuilder::InsertionGuard::InsertionGuard");
+        return reinterpret_cast<uint64_t>(
+            new CrestBox<mlir::OpBuilder::InsertionGuard>(builder));
       });
 }
 

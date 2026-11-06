@@ -11,11 +11,12 @@
 ;; Provides:
 ;;
 ;;   (begin-mlir-code op-form ...)
-;;     Sequences MLIR op-forms, creating each op with the ambient builder: the raw
-;;     mlir::OpBuilder* in current-OpBuilder. :rewrite :with and ^bb bodies install
-;;     it; anywhere else wrap the call in (with-current-OpBuilder b ...), where b is
-;;     a raw OpBuilder* (from with-OpBuilder, or (crest::as_ptr<mlir::OpBuilder> rw)
-;;     for a pattern's rewriter). There is no explicit builder argument.
+;;     Sequences MLIR op-forms, creating each op with the builder in current-OpBuilder:
+;;     a builder shell, either a CrestBox<OpBuilder> or the pattern's CrestBox<RewriterBase*>.
+;;     :rewrite :with installs the pattern's rewriter, and ^bb bodies keep it, moving its
+;;     insertion point to the end of the new block; anywhere else wrap the call in
+;;     (with-current-OpBuilder b ...), where b is a shell (from with-OpBuilder, or the
+;;     pattern's rw). There is no explicit builder argument.
 ;;     Returns the last result (like Scheme's begin).
 ;;
 ;; v2 flat-list syntax — items are scanned sequentially without outer parens per op:
@@ -77,9 +78,8 @@
                 mlir::OpBuilder::create<OperationState>
                 current-OpBuilder)
           (for (only (mlir IR Builders)
-                     mlir::OpBuilder::atBlockEnd
-                     mlir::OpBuilder::getListener
-                     with-OpBuilder
+                     mlir::OpBuilder::setInsertionPointToEnd
+                     with-InsertionGuard
                      with-current-OpBuilder) expand)
           (for (only (mlir IR OperationSupport)
                      mlir::OperationState::addOperands
@@ -92,6 +92,7 @@
                      mlir::FileLineColLoc::get) expand)
           (for (only (mlir IR Region) mlir::Region::push_back<Block>) expand)
           (for (only (mlir IR PatternMatch) mlir::RewriterBase::inlineRegionBefore) expand)
+          (only (mlir IR PatternMatch) crest::isa<CrestBox<mlir::RewriterBase*>>?)
           (for (only (mlir IR Block)
                      mlir::Block::getArgument
                      current-Block
@@ -110,15 +111,23 @@
   ;; Runtime create dispatcher
   ;;===--------------------------------------------------------------------===;;
 
-  ;; Returns the active builder: the raw OpBuilder* in current-OpBuilder, installed by
-  ;; :rewrite :with and ^bb bodies, or by the caller with (with-current-OpBuilder b ...).
-  ;; Error if none is set.
+  ;; Returns the active builder: the shell in current-OpBuilder, installed by :rewrite :with,
+  ;; or by the caller with (with-current-OpBuilder b ...). Error if none is set.
   (define (%%current-builder)
     (or (current-OpBuilder)
         (error '%%current-builder
                "no active builder — use begin-mlir-code inside :rewrite :with or a ^bb block, or wrap it in (with-current-OpBuilder builder ...)")))
 
-  ;; Create an op from a prepared OperationState with a raw OpBuilder*.
+  ;; Returns the active builder when it is the pattern's rewriter, for the rewriter-only
+  ;; operations. Error if the active builder is a plain OpBuilder.
+  (define (%%current-rewriter)
+    (let ([builder (%%current-builder)])
+      (if (crest::isa<CrestBox<mlir::RewriterBase*>>? builder)
+          builder
+          (error '%%current-rewriter
+                 "this needs the pattern's rewriter, but the active builder is a plain OpBuilder"))))
+
+  ;; Create an op from a prepared OperationState with a builder shell.
   (define (%%crest:create-op! builder state)
     (mlir::OpBuilder::create<OperationState> builder state))
 
@@ -180,8 +189,8 @@
       ;;-------------------------------------------------------------------
 
       ;; (begin-mlir-code op ...)
-      ;;   Ops are created with the ambient builder, (%%current-builder), looked up when
-      ;;   each op is created: the raw OpBuilder* in current-OpBuilder.
+      ;;   Ops are created with the builder in current-OpBuilder, (%%current-builder), looked up
+      ;;   when each op is created.
       ;;
       ;; v2 flat syntax: items form a flat list that process-ops-flat scans sequentially.
       ;; Op boundaries are detected by parse-next; parenthesized items that don't
@@ -396,7 +405,7 @@
       ;; body-stxs    — list of body op-form syntax objects
       ;; Uses #,block-id directly in quasi-syntax to avoid with-syntax mark skew.
       (define (%%make-block-fill-lambda block-id types-stx arg-bindings body-stxs)
-        (with-syntax ([builder (car (generate-temporaries '(block-builder)))]
+        (with-syntax ([guard   (car (generate-temporaries '(insertion-guard)))]
                       [types   types-stx]
                       [(arg-binding ...) arg-bindings]
                       [(b ...) body-stxs])
@@ -405,11 +414,9 @@
               #`(let* ([#,block-id (mlir::Region::push_back<Block> region types)]
                        arg-binding ...)
                   (with-current-Block #,block-id
-                    (with-OpBuilder builder (mlir::OpBuilder::atBlockEnd
-                                             #,block-id
-                                             (mlir::OpBuilder::getListener (%%current-builder)))
-                      (with-current-OpBuilder builder
-                        (begin-mlir-code b ...)))))))))
+                    (with-InsertionGuard guard ((%%current-builder))
+                                         (mlir::OpBuilder::setInsertionPointToEnd (%%current-builder) #,block-id)
+                                         (begin-mlir-code b ...))))))))
 
       ;; Returns a fill-fn: (lambda (region-stx) → syntax).
       ;; block-id extracted before syntax-case so both branches share it.
@@ -463,7 +470,7 @@
       ;; @brief Build the code that moves an existing region into the op being created.
       ;;
       ;; The slot is reserved with addRegion like any region modifier. After the op exists, the
-      ;; blocks of region idx of src-op are moved into it with inlineRegionBefore on the ambient builder,
+      ;; blocks of region idx of src-op are moved into it with the pattern's inlineRegionBefore,
       ;; which leaves the source region empty. The caller owns what that does to src-op: it is
       ;; normally the op the pattern replaces.
       ;;
@@ -478,7 +485,7 @@
                         [src-op     src-op-stx]
                         [src-idx    idx-stx])
             #'(mlir::RewriterBase::inlineRegionBefore
-               (%%current-builder)
+               (%%current-rewriter)
                (mlir::Operation::getRegion src-op src-idx)
                (mlir::Operation::getRegion new-op region-idx)))))
 

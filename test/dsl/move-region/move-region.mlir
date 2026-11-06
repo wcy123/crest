@@ -23,6 +23,9 @@
 // RUN:   %crest-opt -allow-unregistered-dialect \
 // RUN:   --crest-pass="passes=passes/move-ordered" %s | %FileCheck %s --check-prefix=ORDER
 
+// RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme5 \
+// RUN:   %crest-opt -allow-unregistered-dialect \
+// RUN:   --crest-pass="passes=passes/move-nested" %s | %FileCheck %s --check-prefix=NEST
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme4 \
 // RUN:   %crest-opt -allow-unregistered-dialect \
 // RUN:   --crest-pass="passes=passes/move-conversion" %s | %FileCheck %s --check-prefix=CONV
@@ -51,6 +54,23 @@
 // CONV-NEXT:    }) : () -> ()
 // CONV-NOT:     test.inner
 // CONV-NOT:     test.src
+// CONV-LABEL: func.func @n
+// CONV:         "test.wrapper"() ({
+// CONV-NEXT:      "test.dst"() ({
+// CONV-NEXT:      ^bb0(%[[C:.*]]: i32):
+// CONV-NEXT:        "test.use"(%[[C]]) : (i32) -> ()
+// CONV-NEXT:      }) : () -> ()
+// CONV-NEXT:    }) : () -> ()
+// CONV-NEXT:    "test.after"() : () -> ()
+
+// NEST-LABEL: func.func @n
+// NEST:         "test.wrapper"() ({
+// NEST-NEXT:      "test.dst"() ({
+// NEST-NEXT:      ^bb0(%[[N:.*]]: i32):
+// NEST-NEXT:        "test.use"(%[[N]]) : (i32) -> ()
+// NEST-NEXT:      }) : () -> ()
+// NEST-NEXT:    }) : () -> ()
+// NEST-NEXT:    "test.after"() : () -> ()
 
 func.func @f() {
   "test.src"() ({
@@ -73,6 +93,14 @@ func.func @g() {
 func.func @h() {
   "test.src"() ({
     "test.inner"() : () -> ()
+  }) : () -> ()
+  return
+}
+
+func.func @n() {
+  "test.nested"() ({
+  ^bb0(%n: i32):
+    "test.use"(%n) : (i32) -> ()
   }) : () -> ()
   return
 }

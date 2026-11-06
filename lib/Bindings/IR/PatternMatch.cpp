@@ -104,21 +104,29 @@ void registerIRRewriterBaseBindings() {
         return reinterpret_cast<uint64_t>(rw.create(state));
       });
   // inlineRegionBefore: move all blocks of the source region to the front of
-  // the destination region. Takes the raw OpBuilder* that current-OpBuilder
-  // holds, not the rewriter shell: the ambient builder of a ^bb body is a plain
-  // OpBuilder, not a RewriterBase. An IRRewriter copy of it, which keeps the
-  // listener, is a real RewriterBase to call MLIR's own implementation on.
-  // (builder-ptr src-region-ptr dest-region-ptr) -> void
+  // the destination region. Rewriter-only: the shell must be a
+  // CrestBox<RewriterBase*>, so the call reaches the real rewriter (the
+  // conversion rewriter overrides several RewriterBase methods).
+  // (rw-ptr src-region-ptr dest-region-ptr) -> void
   Sregister_symbol(
       "mlir::RewriterBase::inlineRegionBefore",
-      (void*)+[](uint64_t builder_ptr, uint64_t src_ptr,
-                 uint64_t dest_ptr) -> void {
-        auto& builder = *crest::as_raw<mlir::OpBuilder>(
-            builder_ptr, "mlir::RewriterBase::inlineRegionBefore");
+      (void*)+[](uint64_t rw_ptr, uint64_t src_ptr, uint64_t dest_ptr) -> void {
+        auto& rw = crest::CrestBox<mlir::RewriterBase*>::inner(
+            rw_ptr, "mlir::RewriterBase::inlineRegionBefore");
         auto* src = reinterpret_cast<mlir::Region*>(src_ptr);
         auto* dest = reinterpret_cast<mlir::Region*>(dest_ptr);
-        mlir::IRRewriter(builder).inlineRegionBefore(*src, *dest,
-                                                     dest->begin());
+        rw.inlineRegionBefore(*src, *dest, dest->begin());
+      });
+  Sregister_symbol(
+      "crest::isa<CrestBox<mlir::RewriterBase*>>",
+      (void*)+[](uint64_t ptr) -> int {
+        if (!ptr) {
+          return 0;
+        }
+        return reinterpret_cast<CrestObject*>(ptr)
+                       ->isa<CrestBox<mlir::RewriterBase*>>()
+                   ? 1
+                   : 0;
       });
   Sregister_symbol(
       "mlir::RewritePatternSet::RewritePatternSet",
@@ -154,14 +162,14 @@ void registerIRRewriterBaseBindings() {
       });
 }
 
-// as_ptr<mlir::OpBuilder> specialisation: unwraps a shell to a raw OpBuilder*.
-//   CrestBox<mlir::RewriterBase*>* — from conversion pattern callbacks. The
-//       RewriterBase is converted to OpBuilder* statically, which
-//       adjusts the address (RewriterBase is polymorphic, OpBuilder is not, so
-//       the OpBuilder base is not at offset 0).
+// as_ptr<mlir::OpBuilder> specialisation: unwraps a shell to an OpBuilder*.
+//   CrestBox<mlir::RewriterBase*>* — the rewriter of a pattern callback. The
+//       RewriterBase is converted to OpBuilder* statically, which adjusts the
+//       address (RewriterBase is polymorphic, OpBuilder is not, so the
+//       OpBuilder base is not at offset 0).
 //   CrestBox<mlir::OpBuilder>*  — from atBlockEnd.
-// Anything else is a bug: a raw pointer must not be unwrapped again, and a raw
-// RewriterBase* is not an OpBuilder*.
+//   CrestBox<mlir::OpBuilder*>* — a builder MLIR passes to a callback.
+// Anything else is a bug, including a raw pointer.
 template <>
 mlir::OpBuilder* as_ptr<mlir::OpBuilder>(uint64_t ptr_val, const char* who) {
   if (!ptr_val) {
@@ -174,7 +182,11 @@ mlir::OpBuilder* as_ptr<mlir::OpBuilder>(uint64_t ptr_val, const char* who) {
   if (obj->isa<crest::CrestBox<mlir::OpBuilder>>()) {
     return &static_cast<crest::CrestBox<mlir::OpBuilder>*>(obj)->inner();
   }
-  scheme_error(who, "expected CrestBox<RewriterBase*> or CrestBox<OpBuilder>");
+  if (obj->isa<crest::CrestBox<mlir::OpBuilder*>>()) {
+    return &static_cast<crest::CrestBox<mlir::OpBuilder*>*>(obj)->inner();
+  }
+  scheme_error(who, "expected a builder shell: CrestBox<RewriterBase*>, "
+                    "CrestBox<OpBuilder> or CrestBox<OpBuilder*>");
   crest_unreachable();
 }
 

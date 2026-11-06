@@ -28,7 +28,6 @@
                      mlir::RewriterBase::replaceOp
                      mlir::RewriterBase::eraseOp) expand)
           (for (only (mlir IR Builders)
-                     crest::as_ptr<mlir::OpBuilder>
                      with-current-OpBuilder) expand)
           (for (only (mlir IR Operation)
                      mlir::Operation::getContext
@@ -165,8 +164,8 @@
   ;; rw / op      — syntax identifiers for the rewriter and matched operation
   ;;
   ;; Generated shape ('conversion):
-  ;;   ;; rw: CrestBox<RewriterBase*> shell; the ambient builder is its raw OpBuilder*
-  ;;   (with-current-OpBuilder (crest::as_ptr<mlir::OpBuilder> rw)
+  ;;   ;; rw: CrestBox<RewriterBase*> shell, installed as the current builder
+  ;;   (with-current-OpBuilder rw
   ;;     (mlir::RewriterBase::setInsertionPoint rw op)
   ;;     (let ([result (begin-mlir-code form ...)])
   ;;       (mlir::RewriterBase::replaceOp rw op result)
@@ -191,7 +190,7 @@
                                                         (call-with-string-output-port
                                                          (lambda (p) (display-condition exn p))))
                             #f])
-                 (with-current-OpBuilder (crest::as_ptr<mlir::OpBuilder> #,rw)
+                 (with-current-OpBuilder #,rw
                    (mlir::RewriterBase::setInsertionPoint #,rw #,op)
                    (let ([result (begin-mlir-code form ...)])
                      ;; Zero-result root: erase the old op (no uses to redirect).

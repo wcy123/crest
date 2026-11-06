@@ -12,7 +12,6 @@
                 mlir::Operation::getContext
                 mlir::Operation::getOperand
                 mlir::Operation::getParentOfType<ModuleOp>)
-          (only (mlir IR Builders) crest::as_ptr<mlir::OpBuilder>)
           (mlir IR BuiltinOps)
           (only (mlir IR Value) mlir::Value::getType)
           (only (mlir IR Block) mlir::Block::front)
@@ -100,7 +99,7 @@
   ;; Called via add-conversion-pattern/ctx (no TypeConverter) so operands are
   ;; the original unconverted values; tc arg is 0 (unused).
   (define (%%print-lower! op operands-ref rw tc)
-    (let* ([bld       (crest::as_ptr<mlir::OpBuilder> rw)]
+    (let* ([bld       rw]
            [loc       (mlir::Operation::getLoc op)]
            [ctx       (mlir::Operation::getContext op)]
            [module-op (mlir::Operation::getParentOfType<ModuleOp> op)]

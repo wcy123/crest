@@ -159,13 +159,13 @@ current-MLIRContext    ; mlir::MLIRContext*  (mlir/IR/MLIRContext.h)
 current-OpBuilder      ; mlir::OpBuilder*    (mlir/IR/Builders.h)
 ```
 
-`current-OpBuilder` holds a **raw** `OpBuilder*` (or `#f`), never a CrestObject shell. A pattern's
-rewriter is a `CrestBox<RewriterBase*>` shell: unwrap it with `(crest::as_ptr<mlir::OpBuilder> rw)`
-(the C++ upcast adjusts the address; `RewriterBase` is polymorphic, so its `OpBuilder` base is not
-at offset 0). Bindings that take a builder take that raw pointer; rewriter-only operations
-(`replaceOp`, `eraseOp`, ...) keep taking the shell. The exception is `inlineRegionBefore`: MLIR's
-version needs only the builder's listener, so the binding takes the raw `OpBuilder*`. That also
-makes it work inside `^bb` bodies, where the ambient builder is not a `RewriterBase`.
+`current-OpBuilder` holds a builder **shell** (or `#f`): a `CrestBox<OpBuilder>` (from `atBlockEnd`)
+or the pattern's `CrestBox<RewriterBase*>`. Every binding that takes a builder takes such a shell;
+C++ unwraps it with `as_ptr<mlir::OpBuilder>`, which tells the kinds apart by type tag (and, for a
+rewriter, adjusts the address: `RewriterBase` is polymorphic, so its `OpBuilder` base is not at
+offset 0). The real object is kept, so rewriter-only operations (`replaceOp`, `eraseOp`,
+`inlineRegionBefore`, ...) work on the same handle and reach the real rewriter, including the
+methods the conversion rewriter overrides. A raw `OpBuilder*` is never a valid handle.
 
 ### Rule 12 — RAII macro placement follows the C++ header
 

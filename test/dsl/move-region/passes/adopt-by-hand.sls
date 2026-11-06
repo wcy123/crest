@@ -9,8 +9,7 @@
                 mlir::Operation::getRegion)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
           (only (mlir IR OperationSupport) with-OperationState mlir::OperationState::addRegion)
-          (only (mlir IR Builders) crest::as_ptr<mlir::OpBuilder>
-                mlir::OpBuilder::create<OperationState>)
+          (only (mlir IR Builders) mlir::OpBuilder::create<OperationState>)
           (only (mlir IR PatternMatch) with-RewritePatternSet mlir::RewriterBase::setInsertionPoint
                 mlir::RewriterBase::eraseOp mlir::RewriterBase::inlineRegionBefore)
           (only (mlir Transforms GreedyPatternRewriteDriver) mlir::applyPatternsGreedily)
@@ -21,8 +20,8 @@
     (let ([new-op (with-OperationState state ((mlir::Operation::getLoc op) "test.dst")
                     (mlir::OperationState::addRegion state)
                     (mlir::OpBuilder::create<OperationState>
-                     (crest::as_ptr<mlir::OpBuilder> rw) state))])
-      (mlir::RewriterBase::inlineRegionBefore (crest::as_ptr<mlir::OpBuilder> rw)
+                     rw state))])
+      (mlir::RewriterBase::inlineRegionBefore rw
                                               (mlir::Operation::getRegion op 0)
                                               (mlir::Operation::getRegion new-op 0))
       (mlir::RewriterBase::eraseOp rw op)

@@ -15,7 +15,6 @@
                 mlir::RewriterBase::replaceOp
                 mlir::RewriterBase::setInsertionPoint)
           (only (mlir IR Builders)
-                crest::as_ptr<mlir::OpBuilder>
                 with-current-OpBuilder)
           (only (mlir Transforms GreedyPatternRewriteDriver)
                 mlir::applyPatternsGreedily)
@@ -29,7 +28,7 @@
 
   ;; test.in(%v) -> test.b(test.a(%v)); the second begin-mlir-code form is here.
   (define (%%in op rw)
-    (let* ([bld (crest::as_ptr<mlir::OpBuilder> rw)]
+    (let* ([bld rw]
            [v   (mlir::Operation::getOperand op 0)]
            [ty  (mlir::Value::getType (mlir::Operation::getResult op 0))])
       (mlir::RewriterBase::setInsertionPoint rw op)
