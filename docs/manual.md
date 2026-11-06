@@ -992,17 +992,15 @@ The context hierarchy during a pattern rewrite:
 |---|---|
 | `(mlir IR MLIRContext)` | `current-MLIRContext`, `with-current-MLIRContext`, `mlir::MLIRContext::new` |
 | `(mlir IR Operation)` | `mlir::Operation::getName`, `getResult`, `getRegion`, `getAttr`, `setAttr!`, `getContext`, `getNumResults`, `getNumOperands` |
-| `(mlir IR Value)` | `mlir::Value::getType`, `getDefiningOp`, `getUses` |
+| `(mlir IR Value)` | `mlir::Value::getType`, `getDefiningOp`, `getUses`, `mlir::OpResult::getResultNumber` |
 | `(mlir IR Block)` | `mlir::Block::getArgument`, `getNumArguments`, `current-Block`, `with-current-Block` |
 | `(mlir IR Region)` | `mlir::Region::front`, `getParentOp` |
-| `(mlir IR OpResult)` | `mlir::OpResult::getResultNumber` |
 
 ### Types
 
 | Import | Key exports |
 |---|---|
-| `(mlir IR BuiltinTypes)` | `mlir::IndexType::get`, `mlir::IntegerType::get<i64>`, `mlir::FloatType::get<f32>`, `mlir::RankedTensorType::get`, `mlir::RankedTensorType::getShape`, `mlir::RankedTensorType::getRank`, `mlir::RankedTensorType::cloneWithEncoding` |
-| `(mlir IR Type)` | `mlir::Type::getFromOpaquePointer` |
+| `(mlir IR BuiltinTypes)` | `mlir::IndexType::get`, `mlir::IntegerType::get<i64>`, `mlir::Float32Type::get`, `mlir::Float64Type::get`, `mlir::RankedTensorType::get`, `mlir::RankedTensorType::getShape`, `mlir::RankedTensorType::getRank`, `mlir::RankedTensorType::cloneWithEncoding` |
 
 ### Attributes
 
