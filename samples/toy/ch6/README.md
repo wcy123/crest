@@ -72,7 +72,7 @@ by the same conversion; nothing in this chapter needs a second pass.
 `--opt` only controls step 4.
 
 1. **Inline** — Scheme-level `%%inline-calls!`, then drop private functions
-2. **Shape inference** — Scheme walk per `toy.func`
+2. **Shape inference** — rewrite patterns (`shape-inference.sls`), as in Ch4
 3. **Canonicalize** — greedy rewrite (Ch3/Ch4 patterns)
 4. **Affine lowering** — `%%toy-to-affine-lower!`, then canonicalize + CSE on
    `func.func`; with `--opt`, also loop fusion + affine scalar replacement
@@ -130,7 +130,8 @@ Running `example.toy` with `--emit=jit` prints the 2x3 result of the last
 | Everything in Ch5 | as in the Ch5 README | `lower-to-affine.sls` is unchanged |
 | `toy.print` lowered to a `printf` loop nest | `define-conversion-pattern`, with every op a `begin-mlir-code` form | see the section above: no typed builder is left |
 | Registering the LLVM conversion | `apply-conversion` (`:type-converter llvm`, `:legal-dialects`, `:legal-ops`, `:illegal-dialects`, `:patterns` with `:no-type-converter`, `:populate`) | the six `populate...Patterns` calls go in `:populate` |
-| Inlining and shape inference | Scheme, as in Ch4 | the reasons are in the Ch4 README |
+| Shape inference | `define-rewrite-pattern`, as in Ch4 | |
+| Inlining | Scheme, as in Ch4 | the reasons are in the Ch4 README |
 
 ## Related Documents
 

@@ -179,7 +179,8 @@ Running the struct example with `--emit=jit` prints:
 | Every op `mlir-gen.sls` creates, including the struct ops | `begin-mlir-code` | as in Ch2 |
 | The canonicalization patterns, including `fold-struct-access` | `define-rewrite-pattern` | as in Ch3 |
 | The lowerings and their registration | as in Ch5 and Ch6 | `apply-conversion`, `define-conversion-pattern`, `begin-mlir-code` |
-| Inlining and shape inference | Scheme, as in Ch4 | the reasons are in the Ch4 README; the inliner also copies the attributes `toy.struct_access` needs |
+| Shape inference | `define-rewrite-pattern`, as in Ch4 | |
+| Inlining | Scheme, as in Ch4 | the reasons are in the Ch4 README; the inliner also copies the attributes `toy.struct_access` needs |
 
 ## Related Documents
 

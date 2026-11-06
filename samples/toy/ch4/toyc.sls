@@ -5,7 +5,7 @@
 ;;
 ;; Ch4 --opt pipeline:
 ;;   1. Inline toy.generic_call ops (eliminates private functions)
-;;   2. Shape inference (resolves tensor<*xf64> to concrete ranked types)
+;;   2. Shape inference (rewrite patterns that resolve tensor<*xf64> to ranked types)
 ;;   3. Canonicalization (fold transpose/reshape pairs)
 (import (chezscheme)
         (only (mlir support CrestObject) with-CrestObject)
@@ -27,7 +27,8 @@
         (toy ch4 ast)
         (toy ch4 toy)
         (toy ch4 mlir-gen)
-        (toy ch4 combine))
+        (toy ch4 combine)
+        (toy ch4 shape-inference))
 
 (define (main)
   (let-values ([(filename action opt?) (%%parse-args (command-line-arguments))])
@@ -74,82 +75,17 @@
 (define (%%run-opt-pipeline! module-op ctx)
   ;; Step 1: inline all toy.generic_call ops, eliminating private functions.
   (%%inline-calls! module-op ctx)
-  ;; Step 2: shape inference — propagate concrete tensor shapes per function.
-  (mlir::Operation::walk module-op
-                         (lambda (op)
-                           (when (string=? (mlir::Operation::getName op) "toy.func")
-                             (%%run-shape-inference! op))))
+  ;; Step 2: shape inference — propagate concrete tensor shapes (patterns in shape-inference.sls).
+  (with-current-MLIRContext ctx
+    (with-RewritePatternSet patterns (ctx)
+      (toy:add-shape-inference-patterns! patterns)
+      (mlir::applyPatternsGreedily module-op patterns)))
+  (toy:check-shapes-inferred! module-op)
   ;; Step 3: canonicalize (fold transpose/reshape patterns from combine.sls).
   (with-current-MLIRContext ctx
     (with-RewritePatternSet patterns (ctx)
       (toy:add-canonicalization-patterns! patterns)
       (mlir::applyPatternsGreedily module-op patterns))))
-
-;; Shape inference worklist pass — mirrors ShapeInferencePass.cpp.
-;; Walks the function body; for ops with unranked results whose operand types
-;; are all known (ranked), infers and sets the result type. Repeats until
-;; fixed point.
-(define (%%run-shape-inference! func-op)
-  (define (%%ranked? type)
-    (mlir::isa<RankedTensorType>? type))
-  (define (%%all-operands-ranked? op)
-    (let loop ([i 0] [n (mlir::Operation::getNumOperands op)])
-      (or (>= i n)
-          (and (%%ranked? (mlir::Value::getType (mlir::Operation::getOperand op i)))
-               (loop (+ i 1) n)))))
-  (define (%%infer-shape! op)
-    (let ([name (mlir::Operation::getName op)])
-      (cond
-       ;; add/mul: result type = type of lhs operand
-       [(or (string=? name "toy.add") (string=? name "toy.mul"))
-        (mlir::Value::setType
-         (mlir::Operation::getResult op 0)
-         (mlir::Value::getType (mlir::Operation::getOperand op 0)))
-        #t]
-       ;; cast: result type = type of input
-       [(string=? name "toy.cast")
-        (mlir::Value::setType
-         (mlir::Operation::getResult op 0)
-         (mlir::Value::getType (mlir::Operation::getOperand op 0)))
-        #t]
-       ;; transpose: result type = input type with reversed shape
-       [(string=? name "toy.transpose")
-        (let* ([input-type (mlir::Value::getType (mlir::Operation::getOperand op 0))]
-               [shape      (mlir::RankedTensorType::getShape input-type)]
-               [rev-shape  (reverse shape)]
-               [elem-type  (mlir::RankedTensorType::getElementType input-type)])
-          (mlir::Value::setType
-           (mlir::Operation::getResult op 0)
-           (mlir::RankedTensorType::get rev-shape elem-type))
-          #t)]
-       [else #f])))
-  ;; Collect ops with unranked results that we know how to infer.
-  (define (%%needs-inference? op)
-    (and (> (mlir::Operation::getNumResults op) 0)
-         (not (%%ranked? (mlir::Value::getType (mlir::Operation::getResult op 0))))
-         (let ([name (mlir::Operation::getName op)])
-           (or (string=? name "toy.add")
-               (string=? name "toy.mul")
-               (string=? name "toy.cast")
-               (string=? name "toy.transpose")))))
-  ;; Fixed-point loop.
-  (let loop ([changed #t])
-    (when changed
-      (let ([still-changed #f])
-        (mlir::Operation::walk func-op
-                               (lambda (op)
-                                 (when (and (%%needs-inference? op)
-                                            (%%all-operands-ranked? op))
-                                   (%%infer-shape! op)
-                                   (set! still-changed #t))))
-        (loop still-changed))))
-  ;; Report error if any op still has unranked results.
-  (mlir::Operation::walk func-op
-                         (lambda (op)
-                           (when (%%needs-inference? op)
-                             (mlir::Operation::emitError op
-                                                         "shape inference failed: operand types not fully resolved")
-                             (exit 1)))))
 
 (define (%%build-module filename ctx)
   (if (let ([n (string-length filename)])
