@@ -33,12 +33,14 @@
     mlir::RewritePatternSet::RewritePatternSet
     ;; Type predicates
     crest::isa<CrestBox<mlir::RewritePatternSet>>?
-    ;; RAII macros
+    ;; Dynamic parameter and RAII macros
+    current-RewriterBase
+    with-current-RewriterBase
     with-RewritePatternSet)
 
   (import (rnrs)
           (only (mlir support CrestObject) with-CrestObject)
-          (only (chezscheme) void)
+          (only (chezscheme) void make-parameter parameterize)
           (only (mlir IR PatternMatch ffi)
                 %mlir::RewriterBase::setInsertionPoint
                 %mlir::RewriterBase::setInsertionPointToEnd
@@ -120,5 +122,17 @@
       [(_ var (ctx) body ...)
        (with-CrestObject var (mlir::RewritePatternSet::RewritePatternSet ctx)
          body ...)]))
+
+  ;; @brief current-RewriterBase — dynamic parameter holding the pattern's rewriter, the
+  ;; CrestBox<RewriterBase*> shell, or #f when no pattern is running. Unlike current-OpBuilder
+  ;; it is the shell, because the rewriter-only operations (inlineRegionBefore, ...) take it.
+  ;; See mlir/IR/PatternMatch.h.
+  (define current-RewriterBase (make-parameter #f))
+
+  ;; @brief with-current-RewriterBase — install a rewriter shell (or #f) as current-RewriterBase.
+  (define-syntax with-current-RewriterBase
+    (syntax-rules ()
+      [(_ rewriter body ...)
+       (parameterize ([current-RewriterBase rewriter]) body ...)]))
 
   ) ;; end library (mlir IR PatternMatch)

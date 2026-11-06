@@ -1,8 +1,7 @@
 #!r6rs
-;; The same rewrite written with the DSL: (:take-region SRC-OP IDX) is a region modifier that
-;; moves region IDX of SRC-OP into the new op instead of creating new blocks (plans/07-g7).
-;; The modifier does not exist yet, so this library does not compile.
-(library (passes take-region)
+;; (:move-region op 1) takes the second region of the source and keeps its position among the
+;; other region modifiers: the new op gets a built region, then the moved one, then an empty one.
+(library (passes move-ordered)
   (export run-pass)
   (import (except (rnrs) =)
           (only (mlir IR Operation) mlir::Operation::getContext)
@@ -12,18 +11,20 @@
           (only (mlir Transforms DialectConversion) add-rewrite-pattern)
           (crest))
 
-  (define-rewrite-pattern (%%adopt op rewriter)
+  (define-rewrite-pattern (%%ordered op rewriter)
     :if-match
-      test.src ()
+      test.two ()
     :rewrite op :with
       test.dst ()
-      (:take-region op 0))
+      (^bb0 () test.built ())
+      (:move-region op 1)
+      (:region))
 
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (with-RewritePatternSet patterns (ctx)
-          (add-rewrite-pattern patterns "test.src" %%adopt 10)
+          (add-rewrite-pattern patterns "test.two" %%ordered 10)
           (mlir::applyPatternsGreedily module-op patterns)))))
 
   ) ;; end library

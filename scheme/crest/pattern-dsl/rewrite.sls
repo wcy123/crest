@@ -66,7 +66,7 @@
           (for (rename (rime loop) (:with :rime-with)) expand)
           (for (only (crest pattern-dsl srcloc) syntax->file+line+col) expand)
           (for (only (crest pattern-dsl keywords)
-                     = : -> :region :loc
+                     = : -> :region :loc :move-region
                      :string :index
                      :i8 :i16 :i32 :i64
                      :f32 :f64
@@ -97,6 +97,9 @@
                      with-current-Block) expand)
           (only (mlir IR Block) current-Block with-current-Block)
           (for (only (mlir IR Operation) mlir::Operation::getRegion) expand)
+          (for (only (mlir IR PatternMatch) current-RewriterBase) expand)
+          (only (mlir IR PatternMatch) current-RewriterBase)
+          (for (only (mlir Transforms DialectConversion) mlir::RewriterBase::inlineRegionBefore) expand)
           (for (only (mlir IR Operation) mlir::Operation::getResult) expand)
           (for (only (crest pattern-dsl ast)
                      make-ast-emit-op ast-emit-op?
@@ -116,6 +119,13 @@
     (or (current-OpBuilder)
         (error '%%current-builder
                "no active builder — use begin-mlir-code inside :rewrite :with or a ^bb block, or wrap it in (with-current-OpBuilder builder ...)")))
+
+  ;; Returns the active rewriter: the CrestBox<RewriterBase*> shell in current-RewriterBase,
+  ;; installed by :rewrite :with. Error if none is set.
+  (define (%%current-rewriter)
+    (or (current-RewriterBase)
+        (error '%%current-rewriter
+               ":move-region needs the pattern's rewriter — use it inside :rewrite :with, or wrap the call in (with-current-RewriterBase rewriter ...)")))
 
   ;; Create an op from a prepared OperationState with a raw OpBuilder*.
   (define (%%crest:create-op! builder state)
@@ -210,7 +220,7 @@
 
       ;; Classify one modifier element for the new v2 attribute syntax.
       ;; Attribute form: (name : val) or (name : val :keyword)
-      ;; Region form:    (^label ...) or (:region ...)
+      ;; Region form:    (^label ...), (:region ...) or (:move-region src-op [idx])
       ;; Loc form:       (:loc expr)
       ;; Returns a tagged pair: (attr . setter-fn), (region . fill-fns), or (loc . stx).
       ;;
@@ -231,7 +241,7 @@
                  [regions '()]
                  [loc     #f]
                  [types   '()])
-          (syntax-case items (-> :region : :string :index
+          (syntax-case items (-> :region :move-region : :string :index
                                  :i8 :i16 :i32 :i64 :f32 :f64
                                  :i8-array :i16-array :i32-array :i64-array :unit :loc)
             ;; -> type-list, continue accumulating types
@@ -264,6 +274,15 @@
                                                       (map make-block-fill
                                                            (syntax->list #'((bb body ...) ...))))))
                    loc types))]
+            ;; (:move-region src-op [idx]) — one region, moved from region idx (default 0) of src-op
+            [((:move-region src-op) . rest)
+             (lp #'rest attrs
+                 (append regions (list (make-region-move-fn (length regions) #'src-op #'0)))
+                 loc types)]
+            [((:move-region src-op idx) . rest)
+             (lp #'rest attrs
+                 (append regions (list (make-region-move-fn (length regions) #'src-op #'idx)))
+                 loc types)]
             ;; (name : val :kw) — attribute with type-constructor keyword
             [((name : val :string) . rest)
              (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
@@ -446,9 +465,31 @@
                           [(block-fill-stmt ...)
                            (map (lambda (fn) (fn region-id)) block-fill-fns)])
               #`(let ([#,region-id (mlir::Operation::getRegion new-op region-idx)])
-                  (if #f #f) ;; in case when block-fill-stmt is empty,
-                  ;; `let` does not allow an empty body
+                  ;; Keeps the `let` body non-empty when the region has no blocks.
+                  (if #f #f)
                   block-fill-stmt ...)))))
+
+      ;; @brief Build the code that moves an existing region into the op being created.
+      ;;
+      ;; The slot is reserved with addRegion like any region modifier. After the op exists, the
+      ;; blocks of region idx of src-op are moved into it with the rewriter's inlineRegionBefore,
+      ;; which leaves the source region empty. The caller owns what that does to src-op: it is
+      ;; normally the op the pattern replaces.
+      ;;
+      ;; @param region-index  exact integer: the 0-based position among the op's region modifiers
+      ;; @param src-op-stx    expression yielding the source Operation*
+      ;; @param idx-stx       expression yielding the source region index
+      ;; @return              a procedure (lambda (op-stx) -> syntax), as make-region-fill-fn
+      (define (make-region-move-fn region-index src-op-stx idx-stx)
+        (lambda (op-stx)
+          (with-syntax ([new-op     op-stx]
+                        [region-idx region-index]
+                        [src-op     src-op-stx]
+                        [src-idx    idx-stx])
+            #'(mlir::RewriterBase::inlineRegionBefore
+               (%%current-rewriter)
+               (mlir::Operation::getRegion src-op src-idx)
+               (mlir::Operation::getRegion new-op region-idx)))))
 
       ;;-------------------------------------------------------------------
       ;; Code emitters

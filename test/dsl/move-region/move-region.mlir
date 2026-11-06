@@ -7,18 +7,19 @@
 // that same block, with its argument and its op, and test.src to be gone.
 //
 //   adopt-by-hand  the control: the move written by hand (works today)
-//   take-region    the DSL form (:take-region op 0), which does not exist yet
+//   move-region    the DSL form (:move-region op)
+//   move-ordered   (:move-region op 1) between two other region modifiers (second function)
 //
-// Remove XFAIL when G7 is implemented. The syntax is the one proposed in the plan; if another
-// is chosen, change take-region.sls.
-//
-// XFAIL: *
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
 // RUN:   %crest-opt -allow-unregistered-dialect \
 // RUN:   --crest-pass="passes=passes/adopt-by-hand" %s | %FileCheck %s
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme2 \
 // RUN:   %crest-opt -allow-unregistered-dialect \
-// RUN:   --crest-pass="passes=passes/take-region" %s | %FileCheck %s
+// RUN:   --crest-pass="passes=passes/move-region" %s | %FileCheck %s
+
+// RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme3 \
+// RUN:   %crest-opt -allow-unregistered-dialect \
+// RUN:   --crest-pass="passes=passes/move-ordered" %s | %FileCheck %s --check-prefix=ORDER
 
 // CHECK-LABEL: func.func @f
 // CHECK:         "test.dst"() ({
@@ -27,10 +28,31 @@
 // CHECK-NEXT:    }) : () -> ()
 // CHECK-NOT:     test.src
 
+// ORDER-LABEL: func.func @g
+// ORDER:         "test.dst"() ({
+// ORDER-NEXT:      "test.built"() : () -> ()
+// ORDER-NEXT:    }, {
+// ORDER-NEXT:    ^bb0(%[[B:.*]]: i32):
+// ORDER-NEXT:      "test.second"(%[[B]]) : (i32) -> ()
+// ORDER-NEXT:    }, {
+// ORDER-NEXT:    }) : () -> ()
+// ORDER-NOT:     test.two
+// ORDER-NOT:     test.first
+
 func.func @f() {
   "test.src"() ({
   ^bb0(%a: i32):
     "test.use"(%a) : (i32) -> ()
+  }) : () -> ()
+  return
+}
+
+func.func @g() {
+  "test.two"() ({
+    "test.first"() : () -> ()
+  }, {
+  ^bb0(%b: i32):
+    "test.second"(%b) : (i32) -> ()
   }) : () -> ()
   return
 }

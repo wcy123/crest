@@ -144,7 +144,7 @@
           :current-op :attr :has-attr? :attr-or
           :optional :variadic
           :index :i64 :f32 :i32-array :i64-array :unit
-          :loc
+          :loc :move-region
           :arg :builder
           make-unbound-value unbound-value?
           ;; Context parameters re-exported for user convenience

@@ -516,6 +516,31 @@ op = my.op ()
      -> !i32
 ```
 
+To keep the body of an existing op instead of building one, use `:move-region`:
+
+```scheme
+:rewrite op :with
+  func.func ()
+    (sym_name : (mlir::Operation::getAttr op "sym_name"))
+    (:move-region op)          ; region 0 of op; (:move-region op 1) is region 1
+```
+
+`(:move-region src-op [idx])` takes any expression that yields an operation, and `idx` defaults
+to 0. It reserves a region slot like `(^bb ...)`, so the order among region modifiers is kept.
+After the new op is created, the blocks of region `idx` of `src-op` are moved into the slot with
+the pattern's `inlineRegionBefore`; the block arguments and ops are the same ones, not copies.
+It needs the pattern's rewriter, so it works inside `:rewrite :with`. Anywhere else it raises an
+error unless the call is wrapped in `with-current-RewriterBase`.
+
+The move leaves the source region empty. That is fine when `src-op` is erased afterwards, which
+is the op the pattern replaces. Taking the region of an op that stays, when that op requires its
+region (`func.func`, `scf.for`, ...), makes it invalid, and the verifier reports it at the end
+of the pass. This is the user's responsibility, as it is when the move is written by hand. The
+feature is meant for an isolated destination such as `func.func` or `gpu.func`, whose body uses
+only its own arguments. For a destination that is not isolated, values the body captures from
+outside must still be in scope, and the terminators must still match the new op; the move does
+neither. Block-argument types are not converted either.
+
 In summary:
 
 | Form | Regions | Blocks per region | Block args |
@@ -525,6 +550,7 @@ In summary:
 | `(^bb ,@types ...)`  | 1 | 1 | dynamic |
 | `(:region (^a ...) (^b ...))` | 1 | N | static |
 | `(:region ...) (:region ...)` | N | N each | static |
+| `(:move-region src-op [idx])` | 1 | those of the source region | the source's |
 
 The body of every `^label` block is a recursive `begin-mlir-code` call — the
 same flat op-form syntax. Regions can be nested arbitrarily deep.
@@ -901,6 +927,7 @@ convention from CLAUDE.md Rules 10–11:
 | `current-MLIRContext` | `with-current-MLIRContext` | `(mlir IR MLIRContext)` | user / `with-current-MLIRContext` |
 | `current-Block` | `with-current-Block` | `(mlir IR Block)` | `^bb0` block bodies |
 | `current-OpBuilder` | `with-current-OpBuilder` | `(mlir IR Builders)` | `:rewrite :with` and `^bb` bodies; user code via `with-current-OpBuilder` |
+| `current-RewriterBase` | `with-current-RewriterBase` | `(mlir IR PatternMatch)` | `:rewrite :with`; read by `:move-region` |
 
 `current-OpBuilder` holds a **raw** `mlir::OpBuilder*`, never a CrestObject shell. A pattern's
 rewriter is a `CrestBox<RewriterBase*>` shell; `(crest::as_ptr<mlir::OpBuilder> rw)` unwraps it
