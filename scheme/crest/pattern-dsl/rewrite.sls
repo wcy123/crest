@@ -342,7 +342,7 @@
                               attrs) regions loc types)]
             ;; anything else — stop
             [(otherwise ...)
-             (values (reverse attrs) regions loc (reverse types) #'(otherwise ...))])))
+             (values (reverse attrs) regions loc types #'(otherwise ...))])))
 
       ;; Returns (values head remaining):
       ;;   (values #f #f)           — items is empty
