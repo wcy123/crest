@@ -76,6 +76,17 @@ Three steps run in order when `--opt` is passed:
 ./toyc example.toy --emit=mlir --opt
 ```
 
+## What is written with the DSL
+
+| Part | Written with | Why |
+|---|---|---|
+| The dialect, including `toy.cast` | `define-dialect` | as in Ch3 |
+| The cast the inliner interface creates | `begin-mlir-code` inside the `materializeCallConversion` callback | the callback gets a builder; `with-current-OpBuilder` installs it |
+| Every op `mlir-gen.sls` creates | `begin-mlir-code` | as in Ch2 |
+| The canonicalization patterns | `define-rewrite-pattern` | as in Ch3 |
+| Inlining | Scheme (`%%inline-calls!` in `toyc.sls`) | it clones ops whose name, operands and attributes are data, so each op is built with an `OperationState`. MLIR's inliner cannot replace it: it needs call interfaces on `toy.generic_call` and `toy.func`, which the dialect DSL cannot declare, and a terminator trait on `toy.return`, which needs LLVM 23 |
+| Shape inference | Scheme walk (`%%run-shape-inference!`) | it changes result types in place and creates no op |
+
 ## Related Documents
 
 - [inlining.md](inlining.md) — step-by-step walkthrough of how MLIR's inliner

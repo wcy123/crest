@@ -234,3 +234,10 @@ patterns — one for each arity.
   that uses `:optional`, `:where`, `:then-let`, and attribute extraction.
 - Study `samples/passes/onnx-to-hipsr/matmul.sls` for a dialect conversion
   pattern with nested regions.
+- Follow the Toy tutorial in `samples/toy`, chapter by chapter. Each chapter README ends with a
+  table of what is written with the DSL and why the rest is not:
+  [Ch2](../samples/toy/ch2/README.md) shows `define-dialect` and `begin-mlir-code` generating IR,
+  [Ch3](../samples/toy/ch3/README.md) and [Ch4](../samples/toy/ch4/README.md) show
+  `define-rewrite-pattern`, [Ch5](../samples/toy/ch5/README.md) shows
+  `define-conversion-pattern`, `apply-conversion`, `:move-region` and regions with `^bb`, and
+  [Ch6](../samples/toy/ch6/README.md) shows a full lowering to LLVM.

@@ -62,6 +62,16 @@ lowering reads as the IR it produces.
 ./toyc example.toy --emit=mlir-affine --opt
 ```
 
+## What is written with the DSL
+
+| Part | Written with | Why |
+|---|---|---|
+| The dialect, `mlir-gen.sls`, the canonicalization patterns | `define-dialect`, `begin-mlir-code`, `define-rewrite-pattern` | as in Ch4 |
+| The affine lowering of `toy.constant`, `toy.add`, `toy.mul`, `toy.transpose`, `toy.func`, `toy.return`, `toy.print` | `define-conversion-pattern`, with every op a `begin-mlir-code` form | see the section above |
+| Registering the conversion | `apply-conversion` (`:mode partial`, `:type-converter`, `:legal-dialects`, `:illegal-dialects`, `:dynamically-legal`, `:patterns`) | one declaration instead of a type converter, a target and a pattern set created and freed by hand |
+| Moving the body of `toy.func` into `func.func` | `(:move-region op)` | the region moves, it is not rebuilt |
+| Inlining and shape inference | Scheme, as in Ch4 | the reasons are in the Ch4 README |
+
 ## Related Documents
 
 - [inlining.md](../ch4/inlining.md) — how `DialectInlinerInterface` works
