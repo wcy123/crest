@@ -55,7 +55,7 @@ def library_exports(root):
         for f in files:
             if not f.endswith('.sls'):
                 continue
-            toks = tokens(open(os.path.join(dirpath, f)).read())
+            toks = tokens(open(os.path.join(dirpath, f), encoding='utf-8').read())
             try:
                 at = toks.index('library')
                 name, j = read_forms(toks, at + 1)
@@ -81,7 +81,7 @@ def library_exports(root):
 def main(manual_path, scheme_root):
     libs = library_exports(scheme_root)
     everything = set().union(*libs.values())
-    manual = open(manual_path).read()
+    manual = open(manual_path, encoding='utf-8').read()
     problems = []
 
     section = manual[manual.index('## 9. MLIR bindings reference'):manual.index('## 10. Deployment')]
