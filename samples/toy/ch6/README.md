@@ -35,9 +35,16 @@ translated to LLVM IR, or executed directly with the MLIR `ExecutionEngine`.
 
 ### `toy.print` → `printf`
 
-`%%print-lower!` is registered with `:no-type-converter` (no
-`TypeConverter`), so it sees the original, unconverted memref operand and reads
-its shape directly. For a memref of shape `d0 x d1 x ...` it emits:
+`%%print-lower!` is a `define-conversion-pattern`, registered with
+`:no-type-converter` (no `TypeConverter`). It reads the original memref
+operand from the op, not the converted one, and takes its shape from that
+operand's type. The scf loop nest is written with `begin-mlir-code`: each
+`scf.for` is an op-form whose body is a `^body` block, so the ops of the
+inner loops land inside it, and the `printf` calls, the global strings and
+the `memref.load` use typed builders on the same ambient builder. The
+helpers that declare `@printf` and the globals insert at the start of the
+module under an `InsertionGuard`, which restores the insertion point when
+they return. For a memref of shape `d0 x d1 x ...` it emits:
 
 1. `llvm.func @printf(!llvm.ptr, ...) -> i32`, declared on first use.
 2. Two private global strings, created on first use:
