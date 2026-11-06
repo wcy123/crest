@@ -104,12 +104,11 @@ void registerIRRewriterBaseBindings() {
         return reinterpret_cast<uint64_t>(rw.create(state));
       });
   // inlineRegionBefore: move all blocks of the source region to the front of
-  // the destination region, reporting each move to the builder's listener.
-  // RewriterBase::inlineRegionBefore uses nothing of the rewriter but its
-  // listener, so this takes the raw OpBuilder* that current-OpBuilder holds:
-  // the ambient builder of a ^bb body is a plain OpBuilder, not a RewriterBase,
-  // and still shares the pattern's listener. (builder-ptr src-region-ptr
-  // dest-region-ptr) -> void
+  // the destination region. Takes the raw OpBuilder* that current-OpBuilder
+  // holds, not the rewriter shell: the ambient builder of a ^bb body is a plain
+  // OpBuilder, not a RewriterBase. An IRRewriter copy of it, which keeps the
+  // listener, is a real RewriterBase to call MLIR's own implementation on.
+  // (builder-ptr src-region-ptr dest-region-ptr) -> void
   Sregister_symbol(
       "mlir::RewriterBase::inlineRegionBefore",
       (void*)+[](uint64_t builder_ptr, uint64_t src_ptr,
@@ -118,18 +117,8 @@ void registerIRRewriterBaseBindings() {
             builder_ptr, "mlir::RewriterBase::inlineRegionBefore");
         auto* src = reinterpret_cast<mlir::Region*>(src_ptr);
         auto* dest = reinterpret_cast<mlir::Region*>(dest_ptr);
-        auto before = dest->begin();
-        auto* listener = builder.getListener();
-        if (!listener) {
-          dest->getBlocks().splice(before, src->getBlocks());
-          return;
-        }
-        while (!src->empty()) {
-          mlir::Block* block = &src->front();
-          auto next = std::next(block->getIterator());
-          block->moveBefore(dest, before);
-          listener->notifyBlockInserted(block, src, next);
-        }
+        mlir::IRRewriter(builder).inlineRegionBefore(*src, *dest,
+                                                     dest->begin());
       });
   Sregister_symbol(
       "mlir::RewritePatternSet::RewritePatternSet",
