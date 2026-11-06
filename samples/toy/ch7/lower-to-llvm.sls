@@ -18,15 +18,18 @@
                 mlir::IndexType::get
                 mlir::IntegerType::get<i8>
                 mlir::IntegerType::get<i32>
+                mlir::IntegerType::get<i64>
+                mlir::MemRefType::getElementType
                 mlir::ShapedType::getShape)
           (only (mlir IR BuiltinAttributes)
-                mlir::StringAttr::get/len)
+                mlir::StringAttr::get/len
+                mlir::TypeAttr::get
+                mlir::parseAttribute)
           (mlir Pass PassManager)
           (mlir Transforms Passes)
           (mlir Dialect LLVMIR IR LLVMDialect)
           (mlir Dialect LLVMIR IR LLVMOps)
           (mlir Dialect LLVMIR Transforms Passes)
-          (mlir Dialect MemRef IR MemRef)
           (mlir Conversion LLVMCommon TypeConverter)
           (mlir Conversion AffineToStandard AffineToStandard)
           (mlir Conversion SCFToControlFlow SCFToControlFlow)
@@ -42,18 +45,31 @@
   ;; toy.print → printf calls inside an scf.for nest
   ;;===--------------------------------------------------------------------===;;
 
+  ;; The type of printf: i32 (ptr, ...).
+  (define (%%printf-type ctx)
+    (mlir::LLVM::LLVMFunctionType::get ctx
+                                       (mlir::IntegerType::get<i32> ctx)
+                                       (mlir::LLVM::LLVMPointerType::get ctx)
+                                       1))
+
   ;; Get-or-insert the @printf declaration at the start of the module. The insertion point
   ;; is restored when the guard ends.
   (define (%%get-or-insert-printf! rw module-op ctx)
     (if (not (zero? (mlir::ModuleOp::lookupSymbol module-op "printf")))
         (mlir::FlatSymbolRefAttr::get ctx "printf")
-        (let* ([i32ty (mlir::IntegerType::get<i32> ctx)]
-               [ptrty (mlir::LLVM::LLVMPointerType::get ctx)]
-               [fnty  (mlir::LLVM::LLVMFunctionType::get ctx i32ty ptrty 1)]
-               [body  (mlir::ModuleOp::getBody module-op)])
+        (let ([fnty (%%printf-type ctx)]
+              [body (mlir::ModuleOp::getBody module-op)])
           (with-InsertionGuard guard (rw)
                                (mlir::RewriterBase::setInsertionPointToStart rw body)
-                               (mlir::LLVM::LLVMFuncOp::create rw (mlir::Operation::getLoc module-op) "printf" fnty))
+                               (with-current-OpBuilder rw
+                                 (begin-mlir-code
+                                     llvm.func ()
+                                     (sym_name : "printf" :string)
+                                     (function_type : (mlir::TypeAttr::get fnty))
+                                     (linkage : (mlir::parseAttribute "#llvm.linkage<external>"))
+                                     (CConv : (mlir::parseAttribute "#llvm.cconv<ccc>"))
+                                     (:region)
+                                     :loc (mlir::Operation::getLoc module-op))))
           (mlir::FlatSymbolRefAttr::get ctx "printf"))))
 
   ;; Get-or-create a global string constant at the start of the module; returns the global op.
@@ -62,37 +78,63 @@
       (if (not (zero? existing))
           existing
           (let* ([len   (string-length value)]  ; includes embedded NUL
-                 [i8ty  (mlir::IntegerType::get<i8> ctx)]
-                 [arrty (mlir::LLVM::LLVMArrayType::get i8ty len)]
+                 [arrty (mlir::LLVM::LLVMArrayType::get (mlir::IntegerType::get<i8> ctx) len)]
                  ;; Use get/len so embedded NUL bytes are preserved in the StringAttr.
                  [attr  (mlir::StringAttr::get/len ctx value len)]
                  [body  (mlir::ModuleOp::getBody module-op)])
             (with-InsertionGuard guard (rw)
                                  (mlir::RewriterBase::setInsertionPointToStart rw body)
-                                 (mlir::LLVM::GlobalOp::create rw loc arrty 1 8 name attr))))))
+                                 (with-current-OpBuilder rw
+                                   (begin-mlir-code
+                                       llvm.mlir.global ()
+                                       (global_type : (mlir::TypeAttr::get arrty))
+                                       (constant : #f :unit)
+                                       (sym_name : name :string)
+                                       (linkage : (mlir::parseAttribute "#llvm.linkage<private>"))
+                                       (value : attr)
+                                       (:region)
+                                       :loc loc)))))))
 
   ;; Get-or-create a global string and return a GEP to its first char, emitted at the
   ;; current insertion point.
   (define (%%global-string-ptr! rw loc name value module-op ctx)
     (let* ([global (%%get-or-create-global-string! rw loc name value module-op ctx)]
-           [ptrty  (mlir::LLVM::LLVMPointerType::get ctx)]
-           [arrty  (mlir::LLVM::GlobalOp::getType global)]
-           [addr   (mlir::LLVM::AddressOfOp::create rw loc global)]
-           [c0     (mlir::LLVM::ConstantOp::create<i64> rw loc 0)])
-      (mlir::LLVM::GEPOp::create rw loc ptrty arrty addr c0 c0)))
+           [ptr    (mlir::LLVM::LLVMPointerType::get ctx)]
+           [i64    (mlir::IntegerType::get<i64> ctx)]
+           [arrty  (mlir::LLVM::GlobalOp::getType global)])
+      (begin-mlir-code
+          addr = llvm.mlir.addressof ()
+          (global_name : (mlir::FlatSymbolRefAttr::get ctx name))
+          :loc loc -> ptr
+          zero = llvm.mlir.constant () (value : 0 :i64) :loc loc -> i64
+          gep  = llvm.getelementptr (addr zero zero)
+          (rawConstantIndices : '(-2147483648 -2147483648) :i32-array)
+          (elem_type : (mlir::TypeAttr::get arrty))
+          :loc loc -> ptr)))
+
+  ;; Call printf with args, at the ambient builder.
+  (define (%%call-printf! loc ctx printf-ref args)
+    (let ([fnty (%%printf-type ctx)]
+          [i32  (mlir::IntegerType::get<i32> ctx)])
+      (begin-mlir-code
+          ret = llvm.call (,@args)
+          (callee : printf-ref)
+          (var_callee_type : (mlir::TypeAttr::get fnty))
+          (operandSegmentSizes : (list (length args) 0) :i32-array)
+          (op_bundle_sizes : '() :i32-array)
+          :loc loc -> i32)))
 
   ;; Emit an scf.for nest over shape; the innermost body loads one element of in and calls
   ;; printf with fmt, and each loop except the innermost prints nl after its body. The ops go
   ;; to the ambient builder; each loop body is a ^bb, so its ops land inside the loop.
   (define (%%emit-print-nest! loc ctx printf-ref fmt nl in shape)
-    (let* ([idx  (mlir::IndexType::get ctx)]
-           [i32  (mlir::IntegerType::get<i32> ctx)]
-           [ptr  (mlir::LLVM::LLVMPointerType::get ctx)]
-           [fnty (mlir::LLVM::LLVMFunctionType::get ctx i32 ptr 1)])
+    (let ([idx  (mlir::IndexType::get ctx)]
+          [elem-type (mlir::MemRefType::getElementType (mlir::Value::getType in))])
       (let nest ([dims shape] [ivs '()])
         (if (null? dims)
-            (let ([elem (mlir::memref::LoadOp::create (current-OpBuilder) loc in (reverse ivs))])
-              (mlir::LLVM::CallOp::create (current-OpBuilder) loc fnty printf-ref (list fmt elem)))
+            (begin-mlir-code
+                elem = memref.load (in ,@(reverse ivs)) :loc loc -> elem-type
+                (%%call-printf! loc ctx printf-ref (list fmt elem)))
             (begin-mlir-code
                 lb = arith.constant () (value : 0 :index) :loc loc -> idx
                 ub = arith.constant () (value : (car dims) :index) :loc loc -> idx
@@ -101,7 +143,7 @@
                 (^body ((iv : idx))
                        (nest (cdr dims) (cons iv ivs))
                        (when (pair? (cdr dims))
-                         (mlir::LLVM::CallOp::create (current-OpBuilder) loc fnty printf-ref (list nl)))
+                         (%%call-printf! loc ctx printf-ref (list nl)))
                        scf.yield () :loc loc)
                 :loc loc)))))
 

@@ -38,13 +38,19 @@ translated to LLVM IR, or executed directly with the MLIR `ExecutionEngine`.
 `%%print-lower!` is a `define-conversion-pattern`, registered with
 `:no-type-converter` (no `TypeConverter`). It reads the original memref
 operand from the op, not the converted one, and takes its shape from that
-operand's type. The scf loop nest is written with `begin-mlir-code`: each
-`scf.for` is an op-form whose body is a `^body` block, so the ops of the
-inner loops land inside it, and the `printf` calls, the global strings and
-the `memref.load` use typed builders on the same ambient builder. The
-helpers that declare `@printf` and the globals insert at the start of the
-module under an `InsertionGuard`, which restores the insertion point when
-they return. For a memref of shape `d0 x d1 x ...` it emits:
+operand's type. Every op is written with `begin-mlir-code`, so none is created
+by a typed builder: each `scf.for` is an op-form whose body is a `^body` block,
+so the ops of the inner loops land inside it, and `memref.load`, `llvm.func`,
+`llvm.mlir.global`, `llvm.mlir.addressof`, `llvm.getelementptr` and the variadic
+`llvm.call` are op-forms too. The ops that typed builders would fill in by
+default are spelled out as attributes: the linkage and calling convention of
+`llvm.func`, the linkage and `constant` flag of `llvm.mlir.global`, the
+`rawConstantIndices` and `elem_type` of `llvm.getelementptr` (a dynamic index is
+`-2147483648`), and for the call its `callee`, `var_callee_type`,
+`operandSegmentSizes` and `op_bundle_sizes`. The helpers that declare `@printf`
+and the globals insert at the start of the module under an `InsertionGuard`,
+which restores the insertion point when they return. For a memref of shape
+`d0 x d1 x ...` it emits:
 
 1. `llvm.func @printf(!llvm.ptr, ...) -> i32`, declared on first use.
 2. Two private global strings, created on first use:
