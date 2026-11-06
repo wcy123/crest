@@ -5,7 +5,7 @@
 ;;          [--emit=ast|--emit=mlir|--emit=mlir-affine] [--opt]
 ;;
 ;; --emit=mlir-affine pipeline (superset of ch4 --opt):
-;;   1. Inline (mlir::createInlinerPass via MLIR PassManager)
+;;   1. Inline (Scheme-level %%inline-calls!, as in ch4)
 ;;   2. Shape inference (Scheme walk, per toy.func)
 ;;   3. Canonicalize (greedy rewrite, ch3/ch4 patterns)
 ;;   4. (affine) Scheme-level partial lowering toy → Affine+Arith+MemRef+Func
@@ -29,7 +29,6 @@
         (mlir Transforms GreedyPatternRewriteDriver)
         (mlir Pass PassManager)
         (mlir Transforms Passes)
-        (mlir Transforms InliningUtils)
         (mlir Dialect Affine Transforms Passes)
         (mlir Dialect Affine IR AffineOps)
         (mlir Dialect Arith IR Arith)

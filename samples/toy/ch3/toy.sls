@@ -153,7 +153,7 @@
     (define-op transpose
       :summary    "transpose a 2D tensor"
       :operands   ((input mlir::Value?))
-      :results    ((output mlir::isa<RankedTensorType>?))
+      :results    ((output mlir::Value?))
       (:parse (parser state) (%%parse-unary-to-type parser state))
       (:print (op printer name) (%%print-unary-to-type op printer name)))
 
@@ -169,7 +169,7 @@
     (define-op generic_call
       :summary    "generic function call"
       :attributes ((callee mlir::StringAttr))
-      :results    ((output mlir::isa<RankedTensorType>?))
+      :results    ((output mlir::Value?))
       (:parse (parser state)
         (%%parse-generic-call parser state))
       (:print (op printer name)

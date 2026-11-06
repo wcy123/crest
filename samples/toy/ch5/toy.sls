@@ -3,10 +3,12 @@
 ;;
 ;; Ch4 adds:
 ;;   - toy.cast op (bridges ranked/unranked type mismatches at call boundaries)
-;;   - DialectInlinerInterface so MLIR's inliner can inline toy.generic_call
+;;   - DialectInlinerInterface, the interface MLIR's inliner would use for toy.generic_call.
+;;     toyc.sls inlines in Scheme instead: MLIR's inliner needs the call interfaces and a
+;;     terminator trait, which a Scheme dialect cannot declare before LLVM 23.
 (library (toy ch5 toy)
   (export toy)
-  (import (chezscheme)
+  (import (except (chezscheme) =)
           (crest dialect)
           (mlir IR Value)
           (mlir IR BuiltinTypes)
@@ -22,7 +24,12 @@
                 mlir::function_interface_impl::printFunctionOp
                 mlir::function_interface_impl::parseFunctionOp)
           (only (mlir support array-ref) crest::CArrayRef::size crest::CArrayRef::at)
-          (for (except (rime loop) :name) expand))
+          (for (except (rime loop) :name) expand)
+          (for (only (crest pattern-dsl rewrite) begin-mlir-code) expand)
+          (for (only (crest pattern-dsl keywords) = :string :loc :arg) expand)
+          (only (crest pattern-dsl keywords) = : -> :region :loc
+                :string :index :i8 :i16 :i32 :i64 :f32 :f64
+                :i8-array :i16-array :i32-array :i64-array :unit))
 
   (define (%%parsed? h) (not (zero? h)))
 
@@ -80,8 +87,8 @@
     (let ([result-type (mlir::Value::getType (mlir::Operation::getResult op 0))])
       (if (let loop ([i 0])
             (or (>= i (mlir::Operation::getNumOperands op))
-                (and (= (mlir::Value::getType (mlir::Operation::getOperand op i))
-                        result-type)
+                (and (eqv? (mlir::Value::getType (mlir::Operation::getOperand op i))
+                           result-type)
                      (loop (+ i 1)))))
           (mlir::OpAsmPrinter::printType printer result-type)
           (mlir::OpAsmPrinter::printFunctionalType printer op))))
@@ -109,10 +116,11 @@
                                                       (mlir::Operation::getOperand op i))))
                    (handleTerminator/block (op new-dest) #f)
                    (materializeCallConversion (builder input result-type loc)
-                     (with-OperationState s (loc "toy.cast")
-                       (mlir::OperationState::addOperands s input)
-                       (mlir::OperationState::addTypes s result-type)
-                       (mlir::OpBuilder::create<OperationState> builder s))))))
+                     ;; MLIR wants the op, not its result.
+                     (with-current-OpBuilder builder
+                       (mlir::Value::getDefiningOp
+                        (begin-mlir-code
+                            r = toy.cast (input) :loc loc -> result-type)))))))
     (define-op constant
       :summary    "constant tensor"
       :attributes ((value mlir::DenseElementsAttr))

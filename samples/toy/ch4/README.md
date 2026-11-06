@@ -1,8 +1,14 @@
 # Toy Ch4 — Inlining
 
-Ch4 enables MLIR's generic inliner for `toy.generic_call` and adds `toy.cast`
-to handle ranked/unranked tensor mismatches that appear at call boundaries
-after inlining.
+Ch4 inlines `toy.generic_call` and adds `toy.cast` to handle ranked/unranked
+tensor mismatches that appear at call boundaries after inlining.
+
+The inlining is done by a Scheme-level inliner in `toyc.sls`, not by MLIR's
+inliner pass. MLIR's inliner needs `toy.generic_call` and `toy.func` to
+implement the call interfaces and `toy.return` to be a terminator, and before
+LLVM 23 a dialect written in Scheme can declare neither (see
+`lib/Crest/TraitStub.cpp`). The dialect still defines the
+`DialectInlinerInterface` that MLIR's inliner would use.
 
 ## What's new over Ch3
 
@@ -46,8 +52,9 @@ assembly format as `transpose` and `reshape`.
 
 Three steps run in order when `--opt` is passed:
 
-1. **Inline** — runs MLIR's inliner, consuming all `toy.generic_call` ops and
-   eliminating private functions.
+1. **Inline** — the Scheme-level `%%inline-calls!` clones each callee body in
+   front of its call, consuming all `toy.generic_call` ops, and then removes
+   the private functions.
 2. **Shape inference** — walks each `toy.func` body; for every op with
    unranked result types whose operands are all ranked, infers and sets the
    result type. Repeats to fixed point.
@@ -71,7 +78,8 @@ Three steps run in order when `--opt` is passed:
 
 ## Related Documents
 
-- [inlining.md](inlining.md) — step-by-step walkthrough of how the MLIR
-  inliner calls `handleTerminator` and why the callback is dialect-specific
+- [inlining.md](inlining.md) — step-by-step walkthrough of how MLIR's inliner
+  would call `handleTerminator` on the dialect's interface (`toyc.sls` does not
+  run MLIR's inliner, see above) and why the callback is dialect-specific
 - [../ch3/README.md](../ch3/README.md) — Ch3 canonicalization patterns that
   Ch4 inherits

@@ -68,6 +68,8 @@ add_library(CrestBindings STATIC
   IR/AffineMap.h
   IR/Block.cpp
   IR/Block.h
+  IR/Dialect.cpp
+  IR/Dialect.h
   IR/DialectRegistry.cpp
   IR/DialectRegistry.h
   IR/BuiltinAttributes.cpp
