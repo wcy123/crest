@@ -39,8 +39,7 @@
     %crest::isa<CrestBox<mlir::TypeConverter>>
     %crest::isa<CrestBox<mlir::ConversionTarget>>
     %mlir::applyPartialConversion
-    %mlir::RewriterBase::modifyOpInPlace
-    %mlir::RewriterBase::inlineRegionBefore)
+    %mlir::RewriterBase::modifyOpInPlace)
 
   (import (chezscheme))
 
@@ -153,8 +152,5 @@
   (define %mlir::RewriterBase::modifyOpInPlace
     (foreign-procedure "mlir::RewriterBase::modifyOpInPlace"
                        (uptr uptr scheme-object) void))
-
-  (define %mlir::RewriterBase::inlineRegionBefore
-    (foreign-procedure "mlir::RewriterBase::inlineRegionBefore" (uptr uptr uptr) void))
 
   ) ;; end library (mlir Transforms DialectConversion ffi)

@@ -79,7 +79,6 @@
           (for (only (mlir IR Builders)
                      mlir::OpBuilder::atBlockEnd
                      mlir::OpBuilder::getListener
-                     crest::OpBuilder::inlineRegionBefore
                      with-OpBuilder
                      with-current-OpBuilder) expand)
           (for (only (mlir IR OperationSupport)
@@ -92,6 +91,7 @@
                      mlir::UnknownLoc::get
                      mlir::FileLineColLoc::get) expand)
           (for (only (mlir IR Region) mlir::Region::push_back<Block>) expand)
+          (for (only (mlir IR PatternMatch) mlir::RewriterBase::inlineRegionBefore) expand)
           (for (only (mlir IR Block)
                      mlir::Block::getArgument
                      current-Block
@@ -463,7 +463,7 @@
       ;; @brief Build the code that moves an existing region into the op being created.
       ;;
       ;; The slot is reserved with addRegion like any region modifier. After the op exists, the
-      ;; blocks of region idx of src-op are moved into it with the ambient builder's listener,
+      ;; blocks of region idx of src-op are moved into it with inlineRegionBefore on the ambient builder,
       ;; which leaves the source region empty. The caller owns what that does to src-op: it is
       ;; normally the op the pattern replaces.
       ;;
@@ -477,7 +477,7 @@
                         [region-idx region-index]
                         [src-op     src-op-stx]
                         [src-idx    idx-stx])
-            #'(crest::OpBuilder::inlineRegionBefore
+            #'(mlir::RewriterBase::inlineRegionBefore
                (%%current-builder)
                (mlir::Operation::getRegion src-op src-idx)
                (mlir::Operation::getRegion new-op region-idx)))))

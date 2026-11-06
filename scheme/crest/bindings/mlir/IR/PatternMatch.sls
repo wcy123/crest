@@ -30,6 +30,7 @@
     mlir::RewriterBase::replaceOp
     mlir::RewriterBase::eraseOp
     mlir::RewriterBase::create<OperationState>
+    mlir::RewriterBase::inlineRegionBefore
     mlir::RewritePatternSet::RewritePatternSet
     ;; Type predicates
     crest::isa<CrestBox<mlir::RewritePatternSet>>?
@@ -47,6 +48,7 @@
                 %mlir::RewriterBase::replaceOp
                 %mlir::RewriterBase::eraseOp
                 %mlir::RewriterBase::create<OperationState>
+                %mlir::RewriterBase::inlineRegionBefore
                 %mlir::RewritePatternSet::RewritePatternSet
                 %crest::isa<CrestBox<mlir::RewritePatternSet>>)
           (only (mlir IR MLIRContext) current-MLIRContext)
@@ -78,6 +80,15 @@
   (define mlir::RewriterBase::eraseOp                 %mlir::RewriterBase::eraseOp)
 
   (define mlir::RewriterBase::create<OperationState> %mlir::RewriterBase::create<OperationState>)
+
+  ;; @brief mlir::RewriterBase::inlineRegionBefore — move all blocks of a region to the front of
+  ;; another region. Unlike the other RewriterBase bindings it takes the raw OpBuilder* (use
+  ;; crest::as_ptr<mlir::OpBuilder> on a rewriter shell), because only the builder's listener is
+  ;; needed; that also makes it work inside ^bb bodies.
+  ;; @param builder  raw OpBuilder* uptr
+  ;; @param src      Region* uptr; empty afterwards
+  ;; @param dest     Region* uptr
+  (define mlir::RewriterBase::inlineRegionBefore %mlir::RewriterBase::inlineRegionBefore)
   (define mlir::RewritePatternSet::RewritePatternSet  %mlir::RewritePatternSet::RewritePatternSet)
 
   ;; @brief crest::isa<CrestBox<mlir::RewritePatternSet>>? — is this ptr a CrestBox<mlir::RewritePatternSet>?

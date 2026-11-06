@@ -528,9 +528,8 @@ To keep the body of an existing op instead of building one, use `:move-region`:
 `(:move-region src-op [idx])` takes any expression that yields an operation, and `idx` defaults
 to 0. It reserves a region slot like `(^bb ...)`, so the order among region modifiers is kept.
 After the new op is created, the blocks of region `idx` of `src-op` are moved into the slot with
-`crest::OpBuilder::inlineRegionBefore`, which does what `RewriterBase::inlineRegionBefore` does
-through the ambient builder's listener; the block arguments and ops are the same ones, not
-copies.
+`mlir::RewriterBase::inlineRegionBefore` on the ambient builder; the block arguments and ops
+are the same ones, not copies.
 
 The move leaves the source region empty. That is fine when `src-op` is erased afterwards, which
 is the op the pattern replaces. Taking the region of an op that stays, when that op requires its

@@ -448,18 +448,6 @@ void registerTransformsDialectConversionBindings() {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         rw.modifyOpInPlace(op, [&] { scheme_call(fn); });
       });
-
-  // inlineRegionBefore: move all blocks from src region into dest region front.
-  // (rw-ptr src-region-ptr dest-region-ptr) → void
-  Sregister_symbol(
-      "mlir::RewriterBase::inlineRegionBefore",
-      (void*)+[](uint64_t rw_ptr, uint64_t src_ptr, uint64_t dest_ptr) -> void {
-        auto& rw = crest::CrestBox<mlir::RewriterBase*>::inner(
-            rw_ptr, "mlir::RewriterBase::inlineRegionBefore");
-        auto* src = reinterpret_cast<mlir::Region*>(src_ptr);
-        auto* dest = reinterpret_cast<mlir::Region*>(dest_ptr);
-        rw.inlineRegionBefore(*src, *dest, dest->begin());
-      });
 }
 
 } // namespace crest

@@ -163,7 +163,9 @@ current-OpBuilder      ; mlir::OpBuilder*    (mlir/IR/Builders.h)
 rewriter is a `CrestBox<RewriterBase*>` shell: unwrap it with `(crest::as_ptr<mlir::OpBuilder> rw)`
 (the C++ upcast adjusts the address; `RewriterBase` is polymorphic, so its `OpBuilder` base is not
 at offset 0). Bindings that take a builder take that raw pointer; rewriter-only operations
-(`replaceOp`, `eraseOp`, `inlineRegionBefore`, ...) keep taking the shell.
+(`replaceOp`, `eraseOp`, ...) keep taking the shell. The exception is `inlineRegionBefore`: MLIR's
+version needs only the builder's listener, so the binding takes the raw `OpBuilder*`. That also
+makes it work inside `^bb` bodies, where the ambient builder is not a `RewriterBase`.
 
 ### Rule 12 — RAII macro placement follows the C++ header
 

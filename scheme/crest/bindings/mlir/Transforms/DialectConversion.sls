@@ -35,7 +35,6 @@
     apply-full-conversion
     mlir::applyPartialConversion
     mlir::RewriterBase::modifyOpInPlace
-    mlir::RewriterBase::inlineRegionBefore
     add-conversion-pattern
     add-conversion-pattern/ctx
     add-rewrite-pattern
@@ -120,7 +119,6 @@
 
   (define mlir::applyPartialConversion  %mlir::applyPartialConversion)
   (define mlir::RewriterBase::modifyOpInPlace  %mlir::RewriterBase::modifyOpInPlace)
-  (define mlir::RewriterBase::inlineRegionBefore %mlir::RewriterBase::inlineRegionBefore)
 
   ;; @brief Register a Scheme ConversionPattern.
   (define add-conversion-pattern

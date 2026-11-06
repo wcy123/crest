@@ -12,6 +12,7 @@
 #include "mlir/IR/Operation.h"
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/IR/PatternMatch.h"
+#include "mlir/IR/Region.h"
 
 namespace crest {
 
@@ -101,6 +102,34 @@ void registerIRRewriterBaseBindings() {
         auto& state = crest::CrestBox<mlir::OperationState>::inner(
             state_ptr, "mlir::RewriterBase::create<OperationState>");
         return reinterpret_cast<uint64_t>(rw.create(state));
+      });
+  // inlineRegionBefore: move all blocks of the source region to the front of
+  // the destination region, reporting each move to the builder's listener.
+  // RewriterBase::inlineRegionBefore uses nothing of the rewriter but its
+  // listener, so this takes the raw OpBuilder* that current-OpBuilder holds:
+  // the ambient builder of a ^bb body is a plain OpBuilder, not a RewriterBase,
+  // and still shares the pattern's listener. (builder-ptr src-region-ptr
+  // dest-region-ptr) -> void
+  Sregister_symbol(
+      "mlir::RewriterBase::inlineRegionBefore",
+      (void*)+[](uint64_t builder_ptr, uint64_t src_ptr,
+                 uint64_t dest_ptr) -> void {
+        auto& builder = *crest::as_raw<mlir::OpBuilder>(
+            builder_ptr, "mlir::RewriterBase::inlineRegionBefore");
+        auto* src = reinterpret_cast<mlir::Region*>(src_ptr);
+        auto* dest = reinterpret_cast<mlir::Region*>(dest_ptr);
+        auto before = dest->begin();
+        auto* listener = builder.getListener();
+        if (!listener) {
+          dest->getBlocks().splice(before, src->getBlocks());
+          return;
+        }
+        while (!src->empty()) {
+          mlir::Block* block = &src->front();
+          auto next = std::next(block->getIterator());
+          block->moveBefore(dest, before);
+          listener->notifyBlockInserted(block, src, next);
+        }
       });
   Sregister_symbol(
       "mlir::RewritePatternSet::RewritePatternSet",

@@ -12,10 +12,9 @@
           (only (mlir IR Builders) crest::as_ptr<mlir::OpBuilder>
                 mlir::OpBuilder::create<OperationState>)
           (only (mlir IR PatternMatch) with-RewritePatternSet mlir::RewriterBase::setInsertionPoint
-                mlir::RewriterBase::eraseOp)
+                mlir::RewriterBase::eraseOp mlir::RewriterBase::inlineRegionBefore)
           (only (mlir Transforms GreedyPatternRewriteDriver) mlir::applyPatternsGreedily)
-          (only (mlir Transforms DialectConversion) add-rewrite-pattern
-                mlir::RewriterBase::inlineRegionBefore))
+          (only (mlir Transforms DialectConversion) add-rewrite-pattern))
 
   (define (%%adopt op rw)
     (mlir::RewriterBase::setInsertionPoint rw op)
@@ -23,7 +22,7 @@
                     (mlir::OperationState::addRegion state)
                     (mlir::OpBuilder::create<OperationState>
                      (crest::as_ptr<mlir::OpBuilder> rw) state))])
-      (mlir::RewriterBase::inlineRegionBefore rw
+      (mlir::RewriterBase::inlineRegionBefore (crest::as_ptr<mlir::OpBuilder> rw)
                                               (mlir::Operation::getRegion op 0)
                                               (mlir::Operation::getRegion new-op 0))
       (mlir::RewriterBase::eraseOp rw op)

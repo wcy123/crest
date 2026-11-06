@@ -19,7 +19,6 @@
     %mlir::OpBuilder::setInsertionPoint
     %mlir::OpBuilder::getContext
     %mlir::OpBuilder::getListener
-    %crest::OpBuilder::inlineRegionBefore
     %crest::as_ptr<mlir::OpBuilder>)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
@@ -53,13 +52,6 @@
 
   (define %mlir::OpBuilder::setInsertionPoint
     (foreign-procedure "mlir::OpBuilder::setInsertionPoint" (uptr uptr) void))
-
-  ;; @brief Move all blocks of one region to the front of another, reporting to the listener.
-  ;; @param builder  raw OpBuilder* uptr
-  ;; @param src      Region* uptr, left empty
-  ;; @param dest     Region* uptr
-  (define %crest::OpBuilder::inlineRegionBefore
-    (foreign-procedure "crest::OpBuilder::inlineRegionBefore" (uptr uptr uptr) void))
 
   ;; @brief Unwrap a builder shell to a raw OpBuilder*.
   ;; @param ptr  CrestBox<OpBuilder>* or CrestBox<RewriterBase*>* shell uptr

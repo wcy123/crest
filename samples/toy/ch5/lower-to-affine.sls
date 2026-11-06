@@ -69,12 +69,11 @@
                 target-add-dynamically-legal-op
                 mlir::applyPartialConversion
                 mlir::RewriterBase::modifyOpInPlace
-                mlir::RewriterBase::inlineRegionBefore
                 type-converter-add-conversion
                 add-conversion-pattern
                 with-TypeConverter
                 with-ConversionTarget)
-          (only (mlir IR PatternMatch) with-RewritePatternSet)
+          (only (mlir IR PatternMatch) with-RewritePatternSet mlir::RewriterBase::inlineRegionBefore)
           (only (mlir IR Builders) crest::as_ptr<mlir::OpBuilder>)
           (only (mlir support array-ref) crest::CArrayRef::at crest::CArrayRef::size)
           (crest))
@@ -200,7 +199,7 @@
                  [new-func (mlir::func::FuncOp::create rw loc name ftype)]
                  [body     (mlir::func::FuncOp::getBody new-func)]
                  [src-reg  (mlir::Operation::getRegion op 0)])
-            (mlir::RewriterBase::inlineRegionBefore rw src-reg body)
+            (mlir::RewriterBase::inlineRegionBefore (crest::as_ptr<mlir::OpBuilder> rw) src-reg body)
             (mlir::RewriterBase::eraseOp rw op)
             #t))))
 

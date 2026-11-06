@@ -24,6 +24,7 @@
     %mlir::RewriterBase::replaceOp
     %mlir::RewriterBase::eraseOp
     %mlir::RewriterBase::create<OperationState>
+    %mlir::RewriterBase::inlineRegionBefore
     %mlir::RewritePatternSet::RewritePatternSet
     %crest::isa<CrestBox<mlir::RewritePatternSet>>)
   (import (rnrs) (only (chezscheme) foreign-procedure))
@@ -56,6 +57,13 @@
   ;; inner pointers in C++. See lib/Bindings/IR/PatternMatch.cpp.
   (define %mlir::RewriterBase::create<OperationState>
     (foreign-procedure "mlir::RewriterBase::create<OperationState>" (uptr uptr) uptr))
+
+  ;; @brief Move all blocks of a region to the front of another, reporting to the listener.
+  ;; @param builder  raw OpBuilder* uptr (not the rewriter shell; see the C++ comment)
+  ;; @param src      Region* uptr, left empty
+  ;; @param dest     Region* uptr
+  (define %mlir::RewriterBase::inlineRegionBefore
+    (foreign-procedure "mlir::RewriterBase::inlineRegionBefore" (uptr uptr uptr) void))
 
   ;; @brief mlir::RewritePatternSet constructor — heap-allocate a CrestBox pattern set.
   ;; @param ctx  MLIRContext* uptr
