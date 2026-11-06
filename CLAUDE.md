@@ -147,10 +147,12 @@ ones never imported or called. If a symbol string has no matching `Sregister_sym
 (define %crest::Foo::bar (foreign-procedure "crest::Foo::bar" (uptr) uptr))
 ```
 
-Audit: `grep -h 'foreign-procedure' scheme/**/*.sls | sed 's/.*"\([^"]*\)".*/\1/'` lists every
-C symbol referenced from Scheme; each must appear in a `Sregister_symbol` call in `lib/`. For a
-`define-builder-binding "NAME"`, the three symbols `NAME<OpBuilder>`, `NAME<RewriterBase*>` and
-`NAME<OpBuilder*>` come from one `register_builder_binding("NAME", ...)` call.
+Audit: `test/bindings/ffi-symbols.mlir` reads every `.sls` file and asks Chez (`foreign-entry?`)
+whether each symbol named by a `foreign-procedure`, and each of the three variants of a
+`define-builder-binding "NAME"` (`NAME<OpBuilder>`, `NAME<RewriterBase*>`, `NAME<OpBuilder*>`),
+is registered. It runs with the suite, so a symbol without a `Sregister_symbol` (or a
+`register_builder_binding`) fails it. A grep of the sources cannot do this: some names are made
+by macros on either side.
 
 ---
 
