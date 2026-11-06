@@ -1,7 +1,8 @@
 ;; Toy Ch5 — partial lowering to Affine+Arith+MemRef+Func dialects.
 ;; Mirrors mlir/examples/toy/Ch5/mlir/LowerToAffineLoops.cpp
 ;;
-;; Conversion patterns (plain Scheme callbacks, not DDR):
+;; Conversion patterns, all define-conversion-pattern; the ops they create are begin-mlir-code
+;; forms:
 ;;   toy.constant   → memref.alloc + affine.store per element
 ;;   toy.add        → affine.for nest with arith.addf
 ;;   toy.mul        → affine.for nest with arith.mulf
@@ -14,8 +15,7 @@
   (import (except (rnrs) =)
           (only (chezscheme) iota)
           (only (mlir IR Value)
-                mlir::Value::getType
-                mlir::Value::getDefiningOp)
+                mlir::Value::getType)
           (only (mlir IR Operation)
                 mlir::Operation::getLoc
                 mlir::Operation::getOperand
@@ -23,7 +23,6 @@
                 mlir::Operation::getNumOperands
                 mlir::Operation::getAttr
                 mlir::Operation::getBlock
-                mlir::Operation::moveBefore
                 mlir::Operation::setOperands
                 mlir::Operation::getContext)
           (only (mlir IR Block)
@@ -32,8 +31,11 @@
           (only (mlir IR BuiltinTypes)
                 mlir::RankedTensorType::getShape
                 mlir::RankedTensorType::getElementType
+                mlir::IndexType::get
+                mlir::Float64Type::get
                 mlir::isa<RankedTensorType>?)
           (only (mlir IR BuiltinAttributes)
+                mlir::AffineMapAttr::get
                 mlir::FloatAttr::get<f64>
                 mlir::DenseElementsAttr::getNumElements
                 mlir::DenseElementsAttr::getValueAt<f64>
@@ -41,21 +43,11 @@
           (only (mlir IR OpImplementation)
                 mlir::StringAttr::getValue)
           (only (mlir IR PatternMatch)
-                mlir::RewriterBase::replaceOp
-                mlir::RewriterBase::eraseOp)
-          (only (mlir Dialect Affine IR AffineOps)
-                mlir::affine::buildAffineLoopNest
-                mlir::affine::AffineLoadOp::create
-                mlir::affine::AffineStoreOp::create)
-          (only (mlir Dialect Arith IR Arith)
-                mlir::arith::AddFOp::create
-                mlir::arith::MulFOp::create
-                mlir::arith::ConstantIndexOp::create
-                mlir::arith::ConstantOp::create<f64>)
+                mlir::RewriterBase::setInsertionPoint)
           (only (mlir Dialect MemRef IR MemRef)
-                mlir::MemRefType::get
-                mlir::memref::AllocOp::create
-                mlir::memref::DeallocOp::create)
+                mlir::MemRefType::get)
+          (only (mlir IR AffineMap) mlir::AffineMap::getMultiDimIdentityMap)
+          (only (mlir IR Builders) with-InsertionGuard)
           (only (mlir support array-ref) crest::CArrayRef::at crest::CArrayRef::size)
           (crest))
 
@@ -67,107 +59,156 @@
   (define (%%tensor->memref-type tensor-type)
     (mlir::MemRefType::get tensor-type))
 
-  ;; Allocate a memref before the first op of block; dealloc before the last.
-  ;; Returns the alloc Value.
-  (define (%%insert-alloc-and-dealloc! bld loc memref-type block)
-    (let* ([alloc-val  (mlir::memref::AllocOp::create bld loc memref-type)]
-           [alloc-op   (mlir::Value::getDefiningOp alloc-val)]
-           [dealloc-op (mlir::memref::DeallocOp::create bld loc alloc-val)])
-      (mlir::Operation::moveBefore alloc-op  (mlir::Block::front block))
-      (mlir::Operation::moveBefore dealloc-op (mlir::Block::back  block))
-      alloc-val))
+  ;; The identity map of rank n as an attribute: the subscripts of an affine.load or store.
+  (define (%%identity-map-attr n)
+    (mlir::AffineMapAttr::get (mlir::AffineMap::getMultiDimIdentityMap n)))
 
-  ;; Lower op to a nest of affine loops over tensor-type's shape.
-  ;; body-fn: (nested-builder ivs-list) → Value to store
-  ;; Returns the alloc Value.
-  (define (%%lower-op-to-loops! op bld tensor-type body-fn)
+  ;; Allocate a memref at the start of the block and free it before the terminator, so it lives
+  ;; for the whole function. Returns the alloc Value.
+  (define (%%insert-alloc-and-dealloc! rw loc memref-type block)
+    (let ([alloc (with-InsertionGuard guard (rw)
+                                      (mlir::RewriterBase::setInsertionPoint rw (mlir::Block::front block))
+                                      (with-current-OpBuilder rw
+                                        (begin-mlir-code
+                                            a = memref.alloc ()
+                                            (operandSegmentSizes : '(0 0) :i32-array)
+                                            :loc loc -> memref-type)))])
+      (with-InsertionGuard guard (rw)
+                           (mlir::RewriterBase::setInsertionPoint rw (mlir::Block::back block))
+                           (with-current-OpBuilder rw
+                             (begin-mlir-code
+                                 memref.dealloc (alloc) :loc loc)))
+      alloc))
+
+  ;; Emit an affine.for nest over shape, with lower bounds 0 and steps 1. The innermost body
+  ;; stores the value of (body-fn ivs) into alloc at the induction variables ivs, outermost
+  ;; first. The ops go to the ambient builder, and each loop body is a ^bb.
+  (define (%%emit-loop-nest! loc ctx shape alloc body-fn)
+    (let ([idx (mlir::IndexType::get ctx)])
+      (let nest ([dims shape] [ivs '()])
+        (if (null? dims)
+            (let ([val (body-fn (reverse ivs))]
+                  [map (%%identity-map-attr (length ivs))])
+              (begin-mlir-code
+                  affine.store (val alloc ,@(reverse ivs)) (map : map) :loc loc))
+            (begin-mlir-code
+                affine.for ()
+                (lowerBoundMap : (affine-map-attr () () 0))
+                (upperBoundMap : (affine-map-attr () () (car dims)))
+                (step : 1 :index)
+                (^body ,@(list idx)
+                       (nest (cdr dims) (cons (:arg 0) ivs))
+                       affine.yield () :loc loc)
+                :loc loc)))))
+
+  ;; Allocate the result of an elementwise lowering and fill it with an affine.for nest over
+  ;; tensor-type's shape. body-fn: (ivs) → the Value to store. Returns the alloc Value.
+  (define (%%lower-op-to-loops! op rw tensor-type body-fn)
     (let* ([loc         (mlir::Operation::getLoc op)]
+           [ctx         (mlir::Operation::getContext op)]
            [memref-type (%%tensor->memref-type tensor-type)]
-           [block       (mlir::Operation::getBlock op)]
-           [alloc       (%%insert-alloc-and-dealloc! bld loc memref-type block)]
-           [shape       (mlir::RankedTensorType::getShape tensor-type)])
-      (mlir::affine::buildAffineLoopNest
-       bld loc
-       (map (lambda (extent) 0) shape)   ; lower bounds
-       shape                             ; upper bounds
-       (map (lambda (extent) 1) shape)   ; steps
-       (lambda (nb loc ivs)
-         (let ([val (body-fn nb loc ivs)])
-           (mlir::affine::AffineStoreOp::create nb loc val alloc ivs))))
+           [alloc       (%%insert-alloc-and-dealloc! rw loc memref-type (mlir::Operation::getBlock op))])
+      (with-current-OpBuilder rw
+        (%%emit-loop-nest! loc ctx (mlir::RankedTensorType::getShape tensor-type) alloc body-fn))
       alloc))
 
   ;;===--------------------------------------------------------------------===;;
   ;; toy.constant → memref.alloc + affine.store per element
   ;;===--------------------------------------------------------------------===;;
 
-  ;; Walk all elements of a DenseElementsAttr and store each as an arith.constant.
-  (define (%%store-const-elements! bld loc const-attr shape alloc idx-consts ctx)
-    (define (store! dim elem-idx indices)
-      (if (eqv? dim (length shape))
-          (let* ([fa    (mlir::DenseElementsAttr::getValueAt<f64> const-attr elem-idx)]
-                 [dval  (mlir::FloatAttr::getValueAsDouble fa)]
-                 [fattr (mlir::FloatAttr::get<f64> ctx dval)]
-                 [cval  (mlir::arith::ConstantOp::create<f64> bld loc fattr)])
-            (mlir::affine::AffineStoreOp::create bld loc cval alloc indices)
-            (+ elem-idx 1))
-          (let loop ([i 0] [ei elem-idx])
-            (if (eqv? i (list-ref shape dim))
-                ei
-                (loop (+ i 1)
-                      (store! (+ dim 1) ei
-                              (append indices (list (list-ref idx-consts i)))))))))
-    (store! 0 0 '()))
+  ;; Walk all elements of a DenseElementsAttr and store each as an arith.constant. Each store
+  ;; subscripts alloc with index constants, one per position along each dimension.
+  (define (%%store-const-elements! loc ctx const-attr shape alloc)
+    (let* ([idx        (mlir::IndexType::get ctx)]
+           [f64        (mlir::Float64Type::get ctx)]
+           [max-dim    (apply max 0 shape)]
+           [idx-consts (map (lambda (i)
+                              (begin-mlir-code
+                                  c = arith.constant () (value : i :index) :loc loc -> idx))
+                            (iota max-dim))])
+      (define (store! dim elem-idx indices)
+        (if (eqv? dim (length shape))
+            (let* ([fa    (mlir::DenseElementsAttr::getValueAt<f64> const-attr elem-idx)]
+                   [fattr (mlir::FloatAttr::get<f64> ctx (mlir::FloatAttr::getValueAsDouble fa))]
+                   [map   (%%identity-map-attr (length indices))])
+              (begin-mlir-code
+                  c = arith.constant () (value : fattr) :loc loc -> f64
+                  affine.store (c alloc ,@indices) (map : map) :loc loc)
+              (+ elem-idx 1))
+            (let loop ([i 0] [ei elem-idx])
+              (if (eqv? i (list-ref shape dim))
+                  ei
+                  (loop (+ i 1)
+                        (store! (+ dim 1) ei
+                                (append indices (list (list-ref idx-consts i)))))))))
+      (store! 0 0 '())))
 
-  (define (%%constant-lower! op operands-ref rw tc)
-    (let* ([bld         rw]
-           [result      (mlir::Operation::getResult op 0)]
-           [tensor-type (mlir::Value::getType result)]
-           [loc         (mlir::Operation::getLoc op)]
-           [const-attr  (mlir::Operation::getAttr op "value")]
-           [shape       (mlir::RankedTensorType::getShape tensor-type)]
-           [memref-type (%%tensor->memref-type tensor-type)]
-           [block       (mlir::Operation::getBlock op)]
-           [alloc       (%%insert-alloc-and-dealloc! bld loc memref-type block)]
-           [ctx         (mlir::Operation::getContext op)]
-           [max-dim     (apply max 0 shape)]
-           [idx-consts  (map (lambda (i) (mlir::arith::ConstantIndexOp::create bld loc i))
-                             (iota max-dim))])
-      (%%store-const-elements! bld loc const-attr shape alloc idx-consts ctx)
-      (mlir::RewriterBase::replaceOp rw op alloc)
-      #t))
+  (define-conversion-pattern (%%constant-lower! op operands-ref rw tc)
+    :if-match
+      %out = toy.constant ()
+    :then-let
+      ([loc         (mlir::Operation::getLoc op)]
+       [ctx         (mlir::Operation::getContext op)]
+       [tensor-type (mlir::Value::getType %out)])
+    :rewrite %out :with
+      alloc = (%%insert-alloc-and-dealloc! rw loc (%%tensor->memref-type tensor-type)
+                                           (mlir::Operation::getBlock op))
+      (%%store-const-elements! loc ctx (mlir::Operation::getAttr op "value")
+                               (mlir::RankedTensorType::getShape tensor-type) alloc)
+      alloc)
 
   ;;===--------------------------------------------------------------------===;;
   ;; toy.add / toy.mul → affine loop nest
   ;;===--------------------------------------------------------------------===;;
 
-  (define (%%binary-lower! op operands-ref rw tc arith-create)
-    (let* ([lhs         (crest::CArrayRef::at operands-ref 0)]
-           [rhs         (crest::CArrayRef::at operands-ref 1)]
-           [tensor-type (mlir::Value::getType (mlir::Operation::getResult op 0))]
-           [alloc       (%%lower-op-to-loops! op rw tensor-type
-                                              (lambda (nb loc ivs)
-                                                (let ([l (mlir::affine::AffineLoadOp::create nb loc lhs ivs)]
-                                                      [r (mlir::affine::AffineLoadOp::create nb loc rhs ivs)])
-                                                  (arith-create nb loc l r))))])
-      (mlir::RewriterBase::replaceOp rw op alloc)
-      #t))
+  ;; Load lhs and rhs at the induction variables and combine them with arith.addf (kind add) or
+  ;; arith.mulf (kind mul). Returns the alloc Value.
+  (define (%%binary-lower! op rw lhs rhs kind)
+    (let* ([tensor-type (mlir::Value::getType (mlir::Operation::getResult op 0))]
+           [elem-type   (mlir::RankedTensorType::getElementType tensor-type)]
+           [loc         (mlir::Operation::getLoc op)])
+      (%%lower-op-to-loops!
+       op rw tensor-type
+       (lambda (ivs)
+         (let ([map (%%identity-map-attr (length ivs))])
+           (begin-mlir-code
+               ;; rhs is loaded first, as the generated IR has always had it
+               r = affine.load (rhs ,@ivs) (map : map) :loc loc -> elem-type
+               l = affine.load (lhs ,@ivs) (map : map) :loc loc -> elem-type
+               (case kind
+                 [(add) (begin-mlir-code v = arith.addf (l r) :loc loc -> elem-type)]
+                 [(mul) (begin-mlir-code v = arith.mulf (l r) :loc loc -> elem-type)])))))))
 
-  (define (%%add-lower! op ops rw tc) (%%binary-lower! op ops rw tc mlir::arith::AddFOp::create))
-  (define (%%mul-lower! op ops rw tc) (%%binary-lower! op ops rw tc mlir::arith::MulFOp::create))
+  (define-conversion-pattern (%%add-lower! op operands-ref rw tc)
+    :if-match
+      %sum = toy.add (%lhs %rhs)
+    :rewrite %sum :with
+      (%%binary-lower! op rw %lhs %rhs 'add))
+
+  (define-conversion-pattern (%%mul-lower! op operands-ref rw tc)
+    :if-match
+      %product = toy.mul (%lhs %rhs)
+    :rewrite %product :with
+      (%%binary-lower! op rw %lhs %rhs 'mul))
 
   ;;===--------------------------------------------------------------------===;;
   ;; toy.transpose → affine loop nest with reversed IVs for load
   ;;===--------------------------------------------------------------------===;;
 
-  (define (%%transpose-lower! op operands-ref rw tc)
-    (let* ([input       (crest::CArrayRef::at operands-ref 0)]
-           [tensor-type (mlir::Value::getType (mlir::Operation::getResult op 0))]
-           [alloc       (%%lower-op-to-loops! op rw tensor-type
-                                              (lambda (nb loc ivs)
-                                                (mlir::affine::AffineLoadOp::create
-                                                 nb loc input (reverse ivs))))])
-      (mlir::RewriterBase::replaceOp rw op alloc)
-      #t))
+  (define-conversion-pattern (%%transpose-lower! op operands-ref rw tc)
+    :if-match
+      %out = toy.transpose (%in)
+    :then-let
+      ([tensor-type (mlir::Value::getType %out)]
+       [elem-type   (mlir::RankedTensorType::getElementType (mlir::Value::getType %out))]
+       [loc         (mlir::Operation::getLoc op)])
+    :rewrite %out :with
+      (%%lower-op-to-loops!
+       op rw tensor-type
+       (lambda (ivs)
+         (let ([map (%%identity-map-attr (length ivs))])
+           (begin-mlir-code
+               v = affine.load (%in ,@(reverse ivs)) (map : map) :loc loc -> elem-type)))))
 
   ;;===--------------------------------------------------------------------===;;
   ;; toy.func @main → func.func @main
