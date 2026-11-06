@@ -66,7 +66,6 @@
 #include "Support/CrestObject.h"
 #include "Support/Logging.h"
 #include "Target/LLVMIR/Export.h"
-#include "Toy/Ch6/LowerToLLVM.h"
 #include "Transforms/DialectConversion.h"
 #include "Transforms/GreedyPatternRewriteDriver.h"
 #include "Transforms/InliningUtils.h"
@@ -141,7 +140,6 @@ void registerMlirForeignFunctions() {
   registerToyStructTypeBindings();
   registerTargetLLVMIRExportBindings();
   registerExecutionEngineBindings();
-  registerToyCh6LowerToLLVMBindings();
   if (g_extra_bindings_fn) {
     g_extra_bindings_fn();
   }

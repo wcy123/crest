@@ -124,8 +124,6 @@ add_library(CrestBindings STATIC
   Target/LLVMIR/Export.h
   ExecutionEngine/ExecutionEngine.cpp
   ExecutionEngine/ExecutionEngine.h
-  Toy/Ch6/LowerToLLVM.cpp
-  Toy/Ch6/LowerToLLVM.h
 )
 
 add_dependencies(CrestBindings ChezScheme ChezBootHeaders)
