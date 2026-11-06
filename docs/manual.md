@@ -110,8 +110,10 @@ The three parameters map to [`matchAndRewrite(Operation* op, PatternRewriter& re
   :if-match ... :rewrite ...)
 ```
 
-The five parameters map to [`matchAndRewrite(Operation* op, ArrayRef<Value> operands, ConversionPatternRewriter& rewriter)`](https://mlir.llvm.org/doxygen/classmlir_1_1ConversionPattern.html#a4e9e0cb68cd4d6f30b1b02b1f3d1e5a3).
-`operands-ref` carries the type-converted operands; fetch them with `(mlir-get-remapped-operands operands-ref)`.
+The four parameters after the name map to [`matchAndRewrite(Operation* op, ArrayRef<Value> operands, ConversionPatternRewriter& rewriter)`](https://mlir.llvm.org/doxygen/classmlir_1_1ConversionPattern.html#a4e9e0cb68cd4d6f30b1b02b1f3d1e5a3).
+`operands-ref` carries the type-converted operands; read them with `crest::CArrayRef::size` and
+`crest::CArrayRef::at` from `(mlir support array-ref)`: `(crest::CArrayRef::at operands-ref 0)` is the first
+operand.
 
 ---
 
@@ -281,6 +283,10 @@ root op (equivalent to
 so new ops appear in place of the matched subgraph. The last emitted op's
 result replaces `%root` in all uses.
 
+A root with no result has no `%var` to name it, so it is written `op`, the pattern's first
+parameter (`:rewrite op :with`). Nothing replaces it: after the new ops are emitted the old op is
+erased.
+
 Op-form syntax — see [§5 `begin-mlir-code`](#5-begin-mlir-code) for the full reference.
 
 ---
@@ -444,6 +450,9 @@ c = arith.constant ()
     (value : 42 :index)
     -> (mlir::IndexType::get)
 
+;; Array shorthands take a Scheme list or vector; val is evaluated, so quote a literal list
+(shapes : '(1 2 3) :i64-array)
+
 ;; General form: val is any Scheme expression returning an mlir::Attribute
 my.op ()
   (scale : (mlir::FloatAttr::get<f32> 0.5))
@@ -576,7 +585,8 @@ list is computed at runtime rather than fixed at compile time.
 
 The block body is a recursive `begin-mlir-code` call — the same op-form
 syntax is available (nested regions, attribute shorthands, multi-result
-ops, etc.) with the block's own builder as the ambient builder.
+ops, etc.) with the same builder as the ambient builder, its insertion point moved to the end of the
+new block.
 
 Inside the block body, **`(:arg N)`** is a shorthand for
 `(mlir::Block::getArgument (current-Block) N)` where `current-Block` is a
@@ -964,9 +974,10 @@ for that. `with-InsertionGuard` saves a builder's insertion point and restores i
 The context hierarchy during a pattern rewrite:
 
 ```
-:rewrite :with                → current-OpBuilder = (as_ptr<OpBuilder> rw)
+:rewrite :with                → current-OpBuilder = rw (the pattern's rewriter shell)
   ^bb0 block body             → current-Block = block
-                                current-OpBuilder = block-builder
+                                current-OpBuilder = rw, insertion point at the end of block,
+                                restored when the body ends
 ```
 
 ### Core IR
@@ -1007,7 +1018,7 @@ The context hierarchy during a pattern rewrite:
 |---|---|
 | `(mlir IR PatternMatch)` | `with-RewritePatternSet` |
 | `(mlir Transforms GreedyPatternRewriteDriver)` | `mlir::applyPatternsGreedily` |
-| `(mlir Transforms DialectConversion)` | `with-TypeConverter`, `with-ConversionTarget`, `mlir::applyFullConversion`, `mlir::applyPartialConversion`, `mlir::ConversionTarget::addIllegalDialect!`, `mlir::ConversionTarget::addLegalDialect!`, `mlir::TypeConverter::addConversion!` |
+| `(mlir Transforms DialectConversion)` | `with-TypeConverter`, `with-ConversionTarget`, `type-converter-add-conversion`, `target-add-legal-dialect`, `target-add-illegal-dialect`, `target-add-legal-op`, `target-add-dynamically-legal-op`, `add-conversion-pattern`, `add-conversion-pattern/ctx`, `add-rewrite-pattern`, `apply-full-conversion`, `mlir::applyPartialConversion` |
 
 ### Location
 
@@ -1021,13 +1032,18 @@ The context hierarchy during a pattern rewrite:
 (import (crest))
 ```
 
-Exports: `define-rewrite-pattern`, `define-conversion-pattern`,
-`add-rewrite-pattern`, `add-conversion-pattern`,
-`begin-mlir-code`, `apply-conversion`, `affine-map`, `affine-map-attr` (see [affine-map-dsl.md](affine-map-dsl.md)),
-`unbound-value?`, `mlir-get-remapped-operands`,
-`:builder`, `:arg`,
-`current-Block`, `with-current-Block`,
-`current-OpBuilder`, `with-current-OpBuilder`.
+Exports: `define-rewrite-pattern`, `define-conversion-pattern`, `begin-mlir-code`,
+`apply-conversion`, `affine-map`, `affine-map-attr` (see [affine-map-dsl.md](affine-map-dsl.md)),
+`make-unbound-value`, `unbound-value?`, `current-Block`, `with-current-Block`, `current-OpBuilder`,
+`with-current-OpBuilder`, and the DSL keywords: `:if-match :then-let :rewrite :with :where`,
+`:debug-parse :debug-validate :debug-analyze :debug-codegen`, `= : -> :region :regions`, `:any`,
+`:current-op :attr :has-attr? :attr-or`, `:optional :variadic`, the attribute keywords
+`:string :index :i8 :i16 :i32 :i64 :f32 :f64 :i8-array :i16-array :i32-array :i64-array :unit`,
+`:loc :move-region` and `:arg :builder`.
+
+`add-rewrite-pattern`, `add-conversion-pattern` and the other registration functions are not
+exported by `(crest)`; import them from `(mlir Transforms DialectConversion)`. A library that uses
+the DSL imports `(except (rnrs) =)`, so that the DSL's `=` is the one in scope.
 
 ---
 
@@ -1076,11 +1092,10 @@ Register additional MLIR APIs from a downstream project without modifying CREST:
 extern "C" void crest_register_extra_bindings(void (*fn)());
 
 crest_register_extra_bindings([]() {
-    Sregister_symbol("myDialect::MyOp::create",
-        (void*)+[](uint64_t builder, uint64_t loc, uint64_t type) -> uint64_t {
-            auto b = *reinterpret_cast<mlir::OpBuilder*>(builder);
-            // ... create op ...
-            return reinterpret_cast<uint64_t>(op.getOperation());
+    Sregister_symbol("myDialect::MyOp::getCount",
+        (void*)+[](uint64_t op_ptr) -> uint64_t {
+            auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
+            return op->getNumOperands();
         });
 });
 ```
@@ -1089,12 +1104,18 @@ Then declare and use in Scheme:
 
 ```scheme
 ;; In your ffi.sls:
-(define %myDialect::MyOp::create
-  (foreign-procedure "myDialect::MyOp::create" (uptr uptr uptr) uptr))
+(define %myDialect::MyOp::getCount
+  (foreign-procedure "myDialect::MyOp::getCount" (uptr) uptr))
 
 ;; In your public .sls:
-(define myDialect::MyOp::create %myDialect::MyOp::create)
+(define myDialect::MyOp::getCount %myDialect::MyOp::getCount)
 ```
+
+A binding that takes a builder is different: a builder is one of three kinds of shell, and each C++
+symbol takes exactly one. Register it with `register_builder_binding`
+(`lib/Bindings/Support/BuilderBinding.h`), which registers the three symbols, and declare it in
+`ffi.sls` with `define-builder-binding` from `(mlir support BuilderBinding)`. See CLAUDE.md
+Rule 4.
 
 Follow the CLAUDE.md binding convention: one header → one module, `%`-prefix
 for raw FFI bindings, clean names in the public module.

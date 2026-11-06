@@ -143,7 +143,8 @@
           :any
           :current-op :attr :has-attr? :attr-or
           :optional :variadic
-          :index :i64 :f32 :i32-array :i64-array :unit
+          :string :index :i8 :i16 :i32 :i64 :f32 :f64
+          :i8-array :i16-array :i32-array :i64-array :unit
           :loc :move-region
           :arg :builder
           make-unbound-value unbound-value?

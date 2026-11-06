@@ -32,6 +32,36 @@ void registerIRBuiltinAttributesBindings() {
       });
 
   Sregister_symbol(
+      "mlir::IntegerAttr::get<i8>",
+      (void*)+[](uint64_t ctx_ptr, ptr value) -> uint64_t {
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
+        return reinterpret_cast<uint64_t>(
+            mlir::IntegerAttr::get(mlir::IntegerType::get(ctx, 8),
+                                   Sinteger64_value(value))
+                .getAsOpaquePointer());
+      });
+
+  Sregister_symbol(
+      "mlir::IntegerAttr::get<i16>",
+      (void*)+[](uint64_t ctx_ptr, ptr value) -> uint64_t {
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
+        return reinterpret_cast<uint64_t>(
+            mlir::IntegerAttr::get(mlir::IntegerType::get(ctx, 16),
+                                   Sinteger64_value(value))
+                .getAsOpaquePointer());
+      });
+
+  Sregister_symbol(
+      "mlir::IntegerAttr::get<i32>",
+      (void*)+[](uint64_t ctx_ptr, ptr value) -> uint64_t {
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
+        return reinterpret_cast<uint64_t>(
+            mlir::IntegerAttr::get(mlir::IntegerType::get(ctx, 32),
+                                   Sinteger64_value(value))
+                .getAsOpaquePointer());
+      });
+
+  Sregister_symbol(
       "mlir::IntegerAttr::get<index>",
       (void*)+[](uint64_t ctx_ptr, ptr value) -> uint64_t {
         auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
@@ -123,6 +153,32 @@ void registerIRBuiltinAttributesBindings() {
         }
         return reinterpret_cast<uint64_t>(
             mlir::DenseI64ArrayAttr::get(ctx, vec).getAsOpaquePointer());
+      });
+
+  // Scheme list or vector of integers; each element is narrowed to the element
+  // type.
+  Sregister_symbol(
+      "mlir::DenseI8ArrayAttr::get",
+      (void*)+[](uint64_t ctx_ptr, ptr value) -> uint64_t {
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
+        llvm::SmallVector<int8_t> vec;
+        for (int64_t v : convert_to_cpp<llvm::SmallVector<int64_t>>(value)) {
+          vec.push_back(static_cast<int8_t>(v));
+        }
+        return reinterpret_cast<uint64_t>(
+            mlir::DenseI8ArrayAttr::get(ctx, vec).getAsOpaquePointer());
+      });
+
+  Sregister_symbol(
+      "mlir::DenseI16ArrayAttr::get",
+      (void*)+[](uint64_t ctx_ptr, ptr value) -> uint64_t {
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
+        llvm::SmallVector<int16_t> vec;
+        for (int64_t v : convert_to_cpp<llvm::SmallVector<int64_t>>(value)) {
+          vec.push_back(static_cast<int16_t>(v));
+        }
+        return reinterpret_cast<uint64_t>(
+            mlir::DenseI16ArrayAttr::get(ctx, vec).getAsOpaquePointer());
       });
 
   Sregister_symbol(
