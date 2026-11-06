@@ -1,6 +1,5 @@
 #!r6rs
-;; The same conversion written with the declarative form proposed in plans/08 (G8). apply-conversion
-;; does not exist yet, so this library does not compile.
+;; The same conversion written with apply-conversion.
 (library (passes declarative)
   (export run-pass)
   (import (except (rnrs) =)

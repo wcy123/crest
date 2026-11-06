@@ -56,18 +56,6 @@
                 mlir::MemRefType::get
                 mlir::memref::AllocOp::create
                 mlir::memref::DeallocOp::create)
-          (only (mlir Transforms DialectConversion)
-                target-create
-                target-add-illegal-dialect
-                target-add-legal-dialect
-                target-add-dynamically-legal-op
-                mlir::applyPartialConversion
-                mlir::RewriterBase::modifyOpInPlace
-                type-converter-add-conversion
-                add-conversion-pattern
-                with-TypeConverter
-                with-ConversionTarget)
-          (only (mlir IR PatternMatch) with-RewritePatternSet)
           (only (mlir support array-ref) crest::CArrayRef::at crest::CArrayRef::size)
           (crest))
 
@@ -223,34 +211,27 @@
   ;;===--------------------------------------------------------------------===;;
 
   (define (%%toy-to-affine-lower! module-op ctx)
-    (with-TypeConverter tc ()
-      ;; Tensor types lower to MemRef types; everything else passes through.
-      (type-converter-add-conversion tc
-                                     (lambda (type)
-                                       (if (mlir::isa<RankedTensorType>? type)
-                                           (%%tensor->memref-type type)
-                                           type)))
-      (with-ConversionTarget target (ctx)
-        (target-add-legal-dialect target "affine")
-        (target-add-legal-dialect target "arith")
-        (target-add-legal-dialect target "func")
-        (target-add-legal-dialect target "memref")
-        (target-add-legal-dialect target "builtin")
-        (target-add-illegal-dialect target "toy")
-        ;; toy.print is legal once its operand is a memref (not a tensor).
-        (target-add-dynamically-legal-op target ctx "toy.print"
-                                         (lambda (print-op)
-                                           (not (mlir::isa<RankedTensorType>?
-                                                 (mlir::Value::getType
-                                                  (mlir::Operation::getOperand print-op 0))))))
-        (with-RewritePatternSet patterns (ctx)
-          (add-conversion-pattern patterns "toy.constant" %%constant-lower!  tc 1)
-          (add-conversion-pattern patterns "toy.add"      %%add-lower!       tc 1)
-          (add-conversion-pattern patterns "toy.mul"      %%mul-lower!       tc 1)
-          (add-conversion-pattern patterns "toy.transpose" %%transpose-lower! tc 1)
-          (add-conversion-pattern patterns "toy.func"     %%func-lower!      tc 1)
-          (add-conversion-pattern patterns "toy.return"   %%return-lower!    tc 1)
-          (add-conversion-pattern patterns "toy.print"    %%print-lower!     tc 1)
-          (eqv? 1 (mlir::applyPartialConversion module-op target patterns))))))
+    (apply-conversion module-op ctx
+                      :mode partial
+                      ;; Tensor types lower to MemRef types; everything else passes through.
+                      :type-converter (lambda (type)
+                                        (if (mlir::isa<RankedTensorType>? type)
+                                            (%%tensor->memref-type type)
+                                            type))
+                      :legal-dialects ("affine" "arith" "func" "memref" "builtin")
+                      :illegal-dialects ("toy")
+                      ;; toy.print is legal once its operand is a memref (not a tensor).
+                      :dynamically-legal (("toy.print"
+                                           (lambda (print-op)
+                                             (not (mlir::isa<RankedTensorType>?
+                                                   (mlir::Value::getType
+                                                    (mlir::Operation::getOperand print-op 0)))))))
+                      :patterns (("toy.constant"  %%constant-lower!)
+                                 ("toy.add"       %%add-lower!)
+                                 ("toy.mul"       %%mul-lower!)
+                                 ("toy.transpose" %%transpose-lower!)
+                                 ("toy.func"      %%func-lower!)
+                                 ("toy.return"    %%return-lower!)
+                                 ("toy.print"     %%print-lower!))))
 
   ) ;; end library (toy ch6 lower-to-affine)

@@ -19,8 +19,8 @@ translated to LLVM IR, or executed directly with the MLIR `ExecutionEngine`.
 
 ### Conversion patterns (`lower-to-llvm.sls`)
 
-`%%toy-to-llvm-lower!` runs one `apply-full-conversion` with an
-`LLVMTypeConverter`. The `llvm` dialect and `builtin.module` are legal; the
+`%%toy-to-llvm-lower!` is one `apply-conversion` (full mode) with an
+`LLVMTypeConverter` (`:type-converter llvm`). The `llvm` dialect and `builtin.module` are legal; the
 `toy` dialect is illegal, so anything left over fails the conversion.
 
 | Source | Pattern set | Result |
@@ -35,7 +35,7 @@ translated to LLVM IR, or executed directly with the MLIR `ExecutionEngine`.
 
 ### `toy.print` → `printf`
 
-`%%print-lower!` is registered with `add-conversion-pattern/ctx` (no
+`%%print-lower!` is registered with `:no-type-converter` (no
 `TypeConverter`), so it sees the original, unconverted memref operand and reads
 its shape directly. For a memref of shape `d0 x d1 x ...` it emits:
 

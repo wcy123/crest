@@ -643,12 +643,14 @@ functions, type predicates, constants — no CREST macros required.
 
 ### Dialect conversion pass
 
+`apply-conversion` runs a dialect conversion from a declaration. It makes the `TypeConverter`,
+the `ConversionTarget` and the `RewritePatternSet`, fills them, applies the conversion and frees
+them, and returns `#t` on success or `#f` on failure:
+
 ```scheme
 (library (passes my-conversion)
   (export run-pass)
   (import (except (rnrs) =)
-          (mlir Transforms DialectConversion)
-          (only (mlir IR PatternMatch) with-RewritePatternSet)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (crest)
@@ -657,18 +659,36 @@ functions, type predicates, constants — no CREST macros required.
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
-        (with-TypeConverter tc ()
-          (with-ConversionTarget target ()
-            (with-RewritePatternSet ps ()
-              ;; Mark source dialect illegal, target dialect legal
-              (mlir::ConversionTarget::addIllegalDialect! target "onnx")
-              (mlir::ConversionTarget::addLegalDialect!   target "hipsr")
-              ;; Register type conversions
-              (mlir::TypeConverter::addConversion! tc convert-tensor-type)
-              ;; Register patterns
-              (add-conversion-pattern ps "onnx.MatMul" my-matmul-pattern 10 tc)
-              (mlir::applyFullConversion module-op target ps tc))))))))
+        (apply-conversion module-op ctx
+          :mode              partial
+          :type-converter    (lambda (type) (if (tensor? type) (tensor->memref type) type))
+          :legal-dialects    ("affine" "arith" "func" "memref" "builtin")
+          :illegal-dialects  ("toy")
+          :dynamically-legal (("toy.print" (lambda (op) (operand-is-memref? op))))
+          :patterns          (("toy.constant" my-constant-pattern)
+                              ("toy.add"      my-add-pattern 10)
+                              ("toy.print"    my-print-pattern :no-type-converter))
+          :populate          (lambda (tc patterns)
+                               (populate-more-patterns tc patterns)))))))
 ```
+
+Every key is optional.
+
+| Key | Value | Meaning |
+|---|---|---|
+| `:mode` | `partial` or `full` | `applyPartialConversion` or `applyFullConversion`; default `full` |
+| `:type-converter` | a procedure `(type) -> type or #f`, or `llvm` | added as a conversion callback of a new `TypeConverter`; `llvm` makes an `LLVMTypeConverter` instead |
+| `:legal-dialects`, `:illegal-dialects`, `:legal-ops` | lists of names | `addLegalDialect`, `addIllegalDialect`, `addLegalOp` |
+| `:dynamically-legal` | `((name predicate) ...)` | `addDynamicallyLegalOp`; the predicate gets the op |
+| `:patterns` | `((name pattern [benefit] [:no-type-converter]) ...)` | one registration each; benefit defaults to 1; `:no-type-converter` registers the pattern so that it sees the original operand types |
+| `:populate` | `(lambda (tc patterns) ...)` | called after `:patterns` with the type converter and the pattern set, for `populate…Patterns` calls |
+
+A mistake in the form is reported when the library compiles, at the key. Names, benefits and
+lambdas are ordinary expressions. The low-level pieces it is built from stay available from
+`(mlir Transforms DialectConversion)`: `with-TypeConverter`, `with-ConversionTarget`,
+`type-converter-add-conversion`, `target-add-legal-dialect`, `target-add-illegal-dialect`,
+`target-add-legal-op`, `target-add-dynamically-legal-op`, `add-conversion-pattern`,
+`add-conversion-pattern/ctx`, `mlir::applyPartialConversion` and `apply-full-conversion`.
 
 ---
 
@@ -1003,7 +1023,7 @@ The context hierarchy during a pattern rewrite:
 
 Exports: `define-rewrite-pattern`, `define-conversion-pattern`,
 `add-rewrite-pattern`, `add-conversion-pattern`,
-`begin-mlir-code`, `affine-map`, `affine-map-attr` (see [affine-map-dsl.md](affine-map-dsl.md)),
+`begin-mlir-code`, `apply-conversion`, `affine-map`, `affine-map-attr` (see [affine-map-dsl.md](affine-map-dsl.md)),
 `unbound-value?`, `mlir-get-remapped-operands`,
 `:builder`, `:arg`,
 `current-Block`, `with-current-Block`,

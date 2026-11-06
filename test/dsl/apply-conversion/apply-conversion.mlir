@@ -1,4 +1,4 @@
-// Declarative conversion registration (G8, plans/08). Every conversion pass repeats the same
+// Declarative conversion registration, apply-conversion (plans/08, G8). Every conversion pass repeats the same
 // imperative shape: a TypeConverter, a ConversionTarget with legal/illegal dialects and ops,
 // a RewritePatternSet, one add-conversion-pattern per pattern, and applyPartialConversion
 // with its (eqv? 1 ...) idiom. The planned form, apply-conversion, states the same thing as
@@ -13,12 +13,8 @@
 //   other.x     a dialect the target does not mention               kept (partial mode)
 //
 //   imperative   the control: the low-level API (works today)
-//   declarative  apply-conversion, which does not exist yet
+//   declarative  apply-conversion
 //
-// Remove XFAIL when G8 is implemented. The syntax is the one proposed in the plan; if another
-// is chosen, change declarative.sls.
-//
-// XFAIL: *
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
 // RUN:   %crest-opt -allow-unregistered-dialect \
 // RUN:   --crest-pass="passes=passes/imperative" %s | %FileCheck %s

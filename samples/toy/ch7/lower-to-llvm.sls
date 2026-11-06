@@ -36,19 +36,11 @@
           (mlir Conversion MemRefToLLVM MemRefToLLVM)
           (mlir Conversion ControlFlowToLLVM ControlFlowToLLVM)
           (mlir Conversion FuncToLLVM ConvertFuncToLLVM)
-          (only (mlir Transforms DialectConversion)
-                target-add-legal-dialect
-                target-add-legal-op
-                target-add-illegal-dialect
-                apply-full-conversion
-                add-conversion-pattern/ctx
-                with-ConversionTarget)
           (only (mlir IR PatternMatch)
                 mlir::RewriterBase::eraseOp
                 mlir::RewriterBase::setInsertionPoint
                 mlir::RewriterBase::setInsertionPointToStart
-                mlir::RewriterBase::setInsertionPointToEnd
-                with-RewritePatternSet)
+                mlir::RewriterBase::setInsertionPointToEnd)
           (crest))
 
   ;;===--------------------------------------------------------------------===;;
@@ -154,25 +146,22 @@
 
   ;; Perform full lowering to LLVM dialect on module-op.
   (define (%%toy-to-llvm-lower! module-op ctx)
-    (with-LLVMTypeConverter tc (ctx)
-      (with-ConversionTarget target (ctx)
-        ;; LLVM dialect is legal; builtin.module too.
-        (target-add-legal-dialect target "llvm")
-        (target-add-legal-op target ctx "builtin.module")
-        ;; Toy dialect is illegal — everything must be lowered.
-        (target-add-illegal-dialect target "toy")
-        (with-RewritePatternSet patterns (ctx)
-          ;; Populate all dialect-to-LLVM conversion patterns.
-          (mlir::populateAffineToStdConversionPatterns patterns)
-          (mlir::populateSCFToControlFlowConversionPatterns patterns)
-          (mlir::arith::populateArithToLLVMConversionPatterns tc patterns)
-          (mlir::populateFinalizeMemRefToLLVMConversionPatterns tc patterns)
-          (mlir::cf::populateControlFlowToLLVMConversionPatterns tc patterns)
-          (mlir::populateFuncToLLVMConversionPatterns tc patterns)
-          ;; toy.print → printf loop nest.
-          ;; No TypeConverter: pattern reads original memref operand types directly.
-          (add-conversion-pattern/ctx patterns "toy.print" %%print-lower! 1)
-          ;; Full conversion — everything must lower.
-          (apply-full-conversion module-op target patterns)))))
+    (apply-conversion module-op ctx
+                      :type-converter llvm
+                      ;; LLVM dialect is legal; builtin.module too. Toy is illegal: everything must lower.
+                      :legal-dialects ("llvm")
+                      :legal-ops ("builtin.module")
+                      :illegal-dialects ("toy")
+                      ;; toy.print → printf loop nest. No TypeConverter: the pattern reads the original
+                      ;; memref operand types directly.
+                      :patterns (("toy.print" %%print-lower! :no-type-converter))
+                      ;; All dialect-to-LLVM conversion patterns.
+                      :populate (lambda (tc patterns)
+                                  (mlir::populateAffineToStdConversionPatterns patterns)
+                                  (mlir::populateSCFToControlFlowConversionPatterns patterns)
+                                  (mlir::arith::populateArithToLLVMConversionPatterns tc patterns)
+                                  (mlir::populateFinalizeMemRefToLLVMConversionPatterns tc patterns)
+                                  (mlir::cf::populateControlFlowToLLVMConversionPatterns tc patterns)
+                                  (mlir::populateFuncToLLVMConversionPatterns tc patterns))))
 
   ) ;; end library (toy ch7 lower-to-llvm)
