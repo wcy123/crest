@@ -26,20 +26,20 @@
       :summary    "element-wise addition"
       :operands   ((lhs mlir::Value?)
                    (rhs mlir::Value?))
-      :results    ((output mlir::RankedTensorType)))
+      :results    ((output mlir::Value?)))
 
     ;; MulOp — element-wise multiplication (f64 tensors)
     (define-op mul
       :summary    "element-wise multiplication"
       :operands   ((lhs mlir::Value?)
                    (rhs mlir::Value?))
-      :results    ((output mlir::RankedTensorType)))
+      :results    ((output mlir::Value?)))
 
     ;; TransposeOp — transpose a 2D tensor
     (define-op transpose
       :summary    "transpose a 2D tensor"
       :operands   ((input mlir::Value?))
-      :results    ((output mlir::RankedTensorType)))
+      :results    ((output mlir::Value?)))
 
     ;; ReshapeOp — reshape a tensor to a given type
     (define-op reshape
@@ -51,7 +51,7 @@
     (define-op generic_call
       :summary    "generic function call"
       :attributes ((callee mlir::StringAttr))
-      :results    ((output mlir::RankedTensorType)))
+      :results    ((output mlir::Value?)))
 
     ;; FuncOp — toy function definition (body provided at codegen time)
     (define-op func
