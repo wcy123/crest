@@ -324,10 +324,17 @@ template <> struct Conversion<mlir::ValueRange, ptr> {
   }
 };
 
-// Scheme list of integers → llvm::SmallVector<int64_t>.
+// Scheme list or vector of integers → llvm::SmallVector<int64_t>.
 template <> struct Conversion<ptr, llvm::SmallVector<int64_t>> {
   inline llvm::SmallVector<int64_t> operator()(const ptr& list) const {
     llvm::SmallVector<int64_t> result;
+    if (Svectorp(list)) {
+      for (iptr i = 0; i < Svector_length(list); ++i) {
+        result.push_back(
+            static_cast<int64_t>(Sinteger_value(Svector_ref(list, i))));
+      }
+      return result;
+    }
     for (ptr p = list; p != Snil; p = Scdr(p)) {
       result.push_back(static_cast<int64_t>(Sinteger_value(Scar(p))));
     }

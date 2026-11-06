@@ -24,10 +24,15 @@
 
 (library (mlir IR BuiltinAttributes)
   (export
+    mlir::IntegerAttr::get<i8>
+    mlir::IntegerAttr::get<i16>
+    mlir::IntegerAttr::get<i32>
     mlir::IntegerAttr::get<i64>
     mlir::IntegerAttr::get<index>
     mlir::FloatAttr::get<f32>
     mlir::UnitAttr::get
+    mlir::DenseI8ArrayAttr::get
+    mlir::DenseI16ArrayAttr::get
     mlir::DenseI32ArrayAttr::get
     mlir::DenseI64ArrayAttr::get
     mlir::DenseI64ArrayAttr::intoArrayRef
@@ -103,6 +108,16 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   (define-ctx-optional mlir::IntegerAttr::get<i64> %mlir::IntegerAttr::get<i64> value)
 
+  ;; @brief mlir::IntegerAttr::get — wrap an integer as an mlir::IntegerAttr of width 8, 16 or 32.
+  ;; @param ctx    mlir::MLIRContext* uptr (optional; defaults to current-MLIRContext)
+  ;; @param value  Scheme exact integer, narrowed to the width
+  ;; @return       mlir::IntegerAttr opaque pointer uptr
+  ;;               Context-owned — valid for the MLIRContext lifetime; do NOT free.
+  ;; @see          mlir/IR/BuiltinAttributes.h
+  (define-ctx-optional mlir::IntegerAttr::get<i8> %mlir::IntegerAttr::get<i8> value)
+  (define-ctx-optional mlir::IntegerAttr::get<i16> %mlir::IntegerAttr::get<i16> value)
+  (define-ctx-optional mlir::IntegerAttr::get<i32> %mlir::IntegerAttr::get<i32> value)
+
   ;; @brief mlir::IntegerAttr::get — wrap an integer as an mlir::IntegerAttr (index type).
   ;; @param ctx    mlir::MLIRContext* uptr (optional; defaults to current-MLIRContext)
   ;; @param value  Scheme exact integer mapped to int64_t
@@ -139,6 +154,14 @@
   ;;             Context-owned — valid for the MLIRContext lifetime; do NOT free.
   ;; @see        mlir/IR/BuiltinAttributes.h
   (define-ctx-optional mlir::UnitAttr::get %mlir::UnitAttr::get)
+
+  ;; @brief mlir::DenseI8ArrayAttr::get, mlir::DenseI16ArrayAttr::get — pack a Scheme list or
+  ;; vector of exact integers into the attribute; each element is narrowed to the element type.
+  ;; @param ctx    mlir::MLIRContext* uptr (optional; defaults to current-MLIRContext)
+  ;; @param value  Scheme list or vector
+  ;; @return       the attribute's opaque pointer uptr; context-owned, do NOT free.
+  (define-ctx-optional mlir::DenseI8ArrayAttr::get %mlir::DenseI8ArrayAttr::get value)
+  (define-ctx-optional mlir::DenseI16ArrayAttr::get %mlir::DenseI16ArrayAttr::get value)
 
   ;; @brief mlir::DenseI32ArrayAttr::get — pack a Scheme list or vector into a mlir::DenseI32ArrayAttr.
   ;; @param ctx    mlir::MLIRContext* uptr (optional; defaults to current-MLIRContext)
@@ -295,7 +318,7 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   (define mlir::DenseI64ArrayAttr::toVector  %mlir::DenseI64ArrayAttr::toVector)
 
-  (define mlir::FloatAttr::get<f64>               %mlir::FloatAttr::get<f64>)
+  (define-ctx-optional mlir::FloatAttr::get<f64> %mlir::FloatAttr::get<f64> value)
   (define mlir::DenseElementsAttr::getNumElements %mlir::DenseElementsAttr::getNumElements)
   (define mlir::DenseElementsAttr::getValueAt<f64> %mlir::DenseElementsAttr::getValueAt<f64>)
 

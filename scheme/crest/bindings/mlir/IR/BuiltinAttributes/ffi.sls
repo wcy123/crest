@@ -21,10 +21,15 @@
 
 (library (mlir IR BuiltinAttributes ffi)
   (export
+    %mlir::IntegerAttr::get<i8>
+    %mlir::IntegerAttr::get<i16>
+    %mlir::IntegerAttr::get<i32>
     %mlir::IntegerAttr::get<i64>
     %mlir::IntegerAttr::get<index>
     %mlir::FloatAttr::get<f32>
     %mlir::UnitAttr::get
+    %mlir::DenseI8ArrayAttr::get
+    %mlir::DenseI16ArrayAttr::get
     %mlir::DenseI32ArrayAttr::get
     %mlir::DenseI64ArrayAttr::get
     %mlir::parseAttribute
@@ -114,6 +119,17 @@
     (foreign-procedure "mlir::IntegerAttr::get<i64>"
                        (uptr scheme-object) uptr))
 
+  ;; @brief mlir::IntegerAttr::get — construct an IntegerAttr with i8, i16 or i32 type.
+  ;; @param ctx    MLIRContext* uptr
+  ;; @param value  Scheme exact integer (narrowed to the width)
+  ;; @return       IntegerAttr opaque pointer uptr
+  (define %mlir::IntegerAttr::get<i8>
+    (foreign-procedure "mlir::IntegerAttr::get<i8>" (uptr scheme-object) uptr))
+  (define %mlir::IntegerAttr::get<i16>
+    (foreign-procedure "mlir::IntegerAttr::get<i16>" (uptr scheme-object) uptr))
+  (define %mlir::IntegerAttr::get<i32>
+    (foreign-procedure "mlir::IntegerAttr::get<i32>" (uptr scheme-object) uptr))
+
   ;; @brief mlir::IntegerAttr::get — construct an IntegerAttr with IndexType.
   ;; @param ctx    MLIRContext* uptr
   ;; @param value  Scheme exact integer (coerced to int64_t via Sinteger64_value)
@@ -133,6 +149,15 @@
   (define %mlir::FloatAttr::get<f32>
     (foreign-procedure "mlir::FloatAttr::get<f32>"
                        (uptr scheme-object) uptr))
+
+  ;; @brief mlir::DenseI8ArrayAttr::get, mlir::DenseI16ArrayAttr::get — from a Scheme list or vector.
+  ;; @param ctx    MLIRContext* uptr
+  ;; @param value  Scheme list or vector of exact integers (each narrowed to the element type)
+  ;; @return       the attribute's opaque pointer uptr
+  (define %mlir::DenseI8ArrayAttr::get
+    (foreign-procedure "mlir::DenseI8ArrayAttr::get" (uptr scheme-object) uptr))
+  (define %mlir::DenseI16ArrayAttr::get
+    (foreign-procedure "mlir::DenseI16ArrayAttr::get" (uptr scheme-object) uptr))
 
   ;; @brief mlir::DenseI32ArrayAttr::get — construct a DenseI32ArrayAttr from a Scheme list.
   ;; @param ctx    MLIRContext* uptr
