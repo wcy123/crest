@@ -38,6 +38,14 @@ Sregister_symbol("crest::logging::info", ...);              // crest:: for FFI p
 `crest::` is only for inherent FFI boundary problems (type adapters, memory lifecycle, I/O).
 Not for business logic expressible as Scheme compositions of existing MLIR bindings.
 
+A binding that takes a builder exists once per kind of builder shell (Rule 11), with the kind as
+the last template argument: `mlir::arith::AddFOp::create<OpBuilder>`,
+`mlir::arith::AddFOp::create<RewriterBase*>`, `mlir::arith::AddFOp::create<OpBuilder*>`, and
+`mlir::OpBuilder::create<OperationState,OpBuilder>` for a name that already has template
+arguments. C++ registers the three with `register_builder_binding("mlir::arith::AddFOp::create",
+[](mlir::OpBuilder& builder, ...) { ... })`; Scheme writes one
+`(define-builder-binding %mlir::arith::AddFOp::create "mlir::arith::AddFOp::create" (uptr ...) uptr)`.
+
 ### Rule 5 — Raw FFI binding has `%` prefix
 
 ```scheme
@@ -90,7 +98,8 @@ Sregister_symbol("mlir::IndexType::get",
 
 The unary `+` converts a non-capturing lambda to a function pointer. Named static functions
 are forbidden (they leak into the TU symbol table). Exception: functions declared in shared
-headers that require external linkage by definition.
+headers that require external linkage by definition. A builder-taking binding passes its
+non-capturing lambda to `register_builder_binding` instead, which registers the three symbols.
 
 ### Rule 13 — Internal Scheme helpers use `%%` prefix
 
@@ -133,7 +142,9 @@ ones never imported or called. If a symbol string has no matching `Sregister_sym
 ```
 
 Audit: `grep -h 'foreign-procedure' scheme/**/*.sls | sed 's/.*"\([^"]*\)".*/\1/'` lists every
-C symbol referenced from Scheme; each must appear in a `Sregister_symbol` call in `lib/`.
+C symbol referenced from Scheme; each must appear in a `Sregister_symbol` call in `lib/`. For a
+`define-builder-binding "NAME"`, the three symbols `NAME<OpBuilder>`, `NAME<RewriterBase*>` and
+`NAME<OpBuilder*>` come from one `register_builder_binding("NAME", ...)` call.
 
 ---
 
@@ -160,10 +171,10 @@ current-OpBuilder      ; mlir::OpBuilder*    (mlir/IR/Builders.h)
 ```
 
 `current-OpBuilder` holds a builder **shell** (or `#f`): a `CrestBox<OpBuilder>` (from `atBlockEnd`)
-or the pattern's `CrestBox<RewriterBase*>`. Every binding that takes a builder takes such a shell;
-C++ unwraps it with `as_ptr<mlir::OpBuilder>`, which tells the kinds apart by type tag (and, for a
-rewriter, adjusts the address: `RewriterBase` is polymorphic, so its `OpBuilder` base is not at
-offset 0). The real object is kept, so rewriter-only operations (`replaceOp`, `eraseOp`,
+or the pattern's `CrestBox<RewriterBase*>` (a builder MLIR passes to a callback is a
+`CrestBox<OpBuilder*>`). Each C++ symbol that takes a builder takes exactly one of these shells,
+so a builder binding is registered three times (see Rule 4); the Scheme side picks by the shell's
+type (`define-builder-binding`). The real object is kept, so rewriter-only operations (`replaceOp`, `eraseOp`,
 `inlineRegionBefore`, ...) work on the same handle and reach the real rewriter, including the
 methods the conversion rewriter overrides. A raw `OpBuilder*` is never a valid handle.
 
@@ -210,3 +221,4 @@ Named `let` is still fine for irregular recursion (mutual, non-linear stepping).
 - [ ] Module name `(mlir Path Name)` matches header path exactly
 - [ ] Every `foreign-procedure` string matches a `Sregister_symbol` key in C++ (Rule 14)
 - [ ] `%%` on internal Scheme helpers; `%` only on raw FFI bindings
+- [ ] A binding that takes a builder: `register_builder_binding` in C++, `define-builder-binding` in `ffi.sls`

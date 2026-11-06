@@ -6,6 +6,7 @@
 // Mirrors mlir/Dialect/Tensor/IR/Tensor.h - tensor op bindings.
 
 #include "Tensor.h"
+#include "../../../Support/BuilderBinding.h"
 #include "../../../Support/SchemeWrapper.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/IR/Builders.h"
@@ -29,16 +30,13 @@ void registerDialectTensorBindings() {
         return mlir::tensor::CastOp::areCastCompatible(fromType, toType) ? 1
                                                                          : 0;
       });
-  Sregister_symbol(
+  register_builder_binding(
       "mlir::tensor::CastOp::create",
-      (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr,
-                 uint64_t result_type_ptr,
-                 uint64_t input_value_ptr) -> uint64_t {
-        if (!builder_ptr || !loc_ptr || !result_type_ptr || !input_value_ptr) {
+      [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t result_type_ptr,
+         uint64_t input_value_ptr) -> uint64_t {
+        if (!loc_ptr || !result_type_ptr || !input_value_ptr) {
           return 0;
         }
-        auto* builder = crest::as_ptr<mlir::OpBuilder>(
-            builder_ptr, "mlir::tensor::CastOp::create");
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto resultType = mlir::Type::getFromOpaquePointer(
@@ -46,7 +44,7 @@ void registerDialectTensorBindings() {
         auto input = mlir::Value::getFromOpaquePointer(
             reinterpret_cast<const void*>(input_value_ptr));
         auto castOp =
-            mlir::tensor::CastOp::create(*builder, loc, resultType, input);
+            mlir::tensor::CastOp::create(builder, loc, resultType, input);
         return reinterpret_cast<uint64_t>(
             castOp.getResult().getAsOpaquePointer());
       });

@@ -69,7 +69,6 @@ template <typename T>
 // Forward declarations for the as_ptr specializations.
 namespace mlir {
 class MLIRContext;
-class OpBuilder;
 } // namespace mlir
 
 namespace crest {
@@ -81,18 +80,6 @@ namespace crest {
 template <>
 [[nodiscard]] mlir::MLIRContext* as_ptr<mlir::MLIRContext>(uint64_t ptr_val,
                                                            const char* who);
-
-// Explicit specialisation for mlir::OpBuilder: unwraps a CrestObject shell —
-// CrestBox<OpBuilder>* (from atBlockEnd), CrestBox<RewriterBase*>* (the
-// rewriter of a pattern callback; upcast to OpBuilder* statically, which
-// adjusts the address because RewriterBase is polymorphic and its OpBuilder
-// base is not at offset 0) or CrestBox<OpBuilder*>* (a builder MLIR passes to a
-// callback). Every binding that takes a builder takes one of these shells, so
-// the same shell also reaches rewriter-only operations. Anything else,
-// including a raw pointer, is an error.
-template <>
-[[nodiscard]] mlir::OpBuilder* as_ptr<mlir::OpBuilder>(uint64_t ptr_val,
-                                                       const char* who);
 } // namespace crest
 
 // ---------------------------------------------------------------------------

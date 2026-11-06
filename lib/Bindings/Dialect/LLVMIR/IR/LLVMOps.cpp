@@ -6,6 +6,7 @@
 // Mirrors mlir/Dialect/LLVMIR/LLVMDialect.h
 
 #include "LLVMOps.h"
+#include "../../../Support/BuilderBinding.h"
 #include "../../../Support/CrestObject.h"
 #include "../../../Support/SchemeWrapper.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
@@ -68,12 +69,10 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
 
   // mlir::LLVM::LLVMFuncOp::create: declare an LLVM function in the module.
   // (builder-ptr loc-ptr name-str func-type-ptr) → Operation* uptr
-  Sregister_symbol(
+  register_builder_binding(
       "mlir::LLVM::LLVMFuncOp::create",
-      (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, const char* name,
-                 uint64_t ftype_ptr) -> uint64_t {
-        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
-            builder_ptr, "mlir::LLVM::LLVMFuncOp::create");
+      [](mlir::OpBuilder& builder, uint64_t loc_ptr, const char* name,
+         uint64_t ftype_ptr) -> uint64_t {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto ftype = mlir::cast<mlir::LLVM::LLVMFunctionType>(
@@ -86,13 +85,11 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
   // mlir::LLVM::GlobalOp::create: create an LLVM global constant.
   // (builder-ptr loc-ptr type-ptr is-constant linkage-int name-str
   // value-attr-ptr) → Operation* uptr linkage: 8=Internal
-  Sregister_symbol(
+  register_builder_binding(
       "mlir::LLVM::GlobalOp::create",
-      (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, uint64_t type_ptr,
-                 int is_constant, int linkage_int, const char* name,
-                 uint64_t value_attr_ptr) -> uint64_t {
-        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
-            builder_ptr, "mlir::LLVM::GlobalOp::create");
+      [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t type_ptr,
+         int is_constant, int linkage_int, const char* name,
+         uint64_t value_attr_ptr) -> uint64_t {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto type = mlir::Type::getFromOpaquePointer(
@@ -119,12 +116,10 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
 
   // mlir::LLVM::AddressOfOp::create: get address of a global.
   // (builder-ptr loc-ptr global-op-ptr) → Value uptr
-  Sregister_symbol(
+  register_builder_binding(
       "mlir::LLVM::AddressOfOp::create",
-      (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr,
-                 uint64_t global_op_ptr) -> uint64_t {
-        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
-            builder_ptr, "mlir::LLVM::AddressOfOp::create");
+      [](mlir::OpBuilder& builder, uint64_t loc_ptr,
+         uint64_t global_op_ptr) -> uint64_t {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto* op = reinterpret_cast<mlir::Operation*>(global_op_ptr);
@@ -138,13 +133,11 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
   // char. (builder-ptr loc-ptr result-type-ptr elem-type-ptr ptr-val index0
   // index1) → Value uptr For global string access: result-type = ptr, elem-type
   // = array type, indices = {0, 0}
-  Sregister_symbol(
+  register_builder_binding(
       "mlir::LLVM::GEPOp::create",
-      (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, uint64_t res_type_ptr,
-                 uint64_t elem_type_ptr, uint64_t ptr_val, uint64_t idx0,
-                 uint64_t idx1) -> uint64_t {
-        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
-            builder_ptr, "mlir::LLVM::GEPOp::create");
+      [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t res_type_ptr,
+         uint64_t elem_type_ptr, uint64_t ptr_val, uint64_t idx0,
+         uint64_t idx1) -> uint64_t {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto res_type = mlir::Type::getFromOpaquePointer(
@@ -166,12 +159,9 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
 
   // mlir::LLVM::ConstantOp::create<i64>: create an i64 constant.
   // (builder-ptr loc-ptr int-val) → Value uptr
-  Sregister_symbol(
+  register_builder_binding(
       "mlir::LLVM::ConstantOp::create<i64>",
-      (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr,
-                 int64_t val) -> uint64_t {
-        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
-            builder_ptr, "mlir::LLVM::ConstantOp::create<i64>");
+      [](mlir::OpBuilder& builder, uint64_t loc_ptr, int64_t val) -> uint64_t {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto i64ty = mlir::IntegerType::get(builder.getContext(), 64);
@@ -183,12 +173,10 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
   // mlir::LLVM::CallOp::create: call an LLVM function.
   // (builder-ptr loc-ptr func-type-ptr callee-attr-ptr operands-list) →
   // Operation* uptr operands-list: Scheme list of Value uptrss
-  Sregister_symbol(
+  register_builder_binding(
       "mlir::LLVM::CallOp::create",
-      (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, uint64_t ftype_ptr,
-                 uint64_t callee_ptr, ptr operands_list) -> uint64_t {
-        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
-            builder_ptr, "mlir::LLVM::CallOp::create");
+      [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t ftype_ptr,
+         uint64_t callee_ptr, ptr operands_list) -> uint64_t {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto ftype = mlir::cast<mlir::LLVM::LLVMFunctionType>(

@@ -162,32 +162,4 @@ void registerIRRewriterBaseBindings() {
       });
 }
 
-// as_ptr<mlir::OpBuilder> specialisation: unwraps a shell to an OpBuilder*.
-//   CrestBox<mlir::RewriterBase*>* — the rewriter of a pattern callback. The
-//       RewriterBase is converted to OpBuilder* statically, which adjusts the
-//       address (RewriterBase is polymorphic, OpBuilder is not, so the
-//       OpBuilder base is not at offset 0).
-//   CrestBox<mlir::OpBuilder>*  — from atBlockEnd.
-//   CrestBox<mlir::OpBuilder*>* — a builder MLIR passes to a callback.
-// Anything else is a bug, including a raw pointer.
-template <>
-mlir::OpBuilder* as_ptr<mlir::OpBuilder>(uint64_t ptr_val, const char* who) {
-  if (!ptr_val) {
-    scheme_error(who, "null builder pointer");
-  }
-  auto* obj = reinterpret_cast<crest::CrestObject*>(ptr_val);
-  if (obj->isa<crest::CrestBox<mlir::RewriterBase*>>()) {
-    return &static_cast<crest::CrestBox<mlir::RewriterBase*>*>(obj)->inner();
-  }
-  if (obj->isa<crest::CrestBox<mlir::OpBuilder>>()) {
-    return &static_cast<crest::CrestBox<mlir::OpBuilder>*>(obj)->inner();
-  }
-  if (obj->isa<crest::CrestBox<mlir::OpBuilder*>>()) {
-    return &static_cast<crest::CrestBox<mlir::OpBuilder*>*>(obj)->inner();
-  }
-  scheme_error(who, "expected a builder shell: CrestBox<RewriterBase*>, "
-                    "CrestBox<OpBuilder> or CrestBox<OpBuilder*>");
-  crest_unreachable();
-}
-
 } // namespace crest

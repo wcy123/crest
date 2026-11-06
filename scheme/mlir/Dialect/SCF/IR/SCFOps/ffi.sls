@@ -11,10 +11,10 @@
           %mlir::scf::ForOp::getBody
           %mlir::scf::ForOp::getInductionVar
           %mlir::scf::YieldOp::create)
-  (import (chezscheme))
+  (import (chezscheme) (mlir support BuilderBinding))
 
-  (define %mlir::scf::ForOp::create
-    (foreign-procedure "mlir::scf::ForOp::create" (uptr uptr uptr uptr uptr) uptr))
+  (define-builder-binding %mlir::scf::ForOp::create
+    "mlir::scf::ForOp::create" (uptr uptr uptr uptr uptr) uptr)
 
   (define %mlir::scf::ForOp::getBody
     (foreign-procedure "mlir::scf::ForOp::getBody" (uptr) uptr))
@@ -22,7 +22,7 @@
   (define %mlir::scf::ForOp::getInductionVar
     (foreign-procedure "mlir::scf::ForOp::getInductionVar" (uptr) uptr))
 
-  (define %mlir::scf::YieldOp::create
-    (foreign-procedure "mlir::scf::YieldOp::create" (uptr uptr) void))
+  (define-builder-binding %mlir::scf::YieldOp::create
+    "mlir::scf::YieldOp::create" (uptr uptr) void)
 
   ) ;; end library (mlir Dialect SCF IR SCFOps ffi)

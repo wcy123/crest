@@ -6,6 +6,7 @@
 // Mirrors mlir/Dialect/Affine/IR/AffineOps.h
 
 #include "AffineOps.h"
+#include "../../../Support/BuilderBinding.h"
 #include "../../../Support/CrestObject.h"
 #include "../../../Support/LockedSchemeObject.h"
 #include "../../../Support/SchemeWrapper.h"
@@ -43,12 +44,10 @@ void registerDialectAffineIRAffineOpsBindings() {
   //   shape-list: Scheme list of int64 dimension sizes (lbs=0, steps=1)
   //   body-fn: (nested-builder-ptr ivs-list) → void
   //     ivs-list: Scheme list of Value uptrss (loop induction variables)
-  Sregister_symbol(
+  register_builder_binding(
       "mlir::affine::buildAffineLoopNest",
-      (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, ptr shape_list,
-                 ptr body_fn) -> void {
-        auto& builder =
-            *crest::as_ptr<mlir::OpBuilder>(builder_ptr, "buildAffineLoopNest");
+      [](mlir::OpBuilder& builder, uint64_t loc_ptr, ptr shape_list,
+         ptr body_fn) -> void {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto ubs = scheme_list_to_i64(shape_list);
@@ -80,32 +79,27 @@ void registerDialectAffineIRAffineOpsBindings() {
   // AffineLoadOp::create: load from memref at affine indices.
   // (builder-ptr loc-ptr memref-val-ptr ivs-list) → Value uptr
   //   ivs-list: Scheme list of Value uptrss (affine index variables)
-  Sregister_symbol(
-      "mlir::affine::AffineLoadOp::create",
-      (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, uint64_t memref_ptr,
-                 ptr ivs_list) -> uint64_t {
-        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
-            builder_ptr, "mlir::affine::AffineLoadOp::create");
-        auto loc = mlir::Location::getFromOpaquePointer(
-            reinterpret_cast<const void*>(loc_ptr));
-        auto memref = mlir::Value::getFromOpaquePointer(
-            reinterpret_cast<const void*>(memref_ptr));
-        auto ivs = scheme_list_to_values(ivs_list);
-        auto loaded =
-            mlir::affine::AffineLoadOp::create(builder, loc, memref, ivs);
-        return reinterpret_cast<uint64_t>(
-            loaded.getResult().getAsOpaquePointer());
-      });
+  register_builder_binding("mlir::affine::AffineLoadOp::create",
+                           [](mlir::OpBuilder& builder, uint64_t loc_ptr,
+                              uint64_t memref_ptr, ptr ivs_list) -> uint64_t {
+                             auto loc = mlir::Location::getFromOpaquePointer(
+                                 reinterpret_cast<const void*>(loc_ptr));
+                             auto memref = mlir::Value::getFromOpaquePointer(
+                                 reinterpret_cast<const void*>(memref_ptr));
+                             auto ivs = scheme_list_to_values(ivs_list);
+                             auto loaded = mlir::affine::AffineLoadOp::create(
+                                 builder, loc, memref, ivs);
+                             return reinterpret_cast<uint64_t>(
+                                 loaded.getResult().getAsOpaquePointer());
+                           });
 
   // AffineStoreOp::create: store value into memref at affine indices.
   // (builder-ptr loc-ptr value-ptr memref-val-ptr ivs-list) → void
   //   ivs-list: Scheme list of Value uptrss (affine index variables)
-  Sregister_symbol(
+  register_builder_binding(
       "mlir::affine::AffineStoreOp::create",
-      (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, uint64_t value_ptr,
-                 uint64_t memref_ptr, ptr ivs_list) -> void {
-        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
-            builder_ptr, "mlir::affine::AffineStoreOp::create");
+      [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t value_ptr,
+         uint64_t memref_ptr, ptr ivs_list) -> void {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto value = mlir::Value::getFromOpaquePointer(

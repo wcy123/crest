@@ -6,6 +6,7 @@
 // Mirrors mlir/IR/Builders.h
 
 #include "Builders.h"
+#include "../Support/BuilderBinding.h"
 #include "../Support/CrestObject.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/Builders.h"
@@ -37,58 +38,57 @@ void registerIROpBuilderBindings() {
         owned->inner().setInsertionPoint(block, block->end());
         return reinterpret_cast<uint64_t>(owned);
       });
-  Sregister_symbol(
+  register_builder_binding(
       "mlir::OpBuilder::create<OperationState>",
-      (void*)+[](uint64_t builder_ptr, uint64_t state_ptr) -> uint64_t {
-        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
-            builder_ptr, "mlir::OpBuilder::create<OperationState>");
+      [](mlir::OpBuilder& builder, uint64_t state_ptr) -> uint64_t {
         auto& state = crest::CrestBox<mlir::OperationState>::inner(
             state_ptr, "mlir::OpBuilder::create<OperationState>");
         return reinterpret_cast<uint64_t>(builder.create(state));
       });
   /// builder_ptr: builder shell, op_ptr: mlir::Operation*
-  Sregister_symbol(
+  register_builder_binding(
       "mlir::OpBuilder::setInsertionPoint",
-      (void*)+[](uint64_t builder_ptr, uint64_t op_ptr) -> void {
-        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
-            builder_ptr, "mlir::OpBuilder::setInsertionPoint");
+      [](mlir::OpBuilder& builder, uint64_t op_ptr) -> void {
         builder.setInsertionPoint(reinterpret_cast<mlir::Operation*>(op_ptr));
       });
   // builder_ptr: builder shell. Returns the raw Listener* (0 if none).
-  Sregister_symbol(
-      "mlir::OpBuilder::getListener",
-      (void*)+[](uint64_t builder_ptr) -> uint64_t {
-        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
-            builder_ptr, "mlir::OpBuilder::getListener");
+  register_builder_binding(
+      "mlir::OpBuilder::getListener", [](mlir::OpBuilder& builder) -> uint64_t {
         return reinterpret_cast<uint64_t>(builder.getListener());
       });
-  Sregister_symbol(
-      "mlir::OpBuilder::getContext",
-      (void*)+[](uint64_t builder_ptr) -> uint64_t {
-        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
-            builder_ptr, "mlir::OpBuilder::getContext");
+  register_builder_binding(
+      "mlir::OpBuilder::getContext", [](mlir::OpBuilder& builder) -> uint64_t {
         return reinterpret_cast<uint64_t>(builder.getContext());
       });
-  // builder_ptr: builder shell, block_ptr: mlir::Block*
+  // Type predicates for the builder shells: Scheme picks the binding variant by
+  // the shell's type (define-builder-binding in (mlir support BuilderBinding)).
   Sregister_symbol(
+      "crest::isa<CrestBox<mlir::OpBuilder>>", (void*)+[](uint64_t ptr) -> int {
+        return ptr && reinterpret_cast<CrestObject*>(ptr)
+                          ->isa<CrestBox<mlir::OpBuilder>>();
+      });
+  Sregister_symbol(
+      "crest::isa<CrestBox<mlir::OpBuilder*>>",
+      (void*)+[](uint64_t ptr) -> int {
+        return ptr && reinterpret_cast<CrestObject*>(ptr)
+                          ->isa<CrestBox<mlir::OpBuilder*>>();
+      });
+  // builder_ptr: builder shell, block_ptr: mlir::Block*
+  register_builder_binding(
       "mlir::OpBuilder::setInsertionPointToEnd",
-      (void*)+[](uint64_t builder_ptr, uint64_t block_ptr) -> void {
+      [](mlir::OpBuilder& builder, uint64_t block_ptr) -> void {
         if (!block_ptr) {
           scheme_error("mlir::OpBuilder::setInsertionPointToEnd",
                        "null block pointer");
         }
-        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
-            builder_ptr, "mlir::OpBuilder::setInsertionPointToEnd");
         builder.setInsertionPointToEnd(
             reinterpret_cast<mlir::Block*>(block_ptr));
       });
   // Saves the builder's insertion point; deleting the shell restores it.
   // builder_ptr: builder shell. Returns CrestBox<InsertionGuard>* uptr.
-  Sregister_symbol(
+  register_builder_binding(
       "mlir::OpBuilder::InsertionGuard::InsertionGuard",
-      (void*)+[](uint64_t builder_ptr) -> uint64_t {
-        auto& builder = *crest::as_ptr<mlir::OpBuilder>(
-            builder_ptr, "mlir::OpBuilder::InsertionGuard::InsertionGuard");
+      [](mlir::OpBuilder& builder) -> uint64_t {
         return reinterpret_cast<uint64_t>(
             new CrestBox<mlir::OpBuilder::InsertionGuard>(builder));
       });

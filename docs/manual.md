@@ -929,8 +929,9 @@ convention from CLAUDE.md Rules 10–11:
 | `current-OpBuilder` | `with-current-OpBuilder` | `(mlir IR Builders)` | `:rewrite :with` and `^bb` bodies; user code via `with-current-OpBuilder` |
 
 `current-OpBuilder` holds a builder shell: a `CrestBox<OpBuilder>` or the pattern's
-`CrestBox<RewriterBase*>`. Every binding that takes a builder takes either kind, and C++ tells
-them apart by type tag. Because the real rewriter is kept, rewriter-only operations (`replaceOp`,
+`CrestBox<RewriterBase*>`. Every binding that takes a builder accepts either kind (and a
+`CrestBox<OpBuilder*>` that MLIR passes to a callback): the Scheme side checks the shell's type
+and calls the matching C++ symbol. Because the real rewriter is kept, rewriter-only operations (`replaceOp`,
 `eraseOp`, `inlineRegionBefore`, ...) work on the same handle and reach the real rewriter,
 including what the conversion rewriter overrides. `with-OpBuilder` creates a builder and binds
 the shell; it does not install it (CLAUDE.md Rule 10) — wrap the body in `with-current-OpBuilder`

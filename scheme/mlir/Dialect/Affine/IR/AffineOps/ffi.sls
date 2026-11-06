@@ -11,19 +11,16 @@
           %mlir::affine::AffineLoadOp::create
           %mlir::affine::AffineStoreOp::create
           %mlir::affine::AffineDialect)
-  (import (chezscheme))
+  (import (chezscheme) (mlir support BuilderBinding))
 
-  (define %mlir::affine::buildAffineLoopNest
-    (foreign-procedure "mlir::affine::buildAffineLoopNest"
-                       (uptr uptr scheme-object scheme-object) void))
+  (define-builder-binding %mlir::affine::buildAffineLoopNest
+    "mlir::affine::buildAffineLoopNest" (uptr uptr scheme-object scheme-object) void)
 
-  (define %mlir::affine::AffineLoadOp::create
-    (foreign-procedure "mlir::affine::AffineLoadOp::create"
-                       (uptr uptr uptr scheme-object) uptr))
+  (define-builder-binding %mlir::affine::AffineLoadOp::create
+    "mlir::affine::AffineLoadOp::create" (uptr uptr uptr scheme-object) uptr)
 
-  (define %mlir::affine::AffineStoreOp::create
-    (foreign-procedure "mlir::affine::AffineStoreOp::create"
-                       (uptr uptr uptr uptr scheme-object) void))
+  (define-builder-binding %mlir::affine::AffineStoreOp::create
+    "mlir::affine::AffineStoreOp::create" (uptr uptr uptr uptr scheme-object) void)
 
   (define %mlir::affine::AffineDialect
     (foreign-procedure "mlir::affine::AffineDialect" (uptr) void))

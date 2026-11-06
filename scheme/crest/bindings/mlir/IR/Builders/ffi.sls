@@ -21,7 +21,7 @@
     %mlir::OpBuilder::getListener
     %mlir::OpBuilder::setInsertionPointToEnd
     %mlir::OpBuilder::InsertionGuard::InsertionGuard)
-  (import (rnrs) (only (chezscheme) foreign-procedure))
+  (import (rnrs) (only (chezscheme) foreign-procedure) (mlir support BuilderBinding))
 
   ;; @brief Heap-allocate a CrestBox<mlir::OpBuilder> positioned at end of block.
   ;; @param ctx       MLIRContext* uptr — needed when block is not yet attached to an op
@@ -37,33 +37,33 @@
   ;; @param state       CrestBox<OperationState>* uptr
   ;; @return            Operation* uptr of the created op
   ;; @see               mlir/IR/Builders.h, mlir/IR/OperationSupport.h
-  (define %mlir::OpBuilder::create<OperationState>
-    (foreign-procedure "mlir::OpBuilder::create<OperationState>" (uptr uptr) uptr))
+  (define-builder-binding %mlir::OpBuilder::create<OperationState>
+    "mlir::OpBuilder::create<OperationState>" (uptr uptr) uptr)
 
   ;; @brief Return the raw OpBuilder::Listener* of a builder, 0 if none.
   ;; @param builder  builder shell uptr
-  (define %mlir::OpBuilder::getListener
-    (foreign-procedure "mlir::OpBuilder::getListener" (uptr) uptr))
+  (define-builder-binding %mlir::OpBuilder::getListener
+    "mlir::OpBuilder::getListener" (uptr) uptr)
 
   ;; @brief Return the MLIRContext* associated with this OpBuilder.
   ;; @param builder  builder shell uptr
   ;; @return         MLIRContext* uptr
-  (define %mlir::OpBuilder::getContext
-    (foreign-procedure "mlir::OpBuilder::getContext" (uptr) uptr))
+  (define-builder-binding %mlir::OpBuilder::getContext
+    "mlir::OpBuilder::getContext" (uptr) uptr)
 
-  (define %mlir::OpBuilder::setInsertionPoint
-    (foreign-procedure "mlir::OpBuilder::setInsertionPoint" (uptr uptr) void))
+  (define-builder-binding %mlir::OpBuilder::setInsertionPoint
+    "mlir::OpBuilder::setInsertionPoint" (uptr uptr) void)
 
   ;; @brief Move the insertion point to the end of a block.
   ;; @param builder  builder shell uptr
   ;; @param block    Block* uptr
-  (define %mlir::OpBuilder::setInsertionPointToEnd
-    (foreign-procedure "mlir::OpBuilder::setInsertionPointToEnd" (uptr uptr) void))
+  (define-builder-binding %mlir::OpBuilder::setInsertionPointToEnd
+    "mlir::OpBuilder::setInsertionPointToEnd" (uptr uptr) void)
 
   ;; @brief Save the builder's insertion point; freeing the shell restores it.
   ;; @param builder  builder shell uptr
   ;; @return         CrestBox<InsertionGuard>* uptr — free via with-CrestObject
-  (define %mlir::OpBuilder::InsertionGuard::InsertionGuard
-    (foreign-procedure "mlir::OpBuilder::InsertionGuard::InsertionGuard" (uptr) uptr))
+  (define-builder-binding %mlir::OpBuilder::InsertionGuard::InsertionGuard
+    "mlir::OpBuilder::InsertionGuard::InsertionGuard" (uptr) uptr)
 
   ) ;; end library (mlir IR Builders ffi)

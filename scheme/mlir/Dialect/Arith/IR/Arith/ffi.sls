@@ -12,19 +12,19 @@
           %mlir::arith::ConstantIndexOp::create
           %mlir::arith::ConstantOp::create<f64>
           %mlir::arith::ArithDialect)
-  (import (chezscheme))
+  (import (chezscheme) (mlir support BuilderBinding))
 
-  (define %mlir::arith::AddFOp::create
-    (foreign-procedure "mlir::arith::AddFOp::create" (uptr uptr uptr uptr) uptr))
+  (define-builder-binding %mlir::arith::AddFOp::create
+    "mlir::arith::AddFOp::create" (uptr uptr uptr uptr) uptr)
 
-  (define %mlir::arith::MulFOp::create
-    (foreign-procedure "mlir::arith::MulFOp::create" (uptr uptr uptr uptr) uptr))
+  (define-builder-binding %mlir::arith::MulFOp::create
+    "mlir::arith::MulFOp::create" (uptr uptr uptr uptr) uptr)
 
-  (define %mlir::arith::ConstantIndexOp::create
-    (foreign-procedure "mlir::arith::ConstantIndexOp::create" (uptr uptr uptr) uptr))
+  (define-builder-binding %mlir::arith::ConstantIndexOp::create
+    "mlir::arith::ConstantIndexOp::create" (uptr uptr uptr) uptr)
 
-  (define %mlir::arith::ConstantOp::create<f64>
-    (foreign-procedure "mlir::arith::ConstantOp::create<f64>" (uptr uptr uptr) uptr))
+  (define-builder-binding %mlir::arith::ConstantOp::create<f64>
+    "mlir::arith::ConstantOp::create<f64>" (uptr uptr uptr) uptr)
 
   (define %mlir::arith::ArithDialect
     (foreign-procedure "mlir::arith::ArithDialect" (uptr) void))

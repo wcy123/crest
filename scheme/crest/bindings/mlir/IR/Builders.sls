@@ -12,9 +12,10 @@
 ;;
 ;; Handle convention: every binding that takes an OpBuilder takes a builder shell:
 ;; CrestBox<OpBuilder> (from atBlockEnd), CrestBox<RewriterBase*> (a pattern's rw) or a
-;; CrestBox<OpBuilder*> that MLIR passes to a callback. C++ tells them apart by type tag, so a
-;; rewriter keeps its real type and rewriter-only operations (replaceOp, inlineRegionBefore, ...)
-;; work on the same handle.
+;; CrestBox<OpBuilder*> that MLIR passes to a callback. Each C++ symbol takes exactly one kind;
+;; define-builder-binding (in the ffi library) checks the shell's type and calls the matching
+;; one. A rewriter keeps its real type, so rewriter-only operations (replaceOp,
+;; inlineRegionBefore, ...) work on the same handle.
 ;;
 ;;===----------------------------------------------------------------------===;;
 

@@ -78,9 +78,9 @@ whether Scheme must free the object. A shell answers both questions at run time.
 **The program can check the type.** A shell has its type tag in the first 8 bytes. A
 binding checks the tag before it uses the shell. If you pass the wrong object, you get a
 clear Scheme error, `wrong CrestObject type`. Without the tag, the program would crash
-deep inside MLIR. The tag also lets one function accept more than one kind of object. For
-example, `as_ptr<mlir::OpBuilder>` accepts a `CrestBox<OpBuilder>`, a
-`CrestBox<RewriterBase*>` or a `CrestBox<OpBuilder*>`.
+deep inside MLIR. A C++ binding takes exactly one kind of shell. When Scheme may hold one of
+several kinds, as it does for a builder, the Scheme side checks the type with an `isa`
+predicate and calls the binding for that kind (`define-builder-binding`, below).
 
 **The object frees itself.** Scheme does not know the C++ type of the object it holds. We
 also do not want a separate "free" binding for every type. So each shell carries its own
@@ -204,17 +204,18 @@ Scheme callback with that shell.
                                                |   insertPoint     +32   |   |
                                            +40 +-------------------------+   |
                                                                              |
-        as_ptr<mlir::OpBuilder> (in C++, on the shell of rw)  -----------------+
-        returns the RewriterBase address + 8: the OpBuilder base the builder bindings use
+        CrestBox<RewriterBase*>::inner, read as an OpBuilder&  ---------------+
+        the C++ upcast adds 8: the OpBuilder base the builder bindings use
 ```
 
 The `OpBuilder` does **not** start at the beginning of the `RewriterBase`. `RewriterBase` has
 virtual functions, so it starts with a hidden pointer to its virtual table (`vptr`).
 `OpBuilder` has no virtual functions and comes after it. Converting a `RewriterBase*` to an
 `OpBuilder*` in C++ adds 8 bytes. Code that reuses the same address would read the `vptr` as
-the builder's `context`. For this reason the conversion is done in C++
-(`as_ptr<mlir::OpBuilder>`), on the shell. `current-OpBuilder` keeps the shell, so a rewriter
-stays a rewriter and rewriter-only operations still reach the real object.
+the builder's `context`. For this reason the conversion is done by C++ on the typed shell
+(`CrestBox<RewriterBase*>::inner` returns a `RewriterBase&`, which converts to `OpBuilder&`).
+`current-OpBuilder` keeps the shell, so a rewriter stays a rewriter and rewriter-only
+operations still reach the real object.
 
 #### What happens when `with-CrestObject` ends
 
@@ -363,10 +364,14 @@ Two types have a special `as_ptr`, because their objects arrive in more than one
 - `as_ptr<mlir::MLIRContext>` also accepts a raw `MLIRContext*`, such as the one from
   `op->getContext()`. **It is not type-safe**: if the argument is not a
   `CrestBox<MLIRContext>`, it is cast to `MLIRContext*` with no check, like `as_raw`.
-- `as_ptr<mlir::OpBuilder>` accepts `CrestBox<OpBuilder>`, `CrestBox<RewriterBase*>` (adding the
-  8 bytes described above) and `CrestBox<OpBuilder*>` (a builder MLIR passes to a callback). It
-  is type-safe: it rejects a raw pointer and any other shell with a Scheme error. A binding that
-  takes a builder takes one of these shells and calls `as_ptr<mlir::OpBuilder>`.
+- A builder is one of three shells: `CrestBox<OpBuilder>` (from `atBlockEnd`),
+  `CrestBox<RewriterBase*>` (a pattern's rewriter, adding the 8 bytes described above) and
+  `CrestBox<OpBuilder*>` (a builder MLIR passes to a callback). Each C++ symbol takes exactly one,
+  so `register_builder_binding` (`lib/Bindings/Support/BuilderBinding.h`) registers one body three
+  times as `NAME<OpBuilder>`, `NAME<RewriterBase*>` and `NAME<OpBuilder*>`. On the Scheme side
+  `define-builder-binding` (`(mlir support BuilderBinding)`) makes one procedure that checks the
+  shell with the `isa` predicates and calls the matching symbol. A raw pointer or any other
+  shell is a Scheme error.
 
 The `isa` check is **exact**. A `CrestBox<RewriterBase*>` is not a
 `CrestBox<PatternRewriter*>`. For this reason, each shell type that is accepted is listed by
