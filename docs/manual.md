@@ -300,8 +300,10 @@ This mirrors MLIR's textual format, which MLIR C++ developers will find familiar
 
 ```scheme
 (begin-mlir-code
-  c0  = arith.constant () (value : 0 :i64) -> (mlir::IntegerType::get<i64>)
-  sum = arith.addi (%a %b) -> (mlir::Value::getType %a))
+  i64 = (mlir::IntegerType::get<i64>)
+  c0  = arith.constant () (value : 0 :i64) -> i64
+  ty  = (mlir::Value::getType %a)
+  sum = arith.addi (%a %b) -> ty)
 ```
 
 ### Supplying the builder
@@ -446,9 +448,10 @@ Common types have shorthands that construct the attribute automatically:
 
 ```scheme
 ;; Shorthand: keyword tag constructs the attribute automatically
+idx = (mlir::IndexType::get)
 c = arith.constant ()
     (value : 42 :index)
-    -> (mlir::IndexType::get)
+    -> idx
 
 ;; Array shorthands take a Scheme list or vector; val is evaluated, so quote a literal list
 (shapes : '(1 2 3) :i64-array)
@@ -461,7 +464,10 @@ my.op ()
 
 ### Result types
 
-`-> !type` where `!type` is any Scheme expression returning an `mlir::Type`.
+`-> !type` where `!type` is a Scheme variable or a literal holding an `mlir::Type`. A
+parenthesised form after `->` is always a **list of types**, one expression per element, so
+`-> (mlir::IndexType::get)` is a one-element list holding the procedure, not a call, and fails when
+the op is created. To use a call as the type, bind it first with `var = (expr)` or `let`.
 Multi-result ops list all types in `(...)`:
 
 ```scheme
@@ -986,17 +992,15 @@ The context hierarchy during a pattern rewrite:
 |---|---|
 | `(mlir IR MLIRContext)` | `current-MLIRContext`, `with-current-MLIRContext`, `mlir::MLIRContext::new` |
 | `(mlir IR Operation)` | `mlir::Operation::getName`, `getResult`, `getRegion`, `getAttr`, `setAttr!`, `getContext`, `getNumResults`, `getNumOperands` |
-| `(mlir IR Value)` | `mlir::Value::getType`, `getDefiningOp`, `getUses` |
+| `(mlir IR Value)` | `mlir::Value::getType`, `getDefiningOp`, `getUses`, `mlir::OpResult::getResultNumber` |
 | `(mlir IR Block)` | `mlir::Block::getArgument`, `getNumArguments`, `current-Block`, `with-current-Block` |
 | `(mlir IR Region)` | `mlir::Region::front`, `getParentOp` |
-| `(mlir IR OpResult)` | `mlir::OpResult::getResultNumber` |
 
 ### Types
 
 | Import | Key exports |
 |---|---|
-| `(mlir IR BuiltinTypes)` | `mlir::IndexType::get`, `mlir::IntegerType::get<i64>`, `mlir::FloatType::get<f32>`, `mlir::RankedTensorType::get`, `mlir::RankedTensorType::getShape`, `mlir::RankedTensorType::getRank`, `mlir::RankedTensorType::cloneWithEncoding` |
-| `(mlir IR Type)` | `mlir::Type::getFromOpaquePointer` |
+| `(mlir IR BuiltinTypes)` | `mlir::IndexType::get`, `mlir::IntegerType::get<i64>`, `mlir::Float32Type::get`, `mlir::Float64Type::get`, `mlir::RankedTensorType::get`, `mlir::RankedTensorType::getShape`, `mlir::RankedTensorType::getRank`, `mlir::RankedTensorType::cloneWithEncoding` |
 
 ### Attributes
 

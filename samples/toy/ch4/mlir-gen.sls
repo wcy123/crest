@@ -11,14 +11,13 @@
           (mlir IR BuiltinTypes)
           (mlir IR BuiltinAttributes)
           (mlir IR Location)
-          (mlir IR OperationSupport)
           (mlir IR Operation)
           (mlir IR Region)
           (mlir IR Block)
           (mlir IR BuiltinOps)
           (toy ch4 ast)
           (for (only (crest pattern-dsl rewrite) begin-mlir-code) expand)
-          (for (only (crest pattern-dsl keywords) = :string :loc :builder :arg) expand)
+          (for (only (crest pattern-dsl keywords) = :string :loc :arg) expand)
           (only (crest pattern-dsl keywords) = : -> :region :loc
                 :string :index :i8 :i16 :i32 :i64 :f32 :f64
                 :i8-array :i16-array :i32-array :i64-array :unit))
@@ -51,42 +50,25 @@
       (error 'mlir-gen "variable already declared" name))
     (hashtable-set! symtab name value))
 
-  (define (%%create-op! builder loc name operands attrs result-types)
-    (with-OperationState state (loc name)
-      (for-each (lambda (v) (mlir::OperationState::addOperands state v))
-                operands)
-      (for-each (lambda (kv)
-                  (mlir::OperationState::addAttribute state (car kv) (cdr kv)))
-                attrs)
-      (for-each (lambda (t) (mlir::OperationState::addTypes state t))
-                result-types)
-      (mlir::OpBuilder::create<OperationState> builder state)))
-
   (define (%%f64-unranked-tensor)
     (%%get-type '()))
 
-  (define (%%mlir-gen-number builder expr)
+  (define (%%mlir-gen-number expr)
     (let* ([loc  (%%loc (number-expr:loc expr))]
            [val  (number-expr:val expr)]
            [type (mlir::RankedTensorType::get '() (mlir::Float64Type::get))]
            [attr (mlir::DenseElementsAttr::get<f64> type (list val))])
-      (mlir::Operation::getResult
-       (%%create-op! builder loc "toy.constant" '()
-                     (list (cons "value" attr))
-                     (list type))
-       0)))
+      (begin-mlir-code
+          r = toy.constant () (value : attr) :loc loc -> type)))
 
-  (define (%%mlir-gen-literal builder expr)
+  (define (%%mlir-gen-literal expr)
     (let* ([loc   (%%loc (literal-expr:loc expr))]
            [dims  (literal-expr:dims expr)]
            [data  (%%collect-data expr)]
            [type  (mlir::RankedTensorType::get dims (mlir::Float64Type::get))]
            [attr  (mlir::DenseElementsAttr::get<f64> type data)])
-      (mlir::Operation::getResult
-       (%%create-op! builder loc "toy.constant" '()
-                     (list (cons "value" attr))
-                     (list type))
-       0)))
+      (begin-mlir-code
+          r = toy.constant () (value : attr) :loc loc -> type)))
 
   (define (%%mlir-gen-var symtab expr)
     (let ([val (hashtable-ref symtab (var-expr:name expr) #f)])
@@ -94,79 +76,75 @@
         (error 'mlir-gen "unknown variable" (var-expr:name expr)))
       val))
 
-  (define (%%mlir-gen-binary builder symtab expr)
-    (let ([lhs (%%mlir-gen-expr builder symtab (binary-expr:lhs expr))]
-          [rhs (%%mlir-gen-expr builder symtab (binary-expr:rhs expr))]
+  (define (%%mlir-gen-binary symtab expr)
+    (let ([lhs (%%mlir-gen-expr symtab (binary-expr:lhs expr))]
+          [rhs (%%mlir-gen-expr symtab (binary-expr:rhs expr))]
           [loc (%%loc (binary-expr:loc expr))])
-      (let ([op-name (case (binary-expr:op expr)
-                       [(#\+) "toy.add"]
-                       [(#\*) "toy.mul"]
-                       [else (error 'mlir-gen "unknown binary op" (binary-expr:op expr))])])
-        (mlir::Operation::getResult
-         (%%create-op! builder loc op-name (list lhs rhs)
-                       '() (list (%%f64-unranked-tensor)))
-         0))))
+      (let ([type (%%f64-unranked-tensor)])
+        (case (binary-expr:op expr)
+          [(#\+) (begin-mlir-code r = toy.add (lhs rhs) :loc loc -> type)]
+          [(#\*) (begin-mlir-code r = toy.mul (lhs rhs) :loc loc -> type)]
+          [else (error 'mlir-gen "unknown binary op" (binary-expr:op expr))]))))
 
-  (define (%%mlir-gen-call builder symtab expr)
+  (define (%%mlir-gen-call symtab expr)
     (let ([callee (call-expr:callee expr)]
           [loc    (%%loc (call-expr:loc expr))]
-          [args   (map (lambda (a) (%%mlir-gen-expr builder symtab a))
+          [args   (map (lambda (a) (%%mlir-gen-expr symtab a))
                        (call-expr:args expr))])
       (cond
        [(string=? callee "transpose")
         (unless (fx=? (length args) 1)
           (error 'mlir-gen "transpose takes exactly one argument"))
-        (mlir::Operation::getResult
-         (%%create-op! builder loc "toy.transpose" args
-                       '() (list (%%f64-unranked-tensor)))
-         0)]
+        (let ([type (%%f64-unranked-tensor)])
+          (begin-mlir-code
+              r = toy.transpose (,@args) :loc loc -> type))]
        [else
-        (let ([callee-attr (mlir::StringAttr::get callee)])
-          (mlir::Operation::getResult
-           (%%create-op! builder loc "toy.generic_call" args
-                         (list (cons "callee" callee-attr))
-                         (list (%%f64-unranked-tensor)))
-           0))])))
+        (let ([type (%%f64-unranked-tensor)])
+          (begin-mlir-code
+              r = toy.generic_call (,@args)
+              (callee : callee :string)
+              :loc loc
+              -> type))])))
 
-  (define (%%mlir-gen-print builder symtab expr)
-    (let ([arg (%%mlir-gen-expr builder symtab (print-expr:arg expr))]
+  (define (%%mlir-gen-print symtab expr)
+    (let ([arg (%%mlir-gen-expr symtab (print-expr:arg expr))]
           [loc (%%loc (print-expr:loc expr))])
-      (%%create-op! builder loc "toy.print" (list arg) '() '())))
+      (begin-mlir-code
+          toy.print (arg) :loc loc)))
 
-  (define (%%mlir-gen-return builder symtab expr)
+  (define (%%mlir-gen-return symtab expr)
     (let ([loc (%%loc (return-expr:loc expr))]
           [val (and (return-expr:expr expr)
-                    (%%mlir-gen-expr builder symtab (return-expr:expr expr)))])
-      (%%create-op! builder loc "toy.return"
-                    (if val (list val) '()) '() '())))
+                    (%%mlir-gen-expr symtab (return-expr:expr expr)))])
+      (begin-mlir-code
+          toy.return (,@(if val (list val) '())) :loc loc)))
 
-  (define (%%mlir-gen-var-decl builder symtab expr)
-    (let* ([init (%%mlir-gen-expr builder symtab (var-decl-expr:init-val expr))]
+  (define (%%mlir-gen-var-decl symtab expr)
+    (let* ([init (%%mlir-gen-expr symtab (var-decl-expr:init-val expr))]
            [loc  (%%loc (var-decl-expr:loc expr))]
            [shape (var-type:shape (var-decl-expr:type expr))]
            [val   (if (null? shape)
                       init
-                      (mlir::Operation::getResult
-                       (%%create-op! builder loc "toy.reshape" (list init)
-                                     '() (list (%%get-type shape)))
-                       0))])
+                      (let ([reshaped-type (%%get-type shape)])
+                        (begin-mlir-code
+                            r = toy.reshape (init) :loc loc -> reshaped-type)))])
       (%%declare! symtab (var-decl-expr:name expr) val)
       val))
 
-  (define (%%mlir-gen-expr builder symtab expr)
+  (define (%%mlir-gen-expr symtab expr)
     (cond
-     [(number-expr?   expr) (%%mlir-gen-number  builder expr)]
-     [(literal-expr?  expr) (%%mlir-gen-literal builder expr)]
+     [(number-expr?   expr) (%%mlir-gen-number  expr)]
+     [(literal-expr?  expr) (%%mlir-gen-literal expr)]
      [(var-expr?      expr) (%%mlir-gen-var     symtab  expr)]
-     [(binary-expr?   expr) (%%mlir-gen-binary  builder symtab expr)]
-     [(call-expr?     expr) (%%mlir-gen-call    builder symtab expr)]
-     [(print-expr?    expr) (%%mlir-gen-print   builder symtab expr)]
-     [(return-expr?   expr) (%%mlir-gen-return  builder symtab expr)]
-     [(var-decl-expr? expr) (%%mlir-gen-var-decl builder symtab expr)]
+     [(binary-expr?   expr) (%%mlir-gen-binary  symtab expr)]
+     [(call-expr?     expr) (%%mlir-gen-call    symtab expr)]
+     [(print-expr?    expr) (%%mlir-gen-print   symtab expr)]
+     [(return-expr?   expr) (%%mlir-gen-return  symtab expr)]
+     [(var-decl-expr? expr) (%%mlir-gen-var-decl symtab expr)]
      [else (error 'mlir-gen "unhandled expression type" expr)]))
 
-  (define (%%mlir-gen-block builder symtab stmts)
-    (for-each (lambda (stmt) (%%mlir-gen-expr builder symtab stmt)) stmts))
+  (define (%%mlir-gen-block symtab stmts)
+    (for-each (lambda (stmt) (%%mlir-gen-expr symtab stmt)) stmts))
 
   (define (%%mlir-gen-function module-body symtab fn)
     (let* ([proto     (function:proto fn)]
@@ -187,10 +165,11 @@
                          (for-each (lambda (arg-ast idx)
                                      (%%declare! symtab (var-expr:name arg-ast) (:arg idx)))
                                    args (iota (length args)))
-                         (%%mlir-gen-block :builder symtab body)
+                         (%%mlir-gen-block symtab body)
                          (when (or (mlir::Block::empty? (current-Block))
                                    (not (toy.return? (mlir::Block::back (current-Block)))))
-                           (%%create-op! :builder (%%loc proto-loc) "toy.return" '() '() '())))
+                           (begin-mlir-code
+                               toy.return () :loc (%%loc proto-loc))))
                    :loc ((location:file proto-loc)
                          (location:line proto-loc)
                          (location:col  proto-loc))))])
