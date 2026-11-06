@@ -127,6 +127,17 @@
           (error '%%current-rewriter
                  "this needs the pattern's rewriter, but the active builder is a plain OpBuilder"))))
 
+  ;; A result type is an mlir::Type, an opaque pointer. A procedure here means the form after ->
+  ;; was a parenthesised call: that is a list of types, so the call was never made.
+  (define (%%check-result-type op-name type)
+    (when (procedure? type)
+      (error 'begin-mlir-code
+             (string-append "the result type of " op-name " is a procedure, not an mlir::Type: "
+                            "a parenthesised form after -> is a list of types; "
+                            "bind a call to a variable first")
+             type))
+    type)
+
   ;; Create an op from a prepared OperationState with a builder shell.
   (define (%%crest:create-op! builder state)
     (mlir::OpBuilder::create<OperationState> builder state))
@@ -555,7 +566,7 @@
                                (lambda (v) (mlir::OperationState::addOperands state v))
                                operands-expr)
                               (for-each
-                               (lambda (t) (mlir::OperationState::addTypes state t))
+                               (lambda (t) (mlir::OperationState::addTypes state (%%check-result-type name t)))
                                (list result-type ...))
                               setter ...           ; addAttribute — before create
                               addregion-call ...   ; addRegion — pre-allocate slots
