@@ -12,21 +12,21 @@
           %mlir::memref::DeallocOp::create
           %mlir::memref::MemRefDialect
           %mlir::memref::LoadOp::create)
-  (import (chezscheme))
+  (import (chezscheme) (mlir support BuilderBinding))
 
   (define %mlir::MemRefType::get
     (foreign-procedure "mlir::MemRefType::get" (uptr) uptr))
 
-  (define %mlir::memref::AllocOp::create
-    (foreign-procedure "mlir::memref::AllocOp::create" (uptr uptr uptr) uptr))
+  (define-builder-binding %mlir::memref::AllocOp::create
+    "mlir::memref::AllocOp::create" (uptr uptr uptr) uptr)
 
-  (define %mlir::memref::DeallocOp::create
-    (foreign-procedure "mlir::memref::DeallocOp::create" (uptr uptr uptr) uptr))
+  (define-builder-binding %mlir::memref::DeallocOp::create
+    "mlir::memref::DeallocOp::create" (uptr uptr uptr) uptr)
 
   (define %mlir::memref::MemRefDialect
     (foreign-procedure "mlir::memref::MemRefDialect" (uptr) void))
 
-  (define %mlir::memref::LoadOp::create
-    (foreign-procedure "mlir::memref::LoadOp::create" (uptr uptr uptr scheme-object) uptr))
+  (define-builder-binding %mlir::memref::LoadOp::create
+    "mlir::memref::LoadOp::create" (uptr uptr uptr scheme-object) uptr)
 
   ) ;; end library (mlir Dialect MemRef IR MemRef ffi)

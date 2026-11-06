@@ -1,5 +1,6 @@
-;; test.in(%v) -> test.out(%v), built through a raw OpBuilder* unwrapped from the rewriter shell.
-(library (passes raw-builder-handle)
+;; test.in(%v) -> test.out(%v), built with the pattern's rewriter shell passed straight to the
+;; OpBuilder bindings.
+(library (passes builder-handle)
   (export run-pass)
   (import (except (rnrs (6)) =)
           (only (mlir IR Value) mlir::Value::getType)
@@ -11,7 +12,6 @@
           (only (mlir IR MLIRContext) with-current-MLIRContext)
           (only (mlir IR PatternMatch) with-RewritePatternSet mlir::RewriterBase::replaceOp)
           (only (mlir IR Builders)
-                crest::as_ptr<mlir::OpBuilder>
                 mlir::OpBuilder::create<OperationState>
                 mlir::OpBuilder::setInsertionPoint)
           (only (mlir IR OperationSupport)
@@ -22,14 +22,14 @@
           (only (mlir Transforms DialectConversion) add-rewrite-pattern))
 
   (define (%%pattern op rw)
-    (let* ([bld (crest::as_ptr<mlir::OpBuilder> rw)]
+    (let* ([bld rw]
            [loc (mlir::Operation::getLoc op)]
            [v   (mlir::Operation::getOperand op 0)]
            [ty  (mlir::Value::getType (mlir::Operation::getResult op 0))]
-           ;; Unwrapping the raw pointer again must fail; if it does not, the pattern
-           ;; is not applied and the CHECK lines fail.
+           ;; A null handle must be rejected; if it is not, the pattern is not applied and
+           ;; the CHECK lines fail.
            [rejected? (guard (e [#t #t])
-                        (crest::as_ptr<mlir::OpBuilder> bld)
+                        (mlir::OpBuilder::setInsertionPoint 0 op)
                         #f)])
       (and rejected?
            (begin

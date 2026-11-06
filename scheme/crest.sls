@@ -76,15 +76,14 @@
 ;;
 ;; begin-mlir-code
 ;; ───────────────
-;; Inline DSL for emitting MLIR operations. Ops are created with the ambient
-;; builder, the raw mlir::OpBuilder* in current-OpBuilder:
+;; Inline DSL for emitting MLIR operations. Ops are created with the builder in
+;; current-OpBuilder, a builder shell (CrestBox<OpBuilder> or the pattern's rewriter):
 ;;
 ;;   (begin-mlir-code op-form ...)
 ;;
 ;; :rewrite :with and ^bb bodies install it. Elsewhere wrap the call:
 ;;   (with-current-OpBuilder b (begin-mlir-code op-form ...))
-;; where b is a raw OpBuilder* (from with-OpBuilder, or
-;; (crest::as_ptr<mlir::OpBuilder> rw) for a pattern's rewriter).
+;; where b is a builder shell (from with-OpBuilder, or a pattern's rw).
 ;;
 ;; op-form syntax:
 ;;
@@ -144,7 +143,7 @@
           :current-op :attr :has-attr? :attr-or
           :optional :variadic
           :index :i64 :f32 :i32-array :i64-array :unit
-          :loc
+          :loc :move-region
           :arg :builder
           make-unbound-value unbound-value?
           ;; Context parameters re-exported for user convenience

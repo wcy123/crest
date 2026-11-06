@@ -6,6 +6,7 @@
 // Mirrors mlir/Dialect/SCF/IR/SCF.h
 
 #include "SCFOps.h"
+#include "../../../Support/BuilderBinding.h"
 #include "../../../Support/SchemeWrapper.h"
 #include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/IR/Builders.h"
@@ -16,12 +17,10 @@ namespace crest {
 void registerDialectSCFIRSCFOpsBindings() {
   // scf::ForOp::create: create an SCF for loop.
   // (builder-ptr loc-ptr lb-ptr ub-ptr step-ptr) → Operation* uptr
-  Sregister_symbol(
+  register_builder_binding(
       "mlir::scf::ForOp::create",
-      (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, uint64_t lb_ptr,
-                 uint64_t ub_ptr, uint64_t step_ptr) -> uint64_t {
-        auto& builder = *crest::as_raw<mlir::OpBuilder>(
-            builder_ptr, "mlir::scf::ForOp::create");
+      [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t lb_ptr,
+         uint64_t ub_ptr, uint64_t step_ptr) -> uint64_t {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto lb = mlir::Value::getFromOpaquePointer(
@@ -56,11 +55,9 @@ void registerDialectSCFIRSCFOpsBindings() {
 
   // scf::YieldOp::create: create an SCF yield.
   // (builder-ptr loc-ptr) → void
-  Sregister_symbol(
+  register_builder_binding(
       "mlir::scf::YieldOp::create",
-      (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr) -> void {
-        auto& builder = *crest::as_raw<mlir::OpBuilder>(
-            builder_ptr, "mlir::scf::YieldOp::create");
+      [](mlir::OpBuilder& builder, uint64_t loc_ptr) -> void {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         mlir::scf::YieldOp::create(builder, loc);

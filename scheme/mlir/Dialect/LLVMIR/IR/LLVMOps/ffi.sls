@@ -19,7 +19,7 @@
           %mlir::LLVM::CallOp::create
           %mlir::ModuleOp::lookupSymbol
           %mlir::FlatSymbolRefAttr::get)
-  (import (chezscheme))
+  (import (chezscheme) (mlir support BuilderBinding))
 
   (define %mlir::LLVM::LLVMFunctionType::get
     (foreign-procedure "mlir::LLVM::LLVMFunctionType::get" (uptr uptr uptr int) uptr))
@@ -30,26 +30,26 @@
   (define %mlir::LLVM::LLVMArrayType::get
     (foreign-procedure "mlir::LLVM::LLVMArrayType::get" (uptr uptr) uptr))
 
-  (define %mlir::LLVM::LLVMFuncOp::create
-    (foreign-procedure "mlir::LLVM::LLVMFuncOp::create" (uptr uptr string uptr) uptr))
+  (define-builder-binding %mlir::LLVM::LLVMFuncOp::create
+    "mlir::LLVM::LLVMFuncOp::create" (uptr uptr string uptr) uptr)
 
-  (define %mlir::LLVM::GlobalOp::create
-    (foreign-procedure "mlir::LLVM::GlobalOp::create" (uptr uptr uptr int int string uptr) uptr))
+  (define-builder-binding %mlir::LLVM::GlobalOp::create
+    "mlir::LLVM::GlobalOp::create" (uptr uptr uptr int int string uptr) uptr)
 
   (define %mlir::LLVM::GlobalOp::getType
     (foreign-procedure "mlir::LLVM::GlobalOp::getType" (uptr) uptr))
 
-  (define %mlir::LLVM::AddressOfOp::create
-    (foreign-procedure "mlir::LLVM::AddressOfOp::create" (uptr uptr uptr) uptr))
+  (define-builder-binding %mlir::LLVM::AddressOfOp::create
+    "mlir::LLVM::AddressOfOp::create" (uptr uptr uptr) uptr)
 
-  (define %mlir::LLVM::GEPOp::create
-    (foreign-procedure "mlir::LLVM::GEPOp::create" (uptr uptr uptr uptr uptr uptr uptr) uptr))
+  (define-builder-binding %mlir::LLVM::GEPOp::create
+    "mlir::LLVM::GEPOp::create" (uptr uptr uptr uptr uptr uptr uptr) uptr)
 
-  (define %mlir::LLVM::ConstantOp::create<i64>
-    (foreign-procedure "mlir::LLVM::ConstantOp::create<i64>" (uptr uptr integer-64) uptr))
+  (define-builder-binding %mlir::LLVM::ConstantOp::create<i64>
+    "mlir::LLVM::ConstantOp::create<i64>" (uptr uptr integer-64) uptr)
 
-  (define %mlir::LLVM::CallOp::create
-    (foreign-procedure "mlir::LLVM::CallOp::create" (uptr uptr uptr uptr scheme-object) uptr))
+  (define-builder-binding %mlir::LLVM::CallOp::create
+    "mlir::LLVM::CallOp::create" (uptr uptr uptr uptr scheme-object) uptr)
 
   (define %mlir::ModuleOp::lookupSymbol
     (foreign-procedure "mlir::ModuleOp::lookupSymbol" (uptr string) uptr))

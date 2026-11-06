@@ -20,7 +20,7 @@
 ;; test.k(%memref, %index) -> OP(%memref, %index)
 (define (%%make-rewrite which)
   (lambda (op rw)
-    (let* ([bld (crest::as_ptr<mlir::OpBuilder> rw)]
+    (let* ([bld rw]
            [m   (mlir::Operation::getOperand op 0)]
            [i   (mlir::Operation::getOperand op 1)]
            [ty  (mlir::Value::getType (mlir::Operation::getResult op 0))])

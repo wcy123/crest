@@ -332,10 +332,12 @@ void registerTransformsDialectConversionBindings() {
             [locked](mlir::OpBuilder& builder, mlir::Type resultType,
                      mlir::ValueRange inputs,
                      mlir::Location loc) -> mlir::Value {
-              // Scheme sees the builder as a raw OpBuilder*; insertion point
-              // changes are made on the builder itself, so nothing is copied.
+              // Scheme sees the builder as a borrowed shell that lives for this
+              // call; insertion point changes are made on the builder itself,
+              // so nothing is copied.
+              crest::CrestBox<mlir::OpBuilder*> builder_shell(&builder);
               ptr builder_arg =
-                  Sunsigned64(reinterpret_cast<uint64_t>(&builder));
+                  Sunsigned64(reinterpret_cast<uint64_t>(&builder_shell));
               ptr result_type_arg = Sunsigned64(
                   reinterpret_cast<uint64_t>(resultType.getAsOpaquePointer()));
               ptr inputs_list = Snil;
@@ -370,10 +372,12 @@ void registerTransformsDialectConversionBindings() {
             [locked](mlir::OpBuilder& builder, mlir::Type resultType,
                      mlir::ValueRange inputs,
                      mlir::Location loc) -> mlir::Value {
-              // Scheme sees the builder as a raw OpBuilder*; insertion point
-              // changes are made on the builder itself, so nothing is copied.
+              // Scheme sees the builder as a borrowed shell that lives for this
+              // call; insertion point changes are made on the builder itself,
+              // so nothing is copied.
+              crest::CrestBox<mlir::OpBuilder*> builder_shell(&builder);
               ptr builder_arg =
-                  Sunsigned64(reinterpret_cast<uint64_t>(&builder));
+                  Sunsigned64(reinterpret_cast<uint64_t>(&builder_shell));
               ptr result_type_arg = Sunsigned64(
                   reinterpret_cast<uint64_t>(resultType.getAsOpaquePointer()));
               ptr inputs_list = Snil;
@@ -447,18 +451,6 @@ void registerTransformsDialectConversionBindings() {
             rw_ptr, "mlir::RewriterBase::modifyOpInPlace");
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         rw.modifyOpInPlace(op, [&] { scheme_call(fn); });
-      });
-
-  // inlineRegionBefore: move all blocks from src region into dest region front.
-  // (rw-ptr src-region-ptr dest-region-ptr) → void
-  Sregister_symbol(
-      "mlir::RewriterBase::inlineRegionBefore",
-      (void*)+[](uint64_t rw_ptr, uint64_t src_ptr, uint64_t dest_ptr) -> void {
-        auto& rw = crest::CrestBox<mlir::RewriterBase*>::inner(
-            rw_ptr, "mlir::RewriterBase::inlineRegionBefore");
-        auto* src = reinterpret_cast<mlir::Region*>(src_ptr);
-        auto* dest = reinterpret_cast<mlir::Region*>(dest_ptr);
-        rw.inlineRegionBefore(*src, *dest, dest->begin());
       });
 }
 

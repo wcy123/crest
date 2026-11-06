@@ -213,7 +213,7 @@
            [args      (prototype:args proto)]
            [arg-types (map (lambda (_) (%%f64-unranked-tensor)) args)]
            [func-type (mlir::FunctionType::get (current-MLIRContext) arg-types '())]
-           [%%fn-bld  (crest::as_ptr<mlir::OpBuilder> (mlir::OpBuilder::atBlockEnd module-body))])
+           [%%fn-bld  (mlir::OpBuilder::atBlockEnd module-body)])
       (with-current-OpBuilder %%fn-bld
         (begin-mlir-code
             toy.func ()

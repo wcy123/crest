@@ -21,7 +21,7 @@
 (library (mlir Dialect Tensor IR ffi)
   (export %mlir::tensor::CastOp::areCastCompatible
           %mlir::tensor::CastOp::create)
-  (import (rnrs) (only (chezscheme) foreign-procedure))
+  (import (rnrs) (only (chezscheme) foreign-procedure) (mlir support BuilderBinding))
 
   ;; @brief tensor::CastOp::areCastCompatible — test whether a tensor.cast
   ;;        between two types is valid.
@@ -40,8 +40,7 @@
   ;; @param input-value-uptr  Value opaque uptr
   ;; @return                  Value opaque uptr of the cast result, or 0
   ;; @note  Defined in lib/Bindings/Dialect/Tensor/Tensor.cpp
-  (define %mlir::tensor::CastOp::create
-    (foreign-procedure "mlir::tensor::CastOp::create"
-                       (uptr uptr uptr uptr) uptr))
+  (define-builder-binding %mlir::tensor::CastOp::create
+    "mlir::tensor::CastOp::create" (uptr uptr uptr uptr) uptr)
 
   ) ;; end library (mlir dialects tensor ffi)

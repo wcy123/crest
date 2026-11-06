@@ -14,6 +14,8 @@
           :unit
           ;; (:loc expr) op-level modifier — override auto-derived Scheme source location
           :loc
+          ;; (:move-region SRC-OP [IDX]) region modifier — move an existing region into the new op
+          :move-region
           ;; (:arg N) shorthand for (mlir::Block::getArgument block N) in block bodies
           :arg
           ;; (:builder) returns the currently active builder/rewriter
@@ -77,6 +79,7 @@
   (define-syntax :i32-array (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :i32-array (only valid as attr type in begin-mlir-code)" x)))
   (define-syntax :i64-array (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :i64-array (only valid as attr type in begin-mlir-code)" x)))
   (define-syntax :unit      (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :unit (only valid as attr type in begin-mlir-code)" x)))
+  (define-syntax :move-region (lambda (x) (syntax-violation 'begin-mlir-code "misplaced :move-region (only valid as op modifier in begin-mlir-code)" x)))
   (define-syntax :loc      (lambda (x) (syntax-violation 'begin-mlir-code "misplaced :loc (only valid as op modifier in begin-mlir-code)" x)))
   (define-syntax :arg
     (syntax-rules ()

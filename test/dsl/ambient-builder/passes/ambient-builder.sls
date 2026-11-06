@@ -14,7 +14,6 @@
                 mlir::RewriterBase::replaceOp
                 mlir::RewriterBase::setInsertionPoint)
           (only (mlir IR Builders)
-                crest::as_ptr<mlir::OpBuilder>
                 with-current-OpBuilder)
           (only (mlir Transforms GreedyPatternRewriteDriver)
                 mlir::applyPatternsGreedily)
@@ -38,7 +37,7 @@
 
   ;; test.two(%v) -> test.two_out(%v), with the builder supplied by the caller.
   (define (%%two op rw)
-    (let* ([bld (crest::as_ptr<mlir::OpBuilder> rw)]
+    (let* ([bld rw]
            [v   (mlir::Operation::getOperand op 0)]
            [ty  (mlir::Value::getType (mlir::Operation::getResult op 0))])
       (mlir::RewriterBase::setInsertionPoint rw op)
@@ -50,7 +49,7 @@
 
   ;; test.three(%v): begin-mlir-code with no builder installed must raise.
   (define (%%three op rw)
-    (let* ([bld (crest::as_ptr<mlir::OpBuilder> rw)]
+    (let* ([bld rw]
            [v   (mlir::Operation::getOperand op 0)]
            [ty  (mlir::Value::getType (mlir::Operation::getResult op 0))]
            [raised? (guard (e [#t #t])

@@ -43,8 +43,8 @@ stores the integer.
 
 An address can point at one of two things:
 
-- **A bare MLIR object**, for example `Operation*`, `MLIRContext*`, or the raw `OpBuilder*`
-  in `current-OpBuilder`. Nothing sits in front of it.
+- **A bare MLIR object**, for example `Operation*` or `MLIRContext*`. Nothing sits in front of
+  it.
 - **A CrestObject.** This doc calls it a **shell**: the wrapper that Scheme holds in place
   of the C++ object.
 
@@ -78,9 +78,9 @@ whether Scheme must free the object. A shell answers both questions at run time.
 **The program can check the type.** A shell has its type tag in the first 8 bytes. A
 binding checks the tag before it uses the shell. If you pass the wrong object, you get a
 clear Scheme error, `wrong CrestObject type`. Without the tag, the program would crash
-deep inside MLIR. The tag also lets one function accept more than one kind of object. For
-example, `as_ptr<mlir::OpBuilder>` accepts a `CrestBox<OpBuilder>` or a
-`CrestBox<RewriterBase*>`.
+deep inside MLIR. A C++ binding takes exactly one kind of shell. When Scheme may hold one of
+several kinds, as it does for a builder, the Scheme side checks the type with an `isa`
+predicate and calls the binding for that kind (`define-builder-binding`, below).
 
 **The object frees itself.** Scheme does not know the C++ type of the object it holds. We
 also do not want a separate "free" binding for every type. So each shell carries its own
@@ -204,16 +204,18 @@ Scheme callback with that shell.
                                                |   insertPoint     +32   |   |
                                            +40 +-------------------------+   |
                                                                              |
-        (crest::as_ptr<mlir::OpBuilder> rw)  ----------------------------------+
-        returns the RewriterBase address + 8: the raw OpBuilder* in current-OpBuilder
+        CrestBox<RewriterBase*>::inner, read as an OpBuilder&  ---------------+
+        the C++ upcast adds 8: the OpBuilder base the builder bindings use
 ```
 
 The `OpBuilder` does **not** start at the beginning of the `RewriterBase`. `RewriterBase` has
 virtual functions, so it starts with a hidden pointer to its virtual table (`vptr`).
 `OpBuilder` has no virtual functions and comes after it. Converting a `RewriterBase*` to an
 `OpBuilder*` in C++ adds 8 bytes. Code that reuses the same address would read the `vptr` as
-the builder's `context`. For this reason the conversion is done in C++
-(`as_ptr<mlir::OpBuilder>`), and `current-OpBuilder` holds the adjusted raw pointer.
+the builder's `context`. For this reason the conversion is done by C++ on the typed shell
+(`CrestBox<RewriterBase*>::inner` returns a `RewriterBase&`, which converts to `OpBuilder&`).
+`current-OpBuilder` keeps the shell, so a rewriter stays a rewriter and rewriter-only
+operations still reach the real object.
 
 #### What happens when `with-CrestObject` ends
 
@@ -240,7 +242,7 @@ Scheme only has `obj`. The deletor was set when the object was built, so it know
 | What a binding checks | not null | type tag | type tag |
 | Freed by Scheme | never | yes, with `with-CrestObject` | never |
 | Memory loads to reach the `T` | 0 | 1 (the type tag, then `T` is inline) | 2 (the type tag, then `ptr`, then the `T` is elsewhere) |
-| Examples | `Operation*`, `Block*`, raw `OpBuilder*`, raw `MLIRContext*` | `OpBuilder` from `atBlockEnd`, `RewritePatternSet` | the pattern's rewriter |
+| Examples | `Operation*`, `Block*`, raw `MLIRContext*` | `OpBuilder` from `atBlockEnd`, `RewritePatternSet` | the pattern's rewriter |
 
 ### Cost of the extra level
 
@@ -254,9 +256,9 @@ costs work in two places:
   `CrestBox<RewriterBase*>` each time a pattern matches an op name and calls its Scheme
   callback.
 
-This is why `current-OpBuilder` holds the raw `OpBuilder*`. The shell is unwrapped once, and
-then every op that `begin-mlir-code` creates uses the raw pointer with no further check.
-The per-call cost has not been measured.
+`current-OpBuilder` holds the shell anyway: a rewriter must stay a rewriter, so that
+rewriter-only operations dispatch on the real object. Each builder binding pays the type-tag
+check. The per-call cost has not been measured.
 
 ### Freeing shells
 
@@ -308,7 +310,7 @@ body. The list is `()` when there are no arguments.
 | `with-ConversionTarget v ()` or `v (ctx)` | a `ConversionTarget` |
 | `with-ExecutionEngine v (module-op)` | an `ExecutionEngine` |
 | `with-ArrayRef v (ref)` or `v (data size)` | a `CArrayRef`; the elements are never freed |
-| `with-OpBuilder v (create-call)` | frees the shell that `(create-call)` makes, but binds `v` to the **raw** `OpBuilder*` inside it |
+| `with-OpBuilder v (create-call)` | frees the shell that `(create-call)` makes, and binds `v` to that shell |
 | `with-DialectRegistry v ()`, `with-MLIRContext v (registry)`, `with-PassManager v (ctx)` | a `DialectRegistry`, an `MLIRContext` made from a registry, a `PassManager` |
 
 Nested macros free in reverse order: the innermost shell is freed first.
@@ -362,10 +364,14 @@ Two types have a special `as_ptr`, because their objects arrive in more than one
 - `as_ptr<mlir::MLIRContext>` also accepts a raw `MLIRContext*`, such as the one from
   `op->getContext()`. **It is not type-safe**: if the argument is not a
   `CrestBox<MLIRContext>`, it is cast to `MLIRContext*` with no check, like `as_raw`.
-- `as_ptr<mlir::OpBuilder>` accepts `CrestBox<OpBuilder>` and `CrestBox<RewriterBase*>`,
-  and adds the 8 bytes described above. It is type-safe: it rejects a raw pointer and any
-  other shell with a Scheme error. A binding that takes a builder takes the raw `OpBuilder*`
-  and calls `as_raw`.
+- A builder is one of three shells: `CrestBox<OpBuilder>` (from `atBlockEnd`),
+  `CrestBox<RewriterBase*>` (a pattern's rewriter, adding the 8 bytes described above) and
+  `CrestBox<OpBuilder*>` (a builder MLIR passes to a callback). Each C++ symbol takes exactly one,
+  so `register_builder_binding` (`lib/Bindings/Support/BuilderBinding.h`) registers one body three
+  times as `NAME<OpBuilder>`, `NAME<RewriterBase*>` and `NAME<OpBuilder*>`. On the Scheme side
+  `define-builder-binding` (`(mlir support BuilderBinding)`) makes one procedure that checks the
+  shell with the `isa` predicates and calls the matching symbol. A raw pointer or any other
+  shell is a Scheme error.
 
 The `isa` check is **exact**. A `CrestBox<RewriterBase*>` is not a
 `CrestBox<PatternRewriter*>`. For this reason, each shell type that is accepted is listed by
@@ -389,9 +395,8 @@ The Scheme side, in `(mlir support CrestObject)`:
   shell frees the shell twice.
 - **A `CrestBox<T*>` is valid only inside the callback.** The C++ code destroys the shell when
   the callback returns, and MLIR owns the object behind it. Do not store either one.
-- **A shell address is not an `OpBuilder*`.** If you pass a `CrestBox<OpBuilder>` where a
-  raw `OpBuilder*` is expected, the binding reads the deletor as the builder's `context`.
-  Unwrap the shell with `as_ptr<mlir::OpBuilder>`, or use `with-OpBuilder`.
+- **A raw `OpBuilder*` is not a builder handle.** Builder bindings take a shell. Passing a raw
+  pointer is an error, and an address that is not a shell at all is undefined behaviour.
 - **The type tag is a function address.** It is unique only if every shared library sees the
   same `type_deletor`. `CREST_VISIBLE` forces default ELF visibility, so the dynamic linker
   merges the copies. On Windows each DLL keeps its own copy, so `isa<T>` is not safe for an

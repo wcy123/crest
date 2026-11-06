@@ -7,6 +7,7 @@
 
 #include "MemRef.h"
 #include "../../../Support/ArrayRef.h"
+#include "../../../Support/BuilderBinding.h"
 #include "../../../Support/CrestObject.h"
 #include "../../../Support/SchemeWrapper.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
@@ -33,12 +34,10 @@ void registerDialectMemRefIRMemRefBindings() {
 
   // memref::AllocOp::create: allocate a MemRefType on the heap.
   // (builder-ptr loc-ptr memref-type-ptr) → Value uptr (the alloc result)
-  Sregister_symbol(
+  register_builder_binding(
       "mlir::memref::AllocOp::create",
-      (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr,
-                 uint64_t memref_type_ptr) -> uint64_t {
-        auto& builder = *crest::as_raw<mlir::OpBuilder>(
-            builder_ptr, "mlir::memref::AllocOp::create");
+      [](mlir::OpBuilder& builder, uint64_t loc_ptr,
+         uint64_t memref_type_ptr) -> uint64_t {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto memref_type =
@@ -51,12 +50,10 @@ void registerDialectMemRefIRMemRefBindings() {
 
   // memref::DeallocOp::create: free a memref allocation.
   // (builder-ptr loc-ptr memref-val-ptr) → Operation* uptr
-  Sregister_symbol(
+  register_builder_binding(
       "mlir::memref::DeallocOp::create",
-      (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr,
-                 uint64_t memref_ptr) -> uint64_t {
-        auto& builder = *crest::as_raw<mlir::OpBuilder>(
-            builder_ptr, "mlir::memref::DeallocOp::create");
+      [](mlir::OpBuilder& builder, uint64_t loc_ptr,
+         uint64_t memref_ptr) -> uint64_t {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto memref = mlir::Value::getFromOpaquePointer(
@@ -68,12 +65,10 @@ void registerDialectMemRefIRMemRefBindings() {
   // memref::LoadOp::create: load from a memref at given indices.
   // (builder-ptr loc-ptr memref-val-ptr indices-list) → Value uptr
   // indices-list: Scheme list of Value uptrss
-  Sregister_symbol(
+  register_builder_binding(
       "mlir::memref::LoadOp::create",
-      (void*)+[](uint64_t builder_ptr, uint64_t loc_ptr, uint64_t memref_ptr,
-                 ptr indices_list) -> uint64_t {
-        auto& builder = *crest::as_raw<mlir::OpBuilder>(
-            builder_ptr, "mlir::memref::LoadOp::create");
+      [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t memref_ptr,
+         ptr indices_list) -> uint64_t {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto memref = mlir::Value::getFromOpaquePointer(

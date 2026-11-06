@@ -57,17 +57,6 @@ template <typename... Ts>
 
 namespace crest {
 
-// Raw pointer argument: Scheme passes the address of an object MLIR (or C++)
-// owns, with no CrestObject shell around it, e.g. a mlir::OpBuilder* obtained
-// from crest::as_ptr<mlir::OpBuilder>. Only the null check is possible.
-template <typename T>
-[[nodiscard]] inline T* as_raw(uint64_t ptr_val, const char* who) {
-  if (!ptr_val) {
-    scheme_error(who, "null pointer");
-  }
-  return reinterpret_cast<T*>(ptr_val);
-}
-
 // Pointer-returning lookup, only for the types whose objects arrive in more
 // than one form (specialised below). Everything else casts the address to its
 // shell type and calls inner(who), e.g.
@@ -80,7 +69,6 @@ template <typename T>
 // Forward declarations for the as_ptr specializations.
 namespace mlir {
 class MLIRContext;
-class OpBuilder;
 } // namespace mlir
 
 namespace crest {
@@ -92,16 +80,6 @@ namespace crest {
 template <>
 [[nodiscard]] mlir::MLIRContext* as_ptr<mlir::MLIRContext>(uint64_t ptr_val,
                                                            const char* who);
-
-// Explicit specialisation for mlir::OpBuilder: unwraps a CrestObject shell —
-// CrestBox<OpBuilder>* (from atBlockEnd) or CrestBox<RewriterBase*>* (from
-// conversion pattern callbacks; upcast to OpBuilder* statically, which adjusts
-// the address because RewriterBase is polymorphic and its OpBuilder base is not
-// at offset 0). Anything else is an error: bindings that take a builder take a
-// raw OpBuilder* (as_raw<mlir::OpBuilder>), never a shell.
-template <>
-[[nodiscard]] mlir::OpBuilder* as_ptr<mlir::OpBuilder>(uint64_t ptr_val,
-                                                       const char* who);
 } // namespace crest
 
 // ---------------------------------------------------------------------------

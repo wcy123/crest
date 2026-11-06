@@ -12,6 +12,7 @@
 #include "mlir/IR/Operation.h"
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/IR/PatternMatch.h"
+#include "mlir/IR/Region.h"
 
 namespace crest {
 
@@ -102,6 +103,31 @@ void registerIRRewriterBaseBindings() {
             state_ptr, "mlir::RewriterBase::create<OperationState>");
         return reinterpret_cast<uint64_t>(rw.create(state));
       });
+  // inlineRegionBefore: move all blocks of the source region to the front of
+  // the destination region. Rewriter-only: the shell must be a
+  // CrestBox<RewriterBase*>, so the call reaches the real rewriter (the
+  // conversion rewriter overrides several RewriterBase methods).
+  // (rw-ptr src-region-ptr dest-region-ptr) -> void
+  Sregister_symbol(
+      "mlir::RewriterBase::inlineRegionBefore",
+      (void*)+[](uint64_t rw_ptr, uint64_t src_ptr, uint64_t dest_ptr) -> void {
+        auto& rw = crest::CrestBox<mlir::RewriterBase*>::inner(
+            rw_ptr, "mlir::RewriterBase::inlineRegionBefore");
+        auto* src = reinterpret_cast<mlir::Region*>(src_ptr);
+        auto* dest = reinterpret_cast<mlir::Region*>(dest_ptr);
+        rw.inlineRegionBefore(*src, *dest, dest->begin());
+      });
+  Sregister_symbol(
+      "crest::isa<CrestBox<mlir::RewriterBase*>>",
+      (void*)+[](uint64_t ptr) -> int {
+        if (!ptr) {
+          return 0;
+        }
+        return reinterpret_cast<CrestObject*>(ptr)
+                       ->isa<CrestBox<mlir::RewriterBase*>>()
+                   ? 1
+                   : 0;
+      });
   Sregister_symbol(
       "mlir::RewritePatternSet::RewritePatternSet",
       (void*)+[](uint64_t ctx_ptr) -> uint64_t {
@@ -134,30 +160,6 @@ void registerIRRewriterBaseBindings() {
             rw_ptr, "mlir::RewriterBase::setInsertionPointToStart");
         rw.setInsertionPointToStart(reinterpret_cast<mlir::Block*>(block_ptr));
       });
-}
-
-// as_ptr<mlir::OpBuilder> specialisation: unwraps a shell to a raw OpBuilder*.
-//   CrestBox<mlir::RewriterBase*>* — from conversion pattern callbacks. The
-//       RewriterBase is converted to OpBuilder* statically, which
-//       adjusts the address (RewriterBase is polymorphic, OpBuilder is not, so
-//       the OpBuilder base is not at offset 0).
-//   CrestBox<mlir::OpBuilder>*  — from atBlockEnd.
-// Anything else is a bug: a raw pointer must not be unwrapped again, and a raw
-// RewriterBase* is not an OpBuilder*.
-template <>
-mlir::OpBuilder* as_ptr<mlir::OpBuilder>(uint64_t ptr_val, const char* who) {
-  if (!ptr_val) {
-    scheme_error(who, "null builder pointer");
-  }
-  auto* obj = reinterpret_cast<crest::CrestObject*>(ptr_val);
-  if (obj->isa<crest::CrestBox<mlir::RewriterBase*>>()) {
-    return &static_cast<crest::CrestBox<mlir::RewriterBase*>*>(obj)->inner();
-  }
-  if (obj->isa<crest::CrestBox<mlir::OpBuilder>>()) {
-    return &static_cast<crest::CrestBox<mlir::OpBuilder>*>(obj)->inner();
-  }
-  scheme_error(who, "expected CrestBox<RewriterBase*> or CrestBox<OpBuilder>");
-  crest_unreachable();
 }
 
 } // namespace crest
