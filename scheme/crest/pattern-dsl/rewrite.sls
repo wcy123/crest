@@ -420,17 +420,34 @@
                     :collect #`(#,var (mlir::Block::getArgument #,block-id #,i)))
               (syntax->list #'body))])))
 
+      ;; @brief Build the code that fills one region of the op being created.
+      ;;
+      ;; Each region modifier of an op-form, (^label ...) or (:region ...), is one region. The
+      ;; slot is reserved with addRegion before the op is created. This function returns the
+      ;; procedure that emits the code run after the op exists: look up the region, then append
+      ;; and fill each of its blocks. The fill cannot run earlier, because ops cannot be put
+      ;; into a block before the op that owns it exists.
+      ;;
+      ;; @param region-index    exact integer: the 0-based position of this region among the
+      ;;                        op's region modifiers
+      ;; @param block-fill-fns  list of procedures from make-block-fill, one per block of the
+      ;;                        region. (^label ...) gives one; (:region (^a ...) (^b ...)) gives
+      ;;                        one per block. Each takes the identifier of the region and
+      ;;                        returns syntax that appends and fills one block.
+      ;; @return                a procedure (lambda (op-stx) → syntax). op-stx is the identifier
+      ;;                        bound to the created Operation*. The syntax is
+      ;;                          (let ([region (mlir::Operation::getRegion op-stx region-index)])
+      ;;                            fill-of-block-0 ... fill-of-block-n)
       (define (make-region-fill-fn region-index block-fill-fns)
         (lambda (op-stx)
-          ;; region-id must be in scope as a Scheme value before with-syntax
-          ;; because (map (fn region-id) ...) runs during binding evaluation —
-          ;; with-syntax bindings are parallel, so [region-id ...] wouldn't help.
           (let ([region-id (car (generate-temporaries '(region)))])
             (with-syntax ([new-op     op-stx]
                           [region-idx region-index]
                           [(block-fill-stmt ...)
                            (map (lambda (fn) (fn region-id)) block-fill-fns)])
               #`(let ([#,region-id (mlir::Operation::getRegion new-op region-idx)])
+                  (if #f #f) ;; in case when block-fill-stmt is empty,
+                  ;; `let` does not allow an empty body
                   block-fill-stmt ...)))))
 
       ;;-------------------------------------------------------------------
