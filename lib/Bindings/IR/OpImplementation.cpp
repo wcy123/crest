@@ -409,11 +409,12 @@ void registerIROpImplementationBindings() {
 
   Sregister_symbol(
       "mlir::OpAsmParser::parseSymbolName",
-      (void*)+[](uint64_t parser_ptr, uint64_t state_ptr) -> ptr {
+      (void*)+[](uint64_t parser_ptr, uint64_t state_ptr,
+                 const char* attr_name) -> ptr {
         auto* p = reinterpret_cast<mlir::OpAsmParser*>(parser_ptr);
         auto& state = *reinterpret_cast<mlir::OperationState*>(state_ptr);
         mlir::StringAttr sym;
-        if (p->parseSymbolName(sym, "callee", state.attributes)) {
+        if (p->parseSymbolName(sym, attr_name, state.attributes)) {
           return Sstring("");
         }
         return Sstring(sym.getValue().data());
