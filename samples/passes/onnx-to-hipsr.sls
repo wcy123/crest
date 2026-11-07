@@ -40,11 +40,10 @@
                 mlir-create-operation
                 mlir::RewriterBase::setInsertionPoint
                 mlir::RewriterBase::eraseOp)
-          (mlir Transforms DialectConversion)
           (only (mlir Interfaces DestinationStyleOp)
                 mlir::DestinationStyleOpInterface::getNumDpsInits
                 mlir::DestinationStyleOpInterface::getDpsInitOperand)
-          (only (mlir IR PatternMatch) with-RewritePatternSet)
+          (only (crest conversion) apply-conversion)
           (mlir dialects hipsr)
           (mlir Dialect Func IR FuncOps)
           (mlir support logging)
@@ -72,10 +71,6 @@
       (mlir-create-operation rewriter "func.return" operands '() (mlir::Operation::getLoc op) 0)
       (mlir::RewriterBase::eraseOp rewriter op)
       #t))
-
-  (define (populate-return-patterns type-converter patterns ctx)
-    (add-conversion-pattern patterns "onnx.Return"
-                            onnx-return->func-return type-converter 1))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Post-processing: erase dead onnx.NoValue ops
@@ -120,45 +115,38 @@
                                    (loop (+ i 1))))))))
 
   ;;===--------------------------------------------------------------------===;;
-  ;; Helper: apply conversion then run post-processing
+  ;; The pass: one conversion, then post-processing
   ;;===--------------------------------------------------------------------===;;
-  (define (do-conversion module-op target patterns)
-    (crest::logging::debug "Applying full conversion...")
-    (let ((success (apply-full-conversion module-op target patterns)))
-      (if (= success 1)
-          (begin
-            (crest::logging::debug "Erasing dead NoValue ops...")
-            (erase-dead-novalue! module-op)
-            (crest::logging::debug "Rewiring placeholder inputs...")
-            (rewire-placeholder-inputs! module-op)
-            (crest::logging::info "ONNX to HipSR Conversion (Scheme): Success"))
-          (begin
-            (mlir::Operation::emitError module-op "onnx-to-hipsr: dialect conversion failed")
-            #f))))
-
   (define (run-pass module-op . args)
     (crest::logging::info "Starting ONNX to HipSR Conversion (Scheme)")
     (let ((ctx (mlir::Operation::getContext module-op)))
       (with-current-MLIRContext ctx
-        (with-TypeConverter type-converter ()
-          (hipsr-type-converter-add-device-memory-conversions! type-converter)
-          (with-ConversionTarget target (ctx)
-            (hipsr-configure-conversion-target! target ctx type-converter)
-            (with-RewritePatternSet patterns (ctx)
-              ;; Scheme DSL patterns
-              (populate-cast-patterns       type-converter patterns ctx)
-              (populate-scatter-nd-patterns type-converter patterns ctx)
-              (populate-equal-patterns      type-converter patterns ctx)
-              (populate-matmul-patterns     type-converter patterns ctx)
-              (populate-min-patterns        type-converter patterns ctx)
-              (populate-transpose-patterns  type-converter patterns ctx)
-              (populate-gather-patterns     type-converter patterns ctx)
-              (populate-expand-patterns     type-converter patterns ctx)
-              (populate-constant-patterns   type-converter patterns ctx)
-              (populate-shape-patterns      type-converter patterns ctx)
-              ;; Infrastructure patterns
-              (populate-return-patterns type-converter patterns ctx)
-              (mlir-populate-func-type-conversion-pattern patterns type-converter)
-              (do-conversion module-op target patterns)))))))
+        (crest::logging::debug "Applying full conversion...")
+        (if (apply-conversion module-op ctx
+                              :configure-type-converter hipsr-type-converter-add-device-memory-conversions!
+                              :configure-target (lambda (target type-converter)
+                                                  (hipsr-configure-conversion-target! target ctx type-converter))
+                              :patterns (("onnx.Return" onnx-return->func-return))
+                              :populate (lambda (type-converter patterns)
+                                          (populate-cast-patterns       type-converter patterns ctx)
+                                          (populate-scatter-nd-patterns type-converter patterns ctx)
+                                          (populate-equal-patterns      type-converter patterns ctx)
+                                          (populate-matmul-patterns     type-converter patterns ctx)
+                                          (populate-min-patterns        type-converter patterns ctx)
+                                          (populate-transpose-patterns  type-converter patterns ctx)
+                                          (populate-gather-patterns     type-converter patterns ctx)
+                                          (populate-expand-patterns     type-converter patterns ctx)
+                                          (populate-constant-patterns   type-converter patterns ctx)
+                                          (populate-shape-patterns      type-converter patterns ctx)
+                                          (mlir-populate-func-type-conversion-pattern patterns type-converter)))
+            (begin
+              (crest::logging::debug "Erasing dead NoValue ops...")
+              (erase-dead-novalue! module-op)
+              (crest::logging::debug "Rewiring placeholder inputs...")
+              (rewire-placeholder-inputs! module-op)
+              (crest::logging::info "ONNX to HipSR Conversion (Scheme): Success"))
+            (begin
+              (mlir::Operation::emitError module-op "onnx-to-hipsr: dialect conversion failed")
+              #f)))))
 
   ) ;; end library (passes onnx-to-hipsr)

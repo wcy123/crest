@@ -26,6 +26,10 @@
 ;;                        ("toy.print" %%print-lower! :no-type-converter))
 ;;   :populate           (lambda (tc patterns) ...)          called with the converter and the
 ;;                                                           pattern set, after :patterns
+;;   :configure-type-converter  a procedure (tc)             called with the converter, after
+;;                                                           :type-converter
+;;   :configure-target  a procedure (target tc)              called with the target and the converter,
+;;                                                           after the legal/illegal keys
 ;;
 ;; A pattern is registered with the type converter and benefit 1 unless the entry says
 ;; otherwise; :no-type-converter registers it so that it sees the original operand types.
@@ -57,7 +61,8 @@
     (lambda (stx)
       (define known
         '(:mode :type-converter :legal-dialects :illegal-dialects :legal-ops
-                :dynamically-legal :patterns :populate))
+                :dynamically-legal :patterns :populate
+                :configure-type-converter :configure-target))
 
       (define (fail at message)
         (syntax-violation 'apply-conversion message at))
@@ -119,16 +124,20 @@
                             [else (fail m ":mode is partial or full")]))]
                 [tc-opt  (lookup options ':type-converter)]
                 [llvm?   (and tc-opt (eq? (syntax->datum tc-opt) 'llvm))]
-                [populate (lookup options ':populate)])
+                [populate (lookup options ':populate)]
+                [configure-tc (lookup options ':configure-type-converter)]
+                [configure-target (lookup options ':configure-target)])
            (with-syntax ([(op* ctx* tc target patterns)
                           (generate-temporaries '(module-op ctx tc target patterns))])
              (with-syntax ([apply-fn (if (eq? mode 'partial)
                                          #'mlir::applyPartialConversion
                                          #'apply-full-conversion)]
                            [(conversion-form ...)
-                            (if (and tc-opt (not llvm?))
-                                (list #`(type-converter-add-conversion tc #,tc-opt))
-                                '())]
+                            (append
+                             (if (and tc-opt (not llvm?))
+                                 (list #`(type-converter-add-conversion tc #,tc-opt))
+                                 '())
+                             (if configure-tc (list #`(#,configure-tc tc)) '()))]
                            [(legal-dialect-form ...)
                             (map (lambda (d) #`(target-add-legal-dialect target #,d))
                                  (elements options ':legal-dialects))]
@@ -147,6 +156,8 @@
                                      [_ (fail entry
                                               "a dynamically legal entry is (name predicate)")]))
                                  (elements options ':dynamically-legal))]
+                           [(configure-target-form ...)
+                            (if configure-target (list #`(#,configure-target target tc)) '())]
                            [(pattern-form ...)
                             (map (lambda (e) (pattern-form e #'tc #'patterns))
                                  (elements options ':patterns))]
@@ -157,6 +168,7 @@
                                illegal-dialect-form ...
                                legal-op-form ...
                                dynamic-form ...
+                               configure-target-form ...
                                (with-RewritePatternSet patterns (ctx*)
                                  pattern-form ...
                                  populate-form ...
