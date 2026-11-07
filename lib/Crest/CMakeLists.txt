@@ -31,6 +31,8 @@ add_library(CrestCore OBJECT
   InlinerInterface.h
   Op.cpp
   Op.h
+  SchemePass.cpp
+  SchemePass.h
   Type.cpp
   Type.h
   ${CREST_TRAIT_SOURCE}

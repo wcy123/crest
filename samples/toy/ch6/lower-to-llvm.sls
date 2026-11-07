@@ -3,7 +3,7 @@
 ;; Lowers the combination of Affine+SCF+Arith+Func+MemRef+Toy dialects to the
 ;; LLVM dialect, including toy.print → printf calls via SCF loop nests, written with begin-mlir-code.
 (library (toy ch6 lower-to-llvm)
-  (export %%toy-to-llvm-lower!)
+  (export toy:lower-to-llvm-pass)
   (import (except (rnrs) =)
           (mlir IR MLIRContext)
           (only (mlir IR Operation)
@@ -188,5 +188,11 @@
                                   (mlir::populateFinalizeMemRefToLLVMConversionPatterns tc patterns)
                                   (mlir::cf::populateControlFlowToLLVMConversionPatterns tc patterns)
                                   (mlir::populateFuncToLLVMConversionPatterns tc patterns))))
+
+  ;; ToyToLLVMLoweringPass: lowers what is left of the toy dialect to the LLVM dialect.
+  (define-pass (toy:lower-to-llvm-pass module)
+    (let ([ctx (mlir::Operation::getContext module)])
+      (with-current-MLIRContext ctx
+        (%%toy-to-llvm-lower! module ctx))))
 
   ) ;; end library (toy ch6 lower-to-llvm)

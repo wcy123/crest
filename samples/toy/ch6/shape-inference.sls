@@ -10,11 +10,12 @@
 ;;   toy.transpose      result type = the input type with its shape reversed
 (library (toy ch6 shape-inference)
   (export toy:add-shape-inference-patterns!
-          toy:check-shapes-inferred!)
+          toy:shape-inference-pass)
   (import (except (rnrs) =)
           (only (mlir IR Value)
                 mlir::Value::getType)
           (only (mlir IR Operation)
+                mlir::Operation::getContext
                 mlir::Operation::getLoc
                 mlir::Operation::getName
                 mlir::Operation::getNumResults
@@ -26,6 +27,7 @@
                 mlir::RankedTensorType::getShape
                 mlir::RankedTensorType::getElementType
                 mlir::isa<RankedTensorType>?)
+          (only (mlir IR MLIRContext) with-current-MLIRContext)
           (crest))
 
   (define (%%ranked? value)
@@ -81,17 +83,26 @@
     ("toy.cast" %%infer-cast 1)
     ("toy.transpose" %%infer-transpose 1))
 
-  ;; Report an error and exit if an op that shape inference handles still has an unranked result.
-  (define (toy:check-shapes-inferred! module-op)
-    (mlir::Operation::walk
-     module-op
-     (lambda (op)
-       (when (and (> (mlir::Operation::getNumResults op) 0)
-                  (not (%%ranked? (mlir::Operation::getResult op 0)))
-                  (member (mlir::Operation::getName op)
-                          '("toy.add" "toy.mul" "toy.cast" "toy.transpose")))
-         (mlir::Operation::emitError
-          op "shape inference failed: operand types not fully resolved")
-         (exit 1)))))
+  ;; ShapeInferencePass: infer the shapes of a function with the patterns above, then fail, as the
+  ;; C++ pass does, when an operation's result is still not a ranked tensor.
+  (define-pass (toy:shape-inference-pass func)
+    (let ([ctx (mlir::Operation::getContext func)]
+          [remaining 0])
+      (with-current-MLIRContext ctx
+        (apply-patterns func ctx :populate toy:add-shape-inference-patterns!))
+      (mlir::Operation::walk
+       func
+       (lambda (op)
+         (when (let loop ([i 0])
+                 (and (< i (mlir::Operation::getNumResults op))
+                      (or (not (%%ranked? (mlir::Operation::getResult op i)))
+                          (loop (+ i 1)))))
+           (set! remaining (+ remaining 1)))))
+      (or (zero? remaining)
+          (begin
+            (mlir::Operation::emitError
+             func (string-append "Shape inference failed, " (number->string remaining)
+                                 " operations couldn't be inferred\n"))
+            #f))))
 
   ) ;; end library (toy ch6 shape-inference)

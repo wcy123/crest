@@ -28,7 +28,6 @@
         (toy ch4 ast)
         (toy ch4 toy)
         (toy ch4 mlir-gen)
-        (only (crest patterns) apply-patterns)
         (toy ch4 shape-inference))
 
 (define %%input-type 'toy)
@@ -92,26 +91,20 @@
         (display (mlir::Operation::print module-op))
         (newline)))))
 
-;; A pass manager nested on toy.func, as the C++ toyc builds it (pm.nest<toy::FuncOp>()); a failing pass
-;; fails toyc (exit code 4).
-(define (%%run-toy-func-passes! module-op ctx . make-passes)
-  (with-PassManager pm (ctx)
-    (let ([func-pm (mlir::PassManager::nest pm "toy.func")])
-      (for-each (lambda (make-pass) (mlir::OpPassManager::addPass func-pm (make-pass)))
-                make-passes))
-    (unless (mlir::PassManager::run! pm module-op)
-      (display "Optimization pipeline failed\n" (current-error-port))
-      (exit 4))))
+(define (%%run-passes! pm module-op)
+  (unless (mlir::PassManager::run! pm module-op)
+    (display "Optimization pipeline failed\n" (current-error-port))
+    (exit 4)))
 
 (define (%%run-opt-pipeline! module-op ctx)
-  ;; Step 1: inline all toy.generic_call ops, eliminating private functions.
-  (%%run-inliner! module-op ctx)
-  ;; Step 2: shape inference — propagate concrete tensor shapes (patterns in shape-inference.sls).
-  (with-current-MLIRContext ctx
-    (apply-patterns module-op ctx :populate toy:add-shape-inference-patterns!))
-  (toy:check-shapes-inferred! module-op)
-  ;; Step 3: canonicalize and CSE, nested on toy.func (the ops' own patterns, see toy.sls).
-  (%%run-toy-func-passes! module-op ctx mlir::createCanonicalizerPass mlir::createCSEPass))
+  ;; As the C++ toyc: the inliner, then shape inference, canonicalizer and CSE nested on toy.func.
+  (with-PassManager pm (ctx)
+    (mlir::PassManager::addPass pm (mlir::createInlinerPass))
+    (let ([func-pm (mlir::PassManager::nest pm "toy.func")])
+      (mlir::OpPassManager::addPass func-pm (toy:shape-inference-pass))
+      (mlir::OpPassManager::addPass func-pm (mlir::createCanonicalizerPass))
+      (mlir::OpPassManager::addPass func-pm (mlir::createCSEPass)))
+    (%%run-passes! pm module-op)))
 
 (define (%%build-module filename ctx)
   (if (or (eq? %%input-type 'mlir)
@@ -135,18 +128,5 @@
                (current-error-port))
       (exit 3))
     op))
-
-;; ---------------------------------------------------------------------------
-;; Inlining: MLIR's inliner pass, as in the C++ tutorial. toy.generic_call is a CallOpInterface,
-;; toy.func is callable, the dialect's DialectInlinerInterface says inlining is legal, and the
-;; pass erases the private callees that are dead afterwards.
-;; ---------------------------------------------------------------------------
-
-(define (%%run-inliner! module-op ctx)
-  (with-PassManager pm (ctx)
-    (mlir::PassManager::addPass pm (mlir::createInlinerPass))
-    (unless (mlir::PassManager::run! pm module-op)
-      (display "Inliner failed\n" (current-error-port))
-      (exit 1))))
 
 (main)

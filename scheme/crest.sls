@@ -138,6 +138,7 @@
           affine-map affine-map-attr
           apply-conversion
           apply-patterns define-pattern-set
+          define-pass
           :if-match :then-let :rewrite :with :where
           :debug-parse :debug-validate :debug-analyze :debug-codegen
           = : -> :region :regions
@@ -158,6 +159,7 @@
           (crest affine-map)
           (crest conversion)
           (crest patterns)
+          (crest pass)
           (for (crest pattern-dsl keywords) expand)
           (for (crest pattern-dsl ast) expand)
           (for (crest pattern-dsl codegen) expand)

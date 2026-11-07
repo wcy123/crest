@@ -43,7 +43,6 @@
         (toy ch6 ast)
         (toy ch6 toy)
         (toy ch6 mlir-gen)
-        (only (crest patterns) apply-patterns)
         (toy ch6 shape-inference)
         (toy ch6 lower-to-affine)
         (toy ch6 lower-to-llvm))
@@ -192,64 +191,34 @@
 ;; Optimization pipeline
 ;; ---------------------------------------------------------------------------
 
-;; A failed lowering fails toyc, as the pass manager failing does in C++ (exit code 4).
-(define (%%exit-unless-lowered ok?)
-  (unless ok? (exit 4)))
+(define (%%run-passes! pm module-op)
+  (unless (mlir::PassManager::run! pm module-op)
+    (display "Optimization pipeline failed\n" (current-error-port))
+    (exit 4)))
 
-;; A pass manager nested on toy.func, as the C++ toyc builds it (pm.nest<toy::FuncOp>()); a failing pass
-;; fails toyc (exit code 4).
-(define (%%run-toy-func-passes! module-op ctx . make-passes)
-  (with-PassManager pm (ctx)
-    (let ([func-pm (mlir::PassManager::nest pm "toy.func")])
-      (for-each (lambda (make-pass) (mlir::OpPassManager::addPass func-pm (make-pass)))
-                make-passes))
-    (unless (mlir::PassManager::run! pm module-op)
-      (display "Optimization pipeline failed\n" (current-error-port))
-      (exit 4))))
-
+;; The pipeline of the C++ toyc, in one pass manager: the inliner, then shape inference, canonicalizer
+;; and CSE nested on toy.func; for the lowerings the affine pass and canonicalizer + CSE (+ loop fusion
+;; and scalar replacement with --opt) nested on func.func (and LLVM, with the DI scope pass, for --emit=mlir-llvm and later).
 (define (%%run-pipeline! module-op ctx opt? emit-affine? emit-llvm?)
-  ;; Step 1: Inline + shape inference + canonicalize+CSE (toy.func level).
-  (%%run-inliner! module-op ctx)
-  (with-current-MLIRContext ctx
-    (apply-patterns module-op ctx :populate toy:add-shape-inference-patterns!))
-  (toy:check-shapes-inferred! module-op)
-  (%%run-toy-func-passes! module-op ctx mlir::createCanonicalizerPass mlir::createCSEPass)
-  ;; Steps 2-4: Affine lowering (same as ch5).
-  (when (or emit-affine? emit-llvm?)
-    (%%exit-unless-lowered (%%toy-to-affine-lower! module-op ctx))
-    (with-PassManager pm (ctx)
-      (let ([func-pm (mlir::PassManager::nest pm "func.func")])
-        (mlir::OpPassManager::addPass func-pm (mlir::createCanonicalizerPass))
-        (mlir::OpPassManager::addPass func-pm (mlir::createCSEPass)))
-      (when opt?
-        (let ([func-pm2 (mlir::PassManager::nest pm "func.func")])
-          (mlir::OpPassManager::addPass func-pm2 (mlir::affine::createLoopFusionPass))
-          (mlir::OpPassManager::addPass func-pm2
-                                        (mlir::affine::createAffineScalarReplacementPass))))
-      (unless (mlir::PassManager::run! pm module-op)
-        (display "Post-affine pipeline failed\n" (current-error-port))
-        (exit 1))))
-  ;; Steps 5-6: LLVM lowering + DI scope pass.
-  (when emit-llvm?
-    (%%exit-unless-lowered (%%toy-to-llvm-lower! module-op ctx))
-    (with-PassManager pm2 (ctx)
-      (mlir::PassManager::addPass pm2 (mlir::LLVM::createDIScopeForLLVMFuncOpPass))
-      (unless (mlir::PassManager::run! pm2 module-op)
-        (display "Post-LLVM pipeline failed\n" (current-error-port))
-        (exit 1)))))
-
-;; ---------------------------------------------------------------------------
-;; Inlining: MLIR's inliner pass, as in the C++ tutorial. toy.generic_call is a CallOpInterface,
-;; toy.func is callable, the dialect's DialectInlinerInterface says inlining is legal, and the
-;; pass erases the private callees that are dead afterwards.
-;; ---------------------------------------------------------------------------
-
-(define (%%run-inliner! module-op ctx)
   (with-PassManager pm (ctx)
     (mlir::PassManager::addPass pm (mlir::createInlinerPass))
-    (unless (mlir::PassManager::run! pm module-op)
-      (display "Inliner failed\n" (current-error-port))
-      (exit 1))))
+    (let ([func-pm (mlir::PassManager::nest pm "toy.func")])
+      (mlir::OpPassManager::addPass func-pm (toy:shape-inference-pass))
+      (mlir::OpPassManager::addPass func-pm (mlir::createCanonicalizerPass))
+      (mlir::OpPassManager::addPass func-pm (mlir::createCSEPass)))
+    (when emit-affine?
+      (mlir::PassManager::addPass pm (toy:lower-to-affine-pass))
+      (let ([func-pm (mlir::PassManager::nest pm "func.func")])
+        (mlir::OpPassManager::addPass func-pm (mlir::createCanonicalizerPass))
+        (mlir::OpPassManager::addPass func-pm (mlir::createCSEPass))
+        (when opt?
+          (mlir::OpPassManager::addPass func-pm (mlir::affine::createLoopFusionPass))
+          (mlir::OpPassManager::addPass func-pm
+                                        (mlir::affine::createAffineScalarReplacementPass)))))
+    (when emit-llvm?
+      (mlir::PassManager::addPass pm (toy:lower-to-llvm-pass))
+      (mlir::PassManager::addPass pm (mlir::LLVM::createDIScopeForLLVMFuncOpPass)))
+    (%%run-passes! pm module-op)))
 
 (define (%%build-module filename ctx)
   (if (or (eq? %%input-type 'mlir)
