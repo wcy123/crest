@@ -3,7 +3,8 @@ name: Build LLVM/MLIR on Windows
 # Manual. Builds LLVM and MLIR from source on the self-hosted Windows runner and installs them
 # next to the existing ones, so the CI job can use them (C:\Develop\local\llvm-<version>-mlir).
 # Settings follow the Linux packages: Release, X86 only, no RTTI, no exceptions, no assertions,
-# and the static release CRT (/MT) that the CREST job builds with (CMAKE_MSVC_RUNTIME_LIBRARY).
+# and the static release CRT (/MT) that the CREST job builds with (CMAKE_MSVC_RUNTIME_LIBRARY;
+# LLVM 23 ignores the old LLVM_USE_CRT_RELEASE, and a /MD build fails to link with __imp_ errors).
 
 on:
   workflow_dispatch:
@@ -40,6 +41,7 @@ jobs:
       - name: Configure
         shell: cmd
         run: |
+          rmdir /s /q C:\Develop\build\llvm-${{ inputs.llvm_tag }}-build 2>nul
           call C:\msvsn2022\VC\Auxiliary\Build\vcvars64.bat
           cmake -S C:\Develop\build\llvm-project-${{ inputs.llvm_tag }}\llvm -B C:\Develop\build\llvm-${{ inputs.llvm_tag }}-build -G Ninja ^
             -DCMAKE_BUILD_TYPE=Release ^
@@ -50,7 +52,8 @@ jobs:
             -DLLVM_ENABLE_ASSERTIONS=OFF ^
             -DLLVM_ENABLE_RTTI=OFF ^
             -DLLVM_ENABLE_EH=OFF ^
-            -DLLVM_USE_CRT_RELEASE=MT ^
+            -DCMAKE_POLICY_DEFAULT_CMP0091=NEW ^
+            -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded ^
             -DLLVM_ENABLE_ZSTD=OFF ^
             -DLLVM_ENABLE_ZLIB=OFF ^
             -DLLVM_ENABLE_LIBXML2=OFF ^
