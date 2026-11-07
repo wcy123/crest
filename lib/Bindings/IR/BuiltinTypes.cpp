@@ -318,9 +318,24 @@ void registerIRBuiltinTypesBindings() {
   CREST_ISA(MemRefType);
   CREST_ISA(UnrankedMemRefType);
   CREST_ISA(UnrankedTensorType);
+  CREST_ISA(TensorType);
   CREST_ISA(VectorType);
   CREST_ISA(ComplexType);
 #undef CREST_ISA
+
+  // The element type of a ranked or unranked tensor.
+  Sregister_symbol(
+      "mlir::TensorType::getElementType", (void*)+[](uint64_t p) -> uint64_t {
+        auto tensor = p ? mlir::dyn_cast<mlir::TensorType>(
+                              mlir::Type::getFromOpaquePointer(
+                                  reinterpret_cast<const void*>(p)))
+                        : mlir::TensorType();
+        if (!tensor) {
+          scheme_error("mlir::TensorType::getElementType", "not a tensor type");
+        }
+        return reinterpret_cast<uint64_t>(
+            tensor.getElementType().getAsOpaquePointer());
+      });
 
   Sregister_symbol(
       "mlir::FloatType::getWidth", (void*)+[](uint64_t p) -> int64_t {

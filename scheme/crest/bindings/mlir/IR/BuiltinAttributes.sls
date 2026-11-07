@@ -69,6 +69,11 @@
     mlir::DenseElementsAttr::getValueAt<f64>
     mlir::ArrayAttr::get
     mlir::ArrayAttr::getElement
+    mlir::isa<ArrayAttr>
+    mlir::FlatSymbolRefAttr::get
+    mlir::isa<FlatSymbolRefAttr>
+    mlir::FlatSymbolRefAttr::getValue
+    mlir::ArrayAttr::size
     )
   (import (rnrs)
           (mlir IR BuiltinAttributes ffi)
@@ -327,5 +332,20 @@
 
   ;; @brief mlir::ArrayAttr::getElement — (attr-ptr idx) → Attr uptr
   (define mlir::ArrayAttr::getElement %mlir::ArrayAttr::getElement)
+
+  ;; @brief mlir::FlatSymbolRefAttr::get — a symbol reference `@name` (ctx optional).
+  (define-ctx-optional mlir::FlatSymbolRefAttr::get %mlir::FlatSymbolRefAttr::get name)
+
+  ;; @brief mlir::isa<FlatSymbolRefAttr> — #t for a symbol reference without nested references.
+  (define (mlir::isa<FlatSymbolRefAttr> a) (not (zero? (%mlir::isa<FlatSymbolRefAttr> a))))
+
+  ;; @brief mlir::FlatSymbolRefAttr::getValue — the referenced name.
+  (define mlir::FlatSymbolRefAttr::getValue %mlir::FlatSymbolRefAttr::getValue)
+
+  ;; @brief mlir::isa<ArrayAttr> — #t if the attribute is an ArrayAttr.
+  (define (mlir::isa<ArrayAttr> a) (not (zero? (%mlir::isa<ArrayAttr> a))))
+
+  ;; @brief mlir::ArrayAttr::size — number of elements of an ArrayAttr.
+  (define mlir::ArrayAttr::size %mlir::ArrayAttr::size)
 
   ) ;; end library (mlir IR BuiltinAttributes)

@@ -63,7 +63,12 @@
     %mlir::DenseElementsAttr::getNumElements
     %mlir::DenseElementsAttr::getValueAt<f64>
     %mlir::ArrayAttr::get
-    %mlir::ArrayAttr::getElement)
+    %mlir::ArrayAttr::getElement
+    %mlir::isa<ArrayAttr>
+    %mlir::FlatSymbolRefAttr::get
+    %mlir::isa<FlatSymbolRefAttr>
+    %mlir::FlatSymbolRefAttr::getValue
+    %mlir::ArrayAttr::size)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::StringAttr::get — construct a StringAttr from a Scheme string.
@@ -365,5 +370,20 @@
 
   (define %mlir::ArrayAttr::getElement
     (foreign-procedure "mlir::ArrayAttr::getElement" (uptr uptr) uptr))
+
+  (define %mlir::FlatSymbolRefAttr::get
+    (foreign-procedure "mlir::FlatSymbolRefAttr::get" (uptr string) uptr))
+
+  (define %mlir::isa<FlatSymbolRefAttr>
+    (foreign-procedure "mlir::isa<FlatSymbolRefAttr>" (uptr) int))
+
+  (define %mlir::FlatSymbolRefAttr::getValue
+    (foreign-procedure "mlir::FlatSymbolRefAttr::getValue" (uptr) string))
+
+  (define %mlir::isa<ArrayAttr>
+    (foreign-procedure "mlir::isa<ArrayAttr>" (uptr) int))
+
+  (define %mlir::ArrayAttr::size
+    (foreign-procedure "mlir::ArrayAttr::size" (uptr) integer-64))
 
   ) ;; end library (mlir IR BuiltinAttributes ffi)

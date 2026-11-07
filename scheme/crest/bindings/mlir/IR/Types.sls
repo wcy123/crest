@@ -14,7 +14,8 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir IR Types)
-  (export mlir::Type::getContext)
+  (export mlir::Type::getContext
+          mlir::Type::print)
   (import (rnrs) (mlir IR Types ffi))
 
   ;; @brief mlir::Type::getContext() — return the MLIRContext that owns this type.
@@ -23,5 +24,10 @@
   ;; @see         mlir/IR/Types.h
   ;; @note        Defined in lib/Bindings/IR/Type.cpp
   (define mlir::Type::getContext %mlir::Type::getContext)
+
+  ;; @brief mlir::Type::print — the type in textual form, e.g. "tensor<2xf64>".
+  ;; @param type  Type opaque pointer uptr
+  ;; @return      string
+  (define mlir::Type::print %mlir::Type::print)
 
   ) ;; end library (mlir IR Types)

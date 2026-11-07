@@ -620,6 +620,55 @@ void registerIRBuiltinAttributesBindings() {
         return reinterpret_cast<uint64_t>(
             arr[static_cast<unsigned>(idx)].getAsOpaquePointer());
       });
+
+  // FlatSymbolRefAttr: a reference to a symbol by name, printed @name.
+  Sregister_symbol(
+      "mlir::FlatSymbolRefAttr::get",
+      (void*)+[](uint64_t ctx_ptr, const char* name) -> uint64_t {
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
+        return reinterpret_cast<uint64_t>(
+            mlir::FlatSymbolRefAttr::get(ctx, name).getAsOpaquePointer());
+      });
+  Sregister_symbol(
+      "mlir::isa<FlatSymbolRefAttr>", (void*)+[](uint64_t p) -> int {
+        return (p && mlir::isa<mlir::FlatSymbolRefAttr>(
+                         mlir::Attribute::getFromOpaquePointer(
+                             reinterpret_cast<const void*>(p))))
+                   ? 1
+                   : 0;
+      });
+  Sregister_symbol(
+      "mlir::FlatSymbolRefAttr::getValue",
+      (void*)+[](uint64_t attr_ptr) -> const char* {
+        auto attr = mlir::dyn_cast_if_present<mlir::FlatSymbolRefAttr>(
+            mlir::Attribute::getFromOpaquePointer(
+                reinterpret_cast<const void*>(attr_ptr)));
+        if (!attr) {
+          scheme_error("mlir::FlatSymbolRefAttr::getValue",
+                       "not a FlatSymbolRefAttr");
+        }
+        return attr.getValue().data();
+      });
+
+  Sregister_symbol(
+      "mlir::isa<ArrayAttr>", (void*)+[](uint64_t p) -> int {
+        return (p && mlir::isa<mlir::ArrayAttr>(
+                         mlir::Attribute::getFromOpaquePointer(
+                             reinterpret_cast<const void*>(p))))
+                   ? 1
+                   : 0;
+      });
+
+  Sregister_symbol(
+      "mlir::ArrayAttr::size", (void*)+[](uint64_t attr_ptr) -> int64_t {
+        auto arr = mlir::dyn_cast_if_present<mlir::ArrayAttr>(
+            mlir::Attribute::getFromOpaquePointer(
+                reinterpret_cast<const void*>(attr_ptr)));
+        if (!arr) {
+          scheme_error("mlir::ArrayAttr::size", "not an ArrayAttr");
+        }
+        return static_cast<int64_t>(arr.size());
+      });
 }
 
 } // namespace crest

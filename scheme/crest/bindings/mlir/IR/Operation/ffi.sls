@@ -40,6 +40,7 @@
 
     %has-attr
     %emit-error
+    %verify
     %emit-warning
     %emit-remark
     %mlir::Operation::dump
@@ -205,6 +206,9 @@
   ;; @return     void
   ;; @see        mlir/IR/Operation.h, mlir/IR/Diagnostics.h
   ;; @note       Defined in lib/Bindings/IR/Operation.cpp
+  (define %verify
+    (foreign-procedure "mlir::Operation::verify" (uptr) int))
+
   (define %emit-error
     (foreign-procedure "mlir::Operation::emitError" (uptr string) void))
 

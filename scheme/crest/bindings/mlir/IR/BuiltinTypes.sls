@@ -56,6 +56,8 @@
     mlir::RankedTensorType::cloneWithEncoding
     ;; UnrankedTensorType
     mlir::isa<UnrankedTensorType>?
+    mlir::isa<TensorType>?
+    mlir::TensorType::getElementType
     mlir::UnrankedTensorType::get
     ;; FunctionType
     mlir::FunctionType::get
@@ -239,6 +241,10 @@
   (define (mlir::isa<MemRefType>?         t) (not (zero? (%mlir::isa<MemRefType>-isa         t))))
   (define (mlir::isa<UnrankedMemRefType>? t) (not (zero? (%mlir::isa<UnrankedMemRefType>-isa t))))
   (define (mlir::isa<UnrankedTensorType>? t) (not (zero? (%mlir::isa<UnrankedTensorType>-isa t))))
+  ;; @brief mlir::isa<TensorType> — a ranked or unranked tensor type.
+  (define (mlir::isa<TensorType>? t) (not (zero? (%mlir::isa<TensorType>-isa t))))
+  ;; @brief mlir::TensorType::getElementType — the element type of a ranked or unranked tensor.
+  (define mlir::TensorType::getElementType %mlir::TensorType::getElementType)
   (define (mlir::isa<VectorType>?         t) (not (zero? (%mlir::isa<VectorType>-isa         t))))
   (define (mlir::isa<ComplexType>?        t) (not (zero? (%mlir::isa<ComplexType>-isa        t))))
 

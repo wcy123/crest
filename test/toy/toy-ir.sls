@@ -3,8 +3,8 @@
 ;; chapters have no tool that reads MLIR text, so the tests that need one use this.
 ;;
 ;; Usage: scheme-mlir toy-ir.sls <toy/chN/toy> <input.mlir> verify
-;;   verify  run the inliner, which has nothing to inline and only matters because the verifier runs
-;;           (it does not erase the dead pure ops the tests build, as the canonicalizer would)
+;;   verify  verify the module (the parser does not), then run the inliner, which has nothing to
+;;           inline, so the pass manager's own verification runs too
 (import (chezscheme)
         (mlir IR DialectRegistry) (mlir IR MLIRContext) (mlir IR Operation)
         (mlir Pass PassManager) (mlir Transforms Passes) (mlir Transforms InliningUtils))
@@ -19,6 +19,9 @@
       (let ([module-op (mlir::parseSourceFile ctx file)])
         (unless (and module-op (not (zero? module-op)))
           (display "parse failed\n")
+          (exit 1))
+        (unless (mlir::Operation::verify? module-op)
+          (display "verification failed\n")
           (exit 1))
         (with-PassManager pm (ctx)
           (mlir::PassManager::addPass pm (mlir::createInlinerPass))

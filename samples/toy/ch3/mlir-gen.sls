@@ -130,7 +130,7 @@
         (let ([type (%%f64-unranked-tensor)])
           (begin-mlir-code
               r = toy.generic_call (,@args)
-              (callee : callee :string)
+              (callee : (mlir::FlatSymbolRefAttr::get callee))
               :loc loc
               -> type))])))
 
