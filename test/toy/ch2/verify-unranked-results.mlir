@@ -7,7 +7,7 @@
 // CHECK: "toy.transpose"(%{{.*}}) : (tensor<2x3xf64>) -> tensor<*xf64>
 // CHECK: "toy.add"(%{{.*}}, %{{.*}}) : (tensor<2x3xf64>, tensor<2x3xf64>) -> tensor<*xf64>
 // CHECK: "toy.mul"(%{{.*}}, %{{.*}}) : (tensor<2x3xf64>, tensor<2x3xf64>) -> tensor<*xf64>
-// CHECK: "toy.generic_call"(%{{.*}}) {callee = "f"} : (tensor<2x3xf64>) -> tensor<*xf64>
+// CHECK: "toy.generic_call"(%{{.*}}) {callee = @f} : (tensor<2x3xf64>) -> tensor<*xf64>
 
 %0 = "toy.constant"() {value = dense<[[1.000000e+00, 2.000000e+00, 3.000000e+00], [4.000000e+00, 5.000000e+00, 6.000000e+00]]> : tensor<2x3xf64>} : () -> tensor<2x3xf64>
 %1 = "toy.transpose"(%0) : (tensor<2x3xf64>) -> tensor<*xf64>
@@ -16,5 +16,5 @@
 "toy.print"(%2) : (tensor<*xf64>) -> ()
 %3 = "toy.mul"(%0, %0) : (tensor<2x3xf64>, tensor<2x3xf64>) -> tensor<*xf64>
 "toy.print"(%3) : (tensor<*xf64>) -> ()
-%4 = "toy.generic_call"(%0) {callee = "f"} : (tensor<2x3xf64>) -> tensor<*xf64>
+%4 = "toy.generic_call"(%0) {callee = @f} : (tensor<2x3xf64>) -> tensor<*xf64>
 "toy.print"(%4) : (tensor<*xf64>) -> ()

@@ -35,6 +35,7 @@
 
     mlir::Operation::hasAttr?
     mlir::Operation::emitError
+    mlir::Operation::verify?
     mlir::Operation::emitWarning
     mlir::Operation::emitRemark
     mlir::Operation::dump
@@ -191,6 +192,12 @@
   ;; @see        mlir/IR/Operation.h, mlir/IR/Diagnostics.h
   ;; @note       Defined in lib/Bindings/IR/Operation.cpp
   (define mlir::Operation::emitError       %emit-error)
+
+  ;; @brief mlir::verify — verify the operation and everything nested in it.
+  ;; @param op   Operation* uptr
+  ;; @return     #t when it verifies, #f after emitting the diagnostics
+  ;; @see        mlir/IR/Verifier.h
+  (define (mlir::Operation::verify? op) (= 1 (%verify op)))
 
   ;; @brief mlir::Operation::emitWarning — emit a compiler warning diagnostic.
   ;; @param op   Operation* uptr (may be null; falls back to logging)

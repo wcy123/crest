@@ -18,6 +18,7 @@
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Operation.h"
+#include "mlir/IR/Verifier.h"
 #include <limits>
 
 namespace crest {
@@ -222,6 +223,18 @@ void registerIROperationBindings() {
                        "operation must not be null");
         }
         return reinterpret_cast<mlir::Operation*>(op_ptr)->hasAttr(attr_name)
+                   ? 1
+                   : 0;
+      });
+  // mlir::verify: 1 when the operation and everything nested in it verifies,
+  // else 0 (the diagnostics are emitted).
+  Sregister_symbol(
+      "mlir::Operation::verify", (void*)+[](uint64_t op_ptr) -> int {
+        if (!op_ptr) {
+          scheme_error("mlir::Operation::verify", "operation must not be null");
+        }
+        return mlir::succeeded(
+                   mlir::verify(reinterpret_cast<mlir::Operation*>(op_ptr)))
                    ? 1
                    : 0;
       });

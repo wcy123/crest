@@ -15,7 +15,8 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir IR Types ffi)
-  (export %mlir::Type::getContext)
+  (export %mlir::Type::getContext
+          %mlir::Type::print)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::Type::getContext() — return the MLIRContext that owns this type.
@@ -25,5 +26,11 @@
   ;; @note        Defined in lib/Bindings/IR/Type.cpp
   (define %mlir::Type::getContext
     (foreign-procedure "mlir::Type::getContext" (uptr) uptr))
+
+  ;; @brief mlir::Type::print — the type in textual form.
+  ;; @param type  Type opaque pointer uptr
+  ;; @return      string
+  (define %mlir::Type::print
+    (foreign-procedure "mlir::Type::print" (uptr) scheme-object))
 
   ) ;; end library (mlir IR Types ffi)

@@ -34,6 +34,8 @@
     %mlir::isa<MemRefType>-isa
     %mlir::isa<UnrankedMemRefType>-isa
     %mlir::isa<UnrankedTensorType>-isa
+    %mlir::isa<TensorType>-isa
+    %mlir::TensorType::getElementType
     %mlir::isa<VectorType>-isa
     %mlir::isa<ComplexType>-isa
     %mlir::RankedTensorType::getRank
@@ -203,6 +205,10 @@
     (foreign-procedure "mlir::isa<UnrankedMemRefType>" (uptr) int))
   (define %mlir::isa<UnrankedTensorType>-isa
     (foreign-procedure "mlir::isa<UnrankedTensorType>" (uptr) int))
+  (define %mlir::isa<TensorType>-isa
+    (foreign-procedure "mlir::isa<TensorType>" (uptr) int))
+  (define %mlir::TensorType::getElementType
+    (foreign-procedure "mlir::TensorType::getElementType" (uptr) uptr))
   (define %mlir::isa<VectorType>-isa
     (foreign-procedure "mlir::isa<VectorType>" (uptr) int))
   (define %mlir::isa<ComplexType>-isa
