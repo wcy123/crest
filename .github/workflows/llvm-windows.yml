@@ -58,6 +58,7 @@ jobs:
             -DLLVM_ENABLE_ZLIB=OFF ^
             -DLLVM_ENABLE_LIBXML2=OFF ^
             -DLLVM_INCLUDE_TESTS=OFF ^
+            -DLLVM_INSTALL_UTILS=ON ^
             -DMLIR_INCLUDE_TESTS=OFF ^
             -DLLVM_INCLUDE_BENCHMARKS=OFF ^
             -DLLVM_INCLUDE_EXAMPLES=OFF ^
@@ -75,7 +76,7 @@ jobs:
       - name: Check the install
         shell: powershell
         run: |
-          foreach ($f in 'lib\cmake\llvm\LLVMConfig.cmake', 'lib\cmake\mlir\MLIRConfig.cmake') {
+          foreach ($f in 'lib\cmake\llvm\LLVMConfig.cmake', 'lib\cmake\mlir\MLIRConfig.cmake', 'bin\FileCheck.exe', 'bin\not.exe') {
             $p = Join-Path '${{ inputs.install_dir }}' $f
             if (-not (Test-Path $p)) { throw "missing $p" }
           }
