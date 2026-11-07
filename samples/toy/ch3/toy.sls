@@ -136,7 +136,7 @@
       :summary    "element-wise addition"
       :operands   ((lhs mlir::Value?)
                    (rhs mlir::Value?))
-      :results    ((output mlir::isa<RankedTensorType>?))
+      :results    ((output mlir::Value?))
       (:parse (parser state) (%%parse-binary-op parser state))
       (:print (op printer name) (%%print-binary-op op printer name)))
 
@@ -145,7 +145,7 @@
       :summary    "element-wise multiplication"
       :operands   ((lhs mlir::Value?)
                    (rhs mlir::Value?))
-      :results    ((output mlir::isa<RankedTensorType>?))
+      :results    ((output mlir::Value?))
       (:parse (parser state) (%%parse-binary-op parser state))
       (:print (op printer name) (%%print-binary-op op printer name)))
 
@@ -201,6 +201,7 @@
     ;; Format: toy.return (%val : type)?
     (define-op return
       :summary    "return from toy.func"
+      :traits     (terminator)
       (:parse (parser state)
         ;; Optional return operand: parse silently, no error if absent.
         (let ([ops (mlir::OpAsmParser::parseOptionalOperand parser)])

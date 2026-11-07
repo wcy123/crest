@@ -50,6 +50,16 @@
     :rewrite %out :with
       %in)
 
+  ;; RedundantCast: cast(x) → x when input and output types are identical. The C++ tutorial gets
+  ;; this from CastOpInterface's folder; here it is a rewrite pattern.
+  (define-rewrite-pattern (%%redundant-cast op rewriter)
+    :if-match
+      %out = toy.cast (%in)
+        :where
+      (equal? (mlir::Value::getType %out) (mlir::Value::getType %in))
+    :rewrite %out :with
+      %in)
+
   ;; FoldConstantReshape: reshape(constant(x)) → constant(x')
   (define-rewrite-pattern (%%fold-constant-reshape op rewriter)
     :if-match
@@ -80,12 +90,29 @@
       (value : !elem)
       -> !type)
 
+  ;; StructAccessOfCast: struct_access(cast(x)) → struct_access(x). MLIR's inliner converts a ranked
+  ;; struct argument to the callee's parameter type with toy.cast; look through it, so the access
+  ;; can fold into the struct constant.
+  (define-rewrite-pattern (%%struct-access-of-cast op rewriter)
+    :if-match
+      %cast  = toy.cast (%in)
+      %field = toy.struct_access (%cast)
+    :then-let
+      ([!idx-attr (mlir::Operation::getAttr op "index")]
+       [!type     (mlir::Value::getType %field)])
+    :rewrite %field :with
+      result = toy.struct_access (%in)
+      (index : !idx-attr)
+      -> !type)
+
   ;; The patterns, as a set a pass can register with :populate.
   (define-pattern-set toy:add-canonicalization-patterns!
     ("toy.transpose" %%simplify-redundant-transpose 1)
     ("toy.reshape" %%reshape-reshape 1)
     ("toy.reshape" %%redundant-reshape 2)
+    ("toy.cast" %%redundant-cast 1)
     ("toy.reshape" %%fold-constant-reshape 1)
-    ("toy.struct_access" %%fold-struct-access 1))
+    ("toy.struct_access" %%fold-struct-access 1)
+    ("toy.struct_access" %%struct-access-of-cast 1))
 
   ) ;; end library (toy ch7 combine)

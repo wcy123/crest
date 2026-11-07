@@ -13,7 +13,7 @@ Licensed under the MIT License.
 ## Overview
 
 Ch4 adds `DialectInlinerInterface` to the toy dialect so MLIR's generic
-inliner can inline `toy.generic_call` into its callers.
+inliner can inline `toy.generic_call` into its callers; `toyc.sls` runs that pass.
 
 ## `isLegalToInline` — three-level gate
 

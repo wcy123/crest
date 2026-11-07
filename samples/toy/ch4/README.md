@@ -3,14 +3,13 @@
 Ch4 inlines `toy.generic_call` and adds `toy.cast` to handle ranked/unranked
 tensor mismatches that appear at call boundaries after inlining.
 
-The inlining is done by a Scheme-level inliner in `toyc.sls`, not by MLIR's
-inliner pass. MLIR's inliner needs `toy.generic_call` to implement
-`CallOpInterface` (a Scheme dialect can declare it), `toy.func` to be callable
-(it is, through `FunctionOpInterface`) and `toy.return` to be a terminator. The
-terminator needs `:traits (terminator)`, which exists only on LLVM 23; this
-tutorial is also built on LLVM 22, where the verifier rejects a block that ends
-in a Scheme op. The dialect still defines the `DialectInlinerInterface` that
-MLIR's inliner would use.
+The inlining is done by MLIR's inliner pass, as in the C++ tutorial. It needs
+`toy.generic_call` to implement `CallOpInterface` (`:interfaces ((mlir::CallOpInterface))`),
+`toy.func` to be callable (it is, through `FunctionOpInterface`), `toy.return` to be a
+terminator (`:traits (terminator)`), and the dialect's `DialectInlinerInterface` to say
+that inlining is legal and how to convert a call operand to the callee's parameter type. This
+needs LLVM 23 (`:traits` uses `DynamicOpDefinition::addTrait`), so the Toy chapters from Ch2
+on are skipped by the tests on LLVM 22.
 
 ## What's new over Ch3
 
@@ -54,9 +53,11 @@ assembly format as `transpose` and `reshape`.
 
 Three steps run in order when `--opt` is passed:
 
-1. **Inline** — the Scheme-level `%%inline-calls!` clones each callee body in
-   front of its call, consuming all `toy.generic_call` ops, and then removes
-   the private functions.
+1. **Inline** — MLIR's inliner pass (`mlir::createInlinerPass`, run on a
+   `PassManager` by `%%run-inliner!`) replaces each `toy.generic_call` with the
+   callee's body, calling the dialect's `materializeCallConversion` to cast a
+   ranked argument to the callee's unranked parameter type, and erases the
+   private functions that are dead afterwards.
 2. **Shape inference** — four rewrite patterns (`shape-inference.sls`) for
    `toy.add`, `toy.mul`, `toy.cast` and `toy.transpose`. Each fires on an op
    with an unranked result whose operands are ranked and replaces it with the
@@ -88,13 +89,13 @@ Three steps run in order when `--opt` is passed:
 | The cast the inliner interface creates | `begin-mlir-code` inside the `materializeCallConversion` callback | the callback gets a builder; `with-current-OpBuilder` installs it |
 | Every op `mlir-gen.sls` creates | `begin-mlir-code` | as in Ch2 |
 | The canonicalization patterns | `define-rewrite-pattern` | as in Ch3 |
-| Inlining | Scheme (`%%inline-calls!` in `toyc.sls`) | it clones ops whose name, operands and attributes are data, so each op is built with an `OperationState`. MLIR's inliner cannot replace it: it needs a terminator trait on `toy.return`, which needs LLVM 23 (the call interfaces can be declared now) |
+| Inlining | MLIR's inliner pass (`%%run-inliner!` in `toyc.sls`) | the dialect declares what the pass needs (`CallOpInterface`, a terminator trait, `DialectInlinerInterface`); no inliner is written in Scheme |
 | Shape inference | `define-rewrite-pattern` (`shape-inference.sls`), applied by the greedy rewriter | one pattern per op; the C++ pass does it with an op interface |
 
 ## Related Documents
 
 - [inlining.md](inlining.md) — step-by-step walkthrough of how MLIR's inliner
-  would call `handleTerminator` on the dialect's interface (`toyc.sls` does not
-  run MLIR's inliner, see above) and why the callback is dialect-specific
+  calls `handleTerminator` on the dialect's interface, and why the callback is
+  dialect-specific
 - [../ch3/README.md](../ch3/README.md) — Ch3 canonicalization patterns that
   Ch4 inherits

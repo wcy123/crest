@@ -41,35 +41,66 @@ struct SymbolConceptData : public mlir::SymbolOpInterface::Concept {
             },
             [](const mlir::SymbolOpInterface::Concept*, mlir::Operation* op,
                mlir::StringAttr name) { op->setAttr("sym_name", name); },
+            // Visibility is the "sym_visibility" attribute (public when
+            // absent), and a symbol that is not public can be discarded once it
+            // has no uses, as MLIR's default implementation of
+            // SymbolOpInterface does.
             [](const mlir::SymbolOpInterface::Concept*,
-               mlir::Operation*) -> mlir::SymbolTable::Visibility {
-              return mlir::SymbolTable::Visibility::Public;
+               mlir::Operation* op) -> mlir::SymbolTable::Visibility {
+              return mlir::SymbolTable::getSymbolVisibility(op);
+            },
+            [](const mlir::SymbolOpInterface::Concept*,
+               mlir::Operation* op) -> bool {
+              return mlir::SymbolTable::getSymbolVisibility(op) ==
+                     mlir::SymbolTable::Visibility::Nested;
+            },
+            [](const mlir::SymbolOpInterface::Concept*,
+               mlir::Operation* op) -> bool {
+              return mlir::SymbolTable::getSymbolVisibility(op) ==
+                     mlir::SymbolTable::Visibility::Private;
+            },
+            [](const mlir::SymbolOpInterface::Concept*,
+               mlir::Operation* op) -> bool {
+              return mlir::SymbolTable::getSymbolVisibility(op) ==
+                     mlir::SymbolTable::Visibility::Public;
+            },
+            [](const mlir::SymbolOpInterface::Concept*, mlir::Operation* op,
+               mlir::SymbolTable::Visibility visibility) {
+              mlir::SymbolTable::setSymbolVisibility(op, visibility);
+            },
+            [](const mlir::SymbolOpInterface::Concept*, mlir::Operation* op) {
+              mlir::SymbolTable::setSymbolVisibility(
+                  op, mlir::SymbolTable::Visibility::Nested);
+            },
+            [](const mlir::SymbolOpInterface::Concept*, mlir::Operation* op) {
+              mlir::SymbolTable::setSymbolVisibility(
+                  op, mlir::SymbolTable::Visibility::Private);
+            },
+            [](const mlir::SymbolOpInterface::Concept*, mlir::Operation* op) {
+              mlir::SymbolTable::setSymbolVisibility(
+                  op, mlir::SymbolTable::Visibility::Public);
+            },
+            [](const mlir::SymbolOpInterface::Concept*, mlir::Operation* op,
+               mlir::Operation* from)
+                -> std::optional<mlir::SymbolTable::UseRange> {
+              return mlir::SymbolTable::getSymbolUses(op, from);
+            },
+            [](const mlir::SymbolOpInterface::Concept*, mlir::Operation* op,
+               mlir::Operation* from) -> bool {
+              return mlir::SymbolTable::symbolKnownUseEmpty(op, from);
+            },
+            [](const mlir::SymbolOpInterface::Concept*, mlir::Operation* op,
+               mlir::StringAttr newName,
+               mlir::Operation* from) -> llvm::LogicalResult {
+              return mlir::SymbolTable::replaceAllSymbolUses(op, newName, from);
             },
             [](const mlir::SymbolOpInterface::Concept*,
                mlir::Operation*) -> bool { return false; },
             [](const mlir::SymbolOpInterface::Concept*,
-               mlir::Operation*) -> bool { return false; },
-            [](const mlir::SymbolOpInterface::Concept*,
-               mlir::Operation*) -> bool { return true; },
-            [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*,
-               mlir::SymbolTable::Visibility) {},
-            [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*) {},
-            [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*) {},
-            [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*) {},
-            [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*,
-               mlir::Operation*) -> std::optional<mlir::SymbolTable::UseRange> {
-              return std::nullopt;
+               mlir::Operation* op) -> bool {
+              return mlir::SymbolTable::getSymbolVisibility(op) !=
+                     mlir::SymbolTable::Visibility::Public;
             },
-            [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*,
-               mlir::Operation*) -> bool { return true; },
-            [](const mlir::SymbolOpInterface::Concept*, mlir::Operation*,
-               mlir::StringAttr, mlir::Operation*) -> llvm::LogicalResult {
-              return mlir::failure();
-            },
-            [](const mlir::SymbolOpInterface::Concept*,
-               mlir::Operation*) -> bool { return false; },
-            [](const mlir::SymbolOpInterface::Concept*,
-               mlir::Operation*) -> bool { return false; },
             [](const mlir::SymbolOpInterface::Concept*,
                mlir::Operation*) -> bool { return false; },
         } {

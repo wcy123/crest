@@ -19,6 +19,9 @@
         (mlir IR Block)
         (mlir IR Region)
         (mlir IR Builders)
+        (mlir Pass PassManager)
+        (mlir Transforms Passes)
+        (mlir Transforms InliningUtils)
         (mlir IR BuiltinAttributes)
         (only (mlir IR OpImplementation) mlir::StringAttr::getValue)
         (toy ch4 parser)
@@ -73,7 +76,7 @@
 
 (define (%%run-opt-pipeline! module-op ctx)
   ;; Step 1: inline all toy.generic_call ops, eliminating private functions.
-  (%%inline-calls! module-op ctx)
+  (%%run-inliner! module-op ctx)
   ;; Step 2: shape inference — propagate concrete tensor shapes (patterns in shape-inference.sls).
   (with-current-MLIRContext ctx
     (apply-patterns module-op ctx :populate toy:add-shape-inference-patterns!))
@@ -105,120 +108,16 @@
     op))
 
 ;; ---------------------------------------------------------------------------
-;; Scheme-level function inliner for toy.generic_call ops.
-;; Replaces each call with a clone of the callee's body, substituting
-;; block arguments with the actual call arguments. It is not MLIR's inliner pass: that needs the
-;; a terminator trait on toy.return (:traits (terminator)), which exists only on LLVM 23, and this
-;; tutorial also builds on LLVM 22.
+;; Inlining: MLIR's inliner pass, as in the C++ tutorial. toy.generic_call is a CallOpInterface,
+;; toy.func is callable, the dialect's DialectInlinerInterface says inlining is legal, and the
+;; pass erases the private callees that are dead afterwards.
 ;; ---------------------------------------------------------------------------
 
-(define (%%inline-calls! module-op ctx)
-  ;; Repeat until no more generic_call ops remain.
-  (let loop ()
-    (let ([call #f])
-      (mlir::Operation::walk module-op
-                             (lambda (op)
-                               (when (and (not call)
-                                          (string=? (mlir::Operation::getName op) "toy.generic_call"))
-                                 (set! call op))))
-      (when call
-        (%%inline-one! call module-op ctx)
-        (loop))))
-  ;; Remove private functions (they are now dead after inlining).
-  (let ([to-erase '()])
-    (mlir::Operation::walk module-op
-                           (lambda (op)
-                             (when (and (string=? (mlir::Operation::getName op) "toy.func")
-                                        (%%private-func? op))
-                               (set! to-erase (cons op to-erase)))))
-    (for-each mlir::Operation::erase to-erase)))
-
-(define (%%private-func? op)
-  (let ([vis (mlir::Operation::getAttr op "sym_visibility")])
-    (and vis (string=? (mlir::StringAttr::getValue vis) "private"))))
-
-(define (%%find-func module-op name)
-  (let ([found #f])
-    (mlir::Operation::walk module-op
-                           (lambda (op)
-                             (when (and (not found)
-                                        (string=? (mlir::Operation::getName op) "toy.func")
-                                        (string=? (mlir::StringAttr::getValue
-                                                   (mlir::Operation::getAttr op "sym_name"))
-                                                  name))
-                               (set! found op))))
-    found))
-
-(define (%%inline-one! call-op module-op ctx)
-  (let* ([callee-name (mlir::StringAttr::getValue
-                       (mlir::Operation::getAttr call-op "callee"))]
-         [callee      (%%find-func module-op callee-name)]
-         [entry-block (mlir::Region::front (mlir::Operation::getRegion callee 0))]
-         [n-args      (mlir::Operation::getNumOperands call-op)]
-         ;; val-map: old value uptr → new value uptr
-         [val-map     (make-hashtable equal-hash equal?)])
-    ;; Map callee block args to actual call operands.
-    (do ([i 0 (+ i 1)]) ((= i n-args))
-      (hashtable-set! val-map
-                      (mlir::Block::getArgument entry-block i)
-                      (mlir::Operation::getOperand call-op i)))
-    ;; Create a builder positioned just before the call op, freed on exit.
-    (with-OpBuilder builder-obj (with-current-MLIRContext ctx
-                                  (mlir::OpBuilder::atBlockEnd entry-block))
-      (let ([return-op #f])
-        ;; Walk callee body, cloning each op before the call.
-        (mlir::Operation::walk callee
-                               (lambda (op)
-                                 (let ([name (mlir::Operation::getName op)])
-                                   (cond
-                                    ;; Skip the func op itself and the entry block (walk visits them).
-                                    [(string=? name "toy.func") (void)]
-                                    [(string=? name "toy.return")
-                                     (set! return-op op)]
-                                    [else
-                                     ;; Clone op before call-op: set builder insertion point.
-                                     (mlir::OpBuilder::setInsertionPoint builder-obj call-op)
-                                     (let* ([n-ops     (mlir::Operation::getNumOperands op)]
-                                            [n-res     (mlir::Operation::getNumResults op)]
-                                            [new-ops   (map (lambda (i)
-                                                              (let ([old (mlir::Operation::getOperand op i)])
-                                                                (hashtable-ref val-map old old)))
-                                                            (iota n-ops))]
-                                            [res-types (map (lambda (i)
-                                                              (mlir::Value::getType
-                                                               (mlir::Operation::getResult op i)))
-                                                            (iota n-res))]
-                                            [attrs     (%%collect-attrs op)]
-                                            [new-op    (with-OperationState s ((mlir::Operation::getLoc op) name)
-                                                         (for-each (lambda (v) (mlir::OperationState::addOperands s v)) new-ops)
-                                                         (for-each (lambda (t) (mlir::OperationState::addTypes s t)) res-types)
-                                                         (for-each (lambda (kv)
-                                                                     (mlir::OperationState::addAttribute s (car kv) (cdr kv)))
-                                                                   attrs)
-                                                         (mlir::OpBuilder::create<OperationState> builder-obj s))])
-                                       ;; Map old results to new results.
-                                       (do ([i 0 (+ i 1)]) ((= i n-res))
-                                         (hashtable-set! val-map
-                                                         (mlir::Operation::getResult op i)
-                                                         (mlir::Operation::getResult new-op i))))]))))
-        ;; Replace call result with the (mapped) return operand.
-        (when (and return-op (> (mlir::Operation::getNumOperands return-op) 0))
-          (let* ([ret-val     (mlir::Operation::getOperand return-op 0)]
-                 [mapped-val  (hashtable-ref val-map ret-val ret-val)])
-            (mlir::Value::replaceAllUsesWith
-             (mlir::Operation::getResult call-op 0)
-             mapped-val)))
-        (mlir::Operation::erase call-op)))))
-
-;; Collect op attributes as an alist of (name-string . attr-uptr).
-;; Reads known attribute keys: "value" (constant), "callee".
-(define (%%collect-attrs op)
-  (let ([result '()])
-    (for-each
-     (lambda (key)
-       (let ([v (mlir::Operation::getAttr op key)])
-         (when v (set! result (cons (cons key v) result)))))
-     '("value" "callee" "sym_name" "function_type" "sym_visibility"))
-    result))
+(define (%%run-inliner! module-op ctx)
+  (with-PassManager pm (ctx)
+    (mlir::PassManager::addPass pm (mlir::createInlinerPass))
+    (unless (mlir::PassManager::run! pm module-op)
+      (display "Inliner failed\n" (current-error-port))
+      (exit 1))))
 
 (main)

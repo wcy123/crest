@@ -8,7 +8,7 @@
 // CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = "toy.transpose"(%arg0) : (tensor<*xf64>) -> tensor<*xf64>
 // CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = "toy.mul"(%{{[a-zA-Z0-9_]+}}, %{{[a-zA-Z0-9_]+}}) : (tensor<*xf64>, tensor<*xf64>) -> tensor<*xf64>
 // CHECK-NEXT:     "toy.return"(%{{[a-zA-Z0-9_]+}}) : (tensor<*xf64>) -> ()
-// CHECK-NEXT:   }) {function_type = (tensor<*xf64>, tensor<*xf64>) -> (), sym_name = "multiply_transpose"} : () -> ()
+// CHECK-NEXT:   }) {function_type = (tensor<*xf64>, tensor<*xf64>) -> tensor<*xf64>, sym_name = "multiply_transpose"} : () -> ()
 // CHECK-NEXT:   "toy.func"() ({
 // CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = "toy.constant"() {value = dense<{{[[]}}[1.000000e+00, 2.000000e+00, 3.000000e+00], [4.000000e+00, 5.000000e+00, 6.000000e+00]{{[]]}}> : tensor<2x3xf64>} : () -> tensor<2x3xf64>
 // CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = "toy.constant"() {value = dense<[1.000000e+00, 2.000000e+00, 3.000000e+00, 4.000000e+00, 5.000000e+00, 6.000000e+00]> : tensor<6xf64>} : () -> tensor<6xf64>

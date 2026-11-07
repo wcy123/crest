@@ -59,7 +59,8 @@
 
     ;; ReturnOp — return from a toy function
     (define-op return
-      :summary    "return from toy.func")
+      :summary    "return from toy.func"
+      :traits     (terminator))
 
     ;; PrintOp — print a tensor to stdout
     (define-op print

@@ -2,7 +2,7 @@
 // RUN:   | FileCheck %s
 
 // CHECK-LABEL: module {
-// CHECK-NEXT:   toy.func @multiply_transpose(%arg0: tensor<*xf64>, %arg1: tensor<*xf64>) {
+// CHECK-NEXT:   toy.func @multiply_transpose(%arg0: tensor<*xf64>, %arg1: tensor<*xf64>) -> tensor<*xf64> {
 // CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = toy.transpose(%arg1 : tensor<*xf64>) to tensor<*xf64>
 // CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = toy.transpose(%arg0 : tensor<*xf64>) to tensor<*xf64>
 // CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = toy.mul %{{[a-zA-Z0-9_]+}}, %{{[a-zA-Z0-9_]+}} : tensor<*xf64>

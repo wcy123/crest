@@ -3,9 +3,9 @@
 ;;
 ;; Ch4 adds:
 ;;   - toy.cast op (bridges ranked/unranked type mismatches at call boundaries)
-;;   - DialectInlinerInterface, the interface MLIR's inliner would use for toy.generic_call.
-;;     toyc.sls inlines in Scheme instead: MLIR's inliner needs a terminator trait on toy.return
-;;     (`:traits (terminator)`), which exists only on LLVM 23, and this tutorial also builds on LLVM 22.
+;;   - DialectInlinerInterface, the interface MLIR's inliner uses for toy.generic_call, and what the
+;;     pass needs from the ops: CallOpInterface on toy.generic_call, FunctionOpInterface on toy.func
+;;     (so it is callable), and `:traits (terminator)` on toy.return (LLVM 23).
 (library (toy ch7 toy)
   (export toy)
   (import (except (chezscheme) =)
@@ -19,6 +19,7 @@
           (mlir IR OpImplementation)
           (mlir IR Builders)
           (mlir IR OperationSupport)
+          (only (mlir Interfaces CallInterfaces) mlir::CallOpInterface)
           (only (mlir Interfaces FunctionInterfaces)
                 mlir::FunctionOpInterface
                 mlir::function_interface_impl::printFunctionOp
@@ -226,6 +227,7 @@
 
     (define-op generic_call
       :summary    "generic function call"
+      :interfaces ((mlir::CallOpInterface))
       :attributes ((callee mlir::StringAttr))
       :results    ((output mlir::Value?))
       (:parse (parser state)
@@ -257,6 +259,7 @@
 
     (define-op return
       :summary    "return from toy.func"
+      :traits     (terminator)
       (:parse (parser state)
         (let ([ops (mlir::OpAsmParser::parseOptionalOperand parser)])
           (if (%%parsed? ops)
