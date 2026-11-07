@@ -33,11 +33,13 @@
           :results
           :interfaces
           :traits
+          :assembly-format
           :required
           :optional
           :variadic)
   (import (chezscheme)
           (for (crest dialect expand) expand)        ; generate-op-defs at macro-expansion time
+          (for (crest dialect assembly-format) expand)
           (for (crest dialect ast) expand run)    ; dialect-parse / op-parse records
           (crest dialect ffi))
 
@@ -72,6 +74,7 @@
   (define :variadic                    ':variadic)
   (define :interfaces                  ':interfaces)
   (define :traits                      ':traits)
+  (define :assembly-format             ':assembly-format)
 
 
   ;; ctx: CrestBox<MLIRContext>* | MLIRContext*
@@ -245,11 +248,12 @@
                   [attributes '()]
                   [results    '()]
                   [interfaces '()]
+                  [assembly-format #f]
                   [op-cbs     (make-vector 8 #f)])
               (let loop-sub ([stx sub-clauses-stx])
                 (syntax-case stx (:summary :description
                                            :operands :attributes :results
-                                           :interfaces :traits
+                                           :interfaces :traits :assembly-format
                                            :verify :verify-regions
                                            :parse :print :fold
                                            :required :optional
@@ -261,6 +265,16 @@
                    (begin
                      (set! interfaces (%%parse-iface-specs #'(iface-spec ...)))
                      (loop-sub #'rest))]
+                  [(:assembly-format format . rest)
+                   (string? (syntax->datum #'format))
+                   (begin
+                     (when assembly-format
+                       (syntax-violation 'define-op "repeated :assembly-format" #'format))
+                     (set! assembly-format #'format)
+                     (loop-sub #'rest))]
+                  [(:assembly-format . _)
+                   (syntax-violation 'define-op ":assembly-format expects a format string"
+                                     (car (syntax->list stx)))]
                   [(:traits (trait ...) . rest)
                    (andmap (lambda (t)
                              (syntax-case t ()
@@ -345,6 +359,15 @@
                                      "unknown clause — expected :operands, :attributes, :results, :summary, :description, or (:callback (args) body ...)"
                                      #'bad)]
                   [()
+                   (when assembly-format
+                     (when (or (vector-ref op-cbs 2) (vector-ref op-cbs 3))
+                       (syntax-violation 'define-op
+                                         ":assembly-format cannot be combined with :parse or :print"
+                                         assembly-format))
+                     (let-values ([(parse print)
+                                   (generate-assembly-format assembly-format operands attributes results)])
+                       (vector-set! op-cbs 2 parse)
+                       (vector-set! op-cbs 3 print)))
                    (make-op-parse op-name-stx operands attributes results op-cbs interfaces)]))))
 
 

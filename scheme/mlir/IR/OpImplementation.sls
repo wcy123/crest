@@ -8,6 +8,7 @@
           mlir::OpAsmPrinter::printType
           mlir::OpAsmPrinter::printOptionalAttrDict
           mlir::OpAsmPrinter::printOptionalAttrDictExcept
+          mlir::OpAsmPrinter::printOptionalAttrDict<ArrayRef<StringRef>>
           mlir::OpAsmPrinter::printFunctionalType
           mlir::OpAsmPrinter::printResultTypes
           mlir::OpAsmPrinter::printSymbolName
@@ -65,6 +66,9 @@
 
   (define mlir::OpAsmPrinter::printOptionalAttrDictExcept
     %mlir::OpAsmPrinter::printOptionalAttrDictExcept)
+
+  (define mlir::OpAsmPrinter::printOptionalAttrDict<ArrayRef<StringRef>>
+    %mlir::OpAsmPrinter::printOptionalAttrDict<ArrayRef<StringRef>>)
 
   (define mlir::OpAsmPrinter::printFunctionalType
     %mlir::OpAsmPrinter::printFunctionalType)

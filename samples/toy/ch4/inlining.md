@@ -188,7 +188,7 @@ This happens when shape inference has already run inside the callee
 expects the unranked type. The toy dialect inserts a `toy.cast`:
 
 ```
-%cast = toy.cast(%result_c : tensor<3x2xf64>) to tensor<*xf64>
+%cast = toy.cast %result_c : tensor<3x2xf64> to tensor<*xf64>
 ```
 
 `handleTerminator` then uses `%cast` (not `%result_c`) as the replacement

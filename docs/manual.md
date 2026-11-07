@@ -764,8 +764,9 @@ The op's full MLIR name is `dialect-name.op-name` (e.g. `toy.constant`).
 | `:operands ((name predicate) ...)` | Operand fields — default `:required`; append `:optional` or `:variadic` to change cardinality: `(name predicate :optional)` |
 | `:attributes ((name predicate) ...)` | Attribute fields — default `:required`; append `:optional` to allow absence: `(name predicate :optional)` |
 | `:results ((name predicate) ...)` | Result fields; `predicate` is called on the result's `mlir::Type` uptr |
-| `(:parse (parser state) body ...)` | Custom assembly parser |
-| `(:print (op printer name) body ...)` | Custom assembly printer |
+| `:assembly-format "format"` | The text form of the op as one ODS format string, see [`:assembly-format`](#assembly-format) |
+| `(:parse (parser state) body ...)` | Custom assembly parser (not with `:assembly-format`) |
+| `(:print (op printer name) body ...)` | Custom assembly printer (not with `:assembly-format`) |
 | `(:verify (op) body ...)` | Extra verifier called after attribute/type checks |
 | `(:fold (op operand-attributes) body ...)` | Folder: return `#f` (no fold), or a list with one entry per result, `(fold-value v)` for an existing value (usually an operand) or `(fold-attribute a)` for a constant the dialect's `:materialize-constant` turns into an op; `'()` means folded in place. `operand-attributes` has one entry per operand: its constant attribute, or `#f`. A `constant-like` op folds to its own value. The context is not installed in the callback: wrap attribute creation in `(with-current-MLIRContext (mlir::Operation::getContext op) ...)` |
 | `(:get-canonicalization-patterns (patterns) body ...)` | The op's own canonicalization patterns (C++ `hasCanonicalizer`): `patterns` is the pattern set being filled, to which `add-rewrite-pattern` (or a `define-pattern-set` procedure) adds patterns; MLIR's canonicalizer pass finds them without the tool registering anything |
@@ -812,6 +813,42 @@ of *attribute* parameters (a type parameter is a `TypeAttr`); it is built on MLI
 `<...>`). Without `:parse`/`:print` the generic `<attr, ...>` syntax is used. The dialect generates
 `(toy.struct? type)`, `(toy.struct ctx params)` (the type, or 0 when `:verify` rejects the parameters, after
 emitting its message) and `(toy.struct-params type)`.
+
+### `:assembly-format`
+
+`:assembly-format` gives the text form of an op as one string in the syntax of TableGen's declarative
+assembly format (MLIR's `Operations.md`, "Declarative Assembly Format"), and generates the `:parse` and
+`:print` callbacks from it. Toy declares `toy.print` as in the C++ tutorial's `Ops.td`:
+
+```scheme
+(define-op print
+  :operands   ((input %%f64-tensor-or-memref-value?))
+  :assembly-format "$input attr-dict `:` type($input)")      ; toy.print %0 : tensor<2x3xf64>
+```
+
+| Element | Meaning |
+|---|---|
+| `` `:` `` `` `,` `` `` `(` `` `` `)` `` `` `<` `` `` `>` `` `` `[` `` `` `]` `` `` `->` `` and `` `keyword` `` | a literal |
+| `$name` | an operand (required, optional or variadic) or an attribute of the op |
+| `type($x)` | the type of an operand or of a result |
+| `type(results)` | the types of all results, comma separated |
+| `functional-type(operands, results)` | `(operand types) -> result types`; `($inputs, results)` when `$inputs` is the op's only operand |
+| `operands` | all operands (the types then come from `functional-type`) |
+| `attr-dict` | the attributes no `$attribute` printed, as `{...}` |
+| `( elements )?` | an optional group: it is there if its first element, the *anchor* `$x^` (an optional operand), is |
+
+The rules are those of ODS: `attr-dict`, every operand with its type and every result type appear once. A
+lone optional or variadic operand needs no `operandSegmentSizes` attribute (it takes the operands the
+required ones leave). The printed spacing is that of `mlir-tblgen` (`OpFormatGen.cpp`): a space between
+elements except around `(`, `)`, `[`, `]`, `<`, `>` and `,`, so a format prints what its C++ twin prints, with
+one difference: an attribute is printed with its type (`[1 : i64]`), where ODS leaves a buildable type out;
+both parse. Mistakes in the string are reported when the library compiles, with the column.
+
+Not in the first version, each reported as such: the literals `=` `{` `}` `?` `+` `*`, `custom<...>`,
+`prop-dict`, `regions`, `successors`, `oilist`, `qualified`, `attr-dict-with-keyword`, `type(operands)`, `else`
+groups, a group whose first element is not an optional operand, result types inside a group or inferred from
+traits (every result type is in the format), and more than one optional or variadic operand. An op that needs
+them keeps a hand-written `:parse` and `:print`, as `toy.add` and `toy.func` do.
 
 ### Op traits
 
