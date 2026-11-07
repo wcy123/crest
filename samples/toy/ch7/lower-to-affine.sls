@@ -33,15 +33,19 @@
                 mlir::RankedTensorType::getElementType
                 mlir::IndexType::get
                 mlir::Float64Type::get
-                mlir::isa<RankedTensorType>?)
+                mlir::isa<RankedTensorType>?
+                mlir::isa<TensorType>?)
           (only (mlir IR BuiltinAttributes)
+                mlir::TypeAttr::getValue
                 mlir::AffineMapAttr::get
                 mlir::FloatAttr::get<f64>
                 mlir::DenseElementsAttr::getNumElements
                 mlir::DenseElementsAttr::getValueAt<f64>
                 mlir::FloatAttr::getValueAsDouble)
           (only (mlir IR OpImplementation)
-                mlir::StringAttr::getValue)
+                mlir::StringAttr::getValue
+                mlir::FunctionType::getNumInputs
+                mlir::FunctionType::getNumResults)
           (only (mlir IR PatternMatch)
                 mlir::RewriterBase::setInsertionPoint)
           (only (mlir Dialect MemRef IR MemRef)
@@ -172,9 +176,9 @@
        (lambda (ivs)
          (let ([map (%%identity-map-attr (length ivs))])
            (begin-mlir-code
-               ;; rhs is loaded first, as the generated IR has always had it
-               r = affine.load (rhs ,@ivs) (map : map) :loc loc -> elem-type
+               ;; lhs is loaded first, as LowerToAffineLoops.cpp does
                l = affine.load (lhs ,@ivs) (map : map) :loc loc -> elem-type
+               r = affine.load (rhs ,@ivs) (map : map) :loc loc -> elem-type
                (case kind
                  [(add) (begin-mlir-code v = arith.addf (l r) :loc loc -> elem-type)]
                  [(mul) (begin-mlir-code v = arith.mulf (l r) :loc loc -> elem-type)])))))))
@@ -214,10 +218,17 @@
   ;; toy.func @main → func.func @main
   ;;===--------------------------------------------------------------------===;;
 
+  ;; Only `main`, with no inputs and no results, is lowered (C++ FuncOpLowering: "expected 'main'
+  ;; to have 0 inputs and 0 results").
+  (define (%%empty-signature? function-type)
+    (and (eqv? 0 (mlir::FunctionType::getNumInputs function-type))
+         (eqv? 0 (mlir::FunctionType::getNumResults function-type))))
+
   (define-conversion-pattern (%%func-lower! op operands-ref rw tc)
     :if-match
       toy.func ()
-        :where (string=? "main" (mlir::StringAttr::getValue (:attr "sym_name")))
+        :where (and (string=? "main" (mlir::StringAttr::getValue (:attr "sym_name")))
+                    (%%empty-signature? (mlir::TypeAttr::getValue (:attr "function_type"))))
     :rewrite op :with
       func.func ()
       (sym_name : (mlir::Operation::getAttr op "sym_name"))
@@ -264,7 +275,7 @@
                       ;; toy.print is legal once its operand is a memref (not a tensor).
                       :dynamically-legal (("toy.print"
                                            (lambda (print-op)
-                                             (not (mlir::isa<RankedTensorType>?
+                                             (not (mlir::isa<TensorType>?
                                                    (mlir::Value::getType
                                                     (mlir::Operation::getOperand print-op 0)))))))
                       :patterns (("toy.constant"  %%constant-lower!)

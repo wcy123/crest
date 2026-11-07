@@ -28,7 +28,6 @@
         (mlir Pass PassManager)
         (mlir Transforms InliningUtils)
         (mlir Transforms Passes)
-        (mlir Conversion ReconcileUnrealizedCasts ReconcileUnrealizedCasts)
         (mlir Dialect Affine Transforms Passes)
         (mlir Dialect Affine IR AffineOps)
         (mlir Dialect Arith IR Arith)
@@ -137,7 +136,7 @@
       (mlir::MLIRContext::getOrLoadDialect ctx "llvm")
       (let ([module-op (%%build-module filename ctx)])
         (%%run-pipeline! module-op ctx opt? #t #t)
-        (display (mlir::translateModuleToLLVMIR module-op))
+        (display (mlir::translateModuleToLLVMIR module-op (if opt? 3 0)))
         (newline)))))
 
 (define (%%run-jit filename opt?)
@@ -162,16 +161,22 @@
       (mlir::MLIRContext::getOrLoadDialect ctx "llvm")
       (let ([module-op (%%build-module filename ctx)])
         (%%run-pipeline! module-op ctx opt? #t #t)
-        (with-ExecutionEngine engine (module-op)
-          (when (not (zero? engine))
-            (let ([rc (mlir::ExecutionEngine::invoke engine "main")])
-              (when (not (zero? rc))
-                (display "JIT invocation failed\n" (current-error-port))
-                (exit 1)))))))))
+        (with-ExecutionEngine engine (module-op (if opt? 3 0))
+          (when (zero? engine)
+            (display "Failed to create the execution engine\n" (current-error-port))
+            (exit 1))
+          (let ([rc (mlir::ExecutionEngine::invoke engine "main")])
+            (when (not (zero? rc))
+              (display "JIT invocation failed\n" (current-error-port))
+              (exit 1))))))))
 
 ;; ---------------------------------------------------------------------------
 ;; Optimization pipeline
 ;; ---------------------------------------------------------------------------
+
+;; A failed lowering fails toyc, as the pass manager failing does in C++ (exit code 4).
+(define (%%exit-unless-lowered ok?)
+  (unless ok? (exit 4)))
 
 (define (%%run-pipeline! module-op ctx opt? emit-affine? emit-llvm?)
   ;; Step 1: Inline + shape inference + canonicalize+CSE (toy.func level).
@@ -183,7 +188,7 @@
     (apply-patterns module-op ctx :populate toy:add-canonicalization-patterns!))
   ;; Steps 2-4: Affine lowering (same as ch5).
   (when (or emit-affine? emit-llvm?)
-    (%%toy-to-affine-lower! module-op ctx)
+    (%%exit-unless-lowered (%%toy-to-affine-lower! module-op ctx))
     (with-PassManager pm (ctx)
       (let ([func-pm (mlir::PassManager::nest pm "func.func")])
         (mlir::OpPassManager::addPass func-pm (mlir::createCanonicalizerPass))
@@ -198,10 +203,8 @@
         (exit 1))))
   ;; Steps 5-6: LLVM lowering + DI scope pass.
   (when emit-llvm?
-    (%%toy-to-llvm-lower! module-op ctx)
+    (%%exit-unless-lowered (%%toy-to-llvm-lower! module-op ctx))
     (with-PassManager pm2 (ctx)
-      ;; Reconcile unrealized casts left by LLVMTypeConverter (e.g. for struct types).
-      (mlir::PassManager::addPass pm2 (mlir::createReconcileUnrealizedCastsPass))
       (mlir::PassManager::addPass pm2 (mlir::LLVM::createDIScopeForLLVMFuncOpPass))
       (unless (mlir::PassManager::run! pm2 module-op)
         (display "Post-LLVM pipeline failed\n" (current-error-port))

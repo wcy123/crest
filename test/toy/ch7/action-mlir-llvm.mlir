@@ -3,8 +3,8 @@
 
 // CHECK-LABEL: module {
 // CHECK-NEXT:   llvm.func @free(!llvm.ptr)
-// CHECK-NEXT:   llvm.mlir.global private constant @nl("\0A\00") {addr_space = 0 : i32}
-// CHECK-NEXT:   llvm.mlir.global private constant @frmt_spec("%{{[a-zA-Z0-9_]+}} \00") {addr_space = 0 : i32}
+// CHECK-NEXT:   llvm.mlir.global internal constant @nl("\0A\00") {addr_space = 0 : i32}
+// CHECK-NEXT:   llvm.mlir.global internal constant @frmt_spec("%{{[a-zA-Z0-9_]+}} \00") {addr_space = 0 : i32}
 // CHECK-NEXT:   llvm.func @printf(!llvm.ptr, ...) -> i32
 // CHECK-NEXT:   llvm.func @malloc(i64) -> !llvm.ptr
 // CHECK-NEXT:   llvm.func @main() {

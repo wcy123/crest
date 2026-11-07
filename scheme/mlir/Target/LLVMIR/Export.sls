@@ -3,4 +3,11 @@
 (library (mlir Target LLVMIR Export)
   (export mlir::translateModuleToLLVMIR)
   (import (rnrs) (mlir Target LLVMIR Export ffi))
-  (define mlir::translateModuleToLLVMIR %mlir::translateModuleToLLVMIR))
+
+  ;; (translateModuleToLLVMIR module) is the module translated to LLVM IR text.
+  ;; (translateModuleToLLVMIR module opt-level) also sets the target triple and data layout of the
+  ;; host and runs LLVM's optimizing pipeline at opt-level 0 to 3, as the C++ Toy tutorial does.
+  (define mlir::translateModuleToLLVMIR
+    (case-lambda
+     [(module)           (%mlir::translateModuleToLLVMIR module)]
+     [(module opt-level) (%mlir::translateModuleToLLVMIR<int> module opt-level)])))
