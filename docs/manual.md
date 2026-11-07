@@ -776,6 +776,25 @@ procedures called at verification time. For example:
 - `:results ((output mlir::isa<RankedTensorType>?))` — result must be ranked
 - `:operands ((lhs mlir::Value))` — any non-null value (`mlir::Value` is `(lambda (v) (not (zero? v)))`)
 
+### `define-type` — dialect types
+
+A dialect can define types of its own with `define-type` next to its ops. A type has a name and a list
+of *attribute* parameters (a type parameter is a `TypeAttr`); it is built on MLIR's
+`DynamicTypeDefinition`, so it works on LLVM 22 and 23 and needs no C++:
+
+```scheme
+(define-dialect toy
+  (define-type struct
+    (:verify (params) ...)          ; #t, #f, or an error message string; optional
+    (:parse (parser) ...)           ; after the name: the list of parameter attributes, or #f
+    (:print (printer params) ...))) ; after the name; :parse and :print come together, or neither
+```
+
+`!toy.struct<tensor<2xf64>, tensor<3xf64>>` is printed as the name followed by what `:print` writes (here
+`<...>`). Without `:parse`/`:print` the generic `<attr, ...>` syntax is used. The dialect generates
+`(toy.struct? type)`, `(toy.struct ctx params)` (the type, or 0 when `:verify` rejects the parameters, after
+emitting its message) and `(toy.struct-params type)`.
+
 ### Op traits
 
 `:traits (name ...)` attaches MLIR traits to the op through `DynamicOpDefinition::addTrait`, so the

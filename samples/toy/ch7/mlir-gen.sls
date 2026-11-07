@@ -17,7 +17,7 @@
           (mlir IR Block)
           (mlir IR BuiltinOps)
           (only (mlir IR Value) mlir::Value::getType)
-          (mlir Dialect Toy ToyStructType)
+          (only (toy ch7 toy) toy.struct toy.struct? toy.struct-params)
           (toy ch7 ast)
           (for (only (crest pattern-dsl rewrite) begin-mlir-code) expand)
           (for (only (crest pattern-dsl keywords) = :string :loc :arg) expand)
@@ -96,6 +96,13 @@
           ;; tensor-typed
           (%%get-type shape))))
 
+  ;; !toy.struct<...>: its parameters are one TypeAttr per element type.
+  (define (%%make-struct-type types)
+    (toy.struct (current-MLIRContext) (map mlir::TypeAttr::get types)))
+
+  (define (%%struct-element-types type)
+    (map mlir::TypeAttr::getValue (toy.struct-params type)))
+
   (define (%%mlir-gen-struct-attr struct-map expr)
     ;; Build a (ArrayAttr, StructType) pair for a struct literal
     (let loop ([values (struct-literal-expr:values expr)]
@@ -103,7 +110,7 @@
                [types '()])
       (if (null? values)
           (let* ([arr  (mlir::ArrayAttr::get (current-MLIRContext) attrs)]
-                 [stype (toy::StructType::get types)])
+                 [stype (%%make-struct-type types)])
             (cons arr stype))
           (let ([v (car values)])
             (cond
@@ -139,8 +146,8 @@
                                  (%%fail loc "invalid access into struct expression"))]
                  ;; find field index from struct type
                  [lhs-type   (mlir::Value::getType lhs)]
-                 [elem-types (if (toy::StructType? lhs-type)
-                                 (toy::StructType::getElementTypes lhs-type)
+                 [elem-types (if (toy.struct? lhs-type)
+                                 (%%struct-element-types lhs-type)
                                  (%%fail loc "invalid access into struct expression"))]
                  ;; find the struct definition to get field names
                  [struct-decl (%%find-struct-decl-by-type struct-map lhs-type)]
@@ -318,7 +325,7 @@
                                    (if entry (car entry) (%%f64-unranked-tensor)))
                                  (%%f64-unranked-tensor)))))
                        vars)])
-      (let ([stype (toy::StructType::get types)])
+      (let ([stype (%%make-struct-type types)])
         (hashtable-set! struct-map (struct-ast:name s) (cons stype s)))))
 
   (define (mlir-gen ctx module)

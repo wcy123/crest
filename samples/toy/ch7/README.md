@@ -53,12 +53,7 @@ README is the Ch6 tensor program and does not use structs.
 |---|---|
 | `toy.struct_constant` | Constant struct. Attribute `value` is an `ArrayAttr` of `DenseElementsAttr` (or nested `ArrayAttr` for nested structs); the result is a struct type. |
 | `toy.struct_access` | `%s[N]`: field `N` of a struct value. Attribute `index` (`i64`). |
-| `toy::StructType` | Defined in `(mlir Dialect Toy ToyStructType)` |
-
-`toy::StructType` is implemented on top of `mlir::TupleType`; it is not a
-separate type with its own storage. Structs therefore print as
-`tuple<tensor<2x3xf64>, tensor<2x3xf64>>`, and `toy::StructType?` is true for
-any tuple.
+| `!toy.struct<T, ...>` | A dialect type written with `define-type` (`toy.sls`): its parameters are one `TypeAttr` per element, `:verify` accepts tensor or struct elements, `:parse` and `:print` give the `struct<...>` syntax of the C++ `ToyDialect::parseType` / `printType`. `toy.struct?`, `toy.struct` and `toy.struct-params` are generated. |
 
 The dialect's `:materialize-constant` hook returns `toy.struct_constant` for
 struct types and `toy.constant` otherwise, so constant folding can produce
@@ -67,13 +62,13 @@ either.
 Raw MLIR for the example (`--emit=mlir`):
 
 ```mlir
-toy.func private @multiply_transpose(%arg0: tuple<tensor<*xf64>, tensor<*xf64>>) {
-  %0 = "toy.struct_access"(%arg0) {index = 1 : i64} : (tuple<tensor<*xf64>, tensor<*xf64>>) -> tensor<*xf64>
+toy.func private @multiply_transpose(%arg0: !toy.struct<tensor<*xf64>, tensor<*xf64>>) {
+  %0 = "toy.struct_access"(%arg0) {index = 1 : i64} : (!toy.struct<tensor<*xf64>, tensor<*xf64>>) -> tensor<*xf64>
   ...
 }
 toy.func @main() {
-  %0 = "toy.struct_constant"() {value = [dense<...> : tensor<2x3xf64>, dense<...> : tensor<2x3xf64>]} : () -> tuple<tensor<2x3xf64>, tensor<2x3xf64>>
-  %1 = toy.generic_call @multiply_transpose(%0) : (tuple<tensor<2x3xf64>, tensor<2x3xf64>>) -> tensor<*xf64>
+  %0 = "toy.struct_constant"() {value = [dense<...> : tensor<2x3xf64>, dense<...> : tensor<2x3xf64>]} : () -> !toy.struct<tensor<2x3xf64>, tensor<2x3xf64>>
+  %1 = toy.generic_call @multiply_transpose(%0) : (!toy.struct<tensor<2x3xf64>, tensor<2x3xf64>>) -> tensor<*xf64>
   ...
 }
 ```

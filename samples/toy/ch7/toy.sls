@@ -7,7 +7,7 @@
 ;;     pass needs from the ops: CallOpInterface on toy.generic_call, FunctionOpInterface on toy.func
 ;;     (so it is callable), and `:traits (terminator)` on toy.return (LLVM 23).
 (library (toy ch7 toy)
-  (export toy)
+  (export toy toy.struct toy.struct? toy.struct-params)
   (import (except (chezscheme) =)
           (crest dialect)
           (only (toy ch7 combine)
@@ -34,7 +34,6 @@
                 mlir::OpAsmParser::parseGreater
                 mlir::OpAsmParser::parseLSquare
                 mlir::OpAsmParser::parseRSquare)
-          (mlir Dialect Toy ToyStructType)
           (for (except (rime loop) :name) expand)
           (for (only (crest pattern-dsl rewrite) begin-mlir-code) expand)
           (for (only (crest pattern-dsl keywords) = :string :loc :arg) expand)
@@ -124,9 +123,13 @@
         (if (zero? t)
             #f
             (let ([types (append types (list t))])
-              (if (zero? (mlir::OpAsmParser::parseOptionalComma parser))
-                  types
-                  (loop types)))))))
+              (if (mlir::OpAsmParser::parseOptionalComma parser)
+                  (loop types)
+                  types))))))
+
+  ;; The element types of a !toy.struct: its parameters are one TypeAttr per element.
+  (define (%%struct-element-types type)
+    (map mlir::TypeAttr::getValue (toy.struct-params type)))
 
   ;; ---- The type constraints of the C++ Ops.td, and the verifiers of Dialect.cpp ----
   ;; (a verifier runs without an installed context, so types are compared by their properties)
@@ -204,7 +207,7 @@
     (cond
      [(mlir::isa<TensorType>? type) (%%verify-tensor-constant op type value)]
      [else
-      (let ([elements (toy::StructType::getElementTypes type)])
+      (let ([elements (%%struct-element-types type)])
         (if (and (mlir::isa<ArrayAttr> value)
                  (eqv? (mlir::ArrayAttr::size value) (length elements)))
             (let loop ([i 0] [types elements])
@@ -224,7 +227,7 @@
   (define (%%verify-struct-access op)
     (let* ([struct-type (mlir::Value::getType (mlir::Operation::getOperand op 0))]
            [index       (mlir::IntegerAttr::getValue (mlir::Operation::getAttr op "index"))]
-           [elements    (toy::StructType::getElementTypes struct-type)])
+           [elements    (%%struct-element-types struct-type)])
       (cond
        [(>= index (length elements))
         (%%error op "index should be within the range of the input struct type")]
@@ -235,7 +238,7 @@
        [else #t])))
 
   (define (%%struct-type-value? value)
-    (toy::StructType? (mlir::Value::getType value)))
+    (toy.struct? (mlir::Value::getType value)))
 
   (define (%%integer-attr? attr) (mlir::isa<IntegerAttr> attr))
   (define (%%array-attr? attr) (mlir::isa<ArrayAttr> attr))
@@ -280,35 +283,42 @@
 
   ;; Toy_StructType and Toy_Type = AnyTypeOf<[F64Tensor, Toy_StructType]>
   (define (%%toy-type? type)
-    (or (%%f64-tensor? type) (toy::StructType? type)))
+    (or (%%f64-tensor? type) (toy.struct? type)))
 
   (define (%%toy-type-value? value)
     (%%toy-type? (mlir::Value::getType value)))
 
   (define-dialect toy
-    (:parse-type (parser)
-      ;; parse `struct` `<` type-list `>`
-      (and (not (zero? (mlir::OpAsmParser::parseKeyword parser "struct")))
-           (not (zero? (mlir::OpAsmParser::parseLess parser)))
-           (let ([types (%%parse-type-list parser)])
-             (and types
-                  (not (zero? (mlir::OpAsmParser::parseGreater parser)))
-                  (toy::StructType::get types)))))
-    (:print-type (type printer)
-      (when (toy::StructType? type)
-        (mlir::OpAsmPrinter::printString printer "struct<")
-        (let ([elems (toy::StructType::getElementTypes type)])
-          (let loop ([ts elems] [first #t])
-            (unless (null? ts)
-              (unless first (mlir::OpAsmPrinter::printString printer ", "))
-              (mlir::OpAsmPrinter::printType printer (car ts))
-              (loop (cdr ts) #f))))
+    ;; !toy.struct<T, ...>: the element types are the parameters (one TypeAttr each). C++ defines
+    ;; StructType with a TypeStorage and ToyDialect::parseType / printType; here it is a dialect type.
+    (define-type struct
+      (:verify (params)
+        (or (and (pair? params)
+                 (for-all (lambda (param)
+                            (let ([element (mlir::TypeAttr::getValue param)])
+                              (or (mlir::isa<TensorType>? element) (toy.struct? element))))
+                          params))
+            "element type for a struct must either be a TensorType or a StructType"))
+      ;; struct-type ::= `struct` `<` type (`,` type)* `>`, after the name
+      (:parse (parser)
+        (and (mlir::OpAsmParser::parseLess parser)
+             (let ([types (%%parse-type-list parser)])
+               (and types
+                    (mlir::OpAsmParser::parseGreater parser)
+                    (map mlir::TypeAttr::get types)))))
+      (:print (printer params)
+        (mlir::OpAsmPrinter::printString printer "<")
+        (let loop ([ts (map mlir::TypeAttr::getValue params)] [first #t])
+          (unless (null? ts)
+            (unless first (mlir::OpAsmPrinter::printString printer ", "))
+            (mlir::OpAsmPrinter::printType printer (car ts))
+            (loop (cdr ts) #f)))
         (mlir::OpAsmPrinter::printString printer ">")))
     ;; Must return the op, not its result: MLIR casts the value to an Operation*.
     (:materialize-constant (builder value type loc)
       (with-current-OpBuilder builder
         (mlir::Value::getDefiningOp
-         (if (toy::StructType? type)
+         (if (toy.struct? type)
              (begin-mlir-code
                  r = toy.struct_constant () (value : value) :loc loc -> type)
              (begin-mlir-code
@@ -483,7 +493,7 @@
       :summary    "struct constant value"
       :traits     (constant-like pure)
       :attributes ((value %%array-attr?))
-      :results    ((output toy::StructType?))
+      :results    ((output toy.struct?))
       (:verify (op) (%%verify-constant op))
       (:parse (parser state)
         ;; parse ArrayAttr then ':' StructType

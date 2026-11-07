@@ -12,6 +12,7 @@
 #include "../Crest/Dialect.h"
 #include "../Crest/InlinerInterface.h"
 #include "../Crest/Op.h"
+#include "../Crest/Type.h"
 
 #include "Dialect/Affine/IR/AffineOps.h"
 #include "Dialect/Affine/Transforms/Passes.h"
@@ -49,7 +50,6 @@
 #include "Dialect/LLVMIR/IR/LLVMDialect.h"
 #include "Dialect/LLVMIR/IR/LLVMOps.h"
 #include "Dialect/LLVMIR/Transforms/Passes.h"
-#include "Dialect/Toy/ToyStructType.h"
 #include "ExecutionEngine/ExecutionEngine.h"
 #include "IR/Operation.h"
 #include "IR/OperationSupport.h"
@@ -96,6 +96,7 @@ void registerMlirForeignFunctions() {
   registerTransformsInliningUtilsBindings();
   registerPassPassManagerBindings();
   registerCrestDynamicOpBindings();
+  registerCrestDynamicTypeBindings();
   registerIRLocationBindings();
   registerIRDiagnosticsBindings();
   registerIROpImplementationBindings();
@@ -139,7 +140,6 @@ void registerMlirForeignFunctions() {
   registerDialectLLVMIRIRLLVMDialectBindings();
   registerDialectLLVMIRIRLLVMOpsBindings();
   registerDialectLLVMIRTransformsPassesBindings();
-  registerToyStructTypeBindings();
   registerTargetLLVMIRExportBindings();
   registerExecutionEngineBindings();
   if (g_extra_bindings_fn) {

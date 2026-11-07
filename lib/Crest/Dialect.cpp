@@ -173,14 +173,30 @@ mlir::Type CrestDialect::parseType(mlir::DialectAsmParser& parser) const {
     return mlir::Type::getFromOpaquePointer(
         ptr_from_scheme<void>(scheme_call(cbs_.parse_type.get(), &parser)));
   }
-  return mlir::ExtensibleDialect::parseType(parser);
+  // The dialect's own types (define-type): the keyword names one of them.
+  llvm::StringRef keyword;
+  if (mlir::failed(parser.parseKeyword(&keyword))) {
+    return mlir::Type();
+  }
+  mlir::Type result;
+  mlir::OptionalParseResult parsed =
+      parseOptionalDynamicType(keyword, parser, result);
+  if (parsed.has_value() && mlir::succeeded(*parsed)) {
+    return result;
+  }
+  if (!parsed.has_value()) {
+    parser.emitError(parser.getNameLoc(), "unknown type '" + keyword +
+                                              "' in dialect '" +
+                                              getNamespace() + "'");
+  }
+  return mlir::Type();
 }
 
 void CrestDialect::printType(mlir::Type type,
                              mlir::DialectAsmPrinter& os) const {
   if (cbs_.print_type.get() != Sfalse) {
     scheme_call(cbs_.print_type.get(), type.getAsOpaquePointer(), &os);
-  } else {
+  } else if (mlir::failed(printIfDynamicType(type, os))) {
     mlir::ExtensibleDialect::printType(type, os);
   }
 }
