@@ -711,6 +711,8 @@ Every key is optional.
 | `:dynamically-legal` | `((name predicate) ...)` | `addDynamicallyLegalOp`; the predicate gets the op |
 | `:patterns` | `((name pattern [benefit] [:no-type-converter]) ...)` | one registration each; benefit defaults to 1; `:no-type-converter` registers the pattern so that it sees the original operand types |
 | `:populate` | `(lambda (tc patterns) ...)` | called after `:patterns` with the type converter and the pattern set, for `populate…Patterns` calls |
+| `:configure-type-converter` | a procedure `(lambda (tc) ...)` | called with the type converter after `:type-converter`, for setup helpers that take the converter |
+| `:configure-target` | a procedure `(lambda (target tc) ...)` | called with the conversion target and the converter after the legal/illegal keys, for setup helpers that take the target |
 
 A mistake in the form is reported when the library compiles, at the key. Names, benefits and
 lambdas are ordinary expressions. The low-level pieces it is built from stay available from
