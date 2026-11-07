@@ -187,6 +187,7 @@
     ;; Format: toy.func @name(%arg0: type, ...) { body }
     (define-op func
       :summary    "toy function definition"
+      :traits     (isolated-from-above)
       :interfaces ((mlir::FunctionOpInterface
                     (getFunctionType (self)
                                      (mlir::TypeAttr::getValue
@@ -201,7 +202,7 @@
     ;; Format: toy.return (%val : type)?
     (define-op return
       :summary    "return from toy.func"
-      :traits     (terminator)
+      :traits     (terminator (has-parent "toy.func"))
       (:parse (parser state)
         ;; Optional return operand: parse silently, no error if absent.
         (let ([ops (mlir::OpAsmParser::parseOptionalOperand parser)])

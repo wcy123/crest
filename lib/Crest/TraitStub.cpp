@@ -10,14 +10,14 @@
 
 namespace crest {
 
-std::string addOpTraits(mlir::DynamicOpDefinition&,
-                        llvm::ArrayRef<std::string> names) {
-  if (names.empty()) {
+std::string addOpTraits(mlir::DynamicOpDefinition&, llvm::StringRef,
+                        llvm::ArrayRef<TraitSpec> traits) {
+  if (traits.empty()) {
     return "";
   }
   return "define-op :traits requires LLVM 23+ (DynamicOpDefinition::addTrait); "
          "requested trait: " +
-         names.front();
+         traits.front().front();
 }
 
 } // namespace crest

@@ -777,13 +777,26 @@ procedures called at verification time. For example:
 
 ### Op traits
 
-`:traits (terminator)` attaches MLIR traits to the op through `DynamicOpDefinition::addTrait`, so
-the verifier and passes see them: a block must end in an op with `terminator`, unless the parent has
-`no-terminator`. The names are CREST's, listed in one table in `lib/Crest/Trait.cpp`:
-`terminator`, `no-terminator`, `commutative`, `zero-operands`, `zero-results`, `zero-regions`,
-`same-operands-and-result-type`. A non-list value is reported when the library compiles; an unknown or
-repeated name when the dialect loads. Before LLVM 23 `addTrait` does not exist, and a dialect that asks
-for a trait fails to load with a message saying so; samples that must run on both do not use it yet.
+`:traits (name ...)` attaches MLIR traits to the op through `DynamicOpDefinition::addTrait`, so the
+verifier and passes see them. A trait with arguments is a list: `(has-parent "toy.func")`. The names are
+CREST's, in one table in `lib/Crest/Trait.cpp`:
+
+| Name | Meaning |
+|---|---|
+| `terminator`, `no-terminator` | the op ends a block / its regions need no terminator |
+| `commutative`, `constant-like` | the MLIR traits of the same name (`constant-like` is only useful with a `:fold` that returns the value) |
+| `zero-operands`, `zero-results`, `zero-regions` | verified |
+| `same-operands-and-result-type`, `same-operands-and-result-shape` | verified |
+| `isolated-from-above` | a region of the op may not use values defined outside it (verified) |
+| `(has-parent "op.name" ...)` | the parent op must be one of the names (verified, with MLIR's message). MLIR's own `HasParent` is a template on the parent class, so `hasTrait<HasParent<...>>` is false for a Scheme op |
+| `pure` | no memory effects and speculatable: attaches `AlwaysSpeculatableImplTrait` and the `MemoryEffectOpInterface` (no effects) and `ConditionallySpeculatable` (speculatable) interfaces, which is what the canonicalizer's dead-code removal, CSE and `isPure` ask |
+
+A non-list value is reported when the library compiles; an unknown or repeated name, or wrong arguments,
+when the dialect loads. Before LLVM 23 `addTrait` does not exist, and a dialect that asks for a trait fails
+to load with a message saying so. The two interfaces behind `pure` can also be listed by hand in
+`:interfaces` (`mlir::MemoryEffectOpInterface`, `mlir::ConditionallySpeculatable`, from
+`(mlir Interfaces SideEffectInterfaces)`). Passes that run on a dialect with Scheme callbacks (verifiers,
+folders) must not run multithreaded: pass `--mlir-disable-threading` to `crest-opt`.
 
 ### Op-level `:interfaces`
 

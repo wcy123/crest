@@ -174,6 +174,7 @@
     ;; Result is mlir::Value? (any value) — cast can produce ranked or unranked.
     (define-op cast
       :summary    "cast tensor to a different shape"
+      :traits     (same-operands-and-result-shape)
       :operands   ((input mlir::Value?))
       :results    ((output mlir::Value?))
       (:parse (parser state) (%%parse-unary-to-type parser state))
@@ -200,6 +201,7 @@
 
     (define-op func
       :summary    "toy function definition"
+      :traits     (isolated-from-above)
       :interfaces ((mlir::FunctionOpInterface
                     (getFunctionType (self)
                                      (mlir::TypeAttr::getValue
@@ -213,7 +215,7 @@
 
     (define-op return
       :summary    "return from toy.func"
-      :traits     (terminator)
+      :traits     (terminator (has-parent "toy.func"))
       (:parse (parser state)
         (let ([ops (mlir::OpAsmParser::parseOptionalOperand parser)])
           (if (%%parsed? ops)

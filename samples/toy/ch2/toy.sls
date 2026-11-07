@@ -55,12 +55,13 @@
 
     ;; FuncOp — toy function definition (body provided at codegen time)
     (define-op func
-      :summary    "toy function definition")
+      :summary    "toy function definition"
+      :traits     (isolated-from-above))
 
     ;; ReturnOp — return from a toy function
     (define-op return
       :summary    "return from toy.func"
-      :traits     (terminator))
+      :traits     (terminator (has-parent "toy.func")))
 
     ;; PrintOp — print a tensor to stdout
     (define-op print
