@@ -131,8 +131,7 @@ per operand/attribute/result for every op, e.g.:
 
 | Part | Written with | Why |
 |---|---|---|
-| The dialect, now with custom syntax | `define-dialect` | as in Ch2 |
-| The text form of `toy.print`, `toy.transpose`, `toy.reshape`, `toy.generic_call` and `toy.return` | `:assembly-format` | the same strings as the `assemblyFormat` of the C++ `Ops.td`; `toy.constant`, `toy.add`, `toy.mul` and `toy.func` have a hand-written `:parse` and `:print`, as in C++ (`hasCustomAssemblyFormat`) |
+| The dialect, with its text form | `define-dialect`, `:assembly-format` | as in Ch2 |
 | Every op `mlir-gen.sls` creates | `begin-mlir-code` | as in Ch2 |
 | The four canonicalization patterns | `define-rewrite-pattern` | each one is a match and a rewrite |
 | Registering the patterns | `define-pattern-set` (`combine.sls`), `:get-canonicalization-patterns` (`toy.sls`) | a table of (op, pattern, benefit) per op, registered by the op as C++ `getCanonicalizationPatterns` does |

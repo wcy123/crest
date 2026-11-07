@@ -4,7 +4,8 @@
 ;;         mlir/examples/toy/Ch2/include/toy/Ops.td
 ;;
 ;; In C++, ~400 lines of ODS + Dialect.cpp + generated code.
-;; Here: define-dialect generates toy:register! and all accessors.
+;; Here: define-dialect generates toy:register! and all accessors, and the text form of the ops that
+;; C++ declares with an assemblyFormat is one :assembly-format string each.
 (library (toy ch2 toy)
   (export toy)
   (import (chezscheme)
@@ -14,9 +15,54 @@
           (mlir IR BuiltinAttributes)
           (mlir IR Operation)
           (mlir IR Types)
-          (only (mlir IR OpImplementation)
-                mlir::FunctionType::getNumResults
-                mlir::FunctionType::getResult))
+          (mlir IR Block)
+          (mlir IR Region)
+          (mlir IR OpImplementation)
+          (only (mlir Interfaces FunctionInterfaces)
+                mlir::FunctionOpInterface
+                mlir::function_interface_impl::printFunctionOp
+                mlir::function_interface_impl::parseFunctionOp))
+
+  ;; Handle-returning parser functions return 0 on failure (not #f),
+  ;; so we need an explicit zero check rather than relying on Scheme truthiness.
+  (define (%%parsed? h) (not (zero? h)))
+
+  ;; Shared parser for binary ops (add, mul).
+  ;; Mirrors parseBinaryOp in Dialect.cpp.
+  ;; Format: %lhs, %rhs {attrs} : type-or-func-type
+  (define (%%parse-binary-op parser state)
+    (let ([ops (mlir::OpAsmParser::parseOperandList parser 2)])
+      (and (%%parsed? ops)
+           (mlir::OpAsmParser::parseOptionalAttrDict parser state)
+           (let ([type (mlir::OpAsmParser::parseColonType parser)])
+             (and (%%parsed? type)
+                  (if (mlir::isa<FunctionType> type)
+                      ;; functional type: (t1, t2) -> t3
+                      (and (mlir::OpAsmParser::resolveOperandsFunctional parser ops type state)
+                           (begin (mlir::OperationState::addType state
+                                                                 (mlir::FunctionType::getResult type 0))
+                                  #t))
+                      ;; same type for all operands and result
+                      (and (mlir::OpAsmParser::resolveOperands parser ops type state)
+                           (begin (mlir::OperationState::addType state type) #t))))))))
+
+  ;; Shared printer for binary ops (add, mul).
+  ;; Mirrors printBinaryOp in Dialect.cpp:
+  ;;   if all types equal: print just that type
+  ;;   otherwise: print functional type
+  (define (%%print-binary-op op printer name)
+    (mlir::OpAsmPrinter::printString printer " ")
+    (mlir::OpAsmPrinter::printOperands printer op)
+    (mlir::OpAsmPrinter::printOptionalAttrDict printer op)
+    (mlir::OpAsmPrinter::printString printer " : ")
+    (let ([result-type (mlir::Value::getType (mlir::Operation::getResult op 0))])
+      (if (let loop ([i 0])
+            (or (>= i (mlir::Operation::getNumOperands op))
+                (and (= (mlir::Value::getType (mlir::Operation::getOperand op i))
+                        result-type)
+                     (loop (+ i 1)))))
+          (mlir::OpAsmPrinter::printType printer result-type)
+          (mlir::OpAsmPrinter::printFunctionalType printer op))))
 
   ;; ---- The type constraints of the C++ Ops.td, and the verifiers of Dialect.cpp ----
   ;; (a verifier runs without an installed context, so types are compared by their properties)
@@ -56,15 +102,6 @@
     (mlir::Operation::emitError op (apply string-append parts))
     #f)
 
-  ;; Variadic<...> operands: every operand satisfies the constraint (the DSL's :variadic needs an
-  ;; operandSegmentSizes attribute, which C++ Toy's single variadic group does not have)
-  (define (%%verify-operands op)
-    (let loop ([i 0])
-      (cond
-       [(>= i (mlir::Operation::getNumOperands op)) #t]
-       [(%%f64-tensor-value? (mlir::Operation::getOperand op i)) (loop (+ i 1))]
-       [else (%%error op "operand #" (number->string i) " must be tensor of f64")])))
-
   ;; verifyConstantForType (a tensor constant; Ch7 adds the struct case)
   (define (%%verify-tensor-constant op type value)
     (cond
@@ -98,7 +135,6 @@
   (define (%%verify-return op)
     (let ([function (mlir::Operation::getParentOp op)])
       (cond
-       [(not (%%verify-operands op)) #f]
        [(or (not function) (not (string=? (mlir::Operation::getName function) "toy.func"))) #t]
        [(> (mlir::Operation::getNumOperands op) 1)
         (%%error op "expects at most 1 return operand")]
@@ -139,6 +175,16 @@
       :traits     (pure)
       :attributes ((value %%f64-elements-attr?))
       :results    ((output %%f64-tensor?))
+      (:parse (parser state)
+        (let ([attr (mlir::OpAsmParser::parseAttribute parser state "value")])
+          (and (%%parsed? attr) (begin (mlir::OperationState::addType state
+                                                                      (mlir::DenseElementsAttr::getType attr))
+                                       #t))))
+      (:print (op printer name)
+        (mlir::OpAsmPrinter::printString printer " ")
+        (mlir::OpAsmPrinter::printOptionalAttrDictExcept printer op "value")
+        (mlir::OpAsmPrinter::printAttribute
+         printer (mlir::Operation::getAttr op "value")))
       (:verify (op) (%%verify-constant op)))
 
     ;; AddOp — element-wise addition (f64 tensors)
@@ -146,48 +192,68 @@
       :summary    "element-wise addition"
       :operands   ((lhs %%f64-tensor-value?)
                    (rhs %%f64-tensor-value?))
-      :results    ((output %%f64-tensor?)))
+      :results    ((output %%f64-tensor?))
+      (:parse (parser state) (%%parse-binary-op parser state))
+      (:print (op printer name) (%%print-binary-op op printer name)))
 
     ;; MulOp — element-wise multiplication (f64 tensors)
     (define-op mul
       :summary    "element-wise multiplication"
       :operands   ((lhs %%f64-tensor-value?)
                    (rhs %%f64-tensor-value?))
-      :results    ((output %%f64-tensor?)))
+      :results    ((output %%f64-tensor?))
+      (:parse (parser state) (%%parse-binary-op parser state))
+      (:print (op printer name) (%%print-binary-op op printer name)))
 
     ;; TransposeOp — transpose a 2D tensor
     (define-op transpose
       :summary    "transpose a 2D tensor"
       :operands   ((input %%f64-tensor-value?))
       :results    ((output %%f64-tensor?))
+      :assembly-format "`(` $input `:` type($input) `)` attr-dict `to` type(results)"
       (:verify (op) (%%verify-transpose op)))
 
     ;; ReshapeOp — reshape a tensor to a given type
     (define-op reshape
       :summary    "reshape a tensor"
       :operands   ((input %%f64-tensor-value?))
-      :results    ((output %%static-shape-f64-tensor?)))
+      :results    ((output %%static-shape-f64-tensor?))
+      :assembly-format "`(` $input `:` type($input) `)` attr-dict `to` type(results)")
 
     ;; GenericCallOp — call to a user-defined function
     (define-op generic_call
       :summary    "generic function call"
       :attributes ((callee %%flat-symbol-ref-attr?))
       :results    ((output %%f64-tensor?))
-      (:verify (op) (%%verify-operands op)))
+      :operands   ((inputs %%f64-tensor-value? :variadic))
+      :assembly-format "$callee `(` $inputs `)` attr-dict `:` functional-type($inputs, results)")
 
     ;; FuncOp — toy function definition (body provided at codegen time)
     (define-op func
       :summary    "toy function definition"
-      :traits     (isolated-from-above))
+      :traits     (isolated-from-above)
+      :interfaces ((mlir::FunctionOpInterface
+                    (getFunctionType (self)
+                                     (mlir::TypeAttr::getValue
+                                      (mlir::Operation::getAttr self "function_type")))
+                    (setFunctionTypeAttr (self attr)
+                                         (mlir::Operation::setAttr! self "function_type" attr))))
+      (:parse (parser state)
+        (mlir::function_interface_impl::parseFunctionOp parser state))
+      (:print (op printer name)
+        (mlir::function_interface_impl::printFunctionOp printer op)))
 
     ;; ReturnOp — return from a toy function
     (define-op return
       :summary    "return from toy.func"
       :traits     (terminator pure (has-parent "toy.func"))
+      :operands   ((input %%f64-tensor-value? :optional))
+      :assembly-format "($input^ `:` type($input))? attr-dict "
       (:verify (op) (%%verify-return op)))
 
     ;; PrintOp — print a tensor to stdout
     (define-op print
       :summary    "print a tensor"
-      :operands   ((input %%f64-tensor-value?))))
+      :operands   ((input %%f64-tensor-value?))
+      :assembly-format "$input attr-dict `:` type($input)"))
   )
