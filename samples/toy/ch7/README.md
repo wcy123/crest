@@ -176,6 +176,7 @@ Running the struct example with `--emit=jit` prints:
 | Part | Written with | Why |
 |---|---|---|
 | The dialect, with struct types and ops | `define-dialect` | the type and `toy.struct_constant`, `toy.struct_access` are declared in it |
+| The text form of `toy.struct_access` and `toy.struct_constant` | `:assembly-format` | `` $input `[` $index `]` attr-dict `:` type($input) `->` type($output) `` and `` $value attr-dict `:` type($output) ``, as in C++ (an attribute prints with its type: `[1 : i64]`, where ODS leaves a buildable type out) |
 | The `:materialize-constant` callback | `begin-mlir-code` with `with-current-OpBuilder` | it returns the op, not its result |
 | Every op `mlir-gen.sls` creates, including the struct ops | `begin-mlir-code` | as in Ch2 |
 | The canonicalization patterns and the folders | `define-rewrite-pattern` | as in Ch3 |

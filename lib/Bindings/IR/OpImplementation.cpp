@@ -16,6 +16,8 @@
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/IR/Region.h"
 #include "mlir/IR/Value.h"
+#include <string>
+#include <vector>
 
 namespace crest {
 
@@ -78,6 +80,27 @@ void registerIROpImplementationBindings() {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         p->printOptionalAttrDict(op->getAttrs(),
                                  llvm::ArrayRef<llvm::StringRef>{elide});
+      });
+
+  // The attributes to leave out are a Scheme list of strings.
+  Sregister_symbol(
+      "mlir::OpAsmPrinter::printOptionalAttrDict<ArrayRef<StringRef>>",
+      (void*)+[](uint64_t printer_ptr, uint64_t op_ptr, ptr elided) -> void {
+        auto* p = reinterpret_cast<mlir::OpAsmPrinter*>(printer_ptr);
+        auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
+        std::vector<std::string> names;
+        for (ptr cur = elided; Spairp(cur); cur = Scdr(cur)) {
+          ptr name = Scar(cur);
+          iptr length = Sstring_length(name);
+          std::string& out =
+              names.emplace_back(static_cast<size_t>(length), '\0');
+          for (iptr i = 0; i < length; ++i) {
+            out[static_cast<size_t>(i)] =
+                static_cast<char>(Sstring_ref(name, i));
+          }
+        }
+        std::vector<llvm::StringRef> refs(names.begin(), names.end());
+        p->printOptionalAttrDict(op->getAttrs(), refs);
       });
 
   Sregister_symbol(
@@ -273,59 +296,11 @@ void registerIROpImplementationBindings() {
       "mlir::OpAsmParser::parseFunctionalType",
       (void*)+[](uint64_t parser_ptr) -> uint64_t {
         auto* p = reinterpret_cast<mlir::OpAsmParser*>(parser_ptr);
-        llvm::SmallVector<mlir::Type, 4> inputs, results;
-        if (p->parseLParen()) {
+        mlir::FunctionType type;
+        if (p->parseType(type)) {
           return 0;
         }
-        if (p->parseOptionalRParen()) {
-          // non-empty inputs
-          mlir::Type t;
-          if (p->parseType(t)) {
-            return 0;
-          }
-          inputs.push_back(t);
-          while (!p->parseOptionalComma()) {
-            if (p->parseType(t)) {
-              return 0;
-            }
-            inputs.push_back(t);
-          }
-          if (p->parseRParen()) {
-            return 0;
-          }
-        }
-        if (p->parseArrow()) {
-          return 0;
-        }
-        // Result: single type or parenthesised list
-        if (!p->parseLParen()) {
-          if (p->parseOptionalRParen()) {
-            // non-empty
-            mlir::Type t;
-            if (p->parseType(t)) {
-              return 0;
-            }
-            results.push_back(t);
-            while (!p->parseOptionalComma()) {
-              if (p->parseType(t)) {
-                return 0;
-              }
-              results.push_back(t);
-            }
-            if (p->parseRParen()) {
-              return 0;
-            }
-          }
-        } else {
-          mlir::Type t;
-          if (p->parseType(t)) {
-            return 0;
-          }
-          results.push_back(t);
-        }
-        return reinterpret_cast<uint64_t>(
-            mlir::FunctionType::get(p->getContext(), inputs, results)
-                .getAsOpaquePointer());
+        return reinterpret_cast<uint64_t>(type.getAsOpaquePointer());
       });
 
   Sregister_symbol(
@@ -405,6 +380,13 @@ void registerIROpImplementationBindings() {
       (void*)+[](uint64_t parser_ptr) -> int {
         return !reinterpret_cast<mlir::OpAsmParser*>(parser_ptr)
                     ->parseRSquare();
+      });
+
+  Sregister_symbol(
+      "mlir::OpAsmParser::emitError",
+      (void*)+[](uint64_t parser_ptr, const char* message) -> void {
+        auto* p = reinterpret_cast<mlir::OpAsmParser*>(parser_ptr);
+        p->emitError(p->getNameLoc(), message);
       });
 
   Sregister_symbol(

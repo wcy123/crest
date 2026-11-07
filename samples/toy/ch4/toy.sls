@@ -52,38 +52,6 @@
                       (and (mlir::OpAsmParser::resolveOperands parser ops type state)
                            (begin (mlir::OperationState::addType state type) #t))))))))
 
-  (define (%%parse-unary-to-type parser state)
-    (and (mlir::OpAsmParser::parseLParen parser)
-         (let ([ops (mlir::OpAsmParser::parseOperand parser)])
-           (and (%%parsed? ops)
-                (mlir::OpAsmParser::parseColon parser)
-                (let ([in-type (mlir::OpAsmParser::parseType parser)])
-                  (and (%%parsed? in-type)
-                       (mlir::OpAsmParser::parseRParen parser)
-                       (mlir::OpAsmParser::parseOptionalAttrDict parser state)
-                       (mlir::OpAsmParser::parseKeyword parser "to")
-                       (let ([res-type (mlir::OpAsmParser::parseType parser)])
-                         (and (%%parsed? res-type)
-                              (mlir::OpAsmParser::resolveOperands parser ops in-type state)
-                              (begin (mlir::OperationState::addType state res-type) #t)))))))))
-
-  (define (%%parse-generic-call parser state)
-    (and (%%parsed? (mlir::OpAsmParser::parseAttribute parser state "callee"))
-         (mlir::OpAsmParser::parseLParen parser)
-         (let ([ops (mlir::OpAsmParser::parseOperandList parser -1)])
-           (and (%%parsed? ops)
-                (mlir::OpAsmParser::parseRParen parser)
-                (mlir::OpAsmParser::parseOptionalAttrDict parser state)
-                (let ([ft (mlir::OpAsmParser::parseColonType parser)])
-                  (and (%%parsed? ft)
-                       (mlir::isa<FunctionType> ft)
-                       (mlir::OpAsmParser::resolveOperandsFunctional parser ops ft state)
-                       (let loop ([i 0] [n (mlir::FunctionType::getNumResults ft)])
-                         (if (>= i n) #t
-                             (begin (mlir::OperationState::addType
-                                     state (mlir::FunctionType::getResult ft i))
-                                    (loop (+ i 1) n))))))))))
-
   (define (%%print-binary-op op printer name)
     (mlir::OpAsmPrinter::printString printer " ")
     (mlir::OpAsmPrinter::printOperands printer op)
@@ -97,17 +65,6 @@
                      (loop (+ i 1)))))
           (mlir::OpAsmPrinter::printType printer result-type)
           (mlir::OpAsmPrinter::printFunctionalType printer op))))
-
-  (define (%%print-unary-to-type op printer name)
-    (let ([input (mlir::Operation::getOperand op 0)])
-      (mlir::OpAsmPrinter::printString printer "(")
-      (mlir::OpAsmPrinter::printOperand printer input)
-      (mlir::OpAsmPrinter::printString printer " : ")
-      (mlir::OpAsmPrinter::printType printer (mlir::Value::getType input))
-      (mlir::OpAsmPrinter::printString printer ")")
-      (mlir::OpAsmPrinter::printOptionalAttrDict printer op)
-      (mlir::OpAsmPrinter::printString printer " to ")
-      (mlir::OpAsmPrinter::printResultTypes printer op)))
 
   ;; ---- The type constraints of the C++ Ops.td, and the verifiers of Dialect.cpp ----
   ;; (a verifier runs without an installed context, so types are compared by their properties)
@@ -147,15 +104,6 @@
     (mlir::Operation::emitError op (apply string-append parts))
     #f)
 
-  ;; Variadic<...> operands: every operand satisfies the constraint (the DSL's :variadic needs an
-  ;; operandSegmentSizes attribute, which C++ Toy's single variadic group does not have)
-  (define (%%verify-operands op)
-    (let loop ([i 0])
-      (cond
-       [(>= i (mlir::Operation::getNumOperands op)) #t]
-       [(%%f64-tensor-value? (mlir::Operation::getOperand op i)) (loop (+ i 1))]
-       [else (%%error op "operand #" (number->string i) " must be tensor of f64")])))
-
   ;; verifyConstantForType (a tensor constant; Ch7 adds the struct case)
   (define (%%verify-tensor-constant op type value)
     (cond
@@ -189,7 +137,6 @@
   (define (%%verify-return op)
     (let ([function (mlir::Operation::getParentOp op)])
       (cond
-       [(not (%%verify-operands op)) #f]
        [(or (not function) (not (string=? (mlir::Operation::getName function) "toy.func"))) #t]
        [(> (mlir::Operation::getNumOperands op) 1)
         (%%error op "expects at most 1 return operand")]
@@ -282,8 +229,7 @@
       :traits     (pure)
       :operands   ((input %%f64-tensor-value?))
       :results    ((output %%f64-tensor?))
-      (:parse (parser state) (%%parse-unary-to-type parser state))
-      (:print (op printer name) (%%print-unary-to-type op printer name))
+      :assembly-format "`(` $input `:` type($input) `)` attr-dict `to` type(results)"
       (:verify (op) (%%verify-transpose op))
       (:get-canonicalization-patterns (patterns) (toy:add-transpose-canonicalization-patterns! patterns)))
 
@@ -292,8 +238,7 @@
       :traits     (pure)
       :operands   ((input %%f64-tensor-value?))
       :results    ((output %%static-shape-f64-tensor?))
-      (:parse (parser state) (%%parse-unary-to-type parser state))
-      (:print (op printer name) (%%print-unary-to-type op printer name))
+      :assembly-format "`(` $input `:` type($input) `)` attr-dict `to` type(results)"
       (:get-canonicalization-patterns (patterns) (toy:add-reshape-canonicalization-patterns! patterns)))
 
     ;; toy.cast — bridge ranked/unranked mismatch at call boundaries.
@@ -305,8 +250,7 @@
       :traits     (pure same-operands-and-result-shape)
       :operands   ((input %%f64-tensor-value?))
       :results    ((output %%f64-tensor?))
-      (:parse (parser state) (%%parse-unary-to-type parser state))
-      (:print (op printer name) (%%print-unary-to-type op printer name))
+      :assembly-format "$input attr-dict `:` type($input) `to` type($output)"
       ;; What CastOpInterface's folder does in C++: a cast to the type it already has is its operand.
       (:fold (op operand-attributes)
         (let ([in (mlir::Operation::getOperand op 0)])
@@ -319,20 +263,8 @@
       :interfaces ((mlir::CallOpInterface))
       :attributes ((callee %%flat-symbol-ref-attr?))
       :results    ((output %%f64-tensor?))
-      (:parse (parser state)
-        (%%parse-generic-call parser state))
-      (:print (op printer name)
-        (mlir::OpAsmPrinter::printString printer " ")
-        (mlir::OpAsmPrinter::printSymbolName
-         printer
-         (mlir::FlatSymbolRefAttr::getValue (mlir::Operation::getAttr op "callee")))
-        (mlir::OpAsmPrinter::printString printer "(")
-        (mlir::OpAsmPrinter::printOperands printer op)
-        (mlir::OpAsmPrinter::printString printer ")")
-        (mlir::OpAsmPrinter::printOptionalAttrDictExcept printer op "callee")
-        (mlir::OpAsmPrinter::printString printer " : ")
-        (mlir::OpAsmPrinter::printFunctionalType printer op))
-      (:verify (op) (%%verify-operands op)))
+      :operands   ((inputs %%f64-tensor-value? :variadic))
+      :assembly-format "$callee `(` $inputs `)` attr-dict `:` functional-type($inputs, results)")
 
     (define-op func
       :summary    "toy function definition"
@@ -351,40 +283,13 @@
     (define-op return
       :summary    "return from toy.func"
       :traits     (terminator pure (has-parent "toy.func"))
-      (:parse (parser state)
-        (let ([ops (mlir::OpAsmParser::parseOptionalOperand parser)])
-          (if (%%parsed? ops)
-              (and (mlir::OpAsmParser::parseColon parser)
-                   (let ([t (mlir::OpAsmParser::parseType parser)])
-                     (and (%%parsed? t)
-                          (mlir::OpAsmParser::resolveOperands
-                           parser ops t state))))
-              #t)))
-      (:print (op printer name)
-        (when (> (mlir::Operation::getNumOperands op) 0)
-          (let ([val (mlir::Operation::getOperand op 0)])
-            (mlir::OpAsmPrinter::printString printer " ")
-            (mlir::OpAsmPrinter::printOperand printer val)
-            (mlir::OpAsmPrinter::printString printer " : ")
-            (mlir::OpAsmPrinter::printType printer (mlir::Value::getType val)))))
+      :operands   ((input %%f64-tensor-value? :optional))
+      :assembly-format "($input^ `:` type($input))? attr-dict "
       (:verify (op) (%%verify-return op)))
 
     (define-op print
       :summary    "print a tensor"
       :operands   ((input %%f64-tensor-value?))
-      (:parse (parser state)
-        (let ([ops (mlir::OpAsmParser::parseOperand parser)])
-          (and (%%parsed? ops)
-               (mlir::OpAsmParser::parseColon parser)
-               (let ([t (mlir::OpAsmParser::parseType parser)])
-                 (and (%%parsed? t)
-                      (mlir::OpAsmParser::resolveOperands
-                       parser ops t state))))))
-      (:print (op printer name)
-        (let ([val (mlir::Operation::getOperand op 0)])
-          (mlir::OpAsmPrinter::printString printer " ")
-          (mlir::OpAsmPrinter::printOperand printer val)
-          (mlir::OpAsmPrinter::printString printer " : ")
-          (mlir::OpAsmPrinter::printType printer (mlir::Value::getType val))))))
+      :assembly-format "$input attr-dict `:` type($input)"))
 
   ) ;; end library (toy ch4 toy)

@@ -177,14 +177,63 @@
                  (let* (sb ... stb ...)
                    (and chk ...))))))))))
 
+  ;; One optional or variadic operand among required ones needs no operandSegmentSizes (as in MLIR): it
+  ;; takes the operands the required ones leave.
+  (define (%%generate-lone-flex-operand-checks ctx op-stx operands)
+    (let* ([n          (length operands)]
+           [indices    (iota n)]
+           [flex-index (let find ([fields operands] [i 0])
+                         (if (eq? (operand-field-modifier (car fields)) ':required)
+                             (find (cdr fields) (+ i 1))
+                             i))]
+           [size-ids   (map (lambda (i) (%%id ctx "%%" "size" (number->string i))) indices)]
+           [start-ids  (map (lambda (i) (%%id ctx "%%" "start" (number->string i))) indices)]
+           [total-id   (%%id ctx "%%" "total")]
+           [size-bindings
+            (map (lambda (size-id i)
+                   (with-syntax ([s size-id] [total total-id] [n-fixed (- n 1)])
+                     (if (= i flex-index)
+                         #'[s (- total n-fixed)]
+                         #'[s 1])))
+                 size-ids indices)]
+           [start-bindings
+            (let loop ([i 0] [prev #'0])
+              (if (= i n) '()
+                  (cons (with-syntax ([st (list-ref start-ids i)] [p prev])
+                          #'[st p])
+                        (loop (+ i 1)
+                              (with-syntax ([st (list-ref start-ids i)]
+                                            [sz (list-ref size-ids i)])
+                                #'(+ st sz))))))]
+           [segment-checks
+            (map (lambda (field size-id start-id)
+                   (%%gen-segment-check ctx op-stx field size-id start-id))
+                 operands size-ids start-ids)])
+      (list
+       (with-syntax ([op        op-stx]
+                     [total     total-id]
+                     [n-fixed   (- n 1)]
+                     [(sb ...)  size-bindings]
+                     [(stb ...) start-bindings]
+                     [(chk ...) segment-checks]
+                     [err       (make-error-message (operand-field-name (car operands))
+                                                    "expected at least " (- n 1) " operand(s)")])
+         #'(let ([total (mlir::Operation::getNumOperands op)])
+             (and (or (>= total n-fixed) (begin (mlir::Operation::emitError op err) #f))
+                  (let* (sb ... stb ...)
+                    (and chk ...))))))))
+
   ;; Entry point: dispatch to the right operand check strategy.
   (define (%%generate-operand-verify-forms ctx op-stx op-record)
     (let ([operands (op-parse-operands op-record)])
-      (if (null? operands)
-          '()
-          (if (%%has-flex-operands? op-record)
-              (%%generate-flex-operand-checks ctx op-stx operands)
-              (%%generate-required-operand-checks ctx op-stx operands)))))
+      (cond
+       [(null? operands) '()]
+       [(not (%%has-flex-operands? op-record))
+        (%%generate-required-operand-checks ctx op-stx operands)]
+       [(= 1 (length (filter (lambda (f) (not (eq? (operand-field-modifier f) ':required)))
+                             operands)))
+        (%%generate-lone-flex-operand-checks ctx op-stx operands)]
+       [else (%%generate-flex-operand-checks ctx op-stx operands)])))
 
   ;; All check forms for one op:
   ;;   1. result count + result types

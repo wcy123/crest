@@ -8,6 +8,7 @@
           %mlir::OpAsmPrinter::printType
           %mlir::OpAsmPrinter::printOptionalAttrDict
           %mlir::OpAsmPrinter::printOptionalAttrDictExcept
+          %mlir::OpAsmPrinter::printOptionalAttrDict<ArrayRef<StringRef>>
           %mlir::OpAsmPrinter::printFunctionalType
           %mlir::OpAsmPrinter::printResultTypes
           %mlir::OpAsmPrinter::printSymbolName
@@ -41,6 +42,7 @@
           %mlir::OpAsmParser::parseLSquare
           %mlir::OpAsmParser::parseRSquare
           %mlir::OpAsmParser::parseSymbolName
+          %mlir::OpAsmParser::emitError
           %mlir::isa<FunctionType>
           %mlir::OperationState::addType)
   (import (chezscheme))
@@ -67,6 +69,11 @@
   ;; Print optional attr dict excluding a single named attribute.
   (define %mlir::OpAsmPrinter::printOptionalAttrDictExcept
     (foreign-procedure "mlir::OpAsmPrinter::printOptionalAttrDictExcept" (uptr uptr string) void))
+
+  ;; Print optional attr dict excluding a list of attribute names (strings).
+  (define %mlir::OpAsmPrinter::printOptionalAttrDict<ArrayRef<StringRef>>
+    (foreign-procedure "mlir::OpAsmPrinter::printOptionalAttrDict<ArrayRef<StringRef>>"
+                       (uptr uptr scheme-object) void))
 
   (define %mlir::OpAsmPrinter::printFunctionalType
     (foreign-procedure "mlir::OpAsmPrinter::printFunctionalType" (uptr uptr) void))
@@ -151,6 +158,9 @@
 
   (define %mlir::OpAsmParser::parseArrow
     (foreign-procedure "mlir::OpAsmParser::parseArrow" (uptr) boolean))
+
+  (define %mlir::OpAsmParser::emitError
+    (foreign-procedure "mlir::OpAsmParser::emitError" (uptr string) void))
 
   (define %mlir::OpAsmParser::parseSymbolName
     (foreign-procedure "mlir::OpAsmParser::parseSymbolName" (uptr uptr string) scheme-object))

@@ -8,6 +8,7 @@
           mlir::OpAsmPrinter::printType
           mlir::OpAsmPrinter::printOptionalAttrDict
           mlir::OpAsmPrinter::printOptionalAttrDictExcept
+          mlir::OpAsmPrinter::printOptionalAttrDict<ArrayRef<StringRef>>
           mlir::OpAsmPrinter::printFunctionalType
           mlir::OpAsmPrinter::printResultTypes
           mlir::OpAsmPrinter::printSymbolName
@@ -36,6 +37,7 @@
           mlir::OpAsmParser::parseLSquare
           mlir::OpAsmParser::parseRSquare
           mlir::OpAsmParser::parseSymbolName
+          mlir::OpAsmParser::emitError
           mlir::isa<FunctionType>
           mlir::OperationState::addType
           mlir::FunctionType::getNumInputs
@@ -65,6 +67,9 @@
 
   (define mlir::OpAsmPrinter::printOptionalAttrDictExcept
     %mlir::OpAsmPrinter::printOptionalAttrDictExcept)
+
+  (define mlir::OpAsmPrinter::printOptionalAttrDict<ArrayRef<StringRef>>
+    %mlir::OpAsmPrinter::printOptionalAttrDict<ArrayRef<StringRef>>)
 
   (define mlir::OpAsmPrinter::printFunctionalType
     %mlir::OpAsmPrinter::printFunctionalType)
@@ -116,6 +121,7 @@
   (define mlir::OpAsmParser::parseGreater        %mlir::OpAsmParser::parseGreater)
   (define mlir::OpAsmParser::parseLSquare        %mlir::OpAsmParser::parseLSquare)
   (define mlir::OpAsmParser::parseRSquare        %mlir::OpAsmParser::parseRSquare)
+  (define mlir::OpAsmParser::emitError %mlir::OpAsmParser::emitError)
   (define mlir::OpAsmParser::parseSymbolName     %mlir::OpAsmParser::parseSymbolName)
   (define mlir::isa<FunctionType>                %mlir::isa<FunctionType>)
   (define mlir::OperationState::addType          %mlir::OperationState::addType)

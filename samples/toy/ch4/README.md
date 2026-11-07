@@ -86,6 +86,7 @@ Three steps run in order when `--opt` is passed:
 | Part | Written with | Why |
 |---|---|---|
 | The dialect, including `toy.cast` | `define-dialect` | as in Ch3 |
+| The text form of `toy.cast` | `:assembly-format` | `` $input attr-dict `:` type($input) `to` type($output) ``, as in C++; it prints `toy.cast %0 : tensor<2xf64> to tensor<*xf64>` |
 | The cast the inliner interface creates | `begin-mlir-code` inside the `materializeCallConversion` callback | the callback gets a builder; `with-current-OpBuilder` installs it |
 | Every op `mlir-gen.sls` creates | `begin-mlir-code` | as in Ch2 |
 | The canonicalization patterns | `define-rewrite-pattern` | as in Ch3 |
