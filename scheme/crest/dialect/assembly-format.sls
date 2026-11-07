@@ -206,24 +206,30 @@
                    ") is neither punctuation nor a keyword")]))
 
   ;; Checks the tree against the op's fields. Returns nothing; raises a syntax violation.
-  (define (%%check fmt-stx elements operand-table attribute-names result-names)
+  (define (%%check fmt-stx elements operand-table attribute-names optional-attribute-names result-names)
     (let ([operand-name (lambda (name) (assoc name operand-table))]
           [seen-operands '()] [seen-operand-types '()] [seen-attributes '()] [seen-result-types '()]
           [attr-dict-seen #f] [operands-directive #f] [functional #f])
       (define (once! cell-name name seen what column)
         (when (member name seen)
-          (%%fail fmt-stx what " " name " appears twice (column " (number->string column) ")")))
+          (%%fail fmt-stx what name " appears twice (column " (number->string column) ")")))
       (define (visit element in-group)
         (case (car element)
           [(literal) (%%check-literal fmt-stx (cadr element) (caddr element))]
           [(variable)
            (let* ([name (cadr element)] [column (cadddr element)] [entry (operand-name name)])
              (cond
+              [(and entry (eq? (cadr entry) ':optional) (not in-group))
+               (%%fail fmt-stx "the optional operand $" name " (column " (number->string column)
+                       ") must be the first element of a group: ($" name "^ ...)?")]
               [entry
                (once! 'operand name seen-operands "the operand $" column)
                (when operands-directive
                  (%%fail fmt-stx "the operands directive and $" name " both name the operands"))
                (set! seen-operands (cons name seen-operands))]
+              [(member name optional-attribute-names)
+               (%%fail fmt-stx "the optional attribute $" name " (column " (number->string column)
+                       ") is not supported yet")]
               [(member name attribute-names)
                (once! 'attribute name seen-attributes "the attribute $" column)
                (set! seen-attributes (cons name seen-attributes))]
@@ -461,8 +467,11 @@
                         operand-table)])]
                [result-steps
                 (if functional-kind
-                    (list (with-syntax ([ft ft] [n (length result-names)] [S #'S])
-                            #'(and (eqv? (mlir::FunctionType::getNumResults ft) n)
+                    (list (with-syntax ([ft ft] [n (length result-names)] [S #'S] [P #'P]
+                                        [message (format "expected ~d result type(s) in the functional type"
+                                                         (length result-names))])
+                            #'(and (or (eqv? (mlir::FunctionType::getNumResults ft) n)
+                                       (begin (mlir::OpAsmParser::emitError P message) #f))
                                    (let add ([i 0])
                                      (if (>= i n)
                                          #t
@@ -600,8 +609,11 @@
       (let* ([elements        (%%parse-format fmt-stx (%%tokenize fmt-stx str))]
              [operand-table   (%%operand-table operands)]
              [attribute-names (%%field-names attributes attribute-field-name)]
+             [optional-attribute-names
+              (%%field-names (filter (lambda (f) (eq? (attribute-field-modifier f) ':optional)) attributes)
+                             attribute-field-name)]
              [result-names    (%%field-names results result-field-name)])
-        (%%check fmt-stx elements operand-table attribute-names result-names)
+        (%%check fmt-stx elements operand-table attribute-names optional-attribute-names result-names)
         (let* ([functional-kind
                 (let find ([es elements])
                   (cond

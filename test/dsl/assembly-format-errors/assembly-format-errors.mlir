@@ -25,6 +25,20 @@
 // RUN:   %crest-opt %s --crest-pass="passes=passes/else-group" 2>&1 | %FileCheck %s --check-prefix=ELSE
 // RUN: not env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
 // RUN:   %crest-opt %s --crest-pass="passes=passes/with-parse" 2>&1 | %FileCheck %s --check-prefix=BOTH
+// RUN: not env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
+// RUN:   %crest-opt %s --crest-pass="passes=passes/optional-attribute" 2>&1 | %FileCheck %s --check-prefix=OPTATTR
+// RUN: not env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
+// RUN:   %crest-opt %s --crest-pass="passes=passes/optional-operand-outside-group" 2>&1 | %FileCheck %s --check-prefix=OPTOPERAND
+// RUN: not env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
+// RUN:   %crest-opt %s --crest-pass="passes=passes/repeated-attribute" 2>&1 | %FileCheck %s --check-prefix=REPEATATTR
+// RUN: not env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
+// RUN:   %crest-opt %s --crest-pass="passes=passes/repeated-attr-dict" 2>&1 | %FileCheck %s --check-prefix=REPEATDICT
+// RUN: not env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
+// RUN:   %crest-opt %s --crest-pass="passes=passes/result-in-group" 2>&1 | %FileCheck %s --check-prefix=RESULTGROUP
+// RUN: not env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
+// RUN:   %crest-opt %s --crest-pass="passes=passes/operand-in-group" 2>&1 | %FileCheck %s --check-prefix=OPERANDGROUP
+// RUN: not env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
+// RUN:   %crest-opt %s --crest-pass="passes=passes/anchor-not-first" 2>&1 | %FileCheck %s --check-prefix=ANCHOR
 
 // DIRECTIVE: Failed to import Scheme library: passes/unknown-directive: Exception in define-op: assembly-format: unknown directive foo at column 7
 // VARIABLE: Failed to import Scheme library: passes/unknown-variable: Exception in define-op: assembly-format: $nope (column 0) is not an operand or an attribute of the op
@@ -38,5 +52,12 @@
 // UNTERMINATED: Failed to import Scheme library: passes/unterminated: Exception in define-op: assembly-format: unterminated literal at column 34
 // ELSE: Failed to import Scheme library: passes/else-group: Exception in define-op: assembly-format: an else group (column 26) is not supported yet
 // BOTH: Failed to import Scheme library: passes/with-parse: Exception in define-op: :assembly-format cannot be combined with :parse or :print
+// OPTATTR: Failed to import Scheme library: passes/optional-attribute: Exception in define-op: assembly-format: the optional attribute $note (column 11) is not supported yet
+// OPTOPERAND: Failed to import Scheme library: passes/optional-operand-outside-group: Exception in define-op: assembly-format: the optional operand $input (column 0) must be the first element of a group: ($input^ ...)?
+// REPEATATTR: Failed to import Scheme library: passes/repeated-attribute: Exception in define-op: assembly-format: the attribute $note appears twice (column 10)
+// REPEATDICT: Failed to import Scheme library: passes/repeated-attr-dict: Exception in define-op: assembly-format: attr-dict appears twice (column 17)
+// RESULTGROUP: Failed to import Scheme library: passes/result-in-group: Exception in define-op: assembly-format: the result type type($out) (column 31) cannot be inside a group
+// OPERANDGROUP: Failed to import Scheme library: passes/operand-in-group: Exception in define-op: assembly-format: $other (column 9) is an operand inside a group; only its first operand may be
+// ANCHOR: Failed to import Scheme library: passes/anchor-not-first: Exception in define-op: assembly-format: $note^ is not the first element of the group; the anchor is the first element in this version
 
 module {}

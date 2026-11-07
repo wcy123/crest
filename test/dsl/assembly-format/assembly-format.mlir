@@ -24,6 +24,10 @@
 // CHECK-NEXT: af.two_attrs 1 : i64, 2 : i64
 // CHECK-NEXT: af.two_attrs 1 : i64, 2 : i64 {extra = 3 : i32}
 // CHECK-NEXT: af.box<%arg0 : i32>
+// CHECK-NEXT: af.after to %arg0 : i32
+// CHECK-NEXT: af.after %arg0 : i32 to %arg0 : i32
+// CHECK-NEXT: af.after to %arg0 : i32 {k = 1 : i32}
+// CHECK-NEXT: %{{.*}}:2 = af.multi %arg0 : i32 -> f32, i64
 // CHECK-NEXT: af.with with %arg0 : i32
 func.func @all_ops(%a: i32) {
   %0 = af.unary %a : i32 to f32
@@ -40,6 +44,10 @@ func.func @all_ops(%a: i32) {
   af.two_attrs 1, 2
   af.two_attrs 1, 2 {extra = 3 : i32}
   af.box<%a : i32>
+  af.after to %a : i32
+  af.after %a : i32 to %a : i32
+  af.after to %a : i32 {k = 1 : i32}
+  %8:2 = af.multi %a : i32 -> f32, i64
   af.with with %a : i32
   return
 }

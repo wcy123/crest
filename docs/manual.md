@@ -846,8 +846,9 @@ both parse. Mistakes in the string are reported when the library compiles, with 
 
 Not in the first version, each reported as such: the literals `=` `{` `}` `?` `+` `*`, `custom<...>`,
 `prop-dict`, `regions`, `successors`, `oilist`, `qualified`, `attr-dict-with-keyword`, `type(operands)`, `else`
-groups, a group whose first element is not an optional operand, result types inside a group or inferred from
-traits (every result type is in the format), and more than one optional or variadic operand. An op that needs
+groups, optional attributes, an optional operand outside a group (it is the first element of one), a group whose
+first element is not an optional operand, result types inside a group or inferred from traits (every result type
+is in the format), and more than one optional or variadic operand. An op that needs
 them keeps a hand-written `:parse` and `:print`, as `toy.add` and `toy.func` do.
 
 ### Op traits

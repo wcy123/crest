@@ -383,6 +383,13 @@ void registerIROpImplementationBindings() {
       });
 
   Sregister_symbol(
+      "mlir::OpAsmParser::emitError",
+      (void*)+[](uint64_t parser_ptr, const char* message) -> void {
+        auto* p = reinterpret_cast<mlir::OpAsmParser*>(parser_ptr);
+        p->emitError(p->getNameLoc(), message);
+      });
+
+  Sregister_symbol(
       "mlir::OpAsmParser::parseSymbolName",
       (void*)+[](uint64_t parser_ptr, uint64_t state_ptr,
                  const char* attr_name) -> ptr {

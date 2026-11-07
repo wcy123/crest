@@ -42,6 +42,7 @@
           %mlir::OpAsmParser::parseLSquare
           %mlir::OpAsmParser::parseRSquare
           %mlir::OpAsmParser::parseSymbolName
+          %mlir::OpAsmParser::emitError
           %mlir::isa<FunctionType>
           %mlir::OperationState::addType)
   (import (chezscheme))
@@ -157,6 +158,9 @@
 
   (define %mlir::OpAsmParser::parseArrow
     (foreign-procedure "mlir::OpAsmParser::parseArrow" (uptr) boolean))
+
+  (define %mlir::OpAsmParser::emitError
+    (foreign-procedure "mlir::OpAsmParser::emitError" (uptr string) void))
 
   (define %mlir::OpAsmParser::parseSymbolName
     (foreign-procedure "mlir::OpAsmParser::parseSymbolName" (uptr uptr string) scheme-object))

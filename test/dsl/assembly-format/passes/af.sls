@@ -45,6 +45,13 @@
     (define-op box
       :operands ((input mlir::Value?))
       :assembly-format "`<` $input `:` type($input) `>` attr-dict")
+    (define-op after
+      :operands ((a mlir::Value? :optional) (b mlir::Value?))
+      :assembly-format "($a^ `:` type($a))? `to` $b `:` type($b) attr-dict")
+    (define-op multi
+      :operands ((input mlir::Value?))
+      :results  ((x %%any-type?) (y %%any-type?))
+      :assembly-format "$input attr-dict `:` type($input) `->` type(results)")
     (define-op with
       :operands ((input mlir::Value?))
       :assembly-format "`with` $input attr-dict `:` type($input)")))
