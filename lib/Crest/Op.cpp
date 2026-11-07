@@ -67,13 +67,50 @@ make_fold_fn(std::optional<LockedSchemeObject> cb) {
       return mlir::failure();
     };
   }
-  // Scheme callback: (op) → bool.  Fold results not yet bridged —
-  // returning failure when the Scheme side cannot fold is correct.
-  return [cb = std::move(*cb)](mlir::Operation* op,
-                               llvm::ArrayRef<mlir::Attribute>,
-                               llvm::SmallVectorImpl<mlir::OpFoldResult>&) {
-    return Sboolean_value(scheme_call(cb.get(), op)) ? mlir::success()
-                                                     : mlir::failure();
+  // Scheme callback: (op operand-attributes) -> #f | list of results.
+  // operand-attributes has one entry per operand, the constant attribute it
+  // folds to or #f. A result is (value . v) or (attribute . a), as made by
+  // fold-value and fold-attribute; the empty list means the op was folded in
+  // place.
+  return [cb = std::move(*cb)](
+             mlir::Operation* op, llvm::ArrayRef<mlir::Attribute> operandAttrs,
+             llvm::SmallVectorImpl<mlir::OpFoldResult>& results) {
+    ptr attrList = Snil;
+    for (auto it = operandAttrs.rbegin(); it != operandAttrs.rend(); ++it) {
+      ptr entry = *it ? Sunsigned64(reinterpret_cast<uint64_t>(
+                            it->getAsOpaquePointer()))
+                      : Sfalse;
+      attrList = Scons(entry, attrList);
+    }
+    LockedSchemeObject result(scheme_call(cb.get(), op, attrList));
+    if (result.get() == Sfalse) {
+      return mlir::failure();
+    }
+    ptr valueSymbol = Sstring_to_symbol("value");
+    ptr attributeSymbol = Sstring_to_symbol("attribute");
+    llvm::SmallVector<mlir::OpFoldResult> folded;
+    for (ptr l = result.get(); Spairp(l); l = Scdr(l)) {
+      ptr entry = Scar(l);
+      if (!Spairp(entry) ||
+          (Scar(entry) != valueSymbol && Scar(entry) != attributeSymbol)) {
+        op->emitError("fold callback: a result must be made by fold-value or "
+                      "fold-attribute");
+        return mlir::failure();
+      }
+      void* raw = reinterpret_cast<void*>(Sunsigned64_value(Scdr(entry)));
+      if (Scar(entry) == valueSymbol) {
+        folded.push_back(mlir::Value::getFromOpaquePointer(raw));
+      } else {
+        folded.push_back(mlir::Attribute::getFromOpaquePointer(raw));
+      }
+    }
+    if (!folded.empty() && folded.size() != op->getNumResults()) {
+      op->emitError("fold callback returned ")
+          << folded.size() << " results for an op with " << op->getNumResults();
+      return mlir::failure();
+    }
+    results.append(folded.begin(), folded.end());
+    return mlir::success();
   };
 }
 

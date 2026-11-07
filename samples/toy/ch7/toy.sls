@@ -170,6 +170,7 @@
                             r = toy.cast (input) :loc loc -> result-type)))))))
     (define-op constant
       :summary    "constant tensor"
+      :traits     (constant-like pure)
       :attributes ((value mlir::DenseElementsAttr))
       :results    ((output mlir::Value?))
       (:parse (parser state)
@@ -181,7 +182,10 @@
         (mlir::OpAsmPrinter::printString printer " ")
         (mlir::OpAsmPrinter::printOptionalAttrDictExcept printer op "value")
         (mlir::OpAsmPrinter::printAttribute
-         printer (mlir::Operation::getAttr op "value"))))
+         printer (mlir::Operation::getAttr op "value")))
+      ;; ConstantOp::fold: a constant folds to its value.
+      (:fold (op operand-attributes)
+        (list (fold-attribute (mlir::Operation::getAttr op "value")))))
 
     ;; add/mul/transpose/reshape/cast: result type is mlir::Value (any tensor)
     ;; because mlir-gen produces unranked results that shape inference resolves.
@@ -224,7 +228,13 @@
       :operands   ((input mlir::Value?))
       :results    ((output mlir::Value?))
       (:parse (parser state) (%%parse-unary-to-type parser state))
-      (:print (op printer name) (%%print-unary-to-type op printer name)))
+      (:print (op printer name) (%%print-unary-to-type op printer name))
+      ;; What CastOpInterface's folder does in C++: a cast to the type it already has is its operand.
+      (:fold (op operand-attributes)
+        (let ([in (mlir::Operation::getOperand op 0)])
+          (and (equal? (mlir::Value::getType in)
+                       (mlir::Value::getType (mlir::Operation::getResult op 0)))
+               (list (fold-value in))))))
 
     (define-op generic_call
       :summary    "generic function call"
@@ -300,6 +310,7 @@
     ;; Ch7: toy.struct_constant [attr-list] : !toy.struct<...>
     (define-op struct_constant
       :summary    "struct constant value"
+      :traits     (constant-like pure)
       :attributes ((value mlir::Value?))
       :results    ((output mlir::Value?))
       (:parse (parser state)
@@ -317,11 +328,15 @@
         (mlir::OpAsmPrinter::printString printer " : ")
         (mlir::OpAsmPrinter::printType printer
                                        (mlir::Value::getType
-                                        (mlir::Operation::getResult op 0)))))
+                                        (mlir::Operation::getResult op 0))))
+      ;; StructConstantOp::fold: a struct constant folds to its value.
+      (:fold (op operand-attributes)
+        (list (fold-attribute (mlir::Operation::getAttr op "value")))))
 
     ;; Ch7: toy.struct_access %val[N] : !toy.struct<...> -> resultType
     (define-op struct_access
       :summary    "struct field access"
+      :traits     (pure)
       :operands   ((input mlir::Value?))
       :attributes ((index mlir::Value?))
       :results    ((output mlir::Value?))
@@ -356,7 +371,15 @@
           (mlir::OpAsmPrinter::printString printer " -> ")
           (mlir::OpAsmPrinter::printType printer
                                          (mlir::Value::getType
-                                          (mlir::Operation::getResult op 0))))))
+                                          (mlir::Operation::getResult op 0)))))
+      ;; StructAccessOp::fold: an access to a constant struct is the element.
+      (:fold (op operand-attributes)
+        (let ([in (car operand-attributes)])
+          (and in
+               (list (fold-attribute
+                      (mlir::ArrayAttr::getElement
+                       in (mlir::IntegerAttr::getValue
+                           (mlir::Operation::getAttr op "index")))))))))
 
     ) ;; end define-dialect toy
 

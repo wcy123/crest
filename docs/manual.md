@@ -767,7 +767,7 @@ The op's full MLIR name is `dialect-name.op-name` (e.g. `toy.constant`).
 | `(:parse (parser state) body ...)` | Custom assembly parser |
 | `(:print (op printer name) body ...)` | Custom assembly printer |
 | `(:verify (op) body ...)` | Extra verifier called after attribute/type checks |
-| `(:fold (op) body ...)` | Constant-fold hook; return `#t` if folded |
+| `(:fold (op operand-attributes) body ...)` | Folder: return `#f` (no fold), or a list with one entry per result, `(fold-value v)` for an existing value (usually an operand) or `(fold-attribute a)` for a constant the dialect's `:materialize-constant` turns into an op; `'()` means folded in place. `operand-attributes` has one entry per operand: its constant attribute, or `#f`. A `constant-like` op folds to its own value. The context is not installed in the callback: wrap attribute creation in `(with-current-MLIRContext (mlir::Operation::getContext op) ...)` |
 | `:traits (name ...)` | MLIR traits of the op (needs LLVM 23; see below) |
 
 **Type predicates** in `:operands`, `:attributes`, `:results` are Scheme

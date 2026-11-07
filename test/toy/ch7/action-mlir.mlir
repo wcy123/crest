@@ -13,8 +13,8 @@
 // CHECK-NEXT:      toy.return {{%.*}} : tensor<*xf64>
 // CHECK-NEXT:    }
 // CHECK-NEXT:    toy.func @main() {
-// CHECK-NEXT:      {{%.*}} = toy.struct_constant [dense<{{.*}}> : tensor<2x3xf64>, dense<{{.*}}> : tensor<2x3xf64>] : tuple<tensor<2x3xf64>, tensor<2x3xf64>>
-// CHECK-NEXT:      {{%.*}} = toy.generic_call @multiply_transpose({{%.*}}) : (tuple<tensor<2x3xf64>, tensor<2x3xf64>>) -> tensor<*xf64>
+// CHECK-NEXT:      {{%.*}} = toy.struct_constant [dense<{{.*}}> : tensor<2x3xf64>, dense<{{.*}}> : tensor<2x3xf64>] : tuple<tensor<*xf64>, tensor<*xf64>>
+// CHECK-NEXT:      {{%.*}} = toy.generic_call @multiply_transpose({{%.*}}) : (tuple<tensor<*xf64>, tensor<*xf64>>) -> tensor<*xf64>
 // CHECK-NEXT:      toy.print {{%.*}} : tensor<*xf64>
 // CHECK-NEXT:      toy.return
 // CHECK-NEXT:    }

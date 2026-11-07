@@ -178,7 +178,13 @@
       :operands   ((input mlir::Value?))
       :results    ((output mlir::Value?))
       (:parse (parser state) (%%parse-unary-to-type parser state))
-      (:print (op printer name) (%%print-unary-to-type op printer name)))
+      (:print (op printer name) (%%print-unary-to-type op printer name))
+      ;; What CastOpInterface's folder does in C++: a cast to the type it already has is its operand.
+      (:fold (op operand-attributes)
+        (let ([in (mlir::Operation::getOperand op 0)])
+          (and (equal? (mlir::Value::getType in)
+                       (mlir::Value::getType (mlir::Operation::getResult op 0)))
+               (list (fold-value in))))))
 
     (define-op generic_call
       :summary    "generic function call"

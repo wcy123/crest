@@ -14,8 +14,8 @@ before lowering. The lowering to Affine and LLVM is unchanged from Ch6.
 | Lexer | — | `struct` keyword; `.` is punctuation unless followed by a digit |
 | AST | functions only | + `struct-ast`, `struct-literal-expr`, `module-ast:structs` |
 | Dialect | tensor ops | + struct type, `toy.struct_constant`, `toy.struct_access` |
-| Canonicalization | 4 patterns | + `FoldStructAccessOfConstant` |
-| Pipeline | inline, shape inference, canonicalize | + struct fold and dead `struct_constant` erase before shape inference |
+| Folders | — | `toy.constant`, `toy.struct_constant`, `toy.struct_access`, `toy.cast` |
+| Pipeline | inline, shape inference, canonicalize | + a canonicalize before shape inference, which folds the struct accesses |
 | Lowering | Affine, LLVM | unchanged (`lower-to-affine.sls`, `lower-to-llvm.sls` differ only in library name) |
 
 ## Language
@@ -94,13 +94,21 @@ toy.func @main() {
   declaration; struct-typed parameters get the struct type instead of an
   unranked tensor.
 
-## Canonicalization (`combine.sls`)
+## Folders (`toy.sls`)
 
-Ch7 registers a fifth pattern alongside the four from Ch3:
+Ch7 adds three folders to the dialect, each a `:fold` clause that returns the constant the op
+folds to (`fold-attribute`), as the C++ `ConstantOp::fold`, `StructConstantOp::fold` and
+`StructAccessOp::fold` do:
 
-| Pattern | Rewrite |
+| Op | Folds to |
 |---|---|
-| `FoldStructAccessOfConstant` | `toy.struct_access(toy.struct_constant{[v0, v1, ...]}, N)` becomes `toy.constant{vN}` |
+| `toy.constant`, `toy.struct_constant` | their own `value` (that is what makes them constants: they also declare `constant-like`) |
+| `toy.struct_access` | element N of the operand's constant `value` (`toy.struct_access(toy.struct_constant{[v0, v1, ...]}, N)` becomes `toy.constant{vN}`, materialized by the dialect's `materialize-constant`) |
+
+The ops are `pure`, so the greedy driver erases a `toy.struct_constant` nothing uses. `mlir-gen`
+types a struct literal with unranked tensors, as C++ does, so a call passes the callee's parameter
+type and the inliner needs no cast; shape inference gives the folded constant its ranked type
+(`InferConstant`).
 
 ## `--opt` pipeline (`toyc.sls`)
 
@@ -108,11 +116,9 @@ There is no lowering for the struct ops, and the `toy` dialect is illegal in the
 LLVM conversion, so they must be gone by the time lowering starts. The struct
 fold is therefore part of the pipeline that every lowering action runs:
 
-1. **Inline** — MLIR's inliner pass; it casts the ranked struct argument to the
-   callee's parameter type with `toy.cast`, which step 2 looks through
+1. **Inline** — MLIR's inliner pass
 2. **Fold structs** — greedy canonicalize so `struct_access(struct_constant)`
-   folds to `toy.constant`, then erase any `toy.struct_constant` left without
-   uses
+   folds to `toy.constant` and the dead `toy.struct_constant` is erased
 3. **Shape inference** — as in Ch5/Ch6
 4. **Canonicalize** — greedy rewrite again
 5. Affine lowering, then LLVM lowering, then cleanup — as in Ch6
@@ -177,10 +183,10 @@ Running the struct example with `--emit=jit` prints:
 | The dialect, with struct types and ops | `define-dialect` | the type and `toy.struct_constant`, `toy.struct_access` are declared in it |
 | The `:materialize-constant` callback | `begin-mlir-code` with `with-current-OpBuilder` | it returns the op, not its result |
 | Every op `mlir-gen.sls` creates, including the struct ops | `begin-mlir-code` | as in Ch2 |
-| The canonicalization patterns, including `fold-struct-access` | `define-rewrite-pattern` | as in Ch3 |
+| The canonicalization patterns and the folders | `define-rewrite-pattern` | as in Ch3 |
 | The lowerings and their registration | as in Ch5 and Ch6 | `apply-conversion`, `define-conversion-pattern`, `begin-mlir-code` |
 | Shape inference | `define-rewrite-pattern`, as in Ch4 | |
-| Inlining | MLIR's inliner pass, as in Ch4 | the dialect declares what the pass needs, see the Ch4 README; `StructAccessOfCast` lets a struct access see through the cast the inliner inserts |
+| Inlining | MLIR's inliner pass, as in Ch4 | the dialect declares what the pass needs, see the Ch4 README |
 
 ## Related Documents
 
