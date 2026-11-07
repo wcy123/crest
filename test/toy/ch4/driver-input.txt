@@ -1,0 +1,5 @@
+module {
+  toy.func @from_mlir() {
+    toy.return
+  }
+}

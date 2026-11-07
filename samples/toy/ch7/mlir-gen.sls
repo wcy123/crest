@@ -11,6 +11,7 @@
           (mlir IR BuiltinTypes)
           (mlir IR BuiltinAttributes)
           (mlir IR Location)
+          (mlir IR Diagnostics)
           (mlir IR Operation)
           (mlir IR Region)
           (mlir IR Block)
@@ -47,9 +48,15 @@
       (list (number-expr:val expr))]
      [else (error '%%collect-data "unexpected expr type" expr)]))
 
-  (define (%%declare! symtab name value)
+  ;; Report an error at a location through the diagnostic engine and abandon code generation:
+  ;; mlir-gen then returns #f, as the C++ MLIRGen returns a null module.
+  (define (%%fail loc . parts)
+    (mlir::emitError loc (apply string-append parts))
+    (raise 'toy-mlir-gen-failed))
+
+  (define (%%declare! loc symtab name value)
     (when (hashtable-ref symtab name #f)
-      (error 'mlir-gen "variable already declared" name))
+      (%%fail loc "error: variable '" name "' is already declared"))
     (hashtable-set! symtab name value))
 
   (define (%%f64-unranked-tensor)
@@ -75,7 +82,7 @@
   (define (%%mlir-gen-var symtab expr)
     (let ([val (hashtable-ref symtab (var-expr:name expr) #f)])
       (unless val
-        (error 'mlir-gen "unknown variable" (var-expr:name expr)))
+        (%%fail (%%loc (var-expr:loc expr)) "error: unknown variable '" (var-expr:name expr) "'"))
       val))
 
   ;; Compute the MLIR type for a var-decl: if the var-type has a struct name,
@@ -129,12 +136,12 @@
           (let* ([lhs (%%mlir-gen-expr symtab struct-map (binary-expr:lhs expr))]
                  [rhs (binary-expr:rhs expr)]
                  [field-name (if (var-expr? rhs) (var-expr:name rhs)
-                                 (error 'mlir-gen "struct access requires identifier" rhs))]
+                                 (%%fail loc "invalid access into struct expression"))]
                  ;; find field index from struct type
                  [lhs-type   (mlir::Value::getType lhs)]
                  [elem-types (if (toy::StructType? lhs-type)
                                  (toy::StructType::getElementTypes lhs-type)
-                                 (error 'mlir-gen "dot operator on non-struct" lhs-type))]
+                                 (%%fail loc "invalid access into struct expression"))]
                  ;; find the struct definition to get field names
                  [struct-decl (%%find-struct-decl-by-type struct-map lhs-type)]
                  [field-idx   (if struct-decl
@@ -153,7 +160,7 @@
               (case op
                 [(#\+) (begin-mlir-code r = toy.add (lhs rhs) :loc loc -> type)]
                 [(#\*) (begin-mlir-code r = toy.mul (lhs rhs) :loc loc -> type)]
-                [else (error 'mlir-gen "unknown binary op" op)]))))))
+                [else (%%fail loc "invalid binary operator '" (string op) "'")]))))))
 
 
   (define (%%find-struct-decl-by-type struct-map stype)
@@ -204,7 +211,7 @@
                      (let ([reshaped-type (%%get-type shape)])
                        (begin-mlir-code
                            r = toy.reshape (init) :loc loc -> reshaped-type))])])
-      (%%declare! symtab (var-decl-expr:name expr) val)
+      (%%declare! (%%loc (var-decl-expr:loc expr)) symtab (var-decl-expr:name expr) val)
       val))
 
   (define (%%mlir-gen-struct-literal struct-map expr)
@@ -239,7 +246,7 @@
       (cond
        [(string=? callee "transpose")
         (unless (fx=? (length args) 1)
-          (error 'mlir-gen "transpose takes exactly one argument"))
+          (%%fail (%%loc (call-expr:loc expr)) "MLIR codegen encountered an error: toy.transpose does not accept multiple arguments"))
         (let ([type (%%f64-unranked-tensor)])
           (begin-mlir-code
               r = toy.transpose (,@args) :loc loc -> type))]
@@ -275,7 +282,7 @@
                                      (let ([arg-name (if (var-decl-expr? arg-ast)
                                                          (var-decl-expr:name arg-ast)
                                                          (var-expr:name arg-ast))])
-                                       (%%declare! symtab arg-name (:arg idx))))
+                                       (%%declare! (%%loc (prototype:loc proto)) symtab arg-name (:arg idx))))
                                    args (iota (length args)))
                          (%%mlir-gen-block symtab struct-map body)
                          (when (or (mlir::Block::empty? (current-Block))
@@ -315,17 +322,24 @@
         (hashtable-set! struct-map (struct-ast:name s) (cons stype s)))))
 
   (define (mlir-gen ctx module)
-    (with-current-MLIRContext ctx
-      (let* ([module-op   (mlir::ModuleOp::create (mlir::UnknownLoc::get ctx))]
-             [module-body (mlir::ModuleOp::getBody module-op)]
-             [struct-map  (make-hashtable equal-hash equal?)])
-        ;; Register struct types first
-        (for-each (lambda (s) (%%mlir-gen-struct struct-map s))
-                  (module-ast:structs module))
-        ;; Generate function bodies
-        (for-each (lambda (fn)
-                    (let ([symtab (make-hashtable equal-hash equal?)])
-                      (%%mlir-gen-function module-body symtab struct-map fn)))
-                  (module-ast:functions module))
-        module-op)))
+    (guard (e [(eq? e 'toy-mlir-gen-failed) #f])
+      (with-current-MLIRContext ctx
+        (let* ([module-op   (mlir::ModuleOp::create (mlir::UnknownLoc::get ctx))]
+               [module-body (mlir::ModuleOp::getBody module-op)]
+               [struct-map  (make-hashtable equal-hash equal?)])
+          ;; Register struct types first
+          (for-each (lambda (s) (%%mlir-gen-struct struct-map s))
+                    (module-ast:structs module))
+          ;; Generate function bodies
+          (for-each (lambda (fn)
+                      (let ([symtab (make-hashtable equal-hash equal?)])
+                        (%%mlir-gen-function module-body symtab struct-map fn)))
+                    (module-ast:functions module))
+          ;; As C++ MLIRGen: the module must verify.
+          (cond
+           [(mlir::Operation::verify? (mlir::ModuleOp::getOperation module-op)) module-op]
+           [else
+            (mlir::Operation::emitError (mlir::ModuleOp::getOperation module-op)
+                                        "module verification error")
+            #f])))))
   )

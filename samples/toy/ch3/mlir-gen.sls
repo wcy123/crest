@@ -9,6 +9,7 @@
           (mlir IR BuiltinTypes)
           (mlir IR BuiltinAttributes)
           (mlir IR Location)
+          (mlir IR Diagnostics)
           (mlir IR Operation)
           (mlir IR Region)
           (mlir IR Block)
@@ -60,9 +61,15 @@
 
   ;; declare! — mirrors MLIRGenImpl::declare()
   ;; Add var→value to symbol table; error if already declared.
-  (define (%%declare! symtab name value)
+  ;; Report an error at a location through the diagnostic engine and abandon code generation:
+  ;; mlir-gen then returns #f, as the C++ MLIRGen returns a null module.
+  (define (%%fail loc . parts)
+    (mlir::emitError loc (apply string-append parts))
+    (raise 'toy-mlir-gen-failed))
+
+  (define (%%declare! loc symtab name value)
     (when (hashtable-ref symtab name #f)
-      (error 'mlir-gen "variable already declared" name))
+      (%%fail loc "error: variable '" name "' is already declared"))
     (hashtable-set! symtab name value))
 
   ;; -------------------------------------------------------------------------
@@ -99,7 +106,7 @@
   (define (%%mlir-gen-var symtab expr)
     (let ([val (hashtable-ref symtab (var-expr:name expr) #f)])
       (unless val
-        (error 'mlir-gen "unknown variable" (var-expr:name expr)))
+        (%%fail (%%loc (var-expr:loc expr)) "error: unknown variable '" (var-expr:name expr) "'"))
       val))
 
   ;; mlirGen(BinaryExprAST) — add or mul
@@ -111,7 +118,7 @@
         (case (binary-expr:op expr)
           [(#\+) (begin-mlir-code r = toy.add (lhs rhs) :loc loc -> type)]
           [(#\*) (begin-mlir-code r = toy.mul (lhs rhs) :loc loc -> type)]
-          [else (error 'mlir-gen "unknown binary op" (binary-expr:op expr))]))))
+          [else (%%fail (%%loc (binary-expr:loc expr)) "invalid binary operator '" (string (binary-expr:op expr)) "'")]))))
 
   ;; mlirGen(CallExprAST) — transpose, generic_call, or print
   (define (%%mlir-gen-call symtab expr)
@@ -122,7 +129,7 @@
       (cond
        [(string=? callee "transpose")
         (unless (fx=? (length args) 1)
-          (error 'mlir-gen "transpose takes exactly one argument"))
+          (%%fail (%%loc (call-expr:loc expr)) "MLIR codegen encountered an error: toy.transpose does not accept multiple arguments"))
         (let ([type (%%f64-unranked-tensor)])
           (begin-mlir-code
               r = toy.transpose (,@args) :loc loc -> type))]
@@ -159,7 +166,7 @@
                       (let ([reshaped-type (%%get-type shape)])
                         (begin-mlir-code
                             r = toy.reshape (init) :loc loc -> reshaped-type)))])
-      (%%declare! symtab (var-decl-expr:name expr) val)
+      (%%declare! (%%loc (var-decl-expr:loc expr)) symtab (var-decl-expr:name expr) val)
       val))
 
   ;; Dispatch on AST node type — mirrors MLIRGenImpl::mlirGen(ExprAST&)
@@ -198,7 +205,7 @@
             (function_type : (mlir::TypeAttr::get func-type))
             (^bb0 ,@arg-types
                   (for-each (lambda (arg-ast idx)
-                              (%%declare! symtab (var-expr:name arg-ast) (:arg idx)))
+                              (%%declare! (%%loc (var-expr:loc arg-ast)) symtab (var-expr:name arg-ast) (:arg idx)))
                             args (iota (length args)))
                   (%%mlir-gen-block symtab body)
                   (when (or (mlir::Block::empty? (current-Block))
@@ -223,13 +230,20 @@
   ;; mirrors toy::mlirGen(MLIRContext&, ModuleAST&)
   ;; -------------------------------------------------------------------------
   (define (mlir-gen ctx module)
-    (with-current-MLIRContext ctx
-      (let* ([module-op   (mlir::ModuleOp::create
-                           (mlir::UnknownLoc::get ctx))]
-             [module-body (mlir::ModuleOp::getBody module-op)])
-        (for-each (lambda (fn)
-                    (let ([symtab (make-hashtable equal-hash equal?)])
-                      (%%mlir-gen-function module-body symtab fn)))
-                  (module-ast:functions module))
-        module-op)))
+    (guard (e [(eq? e 'toy-mlir-gen-failed) #f])
+      (with-current-MLIRContext ctx
+        (let* ([module-op   (mlir::ModuleOp::create
+                             (mlir::UnknownLoc::get ctx))]
+               [module-body (mlir::ModuleOp::getBody module-op)])
+          (for-each (lambda (fn)
+                      (let ([symtab (make-hashtable equal-hash equal?)])
+                        (%%mlir-gen-function module-body symtab fn)))
+                    (module-ast:functions module))
+          ;; As C++ MLIRGen: the module must verify.
+          (cond
+           [(mlir::Operation::verify? (mlir::ModuleOp::getOperation module-op)) module-op]
+           [else
+            (mlir::Operation::emitError (mlir::ModuleOp::getOperation module-op)
+                                        "module verification error")
+            #f])))))
   )

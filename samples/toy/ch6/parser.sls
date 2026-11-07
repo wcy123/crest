@@ -358,10 +358,18 @@
   ;; -------------------------------------------------------------------------
   ;; parseInputFile — mirrors parseInputFile() in toyc.cpp
   ;; -------------------------------------------------------------------------
+  ;; "-" is standard input, as in the C++ tutorial's getFileOrSTDIN.
   (define (parse-input-file filename)
-    (guard (exn [#t (display-condition exn (current-error-port)) #f])
-      (let* ([src    (call-with-port (open-input-file filename)
-                       (lambda (p) (get-string-all p)))]
-             [lexer  (make-lexer-buffer filename src)])
-        (%%parse-module lexer))))
+    (let ([src (guard (exn [#t (display "Could not open input file: " (current-error-port))
+                               (display-condition exn (current-error-port))
+                               (newline (current-error-port))
+                               #f])
+                 (if (string=? filename "-")
+                     (get-string-all (current-input-port))
+                     (call-with-port (open-input-file filename)
+                       (lambda (p) (get-string-all p)))))])
+      (and src
+           (guard (exn [#t (display-condition exn (current-error-port)) #f])
+             (let ([lexer (make-lexer-buffer filename src)])
+               (%%parse-module lexer))))))
   )
