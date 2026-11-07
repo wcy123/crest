@@ -14,8 +14,8 @@
         (toy ch3 ast)
         (toy ch3 toy)
         (toy ch3 mlir-gen)
-        (only (crest patterns) apply-patterns)
-        (toy ch3 combine))
+        (mlir Pass PassManager)
+        (mlir Transforms Passes))
 
 (define %%input-type 'toy)
 
@@ -67,12 +67,22 @@
     (unless module-ast (exit 1))
     (toy:dump module-ast)))
 
+;; A pass manager nested on toy.func, as the C++ toyc builds it (pm.nest<toy::FuncOp>()); a failing pass
+;; fails toyc (exit code 4).
+(define (%%run-toy-func-passes! module-op ctx . make-passes)
+  (with-PassManager pm (ctx)
+    (let ([func-pm (mlir::PassManager::nest pm "toy.func")])
+      (for-each (lambda (make-pass) (mlir::OpPassManager::addPass func-pm (make-pass)))
+                make-passes))
+    (unless (mlir::PassManager::run! pm module-op)
+      (display "Optimization pipeline failed\n" (current-error-port))
+      (exit 4))))
+
 (define (%%dump-mlir filename opt?)
   (let-values ([(ctx module-op) (%%build-module filename)])
     (let ([op (%%module-op->op module-op)])
       (when opt?
-        (with-current-MLIRContext ctx
-          (apply-patterns op ctx :populate toy:add-canonicalization-patterns!)))
+        (%%run-toy-func-passes! op ctx mlir::createCanonicalizerPass))
       (display (mlir::Operation::print op))
       (newline))))
 

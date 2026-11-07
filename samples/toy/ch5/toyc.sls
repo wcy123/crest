@@ -38,7 +38,6 @@
         (toy ch5 toy)
         (toy ch5 mlir-gen)
         (only (crest patterns) apply-patterns)
-        (toy ch5 combine)
         (toy ch5 shape-inference)
         (toy ch5 lower-to-affine))
 
@@ -124,6 +123,17 @@
 (define (%%exit-unless-lowered ok?)
   (unless ok? (exit 4)))
 
+;; A pass manager nested on toy.func, as the C++ toyc builds it (pm.nest<toy::FuncOp>()); a failing pass
+;; fails toyc (exit code 4).
+(define (%%run-toy-func-passes! module-op ctx . make-passes)
+  (with-PassManager pm (ctx)
+    (let ([func-pm (mlir::PassManager::nest pm "toy.func")])
+      (for-each (lambda (make-pass) (mlir::OpPassManager::addPass func-pm (make-pass)))
+                make-passes))
+    (unless (mlir::PassManager::run! pm module-op)
+      (display "Optimization pipeline failed\n" (current-error-port))
+      (exit 4))))
+
 (define (%%run-pipeline! module-op ctx opt? emit-affine?)
   ;; Step 1: Inline toy.generic_call ops (Scheme-level, same as ch4).
   (%%run-inliner! module-op ctx)
@@ -132,8 +142,7 @@
     (apply-patterns module-op ctx :populate toy:add-shape-inference-patterns!))
   (toy:check-shapes-inferred! module-op)
   ;; Step 3: Canonicalize (fold transpose/reshape patterns).
-  (with-current-MLIRContext ctx
-    (apply-patterns module-op ctx :populate toy:add-canonicalization-patterns!))
+  (%%run-toy-func-passes! module-op ctx mlir::createCanonicalizerPass mlir::createCSEPass)
   ;; Steps 4-6: Affine-specific lowering.
   (when emit-affine?
     ;; Step 4: Partial lowering to Affine+Arith+MemRef+Func.

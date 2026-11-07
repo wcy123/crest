@@ -10,6 +10,9 @@
   (export toy)
   (import (except (chezscheme) =)
           (crest dialect)
+          (only (toy ch4 combine)
+                toy:add-transpose-canonicalization-patterns!
+                toy:add-reshape-canonicalization-patterns!)
           (mlir IR Value)
           (mlir IR BuiltinTypes)
           (mlir IR BuiltinAttributes)
@@ -239,6 +242,7 @@
                             r = toy.cast (input) :loc loc -> result-type)))))))
     (define-op constant
       :summary    "constant tensor"
+      :traits     (pure)
       :attributes ((value %%f64-elements-attr?))
       :results    ((output %%f64-tensor?))
       (:parse (parser state)
@@ -257,6 +261,7 @@
     ;; because mlir-gen produces unranked results that shape inference resolves.
     (define-op add
       :summary    "element-wise addition"
+      :traits     (pure)
       :operands   ((lhs %%f64-tensor-value?)
                    (rhs %%f64-tensor-value?))
       :results    ((output %%f64-tensor?))
@@ -265,6 +270,7 @@
 
     (define-op mul
       :summary    "element-wise multiplication"
+      :traits     (pure)
       :operands   ((lhs %%f64-tensor-value?)
                    (rhs %%f64-tensor-value?))
       :results    ((output %%f64-tensor?))
@@ -273,18 +279,22 @@
 
     (define-op transpose
       :summary    "transpose a 2D tensor"
+      :traits     (pure)
       :operands   ((input %%f64-tensor-value?))
       :results    ((output %%f64-tensor?))
       (:parse (parser state) (%%parse-unary-to-type parser state))
       (:print (op printer name) (%%print-unary-to-type op printer name))
-      (:verify (op) (%%verify-transpose op)))
+      (:verify (op) (%%verify-transpose op))
+      (:get-canonicalization-patterns (patterns) (toy:add-transpose-canonicalization-patterns! patterns)))
 
     (define-op reshape
       :summary    "reshape a tensor"
+      :traits     (pure)
       :operands   ((input %%f64-tensor-value?))
       :results    ((output %%static-shape-f64-tensor?))
       (:parse (parser state) (%%parse-unary-to-type parser state))
-      (:print (op printer name) (%%print-unary-to-type op printer name)))
+      (:print (op printer name) (%%print-unary-to-type op printer name))
+      (:get-canonicalization-patterns (patterns) (toy:add-reshape-canonicalization-patterns! patterns)))
 
     ;; toy.cast — bridge ranked/unranked mismatch at call boundaries.
     ;; Inserted by the inliner's materializeCallConversion.
@@ -292,7 +302,7 @@
     ;; either ranked or unranked tensors depending on call direction.
     (define-op cast
       :summary    "cast tensor to a different shape"
-      :traits     (same-operands-and-result-shape)
+      :traits     (pure same-operands-and-result-shape)
       :operands   ((input %%f64-tensor-value?))
       :results    ((output %%f64-tensor?))
       (:parse (parser state) (%%parse-unary-to-type parser state))
@@ -340,7 +350,7 @@
 
     (define-op return
       :summary    "return from toy.func"
-      :traits     (terminator (has-parent "toy.func"))
+      :traits     (terminator pure (has-parent "toy.func"))
       (:parse (parser state)
         (let ([ops (mlir::OpAsmParser::parseOptionalOperand parser)])
           (if (%%parsed? ops)

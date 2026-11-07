@@ -5,6 +5,7 @@
 // CrestOp bridge — lib/Crest/Op.cpp
 
 #include "Op.h"
+#include "../Bindings/Support/CrestObject.h"
 #include "../Bindings/Support/SchemeWrapper.h"
 #include "Trait.h"
 #include "mlir/IR/ExtensibleDialect.h"
@@ -119,9 +120,12 @@ make_canon_fn(std::optional<LockedSchemeObject> cb) {
   if (!cb) {
     return [](mlir::RewritePatternSet&, mlir::MLIRContext*) {};
   }
+  // The callback gets the pattern set as a borrowed shell, valid for the call
+  // only.
   return [cb = std::move(*cb)](mlir::RewritePatternSet& patterns,
-                               mlir::MLIRContext* ctx) {
-    scheme_call(cb.get(), &patterns, ctx);
+                               mlir::MLIRContext*) {
+    CrestBox<mlir::RewritePatternSet*> shell(&patterns);
+    scheme_call(cb.get(), &shell);
   };
 }
 

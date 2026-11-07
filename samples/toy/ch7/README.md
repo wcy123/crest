@@ -117,10 +117,10 @@ LLVM conversion, so they must be gone by the time lowering starts. The struct
 fold is therefore part of the pipeline that every lowering action runs:
 
 1. **Inline** — MLIR's inliner pass
-2. **Fold structs** — greedy canonicalize so `struct_access(struct_constant)`
+2. **Fold structs** — canonicalize (nested on `toy.func`) so `struct_access(struct_constant)`
    folds to `toy.constant` and the dead `toy.struct_constant` is erased
 3. **Shape inference** — as in Ch5/Ch6
-4. **Canonicalize** — greedy rewrite again
+4. **Canonicalize + CSE** — nested on `toy.func`
 5. Affine lowering, then LLVM lowering, then cleanup — as in Ch6
 
 For the example, `--emit=mlir --opt` leaves `@main` with only tensor ops and

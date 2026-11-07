@@ -63,7 +63,7 @@ Three steps run in order when `--opt` is passed:
    with an unranked result whose operands are ranked and replaces it with the
    same op with the inferred result type; the greedy rewriter applies them to
    a fixed point.
-3. **Canonicalize** — applies the same four patterns from Ch3
+3. **Canonicalize + CSE** — nested on `toy.func`: MLIR's canonicalizer (the four patterns from Ch3, which the ops register themselves, and the erasure of dead `pure` ops) and CSE. The four patterns are
    (`SimplifyRedundantTranspose`, `ReshapeReshapeOpt`, `RedundantReshape`,
    `FoldConstantReshape`). After inlining and shape inference, transpositions
    are now in the same function and the redundant-transpose pattern fires.

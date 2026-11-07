@@ -1,7 +1,8 @@
 # Toy Ch3 — Canonicalization Patterns
 
-Ch3 adds four canonicalization rewrite patterns applied via MLIR's greedy
-pattern rewriter, and adds support for reading `.mlir` files directly as input.
+Ch3 adds four canonicalization rewrite patterns, which the ops bring themselves
+(`:get-canonicalization-patterns` in `toy.sls`, `hasCanonicalizer` in C++) so MLIR's
+canonicalizer pass finds them, and adds support for reading `.mlir` files directly as input.
 
 ## What's new over Ch2
 
@@ -133,4 +134,5 @@ per operand/attribute/result for every op, e.g.:
 | The dialect, now with custom parse and print | `define-dialect` | as in Ch2 |
 | Every op `mlir-gen.sls` creates | `begin-mlir-code` | as in Ch2 |
 | The four canonicalization patterns | `define-rewrite-pattern` | each one is a match and a rewrite |
-| Registering and applying the patterns | `define-pattern-set` (`combine.sls`), `apply-patterns` (`toyc.sls`) | a table of (op, pattern, benefit), then one form that makes the set and runs the greedy driver |
+| Registering the patterns | `define-pattern-set` (`combine.sls`), `:get-canonicalization-patterns` (`toy.sls`) | a table of (op, pattern, benefit) per op, registered by the op as C++ `getCanonicalizationPatterns` does |
+| Applying them | `PassManager` nested on `toy.func` with `createCanonicalizerPass` (`toyc.sls`) | the canonicalizer also folds and erases dead `pure` ops, as in the C++ `toyc` |

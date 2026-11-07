@@ -9,6 +9,9 @@
   (export toy)
   (import (chezscheme)
           (crest dialect)
+          (only (toy ch3 combine)
+                toy:add-transpose-canonicalization-patterns!
+                toy:add-reshape-canonicalization-patterns!)
           (mlir IR Value)
           (mlir IR BuiltinTypes)
           (mlir IR BuiltinAttributes)
@@ -233,6 +236,7 @@
     ;; Format: toy.constant {optional-attrs} dense<...>
     (define-op constant
       :summary    "constant tensor"
+      :traits     (pure)
       :attributes ((value %%f64-elements-attr?))
       :results    ((output %%f64-tensor?))
       (:parse (parser state)
@@ -250,6 +254,7 @@
     ;; Format: toy.add %lhs, %rhs {attrs} : type
     (define-op add
       :summary    "element-wise addition"
+      :traits     (pure)
       :operands   ((lhs %%f64-tensor-value?)
                    (rhs %%f64-tensor-value?))
       :results    ((output %%f64-tensor?))
@@ -259,6 +264,7 @@
     ;; Format: toy.mul %lhs, %rhs {attrs} : type
     (define-op mul
       :summary    "element-wise multiplication"
+      :traits     (pure)
       :operands   ((lhs %%f64-tensor-value?)
                    (rhs %%f64-tensor-value?))
       :results    ((output %%f64-tensor?))
@@ -268,19 +274,23 @@
     ;; Format: toy.transpose(%input : type) to result-type
     (define-op transpose
       :summary    "transpose a 2D tensor"
+      :traits     (pure)
       :operands   ((input %%f64-tensor-value?))
       :results    ((output %%f64-tensor?))
       (:parse (parser state) (%%parse-unary-to-type parser state))
       (:print (op printer name) (%%print-unary-to-type op printer name))
-      (:verify (op) (%%verify-transpose op)))
+      (:verify (op) (%%verify-transpose op))
+      (:get-canonicalization-patterns (patterns) (toy:add-transpose-canonicalization-patterns! patterns)))
 
     ;; Format: toy.reshape(%input : type) to result-type
     (define-op reshape
       :summary    "reshape a tensor"
+      :traits     (pure)
       :operands   ((input %%f64-tensor-value?))
       :results    ((output %%static-shape-f64-tensor?))
       (:parse (parser state) (%%parse-unary-to-type parser state))
-      (:print (op printer name) (%%print-unary-to-type op printer name)))
+      (:print (op printer name) (%%print-unary-to-type op printer name))
+      (:get-canonicalization-patterns (patterns) (toy:add-reshape-canonicalization-patterns! patterns)))
 
     ;; Format: toy.generic_call @callee(%args) : functional-type
     (define-op generic_call
@@ -320,7 +330,7 @@
     ;; Format: toy.return (%val : type)?
     (define-op return
       :summary    "return from toy.func"
-      :traits     (terminator (has-parent "toy.func"))
+      :traits     (terminator pure (has-parent "toy.func"))
       (:parse (parser state)
         ;; Optional return operand: parse silently, no error if absent.
         (let ([ops (mlir::OpAsmParser::parseOptionalOperand parser)])
