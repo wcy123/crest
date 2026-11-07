@@ -10,15 +10,18 @@
 //   other.y   no pattern                                               kept
 //
 //   imperative   the control: the low-level API (works today)
-//   declarative  apply-patterns, which does not exist yet
+//   declarative  apply-patterns
+//   pattern-set  the same, with define-pattern-set and :populate with a list of sets
 //
-// XFAIL: *
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
 // RUN:   %crest-opt -allow-unregistered-dialect \
 // RUN:   --crest-pass="passes=passes/imperative" %s | %FileCheck %s
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme2 \
 // RUN:   %crest-opt -allow-unregistered-dialect \
 // RUN:   --crest-pass="passes=passes/declarative" %s | %FileCheck %s
+// RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme3 \
+// RUN:   %crest-opt -allow-unregistered-dialect \
+// RUN:   --crest-pass="passes=passes/pattern-set" %s | %FileCheck %s
 
 // CHECK-LABEL: func.func @f
 // CHECK-NEXT:    "test.a_done"() : () -> ()

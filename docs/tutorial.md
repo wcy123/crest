@@ -54,9 +54,6 @@ Create `passes/tutorial-step1.sls`:
           (only (mlir IR Value) mlir::Value::getType)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
-          (only (mlir IR PatternMatch) with-RewritePatternSet)
-          (only (mlir Transforms GreedyPatternRewriteDriver) mlir::applyPatternsGreedily)
-          (only (mlir Transforms DialectConversion) add-rewrite-pattern)
           (crest))
 
   (define-rewrite-pattern (step1 op rewriter)
@@ -68,9 +65,7 @@ Create `passes/tutorial-step1.sls`:
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
-        (with-RewritePatternSet ps ()
-          (add-rewrite-pattern ps "source.add" step1 1)
-          (mlir::applyPatternsGreedily module-op ps)))))
+        (apply-patterns module-op ctx :patterns (("source.add" step1))))))
 
   ) ;; end library
 ```

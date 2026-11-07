@@ -633,8 +633,6 @@ functions, type predicates, constants — no CREST macros required.
 (library (passes my-pass)
   (export run-pass)
   (import (except (rnrs) =)
-          (only (mlir Transforms GreedyPatternRewriteDriver) mlir::applyPatternsGreedily)
-          (only (mlir IR PatternMatch) with-RewritePatternSet)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
           (crest)
@@ -643,19 +641,34 @@ functions, type predicates, constants — no CREST macros required.
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
-        (with-RewritePatternSet ps (ctx)
-          (add-rewrite-pattern ps "root.op-name" my-pattern 10)
-          (mlir::applyPatternsGreedily module-op ps))))))
+        (apply-patterns module-op ctx
+          :patterns (("root.op-name" my-pattern 10)))))))
 ```
 
-`add-rewrite-pattern` arguments:
+`apply-patterns` makes the `RewritePatternSet`, registers the patterns, runs the greedy driver on
+the root op, frees the set, and returns `#t` on success or `#f` on failure. Keys, all optional:
 
-| Argument | Description |
+| Key | Value |
 |---|---|
-| `pattern-set` | The `RewritePatternSet` to register into |
-| `root-op-name` | String — the op name this pattern is dispatched on (e.g. `"hip.quantize_linear"`) |
-| `pattern-fn` | The pattern function defined by `define-rewrite-pattern` |
-| `benefit` | Integer — higher benefit patterns are tried first; use `1` when there is no ordering concern |
+| `:patterns` | A list of `(root-op-name pattern-fn [benefit])` entries. `root-op-name` is the op the pattern is dispatched on (e.g. `"hip.quantize_linear"`), `pattern-fn` is defined by `define-rewrite-pattern`, `benefit` is an integer (higher is tried first, default `1`) |
+| `:populate` | A procedure of the pattern set, or a list of them; runs after `:patterns`. Use it to keep a table next to its patterns (see `define-pattern-set`) |
+
+Mistakes in the form (unknown or repeated key, key without a value, malformed entry) are reported
+when the library compiles.
+
+`define-pattern-set` defines such a procedure from a table, so a library can export its patterns
+and a pass can say `:populate`:
+
+```scheme
+(define-pattern-set my:patterns
+  ("root.op-name" my-pattern 10)
+  ("root.other"   other-pattern))
+
+(apply-patterns module-op ctx :populate (list my:patterns))
+```
+
+`add-rewrite-pattern` (in `(mlir Transforms DialectConversion)`) is the underlying call, for code
+that fills a set by hand inside `:populate` or `with-RewritePatternSet`.
 
 ### Dialect conversion pass
 

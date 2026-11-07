@@ -18,7 +18,6 @@
         (mlir IR Operation)
         (mlir IR OperationSupport)
         (mlir IR BuiltinOps)
-        (mlir IR PatternMatch)
         (mlir IR Value)
         (mlir IR BuiltinTypes)
         (mlir IR Block)
@@ -26,7 +25,6 @@
         (mlir IR Builders)
         (mlir IR BuiltinAttributes)
         (only (mlir IR OpImplementation) mlir::StringAttr::getValue)
-        (mlir Transforms GreedyPatternRewriteDriver)
         (mlir Pass PassManager)
         (mlir Transforms Passes)
         (mlir Dialect Affine Transforms Passes)
@@ -45,6 +43,7 @@
         (toy ch7 ast)
         (toy ch7 toy)
         (toy ch7 mlir-gen)
+        (only (crest patterns) apply-patterns)
         (toy ch7 combine)
         (toy ch7 shape-inference)
         (toy ch7 lower-to-affine)
@@ -180,9 +179,7 @@
   ;; Ch7: fold struct_access(struct_constant,...) before shape inference,
   ;; then erase dead struct_constant ops.
   (with-current-MLIRContext ctx
-    (with-RewritePatternSet patterns (ctx)
-      (toy:add-canonicalization-patterns! patterns)
-      (mlir::applyPatternsGreedily module-op patterns)))
+    (apply-patterns module-op ctx :populate toy:add-canonicalization-patterns!))
   (let ([dead-struct-constants '()])
     (mlir::Operation::walk module-op
                            (lambda (op)
@@ -193,14 +190,10 @@
                                      (cons op dead-struct-constants)))))
     (for-each mlir::Operation::erase dead-struct-constants))
   (with-current-MLIRContext ctx
-    (with-RewritePatternSet patterns (ctx)
-      (toy:add-shape-inference-patterns! patterns)
-      (mlir::applyPatternsGreedily module-op patterns)))
+    (apply-patterns module-op ctx :populate toy:add-shape-inference-patterns!))
   (toy:check-shapes-inferred! module-op)
   (with-current-MLIRContext ctx
-    (with-RewritePatternSet patterns (ctx)
-      (toy:add-canonicalization-patterns! patterns)
-      (mlir::applyPatternsGreedily module-op patterns)))
+    (apply-patterns module-op ctx :populate toy:add-canonicalization-patterns!))
   ;; Steps 2-4: Affine lowering (same as ch5).
   (when (or emit-affine? emit-llvm?)
     (%%toy-to-affine-lower! module-op ctx)

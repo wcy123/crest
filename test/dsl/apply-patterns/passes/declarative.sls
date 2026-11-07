@@ -1,6 +1,5 @@
 #!r6rs
-;; The same rewrite written with apply-patterns, which does not exist yet, so this library does
-;; not compile.
+;; The same rewrite written with apply-patterns.
 (library (passes declarative)
   (export run-pass)
   (import (except (rnrs) =)

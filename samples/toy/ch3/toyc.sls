@@ -10,12 +10,11 @@
         (mlir IR MLIRContext)
         (mlir IR Operation)
         (mlir IR BuiltinOps)
-        (mlir IR PatternMatch)
-        (mlir Transforms GreedyPatternRewriteDriver)
         (toy ch3 parser)
         (toy ch3 ast)
         (toy ch3 toy)
         (toy ch3 mlir-gen)
+        (only (crest patterns) apply-patterns)
         (toy ch3 combine))
 
 (define (main)
@@ -54,9 +53,7 @@
     (let ([op (%%module-op->op module-op)])
       (when opt?
         (with-current-MLIRContext ctx
-          (with-RewritePatternSet patterns (ctx)
-            (toy:add-canonicalization-patterns! patterns)
-            (mlir::applyPatternsGreedily op patterns))))
+          (apply-patterns op ctx :populate toy:add-canonicalization-patterns!)))
       (display (mlir::Operation::print op))
       (newline))))
 
