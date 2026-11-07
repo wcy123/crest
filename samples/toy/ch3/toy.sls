@@ -3,7 +3,7 @@
 ;;         mlir/examples/toy/Ch3/include/toy/Dialect.h
 ;;         mlir/examples/toy/Ch3/include/toy/Ops.td
 ;;
-;; Ch3 adds no new ops vs Ch2, but adds custom assembly formats.
+;; Ch3 adds no new ops vs Ch2, but the canonicalization patterns of transpose and reshape.
 ;; Canonicalization patterns live in combine.sls.
 (library (toy ch3 toy)
   (export toy)
