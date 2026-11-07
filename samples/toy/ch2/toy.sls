@@ -136,6 +136,7 @@
     ;; ConstantOp — tensor constant from a dense attribute
     (define-op constant
       :summary    "constant tensor"
+      :traits     (pure)
       :attributes ((value %%f64-elements-attr?))
       :results    ((output %%f64-tensor?))
       (:verify (op) (%%verify-constant op)))
@@ -182,7 +183,7 @@
     ;; ReturnOp — return from a toy function
     (define-op return
       :summary    "return from toy.func"
-      :traits     (terminator (has-parent "toy.func"))
+      :traits     (terminator pure (has-parent "toy.func"))
       (:verify (op) (%%verify-return op)))
 
     ;; PrintOp — print a tensor to stdout

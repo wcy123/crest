@@ -102,7 +102,7 @@ void registerTransformsDialectConversionBindings() {
       "crest::DialectConversion::addConversionPattern",
       (void*)+[](uint64_t patterns_ptr, const char* op_name, ptr callback,
                  uint64_t type_converter_ptr, int benefit) -> void {
-        auto& patterns = crest::CrestBox<mlir::RewritePatternSet>::inner(
+        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
             patterns_ptr, "crest::DialectConversion::addConversionPattern");
         auto& typeConverter = crest::CrestBox<mlir::TypeConverter>::inner(
             type_converter_ptr,
@@ -119,7 +119,7 @@ void registerTransformsDialectConversionBindings() {
       "crest::DialectConversion::addConversionPattern/ctx",
       (void*)+[](uint64_t patterns_ptr, const char* op_name, ptr callback,
                  int benefit) -> void {
-        auto& patterns = crest::CrestBox<mlir::RewritePatternSet>::inner(
+        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
             patterns_ptr, "crest::DialectConversion::addConversionPattern/ctx");
         mlir_support_logging_info(
             (std::string("Registering Scheme pattern (no TC) for ") + op_name)
@@ -132,7 +132,7 @@ void registerTransformsDialectConversionBindings() {
       "crest::DialectConversion::addRewritePattern",
       (void*)+[](uint64_t patterns_ptr, const char* op_name, ptr callback,
                  int benefit) -> void {
-        auto& patterns = crest::CrestBox<mlir::RewritePatternSet>::inner(
+        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
             patterns_ptr, "crest::DialectConversion::addRewritePattern");
         crest::LockedSchemeObject lockedCallback(callback);
         mlir_support_logging_info(
@@ -302,7 +302,7 @@ void registerTransformsDialectConversionBindings() {
         auto& target = crest::CrestBox<mlir::ConversionTarget>::inner(
             target_ptr,
             "mlir_transforms_dialect_conversion_apply_full_conversion");
-        auto& patterns = crest::CrestBox<mlir::RewritePatternSet>::inner(
+        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
             patterns_ptr,
             "mlir_transforms_dialect_conversion_apply_full_conversion");
         return mlir::succeeded(mlir::applyFullConversion(module, target,
@@ -313,7 +313,7 @@ void registerTransformsDialectConversionBindings() {
   Sregister_symbol(
       "mlir::populateFunctionOpInterfaceTypeConversionPattern<FuncOp>",
       (void*)+[](uint64_t patterns_ptr, uint64_t converter_ptr) -> void {
-        auto& patterns = crest::CrestBox<mlir::RewritePatternSet>::inner(
+        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
             patterns_ptr,
             "mlir::populateFunctionOpInterfaceTypeConversionPattern<FuncOp>");
         auto& converter = crest::CrestBox<mlir::TypeConverter>::inner(
@@ -434,7 +434,7 @@ void registerTransformsDialectConversionBindings() {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto& target = crest::CrestBox<mlir::ConversionTarget>::inner(
             target_ptr, "mlir::applyPartialConversion");
-        auto& patterns = crest::CrestBox<mlir::RewritePatternSet>::inner(
+        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
             patterns_ptr, "mlir::applyPartialConversion");
         return mlir::succeeded(mlir::applyPartialConversion(
                    op, target, std::move(patterns)))

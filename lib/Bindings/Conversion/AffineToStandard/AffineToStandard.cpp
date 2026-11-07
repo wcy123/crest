@@ -19,7 +19,7 @@ void registerConversionAffineToStandardBindings() {
   Sregister_symbol(
       "mlir::populateAffineToStdConversionPatterns",
       (void*)+[](uint64_t patterns_ptr) -> void {
-        auto& patterns = crest::CrestBox<mlir::RewritePatternSet>::inner(
+        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
             patterns_ptr, "mlir::populateAffineToStdConversionPatterns");
         mlir::populateAffineToStdConversionPatterns(patterns);
       });

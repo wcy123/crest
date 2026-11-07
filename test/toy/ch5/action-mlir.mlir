@@ -16,6 +16,7 @@
 // CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = toy.generic_call @multiply_transpose(%{{[a-zA-Z0-9_]+}}, %{{[a-zA-Z0-9_]+}}) : (tensor<2x3xf64>, tensor<2x3xf64>) -> tensor<*xf64>
 // CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = toy.generic_call @multiply_transpose(%{{[a-zA-Z0-9_]+}}, %{{[a-zA-Z0-9_]+}}) : (tensor<*xf64>, tensor<*xf64>) -> tensor<*xf64>
 // CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = toy.generic_call @multiply_transpose(%{{[a-zA-Z0-9_]+}}, %{{[a-zA-Z0-9_]+}}) : (tensor<2x3xf64>, tensor<*xf64>) -> tensor<*xf64>
+// CHECK-NEXT:     toy.print %{{[a-zA-Z0-9_]+}} : tensor<*xf64>
 // CHECK-NEXT:     toy.return
 // CHECK-NEXT:   }
 // CHECK-NEXT: }

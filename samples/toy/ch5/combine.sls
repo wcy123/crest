@@ -8,7 +8,8 @@
 ;;   RedundantReshape            — reshape(x) → x  when types are identical
 ;;   FoldConstantReshape         — reshape(constant(x)) → constant(x')
 (library (toy ch5 combine)
-  (export toy:add-canonicalization-patterns!)
+  (export toy:add-transpose-canonicalization-patterns!
+          toy:add-reshape-canonicalization-patterns!)
   (import (except (rnrs) =)
           (only (mlir IR Value)
                 mlir::Value::getDefiningOp
@@ -60,11 +61,14 @@
       (value : new-attr)
       -> !out-type)
 
-  ;; The patterns, as a set a pass can register with :populate.
-  (define-pattern-set toy:add-canonicalization-patterns!
-    ("toy.transpose" %%simplify-redundant-transpose 1)
+  ;; The patterns each op brings (hasCanonicalizer in the C++ Ops.td); the ops register them with
+  ;; :get-canonicalization-patterns in toy.sls, so the canonicalizer finds them.
+  (define-pattern-set toy:add-transpose-canonicalization-patterns!
+    ("toy.transpose" %%simplify-redundant-transpose 1))
+
+  (define-pattern-set toy:add-reshape-canonicalization-patterns!
     ("toy.reshape" %%reshape-reshape 1)
-    ("toy.reshape" %%redundant-reshape 2)
+    ("toy.reshape" %%redundant-reshape 1)
     ("toy.reshape" %%fold-constant-reshape 1))
 
   ) ;; end library (toy ch5 combine)

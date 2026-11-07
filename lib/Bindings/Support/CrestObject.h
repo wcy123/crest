@@ -115,6 +115,17 @@ private:
   T* ptr_;
 };
 
+// A T& from either kind of shell a Scheme program can hold for T: the
+// CrestBox<T> it made itself or the CrestBox<T*> that borrows an object MLIR
+// owns (as the pattern set a dialect's :get-canonicalization-patterns hook
+// receives).
+template <typename T> T& as_ref(uint64_t addr, const char* who) {
+  if (addr && reinterpret_cast<CrestObject*>(addr)->isa<CrestBox<T*>>()) {
+    return CrestBox<T*>::inner(addr, who);
+  }
+  return CrestBox<T>::inner(addr, who);
+}
+
 void registerCrestObjectBindings();
 
 } // namespace crest

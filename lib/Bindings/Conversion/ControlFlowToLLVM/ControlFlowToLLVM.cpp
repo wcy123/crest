@@ -22,7 +22,7 @@ void registerConversionControlFlowToLLVMBindings() {
       (void*)+[](uint64_t tc_ptr, uint64_t patterns_ptr) -> void {
         auto& tc = crest::CrestBox<mlir::LLVMTypeConverter>::inner(
             tc_ptr, "mlir::cf::populateControlFlowToLLVMConversionPatterns");
-        auto& patterns = crest::CrestBox<mlir::RewritePatternSet>::inner(
+        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
             patterns_ptr,
             "mlir::cf::populateControlFlowToLLVMConversionPatterns");
         mlir::cf::populateControlFlowToLLVMConversionPatterns(tc, patterns);
@@ -35,7 +35,7 @@ void registerConversionControlFlowToLLVMBindings() {
       (void*)+[](uint64_t tc_ptr, uint64_t patterns_ptr) -> void {
         auto& tc = crest::CrestBox<mlir::LLVMTypeConverter>::inner(
             tc_ptr, "mlir::cf::populateAssertToLLVMConversionPattern");
-        auto& patterns = crest::CrestBox<mlir::RewritePatternSet>::inner(
+        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
             patterns_ptr, "mlir::cf::populateAssertToLLVMConversionPattern");
         mlir::cf::populateAssertToLLVMConversionPattern(tc, patterns);
       });

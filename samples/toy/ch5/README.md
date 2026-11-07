@@ -38,7 +38,7 @@ lowering reads as the IR it produces.
 
 1. **Inline** — MLIR's inliner pass, as in Ch4
 2. **Shape inference** — rewrite patterns (`shape-inference.sls`), as in Ch4
-3. **Canonicalize** — greedy rewrite (Ch3/Ch4 patterns)
+3. **Canonicalize + CSE** — nested on `toy.func` (Ch3/Ch4 patterns, dead ops, common subexpressions)
 4. **Partial lowering** — Scheme-level `%%toy-to-affine-lower!`
 5. **Canonicalize + CSE** — on `func.func` bodies
 6. **(--opt only)** Loop fusion + affine scalar replacement on `func.func`

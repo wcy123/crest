@@ -22,7 +22,7 @@ void registerConversionMemRefToLLVMBindings() {
       (void*)+[](uint64_t tc_ptr, uint64_t patterns_ptr) -> void {
         auto& tc = crest::CrestBox<mlir::LLVMTypeConverter>::inner(
             tc_ptr, "mlir::populateFinalizeMemRefToLLVMConversionPatterns");
-        auto& patterns = crest::CrestBox<mlir::RewritePatternSet>::inner(
+        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
             patterns_ptr,
             "mlir::populateFinalizeMemRefToLLVMConversionPatterns");
         mlir::populateFinalizeMemRefToLLVMConversionPatterns(tc, patterns);

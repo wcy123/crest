@@ -12,7 +12,7 @@ translated to LLVM IR, or executed directly with the MLIR `ExecutionEngine`.
 | Actions | `ast`, `mlir`, `mlir-affine` | + `mlir-llvm`, `llvm`, `jit` |
 | `toy.print` | kept as-is (operand now a memref) | lowered to `scf.for` nest + `llvm.call @printf` |
 | Lowering target | Affine+Arith+MemRef+Func | LLVM dialect only |
-| Post-lowering passes | canonicalize + CSE | + `ReconcileUnrealizedCasts` + `DIScopeForLLVMFuncOp` |
+| Post-lowering passes | canonicalize + CSE | + `DIScopeForLLVMFuncOp` |
 | Backends | — | LLVM IR translation, JIT (`ExecutionEngine`) |
 
 `lower-to-affine.sls` is unchanged from Ch5 (only the library name differs).
@@ -73,7 +73,7 @@ by the same conversion; nothing in this chapter needs a second pass.
 
 1. **Inline** — MLIR's inliner pass, which also drops the private functions
 2. **Shape inference** — rewrite patterns (`shape-inference.sls`), as in Ch4
-3. **Canonicalize** — greedy rewrite (Ch3/Ch4 patterns)
+3. **Canonicalize + CSE** — nested on `toy.func` (Ch3/Ch4 patterns, dead ops, common subexpressions)
 4. **Affine lowering** — `%%toy-to-affine-lower!`, then canonicalize + CSE on
    `func.func`; with `--opt`, also loop fusion + affine scalar replacement
 5. **LLVM lowering** — `%%toy-to-llvm-lower!`
