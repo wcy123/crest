@@ -10,7 +10,7 @@ on:
     inputs:
       llvm_tag:
         description: "llvm-project tag to build"
-        default: "llvmorg-23.1.6"
+        default: "llvmorg-23.1.5"
       install_dir:
         description: "install prefix"
         default: 'C:\Develop\local\llvm-23-mlir'
