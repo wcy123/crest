@@ -802,6 +802,22 @@ Methods not listed use the default C++ concept implementation.
                   (mlir::Operation::setAttr! self "function_type" attr)))))
 ```
 
+The op interfaces a Scheme op can implement: `FunctionOpInterface` (which also brings
+`SymbolOpInterface`, `CallableOpInterface` and `ArgAndResultAttrsOpInterface`), `CallableOpInterface`,
+`SymbolOpInterface`, `ArgAndResultAttrsOpInterface` and `CallOpInterface`. For `CallOpInterface`
+the callee is the op's `callee` attribute (a symbol reference, or a string naming one) and the
+arguments are all its operands; it takes no method clauses (a clause is an error):
+
+```scheme
+(define-op call
+  :results    ((output mlir::Value?))
+  :interfaces ((mlir::CallOpInterface)))
+```
+
+With `FunctionOpInterface` on the function op, `CallOpInterface` on the call op, the dialect's
+`DialectInlinerInterface` and a terminator (`:traits (terminator)`, LLVM 23), MLIR's own `--inline`
+pass inlines calls in a Scheme dialect (`test/dsl/call-op-interface`).
+
 ### Dialect-level `:interfaces`
 
 A dialect can implement MLIR dialect interfaces (like `mlir::DialectInlinerInterface`)

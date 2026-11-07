@@ -131,8 +131,12 @@ crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
       getOrCreateConcept<mlir::SymbolOpInterface>(op_name);
   data->implArgAndResultAttrsOpInterface =
       getOrCreateConcept<mlir::ArgAndResultAttrsOpInterface>(op_name);
-  data->implCallableOpInterface =
-      getOrCreateConcept<mlir::CallableOpInterface>(op_name);
+  auto* callable = getOrCreateConcept<mlir::CallableOpInterface>(op_name);
+  // CallableOpInterface extends ArgAndResultAttrsOpInterface: MLIR's inliner
+  // calls through the base, so it must point at this op's concept.
+  callable->implArgAndResultAttrsOpInterface =
+      data->implArgAndResultAttrsOpInterface;
+  data->implCallableOpInterface = callable;
 
   if (getFunctionType.get() != Sfalse) {
     data->get_function_type = crest::LockedSchemeObject(getFunctionType.get());

@@ -211,24 +211,13 @@ designed if it did. The reason a dialect needs a custom implementation:
 - **Post-replacement side effects** — symbol-table updates, cache
   invalidation, or runtime notifications after use redirection.
 
-## How `toy.return` Is Recognised as a Terminator
+## `toy.return` as a Terminator
 
-`toy.return` has no `IsTerminator` trait — CREST's `define-op` DSL does not
-yet support a `:traits` clause. Despite this, `Block::mightHaveTerminator()`
-does not assert:
-
-```cpp
-// mlir/include/mlir/IR/OperationSupport.h
-bool mightHaveTrait(TypeID traitID) const {
-  return !isRegistered() || getImpl()->hasTrait(traitID);
-}
-```
-
-CREST dynamic ops are not in MLIR's standard op registry (`isRegistered()`
-returns `false`), so `mightHaveTrait` conservatively returns `true` for all
-of them. `Block::getTerminator()` therefore passes its assertion and returns
-`&back()` — the last op by position.
-
-`toy.return` works as a terminator by convention: it is always written last
-in a block. The correct fix is to register `IsTerminator` via a `:traits`
-clause once the DSL supports it.
+`toy.return` has no `IsTerminator` trait, because the Toy dialect is written for LLVM 22 and 23
+and `define-op :traits (terminator)` needs `DynamicOpDefinition::addTrait`, which only LLVM 23 has.
+Scheme dialects are registered ops, so MLIR does not guess: on any LLVM the verifier rejects a
+block that ends in an op without the trait ("block with no terminator"). The Toy tools never
+verify the IR they build, so this does not show. It is also why MLIR's inliner pass is not used here:
+it verifies. With `:traits (terminator)` on `toy.return` (LLVM 23), and `CallOpInterface` on
+`toy.generic_call` (available now), `--inline` works on a Scheme dialect: see
+`test/dsl/call-op-interface`.

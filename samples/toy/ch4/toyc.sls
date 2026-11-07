@@ -108,8 +108,8 @@
 ;; Scheme-level function inliner for toy.generic_call ops.
 ;; Replaces each call with a clone of the callee's body, substituting
 ;; block arguments with the actual call arguments. It is not MLIR's inliner pass: that needs the
-;; call interfaces on toy.generic_call and toy.func and a terminator trait on toy.return, which a
-;; Scheme dialect cannot declare before LLVM 23 (lib/Crest/TraitStub.cpp).
+;; a terminator trait on toy.return (:traits (terminator)), which exists only on LLVM 23, and this
+;; tutorial also builds on LLVM 22.
 ;; ---------------------------------------------------------------------------
 
 (define (%%inline-calls! module-op ctx)

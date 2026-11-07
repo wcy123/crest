@@ -2,6 +2,7 @@
 ;; Mirrors mlir/Interfaces/CallInterfaces.h
 (library (mlir Interfaces CallInterfaces)
   (export mlir::CallableOpInterface
+          mlir::CallOpInterface
           mlir::ArgAndResultAttrsOpInterface
           mlir::CallableOpInterface::getCallableRegion
           mlir::ArgAndResultAttrsOpInterface::getArgAttrsAttr
@@ -10,6 +11,7 @@
           (mlir Interfaces CallInterfaces ffi))
 
   (define mlir::CallableOpInterface %mlir::CallableOpInterface)
+  (define mlir::CallOpInterface %mlir::CallOpInterface)
   (define mlir::ArgAndResultAttrsOpInterface %mlir::ArgAndResultAttrsOpInterface)
 
   (define (mlir::CallableOpInterface::getCallableRegion op)

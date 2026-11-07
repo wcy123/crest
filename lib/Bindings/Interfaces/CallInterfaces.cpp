@@ -13,6 +13,7 @@
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/IR/Region.h"
+#include "mlir/IR/SymbolTable.h"
 #include "mlir/IR/Types.h"
 #include "mlir/Interfaces/CallInterfaces.h"
 #include <cassert>
@@ -56,6 +57,68 @@ struct CallableConceptData : public mlir::CallableOpInterface::Concept {
     assert(other.get_argument_types.get() == Sfalse);
     assert(other.get_result_types.get() == Sfalse);
   }
+};
+
+// A call op's callee is its "callee" attribute, a symbol reference or (as in
+// Toy) a string naming one; its arguments are all of its operands.
+struct CallConceptData : public mlir::CallOpInterface::Concept {
+  using Concept = mlir::CallOpInterface::Concept;
+
+  CallConceptData()
+      : Concept{
+            [](const Concept*,
+               mlir::Operation* op) -> mlir::CallInterfaceCallable {
+              mlir::Attribute callee = op->getAttr("callee");
+              if (auto ref =
+                      llvm::dyn_cast_or_null<mlir::SymbolRefAttr>(callee)) {
+                return ref;
+              }
+              if (auto name =
+                      llvm::dyn_cast_or_null<mlir::StringAttr>(callee)) {
+                return mlir::SymbolRefAttr::get(name);
+              }
+              return mlir::CallInterfaceCallable();
+            },
+            [](const Concept*, mlir::Operation* op,
+               mlir::CallInterfaceCallable callee) {
+              auto ref = llvm::dyn_cast_if_present<mlir::SymbolRefAttr>(callee);
+              if (!ref) {
+                return;
+              }
+              if (llvm::isa_and_nonnull<mlir::StringAttr>(
+                      op->getAttr("callee"))) {
+                op->setAttr("callee", ref.getRootReference());
+              } else {
+                op->setAttr("callee", ref);
+              }
+            },
+            [](const Concept*, mlir::Operation* op)
+                -> mlir::Operation::operand_range { return op->getOperands(); },
+            [](const Concept*,
+               mlir::Operation* op) -> mlir::MutableOperandRange {
+              return mlir::MutableOperandRange(op);
+            },
+            [](const Concept* self, mlir::Operation* op,
+               mlir::SymbolTableCollection* table) -> mlir::Operation* {
+              mlir::CallInterfaceCallable callable =
+                  self->getCallableForCallee(self, op);
+              if (auto value =
+                      llvm::dyn_cast_if_present<mlir::Value>(callable)) {
+                return value.getDefiningOp();
+              }
+              auto ref =
+                  llvm::dyn_cast_if_present<mlir::SymbolRefAttr>(callable);
+              if (!ref) {
+                return nullptr;
+              }
+              return table
+                         ? table->lookupNearestSymbolFrom(op, ref)
+                         : mlir::SymbolTable::lookupNearestSymbolFrom(op, ref);
+            },
+            [](const Concept* self, mlir::Operation* op) -> mlir::Operation* {
+              return self->resolveCallableInTable(self, op, nullptr);
+            },
+        } {}
 };
 
 struct ArgAndResultAttrsConceptData
@@ -116,6 +179,15 @@ SupportedInterfaces<mlir::CallableOpInterface>::getOrCreateDefaultConcept() {
 }
 
 template <>
+mlir::CallOpInterface::Concept*
+SupportedInterfaces<mlir::CallOpInterface>::getOrCreateDefaultConcept() {
+  static mlir::CallOpInterface::Concept* ptr = [] {
+    return getOrCreateDefaultConcept(std::make_unique<CallConceptData>());
+  }();
+  return ptr;
+}
+
+template <>
 mlir::ArgAndResultAttrsOpInterface::Concept* SupportedInterfaces<
     mlir::ArgAndResultAttrsOpInterface>::getOrCreateDefaultConcept() {
   static mlir::ArgAndResultAttrsOpInterface::Concept* ptr = [] {
@@ -133,6 +205,15 @@ SupportedInterfaces<mlir::CallableOpInterface>::CloneConcept(
   auto new_data = std::make_unique<CallableConceptData>(*src);
   return std::shared_ptr<void>(new_data.release(), [](void* p) {
     delete static_cast<CallableConceptData*>(p);
+  });
+}
+
+template <>
+std::shared_ptr<void> SupportedInterfaces<mlir::CallOpInterface>::CloneConcept(
+    const mlir::CallOpInterface::Concept* from) {
+  const auto* src = static_cast<const CallConceptData*>(from);
+  return std::shared_ptr<void>(new CallConceptData(*src), [](void* p) {
+    delete static_cast<CallConceptData*>(p);
   });
 }
 
@@ -164,6 +245,8 @@ SupportedInterfaces<mlir::CallableOpInterface>::CreateConcept(ptr dispatcher) {
       scheme_call(dispatcher, Sstring_to_symbol("getResultTypes")));
 
   auto data = std::make_unique<CallableConceptData>();
+  data->implArgAndResultAttrsOpInterface =
+      getOrCreateConcept<mlir::ArgAndResultAttrsOpInterface>(op_name);
 
   if (getCallableRegion.get() != Sfalse) {
     data->get_callable_region =
@@ -210,6 +293,26 @@ SupportedInterfaces<mlir::CallableOpInterface>::CreateConcept(ptr dispatcher) {
 }
 
 template <>
+mlir::CallOpInterface::Concept*
+SupportedInterfaces<mlir::CallOpInterface>::CreateConcept(ptr dispatcher) {
+  crest::LockedSchemeObject locked_dispatcher(dispatcher);
+  std::string op_name = Conversion<ptr, std::string>{}(
+      scheme_call(dispatcher, Sstring_to_symbol("operation_name")));
+
+  auto data = std::make_unique<CallConceptData>();
+  data->implArgAndResultAttrsOpInterface =
+      getOrCreateConcept<mlir::ArgAndResultAttrsOpInterface>(op_name);
+
+  CallConceptData* raw = data.get();
+  RegisterInterfaceForOp(mlir::CallOpInterface::getInterfaceID(), op_name,
+                         std::shared_ptr<void>(data.release(), [](void* p) {
+                           delete static_cast<CallConceptData*>(p);
+                         }));
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+  return reinterpret_cast<mlir::CallOpInterface::Concept*>(raw);
+}
+
+template <>
 mlir::ArgAndResultAttrsOpInterface::Concept*
 SupportedInterfaces<mlir::ArgAndResultAttrsOpInterface>::CreateConcept(
     ptr dispatcher) {
@@ -231,11 +334,17 @@ SupportedInterfaces<mlir::ArgAndResultAttrsOpInterface>::CreateConcept(
 
 void registerInterfacesCallInterfacesBindings() {
   SupportedInterfaces<mlir::CallableOpInterface>::getOrCreateDefaultConcept();
+  SupportedInterfaces<mlir::CallOpInterface>::getOrCreateDefaultConcept();
   SupportedInterfaces<
       mlir::ArgAndResultAttrsOpInterface>::getOrCreateDefaultConcept();
   Sregister_symbol(
       "mlir::CallableOpInterface", (void*)+[](ptr dispatcher) {
         crest::SupportedInterfaces<mlir::CallableOpInterface>::CreateConcept(
+            dispatcher);
+      });
+  Sregister_symbol(
+      "mlir::CallOpInterface", (void*)+[](ptr dispatcher) {
+        crest::SupportedInterfaces<mlir::CallOpInterface>::CreateConcept(
             dispatcher);
       });
   Sregister_symbol(
