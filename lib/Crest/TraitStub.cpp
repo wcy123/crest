@@ -2,23 +2,22 @@
  * Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
  * Licensed under the MIT License.
  */
-// Stub for DynamicOpTrait / addTrait — LLVM version is too old.
-// Registers crest::add-op-trait! as a function that always errors,
-// so Scheme code gets a clear diagnostic at runtime instead of a crash.
+// Stand-in for Trait.cpp on LLVM before 23, which has no
+// DynamicOpDefinition::addTrait. A dialect that asks for traits gets a clear
+// error instead of silently losing them.
 
-#include "../Bindings/Support/SchemeWrapper.h"
+#include "Trait.h"
 
 namespace crest {
 
-void registerCrestTraitBindings() {
-  Sregister_symbol(
-      "crest::add-op-trait!",
-      (void*)+[](uint64_t, const char* trait_name) -> void {
-        scheme_error("crest::add-op-trait!",
-                     "DynamicOpDefinition::addTrait() requires LLVM 23+; "
-                     "requested trait: ",
-                     trait_name);
-      });
+std::string addOpTraits(mlir::DynamicOpDefinition&,
+                        llvm::ArrayRef<std::string> names) {
+  if (names.empty()) {
+    return "";
+  }
+  return "define-op :traits requires LLVM 23+ (DynamicOpDefinition::addTrait); "
+         "requested trait: " +
+         names.front();
 }
 
 } // namespace crest

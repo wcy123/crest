@@ -11,6 +11,9 @@
 #ifndef CREST_OP_H
 #define CREST_OP_H
 
+#include <string>
+#include <vector>
+
 #include "../Bindings/Support/LockedSchemeObject.h"
 #include "mlir/IR/ExtensibleDialect.h"
 #include <optional>
@@ -36,6 +39,7 @@ public:
     std::optional<LockedSchemeObject> fold;                          // 4
     std::optional<LockedSchemeObject> get_canonicalization_patterns; // 5
     std::optional<LockedSchemeObject> populate_default_attrs;        // 6
+    std::vector<std::string> traits;                                 // 7
   };
 
   /// Build a DynamicOpDefinition from the callbacks and register it into

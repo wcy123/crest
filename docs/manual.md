@@ -768,11 +768,22 @@ The op's full MLIR name is `dialect-name.op-name` (e.g. `toy.constant`).
 | `(:print (op printer name) body ...)` | Custom assembly printer |
 | `(:verify (op) body ...)` | Extra verifier called after attribute/type checks |
 | `(:fold (op) body ...)` | Constant-fold hook; return `#t` if folded |
+| `:traits (name ...)` | MLIR traits of the op (needs LLVM 23; see below) |
 
 **Type predicates** in `:operands`, `:attributes`, `:results` are Scheme
 procedures called at verification time. For example:
 - `:results ((output mlir::isa<RankedTensorType>?))` — result must be ranked
 - `:operands ((lhs mlir::Value))` — any non-null value (`mlir::Value` is `(lambda (v) (not (zero? v)))`)
+
+### Op traits
+
+`:traits (terminator)` attaches MLIR traits to the op through `DynamicOpDefinition::addTrait`, so
+the verifier and passes see them: a block must end in an op with `terminator`, unless the parent has
+`no-terminator`. The names are CREST's, listed in one table in `lib/Crest/Trait.cpp`:
+`terminator`, `no-terminator`, `commutative`, `zero-operands`, `zero-results`, `zero-regions`,
+`same-operands-and-result-type`. A non-list value is reported when the library compiles; an unknown or
+repeated name when the dialect loads. Before LLVM 23 `addTrait` does not exist, and a dialect that asks
+for a trait fails to load with a message saying so; samples that must run on both do not use it yet.
 
 ### Op-level `:interfaces`
 

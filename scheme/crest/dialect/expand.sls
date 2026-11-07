@@ -51,11 +51,12 @@
 
   ;; ── Registration generators ────────────────────────────────────────────────
 
-  ;; 7-slot op-callbacks vector (verify inlined, rest forwarded verbatim).
+  ;; 8-slot op-callbacks vector (verify inlined, rest forwarded verbatim; slot 7 is the
+  ;; list of trait names, '() when there are none).
   (define (%%op-cbs ctx full-name op)
     (let* ([cbs (op-parse-op-cbs op)]
-           [v   (list->vector (map (lambda (i) (or (vector-ref cbs i) #'#f))
-                                   '(0 1 2 3 4 5 6)))])
+           [v   (list->vector (map (lambda (i) (or (vector-ref cbs i) (if (= i 7) #''() #'#f)))
+                                   '(0 1 2 3 4 5 6 7)))])
       (vector-set! v 0 (generate-op-verify-slot ctx full-name op (vector-ref cbs 0)))
       (vector->list v)))
 

@@ -98,7 +98,7 @@
   ;;   operands   — list of operand-field records
   ;;   attributes — list of attribute-field records
   ;;   results    — list of result-field records
-  ;;   op-cbs     — 7-slot vector of Scheme callback syntax or #f (CrestOp slots):
+  ;;   op-cbs     — 8-slot vector of Scheme callback syntax or #f (CrestOp slots):
   ;;                  0  :verify                        (op) → bool
   ;;                  1  :verify-regions                (op) → bool
   ;;                  2  :parse                         (parser state) → bool
@@ -106,6 +106,7 @@
   ;;                  4  :fold                          (op) → bool
   ;;                  5  :get-canonicalization-patterns (pattern-set) → void
   ;;                  6  :populate-default-attrs        (op-name attrs) → void
+  ;;                  7  :traits                        (list "name" ...) of trait names
   ;; interfaces — list of interface-entry records (one per :interfaces entry).
   ;; Each interface-entry carries the interface name syntax and a list of
   ;; interface-method records for any overridden methods.  An empty methods list

@@ -12,7 +12,6 @@
 #include "../Crest/Dialect.h"
 #include "../Crest/InlinerInterface.h"
 #include "../Crest/Op.h"
-#include "../Crest/Trait.h"
 
 #include "Dialect/Affine/IR/AffineOps.h"
 #include "Dialect/Affine/Transforms/Passes.h"
@@ -94,7 +93,6 @@ void registerMlirForeignFunctions() {
   registerTransformsInliningUtilsBindings();
   registerPassPassManagerBindings();
   registerCrestDynamicOpBindings();
-  registerCrestTraitBindings();
   registerIRLocationBindings();
   registerIROpImplementationBindings();
   registerIRAffineExprBindings();
