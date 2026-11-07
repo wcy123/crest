@@ -19,7 +19,7 @@ translated to LLVM IR, or executed directly with the MLIR `ExecutionEngine`.
 
 ### Conversion patterns (`lower-to-llvm.sls`)
 
-`%%toy-to-llvm-lower!` is one `apply-conversion` (full mode) with an
+`toy:lower-to-llvm-pass` is a `define-pass` around one `apply-conversion` (full mode) with an
 `LLVMTypeConverter` (`:type-converter llvm`). The `llvm` dialect and `builtin.module` are legal; the
 `toy` dialect is illegal, so anything left over fails the conversion.
 
@@ -74,9 +74,9 @@ by the same conversion; nothing in this chapter needs a second pass.
 1. **Inline** — MLIR's inliner pass, which also drops the private functions
 2. **Shape inference** — rewrite patterns (`shape-inference.sls`), as in Ch4
 3. **Canonicalize + CSE** — nested on `toy.func` (Ch3/Ch4 patterns, dead ops, common subexpressions)
-4. **Affine lowering** — `%%toy-to-affine-lower!`, then canonicalize + CSE on
+4. **Affine lowering** — `toy:lower-to-affine-pass`, then canonicalize + CSE on
    `func.func`; with `--opt`, also loop fusion + affine scalar replacement
-5. **LLVM lowering** — `%%toy-to-llvm-lower!`
+5. **LLVM lowering** — `toy:lower-to-llvm-pass`
 6. **Cleanup** — `createReconcileUnrealizedCastsPass`, then
    `LLVM::createDIScopeForLLVMFuncOpPass`
 

@@ -776,6 +776,24 @@ procedures called at verification time. For example:
 - `:results ((output mlir::isa<RankedTensorType>?))` — result must be ranked
 - `:operands ((lhs mlir::Value))` — any non-null value (`mlir::Value` is `(lambda (v) (not (zero? v)))`)
 
+### `define-pass` — passes written in Scheme
+
+```scheme
+(define-pass (tag-functions op)       ; defines (tag-functions), which makes a new pass each call
+  (mlir::Operation::setAttr! op "tagged" (mlir::StringAttr::get (mlir::Operation::getContext op) "yes"))
+  #t)                                 ; #f fails the pass
+
+(with-PassManager pm (ctx)
+  (mlir::OpPassManager::addPass (mlir::PassManager::nest pm "func.func") (tag-functions))
+  (mlir::PassManager::run! pm module-op))
+```
+
+`op` is the operation the pass runs on (the `PassManager` decides: nested on `func.func` it runs on each
+function); the body returns `#f` to fail the pass, after saying why with `mlir::Operation::emitError`. The
+pass is an `mlir::Pass` (`lib/Crest/SchemePass.cpp`), so it mixes with C++ passes in one pipeline. Scheme
+is single-threaded: contexts made from Scheme have multithreading disabled; with `crest-opt` use
+`--mlir-disable-threading`. Toy's shape inference and its lowerings to affine and LLVM are passes.
+
 ### `define-type` — dialect types
 
 A dialect can define types of its own with `define-type` next to its ops. A type has a name and a list

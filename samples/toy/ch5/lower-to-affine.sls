@@ -11,7 +11,7 @@
 ;;   toy.return     → func.return (void only)
 ;;   toy.print      → operand update (tensor→memref; op kept)
 (library (toy ch5 lower-to-affine)
-  (export %%toy-to-affine-lower!)
+  (export toy:lower-to-affine-pass)
   (import (except (rnrs) =)
           (only (chezscheme) iota)
           (only (mlir IR Value)
@@ -53,6 +53,7 @@
           (only (mlir IR AffineMap) mlir::AffineMap::getMultiDimIdentityMap)
           (only (mlir IR Builders) with-InsertionGuard)
           (only (mlir support array-ref) crest::CArrayRef::at crest::CArrayRef::size)
+          (only (mlir IR MLIRContext) with-current-MLIRContext)
           (crest))
 
   ;;===--------------------------------------------------------------------===;;
@@ -285,5 +286,11 @@
                                  ("toy.func"      %%func-lower!)
                                  ("toy.return"    %%return-lower!)
                                  ("toy.print"     %%print-lower!))))
+
+  ;; ToyToAffineLoweringPass: partially lowers the toy dialect; fails when the conversion does.
+  (define-pass (toy:lower-to-affine-pass module)
+    (let ([ctx (mlir::Operation::getContext module)])
+      (with-current-MLIRContext ctx
+        (%%toy-to-affine-lower! module ctx))))
 
   ) ;; end library (toy ch5 lower-to-affine)
