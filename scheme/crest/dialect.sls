@@ -5,6 +5,7 @@
           register-dynamic-op!
           define-dialect
           define-op
+          define-type
           fold-attribute
           fold-value
           :name
@@ -118,6 +119,10 @@
     (lambda (stx)
       (syntax-violation 'define-op "define-op used outside define-dialect" stx)))
 
+  (define-syntax define-type
+    (lambda (stx)
+      (syntax-violation 'define-type "define-type used outside define-dialect" stx)))
+
   ;; define-dialect — define an MLIR dialect entirely in Scheme.
   ;; See docs/manual.md §7 "define-dialect reference" for full documentation,
   ;; clause reference, and worked examples.
@@ -164,7 +169,31 @@
         ;; cbs slot order matches CrestDialect::Callbacks — index set directly
         ;; avoids a secondary lookup at call time.
         (let ([ops '()]
+              [types '()]
               [cbs (make-vector 11 #f)])
+
+          ;; (define-type name clause ...): verify / parse / print of a dialect type, over its
+          ;; list of attribute parameters.
+          (define (parse-define-type name-stx clauses-stx)
+            (let ([tcbs (make-vector 3 #f)])
+              (let loop-type ([stx clauses-stx])
+                (syntax-case stx (:summary :description :verify :parse :print)
+                  [(:summary _ . rest)     (loop-type #'rest)]
+                  [(:description _ . rest) (loop-type #'rest)]
+                  [((:verify (params) body ...) . rest)
+                   (identifier? #'params)
+                   (begin (vector-set! tcbs 0 #'(lambda (params) body ...)) (loop-type #'rest))]
+                  [((:parse (parser) body ...) . rest)
+                   (identifier? #'parser)
+                   (begin (vector-set! tcbs 1 #'(lambda (parser) body ...)) (loop-type #'rest))]
+                  [((:print (printer params) body ...) . rest)
+                   (and (identifier? #'printer) (identifier? #'params))
+                   (begin (vector-set! tcbs 2 #'(lambda (printer params) body ...)) (loop-type #'rest))]
+                  [(bad . _)
+                   (syntax-violation 'define-type
+                                     "unknown clause: expected (:verify (params) ...), (:parse (parser) ...) or (:print (printer params) ...)"
+                                     #'bad)]
+                  [() (make-type-parse name-stx tcbs)]))))
 
           ;; Returns operand-field record.  type is kept as syntax so it resolves
           ;; correctly when used in generated verify code (a predicate, not a symbol).
@@ -331,11 +360,16 @@
                                          :verify-region-arg-attr
                                          :verify-region-result-attr
                                          :interfaces
-                                         define-op)
+                                         define-op define-type)
                 ;; :summary/:description accepted but produce no runtime effect —
                 ;; same placeholder role as in define-op.
                 [(:summary     _ . rest) (loop #'rest)]
                 [(:description _ . rest) (loop #'rest)]
+                [((define-type type-name . type-sub) . rest)
+                 (identifier? #'type-name)
+                 (begin
+                   (set! types (cons (parse-define-type #'type-name #'type-sub) types))
+                   (loop #'rest))]
                 [((define-op op-name . op-sub) . rest)
                  (identifier? #'op-name)
                  (begin
@@ -390,21 +424,29 @@
                                    "unrecognised clause — expected (define-op ...) or (:keyword (args) body ...)"
                                    #'bad)]
                 [()
-                 (make-dialect-parse dialect-id-stx (reverse ops) cbs dialect-ifaces)])))))
+                 (make-dialect-parse dialect-id-stx (reverse ops) cbs dialect-ifaces (reverse types))])))))
 
       (syntax-case stx ()
         [(_ dialect-id clause ...)
          (let* ([dialect      (parse-clauses #'(clause ...) #'dialect-id)]
                 [ops          (dialect-parse-ops dialect)]
+                [types        (dialect-parse-types dialect)]
                 [all-op-defs  (generate-all-op-defs #'dialect-id ops)]
+                [type-defs    (generate-type-defs #'dialect-id types
+                                                  #'%crest::DynamicType::get
+                                                  #'%crest::DynamicType::isa
+                                                  #'%crest::DynamicType::getParams)]
                 [reg-defs     (generate-register-dialect #'dialect-id (dialect-parse-cbs dialect) ops
                                                          #'%crest::register-dynamic-op!
                                                          #f
-                                                         (dialect-parse-dialect-ifaces dialect))])
+                                                         (dialect-parse-dialect-ifaces dialect)
+                                                         types
+                                                         #'%crest::register-dynamic-type!)])
            (let ([result (with-syntax
                              ([(op-def  ...) all-op-defs]
+                              [(type-def ...) type-defs]
                               [(reg-def ...) reg-defs])
-                           #'(begin reg-def ... op-def ...))])
+                           #'(begin reg-def ... type-def ... op-def ...))])
              (when (getenv "DEBUG_DEFINE_DIALECT")
                (pretty-print (syntax->datum result)))
              result))])

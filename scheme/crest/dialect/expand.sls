@@ -2,6 +2,7 @@
 ;; Imported at (for ... expand) by (crest dialect).
 (library (crest dialect expand)
   (export generate-all-op-defs
+          generate-type-defs
           generate-register-dialect)
   (import (chezscheme)
           (rime loop)
@@ -69,6 +70,37 @@
                     [(cb ...) (%%op-cbs ctx full-name op)])
         #'(reg-op dialect-ptr op-name (vector cb ...)))))
 
+  ;; ── Dialect types (define-type) ─────────────────────────────────────────────
+
+  ;; (reg-type dialect-ptr "pair" (vector verify parse print)) for one type.
+  (define (%%generate-register-type! ctx type reg-type-stx)
+    (with-syntax ([reg-type  reg-type-stx]
+                  [type-name (%%id->str (type-parse-name type))]
+                  [(cb ...)  (map (lambda (cb) (or cb #'#f))
+                                  (vector->list (type-parse-cbs type)))])
+      #'(reg-type dialect-ptr type-name (vector cb ...))))
+
+  ;; <dialect>.<type>? / <dialect>.<type> / <dialect>.<type>-params for each type:
+  ;;   (toy.struct? type)            #t when type is that dialect type
+  ;;   (toy.struct ctx params)       the type with these attribute parameters (0 if it does not verify)
+  ;;   (toy.struct-params type)      the list of its attribute parameters
+  (define (generate-type-defs ctx types get-stx isa-stx params-stx)
+    (apply append
+           (map (lambda (type)
+                  (let ([full-name (%%id ctx ctx "." (type-parse-name type))])
+                    (with-syntax ([isa?       (%%id ctx full-name "?")]
+                                  [make       full-name]
+                                  [params-of  (%%id ctx full-name "-params")]
+                                  [dialect-s  (%%id->str ctx)]
+                                  [type-s     (%%id->str (type-parse-name type))]
+                                  [get-fn     get-stx]
+                                  [isa-fn     isa-stx]
+                                  [params-fn  params-stx])
+                      (list #'(define (isa? type) (eqv? 1 (isa-fn dialect-s type-s type)))
+                            #'(define (make ctx params) (get-fn dialect-s type-s params ctx))
+                            #'(define (params-of type) (params-fn type))))))
+                types)))
+
   ;; Generates at library-load time:
   ;;   (define <dialect>:dialect-callbacks (vector cb ...))
   ;; Generates (define testd (vector ...)) — binds the dialect name itself to
@@ -125,7 +157,9 @@
                                      . rest)
     ;; dialect-ifaces is an optional 6th argument (default empty list) so that
     ;; callers compiled before this change continue to work.
-    (let ([dialect-ifaces (if (null? rest) '() (car rest))])
+    (let ([dialect-ifaces (if (null? rest) '() (car rest))]
+          [types          (if (or (null? rest) (null? (cdr rest))) '() (cadr rest))]
+          [reg-type-stx   (if (or (null? rest) (null? (cdr rest))) #f (caddr rest))])
       (let ([op-prefix (string-append (%%id->str ctx) ".")])
         (let-values ([(iface-defs iface-calls)
                       (generate-interface-registrations ctx ops)]
@@ -134,12 +168,15 @@
           (let ([base-defs
                  (with-syntax
                      ([%%toy.initialize (%%id ctx "%%" ctx ":initialize")]
+                      [(type-reg ...)   (map (lambda (type)
+                                               (%%generate-register-type! ctx type reg-type-stx))
+                                             types)]
                       [(op-reg ...)     (map (lambda (op)
                                                (%%generate-register-op! ctx op-prefix op reg-op-stx))
                                              ops)]
                       [(diface-call ...) diface-init-calls])
                    (list
-                    #'(define (%%toy.initialize dialect-ptr) op-reg ... diface-call ...)))]
+                    #'(define (%%toy.initialize dialect-ptr) type-reg ... op-reg ... diface-call ...)))]
                 ;; stash-stx kept in signature for forward compat but unused now
                 [dialect-cbs-defs (%%generate-dialect-callbacks ctx dialect-cbs ops stash-stx)]
                 ;; Emit op iface-calls at library-load time so interface concepts are

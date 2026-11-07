@@ -4,7 +4,7 @@
 
 // CHECK: index should be within the range of the input struct type
 
-toy.func @f(%arg0: tuple<tensor<*xf64>, tensor<*xf64>>) {
-  %0 = toy.struct_access %arg0[2 : i64] : tuple<tensor<*xf64>, tensor<*xf64>> -> tensor<*xf64>
+toy.func @f(%arg0: !toy.struct<tensor<*xf64>, tensor<*xf64>>) {
+  %0 = toy.struct_access %arg0[2 : i64] : !toy.struct<tensor<*xf64>, tensor<*xf64>> -> tensor<*xf64>
   toy.return
 }

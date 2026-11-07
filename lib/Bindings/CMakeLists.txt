@@ -48,8 +48,6 @@ add_library(CrestBindings STATIC
   Dialect/LLVMIR/IR/LLVMOps.h
   Dialect/LLVMIR/Transforms/Passes.cpp
   Dialect/LLVMIR/Transforms/Passes.h
-  Dialect/Toy/ToyStructType.cpp
-  Dialect/Toy/ToyStructType.h
   Dialect/Shape/IR/Shape.cpp
   Dialect/Shape/IR/Shape.h
   Dialect/Tensor/IR/Tensor.cpp

@@ -9,6 +9,12 @@
           dialect-parse-ops
           dialect-parse-cbs
           dialect-parse-dialect-ifaces
+          dialect-parse-types
+          type-parse
+          make-type-parse
+          type-parse?
+          type-parse-name
+          type-parse-cbs
           op-parse
           make-op-parse
           op-parse?
@@ -75,7 +81,15 @@
     (fields (immutable name          dialect-parse-name)
             (immutable ops           dialect-parse-ops)
             (immutable cbs           dialect-parse-cbs)
-            (immutable dialect-ifaces dialect-parse-dialect-ifaces)))
+            (immutable dialect-ifaces dialect-parse-dialect-ifaces)
+            (immutable types         dialect-parse-types)))
+
+  ;; A (define-type name clause ...) of a dialect.
+  ;;   name — syntax e.g. #'pair
+  ;;   cbs  — 3-slot vector of Scheme callback syntax or #f: 0 :verify, 1 :parse, 2 :print
+  (define-record-type type-parse
+    (fields (immutable name type-parse-name)
+            (immutable cbs  type-parse-cbs)))
 
   ;; A single attribute field declaration inside (define-op ... :attributes (...)).
   ;;   name     — symbol e.g. 'value
