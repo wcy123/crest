@@ -11,9 +11,6 @@ import sys
 
 # (file name, pattern) -> why the DSL is not used there
 ALLOWED = {
-    ('toyc.sls', 'OperationState'):
-        'the Scheme inliner clones ops whose name, operands and attributes are data '
-        '(MLIR\'s inliner cannot run on a Scheme dialect before LLVM 23)',
     ('mlir-gen.sls', 'ModuleOp::create'):
         'creates the module that holds the generated functions, not an op the DSL builds',
 }

@@ -8,7 +8,7 @@ combination of `affine`, `arith`, `memref`, and `func` dialects.
 | Feature | Ch4 | Ch5 |
 |---|---|---|
 | Actions | `ast`, `mlir` | `ast`, `mlir`, `mlir-affine` |
-| Inliner | Scheme-level walk | Scheme-level walk (unchanged) |
+| Inliner | MLIR's inliner pass | MLIR's inliner pass (unchanged) |
 | `--emit=mlir-affine` | — | partial lowering to Affine+Arith+MemRef+Func |
 | Post-lowering passes | — | canonicalize + CSE on `func.func` |
 | `--opt` additions | canonicalize | + loop fusion + affine scalar replacement |
@@ -36,7 +36,7 @@ lowering reads as the IR it produces.
 
 ### `--emit=mlir-affine` pipeline (`toyc.sls`)
 
-1. **Inline** — Scheme-level `%%inline-calls!`, as in Ch4
+1. **Inline** — MLIR's inliner pass, as in Ch4
 2. **Shape inference** — rewrite patterns (`shape-inference.sls`), as in Ch4
 3. **Canonicalize** — greedy rewrite (Ch3/Ch4 patterns)
 4. **Partial lowering** — Scheme-level `%%toy-to-affine-lower!`
@@ -71,7 +71,7 @@ lowering reads as the IR it produces.
 | Registering the conversion | `apply-conversion` (`:mode partial`, `:type-converter`, `:legal-dialects`, `:illegal-dialects`, `:dynamically-legal`, `:patterns`) | one declaration instead of a type converter, a target and a pattern set created and freed by hand |
 | Moving the body of `toy.func` into `func.func` | `(:move-region op)` | the region moves, it is not rebuilt |
 | Shape inference | `define-rewrite-pattern`, as in Ch4 | |
-| Inlining | Scheme, as in Ch4 | the reasons are in the Ch4 README |
+| Inlining | MLIR's inliner pass, as in Ch4 | the dialect declares what the pass needs, see the Ch4 README |
 
 ## Related Documents
 

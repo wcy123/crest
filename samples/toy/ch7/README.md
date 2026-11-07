@@ -108,8 +108,8 @@ There is no lowering for the struct ops, and the `toy` dialect is illegal in the
 LLVM conversion, so they must be gone by the time lowering starts. The struct
 fold is therefore part of the pipeline that every lowering action runs:
 
-1. **Inline** — Scheme-level `%%inline-calls!`; `index` is among the
-   attributes copied onto cloned ops so `toy.struct_access` survives inlining
+1. **Inline** — MLIR's inliner pass; it casts the ranked struct argument to the
+   callee's parameter type with `toy.cast`, which step 2 looks through
 2. **Fold structs** — greedy canonicalize so `struct_access(struct_constant)`
    folds to `toy.constant`, then erase any `toy.struct_constant` left without
    uses
@@ -180,7 +180,7 @@ Running the struct example with `--emit=jit` prints:
 | The canonicalization patterns, including `fold-struct-access` | `define-rewrite-pattern` | as in Ch3 |
 | The lowerings and their registration | as in Ch5 and Ch6 | `apply-conversion`, `define-conversion-pattern`, `begin-mlir-code` |
 | Shape inference | `define-rewrite-pattern`, as in Ch4 | |
-| Inlining | Scheme, as in Ch4 | the reasons are in the Ch4 README; the inliner also copies the attributes `toy.struct_access` needs |
+| Inlining | MLIR's inliner pass, as in Ch4 | the dialect declares what the pass needs, see the Ch4 README; `StructAccessOfCast` lets a struct access see through the cast the inliner inserts |
 
 ## Related Documents
 

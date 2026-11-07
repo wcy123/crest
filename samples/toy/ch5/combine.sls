@@ -46,6 +46,16 @@
     :rewrite %out :with
       %in)
 
+  ;; RedundantCast: cast(x) → x when input and output types are identical. The C++ tutorial gets
+  ;; this from CastOpInterface's folder; here it is a rewrite pattern.
+  (define-rewrite-pattern (%%redundant-cast op rewriter)
+    :if-match
+      %out = toy.cast (%in)
+        :where
+      (equal? (mlir::Value::getType %out) (mlir::Value::getType %in))
+    :rewrite %out :with
+      %in)
+
   ;; FoldConstantReshape: reshape(constant(x)) → constant(x')
   (define-rewrite-pattern (%%fold-constant-reshape op rewriter)
     :if-match
@@ -65,6 +75,7 @@
     ("toy.transpose" %%simplify-redundant-transpose 1)
     ("toy.reshape" %%reshape-reshape 1)
     ("toy.reshape" %%redundant-reshape 2)
+    ("toy.cast" %%redundant-cast 1)
     ("toy.reshape" %%fold-constant-reshape 1))
 
   ) ;; end library (toy ch5 combine)

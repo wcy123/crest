@@ -169,7 +169,16 @@
                          (when (or (mlir::Block::empty? (current-Block))
                                    (not (toy.return? (mlir::Block::back (current-Block)))))
                            (begin-mlir-code
-                               toy.return () :loc (%%loc proto-loc))))
+                               toy.return () :loc (%%loc proto-loc)))
+                         ;; As C++ MLIRGen does: a function that returns a value has one
+                         ;; unranked tensor result (shape inference refines it later).
+                         (let ([ret (mlir::Block::back (current-Block))])
+                           (when (> (mlir::Operation::getNumOperands ret) 0)
+                             (mlir::Operation::setAttr!
+                              (mlir::Operation::getParentOp ret) "function_type"
+                              (mlir::TypeAttr::get
+                               (mlir::FunctionType::get (current-MLIRContext) arg-types
+                                                        (list (%%f64-unranked-tensor))))))))
                    :loc ((location:file proto-loc)
                          (location:line proto-loc)
                          (location:col  proto-loc))))])

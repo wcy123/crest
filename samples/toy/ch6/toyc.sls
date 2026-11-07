@@ -26,6 +26,7 @@
         (mlir IR BuiltinAttributes)
         (only (mlir IR OpImplementation) mlir::StringAttr::getValue)
         (mlir Pass PassManager)
+        (mlir Transforms InliningUtils)
         (mlir Transforms Passes)
         (mlir Conversion ReconcileUnrealizedCasts ReconcileUnrealizedCasts)
         (mlir Dialect Affine Transforms Passes)
@@ -174,7 +175,7 @@
 
 (define (%%run-pipeline! module-op ctx opt? emit-affine? emit-llvm?)
   ;; Step 1: Inline + shape inference + canonicalize+CSE (toy.func level).
-  (%%inline-calls! module-op ctx)
+  (%%run-inliner! module-op ctx)
   (with-current-MLIRContext ctx
     (apply-patterns module-op ctx :populate toy:add-shape-inference-patterns!))
   (toy:check-shapes-inferred! module-op)
@@ -207,105 +208,17 @@
         (exit 1)))))
 
 ;; ---------------------------------------------------------------------------
-;; Inliner — identical to ch5
+;; Inlining: MLIR's inliner pass, as in the C++ tutorial. toy.generic_call is a CallOpInterface,
+;; toy.func is callable, the dialect's DialectInlinerInterface says inlining is legal, and the
+;; pass erases the private callees that are dead afterwards.
 ;; ---------------------------------------------------------------------------
 
-(define (%%inline-calls! module-op ctx)
-  (let loop ()
-    (let ([call #f])
-      (mlir::Operation::walk module-op
-                             (lambda (op)
-                               (when (and (not call)
-                                          (string=? (mlir::Operation::getName op) "toy.generic_call"))
-                                 (set! call op))))
-      (when call
-        (%%inline-one! call module-op ctx)
-        (loop))))
-  (let ([to-erase '()])
-    (mlir::Operation::walk module-op
-                           (lambda (op)
-                             (when (and (string=? (mlir::Operation::getName op) "toy.func")
-                                        (%%private-func? op))
-                               (set! to-erase (cons op to-erase)))))
-    (for-each mlir::Operation::erase to-erase)))
-
-(define (%%private-func? op)
-  (let ([vis (mlir::Operation::getAttr op "sym_visibility")])
-    (and vis (string=? (mlir::StringAttr::getValue vis) "private"))))
-
-(define (%%find-func module-op name)
-  (let ([found #f])
-    (mlir::Operation::walk module-op
-                           (lambda (op)
-                             (when (and (not found)
-                                        (string=? (mlir::Operation::getName op) "toy.func")
-                                        (string=? (mlir::StringAttr::getValue
-                                                   (mlir::Operation::getAttr op "sym_name"))
-                                                  name))
-                               (set! found op))))
-    found))
-
-(define (%%inline-one! call-op module-op ctx)
-  (let* ([callee-name (mlir::StringAttr::getValue
-                       (mlir::Operation::getAttr call-op "callee"))]
-         [callee      (%%find-func module-op callee-name)]
-         [entry-block (mlir::Region::front (mlir::Operation::getRegion callee 0))]
-         [n-args      (mlir::Operation::getNumOperands call-op)]
-         [val-map     (make-hashtable equal-hash equal?)])
-    (do ([i 0 (+ i 1)]) ((= i n-args))
-      (hashtable-set! val-map
-                      (mlir::Block::getArgument entry-block i)
-                      (mlir::Operation::getOperand call-op i)))
-    (with-OpBuilder builder-obj (with-current-MLIRContext ctx
-                                  (mlir::OpBuilder::atBlockEnd entry-block))
-      (let ([return-op #f])
-        (mlir::Operation::walk callee
-                               (lambda (op)
-                                 (let ([name (mlir::Operation::getName op)])
-                                   (cond
-                                    [(string=? name "toy.func") (void)]
-                                    [(string=? name "toy.return") (set! return-op op)]
-                                    [else
-                                     (mlir::OpBuilder::setInsertionPoint builder-obj call-op)
-                                     (let* ([n-ops     (mlir::Operation::getNumOperands op)]
-                                            [n-res     (mlir::Operation::getNumResults op)]
-                                            [new-ops   (map (lambda (i)
-                                                              (hashtable-ref val-map
-                                                                             (mlir::Operation::getOperand op i)
-                                                                             (mlir::Operation::getOperand op i)))
-                                                            (iota n-ops))]
-                                            [res-types (map (lambda (i)
-                                                              (mlir::Value::getType
-                                                               (mlir::Operation::getResult op i)))
-                                                            (iota n-res))]
-                                            [attrs     (%%collect-attrs op)]
-                                            [new-op    (with-OperationState s ((mlir::Operation::getLoc op) name)
-                                                         (for-each (lambda (v) (mlir::OperationState::addOperands s v)) new-ops)
-                                                         (for-each (lambda (t) (mlir::OperationState::addTypes s t)) res-types)
-                                                         (for-each (lambda (kv)
-                                                                     (mlir::OperationState::addAttribute s (car kv) (cdr kv)))
-                                                                   attrs)
-                                                         (mlir::OpBuilder::create<OperationState> builder-obj s))])
-                                       (do ([i 0 (+ i 1)]) ((= i n-res))
-                                         (hashtable-set! val-map
-                                                         (mlir::Operation::getResult op i)
-                                                         (mlir::Operation::getResult new-op i))))]))))
-        (when (and return-op (> (mlir::Operation::getNumOperands return-op) 0))
-          (let* ([ret-val    (mlir::Operation::getOperand return-op 0)]
-                 [mapped-val (hashtable-ref val-map ret-val ret-val)])
-            (mlir::Value::replaceAllUsesWith
-             (mlir::Operation::getResult call-op 0)
-             mapped-val)))
-        (mlir::Operation::erase call-op)))))
-
-(define (%%collect-attrs op)
-  (let ([result '()])
-    (for-each
-     (lambda (key)
-       (let ([v (mlir::Operation::getAttr op key)])
-         (when v (set! result (cons (cons key v) result)))))
-     '("value" "callee" "sym_name" "function_type" "sym_visibility"))
-    result))
+(define (%%run-inliner! module-op ctx)
+  (with-PassManager pm (ctx)
+    (mlir::PassManager::addPass pm (mlir::createInlinerPass))
+    (unless (mlir::PassManager::run! pm module-op)
+      (display "Inliner failed\n" (current-error-port))
+      (exit 1))))
 
 (define (%%build-module filename ctx)
   (if (let ([n (string-length filename)])

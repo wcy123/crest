@@ -2,7 +2,8 @@
 
 Ch2 defines the `toy` dialect in Scheme and turns the AST into MLIR. The output is printed in
 MLIR's generic form (`"toy.func"() ({ ... })`): the dialect has no custom syntax yet, and Ch3
-adds it.
+adds it. The dialect declares `toy.return` as a terminator (`:traits (terminator)`), which needs
+LLVM 23.
 
 ```sh
 # From the repository root
