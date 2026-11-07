@@ -318,13 +318,13 @@
 // CHECK-NEXT:     llvm.cond_br %{{[a-zA-Z0-9_]+}}, ^bb10, ^bb11
 // CHECK-NEXT:   ^bb10:  // pred: ^bb9
 // CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = llvm.extractvalue %{{[a-zA-Z0-9_]+}}[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
-// CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = llvm.mlir.constant(3 : index) : i64
+// CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = llvm.mlir.constant(2 : index) : i64
 // CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = llvm.mul %{{[a-zA-Z0-9_]+}}, %{{[a-zA-Z0-9_]+}} overflow<nsw, nuw> : i64
 // CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = llvm.add %{{[a-zA-Z0-9_]+}}, %{{[a-zA-Z0-9_]+}} overflow<nsw, nuw> : i64
 // CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = llvm.getelementptr inbounds|nuw %{{[a-zA-Z0-9_]+}}[%{{[a-zA-Z0-9_]+}}] : (!llvm.ptr, i64) -> !llvm.ptr, f64
 // CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = llvm.load %{{[a-zA-Z0-9_]+}} : !llvm.ptr -> f64
 // CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = llvm.extractvalue %{{[a-zA-Z0-9_]+}}[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
-// CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = llvm.mlir.constant(2 : index) : i64
+// CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = llvm.mlir.constant(3 : index) : i64
 // CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = llvm.mul %{{[a-zA-Z0-9_]+}}, %{{[a-zA-Z0-9_]+}} overflow<nsw, nuw> : i64
 // CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = llvm.add %{{[a-zA-Z0-9_]+}}, %{{[a-zA-Z0-9_]+}} overflow<nsw, nuw> : i64
 // CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = llvm.getelementptr inbounds|nuw %{{[a-zA-Z0-9_]+}}[%{{[a-zA-Z0-9_]+}}] : (!llvm.ptr, i64) -> !llvm.ptr, f64

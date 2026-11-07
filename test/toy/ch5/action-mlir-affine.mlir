@@ -116,8 +116,8 @@
 // CHECK-NEXT:     }
 // CHECK-NEXT:     affine.for %arg0 = 0 to 3 {
 // CHECK-NEXT:       affine.for %arg1 = 0 to 2 {
-// CHECK-NEXT:         %{{[a-zA-Z0-9_]+}} = affine.load %{{[a-zA-Z0-9_]+}}[%arg0, %arg1] : memref<2x3xf64>
 // CHECK-NEXT:         %{{[a-zA-Z0-9_]+}} = affine.load %{{[a-zA-Z0-9_]+}}[%arg0, %arg1] : memref<3x2xf64>
+// CHECK-NEXT:         %{{[a-zA-Z0-9_]+}} = affine.load %{{[a-zA-Z0-9_]+}}[%arg0, %arg1] : memref<2x3xf64>
 // CHECK-NEXT:         %{{[a-zA-Z0-9_]+}} = arith.mulf %{{[a-zA-Z0-9_]+}}, %{{[a-zA-Z0-9_]+}} : f64
 // CHECK-NEXT:         affine.store %{{[a-zA-Z0-9_]+}}, %{{[a-zA-Z0-9_]+}}[%arg0, %arg1] : memref<3x2xf64>
 // CHECK-NEXT:       }

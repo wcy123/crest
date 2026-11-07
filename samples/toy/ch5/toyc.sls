@@ -103,6 +103,10 @@
 ;; Optimization pipeline
 ;; ---------------------------------------------------------------------------
 
+;; A failed lowering fails toyc, as the pass manager failing does in C++ (exit code 4).
+(define (%%exit-unless-lowered ok?)
+  (unless ok? (exit 4)))
+
 (define (%%run-pipeline! module-op ctx opt? emit-affine?)
   ;; Step 1: Inline toy.generic_call ops (Scheme-level, same as ch4).
   (%%run-inliner! module-op ctx)
@@ -116,7 +120,7 @@
   ;; Steps 4-6: Affine-specific lowering.
   (when emit-affine?
     ;; Step 4: Partial lowering to Affine+Arith+MemRef+Func.
-    (%%toy-to-affine-lower! module-op ctx)
+    (%%exit-unless-lowered (%%toy-to-affine-lower! module-op ctx))
     ;; Steps 5-6: Post-lowering cleanup.
     (with-PassManager pm2 (ctx)
       (let ([func-pm (mlir::PassManager::nest pm2 "func.func")])

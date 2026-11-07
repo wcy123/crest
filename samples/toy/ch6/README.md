@@ -90,7 +90,7 @@ a debug-info scope (`DISubprogram`) to each `llvm.func`, which is why the
 | Action | Output |
 |---|---|
 | `--emit=mlir-llvm` | the module in the LLVM dialect, printed as MLIR |
-| `--emit=llvm` | `mlir::translateModuleToLLVMIR` — textual LLVM IR |
+| `--emit=llvm` | `mlir::translateModuleToLLVMIR` — textual LLVM IR with the host's target triple and data layout; `--opt` also runs LLVM's O3 pipeline (`makeOptimizingTransformer`), as the C++ `dumpLLVMIR` does |
 | `--emit=jit` | runs `@main` through `ExecutionEngine::invoke`; the program's own `print` output goes to stdout |
 
 ## Commands

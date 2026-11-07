@@ -20,10 +20,11 @@ namespace crest {
 
 void registerExecutionEngineBindings() {
   // mlir::ExecutionEngine::create: JIT-compile an MLIR module.
-  // (module-ptr) → CrestBox<unique_ptr<ExecutionEngine>>* uptr
+  // (module-ptr opt-level) → CrestBox<unique_ptr<ExecutionEngine>>* uptr, 0 on
+  // failure
   Sregister_symbol(
       "mlir::ExecutionEngine::create",
-      (void*)+[](uint64_t module_ptr) -> uint64_t {
+      (void*)+[](uint64_t module_ptr, int opt_level) -> uint64_t {
         auto* op = reinterpret_cast<mlir::Operation*>(module_ptr);
         auto module = mlir::cast<mlir::ModuleOp>(op);
         auto* ctx = module->getContext();
@@ -35,7 +36,9 @@ void registerExecutionEngineBindings() {
         mlir::registerLLVMDialectTranslation(*ctx);
 
         mlir::ExecutionEngineOptions opts;
-        auto transformer = mlir::makeOptimizingTransformer(0, 0, nullptr);
+        auto transformer = mlir::makeOptimizingTransformer(
+            static_cast<unsigned>(opt_level), /*sizeLevel=*/0,
+            /*targetMachine=*/nullptr);
         opts.transformer = transformer;
         auto maybeEngine = mlir::ExecutionEngine::create(module, opts);
         if (!maybeEngine) {

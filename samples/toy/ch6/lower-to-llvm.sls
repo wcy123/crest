@@ -90,7 +90,7 @@
                                        (global_type : (mlir::TypeAttr::get arrty))
                                        (constant : #f :unit)
                                        (sym_name : name :string)
-                                       (linkage : (mlir::parseAttribute "#llvm.linkage<private>"))
+                                       (linkage : (mlir::parseAttribute "#llvm.linkage<internal>"))
                                        (value : attr)
                                        (:region)
                                        :loc loc)))))))
