@@ -125,8 +125,14 @@ jobs:
           path: build/test-results/
 
   windows:
-    name: Build and Test — Windows (LLVM 22, self-hosted)
+    name: Build and Test — Windows (LLVM ${{ matrix.llvm }}, self-hosted)
     runs-on: [self-hosted, Windows, X64, msvc]
+    strategy:
+      fail-fast: false
+      max-parallel: 1   # the jobs share C:\Develop\crest-deps
+      matrix:
+        # Both are built from source on the runner (the llvm-windows workflow).
+        llvm: [22, 23]
 
     steps:
       - name: Checkout
@@ -156,8 +162,8 @@ jobs:
             -DCMAKE_CXX_COMPILER=cl ^
             -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded ^
             -DCMAKE_PREFIX_PATH=C:\Develop\local ^
-            -DMLIR_DIR=C:\Develop\local\llvm-22-mlir\lib\cmake\mlir ^
-            -DLLVM_DIR=C:\Develop\local\llvm-22-mlir\lib\cmake\llvm ^
+            -DMLIR_DIR=C:\Develop\local\llvm-${{ matrix.llvm }}-mlir\lib\cmake\mlir ^
+            -DLLVM_DIR=C:\Develop\local\llvm-${{ matrix.llvm }}-mlir\lib\cmake\llvm ^
             -DLLVM_EXTERNAL_LIT=C:\ProgramData\miniconda3\Scripts\lit.exe
 
       # ── Build ────────────────────────────────────────────────────────────────
@@ -187,5 +193,5 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results-windows
+          name: test-results-windows-llvm${{ matrix.llvm }}
           path: build/test-results/
