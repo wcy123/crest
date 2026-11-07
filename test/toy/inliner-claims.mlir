@@ -19,13 +19,13 @@
 // T6: mlir::createInlinerPass
 // T7: mlir::createInlinerPass
 // D4: mlir::CallOpInterface
-// D4: :traits (terminator)
+// D4: :traits (terminator
 // D5: mlir::CallOpInterface
-// D5: :traits (terminator)
+// D5: :traits (terminator
 // D6: mlir::CallOpInterface
-// D6: :traits (terminator)
+// D6: :traits (terminator
 // D7: mlir::CallOpInterface
-// D7: :traits (terminator)
+// D7: :traits (terminator
 // R4: MLIR's inliner pass
 // R4-NOT: Scheme-level inliner
 // R5: Toy Ch5

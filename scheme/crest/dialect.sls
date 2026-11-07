@@ -225,16 +225,34 @@
                    (begin
                      (set! interfaces (%%parse-iface-specs #'(iface-spec ...)))
                      (loop-sub #'rest))]
-                  [(:traits (name ...) . rest)
-                   (andmap identifier? (syntax->list #'(name ...)))
+                  [(:traits (trait ...) . rest)
+                   (andmap (lambda (t)
+                             (syntax-case t ()
+                               [name (identifier? #'name) #t]
+                               [(name arg ...)
+                                (and (identifier? #'name)
+                                     (andmap (lambda (a) (or (identifier? a)
+                                                             (string? (syntax->datum a))))
+                                             (syntax->list #'(arg ...))))
+                                #t]
+                               [_ #f]))
+                           (syntax->list #'(trait ...)))
                    (begin
                      (when (vector-ref op-cbs 7)
                        (syntax-violation 'define-op "repeated :traits" (car (syntax->list stx))))
                      (vector-set! op-cbs 7
-                                  (with-syntax ([(name-string ...)
-                                                 (map (lambda (n) (symbol->string (syntax->datum n)))
-                                                      (syntax->list #'(name ...)))])
-                                    #'(list name-string ...)))
+                                  (with-syntax
+                                      ([(spec ...)
+                                        (map (lambda (t)
+                                               (let ([parts (if (identifier? t) (list t) (syntax->list t))])
+                                                 (with-syntax ([(part ...)
+                                                                (map (lambda (x)
+                                                                       (let ([d (syntax->datum x)])
+                                                                         (if (string? d) d (symbol->string d))))
+                                                                     parts)])
+                                                   #'(list part ...))))
+                                             (syntax->list #'(trait ...)))])
+                                    #'(list spec ...)))
                      (loop-sub #'rest))]
                   [(:traits . _)
                    (syntax-violation 'define-op ":traits expects a list of trait names"
