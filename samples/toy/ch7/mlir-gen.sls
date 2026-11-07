@@ -1,5 +1,5 @@
 ;; MLIR code generation from the Toy AST.
-;; Mirrors mlir/examples/toy/Ch4/mlir/MLIRGen.cpp
+;; Mirrors mlir/examples/toy/Ch7/mlir/MLIRGen.cpp
 ;;
 ;; Ch4 adds private visibility to non-main functions so the inliner can
 ;; eliminate them after inlining all call sites.
@@ -53,6 +53,10 @@
   (define (%%fail loc . parts)
     (mlir::emitError loc (apply string-append parts))
     (raise 'toy-mlir-gen-failed))
+
+  ;; Names of the functions generated so far, as the C++ functionMap: a function is added after its
+  ;; body, so a call to a later or to the enclosing function is an error too.
+  (define %%defined-functions (make-parameter #f))
 
   (define (%%declare! loc symtab name value)
     (when (hashtable-ref symtab name #f)
@@ -257,6 +261,8 @@
         (let ([type (%%f64-unranked-tensor)])
           (begin-mlir-code
               r = toy.transpose (,@args) :loc loc -> type))]
+       [(not (hashtable-ref (%%defined-functions) callee #f))
+        (%%fail loc "no defined function found for '" callee "'")]
        [else
         (let ([type (%%f64-unranked-tensor)])
           (begin-mlir-code
@@ -333,15 +339,18 @@
       (with-current-MLIRContext ctx
         (let* ([module-op   (mlir::ModuleOp::create (mlir::UnknownLoc::get ctx))]
                [module-body (mlir::ModuleOp::getBody module-op)]
-               [struct-map  (make-hashtable equal-hash equal?)])
+               [struct-map  (make-hashtable equal-hash equal?)]
+               [functions   (make-hashtable equal-hash equal?)])
           ;; Register struct types first
           (for-each (lambda (s) (%%mlir-gen-struct struct-map s))
                     (module-ast:structs module))
           ;; Generate function bodies
-          (for-each (lambda (fn)
-                      (let ([symtab (make-hashtable equal-hash equal?)])
-                        (%%mlir-gen-function module-body symtab struct-map fn)))
-                    (module-ast:functions module))
+          (parameterize ([%%defined-functions functions])
+            (for-each (lambda (fn)
+                        (let ([symtab (make-hashtable equal-hash equal?)])
+                          (%%mlir-gen-function module-body symtab struct-map fn)
+                          (hashtable-set! functions (prototype:name (function:proto fn)) #t)))
+                      (module-ast:functions module)))
           ;; As C++ MLIRGen: the module must verify.
           (cond
            [(mlir::Operation::verify? (mlir::ModuleOp::getOperation module-op)) module-op]
