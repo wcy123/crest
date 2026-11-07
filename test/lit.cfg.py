@@ -11,6 +11,10 @@ config.suffixes = [".mlir"]
 config.test_source_root = os.path.dirname(__file__)
 config.test_exec_root = os.path.join(config.crest_obj_root, "test")
 
+# Tests that need DynamicOpDefinition::addTrait say "REQUIRES: llvm-23".
+if int(config.llvm_version_major) >= 23:
+    config.available_features.add("llvm-23")
+
 llvm_config.with_system_environment(["HOME", "PATH", "CREST_PATH",
                                      "CREST_DEBUG_MATCH",
                                      "CREST_SCHEME_BINARY_DIR"])

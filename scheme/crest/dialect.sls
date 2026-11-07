@@ -29,6 +29,7 @@
           :attributes
           :results
           :interfaces
+          :traits
           :required
           :optional
           :variadic)
@@ -67,6 +68,7 @@
   (define :optional                    ':optional)
   (define :variadic                    ':variadic)
   (define :interfaces                  ':interfaces)
+  (define :traits                      ':traits)
 
 
   ;; ctx: CrestBox<MLIRContext>* | MLIRContext*
@@ -77,6 +79,7 @@
 
   (define (%%plist->vector n index-fn plist)
     (let ([v (make-vector n #f)])
+      (vector-set! v (- n 1) '())
       (let loop ([rest plist])
         (unless (null? rest)
           (vector-set! v (index-fn (car rest)) (cadr rest))
@@ -92,13 +95,14 @@
       [(:fold)                           4]
       [(:get-canonicalization-patterns)  5]
       [(:populate-default-attrs)         6]
+      [(:traits)                         7]
       [else (error "register-dynamic-op!" "unknown callback keyword" key)]))
 
   (define (register-dynamic-op! dialect-ptr op-name . callbacks)
     (%crest::register-dynamic-op!
      dialect-ptr
      op-name
-     (%%plist->vector 7 %%op-slot-index callbacks)))
+     (%%plist->vector 8 %%op-slot-index callbacks)))
 
   ;; Stub so define-op used outside define-dialect gives a clear error,
   ;; and so identifiers in user code are free-identifier=? to the literal
@@ -198,11 +202,11 @@
                   [attributes '()]
                   [results    '()]
                   [interfaces '()]
-                  [op-cbs     (make-vector 7 #f)])
+                  [op-cbs     (make-vector 8 #f)])
               (let loop-sub ([stx sub-clauses-stx])
                 (syntax-case stx (:summary :description
                                            :operands :attributes :results
-                                           :interfaces
+                                           :interfaces :traits
                                            :verify :verify-regions
                                            :parse :print :fold
                                            :required :optional
@@ -214,6 +218,20 @@
                    (begin
                      (set! interfaces (%%parse-iface-specs #'(iface-spec ...)))
                      (loop-sub #'rest))]
+                  [(:traits (name ...) . rest)
+                   (andmap identifier? (syntax->list #'(name ...)))
+                   (begin
+                     (when (vector-ref op-cbs 7)
+                       (syntax-violation 'define-op "repeated :traits" (car (syntax->list stx))))
+                     (vector-set! op-cbs 7
+                                  (with-syntax ([(name-string ...)
+                                                 (map (lambda (n) (symbol->string (syntax->datum n)))
+                                                      (syntax->list #'(name ...)))])
+                                    #'(list name-string ...)))
+                     (loop-sub #'rest))]
+                  [(:traits . _)
+                   (syntax-violation 'define-op ":traits expects a list of trait names"
+                                     (car (syntax->list stx)))]
                   [(:operands    (field ...) . rest)
                    (begin
                      (set! operands (map parse-op-operand (syntax->list #'(field ...))))

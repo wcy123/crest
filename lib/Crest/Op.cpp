@@ -6,6 +6,7 @@
 
 #include "Op.h"
 #include "../Bindings/Support/SchemeWrapper.h"
+#include "Trait.h"
 #include "mlir/IR/ExtensibleDialect.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/IR/PatternMatch.h"
@@ -139,6 +140,12 @@ void CrestOp::registerInto(mlir::ExtensibleDialect* dialect,
         make_default_attrs_fn(std::move(cbs.populate_default_attrs)));
   }
 
+  std::string trait_error = addOpTraits(*def, cbs.traits);
+  if (!trait_error.empty()) {
+    scheme_error("crest::register-dynamic-op!",
+                 op_name.str() + ": " + trait_error);
+  }
+
   dialect->registerDynamicOp(std::move(def));
 }
 
@@ -158,6 +165,7 @@ void registerCrestDynamicOpBindings() {
   //   4 fold            (op) → bool
   //   5 get-canonicalization-patterns (pattern-set-ptr ctx-ptr) → void
   //   6 populate-default-attrs        (op-name-ptr attr-list-ptr) → void
+  //   7 traits                        list of trait-name strings
   Sregister_symbol(
       "crest::register-dynamic-op!",
       (void*)+[](uint64_t dialect_ptr, const char* op_name,
@@ -184,6 +192,18 @@ void registerCrestDynamicOpBindings() {
         cbs.fold = make_cb(Svector_ref(v, 4));
         cbs.get_canonicalization_patterns = make_cb(Svector_ref(v, 5));
         cbs.populate_default_attrs = make_cb(Svector_ref(v, 6));
+        for (ptr l = Svector_ref(v, 7); !Snullp(l); l = Scdr(l)) {
+          ptr name = Scar(l);
+          if (!Sstringp(name)) {
+            scheme_error("crest::register-dynamic-op!",
+                         "trait names must be strings");
+          }
+          std::string s;
+          for (iptr i = 0; i < Sstring_length(name); ++i) {
+            s.push_back(static_cast<char>(Sstring_ref(name, i)));
+          }
+          cbs.traits.push_back(std::move(s));
+        }
 
         CrestOp::registerInto(dialect, op_name, std::move(cbs));
       });

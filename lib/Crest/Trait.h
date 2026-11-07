@@ -5,9 +5,20 @@
 #ifndef CREST_TRAIT_H
 #define CREST_TRAIT_H
 
+#include "llvm/ADT/ArrayRef.h"
+#include <string>
+
+namespace mlir {
+class DynamicOpDefinition;
+} // namespace mlir
+
 namespace crest {
 
-void registerCrestTraitBindings();
+/// Attaches the named traits to a dynamic op definition. Returns an empty
+/// string on success and a message when a name is unknown or traits are not
+/// supported by the LLVM this was built against.
+std::string addOpTraits(mlir::DynamicOpDefinition& def,
+                        llvm::ArrayRef<std::string> names);
 
 } // namespace crest
 
