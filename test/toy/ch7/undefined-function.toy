@@ -1,0 +1,4 @@
+def main() {
+  var a = missing([1, 2]);
+  print(a);
+}

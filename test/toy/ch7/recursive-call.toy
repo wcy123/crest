@@ -1,0 +1,7 @@
+def loop(x) {
+  return loop(x);
+}
+
+def main() {
+  print(loop([1, 2]));
+}
