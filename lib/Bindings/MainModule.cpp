@@ -30,6 +30,7 @@
 #include "IR/BuiltinAttributes.h"
 #include "IR/BuiltinOps.h"
 #include "IR/BuiltinTypes.h"
+#include "IR/Diagnostics.h"
 #include "IR/Dialect.h"
 #include "IR/DialectRegistry.h"
 #include "IR/Location.h"
@@ -96,6 +97,7 @@ void registerMlirForeignFunctions() {
   registerPassPassManagerBindings();
   registerCrestDynamicOpBindings();
   registerIRLocationBindings();
+  registerIRDiagnosticsBindings();
   registerIROpImplementationBindings();
   registerIRAffineExprBindings();
   registerIRAffineMapBindings();

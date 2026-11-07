@@ -21,7 +21,11 @@ void registerIRMLIRContextBindings() {
   /// → CrestBox<mlir::MLIRContext>*
   Sregister_symbol(
       "mlir::MLIRContext::new", (void*)+[]() -> uint64_t {
-        return reinterpret_cast<uint64_t>(new CrestBox<mlir::MLIRContext>());
+        // Scheme callbacks (verifiers, folders, patterns) cannot run on MLIR's
+        // worker threads, so a context made from Scheme is single-threaded.
+        auto* box = new CrestBox<mlir::MLIRContext>();
+        box->inner().disableMultithreading();
+        return reinterpret_cast<uint64_t>(box);
       });
 
   /// registry_ptr: CrestBox<mlir::DialectRegistry>* →
@@ -31,8 +35,9 @@ void registerIRMLIRContextBindings() {
       (void*)+[](uint64_t registry_ptr) -> uint64_t {
         auto& registry = crest::CrestBox<mlir::DialectRegistry>::inner(
             registry_ptr, "mlir::MLIRContext::new/registry");
-        return reinterpret_cast<uint64_t>(
-            new CrestBox<mlir::MLIRContext>(registry));
+        auto* box = new CrestBox<mlir::MLIRContext>(registry);
+        box->inner().disableMultithreading();
+        return reinterpret_cast<uint64_t>(box);
       });
 
   Sregister_symbol(

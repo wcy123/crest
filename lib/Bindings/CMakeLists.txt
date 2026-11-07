@@ -80,6 +80,8 @@ add_library(CrestBindings STATIC
   IR/BuiltinOps.h
   IR/BuiltinTypes.cpp
   IR/BuiltinTypes.h
+  IR/Diagnostics.cpp
+  IR/Diagnostics.h
   IR/Location.cpp
   IR/Location.h
   IR/MLIRContext.cpp
