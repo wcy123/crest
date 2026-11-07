@@ -5,6 +5,8 @@
           register-dynamic-op!
           define-dialect
           define-op
+          fold-attribute
+          fold-value
           :name
           :initialize
           :get-dependent-dialects
@@ -73,6 +75,11 @@
 
   ;; ctx: CrestBox<MLIRContext>* | MLIRContext*
   ;; module-name: slash-separated library path (e.g. "toy/ch3/toy")
+  ;; The results of a :fold callback: (fold-value v) is an operand (or other existing value) the op
+  ;; folds to, (fold-attribute a) a constant the dialect's :materialize-constant turns into an op.
+  (define (fold-value v) (cons 'value v))
+  (define (fold-attribute a) (cons 'attribute a))
+
   ;; Safe outside the pass pipeline (multiThreadedExecutionContext == 0).
   (define (load-scheme-dialect! ctx dialect-name module-name)
     (%crest::load-scheme-dialect! ctx dialect-name module-name))
@@ -201,7 +208,7 @@
           ;;   1  verify-regions               (op) → bool
           ;;   2  parse                        (parser state) → bool  [#f = generic]
           ;;   3  print                        (op printer name) → void [#f = generic]
-          ;;   4  fold                         (op) → bool
+          ;;   4  fold                         (op operand-attributes) → #f | list of fold results
           ;;   5  get-canonicalization-patterns (pattern-set) → void
           ;;   6  populate-default-attrs       (op-name attrs) → void
           (define (parse-define-op op-name-stx sub-clauses-stx)
@@ -288,10 +295,14 @@
                    (and (identifier? #'op) (identifier? #'printer) (identifier? #'name))
                    (begin (vector-set! op-cbs 3 #'(lambda (op printer name) body ...))
                           (loop-sub #'rest))]
-                  [((:fold                         (op) body ...) . rest)
-                   (identifier? #'op)
-                   (begin (vector-set! op-cbs 4 #'(lambda (op) body ...))
+                  [((:fold                         (op operand-attributes) body ...) . rest)
+                   (and (identifier? #'op) (identifier? #'operand-attributes))
+                   (begin (vector-set! op-cbs 4 #'(lambda (op operand-attributes) body ...))
                           (loop-sub #'rest))]
+                  [((:fold . _) . rest)
+                   (syntax-violation 'define-op
+                                     "expected (:fold (op operand-attributes) body ...)"
+                                     (car (syntax->list stx)))]
                   [((:get-canonicalization-patterns (pattern-set) body ...) . rest)
                    (identifier? #'pattern-set)
                    (begin (vector-set! op-cbs 5 #'(lambda (pattern-set) body ...))

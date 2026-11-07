@@ -15,12 +15,15 @@
           (only (mlir IR Value)
                 mlir::Value::getType)
           (only (mlir IR Operation)
+                mlir::Operation::getAttr
                 mlir::Operation::getLoc
                 mlir::Operation::getName
                 mlir::Operation::getNumResults
                 mlir::Operation::getResult
                 mlir::Operation::emitError
                 mlir::Operation::walk)
+          (only (mlir IR BuiltinAttributes)
+                mlir::DenseElementsAttr::getType)
           (only (mlir IR BuiltinTypes)
                 mlir::RankedTensorType::get
                 mlir::RankedTensorType::getShape
@@ -74,12 +77,25 @@
     :rewrite %out :with
       result = toy.transpose (%in) :loc loc -> !type)
 
+  ;; ConstantOp::inferShapes: an unranked constant takes the type of its value.
+  (define-rewrite-pattern (%%infer-constant op rewriter)
+    :if-match
+      %out = toy.constant ()
+        :where (not (%%ranked? %out))
+    :then-let
+      ([!value (mlir::Operation::getAttr op "value")]
+       [!type  (mlir::DenseElementsAttr::getType !value)]
+       [loc    (mlir::Operation::getLoc op)])
+    :rewrite %out :with
+      result = toy.constant () (value : !value) :loc loc -> !type)
+
   ;; The patterns, as a set a pass can register with :populate.
   (define-pattern-set toy:add-shape-inference-patterns!
     ("toy.add" %%infer-add 1)
     ("toy.mul" %%infer-mul 1)
     ("toy.cast" %%infer-cast 1)
-    ("toy.transpose" %%infer-transpose 1))
+    ("toy.transpose" %%infer-transpose 1)
+    ("toy.constant" %%infer-constant 1))
 
   ;; Report an error and exit if an op that shape inference handles still has an unranked result.
   (define (toy:check-shapes-inferred! module-op)

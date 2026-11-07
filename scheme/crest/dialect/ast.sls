@@ -103,7 +103,7 @@
   ;;                  1  :verify-regions                (op) → bool
   ;;                  2  :parse                         (parser state) → bool
   ;;                  3  :print                         (op printer name) → void
-  ;;                  4  :fold                          (op) → bool
+  ;;                  4  :fold                          (op operand-attributes) → #f | list of results
   ;;                  5  :get-canonicalization-patterns (pattern-set) → void
   ;;                  6  :populate-default-attrs        (op-name attrs) → void
   ;;                  7  :traits                        (list "name" ...) of trait names

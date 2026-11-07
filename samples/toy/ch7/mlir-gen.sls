@@ -106,9 +106,11 @@
                      [data  (%%collect-data v)]
                      [type  (mlir::RankedTensorType::get dims (mlir::Float64Type::get))]
                      [attr  (mlir::DenseElementsAttr::get<f64> type data)])
+                ;; As C++ MLIRGen: the struct type lists unranked tensors, like the declared
+                ;; parameter types, so a call needs no cast; the attribute carries the real shape.
                 (loop (cdr values)
                       (append attrs (list attr))
-                      (append types (list type))))]
+                      (append types (list (%%f64-unranked-tensor)))))]
              [(struct-literal-expr? v)
               (let* ([pair  (%%mlir-gen-struct-attr struct-map v)]
                      [attr  (car pair)]

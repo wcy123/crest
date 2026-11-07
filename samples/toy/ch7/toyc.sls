@@ -173,26 +173,14 @@
 ;; Optimization pipeline
 ;; ---------------------------------------------------------------------------
 
-(define (%%erase-dead-ops! module-op name)
-  (let ([dead '()])
-    (mlir::Operation::walk module-op
-                           (lambda (op)
-                             (when (and (string=? (mlir::Operation::getName op) name)
-                                        (mlir::Operation::use_empty? op))
-                               (set! dead (cons op dead)))))
-    (for-each mlir::Operation::erase dead)))
-
 (define (%%run-pipeline! module-op ctx opt? emit-affine? emit-llvm?)
   ;; Step 1: Inline + shape inference + canonicalize+CSE (toy.func level).
   ;; Ch7 adds one extra canonicalize pass in the toy.func nested PM.
   (%%run-inliner! module-op ctx)
-  ;; Ch7: fold struct_access(struct_constant,...) before shape inference, then erase the
-  ;; toy.cast and toy.struct_constant ops that nothing uses any more (a cast first: it uses the
-  ;; struct constant).
+  ;; Ch7 adds one canonicalization before shape inference: struct_access folds into the struct
+  ;; constant, and the pure ops nothing uses any more disappear.
   (with-current-MLIRContext ctx
     (apply-patterns module-op ctx :populate toy:add-canonicalization-patterns!))
-  (%%erase-dead-ops! module-op "toy.cast")
-  (%%erase-dead-ops! module-op "toy.struct_constant")
   (with-current-MLIRContext ctx
     (apply-patterns module-op ctx :populate toy:add-shape-inference-patterns!))
   (toy:check-shapes-inferred! module-op)
