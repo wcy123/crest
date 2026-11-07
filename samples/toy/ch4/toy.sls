@@ -4,8 +4,8 @@
 ;; Ch4 adds:
 ;;   - toy.cast op (bridges ranked/unranked type mismatches at call boundaries)
 ;;   - DialectInlinerInterface, the interface MLIR's inliner would use for toy.generic_call.
-;;     toyc.sls inlines in Scheme instead: MLIR's inliner needs the call interfaces and a
-;;     terminator trait, which a Scheme dialect cannot declare before LLVM 23.
+;;     toyc.sls inlines in Scheme instead: MLIR's inliner needs a terminator trait on toy.return
+;;     (`:traits (terminator)`), which exists only on LLVM 23, and this tutorial also builds on LLVM 22.
 (library (toy ch4 toy)
   (export toy)
   (import (except (chezscheme) =)

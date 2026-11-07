@@ -124,6 +124,13 @@
         (map (lambda (spec-stx)
                (syntax-case spec-stx ()
                  [(iface-name method-clause ...)
+                  (and (identifier? #'iface-name)
+                       (eq? (syntax->datum #'iface-name) 'mlir::CallOpInterface)
+                       (pair? (syntax->list #'(method-clause ...))))
+                  (syntax-violation ':interfaces
+                                    "mlir::CallOpInterface takes no method clauses: the callee is the callee attribute and the arguments are the operands"
+                                    spec-stx)]
+                 [(iface-name method-clause ...)
                   (identifier? #'iface-name)
                   (make-interface-entry
                    #'iface-name

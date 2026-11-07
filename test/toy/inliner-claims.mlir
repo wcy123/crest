@@ -1,7 +1,6 @@
 // The Toy tutorials inline calls with a Scheme-level inliner in toyc.sls, not with MLIR's inliner:
-// MLIR's inliner needs toy.generic_call and toy.func to implement the call interfaces and
-// toy.return to be a terminator, and before LLVM 23 a dialect written in Scheme can do neither
-// (lib/Crest/TraitStub.cpp). The READMEs and comments must say so, not claim that MLIR's inliner
+// MLIR's inliner needs toy.return to be a terminator, which a dialect written in Scheme can declare
+// only on LLVM 23 (:traits), and the tutorials also build on LLVM 22. The READMEs and comments must say so, not claim that MLIR's inliner
 // runs, so a reader is not sent looking for a pass that is not there.
 //
 // RUN: FileCheck %s --input-file=%S/../../samples/toy/ch4/README.md --check-prefix=R4

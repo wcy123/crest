@@ -4,11 +4,13 @@ Ch4 inlines `toy.generic_call` and adds `toy.cast` to handle ranked/unranked
 tensor mismatches that appear at call boundaries after inlining.
 
 The inlining is done by a Scheme-level inliner in `toyc.sls`, not by MLIR's
-inliner pass. MLIR's inliner needs `toy.generic_call` and `toy.func` to
-implement the call interfaces and `toy.return` to be a terminator, and before
-LLVM 23 a dialect written in Scheme can declare neither (see
-`lib/Crest/TraitStub.cpp`). The dialect still defines the
-`DialectInlinerInterface` that MLIR's inliner would use.
+inliner pass. MLIR's inliner needs `toy.generic_call` to implement
+`CallOpInterface` (a Scheme dialect can declare it), `toy.func` to be callable
+(it is, through `FunctionOpInterface`) and `toy.return` to be a terminator. The
+terminator needs `:traits (terminator)`, which exists only on LLVM 23; this
+tutorial is also built on LLVM 22, where the verifier rejects a block that ends
+in a Scheme op. The dialect still defines the `DialectInlinerInterface` that
+MLIR's inliner would use.
 
 ## What's new over Ch3
 
@@ -86,7 +88,7 @@ Three steps run in order when `--opt` is passed:
 | The cast the inliner interface creates | `begin-mlir-code` inside the `materializeCallConversion` callback | the callback gets a builder; `with-current-OpBuilder` installs it |
 | Every op `mlir-gen.sls` creates | `begin-mlir-code` | as in Ch2 |
 | The canonicalization patterns | `define-rewrite-pattern` | as in Ch3 |
-| Inlining | Scheme (`%%inline-calls!` in `toyc.sls`) | it clones ops whose name, operands and attributes are data, so each op is built with an `OperationState`. MLIR's inliner cannot replace it: it needs call interfaces on `toy.generic_call` and `toy.func`, which the dialect DSL cannot declare, and a terminator trait on `toy.return`, which needs LLVM 23 |
+| Inlining | Scheme (`%%inline-calls!` in `toyc.sls`) | it clones ops whose name, operands and attributes are data, so each op is built with an `OperationState`. MLIR's inliner cannot replace it: it needs a terminator trait on `toy.return`, which needs LLVM 23 (the call interfaces can be declared now) |
 | Shape inference | `define-rewrite-pattern` (`shape-inference.sls`), applied by the greedy rewriter | one pattern per op; the C++ pass does it with an op interface |
 
 ## Related Documents
