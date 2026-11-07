@@ -26,8 +26,6 @@
                 mlir::RankedTensorType::getShape
                 mlir::RankedTensorType::getElementType
                 mlir::isa<RankedTensorType>?)
-          (only (mlir Transforms DialectConversion)
-                add-rewrite-pattern)
           (crest))
 
   (define (%%ranked? value)
@@ -76,12 +74,12 @@
     :rewrite %out :with
       result = toy.transpose (%in) :loc loc -> !type)
 
-  ;; Register the shape inference patterns into a RewritePatternSet.
-  (define (toy:add-shape-inference-patterns! patterns)
-    (add-rewrite-pattern patterns "toy.add"       %%infer-add       1)
-    (add-rewrite-pattern patterns "toy.mul"       %%infer-mul       1)
-    (add-rewrite-pattern patterns "toy.cast"      %%infer-cast      1)
-    (add-rewrite-pattern patterns "toy.transpose" %%infer-transpose 1))
+  ;; The patterns, as a set a pass can register with :populate.
+  (define-pattern-set toy:add-shape-inference-patterns!
+    ("toy.add" %%infer-add 1)
+    ("toy.mul" %%infer-mul 1)
+    ("toy.cast" %%infer-cast 1)
+    ("toy.transpose" %%infer-transpose 1))
 
   ;; Report an error and exit if an op that shape inference handles still has an unranked result.
   (define (toy:check-shapes-inferred! module-op)

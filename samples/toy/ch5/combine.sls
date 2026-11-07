@@ -17,8 +17,6 @@
                 mlir::Operation::getAttr)
           (only (mlir IR BuiltinAttributes)
                 mlir::DenseElementsAttr::reshape)
-          (only (mlir Transforms DialectConversion)
-                add-rewrite-pattern)
           (crest))
 
   ;; SimplifyRedundantTranspose: transpose(transpose(x)) → x
@@ -62,11 +60,11 @@
       (value : new-attr)
       -> !out-type)
 
-  ;; Register all four patterns into a RewritePatternSet.
-  (define (toy:add-canonicalization-patterns! patterns)
-    (add-rewrite-pattern patterns "toy.transpose" %%simplify-redundant-transpose 1)
-    (add-rewrite-pattern patterns "toy.reshape"   %%reshape-reshape              1)
-    (add-rewrite-pattern patterns "toy.reshape"   %%redundant-reshape            2)
-    (add-rewrite-pattern patterns "toy.reshape"   %%fold-constant-reshape        1))
+  ;; The patterns, as a set a pass can register with :populate.
+  (define-pattern-set toy:add-canonicalization-patterns!
+    ("toy.transpose" %%simplify-redundant-transpose 1)
+    ("toy.reshape" %%reshape-reshape 1)
+    ("toy.reshape" %%redundant-reshape 2)
+    ("toy.reshape" %%fold-constant-reshape 1))
 
   ) ;; end library (toy ch5 combine)

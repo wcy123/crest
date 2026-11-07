@@ -133,4 +133,4 @@ per operand/attribute/result for every op, e.g.:
 | The dialect, now with custom parse and print | `define-dialect` | as in Ch2 |
 | Every op `mlir-gen.sls` creates | `begin-mlir-code` | as in Ch2 |
 | The four canonicalization patterns | `define-rewrite-pattern` | each one is a match and a rewrite |
-| Registering the patterns | `with-RewritePatternSet`, `add-rewrite-pattern`, `applyPatternsGreedily` | written out, so the pieces are visible; there is no declarative form for greedy rewrites |
+| Registering and applying the patterns | `define-pattern-set` (`combine.sls`), `apply-patterns` (`toyc.sls`) | a table of (op, pattern, benefit), then one form that makes the set and runs the greedy driver |

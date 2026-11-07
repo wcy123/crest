@@ -18,7 +18,6 @@
         (mlir IR Operation)
         (mlir IR OperationSupport)
         (mlir IR BuiltinOps)
-        (mlir IR PatternMatch)
         (mlir IR Value)
         (mlir IR BuiltinTypes)
         (mlir IR Block)
@@ -26,7 +25,6 @@
         (mlir IR Builders)
         (mlir IR BuiltinAttributes)
         (only (mlir IR OpImplementation) mlir::StringAttr::getValue)
-        (mlir Transforms GreedyPatternRewriteDriver)
         (mlir Pass PassManager)
         (mlir Transforms Passes)
         (mlir Conversion ReconcileUnrealizedCasts ReconcileUnrealizedCasts)
@@ -45,6 +43,7 @@
         (toy ch6 ast)
         (toy ch6 toy)
         (toy ch6 mlir-gen)
+        (only (crest patterns) apply-patterns)
         (toy ch6 combine)
         (toy ch6 shape-inference)
         (toy ch6 lower-to-affine)
@@ -177,14 +176,10 @@
   ;; Step 1: Inline + shape inference + canonicalize+CSE (toy.func level).
   (%%inline-calls! module-op ctx)
   (with-current-MLIRContext ctx
-    (with-RewritePatternSet patterns (ctx)
-      (toy:add-shape-inference-patterns! patterns)
-      (mlir::applyPatternsGreedily module-op patterns)))
+    (apply-patterns module-op ctx :populate toy:add-shape-inference-patterns!))
   (toy:check-shapes-inferred! module-op)
   (with-current-MLIRContext ctx
-    (with-RewritePatternSet patterns (ctx)
-      (toy:add-canonicalization-patterns! patterns)
-      (mlir::applyPatternsGreedily module-op patterns)))
+    (apply-patterns module-op ctx :populate toy:add-canonicalization-patterns!))
   ;; Steps 2-4: Affine lowering (same as ch5).
   (when (or emit-affine? emit-llvm?)
     (%%toy-to-affine-lower! module-op ctx)

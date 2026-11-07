@@ -14,7 +14,6 @@
         (mlir IR Operation)
         (mlir IR OperationSupport)
         (mlir IR BuiltinOps)
-        (mlir IR PatternMatch)
         (mlir IR Value)
         (mlir IR BuiltinTypes)
         (mlir IR Block)
@@ -22,11 +21,11 @@
         (mlir IR Builders)
         (mlir IR BuiltinAttributes)
         (only (mlir IR OpImplementation) mlir::StringAttr::getValue)
-        (mlir Transforms GreedyPatternRewriteDriver)
         (toy ch4 parser)
         (toy ch4 ast)
         (toy ch4 toy)
         (toy ch4 mlir-gen)
+        (only (crest patterns) apply-patterns)
         (toy ch4 combine)
         (toy ch4 shape-inference))
 
@@ -77,15 +76,11 @@
   (%%inline-calls! module-op ctx)
   ;; Step 2: shape inference — propagate concrete tensor shapes (patterns in shape-inference.sls).
   (with-current-MLIRContext ctx
-    (with-RewritePatternSet patterns (ctx)
-      (toy:add-shape-inference-patterns! patterns)
-      (mlir::applyPatternsGreedily module-op patterns)))
+    (apply-patterns module-op ctx :populate toy:add-shape-inference-patterns!))
   (toy:check-shapes-inferred! module-op)
   ;; Step 3: canonicalize (fold transpose/reshape patterns from combine.sls).
   (with-current-MLIRContext ctx
-    (with-RewritePatternSet patterns (ctx)
-      (toy:add-canonicalization-patterns! patterns)
-      (mlir::applyPatternsGreedily module-op patterns))))
+    (apply-patterns module-op ctx :populate toy:add-canonicalization-patterns!)))
 
 (define (%%build-module filename ctx)
   (if (let ([n (string-length filename)])
