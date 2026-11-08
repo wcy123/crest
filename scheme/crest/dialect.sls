@@ -365,7 +365,12 @@
                                          ":assembly-format cannot be combined with :parse or :print"
                                          assembly-format))
                      (let-values ([(parse print)
-                                   (generate-assembly-format assembly-format operands attributes results)])
+                                   (generate-assembly-format
+                                    assembly-format operands attributes results
+                                    (exists (lambda (entry)
+                                              (eq? (syntax->datum (interface-entry-name entry))
+                                                   'mlir::InferTypeOpInterface))
+                                            interfaces))])
                        (vector-set! op-cbs 2 parse)
                        (vector-set! op-cbs 3 print)))
                    (make-op-parse op-name-stx operands attributes results op-cbs interfaces)]))))

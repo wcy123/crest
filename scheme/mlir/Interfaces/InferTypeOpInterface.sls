@@ -8,7 +8,8 @@
 ;; (lib/Crest/InferType.cpp) and installed in the op's InterfaceMap when the op is registered.
 (library (mlir Interfaces InferTypeOpInterface)
   (export mlir::InferTypeOpInterface
-          mlir::InferTypeOpInterface::inferReturnTypes<OperationState>)
+          mlir::InferTypeOpInterface::inferReturnTypes<OperationState>
+          mlir::InferTypeOpInterface::inferReturnTypes<OperationState*>)
   (import (chezscheme)
           (mlir IR MLIRContext)
           (mlir Interfaces InferTypeOpInterface ffi))
@@ -109,5 +110,8 @@
 
   (define mlir::InferTypeOpInterface::inferReturnTypes<OperationState>
     %mlir::InferTypeOpInterface::inferReturnTypes<OperationState>)
+
+  (define mlir::InferTypeOpInterface::inferReturnTypes<OperationState*>
+    %mlir::InferTypeOpInterface::inferReturnTypes<OperationState*>)
 
   ) ;; end library (mlir Interfaces InferTypeOpInterface)

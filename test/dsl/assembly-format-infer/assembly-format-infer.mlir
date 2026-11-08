@@ -4,7 +4,6 @@
 // nothing in the text, inf.pair has two results. The generic form shows the inferred types, and it
 // parses back to the same custom text.
 //
-// XFAIL: *
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/inf \
 // RUN:   %crest-opt %s --mlir-disable-threading --crest-scheme-dialect=inf=passes/inf | %FileCheck %s
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/inf \
@@ -22,7 +21,7 @@
 // CHECK-NEXT: %{{.*}}:2 = inf.pair %arg0 : i32
 
 // GENERIC: "inf.add"(%arg0, %arg1) : (i32, i32) -> i32
-// GENERIC: "inf.add"(%arg2, %arg2) <{tag = "t"}> : (f32, f32) -> f32
+// GENERIC: "inf.add"(%arg2, %arg2) {tag = "t"} : (f32, f32) -> f32
 // GENERIC: "inf.zero"() : () -> i64
 // GENERIC: "inf.pair"(%arg0) : (i32) -> (i32, i32)
 

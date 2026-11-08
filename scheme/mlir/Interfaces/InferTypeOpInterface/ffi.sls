@@ -3,7 +3,8 @@
 (library (mlir Interfaces InferTypeOpInterface ffi)
   (export %crest::InferTypeOpInterface::registerEntry
           %crest::InferTypeOpInterface::adapt
-          %mlir::InferTypeOpInterface::inferReturnTypes<OperationState>)
+          %mlir::InferTypeOpInterface::inferReturnTypes<OperationState>
+          %mlir::InferTypeOpInterface::inferReturnTypes<OperationState*>)
   (import (chezscheme))
 
   (define %crest::InferTypeOpInterface::registerEntry
@@ -16,6 +17,10 @@
 
   (define %mlir::InferTypeOpInterface::inferReturnTypes<OperationState>
     (foreign-procedure "mlir::InferTypeOpInterface::inferReturnTypes<OperationState>"
+                       (uptr) scheme-object))
+
+  (define %mlir::InferTypeOpInterface::inferReturnTypes<OperationState*>
+    (foreign-procedure "mlir::InferTypeOpInterface::inferReturnTypes<OperationState*>"
                        (uptr) scheme-object))
 
   ) ;; end library (mlir Interfaces InferTypeOpInterface ffi)
