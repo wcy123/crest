@@ -2,6 +2,7 @@
 ;; Mirrors mlir/Interfaces/InferTypeOpInterface.h
 (library (mlir Interfaces InferTypeOpInterface ffi)
   (export %crest::InferTypeOpInterface::reportFailure
+          %crest::InferTypeOpInterface::registerCompatibility
           %crest::InferTypeOpInterface::registerEntry
           %crest::InferTypeOpInterface::adapt
           %mlir::InferTypeOpInterface::inferReturnTypes<OperationState>
@@ -10,6 +11,9 @@
 
   (define %crest::InferTypeOpInterface::reportFailure
     (foreign-procedure "crest::InferTypeOpInterface::reportFailure" (string) void))
+
+  (define %crest::InferTypeOpInterface::registerCompatibility
+    (foreign-procedure "crest::InferTypeOpInterface::registerCompatibility" (string scheme-object) void))
 
   (define %crest::InferTypeOpInterface::registerEntry
     (foreign-procedure "crest::InferTypeOpInterface::registerEntry" (string uptr) void))

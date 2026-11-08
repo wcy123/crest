@@ -147,7 +147,8 @@ make_default_attrs_fn(std::optional<LockedSchemeObject> cb) {
 
 void CrestOp::registerInto(mlir::ExtensibleDialect* dialect,
                            llvm::StringRef op_name, Callbacks cbs) {
-  auto verify_fn = make_verify_fn(std::move(cbs.verify));
+  auto verify_fn =
+      withInferredTypesCheck(make_verify_fn(std::move(cbs.verify)), op_name);
   auto verify_region_fn = make_verify_fn(std::move(cbs.verify_regions));
 
   // DynamicOpDefinition::get adds "dialect_namespace." prefix internally.

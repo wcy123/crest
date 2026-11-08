@@ -2,7 +2,6 @@
 // type of its left operand (i32); an op that says i64 was accepted. A C++ op with the interface is
 // rejected ("inferred type(s) ... are incompatible with return type(s) of operation ...") and so is this.
 //
-// XFAIL: *
 // RUN: not env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
 // RUN:   %crest-opt %s --mlir-disable-threading --crest-scheme-dialect=bld=passes/bld-dialect 2>&1 \
 // RUN:   | %FileCheck %s

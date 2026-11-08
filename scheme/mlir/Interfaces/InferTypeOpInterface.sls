@@ -98,14 +98,21 @@
                    (machine-type))]))
 
   ;; dispatcher: (lambda (method) ...) made by define-op for the op's :interfaces entry;
-  ;; 'operation_name answers the op's name and 'inferReturnTypes the method clause or #f.
+  ;; 'operation_name answers the op's name and 'inferReturnTypes the method clause or #f. The clause
+  ;; (isCompatibleReturnTypes (inferred actual) body ...) says whether the result types of an op
+  ;; (a list of Types) fit what inferReturnTypes answered (a list of Types); without it they must be
+  ;; equal. An op whose inference is general and whose results get refined later (a ranked tensor
+  ;; where the inference says tensor<*xf64>) needs it, as the ODS ops of C++ that override it do.
   (define (mlir::InferTypeOpInterface dispatcher)
-    (let ([op-name (dispatcher 'operation_name)]
-          [method  (dispatcher 'inferReturnTypes)])
+    (let ([op-name    (dispatcher 'operation_name)]
+          [method     (dispatcher 'inferReturnTypes)]
+          [compatible (dispatcher 'isCompatibleReturnTypes)])
       (unless method
         (error 'mlir::InferTypeOpInterface
                "the interface needs an inferReturnTypes clause (context location operands attributes)"
                op-name))
+      (when compatible
+        (%crest::InferTypeOpInterface::registerCompatibility op-name compatible))
       (%crest::InferTypeOpInterface::registerEntry op-name (%%entry-point method))))
 
   (define mlir::InferTypeOpInterface::inferReturnTypes<OperationState>

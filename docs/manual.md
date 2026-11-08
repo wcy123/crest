@@ -937,10 +937,10 @@ With `FunctionOpInterface` on the function op, `CallOpInterface` on the call op,
 `DialectInlinerInterface` and a terminator (`:traits (terminator)`, LLVM 23), MLIR's own `--inline`
 pass inlines calls in a Scheme dialect (`test/dsl/call-op-interface`).
 
-`InferTypeOpInterface` lets an op-form leave out `-> type` (see [§5](#5-begin-mlir-code)). Its one
+`InferTypeOpInterface` lets an op-form leave out `-> type` (see [§5](#5-begin-mlir-code)). Its
 method clause is `inferReturnTypes`, which gets the context, the location (or `#f`), the list of
 operand `Value`s and the alist of `(name . Attribute)`, and returns the list of result `Type`s
-(`#f` to say it cannot tell):
+(`#f` to say it cannot tell). An error it raises is part of the message of the diagnostic:
 
 ```scheme
 (import (only (mlir Interfaces InferTypeOpInterface) mlir::InferTypeOpInterface))
@@ -952,6 +952,15 @@ operand `Value`s and the alist of `(name . Attribute)`, and returns the list of 
                 (inferReturnTypes (context location operands attributes)
                   (list (mlir::Value::getType (car operands)))))))
 ```
+
+The verifier of the op checks its result types against the inference, as that of a C++ op with the
+interface does: an `add` that says `i64` where the inference says `i32` is an error. The second
+clause, `isCompatibleReturnTypes (inferred actual)`, says what fits (two lists of `Type`s, a boolean);
+without it the types must be equal. An op whose inference is general and whose results are refined
+later needs it, as the ODS ops of C++ that override `isCompatibleReturnTypes` do: Toy's `add`,
+`mul`, `transpose` and `constant` infer `tensor<*xf64>` and shape inference makes the result ranked,
+so they accept any `f64` tensor (`test/dsl/op-builders/compatible-types.mlir`). The op's own `:verify`
+runs first.
 
 The name in `:interfaces` is a Scheme procedure that the dialect's library must import: it takes
 the dispatcher that `define-op` makes for the entry. `mlir::InferTypeOpInterface` makes a C function

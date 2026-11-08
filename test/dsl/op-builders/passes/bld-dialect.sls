@@ -27,6 +27,17 @@
                     (inferReturnTypes (context location operands attributes)
                                       (list (mlir::IntegerType::get<i64>))))))
 
+    ;; The inference is i32 and the result may be any single type: isCompatibleReturnTypes says what
+    ;; fits, as the ODS ops of C++ that override it do (Toy: tensor<*xf64>, then a ranked tensor).
+    (define-op loose
+      :operands   ((x mlir::Value?))
+      :results    ((out mlir::Value?))
+      :interfaces ((mlir::InferTypeOpInterface
+                    (inferReturnTypes (context location operands attributes)
+                                      (list (mlir::Value::getType (car operands))))
+                    (isCompatibleReturnTypes (inferred actual)
+                                             (eqv? (length actual) 1)))))
+
     ;; No InferTypeOpInterface: creating it without `-> type` is an error.
     (define-op plain
       :operands ((x mlir::Value?))
