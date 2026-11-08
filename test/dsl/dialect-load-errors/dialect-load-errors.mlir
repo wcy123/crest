@@ -32,12 +32,12 @@
 // RUN:   %crest-opt %s --mlir-disable-threading --crest-scheme-dialect=bad=passes/not-a-vector 2>&1 \
 // RUN:   | %FileCheck %s --check-prefixes=ALL,NOTVECTOR
 // The other entry point: the pass option dialects-in-scheme=, which loads the dialect when the pass runs
-// (so the input must not use it: empty.mlir; the pass is a no-op).
+// (so the input must not use it: empty.in; the pass is a no-op).
 // RUN: not env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
-// RUN:   %crest-opt %S/empty.mlir --mlir-disable-threading --crest-pass="dialects-in-scheme=bad=passes/macro-error passes=passes/identity" 2>&1 \
+// RUN:   %crest-opt %S/empty.in --mlir-disable-threading --crest-pass="dialects-in-scheme=bad=passes/macro-error passes=passes/identity" 2>&1 \
 // RUN:   | %FileCheck %s --check-prefixes=ALL,MACRO
 // RUN: not env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
-// RUN:   %crest-opt %S/empty.mlir --mlir-disable-threading --crest-pass="dialects-in-scheme=bad=passes/body-error passes=passes/identity" 2>&1 \
+// RUN:   %crest-opt %S/empty.in --mlir-disable-threading --crest-pass="dialects-in-scheme=bad=passes/body-error passes=passes/identity" 2>&1 \
 // RUN:   | %FileCheck %s --check-prefixes=ALL,BODY
 
 // ALL-NOT: PLEASE submit a bug report
