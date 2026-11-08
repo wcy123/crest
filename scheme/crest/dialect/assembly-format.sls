@@ -7,6 +7,10 @@
           (crest dialect ast)
           (mlir IR Operation)
           (only (mlir IR Value) mlir::Value::getType)
+          (only (mlir IR BuiltinTypes)
+                mlir::IntegerType::get<i8> mlir::IntegerType::get<i16> mlir::IntegerType::get<i32>
+                mlir::IntegerType::get<i64> mlir::IndexType::get
+                mlir::Float32Type::get mlir::Float64Type::get)
           (only (mlir Interfaces InferTypeOpInterface)
                 mlir::InferTypeOpInterface::inferReturnTypes<OperationState*>)
           (mlir IR OpImplementation))
@@ -375,7 +379,8 @@
 
   ;; ── Parser ──────────────────────────────────────────────────────────────────
 
-  (define (%%generate-parser elements operand-table result-names functional-kind infer-results?)
+  (define (%%generate-parser elements operand-table result-names functional-kind infer-results?
+                             attribute-types)
     (with-syntax ([P (car (generate-temporaries '(parser)))]
                   [S (car (generate-temporaries '(state)))])
       (let* ([n-operands (length operand-table)]
@@ -417,6 +422,12 @@
                             [else
                              #'(let ([h (mlir::OpAsmParser::parseOperandList P -1)])
                                  (and (not (eqv? h 0)) (begin (set! id h) #t)))]))))]
+                [(assoc name attribute-types)
+                 ;; a buildable attribute type: the text may leave the type out
+                 => (lambda (entry)
+                      (with-syntax ([name name] [P #'P] [S #'S]
+                                    [type (%%buildable-type-expr (cdr entry) #'P)])
+                        #'(not (eqv? 0 (mlir::OpAsmParser::parseAttribute<Type> P S type name)))))]
                 [else
                  (with-syntax ([name name] [P #'P] [S #'S])
                    #'(not (eqv? 0 (mlir::OpAsmParser::parseAttribute P S name))))]))]
@@ -526,7 +537,7 @@
      [last-was-punctuation (not (memv (string-ref text 0) (string->list ">)}],")))]
      [else (not (memv (string-ref text 0) (string->list "<>(){}[],")))]))
 
-  (define (%%generate-printer elements operand-table attribute-vars result-names)
+  (define (%%generate-printer elements operand-table attribute-vars result-names attribute-types)
     (with-syntax ([OP (car (generate-temporaries '(op)))]
                   [PR (car (generate-temporaries '(printer)))]
                   [NM (car (generate-temporaries '(name)))])
@@ -602,6 +613,10 @@
                                    (when (> i s) (mlir::OpAsmPrinter::printString PR ", "))
                                    (mlir::OpAsmPrinter::printOperand PR (mlir::Operation::getOperand OP i))
                                    (print (+ i 1))))))]))]
+                [(assoc name attribute-types)
+                 ;; a buildable attribute type: the text leaves the type out
+                 (with-syntax ([PR #'PR] [OP #'OP] [name name])
+                   #'(mlir::OpAsmPrinter::printAttributeWithoutType PR (mlir::Operation::getAttr OP name)))]
                 [else
                  (with-syntax ([PR #'PR] [OP #'OP] [name name])
                    #'(mlir::OpAsmPrinter::printAttribute PR (mlir::Operation::getAttr OP name)))]))]
@@ -627,6 +642,19 @@
   ;; ── Entry point ─────────────────────────────────────────────────────────────
 
   ;; fmt-stx is the string syntax of the clause; returns (values parse-lambda print-lambda) syntax.
+  ;; The type an attribute with :buildable-type has when the text leaves it out, built from the parser's
+  ;; context (what `parser.getBuilder().getI64Type()` is in C++).
+  (define (%%buildable-type-expr key parser-stx)
+    (with-syntax ([P parser-stx])
+      (case key
+        [(:i8)    #'(mlir::IntegerType::get<i8>  (mlir::AsmParser::getContext P))]
+        [(:i16)   #'(mlir::IntegerType::get<i16> (mlir::AsmParser::getContext P))]
+        [(:i32)   #'(mlir::IntegerType::get<i32> (mlir::AsmParser::getContext P))]
+        [(:i64)   #'(mlir::IntegerType::get<i64> (mlir::AsmParser::getContext P))]
+        [(:index) #'(mlir::IndexType::get        (mlir::AsmParser::getContext P))]
+        [(:f32)   #'(mlir::Float32Type::get      (mlir::AsmParser::getContext P))]
+        [(:f64)   #'(mlir::Float64Type::get      (mlir::AsmParser::getContext P))])))
+
   ;; Whether a directive of the format gives the type of a result (type($r), type(results), functional-type).
   (define (%%result-types-appear? elements result-names)
     (exists (lambda (e)
@@ -651,7 +679,10 @@
              [optional-attribute-names
               (%%field-names (filter (lambda (f) (eq? (attribute-field-modifier f) ':optional)) attributes)
                              attribute-field-name)]
-             [result-names    (%%field-names results result-field-name)])
+             [result-names    (%%field-names results result-field-name)]
+             ;; (name . type keyword) of the attributes that have a :buildable-type
+             [attribute-types (filter cdr (map cons attribute-names
+                                               (map attribute-field-buildable-type attributes)))])
         (let ([infer-results? (and implements-infer-type?
                                    (pair? result-names)
                                    (not (%%result-types-appear? elements result-names)))])
@@ -673,6 +704,8 @@
                                    [(eq? (car e) 'group) (collect (cadr e))]
                                    [else '()]))
                                 es)))])
-            (values (%%generate-parser elements operand-table result-names functional-kind infer-results?)
-                    (%%generate-printer elements operand-table attribute-vars result-names)))))))
+            (values (%%generate-parser elements operand-table result-names functional-kind infer-results?
+                                       attribute-types)
+                    (%%generate-printer elements operand-table attribute-vars result-names
+                                        attribute-types)))))))
   )

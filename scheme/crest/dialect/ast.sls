@@ -36,6 +36,7 @@
           attribute-field-name
           attribute-field-type
           attribute-field-modifier
+          attribute-field-buildable-type
           result-field
           make-result-field
           result-field?
@@ -95,10 +96,14 @@
   ;;   name     — symbol e.g. 'value
   ;;   type     — syntax: predicate (attr) → bool
   ;;   modifier — :required (default) or :optional
+  ;;   buildable-type — #f, or the datum of a type keyword (:i8 :i16 :i32 :i64 :f32 :f64 :index): the type
+  ;;                    an :assembly-format gives the attribute when the text leaves it out, as ODS does
+  ;;                    for I64Attr and the like
   (define-record-type attribute-field
-    (fields (immutable name     attribute-field-name)
-            (immutable type     attribute-field-type)
-            (immutable modifier attribute-field-modifier)))
+    (fields (immutable name           attribute-field-name)
+            (immutable type           attribute-field-type)
+            (immutable modifier       attribute-field-modifier)
+            (immutable buildable-type attribute-field-buildable-type)))
 
   ;; A single result field declaration inside (define-op ... :results (...)).
   ;;   name — syntax: identifier (used for accessor name generation)

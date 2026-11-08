@@ -5,6 +5,7 @@
           mlir::OpAsmPrinter::printOperands
           mlir::OpAsmPrinter::printOperand
           mlir::OpAsmPrinter::printAttribute
+          mlir::OpAsmPrinter::printAttributeWithoutType
           mlir::OpAsmPrinter::printType
           mlir::OpAsmPrinter::printOptionalAttrDict
           mlir::OpAsmPrinter::printOptionalAttrDictExcept
@@ -25,6 +26,8 @@
           mlir::OpAsmParser::parseFunctionalType
           mlir::OpAsmParser::parseOptionalAttrDict
           mlir::OpAsmParser::parseAttribute
+          mlir::OpAsmParser::parseAttribute<Type>
+          mlir::AsmParser::getContext
           mlir::OpAsmParser::parseKeyword
           mlir::OpAsmParser::parseLParen
           mlir::OpAsmParser::parseRParen
@@ -58,6 +61,9 @@
 
   (define mlir::OpAsmPrinter::printAttribute
     %mlir::OpAsmPrinter::printAttribute)
+
+  (define mlir::OpAsmPrinter::printAttributeWithoutType
+    %mlir::OpAsmPrinter::printAttributeWithoutType)
 
   (define mlir::OpAsmPrinter::printType
     %mlir::OpAsmPrinter::printType)
@@ -110,6 +116,8 @@
   (define mlir::OpAsmParser::parseFunctionalType %mlir::OpAsmParser::parseFunctionalType)
   (define mlir::OpAsmParser::parseOptionalAttrDict %mlir::OpAsmParser::parseOptionalAttrDict)
   (define mlir::OpAsmParser::parseAttribute      %mlir::OpAsmParser::parseAttribute)
+  (define mlir::OpAsmParser::parseAttribute<Type> %mlir::OpAsmParser::parseAttribute<Type>)
+  (define mlir::AsmParser::getContext            %mlir::AsmParser::getContext)
   (define mlir::OpAsmParser::parseKeyword        %mlir::OpAsmParser::parseKeyword)
   (define mlir::OpAsmParser::parseLParen         %mlir::OpAsmParser::parseLParen)
   (define mlir::OpAsmParser::parseRParen         %mlir::OpAsmParser::parseRParen)

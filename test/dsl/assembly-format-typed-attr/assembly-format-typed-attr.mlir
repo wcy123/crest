@@ -1,8 +1,8 @@
 // An attribute field with a :buildable-type prints without its type and parses without it, as the
 // I64Attr of C++ Toy's StructAccessOp does (plans/27): `[1]`, not `[1 : i64]`. The generic form shows
-// the type that the parser built the attribute with, and a text that still writes the type parses.
+// the type that the parser built the attribute with. As in C++, a text that still writes the type is not
+// accepted: the generic form is how a typed attribute is written.
 //
-// XFAIL: *
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/ta \
 // RUN:   %crest-opt %s --mlir-disable-threading --crest-scheme-dialect=ta=passes/ta | %FileCheck %s
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/ta \
@@ -26,7 +26,7 @@
 
 func.func @f(%a: i32) {
   %0 = ta.index %a[1] : i32 -> f32
-  %1 = ta.index %a[2 : i64] : i32 -> f32
+  %1 = ta.index %a[2] : i32 -> f32
   %2 = ta.scale %a by 2.5 : i32 -> f32
   %3 = ta.at %a at 3 : i32 -> i32
   return
