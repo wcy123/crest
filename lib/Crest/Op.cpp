@@ -7,6 +7,7 @@
 #include "Op.h"
 #include "../Bindings/Support/CrestObject.h"
 #include "../Bindings/Support/SchemeWrapper.h"
+#include "InferType.h"
 #include "Trait.h"
 #include "mlir/IR/ExtensibleDialect.h"
 #include "mlir/IR/Operation.h"
@@ -187,6 +188,7 @@ void CrestOp::registerInto(mlir::ExtensibleDialect* dialect,
                  op_name.str() + ": " + trait_error);
   }
 
+  attachInferTypeOpInterface(*def, op_name);
   dialect->registerDynamicOp(std::move(def));
 }
 

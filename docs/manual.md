@@ -353,8 +353,16 @@ An op-form starts at a recognizable boundary pattern:
 ```
 result-var = dialect.op-name (operands...) modifiers... -> result-type
 (r0 r1) = dialect.op-name (operands...) modifiers... -> (type0 type1)
+result-var = dialect.op-name (operands...) modifiers...        ; result types inferred, see below
 dialect.op-name (operands...) modifiers...
 ```
+
+The `-> result-type` can be left out when the op implements `mlir::InferTypeOpInterface`
+(a C++ op such as `arith.addi`, or an op of a Scheme dialect, see
+[Op-level `:interfaces`](#op-level-interfaces)): the types come from the operands, attributes
+and regions given to the op-form, as `builder.create<AddOp>(loc, lhs, rhs)` gets them in C++.
+An explicit `->` always wins. Leaving it out for an op that is not registered, or does not
+implement the interface, raises `no result type for <op>: ... write -> type`.
 
 Op names contain `.` (e.g. `arith.constant`, `toy.func`). Result vars do not.
 Any parenthesized item that doesn't match an op-form pattern is a Scheme expression.
@@ -893,7 +901,7 @@ Methods not listed use the default C++ concept implementation.
 
 The op interfaces a Scheme op can implement: `FunctionOpInterface` (which also brings
 `SymbolOpInterface`, `CallableOpInterface` and `ArgAndResultAttrsOpInterface`), `CallableOpInterface`,
-`SymbolOpInterface`, `ArgAndResultAttrsOpInterface` and `CallOpInterface`. For `CallOpInterface`
+`SymbolOpInterface`, `ArgAndResultAttrsOpInterface`, `CallOpInterface` and `InferTypeOpInterface`. For `CallOpInterface`
 the callee is the op's `callee` attribute (a symbol reference, or a string naming one) and the
 arguments are all its operands; it takes no method clauses (a clause is an error):
 
@@ -906,6 +914,30 @@ arguments are all its operands; it takes no method clauses (a clause is an error
 With `FunctionOpInterface` on the function op, `CallOpInterface` on the call op, the dialect's
 `DialectInlinerInterface` and a terminator (`:traits (terminator)`, LLVM 23), MLIR's own `--inline`
 pass inlines calls in a Scheme dialect (`test/dsl/call-op-interface`).
+
+`InferTypeOpInterface` lets an op-form leave out `-> type` (see [§5](#5-begin-mlir-code)). Its one
+method clause is `inferReturnTypes`, which gets the context, the location (or `#f`), the list of
+operand `Value`s and the alist of `(name . Attribute)`, and returns the list of result `Type`s
+(`#f` to say it cannot tell):
+
+```scheme
+(import (only (mlir Interfaces InferTypeOpInterface) mlir::InferTypeOpInterface))
+
+(define-op add
+  :operands   ((lhs mlir::Value?) (rhs mlir::Value?))
+  :results    ((out mlir::Value?))
+  :interfaces ((mlir::InferTypeOpInterface
+                (inferReturnTypes (context location operands attributes)
+                  (list (mlir::Value::getType (car operands)))))))
+```
+
+The name in `:interfaces` is a Scheme procedure that the dialect's library must import: it takes
+the dispatcher that `define-op` makes for the entry. `mlir::InferTypeOpInterface` makes a C function
+for the method with `foreign-callable`, because MLIR calls `inferReturnTypes` through a function
+pointer that carries neither the op nor a `Concept`. The dialect has to be loaded into the context
+(`dialects-in-scheme=` or `--crest-scheme-dialect=` with an op in the input) for MLIR to see the
+interface (`test/dsl/op-builders`). Platforms: System V x86-64 and Windows x64; on another machine
+type the dialect fails to load with a message saying so.
 
 ### Dialect-level `:interfaces`
 

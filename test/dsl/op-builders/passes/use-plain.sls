@@ -1,5 +1,5 @@
 #!r6rs
-;; Rewrites test.src(%a, %b) into bld.plain, which has no :infer-result-types, and names no result type.
+;; Rewrites test.src(%a, %b) into bld.plain, which does not implement InferTypeOpInterface, and names no result type.
 (library (passes use-plain)
   (export run-pass)
   (import (except (rnrs) =)

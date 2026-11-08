@@ -23,10 +23,9 @@
   ;;       ...
   ;;       (else #f)))                               ; #f → use C++ default
   ;;
-  ;; Registration call — inline foreign-procedure so no Scheme identifier for
-  ;; the interface function is needed at the define-dialect call site:
-  ;;   ((foreign-procedure "mlir::FunctionOpInterface" (scheme-object) void)
-  ;;    %%toy.func:mlir::FunctionOpInterface)
+  ;; Registration call — the interface name written in :interfaces is a Scheme procedure
+  ;; that takes the dispatcher, so the library of the dialect imports it:
+  ;;   (mlir::FunctionOpInterface %%toy.func:mlir::FunctionOpInterface)
   (define (generate-interface-registrations ctx ops)
     (let ([op-prefix (string-append (%%id->str ctx) ".")])
       (let loop ([ops ops] [defs '()] [calls '()])
@@ -42,13 +41,12 @@
                         (loop (cdr ops) defs calls)
                         (let* ([entry          (car entries)]
                                [iface-stx      (interface-entry-name entry)]
-                               [iface-name-str (%%id->str iface-stx)]
                                [methods        (interface-entry-methods entry)]
                                ;; %%toy.func:mlir::FunctionOpInterface
                                [proc-id        (%%id ctx "%%" op-name-str ":" iface-stx)])
                           (with-syntax
                               ([dispatch-proc  proc-id]
-                               [iface-sym      iface-name-str]
+                               [iface-proc     iface-stx]
                                [op-name-s      op-name-str]
                                [(method-clause ...)
                                 (map (lambda (m)
@@ -66,9 +64,7 @@
                                          method-clause ...
                                          (else #f)))
                                    defs)
-                             (cons #'((foreign-procedure iface-sym (scheme-object) void)
-                                      dispatch-proc)
-                                   calls))))))))))))
+                             (cons #'(iface-proc dispatch-proc) calls))))))))))))
 
   ;; Build the 11-slot dialect callbacks vector (slots 0-10).
   ;; Slot 11 (:get-registered-interface-for-op) is removed — LookupInterfaceForOp

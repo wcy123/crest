@@ -1,11 +1,10 @@
-// An op of a Scheme dialect can be created without `-> type` when its define-op has an
-// :infer-result-types clause: bld.add takes the type of its left operand, bld.zero answers i64 with
-// no operands at all, and an explicit `-> i64` still wins over the clause.
+// An op of a Scheme dialect can be created without `-> type` when it implements
+// mlir::InferTypeOpInterface: bld.add takes the type of its left operand, bld.zero answers i64 with
+// no operands at all, and an explicit `-> i64` still wins over the interface.
 //
-// XFAIL: *
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
 // RUN:   %crest-opt %s -allow-unregistered-dialect --mlir-disable-threading \
-// RUN:   --crest-scheme-dialect=bld=passes/bld-dialect --crest-pass="passes=passes/use-builder" \
+// RUN:   --crest-pass="dialects-in-scheme=bld=passes/bld-dialect passes=passes/use-builder" \
 // RUN:   | %FileCheck %s
 
 // CHECK-LABEL: func.func @f

@@ -54,6 +54,8 @@ add_library(CrestBindings STATIC
   Dialect/Tensor/IR/Tensor.h
   Interfaces/CallInterfaces.cpp
   Interfaces/CallInterfaces.h
+  Interfaces/InferTypeOpInterface.cpp
+  Interfaces/InferTypeOpInterface.h
   Interfaces/SideEffectInterfaces.cpp
   Interfaces/SideEffectInterfaces.h
   Interfaces/DestinationStyleOpInterface.cpp
@@ -166,6 +168,7 @@ target_link_libraries(CrestBindings
     MLIRFuncDialect
     MLIRMemRefDialect
     MLIRCallInterfaces
+    MLIRInferTypeOpInterface
     MLIRSideEffectInterfaces
     MLIRFunctionInterfaces
     MLIRTensorDialect
