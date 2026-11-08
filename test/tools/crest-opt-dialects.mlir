@@ -2,7 +2,6 @@
 // memref, affine, cf and llvm, as toyc does. It knew only func, shape and tensor, so a text with an
 // arith op was rejected ("Dialect `arith' not found") and a Scheme pass could not be tried on it.
 //
-// XFAIL: *
 // RUN: %crest-opt %s | %FileCheck %s
 
 // CHECK-LABEL: func.func @f

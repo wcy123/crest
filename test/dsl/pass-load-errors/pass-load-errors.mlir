@@ -9,7 +9,6 @@
 // that fails to import (test/dsl/import-error) or a dialect library that does not load
 // (test/dsl/dialect-load-errors).
 //
-// XFAIL: *
 // RUN: not env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
 // RUN:   %crest-opt %s --crest-pass="passes=passes/no-run-pass" 2>&1 \
 // RUN:   | %FileCheck %s --implicit-check-not='PLEASE submit a bug report' --implicit-check-not='invalid memory reference'
