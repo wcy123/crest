@@ -179,6 +179,7 @@ Running the struct example with `--emit=jit` prints:
 | The text form of `toy.struct_access` and `toy.struct_constant` | `:assembly-format` | `` $input `[` $index `]` attr-dict `:` type($input) `->` type($output) `` and `` $value attr-dict `:` type($output) ``, as in C++ (an attribute prints with its type: `[1 : i64]`, where ODS leaves a buildable type out) |
 | The `:materialize-constant` callback | `begin-mlir-code` with `with-current-OpBuilder` | it returns the op, not its result |
 | Every op `mlir-gen.sls` creates, including the struct ops | `begin-mlir-code` | as in Ch2 |
+| The result type of `toy.struct_access` | `:interfaces ((mlir::InferTypeOpInterface ...))` | as in Ch2: C++'s `StructAccessOp` builder takes the struct's element type at the index, and so does the op here |
 | The canonicalization patterns and the folders | `define-rewrite-pattern` | as in Ch3 |
 | The lowerings and their registration | as in Ch5 and Ch6 | `apply-conversion`, `define-conversion-pattern`, `begin-mlir-code` |
 | Shape inference | `define-rewrite-pattern`, as in Ch4 | |

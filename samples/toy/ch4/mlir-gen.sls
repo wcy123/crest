@@ -66,7 +66,7 @@
            [type (mlir::RankedTensorType::get '() (mlir::Float64Type::get))]
            [attr (mlir::DenseElementsAttr::get<f64> type (list val))])
       (begin-mlir-code
-          r = toy.constant () (value : attr) :loc loc -> type)))
+          r = toy.constant () (value : attr) :loc loc)))
 
   (define (%%mlir-gen-literal expr)
     (let* ([loc   (%%loc (literal-expr:loc expr))]
@@ -75,7 +75,7 @@
            [type  (mlir::RankedTensorType::get dims (mlir::Float64Type::get))]
            [attr  (mlir::DenseElementsAttr::get<f64> type data)])
       (begin-mlir-code
-          r = toy.constant () (value : attr) :loc loc -> type)))
+          r = toy.constant () (value : attr) :loc loc)))
 
   (define (%%mlir-gen-var symtab expr)
     (let ([val (hashtable-ref symtab (var-expr:name expr) #f)])
@@ -87,11 +87,10 @@
     (let ([lhs (%%mlir-gen-expr symtab (binary-expr:lhs expr))]
           [rhs (%%mlir-gen-expr symtab (binary-expr:rhs expr))]
           [loc (%%loc (binary-expr:loc expr))])
-      (let ([type (%%f64-unranked-tensor)])
-        (case (binary-expr:op expr)
-          [(#\+) (begin-mlir-code r = toy.add (lhs rhs) :loc loc -> type)]
-          [(#\*) (begin-mlir-code r = toy.mul (lhs rhs) :loc loc -> type)]
-          [else (%%fail (%%loc (binary-expr:loc expr)) "invalid binary operator '" (string (binary-expr:op expr)) "'")]))))
+      (case (binary-expr:op expr)
+        [(#\+) (begin-mlir-code r = toy.add (lhs rhs) :loc loc)]
+        [(#\*) (begin-mlir-code r = toy.mul (lhs rhs) :loc loc)]
+        [else (%%fail (%%loc (binary-expr:loc expr)) "invalid binary operator '" (string (binary-expr:op expr)) "'")])))
 
   (define (%%mlir-gen-call symtab expr)
     (let ([callee (call-expr:callee expr)]
@@ -102,9 +101,8 @@
        [(string=? callee "transpose")
         (unless (fx=? (length args) 1)
           (%%fail (%%loc (call-expr:loc expr)) "MLIR codegen encountered an error: toy.transpose does not accept multiple arguments"))
-        (let ([type (%%f64-unranked-tensor)])
-          (begin-mlir-code
-              r = toy.transpose (,@args) :loc loc -> type))]
+        (begin-mlir-code
+            r = toy.transpose (,@args) :loc loc)]
        [else
         (let ([type (%%f64-unranked-tensor)])
           (begin-mlir-code

@@ -72,7 +72,7 @@
            [type (mlir::RankedTensorType::get '() (mlir::Float64Type::get))]
            [attr (mlir::DenseElementsAttr::get<f64> type (list val))])
       (begin-mlir-code
-          r = toy.constant () (value : attr) :loc loc -> type)))
+          r = toy.constant () (value : attr) :loc loc)))
 
   (define (%%mlir-gen-literal expr)
     (let* ([loc   (%%loc (literal-expr:loc expr))]
@@ -81,7 +81,7 @@
            [type  (mlir::RankedTensorType::get dims (mlir::Float64Type::get))]
            [attr  (mlir::DenseElementsAttr::get<f64> type data)])
       (begin-mlir-code
-          r = toy.constant () (value : attr) :loc loc -> type)))
+          r = toy.constant () (value : attr) :loc loc)))
 
   (define (%%mlir-gen-var symtab expr)
     (let ([val (hashtable-ref symtab (var-expr:name expr) #f)])
@@ -157,21 +157,18 @@
                  [struct-decl (%%find-struct-decl-by-type struct-map lhs-type)]
                  [field-idx   (if struct-decl
                                   (%%find-field-index struct-decl field-name)
-                                  (error 'mlir-gen "cannot find struct for field access" field-name))]
-                 [result-type (list-ref elem-types field-idx)])
+                                  (error 'mlir-gen "cannot find struct for field access" field-name))])
             (begin-mlir-code
                 r = toy.struct_access (lhs)
                 (index : field-idx :i64)
-                :loc loc
-                -> result-type))
+                :loc loc))
           ;; regular binary op
           (let ([lhs (%%mlir-gen-expr symtab struct-map (binary-expr:lhs expr))]
                 [rhs (%%mlir-gen-expr symtab struct-map (binary-expr:rhs expr))])
-            (let ([type (%%f64-unranked-tensor)])
-              (case op
-                [(#\+) (begin-mlir-code r = toy.add (lhs rhs) :loc loc -> type)]
-                [(#\*) (begin-mlir-code r = toy.mul (lhs rhs) :loc loc -> type)]
-                [else (%%fail loc "invalid binary operator '" (string op) "'")]))))))
+            (case op
+              [(#\+) (begin-mlir-code r = toy.add (lhs rhs) :loc loc)]
+              [(#\*) (begin-mlir-code r = toy.mul (lhs rhs) :loc loc)]
+              [else (%%fail loc "invalid binary operator '" (string op) "'")])))))
 
 
   (define (%%find-struct-decl-by-type struct-map stype)
@@ -258,9 +255,8 @@
        [(string=? callee "transpose")
         (unless (fx=? (length args) 1)
           (%%fail (%%loc (call-expr:loc expr)) "MLIR codegen encountered an error: toy.transpose does not accept multiple arguments"))
-        (let ([type (%%f64-unranked-tensor)])
-          (begin-mlir-code
-              r = toy.transpose (,@args) :loc loc -> type))]
+        (begin-mlir-code
+            r = toy.transpose (,@args) :loc loc)]
        [(not (hashtable-ref (%%defined-functions) callee #f))
         (%%fail loc "no defined function found for '" callee "'")]
        [else
