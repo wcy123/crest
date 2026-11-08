@@ -181,8 +181,8 @@
                l = affine.load (lhs ,@ivs) (map : map) :loc loc -> elem-type
                r = affine.load (rhs ,@ivs) (map : map) :loc loc -> elem-type
                (case kind
-                 [(add) (begin-mlir-code v = arith.addf (l r) :loc loc -> elem-type)]
-                 [(mul) (begin-mlir-code v = arith.mulf (l r) :loc loc -> elem-type)])))))))
+                 [(add) (begin-mlir-code v = arith.addf (l r) :loc loc)]
+                 [(mul) (begin-mlir-code v = arith.mulf (l r) :loc loc)])))))))
 
   (define-conversion-pattern (%%add-lower! op operands-ref rw tc)
     :if-match

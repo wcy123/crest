@@ -358,7 +358,7 @@ dialect.op-name (operands...) modifiers...
 ```
 
 The `-> result-type` can be left out when the op implements `mlir::InferTypeOpInterface`
-(a C++ op such as `arith.addi`, or an op of a Scheme dialect, see
+(a C++ op such as `arith.addi`, checked in `test/dsl/op-builders/cxx-ops.mlir`, or an op of a Scheme dialect, see
 [Op-level `:interfaces`](#op-level-interfaces)): the types come from the operands, attributes
 and regions given to the op-form, as `builder.create<AddOp>(loc, lhs, rhs)` gets them in C++.
 An explicit `->` always wins. Leaving it out for an op that is not registered, or does not
