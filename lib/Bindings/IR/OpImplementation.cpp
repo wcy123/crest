@@ -47,6 +47,15 @@ void registerIROpImplementationBindings() {
       });
 
   Sregister_symbol(
+      "mlir::OpAsmPrinter::printAttributeWithoutType",
+      (void*)+[](uint64_t printer_ptr, uint64_t attr_ptr) -> void {
+        auto* p = reinterpret_cast<mlir::OpAsmPrinter*>(printer_ptr);
+        auto attr = mlir::Attribute::getFromOpaquePointer(
+            reinterpret_cast<void*>(attr_ptr));
+        p->printAttributeWithoutType(attr);
+      });
+
+  Sregister_symbol(
       "mlir::OpAsmPrinter::printAttribute",
       (void*)+[](uint64_t printer_ptr, uint64_t attr_ptr) -> void {
         auto* p = reinterpret_cast<mlir::OpAsmPrinter*>(printer_ptr);
@@ -322,6 +331,30 @@ void registerIROpImplementationBindings() {
           return 0;
         }
         return reinterpret_cast<uint64_t>(attr.getAsOpaquePointer());
+      });
+
+  // parseAttribute with the type the attribute has when the text leaves it out,
+  // as ODS does for a buildable attribute type (the I64Attr of an op).
+  Sregister_symbol(
+      "mlir::OpAsmParser::parseAttribute<Type>",
+      (void*)+[](uint64_t parser_ptr, uint64_t state_ptr, uint64_t type_ptr,
+                 const char* attr_name) -> uint64_t {
+        auto* p = reinterpret_cast<mlir::OpAsmParser*>(parser_ptr);
+        auto& state = *reinterpret_cast<mlir::OperationState*>(state_ptr);
+        auto type = mlir::Type::getFromOpaquePointer(
+            reinterpret_cast<const void*>(type_ptr));
+        mlir::Attribute attr;
+        if (p->parseAttribute(attr, type, attr_name, state.attributes)) {
+          return 0;
+        }
+        return reinterpret_cast<uint64_t>(attr.getAsOpaquePointer());
+      });
+
+  Sregister_symbol(
+      "mlir::AsmParser::getContext",
+      (void*)+[](uint64_t parser_ptr) -> uint64_t {
+        auto* p = reinterpret_cast<mlir::OpAsmParser*>(parser_ptr);
+        return reinterpret_cast<uint64_t>(p->getContext());
       });
 
   Sregister_symbol(

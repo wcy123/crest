@@ -144,35 +144,47 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
         return 1;
       });
 
+  // The result types of the op named by `state`, from the operands, attributes
+  // and regions already in it: the list of Types, or #f when the op does not
+  // implement InferTypeOpInterface. An OperationState reaches Scheme in two
+  // forms (a box from with-OperationState, a raw pointer in a :parse callback),
+  // and each has a binding that calls this.
+  static const auto infer = [](mlir::OperationState& state) -> ptr {
+    std::optional<mlir::RegisteredOperationName> info =
+        state.name.getRegisteredInfo();
+    auto* model =
+        info ? info->getInterface<mlir::InferTypeOpInterface>() : nullptr;
+    if (!model || !model->inferReturnTypes) {
+      return Sfalse;
+    }
+    mlir::MLIRContext* ctx = state.getContext();
+    llvm::SmallVector<mlir::Type, 4> types;
+    if (mlir::failed(model->inferReturnTypes(
+            ctx, state.location, state.operands,
+            state.attributes.getDictionary(ctx), state.getRawProperties(),
+            mlir::RegionRange(state.regions), types))) {
+      scheme_error("mlir::InferTypeOpInterface::inferReturnTypes",
+                   "cannot infer the result types of ",
+                   state.name.getStringRef().str());
+    }
+    return Conversion<mlir::TypeRange, ptr>{}(types);
+  };
+
   // mlir::InferTypeOpInterface::inferReturnTypes<OperationState> (uptr state)
-  //
-  // inferReturnTypes of the op named by the state, called with the operands,
-  // attributes and regions already in the state. Returns the list of result
-  // Types, or #f when the op does not implement InferTypeOpInterface.
+  //   state: a CrestBox<OperationState>, as with-OperationState makes
   Sregister_symbol(
       "mlir::InferTypeOpInterface::inferReturnTypes<OperationState>",
       (void*)+[](uint64_t state_ptr) -> ptr {
-        mlir::OperationState& state =
-            crest::CrestBox<mlir::OperationState>::inner(
-                state_ptr, "mlir::InferTypeOpInterface::inferReturnTypes");
-        std::optional<mlir::RegisteredOperationName> info =
-            state.name.getRegisteredInfo();
-        auto* model =
-            info ? info->getInterface<mlir::InferTypeOpInterface>() : nullptr;
-        if (!model || !model->inferReturnTypes) {
-          return Sfalse;
-        }
-        mlir::MLIRContext* ctx = state.getContext();
-        llvm::SmallVector<mlir::Type, 4> types;
-        if (mlir::failed(model->inferReturnTypes(
-                ctx, state.location, state.operands,
-                state.attributes.getDictionary(ctx), state.getRawProperties(),
-                mlir::RegionRange(state.regions), types))) {
-          scheme_error("mlir::InferTypeOpInterface::inferReturnTypes",
-                       "cannot infer the result types of ",
-                       state.name.getStringRef().str());
-        }
-        return Conversion<mlir::TypeRange, ptr>{}(types);
+        return infer(crest::CrestBox<mlir::OperationState>::inner(
+            state_ptr, "mlir::InferTypeOpInterface::inferReturnTypes"));
+      });
+
+  // mlir::InferTypeOpInterface::inferReturnTypes<OperationState*> (uptr state)
+  //   state: the raw OperationState* of a :parse callback
+  Sregister_symbol(
+      "mlir::InferTypeOpInterface::inferReturnTypes<OperationState*>",
+      (void*)+[](uint64_t state_ptr) -> ptr {
+        return infer(*reinterpret_cast<mlir::OperationState*>(state_ptr));
       });
 }
 

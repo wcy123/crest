@@ -5,6 +5,7 @@
           %mlir::OpAsmPrinter::printOperands
           %mlir::OpAsmPrinter::printOperand
           %mlir::OpAsmPrinter::printAttribute
+          %mlir::OpAsmPrinter::printAttributeWithoutType
           %mlir::OpAsmPrinter::printType
           %mlir::OpAsmPrinter::printOptionalAttrDict
           %mlir::OpAsmPrinter::printOptionalAttrDictExcept
@@ -30,6 +31,8 @@
           %mlir::OpAsmParser::parseFunctionalType
           %mlir::OpAsmParser::parseOptionalAttrDict
           %mlir::OpAsmParser::parseAttribute
+          %mlir::OpAsmParser::parseAttribute<Type>
+          %mlir::AsmParser::getContext
           %mlir::OpAsmParser::parseKeyword
           %mlir::OpAsmParser::parseLParen
           %mlir::OpAsmParser::parseRParen
@@ -58,6 +61,9 @@
 
   (define %mlir::OpAsmPrinter::printAttribute
     (foreign-procedure "mlir::OpAsmPrinter::printAttribute" (uptr uptr) void))
+
+  (define %mlir::OpAsmPrinter::printAttributeWithoutType
+    (foreign-procedure "mlir::OpAsmPrinter::printAttributeWithoutType" (uptr uptr) void))
 
   (define %mlir::OpAsmPrinter::printType
     (foreign-procedure "mlir::OpAsmPrinter::printType" (uptr uptr) void))
@@ -137,6 +143,12 @@
 
   (define %mlir::OpAsmParser::parseAttribute
     (foreign-procedure "mlir::OpAsmParser::parseAttribute" (uptr uptr string) uptr))
+
+  (define %mlir::OpAsmParser::parseAttribute<Type>
+    (foreign-procedure "mlir::OpAsmParser::parseAttribute<Type>" (uptr uptr uptr string) uptr))
+
+  (define %mlir::AsmParser::getContext
+    (foreign-procedure "mlir::AsmParser::getContext" (uptr) uptr))
 
   (define %mlir::OpAsmParser::parseKeyword
     (foreign-procedure "mlir::OpAsmParser::parseKeyword" (uptr string) boolean))

@@ -36,6 +36,7 @@
           :assembly-format
           :required
           :optional
+          :buildable-type
           :variadic)
   (import (chezscheme)
           (for (crest dialect expand) expand)        ; generate-op-defs at macro-expansion time
@@ -71,6 +72,7 @@
   (define :results                     ':results)
   (define :required                    ':required)
   (define :optional                    ':optional)
+  (define :buildable-type              ':buildable-type)
   (define :variadic                    ':variadic)
   (define :interfaces                  ':interfaces)
   (define :traits                      ':traits)
@@ -220,19 +222,36 @@
                                  field-stx)]))
           ;; Returns attribute-field record — mirrors parse-op-operand for attributes.
           (define (parse-op-attribute field-stx)
-            (syntax-case field-stx (:required :optional)
+            ;; The type keyword of :buildable-type, as the shorthands of an op-form name a type.
+            (define (buildable key-stx)
+              (let ([key (syntax->datum key-stx)])
+                (unless (memq key '(:i8 :i16 :i32 :i64 :f32 :f64 :index))
+                  (syntax-violation 'define-op
+                                    ":buildable-type expects :i8, :i16, :i32, :i64, :f32, :f64 or :index"
+                                    field-stx key-stx))
+                key))
+            (syntax-case field-stx (:required :optional :buildable-type)
               [(name type)
                (identifier? #'name)
-               (make-attribute-field #'name #'type ':required)]
+               (make-attribute-field #'name #'type ':required #f)]
               [(name type :required)
                (identifier? #'name)
-               (make-attribute-field #'name #'type ':required)]
+               (make-attribute-field #'name #'type ':required #f)]
               [(name type :optional)
                (identifier? #'name)
-               (make-attribute-field #'name #'type ':optional)]
+               (make-attribute-field #'name #'type ':optional #f)]
+              [(name type :buildable-type key)
+               (identifier? #'name)
+               (make-attribute-field #'name #'type ':required (buildable #'key))]
+              [(name type :required :buildable-type key)
+               (identifier? #'name)
+               (make-attribute-field #'name #'type ':required (buildable #'key))]
+              [(name type :optional :buildable-type key)
+               (identifier? #'name)
+               (make-attribute-field #'name #'type ':optional (buildable #'key))]
               [_
                (syntax-violation 'define-op
-                                 "malformed attribute — expected (name type) or (name type :required/:optional)"
+                                 "malformed attribute — expected (name type), (name type :required/:optional) or either with :buildable-type :i64 (or another type keyword) at the end"
                                  field-stx)]))
 
           ;; Op callback vector slots (mirrors CrestOp::Callbacks in lib/Crest/Op.h):
@@ -359,15 +378,29 @@
                                      "unknown clause — expected :operands, :attributes, :results, :summary, :description, or (:callback (args) body ...)"
                                      #'bad)]
                   [()
-                   (when assembly-format
-                     (when (or (vector-ref op-cbs 2) (vector-ref op-cbs 3))
-                       (syntax-violation 'define-op
-                                         ":assembly-format cannot be combined with :parse or :print"
-                                         assembly-format))
-                     (let-values ([(parse print)
-                                   (generate-assembly-format assembly-format operands attributes results)])
-                       (vector-set! op-cbs 2 parse)
-                       (vector-set! op-cbs 3 print)))
+                   ;; (a syntax-case clause is a fender and one expression: the checks are the fender)
+                   (begin
+                     (when assembly-format
+                       (when (or (vector-ref op-cbs 2) (vector-ref op-cbs 3))
+                         (syntax-violation 'define-op
+                                           ":assembly-format cannot be combined with :parse or :print"
+                                           assembly-format))
+                       (let-values ([(parse print)
+                                     (generate-assembly-format
+                                      assembly-format operands attributes results
+                                      (exists (lambda (entry)
+                                                (eq? (syntax->datum (interface-entry-name entry))
+                                                     'mlir::InferTypeOpInterface))
+                                              interfaces))])
+                         (vector-set! op-cbs 2 parse)
+                         (vector-set! op-cbs 3 print)))
+                     (unless assembly-format
+                       (for-each (lambda (field)
+                                   (when (attribute-field-buildable-type field)
+                                     (syntax-violation 'define-op
+                                                       ":buildable-type is the type an :assembly-format gives the attribute; the op has none"
+                                                       (attribute-field-name field))))
+                                 attributes)))
                    (make-op-parse op-name-stx operands attributes results op-cbs interfaces)]))))
 
 

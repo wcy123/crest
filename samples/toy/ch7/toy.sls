@@ -442,7 +442,7 @@
       :summary    "struct field access"
       :traits     (pure)
       :operands   ((input %%struct-type-value?))
-      :attributes ((index %%integer-attr?))
+      :attributes ((index %%integer-attr? :buildable-type :i64))
       :results    ((output %%toy-type?))
       :interfaces ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes)

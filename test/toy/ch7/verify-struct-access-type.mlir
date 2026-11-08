@@ -5,6 +5,6 @@
 // CHECK: must have the same result type as the struct element referred to by the index
 
 toy.func @f(%arg0: !toy.struct<tensor<*xf64>, tensor<2xf64>>) {
-  %0 = toy.struct_access %arg0[1 : i64] : !toy.struct<tensor<*xf64>, tensor<2xf64>> -> tensor<3xf64>
+  %0 = toy.struct_access %arg0[1] : !toy.struct<tensor<*xf64>, tensor<2xf64>> -> tensor<3xf64>
   toy.return
 }

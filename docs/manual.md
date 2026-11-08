@@ -358,7 +358,7 @@ dialect.op-name (operands...) modifiers...
 ```
 
 The `-> result-type` can be left out when the op implements `mlir::InferTypeOpInterface`
-(a C++ op such as `arith.addi`, or an op of a Scheme dialect, see
+(a C++ op such as `arith.addi`, checked in `test/dsl/op-builders/cxx-ops.mlir`, or an op of a Scheme dialect, see
 [Op-level `:interfaces`](#op-level-interfaces)): the types come from the operands, attributes
 and regions given to the op-form, as `builder.create<AddOp>(loc, lhs, rhs)` gets them in C++.
 An explicit `->` always wins. Leaving it out for an op that is not registered, or does not
@@ -770,7 +770,7 @@ The op's full MLIR name is `dialect-name.op-name` (e.g. `toy.constant`).
 |---|---|
 | `:summary "text"` | Human-readable description (documentation only) |
 | `:operands ((name predicate) ...)` | Operand fields — default `:required`; append `:optional` or `:variadic` to change cardinality: `(name predicate :optional)` |
-| `:attributes ((name predicate) ...)` | Attribute fields — default `:required`; append `:optional` to allow absence: `(name predicate :optional)` |
+| `:attributes ((name predicate) ...)` | Attribute fields — default `:required`; append `:optional` to allow absence: `(name predicate :optional)`; `:buildable-type :i64` (or `:i8 :i16 :i32 :f32 :f64 :index`) at the end gives the attribute the type an `:assembly-format` leaves out, see [`:assembly-format`](#assembly-format) |
 | `:results ((name predicate) ...)` | Result fields; `predicate` is called on the result's `mlir::Type` uptr |
 | `:assembly-format "format"` | The text form of the op as one ODS format string, see [`:assembly-format`](#assembly-format) |
 | `(:parse (parser state) body ...)` | Custom assembly parser (not with `:assembly-format`) |
@@ -848,15 +848,32 @@ assembly format (MLIR's `Operations.md`, "Declarative Assembly Format"), and gen
 The rules are those of ODS: `attr-dict`, every operand with its type and every result type appear once. A
 lone optional or variadic operand needs no `operandSegmentSizes` attribute (it takes the operands the
 required ones leave). The printed spacing is that of `mlir-tblgen` (`OpFormatGen.cpp`): a space between
-elements except around `(`, `)`, `[`, `]`, `<`, `>` and `,`, so a format prints what its C++ twin prints, with
-one difference: an attribute is printed with its type (`[1 : i64]`), where ODS leaves a buildable type out;
-both parse. Mistakes in the string are reported when the library compiles, with the column.
+elements except around `(`, `)`, `[`, `]`, `<`, `>` and `,`, so a format prints what its C++ twin prints.
+Mistakes in the string are reported when the library compiles, with the column.
+
+**Result types left out.** An op that has `mlir::InferTypeOpInterface` in its `:interfaces` may leave every
+result type out of the format: the parser asks the interface for them once the operands and attributes are
+in, and the printer prints none (`%0 = inf.add %a, %b : i32, i32` has the type of `%a`). Some result types in
+the format and some not is an error; so is leaving them all out in an op without the interface
+(`test/dsl/assembly-format-infer`).
+
+**Attributes with a buildable type.** ODS knows the type of an `I64Attr`, so it prints `[1]` and parses `1` as
+an `i64`. An attribute field says the same with `:buildable-type` and one of `:i8 :i16 :i32 :i64 :f32 :f64
+:index`:
+
+```scheme
+:attributes ((index %%integer-attr? :buildable-type :i64))   ; $index prints [1] and parses as 1 : i64
+```
+
+As in C++, a text that still writes the type (`[1 : i64]`) is not accepted; the generic form is how a typed
+attribute is written. A field with `:buildable-type` in an op that has no `:assembly-format` is an error
+(`test/dsl/assembly-format-typed-attr`).
 
 Not in the first version, each reported as such: the literals `=` `{` `}` `?` `+` `*`, `custom<...>`,
 `prop-dict`, `regions`, `successors`, `oilist`, `qualified`, `attr-dict-with-keyword`, `type(operands)`, `else`
 groups, optional attributes, an optional operand outside a group (it is the first element of one), a group whose
-first element is not an optional operand, result types inside a group or inferred from traits (every result type
-is in the format), and more than one optional or variadic operand. An op that needs
+first element is not an optional operand, result types inside a group or inferred from traits (they are inferred
+only through `InferTypeOpInterface`, all or none), and more than one optional or variadic operand. An op that needs
 them keeps a hand-written `:parse` and `:print`, as `toy.add` and `toy.func` do.
 
 ### Op traits

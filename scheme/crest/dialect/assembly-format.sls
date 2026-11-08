@@ -7,6 +7,12 @@
           (crest dialect ast)
           (mlir IR Operation)
           (only (mlir IR Value) mlir::Value::getType)
+          (only (mlir IR BuiltinTypes)
+                mlir::IntegerType::get<i8> mlir::IntegerType::get<i16> mlir::IntegerType::get<i32>
+                mlir::IntegerType::get<i64> mlir::IndexType::get
+                mlir::Float32Type::get mlir::Float64Type::get)
+          (only (mlir Interfaces InferTypeOpInterface)
+                mlir::InferTypeOpInterface::inferReturnTypes<OperationState*>)
           (mlir IR OpImplementation))
 
   (define (%%fail fmt-stx message . parts)
@@ -206,7 +212,8 @@
                    ") is neither punctuation nor a keyword")]))
 
   ;; Checks the tree against the op's fields. Returns nothing; raises a syntax violation.
-  (define (%%check fmt-stx elements operand-table attribute-names optional-attribute-names result-names)
+  (define (%%check fmt-stx elements operand-table attribute-names optional-attribute-names result-names
+                   infer-results?)
     (let ([operand-name (lambda (name) (assoc name operand-table))]
           [seen-operands '()] [seen-operand-types '()] [seen-attributes '()] [seen-result-types '()]
           [attr-dict-seen #f] [operands-directive #f] [functional #f])
@@ -356,11 +363,13 @@
                   (unless (member (car entry) seen-operand-types)
                     (%%fail fmt-stx "the type of the operand $" (car entry) " does not appear in the format")))
                 operand-table)
-      (for-each (lambda (r)
-                  (unless (member r seen-result-types)
-                    (%%fail fmt-stx "the type of the result $" r
-                            " does not appear in the format: write type($" r ") or type(results)")))
-                result-names)
+      ;; Every result type appears, or none does and the op infers them.
+      (unless infer-results?
+        (for-each (lambda (r)
+                    (unless (member r seen-result-types)
+                      (%%fail fmt-stx "the type of the result $" r
+                              " does not appear in the format: write type($" r ") or type(results)")))
+                  result-names))
       (unless attr-dict-seen
         (%%fail fmt-stx "attr-dict does not appear in the format"))
       (let ([flex (filter (lambda (e) (not (eq? (cadr e) ':required))) operand-table)])
@@ -370,7 +379,8 @@
 
   ;; ── Parser ──────────────────────────────────────────────────────────────────
 
-  (define (%%generate-parser elements operand-table result-names functional-kind)
+  (define (%%generate-parser elements operand-table result-names functional-kind infer-results?
+                             attribute-types)
     (with-syntax ([P (car (generate-temporaries '(parser)))]
                   [S (car (generate-temporaries '(state)))])
       (let* ([n-operands (length operand-table)]
@@ -412,6 +422,12 @@
                             [else
                              #'(let ([h (mlir::OpAsmParser::parseOperandList P -1)])
                                  (and (not (eqv? h 0)) (begin (set! id h) #t)))]))))]
+                [(assoc name attribute-types)
+                 ;; a buildable attribute type: the text may leave the type out
+                 => (lambda (entry)
+                      (with-syntax ([name name] [P #'P] [S #'S]
+                                    [type (%%buildable-type-expr (cdr entry) #'P)])
+                        #'(not (eqv? 0 (mlir::OpAsmParser::parseAttribute<Type> P S type name)))))]
                 [else
                  (with-syntax ([name name] [P #'P] [S #'S])
                    #'(not (eqv? 0 (mlir::OpAsmParser::parseAttribute P S name))))]))]
@@ -466,21 +482,41 @@
                             #'(or (eqv? ops 0) (mlir::OpAsmParser::resolveOperands P ops type S))))
                         operand-table)])]
                [result-steps
-                (if functional-kind
-                    (list (with-syntax ([ft ft] [n (length result-names)] [S #'S] [P #'P]
-                                        [message (format "expected ~d result type(s) in the functional type"
-                                                         (length result-names))])
-                            #'(and (or (eqv? (mlir::FunctionType::getNumResults ft) n)
-                                       (begin (mlir::OpAsmParser::emitError P message) #f))
-                                   (let add ([i 0])
-                                     (if (>= i n)
-                                         #t
-                                         (begin (mlir::OperationState::addType
-                                                 S (mlir::FunctionType::getResult ft i))
-                                                (add (+ i 1))))))))
-                    (map (lambda (id) (with-syntax ([id id] [S #'S])
-                                        #'(begin (mlir::OperationState::addType S id) #t)))
-                         rtype-ids))])
+                (cond
+                 [infer-results?
+                  ;; No result type in the text: the op's InferTypeOpInterface answers them from the
+                  ;; operands and attributes parsed so far.
+                  (list (with-syntax ([S #'S] [P #'P])
+                          #'(guard (c [#t (mlir::OpAsmParser::emitError
+                                           P (string-append "cannot infer the result types: "
+                                                            (call-with-string-output-port
+                                                             (lambda (port) (display-condition c port)))))
+                                          #f])
+                              (let ([types (mlir::InferTypeOpInterface::inferReturnTypes<OperationState*> S)])
+                                (cond
+                                 [(not types)
+                                  (mlir::OpAsmParser::emitError
+                                   P "the op does not implement InferTypeOpInterface")
+                                  #f]
+                                 [else
+                                  (for-each (lambda (type) (mlir::OperationState::addType S type)) types)
+                                  #t])))))]
+                 [functional-kind
+                  (list (with-syntax ([ft ft] [n (length result-names)] [S #'S] [P #'P]
+                                      [message (format "expected ~d result type(s) in the functional type"
+                                                       (length result-names))])
+                          #'(and (or (eqv? (mlir::FunctionType::getNumResults ft) n)
+                                     (begin (mlir::OpAsmParser::emitError P message) #f))
+                                 (let add ([i 0])
+                                   (if (>= i n)
+                                       #t
+                                       (begin (mlir::OperationState::addType
+                                               S (mlir::FunctionType::getResult ft i))
+                                              (add (+ i 1))))))))]
+                 [else
+                  (map (lambda (id) (with-syntax ([id id] [S #'S])
+                                      #'(begin (mlir::OperationState::addType S id) #t)))
+                       rtype-ids)])])
           (with-syntax ([(ops ...) ops-ids]
                         [(type ...) type-ids]
                         [(rtype ...) rtype-ids]
@@ -501,7 +537,7 @@
      [last-was-punctuation (not (memv (string-ref text 0) (string->list ">)}],")))]
      [else (not (memv (string-ref text 0) (string->list "<>(){}[],")))]))
 
-  (define (%%generate-printer elements operand-table attribute-vars result-names)
+  (define (%%generate-printer elements operand-table attribute-vars result-names attribute-types)
     (with-syntax ([OP (car (generate-temporaries '(op)))]
                   [PR (car (generate-temporaries '(printer)))]
                   [NM (car (generate-temporaries '(name)))])
@@ -577,6 +613,10 @@
                                    (when (> i s) (mlir::OpAsmPrinter::printString PR ", "))
                                    (mlir::OpAsmPrinter::printOperand PR (mlir::Operation::getOperand OP i))
                                    (print (+ i 1))))))]))]
+                [(assoc name attribute-types)
+                 ;; a buildable attribute type: the text leaves the type out
+                 (with-syntax ([PR #'PR] [OP #'OP] [name name])
+                   #'(mlir::OpAsmPrinter::printAttributeWithoutType PR (mlir::Operation::getAttr OP name)))]
                 [else
                  (with-syntax ([PR #'PR] [OP #'OP] [name name])
                    #'(mlir::OpAsmPrinter::printAttribute PR (mlir::Operation::getAttr OP name)))]))]
@@ -602,7 +642,34 @@
   ;; ── Entry point ─────────────────────────────────────────────────────────────
 
   ;; fmt-stx is the string syntax of the clause; returns (values parse-lambda print-lambda) syntax.
-  (define (generate-assembly-format fmt-stx operands attributes results)
+  ;; The type an attribute with :buildable-type has when the text leaves it out, built from the parser's
+  ;; context (what `parser.getBuilder().getI64Type()` is in C++).
+  (define (%%buildable-type-expr key parser-stx)
+    (with-syntax ([P parser-stx])
+      (case key
+        [(:i8)    #'(mlir::IntegerType::get<i8>  (mlir::AsmParser::getContext P))]
+        [(:i16)   #'(mlir::IntegerType::get<i16> (mlir::AsmParser::getContext P))]
+        [(:i32)   #'(mlir::IntegerType::get<i32> (mlir::AsmParser::getContext P))]
+        [(:i64)   #'(mlir::IntegerType::get<i64> (mlir::AsmParser::getContext P))]
+        [(:index) #'(mlir::IndexType::get        (mlir::AsmParser::getContext P))]
+        [(:f32)   #'(mlir::Float32Type::get      (mlir::AsmParser::getContext P))]
+        [(:f64)   #'(mlir::Float64Type::get      (mlir::AsmParser::getContext P))])))
+
+  ;; Whether a directive of the format gives the type of a result (type($r), type(results), functional-type).
+  (define (%%result-types-appear? elements result-names)
+    (exists (lambda (e)
+              (case (car e)
+                [(type) (let ([arg (cadr e)])
+                          (or (eq? arg 'results)
+                              (and (pair? arg) (member (cadr arg) result-names) #t)))]
+                [(functional-type) #t]
+                [(group) (%%result-types-appear? (cadr e) result-names)]
+                [else #f]))
+            elements))
+
+  ;; implements-infer-type?: the op has mlir::InferTypeOpInterface in its :interfaces, so the format may
+  ;; leave out all of its result types.
+  (define (generate-assembly-format fmt-stx operands attributes results implements-infer-type?)
     (let ([str (syntax->datum fmt-stx)])
       (unless (string? str)
         (syntax-violation 'define-op ":assembly-format expects a string" fmt-stx))
@@ -612,24 +679,33 @@
              [optional-attribute-names
               (%%field-names (filter (lambda (f) (eq? (attribute-field-modifier f) ':optional)) attributes)
                              attribute-field-name)]
-             [result-names    (%%field-names results result-field-name)])
-        (%%check fmt-stx elements operand-table attribute-names optional-attribute-names result-names)
-        (let* ([functional-kind
-                (let find ([es elements])
-                  (cond
-                   [(null? es) #f]
-                   [(eq? (car (car es)) 'functional-type)
-                    (if (eq? (cadr (car es)) 'operands) 'operands 'variable)]
-                   [else (find (cdr es))]))]
-               [attribute-vars
-                (let collect ([es elements])
-                  (apply append
-                         (map (lambda (e)
-                                (cond
-                                 [(and (eq? (car e) 'variable) (member (cadr e) attribute-names)) (list (cadr e))]
-                                 [(eq? (car e) 'group) (collect (cadr e))]
-                                 [else '()]))
-                              es)))])
-          (values (%%generate-parser elements operand-table result-names functional-kind)
-                  (%%generate-printer elements operand-table attribute-vars result-names))))))
+             [result-names    (%%field-names results result-field-name)]
+             ;; (name . type keyword) of the attributes that have a :buildable-type
+             [attribute-types (filter cdr (map cons attribute-names
+                                               (map attribute-field-buildable-type attributes)))])
+        (let ([infer-results? (and implements-infer-type?
+                                   (pair? result-names)
+                                   (not (%%result-types-appear? elements result-names)))])
+          (%%check fmt-stx elements operand-table attribute-names optional-attribute-names result-names
+                   infer-results?)
+          (let* ([functional-kind
+                  (let find ([es elements])
+                    (cond
+                     [(null? es) #f]
+                     [(eq? (car (car es)) 'functional-type)
+                      (if (eq? (cadr (car es)) 'operands) 'operands 'variable)]
+                     [else (find (cdr es))]))]
+                 [attribute-vars
+                  (let collect ([es elements])
+                    (apply append
+                           (map (lambda (e)
+                                  (cond
+                                   [(and (eq? (car e) 'variable) (member (cadr e) attribute-names)) (list (cadr e))]
+                                   [(eq? (car e) 'group) (collect (cadr e))]
+                                   [else '()]))
+                                es)))])
+            (values (%%generate-parser elements operand-table result-names functional-kind infer-results?
+                                       attribute-types)
+                    (%%generate-printer elements operand-table attribute-vars result-names
+                                        attribute-types)))))))
   )

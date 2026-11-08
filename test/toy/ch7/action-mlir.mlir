@@ -5,9 +5,9 @@
 
 // CHECK-LABEL: module {
 // CHECK-NEXT:    toy.func private @multiply_transpose(%arg0: !toy.struct<tensor<*xf64>, tensor<*xf64>>) -> tensor<*xf64> {
-// CHECK-NEXT:      {{%.*}} = toy.struct_access %arg0[1 : i64] : !toy.struct<tensor<*xf64>, tensor<*xf64>> -> tensor<*xf64>
+// CHECK-NEXT:      {{%.*}} = toy.struct_access %arg0[1] : !toy.struct<tensor<*xf64>, tensor<*xf64>> -> tensor<*xf64>
 // CHECK-NEXT:      {{%.*}} = toy.transpose({{%.*}} : tensor<*xf64>) to tensor<*xf64>
-// CHECK-NEXT:      {{%.*}} = toy.struct_access %arg0[0 : i64] : !toy.struct<tensor<*xf64>, tensor<*xf64>> -> tensor<*xf64>
+// CHECK-NEXT:      {{%.*}} = toy.struct_access %arg0[0] : !toy.struct<tensor<*xf64>, tensor<*xf64>> -> tensor<*xf64>
 // CHECK-NEXT:      {{%.*}} = toy.transpose({{%.*}} : tensor<*xf64>) to tensor<*xf64>
 // CHECK-NEXT:      {{%.*}} = toy.mul {{%.*}}, {{%.*}} : tensor<*xf64>
 // CHECK-NEXT:      toy.return {{%.*}} : tensor<*xf64>

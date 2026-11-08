@@ -12,6 +12,8 @@
 // RUN: not env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
 // RUN:   %crest-opt %s --crest-pass="passes=passes/missing-result-type" 2>&1 | %FileCheck %s --check-prefix=RESULT
 // RUN: not env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
+// RUN:   %crest-opt %s --crest-pass="passes=passes/partial-result-types" 2>&1 | %FileCheck %s --check-prefix=PARTIAL
+// RUN: not env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
 // RUN:   %crest-opt %s --crest-pass="passes=passes/missing-attr-dict" 2>&1 | %FileCheck %s --check-prefix=ATTRDICT
 // RUN: not env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
 // RUN:   %crest-opt %s --crest-pass="passes=passes/unsupported-literal" 2>&1 | %FileCheck %s --check-prefix=LITERAL
@@ -45,6 +47,7 @@
 // OPERAND: Failed to import Scheme library: passes/missing-operand: Exception in define-op: assembly-format: the operand $other does not appear in the format
 // TYPE: Failed to import Scheme library: passes/missing-type: Exception in define-op: assembly-format: the type of the operand $input does not appear in the format
 // RESULT: Failed to import Scheme library: passes/missing-result-type: Exception in define-op: assembly-format: the type of the result $out does not appear in the format: write type($out) or type(results)
+// PARTIAL: Failed to import Scheme library: passes/partial-result-types: Exception in define-op: assembly-format: the type of the result $second does not appear in the format: write type($second) or type(results)
 // ATTRDICT: Failed to import Scheme library: passes/missing-attr-dict: Exception in define-op: assembly-format: attr-dict does not appear in the format
 // LITERAL: Failed to import Scheme library: passes/unsupported-literal: Exception in define-op: assembly-format: the literal `=` (column 7) is not supported yet
 // CUSTOM: Failed to import Scheme library: passes/unsupported-directive: Exception in define-op: assembly-format: the directive custom (column 0) is not supported yet
