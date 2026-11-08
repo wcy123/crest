@@ -163,6 +163,11 @@ struct CrestPass : public mlir::OperationPass<mlir::ModuleOp> {
                      << spec << "'\n";
         continue;
       }
+      // A library that does not load is left out here (this cannot report a
+      // failure); runOnOperation reports it before the passes run.
+      if (crest::validateSchemeDialect(dialect_name.str(), module_name.str())) {
+        continue;
+      }
       auto [type_id, factory] =
           crest::dialectFactory(dialect_name.str(), module_name.str());
       registry.insert(type_id, dialect_name.str(), factory);
@@ -189,6 +194,19 @@ struct CrestPass : public mlir::OperationPass<mlir::ModuleOp> {
     auto interp = ChezSchemeInterpreter::instance(
         level, crest::registerMlirForeignFunctions);
     interp->setLogLevel(level);
+
+    for (const auto& spec : schemeDialects_) {
+      auto [dialect_name, module_name] = llvm::StringRef(spec).split('=');
+      if (dialect_name.empty() || module_name.empty()) {
+        continue;
+      }
+      if (auto error = crest::validateSchemeDialect(dialect_name.str(),
+                                                    module_name.str())) {
+        getOperation().emitError("Failed to import Scheme library: " +
+                                 module_name.str() + ": " + *error);
+        return signalPassFailure();
+      }
+    }
 
     for (const auto& pass : passes_) {
       if (auto importError = interp->importLibrary(pass)) {

@@ -58,6 +58,14 @@ int main(int argc, char** argv) {
                    << arg << "'\n";
       continue;
     }
+    // The dialect is created lazily, when the first of its ops is parsed, and
+    // cannot fail then, so a library that does not load is reported here.
+    if (auto error = crest::validateSchemeDialect(dialect_name.str(),
+                                                  module_name.str())) {
+      llvm::errs() << "error: Failed to import Scheme library: " << module_name
+                   << ": " << *error << "\n";
+      return 1;
+    }
     auto [type_id, factory] =
         crest::dialectFactory(dialect_name.str(), module_name.str());
     registry.insert(type_id, dialect_name.str(), factory);

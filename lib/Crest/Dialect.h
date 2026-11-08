@@ -15,6 +15,7 @@
 #include "mlir/Support/TypeID.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 
 namespace crest {
@@ -166,6 +167,15 @@ void registerIRExtensibleDialectBindings();
 /// @endcode
 std::pair<mlir::TypeID, mlir::DialectAllocatorFunction>
 dialectFactory(std::string dialect_name, std::string module_name);
+
+/// Imports the library `module_name` and checks it defines `dialect_name`
+/// (see ChezSchemeInterpreter::importDialectLibrary). Returns why it does not,
+/// or std::nullopt. The CrestDialect constructor cannot fail, so every place
+/// that registers a dialectFactory calls this first and reports the failure
+/// its own way.
+std::optional<std::string>
+validateSchemeDialect(const std::string& dialect_name,
+                      const std::string& module_name);
 
 } // namespace crest
 

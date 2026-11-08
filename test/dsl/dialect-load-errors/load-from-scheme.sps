@@ -1,0 +1,21 @@
+#!r6rs
+;; The two ways a Scheme program loads a Scheme dialect: load-scheme-dialect! into a context, and
+;; mlir::DialectRegistry::insert into a registry. A library that does not load raises a Scheme error that
+;; names it, instead of aborting the process.
+(import (rnrs)
+        (only (chezscheme) display-condition)
+        (mlir IR MLIRContext)
+        (mlir IR DialectRegistry)
+        (crest dialect))
+
+(define (try who thunk)
+  (guard (e [#t (display who) (display ": ") (display-condition e) (newline)])
+    (thunk)
+    (display who) (display ": loaded") (newline)))
+
+(try "load-scheme-dialect!"
+     (lambda () (load-scheme-dialect! (mlir::MLIRContext::new) "bad" "passes/body-error")))
+(try "DialectRegistry::insert"
+     (lambda ()
+       (with-DialectRegistry reg ()
+         (mlir::DialectRegistry::insert reg "bad" "passes/body-error"))))

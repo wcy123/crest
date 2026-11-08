@@ -29,9 +29,17 @@ void registerIRDialectRegistryBindings() {
                  const char* module_name) -> void {
         auto& registry = crest::CrestBox<mlir::DialectRegistry>::inner(
             registry_ptr, "mlir::DialectRegistry::insert");
-        auto [type_id, factory] = crest::dialectFactory(
-            std::string(dialect_name), std::string(module_name));
-        registry.insert(type_id, std::string(dialect_name), factory);
+        // Copy first: the strings point into the Scheme heap, which the Scheme
+        // code that validateSchemeDialect runs may move.
+        std::string dialect(dialect_name);
+        std::string module(module_name);
+        if (auto error = crest::validateSchemeDialect(dialect, module)) {
+          scheme_error("mlir::DialectRegistry::insert",
+                       "Failed to import Scheme library: " + module + ": " +
+                           *error);
+        }
+        auto [type_id, factory] = crest::dialectFactory(dialect, module);
+        registry.insert(type_id, dialect, factory);
       });
 }
 
