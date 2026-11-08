@@ -46,15 +46,15 @@ the mismatch. Shape inference resolves the cast in the next pipeline step.
 
 Bridges a ranked/unranked tensor mismatch at a call boundary. Inserted
 automatically by `materializeCallConversion`; not written by hand in Toy
-source. Uses the same `%%parse-unary-to-type` / `%%print-unary-to-type`
-assembly format as `transpose` and `reshape`.
+source. Its text form is the C++ `assemblyFormat`, declared with `:assembly-format`
+(`toy.cast %0 : tensor<2xf64> to tensor<*xf64>`).
 
 ### `--opt` pipeline (`toyc.sls`)
 
 Three steps run in order when `--opt` is passed:
 
 1. **Inline** — MLIR's inliner pass (`mlir::createInlinerPass`, run on a
-   `PassManager` by `%%run-inliner!`) replaces each `toy.generic_call` with the
+   `PassManager` in `toyc.sls`) replaces each `toy.generic_call` with the
    callee's body, calling the dialect's `materializeCallConversion` to cast a
    ranked argument to the callee's unranked parameter type, and erases the
    private functions that are dead afterwards.
@@ -90,7 +90,7 @@ Three steps run in order when `--opt` is passed:
 | The cast the inliner interface creates | `begin-mlir-code` inside the `materializeCallConversion` callback | the callback gets a builder; `with-current-OpBuilder` installs it |
 | Every op `mlir-gen.sls` creates | `begin-mlir-code` | as in Ch2 |
 | The canonicalization patterns | `define-rewrite-pattern` | as in Ch3 |
-| Inlining | MLIR's inliner pass (`%%run-inliner!` in `toyc.sls`) | the dialect declares what the pass needs (`CallOpInterface`, a terminator trait, `DialectInlinerInterface`); no inliner is written in Scheme |
+| Inlining | MLIR's inliner pass (added to the `PassManager` in `toyc.sls`) | the dialect declares what the pass needs (`CallOpInterface`, a terminator trait, `DialectInlinerInterface`); no inliner is written in Scheme |
 | Shape inference | `define-rewrite-pattern` (`shape-inference.sls`), applied by the greedy rewriter | one pattern per op; the C++ pass does it with an op interface |
 
 ## Related Documents
