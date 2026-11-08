@@ -248,11 +248,13 @@ ChezSchemeInterpreter::importLibrary(const std::string& slashSeparatedName) {
   // library before it reaches the top-level abort handler. It returns the
   // condition as a string (#f on success), so the caller can show why the
   // import failed. A raised object that is not a condition is written as is.
-  std::string importCode =
-      "(guard (c (#t (call-with-string-output-port"
-      " (lambda (p) (if (condition? c) (display-condition c p) (write c p))))))"
-      " (eval '(import (" +
-      lib + "))) #f)";
+  std::string importCode = R"(
+(guard (c (#t (call-with-string-output-port
+                (lambda (p) (if (condition? c) (display-condition c p) (write c p))))))
+  (eval '(import ()" + lib +
+                           R"()))
+  #f)
+)";
   ptr port = scheme_call("open-string-input-port", Sstring(importCode.c_str()));
   ptr expr = scheme_call("read", port);
   ptr result = scheme_call("eval", expr);
@@ -276,17 +278,18 @@ std::optional<std::string> ChezSchemeInterpreter::importDialectLibrary(
   }
   // Referencing the dialect's name runs the library body; a body error, an
   // export that is missing and a value of the wrong kind all come back as text.
-  std::string checkCode =
-      "(guard (c (#t (call-with-string-output-port"
-      " (lambda (p) (if (condition? c) (display-condition c p) (write c p))))))"
-      " (let ([v (eval '" +
-      dialectName +
-      ")])"
-      " (if (vector? v) #f"
-      " (call-with-string-output-port"
-      " (lambda (p) (display \"expected the callbacks vector that "
-      "define-dialect"
-      " binds to the dialect name, got \" p) (write v p)))))) ";
+  std::string checkCode = R"(
+(guard (c (#t (call-with-string-output-port
+                (lambda (p) (if (condition? c) (display-condition c p) (write c p))))))
+  (let ([v (eval ')" + dialectName +
+                          R"()])
+    (if (vector? v)
+        #f
+        (call-with-string-output-port
+          (lambda (p)
+            (display "expected the callbacks vector that define-dialect binds to the dialect name, got " p)
+            (write v p))))))
+)";
   ptr port = scheme_call("open-string-input-port", Sstring(checkCode.c_str()));
   ptr expr = scheme_call("read", port);
   ptr result = scheme_call("eval", expr);
