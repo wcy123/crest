@@ -18,6 +18,8 @@
 #include "../Support/CrestObject.h"
 #include "../Support/SchemeWrapper.h"
 #include "llvm/Config/llvm-config.h"
+#include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/LogicalResult.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/Location.h"
 #include "mlir/IR/OperationSupport.h"
@@ -31,6 +33,23 @@
 namespace crest {
 
 void registerInterfacesInferTypeOpInterfaceBindings() {
+  // The Scheme foreign-callable answers with one byte (1 = success, 0 =
+  // failure), which is how a LogicalResult is stored: a single bool. Windows
+  // makes the callable write that byte into the caller's return box.
+  static_assert(sizeof(llvm::LogicalResult) == 1);
+  {
+    const llvm::LogicalResult success = llvm::success();
+    const llvm::LogicalResult failure = llvm::failure();
+    unsigned char successByte = 0;
+    unsigned char failureByte = 1;
+    std::memcpy(&successByte, &success, 1);
+    std::memcpy(&failureByte, &failure, 1);
+    if (successByte != 1 || failureByte != 0) {
+      llvm::report_fatal_error(
+          "InferTypeOpInterface: LogicalResult is not stored as 1 / 0");
+    }
+  }
+
   // crest::InferTypeOpInterface::registerEntry (string op-name) (uptr entry)
   //
   // `entry` is the address of the op's foreign-callable.
