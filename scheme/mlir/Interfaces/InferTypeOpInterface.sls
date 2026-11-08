@@ -13,13 +13,28 @@
           (mlir IR MLIRContext)
           (mlir Interfaces InferTypeOpInterface ffi))
 
-  ;; The C++ method is called with (context location operands attributes properties regions result)
-  ;; as the platform ABI passes them: 10 or 11 machine words on System V x86-64 (the properties
-  ;; are 16 bytes from LLVM 23), where the 16-byte classes take two words each, and 7 on Windows
-  ;; x64, where they are passed by reference (after the hidden return pointer, see below). The words go to the C++ adapter, which knows the
-  ;; layout and calls `proc` with (context location operands attributes). The System V callable
-  ;; takes 11 words; one more than the call passes (LLVM 22) is read and ignored.
-  ;; An error in `proc` must not unwind through the C++ frames: it is reported and answers failure.
+  ;; How MLIR's call reaches this function. MLIR calls it like any C function, and a C call is a
+  ;; list of numbers, each 8 bytes (a pointer or an integer). This function gets them as w0, w1,
+  ;; w2, ... in order. inferReturnTypes has seven inputs, but an input is not always one number:
+  ;; a 16-byte C++ object, such as a ValueRange (a pointer and a count), does not fit in one.
+  ;;
+  ;;   Linux passes such an object as two numbers, its two halves (LLVM 22):
+  ;;     w0 context | w1 w2 location | w3 w4 operands (pointer, count) | w5 attributes
+  ;;     | w6 properties | w7 w8 regions | w9 where to put the result types
+  ;;   In LLVM 23 the properties are 16 bytes too, so they take w6 w7, the regions w8 w9 and the
+  ;;   result types go to w10.
+  ;;
+  ;;   Windows copies such an object to memory and passes one number, the address of the copy:
+  ;;     w0 context | w1 address of location | w2 address of operands | w3 attributes
+  ;;     | w4 properties | w5 address of regions | w6 where to put the result types
+  ;;
+  ;; The C++ function `adapt` (lib/Bindings/Interfaces/InferTypeOpInterface.cpp) knows which number
+  ;; is which. It rebuilds the C++ objects and calls `proc` with (context location operands
+  ;; attributes). The Linux function always takes 11 numbers; with LLVM 22 the last one is
+  ;; leftover memory and is ignored.
+  ;;
+  ;; An error inside `proc` must not escape into the C++ code above us, so it is printed here and
+  ;; the answer is "failed" (0).
   (define (%%infer proc w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10)
     (guard (c [#t (let ([port (current-error-port)])
                     (display-condition c port)
@@ -37,11 +52,18 @@
       (lock-object code)
       (foreign-callable-entry-point code)))
 
-  ;; Windows x64: LogicalResult has a private member, so it is not an aggregate to the Microsoft ABI
-  ;; and is returned through a hidden pointer that comes before every other argument. The callee
-  ;; writes the result byte through it and returns the pointer. The seven words after it are the
-  ;; arguments: the context, the addresses of the optional<Location> and of the ValueRange, the
-  ;; DictionaryAttr, the properties, the address of the RegionRange and the output vector.
+  ;; Windows also wants the answer in a different place. The C++ function returns a LogicalResult,
+  ;; which is a yes or a no. On Linux that is just the returned byte. On Windows the caller sets
+  ;; aside a small box in memory and passes the box's address as an extra number BEFORE all the
+  ;; others. This function has to put its yes (1) or no (0) into the box and return the box's
+  ;; address. (Windows does this because LogicalResult is a class with a private field, not a
+  ;; plain value.)
+  ;;
+  ;;   (lambda (result w0 w1 ...) ...)
+  ;;   result is the address of the box, w0 the context, w1 the address of the location, ...
+  ;;
+  ;; Without the extra first number, w0 would be taken to be the box and every other number would
+  ;; be read one place too early: that was the crash.
   (define (%%windows-entry-point proc)
     (let ([code (foreign-callable
                  (lambda (result w0 w1 w2 w3 w4 w5 w6)

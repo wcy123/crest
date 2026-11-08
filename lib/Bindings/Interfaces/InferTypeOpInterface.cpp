@@ -41,25 +41,17 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
                                         reinterpret_cast<void*>(entry));
       });
 
-  // crest::InferTypeOpInterface::adapt (scheme-object proc) (uptr word) x11
+  // crest::InferTypeOpInterface::adapt (scheme-object proc) (uptr w0 ... w10)
   //   -> unsigned-8 (1 = success, 0 = failure)
   //
-  // The words are the arguments of
-  //   inferReturnTypes(MLIRContext*, std::optional<Location>, ValueRange,
-  //                    DictionaryAttr, properties, RegionRange,
-  //                    SmallVectorImpl<Type>&)
-  // as the ABI passes them; `properties` is an 8-byte OpaqueProperties before
-  // LLVM 23 and a 16-byte PropertyRef from LLVM 23. System V x86-64 passes the
-  // 16-byte classes (optional<Location>, ValueRange, RegionRange, PropertyRef)
-  // as two words each, so the words are the arguments in order: ten of them
-  // before LLVM 23 (the output vector is w9) and eleven from LLVM 23 (w10).
-  // Windows x64 passes each 16-byte class by reference, so seven words are used
-  // in both: the context, the address of the optional<Location>, the address of
-  // the ValueRange, the DictionaryAttr, the properties (by value, or the
-  // address of the PropertyRef), the address of the RegionRange and the output
-  // vector. (The hidden pointer through which Windows returns LogicalResult is
-  // handled in Scheme and is not among them.) Words that the layout does not
-  // use are zero or garbage and are ignored.
+  // w0 ... w10 are the numbers of MLIR's call to inferReturnTypes(context,
+  // location, operands, attributes, properties, regions, result types), as
+  // (mlir Interfaces InferTypeOpInterface) receives them. Which number is
+  // which depends on the system; see the table there. In short: on Linux a
+  // 16-byte object (location, operands, regions, and the properties in
+  // LLVM 23) is two numbers, its two halves, so the result types are w9 (w10
+  // in LLVM 23); on Windows it is one number, the address of a copy, so the
+  // result types are w6. Numbers a layout does not use are ignored.
   //
   // `proc` is called with (context location operands attributes): the context
   // pointer, the location pointer or #f, the list of operand Values, and the
