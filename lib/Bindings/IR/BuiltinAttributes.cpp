@@ -563,7 +563,7 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::FloatAttr::get<f64>",
       (void*)+[](uint64_t ctx_ptr, double val) -> uint64_t {
-        auto* ctx = reinterpret_cast<mlir::MLIRContext*>(ctx_ptr);
+        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
         auto attr = mlir::FloatAttr::get(mlir::Float64Type::get(ctx), val);
         return reinterpret_cast<uint64_t>(attr.getAsOpaquePointer());
       });
