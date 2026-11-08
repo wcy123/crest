@@ -24,7 +24,9 @@
   ;;   In LLVM 23 the properties are 16 bytes too, so they take w6 w7, the regions w8 w9 and the
   ;;   result types go to w10.
   ;;
-  ;;   Windows copies such an object to memory and passes one number, the address of the copy:
+  ;;   Windows copies such an object to memory and passes one number, the address of the copy.
+  ;;   (Windows also passes the address of a box for the answer before w0; see the comment above
+  ;;   %%windows-entry-point, which takes it off as `result`.)
   ;;     w0 context | w1 address of location | w2 address of operands | w3 attributes
   ;;     | w4 properties | w5 address of regions | w6 where to put the result types
   ;;
@@ -52,18 +54,30 @@
       (lock-object code)
       (foreign-callable-entry-point code)))
 
-  ;; Windows also wants the answer in a different place. The C++ function returns a LogicalResult,
-  ;; which is a yes or a no. On Linux that is just the returned byte. On Windows the caller sets
-  ;; aside a small box in memory and passes the box's address as an extra number BEFORE all the
-  ;; others. This function has to put its yes (1) or no (0) into the box and return the box's
-  ;; address. (Windows does this because LogicalResult is a class with a private field, not a
-  ;; plain value.)
+  ;; Windows also wants the answer in a different place.
   ;;
-  ;;   (lambda (result w0 w1 ...) ...)
-  ;;   result is the address of the box, w0 the context, w1 the address of the location, ...
+  ;; MLIR's C++ code calls   LogicalResult r = inferReturnTypes(ctx, loc, ...);   and later tests r.
   ;;
-  ;; Without the extra first number, w0 would be taken to be the box and every other number would
-  ;; be read one place too early: that was the crash.
+  ;;   Linux: the function returns the answer, 1 (success) or 0 (failure), as its return value.
+  ;;
+  ;;   Windows: the caller rewrites the call into this:
+  ;;       char box;                          // 1 byte on the caller's stack, say at 0x00A01000
+  ;;       inferReturnTypes(&box, ctx, &loc, ...);
+  ;;       ... later it reads `box` to get r.
+  ;;     So the numbers this function receives start with the address of the box:
+  ;;       number 0: 0x00A01000      the box           (the `result` parameter below)
+  ;;       number 1: 0x1F4C0000      the context       (w0)
+  ;;       number 2: 0x00A01040      the location copy (w1)
+  ;;       ...
+  ;;     The function must (1) write its answer, 1 or 0, into memory at 0x00A01000 and
+  ;;     (2) return 0x00A01000, the address of the box, not the answer.
+  ;;
+  ;; The lists of w0, w1, ... above start after the box. Without the box in front, the first
+  ;; number 0x00A01000 was taken to be the context and 0x1F4C0000 the address of the location, so
+  ;; the function read memory at wrong addresses: that was the crash.
+  ;;
+  ;; Windows uses a box because LogicalResult is a class with a private field. It hands plain
+  ;; values such as a bool back directly, but not a class like this one.
   (define (%%windows-entry-point proc)
     (let ([code (foreign-callable
                  (lambda (result w0 w1 w2 w3 w4 w5 w6)
