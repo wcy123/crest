@@ -27,6 +27,8 @@ endif()
 add_library(CrestCore OBJECT
   Dialect.cpp
   Dialect.h
+  InferType.cpp
+  InferType.h
   InlinerInterface.cpp
   InlinerInterface.h
   Op.cpp

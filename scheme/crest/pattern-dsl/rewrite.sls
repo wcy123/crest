@@ -77,6 +77,8 @@
           (only (mlir IR Builders)
                 mlir::OpBuilder::create<OperationState>
                 current-OpBuilder)
+          (only (mlir Interfaces InferTypeOpInterface)
+                mlir::InferTypeOpInterface::inferReturnTypes<OperationState>)
           (for (only (mlir IR Builders)
                      mlir::OpBuilder::setInsertionPointToEnd
                      with-InsertionGuard
@@ -137,6 +139,14 @@
                             "bind a call to a variable first")
              type))
     type)
+
+  ;; The result types of an op-form without -> : the op's InferTypeOpInterface answers them from the
+  ;; operands, attributes and regions already in the state.
+  (define (%%infer-result-types state op-name)
+    (or (mlir::InferTypeOpInterface::inferReturnTypes<OperationState> state)
+        (error 'begin-mlir-code
+               (string-append "no result type for " op-name ": the op is not registered or "
+                              "does not implement mlir::InferTypeOpInterface; write -> type"))))
 
   ;; Create an op from a prepared OperationState with a builder shell.
   (define (%%crest:create-op! builder state)
@@ -379,7 +389,8 @@
                          (parse-modifiers-flat #'rest)])
              (let ([nvars  (length (syntax->list #'(v ...)))]
                    [ntypes (length types)])
-               (unless (eqv? nvars ntypes)
+               ;; No -> at all: the result types are inferred when the op is created.
+               (unless (or (eqv? nvars ntypes) (eqv? ntypes 0))
                  (syntax-violation 'begin-mlir-code
                                    (string-append "result variable count (" (number->string nvars)
                                                   ") does not match result type count (" (number->string ntypes) ")")
@@ -538,11 +549,16 @@
                ;; (can't use the 'state pattern var — with-syntax bindings are parallel).
                [addregion-calls
                 (loop :for i :from 0 :below nregions
-                      :collect #`(mlir::OperationState::addRegion #,state-id))])
+                      :collect #`(mlir::OperationState::addRegion #,state-id))]
+               ;; The types after ->, or inferred when there is none but a result.
+               [types-expr-stx
+                (if (and (null? result-types) (pair? result-vars))
+                    #`(%%infer-result-types #,state-id #,op-name)
+                    #`(list #,@result-types))])
           (with-syntax
               ([operands-expr  operands]         ; runtime operand list expr
                [name           op-name]          ; string literal
-               [(result-type ...) result-types]  ; result type exprs
+               [types-expr       types-expr-stx]   ; runtime list of the result types
                [op-tmp         op-var]           ; %op-tmp-N exposed to callers
                [state          state-id]         ; gensym for OperationState binding
                ;; Setters call addAttribute on state BEFORE create (correct MLIR idiom).
@@ -565,11 +581,12 @@
                               (for-each
                                (lambda (v) (mlir::OperationState::addOperands state v))
                                operands-expr)
-                              (for-each
-                               (lambda (t) (mlir::OperationState::addTypes state (%%check-result-type name t)))
-                               (list result-type ...))
                               setter ...           ; addAttribute — before create
                               addregion-call ...   ; addRegion — pre-allocate slots
+                              ;; after the operands, attributes and regions: inference reads them
+                              (for-each
+                               (lambda (t) (mlir::OperationState::addTypes state (%%check-result-type name t)))
+                               types-expr)
                               (%%crest:create-op! (%%current-builder) state))])
                        region-fill-stmt ...        ; fill regions — after create
                        op-tmp))

@@ -62,6 +62,7 @@
 #include "Interfaces/CallInterfaces.h"
 #include "Interfaces/DestinationStyleOpInterface.h"
 #include "Interfaces/FunctionInterfaces.h"
+#include "Interfaces/InferTypeOpInterface.h"
 #include "Interfaces/SideEffectInterfaces.h"
 #include "Pass/PassManager.h"
 #include "Support/ArrayRef.h"
@@ -87,6 +88,7 @@ void registerMlirForeignFunctions() {
   registerDialectTensorBindings();
   registerInterfacesDpsBindings();
   registerInterfacesCallInterfacesBindings();
+  registerInterfacesInferTypeOpInterfaceBindings();
   registerInterfacesSideEffectInterfacesBindings();
   registerInterfacesFunctionInterfacesBindings();
   registerIRSymbolInterfacesBindings();

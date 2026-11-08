@@ -1,0 +1,65 @@
+/*
+ * Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
+ * Licensed under the MIT License.
+ */
+// InferTypeOpInterface for Scheme ops — lib/Crest/InferType.cpp
+//
+// inferReturnTypes is a static interface method: its function pointer in the
+// Concept gets no Concept* and no Operation*, so one shared C++ function cannot
+// tell which Scheme op it serves. Every op therefore gets a function of its
+// own: Scheme makes it with foreign-callable and registers it here by op name.
+// The Concept is a heap object in the op's InterfaceMap, so this one model
+// type serves all ops and the pointer is filled in per op.
+
+#include "InferType.h"
+#include "mlir/IR/ExtensibleDialect.h"
+#include "mlir/Interfaces/InferTypeOpInterface.h"
+#include <string>
+#include <unordered_map>
+
+namespace crest {
+
+namespace {
+
+// The signature differs between LLVM versions (the properties argument is an
+// OpaqueProperties before LLVM 23 and a PropertyRef from LLVM 23), so take it
+// from the Concept.
+using InferFn = decltype(mlir::InferTypeOpInterface::Concept::inferReturnTypes);
+
+struct DynamicInferTypeModel : public mlir::InferTypeOpInterface::Concept {
+  using Interface = mlir::InferTypeOpInterface;
+
+  DynamicInferTypeModel()
+      : Concept{
+            nullptr,
+            // Only the ODS-generated verifier calls refineReturnTypes and
+            // a dynamic op has no such trait.
+            [](mlir::MLIRContext*, std::optional<mlir::Location>,
+               mlir::ValueRange, mlir::DictionaryAttr, auto, mlir::RegionRange,
+               llvm::SmallVectorImpl<mlir::Type>&) { return mlir::success(); },
+            [](mlir::TypeRange lhs, mlir::TypeRange rhs) {
+              return lhs == rhs;
+            }} {}
+};
+
+// Op name -> inferReturnTypes entry registered from Scheme.
+std::unordered_map<std::string, InferFn> g_infer_entries;
+
+} // namespace
+
+void registerInferReturnTypes(llvm::StringRef opName, void* entry) {
+  g_infer_entries[opName.str()] = reinterpret_cast<InferFn>(entry);
+}
+
+void attachInferTypeOpInterface(mlir::DynamicOpDefinition& def,
+                                llvm::StringRef opName) {
+  auto it = g_infer_entries.find(opName.str());
+  if (it == g_infer_entries.end()) {
+    return;
+  }
+  mlir::detail::InterfaceMap& map = def.getInterfaceMap();
+  map.insertModels<DynamicInferTypeModel>();
+  map.lookup<mlir::InferTypeOpInterface>()->inferReturnTypes = it->second;
+}
+
+} // namespace crest
