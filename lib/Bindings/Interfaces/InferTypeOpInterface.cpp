@@ -32,6 +32,13 @@
 
 namespace crest {
 
+namespace {
+// The text of the error that a Scheme inferReturnTypes raised, given by its
+// callable (reportFailure) before it answers failure, for the message of the
+// error that comes back through the function pointer. Cleared when used.
+std::string g_reported_failure;
+} // namespace
+
 void registerInterfacesInferTypeOpInterfaceBindings() {
   // The Scheme foreign-callable answers with one byte (1 = success, 0 =
   // failure), which is how a LogicalResult is stored: a single bool. Windows
@@ -49,6 +56,16 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
           "InferTypeOpInterface: LogicalResult is not stored as 1 / 0");
     }
   }
+
+  // crest::InferTypeOpInterface::reportFailure (string message)
+  //
+  // The callable of an op calls it with the text of the error its Scheme
+  // method raised, before it answers failure, so that the diagnostic shows it.
+  Sregister_symbol(
+      "crest::InferTypeOpInterface::reportFailure",
+      (void*)+[](const char* message) -> void {
+        g_reported_failure = message;
+      });
 
   // crest::InferTypeOpInterface::registerEntry (string op-name) (uptr entry)
   //
@@ -159,13 +176,24 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
     }
     mlir::MLIRContext* ctx = state.getContext();
     llvm::SmallVector<mlir::Type, 4> types;
+    g_reported_failure.clear();
     if (mlir::failed(model->inferReturnTypes(
             ctx, state.location, state.operands,
             state.attributes.getDictionary(ctx), state.getRawProperties(),
             mlir::RegionRange(state.regions), types))) {
-      scheme_error("mlir::InferTypeOpInterface::inferReturnTypes",
-                   "cannot infer the result types of ",
-                   state.name.getStringRef().str());
+      std::string message =
+          "cannot infer the result types of " + state.name.getStringRef().str();
+      if (!g_reported_failure.empty()) {
+        message += ": " + g_reported_failure;
+      } else if (!state.regions.empty()) {
+        // An op-form fills the regions after the op exists, as the builders
+        // of C++ need the op to own the block: an inference that reads them
+        // (scf.if) finds them empty.
+        message += ": its regions are still empty when the types are inferred "
+                   "(they are filled after the op is created); write -> type";
+      }
+      g_reported_failure.clear();
+      scheme_error("mlir::InferTypeOpInterface::inferReturnTypes", message);
     }
     return Conversion<mlir::TypeRange, ptr>{}(types);
   };

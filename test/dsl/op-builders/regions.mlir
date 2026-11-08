@@ -3,7 +3,6 @@
 // the same (the scf::IfOp builders take the result types). With the type it builds; without it the
 // error says why and what to write, and not only "cannot infer".
 //
-// XFAIL: *
 // RUN: %scheme-mlir %S/scf-if.sls explicit | %FileCheck %s --check-prefix=EXPLICIT
 // RUN: not %scheme-mlir %S/scf-if.sls inferred 2>&1 | %FileCheck %s --check-prefix=INFERRED
 

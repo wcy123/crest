@@ -359,10 +359,15 @@ dialect.op-name (operands...) modifiers...
 
 The `-> result-type` can be left out when the op implements `mlir::InferTypeOpInterface`
 (a C++ op such as `arith.addi`, checked in `test/dsl/op-builders/cxx-ops.mlir`, or an op of a Scheme dialect, see
-[Op-level `:interfaces`](#op-level-interfaces)): the types come from the operands, attributes
-and regions given to the op-form, as `builder.create<AddOp>(loc, lhs, rhs)` gets them in C++.
-An explicit `->` always wins. Leaving it out for an op that is not registered, or does not
-implement the interface, raises `no result type for <op>: ... write -> type`.
+[Op-level `:interfaces`](#op-level-interfaces)): the types come from the operands and attributes
+given to the op-form, as `builder.create<AddOp>(loc, lhs, rhs)` gets them in C++. The regions are
+not there yet: an op-form fills them after the op exists, so an op whose inference reads them
+(`scf.if`) needs its `-> type`, as the `scf::IfOp` builders of C++ take the result types; the error
+says so (`test/dsl/op-builders/regions.mlir`). An explicit `->` is used as written, and the verifier
+checks it against the interface like that of a C++ op (`inferred type(s) ... are incompatible with
+return type(s) of operation ...`). Leaving it out for an op that is not registered, or does not
+implement the interface, raises `no result type for <op>: ... write -> type`; an error that the
+op's own `inferReturnTypes` raises is part of the message.
 
 Op names contain `.` (e.g. `arith.constant`, `toy.func`). Result vars do not.
 Any parenthesized item that doesn't match an op-form pattern is a Scheme expression.

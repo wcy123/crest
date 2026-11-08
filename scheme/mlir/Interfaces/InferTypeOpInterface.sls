@@ -36,13 +36,13 @@
   ;; attributes). The Linux function always takes 11 numbers; with LLVM 22 the last one is
   ;; leftover memory and is ignored.
   ;;
-  ;; An error inside `proc` must not escape into the C++ code above us, so it is printed here and
-  ;; the answer is "failed" (0).
+  ;; An error inside `proc` must not escape into the C++ code above us: its text goes to C++, whose
+  ;; diagnostic shows it, and the answer is "failed" (0).
   (define (%%infer proc w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10)
-    (guard (c [#t (let ([port (current-error-port)])
-                    (display-condition c port)
-                    (newline port)
-                    0)])
+    (guard (c [#t (%crest::InferTypeOpInterface::reportFailure
+                   (call-with-string-output-port
+                    (lambda (port) (display-condition c port))))
+                  0])
       (with-current-MLIRContext w0
         (%crest::InferTypeOpInterface::adapt proc w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10))))
 
