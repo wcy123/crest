@@ -4,7 +4,9 @@
 (library (passes ifacetest)
   (export %%ifacetest.func:mlir::FunctionOpInterface
           ifacetest)
-  (import (chezscheme) (crest dialect))
+  (import (chezscheme)
+          (crest dialect)
+          (only (mlir Interfaces FunctionInterfaces) mlir::FunctionOpInterface))
 
   (define-dialect ifacetest
     (define-op func

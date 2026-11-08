@@ -1,0 +1,33 @@
+#!r6rs
+;; A Scheme dialect for the op-builders tests. An op that implements mlir::InferTypeOpInterface can
+;; be created without `-> type`. The inferReturnTypes clause gets the context, the location (or #f),
+;; the operands (a list of Values) and the attributes (an alist of name and Attribute), and returns
+;; one mlir::Type per result.
+(library (passes bld-dialect)
+  (export bld)
+  (import (except (chezscheme) =)
+          (crest dialect)
+          (mlir IR Value)
+          (mlir IR BuiltinTypes)
+          (only (mlir Interfaces InferTypeOpInterface) mlir::InferTypeOpInterface))
+
+  (define-dialect bld
+    ;; The result has the type of the left operand.
+    (define-op add
+      :operands ((lhs mlir::Value?) (rhs mlir::Value?))
+      :results  ((out mlir::Value?))
+      :interfaces ((mlir::InferTypeOpInterface
+                    (inferReturnTypes (context location operands attributes)
+                                      (list (mlir::Value::getType (car operands)))))))
+
+    ;; No operands: the answer comes from nothing but the op itself.
+    (define-op zero
+      :results ((out mlir::Value?))
+      :interfaces ((mlir::InferTypeOpInterface
+                    (inferReturnTypes (context location operands attributes)
+                                      (list (mlir::IntegerType::get<i64>))))))
+
+    ;; No InferTypeOpInterface: creating it without `-> type` is an error.
+    (define-op plain
+      :operands ((x mlir::Value?))
+      :results  ((out mlir::Value?)))))
