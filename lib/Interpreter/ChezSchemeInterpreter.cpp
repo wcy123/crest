@@ -262,6 +262,40 @@ ChezSchemeInterpreter::importLibrary(const std::string& slashSeparatedName) {
   return convert_to_cpp<std::string>(result);
 }
 
+std::optional<std::string> ChezSchemeInterpreter::importDialectLibrary(
+    const std::string& slashSeparatedName, const std::string& dialectName) {
+  for (char c : dialectName) {
+    if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_' && c != '-' &&
+        c != '.') {
+      return "invalid dialect name character '" + std::string(1, c) +
+             "' in: " + dialectName;
+    }
+  }
+  if (auto error = importLibrary(slashSeparatedName)) {
+    return error;
+  }
+  // Referencing the dialect's name runs the library body; a body error, an
+  // export that is missing and a value of the wrong kind all come back as text.
+  std::string checkCode =
+      "(guard (c (#t (call-with-string-output-port"
+      " (lambda (p) (if (condition? c) (display-condition c p) (write c p))))))"
+      " (let ([v (eval '" +
+      dialectName +
+      ")])"
+      " (if (vector? v) #f"
+      " (call-with-string-output-port"
+      " (lambda (p) (display \"expected the callbacks vector that "
+      "define-dialect"
+      " binds to the dialect name, got \" p) (write v p)))))) ";
+  ptr port = scheme_call("open-string-input-port", Sstring(checkCode.c_str()));
+  ptr expr = scheme_call("read", port);
+  ptr result = scheme_call("eval", expr);
+  if (result == Sfalse) {
+    return std::nullopt;
+  }
+  return convert_to_cpp<std::string>(result);
+}
+
 bool ChezSchemeInterpreter::eval(const char* code) {
   ptr port = scheme_call("open-string-input-port", Sstring(code));
   ptr expr = scheme_call("read", port);

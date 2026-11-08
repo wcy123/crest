@@ -311,8 +311,16 @@ void registerIRExtensibleDialectBindings() {
                  const char* module_name) -> void {
         auto* ctx = crest::as_ptr<mlir::MLIRContext>(
             ctx_ptr, "crest::load-scheme-dialect!");
-        auto [type_id, factory] =
-            dialectFactory(std::string(dialect_name), std::string(module_name));
+        // Copy first: the strings point into the Scheme heap, which the Scheme
+        // code that validateSchemeDialect runs may move.
+        std::string dialect(dialect_name);
+        std::string module(module_name);
+        if (auto error = validateSchemeDialect(dialect, module)) {
+          scheme_error("crest::load-scheme-dialect!",
+                       "Failed to import Scheme library: " + module + ": " +
+                           *error);
+        }
+        auto [type_id, factory] = dialectFactory(dialect, module);
         factory(ctx);
       });
 }
@@ -336,8 +344,24 @@ CrestDialect::CrestDialect(mlir::TypeID id, const std::string& module_name,
   // define-dialect using the call-site identifier, so it has the same scope
   // as the user's (export testd). Stop_level_value finds it after import.
   ptr cbs_vec = Stop_level_value(Sstring_to_symbol(dialect_name.c_str()));
+  if (!Svectorp(cbs_vec)) {
+    // validateSchemeDialect reports this before a factory is registered; this
+    // is the backstop for a caller that skipped it.
+    llvm::report_fatal_error(
+        llvm::Twine("CrestDialect: '") + dialect_name +
+        "' of Scheme library '" + module_name +
+        "' is not the callbacks vector define-dialect makes");
+  }
   cbs_ = std::move(*unpack_callbacks(cbs_vec));
   initialize();
+}
+
+std::optional<std::string>
+validateSchemeDialect(const std::string& dialect_name,
+                      const std::string& module_name) {
+  auto interp = ChezSchemeInterpreter::instance(
+      SchemeLogLevel::Warning, crest::registerMlirForeignFunctions);
+  return interp->importDialectLibrary(module_name, dialect_name);
 }
 
 std::pair<mlir::TypeID, mlir::DialectAllocatorFunction>

@@ -976,6 +976,12 @@ only when no ops of this dialect appear in input IR yet):
 (load-scheme-dialect! ctx "toy" "toy/ch4/toy")
 ```
 
+A library that does not load (not found, an error in it or when it runs, or the dialect name not
+exported) is reported when the dialect is registered, not when its first op is parsed:
+`mlir::DialectRegistry::insert` and `load-scheme-dialect!` raise a Scheme error that names the library,
+`crest-opt --crest-scheme-dialect=` prints `error: Failed to import Scheme library: <library>: <reason>` and
+exits with status 1, and `--crest-pass="dialects-in-scheme=..."` reports it as a pass failure.
+
 ### Inspecting the expansion
 
 ```bash

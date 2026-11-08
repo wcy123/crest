@@ -78,6 +78,15 @@ public:
   std::optional<std::string>
   importLibrary(const std::string& slashSeparatedName);
 
+  // Like importLibrary, for a library that defines a dialect: it also runs the
+  // library body (Chez runs it when an export is first used, so a plain import
+  // does not see an error in it) and checks that `dialectName` is bound to a
+  // vector, which is the callbacks vector define-dialect makes. Returns why it
+  // is not, or std::nullopt.
+  std::optional<std::string>
+  importDialectLibrary(const std::string& slashSeparatedName,
+                       const std::string& dialectName);
+
   // Load a Scheme source file by path — equivalent to (load path).
   void loadFile(const std::string& path);
 
