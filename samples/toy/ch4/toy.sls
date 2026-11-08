@@ -24,6 +24,7 @@
           (mlir IR Builders)
           (mlir IR OperationSupport)
           (only (mlir Interfaces CallInterfaces) mlir::CallOpInterface)
+          (only (mlir Interfaces InferTypeOpInterface) mlir::InferTypeOpInterface)
           (only (mlir Interfaces FunctionInterfaces)
                 mlir::FunctionOpInterface
                 mlir::function_interface_impl::printFunctionOp
@@ -37,6 +38,15 @@
                 :i8-array :i16-array :i32-array :i64-array :unit))
 
   (define (%%parsed? h) (not (zero? h)))
+
+  ;; InferTypeOpInterface, as the builders of the C++ Ops.td. AddOp, MulOp and TransposeOp make an
+  ;; unranked f64 tensor (shape inference refines it later); ConstantOp has the type of its value.
+  (define (%%unranked-f64-tensor-types)
+    (list (mlir::UnrankedTensorType::get (mlir::Float64Type::get))))
+
+  (define (%%constant-result-types attributes)
+    (let ([value (assoc "value" attributes)])
+      (and value (list (mlir::DenseElementsAttr::getType (cdr value))))))
 
   (define (%%parse-binary-op parser state)
     (let ([ops (mlir::OpAsmParser::parseOperandList parser 2)])
@@ -192,6 +202,9 @@
       :traits     (pure)
       :attributes ((value %%f64-elements-attr?))
       :results    ((output %%f64-tensor?))
+      :interfaces ((mlir::InferTypeOpInterface
+                    (inferReturnTypes (context location operands attributes)
+                                      (%%constant-result-types attributes))))
       (:parse (parser state)
         (let ([attr (mlir::OpAsmParser::parseAttribute parser state "value")])
           (and (%%parsed? attr) (begin (mlir::OperationState::addType state
@@ -212,6 +225,9 @@
       :operands   ((lhs %%f64-tensor-value?)
                    (rhs %%f64-tensor-value?))
       :results    ((output %%f64-tensor?))
+      :interfaces ((mlir::InferTypeOpInterface
+                    (inferReturnTypes (context location operands attributes)
+                                      (%%unranked-f64-tensor-types))))
       (:parse (parser state) (%%parse-binary-op parser state))
       (:print (op printer name) (%%print-binary-op op printer name)))
 
@@ -221,6 +237,9 @@
       :operands   ((lhs %%f64-tensor-value?)
                    (rhs %%f64-tensor-value?))
       :results    ((output %%f64-tensor?))
+      :interfaces ((mlir::InferTypeOpInterface
+                    (inferReturnTypes (context location operands attributes)
+                                      (%%unranked-f64-tensor-types))))
       (:parse (parser state) (%%parse-binary-op parser state))
       (:print (op printer name) (%%print-binary-op op printer name)))
 
@@ -229,6 +248,9 @@
       :traits     (pure)
       :operands   ((input %%f64-tensor-value?))
       :results    ((output %%f64-tensor?))
+      :interfaces ((mlir::InferTypeOpInterface
+                    (inferReturnTypes (context location operands attributes)
+                                      (%%unranked-f64-tensor-types))))
       :assembly-format "`(` $input `:` type($input) `)` attr-dict `to` type(results)"
       (:verify (op) (%%verify-transpose op))
       (:get-canonicalization-patterns (patterns) (toy:add-transpose-canonicalization-patterns! patterns)))

@@ -3,7 +3,6 @@
 // takes the type of its value, the others an unranked f64 tensor (shape inference refines it later).
 //
 // REQUIRES: llvm-23
-// XFAIL: *
 // RUN: %scheme-mlir %S/infer-result-types.sls toy/ch2/toy | FileCheck %s
 // RUN: %scheme-mlir %S/infer-result-types.sls toy/ch3/toy | FileCheck %s
 // RUN: %scheme-mlir %S/infer-result-types.sls toy/ch4/toy | FileCheck %s

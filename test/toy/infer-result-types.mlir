@@ -4,7 +4,6 @@
 // write one. Reshape, generic_call and struct_constant are built with an explicit type in C++ and
 // keep it. The printed IR does not change: the action-mlir tests of each chapter cover that.
 //
-// XFAIL: *
 // RUN: python3 %S/check-infer-result-types.py %S/../../samples/toy
 
 module {}
