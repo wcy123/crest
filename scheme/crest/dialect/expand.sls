@@ -174,9 +174,12 @@
                       [(op-reg ...)     (map (lambda (op)
                                                (%%generate-register-op! ctx op-prefix op reg-op-stx))
                                              ops)]
-                      [(diface-call ...) diface-init-calls])
+                      [(diface-call ...) diface-init-calls]
+                      [(user-init ...)   (let ([u (vector-ref dialect-cbs 0)])
+                                           (if u (list #`(#,u dialect-ptr)) '()))])
                    (list
-                    #'(define (%%toy.initialize dialect-ptr) type-reg ... op-reg ... diface-call ...)))]
+                    #'(define (%%toy.initialize dialect-ptr)
+                        type-reg ... op-reg ... diface-call ... user-init ...)))]
                 ;; stash-stx kept in signature for forward compat but unused now
                 [dialect-cbs-defs (%%generate-dialect-callbacks ctx dialect-cbs ops stash-stx)]
                 ;; Emit op iface-calls at library-load time so interface concepts are
