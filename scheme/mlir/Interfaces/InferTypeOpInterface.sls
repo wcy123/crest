@@ -16,7 +16,7 @@
   ;; The C++ method is called with (context location operands attributes properties regions result)
   ;; as the platform ABI passes them: 10 or 11 machine words on System V x86-64 (the properties
   ;; are 16 bytes from LLVM 23), where the 16-byte classes take two words each, and 7 on Windows
-  ;; x64, where they are passed by reference. The words go to the C++ adapter, which knows the
+  ;; x64, where they are passed by reference (after the hidden return pointer, see below). The words go to the C++ adapter, which knows the
   ;; layout and calls `proc` with (context location operands attributes). The System V callable
   ;; takes 11 words; one more than the call passes (LLVM 22) is read and ignored.
   ;; An error in `proc` must not unwind through the C++ frames: it is reported and answers failure.
@@ -37,12 +37,18 @@
       (lock-object code)
       (foreign-callable-entry-point code)))
 
+  ;; Windows x64: LogicalResult has a private member, so it is not an aggregate to the Microsoft ABI
+  ;; and is returned through a hidden pointer that comes before every other argument. The callee
+  ;; writes the result byte through it and returns the pointer. The seven words after it are the
+  ;; arguments: the context, the addresses of the optional<Location> and of the ValueRange, the
+  ;; DictionaryAttr, the properties, the address of the RegionRange and the output vector.
   (define (%%windows-entry-point proc)
     (let ([code (foreign-callable
-                 (lambda (w0 w1 w2 w3 w4 w5 w6)
-                   (%%infer proc w0 w1 w2 w3 w4 w5 w6 0 0 0 0))
-                 (uptr uptr uptr uptr uptr uptr uptr)
-                 unsigned-8)])
+                 (lambda (result w0 w1 w2 w3 w4 w5 w6)
+                   (foreign-set! 'unsigned-8 result 0 (%%infer proc w0 w1 w2 w3 w4 w5 w6 0 0 0 0))
+                   result)
+                 (uptr uptr uptr uptr uptr uptr uptr uptr)
+                 uptr)])
       (lock-object code)
       (foreign-callable-entry-point code)))
 

@@ -57,8 +57,9 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
   // in both: the context, the address of the optional<Location>, the address of
   // the ValueRange, the DictionaryAttr, the properties (by value, or the
   // address of the PropertyRef), the address of the RegionRange and the output
-  // vector. Words that the layout does not use are zero or garbage and are
-  // ignored.
+  // vector. (The hidden pointer through which Windows returns LogicalResult is
+  // handled in Scheme and is not among them.) Words that the layout does not
+  // use are zero or garbage and are ignored.
   //
   // `proc` is called with (context location operands attributes): the context
   // pointer, the location pointer or #f, the list of operand Values, and the
