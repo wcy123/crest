@@ -7,6 +7,7 @@
 #include "Op.h"
 #include "../Bindings/Support/CrestObject.h"
 #include "../Bindings/Support/SchemeWrapper.h"
+#include "../Bindings/Support/XmmGuard.h"
 #include "InferType.h"
 #include "Trait.h"
 #include "mlir/IR/ExtensibleDialect.h"
@@ -46,7 +47,7 @@ make_verify_fn(int (*fn)(uint64_t)) {
     return [](mlir::Operation*) { return mlir::success(); };
   }
   return [fn](mlir::Operation* op) -> llvm::LogicalResult {
-    if (fn(reinterpret_cast<uint64_t>(op)) != 0) {
+    if (callForeign(fn, reinterpret_cast<uint64_t>(op)) != 0) {
       return mlir::success();
     }
     std::string message = takeReportedFailure();
@@ -61,8 +62,8 @@ static mlir::OperationName::ParseAssemblyFn make_parse_fn(int (*fn)(uint64_t,
                                                                     uint64_t)) {
   return [fn](mlir::OpAsmParser& parser,
               mlir::OperationState& state) -> mlir::ParseResult {
-    if (fn(reinterpret_cast<uint64_t>(&parser),
-           reinterpret_cast<uint64_t>(&state)) != 0) {
+    if (callForeign(fn, reinterpret_cast<uint64_t>(&parser),
+                    reinterpret_cast<uint64_t>(&state)) != 0) {
       return mlir::ParseResult::success();
     }
     std::string message = takeReportedFailure();
@@ -86,7 +87,8 @@ make_print_fn(void (*fn)(uint64_t, uint64_t)) {
       opName = opName.drop_front(defaultDialect.size() + 1);
     }
     printer << opName;
-    fn(reinterpret_cast<uint64_t>(op), reinterpret_cast<uint64_t>(&printer));
+    callForeign(fn, reinterpret_cast<uint64_t>(op),
+                reinterpret_cast<uint64_t>(&printer));
   };
 }
 
@@ -112,8 +114,9 @@ make_fold_fn(int (*fn)(uint64_t, const void* const*, uint64_t, void*)) {
       attrs.push_back(attr ? attr.getAsOpaquePointer() : nullptr);
     }
     FoldedResults folded;
-    if (fn(reinterpret_cast<uint64_t>(op), attrs.data(), attrs.size(),
-           &folded) == 0) {
+    if (callForeign(fn, reinterpret_cast<uint64_t>(op), attrs.data(),
+                    static_cast<uint64_t>(attrs.size()),
+                    static_cast<void*>(&folded)) == 0) {
       std::string message = takeReportedFailure();
       if (!message.empty()) {
         op->emitError(message);
@@ -139,7 +142,7 @@ make_canon_fn(void (*fn)(uint64_t)) {
   // only.
   return [fn](mlir::RewritePatternSet& patterns, mlir::MLIRContext*) {
     CrestBox<mlir::RewritePatternSet*> shell(&patterns);
-    fn(reinterpret_cast<uint64_t>(&shell));
+    callForeign(fn, reinterpret_cast<uint64_t>(&shell));
   };
 }
 
@@ -149,7 +152,8 @@ make_default_attrs_fn(void (*fn)(uint64_t, uint64_t)) {
     return [](const mlir::OperationName&, mlir::NamedAttrList&) {};
   }
   return [fn](const mlir::OperationName& name, mlir::NamedAttrList& attrs) {
-    fn(reinterpret_cast<uint64_t>(&name), reinterpret_cast<uint64_t>(&attrs));
+    callForeign(fn, reinterpret_cast<uint64_t>(&name),
+                reinterpret_cast<uint64_t>(&attrs));
   };
 }
 

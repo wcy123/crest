@@ -6,6 +6,7 @@
 #include "InlinerInterface.h"
 #include "../Bindings/Support/CrestObject.h"
 #include "../Bindings/Support/SchemeWrapper.h"
+#include "../Bindings/Support/XmmGuard.h"
 #include "Dialect.h"
 #include "mlir/IR/Builders.h"
 
@@ -14,27 +15,27 @@ namespace crest {
 bool CrestInlinerInterface::isLegalToInline(mlir::Operation* call,
                                             mlir::Operation* callable,
                                             bool wouldBeCloned) const {
-  return isLegalToInlineCallFn(reinterpret_cast<uint64_t>(call),
-                               reinterpret_cast<uint64_t>(callable),
-                               wouldBeCloned) != 0;
+  return callForeign(isLegalToInlineCallFn, reinterpret_cast<uint64_t>(call),
+                     reinterpret_cast<uint64_t>(callable),
+                     static_cast<int>(wouldBeCloned)) != 0;
 }
 
 bool CrestInlinerInterface::isLegalToInline(mlir::Region* dest,
                                             mlir::Region* src,
                                             bool wouldBeCloned,
                                             mlir::IRMapping&) const {
-  return isLegalToInlineRegionFn(reinterpret_cast<uint64_t>(dest),
-                                 reinterpret_cast<uint64_t>(src),
-                                 wouldBeCloned) != 0;
+  return callForeign(isLegalToInlineRegionFn, reinterpret_cast<uint64_t>(dest),
+                     reinterpret_cast<uint64_t>(src),
+                     static_cast<int>(wouldBeCloned)) != 0;
 }
 
 bool CrestInlinerInterface::isLegalToInline(mlir::Operation* op,
                                             mlir::Region* dest,
                                             bool wouldBeCloned,
                                             mlir::IRMapping&) const {
-  return isLegalToInlineOpFn(reinterpret_cast<uint64_t>(op),
-                             reinterpret_cast<uint64_t>(dest),
-                             wouldBeCloned) != 0;
+  return callForeign(isLegalToInlineOpFn, reinterpret_cast<uint64_t>(op),
+                     reinterpret_cast<uint64_t>(dest),
+                     static_cast<int>(wouldBeCloned)) != 0;
 }
 
 void CrestInlinerInterface::handleTerminator(
@@ -50,8 +51,8 @@ void CrestInlinerInterface::handleTerminator(
     ptrs.push_back(reinterpret_cast<uintptr_t>(v.getAsOpaquePointer()));
   }
   CArrayRef<uintptr_t> arr(ptrs.data(), ptrs.size());
-  handleTerminatorValueFn(reinterpret_cast<uint64_t>(op),
-                          reinterpret_cast<uint64_t>(&arr));
+  callForeign(handleTerminatorValueFn, reinterpret_cast<uint64_t>(op),
+              reinterpret_cast<uint64_t>(&arr));
 }
 
 void CrestInlinerInterface::handleTerminator(mlir::Operation* op,
@@ -59,8 +60,8 @@ void CrestInlinerInterface::handleTerminator(mlir::Operation* op,
   if (!handleTerminatorBlockFn) {
     return;
   }
-  handleTerminatorBlockFn(reinterpret_cast<uint64_t>(op),
-                          reinterpret_cast<uint64_t>(newDest));
+  callForeign(handleTerminatorBlockFn, reinterpret_cast<uint64_t>(op),
+              reinterpret_cast<uint64_t>(newDest));
 }
 
 mlir::Operation* CrestInlinerInterface::materializeCallConversion(
@@ -71,8 +72,8 @@ mlir::Operation* CrestInlinerInterface::materializeCallConversion(
   }
   // Scheme sees the builder as a borrowed shell that lives for this call.
   crest::CrestBox<mlir::OpBuilder*> builder_shell(&builder);
-  return reinterpret_cast<mlir::Operation*>(materializeCallConversionFn(
-      reinterpret_cast<uint64_t>(&builder_shell),
+  return reinterpret_cast<mlir::Operation*>(callForeign(
+      materializeCallConversionFn, reinterpret_cast<uint64_t>(&builder_shell),
       reinterpret_cast<uint64_t>(input.getAsOpaquePointer()),
       reinterpret_cast<uint64_t>(resultType.getAsOpaquePointer()),
       reinterpret_cast<uint64_t>(loc.getAsOpaquePointer())));

@@ -17,6 +17,7 @@
 #include "../../Crest/InferType.h"
 #include "../Support/CrestObject.h"
 #include "../Support/SchemeWrapper.h"
+#include "../Support/XmmGuard.h"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/LogicalResult.h"
@@ -190,10 +191,12 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
     mlir::MLIRContext* ctx = state.getContext();
     llvm::SmallVector<mlir::Type, 4> types;
     g_reported_failure.clear();
-    if (mlir::failed(model->inferReturnTypes(
-            ctx, state.location, state.operands,
-            state.attributes.getDictionary(ctx), state.getRawProperties(),
-            mlir::RegionRange(state.regions), types))) {
+    if (mlir::failed(crest::withXmmPreserved([&] {
+          return model->inferReturnTypes(
+              ctx, state.location, state.operands,
+              state.attributes.getDictionary(ctx), state.getRawProperties(),
+              mlir::RegionRange(state.regions), types);
+        }))) {
       std::string message =
           "cannot infer the result types of " + state.name.getStringRef().str();
       if (!g_reported_failure.empty()) {

@@ -7,6 +7,7 @@
 #define CREST_BINDINGS_FOREIGN_CALLABLE_H
 
 #include "SchemeWrapper.h"
+#include "XmmGuard.h"
 #include <cstdint>
 #include <utility>
 
@@ -27,6 +28,9 @@ template <typename Signature> class ForeignCallable;
 ///
 /// Make the owner first in a binding, before a return or a check that can
 /// raise: an error that leaves through Scheme skips destructors.
+///
+/// The call goes through callForeign (XmmGuard.h): Chez Scheme's
+/// foreign-callable on Windows x64 does not preserve XMM6-XMM15.
 template <typename R, typename... Args> class ForeignCallable<R(Args...)> {
 public:
   ForeignCallable() = default;
@@ -52,7 +56,7 @@ public:
 
   R operator()(Args... args) const {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-    return reinterpret_cast<R (*)(Args...)>(entry_)(args...);
+    return callForeign(reinterpret_cast<R (*)(Args...)>(entry_), args...);
   }
 
 private:

@@ -7,6 +7,7 @@
 #include "SchemePass.h"
 #include "../Bindings/Support/CrestObject.h"
 #include "../Bindings/Support/SchemeWrapper.h"
+#include "../Bindings/Support/XmmGuard.h"
 #include "mlir/Pass/Pass.h"
 #include <memory>
 #include <string>
@@ -45,7 +46,8 @@ public:
   }
 
   void runOnOperation() override {
-    if (callback_(reinterpret_cast<uint64_t>(getOperation())) == 0) {
+    if (callForeign(callback_, reinterpret_cast<uint64_t>(getOperation())) ==
+        0) {
       std::string message = std::move(g_reported_failure);
       g_reported_failure.clear();
       if (!message.empty()) {

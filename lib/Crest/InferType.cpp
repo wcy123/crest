@@ -12,6 +12,7 @@
 // type serves all ops and the pointer is filled in per op.
 
 #include "InferType.h"
+#include "../Bindings/Support/XmmGuard.h"
 #include "mlir/IR/Diagnostics.h"
 #include "mlir/IR/ExtensibleDialect.h"
 #include "mlir/IR/Operation.h"
@@ -83,10 +84,11 @@ withInferredTypesCheck(mlir::OperationName::VerifyInvariantsFn verify,
     // The check of InferTypeOpInterface::verifyInferredResultTypes, which only
     // an op class with the interface as a trait gets.
     llvm::SmallVector<mlir::Type, 4> inferred;
-    if (mlir::failed(infer(op->getContext(), op->getLoc(), op->getOperands(),
-                           op->getRawDictionaryAttrs(),
-                           op->getPropertiesStorage(),
-                           mlir::RegionRange(op->getRegions()), inferred))) {
+    if (mlir::failed(withXmmPreserved([&] {
+          return infer(op->getContext(), op->getLoc(), op->getOperands(),
+                       op->getRawDictionaryAttrs(), op->getPropertiesStorage(),
+                       mlir::RegionRange(op->getRegions()), inferred);
+        }))) {
       return op->emitOpError("failed to infer returned types");
     }
     bool isCompatible;
