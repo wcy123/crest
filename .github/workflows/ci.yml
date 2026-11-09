@@ -200,15 +200,15 @@ jobs:
           call C:\msvsn2022\VC\Auxiliary\Build\vcvars64.bat
           cmake --build build --target check-crest
 
-      - name: Data breakpoint probe
-        if: always()
+      - name: Debugger run of walk-leak
+        if: always() && matrix.llvm == 23
         continue-on-error: true
         shell: cmd
         run: |
           set PATH=%PATH%;C:\Program Files (x86)\Windows Kits\10\Debuggers\x64
-          set CREST_PATH=%CD%\test\dsl\type-callbacks
-          set CREST_SCHEME_BINARY_DIR=%CD%\build\expbin2
-          cdb -cf tools\experiment\probe.cdb build\tools\crest-opt\crest-opt.exe test\dsl\type-callbacks\type-callbacks.mlir --mlir-disable-threading --crest-scheme-dialect=tcb=passes/tcb 2>&1
+          set CREST_PATH=%CD%\test\dsl\one-shot-callbacks
+          set CREST_SCHEME_BINARY_DIR=%CD%\build\expbin4
+          cdb -g -G -c "kb 25;ub @rip L12;q" build\tools\scheme-mlir\scheme-mlir.exe test\dsl\one-shot-callbacks\walk-leak-driver.sls test\dsl\one-shot-callbacks\walk-leak.mlir 2>&1
 
       - name: Upload test results
         if: always()
