@@ -550,7 +550,9 @@
                [addregion-calls
                 (loop :for i :from 0 :below nregions
                       :collect #`(mlir::OperationState::addRegion #,state-id))]
-               ;; The types after ->, or inferred when there is none but a result.
+               ;; The types after ->, or inferred when there is none but a result. A form without
+               ;; a result variable is a statement (scf.yield (a)): the op gets no results and is
+               ;; never inferred (-> types without a variable do not compile, see parse-next).
                [types-expr-stx
                 (if (and (null? result-types) (pair? result-vars))
                     #`(%%infer-result-types #,state-id #,op-name)
