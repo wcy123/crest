@@ -96,6 +96,7 @@ struct FunctionConceptData : public mlir::FunctionOpInterface::Concept {
       getFunctionType =
           +[](const Concept* self, mlir::Operation* op) -> mlir::Type {
         const auto* d = static_cast<const FunctionConceptData*>(self);
+        CREST_REFRESH();
         return mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(
             d->get_function_type(reinterpret_cast<uint64_t>(op))));
       };
@@ -107,6 +108,7 @@ struct FunctionConceptData : public mlir::FunctionOpInterface::Concept {
       setFunctionTypeAttr =
           +[](const Concept* self, mlir::Operation* op, mlir::TypeAttr t) {
             const auto* d = static_cast<const FunctionConceptData*>(self);
+        CREST_REFRESH();
             d->set_function_type_attr(
                 reinterpret_cast<uint64_t>(op),
                 reinterpret_cast<uint64_t>(t.getAsOpaquePointer()));
@@ -119,6 +121,7 @@ struct FunctionConceptData : public mlir::FunctionOpInterface::Concept {
           +[](const Concept* self, mlir::Operation* op, mlir::TypeRange inputs,
               mlir::TypeRange results) -> mlir::Type {
         const auto* d = static_cast<const FunctionConceptData*>(self);
+        CREST_REFRESH();
         llvm::SmallVector<const void*, 8> inputPointers;
         llvm::SmallVector<const void*, 8> resultPointers;
         for (mlir::Type t : inputs) {
@@ -138,6 +141,7 @@ struct FunctionConceptData : public mlir::FunctionOpInterface::Concept {
       verifyBody =
           +[](const Concept* self, mlir::Operation* op) -> llvm::LogicalResult {
         const auto* d = static_cast<const FunctionConceptData*>(self);
+        CREST_REFRESH();
         return verifyResult(op, d->verify_body(reinterpret_cast<uint64_t>(op)));
       };
     }
@@ -146,6 +150,7 @@ struct FunctionConceptData : public mlir::FunctionOpInterface::Concept {
       verifyType =
           +[](const Concept* self, mlir::Operation* op) -> llvm::LogicalResult {
         const auto* d = static_cast<const FunctionConceptData*>(self);
+        CREST_REFRESH();
         return verifyResult(op, d->verify_type(reinterpret_cast<uint64_t>(op)));
       };
     }

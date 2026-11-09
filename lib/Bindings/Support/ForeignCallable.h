@@ -51,6 +51,7 @@ public:
   explicit operator bool() const { return entry_ != 0; }
 
   R operator()(Args... args) const {
+    CREST_REFRESH();
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     return reinterpret_cast<R (*)(Args...)>(entry_)(args...);
   }

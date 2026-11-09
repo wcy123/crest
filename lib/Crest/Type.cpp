@@ -129,6 +129,7 @@ void registerCrestDynamicTypeBindings() {
           }
           auto pointers = opaquePointers(params);
           TypeSink sink;
+          CREST_REFRESH();
           int answer = verify(pointers.data(), pointers.size(),
                               reinterpret_cast<uint64_t>(&sink));
           if (answer == 1) {
@@ -150,6 +151,7 @@ void registerCrestDynamicTypeBindings() {
               -> mlir::ParseResult {
             TypeSink sink;
             sink.parsed = &parsed;
+            CREST_REFRESH();
             int answer = parse(reinterpret_cast<uint64_t>(&p),
                                reinterpret_cast<uint64_t>(&sink));
             if (answer == 1) {
@@ -166,6 +168,7 @@ void registerCrestDynamicTypeBindings() {
               [print](mlir::AsmPrinter& p,
                       llvm::ArrayRef<mlir::Attribute> params) {
                 auto pointers = opaquePointers(params);
+                CREST_REFRESH();
                 print(reinterpret_cast<uint64_t>(&p), pointers.data(),
                       pointers.size());
               };
