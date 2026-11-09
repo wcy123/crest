@@ -87,6 +87,11 @@ public:
   importDialectLibrary(const std::string& slashSeparatedName,
                        const std::string& dialectName);
 
+  // Whether the (imported) library named like importLibrary names it exports
+  // `name`: (library-exports '(passes my-rewrite)) contains it.
+  bool libraryExports(const std::string& slashSeparatedName,
+                      const std::string& name);
+
   // Load a Scheme source file by path — equivalent to (load path).
   void loadFile(const std::string& path);
 

@@ -7,7 +7,13 @@ target_link_libraries(crest-opt
     MLIRPass
     MLIRIR
     MLIRSupport
+    MLIRAffineDialect
+    MLIRArithDialect
+    MLIRControlFlowDialect
     MLIRFuncDialect
+    MLIRLLVMDialect
+    MLIRMemRefDialect
+    MLIRSCFDialect
     MLIRShapeDialect
     MLIRTensorDialect
     MLIRTransforms

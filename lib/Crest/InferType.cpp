@@ -12,7 +12,10 @@
 // type serves all ops and the pointer is filled in per op.
 
 #include "InferType.h"
+#include "../Bindings/Support/SchemeWrapper.h"
+#include "mlir/IR/Diagnostics.h"
 #include "mlir/IR/ExtensibleDialect.h"
+#include "mlir/IR/Operation.h"
 #include "mlir/Interfaces/InferTypeOpInterface.h"
 #include <string>
 #include <unordered_map>
@@ -45,10 +48,66 @@ struct DynamicInferTypeModel : public mlir::InferTypeOpInterface::Concept {
 // Op name -> inferReturnTypes entry registered from Scheme.
 std::unordered_map<std::string, InferFn> g_infer_entries;
 
+// Op name -> isCompatibleReturnTypes procedure registered from Scheme.
+std::unordered_map<std::string, LockedSchemeObject> g_compatible;
+
 } // namespace
+
+void registerCompatibleReturnTypes(llvm::StringRef opName,
+                                   LockedSchemeObject proc) {
+  g_compatible[opName.str()] = std::move(proc);
+}
 
 void registerInferReturnTypes(llvm::StringRef opName, void* entry) {
   g_infer_entries[opName.str()] = reinterpret_cast<InferFn>(entry);
+}
+
+mlir::OperationName::VerifyInvariantsFn
+withInferredTypesCheck(mlir::OperationName::VerifyInvariantsFn verify,
+                       llvm::StringRef opName) {
+  auto it = g_infer_entries.find(opName.str());
+  if (it == g_infer_entries.end()) {
+    return verify;
+  }
+  InferFn infer = it->second;
+  auto compatibleIt = g_compatible.find(opName.str());
+  // The map's nodes do not move: the lambda keeps a pointer to the procedure.
+  const LockedSchemeObject* compatible =
+      compatibleIt == g_compatible.end() ? nullptr : &compatibleIt->second;
+  return [infer, compatible, verify = std::move(verify)](
+             mlir::Operation* op) -> llvm::LogicalResult {
+    // The op's own verifier first: its message is the more specific one.
+    if (mlir::failed(verify(op))) {
+      return mlir::failure();
+    }
+    // The check of InferTypeOpInterface::verifyInferredResultTypes, which only
+    // an op class with the interface as a trait gets.
+    llvm::SmallVector<mlir::Type, 4> inferred;
+    if (mlir::failed(infer(op->getContext(), op->getLoc(), op->getOperands(),
+                           op->getRawDictionaryAttrs(),
+                           op->getPropertiesStorage(),
+                           mlir::RegionRange(op->getRegions()), inferred))) {
+      return op->emitOpError("failed to infer returned types");
+    }
+    bool isCompatible;
+    if (compatible) {
+      ptr inferredList = Conversion<mlir::TypeRange, ptr>{}(inferred);
+      ptr actualList = Conversion<mlir::TypeRange, ptr>{}(op->getResultTypes());
+      isCompatible =
+          scheme_call(compatible->get(), inferredList, actualList) != Sfalse;
+    } else {
+      isCompatible =
+          mlir::TypeRange(inferred) == mlir::TypeRange(op->getResultTypes());
+    }
+    if (!isCompatible) {
+      return mlir::emitOptionalError(
+          op->getLoc(), "'", op->getName().getStringRef(),
+          "' op inferred type(s) ", inferred,
+          " are incompatible with return type(s) of operation ",
+          op->getResultTypes());
+    }
+    return mlir::success();
+  };
 }
 
 void attachInferTypeOpInterface(mlir::DynamicOpDefinition& def,

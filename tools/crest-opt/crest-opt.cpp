@@ -18,7 +18,13 @@
 
 #include "../lib/Crest/Dialect.h"
 #include "crest/Passes/Passes.h"
+#include "mlir/Dialect/Affine/IR/AffineOps.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/ControlFlow/IR/ControlFlow.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
+#include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/Dialect/Shape/IR/Shape.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/IR/DialectRegistry.h"
@@ -37,7 +43,12 @@ static llvm::cl::list<std::string> SchemeDialects(
 
 int main(int argc, char** argv) {
   mlir::DialectRegistry registry;
-  registry.insert<mlir::func::FuncDialect, mlir::shape::ShapeDialect,
+  // The dialects the Scheme passes and the Toy tutorial create ops of, as toyc
+  // registers them.
+  registry.insert<mlir::affine::AffineDialect, mlir::arith::ArithDialect,
+                  mlir::cf::ControlFlowDialect, mlir::func::FuncDialect,
+                  mlir::LLVM::LLVMDialect, mlir::memref::MemRefDialect,
+                  mlir::scf::SCFDialect, mlir::shape::ShapeDialect,
                   mlir::tensor::TensorDialect>();
   crest::registerCrestPass();
   mlir::registerTransformsPasses(); // --canonicalize, --cse, --inliner, etc.

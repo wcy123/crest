@@ -220,6 +220,26 @@ struct CrestPass : public mlir::OperationPass<mlir::ModuleOp> {
       }
     }
 
+    // The pass is run by calling run-pass. Some library of the list exports it
+    // (the others may be helpers, as in test/dsl/multi-pass); if none does, the
+    // call would go to whatever the name is bound to, or to nothing.
+    bool exportsRunPass = false;
+    for (const auto& pass : passes_) {
+      exportsRunPass =
+          exportsRunPass || interp->libraryExports(pass, "run-pass");
+    }
+    if (!exportsRunPass) {
+      std::string libraries;
+      for (const auto& pass : passes_) {
+        libraries += (libraries.empty() ? "" : ", ") + pass;
+      }
+      getOperation().emitError(
+          "Scheme library " + libraries +
+          " does not export run-pass, which --crest-pass=passes= calls to run "
+          "the pass");
+      return signalPassFailure();
+    }
+
     scheme_call("run-pass", getOperation().getOperation());
   }
 

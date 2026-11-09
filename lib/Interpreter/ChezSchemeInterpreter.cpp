@@ -264,6 +264,26 @@ ChezSchemeInterpreter::importLibrary(const std::string& slashSeparatedName) {
   return convert_to_cpp<std::string>(result);
 }
 
+bool ChezSchemeInterpreter::libraryExports(
+    const std::string& slashSeparatedName, const std::string& name) {
+  // The names go into Scheme code: the same characters as importLibrary.
+  for (const std::string* text : {&slashSeparatedName, &name}) {
+    for (char c : *text) {
+      if (!std::isalnum(static_cast<unsigned char>(c)) && c != '/' &&
+          c != '_' && c != '-' && c != '.') {
+        return false;
+      }
+    }
+  }
+  std::string lib = slashSeparatedName;
+  std::replace(lib.begin(), lib.end(), '/', ' ');
+  std::string code = R"((and (memq ')" + name + R"( (library-exports '()" +
+                     lib + R"()))) #t))";
+  ptr port = scheme_call("open-string-input-port", Sstring(code.c_str()));
+  ptr expr = scheme_call("read", port);
+  return scheme_call("eval", expr) != Sfalse;
+}
+
 std::optional<std::string> ChezSchemeInterpreter::importDialectLibrary(
     const std::string& slashSeparatedName, const std::string& dialectName) {
   for (char c : dialectName) {

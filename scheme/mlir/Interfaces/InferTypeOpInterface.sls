@@ -36,13 +36,13 @@
   ;; attributes). The Linux function always takes 11 numbers; with LLVM 22 the last one is
   ;; leftover memory and is ignored.
   ;;
-  ;; An error inside `proc` must not escape into the C++ code above us, so it is printed here and
-  ;; the answer is "failed" (0).
+  ;; An error inside `proc` must not escape into the C++ code above us: its text goes to C++, whose
+  ;; diagnostic shows it, and the answer is "failed" (0).
   (define (%%infer proc w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10)
-    (guard (c [#t (let ([port (current-error-port)])
-                    (display-condition c port)
-                    (newline port)
-                    0)])
+    (guard (c [#t (%crest::InferTypeOpInterface::reportFailure
+                   (call-with-string-output-port
+                    (lambda (port) (display-condition c port))))
+                  0])
       (with-current-MLIRContext w0
         (%crest::InferTypeOpInterface::adapt proc w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10))))
 
@@ -98,14 +98,21 @@
                    (machine-type))]))
 
   ;; dispatcher: (lambda (method) ...) made by define-op for the op's :interfaces entry;
-  ;; 'operation_name answers the op's name and 'inferReturnTypes the method clause or #f.
+  ;; 'operation_name answers the op's name and 'inferReturnTypes the method clause or #f. The clause
+  ;; (isCompatibleReturnTypes (inferred actual) body ...) says whether the result types of an op
+  ;; (a list of Types) fit what inferReturnTypes answered (a list of Types); without it they must be
+  ;; equal. An op whose inference is general and whose results get refined later (a ranked tensor
+  ;; where the inference says tensor<*xf64>) needs it, as the ODS ops of C++ that override it do.
   (define (mlir::InferTypeOpInterface dispatcher)
-    (let ([op-name (dispatcher 'operation_name)]
-          [method  (dispatcher 'inferReturnTypes)])
+    (let ([op-name    (dispatcher 'operation_name)]
+          [method     (dispatcher 'inferReturnTypes)]
+          [compatible (dispatcher 'isCompatibleReturnTypes)])
       (unless method
         (error 'mlir::InferTypeOpInterface
                "the interface needs an inferReturnTypes clause (context location operands attributes)"
                op-name))
+      (when compatible
+        (%crest::InferTypeOpInterface::registerCompatibility op-name compatible))
       (%crest::InferTypeOpInterface::registerEntry op-name (%%entry-point method))))
 
   (define mlir::InferTypeOpInterface::inferReturnTypes<OperationState>

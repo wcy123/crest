@@ -359,10 +359,15 @@ dialect.op-name (operands...) modifiers...
 
 The `-> result-type` can be left out when the op implements `mlir::InferTypeOpInterface`
 (a C++ op such as `arith.addi`, checked in `test/dsl/op-builders/cxx-ops.mlir`, or an op of a Scheme dialect, see
-[Op-level `:interfaces`](#op-level-interfaces)): the types come from the operands, attributes
-and regions given to the op-form, as `builder.create<AddOp>(loc, lhs, rhs)` gets them in C++.
-An explicit `->` always wins. Leaving it out for an op that is not registered, or does not
-implement the interface, raises `no result type for <op>: ... write -> type`.
+[Op-level `:interfaces`](#op-level-interfaces)): the types come from the operands and attributes
+given to the op-form, as `builder.create<AddOp>(loc, lhs, rhs)` gets them in C++. The regions are
+not there yet: an op-form fills them after the op exists, so an op whose inference reads them
+(`scf.if`) needs its `-> type`, as the `scf::IfOp` builders of C++ take the result types; the error
+says so (`test/dsl/op-builders/regions.mlir`). An explicit `->` is used as written, and the verifier
+checks it against the interface like that of a C++ op (`inferred type(s) ... are incompatible with
+return type(s) of operation ...`). Leaving it out for an op that is not registered, or does not
+implement the interface, raises `no result type for <op>: ... write -> type`; an error that the
+op's own `inferReturnTypes` raises is part of the message.
 
 Op names contain `.` (e.g. `arith.constant`, `toy.func`). Result vars do not.
 Any parenthesized item that doesn't match an op-form pattern is a Scheme expression.
@@ -932,10 +937,10 @@ With `FunctionOpInterface` on the function op, `CallOpInterface` on the call op,
 `DialectInlinerInterface` and a terminator (`:traits (terminator)`, LLVM 23), MLIR's own `--inline`
 pass inlines calls in a Scheme dialect (`test/dsl/call-op-interface`).
 
-`InferTypeOpInterface` lets an op-form leave out `-> type` (see [§5](#5-begin-mlir-code)). Its one
+`InferTypeOpInterface` lets an op-form leave out `-> type` (see [§5](#5-begin-mlir-code)). Its
 method clause is `inferReturnTypes`, which gets the context, the location (or `#f`), the list of
 operand `Value`s and the alist of `(name . Attribute)`, and returns the list of result `Type`s
-(`#f` to say it cannot tell):
+(`#f` to say it cannot tell). An error it raises is part of the message of the diagnostic:
 
 ```scheme
 (import (only (mlir Interfaces InferTypeOpInterface) mlir::InferTypeOpInterface))
@@ -947,6 +952,15 @@ operand `Value`s and the alist of `(name . Attribute)`, and returns the list of 
                 (inferReturnTypes (context location operands attributes)
                   (list (mlir::Value::getType (car operands)))))))
 ```
+
+The verifier of the op checks its result types against the inference, as that of a C++ op with the
+interface does: an `add` that says `i64` where the inference says `i32` is an error. The second
+clause, `isCompatibleReturnTypes (inferred actual)`, says what fits (two lists of `Type`s, a boolean);
+without it the types must be equal. An op whose inference is general and whose results are refined
+later needs it, as the ODS ops of C++ that override `isCompatibleReturnTypes` do: Toy's `add`,
+`mul`, `transpose` and `constant` infer `tensor<*xf64>` and shape inference makes the result ranked,
+so they accept any `f64` tensor (`test/dsl/op-builders/compatible-types.mlir`). The op's own `:verify`
+runs first.
 
 The name in `:interfaces` is a Scheme procedure that the dialect's library must import: it takes
 the dispatcher that `define-op` makes for the entry. `mlir::InferTypeOpInterface` makes a C function

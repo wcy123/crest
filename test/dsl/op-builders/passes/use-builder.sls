@@ -5,7 +5,7 @@
   (import (except (rnrs) =)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
-          (only (mlir IR BuiltinTypes) mlir::IntegerType::get<i64>)
+          (only (mlir IR Value) mlir::Value::getType)
           (only (mlir IR PatternMatch) with-RewritePatternSet)
           (only (mlir Transforms GreedyPatternRewriteDriver) mlir::applyPatternsGreedily)
           (only (mlir Transforms DialectConversion) add-rewrite-pattern)
@@ -15,11 +15,11 @@
     :if-match
       test.src (%a %b)
     :rewrite op :with
-      i64  = (mlir::IntegerType::get<i64>)
+      ty   = (mlir::Value::getType %a)
       sum  = bld.add (%a %b)
       zero = bld.zero ()
-      wide = bld.add (%a %b) -> i64
-      test.use (sum zero wide))
+      same = bld.add (%a %b) -> ty
+      test.use (sum zero same))
 
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])

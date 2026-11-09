@@ -36,6 +36,13 @@
   (define (%%unranked-f64-tensor-types)
     (list (mlir::UnrankedTensorType::get (mlir::Float64Type::get))))
 
+  ;; isCompatibleReturnTypes of add, mul, transpose and constant: the inference of the first three is
+  ;; tensor<*xf64> and shape inference refines the result to a ranked tensor; a constant that
+  ;; materialization made may have an unranked result (its verifier checks a ranked one against the
+  ;; value). So any f64 tensor fits.
+  (define (%%f64-tensor-results? actual)
+    (and (pair? actual) (null? (cdr actual)) (%%f64-tensor? (car actual))))
+
   (define (%%constant-result-types attributes)
     (let ([value (assoc "value" attributes)])
       (and value (list (mlir::DenseElementsAttr::getType (cdr value))))))
@@ -198,7 +205,9 @@
       :results    ((output %%f64-tensor?))
       :interfaces ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes)
-                                      (%%constant-result-types attributes))))
+                                      (%%constant-result-types attributes))
+                    (isCompatibleReturnTypes (inferred actual)
+                                             (%%f64-tensor-results? actual))))
       (:parse (parser state)
         (let ([attr (mlir::OpAsmParser::parseAttribute parser state "value")])
           (and (%%parsed? attr) (begin (mlir::OperationState::addType state
@@ -220,7 +229,9 @@
       :results    ((output %%f64-tensor?))
       :interfaces ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes)
-                                      (%%unranked-f64-tensor-types))))
+                                      (%%unranked-f64-tensor-types))
+                    (isCompatibleReturnTypes (inferred actual)
+                                             (%%f64-tensor-results? actual))))
       (:parse (parser state) (%%parse-binary-op parser state))
       (:print (op printer name) (%%print-binary-op op printer name)))
 
@@ -233,7 +244,9 @@
       :results    ((output %%f64-tensor?))
       :interfaces ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes)
-                                      (%%unranked-f64-tensor-types))))
+                                      (%%unranked-f64-tensor-types))
+                    (isCompatibleReturnTypes (inferred actual)
+                                             (%%f64-tensor-results? actual))))
       (:parse (parser state) (%%parse-binary-op parser state))
       (:print (op printer name) (%%print-binary-op op printer name)))
 
@@ -245,7 +258,9 @@
       :results    ((output %%f64-tensor?))
       :interfaces ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes)
-                                      (%%unranked-f64-tensor-types))))
+                                      (%%unranked-f64-tensor-types))
+                    (isCompatibleReturnTypes (inferred actual)
+                                             (%%f64-tensor-results? actual))))
       :assembly-format "`(` $input `:` type($input) `)` attr-dict `to` type(results)"
       (:verify (op) (%%verify-transpose op))
       (:get-canonicalization-patterns (patterns) (toy:add-transpose-canonicalization-patterns! patterns)))
