@@ -47,27 +47,34 @@ jobs:
             uuid-dev \
             libgtest-dev \
             googletest \
-            emacs-nox
+            emacs-nox \
+            ccache
 
       # ── Python tools ────────────────────────────────────────────────────────
       - name: Install Python build tools
         run: pip install cmake ninja lit
 
-      # ── sccache ─────────────────────────────────────────────────────────────
-      - name: Set sccache environment
+      # ── ccache ──────────────────────────────────────────────────────────────
+      # ccache comes from apt (installed above), not from a download of a GitHub release: the
+      # sccache action failed the job whenever that download returned a 5xx. Every run saves its
+      # cache under its own key and restores the most recent one, so the objects of a commit are
+      # there for the next commit (a key per day would only keep what the first run of the day built).
+      - name: Set ccache environment
         run: |
-          echo "SCCACHE_DIR=${{ runner.workspace }}/sccache-dir" >> $GITHUB_ENV
-          echo "SCCACHE_KEY_DATE=$(date -u +'%Y%m%d')" >> $GITHUB_ENV
+          echo "CCACHE_DIR=${{ runner.workspace }}/ccache-dir" >> $GITHUB_ENV
+          echo "CCACHE_COMPILERCHECK=content" >> $GITHUB_ENV
+          echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
+          echo "CCACHE_MAXSIZE=1G" >> $GITHUB_ENV
 
-      - name: Restore sccache cache
+      - name: Restore ccache cache
         uses: actions/cache/restore@v4
         with:
-          path: ${{ runner.workspace }}/sccache-dir
-          key: sccache-linux-${{ matrix.llvm }}-${{ env.SCCACHE_KEY_DATE }}
-          restore-keys: sccache-linux-${{ matrix.llvm }}-
+          path: ${{ runner.workspace }}/ccache-dir
+          key: ccache-linux-${{ matrix.llvm }}-${{ github.run_id }}
+          restore-keys: ccache-linux-${{ matrix.llvm }}-
 
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
+      - name: Reset ccache statistics
+        run: ccache --zero-stats
 
       # ── Cache ChezScheme build ───────────────────────────────────────────────
       # Key on deps.cmake so cache invalidates when GIT_TAG or build flags change.
@@ -89,8 +96,8 @@ jobs:
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
             -DCMAKE_C_COMPILER=clang-${{ matrix.llvm }} \
             -DCMAKE_CXX_COMPILER=clang++-${{ matrix.llvm }} \
-            -DCMAKE_C_COMPILER_LAUNCHER=sccache \
-            -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DFETCHCONTENT_UPDATES_DISCONNECTED=ON \
             -DMLIR_DIR=/usr/lib/llvm-${{ matrix.llvm }}/lib/cmake/mlir \
             -DLLVM_DIR=/usr/lib/llvm-${{ matrix.llvm }}/lib/cmake/llvm \
@@ -100,12 +107,16 @@ jobs:
       - name: Build
         run: cmake --build build --parallel $(nproc)
 
-      - name: Save sccache cache
+      - name: ccache statistics
+        if: always()
+        run: ccache --show-stats
+
+      - name: Save ccache cache
         uses: actions/cache/save@v4
         if: always()
         with:
-          path: ${{ runner.workspace }}/sccache-dir
-          key: sccache-linux-${{ matrix.llvm }}-${{ env.SCCACHE_KEY_DATE }}
+          path: ${{ runner.workspace }}/ccache-dir
+          key: ccache-linux-${{ matrix.llvm }}-${{ github.run_id }}
 
       # ── Tests ────────────────────────────────────────────────────────────────
       - name: Unit tests
