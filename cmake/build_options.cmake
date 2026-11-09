@@ -15,8 +15,8 @@ endif()
 
 if(CREST_WARNINGS_AS_ERRORS)
   add_compile_options(
-    $<$<CXX_COMPILER_ID:MSVC>:/W4>
-    $<$<CXX_COMPILER_ID:MSVC>:/WX>
+    $<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CXX_COMPILER_ID:MSVC>>:/W4>
+    $<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CXX_COMPILER_ID:MSVC>>:/WX>
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall>
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wextra>
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wconversion>
@@ -29,5 +29,6 @@ if(MSVC)
   # MSVC cannot prove that [[noreturn]] callsites are unreachable. scheme_error
   # has the same issue. We cannot modify LLVM headers, so global suppression is
   # required — matching what LLVM itself does in HandleLLVMOptions.cmake.
-  add_compile_options(/wd4702)
+  # (Not for the MASM file of lib/Bindings/Support, which has no such option.)
+  add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd4702>)
 endif()

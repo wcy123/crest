@@ -108,8 +108,8 @@ add_library(CrestBindings STATIC
   Support/ArrayRef.h
   Support/CrestObject.cpp
   Support/CrestObject.h
-  Support/LockedSchemeObject.cpp
-  Support/LockedSchemeObject.h
+  Support/ForeignCallable.h
+  Support/XmmGuard.h
   Support/Logging.cpp
   Support/Logging.h
   Support/SchemeWrapper.cpp
@@ -139,6 +139,10 @@ target_include_directories(CrestBindings
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/..            # lib/ - allows Crest/ to include Bindings/Support/
 )
+
+if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+  target_sources(CrestBindings PRIVATE Support/XmmGuard_x64.asm)
+endif()
 
 target_link_libraries(CrestBindings
   PUBLIC

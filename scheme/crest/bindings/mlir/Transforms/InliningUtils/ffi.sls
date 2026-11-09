@@ -12,9 +12,12 @@
           %mlir::createInlinerPass)
   (import (chezscheme) (mlir support BuilderBinding))
 
+  ;; The dialect, then the entry point of the foreign-callable of each method (isLegalToInline/call,
+  ;; /region, /op, handleTerminator/value, /block, materializeCallConversion), 0 for a method the
+  ;; dialect does not have.
   (define %mlir::DialectInlinerInterface
     (foreign-procedure "mlir::DialectInlinerInterface"
-                       (uptr scheme-object) void))
+                       (uptr uptr uptr uptr uptr uptr uptr) void))
 
   (define-builder-binding %mlir::DialectInlinerInterface::materializeCallConversion
     "mlir::DialectInlinerInterface::materializeCallConversion" (uptr uptr uptr uptr uptr) uptr)
