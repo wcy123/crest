@@ -9,6 +9,7 @@
           (crest dialect ast)
           (crest dialect expand utils)
           (crest dialect expand verifiers)
+          (crest dialect callbacks)          ; crest-dialect-callback-entries
           (crest dialect expand interfaces)  ; generate-interface-registrations, dialect-cbs-with-interfaces
           (mlir IR Operation)
           (only (mlir Transforms InliningUtils) mlir::DialectInlinerInterface))
@@ -102,16 +103,14 @@
                             #'(define (params-of type) (params-fn type))))))
                 types)))
 
-  ;; Generates at library-load time:
-  ;;   (define <dialect>:dialect-callbacks (vector cb ...))
-  ;; Generates (define testd (vector ...)) — binds the dialect name itself to
-  ;; the callbacks vector.  Uses ctx (the call-site identifier) so the binding
-  ;; has the same scope as the user's (export testd), making it accessible from
-  ;; C++ via Stop_level_value(Sstring_to_symbol("testd")) after import.
+  ;; Generates (define testd (crest-dialect-callback-entries cb ...)) at library-load time: it
+  ;; binds the dialect name itself to the vector of the entry points of the callbacks.  Uses ctx
+  ;; (the call-site identifier) so the binding has the same scope as the user's (export testd),
+  ;; making it accessible from C++ via Stop_level_value(Sstring_to_symbol("testd")) after import.
   (define (%%generate-dialect-callbacks ctx dialect-cbs ops stash-stx)
     (with-syntax ([dialect-value ctx]
                   [(cb ...) (dialect-cbs-with-interfaces ctx dialect-cbs ops)])
-      (list #'(define dialect-value (vector cb ...)))))
+      (list #'(define dialect-value (crest-dialect-callback-entries cb ...)))))
 
   ;; Top-level: %%<dialect>:initialize + <dialect>:dialect-callbacks
   ;; <dialect>:register! is gone — use load-scheme-dialect! or

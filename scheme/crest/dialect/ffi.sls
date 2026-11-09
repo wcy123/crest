@@ -6,6 +6,8 @@
           %crest::DynamicType::get
           %crest::DynamicType::isa
           %crest::DynamicType::getParams
+          %crest::CrestDialect::loadDependentDialect
+          %crest::CrestDialect::reportFailure
           %mlir::OperationName::getStringRef)
   (import (chezscheme))
 
@@ -35,6 +37,16 @@
   ;; (uptr type) → list of attribute pointers
   (define %crest::DynamicType::getParams
     (foreign-procedure "crest::DynamicType::getParams" (uptr) scheme-object))
+
+  ;; (uptr dialect) (string name) → void — load the dialect `name` before `dialect`; no such dialect
+  ;; in the registry is a fatal error.
+  (define %crest::CrestDialect::loadDependentDialect
+    (foreign-procedure "crest::CrestDialect::loadDependentDialect" (uptr string) void))
+
+  ;; (string message) → void — the text of an error that a verifier of the dialect raised, for the
+  ;; diagnostic of its failure.
+  (define %crest::CrestDialect::reportFailure
+    (foreign-procedure "crest::CrestDialect::reportFailure" (string) void))
 
   ;; (uptr op-name) → string — get fully-qualified name of an OperationName.
   (define %mlir::OperationName::getStringRef
