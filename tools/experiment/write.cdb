@@ -1,3 +1,3 @@
-.printf "WRITE at %p: now=%p\n", @$t1, poi(@$t1)
-kb 14
+.printf "WRITE: node=%p\n", poi(@$t1)
+kb 10
 g
