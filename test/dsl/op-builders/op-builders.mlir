@@ -1,7 +1,6 @@
 // An op of a Scheme dialect can be created without `-> type` when it implements
 // mlir::InferTypeOpInterface: bld.add takes the type of its left operand, bld.zero answers i64 with
-// no operands at all, and an explicit `-> i32` is used as written (the verifier checks it against the
-// interface, see inferred-type-mismatch.mlir).
+// no operands at all, and an explicit `-> i32` is used as written.
 //
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme \
 // RUN:   %crest-opt %s -allow-unregistered-dialect --mlir-disable-threading \

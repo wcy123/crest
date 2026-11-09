@@ -6,13 +6,17 @@
 
 #include "Op.h"
 #include "../Bindings/Support/CrestObject.h"
+#include "../Bindings/Support/LockedSchemeObject.h"
 #include "../Bindings/Support/SchemeWrapper.h"
 #include "../Bindings/Support/XmmGuard.h"
 #include "InferType.h"
 #include "Trait.h"
+#include "llvm/ADT/DenseMap.h"
 #include "mlir/IR/ExtensibleDialect.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/IR/PatternMatch.h"
+#include "mlir/Interfaces/InferTypeOpInterface.h"
+#include "mlir/Support/TypeID.h"
 
 namespace crest {
 
@@ -31,6 +35,49 @@ std::string takeReportedFailure() {
 
 // What MLIR collects while a folder runs; Scheme pushes into it.
 using FoldedResults = llvm::SmallVector<mlir::OpFoldResult>;
+
+// How an interface whose methods come from Scheme is installed in the
+// definition of an op: from its dispatcher of C, locked by the caller for the
+// call, before the op is registered. Keyed by the TypeID of the interface.
+using AttachInterfaceFn = void (*)(mlir::DynamicOpDefinition& def,
+                                   const LockedSchemeObject& dispatcher);
+
+const llvm::DenseMap<mlir::TypeID, AttachInterfaceFn>& getAttachInterfaceFns() {
+  static const llvm::DenseMap<mlir::TypeID, AttachInterfaceFn> fns = {
+      {mlir::InferTypeOpInterface::getInterfaceID(),
+       attachInferTypeOpInterface},
+  };
+  return fns;
+}
+
+// Install each interface of `interfaces`, the list of (TypeID . dispatcher)
+// pairs of the :interface2 entries of the op: the TypeID is the address that
+// the TypeID of the interface wraps.
+void attachInterfaces(mlir::DynamicOpDefinition& def,
+                      const LockedSchemeObject& interfaces) {
+  const auto& attachFns = getAttachInterfaceFns();
+  // Attaching calls Scheme, which can move the objects that the list points to,
+  // so each pair is read again from the list, which is locked.
+  for (iptr i = 0;; ++i) {
+    ptr tail = interfaces.get();
+    for (iptr k = 0; k < i && Spairp(tail); ++k) {
+      tail = Scdr(tail);
+    }
+    if (!Spairp(tail)) {
+      return;
+    }
+    ptr pair = Scar(tail);
+    mlir::TypeID id = mlir::TypeID::getFromOpaquePointer(
+        reinterpret_cast<const void*>(Sunsigned64_value(Scar(pair))));
+    LockedSchemeObject dispatcher(Scdr(pair));
+    auto attach = attachFns.find(id);
+    if (attach == attachFns.end()) {
+      scheme_error("crest::register-dynamic-op!",
+                   "no way to install an interface of :interface2");
+    }
+    attach->second(def, dispatcher);
+  }
+}
 
 } // namespace
 
@@ -162,8 +209,9 @@ make_default_attrs_fn(void (*fn)(uint64_t, uint64_t)) {
 // ---------------------------------------------------------------------------
 
 void CrestOp::registerInto(mlir::ExtensibleDialect* dialect,
-                           llvm::StringRef op_name, Callbacks cbs) {
-  auto verify_fn = withInferredTypesCheck(make_verify_fn(cbs.verify), op_name);
+                           llvm::StringRef op_name, Callbacks cbs,
+                           const LockedSchemeObject& interfaces) {
+  auto verify_fn = make_verify_fn(cbs.verify);
   auto verify_region_fn = make_verify_fn(cbs.verify_regions);
 
   // DynamicOpDefinition::get adds "dialect_namespace." prefix internally.
@@ -204,7 +252,7 @@ void CrestOp::registerInto(mlir::ExtensibleDialect* dialect,
                  op_name.str() + ": " + trait_error);
   }
 
-  attachInferTypeOpInterface(*def, op_name);
+  attachInterfaces(*def, interfaces);
   dialect->registerDynamicOp(std::move(def));
 }
 
@@ -244,7 +292,7 @@ void registerCrestDynamicOpBindings() {
       });
 
   // crest::register-dynamic-op! (uptr dialect) (string op-name) (scheme-object
-  // vector/8)
+  // vector/8) (scheme-object interfaces)
   //
   // Must be called from inside the dialect's :initialize callback. The vector
   // is made once by define-dialect ((crest dialect callbacks)). Slots (0 = use
@@ -257,12 +305,20 @@ void registerCrestDynamicOpBindings() {
   //   5 get-canonicalization-patterns (uptr pattern-set-shell) → void
   //   6 populate-default-attrs        (uptr op-name, uptr attrs) → void
   //   7 traits                        list of (name arg ...) lists of strings
+  //
+  // `interfaces` is the list of (TypeID . dispatcher) pairs of the op's
+  // :interface2 entries. The dispatchers are only needed while the op is
+  // registered, so the list is locked for this call and not kept.
   Sregister_symbol(
       "crest::register-dynamic-op!",
-      (void*)+[](uint64_t dialect_ptr, const char* op_name,
-                 ptr cbs_ptr) -> void {
+      (void*)+[](uint64_t dialect_ptr, const char* op_name, ptr cbs_ptr,
+                 ptr interfaces_ptr) -> void {
         auto* dialect = reinterpret_cast<mlir::ExtensibleDialect*>(dialect_ptr);
         ptr v = cbs_ptr;
+        // Locked before anything that can call Scheme: the garbage collector
+        // moves objects. An error that leaves through scheme_error skips the
+        // destructor, which leaves this list locked.
+        LockedSchemeObject interfaces(interfaces_ptr);
 
         auto entry = [&](int slot) -> uint64_t {
           ptr value = Svector_ref(v, slot);
@@ -306,7 +362,7 @@ void registerCrestDynamicOpBindings() {
           cbs.traits.push_back(std::move(spec));
         }
 
-        CrestOp::registerInto(dialect, op_name, std::move(cbs));
+        CrestOp::registerInto(dialect, op_name, std::move(cbs), interfaces);
       });
 }
 

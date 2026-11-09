@@ -24,6 +24,7 @@
           op-parse-results
           op-parse-op-cbs
           op-parse-interfaces
+          op-parse-interface2
           operand-field
           make-operand-field
           operand-field?
@@ -136,7 +137,12 @@
             (immutable attributes op-parse-attributes)
             (immutable results    op-parse-results)
             (immutable op-cbs     op-parse-op-cbs)
-            (immutable interfaces op-parse-interfaces)))
+            (immutable interfaces op-parse-interfaces)
+            (immutable interface2 op-parse-interface2)))
+
+  ;; interface2 — list of the syntax of the :interface2 entries (interface-name method-clause ...),
+  ;; each used as it was written: the interface-name is a macro of the library of the interface,
+  ;; which makes the pair of the TypeID of the interface and the C dispatcher of its clauses.
 
   ;; One entry in an op's :interfaces list.
   ;;   name    — identifier syntax for the interface, e.g. #'mlir::FunctionOpInterface

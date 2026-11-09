@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 
+#include "../Bindings/Support/LockedSchemeObject.h"
 #include "mlir/IR/ExtensibleDialect.h"
 
 namespace crest {
@@ -46,8 +47,11 @@ public:
 
   /// Build a DynamicOpDefinition from the callbacks and register it into
   /// the given dialect. Must be called from inside the dialect's initialize().
+  /// `interfaces` is the list of (TypeID . dispatcher) pairs of the op's
+  /// :interface2 entries, locked by the caller; it is not kept after the call.
   static void registerInto(mlir::ExtensibleDialect* dialect,
-                           llvm::StringRef op_name, Callbacks cbs);
+                           llvm::StringRef op_name, Callbacks cbs,
+                           const LockedSchemeObject& interfaces);
 };
 
 void registerCrestDynamicOpBindings();

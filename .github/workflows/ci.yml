@@ -121,9 +121,11 @@ jobs:
       # ── Tests ────────────────────────────────────────────────────────────────
       - name: Unit tests
         run: |
-          cmake --build build --target CrestInterpreterTests
+          cmake --build build --target CrestInterpreterTests CrestInferTypeTests
           ./build/unittests/Interpreter/CrestInterpreterTests \
             --gtest_output=xml:build/test-results/unit-tests.xml
+          ./build/unittests/Crest/CrestInferTypeTests \
+            --gtest_output=xml:build/test-results/unit-tests-infer-type.xml
 
       - name: Lit tests
         run: cmake --build build --target check-crest
@@ -188,9 +190,13 @@ jobs:
       - name: Unit tests
         shell: cmd
         run: |
-          cmake --build build --target CrestInterpreterTests
+          cmake --build build --target CrestInterpreterTests CrestInferTypeTests
+          if errorlevel 1 exit /b 1
           build\unittests\Interpreter\CrestInterpreterTests.exe ^
             --gtest_output=xml:build/test-results/unit-tests.xml
+          if errorlevel 1 exit /b 1
+          build\unittests\Crest\CrestInferTypeTests.exe ^
+            --gtest_output=xml:build/test-results/unit-tests-infer-type.xml
 
       - name: Lit tests
         shell: cmd

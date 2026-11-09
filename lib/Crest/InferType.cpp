@@ -7,18 +7,18 @@
 // inferReturnTypes is a static interface method: its function pointer in the
 // Concept gets no Concept* and no Operation*, so one shared C++ function cannot
 // tell which Scheme op it serves. Every op therefore gets a function of its
-// own: Scheme makes it with foreign-callable and registers it here by op name.
+// own: Scheme makes it with foreign-callable, once, when the library of the
+// dialect is loaded. The dispatcher of C of the op, which is only needed while
+// the op is registered, is locked by the caller; C++ asks it for the entry
+// point of each method with scheme_call.
 // The Concept is a heap object in the op's InterfaceMap, so this one model
 // type serves all ops and the pointer is filled in per op.
 
 #include "InferType.h"
-#include "../Bindings/Support/XmmGuard.h"
-#include "mlir/IR/Diagnostics.h"
+#include "../Bindings/Support/SchemeWrapper.h"
 #include "mlir/IR/ExtensibleDialect.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/Interfaces/InferTypeOpInterface.h"
-#include <string>
-#include <unordered_map>
 
 namespace crest {
 
@@ -32,102 +32,52 @@ using InferFn = decltype(mlir::InferTypeOpInterface::Concept::inferReturnTypes);
 struct DynamicInferTypeModel : public mlir::InferTypeOpInterface::Concept {
   using Interface = mlir::InferTypeOpInterface;
 
+  // What an op gets for a method its dispatcher has no clause for. The default
+  // refineReturnTypes of an ODS op calls the other two methods of the op, which
+  // a function pointer without the op cannot do, so it accepts anything.
+  template <typename Properties>
+  static llvm::LogicalResult
+  defaultRefine(mlir::MLIRContext*, std::optional<mlir::Location>,
+                mlir::ValueRange, mlir::DictionaryAttr, Properties,
+                mlir::RegionRange, llvm::SmallVectorImpl<mlir::Type>&) {
+    return mlir::success();
+  }
+  static bool defaultCompatible(mlir::TypeRange lhs, mlir::TypeRange rhs) {
+    return lhs == rhs;
+  }
+
   DynamicInferTypeModel()
-      : Concept{
-            nullptr,
-            // Only the ODS-generated verifier calls refineReturnTypes and
-            // a dynamic op has no such trait.
-            [](mlir::MLIRContext*, std::optional<mlir::Location>,
-               mlir::ValueRange, mlir::DictionaryAttr, auto, mlir::RegionRange,
-               llvm::SmallVectorImpl<mlir::Type>&) { return mlir::success(); },
-            [](mlir::TypeRange lhs, mlir::TypeRange rhs) {
-              return lhs == rhs;
-            }} {}
+      : Concept{nullptr, defaultRefine, defaultCompatible} {}
 };
 
-// Op name -> inferReturnTypes entry registered from Scheme.
-std::unordered_map<std::string, InferFn> g_infer_entries;
-
-using CompatibleFn = int (*)(const void* const*, uint64_t, const void* const*,
-                             uint64_t);
-
-// Op name -> isCompatibleReturnTypes entry registered from Scheme.
-std::unordered_map<std::string, CompatibleFn> g_compatible;
+// The entry point of the callable that `dispatcher` has for `method`, or null.
+void* entryPoint(const LockedSchemeObject& dispatcher, const char* method) {
+  return reinterpret_cast<void*>(Sunsigned64_value(
+      scheme_call(dispatcher.get(), Sstring_to_symbol(method))));
+}
 
 } // namespace
 
-void registerCompatibleReturnTypes(llvm::StringRef opName, void* entry) {
-  g_compatible[opName.str()] = reinterpret_cast<CompatibleFn>(entry);
-}
-
-void registerInferReturnTypes(llvm::StringRef opName, void* entry) {
-  g_infer_entries[opName.str()] = reinterpret_cast<InferFn>(entry);
-}
-
-mlir::OperationName::VerifyInvariantsFn
-withInferredTypesCheck(mlir::OperationName::VerifyInvariantsFn verify,
-                       llvm::StringRef opName) {
-  auto it = g_infer_entries.find(opName.str());
-  if (it == g_infer_entries.end()) {
-    return verify;
-  }
-  InferFn infer = it->second;
-  auto compatibleIt = g_compatible.find(opName.str());
-  CompatibleFn compatible =
-      compatibleIt == g_compatible.end() ? nullptr : compatibleIt->second;
-  return [infer, compatible, verify = std::move(verify)](
-             mlir::Operation* op) -> llvm::LogicalResult {
-    // The op's own verifier first: its message is the more specific one.
-    if (mlir::failed(verify(op))) {
-      return mlir::failure();
-    }
-    // The check of InferTypeOpInterface::verifyInferredResultTypes, which only
-    // an op class with the interface as a trait gets.
-    llvm::SmallVector<mlir::Type, 4> inferred;
-    if (mlir::failed(withXmmPreserved([&] {
-          return infer(op->getContext(), op->getLoc(), op->getOperands(),
-                       op->getRawDictionaryAttrs(), op->getPropertiesStorage(),
-                       mlir::RegionRange(op->getRegions()), inferred);
-        }))) {
-      return op->emitOpError("failed to infer returned types");
-    }
-    bool isCompatible;
-    if (compatible) {
-      llvm::SmallVector<const void*, 4> inferredPointers;
-      llvm::SmallVector<const void*, 4> actualPointers;
-      for (mlir::Type type : inferred) {
-        inferredPointers.push_back(type.getAsOpaquePointer());
-      }
-      for (mlir::Type type : op->getResultTypes()) {
-        actualPointers.push_back(type.getAsOpaquePointer());
-      }
-      isCompatible =
-          compatible(inferredPointers.data(), inferredPointers.size(),
-                     actualPointers.data(), actualPointers.size()) != 0;
-    } else {
-      isCompatible =
-          mlir::TypeRange(inferred) == mlir::TypeRange(op->getResultTypes());
-    }
-    if (!isCompatible) {
-      return mlir::emitOptionalError(
-          op->getLoc(), "'", op->getName().getStringRef(),
-          "' op inferred type(s) ", inferred,
-          " are incompatible with return type(s) of operation ",
-          op->getResultTypes());
-    }
-    return mlir::success();
-  };
-}
-
 void attachInferTypeOpInterface(mlir::DynamicOpDefinition& def,
-                                llvm::StringRef opName) {
-  auto it = g_infer_entries.find(opName.str());
-  if (it == g_infer_entries.end()) {
-    return;
-  }
+                                const LockedSchemeObject& dispatcher) {
   mlir::detail::InterfaceMap& map = def.getInterfaceMap();
   map.insertModels<DynamicInferTypeModel>();
-  map.lookup<mlir::InferTypeOpInterface>()->inferReturnTypes = it->second;
+  mlir::InferTypeOpInterface::Concept* concept_ =
+      map.lookup<mlir::InferTypeOpInterface>();
+  // The entry of each method the dispatcher has a clause for; the others keep
+  // the default.
+  if (void* infer = entryPoint(dispatcher, "inferReturnTypes")) {
+    concept_->inferReturnTypes = reinterpret_cast<InferFn>(infer);
+  }
+  if (void* refine = entryPoint(dispatcher, "refineReturnTypes")) {
+    concept_->refineReturnTypes =
+        reinterpret_cast<decltype(concept_->refineReturnTypes)>(refine);
+  }
+  if (void* compatible = entryPoint(dispatcher, "isCompatibleReturnTypes")) {
+    concept_->isCompatibleReturnTypes =
+        reinterpret_cast<decltype(concept_->isCompatibleReturnTypes)>(
+            compatible);
+  }
 }
 
 } // namespace crest

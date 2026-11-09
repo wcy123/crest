@@ -16,14 +16,14 @@
     (define-op add
       :operands ((lhs mlir::Value?) (rhs mlir::Value?))
       :results  ((out mlir::Value?))
-      :interfaces ((mlir::InferTypeOpInterface
+      :interface2 ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes)
                                       (list (mlir::Value::getType (car operands)))))))
 
     ;; No operands: the answer comes from nothing but the op itself.
     (define-op zero
       :results ((out mlir::Value?))
-      :interfaces ((mlir::InferTypeOpInterface
+      :interface2 ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes)
                                       (list (mlir::IntegerType::get<i64>))))))
 
@@ -32,11 +32,24 @@
     (define-op loose
       :operands   ((x mlir::Value?))
       :results    ((out mlir::Value?))
-      :interfaces ((mlir::InferTypeOpInterface
+      :interface2 ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes)
                                       (list (mlir::Value::getType (car operands))))
                     (isCompatibleReturnTypes (inferred actual)
                                              (eqv? (length actual) 1)))))
+
+    ;; refineReturnTypes says what the result may be, given the result types the op has (a list of
+    ;; Types): any single type but i64 (unittests/Crest/InferTypeTest.cpp calls it).
+    (define-op refined
+      :operands   ((x mlir::Value?))
+      :results    ((out mlir::Value?))
+      :interface2 ((mlir::InferTypeOpInterface
+                    (inferReturnTypes (context location operands attributes)
+                                      (list (mlir::Value::getType (car operands))))
+                    (refineReturnTypes (context location operands attributes return-types)
+                                       (and (eqv? (length return-types) 1)
+                                            (not (eqv? (car return-types) (mlir::IntegerType::get<i64>)))
+                                            return-types)))))
 
     ;; No InferTypeOpInterface: creating it without `-> type` is an error.
     (define-op plain
