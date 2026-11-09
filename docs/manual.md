@@ -1032,18 +1032,6 @@ inside `define-dialect`:
 | `(:materialize-constant (builder value type loc) body)` | `materializeConstant` | Constant materialization |
 | `(:get-canonicalization-patterns (pattern-set) body)` | `getCanonicalizationPatterns` | Dialect-wide canonicalization |
 | `(:verify-op-attr (op attr) body)` | `verifyOperationAttribute` | Attribute attachment rules |
-| `(:verify-region-arg-attr (op region-index arg-index attr) body)` | `verifyRegionArgAttribute` | Rules for an attribute of a block argument |
-| `(:verify-region-result-attr (op region-index result-index attr) body)` | `verifyRegionResultAttribute` | Rules for an attribute of a function result |
-| `(:get-dependent-dialects () body)` | the dialects loaded first | A list of dialect names (strings) to load before this one |
-| `(:initialize (dialect) body)` | `initialize` | Runs once per context, after the dependencies |
-
-A parse callback that fails answers `#f`. A verifier says yes with any value but `#f`; it reports its
-own message (`mlir::Operation::emitError`) and answers `#f`. An error that a verifier raises does not end
-the process: the verifier fails and the diagnostic has the text of the error. The callbacks are made
-into C functions once, when the library of the dialect is loaded, and a context that loads the dialect
-shares them (`test/dsl/dialect-callbacks`). There is no way for Scheme to print into a `DialectAsmPrinter`
-yet, so `:print-type` and `:print-attribute` are only reached for a type or attribute of the dialect
-that C++ made.
 
 ### Loading the dialect
 

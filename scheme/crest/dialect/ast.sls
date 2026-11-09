@@ -71,13 +71,13 @@
   ;; Result of parse-clauses.
   ;;   name — MLIR dialect namespace string e.g. "toy"
   ;;   ops  — list of op-parse records (reverse order; callers must reverse)
-  ;;   cbs  — 11-slot vector of Scheme callback syntax or #f (CrestDialect slots):
+  ;;   cbs  — 12-slot vector of Scheme callback syntax or #f (CrestDialect slots):
   ;;            0  :initialize                    6  :materialize-constant
   ;;            1  :get-dependent-dialects        7  :get-canonicalization-patterns
   ;;            2  :parse-attribute               8  :verify-op-attr
   ;;            3  :print-attribute               9  :verify-region-arg-attr
   ;;            4  :parse-type                   10  :verify-region-result-attr
-  ;;            5  :print-type
+  ;;            5  :print-type                   11  :get-registered-interface-for-op
   (define-record-type dialect-parse
     (fields (immutable name          dialect-parse-name)
             (immutable ops           dialect-parse-ops)
