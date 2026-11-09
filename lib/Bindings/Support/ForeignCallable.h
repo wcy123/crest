@@ -22,8 +22,8 @@ template <typename Signature> class ForeignCallable;
 /// address is kept as a plain function pointer. One made for a run (a closure
 /// that the user passes to a pattern, a type converter, a walk) has this owner:
 /// it takes over that lock and releases it when the thing that calls the
-/// function dies, so the code object can be collected. Unlock on a Scheme
-/// thread, with Chez running, as LockedSchemeObject did.
+/// function dies, so the code object can be collected. The unlock must happen
+/// on a Scheme thread, with Chez running.
 ///
 /// Make the owner first in a binding, before a return or a check that can
 /// raise: an error that leaves through Scheme skips destructors.

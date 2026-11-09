@@ -220,6 +220,30 @@ Named `let` is still fine for irregular recursion (mutual, non-linear stepping).
 
 ---
 
+## Rule 17 — C++ keeps C functions, not Scheme procedures
+
+A Scheme procedure that C++ calls later is never stored as a `ptr`: the garbage collector moves it. The Scheme
+side makes a C function for it with `crest-callback-entry-point` (`(crest callback)`), which builds a
+`foreign-callable`, locks its code object and answers its entry point; the C++ binding takes that address as a
+`uptr`. Who releases the lock depends on how long the callable is used:
+
+- **made once per library** (an op's clause, a dialect's callback, the body of a `define-pass`): create it at
+  the library level, so a context makes none of its own; C++ keeps a plain function pointer and never releases it;
+- **made for a run** (a closure the user passes to a pattern, a type converter, a walk): C++ holds it in a
+  `crest::ForeignCallable<R(Args...)>` (`lib/Bindings/Support/ForeignCallable.h`) that unlocks it when what
+  calls it is destroyed. Construct the owner first in the binding, before an early return or a check that can
+  raise (an error that leaves through Scheme skips destructors).
+
+Only scalars cross the boundary (`uptr`, `int`, `unsigned-32`, strings); a range is a pointer and a count, read
+back with `crest-callback-pointer-list`, and a list that Scheme answers is pushed through a `foreign-procedure`
+into a sink that C++ passes. A callback that has a verdict (a verifier, a parser, a pass) catches an error with
+`guard`, gives its text to C++ (`reportFailure`) and answers failure, so the diagnostic has the text instead of
+the process ending. `scheme_call` stays for the control plane (a top-level name, or the procedure that Scheme
+gave as an argument of the foreign call that is running). A test that makes the callable per run checks that
+it is released (`test/dsl/apply-conversion/leak.mlir`).
+
+---
+
 ## Checklist for a new binding
 
 - [ ] `lib/Bindings/<Path>/<Name>.cpp` with `// Mirrors mlir/<Path>/<Name>.h` on line 6
@@ -230,3 +254,4 @@ Named `let` is still fine for irregular recursion (mutual, non-linear stepping).
 - [ ] Every `foreign-procedure` string matches a `Sregister_symbol` key in C++ (Rule 14)
 - [ ] `%%` on internal Scheme helpers; `%` only on raw FFI bindings
 - [ ] A binding that takes a builder: `register_builder_binding` in C++, `define-builder-binding` in `ffi.sls`
+- [ ] A binding that calls back into Scheme: a callable from `crest-callback-entry-point`, owned per Rule 17

@@ -990,7 +990,9 @@ the dispatcher that `define-op` makes for the entry. `mlir::InferTypeOpInterface
 for the method with `foreign-callable`, because MLIR calls `inferReturnTypes` through a function
 pointer that carries neither the op nor a `Concept`. `mlir::FunctionOpInterface` and
 `mlir::CallableOpInterface` make one for each clause as well (`(crest callback)`), and C++ keeps its
-address instead of the Scheme procedure. The dialect has to be loaded into the context
+address instead of the Scheme procedure. So does everything else that C++ calls back into Scheme: the
+callbacks of a dialect, of its ops and types, passes, and conversions (see
+[Extending with custom C++ bindings](#11-extending-with-custom-c-bindings)). The dialect has to be loaded into the context
 (`dialects-in-scheme=` or `--crest-scheme-dialect=` with an op in the input) for MLIR to see the
 interface (`test/dsl/op-builders`). Platforms: System V x86-64 and Windows x64; on another machine
 type the dialect fails to load with a message saying so.
@@ -1362,6 +1364,16 @@ symbol takes exactly one. Register it with `register_builder_binding`
 (`lib/Bindings/Support/BuilderBinding.h`), which registers the three symbols, and declare it in
 `ffi.sls` with `define-builder-binding` from `(mlir support BuilderBinding)`. See CLAUDE.md
 Rule 4.
+
+A binding that calls back into Scheme does not keep a Scheme procedure: the garbage collector moves
+it. The Scheme side makes a C function for it with `crest-callback-entry-point` from `(crest callback)`,
+which locks the code object and answers its address, and the binding takes that address as a `uptr`.
+A callback that lives as long as the library (the clause of an op, a callback of a dialect) is made once,
+where the library defines it, and C++ keeps the address as a function pointer. One that lives for a run (a
+pattern, a walk, a type conversion) is held by a `crest::ForeignCallable`
+(`lib/Bindings/Support/ForeignCallable.h`), which unlocks it when what calls it is destroyed. Only scalars
+cross: pointers, integers, strings, and a range as a pointer and a count that `crest-callback-pointer-list`
+reads back as a list. See CLAUDE.md Rule 17.
 
 Follow the CLAUDE.md binding convention: one header → one module, `%`-prefix
 for raw FFI bindings, clean names in the public module.
