@@ -146,13 +146,12 @@
 
   ;; @brief mlir::Operation::walk — walk all nested ops, calling callback for each.
   ;; @param op        Operation* uptr (root of walk)
-  ;; @param callback  entry point (uptr) of a foreign-callable (uptr op) → void; C++ releases it
-  ;;                  when the walk is over
+  ;; @param callback  Scheme callable (scheme-object) invoked with each Operation* uptr
   ;; @return          void
   ;; @see             mlir/IR/Operation.h
-  ;; @note            Defined in lib/Bindings/IR/Operation.cpp
+  ;; @note            Defined in lib/Bindings/IR/Operation.cpp; callback is GC-rooted internally
   (define %walk
-    (foreign-procedure "mlir::Operation::walk" (uptr uptr) void))
+    (foreign-procedure "mlir::Operation::walk" (uptr scheme-object) void))
 
   ;; @brief mlir::Operation::setOperand — replace the i-th operand with a new value.
   ;; @param op     Operation* uptr

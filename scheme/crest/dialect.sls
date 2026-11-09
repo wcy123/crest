@@ -2,6 +2,7 @@
 ;; :initialize, :parse-type etc. without quoting in call sites.
 (library (crest dialect)
   (export load-scheme-dialect!
+          register-dynamic-op!
           define-dialect
           define-op
           define-type
@@ -88,6 +89,33 @@
   ;; Safe outside the pass pipeline (multiThreadedExecutionContext == 0).
   (define (load-scheme-dialect! ctx dialect-name module-name)
     (%crest::load-scheme-dialect! ctx dialect-name module-name))
+
+  (define (%%plist->vector n index-fn plist)
+    (let ([v (make-vector n #f)])
+      (vector-set! v (- n 1) '())
+      (let loop ([rest plist])
+        (unless (null? rest)
+          (vector-set! v (index-fn (car rest)) (cadr rest))
+          (loop (cddr rest))))
+      v))
+
+  (define (%%op-slot-index key)
+    (case key
+      [(:verify)                         0]
+      [(:verify-regions)                 1]
+      [(:parse)                          2]
+      [(:print)                          3]
+      [(:fold)                           4]
+      [(:get-canonicalization-patterns)  5]
+      [(:populate-default-attrs)         6]
+      [(:traits)                         7]
+      [else (error "register-dynamic-op!" "unknown callback keyword" key)]))
+
+  (define (register-dynamic-op! dialect-ptr op-name . callbacks)
+    (%crest::register-dynamic-op!
+     dialect-ptr
+     op-name
+     (%%plist->vector 8 %%op-slot-index callbacks)))
 
   ;; Stub so define-op used outside define-dialect gives a clear error,
   ;; and so identifiers in user code are free-identifier=? to the literal

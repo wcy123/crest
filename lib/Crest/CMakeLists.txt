@@ -3,7 +3,7 @@
 #
 # Built as an OBJECT library (not STATIC) so the compiled objects can be
 # linked into CrestBindings without a circular library dependency:
-#   CrestCore needs SchemeWrapper (in CrestBindings/Support/)
+#   CrestCore needs LockedSchemeObject/SchemeWrapper (in CrestBindings/Support/)
 #   CrestBindings needs CrestCore (for registerIR*Bindings)
 #
 # OBJECT libraries resolve the cycle: CrestBindings includes CrestCore's

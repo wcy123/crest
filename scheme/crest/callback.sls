@@ -10,7 +10,6 @@
 ;;
 ;;   (crest-callback-entry-point (argument-type ...) result-type proc)   an address
 ;;   (crest-callback-pointer-list pointer count)                          a list of integers
-;;   (crest-callback-condition-text condition)                            a string
 ;;
 ;; C++ cannot keep a Scheme procedure without telling the garbage collector, so a procedure that
 ;; C++ is to call later gets a C function of its own: a foreign-callable, which is locked, and
@@ -30,8 +29,7 @@
 ;;===----------------------------------------------------------------------===;;
 (library (crest callback)
   (export crest-callback-entry-point
-          crest-callback-pointer-list
-          crest-callback-condition-text)
+          crest-callback-pointer-list)
   (import (chezscheme))
 
   (define-syntax crest-callback-entry-point
@@ -43,11 +41,5 @@
 
   (define (crest-callback-pointer-list pointer count)
     (map (lambda (i) (foreign-ref 'uptr pointer (* i 8))) (iota count)))
-
-  ;; The text of the condition of an error that a callable catches, which goes to C++ so that the
-  ;; diagnostic of the failure shows it.
-  (define (crest-callback-condition-text condition)
-    (call-with-string-output-port
-     (lambda (port) (display-condition condition port))))
 
   ) ;; end library (crest callback)

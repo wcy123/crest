@@ -17,6 +17,7 @@
 #include "mlir/IR/Value.h"
 #include "mlir/IR/ValueRange.h"
 #include <array>
+#include <functional>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -126,13 +127,6 @@ template <typename... Ts> inline ptr make_scheme_list(Ts&&... args) {
 // The first argument is either:
 //   ptr          — an already-resolved Scheme procedure
 //   const char*  — a top-level name (symbol lookup fires on each call)
-//
-// For a call that C++ makes now: a top-level procedure, or one that Scheme gave
-// as an argument of the foreign call that is running. A procedure that C++
-// keeps for later is not held as a ptr (the garbage collector moves it): Scheme
-// makes a C function for it with foreign-callable (scheme/crest/callback.sls),
-// and C++ keeps its entry point, in a crest::ForeignCallable when it is made
-// for one run.
 ptr convert_to_scheme_func(const char* fname); // defined in SchemeWrapper.cpp
 inline ptr convert_to_scheme_func(ptr f) { return f; }
 
@@ -277,6 +271,33 @@ inline uint64_t Conversion<ptr, uint64_t>::operator()(const ptr& v) {
 template <> inline double Conversion<ptr, double>::operator()(const ptr& v) {
   return Sflonum_value(v);
 }
+// ---------------------------------------------------------------------------
+// Conversion<ptr, R(Args...)>: Scheme procedure → C++ callable.
+//
+// Returns std::function<R(Args...)> that calls the Scheme procedure when
+// invoked.  Arguments are converted via Conversion<Arg, ptr> and the
+// return value (if non-void) via Conversion<ptr, R>.
+//
+// Lifetime: the returned callable captures proc by value (a raw ptr).
+// The caller must keep the Scheme procedure alive for the callable's
+// lifetime — typically by calling Slock_object(proc) before conversion
+// and Sunlock_object(proc) when the callable is destroyed.
+// ---------------------------------------------------------------------------
+template <typename R, typename... Args> struct Conversion<ptr, R(Args...)> {
+  inline std::function<R(Args...)> operator()(const ptr& proc) const {
+    if (!Sprocedurep(proc)) {
+      scheme_error("Conversion<ptr, R(Args...)>", "expected a procedure");
+    }
+    return [proc](Args... args) -> R {
+      if constexpr (std::is_void_v<R>) {
+        scheme_call(proc, args...);
+      } else {
+        return Conversion<ptr, R>{}(scheme_call(proc, args...));
+      }
+    };
+  }
+};
+
 // mlir::TypeRange → Scheme list of uptr (one per mlir::Type opaque pointer).
 template <> struct Conversion<mlir::TypeRange, ptr> {
   inline ptr operator()(const mlir::TypeRange& range) const {

@@ -8,7 +8,6 @@
 #include "AffineOps.h"
 #include "../../../Support/BuilderBinding.h"
 #include "../../../Support/CrestObject.h"
-#include "../../../Support/ForeignCallable.h"
 #include "../../../Support/SchemeWrapper.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Affine/Utils.h"
@@ -22,18 +21,14 @@ void registerDialectAffineIRAffineOpsBindings() {
   // mlir::affine::buildAffineLoopNest(OpBuilder&, Location, lbs, ubs, steps,
   // body) (builder loc lbs ubs steps body-fn) → void
   //   lbs, ubs, steps: Scheme lists of integers
-  //   body-fn: the entry point of a foreign-callable made for this call,
-  //   (nested-builder loc ivs count) → void, the callback of the C++ function
+  //   body-fn: (nested-builder loc ivs) → void, the callback of the C++
+  //   function
   //     nested-builder: builder shell, valid only during the call
-  //     ivs: pointer to the Value uptrs (the induction variables), and count
+  //     ivs: Scheme list of Value uptrs (the induction variables)
   register_builder_binding(
       "mlir::affine::buildAffineLoopNest",
       [](mlir::OpBuilder& builder, uint64_t loc_ptr, ptr lbs, ptr ubs,
-         ptr steps, uint64_t body_fn) -> void {
-        // Make the owner first; it releases the callable when the call is over.
-        crest::ForeignCallable<void(uint64_t, uint64_t, const uint64_t*,
-                                    uint64_t)>
-            owned(body_fn);
+         ptr steps, ptr body_fn) -> void {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         mlir::affine::buildAffineLoopNest(
@@ -44,14 +39,9 @@ void registerDialectAffineIRAffineOpsBindings() {
                 mlir::ValueRange ivs) {
               // Borrowed shell, valid for the duration of the call.
               crest::CrestBox<mlir::OpBuilder*> nb_shell(&nb);
-              llvm::SmallVector<uint64_t, 4> iv_pointers;
-              for (mlir::Value iv : ivs) {
-                iv_pointers.push_back(
-                    reinterpret_cast<uint64_t>(iv.getAsOpaquePointer()));
-              }
-              owned(reinterpret_cast<uint64_t>(&nb_shell),
-                    reinterpret_cast<uint64_t>(nb_loc.getAsOpaquePointer()),
-                    iv_pointers.data(), iv_pointers.size());
+              scheme_call(
+                  body_fn, reinterpret_cast<uint64_t>(&nb_shell),
+                  reinterpret_cast<uint64_t>(nb_loc.getAsOpaquePointer()), ivs);
             });
       });
 

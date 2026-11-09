@@ -46,7 +46,6 @@
     )
 
   (import (rnrs)
-          (crest callback)
           (mlir Transforms DialectConversion ffi)
           (only (mlir IR PatternMatch)
                 mlir::RewritePatternSet::RewritePatternSet)
@@ -58,42 +57,17 @@
   (define type-converter-create
     %type-converter-create)
 
-  ;; The callbacks that the procedures below take are closures for one conversion: each is made into
-  ;; a C function (see (crest callback)) that C++ releases when what calls it is destroyed (the
-  ;; pattern set, the target or the type converter). A procedure that is not one is an error now,
-  ;; when it is given, not when it is called.
-  (define (%%procedure who proc)
-    (unless (procedure? proc)
-      (assertion-violation who "the callback must be a procedure" proc))
-    proc)
-
   ;; @brief TypeConverter::addConversion — register a Scheme type-conversion callback.
-  ;; @param proc (type) → the converted type, or #f when this conversion does not apply
-  (define (type-converter-add-conversion converter proc)
-    (%%procedure 'type-converter-add-conversion proc)
-    (%type-converter-add-conversion
-     converter
-     (crest-callback-entry-point (uptr) uptr (lambda (type) (or (proc type) 0)))))
-
-  ;; The materialization callbacks: (builder result-type inputs loc) → the Value, or #f
-  (define (%%materialization who proc)
-    (%%procedure who proc)
-    (crest-callback-entry-point
-     (uptr uptr uptr uptr uptr) uptr
-     (lambda (builder result-type inputs input-count loc)
-       (or (proc builder result-type (crest-callback-pointer-list inputs input-count) loc) 0))))
+  (define type-converter-add-conversion
+    %type-converter-add-conversion)
 
   ;; @brief TypeConverter::addSourceMaterialization.
-  (define (mlir::TypeConverter::addSourceMaterialization converter proc)
-    (%mlir::TypeConverter::addSourceMaterialization
-     converter
-     (%%materialization 'mlir::TypeConverter::addSourceMaterialization proc)))
+  (define mlir::TypeConverter::addSourceMaterialization
+    %mlir::TypeConverter::addSourceMaterialization)
 
   ;; @brief TypeConverter::addTargetMaterialization.
-  (define (mlir::TypeConverter::addTargetMaterialization converter proc)
-    (%mlir::TypeConverter::addTargetMaterialization
-     converter
-     (%%materialization 'mlir::TypeConverter::addTargetMaterialization proc)))
+  (define mlir::TypeConverter::addTargetMaterialization
+    %mlir::TypeConverter::addTargetMaterialization)
 
   ;; @brief TypeConverter::isLegal(Type).
   (define type-converter-is-legal-type
@@ -125,24 +99,13 @@
   (define target-add-legal-op
     %target-add-legal-op)
 
-  ;; A legality callback (op) → boolean: legal when it answers neither #f nor 0.
-  (define (%%legality who proc)
-    (%%procedure who proc)
-    (crest-callback-entry-point
-     (uptr) int
-     (lambda (op)
-       (let ([legal (proc op)])
-         (if (and legal (not (eqv? legal 0))) 1 0)))))
-
   ;; @brief ConversionTarget::addDynamicallyLegalOp.
-  (define (target-add-dynamically-legal-op target ctx op-name proc)
-    (%target-add-dynamically-legal-op
-     target ctx op-name (%%legality 'target-add-dynamically-legal-op proc)))
+  (define target-add-dynamically-legal-op
+    %target-add-dynamically-legal-op)
 
   ;; @brief ConversionTarget::markUnknownOpDynamicallyLegal.
-  (define (target-mark-unknown-ops-dynamically-legal target proc)
-    (%target-mark-unknown-ops-dynamically-legal
-     target (%%legality 'target-mark-unknown-ops-dynamically-legal proc)))
+  (define target-mark-unknown-ops-dynamically-legal
+    %target-mark-unknown-ops-dynamically-legal)
 
   ;; @brief mlir::RewritePatternSet constructor.
   ;; @param ctx MLIRContext* uptr
@@ -155,43 +118,21 @@
     %apply-full-conversion)
 
   (define mlir::applyPartialConversion  %mlir::applyPartialConversion)
-  ;; @brief RewriterBase::modifyOpInPlace: THUNK changes the op, and the rewriter is told.
-  ;; THUNK is made into a C function for this call and released when it returns.
-  (define (mlir::RewriterBase::modifyOpInPlace rewriter op thunk)
-    (%mlir::RewriterBase::modifyOpInPlace
-     rewriter op (crest-callback-entry-point () void thunk)))
-
-  ;; The callback of a pattern succeeds when it answers #t (and only #t).
-  (define (%%conversion-pattern who proc)
-    (%%procedure who proc)
-    (crest-callback-entry-point
-     (uptr uptr uptr uptr) int
-     (lambda (op operands rewriter type-converter)
-       (if (eq? (proc op operands rewriter type-converter) #t) 1 0))))
+  (define mlir::RewriterBase::modifyOpInPlace  %mlir::RewriterBase::modifyOpInPlace)
 
   ;; @brief Register a Scheme ConversionPattern.
-  ;; @param proc (op operands-ref rewriter type-converter) → #t when it rewrote the op
-  (define (add-conversion-pattern patterns op-name proc type-converter benefit)
-    (%add-conversion-pattern
-     patterns op-name (%%conversion-pattern 'add-conversion-pattern proc) type-converter benefit))
+  (define add-conversion-pattern
+    %add-conversion-pattern)
 
   ;; @brief Register a Scheme ConversionPattern with no TypeConverter.
   ;; Operands passed as original (unconverted) values. Use when the pattern
   ;; reads the original operand types directly (e.g. memref.load on the input).
-  (define (add-conversion-pattern/ctx patterns op-name proc benefit)
-    (%add-conversion-pattern/ctx
-     patterns op-name (%%conversion-pattern 'add-conversion-pattern/ctx proc) benefit))
+  (define add-conversion-pattern/ctx
+    %add-conversion-pattern/ctx)
 
   ;; @brief Register a Scheme RewritePattern (no TypeConverter).
-  ;; @param proc (op rewriter) → #t when it rewrote the op
-  (define (add-rewrite-pattern patterns op-name proc benefit)
-    (%%procedure 'add-rewrite-pattern proc)
-    (%add-rewrite-pattern
-     patterns op-name
-     (crest-callback-entry-point
-      (uptr uptr) int
-      (lambda (op rewriter) (if (eq? (proc op rewriter) #t) 1 0)))
-     benefit))
+  (define add-rewrite-pattern
+    %add-rewrite-pattern)
 
   ;; @brief mlir::populateFunctionOpInterfaceTypeConversionPattern<FuncOp>.
   (define populate-func-type-conversion

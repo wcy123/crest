@@ -5,13 +5,14 @@
 // Dialect types defined in Scheme — lib/Crest/Type.cpp
 
 #include "Type.h"
+#include "../Bindings/Support/LockedSchemeObject.h"
 #include "../Bindings/Support/SchemeWrapper.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/Diagnostics.h"
 #include "mlir/IR/ExtensibleDialect.h"
 #include "mlir/IR/Location.h"
-#include "mlir/IR/OpImplementation.h"
 #include <map>
+#include <optional>
 #include <string>
 #include <tuple>
 
@@ -44,130 +45,86 @@ ptr attributeList(llvm::ArrayRef<mlir::Attribute> attrs) {
   return list;
 }
 
-// What the callables of a type's verifier and parser fill in: the attributes
-// that a parser produced (crest::DynamicType::addParam) and the message of a
-// failure (crest::DynamicType::setMessage).
-struct TypeSink {
-  llvm::SmallVectorImpl<mlir::Attribute>* parsed = nullptr;
-  std::string message;
-};
-
-// The attribute parameters as the array of opaque pointers that Scheme reads.
-llvm::SmallVector<const void*, 4>
-opaquePointers(llvm::ArrayRef<mlir::Attribute> attrs) {
-  llvm::SmallVector<const void*, 4> pointers;
-  for (mlir::Attribute attr : attrs) {
-    pointers.push_back(attr.getAsOpaquePointer());
+std::optional<LockedSchemeObject> procedureOrNone(ptr slot, const char* what) {
+  if (Sprocedurep(slot)) {
+    return LockedSchemeObject(slot);
   }
-  return pointers;
+  if (slot != Sfalse) {
+    scheme_error("crest::register-dynamic-type!", what,
+                 "must be a procedure or #f");
+  }
+  return std::nullopt;
 }
 
 } // namespace
 
 void registerCrestDynamicTypeBindings() {
-  // crest::DynamicType::addParam (uptr sink) (uptr attribute)
-  // crest::DynamicType::setMessage (uptr sink) (string message)
-  //
-  // The callables of a type give their answers to the `sink` that C++ passed.
-  Sregister_symbol(
-      "crest::DynamicType::addParam",
-      (void*)+[](uint64_t sink, uint64_t attribute) -> void {
-        reinterpret_cast<TypeSink*>(sink)->parsed->push_back(
-            mlir::Attribute::getFromOpaquePointer(
-                reinterpret_cast<const void*>(attribute)));
-      });
-  Sregister_symbol(
-      "crest::DynamicType::setMessage",
-      (void*)+[](uint64_t sink, const char* message) -> void {
-        reinterpret_cast<TypeSink*>(sink)->message = message;
-      });
-
   // crest::register-dynamic-type! (uptr dialect) (string name) (scheme-object
   // vector/3) → void
   //
-  // Must be called from the dialect's :initialize. The vector is made once by
-  // define-dialect ((crest dialect callbacks)). Slots (0 = default; the others
-  // are the entry point of a foreign-callable):
-  //   0 verify  (uptr params, uptr n, uptr sink) → int
-  //             1 ok, 0 invalid (MLIR's message), 2 invalid, message in the
-  //             sink
-  //   1 parse   (uptr parser, uptr sink) → int      (the text after the type
-  //             name) 1 ok with the parameters in the sink, 0 failed, 2 failed
-  //             with the message in the sink
-  //   2 print   (uptr printer, uptr params, uptr n) → void   (the text after
-  //             the type name)
+  // Must be called from the dialect's :initialize. Slots (#f = default):
+  //   0 verify  (list-of-attributes) → #t | #f | error-message-string
+  //   1 parse   (parser) → list-of-attributes | #f      (the text after the
+  //   type name) 2 print   (printer list-of-attributes) → void      (the text
+  //   after the type name)
   Sregister_symbol(
       "crest::register-dynamic-type!",
       (void*)+[](uint64_t dialect_ptr, const char* name, ptr cbs) -> void {
         auto* dialect = reinterpret_cast<mlir::ExtensibleDialect*>(dialect_ptr);
-        auto entry = [&](int slot) -> uint64_t {
-          ptr value = Svector_ref(cbs, slot);
-          if (!Sfixnump(value) && !Sbignump(value)) {
-            scheme_error("crest::register-dynamic-type!",
-                         "callback slot must be the entry point of a callable "
-                         "or 0");
-          }
-          return static_cast<uint64_t>(Sinteger64_value(value));
-        };
-        using VerifyFn = int (*)(const void* const*, uint64_t, uint64_t);
-        using ParseFn = int (*)(uint64_t, uint64_t);
-        using PrintFn = void (*)(uint64_t, const void* const*, uint64_t);
-        auto verify = reinterpret_cast<VerifyFn>(entry(0));
-        auto parse = reinterpret_cast<ParseFn>(entry(1));
-        auto print = reinterpret_cast<PrintFn>(entry(2));
-        if ((parse != nullptr) != (print != nullptr)) {
+        auto verify = procedureOrNone(Svector_ref(cbs, 0), "the verify slot ");
+        auto parse = procedureOrNone(Svector_ref(cbs, 1), "the parse slot ");
+        auto print = procedureOrNone(Svector_ref(cbs, 2), "the print slot ");
+        if (parse.has_value() != print.has_value()) {
           scheme_error("crest::register-dynamic-type!",
                        "a type needs both :parse and :print, or neither");
         }
 
         mlir::DynamicTypeDefinition::VerifierFn verifier =
-            [verify](
+            [verify = std::move(verify)](
                 llvm::function_ref<mlir::InFlightDiagnostic()> emitError,
                 llvm::ArrayRef<mlir::Attribute> params) -> mlir::LogicalResult {
           if (!verify) {
             return mlir::success();
           }
-          auto pointers = opaquePointers(params);
-          TypeSink sink;
-          int answer = verify(pointers.data(), pointers.size(),
-                              reinterpret_cast<uint64_t>(&sink));
-          if (answer == 1) {
-            return mlir::success();
-          }
-          if (answer == 2) {
-            emitError() << sink.message;
-          } else {
+          LockedSchemeObject result(
+              scheme_call(verify->get(), attributeList(params)));
+          if (result.get() == Sfalse) {
             emitError() << "invalid type parameters";
+            return mlir::failure();
           }
-          return mlir::failure();
+          if (Sstringp(result.get())) {
+            std::string message;
+            for (iptr i = 0; i < Sstring_length(result.get()); ++i) {
+              message.push_back(
+                  static_cast<char>(Sstring_ref(result.get(), i)));
+            }
+            emitError() << message;
+            return mlir::failure();
+          }
+          return mlir::success();
         };
 
         std::unique_ptr<mlir::DynamicTypeDefinition> def;
         if (parse) {
           mlir::DynamicTypeDefinition::ParserFn parser =
-              [parse](mlir::AsmParser& p,
-                      llvm::SmallVectorImpl<mlir::Attribute>& parsed)
+              [parse = std::move(parse)](
+                  mlir::AsmParser& p,
+                  llvm::SmallVectorImpl<mlir::Attribute>& parsed)
               -> mlir::ParseResult {
-            TypeSink sink;
-            sink.parsed = &parsed;
-            int answer = parse(reinterpret_cast<uint64_t>(&p),
-                               reinterpret_cast<uint64_t>(&sink));
-            if (answer == 1) {
-              return mlir::success();
+            LockedSchemeObject result(scheme_call(parse->get(), &p));
+            if (result.get() == Sfalse) {
+              return mlir::failure();
             }
-            if (answer == 2) {
-              mlir::InFlightDiagnostic diagnostic =
-                  p.emitError(p.getCurrentLocation());
-              diagnostic << sink.message;
+            for (ptr l = result.get(); Spairp(l); l = Scdr(l)) {
+              parsed.push_back(mlir::Attribute::getFromOpaquePointer(
+                  reinterpret_cast<const void*>(Sunsigned64_value(Scar(l)))));
             }
-            return mlir::failure();
+            return mlir::success();
           };
           mlir::DynamicTypeDefinition::PrinterFn printer =
-              [print](mlir::AsmPrinter& p,
-                      llvm::ArrayRef<mlir::Attribute> params) {
-                auto pointers = opaquePointers(params);
-                print(reinterpret_cast<uint64_t>(&p), pointers.data(),
-                      pointers.size());
+              [print = std::move(print)](
+                  mlir::AsmPrinter& p, llvm::ArrayRef<mlir::Attribute> params) {
+                scheme_call(print->get(), &p, attributeList(params));
               };
           def = mlir::DynamicTypeDefinition::get(
               name, dialect, std::move(verifier), std::move(parser),

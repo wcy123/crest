@@ -19,24 +19,10 @@
           mlir::affine::AffineStoreOp::create<AffineMap>
           mlir::DialectRegistry::insert<mlir::affine::AffineDialect>)
   (import (rnrs)
-          (crest callback)
           (mlir Dialect Affine IR AffineOps ffi))
 
-  ;; @brief buildAffineLoopNest: build a nest of loops with constant bounds and steps, and call
-  ;;        BODY inside the innermost one.
-  ;; @param builder  a builder shell
-  ;; @param loc      Location uptr
-  ;; @param lbs ubs steps  lists of integers, one per loop
-  ;; @param body     (nested-builder loc ivs): the builder shell for the body (valid during the call)
-  ;;                 and the list of the induction variables. It is made into a C function for this
-  ;;                 call and released when the call returns.
-  (define (mlir::affine::buildAffineLoopNest builder loc lbs ubs steps body)
-    (%mlir::affine::buildAffineLoopNest
-     builder loc lbs ubs steps
-     (crest-callback-entry-point
-      (uptr uptr uptr uptr) void
-      (lambda (nested-builder nested-loc ivs count)
-        (body nested-builder nested-loc (crest-callback-pointer-list ivs count))))))
+  (define mlir::affine::buildAffineLoopNest
+    %mlir::affine::buildAffineLoopNest)
 
   (define mlir::affine::AffineLoadOp::create
     %mlir::affine::AffineLoadOp::create)

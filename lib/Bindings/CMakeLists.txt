@@ -109,6 +109,8 @@ add_library(CrestBindings STATIC
   Support/CrestObject.cpp
   Support/CrestObject.h
   Support/ForeignCallable.h
+  Support/LockedSchemeObject.cpp
+  Support/LockedSchemeObject.h
   Support/Logging.cpp
   Support/Logging.h
   Support/SchemeWrapper.cpp
