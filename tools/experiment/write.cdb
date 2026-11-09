@@ -1,3 +1,0 @@
-.printf "WRITE: node=%p\n", poi(@$t1)
-kb 10
-g

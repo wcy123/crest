@@ -1,3 +1,0 @@
-.printf "STACK-WRITE hit at rip=%p\n", @rip
-kb 10
-g

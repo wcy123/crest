@@ -87,7 +87,9 @@
                                           verify-op-attr verify-region-arg-attr
                                           verify-region-result-attr)
     (vector
-     (or initialize 0)
+     (if initialize
+         (crest-callback-entry-point (uptr) void initialize)
+         0)
      (if get-dependent-dialects
          (crest-callback-entry-point
           (uptr) void

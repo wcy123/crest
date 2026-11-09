@@ -75,64 +75,6 @@ TEST_F(InterpreterTest, ForeignCallableMovedFromDoesNotUnlock) {
   EXPECT_FALSE(Slocked_objectp(code));
 }
 
-// The callee-saved state of the caller must survive a foreign-callable: on Windows x64 that includes
-// xmm6-xmm15. A callable that allocates and computes with flonums runs while ten doubles are live in
-// the caller (the compiler keeps them in those registers across the call).
-static uint64_t makeBusyCallableEntry() {
-  ptr port = scheme_call(
-      "open-string-input-port",
-      Sstring("(let ([code (foreign-callable"
-              "  (lambda (x)"
-              "    (let loop ([i 0] [acc 0.0] [l '()])"
-              "      (if (< i 5000)"
-              "          (loop (+ i 1) (+ acc (* 1.5 (exact->inexact i))) (cons (make-string 3 #\\a) l))"
-              "          (begin (collect) (if (> acc 0.0) (length l) 0)))))"
-              "  (int) int)])"
-              "  (lock-object code)"
-              "  (foreign-callable-entry-point code))"));
-  ptr expr = scheme_call("read", port);
-  return Sunsigned64_value(scheme_call("eval", expr));
-}
-
-static double g_seed = 3.0;
-
-TEST_F(InterpreterTest, ForeignCallablePreservesCalleeSavedFloatingPointRegisters) {
-  ForeignCallable<int(int)> callable(makeBusyCallableEntry());
-  double a0 = g_seed * 1.5, a1 = g_seed * 2.5, a2 = g_seed * 3.5, a3 = g_seed * 4.5,
-         a4 = g_seed * 5.5, a5 = g_seed * 6.5, a6 = g_seed * 7.5, a7 = g_seed * 8.5,
-         a8 = g_seed * 9.5, a9 = g_seed * 10.5;
-  EXPECT_EQ(callable(1), 5000);
-  EXPECT_EQ(a0, g_seed * 1.5);
-  EXPECT_EQ(a1, g_seed * 2.5);
-  EXPECT_EQ(a2, g_seed * 3.5);
-  EXPECT_EQ(a3, g_seed * 4.5);
-  EXPECT_EQ(a4, g_seed * 5.5);
-  EXPECT_EQ(a5, g_seed * 6.5);
-  EXPECT_EQ(a6, g_seed * 7.5);
-  EXPECT_EQ(a7, g_seed * 8.5);
-  EXPECT_EQ(a8, g_seed * 9.5);
-  EXPECT_EQ(a9, g_seed * 10.5);
-}
-
-static uint64_t g_integer_seed = 7;
-
-TEST_F(InterpreterTest, ForeignCallablePreservesCalleeSavedGeneralRegisters) {
-  ForeignCallable<int(int)> callable(makeBusyCallableEntry());
-  uint64_t b0 = g_integer_seed * 3, b1 = g_integer_seed * 5, b2 = g_integer_seed * 7,
-           b3 = g_integer_seed * 11, b4 = g_integer_seed * 13, b5 = g_integer_seed * 17,
-           b6 = g_integer_seed * 19, b7 = g_integer_seed * 23, b8 = g_integer_seed * 29;
-  EXPECT_EQ(callable(1), 5000);
-  EXPECT_EQ(b0, g_integer_seed * 3);
-  EXPECT_EQ(b1, g_integer_seed * 5);
-  EXPECT_EQ(b2, g_integer_seed * 7);
-  EXPECT_EQ(b3, g_integer_seed * 11);
-  EXPECT_EQ(b4, g_integer_seed * 13);
-  EXPECT_EQ(b5, g_integer_seed * 17);
-  EXPECT_EQ(b6, g_integer_seed * 19);
-  EXPECT_EQ(b7, g_integer_seed * 23);
-  EXPECT_EQ(b8, g_integer_seed * 29);
-}
-
 TEST(ParseLogLevel, KnownLevels) {
   EXPECT_EQ(parseLogLevel("trace"), SchemeLogLevel::Trace);
   EXPECT_EQ(parseLogLevel("debug"), SchemeLogLevel::Debug);

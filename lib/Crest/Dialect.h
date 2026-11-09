@@ -70,7 +70,7 @@ public:
   /// the ExtensibleDialect default). Pointers and the dialect itself cross as
   /// integers; the Scheme side adapts the answers (a failed parse is 0).
   struct Callbacks {
-    ptr initialize = Sfalse;
+    void (*initialize)(uint64_t dialect) = nullptr;
     void (*get_dependent_dialects)(uint64_t dialect) = nullptr;
     uint64_t (*parse_attribute)(uint64_t parser, uint64_t type) = nullptr;
     void (*print_attribute)(uint64_t attr, uint64_t printer) = nullptr;

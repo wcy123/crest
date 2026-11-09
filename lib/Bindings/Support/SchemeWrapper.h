@@ -121,9 +121,6 @@ template <typename... Ts> inline ptr make_scheme_list(Ts&&... args) {
   return list;
 }
 
-// EXPERIMENT: a trivial Scall before a callable runs.
-#define CREST_REFRESH() ((void)scheme_call("void"))
-
 // ---- scheme_call ----
 //
 // The first argument is either:

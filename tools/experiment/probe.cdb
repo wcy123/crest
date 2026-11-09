@@ -1,4 +1,0 @@
-bu scheme_mlir!crest_probe_before_callable ".echo === BEFORE callable; rM 40; g"
-bu scheme_mlir!crest_probe_after_callable ".echo === AFTER callable; rM 40; g"
-g
-q

@@ -21,8 +21,3 @@ target_link_libraries(crest-opt
 
 llvm_update_compile_flags(crest-opt)
 mlir_check_all_link_libraries(crest-opt)
-
-# EXPERIMENT (to be reverted): a linker map, to symbolize a crash on Windows.
-if(MSVC)
-  target_link_options(crest-opt PRIVATE /MAP)
-endif()

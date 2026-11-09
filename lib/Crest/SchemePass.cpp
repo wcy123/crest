@@ -45,7 +45,6 @@ public:
   }
 
   void runOnOperation() override {
-    CREST_REFRESH();
     if (callback_(reinterpret_cast<uint64_t>(getOperation())) == 0) {
       std::string message = std::move(g_reported_failure);
       g_reported_failure.clear();

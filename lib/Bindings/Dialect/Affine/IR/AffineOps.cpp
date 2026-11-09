@@ -16,23 +16,6 @@
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/DialectRegistry.h"
 
-#include <cstdio>
-#define CREST_TRACE(...) (std::fprintf(stderr, "TRACE " __VA_ARGS__), std::fputc('\n', stderr), std::fflush(stderr))
-
-#if defined(_MSC_VER)
-#define CREST_NOINLINE __declspec(noinline)
-#else
-#define CREST_NOINLINE __attribute__((noinline))
-#endif
-extern "C" CREST_NOINLINE void crest_probe_before_callable(void* builder) {
-  static void* volatile sink;
-  sink = builder;
-}
-extern "C" CREST_NOINLINE void crest_probe_after_callable(void* builder) {
-  static void* volatile sink;
-  sink = builder;
-}
-
 namespace crest {
 
 void registerDialectAffineIRAffineOpsBindings() {
@@ -66,25 +49,9 @@ void registerDialectAffineIRAffineOpsBindings() {
                 iv_pointers.push_back(
                     reinterpret_cast<uint64_t>(iv.getAsOpaquePointer()));
               }
-              {
-                auto ip = nb.getInsertionPoint();
-                auto en = nb.getBlock()->end();
-                const uint64_t* a = reinterpret_cast<const uint64_t*>(&ip);
-                const uint64_t* b = reinterpret_cast<const uint64_t*>(&en);
-                CREST_TRACE("sizeof OpBuilder=%zu Block=%zu iterator=%zu; ip=%llx %llx end=%llx %llx",
-                            sizeof(mlir::OpBuilder), sizeof(mlir::Block), sizeof(ip),
-                            static_cast<unsigned long long>(a[0]),
-                            static_cast<unsigned long long>(sizeof(ip) > 8 ? a[1] : 0),
-                            static_cast<unsigned long long>(b[0]),
-                            static_cast<unsigned long long>(sizeof(en) > 8 ? b[1] : 0));
-              }
-              CREST_TRACE("loop body: nb=%p block=%p at-end=%d", static_cast<void*>(&nb), static_cast<void*>(nb.getBlock()), nb.getBlock() ? (nb.getInsertionPoint() == nb.getBlock()->end()) : -1);
-              crest_probe_before_callable(&nb);
               owned(reinterpret_cast<uint64_t>(&nb_shell),
                     reinterpret_cast<uint64_t>(nb_loc.getAsOpaquePointer()),
                     iv_pointers.data(), iv_pointers.size());
-              crest_probe_after_callable(&nb);
-              CREST_TRACE("loop body done: nb=%p block=%p at-end=%d", static_cast<void*>(&nb), static_cast<void*>(nb.getBlock()), nb.getBlock() ? (nb.getInsertionPoint() == nb.getBlock()->end()) : -1);
             });
       });
 

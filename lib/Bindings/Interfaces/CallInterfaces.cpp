@@ -55,7 +55,6 @@ struct CallableConceptData : public mlir::CallableOpInterface::Concept {
       getCallableRegion =
           +[](const Concept* self, mlir::Operation* op) -> mlir::Region* {
         const auto* d = static_cast<const CallableConceptData*>(self);
-        CREST_REFRESH();
         return reinterpret_cast<mlir::Region*>(
             d->get_callable_region(reinterpret_cast<uint64_t>(op)));
       };

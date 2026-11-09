@@ -20,9 +20,6 @@
 #include <string>
 #include <unordered_map>
 
-#include <cstdio>
-#define CREST_TRACE(...) (std::fprintf(stderr, "TRACE " __VA_ARGS__), std::fputc('\n', stderr), std::fflush(stderr))
-
 namespace crest {
 
 // ---------------------------------------------------------------------------
@@ -51,7 +48,6 @@ bool RegisterInterfaceForOp(mlir::TypeID id, const std::string& op_name,
 
 void* CrestDialect::getRegisteredInterfaceForOp(mlir::TypeID interfaceID,
                                                 mlir::OperationName opName) {
-  CREST_TRACE("getRegisteredInterfaceForOp %s", opName.getStringRef().str().c_str());
   return LookupInterfaceForOp(interfaceID, opName.getStringRef().str());
 }
 
@@ -130,23 +126,17 @@ void CrestDialect::initialize() {
   // built-in MLIR dialects the host registered (registry.insert<T>(),
   // registerAllDialects()) and for other Scheme dialects registered by name
   // (--crest-scheme-dialect).
-  CREST_TRACE("initialize: deps=%p",
-              reinterpret_cast<void*>(cbs_.get_dependent_dialects));
   if (cbs_.get_dependent_dialects) {
-    CREST_REFRESH();
     cbs_.get_dependent_dialects(reinterpret_cast<uint64_t>(this));
   }
-  CREST_TRACE("initialize: calling the dialect initialize");
-  if (cbs_.initialize != Sfalse) {
-    scheme_call(cbs_.initialize, reinterpret_cast<uint64_t>(this));
+  if (cbs_.initialize) {
+    cbs_.initialize(reinterpret_cast<uint64_t>(this));
   }
-  CREST_TRACE("initialize: returned");
 }
 
 mlir::Attribute CrestDialect::parseAttribute(mlir::DialectAsmParser& parser,
                                              mlir::Type type) const {
   if (cbs_.parse_attribute) {
-    CREST_REFRESH();
     return mlir::Attribute::getFromOpaquePointer(
         reinterpret_cast<const void*>(cbs_.parse_attribute(
             reinterpret_cast<uint64_t>(&parser),
@@ -158,7 +148,6 @@ mlir::Attribute CrestDialect::parseAttribute(mlir::DialectAsmParser& parser,
 void CrestDialect::printAttribute(mlir::Attribute attr,
                                   mlir::DialectAsmPrinter& os) const {
   if (cbs_.print_attribute) {
-    CREST_REFRESH();
     cbs_.print_attribute(reinterpret_cast<uint64_t>(attr.getAsOpaquePointer()),
                          reinterpret_cast<uint64_t>(&os));
   } else {
@@ -168,7 +157,6 @@ void CrestDialect::printAttribute(mlir::Attribute attr,
 
 mlir::Type CrestDialect::parseType(mlir::DialectAsmParser& parser) const {
   if (cbs_.parse_type) {
-    CREST_REFRESH();
     return mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(
         cbs_.parse_type(reinterpret_cast<uint64_t>(&parser))));
   }
@@ -194,7 +182,6 @@ mlir::Type CrestDialect::parseType(mlir::DialectAsmParser& parser) const {
 void CrestDialect::printType(mlir::Type type,
                              mlir::DialectAsmPrinter& os) const {
   if (cbs_.print_type) {
-    CREST_REFRESH();
     cbs_.print_type(reinterpret_cast<uint64_t>(type.getAsOpaquePointer()),
                     reinterpret_cast<uint64_t>(&os));
   } else if (mlir::failed(printIfDynamicType(type, os))) {
@@ -207,7 +194,6 @@ mlir::Operation* CrestDialect::materializeConstant(mlir::OpBuilder& builder,
                                                    mlir::Type type,
                                                    mlir::Location loc) {
   if (cbs_.materialize_constant) {
-    CREST_REFRESH();
     // Scheme sees the builder as a borrowed shell that lives for this call.
     crest::CrestBox<mlir::OpBuilder*> builder_shell(&builder);
     return reinterpret_cast<mlir::Operation*>(cbs_.materialize_constant(
@@ -223,7 +209,6 @@ mlir::Operation* CrestDialect::materializeConstant(mlir::OpBuilder& builder,
 void CrestDialect::getCanonicalizationPatterns(
     mlir::RewritePatternSet& results) const {
   if (cbs_.get_canonicalization_patterns) {
-    CREST_REFRESH();
     // Scheme sees the set as a borrowed shell that lives for this call, as for
     // the patterns of an op.
     crest::CrestBox<mlir::RewritePatternSet*> shell(&results);
@@ -237,7 +222,6 @@ mlir::LogicalResult
 CrestDialect::verifyOperationAttribute(mlir::Operation* op,
                                        mlir::NamedAttribute attr) {
   if (cbs_.verify_op_attr) {
-    CREST_REFRESH();
     return verifyResult(op,
                         cbs_.verify_op_attr(reinterpret_cast<uint64_t>(op),
                                             reinterpret_cast<uint64_t>(&attr)));
@@ -250,7 +234,6 @@ CrestDialect::verifyRegionArgAttribute(mlir::Operation* op,
                                        unsigned regionIndex, unsigned argIndex,
                                        mlir::NamedAttribute attr) {
   if (cbs_.verify_region_arg_attr) {
-    CREST_REFRESH();
     return verifyResult(op, cbs_.verify_region_arg_attr(
                                 reinterpret_cast<uint64_t>(op), regionIndex,
                                 argIndex, reinterpret_cast<uint64_t>(&attr)));
@@ -263,7 +246,6 @@ mlir::LogicalResult CrestDialect::verifyRegionResultAttribute(
     mlir::Operation* op, unsigned regionIndex, unsigned resultIndex,
     mlir::NamedAttribute attr) {
   if (cbs_.verify_region_result_attr) {
-    CREST_REFRESH();
     return verifyResult(
         op, cbs_.verify_region_result_attr(reinterpret_cast<uint64_t>(op),
                                            regionIndex, resultIndex,
@@ -289,12 +271,7 @@ static CrestDialect::Callbacks unpack_callbacks(ptr v) {
     return static_cast<uint64_t>(Sinteger64_value(value));
   };
   CrestDialect::Callbacks cbs;
-  cbs.initialize = Svector_ref(v, 0);
-  if (Sprocedurep(cbs.initialize)) {
-    Slock_object(cbs.initialize);
-  } else {
-    cbs.initialize = Sfalse;
-  }
+  cbs.initialize = reinterpret_cast<decltype(cbs.initialize)>(entry(0));
   cbs.get_dependent_dialects =
       reinterpret_cast<decltype(cbs.get_dependent_dialects)>(entry(1));
   cbs.parse_attribute =
@@ -381,13 +358,11 @@ CrestDialect::CrestDialect(mlir::TypeID id, const std::string& module_name,
     : mlir::ExtensibleDialect(dialect_name, ctx, id),
       interp_(ChezSchemeInterpreter::instance(
           SchemeLogLevel::Warning, crest::registerMlirForeignFunctions)) {
-  CREST_TRACE("ctor %s: importing", dialect_name.c_str());
   if (auto importError = interp_->importLibrary(module_name)) {
     llvm::report_fatal_error(
         llvm::Twine("CrestDialect: failed to import Scheme library '") +
         module_name + "' for dialect '" + dialect_name + "': " + *importError);
   }
-  CREST_TRACE("ctor %s: imported", dialect_name.c_str());
   // The dialect name (e.g. "testd") is bound to the callbacks vector by
   // define-dialect using the call-site identifier, so it has the same scope
   // as the user's (export testd). Stop_level_value finds it after import.
@@ -400,12 +375,8 @@ CrestDialect::CrestDialect(mlir::TypeID id, const std::string& module_name,
         "' of Scheme library '" + module_name +
         "' is not the callbacks vector define-dialect makes");
   }
-  CREST_TRACE("ctor %s: vector found", dialect_name.c_str());
   cbs_ = unpack_callbacks(cbs_vec);
-  CREST_TRACE("ctor %s: unpacked; initialize=%p", dialect_name.c_str(),
-              reinterpret_cast<void*>(cbs_.initialize));
   initialize();
-  CREST_TRACE("ctor %s: initialized", dialect_name.c_str());
 }
 
 std::optional<std::string>
@@ -422,16 +393,11 @@ dialectFactory(std::string dialect_name, std::string module_name) {
   return {type_id,
           [type_id, dialect_name,
            module_name](mlir::MLIRContext* ctx) -> mlir::Dialect* {
-            CREST_TRACE("factory %s: loading", dialect_name.c_str());
-            mlir::Dialect* loaded = ctx->getOrLoadDialect(
+            return ctx->getOrLoadDialect(
                 dialect_name, type_id, [&]() -> std::unique_ptr<mlir::Dialect> {
-                  auto made = std::make_unique<CrestDialect>(type_id, module_name,
+                  return std::make_unique<CrestDialect>(type_id, module_name,
                                                         dialect_name, ctx);
-                  CREST_TRACE("factory %s: constructed %p", dialect_name.c_str(), static_cast<void*>(made.get()));
-                  return made;
                 });
-            CREST_TRACE("factory %s: loaded %p", dialect_name.c_str(), static_cast<void*>(loaded));
-            return loaded;
           }};
 }
 

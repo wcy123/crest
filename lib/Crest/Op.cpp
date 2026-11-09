@@ -13,9 +13,6 @@
 #include "mlir/IR/Operation.h"
 #include "mlir/IR/PatternMatch.h"
 
-#include <cstdio>
-#define CREST_TRACE(...) (std::fprintf(stderr, "TRACE " __VA_ARGS__), std::fputc('\n', stderr), std::fflush(stderr))
-
 namespace crest {
 
 namespace {
@@ -49,11 +46,7 @@ make_verify_fn(int (*fn)(uint64_t)) {
     return [](mlir::Operation*) { return mlir::success(); };
   }
   return [fn](mlir::Operation* op) -> llvm::LogicalResult {
-    CREST_REFRESH();
-    CREST_TRACE("op verify %s: calling %p", op->getName().getStringRef().str().c_str(), reinterpret_cast<void*>(fn));
-    int answer = fn(reinterpret_cast<uint64_t>(op));
-    CREST_TRACE("op verify: answered %d", answer);
-    if (answer != 0) {
+    if (fn(reinterpret_cast<uint64_t>(op)) != 0) {
       return mlir::success();
     }
     std::string message = takeReportedFailure();
@@ -68,12 +61,8 @@ static mlir::OperationName::ParseAssemblyFn make_parse_fn(int (*fn)(uint64_t,
                                                                     uint64_t)) {
   return [fn](mlir::OpAsmParser& parser,
               mlir::OperationState& state) -> mlir::ParseResult {
-    CREST_REFRESH();
-    CREST_TRACE("op parse: calling %p", reinterpret_cast<void*>(fn));
-    int parsed = fn(reinterpret_cast<uint64_t>(&parser),
-                    reinterpret_cast<uint64_t>(&state));
-    CREST_TRACE("op parse: answered %d", parsed);
-    if (parsed != 0) {
+    if (fn(reinterpret_cast<uint64_t>(&parser),
+           reinterpret_cast<uint64_t>(&state)) != 0) {
       return mlir::ParseResult::success();
     }
     std::string message = takeReportedFailure();
@@ -97,7 +86,6 @@ make_print_fn(void (*fn)(uint64_t, uint64_t)) {
       opName = opName.drop_front(defaultDialect.size() + 1);
     }
     printer << opName;
-    CREST_REFRESH();
     fn(reinterpret_cast<uint64_t>(op), reinterpret_cast<uint64_t>(&printer));
   };
 }
@@ -124,7 +112,6 @@ make_fold_fn(int (*fn)(uint64_t, const void* const*, uint64_t, void*)) {
       attrs.push_back(attr ? attr.getAsOpaquePointer() : nullptr);
     }
     FoldedResults folded;
-    CREST_REFRESH();
     if (fn(reinterpret_cast<uint64_t>(op), attrs.data(), attrs.size(),
            &folded) == 0) {
       std::string message = takeReportedFailure();
@@ -152,7 +139,6 @@ make_canon_fn(void (*fn)(uint64_t)) {
   // only.
   return [fn](mlir::RewritePatternSet& patterns, mlir::MLIRContext*) {
     CrestBox<mlir::RewritePatternSet*> shell(&patterns);
-    CREST_REFRESH();
     fn(reinterpret_cast<uint64_t>(&shell));
   };
 }
@@ -163,7 +149,6 @@ make_default_attrs_fn(void (*fn)(uint64_t, uint64_t)) {
     return [](const mlir::OperationName&, mlir::NamedAttrList&) {};
   }
   return [fn](const mlir::OperationName& name, mlir::NamedAttrList& attrs) {
-    CREST_REFRESH();
     fn(reinterpret_cast<uint64_t>(&name), reinterpret_cast<uint64_t>(&attrs));
   };
 }
@@ -174,7 +159,6 @@ make_default_attrs_fn(void (*fn)(uint64_t, uint64_t)) {
 
 void CrestOp::registerInto(mlir::ExtensibleDialect* dialect,
                            llvm::StringRef op_name, Callbacks cbs) {
-  CREST_TRACE("registerInto %s: verify=%p parse=%p print=%p fold=%p", op_name.str().c_str(), reinterpret_cast<void*>(cbs.verify), reinterpret_cast<void*>(cbs.parse), reinterpret_cast<void*>(cbs.print), reinterpret_cast<void*>(cbs.fold));
   auto verify_fn = withInferredTypesCheck(make_verify_fn(cbs.verify), op_name);
   auto verify_region_fn = make_verify_fn(cbs.verify_regions);
 
@@ -217,9 +201,7 @@ void CrestOp::registerInto(mlir::ExtensibleDialect* dialect,
   }
 
   attachInferTypeOpInterface(*def, op_name);
-  CREST_TRACE("registerInto %s: registering", op_name.str().c_str());
   dialect->registerDynamicOp(std::move(def));
-  CREST_TRACE("registerInto %s: done", op_name.str().c_str());
 }
 
 // ---------------------------------------------------------------------------

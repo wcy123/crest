@@ -14,7 +14,6 @@ namespace crest {
 bool CrestInlinerInterface::isLegalToInline(mlir::Operation* call,
                                             mlir::Operation* callable,
                                             bool wouldBeCloned) const {
-  CREST_REFRESH();
   return isLegalToInlineCallFn(reinterpret_cast<uint64_t>(call),
                                reinterpret_cast<uint64_t>(callable),
                                wouldBeCloned) != 0;
@@ -24,7 +23,6 @@ bool CrestInlinerInterface::isLegalToInline(mlir::Region* dest,
                                             mlir::Region* src,
                                             bool wouldBeCloned,
                                             mlir::IRMapping&) const {
-  CREST_REFRESH();
   return isLegalToInlineRegionFn(reinterpret_cast<uint64_t>(dest),
                                  reinterpret_cast<uint64_t>(src),
                                  wouldBeCloned) != 0;
@@ -34,7 +32,6 @@ bool CrestInlinerInterface::isLegalToInline(mlir::Operation* op,
                                             mlir::Region* dest,
                                             bool wouldBeCloned,
                                             mlir::IRMapping&) const {
-  CREST_REFRESH();
   return isLegalToInlineOpFn(reinterpret_cast<uint64_t>(op),
                              reinterpret_cast<uint64_t>(dest),
                              wouldBeCloned) != 0;
@@ -53,7 +50,6 @@ void CrestInlinerInterface::handleTerminator(
     ptrs.push_back(reinterpret_cast<uintptr_t>(v.getAsOpaquePointer()));
   }
   CArrayRef<uintptr_t> arr(ptrs.data(), ptrs.size());
-  CREST_REFRESH();
   handleTerminatorValueFn(reinterpret_cast<uint64_t>(op),
                           reinterpret_cast<uint64_t>(&arr));
 }
@@ -63,7 +59,6 @@ void CrestInlinerInterface::handleTerminator(mlir::Operation* op,
   if (!handleTerminatorBlockFn) {
     return;
   }
-  CREST_REFRESH();
   handleTerminatorBlockFn(reinterpret_cast<uint64_t>(op),
                           reinterpret_cast<uint64_t>(newDest));
 }
@@ -76,7 +71,6 @@ mlir::Operation* CrestInlinerInterface::materializeCallConversion(
   }
   // Scheme sees the builder as a borrowed shell that lives for this call.
   crest::CrestBox<mlir::OpBuilder*> builder_shell(&builder);
-  CREST_REFRESH();
   return reinterpret_cast<mlir::Operation*>(materializeCallConversionFn(
       reinterpret_cast<uint64_t>(&builder_shell),
       reinterpret_cast<uint64_t>(input.getAsOpaquePointer()),

@@ -1,6 +1,0 @@
-.printf "BEFORE callable: builder=%p rsp=%p\n", @rcx, @rsp
-r $t1 = @rcx+0x20
-r $t2 = poi(@$t1)
-.printf "node X=%p\n", @$t2
-.foreach (a {s -[1]q @rsp @rsp+0x2000 @$t2}) { .printf "stack copy of X at %p\n", ${a}; ba w8 ${a} "$$>< tools/experiment/write2.cdb" }
-g
