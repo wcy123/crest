@@ -812,7 +812,10 @@ procedures called at verification time. For example:
 function); the body returns `#f` to fail the pass, after saying why with `mlir::Operation::emitError`. The
 pass is an `mlir::Pass` (`lib/Crest/SchemePass.cpp`), so it mixes with C++ passes in one pipeline. Scheme
 is single-threaded: contexts made from Scheme have multithreading disabled; with `crest-opt` use
-`--mlir-disable-threading`. Toy's shape inference and its lowerings to affine and LLVM are passes.
+`--mlir-disable-threading`. A body that raises a Scheme error does not end the process: the pass fails and
+the diagnostic has the text of the error. The body is made into a C function once, where the pass is defined,
+and every pass that `(tag-functions)` makes shares it. Toy's shape inference and its lowerings to affine and
+LLVM are passes.
 
 ### `define-type` — dialect types
 
