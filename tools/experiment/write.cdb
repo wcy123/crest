@@ -1,0 +1,2 @@
+.printf "write: now=%p\n", poi(@$t0)
+.if (poi(@$t0) == 0) { .echo ZERO_WRITE; kb 30; ub @rip L8; q } .else { g }
