@@ -785,6 +785,12 @@ The op's full MLIR name is `dialect-name.op-name` (e.g. `toy.constant`).
 | `(:get-canonicalization-patterns (patterns) body ...)` | The op's own canonicalization patterns (C++ `hasCanonicalizer`): `patterns` is the pattern set being filled, to which `add-rewrite-pattern` (or a `define-pattern-set` procedure) adds patterns; MLIR's canonicalizer pass finds them without the tool registering anything |
 | `:traits (name ...)` | MLIR traits of the op (needs LLVM 23; see below) |
 
+The callbacks of an op are made into C functions once, when the library of the dialect is loaded, and
+every context that loads the dialect shares them. A `:verify`, `:verify-regions` or `:parse` that raises a
+Scheme error does not end the process: it fails and the diagnostic has the text of the error. So does a
+`:fold` that answers something that `fold-value` and `fold-attribute` did not make (the message says so).
+A `:fold` that answers `'()` has changed the op in place.
+
 **Type predicates** in `:operands`, `:attributes`, `:results` are Scheme
 procedures called at verification time. For example:
 - `:results ((output mlir::isa<RankedTensorType>?))` — result must be ranked
@@ -823,7 +829,9 @@ of *attribute* parameters (a type parameter is a `TypeAttr`); it is built on MLI
 ```
 
 `!toy.struct<tensor<2xf64>, tensor<3xf64>>` is printed as the name followed by what `:print` writes (here
-`<...>`). Without `:parse`/`:print` the generic `<attr, ...>` syntax is used. The dialect generates
+`<...>`). A `:verify` that says `#f` gives MLIR's message ("invalid type parameters"), and one that raises a
+Scheme error gives the text of the error, as does a `:parse`. Without `:parse`/`:print` the generic
+`<attr, ...>` syntax is used. The dialect generates
 `(toy.struct? type)`, `(toy.struct ctx params)` (the type, or 0 when `:verify` rejects the parameters, after
 emitting its message) and `(toy.struct-params type)`.
 

@@ -4,9 +4,9 @@
  */
 // CrestOp bridge — lib/Crest/Op.h
 //
-// Analogous to CrestDialect: stores Scheme callbacks for each
-// DynamicOpDefinition hook and bridges them into llvm::unique_function types
-// that MLIR expects.
+// Analogous to CrestDialect: stores the entry point of the Scheme
+// foreign-callable of each DynamicOpDefinition hook and bridges them into
+// llvm::unique_function types that MLIR expects.
 
 #ifndef CREST_OP_H
 #define CREST_OP_H
@@ -14,32 +14,34 @@
 #include <string>
 #include <vector>
 
-#include "../Bindings/Support/LockedSchemeObject.h"
 #include "mlir/IR/ExtensibleDialect.h"
-#include <optional>
 
 namespace crest {
 
 /// Bridges a Scheme-defined op into a mlir::DynamicOpDefinition.
 ///
-/// Each callback slot is optional — absent (std::nullopt) means use MLIR's
-/// default behaviour (e.g. generic assembly format, always-success verify).
+/// Each callback slot is optional — absent (nullptr) means use MLIR's default
+/// behaviour (e.g. generic assembly format, always-success verify).
 ///
-/// Unlike CrestDialect (which uses C++ virtual dispatch), DynamicOpDefinition
-/// stores llvm::unique_function — move-only callables. Each LockedSchemeObject
-/// is moved directly into its unique_function, keeping the Scheme procedure
-/// GC-locked for the lifetime of the op registration.
+/// The entry points are those of foreign-callables that the dialect's library
+/// made once (scheme/crest/dialect/callbacks.sls); they stay valid for the
+/// process, so a closure over one is all the unique_function needs. Objects
+/// cross as integers; an answer of 0 from a verifier or a parser is a failure,
+/// and when the Scheme side raised an error it first said why
+/// (crest::DynamicOp::reportFailure).
 class CrestOp {
 public:
   struct Callbacks {
-    std::optional<LockedSchemeObject> verify;                        // 0
-    std::optional<LockedSchemeObject> verify_regions;                // 1
-    std::optional<LockedSchemeObject> parse;                         // 2
-    std::optional<LockedSchemeObject> print;                         // 3
-    std::optional<LockedSchemeObject> fold;                          // 4
-    std::optional<LockedSchemeObject> get_canonicalization_patterns; // 5
-    std::optional<LockedSchemeObject> populate_default_attrs;        // 6
-    std::vector<std::vector<std::string>> traits;                    // 7
+    int (*verify)(uint64_t op) = nullptr;                               // 0
+    int (*verify_regions)(uint64_t op) = nullptr;                       // 1
+    int (*parse)(uint64_t parser, uint64_t state) = nullptr;            // 2
+    void (*print)(uint64_t op, uint64_t printer) = nullptr;             // 3
+    int (*fold)(uint64_t op, const void* const* operand_attrs, uint64_t n,
+                void* folded) = nullptr;                                // 4
+    void (*get_canonicalization_patterns)(uint64_t patterns) = nullptr; // 5
+    void (*populate_default_attrs)(uint64_t name,
+                                   uint64_t attrs) = nullptr;           // 6
+    std::vector<std::vector<std::string>> traits;                       // 7
   };
 
   /// Build a DynamicOpDefinition from the callbacks and register it into
