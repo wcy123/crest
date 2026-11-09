@@ -200,6 +200,94 @@ jobs:
           call C:\msvsn2022\VC\Auxiliary\Build\vcvars64.bat
           cmake --build build --target check-crest
 
+      - name: Debugger run (experiment)
+        if: always() && matrix.llvm == 23
+        continue-on-error: true
+        shell: cmd
+        run: |
+          set PATH=%PATH%;C:\Program Files (x86)\Windows Kits\10\Debuggers\x64
+          set CREST_PATH=%CD%\test\dsl\type-callbacks
+          set CREST_SCHEME_BINARY_DIR=%CD%\build\expbin2
+          echo ===== plain
+          cdb -g -G -c ".ecxr;r;kb 30;ub @rip L16;u @rip L8;q" build\tools\crest-opt\crest-opt.exe test\dsl\type-callbacks\type-callbacks.mlir --mlir-disable-threading --crest-scheme-dialect=tcb=passes/tcb 2>&1
+          echo ===== page heap
+          gflags /p /enable crest-opt.exe /full
+          set CREST_SCHEME_BINARY_DIR=%CD%\build\expbin3
+          cdb -g -G -c ".ecxr;r;kb 30;q" build\tools\crest-opt\crest-opt.exe test\dsl\type-callbacks\type-callbacks.mlir --mlir-disable-threading --crest-scheme-dialect=tcb=passes/tcb 2>&1
+          gflags /p /disable crest-opt.exe
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-linux-llvm${{ matrix.llvm }}
+          path: build/test-results/
+
+  windows:
+    name: Build and Test — Windows (LLVM ${{ matrix.llvm }}, self-hosted)
+    runs-on: [self-hosted, Windows, X64, msvc]
+    strategy:
+      fail-fast: false
+      max-parallel: 1   # the jobs share C:\Develop\crest-deps
+      matrix:
+        # Both are built from source on the runner (the llvm-windows workflow).
+        llvm: [22, 23]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Configure ───────────────────────────────────────────────────────────────
+      # build\ is wiped each run to avoid stale CMakeCache and git ownership issues.
+      # FETCHCONTENT_BASE_DIR + CHEZ_BUILD_DIR keep ChezScheme source/build/stamps
+      # in C:\Develop\crest-deps so they survive the wipe (first run builds Chez,
+      # subsequent runs skip it — saves ~5 min). FETCHCONTENT_UPDATES_DISCONNECTED
+      # skips the git update step on cache hits.
+      # Note: sccache with MSVC RelWithDebInfo causes C1041/C1090 PDB contention
+      # (multiple cl.exe writing to the same .pdb). Omitting sccache for Windows
+      # until a clean solution is found; ChezScheme caching already cuts most time.
+      - name: Configure
+        shell: cmd
+        run: |
+          rmdir /s /q build 2>nul
+          git config --global --add safe.directory C:/Develop/crest-deps/chezscheme-src
+          call C:\msvsn2022\VC\Auxiliary\Build\vcvars64.bat
+          cmake -B build -G Ninja ^
+            -DFETCHCONTENT_BASE_DIR=C:\Develop\crest-deps ^
+            -DFETCHCONTENT_UPDATES_DISCONNECTED=ON ^
+            -DCHEZ_BUILD_DIR=C:\Develop\crest-deps\chezscheme-build ^
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo ^
+            -DCMAKE_C_COMPILER=cl ^
+            -DCMAKE_CXX_COMPILER=cl ^
+            -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded ^
+            -DCMAKE_PREFIX_PATH=C:\Develop\local ^
+            -DMLIR_DIR=C:\Develop\local\llvm-${{ matrix.llvm }}-mlir\lib\cmake\mlir ^
+            -DLLVM_DIR=C:\Develop\local\llvm-${{ matrix.llvm }}-mlir\lib\cmake\llvm ^
+            -DLLVM_EXTERNAL_LIT=C:\ProgramData\miniconda3\Scripts\lit.exe
+
+      # ── Build ────────────────────────────────────────────────────────────────
+      - name: Build
+        shell: cmd
+        run: |
+          call C:\msvsn2022\VC\Auxiliary\Build\vcvars64.bat
+          cmake --build build --parallel 60
+
+      # ── Tests ────────────────────────────────────────────────────────────────
+      - name: Unit tests
+        shell: cmd
+        run: |
+          cmake --build build --target CrestInterpreterTests
+          build\unittests\Interpreter\CrestInterpreterTests.exe ^
+            --gtest_output=xml:build/test-results/unit-tests.xml
+
+      - name: Lit tests
+        shell: cmd
+        env:
+          CREST_PATH: ${{ github.workspace }}/samples
+        run: |
+          call C:\msvsn2022\VC\Auxiliary\Build\vcvars64.bat
+          cmake --build build --target check-crest
+
       - name: Debugger probe (experiment)
         if: always() && matrix.llvm == 23
         continue-on-error: true
