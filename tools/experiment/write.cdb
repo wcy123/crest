@@ -1,3 +1,3 @@
-.printf "write at %p: now=%p block=%p +18=%p\n", @$t0, poi(@$t0), poi(@$t0-0x10), poi(@$t0-8)
-kb 6
+.printf "WRITE at %p: now=%p\n", @$t1, poi(@$t1)
+kb 14
 g
