@@ -24,7 +24,7 @@ extern "C" void crest_preserve_xmm_invoke(void (*fn)(void*), void* context);
 namespace crest {
 
 /// Run `f()` with XMM6-XMM15 preserved, and return what it returns.
-template <typename F> inline decltype(auto) withXmmPreserved(F&& f) {
+template <typename F> inline auto withXmmPreserved(F&& f) {
 #if defined(_WIN64) && defined(_MSC_VER)
   using Callable = std::remove_reference_t<F>;
   using Result = std::invoke_result_t<Callable&>;
