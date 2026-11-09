@@ -1,4 +1,4 @@
-bu crest_opt!mlir::OpBuilder::insert "r $t0 = @rcx+0x20; .printf \"first insert: builder=%p ip=%p\\n\", @rcx, poi(@$t0); bc 0; ba w8 @$t0 \"$$><tools\\experiment\\write.cdb\"; g"
+bu crest_opt!mlir::OpBuilder::insert "r $t0 = @rcx+0x20; .printf \"first insert: builder=%p block=%p +18=%p +20=%p\\n\", @rcx, poi(@rcx+0x10), poi(@rcx+0x18), poi(@$t0); bc 0; ba w8 @$t0 \"$$>< tools/experiment/write.cdb\"; g"
 g
 .printf "debuggee ended\n"
 q

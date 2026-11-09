@@ -1,2 +1,3 @@
-.printf "write: now=%p\n", poi(@$t0)
-.if (poi(@$t0) == 0) { .echo ZERO_WRITE; kb 30; ub @rip L8; q } .else { g }
+.printf "write at %p: now=%p block=%p +18=%p\n", @$t0, poi(@$t0), poi(@$t0-0x10), poi(@$t0-8)
+kb 6
+g
