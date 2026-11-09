@@ -992,14 +992,16 @@ by placing an `:interfaces` clause directly inside `define-dialect`, before any
                   (isLegalToInline/call   (call callable wouldBeCloned) #t)
                   (isLegalToInline/region (dest src wouldBeCloned) #t)
                   (isLegalToInline/op     (op dest wouldBeCloned) #t)
-                  ;; Optional: handle toy.return terminators during inlining
-                  (handleTerminator (op n replacements)
-                    (let loop ([i 0] [repls replacements])
-                      (when (< i n)
-                        (mlir::Value::replaceAllUsesWith
-                          (car repls)
-                          (mlir::Operation::getOperand op i))
-                        (loop (+ i 1) (cdr repls)))))
+                  ;; Optional: the terminator of a callee of one block. `replacements` is a
+                  ;; CArrayRef of the Values that stand for the results of the call.
+                  (handleTerminator/value (op replacements)
+                    (do ([i 0 (+ i 1)])
+                        ((= i (crest::CArrayRef::size replacements)))
+                      (mlir::Value::replaceAllUsesWith
+                        (crest::CArrayRef::at replacements i)
+                        (mlir::Operation::getOperand op i))))
+                  ;; Optional: the terminator of a block of a callee of more blocks
+                  (handleTerminator/block (op new-dest) ...)
                   ;; Optional: insert a cast op at type-mismatched call boundaries
                   (materializeCallConversion (builder input result-type loc)
                     (with-OperationState (s loc "toy.cast")
@@ -1010,8 +1012,11 @@ by placing an `:interfaces` clause directly inside `define-dialect`, before any
 ```
 
 The expander generates a dispatcher function `%%toy:mlir::DialectInlinerInterface`
-and splices a registration call into the dialect's initialize callback. Any dialect
-interface following this dispatcher protocol can be registered the same way.
+and splices a registration call into the dialect's initialize callback. The registration
+(`mlir::DialectInlinerInterface` of `(mlir Transforms InliningUtils)`) makes a C function with
+`foreign-callable` for each method, once for the dialect's library, and C++ keeps their addresses.
+`mlir::DialectInlinerInterface` is the only dialect-level interface there is; another name is a
+syntax error.
 
 ### Dialect-level callbacks
 

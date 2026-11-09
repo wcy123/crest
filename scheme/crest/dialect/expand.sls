@@ -10,7 +10,8 @@
           (crest dialect expand utils)
           (crest dialect expand verifiers)
           (crest dialect expand interfaces)  ; generate-interface-registrations, dialect-cbs-with-interfaces
-          (mlir IR Operation))
+          (mlir IR Operation)
+          (only (mlir Transforms InliningUtils) mlir::DialectInlinerInterface))
 
   ;; ── Accessor generators ────────────────────────────────────────────────────
 
@@ -126,12 +127,15 @@
           (let* ([entry     (car entries)]
                  [iface-stx (interface-entry-name entry)]
                  [iface-str (%%id->str iface-stx)]
+                 [_         (unless (string=? iface-str "mlir::DialectInlinerInterface")
+                              (syntax-violation 'define-dialect
+                                                "unsupported dialect-level interface"
+                                                iface-stx))]
                  [methods   (interface-entry-methods entry)]
                  ;; %%<dialect>:<iface-name>  e.g. %%toy:mlir::DialectInlinerInterface
                  [proc-id   (%%id ctx "%%" ctx ":" iface-stx)])
             (with-syntax
                 ([dispatch-proc proc-id]
-                 [iface-sym     iface-str]
                  [(method-clause ...)
                   (map (lambda (m)
                          (with-syntax
@@ -149,8 +153,7 @@
                      defs)
                ;; Registration call: inside %%<dialect>:initialize it has access to
                ;; dialect-ptr, so emit as a form to be spliced into the body.
-               (cons #'((foreign-procedure iface-sym (uptr scheme-object) void)
-                        dialect-ptr dispatch-proc)
+               (cons #'(mlir::DialectInlinerInterface dialect-ptr dispatch-proc)
                      init-calls)))))))
 
   (define (generate-register-dialect ctx dialect-cbs ops reg-op-stx stash-stx

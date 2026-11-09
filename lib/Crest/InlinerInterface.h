@@ -4,7 +4,6 @@
  */
 #pragma once
 #include "../Bindings/Support/ArrayRef.h"
-#include "../Bindings/Support/LockedSchemeObject.h"
 #include "mlir/IR/IRMapping.h"
 #include "mlir/Transforms/InliningUtils.h"
 
@@ -14,16 +13,23 @@ namespace crest {
 //
 // Registered on a CrestDialect when the Scheme dialect calls
 // (mlir::DialectInlinerInterface dialect dispatcher).  Each virtual method
-// dispatches to the corresponding Scheme callback obtained from `dispatcher`.
+// calls the entry point of a Scheme foreign-callable made once for the
+// dialect's library (see scheme/crest/callback.sls); the optional ones may be
+// nullptr.
 struct CrestInlinerInterface : public mlir::DialectInlinerInterface {
   using mlir::DialectInlinerInterface::DialectInlinerInterface;
 
-  LockedSchemeObject isLegalToInlineCallFn;
-  LockedSchemeObject isLegalToInlineRegionFn;
-  LockedSchemeObject isLegalToInlineOpFn;
-  LockedSchemeObject handleTerminatorValueFn;
-  LockedSchemeObject handleTerminatorBlockFn;
-  LockedSchemeObject materializeCallConversionFn;
+  int (*isLegalToInlineCallFn)(uint64_t call, uint64_t callable,
+                               int wouldBeCloned) = nullptr;
+  int (*isLegalToInlineRegionFn)(uint64_t dest, uint64_t src,
+                                 int wouldBeCloned) = nullptr;
+  int (*isLegalToInlineOpFn)(uint64_t op, uint64_t dest,
+                             int wouldBeCloned) = nullptr;
+  void (*handleTerminatorValueFn)(uint64_t op, uint64_t values) = nullptr;
+  void (*handleTerminatorBlockFn)(uint64_t op, uint64_t newDest) = nullptr;
+  uint64_t (*materializeCallConversionFn)(uint64_t builder, uint64_t input,
+                                          uint64_t resultType,
+                                          uint64_t loc) = nullptr;
 
   bool isLegalToInline(mlir::Operation* call, mlir::Operation* callable,
                        bool wouldBeCloned) const final;

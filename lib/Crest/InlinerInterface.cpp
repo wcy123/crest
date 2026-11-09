@@ -14,120 +14,103 @@ namespace crest {
 bool CrestInlinerInterface::isLegalToInline(mlir::Operation* call,
                                             mlir::Operation* callable,
                                             bool wouldBeCloned) const {
-  ptr result = scheme_call(isLegalToInlineCallFn.get(),
-                           Sunsigned64(reinterpret_cast<uint64_t>(call)),
-                           Sunsigned64(reinterpret_cast<uint64_t>(callable)),
-                           wouldBeCloned ? Strue : Sfalse);
-  return result != Sfalse;
+  return isLegalToInlineCallFn(reinterpret_cast<uint64_t>(call),
+                               reinterpret_cast<uint64_t>(callable),
+                               wouldBeCloned) != 0;
 }
 
 bool CrestInlinerInterface::isLegalToInline(mlir::Region* dest,
                                             mlir::Region* src,
                                             bool wouldBeCloned,
                                             mlir::IRMapping&) const {
-  ptr result = scheme_call(isLegalToInlineRegionFn.get(),
-                           Sunsigned64(reinterpret_cast<uint64_t>(dest)),
-                           Sunsigned64(reinterpret_cast<uint64_t>(src)),
-                           wouldBeCloned ? Strue : Sfalse);
-  return result != Sfalse;
+  return isLegalToInlineRegionFn(reinterpret_cast<uint64_t>(dest),
+                                 reinterpret_cast<uint64_t>(src),
+                                 wouldBeCloned) != 0;
 }
 
 bool CrestInlinerInterface::isLegalToInline(mlir::Operation* op,
                                             mlir::Region* dest,
                                             bool wouldBeCloned,
                                             mlir::IRMapping&) const {
-  ptr result = scheme_call(isLegalToInlineOpFn.get(),
-                           Sunsigned64(reinterpret_cast<uint64_t>(op)),
-                           Sunsigned64(reinterpret_cast<uint64_t>(dest)),
-                           wouldBeCloned ? Strue : Sfalse);
-  return result != Sfalse;
+  return isLegalToInlineOpFn(reinterpret_cast<uint64_t>(op),
+                             reinterpret_cast<uint64_t>(dest),
+                             wouldBeCloned) != 0;
 }
 
 void CrestInlinerInterface::handleTerminator(
     mlir::Operation* op, mlir::ValueRange valuesToRepl) const {
-  if (handleTerminatorValueFn.get() == Sfalse) {
+  if (!handleTerminatorValueFn) {
     return;
   }
-  // Pack the ValueRange into a CArrayRef<uintptr_t> for the Scheme callback.
-  // unique_ptr ensures deletion even if scheme_call exits via
-  // longjmp/exception.
+  // Pack the ValueRange into a CArrayRef<uintptr_t>, which Scheme reads during
+  // the call.
   std::vector<uintptr_t> ptrs;
   ptrs.reserve(valuesToRepl.size());
   for (auto v : valuesToRepl) {
     ptrs.push_back(reinterpret_cast<uintptr_t>(v.getAsOpaquePointer()));
   }
-  auto arr = std::make_unique<CArrayRef<uintptr_t>>(ptrs.data(), ptrs.size());
-  scheme_call(handleTerminatorValueFn.get(),
-              Sunsigned64(reinterpret_cast<uint64_t>(op)),
-              Sunsigned64(reinterpret_cast<uint64_t>(arr.get())));
+  CArrayRef<uintptr_t> arr(ptrs.data(), ptrs.size());
+  handleTerminatorValueFn(reinterpret_cast<uint64_t>(op),
+                          reinterpret_cast<uint64_t>(&arr));
 }
 
 void CrestInlinerInterface::handleTerminator(mlir::Operation* op,
                                              mlir::Block* newDest) const {
-  if (handleTerminatorBlockFn.get() == Sfalse) {
+  if (!handleTerminatorBlockFn) {
     return;
   }
-  scheme_call(handleTerminatorBlockFn.get(),
-              Sunsigned64(reinterpret_cast<uint64_t>(op)),
-              Sunsigned64(reinterpret_cast<uint64_t>(newDest)));
+  handleTerminatorBlockFn(reinterpret_cast<uint64_t>(op),
+                          reinterpret_cast<uint64_t>(newDest));
 }
 
 mlir::Operation* CrestInlinerInterface::materializeCallConversion(
     mlir::OpBuilder& builder, mlir::Value input, mlir::Type resultType,
     mlir::Location loc) const {
-  if (materializeCallConversionFn.get() == Sfalse) {
+  if (!materializeCallConversionFn) {
     return nullptr;
   }
   // Scheme sees the builder as a borrowed shell that lives for this call.
   crest::CrestBox<mlir::OpBuilder*> builder_shell(&builder);
-  ptr result = scheme_call(
-      materializeCallConversionFn.get(),
-      Sunsigned64(reinterpret_cast<uint64_t>(&builder_shell)),
-      Sunsigned64(reinterpret_cast<uint64_t>(input.getAsOpaquePointer())),
-      Sunsigned64(reinterpret_cast<uint64_t>(resultType.getAsOpaquePointer())),
-      Sunsigned64(reinterpret_cast<uint64_t>(loc.getAsOpaquePointer())));
-  if (result == Sfalse || !Sunsigned64_value(result)) {
-    return nullptr;
-  }
-  return reinterpret_cast<mlir::Operation*>(Sunsigned64_value(result));
+  return reinterpret_cast<mlir::Operation*>(materializeCallConversionFn(
+      reinterpret_cast<uint64_t>(&builder_shell),
+      reinterpret_cast<uint64_t>(input.getAsOpaquePointer()),
+      reinterpret_cast<uint64_t>(resultType.getAsOpaquePointer()),
+      reinterpret_cast<uint64_t>(loc.getAsOpaquePointer())));
 }
 
 void registerCrestInlinerInterfaceBindings() {
+  // mlir::DialectInlinerInterface (uptr dialect) (uptr isLegalToInline/call)
+  //   (uptr isLegalToInline/region) (uptr isLegalToInline/op)
+  //   (uptr handleTerminator/value) (uptr handleTerminator/block)
+  //   (uptr materializeCallConversion)
+  //
+  // Each uptr is the entry point of a foreign-callable made in Scheme, or 0 for
+  // an optional method the dialect does not have.
   Sregister_symbol(
       "mlir::DialectInlinerInterface",
-      (void*)+[](uint64_t dialect_ptr, ptr dispatch_fn) -> void {
-        crest::LockedSchemeObject locked(dispatch_fn);
-
-        auto get = [&](const char* name) -> crest::LockedSchemeObject {
-          return crest::LockedSchemeObject(
-              scheme_call(locked.get(), Sstring_to_symbol(name)));
-        };
-
-        auto isLegalCall = get("isLegalToInline/call");
-        auto isLegalRegion = get("isLegalToInline/region");
-        auto isLegalOp = get("isLegalToInline/op");
-
-        if (isLegalCall.get() == Sfalse) {
-          scheme_error("mlir::DialectInlinerInterface",
-                       "isLegalToInline/call is required but not provided");
-        }
-        if (isLegalRegion.get() == Sfalse) {
-          scheme_error("mlir::DialectInlinerInterface",
-                       "isLegalToInline/region is required but not provided");
-        }
-        if (isLegalOp.get() == Sfalse) {
-          scheme_error("mlir::DialectInlinerInterface",
-                       "isLegalToInline/op is required but not provided");
-        }
-
+      (void*)+[](uint64_t dialect_ptr, uint64_t isLegalCall,
+                 uint64_t isLegalRegion, uint64_t isLegalOp,
+                 uint64_t handleTerminatorValue, uint64_t handleTerminatorBlock,
+                 uint64_t materializeCallConversion) -> void {
         auto* dialect = reinterpret_cast<CrestDialect*>(dialect_ptr);
         auto iface = std::make_unique<CrestInlinerInterface>(dialect);
-        iface->isLegalToInlineCallFn = std::move(isLegalCall);
-        iface->isLegalToInlineRegionFn = std::move(isLegalRegion);
-        iface->isLegalToInlineOpFn = std::move(isLegalOp);
-        iface->handleTerminatorValueFn = get("handleTerminator/value");
-        iface->handleTerminatorBlockFn = get("handleTerminator/block");
-        iface->materializeCallConversionFn = get("materializeCallConversion");
+        iface->isLegalToInlineCallFn =
+            reinterpret_cast<decltype(iface->isLegalToInlineCallFn)>(
+                isLegalCall);
+        iface->isLegalToInlineRegionFn =
+            reinterpret_cast<decltype(iface->isLegalToInlineRegionFn)>(
+                isLegalRegion);
+        iface->isLegalToInlineOpFn =
+            reinterpret_cast<decltype(iface->isLegalToInlineOpFn)>(isLegalOp);
+        iface->handleTerminatorValueFn =
+            reinterpret_cast<decltype(iface->handleTerminatorValueFn)>(
+                handleTerminatorValue);
+        iface->handleTerminatorBlockFn =
+            reinterpret_cast<decltype(iface->handleTerminatorBlockFn)>(
+                handleTerminatorBlock);
+        iface->materializeCallConversionFn =
+            reinterpret_cast<decltype(iface->materializeCallConversionFn)>(
+                materializeCallConversion);
         dialect->addInterface(std::move(iface));
       });
 }
