@@ -732,7 +732,12 @@ lambdas are ordinary expressions. The low-level pieces it is built from stay ava
 `(mlir Transforms DialectConversion)`: `with-TypeConverter`, `with-ConversionTarget`,
 `type-converter-add-conversion`, `target-add-legal-dialect`, `target-add-illegal-dialect`,
 `target-add-legal-op`, `target-add-dynamically-legal-op`, `add-conversion-pattern`,
-`add-conversion-pattern/ctx`, `mlir::applyPartialConversion` and `apply-full-conversion`.
+`add-conversion-pattern/ctx`, `mlir::applyPartialConversion` and `apply-full-conversion`. The
+procedures they take (patterns, legality checks, type conversions, materializations) are closures for
+one conversion: each is made into a C function when it is registered, and C++ releases it when the
+pattern set, the target or the type converter that calls it is destroyed, so running a conversion many
+times does not leak (`test/dsl/apply-conversion/leak.mlir`). A value that is not a procedure is an error
+when it is registered.
 
 ---
 
@@ -785,6 +790,12 @@ The op's full MLIR name is `dialect-name.op-name` (e.g. `toy.constant`).
 | `(:get-canonicalization-patterns (patterns) body ...)` | The op's own canonicalization patterns (C++ `hasCanonicalizer`): `patterns` is the pattern set being filled, to which `add-rewrite-pattern` (or a `define-pattern-set` procedure) adds patterns; MLIR's canonicalizer pass finds them without the tool registering anything |
 | `:traits (name ...)` | MLIR traits of the op (needs LLVM 23; see below) |
 
+The callbacks of an op are made into C functions once, when the library of the dialect is loaded, and
+every context that loads the dialect shares them. A `:verify`, `:verify-regions` or `:parse` that raises a
+Scheme error does not end the process: it fails and the diagnostic has the text of the error. So does a
+`:fold` that answers something that `fold-value` and `fold-attribute` did not make (the message says so).
+A `:fold` that answers `'()` has changed the op in place.
+
 **Type predicates** in `:operands`, `:attributes`, `:results` are Scheme
 procedures called at verification time. For example:
 - `:results ((output mlir::isa<RankedTensorType>?))` — result must be ranked
@@ -806,7 +817,10 @@ procedures called at verification time. For example:
 function); the body returns `#f` to fail the pass, after saying why with `mlir::Operation::emitError`. The
 pass is an `mlir::Pass` (`lib/Crest/SchemePass.cpp`), so it mixes with C++ passes in one pipeline. Scheme
 is single-threaded: contexts made from Scheme have multithreading disabled; with `crest-opt` use
-`--mlir-disable-threading`. Toy's shape inference and its lowerings to affine and LLVM are passes.
+`--mlir-disable-threading`. A body that raises a Scheme error does not end the process: the pass fails and
+the diagnostic has the text of the error. The body is made into a C function once, where the pass is defined,
+and every pass that `(tag-functions)` makes shares it. Toy's shape inference and its lowerings to affine and
+LLVM are passes.
 
 ### `define-type` — dialect types
 
@@ -823,7 +837,9 @@ of *attribute* parameters (a type parameter is a `TypeAttr`); it is built on MLI
 ```
 
 `!toy.struct<tensor<2xf64>, tensor<3xf64>>` is printed as the name followed by what `:print` writes (here
-`<...>`). Without `:parse`/`:print` the generic `<attr, ...>` syntax is used. The dialect generates
+`<...>`). A `:verify` that says `#f` gives MLIR's message ("invalid type parameters"), and one that raises a
+Scheme error gives the text of the error, as does a `:parse`. Without `:parse`/`:print` the generic
+`<attr, ...>` syntax is used. The dialect generates
 `(toy.struct? type)`, `(toy.struct ctx params)` (the type, or 0 when `:verify` rejects the parameters, after
 emitting its message) and `(toy.struct-params type)`.
 
@@ -974,7 +990,9 @@ the dispatcher that `define-op` makes for the entry. `mlir::InferTypeOpInterface
 for the method with `foreign-callable`, because MLIR calls `inferReturnTypes` through a function
 pointer that carries neither the op nor a `Concept`. `mlir::FunctionOpInterface` and
 `mlir::CallableOpInterface` make one for each clause as well (`(crest callback)`), and C++ keeps its
-address instead of the Scheme procedure. The dialect has to be loaded into the context
+address instead of the Scheme procedure. So does everything else that C++ calls back into Scheme: the
+callbacks of a dialect, of its ops and types, passes, and conversions (see
+[Extending with custom C++ bindings](#11-extending-with-custom-c-bindings)). The dialect has to be loaded into the context
 (`dialects-in-scheme=` or `--crest-scheme-dialect=` with an op in the input) for MLIR to see the
 interface (`test/dsl/op-builders`). Platforms: System V x86-64 and Windows x64; on another machine
 type the dialect fails to load with a message saying so.
@@ -1032,6 +1050,18 @@ inside `define-dialect`:
 | `(:materialize-constant (builder value type loc) body)` | `materializeConstant` | Constant materialization |
 | `(:get-canonicalization-patterns (pattern-set) body)` | `getCanonicalizationPatterns` | Dialect-wide canonicalization |
 | `(:verify-op-attr (op attr) body)` | `verifyOperationAttribute` | Attribute attachment rules |
+| `(:verify-region-arg-attr (op region-index arg-index attr) body)` | `verifyRegionArgAttribute` | Rules for an attribute of a block argument |
+| `(:verify-region-result-attr (op region-index result-index attr) body)` | `verifyRegionResultAttribute` | Rules for an attribute of a function result |
+| `(:get-dependent-dialects () body)` | the dialects loaded first | A list of dialect names (strings) to load before this one |
+| `(:initialize (dialect) body)` | `initialize` | Runs once per context, after the dependencies |
+
+A parse callback that fails answers `#f`. A verifier says yes with any value but `#f`; it reports its
+own message (`mlir::Operation::emitError`) and answers `#f`. An error that a verifier raises does not end
+the process: the verifier fails and the diagnostic has the text of the error. The callbacks are made
+into C functions once, when the library of the dialect is loaded, and a context that loads the dialect
+shares them (`test/dsl/dialect-callbacks`). There is no way for Scheme to print into a `DialectAsmPrinter`
+yet, so `:print-type` and `:print-attribute` are only reached for a type or attribute of the dialect
+that C++ made.
 
 ### Loading the dialect
 
@@ -1334,6 +1364,16 @@ symbol takes exactly one. Register it with `register_builder_binding`
 (`lib/Bindings/Support/BuilderBinding.h`), which registers the three symbols, and declare it in
 `ffi.sls` with `define-builder-binding` from `(mlir support BuilderBinding)`. See CLAUDE.md
 Rule 4.
+
+A binding that calls back into Scheme does not keep a Scheme procedure: the garbage collector moves
+it. The Scheme side makes a C function for it with `crest-callback-entry-point` from `(crest callback)`,
+which locks the code object and answers its address, and the binding takes that address as a `uptr`.
+A callback that lives as long as the library (the clause of an op, a callback of a dialect) is made once,
+where the library defines it, and C++ keeps the address as a function pointer. One that lives for a run (a
+pattern, a walk, a type conversion) is held by a `crest::ForeignCallable`
+(`lib/Bindings/Support/ForeignCallable.h`), which unlocks it when what calls it is destroyed. Only scalars
+cross: pointers, integers, strings, and a range as a pointer and a count that `crest-callback-pointer-list`
+reads back as a list. See CLAUDE.md Rule 17.
 
 Follow the CLAUDE.md binding convention: one header → one module, `%`-prefix
 for raw FFI bindings, clean names in the public module.

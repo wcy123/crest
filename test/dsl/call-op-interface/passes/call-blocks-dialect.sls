@@ -19,8 +19,8 @@
                    (handleTerminator/value (op replacements) #f)
                    (handleTerminator/block (op new-dest)
                                            (display "handleTerminator/block\n"
-                                                    (current-error-port))
-                                           (flush-output-port (current-error-port)))
+                                                    (current-output-port))
+                                           (flush-output-port (current-output-port)))
                    (materializeCallConversion (builder input result-type loc) 0))))
     (define-op func
       :summary    "function"

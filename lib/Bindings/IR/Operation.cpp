@@ -7,7 +7,7 @@
 
 #include "Operation.h"
 #include "../Support/ArrayRef.h"
-#include "../Support/LockedSchemeObject.h"
+#include "../Support/ForeignCallable.h"
 #include "../Support/Logging.h"
 #include "../Support/SchemeWrapper.h"
 #include "llvm/Support/raw_ostream.h"
@@ -160,15 +160,18 @@ void registerIROperationBindings() {
                                   .getAsOpaquePointer()));
       });
   Sregister_symbol(
-      "mlir::Operation::walk", (void*)+[](uint64_t op, ptr callback) -> void {
+      "mlir::Operation::walk",
+      (void*)+[](uint64_t op, uint64_t callback) -> void {
+        // The callback is a foreign-callable made for this call (see
+        // scheme/crest/callback.sls); the owner releases it when the walk is
+        // over. Make it first: the return below must not leak it.
+        crest::ForeignCallable<void(uint64_t)> owned(callback);
         if (!op) {
           return;
         }
         mlir::Operation* cppOp = reinterpret_cast<mlir::Operation*>(op);
-        crest::LockedSchemeObject locked(callback);
-        cppOp->walk([&locked](mlir::Operation* walkOp) {
-          ptr schemeOp = Sunsigned64(reinterpret_cast<uint64_t>(walkOp));
-          scheme_call(locked.get(), schemeOp);
+        cppOp->walk([&owned](mlir::Operation* walkOp) {
+          owned(reinterpret_cast<uint64_t>(walkOp));
         });
       });
   Sregister_symbol(

@@ -52,6 +52,7 @@
     mlir::Operation::getParentOfType<ModuleOp>
     operation-get-operands)
   (import (rnrs)
+          (crest callback)
           (mlir IR Operation ffi)
           (rename (rime loop) (:with :rime-with))
           (only (mlir IR BuiltinAttributes)
@@ -138,11 +139,13 @@
 
   ;; @brief mlir::Operation::walk — walk all nested ops, calling callback for each.
   ;; @param op        Operation* uptr (root of walk)
-  ;; @param callback  Scheme callable invoked with each Operation* uptr
+  ;; @param callback  procedure invoked with each Operation* uptr (its answer is ignored); it is made
+  ;;                  into a C function for the walk and released when the walk is over
   ;; @return          void
   ;; @see             mlir/IR/Operation.h
-  ;; @note            Defined in lib/Bindings/IR/Operation.cpp; callback is GC-rooted internally
-  (define mlir::Operation::walk              %walk)
+  ;; @note            Defined in lib/Bindings/IR/Operation.cpp
+  (define (mlir::Operation::walk op callback)
+    (%walk op (crest-callback-entry-point (uptr) void callback)))
 
   ;; @brief mlir::Operation::setOperand — replace the i-th operand with a new value.
   ;; @param op     Operation* uptr

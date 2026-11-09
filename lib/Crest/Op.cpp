@@ -15,40 +15,70 @@
 
 namespace crest {
 
+namespace {
+
+// The text of an error that a Scheme callback raised, which its callable gives
+// (crest::DynamicOp::reportFailure) before it answers 0, so that the diagnostic
+// can carry it. Empty when the callback just said no.
+std::string g_reported_failure;
+
+std::string takeReportedFailure() {
+  std::string message = std::move(g_reported_failure);
+  g_reported_failure.clear();
+  return message;
+}
+
+// What MLIR collects while a folder runs; Scheme pushes into it.
+using FoldedResults = llvm::SmallVector<mlir::OpFoldResult>;
+
+} // namespace
+
 // ---------------------------------------------------------------------------
-// Helpers — build llvm::unique_function types from optional Scheme callbacks.
-//
-// Each helper takes the optional callback and returns the appropriate function
-// object. When the callback is absent, a no-op or always-success default is
-// returned so the caller can always use the full DynamicOpDefinition::get
-// overload without branching on which slots are set.
+// Helpers — build llvm::unique_function types from the entry points. When a
+// slot is absent, a no-op or always-success default is returned so the caller
+// can always use the full DynamicOpDefinition::get overload without branching
+// on which slots are set.
 // ---------------------------------------------------------------------------
 
 static mlir::OperationName::VerifyInvariantsFn
-make_verify_fn(std::optional<LockedSchemeObject> cb) {
-  if (!cb) {
+make_verify_fn(int (*fn)(uint64_t)) {
+  if (!fn) {
     return [](mlir::Operation*) { return mlir::success(); };
   }
-  return [cb = std::move(*cb)](mlir::Operation* op) {
-    return Sboolean_value(scheme_call(cb.get(), op)) ? mlir::success()
-                                                     : mlir::failure();
+  return [fn](mlir::Operation* op) -> llvm::LogicalResult {
+    if (fn(reinterpret_cast<uint64_t>(op)) != 0) {
+      return mlir::success();
+    }
+    std::string message = takeReportedFailure();
+    if (message.empty()) {
+      return mlir::failure();
+    }
+    return op->emitOpError() << message;
   };
 }
 
-static mlir::OperationName::ParseAssemblyFn
-make_parse_fn(LockedSchemeObject cb) {
-  return [cb = std::move(cb)](mlir::OpAsmParser& parser,
-                              mlir::OperationState& state) {
-    return Sboolean_value(scheme_call(cb.get(), &parser, &state))
-               ? mlir::ParseResult::success()
-               : mlir::ParseResult::failure();
+static mlir::OperationName::ParseAssemblyFn make_parse_fn(int (*fn)(uint64_t,
+                                                                    uint64_t)) {
+  return [fn](mlir::OpAsmParser& parser,
+              mlir::OperationState& state) -> mlir::ParseResult {
+    if (fn(reinterpret_cast<uint64_t>(&parser),
+           reinterpret_cast<uint64_t>(&state)) != 0) {
+      return mlir::ParseResult::success();
+    }
+    std::string message = takeReportedFailure();
+    if (!message.empty()) {
+      mlir::InFlightDiagnostic diagnostic =
+          parser.emitError(parser.getCurrentLocation());
+      diagnostic << message;
+    }
+    return mlir::ParseResult::failure();
   };
 }
 
 static mlir::OperationName::PrintAssemblyFn
-make_print_fn(LockedSchemeObject cb) {
-  return [cb = std::move(cb)](mlir::Operation* op, mlir::OpAsmPrinter& printer,
-                              llvm::StringRef defaultDialect) {
+make_print_fn(void (*fn)(uint64_t, uint64_t)) {
+  return [fn](mlir::Operation* op, mlir::OpAsmPrinter& printer,
+              llvm::StringRef defaultDialect) {
     // printAssembly must print the op name first, then the rest.
     llvm::StringRef opName = op->getName().getStringRef();
     if (!defaultDialect.empty() &&
@@ -56,14 +86,13 @@ make_print_fn(LockedSchemeObject cb) {
       opName = opName.drop_front(defaultDialect.size() + 1);
     }
     printer << opName;
-    std::string op_name_str = op->getName().getStringRef().str();
-    scheme_call(cb.get(), op, &printer, op_name_str.c_str());
+    fn(reinterpret_cast<uint64_t>(op), reinterpret_cast<uint64_t>(&printer));
   };
 }
 
 static mlir::OperationName::FoldHookFn
-make_fold_fn(std::optional<LockedSchemeObject> cb) {
-  if (!cb) {
+make_fold_fn(int (*fn)(uint64_t, const void* const*, uint64_t, void*)) {
+  if (!fn) {
     return [](mlir::Operation*, llvm::ArrayRef<mlir::Attribute>,
               llvm::SmallVectorImpl<mlir::OpFoldResult>&) {
       return mlir::failure();
@@ -71,40 +100,25 @@ make_fold_fn(std::optional<LockedSchemeObject> cb) {
   }
   // Scheme callback: (op operand-attributes) -> #f | list of results.
   // operand-attributes has one entry per operand, the constant attribute it
-  // folds to or #f. A result is (value . v) or (attribute . a), as made by
-  // fold-value and fold-attribute; the empty list means the op was folded in
-  // place.
-  return [cb = std::move(*cb)](
-             mlir::Operation* op, llvm::ArrayRef<mlir::Attribute> operandAttrs,
-             llvm::SmallVectorImpl<mlir::OpFoldResult>& results) {
-    ptr attrList = Snil;
-    for (auto it = operandAttrs.rbegin(); it != operandAttrs.rend(); ++it) {
-      ptr entry = *it ? Sunsigned64(reinterpret_cast<uint64_t>(
-                            it->getAsOpaquePointer()))
-                      : Sfalse;
-      attrList = Scons(entry, attrList);
+  // folds to or #f (0 here). A result is (value . v) or (attribute . a), as
+  // made by fold-value and fold-attribute; Scheme pushes each into `folded`
+  // (crest::Fold::addValue / addAttribute). Answering 1 with nothing pushed
+  // means the op was folded in place; 0 is no fold, or an error when Scheme
+  // said why.
+  return [fn](mlir::Operation* op, llvm::ArrayRef<mlir::Attribute> operandAttrs,
+              llvm::SmallVectorImpl<mlir::OpFoldResult>& results) {
+    llvm::SmallVector<const void*, 4> attrs;
+    for (mlir::Attribute attr : operandAttrs) {
+      attrs.push_back(attr ? attr.getAsOpaquePointer() : nullptr);
     }
-    LockedSchemeObject result(scheme_call(cb.get(), op, attrList));
-    if (result.get() == Sfalse) {
+    FoldedResults folded;
+    if (fn(reinterpret_cast<uint64_t>(op), attrs.data(), attrs.size(),
+           &folded) == 0) {
+      std::string message = takeReportedFailure();
+      if (!message.empty()) {
+        op->emitError(message);
+      }
       return mlir::failure();
-    }
-    ptr valueSymbol = Sstring_to_symbol("value");
-    ptr attributeSymbol = Sstring_to_symbol("attribute");
-    llvm::SmallVector<mlir::OpFoldResult> folded;
-    for (ptr l = result.get(); Spairp(l); l = Scdr(l)) {
-      ptr entry = Scar(l);
-      if (!Spairp(entry) ||
-          (Scar(entry) != valueSymbol && Scar(entry) != attributeSymbol)) {
-        op->emitError("fold callback: a result must be made by fold-value or "
-                      "fold-attribute");
-        return mlir::failure();
-      }
-      void* raw = reinterpret_cast<void*>(Sunsigned64_value(Scdr(entry)));
-      if (Scar(entry) == valueSymbol) {
-        folded.push_back(mlir::Value::getFromOpaquePointer(raw));
-      } else {
-        folded.push_back(mlir::Attribute::getFromOpaquePointer(raw));
-      }
     }
     if (!folded.empty() && folded.size() != op->getNumResults()) {
       op->emitError("fold callback returned ")
@@ -117,27 +131,25 @@ make_fold_fn(std::optional<LockedSchemeObject> cb) {
 }
 
 static mlir::DynamicOpDefinition::GetCanonicalizationPatternsFn
-make_canon_fn(std::optional<LockedSchemeObject> cb) {
-  if (!cb) {
+make_canon_fn(void (*fn)(uint64_t)) {
+  if (!fn) {
     return [](mlir::RewritePatternSet&, mlir::MLIRContext*) {};
   }
   // The callback gets the pattern set as a borrowed shell, valid for the call
   // only.
-  return [cb = std::move(*cb)](mlir::RewritePatternSet& patterns,
-                               mlir::MLIRContext*) {
+  return [fn](mlir::RewritePatternSet& patterns, mlir::MLIRContext*) {
     CrestBox<mlir::RewritePatternSet*> shell(&patterns);
-    scheme_call(cb.get(), &shell);
+    fn(reinterpret_cast<uint64_t>(&shell));
   };
 }
 
 static mlir::OperationName::PopulateDefaultAttrsFn
-make_default_attrs_fn(std::optional<LockedSchemeObject> cb) {
-  if (!cb) {
+make_default_attrs_fn(void (*fn)(uint64_t, uint64_t)) {
+  if (!fn) {
     return [](const mlir::OperationName&, mlir::NamedAttrList&) {};
   }
-  return [cb = std::move(*cb)](const mlir::OperationName& name,
-                               mlir::NamedAttrList& attrs) {
-    scheme_call(cb.get(), &name, &attrs);
+  return [fn](const mlir::OperationName& name, mlir::NamedAttrList& attrs) {
+    fn(reinterpret_cast<uint64_t>(&name), reinterpret_cast<uint64_t>(&attrs));
   };
 }
 
@@ -147,9 +159,8 @@ make_default_attrs_fn(std::optional<LockedSchemeObject> cb) {
 
 void CrestOp::registerInto(mlir::ExtensibleDialect* dialect,
                            llvm::StringRef op_name, Callbacks cbs) {
-  auto verify_fn =
-      withInferredTypesCheck(make_verify_fn(std::move(cbs.verify)), op_name);
-  auto verify_region_fn = make_verify_fn(std::move(cbs.verify_regions));
+  auto verify_fn = withInferredTypesCheck(make_verify_fn(cbs.verify), op_name);
+  auto verify_region_fn = make_verify_fn(cbs.verify_regions);
 
   // DynamicOpDefinition::get adds "dialect_namespace." prefix internally.
   // op_name arrives as "toy.constant" (fully qualified); strip the prefix.
@@ -166,21 +177,21 @@ void CrestOp::registerInto(mlir::ExtensibleDialect* dialect,
   auto def = mlir::DynamicOpDefinition::get(
       unqualified, dialect, std::move(verify_fn), std::move(verify_region_fn));
   if (cbs.parse) {
-    def->setParseFn(make_parse_fn(std::move(*cbs.parse)));
+    def->setParseFn(make_parse_fn(cbs.parse));
   }
   if (cbs.print) {
-    def->setPrintFn(make_print_fn(std::move(*cbs.print)));
+    def->setPrintFn(make_print_fn(cbs.print));
   }
   if (cbs.fold) {
-    def->setFoldHookFn(make_fold_fn(std::move(cbs.fold)));
+    def->setFoldHookFn(make_fold_fn(cbs.fold));
   }
   if (cbs.get_canonicalization_patterns) {
     def->setGetCanonicalizationPatternsFn(
-        make_canon_fn(std::move(cbs.get_canonicalization_patterns)));
+        make_canon_fn(cbs.get_canonicalization_patterns));
   }
   if (cbs.populate_default_attrs) {
     def->setPopulateDefaultAttrsFn(
-        make_default_attrs_fn(std::move(cbs.populate_default_attrs)));
+        make_default_attrs_fn(cbs.populate_default_attrs));
   }
 
   std::string trait_error = addOpTraits(*def, op_name, cbs.traits);
@@ -198,17 +209,49 @@ void CrestOp::registerInto(mlir::ExtensibleDialect* dialect,
 // ---------------------------------------------------------------------------
 
 void registerCrestDynamicOpBindings() {
-  // crest::register-dynamic-op! (uptr dialect) (string op-name) (uptr vector/7)
+  // crest::DynamicOp::reportFailure (string message)
   //
-  // Must be called from inside the dialect's :initialize callback.
-  // Callback vector slots (#f = use MLIR default):
-  //   0 verify          (op) → bool
-  //   1 verify-regions  (op) → bool
-  //   2 parse           (parser state) → bool   [#f = generic format]
-  //   3 print           (op printer name) → void [#f = generic format]
-  //   4 fold            (op) → bool
-  //   5 get-canonicalization-patterns (pattern-set-ptr ctx-ptr) → void
-  //   6 populate-default-attrs        (op-name-ptr attr-list-ptr) → void
+  // The callable of a verifier, parser or folder calls it with the text of the
+  // error its Scheme callback raised (or of a result that is wrong), before it
+  // answers 0, so that the diagnostic shows it.
+  Sregister_symbol(
+      "crest::DynamicOp::reportFailure",
+      (void*)+[](const char* message) -> void {
+        g_reported_failure = message;
+      });
+
+  // crest::Fold::addValue (uptr folded) (uptr value)
+  // crest::Fold::addAttribute (uptr folded) (uptr attribute)
+  //
+  // The folder of an op gives each result to the `folded` that C++ passed.
+  Sregister_symbol(
+      "crest::Fold::addValue",
+      (void*)+[](uint64_t folded, uint64_t value) -> void {
+        reinterpret_cast<FoldedResults*>(folded)->push_back(
+            mlir::Value::getFromOpaquePointer(
+                reinterpret_cast<const void*>(value)));
+      });
+  Sregister_symbol(
+      "crest::Fold::addAttribute",
+      (void*)+[](uint64_t folded, uint64_t attribute) -> void {
+        reinterpret_cast<FoldedResults*>(folded)->push_back(
+            mlir::Attribute::getFromOpaquePointer(
+                reinterpret_cast<const void*>(attribute)));
+      });
+
+  // crest::register-dynamic-op! (uptr dialect) (string op-name) (scheme-object
+  // vector/8)
+  //
+  // Must be called from inside the dialect's :initialize callback. The vector
+  // is made once by define-dialect ((crest dialect callbacks)). Slots (0 = use
+  // MLIR's default; the others are the entry point of a foreign-callable):
+  //   0 verify          (uptr op) → int
+  //   1 verify-regions  (uptr op) → int
+  //   2 parse           (uptr parser, uptr state) → int   [0 = generic format]
+  //   3 print           (uptr op, uptr printer) → void    [0 = generic format]
+  //   4 fold            (uptr op, uptr attrs, uptr n, uptr folded) → int
+  //   5 get-canonicalization-patterns (uptr pattern-set-shell) → void
+  //   6 populate-default-attrs        (uptr op-name, uptr attrs) → void
   //   7 traits                        list of (name arg ...) lists of strings
   Sregister_symbol(
       "crest::register-dynamic-op!",
@@ -217,25 +260,28 @@ void registerCrestDynamicOpBindings() {
         auto* dialect = reinterpret_cast<mlir::ExtensibleDialect*>(dialect_ptr);
         ptr v = cbs_ptr;
 
-        auto make_cb = [](ptr slot) -> std::optional<LockedSchemeObject> {
-          if (Sprocedurep(slot)) {
-            return LockedSchemeObject(slot);
-          }
-          if (slot != Sfalse) {
+        auto entry = [&](int slot) -> uint64_t {
+          ptr value = Svector_ref(v, slot);
+          if (!Sfixnump(value) && !Sbignump(value)) {
             scheme_error("crest::register-dynamic-op!",
-                         "callback slot must be a procedure or #f");
+                         "callback slot must be the entry point of a callable "
+                         "or 0");
           }
-          return std::nullopt;
+          return static_cast<uint64_t>(Sinteger64_value(value));
         };
 
         CrestOp::Callbacks cbs;
-        cbs.verify = make_cb(Svector_ref(v, 0));
-        cbs.verify_regions = make_cb(Svector_ref(v, 1));
-        cbs.parse = make_cb(Svector_ref(v, 2));
-        cbs.print = make_cb(Svector_ref(v, 3));
-        cbs.fold = make_cb(Svector_ref(v, 4));
-        cbs.get_canonicalization_patterns = make_cb(Svector_ref(v, 5));
-        cbs.populate_default_attrs = make_cb(Svector_ref(v, 6));
+        cbs.verify = reinterpret_cast<decltype(cbs.verify)>(entry(0));
+        cbs.verify_regions =
+            reinterpret_cast<decltype(cbs.verify_regions)>(entry(1));
+        cbs.parse = reinterpret_cast<decltype(cbs.parse)>(entry(2));
+        cbs.print = reinterpret_cast<decltype(cbs.print)>(entry(3));
+        cbs.fold = reinterpret_cast<decltype(cbs.fold)>(entry(4));
+        cbs.get_canonicalization_patterns =
+            reinterpret_cast<decltype(cbs.get_canonicalization_patterns)>(
+                entry(5));
+        cbs.populate_default_attrs =
+            reinterpret_cast<decltype(cbs.populate_default_attrs)>(entry(6));
         auto to_string = [](ptr name) {
           if (!Sstringp(name)) {
             scheme_error("crest::register-dynamic-op!",

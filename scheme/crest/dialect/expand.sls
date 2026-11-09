@@ -9,6 +9,7 @@
           (crest dialect ast)
           (crest dialect expand utils)
           (crest dialect expand verifiers)
+          (crest dialect callbacks)          ; crest-dialect-callback-entries
           (crest dialect expand interfaces)  ; generate-interface-registrations, dialect-cbs-with-interfaces
           (mlir IR Operation)
           (only (mlir Transforms InliningUtils) mlir::DialectInlinerInterface))
@@ -62,24 +63,47 @@
       (vector-set! v 0 (generate-op-verify-slot ctx full-name op (vector-ref cbs 0)))
       (vector->list v)))
 
-  ;; (reg-op dialect-ptr "toy.constant" (vector ...)) call for one op.
-  (define (%%generate-register-op! ctx op-prefix op reg-op-stx)
+  ;; The name of the library-level variable that holds the entry points of the callbacks of an op
+  ;; (or of a type): its foreign-callables are made once, when the library is loaded, and every
+  ;; context that loads the dialect registers the op with this same vector.
+  (define (%%op-callbacks-id ctx op)
+    (%%id ctx "%%" ctx "." (op-parse-name op) ":op-callbacks"))
+
+  (define (%%type-callbacks-id ctx type)
+    (%%id ctx "%%" ctx "." (type-parse-name type) ":type-callbacks"))
+
+  ;; (define %%toy.constant:op-callbacks (crest-op-callback-entries "toy.constant" cb ...)) for one op.
+  (define (%%generate-op-callbacks-def ctx op-prefix op)
     (let ([full-name    (%%id ctx ctx "." (op-parse-name op))]
           [name-str     (string-append op-prefix (%%id->str (op-parse-name op)))])
-      (with-syntax ([reg-op reg-op-stx]
+      (with-syntax ([callbacks (%%op-callbacks-id ctx op)]
                     [op-name name-str]
                     [(cb ...) (%%op-cbs ctx full-name op)])
-        #'(reg-op dialect-ptr op-name (vector cb ...)))))
+        #'(define callbacks (crest-op-callback-entries op-name cb ...)))))
+
+  ;; (reg-op dialect-ptr "toy.constant" %%toy.constant:op-callbacks) call for one op.
+  (define (%%generate-register-op! ctx op-prefix op reg-op-stx)
+    (let ([name-str (string-append op-prefix (%%id->str (op-parse-name op)))])
+      (with-syntax ([reg-op reg-op-stx]
+                    [op-name name-str]
+                    [callbacks (%%op-callbacks-id ctx op)])
+        #'(reg-op dialect-ptr op-name callbacks))))
 
   ;; ── Dialect types (define-type) ─────────────────────────────────────────────
 
-  ;; (reg-type dialect-ptr "pair" (vector verify parse print)) for one type.
+  ;; (define %%toy.pair:type-callbacks (crest-type-callback-entries verify parse print)) for one type.
+  (define (%%generate-type-callbacks-def ctx type)
+    (with-syntax ([callbacks (%%type-callbacks-id ctx type)]
+                  [(cb ...)  (map (lambda (cb) (or cb #'#f))
+                                  (vector->list (type-parse-cbs type)))])
+      #'(define callbacks (crest-type-callback-entries cb ...))))
+
+  ;; (reg-type dialect-ptr "pair" %%toy.pair:type-callbacks) for one type.
   (define (%%generate-register-type! ctx type reg-type-stx)
     (with-syntax ([reg-type  reg-type-stx]
                   [type-name (%%id->str (type-parse-name type))]
-                  [(cb ...)  (map (lambda (cb) (or cb #'#f))
-                                  (vector->list (type-parse-cbs type)))])
-      #'(reg-type dialect-ptr type-name (vector cb ...))))
+                  [callbacks (%%type-callbacks-id ctx type)])
+      #'(reg-type dialect-ptr type-name callbacks)))
 
   ;; <dialect>.<type>? / <dialect>.<type> / <dialect>.<type>-params for each type:
   ;;   (toy.struct? type)            #t when type is that dialect type
@@ -102,16 +126,14 @@
                             #'(define (params-of type) (params-fn type))))))
                 types)))
 
-  ;; Generates at library-load time:
-  ;;   (define <dialect>:dialect-callbacks (vector cb ...))
-  ;; Generates (define testd (vector ...)) — binds the dialect name itself to
-  ;; the callbacks vector.  Uses ctx (the call-site identifier) so the binding
-  ;; has the same scope as the user's (export testd), making it accessible from
-  ;; C++ via Stop_level_value(Sstring_to_symbol("testd")) after import.
+  ;; Generates (define testd (crest-dialect-callback-entries cb ...)) at library-load time: it
+  ;; binds the dialect name itself to the vector of the entry points of the callbacks.  Uses ctx
+  ;; (the call-site identifier) so the binding has the same scope as the user's (export testd),
+  ;; making it accessible from C++ via Stop_level_value(Sstring_to_symbol("testd")) after import.
   (define (%%generate-dialect-callbacks ctx dialect-cbs ops stash-stx)
     (with-syntax ([dialect-value ctx]
                   [(cb ...) (dialect-cbs-with-interfaces ctx dialect-cbs ops)])
-      (list #'(define dialect-value (vector cb ...)))))
+      (list #'(define dialect-value (crest-dialect-callback-entries cb ...)))))
 
   ;; Top-level: %%<dialect>:initialize + <dialect>:dialect-callbacks
   ;; <dialect>:register! is gone — use load-scheme-dialect! or
@@ -194,6 +216,9 @@
                      (with-syntax ([%%iface-marker (%%id ctx "%%" ctx "-iface-init")]
                                    [(iface-call ...) iface-calls])
                        (list #'(define %%iface-marker (begin iface-call ... #t)))))])
-            (append diface-defs iface-defs base-defs dialect-cbs-defs toplevel-iface-calls))))))
+            (append diface-defs iface-defs
+                    (map (lambda (op) (%%generate-op-callbacks-def ctx op-prefix op)) ops)
+                    (map (lambda (type) (%%generate-type-callbacks-def ctx type)) types)
+                    base-defs dialect-cbs-defs toplevel-iface-calls))))))
 
   ) ;; end library (crest dialect expand)

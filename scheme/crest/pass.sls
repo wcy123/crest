@@ -15,7 +15,11 @@
 ;; consumed by PassManager::addPass). When the pass runs, op is the operation it is anchored on (the
 ;; PassManager it is added to decides which: nest "toy.func" runs it on each toy.func) and body runs;
 ;; a body that returns #f fails the pass, anything else is success. A failing body should say why with
-;; mlir::Operation::emitError first.
+;; mlir::Operation::emitError first. An error that the body raises does not end the process: the pass
+;; fails and the diagnostic has the text of the error.
+;;
+;; The body is made into a C function, once, where the pass is defined; every pass that (name) makes
+;; calls it.
 ;;
 ;;   (with-PassManager pm (ctx)
 ;;     (let ([func-pm (mlir::PassManager::nest pm "toy.func")])
@@ -31,7 +35,14 @@
   (export define-pass)
   (import (rnrs)
           (for (only (chezscheme) syntax->list) expand)
+          (crest callback)
           (crest pass ffi))
+
+  ;; The verdict of the body of a pass as C wants it: 1 or 0. An error that the body raises is
+  ;; reported.
+  (define (%%verdict thunk)
+    (guard (c [#t (%crest::SchemePass::reportFailure (crest-callback-condition-text c)) 0])
+      (if (thunk) 1 0)))
 
   (define-syntax define-pass
     (lambda (stx)
@@ -39,8 +50,13 @@
         [(_ (name op) body ...)
          (and (identifier? #'name) (identifier? #'op))
          (with-syntax ([name-string (symbol->string (syntax->datum #'name))])
-           #'(define (name)
-               (%crest::createSchemePass name-string (lambda (op) body ...))))]
+           #'(begin
+               (define entry
+                 (let ([run (lambda (op) body ...)])
+                   (crest-callback-entry-point (uptr) int
+                                               (lambda (x) (%%verdict (lambda () (run x)))))))
+               (define (name)
+                 (%crest::createSchemePass name-string entry))))]
         [(_ . _)
          (syntax-violation 'define-pass "expected (define-pass (name op) body ...)" stx)])))
 

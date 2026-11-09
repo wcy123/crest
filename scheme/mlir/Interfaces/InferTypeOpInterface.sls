@@ -48,13 +48,10 @@
         (%crest::InferTypeOpInterface::adapt proc w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10))))
 
   (define (%%system-v-entry-point proc)
-    (let ([code (foreign-callable
-                 (lambda (w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10)
-                   (%%infer proc w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10))
-                 (uptr uptr uptr uptr uptr uptr uptr uptr uptr uptr uptr)
-                 unsigned-8)])
-      (lock-object code)
-      (foreign-callable-entry-point code)))
+    (crest-callback-entry-point
+     (uptr uptr uptr uptr uptr uptr uptr uptr uptr uptr uptr) unsigned-8
+     (lambda (w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10)
+       (%%infer proc w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10))))
 
   ;; Windows also wants the answer in a different place.
   ;;
@@ -81,14 +78,11 @@
   ;; Windows uses a box because LogicalResult is a class with a private field. It hands plain
   ;; values such as a bool back directly, but not a class like this one.
   (define (%%windows-entry-point proc)
-    (let ([code (foreign-callable
-                 (lambda (result w0 w1 w2 w3 w4 w5 w6)
-                   (foreign-set! 'unsigned-8 result 0 (%%infer proc w0 w1 w2 w3 w4 w5 w6 0 0 0 0))
-                   result)
-                 (uptr uptr uptr uptr uptr uptr uptr uptr)
-                 uptr)])
-      (lock-object code)
-      (foreign-callable-entry-point code)))
+    (crest-callback-entry-point
+     (uptr uptr uptr uptr uptr uptr uptr uptr) uptr
+     (lambda (result w0 w1 w2 w3 w4 w5 w6)
+       (foreign-set! 'unsigned-8 result 0 (%%infer proc w0 w1 w2 w3 w4 w5 w6 0 0 0 0))
+       result)))
 
   (define (%%entry-point proc)
     (case (machine-type)
