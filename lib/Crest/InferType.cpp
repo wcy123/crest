@@ -12,7 +12,6 @@
 // type serves all ops and the pointer is filled in per op.
 
 #include "InferType.h"
-#include "../Bindings/Support/SchemeWrapper.h"
 #include "mlir/IR/Diagnostics.h"
 #include "mlir/IR/ExtensibleDialect.h"
 #include "mlir/IR/Operation.h"
@@ -48,14 +47,16 @@ struct DynamicInferTypeModel : public mlir::InferTypeOpInterface::Concept {
 // Op name -> inferReturnTypes entry registered from Scheme.
 std::unordered_map<std::string, InferFn> g_infer_entries;
 
-// Op name -> isCompatibleReturnTypes procedure registered from Scheme.
-std::unordered_map<std::string, LockedSchemeObject> g_compatible;
+using CompatibleFn = int (*)(const void* const*, uint64_t, const void* const*,
+                             uint64_t);
+
+// Op name -> isCompatibleReturnTypes entry registered from Scheme.
+std::unordered_map<std::string, CompatibleFn> g_compatible;
 
 } // namespace
 
-void registerCompatibleReturnTypes(llvm::StringRef opName,
-                                   LockedSchemeObject proc) {
-  g_compatible[opName.str()] = std::move(proc);
+void registerCompatibleReturnTypes(llvm::StringRef opName, void* entry) {
+  g_compatible[opName.str()] = reinterpret_cast<CompatibleFn>(entry);
 }
 
 void registerInferReturnTypes(llvm::StringRef opName, void* entry) {
@@ -71,9 +72,8 @@ withInferredTypesCheck(mlir::OperationName::VerifyInvariantsFn verify,
   }
   InferFn infer = it->second;
   auto compatibleIt = g_compatible.find(opName.str());
-  // The map's nodes do not move: the lambda keeps a pointer to the procedure.
-  const LockedSchemeObject* compatible =
-      compatibleIt == g_compatible.end() ? nullptr : &compatibleIt->second;
+  CompatibleFn compatible =
+      compatibleIt == g_compatible.end() ? nullptr : compatibleIt->second;
   return [infer, compatible, verify = std::move(verify)](
              mlir::Operation* op) -> llvm::LogicalResult {
     // The op's own verifier first: its message is the more specific one.
@@ -91,10 +91,17 @@ withInferredTypesCheck(mlir::OperationName::VerifyInvariantsFn verify,
     }
     bool isCompatible;
     if (compatible) {
-      ptr inferredList = Conversion<mlir::TypeRange, ptr>{}(inferred);
-      ptr actualList = Conversion<mlir::TypeRange, ptr>{}(op->getResultTypes());
+      llvm::SmallVector<const void*, 4> inferredPointers;
+      llvm::SmallVector<const void*, 4> actualPointers;
+      for (mlir::Type type : inferred) {
+        inferredPointers.push_back(type.getAsOpaquePointer());
+      }
+      for (mlir::Type type : op->getResultTypes()) {
+        actualPointers.push_back(type.getAsOpaquePointer());
+      }
       isCompatible =
-          scheme_call(compatible->get(), inferredList, actualList) != Sfalse;
+          compatible(inferredPointers.data(), inferredPointers.size(),
+                     actualPointers.data(), actualPointers.size()) != 0;
     } else {
       isCompatible =
           mlir::TypeRange(inferred) == mlir::TypeRange(op->getResultTypes());

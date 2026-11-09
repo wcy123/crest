@@ -68,15 +68,16 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
       });
 
   // crest::InferTypeOpInterface::registerCompatibility (string op-name)
-  //                                                    (scheme-object proc)
+  //                                                    (uptr entry)
   //
-  // `proc` is the isCompatibleReturnTypes method of the op: (inferred actual)
-  // -> boolean, over two lists of Types. The verifier of the op calls it.
+  // `entry` is the address of the foreign-callable of the
+  // isCompatibleReturnTypes method of the op, which the verifier of the op
+  // calls.
   Sregister_symbol(
       "crest::InferTypeOpInterface::registerCompatibility",
-      (void*)+[](const char* op_name, ptr proc) -> void {
+      (void*)+[](const char* op_name, uint64_t entry) -> void {
         crest::registerCompatibleReturnTypes(std::string(op_name),
-                                             crest::LockedSchemeObject(proc));
+                                             reinterpret_cast<void*>(entry));
       });
 
   // crest::InferTypeOpInterface::registerEntry (string op-name) (uptr entry)

@@ -11,6 +11,7 @@
           mlir::InferTypeOpInterface::inferReturnTypes<OperationState>
           mlir::InferTypeOpInterface::inferReturnTypes<OperationState*>)
   (import (chezscheme)
+          (crest callback)
           (mlir IR MLIRContext)
           (mlir Interfaces InferTypeOpInterface ffi))
 
@@ -112,7 +113,15 @@
                "the interface needs an inferReturnTypes clause (context location operands attributes)"
                op-name))
       (when compatible
-        (%crest::InferTypeOpInterface::registerCompatibility op-name compatible))
+        (%crest::InferTypeOpInterface::registerCompatibility
+         op-name
+         (crest-callback-entry-point
+          (uptr uptr uptr uptr) int
+          (lambda (inferred inferred-count actual actual-count)
+            (if (compatible (crest-callback-pointer-list inferred inferred-count)
+                            (crest-callback-pointer-list actual actual-count))
+                1
+                0)))))
       (%crest::InferTypeOpInterface::registerEntry op-name (%%entry-point method))))
 
   (define mlir::InferTypeOpInterface::inferReturnTypes<OperationState>

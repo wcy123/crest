@@ -12,10 +12,6 @@
           (crest callback)
           (mlir Interfaces FunctionInterfaces ffi))
 
-  ;; The elements of a C array of pointers: how C++ passes the TypeRange of cloneTypeWith.
-  (define (%%types pointer count)
-    (map (lambda (i) (foreign-ref 'uptr pointer (* i 8))) (iota count)))
-
   ;; The foreign-callable of verifyBody or verifyType: 1 for #t, 0 for any other answer. An error
   ;; must not escape into the C++ code above us, so its text goes to C++, whose diagnostic shows
   ;; it, and the answer is 0.
@@ -49,7 +45,9 @@
            (crest-callback-entry-point
             (uptr uptr uptr uptr uptr) uptr
             (lambda (op inputs input-count results result-count)
-              (clone op (%%types inputs input-count) (%%types results result-count))))
+              (clone op
+                     (crest-callback-pointer-list inputs input-count)
+                     (crest-callback-pointer-list results result-count))))
            0)
        (if body (%%verifier-entry-point body) 0)
        (if type (%%verifier-entry-point type) 0))))
