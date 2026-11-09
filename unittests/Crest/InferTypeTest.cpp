@@ -13,6 +13,7 @@
 #include "../../lib/Interpreter/ChezSchemeInterpreter.h"
 #include "mlir/IR/Block.h"
 #include "mlir/IR/BuiltinTypes.h"
+#include "mlir/IR/DialectRegistry.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/IR/OperationSupport.h"
@@ -51,15 +52,22 @@ protected:
   }
   static void TearDownTestSuite() { g_interp.reset(); }
 
+  // A registry with the bld dialect. The context copies it, and with it the
+  // factory, whose strings the dialect refers to (its namespace) for as long as
+  // the context lives: the factory must not be a temporary of the test.
+  static mlir::DialectRegistry makeRegistry() {
+    mlir::DialectRegistry registry;
+    auto [typeId, factory] = dialectFactory("bld", "passes/bld-dialect");
+    registry.insert(typeId, "bld", factory);
+    return registry;
+  }
+
   // An op of the bld dialect with i32 operands, created without verifying it.
   // Its methods are called through the function pointers of the Concept in its
   // interface map, as MLIR's code does.
   struct BldOp {
     BldOp(mlir::MLIRContext& ctx, const char* name, unsigned numOperands) {
-      if (!ctx.getLoadedDialect("bld")) {
-        auto [typeId, factory] = dialectFactory("bld", "passes/bld-dialect");
-        factory(&ctx);
-      }
+      ctx.getOrLoadDialect("bld");
       mlir::Type i32 = mlir::IntegerType::get(&ctx, 32);
       mlir::Location loc = mlir::UnknownLoc::get(&ctx);
       for (unsigned i = 0; i < numOperands; ++i) {
@@ -107,7 +115,7 @@ protected:
 } // namespace
 
 TEST_F(InferTypeTest, DirectCallInfersTheTypeOfTheLeftOperand) {
-  mlir::MLIRContext ctx(mlir::MLIRContext::Threading::DISABLED);
+  mlir::MLIRContext ctx(makeRegistry(), mlir::MLIRContext::Threading::DISABLED);
   BldOp add(ctx, "bld.add", 2);
   llvm::SmallVector<mlir::Type, 2> types;
   ASSERT_TRUE(mlir::succeeded(add.infer(types)));
@@ -118,7 +126,7 @@ TEST_F(InferTypeTest, DirectCallInfersTheTypeOfTheLeftOperand) {
 // A Scheme op gets the three methods of the interface, from the clauses of its
 // :interface2 entry, and the default for a method it has no clause for.
 TEST_F(InferTypeTest, CompatibleReturnTypesIsTheClauseOrEquality) {
-  mlir::MLIRContext ctx(mlir::MLIRContext::Threading::DISABLED);
+  mlir::MLIRContext ctx(makeRegistry(), mlir::MLIRContext::Threading::DISABLED);
   mlir::Type i32 = mlir::IntegerType::get(&ctx, 32);
   mlir::Type i64 = mlir::IntegerType::get(&ctx, 64);
   // bld.add has no clause: the types must be equal.
@@ -132,7 +140,7 @@ TEST_F(InferTypeTest, CompatibleReturnTypesIsTheClauseOrEquality) {
 }
 
 TEST_F(InferTypeTest, RefineReturnTypesIsTheClauseOrAcceptsAnything) {
-  mlir::MLIRContext ctx(mlir::MLIRContext::Threading::DISABLED);
+  mlir::MLIRContext ctx(makeRegistry(), mlir::MLIRContext::Threading::DISABLED);
   mlir::Type i64 = mlir::IntegerType::get(&ctx, 64);
   mlir::Type f32 = mlir::Float32Type::get(&ctx);
   // bld.add has no clause: the default accepts, and leaves the types.
@@ -154,7 +162,8 @@ TEST_F(InferTypeTest, RefineReturnTypesIsTheClauseOrAcceptsAnything) {
 // callables are shared, the Concept is not.
 TEST_F(InferTypeTest, EveryContextThatLoadsTheDialectInfers) {
   for (int i = 0; i < 3; ++i) {
-    mlir::MLIRContext ctx(mlir::MLIRContext::Threading::DISABLED);
+    mlir::MLIRContext ctx(makeRegistry(),
+                          mlir::MLIRContext::Threading::DISABLED);
     BldOp add(ctx, "bld.add", 2);
     llvm::SmallVector<mlir::Type, 2> types;
     ASSERT_TRUE(mlir::succeeded(add.infer(types))) << "context " << i;
@@ -173,7 +182,7 @@ TEST_F(InferTypeTest, EveryContextThatLoadsTheDialectInfers) {
 static volatile float g_vector_seed = 1.0f;
 
 TEST_F(InferTypeTest, DirectCallPreservesVectorRegisters) {
-  mlir::MLIRContext ctx(mlir::MLIRContext::Threading::DISABLED);
+  mlir::MLIRContext ctx(makeRegistry(), mlir::MLIRContext::Threading::DISABLED);
   BldOp add(ctx, "bld.add", 2);
   float seed = g_vector_seed;
   __m128 v0 = _mm_set_ps(seed + 1, seed + 2, seed + 3, seed + 4);
