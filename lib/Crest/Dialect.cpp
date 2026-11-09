@@ -51,6 +51,7 @@ bool RegisterInterfaceForOp(mlir::TypeID id, const std::string& op_name,
 
 void* CrestDialect::getRegisteredInterfaceForOp(mlir::TypeID interfaceID,
                                                 mlir::OperationName opName) {
+  CREST_TRACE("getRegisteredInterfaceForOp %s", opName.getStringRef().str().c_str());
   return LookupInterfaceForOp(interfaceID, opName.getStringRef().str());
 }
 
@@ -406,11 +407,16 @@ dialectFactory(std::string dialect_name, std::string module_name) {
   return {type_id,
           [type_id, dialect_name,
            module_name](mlir::MLIRContext* ctx) -> mlir::Dialect* {
-            return ctx->getOrLoadDialect(
+            CREST_TRACE("factory %s: loading", dialect_name.c_str());
+            mlir::Dialect* loaded = ctx->getOrLoadDialect(
                 dialect_name, type_id, [&]() -> std::unique_ptr<mlir::Dialect> {
-                  return std::make_unique<CrestDialect>(type_id, module_name,
+                  auto made = std::make_unique<CrestDialect>(type_id, module_name,
                                                         dialect_name, ctx);
+                  CREST_TRACE("factory %s: constructed %p", dialect_name.c_str(), static_cast<void*>(made.get()));
+                  return made;
                 });
+            CREST_TRACE("factory %s: loaded %p", dialect_name.c_str(), static_cast<void*>(loaded));
+            return loaded;
           }};
 }
 
