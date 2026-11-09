@@ -200,6 +200,16 @@ jobs:
           call C:\msvsn2022\VC\Auxiliary\Build\vcvars64.bat
           cmake --build build --target check-crest
 
+      - name: Crash symbolization (experiment)
+        if: always() && matrix.llvm == 23
+        continue-on-error: true
+        shell: cmd
+        run: |
+          set CREST_PATH=%CD%\test\dsl\type-callbacks
+          set CREST_SCHEME_BINARY_DIR=%CD%\build\expbin
+          build\tools\crest-opt\crest-opt.exe test\dsl\type-callbacks\type-callbacks.mlir --mlir-disable-threading --crest-scheme-dialect=tcb=passes/tcb > crash.txt 2>&1
+          python tools\experiment\mapsym.py build\tools\crest-opt\crest-opt.map crash.txt
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
