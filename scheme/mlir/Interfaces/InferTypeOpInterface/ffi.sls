@@ -13,7 +13,7 @@
     (foreign-procedure "crest::InferTypeOpInterface::reportFailure" (string) void))
 
   (define %crest::InferTypeOpInterface::registerCompatibility
-    (foreign-procedure "crest::InferTypeOpInterface::registerCompatibility" (string scheme-object) void))
+    (foreign-procedure "crest::InferTypeOpInterface::registerCompatibility" (string uptr) void))
 
   (define %crest::InferTypeOpInterface::registerEntry
     (foreign-procedure "crest::InferTypeOpInterface::registerEntry" (string uptr) void))

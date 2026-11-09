@@ -7,32 +7,13 @@
 
 #include "SymbolInterfaces.h"
 #include "../../Crest/Interface.h"
-#include "../Support/LockedSchemeObject.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/IR/SymbolTable.h"
-#include <cassert>
 #include <memory>
 
 namespace {
 struct SymbolConceptData : public mlir::SymbolOpInterface::Concept {
-  crest::LockedSchemeObject get_name_attr;
-  crest::LockedSchemeObject set_name;
-  crest::LockedSchemeObject get_visibility;
-  crest::LockedSchemeObject is_nested;
-  crest::LockedSchemeObject is_private;
-  crest::LockedSchemeObject is_public;
-  crest::LockedSchemeObject set_visibility;
-  crest::LockedSchemeObject set_nested;
-  crest::LockedSchemeObject set_private;
-  crest::LockedSchemeObject set_public;
-  crest::LockedSchemeObject get_symbol_uses;
-  crest::LockedSchemeObject symbol_known_use_empty;
-  crest::LockedSchemeObject replace_all_symbol_uses;
-  crest::LockedSchemeObject is_optional_symbol;
-  crest::LockedSchemeObject can_discard_on_use_empty;
-  crest::LockedSchemeObject is_declaration;
-
   SymbolConceptData()
       : mlir::SymbolOpInterface::Concept{
             [](const mlir::SymbolOpInterface::Concept*,
@@ -103,44 +84,7 @@ struct SymbolConceptData : public mlir::SymbolOpInterface::Concept {
             },
             [](const mlir::SymbolOpInterface::Concept*,
                mlir::Operation*) -> bool { return false; },
-        } {
-    assert(get_name_attr.get() == Sfalse);
-    assert(set_name.get() == Sfalse);
-    assert(get_visibility.get() == Sfalse);
-    assert(is_nested.get() == Sfalse);
-    assert(is_private.get() == Sfalse);
-    assert(is_public.get() == Sfalse);
-    assert(set_visibility.get() == Sfalse);
-    assert(set_nested.get() == Sfalse);
-    assert(set_private.get() == Sfalse);
-    assert(set_public.get() == Sfalse);
-    assert(get_symbol_uses.get() == Sfalse);
-    assert(symbol_known_use_empty.get() == Sfalse);
-    assert(replace_all_symbol_uses.get() == Sfalse);
-    assert(is_optional_symbol.get() == Sfalse);
-    assert(can_discard_on_use_empty.get() == Sfalse);
-    assert(is_declaration.get() == Sfalse);
-  }
-
-  SymbolConceptData(const SymbolConceptData& other)
-      : mlir::SymbolOpInterface::Concept(other) {
-    assert(other.get_name_attr.get() == Sfalse);
-    assert(other.set_name.get() == Sfalse);
-    assert(other.get_visibility.get() == Sfalse);
-    assert(other.is_nested.get() == Sfalse);
-    assert(other.is_private.get() == Sfalse);
-    assert(other.is_public.get() == Sfalse);
-    assert(other.set_visibility.get() == Sfalse);
-    assert(other.set_nested.get() == Sfalse);
-    assert(other.set_private.get() == Sfalse);
-    assert(other.set_public.get() == Sfalse);
-    assert(other.get_symbol_uses.get() == Sfalse);
-    assert(other.symbol_known_use_empty.get() == Sfalse);
-    assert(other.replace_all_symbol_uses.get() == Sfalse);
-    assert(other.is_optional_symbol.get() == Sfalse);
-    assert(other.can_discard_on_use_empty.get() == Sfalse);
-    assert(other.is_declaration.get() == Sfalse);
-  }
+        } {}
 };
 } // anonymous namespace
 
@@ -168,11 +112,8 @@ SupportedInterfaces<mlir::SymbolOpInterface>::CloneConcept(
 
 template <>
 mlir::SymbolOpInterface::Concept*
-SupportedInterfaces<mlir::SymbolOpInterface>::CreateConcept(ptr dispatcher) {
-  crest::LockedSchemeObject locked_dispatcher(dispatcher);
-  std::string op_name = Conversion<ptr, std::string>{}(
-      scheme_call(dispatcher, Sstring_to_symbol("operation_name")));
-
+SupportedInterfaces<mlir::SymbolOpInterface>::CreateConcept(
+    const std::string& op_name) {
   auto data = std::make_unique<SymbolConceptData>();
 
   SymbolConceptData* raw = data.get();
@@ -186,9 +127,9 @@ SupportedInterfaces<mlir::SymbolOpInterface>::CreateConcept(ptr dispatcher) {
 
 void registerIRSymbolInterfacesBindings() {
   Sregister_symbol(
-      "mlir::SymbolOpInterface", (void*)+[](ptr dispatcher) {
+      "mlir::SymbolOpInterface", (void*)+[](const char* op_name) {
         crest::SupportedInterfaces<mlir::SymbolOpInterface>::CreateConcept(
-            dispatcher);
+            op_name);
       });
 
   Sregister_symbol(

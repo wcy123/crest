@@ -2,9 +2,9 @@
 // form to <file>, each under a header with its source position. The pass library has
 // two forms; both must appear, in order, in the one file.
 //
-// RUN: rm -rf %t %t.expanded
+// RUN: rm -rf %t/debug-begin-mlir-code-scheme %t.expanded
 // RUN: env CREST_DEBUG_BEGIN_MLIR_CODE=%t.expanded CREST_PATH=%S \
-// RUN:   CREST_SCHEME_BINARY_DIR=%t/scheme \
+// RUN:   CREST_SCHEME_BINARY_DIR=%t/debug-begin-mlir-code-scheme \
 // RUN:   %crest-opt -allow-unregistered-dialect \
 // RUN:   --crest-pass="passes=passes/debug-begin-mlir-code" %s \
 // RUN:   | %FileCheck %s

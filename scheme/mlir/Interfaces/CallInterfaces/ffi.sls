@@ -10,13 +10,13 @@
   (import (chezscheme))
 
   (define %mlir::CallableOpInterface
-    (foreign-procedure "mlir::CallableOpInterface" (scheme-object) void))
+    (foreign-procedure "mlir::CallableOpInterface" (string uptr) void))
 
   (define %mlir::CallOpInterface
-    (foreign-procedure "mlir::CallOpInterface" (scheme-object) void))
+    (foreign-procedure "mlir::CallOpInterface" (string) void))
 
   (define %mlir::ArgAndResultAttrsOpInterface
-    (foreign-procedure "mlir::ArgAndResultAttrsOpInterface" (scheme-object) void))
+    (foreign-procedure "mlir::ArgAndResultAttrsOpInterface" (string) void))
 
   (define %mlir::CallableOpInterface::getCallableRegion
     (foreign-procedure "mlir::CallableOpInterface::getCallableRegion" (uptr) uptr))

@@ -921,6 +921,13 @@ Methods not listed use the default C++ concept implementation.
                   (mlir::Operation::setAttr! self "function_type" attr)))))
 ```
 
+Two interfaces have method clauses that matter. `FunctionOpInterface`: `getFunctionType (op)` answers
+the `Type`, `setFunctionTypeAttr (op attr)`, `cloneTypeWith (op inputs results)` answers a `Type` (the two
+ranges are lists of `Type`s), and `verifyBody (op)` and `verifyType (op)` answer `#t` for success. An error
+that a verifier raises does not end the process: the verifier fails and the diagnostic carries the text of
+the error. `CallableOpInterface`: `getCallableRegion (op)` answers the `Region` (the first one by default).
+A clause with any other name is ignored.
+
 The op interfaces a Scheme op can implement: `FunctionOpInterface` (which also brings
 `SymbolOpInterface`, `CallableOpInterface` and `ArgAndResultAttrsOpInterface`), `CallableOpInterface`,
 `SymbolOpInterface`, `ArgAndResultAttrsOpInterface`, `CallOpInterface` and `InferTypeOpInterface`. For `CallOpInterface`
@@ -965,7 +972,9 @@ runs first.
 The name in `:interfaces` is a Scheme procedure that the dialect's library must import: it takes
 the dispatcher that `define-op` makes for the entry. `mlir::InferTypeOpInterface` makes a C function
 for the method with `foreign-callable`, because MLIR calls `inferReturnTypes` through a function
-pointer that carries neither the op nor a `Concept`. The dialect has to be loaded into the context
+pointer that carries neither the op nor a `Concept`. `mlir::FunctionOpInterface` and
+`mlir::CallableOpInterface` make one for each clause as well (`(crest callback)`), and C++ keeps its
+address instead of the Scheme procedure. The dialect has to be loaded into the context
 (`dialects-in-scheme=` or `--crest-scheme-dialect=` with an op in the input) for MLIR to see the
 interface (`test/dsl/op-builders`). Platforms: System V x86-64 and Windows x64; on another machine
 type the dialect fails to load with a message saying so.

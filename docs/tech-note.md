@@ -221,7 +221,8 @@ Crest ops are registered at runtime via `DynamicOpDefinition::get` + `registerDy
 ```
 import (passes ifacetest)
   → %%ifacetest-iface-init runs   (library-load-time define)
-  → (foreign-procedure "mlir::FunctionOpInterface" ...) ifacetest.func dispatcher
+  → (foreign-procedure "mlir::FunctionOpInterface" ...) "ifacetest.func" and the entry point
+    of the foreign-callable of each method clause (0 for none)
   → FunctionOpInterface::CreateConcept
   → RegisterInterfaceForOp(FunctionOpInterface::getInterfaceID(),
                            "ifacetest.func",

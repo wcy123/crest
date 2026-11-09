@@ -5,9 +5,9 @@
 #ifndef CREST_INFER_TYPE_H
 #define CREST_INFER_TYPE_H
 
-#include "../Bindings/Support/LockedSchemeObject.h"
 #include "llvm/ADT/StringRef.h"
 #include "mlir/IR/OperationSupport.h"
+#include <cstdint>
 
 namespace mlir {
 class DynamicOpDefinition;
@@ -21,13 +21,16 @@ namespace crest {
 /// foreign-callable and stays valid for the process.
 void registerInferReturnTypes(llvm::StringRef opName, void* entry);
 
-/// The isCompatibleReturnTypes method of the Scheme op `opName`: a procedure
-/// (inferred actual) -> boolean over two lists of Types. Without one the result
-/// types must equal the inferred ones. An op whose inference is general and
-/// whose results get refined later (Toy: tensor<*xf64>, then a ranked tensor)
-/// says what is compatible, as the ODS ops of C++ do.
-void registerCompatibleReturnTypes(llvm::StringRef opName,
-                                   crest::LockedSchemeObject proc);
+/// Remember the C function `entry` as the isCompatibleReturnTypes method of
+/// the Scheme op `opName`: int (const void* const* inferred, uint64_t
+/// inferredCount, const void* const* actual, uint64_t actualCount), the opaque
+/// pointers of two ranges of Types, answering 1 when they are compatible. It is
+/// the address of a Chez foreign-callable and stays valid for the process.
+/// Without one the result types must equal the inferred ones. An op whose
+/// inference is general and whose results get refined later (Toy:
+/// tensor<*xf64>, then a ranked tensor) says what is compatible, as the ODS ops
+/// of C++ do.
+void registerCompatibleReturnTypes(llvm::StringRef opName, void* entry);
 
 /// If a function was registered for `opName`, wrap `verify` so that it first
 /// checks the result types of the op against what that function infers, as the
