@@ -86,7 +86,7 @@ static uint64_t makeBusyCallableEntry() {
               "    (let loop ([i 0] [acc 0.0] [l '()])"
               "      (if (< i 5000)"
               "          (loop (+ i 1) (+ acc (* 1.5 (exact->inexact i))) (cons (make-string 3 #\\a) l))"
-              "          (if (> acc 0.0) (length l) 0))))"
+              "          (begin (collect) (if (> acc 0.0) (length l) 0)))))"
               "  (int) int)])"
               "  (lock-object code)"
               "  (foreign-callable-entry-point code))"));
@@ -112,6 +112,25 @@ TEST_F(InterpreterTest, ForeignCallablePreservesCalleeSavedFloatingPointRegister
   EXPECT_EQ(a7, g_seed * 8.5);
   EXPECT_EQ(a8, g_seed * 9.5);
   EXPECT_EQ(a9, g_seed * 10.5);
+}
+
+static uint64_t g_integer_seed = 7;
+
+TEST_F(InterpreterTest, ForeignCallablePreservesCalleeSavedGeneralRegisters) {
+  ForeignCallable<int(int)> callable(makeBusyCallableEntry());
+  uint64_t b0 = g_integer_seed * 3, b1 = g_integer_seed * 5, b2 = g_integer_seed * 7,
+           b3 = g_integer_seed * 11, b4 = g_integer_seed * 13, b5 = g_integer_seed * 17,
+           b6 = g_integer_seed * 19, b7 = g_integer_seed * 23, b8 = g_integer_seed * 29;
+  EXPECT_EQ(callable(1), 5000);
+  EXPECT_EQ(b0, g_integer_seed * 3);
+  EXPECT_EQ(b1, g_integer_seed * 5);
+  EXPECT_EQ(b2, g_integer_seed * 7);
+  EXPECT_EQ(b3, g_integer_seed * 11);
+  EXPECT_EQ(b4, g_integer_seed * 13);
+  EXPECT_EQ(b5, g_integer_seed * 17);
+  EXPECT_EQ(b6, g_integer_seed * 19);
+  EXPECT_EQ(b7, g_integer_seed * 23);
+  EXPECT_EQ(b8, g_integer_seed * 29);
 }
 
 TEST(ParseLogLevel, KnownLevels) {
