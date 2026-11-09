@@ -8,11 +8,11 @@
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/inline-multi-block-scheme \
 // RUN:   %crest-opt %s --verify-each=0 \
 // RUN:   --crest-scheme-dialect=callblocks=passes/call-blocks-dialect \
-// RUN:   --inline > %t/inline-multi-block-out.txt 2> %t/inline-multi-block-err.txt
-// RUN: %FileCheck %s --check-prefix=ERR --input-file=%t/inline-multi-block-err.txt
+// RUN:   --inline > %t/inline-multi-block-out.txt
+// RUN: %FileCheck %s --check-prefix=SAY --input-file=%t/inline-multi-block-out.txt
 // RUN: %FileCheck %s --input-file=%t/inline-multi-block-out.txt
 
-// ERR: handleTerminator/block
+// SAY: handleTerminator/block
 
 // CHECK-NOT: callblocks.call
 // CHECK: sym_name = "main"

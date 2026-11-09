@@ -11,7 +11,7 @@
           (crest dialect))
 
   (define (say . words)
-    (let ([port (current-error-port)])
+    (let ([port (current-output-port)])
       (for-each (lambda (word) (display word port)) words)
       (newline port)
       (flush-output-port port)))

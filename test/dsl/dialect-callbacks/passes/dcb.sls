@@ -1,5 +1,5 @@
 #!r6rs
-;; A dialect with the callbacks of the dialect itself. Each one says that it ran, on the error port.
+;; A dialect with the callbacks of the dialect itself. Each one says that it ran, on the output port.
 ;; Not here: :print-type and :print-attribute (a Scheme dialect has no type or attribute of its own
 ;; that MLIR would print through them, and no binding prints into a DialectAsmPrinter).
 (library (passes dcb)
@@ -15,7 +15,7 @@
           (except (crest) :optional :variadic))
 
   (define (say . words)
-    (let ([port (current-error-port)])
+    (let ([port (current-output-port)])
       (for-each (lambda (word) (display word port)) words)
       (newline port)
       (flush-output-port port)))

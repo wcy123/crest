@@ -8,20 +8,20 @@
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/dialect-callbacks-scheme \
 // RUN:   %crest-opt %s --mlir-disable-threading \
 // RUN:   --crest-scheme-dialect=dcbdep=passes/dcbdep --crest-scheme-dialect=dcb=passes/dcb \
-// RUN:   --canonicalize > %t/dialect-callbacks-out.txt 2> %t/dialect-callbacks-err.txt
-// RUN: %FileCheck %s --check-prefix=ERR --input-file=%t/dialect-callbacks-err.txt
+// RUN:   --canonicalize > %t/dialect-callbacks-out.txt
+// RUN: %FileCheck %s --check-prefix=SAY --input-file=%t/dialect-callbacks-out.txt
 // RUN: %FileCheck %s --input-file=%t/dialect-callbacks-out.txt
 
 // The dependency first, then the dialect.
-// ERR: dcbdep initialize
-// ERR: dcb initialize
-// ERR-DAG: parse-attribute
-// ERR-DAG: parse-type
-// ERR-DAG: verify-op-attr dcb.holder
-// ERR-DAG: verify-region-arg-attr 0 0
-// ERR-DAG: verify-region-arg-attr 0 1
-// ERR-DAG: verify-region-result-attr 0 0
-// ERR-DAG: get-canonicalization-patterns
+// SAY: dcbdep initialize
+// SAY: dcb initialize
+// SAY-DAG: parse-attribute
+// SAY-DAG: parse-type
+// SAY-DAG: verify-op-attr dcb.holder
+// SAY-DAG: verify-region-arg-attr 0 0
+// SAY-DAG: verify-region-arg-attr 0 1
+// SAY-DAG: verify-region-result-attr 0 0
+// SAY-DAG: get-canonicalization-patterns
 
 // The parsed attribute and type are the builtin ones the callbacks answered, and the pattern of the
 // dialect made the function return its argument (the two dcb.neg stay: they are not pure).

@@ -22,7 +22,7 @@
             (mlir::affine::buildAffineLoopNest
              builder (mlir::Operation::getLoc module-op) '(0 0) '(4 8) '(1 2)
              (lambda (nested-builder loc ivs)
-               (let ([port (current-error-port)])
+               (let ([port (current-output-port)])
                  (display (string-append "induction variables: " (number->string (length ivs)) "\n")
                           port)
                  (flush-output-port port)))))))))

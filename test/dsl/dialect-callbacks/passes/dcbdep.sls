@@ -7,7 +7,7 @@
 
   (define-dialect dcbdep
     (:initialize (dialect)
-      (let ([port (current-error-port)])
+      (let ([port (current-output-port)])
         (display "dcbdep initialize\n" port)
         (flush-output-port port)))
     (define-op marker
