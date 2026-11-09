@@ -52,6 +52,18 @@ void registerDialectAffineIRAffineOpsBindings() {
                 iv_pointers.push_back(
                     reinterpret_cast<uint64_t>(iv.getAsOpaquePointer()));
               }
+              {
+                auto ip = nb.getInsertionPoint();
+                auto en = nb.getBlock()->end();
+                const uint64_t* a = reinterpret_cast<const uint64_t*>(&ip);
+                const uint64_t* b = reinterpret_cast<const uint64_t*>(&en);
+                CREST_TRACE("sizeof OpBuilder=%zu Block=%zu iterator=%zu; ip=%llx %llx end=%llx %llx",
+                            sizeof(mlir::OpBuilder), sizeof(mlir::Block), sizeof(ip),
+                            static_cast<unsigned long long>(a[0]),
+                            static_cast<unsigned long long>(sizeof(ip) > 8 ? a[1] : 0),
+                            static_cast<unsigned long long>(b[0]),
+                            static_cast<unsigned long long>(sizeof(en) > 8 ? b[1] : 0));
+              }
               CREST_TRACE("loop body: nb=%p block=%p at-end=%d", static_cast<void*>(&nb), static_cast<void*>(nb.getBlock()), nb.getBlock() ? (nb.getInsertionPoint() == nb.getBlock()->end()) : -1);
               owned(reinterpret_cast<uint64_t>(&nb_shell),
                     reinterpret_cast<uint64_t>(nb_loc.getAsOpaquePointer()),
