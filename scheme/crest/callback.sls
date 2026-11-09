@@ -12,10 +12,16 @@
 ;;   (crest-callback-pointer-list pointer count)                          a list of integers
 ;;
 ;; C++ cannot keep a Scheme procedure without telling the garbage collector, so a procedure that
-;; C++ is to call later gets a C function of its own: a foreign-callable, which is locked for the
-;; life of the process, and whose address is what C++ stores. The types are those of
-;; foreign-callable (uptr, int, void, ...). The callable is never freed, so use it for what is made
-;; once per op or per dialect, not for a closure made per run.
+;; C++ is to call later gets a C function of its own: a foreign-callable, which is locked, and
+;; whose address is what C++ stores. The types are those of foreign-callable (uptr, int, void, ...).
+;; The lock is taken once, here, and who releases it depends on how long the callable is used:
+;;
+;;   made once per library (an op's clause, a dialect's callback, the body of a pass): define it at
+;;   the library level; C++ keeps the address as a plain function pointer and never releases it.
+;;
+;;   made for a run (a closure that the user passes to a pattern, a type converter, a walk): C++
+;;   gives the address to a crest::ForeignCallable (lib/Bindings/Support/ForeignCallable.h), which
+;;   takes over this lock and releases it when whatever calls the function is destroyed.
 ;;
 ;; C++ gives a range (a TypeRange, say) as a pointer to an array and a count, not as a Scheme
 ;; list; crest-callback-pointer-list reads the count elements of 8 bytes at pointer.

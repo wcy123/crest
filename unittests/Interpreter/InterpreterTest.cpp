@@ -4,6 +4,7 @@
  */
 //===- InterpreterTest.cpp - Unit tests for ChezSchemeInterpreter ---------===//
 
+#include "../../lib/Bindings/Support/ForeignCallable.h"
 #include "../../lib/Interpreter/ChezSchemeInterpreter.h"
 #include "gtest/gtest.h"
 
@@ -29,6 +30,49 @@ TEST_F(InterpreterTest, SameInstanceReturned) {
 
 TEST_F(InterpreterTest, EvalSimpleExpression) {
   EXPECT_TRUE(g_interp->eval("(+ 1 2)"));
+}
+
+// What crest-callback-entry-point (scheme/crest/callback.sls) does: make a
+// foreign-callable, lock its code object once, answer its address.
+static uint64_t makeCallableEntry() {
+  ptr port = scheme_call(
+      "open-string-input-port",
+      Sstring("(let ([code (foreign-callable (lambda (x) (+ x 1)) (int) int)])"
+              "  (lock-object code)"
+              "  (foreign-callable-entry-point code))"));
+  ptr expr = scheme_call("read", port);
+  return Sunsigned64_value(scheme_call("eval", expr));
+}
+
+TEST_F(InterpreterTest, ForeignCallableCallsTheSchemeProcedure) {
+  ForeignCallable<int(int)> callable(makeCallableEntry());
+  ASSERT_TRUE(callable);
+  EXPECT_EQ(callable(41), 42);
+}
+
+TEST_F(InterpreterTest, ForeignCallableUnlocksItsCodeObjectWhenDestroyed) {
+  uint64_t entry = makeCallableEntry();
+  ptr code = Sforeign_callable_code_object(reinterpret_cast<void*>(entry));
+  EXPECT_TRUE(Slocked_objectp(code));
+  {
+    ForeignCallable<int(int)> callable(entry);
+    // Running Scheme may collect garbage; the locked object stays where it is.
+    EXPECT_EQ(callable(1), 2);
+    EXPECT_TRUE(Slocked_objectp(code));
+  }
+  EXPECT_FALSE(Slocked_objectp(code));
+}
+
+TEST_F(InterpreterTest, ForeignCallableMovedFromDoesNotUnlock) {
+  uint64_t entry = makeCallableEntry();
+  ptr code = Sforeign_callable_code_object(reinterpret_cast<void*>(entry));
+  {
+    ForeignCallable<int(int)> first(entry);
+    ForeignCallable<int(int)> second(std::move(first));
+    EXPECT_FALSE(first);
+    EXPECT_TRUE(second);
+  }
+  EXPECT_FALSE(Slocked_objectp(code));
 }
 
 TEST(ParseLogLevel, KnownLevels) {
