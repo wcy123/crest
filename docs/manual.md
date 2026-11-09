@@ -732,7 +732,12 @@ lambdas are ordinary expressions. The low-level pieces it is built from stay ava
 `(mlir Transforms DialectConversion)`: `with-TypeConverter`, `with-ConversionTarget`,
 `type-converter-add-conversion`, `target-add-legal-dialect`, `target-add-illegal-dialect`,
 `target-add-legal-op`, `target-add-dynamically-legal-op`, `add-conversion-pattern`,
-`add-conversion-pattern/ctx`, `mlir::applyPartialConversion` and `apply-full-conversion`.
+`add-conversion-pattern/ctx`, `mlir::applyPartialConversion` and `apply-full-conversion`. The
+procedures they take (patterns, legality checks, type conversions, materializations) are closures for
+one conversion: each is made into a C function when it is registered, and C++ releases it when the
+pattern set, the target or the type converter that calls it is destroyed, so running a conversion many
+times does not leak (`test/dsl/apply-conversion/leak.mlir`). A value that is not a procedure is an error
+when it is registered.
 
 ---
 
