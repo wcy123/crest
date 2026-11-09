@@ -1,4 +1,4 @@
 bu crest_opt!mlir::OpBuilder::insert "r $t1 = @rcx+0x298; .printf \"first insert: builder=%p watch=%p\\n\", @rcx, @$t1; bc 0; ba w8 @$t1 \"$$>< tools/experiment/write.cdb\"; g"
 g
-.printf "crash: rdi=%p watch=%p value-at-watch=%p\n", @rdi, @$t1, poi(@$t1)
+.printf "crash or exit: rdi=%p watch=%p value-at-watch=%p\n", @rdi, @$t1, poi(@$t1)
 q
