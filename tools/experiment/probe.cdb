@@ -1,5 +1,5 @@
-bu scheme_mlir!crest_probe_before_callable "r $t1 = @rcx+0x20; .printf \"BEFORE callable: builder=%p ip-node=%p\\n\", @rcx, poi(@$t1); ba w8 @$t1 \"$$>< tools/experiment/write.cdb\"; g"
-bu scheme_mlir!crest_probe_after_callable ".printf \"AFTER callable: ip-node=%p\\n\", poi(@$t1); g"
+bu scheme_mlir!crest_probe_before_callable "$$>< tools/experiment/before.cdb"
+bu scheme_mlir!crest_probe_after_callable ".printf \"AFTER callable\\n\"; g"
 g
-.printf "crash: rdi=%p ip-node-at-watch=%p\n", @rdi, poi(@$t1)
+.printf "crash: rdi=%p\n", @rdi
 q
