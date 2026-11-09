@@ -433,14 +433,16 @@ void registerTransformsDialectConversionBindings() {
       });
 
   // modifyOpInPlace: mutate an op inside a rewriter notification.
-  // (rw-ptr op-ptr fn) → void  where fn is a Scheme thunk () → void
+  // (rw-ptr op-ptr fn) → void  where fn is the entry point of a
+  // foreign-callable made for this call, a thunk () → void
   Sregister_symbol(
       "mlir::RewriterBase::modifyOpInPlace",
-      (void*)+[](uint64_t rw_ptr, uint64_t op_ptr, ptr fn) -> void {
+      (void*)+[](uint64_t rw_ptr, uint64_t op_ptr, uint64_t fn) -> void {
+        crest::ForeignCallable<void()> owned(fn);
         auto& rw = crest::CrestBox<mlir::RewriterBase*>::inner(
             rw_ptr, "mlir::RewriterBase::modifyOpInPlace");
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-        rw.modifyOpInPlace(op, [&] { scheme_call(fn); });
+        rw.modifyOpInPlace(op, [&] { owned(); });
       });
 }
 

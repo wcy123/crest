@@ -155,7 +155,11 @@
     %apply-full-conversion)
 
   (define mlir::applyPartialConversion  %mlir::applyPartialConversion)
-  (define mlir::RewriterBase::modifyOpInPlace  %mlir::RewriterBase::modifyOpInPlace)
+  ;; @brief RewriterBase::modifyOpInPlace: THUNK changes the op, and the rewriter is told.
+  ;; THUNK is made into a C function for this call and released when it returns.
+  (define (mlir::RewriterBase::modifyOpInPlace rewriter op thunk)
+    (%mlir::RewriterBase::modifyOpInPlace
+     rewriter op (crest-callback-entry-point () void thunk)))
 
   ;; The callback of a pattern succeeds when it answers #t (and only #t).
   (define (%%conversion-pattern who proc)

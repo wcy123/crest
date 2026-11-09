@@ -17,7 +17,7 @@
 
   (define-builder-binding %mlir::affine::buildAffineLoopNest
     "mlir::affine::buildAffineLoopNest"
-    (uptr uptr scheme-object scheme-object scheme-object scheme-object) void)
+    (uptr uptr scheme-object scheme-object scheme-object uptr) void)
 
   (define-builder-binding %mlir::affine::AffineLoadOp::create
     "mlir::affine::AffineLoadOp::create" (uptr uptr uptr scheme-object) uptr)
