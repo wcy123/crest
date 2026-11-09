@@ -136,8 +136,8 @@ void CrestDialect::initialize() {
     cbs_.get_dependent_dialects(reinterpret_cast<uint64_t>(this));
   }
   CREST_TRACE("initialize: calling the dialect initialize");
-  if (cbs_.initialize) {
-    cbs_.initialize(reinterpret_cast<uint64_t>(this));
+  if (cbs_.initialize != Sfalse) {
+    scheme_call(cbs_.initialize, reinterpret_cast<uint64_t>(this));
   }
   CREST_TRACE("initialize: returned");
 }
@@ -279,7 +279,12 @@ static CrestDialect::Callbacks unpack_callbacks(ptr v) {
     return static_cast<uint64_t>(Sinteger64_value(value));
   };
   CrestDialect::Callbacks cbs;
-  cbs.initialize = reinterpret_cast<decltype(cbs.initialize)>(entry(0));
+  cbs.initialize = Svector_ref(v, 0);
+  if (Sprocedurep(cbs.initialize)) {
+    Slock_object(cbs.initialize);
+  } else {
+    cbs.initialize = Sfalse;
+  }
   cbs.get_dependent_dialects =
       reinterpret_cast<decltype(cbs.get_dependent_dialects)>(entry(1));
   cbs.parse_attribute =
