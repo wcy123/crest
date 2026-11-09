@@ -1,5 +1,4 @@
-bu scheme_mlir!crest_probe_before_callable "$$>< tools/experiment/before.cdb"
-bu scheme_mlir!crest_probe_after_callable ".printf \"AFTER callable\\n\"; g"
+bu scheme_mlir!crest_probe_before_callable ".echo === BEFORE callable (SSE registers)"; "rM 40"; "g"
+bu scheme_mlir!crest_probe_after_callable ".echo === AFTER callable (SSE registers)"; "rM 40"; "g"
 g
-.printf "crash: rdi=%p\n", @rdi
 q
