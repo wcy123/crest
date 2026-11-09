@@ -123,13 +123,6 @@ struct CallConceptData : public mlir::CallOpInterface::Concept {
 
 struct ArgAndResultAttrsConceptData
     : public mlir::ArgAndResultAttrsOpInterface::Concept {
-  crest::LockedSchemeObject get_arg_attrs_attr;
-  crest::LockedSchemeObject get_res_attrs_attr;
-  crest::LockedSchemeObject set_arg_attrs_attr;
-  crest::LockedSchemeObject set_res_attrs_attr;
-  crest::LockedSchemeObject get_arg_attr;
-  crest::LockedSchemeObject get_res_attr;
-
   // printFunctionOp only calls getArgAttrsAttr/getResAttrsAttr; nullptr is
   // safe.
   ArgAndResultAttrsConceptData()
@@ -146,24 +139,7 @@ struct ArgAndResultAttrsConceptData
                mlir::Operation*) -> mlir::Attribute { return nullptr; },
             [](const mlir::ArgAndResultAttrsOpInterface::Concept*,
                mlir::Operation*) -> mlir::Attribute { return nullptr; },
-        } {
-    assert(get_arg_attrs_attr.get() == Sfalse);
-    assert(get_res_attrs_attr.get() == Sfalse);
-    assert(set_arg_attrs_attr.get() == Sfalse);
-    assert(set_res_attrs_attr.get() == Sfalse);
-    assert(get_arg_attr.get() == Sfalse);
-    assert(get_res_attr.get() == Sfalse);
-  }
-
-  ArgAndResultAttrsConceptData(const ArgAndResultAttrsConceptData& other)
-      : mlir::ArgAndResultAttrsOpInterface::Concept(other) {
-    assert(other.get_arg_attrs_attr.get() == Sfalse);
-    assert(other.get_res_attrs_attr.get() == Sfalse);
-    assert(other.set_arg_attrs_attr.get() == Sfalse);
-    assert(other.set_res_attrs_attr.get() == Sfalse);
-    assert(other.get_arg_attr.get() == Sfalse);
-    assert(other.get_res_attr.get() == Sfalse);
-  }
+        } {}
 };
 } // anonymous namespace
 

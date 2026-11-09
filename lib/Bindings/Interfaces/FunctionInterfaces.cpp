@@ -190,16 +190,8 @@ crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
       return r == Strue ? mlir::success() : mlir::failure();
     };
   }
-  if (!data->getFunctionType) {
-    scheme_error("FunctionOpInterface::CreateConcept", op_name,
-                 ": getFunctionType is null");
-  }
-  if (!data->setFunctionTypeAttr) {
-    scheme_error("FunctionOpInterface::CreateConcept", op_name,
-                 ": setFunctionTypeAttr is null");
-  }
-  // cloneTypeWith, verifyBody, verifyType are optional: if #f, the default
-  // concept implementation (from getOrCreateDefaultConcept) is kept.
+  // A method the dispatcher answers #f for keeps the default implementation
+  // that the constructor of FunctionConceptData installed.
   auto* raw = data.get();
   crest::RegisterInterfaceForOp(
       mlir::FunctionOpInterface::getInterfaceID(), op_name,
