@@ -156,8 +156,9 @@ void registerCrestDynamicTypeBindings() {
               return mlir::success();
             }
             if (answer == 2) {
-              return mlir::ParseResult(p.emitError(p.getCurrentLocation())
-                                       << sink.message);
+              mlir::InFlightDiagnostic diagnostic =
+                  p.emitError(p.getCurrentLocation());
+              diagnostic << sink.message;
             }
             return mlir::failure();
           };

@@ -67,8 +67,9 @@ static mlir::OperationName::ParseAssemblyFn make_parse_fn(int (*fn)(uint64_t,
     }
     std::string message = takeReportedFailure();
     if (!message.empty()) {
-      return mlir::ParseResult(parser.emitError(parser.getCurrentLocation())
-                               << message);
+      mlir::InFlightDiagnostic diagnostic =
+          parser.emitError(parser.getCurrentLocation());
+      diagnostic << message;
     }
     return mlir::ParseResult::failure();
   };
