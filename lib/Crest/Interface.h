@@ -52,8 +52,11 @@ template <typename Interface> struct SupportedInterfaces {
   static std::shared_ptr<void>
   CloneConcept(const ConceptType* from); // undefined by design
 
-  // Copy the default concept, override provided slots, then register.
-  static ConceptType* CreateConcept(ptr dispatcher); // undefined by design
+  // Create the concept of one op, register it under `op_name` and return it. An
+  // interface whose methods can come from Scheme returns its own concept type,
+  // which the registering function downcasts to set the entry points.
+  static ConceptType*
+  CreateConcept(const std::string& op_name); // undefined by design
 };
 
 // Return the typed concept for (Interface, op_name).

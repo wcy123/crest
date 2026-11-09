@@ -7,7 +7,7 @@
   (import (chezscheme))
 
   (define %mlir::SymbolOpInterface
-    (foreign-procedure "mlir::SymbolOpInterface" (scheme-object) void))
+    (foreign-procedure "mlir::SymbolOpInterface" (string) void))
 
   (define %mlir::SymbolOpInterface::getNameAttr
     (foreign-procedure "mlir::SymbolOpInterface::getNameAttr" (uptr) uptr))

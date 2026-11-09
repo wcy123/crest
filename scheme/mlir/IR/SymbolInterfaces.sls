@@ -7,7 +7,10 @@
   (import (rnrs)
           (mlir IR SymbolInterfaces ffi))
 
-  (define mlir::SymbolOpInterface %mlir::SymbolOpInterface)
+  ;; dispatcher: made by define-op for the op's :interfaces entry; 'operation_name answers the
+  ;; op's name. The interface has no method that Scheme implements.
+  (define (mlir::SymbolOpInterface dispatcher)
+    (%mlir::SymbolOpInterface (dispatcher 'operation_name)))
 
   (define (mlir::SymbolOpInterface::getNameAttr op)
     (%mlir::SymbolOpInterface::getNameAttr op))

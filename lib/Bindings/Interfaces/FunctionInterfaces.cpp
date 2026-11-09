@@ -8,7 +8,6 @@
 #include "FunctionInterfaces.h"
 #include "../../Crest/Interface.h"
 #include "../IR/SymbolInterfaces.h"
-#include "../Support/LockedSchemeObject.h"
 #include "../Support/SchemeWrapper.h"
 #include "CallInterfaces.h"
 #include "mlir/IR/BuiltinAttributes.h"
@@ -28,54 +27,128 @@
 //
 // Inherits from mlir::FunctionOpInterface::Concept so FunctionConceptData*
 // is implicitly convertible to Concept*, and static_cast downcasts are valid.
-// Stores the
-// per-method locked Scheme lambdas.  Default-constructed fields hold Sfalse.
+// A method that Scheme implements has the entry point of a foreign-callable in
+// the field of its name; the default implementation stays in the Concept
+// until then.
 // ---------------------------------------------------------------------------
 namespace {
+// What a Scheme verifyBody or verifyType said: 1 is success. A Scheme error
+// makes the callable report its text before it answers 0, so the diagnostic
+// can carry it.
+std::string g_reported_failure;
+
+llvm::LogicalResult verifyResult(mlir::Operation* op, int answer) {
+  if (answer != 0) {
+    return mlir::success();
+  }
+  if (g_reported_failure.empty()) {
+    return mlir::failure();
+  }
+  std::string message = std::move(g_reported_failure);
+  g_reported_failure.clear();
+  return op->emitOpError() << message;
+}
+
 struct FunctionConceptData : public mlir::FunctionOpInterface::Concept {
-  crest::LockedSchemeObject get_function_type;
-  crest::LockedSchemeObject set_function_type_attr;
-  crest::LockedSchemeObject clone_type_with;
-  crest::LockedSchemeObject verify_body;
-  crest::LockedSchemeObject verify_type;
+  using Concept = mlir::FunctionOpInterface::Concept;
+
+  uint64_t (*get_function_type)(uint64_t op) = nullptr;
+  void (*set_function_type_attr)(uint64_t op, uint64_t attr) = nullptr;
+  uint64_t (*clone_type_with)(uint64_t op, const void* const* inputs,
+                              uint64_t input_count, const void* const* results,
+                              uint64_t result_count) = nullptr;
+  int (*verify_body)(uint64_t op) = nullptr;
+  int (*verify_type)(uint64_t op) = nullptr;
 
   FunctionConceptData()
-      : mlir::FunctionOpInterface::Concept{
-            [](const mlir::FunctionOpInterface::Concept*,
-               mlir::Operation* op) -> mlir::Type {
+      : Concept{
+            [](const Concept*, mlir::Operation* op) -> mlir::Type {
               return mlir::cast<mlir::TypeAttr>(op->getAttr("function_type"))
                   .getValue();
             },
-            [](const mlir::FunctionOpInterface::Concept*, mlir::Operation* op,
-               mlir::TypeAttr t) { op->setAttr("function_type", t); },
-            [](const mlir::FunctionOpInterface::Concept*, mlir::Operation* op,
-               mlir::TypeRange inputs, mlir::TypeRange results) -> mlir::Type {
+            [](const Concept*, mlir::Operation* op, mlir::TypeAttr t) {
+              op->setAttr("function_type", t);
+            },
+            [](const Concept*, mlir::Operation* op, mlir::TypeRange inputs,
+               mlir::TypeRange results) -> mlir::Type {
               return mlir::FunctionType::get(op->getContext(), inputs, results);
             },
-            [](const mlir::FunctionOpInterface::Concept*, mlir::Operation*)
-                -> llvm::LogicalResult { return mlir::success(); },
-            [](const mlir::FunctionOpInterface::Concept*, mlir::Operation*)
-                -> llvm::LogicalResult { return mlir::success(); },
+            [](const Concept*, mlir::Operation*) -> llvm::LogicalResult {
+              return mlir::success();
+            },
+            [](const Concept*, mlir::Operation*) -> llvm::LogicalResult {
+              return mlir::success();
+            },
             crest::SupportedInterfaces<
                 mlir::SymbolOpInterface>::getOrCreateDefaultConcept(),
             crest::SupportedInterfaces<mlir::ArgAndResultAttrsOpInterface>::
                 getOrCreateDefaultConcept(),
             crest::SupportedInterfaces<
-                mlir::CallableOpInterface>::getOrCreateDefaultConcept()} {
-    assert(get_function_type.get() == Sfalse);
-    assert(set_function_type_attr.get() == Sfalse);
-    assert(clone_type_with.get() == Sfalse);
-    assert(verify_body.get() == Sfalse);
-    assert(verify_type.get() == Sfalse);
-  }
+                mlir::CallableOpInterface>::getOrCreateDefaultConcept()} {}
 
-  FunctionConceptData(const FunctionConceptData& other)
-      : mlir::FunctionOpInterface::Concept(other) {
-    assert(other.get_function_type.get() == Sfalse);
-    assert(other.set_function_type_attr.get() == Sfalse);
-    assert(other.clone_type_with.get() == Sfalse);
-    assert(other.verify_body.get() == Sfalse);
-    assert(other.verify_type.get() == Sfalse);
+  // An entry of 0 leaves the default implementation of that method.
+  void install(uint64_t getFunctionTypeEntry, uint64_t setFunctionTypeAttrEntry,
+               uint64_t cloneTypeWithEntry, uint64_t verifyBodyEntry,
+               uint64_t verifyTypeEntry) {
+    if (getFunctionTypeEntry != 0) {
+      get_function_type =
+          reinterpret_cast<decltype(get_function_type)>(getFunctionTypeEntry);
+      getFunctionType =
+          +[](const Concept* self, mlir::Operation* op) -> mlir::Type {
+        const auto* d = static_cast<const FunctionConceptData*>(self);
+        return mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(
+            d->get_function_type(reinterpret_cast<uint64_t>(op))));
+      };
+    }
+    if (setFunctionTypeAttrEntry != 0) {
+      set_function_type_attr =
+          reinterpret_cast<decltype(set_function_type_attr)>(
+              setFunctionTypeAttrEntry);
+      setFunctionTypeAttr =
+          +[](const Concept* self, mlir::Operation* op, mlir::TypeAttr t) {
+            const auto* d = static_cast<const FunctionConceptData*>(self);
+            d->set_function_type_attr(
+                reinterpret_cast<uint64_t>(op),
+                reinterpret_cast<uint64_t>(t.getAsOpaquePointer()));
+          };
+    }
+    if (cloneTypeWithEntry != 0) {
+      clone_type_with =
+          reinterpret_cast<decltype(clone_type_with)>(cloneTypeWithEntry);
+      cloneTypeWith =
+          +[](const Concept* self, mlir::Operation* op, mlir::TypeRange inputs,
+              mlir::TypeRange results) -> mlir::Type {
+        const auto* d = static_cast<const FunctionConceptData*>(self);
+        llvm::SmallVector<const void*, 8> inputPointers;
+        llvm::SmallVector<const void*, 8> resultPointers;
+        for (mlir::Type t : inputs) {
+          inputPointers.push_back(t.getAsOpaquePointer());
+        }
+        for (mlir::Type t : results) {
+          resultPointers.push_back(t.getAsOpaquePointer());
+        }
+        return mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(
+            d->clone_type_with(reinterpret_cast<uint64_t>(op),
+                               inputPointers.data(), inputPointers.size(),
+                               resultPointers.data(), resultPointers.size())));
+      };
+    }
+    if (verifyBodyEntry != 0) {
+      verify_body = reinterpret_cast<decltype(verify_body)>(verifyBodyEntry);
+      verifyBody =
+          +[](const Concept* self, mlir::Operation* op) -> llvm::LogicalResult {
+        const auto* d = static_cast<const FunctionConceptData*>(self);
+        return verifyResult(op, d->verify_body(reinterpret_cast<uint64_t>(op)));
+      };
+    }
+    if (verifyTypeEntry != 0) {
+      verify_type = reinterpret_cast<decltype(verify_type)>(verifyTypeEntry);
+      verifyType =
+          +[](const Concept* self, mlir::Operation* op) -> llvm::LogicalResult {
+        const auto* d = static_cast<const FunctionConceptData*>(self);
+        return verifyResult(op, d->verify_type(reinterpret_cast<uint64_t>(op)));
+      };
+    }
   }
 };
 } // anonymous namespace
@@ -103,28 +176,7 @@ crest::SupportedInterfaces<mlir::FunctionOpInterface>::CloneConcept(
 template <>
 mlir::FunctionOpInterface::Concept*
 crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
-    ptr dispatcher) {
-  // Lock dispatcher to pin it in memory: Sstring_to_symbol() and scheme_call()
-  // can trigger GC which would move the dispatcher closure, leaving the C local
-  // variable stale. Locking prevents GC from relocating it.
-  crest::LockedSchemeObject locked_dispatcher(dispatcher);
-  using Concept = mlir::FunctionOpInterface::Concept;
-  std::string op_name = Conversion<ptr, std::string>{}(
-      scheme_call(dispatcher, Sstring_to_symbol("operation_name")));
-
-  // Each scheme_call can trigger GC. Lock every returned ptr immediately so
-  // subsequent scheme_calls cannot invalidate earlier values.
-  crest::LockedSchemeObject getFunctionType(
-      scheme_call(dispatcher, Sstring_to_symbol("getFunctionType")));
-  crest::LockedSchemeObject setFunctionTypeAttr(
-      scheme_call(dispatcher, Sstring_to_symbol("setFunctionTypeAttr")));
-  crest::LockedSchemeObject cloneTypeWith(
-      scheme_call(dispatcher, Sstring_to_symbol("cloneTypeWith")));
-  crest::LockedSchemeObject verifyBody(
-      scheme_call(dispatcher, Sstring_to_symbol("verifyBody")));
-  crest::LockedSchemeObject verifyType(
-      scheme_call(dispatcher, Sstring_to_symbol("verifyType")));
-
+    const std::string& op_name) {
   auto data = std::make_unique<FunctionConceptData>();
 
   data->implSymbolOpInterface =
@@ -138,60 +190,6 @@ crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
       data->implArgAndResultAttrsOpInterface;
   data->implCallableOpInterface = callable;
 
-  if (getFunctionType.get() != Sfalse) {
-    data->get_function_type = crest::LockedSchemeObject(getFunctionType.get());
-    data->getFunctionType =
-        +[](const Concept* self, mlir::Operation* op) -> mlir::Type {
-      const auto* d = static_cast<const FunctionConceptData*>(self);
-      ptr r = scheme_call(d->get_function_type.get(),
-                          reinterpret_cast<uint64_t>(op));
-      return mlir::Type::getFromOpaquePointer(
-          reinterpret_cast<const void*>(Sunsigned64_value(r)));
-    };
-  }
-  if (setFunctionTypeAttr.get() != Sfalse) {
-    data->set_function_type_attr =
-        crest::LockedSchemeObject(setFunctionTypeAttr.get());
-    data->setFunctionTypeAttr =
-        +[](const Concept* self, mlir::Operation* op, mlir::TypeAttr t) {
-          const auto* d = static_cast<const FunctionConceptData*>(self);
-          scheme_call(d->set_function_type_attr.get(),
-                      reinterpret_cast<uint64_t>(op),
-                      reinterpret_cast<uint64_t>(t.getAsOpaquePointer()));
-        };
-  }
-  if (cloneTypeWith.get() != Sfalse) {
-    data->clone_type_with = crest::LockedSchemeObject(cloneTypeWith.get());
-    data->cloneTypeWith =
-        +[](const Concept* self, mlir::Operation* op, mlir::TypeRange inputs,
-            mlir::TypeRange results) -> mlir::Type {
-      const auto* d = static_cast<const FunctionConceptData*>(self);
-      ptr r = scheme_call(d->clone_type_with.get(),
-                          reinterpret_cast<uint64_t>(op), inputs, results);
-      return mlir::Type::getFromOpaquePointer(
-          reinterpret_cast<const void*>(Sunsigned64_value(r)));
-    };
-  }
-  if (verifyBody.get() != Sfalse) {
-    data->verify_body = crest::LockedSchemeObject(verifyBody.get());
-    data->verifyBody =
-        +[](const Concept* self, mlir::Operation* op) -> llvm::LogicalResult {
-      const auto* d = static_cast<const FunctionConceptData*>(self);
-      ptr r = scheme_call(d->verify_body.get(), reinterpret_cast<uint64_t>(op));
-      return r == Strue ? mlir::success() : mlir::failure();
-    };
-  }
-  if (verifyType.get() != Sfalse) {
-    data->verify_type = crest::LockedSchemeObject(verifyType.get());
-    data->verifyType =
-        +[](const Concept* self, mlir::Operation* op) -> llvm::LogicalResult {
-      const auto* d = static_cast<const FunctionConceptData*>(self);
-      ptr r = scheme_call(d->verify_type.get(), reinterpret_cast<uint64_t>(op));
-      return r == Strue ? mlir::success() : mlir::failure();
-    };
-  }
-  // A method the dispatcher answers #f for keeps the default implementation
-  // that the constructor of FunctionConceptData installed.
   auto* raw = data.get();
   crest::RegisterInterfaceForOp(
       mlir::FunctionOpInterface::getInterfaceID(), op_name,
@@ -202,10 +200,32 @@ crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
 }
 
 void registerInterfacesFunctionInterfacesBindings() {
+  // mlir::FunctionOpInterface (string op-name) (uptr getFunctionType)
+  //   (uptr setFunctionTypeAttr) (uptr cloneTypeWith) (uptr verifyBody)
+  //   (uptr verifyType)
+  //
+  // Each uptr is the entry point of a foreign-callable made in Scheme, or 0
+  // when the op leaves that method to the default implementation.
   Sregister_symbol(
-      "mlir::FunctionOpInterface", (void*)+[](ptr dispatcher) {
-        crest::SupportedInterfaces<mlir::FunctionOpInterface>::CreateConcept(
-            dispatcher);
+      "mlir::FunctionOpInterface",
+      (void*)+[](const char* op_name, uint64_t getFunctionTypeEntry,
+                 uint64_t setFunctionTypeAttrEntry, uint64_t cloneTypeWithEntry,
+                 uint64_t verifyBodyEntry, uint64_t verifyTypeEntry) {
+        auto* data = static_cast<FunctionConceptData*>(
+            crest::SupportedInterfaces<
+                mlir::FunctionOpInterface>::CreateConcept(op_name));
+        data->install(getFunctionTypeEntry, setFunctionTypeAttrEntry,
+                      cloneTypeWithEntry, verifyBodyEntry, verifyTypeEntry);
+      });
+
+  // crest::FunctionOpInterface::reportFailure (string message)
+  //
+  // The callable of a verifier calls it with the text of the error its Scheme
+  // method raised, before it answers failure, so that the diagnostic shows it.
+  Sregister_symbol(
+      "crest::FunctionOpInterface::reportFailure",
+      (void*)+[](const char* message) -> void {
+        g_reported_failure = message;
       });
 
   // Trigger initialisation of the default concept — registration under "."

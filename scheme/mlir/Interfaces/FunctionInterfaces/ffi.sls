@@ -2,6 +2,7 @@
 ;; Mirrors mlir/Interfaces/FunctionInterfaces.h
 (library (mlir Interfaces FunctionInterfaces ffi)
   (export %mlir::FunctionOpInterface
+          %crest::FunctionOpInterface::reportFailure
           %mlir::function_interface_impl::parseFunctionOp
           %mlir::function_interface_impl::printFunctionOp
           %mlir::FunctionOpInterface::getFunctionType
@@ -10,9 +11,15 @@
           %mlir::FunctionOpInterface::verifyType)
   (import (chezscheme))
 
-  ;; Register an interface concept for one op via a Scheme dispatcher procedure.
+  ;; Register the interface concept of one op: its name, then the entry point of the
+  ;; foreign-callable of each method (getFunctionType, setFunctionTypeAttr, cloneTypeWith,
+  ;; verifyBody, verifyType), 0 for a method the op leaves to the default.
   (define %mlir::FunctionOpInterface
-    (foreign-procedure "mlir::FunctionOpInterface" (scheme-object) void))
+    (foreign-procedure "mlir::FunctionOpInterface" (string uptr uptr uptr uptr uptr) void))
+
+  ;; The text of an error that a verifier raised, for the diagnostic that its failure makes.
+  (define %crest::FunctionOpInterface::reportFailure
+    (foreign-procedure "crest::FunctionOpInterface::reportFailure" (string) void))
 
   ;; Interface method calls — look up registered concept and dispatch.
   (define %mlir::FunctionOpInterface::getFunctionType

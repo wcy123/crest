@@ -7,7 +7,6 @@
 
 #include "SymbolInterfaces.h"
 #include "../../Crest/Interface.h"
-#include "../Support/LockedSchemeObject.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/IR/SymbolTable.h"
@@ -113,11 +112,8 @@ SupportedInterfaces<mlir::SymbolOpInterface>::CloneConcept(
 
 template <>
 mlir::SymbolOpInterface::Concept*
-SupportedInterfaces<mlir::SymbolOpInterface>::CreateConcept(ptr dispatcher) {
-  crest::LockedSchemeObject locked_dispatcher(dispatcher);
-  std::string op_name = Conversion<ptr, std::string>{}(
-      scheme_call(dispatcher, Sstring_to_symbol("operation_name")));
-
+SupportedInterfaces<mlir::SymbolOpInterface>::CreateConcept(
+    const std::string& op_name) {
   auto data = std::make_unique<SymbolConceptData>();
 
   SymbolConceptData* raw = data.get();
@@ -131,9 +127,9 @@ SupportedInterfaces<mlir::SymbolOpInterface>::CreateConcept(ptr dispatcher) {
 
 void registerIRSymbolInterfacesBindings() {
   Sregister_symbol(
-      "mlir::SymbolOpInterface", (void*)+[](ptr dispatcher) {
+      "mlir::SymbolOpInterface", (void*)+[](const char* op_name) {
         crest::SupportedInterfaces<mlir::SymbolOpInterface>::CreateConcept(
-            dispatcher);
+            op_name);
       });
 
   Sregister_symbol(

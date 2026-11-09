@@ -7,7 +7,6 @@
 
 #include "CallInterfaces.h"
 #include "../../Crest/Interface.h"
-#include "../Support/LockedSchemeObject.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/Attributes.h"
 #include "mlir/IR/BuiltinTypes.h"
@@ -16,14 +15,15 @@
 #include "mlir/IR/SymbolTable.h"
 #include "mlir/IR/Types.h"
 #include "mlir/Interfaces/CallInterfaces.h"
-#include <cassert>
 #include <memory>
 
 namespace {
 struct CallableConceptData : public mlir::CallableOpInterface::Concept {
-  crest::LockedSchemeObject get_callable_region;
-  crest::LockedSchemeObject get_argument_types;
-  crest::LockedSchemeObject get_result_types;
+  using Concept = mlir::CallableOpInterface::Concept;
+
+  // The entry point of a foreign-callable made in Scheme; nullptr keeps the
+  // default implementation, which is the first region of the op.
+  uint64_t (*get_callable_region)(uint64_t op) = nullptr;
 
   CallableConceptData()
       : mlir::CallableOpInterface::Concept{
@@ -45,17 +45,20 @@ struct CallableConceptData : public mlir::CallableOpInterface::Concept {
                              .getValue())
                   .getResults();
             },
-        } {
-    assert(get_callable_region.get() == Sfalse);
-    assert(get_argument_types.get() == Sfalse);
-    assert(get_result_types.get() == Sfalse);
-  }
+        } {}
 
-  CallableConceptData(const CallableConceptData& other)
-      : mlir::CallableOpInterface::Concept(other) {
-    assert(other.get_callable_region.get() == Sfalse);
-    assert(other.get_argument_types.get() == Sfalse);
-    assert(other.get_result_types.get() == Sfalse);
+  // An entry of 0 leaves the default implementation of the method.
+  void install(uint64_t getCallableRegionEntry) {
+    if (getCallableRegionEntry != 0) {
+      get_callable_region = reinterpret_cast<decltype(get_callable_region)>(
+          getCallableRegionEntry);
+      getCallableRegion =
+          +[](const Concept* self, mlir::Operation* op) -> mlir::Region* {
+        const auto* d = static_cast<const CallableConceptData*>(self);
+        return reinterpret_cast<mlir::Region*>(
+            d->get_callable_region(reinterpret_cast<uint64_t>(op)));
+      };
+    }
   }
 };
 
@@ -206,58 +209,11 @@ SupportedInterfaces<mlir::ArgAndResultAttrsOpInterface>::CloneConcept(
 
 template <>
 mlir::CallableOpInterface::Concept*
-SupportedInterfaces<mlir::CallableOpInterface>::CreateConcept(ptr dispatcher) {
-  crest::LockedSchemeObject locked_dispatcher(dispatcher);
-  using Concept = mlir::CallableOpInterface::Concept;
-  std::string op_name = Conversion<ptr, std::string>{}(
-      scheme_call(dispatcher, Sstring_to_symbol("operation_name")));
-
-  // Lock each returned ptr immediately — each scheme_call is a GC point.
-  crest::LockedSchemeObject getCallableRegion(
-      scheme_call(dispatcher, Sstring_to_symbol("getCallableRegion")));
-  crest::LockedSchemeObject getArgumentTypes(
-      scheme_call(dispatcher, Sstring_to_symbol("getArgumentTypes")));
-  crest::LockedSchemeObject getResultTypes(
-      scheme_call(dispatcher, Sstring_to_symbol("getResultTypes")));
-
+SupportedInterfaces<mlir::CallableOpInterface>::CreateConcept(
+    const std::string& op_name) {
   auto data = std::make_unique<CallableConceptData>();
   data->implArgAndResultAttrsOpInterface =
       getOrCreateConcept<mlir::ArgAndResultAttrsOpInterface>(op_name);
-
-  if (getCallableRegion.get() != Sfalse) {
-    data->get_callable_region =
-        crest::LockedSchemeObject(getCallableRegion.get());
-    data->getCallableRegion =
-        +[](const Concept* self, mlir::Operation* op) -> mlir::Region* {
-      const auto* d = static_cast<const CallableConceptData*>(self);
-      ptr r = scheme_call(d->get_callable_region.get(),
-                          reinterpret_cast<uint64_t>(op));
-      return reinterpret_cast<mlir::Region*>(Sunsigned64_value(r));
-    };
-  }
-  if (getArgumentTypes.get() != Sfalse) {
-    data->get_argument_types =
-        crest::LockedSchemeObject(getArgumentTypes.get());
-    data->getArgumentTypes =
-        +[](const Concept* self,
-            mlir::Operation* op) -> llvm::ArrayRef<mlir::Type> {
-      const auto* d = static_cast<const CallableConceptData*>(self);
-      (void)d;
-      (void)op;
-      return {};
-    };
-  }
-  if (getResultTypes.get() != Sfalse) {
-    data->get_result_types = crest::LockedSchemeObject(getResultTypes.get());
-    data->getResultTypes =
-        +[](const Concept* self,
-            mlir::Operation* op) -> llvm::ArrayRef<mlir::Type> {
-      const auto* d = static_cast<const CallableConceptData*>(self);
-      (void)d;
-      (void)op;
-      return {};
-    };
-  }
 
   CallableConceptData* raw = data.get();
   RegisterInterfaceForOp(mlir::CallableOpInterface::getInterfaceID(), op_name,
@@ -270,11 +226,8 @@ SupportedInterfaces<mlir::CallableOpInterface>::CreateConcept(ptr dispatcher) {
 
 template <>
 mlir::CallOpInterface::Concept*
-SupportedInterfaces<mlir::CallOpInterface>::CreateConcept(ptr dispatcher) {
-  crest::LockedSchemeObject locked_dispatcher(dispatcher);
-  std::string op_name = Conversion<ptr, std::string>{}(
-      scheme_call(dispatcher, Sstring_to_symbol("operation_name")));
-
+SupportedInterfaces<mlir::CallOpInterface>::CreateConcept(
+    const std::string& op_name) {
   auto data = std::make_unique<CallConceptData>();
   data->implArgAndResultAttrsOpInterface =
       getOrCreateConcept<mlir::ArgAndResultAttrsOpInterface>(op_name);
@@ -291,11 +244,7 @@ SupportedInterfaces<mlir::CallOpInterface>::CreateConcept(ptr dispatcher) {
 template <>
 mlir::ArgAndResultAttrsOpInterface::Concept*
 SupportedInterfaces<mlir::ArgAndResultAttrsOpInterface>::CreateConcept(
-    ptr dispatcher) {
-  crest::LockedSchemeObject locked_dispatcher(dispatcher);
-  std::string op_name = Conversion<ptr, std::string>{}(
-      scheme_call(dispatcher, Sstring_to_symbol("operation_name")));
-
+    const std::string& op_name) {
   auto data = std::make_unique<ArgAndResultAttrsConceptData>();
 
   ArgAndResultAttrsConceptData* raw = data.get();
@@ -313,20 +262,27 @@ void registerInterfacesCallInterfacesBindings() {
   SupportedInterfaces<mlir::CallOpInterface>::getOrCreateDefaultConcept();
   SupportedInterfaces<
       mlir::ArgAndResultAttrsOpInterface>::getOrCreateDefaultConcept();
+  // mlir::CallableOpInterface (string op-name) (uptr getCallableRegion)
+  //
+  // The uptr is the entry point of a foreign-callable made in Scheme, or 0 when
+  // the op keeps the default implementation.
   Sregister_symbol(
-      "mlir::CallableOpInterface", (void*)+[](ptr dispatcher) {
-        crest::SupportedInterfaces<mlir::CallableOpInterface>::CreateConcept(
-            dispatcher);
+      "mlir::CallableOpInterface",
+      (void*)+[](const char* op_name, uint64_t getCallableRegionEntry) {
+        auto* data = static_cast<CallableConceptData*>(
+            crest::SupportedInterfaces<
+                mlir::CallableOpInterface>::CreateConcept(op_name));
+        data->install(getCallableRegionEntry);
       });
   Sregister_symbol(
-      "mlir::CallOpInterface", (void*)+[](ptr dispatcher) {
+      "mlir::CallOpInterface", (void*)+[](const char* op_name) {
         crest::SupportedInterfaces<mlir::CallOpInterface>::CreateConcept(
-            dispatcher);
+            op_name);
       });
   Sregister_symbol(
-      "mlir::ArgAndResultAttrsOpInterface", (void*)+[](ptr dispatcher) {
+      "mlir::ArgAndResultAttrsOpInterface", (void*)+[](const char* op_name) {
         crest::SupportedInterfaces<
-            mlir::ArgAndResultAttrsOpInterface>::CreateConcept(dispatcher);
+            mlir::ArgAndResultAttrsOpInterface>::CreateConcept(op_name);
       });
 
   Sregister_symbol(

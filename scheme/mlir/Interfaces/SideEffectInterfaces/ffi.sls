@@ -6,9 +6,9 @@
   (import (chezscheme))
 
   (define %mlir::MemoryEffectOpInterface
-    (foreign-procedure "mlir::MemoryEffectOpInterface" (scheme-object) void))
+    (foreign-procedure "mlir::MemoryEffectOpInterface" (string) void))
 
   (define %mlir::ConditionallySpeculatable
-    (foreign-procedure "mlir::ConditionallySpeculatable" (scheme-object) void))
+    (foreign-procedure "mlir::ConditionallySpeculatable" (string) void))
 
   ) ;; end library (mlir Interfaces SideEffectInterfaces ffi)

@@ -26,4 +26,8 @@
     (define-op bad
       :interfaces ((mlir::FunctionOpInterface
                     (verifyBody (self) #f)
-                    (verifyType (self) #f))))))
+                    (verifyType (self) #f))))
+    (define-op raises
+      :interfaces ((mlir::FunctionOpInterface
+                    (verifyBody (self) (error 'verifyBody "the body is broken"))
+                    (verifyType (self) (error 'verifyType "the type is broken")))))))

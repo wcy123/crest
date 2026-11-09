@@ -7,7 +7,6 @@
 
 #include "SideEffectInterfaces.h"
 #include "../../Crest/Interface.h"
-#include "../Support/LockedSchemeObject.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 #include <memory>
@@ -37,10 +36,7 @@ struct SpeculatableConceptData
 };
 
 template <typename Interface, typename Data>
-typename Interface::Concept* createConcept(ptr dispatcher) {
-  crest::LockedSchemeObject locked_dispatcher(dispatcher);
-  std::string op_name = Conversion<ptr, std::string>{}(
-      scheme_call(dispatcher, Sstring_to_symbol("operation_name")));
+typename Interface::Concept* createConcept(const std::string& op_name) {
   auto data = std::make_unique<Data>();
   Data* raw = data.get();
   crest::RegisterInterfaceForOp(
@@ -99,14 +95,14 @@ void registerInterfacesSideEffectInterfacesBindings() {
   SupportedInterfaces<
       mlir::ConditionallySpeculatable>::getOrCreateDefaultConcept();
   Sregister_symbol(
-      "mlir::MemoryEffectOpInterface", (void*)+[](ptr dispatcher) {
+      "mlir::MemoryEffectOpInterface", (void*)+[](const char* op_name) {
         createConcept<mlir::MemoryEffectOpInterface, MemoryEffectConceptData>(
-            dispatcher);
+            op_name);
       });
   Sregister_symbol(
-      "mlir::ConditionallySpeculatable", (void*)+[](ptr dispatcher) {
+      "mlir::ConditionallySpeculatable", (void*)+[](const char* op_name) {
         createConcept<mlir::ConditionallySpeculatable, SpeculatableConceptData>(
-            dispatcher);
+            op_name);
       });
 }
 
