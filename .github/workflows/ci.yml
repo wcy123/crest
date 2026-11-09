@@ -208,7 +208,7 @@ jobs:
           set PATH=%PATH%;C:\Program Files (x86)\Windows Kits\10\Debuggers\x64
           set CREST_PATH=%CD%\test\dsl\one-shot-callbacks
           set CREST_SCHEME_BINARY_DIR=%CD%\build\expbin4
-          cdb -g -G -c "kb 25;ub @rip L12;q" build\tools\scheme-mlir\scheme-mlir.exe test\dsl\one-shot-callbacks\walk-leak-driver.sls test\dsl\one-shot-callbacks\walk-leak.mlir 2>&1
+          cdb -g -G -c "q" build\tools\scheme-mlir\scheme-mlir.exe test\dsl\one-shot-callbacks\walk-leak-driver.sls test\dsl\one-shot-callbacks\walk-leak.mlir 2>&1
 
       - name: Upload test results
         if: always()

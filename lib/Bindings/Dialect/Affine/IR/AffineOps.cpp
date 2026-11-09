@@ -16,6 +16,9 @@
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/DialectRegistry.h"
 
+#include <cstdio>
+#define CREST_TRACE(...) (std::fprintf(stderr, "TRACE " __VA_ARGS__), std::fputc('\n', stderr), std::fflush(stderr))
+
 namespace crest {
 
 void registerDialectAffineIRAffineOpsBindings() {
@@ -49,9 +52,11 @@ void registerDialectAffineIRAffineOpsBindings() {
                 iv_pointers.push_back(
                     reinterpret_cast<uint64_t>(iv.getAsOpaquePointer()));
               }
+              CREST_TRACE("loop body: nb=%p block=%p at-end=%d", static_cast<void*>(&nb), static_cast<void*>(nb.getBlock()), nb.getBlock() ? (nb.getInsertionPoint() == nb.getBlock()->end()) : -1);
               owned(reinterpret_cast<uint64_t>(&nb_shell),
                     reinterpret_cast<uint64_t>(nb_loc.getAsOpaquePointer()),
                     iv_pointers.data(), iv_pointers.size());
+              CREST_TRACE("loop body done: nb=%p block=%p at-end=%d", static_cast<void*>(&nb), static_cast<void*>(nb.getBlock()), nb.getBlock() ? (nb.getInsertionPoint() == nb.getBlock()->end()) : -1);
             });
       });
 
