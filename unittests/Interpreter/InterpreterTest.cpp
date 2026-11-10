@@ -179,6 +179,16 @@ TEST_F(InterpreterTest, FromProcedureCompilesTheMakerOncePerPrototype) {
 // of C++ memory. Valgrind showed it. The message must be copied into a Scheme
 // string and the C++ objects destroyed before Scheme is called.
 #if defined(__GLIBC__)
+// The bytes that malloc has given out and not got back. mallinfo2 replaces
+// mallinfo (glibc 2.33), which newer glibc marks as deprecated.
+static size_t bytesInUse() {
+#  if __GLIBC_PREREQ(2, 33)
+  return static_cast<size_t>(mallinfo2().uordblks);
+#  else
+  return static_cast<size_t>(mallinfo().uordblks);
+#  endif
+}
+
 TEST_F(InterpreterTest, SchemeErrorDoesNotLeakCppMemory) {
   Sregister_symbol(
       "crest::test::raise", (void*)+[]() -> void {
@@ -203,11 +213,11 @@ TEST_F(InterpreterTest, SchemeErrorDoesNotLeakCppMemory) {
   };
   run(100);
   collect();
-  size_t before = static_cast<size_t>(mallinfo().uordblks);
+  size_t before = bytesInUse();
   constexpr int kErrors = 20000;
   run(kErrors);
   collect();
-  size_t grown = static_cast<size_t>(mallinfo().uordblks) - before;
+  size_t grown = bytesInUse() - before;
   // Before the repair each error lost about 816 bytes in scheme_error. What is
   // left, about 200 bytes per error, is Chez's own: S_call_help allocates a
   // record for each call from C into Scheme and does not free it when an error
