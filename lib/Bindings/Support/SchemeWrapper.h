@@ -129,10 +129,10 @@ template <typename... Ts> inline ptr make_scheme_list(Ts&&... args) {
 //
 // For a call that C++ makes now: a top-level procedure, or one that Scheme gave
 // as an argument of the foreign call that is running. A procedure that C++
-// keeps for later is not held as a ptr (the garbage collector moves it): Scheme
-// makes a C function for it with foreign-callable (scheme/crest/callback.sls),
-// and C++ keeps its entry point, in a crest::ForeignCallable when it is made
-// for one run.
+// keeps for later is not held as a ptr (the garbage collector moves it): a C
+// function is made for it with foreign-callable, by Scheme once per library
+// (scheme/crest/callback.sls) or by C++ for one run
+// (crest::ForeignCallable::fromProcedure), and C++ keeps its entry point.
 ptr convert_to_scheme_func(const char* fname); // defined in SchemeWrapper.cpp
 inline ptr convert_to_scheme_func(ptr f) { return f; }
 

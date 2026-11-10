@@ -222,17 +222,21 @@ Named `let` is still fine for irregular recursion (mutual, non-linear stepping).
 
 ## Rule 17 — C++ keeps C functions, not Scheme procedures
 
-A Scheme procedure that C++ calls later is never stored as a `ptr`: the garbage collector moves it. The Scheme
-side makes a C function for it with `crest-callback-entry-point` (`(crest callback)`), which builds a
-`foreign-callable`, locks its code object and answers its entry point; the C++ binding takes that address as a
-`uptr`. Who releases the lock depends on how long the callable is used:
+A Scheme procedure that C++ calls later is never stored as a `ptr`: the garbage collector moves it. It gets a C
+function of its own, a `foreign-callable` whose code object is locked. Who makes it and who releases the lock
+depend on how long the callable is used:
 
-- **made once per library** (an op's clause, a dialect's callback, the body of a `define-pass`): create it at
-  the library level, so a context makes none of its own; C++ keeps a plain function pointer and never releases it;
-- **made for a run** (a closure the user passes to a pattern, a type converter, a walk): C++ holds it in a
-  `crest::ForeignCallable<R(Args...)>` (`lib/Bindings/Support/ForeignCallable.h`) that unlocks it when what
-  calls it is destroyed. Construct the owner first in the binding, before an early return or a check that can
-  raise (an error that leaves through Scheme skips destructors).
+- **made once per library** (an op's clause, a dialect's callback, the body of a `define-pass`): the Scheme side
+  makes it at the library level with `crest-callback-entry-point` (`(crest callback)`), which answers its entry
+  point, so a context makes none of its own; the C++ binding takes that address as a `uptr` and keeps a plain
+  function pointer, and never releases it;
+- **made for a run** (a closure the user passes to a pattern, a type converter, a walk): Scheme gives the binding
+  the procedure, adapted to the C types, as a `scheme-object`, and the binding makes the owner with
+  `crest::ForeignCallable<R(Args...)>::fromProcedure(procedure)` (`lib/Bindings/Support/ForeignCallable.h`),
+  which deduces the prototype from the C++ type, compiles the maker once per prototype, and unlocks the callable
+  when what calls it is destroyed. Making it runs Scheme, which can move the objects of the Scheme heap: copy a
+  `const char*` into a `std::string` and read a Scheme list first, then make the owner before an early return or a
+  check that can raise (an error that leaves through Scheme skips destructors).
 
 C++ calls a callable directly through its function pointer. Chez Scheme's `foreign-callable` on Windows x64 used
 to zero the upper halves of XMM6-XMM11, which that ABI makes callee-saved, and C++ compiled for LLVM 23 keeps

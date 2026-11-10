@@ -21,9 +21,11 @@
 ;;   made once per library (an op's clause, a dialect's callback, the body of a pass): define it at
 ;;   the library level; C++ keeps the address as a plain function pointer and never releases it.
 ;;
-;;   made for a run (a closure that the user passes to a pattern, a type converter, a walk): C++
-;;   gives the address to a crest::ForeignCallable (lib/Bindings/Support/ForeignCallable.h), which
-;;   takes over this lock and releases it when whatever calls the function is destroyed.
+;;   made for a run (a closure that the user passes to a pattern, a type converter, a walk): not made
+;;   here. Scheme gives C++ the procedure, adapted to the C types, and C++ makes the callable with
+;;   crest::ForeignCallable<R(Args...)>::fromProcedure (lib/Bindings/Support/ForeignCallable.h), which
+;;   deduces the prototype from the C++ type and releases the lock when whatever calls the function
+;;   is destroyed.
 ;;
 ;; C++ gives a range (a TypeRange, say) as a pointer to an array and a count, not as a Scheme
 ;; list; crest-callback-pointer-list reads the count elements of 8 bytes at pointer.
