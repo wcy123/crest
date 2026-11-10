@@ -21,3 +21,25 @@ func.func @f(%a: i32, %b: i32, %c: i32 {dcb.flag = 1 : i32}) {
 
 // expected-error @+1 {{the attribute is broken}}
 "dcb.raises"() {dcb.flag = 1 : i32} : () -> ()
+
+// -----
+
+// The verifiers inspect the attribute they get: its name and its value.
+
+// expected-error @+1 {{attribute dcb.flag = 11 : i32 is too big}}
+"dcb.holder"() {dcb.flag = 11 : i32} : () -> ()
+
+// -----
+
+// expected-error @+1 {{argument attribute dcb.flag = 12 : i32 is too big}}
+func.func @g(%a: i32 {dcb.flag = 12 : i32}) {
+  return
+}
+
+// -----
+
+// expected-error @+1 {{result attribute dcb.flag = 13 : i32 is too big}}
+func.func @h() -> (i32 {dcb.flag = 13 : i32}) {
+  %0 = "dcb.make"() : () -> i32
+  return %0 : i32
+}

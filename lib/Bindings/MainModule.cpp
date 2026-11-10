@@ -27,6 +27,7 @@
 #include "Dialect/Tensor/IR/Tensor.h"
 #include "IR/AffineExpr.h"
 #include "IR/AffineMap.h"
+#include "IR/Attributes.h"
 #include "IR/Block.h"
 #include "IR/Builders.h"
 #include "IR/BuiltinAttributes.h"
@@ -118,6 +119,7 @@ void registerMlirForeignFunctions() {
   registerIROpResultBindings();
   registerIRRewriterBaseBindings();
   registerIRTypeBindings();
+  registerIRAttributeBindings();
   registerIRValueBindings();
   registerCrestObjectBindings();
   registerArrayRefBindings();

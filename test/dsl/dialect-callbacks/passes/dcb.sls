@@ -1,7 +1,7 @@
 #!r6rs
 ;; A dialect with the callbacks of the dialect itself. Each one says that it ran, on the output port.
-;; Not here: :print-type and :print-attribute (a Scheme dialect has no type or attribute of its own
-;; that MLIR would print through them, and no binding prints into a DialectAsmPrinter).
+;; The verifiers look at the attribute they are given (its name and value): dcb.flag above 10 is refused.
+;; Not here: :print-type and :print-attribute (see passes/dcbprint.sls).
 (library (passes dcb)
   (export dcb)
   (import (except (rnrs) =)
@@ -9,6 +9,7 @@
           (mlir IR Operation)
           (mlir IR BuiltinTypes)
           (mlir IR BuiltinAttributes)
+          (mlir IR Attributes)
           (mlir IR OpImplementation)
           (only (mlir Transforms DialectConversion) add-rewrite-pattern)
           (crest dialect)
@@ -19,6 +20,14 @@
       (for-each (lambda (word) (display word port)) words)
       (newline port)
       (flush-output-port port)))
+
+  ;; The text of the named attribute, "dcb.flag = 11 : i32", when its value is too big, else #f.
+  (define (too-big attr)
+    (let ([name  (mlir::StringAttr::getValue (mlir::NamedAttribute::getName attr))]
+          [value (mlir::NamedAttribute::getValue attr)])
+      (and (string=? name "dcb.flag")
+           (> (mlir::IntegerAttr::getValue value) 10)
+           (string-append name " = " (mlir::Attribute::print value)))))
 
   (define-rewrite-pattern (%%neg-neg op rewriter)
     :if-match
@@ -42,6 +51,10 @@
     (:verify-op-attr (op attr)
       (say "verify-op-attr " (mlir::Operation::getName op))
       (cond
+       [(too-big attr)
+        => (lambda (text)
+             (mlir::Operation::emitError op (string-append "attribute " text " is too big"))
+             #f)]
        [(string=? (mlir::Operation::getName op) "dcb.bad")
         (mlir::Operation::emitError op "the attribute is not allowed")
         #f]
@@ -50,12 +63,23 @@
        [else #t]))
     (:verify-region-arg-attr (op region-index arg-index attr)
       (say "verify-region-arg-attr " region-index " " arg-index)
-      (if (eqv? arg-index 2)
-          (begin (mlir::Operation::emitError op "the argument attribute is not allowed") #f)
-          #t))
+      (cond
+       [(too-big attr)
+        => (lambda (text)
+             (mlir::Operation::emitError op (string-append "argument attribute " text " is too big"))
+             #f)]
+       [(eqv? arg-index 2)
+        (mlir::Operation::emitError op "the argument attribute is not allowed")
+        #f]
+       [else #t]))
     (:verify-region-result-attr (op region-index result-index attr)
       (say "verify-region-result-attr " region-index " " result-index)
-      #t)
+      (cond
+       [(too-big attr)
+        => (lambda (text)
+             (mlir::Operation::emitError op (string-append "result attribute " text " is too big"))
+             #f)]
+       [else #t]))
     (define-op neg
       :operands ((x mlir::Value?))
       :results  ((out mlir::Value?)))
