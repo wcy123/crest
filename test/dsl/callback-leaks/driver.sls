@@ -5,6 +5,7 @@
 ;; A per-run callback is a C function that C++ makes for one run: a code object that Chez keeps locked
 ;; until C++ unlocks it. A leak shows as code objects that outlive the run.
 (import (except (rnrs) =)
+        (only (crest dialect) load-scheme-dialect!)
         (only (chezscheme) collect object-counts enable-object-counts command-line-arguments)
         (mlir IR DialectRegistry) (mlir IR MLIRContext) (mlir IR Operation)
         (mlir Dialect Func IR FuncOps)
@@ -112,3 +113,11 @@
           (with-TypeConverter tc ()
             (ignoring-errors
              (lambda () (mlir::RewriterBase::modifyOpInPlace tc module (lambda () #t))))))
+
+;; The callables of a dialect (the clauses of its interfaces, its inliner, its ops and types) are made
+;; once, when its library is loaded. A context that loads the dialect makes none of its own.
+(check "dialect-load"
+       (lambda ()
+         (with-DialectRegistry reg ()
+           (with-MLIRContext ctx (reg)
+             (load-scheme-dialect! ctx "leaks" "passes/leaks-dialect")))))
