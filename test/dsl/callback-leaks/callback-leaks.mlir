@@ -3,7 +3,7 @@
 // them. Running each API 100 times, each in a context of its own, leaves no code objects behind. This
 // covers the ways to use them that the other leak tests do not: both materializations, a partial
 // conversion, registrations that are never applied, a greedy rewrite, modifyOpInPlace, the body of a
-// pass.
+// pass, and a handle of the wrong kind (a Scheme error raised after the callback was given).
 //
 // RUN: rm -rf %t/callback-leaks-scheme && mkdir -p %t/callback-leaks-scheme
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/callback-leaks-scheme \
@@ -15,6 +15,11 @@
 // CHECK-NEXT: rewrite-greedy: ok
 // CHECK-NEXT: modify-in-place: ok
 // CHECK-NEXT: pass-pipeline: ok
+// CHECK-NEXT: wrong-handle-conversion: ok
+// CHECK-NEXT: wrong-handle-materialization: ok
+// CHECK-NEXT: wrong-handle-legality: ok
+// CHECK-NEXT: wrong-handle-patterns: ok
+// CHECK-NEXT: wrong-handle-modify: ok
 
 func.func @f() {
   "test.a"() : () -> ()

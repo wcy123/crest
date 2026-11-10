@@ -71,3 +71,44 @@
             (mlir::PassManager::addPass pm (leak-pass))
             (mlir::OpPassManager::addPass (mlir::PassManager::nest pm "func.func") (leak-pass))
             (mlir::PassManager::run! pm module)))
+
+;; A mistake of the caller: a handle of the wrong kind. The binding raises an error. The callback was
+;; given first, so a C function exists by then, and it must be released on this path too.
+(scenario "wrong-handle-conversion" (ctx module)
+          (with-TypeConverter tc ()
+            (with-ConversionTarget target (ctx)
+              (ignoring-errors
+               (lambda () (type-converter-add-conversion target (lambda (type) type)))))))
+
+(scenario "wrong-handle-materialization" (ctx module)
+          (with-TypeConverter tc ()
+            (with-ConversionTarget target (ctx)
+              (ignoring-errors
+               (lambda ()
+                 (mlir::TypeConverter::addSourceMaterialization target (lambda (b t i l) #f))))
+              (ignoring-errors
+               (lambda ()
+                 (mlir::TypeConverter::addTargetMaterialization target (lambda (b t i l) #f)))))))
+
+(scenario "wrong-handle-legality" (ctx module)
+          (with-TypeConverter tc ()
+            (ignoring-errors
+             (lambda () (target-add-dynamically-legal-op tc ctx "test.a" (lambda (op) #f))))
+            (ignoring-errors
+             (lambda () (target-mark-unknown-ops-dynamically-legal tc (lambda (op) #t))))))
+
+(scenario "wrong-handle-patterns" (ctx module)
+          (with-TypeConverter tc ()
+            (with-ConversionTarget target (ctx)
+              (with-RewritePatternSet patterns (ctx)
+                (ignoring-errors
+                 (lambda () (add-rewrite-pattern tc "test.a" (lambda (op rewriter) #f) 1)))
+                (ignoring-errors
+                 (lambda () (add-conversion-pattern patterns "test.a" (lambda (op o r t) #f) target 1)))
+                (ignoring-errors
+                 (lambda () (add-conversion-pattern/ctx tc "test.a" (lambda (op o r t) #f) 1)))))))
+
+(scenario "wrong-handle-modify" (ctx module)
+          (with-TypeConverter tc ()
+            (ignoring-errors
+             (lambda () (mlir::RewriterBase::modifyOpInPlace tc module (lambda () #t))))))
