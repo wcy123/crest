@@ -22,6 +22,43 @@
 namespace crest {
 
 void registerIROpImplementationBindings() {
+  // The methods of mlir::AsmPrinter, the base of OpAsmPrinter and of the
+  // DialectAsmPrinter that a dialect's :print-type and :print-attribute get.
+  // mlir::AsmPrinter::getStream (uptr printer) -> uptr llvm::raw_ostream*
+  Sregister_symbol(
+      "mlir::AsmPrinter::getStream",
+      (void*)+[](uint64_t printer_ptr) -> uint64_t {
+        auto* p = reinterpret_cast<mlir::AsmPrinter*>(printer_ptr);
+        return reinterpret_cast<uint64_t>(&p->getStream());
+      });
+  Sregister_symbol(
+      "mlir::AsmPrinter::printType",
+      (void*)+[](uint64_t printer_ptr, uint64_t type_ptr) -> void {
+        reinterpret_cast<mlir::AsmPrinter*>(printer_ptr)
+            ->printType(mlir::Type::getFromOpaquePointer(
+                reinterpret_cast<const void*>(type_ptr)));
+      });
+  Sregister_symbol(
+      "mlir::AsmPrinter::printAttribute",
+      (void*)+[](uint64_t printer_ptr, uint64_t attr_ptr) -> void {
+        reinterpret_cast<mlir::AsmPrinter*>(printer_ptr)
+            ->printAttribute(mlir::Attribute::getFromOpaquePointer(
+                reinterpret_cast<const void*>(attr_ptr)));
+      });
+  // The text as a keyword if it is one, else as a quoted string.
+  Sregister_symbol(
+      "mlir::AsmPrinter::printKeywordOrString",
+      (void*)+[](uint64_t printer_ptr, const char* text) -> void {
+        reinterpret_cast<mlir::AsmPrinter*>(printer_ptr)
+            ->printKeywordOrString(text);
+      });
+  // The text as a quoted, escaped string.
+  Sregister_symbol(
+      "mlir::AsmPrinter::printString",
+      (void*)+[](uint64_t printer_ptr, const char* text) -> void {
+        reinterpret_cast<mlir::AsmPrinter*>(printer_ptr)->printString(text);
+      });
+
   Sregister_symbol(
       "mlir::OpAsmPrinter::printString",
       (void*)+[](uint64_t printer_ptr, const char* s) -> void {

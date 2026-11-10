@@ -1,7 +1,12 @@
 #!r6rs
 ;; Mirrors mlir/IR/OpImplementation.h
 (library (mlir IR OpImplementation)
-  (export mlir::OpAsmPrinter::printString
+  (export mlir::AsmPrinter::getStream
+          mlir::AsmPrinter::printType
+          mlir::AsmPrinter::printAttribute
+          mlir::AsmPrinter::printKeywordOrString
+          mlir::AsmPrinter::printString
+          mlir::OpAsmPrinter::printString
           mlir::OpAsmPrinter::printOperands
           mlir::OpAsmPrinter::printOperand
           mlir::OpAsmPrinter::printAttribute
@@ -49,6 +54,14 @@
           mlir::FunctionType::getResult)
   (import (rnrs)
           (mlir IR OpImplementation ffi))
+
+  ;; The methods of mlir::AsmPrinter, which also take the DialectAsmPrinter that a dialect's
+  ;; :print-type and :print-attribute get.
+  (define mlir::AsmPrinter::getStream %mlir::AsmPrinter::getStream)
+  (define mlir::AsmPrinter::printType %mlir::AsmPrinter::printType)
+  (define mlir::AsmPrinter::printAttribute %mlir::AsmPrinter::printAttribute)
+  (define mlir::AsmPrinter::printKeywordOrString %mlir::AsmPrinter::printKeywordOrString)
+  (define mlir::AsmPrinter::printString %mlir::AsmPrinter::printString)
 
   (define mlir::OpAsmPrinter::printString
     %mlir::OpAsmPrinter::printString)

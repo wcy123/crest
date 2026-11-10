@@ -1,7 +1,12 @@
 #!r6rs
 ;; Mirrors mlir/IR/OpImplementation.h
 (library (mlir IR OpImplementation ffi)
-  (export %mlir::OpAsmPrinter::printString
+  (export %mlir::AsmPrinter::getStream
+          %mlir::AsmPrinter::printType
+          %mlir::AsmPrinter::printAttribute
+          %mlir::AsmPrinter::printKeywordOrString
+          %mlir::AsmPrinter::printString
+          %mlir::OpAsmPrinter::printString
           %mlir::OpAsmPrinter::printOperands
           %mlir::OpAsmPrinter::printOperand
           %mlir::OpAsmPrinter::printAttribute
@@ -49,6 +54,22 @@
           %mlir::isa<FunctionType>
           %mlir::OperationState::addType)
   (import (chezscheme))
+
+  ;; (uptr printer) -> uptr: the llvm::raw_ostream that the printer writes to.
+  (define %mlir::AsmPrinter::getStream
+    (foreign-procedure "mlir::AsmPrinter::getStream" (uptr) uptr))
+
+  (define %mlir::AsmPrinter::printType
+    (foreign-procedure "mlir::AsmPrinter::printType" (uptr uptr) void))
+
+  (define %mlir::AsmPrinter::printAttribute
+    (foreign-procedure "mlir::AsmPrinter::printAttribute" (uptr uptr) void))
+
+  (define %mlir::AsmPrinter::printKeywordOrString
+    (foreign-procedure "mlir::AsmPrinter::printKeywordOrString" (uptr string) void))
+
+  (define %mlir::AsmPrinter::printString
+    (foreign-procedure "mlir::AsmPrinter::printString" (uptr string) void))
 
   (define %mlir::OpAsmPrinter::printString
     (foreign-procedure "mlir::OpAsmPrinter::printString" (uptr string) void))
