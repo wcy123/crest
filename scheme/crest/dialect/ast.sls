@@ -23,7 +23,6 @@
           op-parse-attributes
           op-parse-results
           op-parse-op-cbs
-          op-parse-interfaces
           op-parse-interface2
           operand-field
           make-operand-field
@@ -127,24 +126,19 @@
   ;;                  5  :get-canonicalization-patterns (pattern-set) → void
   ;;                  6  :populate-default-attrs        (op-name attrs) → void
   ;;                  7  :traits                        (list "name" ...) of trait names
-  ;; interfaces — list of interface-entry records (one per :interfaces entry).
-  ;; Each interface-entry carries the interface name syntax and a list of
-  ;; interface-method records for any overridden methods.  An empty methods list
-  ;; means "use the default C++ concept."
   (define-record-type op-parse
     (fields (immutable name       op-parse-name)
             (immutable operands   op-parse-operands)
             (immutable attributes op-parse-attributes)
             (immutable results    op-parse-results)
             (immutable op-cbs     op-parse-op-cbs)
-            (immutable interfaces op-parse-interfaces)
             (immutable interface2 op-parse-interface2)))
 
   ;; interface2 — list of the syntax of the :interface2 entries (interface-name method-clause ...),
   ;; each used as it was written: the interface-name is a macro of the library of the interface,
   ;; which makes the pair of the TypeID of the interface and the C dispatcher of its clauses.
 
-  ;; One entry in an op's :interfaces list.
+  ;; One entry in the :interfaces list of a dialect.
   ;;   name    — identifier syntax for the interface, e.g. #'mlir::FunctionOpInterface
   ;;   methods — list of interface-method records; empty = use default C++ concept
   (define-record-type interface-entry

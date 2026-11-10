@@ -109,18 +109,10 @@
     (lambda (stx)
 
       ;; Parse a list of (interface-name method-clause ...) syntax objects into
-      ;; a list of interface-entry records. Shared by op-level and dialect-level
-      ;; :interfaces clauses.
+      ;; a list of interface-entry records: the :interfaces clause of the dialect.
       (define (%%parse-iface-specs iface-specs-stx)
         (map (lambda (spec-stx)
                (syntax-case spec-stx ()
-                 [(iface-name method-clause ...)
-                  (and (identifier? #'iface-name)
-                       (eq? (syntax->datum #'iface-name) 'mlir::CallOpInterface)
-                       (pair? (syntax->list #'(method-clause ...))))
-                  (syntax-violation ':interfaces
-                                    "mlir::CallOpInterface takes no method clauses: the callee is the callee attribute and the arguments are the operands"
-                                    spec-stx)]
                  [(iface-name method-clause ...)
                   (identifier? #'iface-name)
                   (make-interface-entry
@@ -240,7 +232,6 @@
             (let ([operands   '()]
                   [attributes '()]
                   [results    '()]
-                  [interfaces '()]
                   [interface2 #f]
                   [assembly-format #f]
                   [op-cbs     (make-vector 8 #f)])
@@ -255,10 +246,10 @@
                                            :populate-default-attrs)
                   [(:summary     _ . rest)  (loop-sub #'rest)]
                   [(:description _ . rest)  (loop-sub #'rest)]
-                  [(:interfaces  (iface-spec ...) . rest)
-                   (begin
-                     (set! interfaces (%%parse-iface-specs #'(iface-spec ...)))
-                     (loop-sub #'rest))]
+                  [(:interfaces . _)
+                   (syntax-violation 'define-op
+                                     ":interfaces is gone from define-op: write its interfaces as the entries of :interface2"
+                                     (car (syntax->list stx)))]
                   [(:interface2 ((iface-name method-clause ...) ...) . rest)
                    (andmap identifier? (syntax->list #'(iface-name ...)))
                    (begin
@@ -387,7 +378,7 @@
                                                        ":buildable-type is the type an :assembly-format gives the attribute; the op has none"
                                                        (attribute-field-name field))))
                                  attributes)))
-                   (make-op-parse op-name-stx operands attributes results op-cbs interfaces
+                   (make-op-parse op-name-stx operands attributes results op-cbs
                                   (or interface2 '()))]))))
 
 
@@ -453,7 +444,7 @@
                  (and (identifier? #'op)           (identifier? #'region-index)
                       (identifier? #'result-index) (identifier? #'attr))
                  (begin (vector-set! cbs 10 #'(lambda (op region-index result-index attr) body ...)) (loop #'rest))]
-                ;; Dialect-level interfaces — same structure as op-level :interfaces.
+                ;; Dialect-level interfaces — the same entries as the :interface2 clause of an op.
                 ;; Each spec is (interface-name method-clause ...) where method-clause
                 ;; is (method-name (formals) body ...).
                 [((:interfaces (iface-spec ...)) . rest)

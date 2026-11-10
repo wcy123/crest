@@ -1,4 +1,4 @@
-// Tests the :interfaces DSL end-to-end.
+// Tests the :interface2 DSL end-to-end.
 // Uses an isolated scheme binary dir to avoid stale cache issues.
 
 // RUN: rm -rf %t/iface-scheme && mkdir -p %t/iface-scheme
@@ -6,9 +6,6 @@
 // RUN:   %scheme-mlir %S/passes/interface-dsl.sls %s \
 // RUN:   | %FileCheck %s
 
-// CHECK: dispatcher-op-name: ifacetest.func
-// CHECK: dispatcher-getFunctionType: #f
-// CHECK: dispatcher-verifyBody: #f
 // CHECK: getFunctionType: #t
 // CHECK: verifyBody: #t
 // CHECK: verifyType: #t

@@ -7,5 +7,5 @@
 
   (define-dialect badcall
     (define-op call
-      :interfaces ((mlir::CallOpInterface
+      :interface2 ((mlir::CallOpInterface
                     (getArgOperands (self) 0))))))

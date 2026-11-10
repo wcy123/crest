@@ -1,6 +1,6 @@
-;; Unit test for the :interfaces DSL — top-level program for scheme-mlir.
+;; Unit test for the :interface2 DSL — top-level program for scheme-mlir.
 (import (chezscheme)
-        (passes ifacetest)
+        (crest dialect)
         (mlir IR Operation)
         (mlir IR Region)
         (mlir IR Block)
@@ -23,8 +23,11 @@
       (display "Usage: scheme-mlir passes/interface-dsl.sls <file.mlir>\n"
                (current-error-port))
       (exit 1))
+    ;; The interfaces of an op are part of its definition, so they exist in a context that loads the
+    ;; dialect.
     (let* ([ctx (mlir::MLIRContext::new)]
            [_   (mlir::MLIRContext::allowUnregisteredDialects ctx #t)]
+           [_   (load-scheme-dialect! ctx "ifacetest" "passes/ifacetest")]
            [op  (mlir::parseSourceFile ctx (car args))])
       (when (zero? op)
         (display (string-append "Failed to parse: " (car args) "\n")
@@ -40,12 +43,6 @@
       (let* ([body-region (mlir::Operation::getRegion module 0)]
              [body-block  (mlir::Region::front body-region)]
              [func-op     (mlir::Block::front body-block)])
-        (display "dispatcher-op-name: ")
-        (display (%%ifacetest.func:mlir::FunctionOpInterface 'operation_name)) (newline)
-        (display "dispatcher-getFunctionType: ")
-        (display (%%ifacetest.func:mlir::FunctionOpInterface 'getFunctionType)) (newline)
-        (display "dispatcher-verifyBody: ")
-        (display (%%ifacetest.func:mlir::FunctionOpInterface 'verifyBody)) (newline)
         (display "getFunctionType: ")
         (display (not (zero? (mlir::FunctionOpInterface::getFunctionType func-op)))) (newline)
         (display "verifyBody: ")

@@ -1,6 +1,6 @@
-;; Calls the interface methods of ops whose :interfaces entries have method clauses.
+;; Calls the interface methods of ops whose :interface2 entries have method clauses.
 (import (chezscheme)
-        (passes ifaceclauses)
+        (crest dialect)
         (mlir IR Operation)
         (mlir IR Region)
         (mlir IR Block)
@@ -22,9 +22,6 @@
   (newline))
 
 (define (main)
-  ;; Chez runs a library only when the program uses one of its exports; the interface concepts of
-  ;; the ops are registered when (passes ifaceclauses) runs.
-  (unless (vector? ifaceclauses) (exit 1))
   (let ([args (command-line-arguments)])
     (when (null? args)
       (display "Usage: scheme-mlir passes/interface-clauses.sls <file.mlir>\n"
@@ -32,6 +29,8 @@
       (exit 1))
     (let* ([ctx (mlir::MLIRContext::new)]
            [_   (mlir::MLIRContext::allowUnregisteredDialects ctx #t)]
+           ;; The interfaces of an op are part of its definition: load the dialect.
+           [_   (load-scheme-dialect! ctx "ifaceclauses" "passes/ifaceclauses")]
            [module (mlir::parseSourceFile ctx (car args))])
       (when (zero? module)
         (display (string-append "Failed to parse: " (car args) "\n") (current-error-port))

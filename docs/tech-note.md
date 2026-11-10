@@ -197,97 +197,42 @@ extern "C" ::mlir::DialectPluginLibraryInfo mlirGetDialectPluginInfo() {
 
 ---
 
-## Interface Dispatch: why bindings call `LookupInterfaceForOp` directly
+## Interfaces of a Scheme op: the interface map of its definition
 
-When a CREST binding calls an MLIR interface method such as `FunctionOpInterface::getFunctionType`, there are two apparent paths. Understanding why we take the direct path — and why the indirect path exists at all — requires tracing how MLIR resolves interface concepts for static vs. dynamic ops.
+An op of a C++ dialect gets every interface at compile time: `RegisteredOperationName::insert` builds an
+`OperationName::Impl` whose `InterfaceMap` holds a pointer to the `Concept` of each interface (a struct of function
+pointers, the vtable of the interface). `mlir::dyn_cast<FunctionOpInterface>(op)` and
+`op->getName().hasInterface<FunctionOpInterface>()` are one lookup in that map.
 
-### Background: how MLIR resolves interfaces for static ops
+A Scheme op is a `DynamicOpDefinition`, which is such an `Impl` with an empty map. Until the interfaces were moved to
+`:interface2` (2026-11) CREST kept its `Concept`s in a separate table keyed by interface and op *name*
+(`g_op_interface_registry`), reached through the `getRegisteredInterfaceForOp` hook of the dialect, which is only
+consulted by `dyn_cast` on an `Operation`. `hasInterface`, `getInterface` and the checks of passes that run on an
+interface (`InterfacePass::canScheduleOn`) read the `InterfaceMap` only, so they said "no" for every Scheme op. The
+table was also process-wide: an op name had its interfaces in a context that never loaded the dialect.
 
-For a static C++ op like `mlir::func::FuncOp`, every interface it implements is registered at compile time via TableGen. At program startup, `RegisteredOperationName::insert` builds an `AbstractOperation` whose `interfaceMap` already contains a pointer to each concept. A concept is a struct of function pointers — the vtable for the interface.
+Now the interfaces are part of the definition. `register-dynamic-op!` takes the list of `(TypeID . dispatcher)` pairs
+of the op's `:interface2` entries (the macro of each interface library makes the pair, see
+`scheme/mlir/Interfaces/InferTypeOpInterface.sls`), and `lib/Crest/Op.cpp` finds the **attach function** of each
+interface by its `TypeID` in a static table. The attach function inserts a *model* into
+`def.getInterfaceMap()`: a struct derived from the interface's `Concept` with `using Interface = ...;`
+(`lib/Bindings/Interfaces/*.cpp`, `lib/Bindings/IR/SymbolInterfaces.cpp`, `lib/Crest/InferType.cpp`).
+`InterfaceMap::insertModels` default-constructs it in `malloc`ed memory and frees it with the map, so a model must be
+trivially destructible. The methods that Scheme implements keep the entry point of their callable in the model, and the
+`Concept`'s own function reads it through `self`. An interface whose method has no `self` (`inferReturnTypes`, static)
+gets the entry point itself in the `Concept`.
 
-`mlir::dyn_cast<FunctionOpInterface>(op)` is therefore a cheap O(1) lookup:
+An interface that extends others (`FunctionOpInterface` extends `SymbolOpInterface`, `ArgAndResultAttrsOpInterface` and
+`CallableOpInterface`; `CallableOpInterface` and `CallOpInterface` extend `ArgAndResultAttrsOpInterface`) needs them in the
+map first: the `Concept` looks them up in `initializeInterfaceConcept`, which `insertModels` calls. The attach
+functions insert the bases once (`insertModelOnce` in `lib/Crest/Interface.h`) and then their own model, so an op that
+declares `FunctionOpInterface` has the other three as well, as `func.func` does.
 
-```
-op → AbstractOperation::interfaceMap.lookup(FunctionOpInterface::getInterfaceID())
-   → FunctionOpInterface::Concept*   (pre-populated at startup)
-```
+The Scheme-callable accessors (`mlir::FunctionOpInterface::getFunctionType` and the others) look the `Concept` up in the
+registered name of the op (`lookupConcept`), so they work for C++ ops as well. The one thing a context needs is the
+dialect: an op of a dialect that was not loaded is an unregistered op and has no interfaces.
 
-The returned `mlir::FunctionOpInterface` wrapper bundles `(Operation*, Concept*)`. Calling `fn.getFunctionType()` dispatches through `concept->getFunctionType(concept, op)`.
-
-### Why the same path is slower for Crest dynamic ops
-
-Crest ops are registered at runtime via `DynamicOpDefinition::get` + `registerDynamicOp`. Their `AbstractOperation::interfaceMap` is **empty** — concepts are not known at C++ compile time. They are registered later, when the Scheme library is imported:
-
-```
-import (passes ifacetest)
-  → %%ifacetest-iface-init runs   (library-load-time define)
-  → (foreign-procedure "mlir::FunctionOpInterface" ...) "ifacetest.func" and the entry point
-    of the foreign-callable of each method clause (0 for none)
-  → FunctionOpInterface::CreateConcept
-  → RegisterInterfaceForOp(FunctionOpInterface::getInterfaceID(),
-                           "ifacetest.func",
-                           concept_ptr)     ← stored in g_op_interface_registry
-```
-
-`g_op_interface_registry` is a `DenseMap<TypeID, unordered_map<string, shared_ptr<void>>>` in `Dialect.cpp` — entirely separate from MLIR's `AbstractOperation::interfaceMap`.
-
-When `mlir::dyn_cast<FunctionOpInterface>(op)` is called on a Crest op:
-
-```
-op → AbstractOperation::interfaceMap.lookup(...)
-   → miss (empty for dynamic ops)
-   → dialect->getRegisteredInterfaceForOp(FunctionOpInterface::getInterfaceID(), op->getName())
-   → CrestDialect::getRegisteredInterfaceForOp
-   → LookupInterfaceForOp(id, op_name_string)
-   → g_op_interface_registry DenseMap lookup + unordered_map string lookup
-   → FunctionOpInterface::Concept*
-```
-
-`getRegisteredInterfaceForOp` is MLIR's extension hook for `ExtensibleDialect` — it exists precisely so that dynamic ops can participate in interface dispatch without pre-populated interface maps. Without it, `dyn_cast` would always return null for our ops.
-
-### The `c` path used in CREST bindings
-
-The `mlir::FunctionOpInterface::getFunctionType` binding in `FunctionInterfaces.cpp`:
-
-```cpp
-Sregister_symbol(
-    "mlir::FunctionOpInterface::getFunctionType",
-    (void*)+[](uint64_t op_ptr) -> uint64_t {
-      auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-      auto name_str = op->getName().getStringRef().str();
-      auto* c = static_cast<mlir::FunctionOpInterface::Concept*>(
-          LookupInterfaceForOp(mlir::FunctionOpInterface::getInterfaceID(),
-                               name_str));
-      if (!c) { scheme_error(...); }
-      return reinterpret_cast<uint64_t>(
-          c->getFunctionType(c, op).getAsOpaquePointer());
-    });
-```
-
-This calls `LookupInterfaceForOp` directly — skipping the `dyn_cast` wrapper entirely. The `fn` path (via `dyn_cast`) would do the same lookup but with extra steps:
-
-| Step | `fn` path (`dyn_cast`) | `c` path (direct) |
-|---|---|---|
-| AbstractOperation interfaceMap lookup | yes → miss | no |
-| virtual call `dialect->getRegisteredInterfaceForOp` | yes | no |
-| `LookupInterfaceForOp` DenseMap + string lookup | yes | yes |
-| construct `FunctionOpInterface(op, concept)` wrapper | yes | no |
-| dispatch `concept->getFunctionType(concept, op)` | yes | yes |
-
-Both paths arrive at the same concept pointer and make the same final dispatch. The `c` path skips the interfaceMap miss, the virtual dispatch through the dialect, and the construction of the interface wrapper object. The dominant cost in both paths is the `std::string` allocation in `op->getName().getStringRef().str()` used as the map key.
-
-### Role of `getRegisteredInterfaceForOp`
-
-`CrestDialect::getRegisteredInterfaceForOp` is kept because MLIR code outside CREST's own bindings can call `dyn_cast<SomeInterface>(op)` on a Crest op — for example, MLIR's own pass infrastructure, verifier, or printer. Without the override, those calls would silently return null and MLIR would treat the op as not implementing the interface. The override ensures that Crest ops participate correctly in MLIR's generic interface dispatch even when the caller uses `dyn_cast` rather than our direct bindings.
-
-### Summary
-
-- For **static MLIR ops**: `dyn_cast` → `AbstractOperation::interfaceMap` → concept (fast, one lookup).
-- For **Crest dynamic ops**: `dyn_cast` → interfaceMap miss → `getRegisteredInterfaceForOp` → `LookupInterfaceForOp` → concept (slower, two lookups + virtual call).
-- **CREST's own bindings** use `LookupInterfaceForOp` directly, skipping the `dyn_cast` wrapper overhead.
-- `getRegisteredInterfaceForOp` is retained so that MLIR-internal callers using `dyn_cast` on Crest ops still work correctly.
-
----
+`unittests/Crest/InterfaceTest.cpp` asks the map of an op of each interface, and of one with none.
 
 ### Implication for CREST's `dialects-in-scheme=` option
 
@@ -295,7 +240,7 @@ Both paths arrive at the same concept pointer and make the same final dispatch. 
 
 **However**, if the Scheme-defined dialect's ops appear in the **input MLIR file**, the ops are parsed as `UnregisteredOpModel` instances (before `getDependentDialects` runs). When the dialect is later registered, those models are freed, leaving existing `Operation` objects with dangling `OperationName` pointers.
 
-The `interface-dsl` test exercises this case: `ifacetest.func` is in the input IR. The idiomatic fix (mirroring Pattern 2 above) is a top-level `--crest-preload-scheme-dialect=passes/ifacetest` flag in `crest-opt.cpp` that, before `MlirOptMain` runs, initializes the Chez interpreter, imports the library, and inserts the dialect factory into the global `DialectRegistry`. The parser then lazy-loads `ifacetest` on first encounter — no `UnregisteredOpModel`, no use-after-free. Alternatively, the test can be restructured so `ifacetest.func` ops are created programmatically by the pass rather than parsed from input.
+The `interface-dsl` tests avoid it by loading the dialect into the context (`load-scheme-dialect!`) before they parse the input. The idiomatic fix (mirroring Pattern 2 above) is a top-level `--crest-preload-scheme-dialect=passes/ifacetest` flag in `crest-opt.cpp` that, before `MlirOptMain` runs, initializes the Chez interpreter, imports the library, and inserts the dialect factory into the global `DialectRegistry`. The parser then lazy-loads `ifacetest` on first encounter — no `UnregisteredOpModel`, no use-after-free. Alternatively, the test can be restructured so `ifacetest.func` ops are created programmatically by the pass rather than parsed from input.
 
 ## Chez Scheme pin
 

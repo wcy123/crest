@@ -408,7 +408,7 @@
 
     (define-op generic_call
       :summary    "generic function call"
-      :interfaces ((mlir::CallOpInterface))
+      :interface2 ((mlir::CallOpInterface))
       :attributes ((callee %%flat-symbol-ref-attr?))
       :results    ((output %%toy-type?))
       :operands   ((inputs %%toy-type-value? :variadic))
@@ -417,7 +417,7 @@
     (define-op func
       :summary    "toy function definition"
       :traits     (isolated-from-above)
-      :interfaces ((mlir::FunctionOpInterface
+      :interface2 ((mlir::FunctionOpInterface
                     (getFunctionType (self)
                                      (mlir::TypeAttr::getValue
                                       (mlir::Operation::getAttr self "function_type")))

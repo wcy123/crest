@@ -1,6 +1,6 @@
 ;; Calls the verifiers of an op whose clauses raise a Scheme error.
 (import (chezscheme)
-        (passes ifaceclauses)
+        (crest dialect)
         (mlir IR Operation)
         (mlir IR Region)
         (mlir IR Block)
@@ -18,10 +18,9 @@
   (newline))
 
 (define (main)
-  ;; Chez runs a library only when the program uses one of its exports.
-  (unless (vector? ifaceclauses) (exit 1))
   (let* ([ctx (mlir::MLIRContext::new)]
          [_   (mlir::MLIRContext::allowUnregisteredDialects ctx #t)]
+         [_   (load-scheme-dialect! ctx "ifaceclauses" "passes/ifaceclauses")]
          [module (mlir::parseSourceFile ctx (car (command-line-arguments)))])
     (when (zero? module)
       (exit 1))

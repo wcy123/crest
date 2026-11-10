@@ -1,5 +1,5 @@
 #!r6rs
-;; Ops whose :interfaces entries supply method clauses. The clauses announce themselves, so the
+;; Ops whose :interface2 entries supply method clauses. The clauses announce themselves, so the
 ;; test can tell that MLIR's call through the Concept reached them.
 (library (passes ifaceclauses)
   (export ifaceclauses)
@@ -12,7 +12,7 @@
 
   (define-dialect ifaceclauses
     (define-op good
-      :interfaces ((mlir::CallableOpInterface
+      :interface2 ((mlir::CallableOpInterface
                     (getCallableRegion (self)
                                        (display "clause getCallableRegion\n")
                                        (mlir::Operation::getRegion self 0)))
@@ -24,10 +24,10 @@
                     (verifyBody (self) (display "clause verifyBody\n") #t)
                     (verifyType (self) (display "clause verifyType\n") #t))))
     (define-op bad
-      :interfaces ((mlir::FunctionOpInterface
+      :interface2 ((mlir::FunctionOpInterface
                     (verifyBody (self) #f)
                     (verifyType (self) #f))))
     (define-op raises
-      :interfaces ((mlir::FunctionOpInterface
+      :interface2 ((mlir::FunctionOpInterface
                     (verifyBody (self) (error 'verifyBody "the body is broken"))
                     (verifyType (self) (error 'verifyType "the type is broken")))))))

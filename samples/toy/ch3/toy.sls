@@ -286,7 +286,7 @@
     (define-op func
       :summary    "toy function definition"
       :traits     (isolated-from-above)
-      :interfaces ((mlir::FunctionOpInterface
+      :interface2 ((mlir::FunctionOpInterface
                     (getFunctionType (self)
                                      (mlir::TypeAttr::getValue
                                       (mlir::Operation::getAttr self "function_type")))

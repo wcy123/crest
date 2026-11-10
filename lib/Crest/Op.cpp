@@ -5,6 +5,10 @@
 // CrestOp bridge — lib/Crest/Op.cpp
 
 #include "Op.h"
+#include "../Bindings/IR/SymbolInterfaces.h"
+#include "../Bindings/Interfaces/CallInterfaces.h"
+#include "../Bindings/Interfaces/FunctionInterfaces.h"
+#include "../Bindings/Interfaces/SideEffectInterfaces.h"
 #include "../Bindings/Support/CrestObject.h"
 #include "../Bindings/Support/LockedSchemeObject.h"
 #include "../Bindings/Support/SchemeWrapper.h"
@@ -14,7 +18,11 @@
 #include "mlir/IR/ExtensibleDialect.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/IR/PatternMatch.h"
+#include "mlir/IR/SymbolTable.h"
+#include "mlir/Interfaces/CallInterfaces.h"
+#include "mlir/Interfaces/FunctionInterfaces.h"
 #include "mlir/Interfaces/InferTypeOpInterface.h"
+#include "mlir/Interfaces/SideEffectInterfaces.h"
 #include "mlir/Support/TypeID.h"
 
 namespace crest {
@@ -45,6 +53,16 @@ const llvm::DenseMap<mlir::TypeID, AttachInterfaceFn>& getAttachInterfaceFns() {
   static const llvm::DenseMap<mlir::TypeID, AttachInterfaceFn> fns = {
       {mlir::InferTypeOpInterface::getInterfaceID(),
        attachInferTypeOpInterface},
+      {mlir::CallableOpInterface::getInterfaceID(), attachCallableOpInterface},
+      {mlir::CallOpInterface::getInterfaceID(), attachCallOpInterface},
+      {mlir::ArgAndResultAttrsOpInterface::getInterfaceID(),
+       attachArgAndResultAttrsOpInterface},
+      {mlir::FunctionOpInterface::getInterfaceID(), attachFunctionOpInterface},
+      {mlir::SymbolOpInterface::getInterfaceID(), attachSymbolOpInterface},
+      {mlir::MemoryEffectOpInterface::getInterfaceID(),
+       attachMemoryEffectOpInterface},
+      {mlir::ConditionallySpeculatable::getInterfaceID(),
+       attachConditionallySpeculatable},
   };
   return fns;
 }
