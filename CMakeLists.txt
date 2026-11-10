@@ -7,12 +7,6 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   project(crest VERSION 0.1.0 LANGUAGES C CXX)
 endif()
 
-# lib/Bindings/Support/XmmGuard_x64.asm: Chez Scheme's foreign-callable on
-# Windows x64 clobbers XMM6-XMM15, so every call into one goes through it.
-if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
-  enable_language(ASM_MASM)
-endif()
-
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 

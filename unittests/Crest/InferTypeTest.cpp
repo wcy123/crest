@@ -5,9 +5,8 @@
 //===- InferTypeTest.cpp - InferTypeOpInterface of a Scheme op ------------===//
 //
 // MLIR calls inferReturnTypes through a function pointer in the Concept in the
-// op's interface map, from its own code (a builder, a pass that infers): not
-// through crest::callForeign. The pointer is that of a Chez foreign-callable.
-// These tests call it as MLIR does.
+// op's interface map, from its own code (a builder, a pass that infers). The
+// pointer is that of a Chez foreign-callable. These tests call it as MLIR does.
 
 #include "../../lib/Crest/Dialect.h"
 #include "../../lib/Interpreter/ChezSchemeInterpreter.h"
@@ -89,7 +88,7 @@ protected:
     }
 
     // The call that MLIR's code makes, through the function pointer of the
-    // Concept: not through crest::callForeign.
+    // Concept.
     mlir::LogicalResult infer(llvm::SmallVectorImpl<mlir::Type>& types) {
       return getConcept()->inferReturnTypes(
           op->getContext(), op->getLoc(), op->getOperands(),
@@ -179,10 +178,9 @@ TEST_F(InferTypeTest, EveryContextThatLoadsTheDialectInfers) {
 // XMM11 as 64-bit doubles, so the upper halves of those registers came back
 // zero, which that ABI makes callee-saved; LLVM 23 code keeps a 16-byte
 // Block::iterator there across a call. MLIR calls the function pointers of the
-// Concept itself, not through crest::callForeign, so the callable has to
-// preserve them: cmake/deps.cmake pins a Chez with the upstream repair
-// (cisco/ChezScheme#1064). Everywhere else the registers are caller-saved, so
-// the test only checks the setup there.
+// Concept itself, so the callable has to preserve them: cmake/deps.cmake pins a
+// Chez with the upstream repair (cisco/ChezScheme#1064). Everywhere else the
+// registers are caller-saved, so the test only checks the setup there.
 static volatile float g_vector_seed = 1.0f;
 
 TEST_F(InferTypeTest, DirectCallPreservesVectorRegisters) {

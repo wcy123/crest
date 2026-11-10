@@ -8,7 +8,6 @@
 #include "CallInterfaces.h"
 #include "../../Crest/Interface.h"
 #include "../Support/SchemeWrapper.h"
-#include "../Support/XmmGuard.h"
 #include "mlir/IR/Attributes.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Operation.h"
@@ -56,8 +55,8 @@ struct CallableConceptData : public mlir::CallableOpInterface::Concept {
       getCallableRegion =
           +[](const Concept* self, mlir::Operation* op) -> mlir::Region* {
         const auto* d = static_cast<const CallableConceptData*>(self);
-        return reinterpret_cast<mlir::Region*>(crest::callForeign(
-            d->get_callable_region, reinterpret_cast<uint64_t>(op)));
+        return reinterpret_cast<mlir::Region*>(
+            d->get_callable_region(reinterpret_cast<uint64_t>(op)));
       };
     }
   }

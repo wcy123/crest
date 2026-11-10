@@ -17,7 +17,6 @@
 #include "../../Crest/InferType.h"
 #include "../Support/CrestObject.h"
 #include "../Support/SchemeWrapper.h"
-#include "../Support/XmmGuard.h"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/LogicalResult.h"

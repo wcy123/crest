@@ -318,10 +318,13 @@ changed them. The upstream repair is
 preservation by callables", merged 2026-09-17 (`f6a0279d4`); the issue is
 [racket/ChezScheme#66](https://github.com/racket/ChezScheme/issues/66). The pin of 2026-05-11 predates it.
 
-CREST calls most callables through `crest::callForeign` (`lib/Bindings/Support/XmmGuard.h`), which saves and
-restores the registers around the call. MLIR calls the function pointers of the `InferTypeOpInterface` Concept by
-itself, so the callable has to preserve them: `unittests/Crest/InferTypeTest.cpp`,
-`DirectCallPreservesVectorRegisters`, fails on Windows x64 with a Chez that does not.
+Until 2026-11-10 CREST worked around it: every call from C++ into a callable went through a guard
+(`crest::callForeign`, `XmmGuard.h` and a MASM routine, `XmmGuard_x64.asm`) that saved and restored the registers.
+That did not cover MLIR calling the function pointers of the `InferTypeOpInterface` Concept by itself. With the
+repaired Chez the callable preserves the registers, and the guard was removed. The regression tests are
+`unittests/Crest/InferTypeTest.cpp`, `DirectCallPreservesVectorRegisters`, and
+`unittests/Interpreter/InterpreterTest.cpp`, `ForeignCallablePreservesVectorRegisters`: both fail on Windows x64
+with a Chez that does not preserve them.
 
 ### Why this commit
 
