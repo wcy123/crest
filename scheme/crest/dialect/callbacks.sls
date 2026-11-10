@@ -10,7 +10,7 @@
 ;;
 ;;   (crest-dialect-callback-entries initialize get-dependent-dialects parse-attribute
 ;;     print-attribute parse-type print-type materialize-constant get-canonicalization-patterns
-;;     verify-op-attr verify-region-arg-attr verify-region-result-attr)       a vector
+;;     verify-op-attr verify-region-arg-attr verify-region-result-attr interfaces)  a vector
 ;;   (crest-op-callback-entries op-name verify verify-regions parse print fold
 ;;     get-canonicalization-patterns populate-default-attrs traits)            a vector
 ;;   (crest-type-callback-entries verify parse print)                          a vector
@@ -85,7 +85,7 @@
                                           print-attribute parse-type print-type
                                           materialize-constant get-canonicalization-patterns
                                           verify-op-attr verify-region-arg-attr
-                                          verify-region-result-attr)
+                                          verify-region-result-attr interfaces)
     (vector
      (if initialize
          (crest-callback-entry-point (uptr) void initialize)
@@ -138,7 +138,9 @@
           (lambda (op region-index result-index attr)
             (%%verdict (lambda ()
                          (verify-region-result-attr op region-index result-index attr)))))
-         0)))
+         0)
+     ;; Slot 11, data: the list of (TypeID . dispatcher) pairs of the dialect's :interfaces entries.
+     interfaces))
 
   ;; The slots of an op: verify, verify-regions, parse, print, fold, get-canonicalization-patterns,
   ;; populate-default-attrs, and the list of its traits, which is data. `op-name` is the full name

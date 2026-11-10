@@ -9,14 +9,15 @@
 ;; (mlir Transforms InliningUtils) — Public API for mlir/Transforms/InliningUtils.h.
 ;;
 ;; Provides:
-;;   mlir::DialectInlinerInterface — register a Scheme-backed inliner interface
-;;                                    on a CrestDialect
+;;   mlir::DialectInlinerInterface — the head of an entry of the :interfaces clause of
+;;                                    define-dialect: a Scheme-backed inliner interface
 ;;   mlir::createInlinerPass       — create an MLIR inliner pass instance
 ;;
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir Transforms InliningUtils)
   (export mlir::DialectInlinerInterface
+          mlir::DialectInlinerInterface::getInterfaceID
           mlir::DialectInlinerInterface::materializeCallConversion
           mlir::createInlinerPass)
   (import (chezscheme)
@@ -28,51 +29,75 @@
         (error 'mlir::DialectInlinerInterface
                (string-append (symbol->string name) " is required but not provided"))))
 
-  ;; The foreign-callables of one dispatcher, as the list of their entry points that
-  ;; %mlir::DialectInlinerInterface takes. The dispatcher is a procedure of the dialect's library,
-  ;; so it is the same object each time a context loads the dialect: its callables are made once
-  ;; and shared by all contexts.
-  (define %%entries (make-weak-eq-hashtable))
-
-  (define (%%make-entries dispatcher)
+  ;; The C functions of the clauses of a dialect. `dispatcher` is (lambda (method) ...): a method
+  ;; name answers its clause or #f; isLegalToInline/call, /region and /op are required. The answer
+  ;; is the dispatcher of C: (lambda (method) ...) that answers, for each method the dispatcher has
+  ;; a clause for, the entry point of its foreign-callable, and 0 for the others. The callables are
+  ;; made here, once: the entry of the :interfaces clause is evaluated when the library of the dialect
+  ;; is loaded, and C++ gets the dispatcher with the TypeID of the interface, asks it for the entries
+  ;; while it loads the dialect in a context, and gives the dialect its inliner interface
+  ;; (lib/Crest/InlinerInterface.cpp). It does not keep the dispatcher.
+  (define (%%c-dispatcher dispatcher)
     (let ([call   (%%required dispatcher 'isLegalToInline/call)]
           [region (%%required dispatcher 'isLegalToInline/region)]
           [op     (%%required dispatcher 'isLegalToInline/op)]
           [value  (dispatcher 'handleTerminator/value)]
           [block  (dispatcher 'handleTerminator/block)]
           [materialize (dispatcher 'materializeCallConversion)])
-      (list
-       (crest-callback-entry-point
-        (uptr uptr int) int
-        (lambda (call-op callable would-be-cloned)
-          (if (call call-op callable (eqv? would-be-cloned 1)) 1 0)))
-       (crest-callback-entry-point
-        (uptr uptr int) int
-        (lambda (dest src would-be-cloned)
-          (if (region dest src (eqv? would-be-cloned 1)) 1 0)))
-       (crest-callback-entry-point
-        (uptr uptr int) int
-        (lambda (inlined-op dest would-be-cloned)
-          (if (op inlined-op dest (eqv? would-be-cloned 1)) 1 0)))
-       (if value (crest-callback-entry-point (uptr uptr) void value) 0)
-       (if block (crest-callback-entry-point (uptr uptr) void block) 0)
-       (if materialize
-           (crest-callback-entry-point
-            (uptr uptr uptr uptr) uptr
-            (lambda (builder input result-type loc)
-              (or (materialize builder input result-type loc) 0)))
-           0))))
+      (let ([entries
+             (list
+              (cons 'isLegalToInline/call
+                    (crest-callback-entry-point
+                     (uptr uptr int) int
+                     (lambda (call-op callable would-be-cloned)
+                       (if (call call-op callable (eqv? would-be-cloned 1)) 1 0))))
+              (cons 'isLegalToInline/region
+                    (crest-callback-entry-point
+                     (uptr uptr int) int
+                     (lambda (dest src would-be-cloned)
+                       (if (region dest src (eqv? would-be-cloned 1)) 1 0))))
+              (cons 'isLegalToInline/op
+                    (crest-callback-entry-point
+                     (uptr uptr int) int
+                     (lambda (inlined-op dest would-be-cloned)
+                       (if (op inlined-op dest (eqv? would-be-cloned 1)) 1 0))))
+              (cons 'handleTerminator/value
+                    (if value (crest-callback-entry-point (uptr uptr) void value) 0))
+              (cons 'handleTerminator/block
+                    (if block (crest-callback-entry-point (uptr uptr) void block) 0))
+              (cons 'materializeCallConversion
+                    (if materialize
+                        (crest-callback-entry-point
+                         (uptr uptr uptr uptr) uptr
+                         (lambda (builder input result-type loc)
+                           (or (materialize builder input result-type loc) 0)))
+                        0)))])
+        (lambda (method)
+          (cond
+           [(assq method entries) => cdr]
+           [else 0])))))
 
-  ;; @brief Register the inliner interface of a Scheme dialect.
-  ;; @param dialect     the dialect (CrestDialect*) uptr
-  ;; @param dispatcher  made by define-dialect for its :interfaces entry: answers a method name with
-  ;;                    the clause or #f; isLegalToInline/call, /region and /op are required
-  (define (mlir::DialectInlinerInterface dialect dispatcher)
-    (let ([entries (or (hashtable-ref %%entries dispatcher #f)
-                       (let ([made (%%make-entries dispatcher)])
-                         (hashtable-set! %%entries dispatcher made)
-                         made))])
-      (apply %mlir::DialectInlinerInterface dialect entries)))
+  ;; An entry of the :interfaces clause of define-dialect (the dialect's own, not an op's):
+  ;;   (mlir::DialectInlinerInterface
+  ;;     (isLegalToInline/call   (call callable would-be-cloned) body ...)   required
+  ;;     (isLegalToInline/region (dest src would-be-cloned) body ...)        required
+  ;;     (isLegalToInline/op     (op dest would-be-cloned) body ...)         required
+  ;;     (handleTerminator/value (op replacements) body ...)
+  ;;     (handleTerminator/block (op new-dest) body ...)
+  ;;     (materializeCallConversion (builder input result-type loc) body ...))
+  ;; An entry is the pair of the TypeID of the interface and the dispatcher of C of its clauses.
+  (define-syntax mlir::DialectInlinerInterface
+    (syntax-rules ()
+      [(_ (method (formal ...) body ...) ...)
+       (cons (mlir::DialectInlinerInterface::getInterfaceID)
+             (%%c-dispatcher
+              (lambda (name)
+                (case name
+                  [(method) (lambda (formal ...) body ...)] ...
+                  [else #f]))))]))
+
+  (define mlir::DialectInlinerInterface::getInterfaceID
+    %mlir::DialectInlinerInterface::getInterfaceID)
 
   ;; @brief materializeCallConversion on the dialect's inliner interface: creates the op that
   ;; bridges a call operand of one type to a parameter of another.

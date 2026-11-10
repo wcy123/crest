@@ -5,8 +5,11 @@
 //===- InterpreterTest.cpp - Unit tests for ChezSchemeInterpreter ---------===//
 
 #include "../../lib/Bindings/Support/ForeignCallable.h"
+#include "../../lib/Bindings/Support/LockedSchemeObject.h"
 #include "../../lib/Interpreter/ChezSchemeInterpreter.h"
 #include "gtest/gtest.h"
+#include <chrono>
+#include <iostream>
 #if defined(__SSE2__) || defined(_M_X64)
 #  include <emmintrin.h>
 #endif
@@ -76,6 +79,113 @@ TEST_F(InterpreterTest, ForeignCallableMovedFromDoesNotUnlock) {
     EXPECT_TRUE(second);
   }
   EXPECT_FALSE(Slocked_objectp(code));
+}
+
+// A Scheme value from its text.
+static ptr evalScheme(const char* code) {
+  ptr port = scheme_call("open-string-input-port", Sstring(code));
+  ptr expr = scheme_call("read", port);
+  return scheme_call("eval", expr);
+}
+
+// ForeignCallable<R(Args...)>::fromProcedure makes the callable from a Scheme
+// procedure, with the prototype that the C++ type says.
+TEST_F(InterpreterTest, FromProcedureMakesTheCallable) {
+  auto callable = ForeignCallable<int(int)>::fromProcedure(
+      evalScheme("(lambda (x) (+ x 1))"));
+  ASSERT_TRUE(callable);
+  EXPECT_EQ(callable(41), 42);
+}
+
+TEST_F(InterpreterTest, FromProcedureUnlocksItsCodeObjectWhenDestroyed) {
+  uint64_t entry = 0;
+  ptr code = nullptr;
+  {
+    auto callable = ForeignCallable<int(int)>::fromProcedure(
+        evalScheme("(lambda (x) (* x 2))"));
+    entry = callable.entry();
+    code = Sforeign_callable_code_object(reinterpret_cast<void*>(entry));
+    EXPECT_TRUE(Slocked_objectp(code));
+    EXPECT_EQ(callable(4), 8);
+  }
+  EXPECT_FALSE(Slocked_objectp(code));
+}
+
+TEST_F(InterpreterTest, FromProcedureMovedFromDoesNotUnlock) {
+  ptr code = nullptr;
+  {
+    auto first =
+        ForeignCallable<int(int)>::fromProcedure(evalScheme("(lambda (x) x)"));
+    code =
+        Sforeign_callable_code_object(reinterpret_cast<void*>(first.entry()));
+    ForeignCallable<int(int)> second(std::move(first));
+    EXPECT_FALSE(first);
+    EXPECT_TRUE(second);
+    EXPECT_TRUE(Slocked_objectp(code));
+  }
+  EXPECT_FALSE(Slocked_objectp(code));
+}
+
+// The prototype comes from the C++ type: pointers and integers, a void result.
+TEST_F(InterpreterTest, FromProcedureDeducesOtherPrototypes) {
+  auto add = ForeignCallable<uint64_t(uint64_t, int)>::fromProcedure(
+      evalScheme("(lambda (a b) (+ a b))"));
+  EXPECT_EQ(add(uint64_t{1} << 40, 2), (uint64_t{1} << 40) + 2);
+
+  evalScheme("(define crest-test-box (box 0))");
+  auto store = ForeignCallable<void(unsigned)>::fromProcedure(
+      evalScheme("(lambda (x) (set-box! crest-test-box x))"));
+  store(4000000000u);
+  EXPECT_EQ(Sunsigned64_value(evalScheme("(unbox crest-test-box)")),
+            4000000000u);
+
+  auto bytes = ForeignCallable<uint8_t(uint8_t)>::fromProcedure(
+      evalScheme("(lambda (x) (+ x 1))"));
+  EXPECT_EQ(bytes(41), 42);
+}
+
+// A callable made from a procedure keeps it alive: the code object holds it.
+TEST_F(InterpreterTest, FromProcedureSurvivesCollections) {
+  auto callable = ForeignCallable<int(int)>::fromProcedure(
+      evalScheme("(let ([k (list 10)]) (lambda (x) (+ x (car k))))"));
+  for (int i = 0; i < 3; ++i) {
+    scheme_call("collect");
+  }
+  EXPECT_EQ(callable(5), 15);
+}
+
+// The Scheme procedure that makes the callables of one prototype is compiled
+// once and shared.
+TEST_F(InterpreterTest, FromProcedureCompilesTheMakerOncePerPrototype) {
+  size_t before = detail::foreignCallableMakerCount();
+  auto first =
+      ForeignCallable<uint64_t(uint64_t, uint64_t, uint64_t)>::fromProcedure(
+          evalScheme("(lambda (a b c) (+ a b c))"));
+  EXPECT_EQ(detail::foreignCallableMakerCount(), before + 1);
+  auto second =
+      ForeignCallable<uint64_t(uint64_t, uint64_t, uint64_t)>::fromProcedure(
+          evalScheme("(lambda (a b c) (* a b c))"));
+  EXPECT_EQ(detail::foreignCallableMakerCount(), before + 1);
+  EXPECT_EQ(first(1, 2, 3), 6u);
+  EXPECT_EQ(second(2, 3, 4), 24u);
+}
+
+// What a run costs: one creation and one release.
+TEST_F(InterpreterTest, FromProcedureCostPerRun) {
+  ptr proc = evalScheme("(lambda (x) x)");
+  LockedSchemeObject keep(proc);
+  constexpr int kRuns = 2000;
+  auto begin = std::chrono::steady_clock::now();
+  for (int i = 0; i < kRuns; ++i) {
+    auto callable = ForeignCallable<int(int)>::fromProcedure(keep.get());
+    ASSERT_EQ(callable(i), i);
+  }
+  auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                   std::chrono::steady_clock::now() - begin)
+                   .count();
+  std::cout << "[ INFO ] fromProcedure: " << nanos / kRuns
+            << " ns per creation and release\n";
+  EXPECT_LT(nanos / kRuns, 5000000);
 }
 
 #if defined(__SSE2__) || defined(_M_X64)

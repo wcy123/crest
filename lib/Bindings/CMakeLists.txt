@@ -68,6 +68,9 @@ add_library(CrestBindings STATIC
   IR/AffineExpr.h
   IR/AffineMap.cpp
   IR/AffineMap.h
+  llvm/Support/raw_ostream.cpp
+  IR/Attributes.cpp
+  IR/Attributes.h
   IR/Block.cpp
   IR/Block.h
   IR/Dialect.cpp
@@ -108,6 +111,7 @@ add_library(CrestBindings STATIC
   Support/ArrayRef.h
   Support/CrestObject.cpp
   Support/CrestObject.h
+  Support/ForeignCallable.cpp
   Support/ForeignCallable.h
   Support/LockedSchemeObject.cpp
   Support/LockedSchemeObject.h

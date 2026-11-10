@@ -4,7 +4,11 @@
         (mlir IR Operation)
         (mlir IR Region)
         (mlir IR Block)
-        (mlir IR MLIRContext))
+        (mlir IR MLIRContext)
+        (mlir IR Types)
+        (only (mlir IR BuiltinTypes) mlir::IntegerType::get<i32> mlir::IntegerType::get<i64>
+              mlir::Float32Type::get)
+        (only (mlir Interfaces FunctionInterfaces) mlir::FunctionOpInterface::cloneTypeWith))
 
 (define mlir::FunctionOpInterface::getFunctionType
   (foreign-procedure "mlir::FunctionOpInterface::getFunctionType" (uptr) uptr))
@@ -45,6 +49,17 @@
           (show "getCallableRegion"
                 (not (zero? (mlir::CallableOpInterface::getCallableRegion good))))
           (show "bad verifyBody" (mlir::FunctionOpInterface::verifyBody bad))
-          (show "bad verifyType" (mlir::FunctionOpInterface::verifyType bad)))))))
+          (show "bad verifyType" (mlir::FunctionOpInterface::verifyType bad))
+          ;; cloneTypeWith: the clause of `good` reverses the inputs, `bad` has the default.
+          (let* ([inputs    (list (mlir::IntegerType::get<i32>) (mlir::Float32Type::get))]
+                 [results   (list (mlir::IntegerType::get<i64>))]
+                 [good-type (mlir::FunctionOpInterface::cloneTypeWith good inputs results)]
+                 [bad-type  (mlir::FunctionOpInterface::cloneTypeWith bad inputs results)])
+            (display "good cloneTypeWith: ")
+            (display (mlir::Type::print good-type))
+            (newline)
+            (display "bad cloneTypeWith: ")
+            (display (mlir::Type::print bad-type))
+            (newline)))))))
 
 (main)

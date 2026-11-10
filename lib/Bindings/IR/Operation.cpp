@@ -160,12 +160,12 @@ void registerIROperationBindings() {
                                   .getAsOpaquePointer()));
       });
   Sregister_symbol(
-      "mlir::Operation::walk",
-      (void*)+[](uint64_t op, uint64_t callback) -> void {
-        // The callback is a foreign-callable made for this call (see
-        // scheme/crest/callback.sls); the owner releases it when the walk is
-        // over. Make it first: the return below must not leak it.
-        crest::ForeignCallable<void(uint64_t)> owned(callback);
+      "mlir::Operation::walk", (void*)+[](uint64_t op, ptr callback) -> void {
+        // The callback is a Scheme procedure that is made into a
+        // foreign-callable for this call; the owner releases it when the walk
+        // is over. Make it first: the return below must not leak it.
+        auto owned =
+            crest::ForeignCallable<void(uint64_t)>::fromProcedure(callback);
         if (!op) {
           return;
         }

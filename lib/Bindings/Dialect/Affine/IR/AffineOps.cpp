@@ -22,24 +22,26 @@ void registerDialectAffineIRAffineOpsBindings() {
   // mlir::affine::buildAffineLoopNest(OpBuilder&, Location, lbs, ubs, steps,
   // body) (builder loc lbs ubs steps body-fn) → void
   //   lbs, ubs, steps: Scheme lists of integers
-  //   body-fn: the entry point of a foreign-callable made for this call,
+  //   body-fn: a Scheme procedure, made into a foreign-callable for this call,
   //   (nested-builder loc ivs count) → void, the callback of the C++ function
   //     nested-builder: builder shell, valid only during the call
   //     ivs: pointer to the Value uptrs (the induction variables), and count
   register_builder_binding(
       "mlir::affine::buildAffineLoopNest",
       [](mlir::OpBuilder& builder, uint64_t loc_ptr, ptr lbs, ptr ubs,
-         ptr steps, uint64_t body_fn) -> void {
-        // Make the owner first; it releases the callable when the call is over.
-        crest::ForeignCallable<void(uint64_t, uint64_t, const uint64_t*,
-                                    uint64_t)>
-            owned(body_fn);
+         ptr steps, ptr body_fn) -> void {
+        // Making the callable runs Scheme, which can move the lists: read them
+        // first. The owner releases the callable when the call is over.
+        auto lowerBounds = convert_to_cpp<llvm::SmallVector<int64_t>>(lbs);
+        auto upperBounds = convert_to_cpp<llvm::SmallVector<int64_t>>(ubs);
+        auto stepValues = convert_to_cpp<llvm::SmallVector<int64_t>>(steps);
+        auto owned =
+            crest::ForeignCallable<void(uint64_t, uint64_t, const uint64_t*,
+                                        uint64_t)>::fromProcedure(body_fn);
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         mlir::affine::buildAffineLoopNest(
-            builder, loc, convert_to_cpp<llvm::SmallVector<int64_t>>(lbs),
-            convert_to_cpp<llvm::SmallVector<int64_t>>(ubs),
-            convert_to_cpp<llvm::SmallVector<int64_t>>(steps),
+            builder, loc, lowerBounds, upperBounds, stepValues,
             [&](mlir::OpBuilder& nb, mlir::Location nb_loc,
                 mlir::ValueRange ivs) {
               // Borrowed shell, valid for the duration of the call.

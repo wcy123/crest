@@ -1,0 +1,31 @@
+/*
+ * Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
+// Mirrors llvm/Support/raw_ostream.h
+//
+// There is no header of ours for it: a lib/Bindings/llvm/Support/raw_ostream.h
+// would hide the one of LLVM from every file that includes it by that name.
+
+#include "llvm/Support/raw_ostream.h"
+#include "../../Support/SchemeWrapper.h"
+
+namespace crest {
+
+void registerLLVMRawOstreamBindings() {
+  // llvm::raw_ostream::write (uptr stream) (string text)
+  //
+  // `stream` is a raw_ostream that C++ gave Scheme for the length of a
+  // callback, such as mlir::AsmPrinter::getStream.
+  Sregister_symbol(
+      "llvm::raw_ostream::write",
+      (void*)+[](uint64_t stream_ptr, const char* text) -> void {
+        if (!stream_ptr) {
+          scheme_error("llvm::raw_ostream::write", "stream pointer is null");
+        }
+        *reinterpret_cast<llvm::raw_ostream*>(stream_ptr) << text;
+      });
+}
+
+} // namespace crest

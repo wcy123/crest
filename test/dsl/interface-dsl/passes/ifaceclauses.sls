@@ -7,6 +7,7 @@
           (crest dialect)
           (mlir IR Operation)
           (mlir IR BuiltinAttributes)
+          (only (mlir IR BuiltinTypes) mlir::FunctionType::get)
           (only (mlir Interfaces FunctionInterfaces) mlir::FunctionOpInterface)
           (only (mlir Interfaces CallInterfaces) mlir::CallableOpInterface))
 
@@ -22,7 +23,11 @@
                                      (mlir::TypeAttr::getValue
                                       (mlir::Operation::getAttr self "function_type")))
                     (verifyBody (self) (display "clause verifyBody\n") #t)
-                    (verifyType (self) (display "clause verifyType\n") #t))))
+                    (verifyType (self) (display "clause verifyType\n") #t)
+                    ;; Not the default: the inputs come back in the other order.
+                    (cloneTypeWith (self inputs results)
+                                   (display "clause cloneTypeWith\n")
+                                   (mlir::FunctionType::get (mlir::Operation::getContext self) (reverse inputs) results)))))
     (define-op bad
       :interfaces ((mlir::FunctionOpInterface
                     (verifyBody (self) #f)

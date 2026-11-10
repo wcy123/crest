@@ -49,26 +49,26 @@
     (foreign-procedure "mlir::TypeConverter::TypeConverter"
                        () uptr))
 
-  ;; The callbacks below are entry points of foreign-callables made for the conversion (see
-  ;; (crest callback)); C++ releases each one when the pattern set, the target or the type converter
-  ;; that calls it is destroyed.
+  ;; The callbacks below are Scheme procedures, adapted to C types: C++ makes a foreign-callable of
+  ;; each for the conversion (crest::ForeignCallable::fromProcedure) and releases it when the pattern
+  ;; set, the target or the type converter that calls it is destroyed.
 
   ;; @brief TypeConverter::addConversion — register a type-conversion callback: (uptr type) → uptr.
   (define %type-converter-add-conversion
     (foreign-procedure "mlir::TypeConverter::addConversion"
-                       (uptr uptr) void))
+                       (uptr scheme-object) void))
 
   ;; @brief TypeConverter::addSourceMaterialization — register a Scheme callback.
   (define %mlir::TypeConverter::addSourceMaterialization
     (foreign-procedure
      "mlir::TypeConverter::addSourceMaterialization"
-     (uptr uptr) void))
+     (uptr scheme-object) void))
 
   ;; @brief TypeConverter::addTargetMaterialization — register a Scheme callback.
   (define %mlir::TypeConverter::addTargetMaterialization
     (foreign-procedure
      "mlir::TypeConverter::addTargetMaterialization"
-     (uptr uptr) void))
+     (uptr scheme-object) void))
 
   ;; @brief TypeConverter::isLegal(Type).
   (define %type-converter-is-legal-type
@@ -110,13 +110,13 @@
   ;; @brief ConversionTarget::addDynamicallyLegalOp.
   (define %target-add-dynamically-legal-op
     (foreign-procedure "mlir::ConversionTarget::addDynamicallyLegalOp"
-                       (uptr uptr string uptr) void))
+                       (uptr uptr string scheme-object) void))
 
   ;; @brief ConversionTarget::markUnknownOpDynamicallyLegal.
   (define %target-mark-unknown-ops-dynamically-legal
     (foreign-procedure
      "mlir::ConversionTarget::markUnknownOpsDynamicallyLegal"
-     (uptr uptr) void))
+     (uptr scheme-object) void))
 
   ;; @brief mlir::applyFullConversion.
   (define %apply-full-conversion
@@ -126,17 +126,17 @@
   ;; @brief Register a Scheme ConversionPattern for a named op.
   (define %add-conversion-pattern
     (foreign-procedure "crest::DialectConversion::addConversionPattern"
-                       (uptr string uptr uptr int) void))
+                       (uptr string scheme-object uptr int) void))
 
   ;; @brief Register a Scheme ConversionPattern with no TypeConverter (original operands).
   (define %add-conversion-pattern/ctx
     (foreign-procedure "crest::DialectConversion::addConversionPattern/ctx"
-                       (uptr string uptr int) void))
+                       (uptr string scheme-object int) void))
 
   ;; @brief Register a Scheme RewritePattern (no TypeConverter) for a named op.
   (define %add-rewrite-pattern
     (foreign-procedure "crest::DialectConversion::addRewritePattern"
-                       (uptr string uptr int) void))
+                       (uptr string scheme-object int) void))
 
   ;; @brief mlir::populateFunctionOpInterfaceTypeConversionPattern<FuncOp>.
   (define %populate-func-type-conversion
@@ -155,6 +155,6 @@
 
   (define %mlir::RewriterBase::modifyOpInPlace
     (foreign-procedure "mlir::RewriterBase::modifyOpInPlace"
-                       (uptr uptr uptr) void))
+                       (uptr uptr scheme-object) void))
 
   ) ;; end library (mlir Transforms DialectConversion ffi)

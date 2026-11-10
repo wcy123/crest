@@ -1,6 +1,7 @@
 #!r6rs
 ;; A Scheme dialect whose ops have the callbacks that no other test uses: :verify-regions, a :verify
-;; that fails or raises, :populate-default-attrs and folders that answer in place or wrongly.
+;; that fails or raises, :populate-default-attrs (which fills a NamedAttrList) and folders that
+;; answer in place or wrongly.
 (library (passes ocb)
   (export ocb)
   (import (except (rnrs) =)
@@ -8,6 +9,7 @@
           (mlir IR Operation)
           (mlir IR BuiltinAttributes)
           (mlir IR MLIRContext)
+          (mlir IR OperationSupport)
           (crest dialect))
 
   (define (say . words)
@@ -32,8 +34,18 @@
         #f))
     (define-op raises
       (:verify (op) (error 'verify "the verifier is broken")))
+    ;; A default for `level`, given only when the op has none (get, then append).
     (define-op defaults
-      (:populate-default-attrs (op-name attrs) (say "populate-default-attrs")))
+      (:populate-default-attrs (op-name attrs)
+        (say "populate-default-attrs")
+        (with-current-MLIRContext (mlir::OperationName::getContext op-name)
+          (when (zero? (mlir::NamedAttrList::get attrs "level"))
+            (mlir::NamedAttrList::append attrs "level" (mlir::IntegerAttr::get<i32> 7))))))
+    ;; `mode` is always the default (set replaces an attribute that is there, adds one that is not).
+    (define-op overrides
+      (:populate-default-attrs (op-name attrs)
+        (with-current-MLIRContext (mlir::OperationName::getContext op-name)
+          (mlir::NamedAttrList::set attrs "mode" (mlir::StringAttr::get "default")))))
 
     ;; A folder that answers a list with something that fold-value and fold-attribute did not make.
     (define-op malformed

@@ -20,6 +20,10 @@
     %mlir::OperationState::addTypes
     %mlir::OperationState::addRegion
     %mlir::OperationState::addAttribute
+    %mlir::NamedAttrList::get
+    %mlir::NamedAttrList::append
+    %mlir::NamedAttrList::set
+    %mlir::OperationName::getContext
     %crest::isa<CrestBox<mlir::OperationState>>
     %operation-state-create
     %operation-state-add-operands          ;; canonical: mlir::OperationState::addOperands
@@ -63,6 +67,22 @@
   ;; @brief Type predicate — is this ptr a CrestBox<mlir::OperationState>?
   (define %crest::isa<CrestBox<mlir::OperationState>>
     (foreign-procedure "crest::isa<CrestBox<mlir::OperationState>>" (uptr) int))
+
+  ;; (uptr list) (string name) -> uptr: the attribute of that name in the list, 0 if it has none.
+  (define %mlir::NamedAttrList::get
+    (foreign-procedure "mlir::NamedAttrList::get" (uptr string) uptr))
+
+  ;; (uptr list) (string name) (uptr attribute) -> void: add an attribute that the list does not have.
+  (define %mlir::NamedAttrList::append
+    (foreign-procedure "mlir::NamedAttrList::append" (uptr string uptr) void))
+
+  ;; (uptr list) (string name) (uptr attribute) -> void: replace the attribute of that name, or add it.
+  (define %mlir::NamedAttrList::set
+    (foreign-procedure "mlir::NamedAttrList::set" (uptr string uptr) void))
+
+  ;; (uptr name) -> uptr: the MLIRContext of an OperationName.
+  (define %mlir::OperationName::getContext
+    (foreign-procedure "mlir::OperationName::getContext" (uptr) uptr))
 
   (define %mlir::OperationState::create        %operation-state-create)
   (define %mlir::OperationState::addOperands   %operation-state-add-operands)

@@ -7,6 +7,7 @@
 #include "../Bindings/Support/CrestObject.h"
 #include "../Bindings/Support/SchemeWrapper.h"
 #include "Dialect.h"
+#include "Interface.h"
 #include "mlir/IR/Builders.h"
 
 namespace crest {
@@ -78,41 +79,30 @@ mlir::Operation* CrestInlinerInterface::materializeCallConversion(
       reinterpret_cast<uint64_t>(loc.getAsOpaquePointer())));
 }
 
-void registerCrestInlinerInterfaceBindings() {
-  // mlir::DialectInlinerInterface (uptr dialect) (uptr isLegalToInline/call)
-  //   (uptr isLegalToInline/region) (uptr isLegalToInline/op)
-  //   (uptr handleTerminator/value) (uptr handleTerminator/block)
-  //   (uptr materializeCallConversion)
-  //
-  // Each uptr is the entry point of a foreign-callable made in Scheme, or 0 for
-  // an optional method the dialect does not have.
-  Sregister_symbol(
-      "mlir::DialectInlinerInterface",
-      (void*)+[](uint64_t dialect_ptr, uint64_t isLegalCall,
-                 uint64_t isLegalRegion, uint64_t isLegalOp,
-                 uint64_t handleTerminatorValue, uint64_t handleTerminatorBlock,
-                 uint64_t materializeCallConversion) -> void {
-        auto* dialect = reinterpret_cast<CrestDialect*>(dialect_ptr);
-        auto iface = std::make_unique<CrestInlinerInterface>(dialect);
-        iface->isLegalToInlineCallFn =
-            reinterpret_cast<decltype(iface->isLegalToInlineCallFn)>(
-                isLegalCall);
-        iface->isLegalToInlineRegionFn =
-            reinterpret_cast<decltype(iface->isLegalToInlineRegionFn)>(
-                isLegalRegion);
-        iface->isLegalToInlineOpFn =
-            reinterpret_cast<decltype(iface->isLegalToInlineOpFn)>(isLegalOp);
-        iface->handleTerminatorValueFn =
-            reinterpret_cast<decltype(iface->handleTerminatorValueFn)>(
-                handleTerminatorValue);
-        iface->handleTerminatorBlockFn =
-            reinterpret_cast<decltype(iface->handleTerminatorBlockFn)>(
-                handleTerminatorBlock);
-        iface->materializeCallConversionFn =
-            reinterpret_cast<decltype(iface->materializeCallConversionFn)>(
-                materializeCallConversion);
-        dialect->addInterface(std::move(iface));
-      });
+void attachDialectInlinerInterface(CrestDialect& dialect,
+                                   const LockedSchemeObject& dispatcher) {
+  auto iface = std::make_unique<CrestInlinerInterface>(&dialect);
+  iface->isLegalToInlineCallFn =
+      reinterpret_cast<decltype(iface->isLegalToInlineCallFn)>(
+          interfaceEntryPoint(dispatcher, "isLegalToInline/call"));
+  iface->isLegalToInlineRegionFn =
+      reinterpret_cast<decltype(iface->isLegalToInlineRegionFn)>(
+          interfaceEntryPoint(dispatcher, "isLegalToInline/region"));
+  iface->isLegalToInlineOpFn =
+      reinterpret_cast<decltype(iface->isLegalToInlineOpFn)>(
+          interfaceEntryPoint(dispatcher, "isLegalToInline/op"));
+  // Optional: a method the dialect has no clause for is null and keeps the
+  // default.
+  iface->handleTerminatorValueFn =
+      reinterpret_cast<decltype(iface->handleTerminatorValueFn)>(
+          interfaceEntryPoint(dispatcher, "handleTerminator/value"));
+  iface->handleTerminatorBlockFn =
+      reinterpret_cast<decltype(iface->handleTerminatorBlockFn)>(
+          interfaceEntryPoint(dispatcher, "handleTerminator/block"));
+  iface->materializeCallConversionFn =
+      reinterpret_cast<decltype(iface->materializeCallConversionFn)>(
+          interfaceEntryPoint(dispatcher, "materializeCallConversion"));
+  dialect.addInterface(std::move(iface));
 }
 
 } // namespace crest

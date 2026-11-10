@@ -18,6 +18,18 @@
 namespace crest {
 
 void registerTransformsInliningUtilsBindings() {
+  // mlir::DialectInlinerInterface::getInterfaceID () -> uptr
+  //
+  // The address that the TypeID of the interface wraps: the :interfaces clause
+  // of a dialect pairs it with the dispatcher, and C++ finds how to install the
+  // interface by it (lib/Crest/Dialect.cpp).
+  Sregister_symbol(
+      "mlir::DialectInlinerInterface::getInterfaceID",
+      (void*)+[]() -> uint64_t {
+        return reinterpret_cast<uint64_t>(
+            mlir::DialectInlinerInterface::getInterfaceID()
+                .getAsOpaquePointer());
+      });
   Sregister_symbol(
       "mlir::createInlinerPass", (void*)+[]() -> uint64_t {
         return reinterpret_cast<uint64_t>(

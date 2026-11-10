@@ -10,7 +10,6 @@
 // Dialect/, or Interfaces/ sub-tree.
 
 #include "../Crest/Dialect.h"
-#include "../Crest/InlinerInterface.h"
 #include "../Crest/Op.h"
 #include "../Crest/SchemePass.h"
 #include "../Crest/Type.h"
@@ -27,6 +26,7 @@
 #include "Dialect/Tensor/IR/Tensor.h"
 #include "IR/AffineExpr.h"
 #include "IR/AffineMap.h"
+#include "IR/Attributes.h"
 #include "IR/Block.h"
 #include "IR/Builders.h"
 #include "IR/BuiltinAttributes.h"
@@ -75,6 +75,9 @@
 
 namespace crest {
 
+// lib/Bindings/llvm/Support/raw_ostream.cpp has no header of its own.
+void registerLLVMRawOstreamBindings();
+
 // Hook for downstream projects to register their own dialect-specific
 // FFI without modifying CREST itself.
 static void (*g_extra_bindings_fn)() = nullptr;
@@ -95,7 +98,6 @@ void registerMlirForeignFunctions() {
   registerIRDialectBindings();
   registerIRDialectRegistryBindings();
   registerIRExtensibleDialectBindings();
-  registerCrestInlinerInterfaceBindings();
   registerTransformsInliningUtilsBindings();
   registerPassPassManagerBindings();
   registerCrestDynamicOpBindings();
@@ -118,6 +120,8 @@ void registerMlirForeignFunctions() {
   registerIROpResultBindings();
   registerIRRewriterBaseBindings();
   registerIRTypeBindings();
+  registerIRAttributeBindings();
+  registerLLVMRawOstreamBindings();
   registerIRValueBindings();
   registerCrestObjectBindings();
   registerArrayRefBindings();

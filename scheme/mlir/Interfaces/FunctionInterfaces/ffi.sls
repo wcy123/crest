@@ -7,6 +7,7 @@
           %mlir::function_interface_impl::printFunctionOp
           %mlir::FunctionOpInterface::getFunctionType
           %mlir::FunctionOpInterface::setFunctionTypeAttr
+          %mlir::FunctionOpInterface::cloneTypeWith
           %mlir::FunctionOpInterface::verifyBody
           %mlir::FunctionOpInterface::verifyType)
   (import (chezscheme))
@@ -22,6 +23,11 @@
   ;; Interface method calls — look up the concept in the interface map of the op and dispatch.
   (define %mlir::FunctionOpInterface::getFunctionType
     (foreign-procedure "mlir::FunctionOpInterface::getFunctionType" (uptr) uptr))
+
+  ;; (uptr op) (list-of-Types inputs) (list-of-Types results) -> uptr Type
+  (define %mlir::FunctionOpInterface::cloneTypeWith
+    (foreign-procedure "mlir::FunctionOpInterface::cloneTypeWith" (uptr scheme-object scheme-object)
+                       uptr))
 
   (define %mlir::FunctionOpInterface::setFunctionTypeAttr
     (foreign-procedure "mlir::FunctionOpInterface::setFunctionTypeAttr" (uptr uptr) void))
