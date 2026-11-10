@@ -42,18 +42,25 @@ extern "C" {
 
 template <typename... Ts>
 [[noreturn]] inline void scheme_error(const char* who, const Ts&... args) {
-  std::ostringstream stream;
-  bool first = true;
-  auto append = [&](const auto& v) {
-    if (!first) {
-      stream << ' ';
-    }
-    first = false;
-    stream << v;
-  };
-  (append(args), ...);
-  Scall2(Stop_level_value(Sstring_to_symbol("error")), Sstring(who),
-         Sstring(stream.str().c_str()));
+  // The Scheme procedure `error` does not return: it unwinds, and the
+  // destructors of the C++ objects of this frame do not run. So the message is
+  // copied into a Scheme string and the stream is destroyed before Scheme is
+  // called. Calling it first leaked the stream and its text on every error.
+  ptr message;
+  {
+    std::ostringstream stream;
+    bool first = true;
+    auto append = [&](const auto& v) {
+      if (!first) {
+        stream << ' ';
+      }
+      first = false;
+      stream << v;
+    };
+    (append(args), ...);
+    message = Sstring(stream.str().c_str());
+  }
+  Scall2(Stop_level_value(Sstring_to_symbol("error")), Sstring(who), message);
   crest_unreachable();
 }
 

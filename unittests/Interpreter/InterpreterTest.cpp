@@ -10,6 +10,9 @@
 #include "gtest/gtest.h"
 #include <chrono>
 #include <iostream>
+#if defined(__GLIBC__)
+#  include <malloc.h>
+#endif
 #if defined(__SSE2__) || defined(_M_X64)
 #  include <emmintrin.h>
 #endif
@@ -169,6 +172,51 @@ TEST_F(InterpreterTest, FromProcedureCompilesTheMakerOncePerPrototype) {
   EXPECT_EQ(first(1, 2, 3), 6u);
   EXPECT_EQ(second(2, 3, 4), 24u);
 }
+
+// REGRESSION: scheme_error built its message with a std::ostringstream and a
+// std::string, then called the Scheme procedure `error`, which never returns:
+// the destructors of both were skipped, and every error leaked about 550 bytes
+// of C++ memory. Valgrind showed it. The message must be copied into a Scheme
+// string and the C++ objects destroyed before Scheme is called.
+#if defined(__GLIBC__)
+TEST_F(InterpreterTest, SchemeErrorDoesNotLeakCppMemory) {
+  Sregister_symbol(
+      "crest::test::raise", (void*)+[]() -> void {
+        scheme_error("crest::test", "a message that is long enough to matter",
+                     42, "and a second part");
+      });
+  evalScheme("(define crest-test-raise"
+             "  (foreign-procedure \"crest::test::raise\" () void))");
+  ptr once = evalScheme("(lambda () (guard (c [#t #f]) (crest-test-raise)))");
+  LockedSchemeObject locked(once);
+  auto run = [&](int times) {
+    for (int i = 0; i < times; ++i) {
+      scheme_call(locked.get());
+    }
+  };
+  // The errors themselves are Scheme garbage: collect before and after, so
+  // that only memory that C++ lost is left in the difference.
+  auto collect = [] {
+    for (int i = 0; i < 3; ++i) {
+      scheme_call("collect");
+    }
+  };
+  run(100);
+  collect();
+  size_t before = static_cast<size_t>(mallinfo().uordblks);
+  constexpr int kErrors = 20000;
+  run(kErrors);
+  collect();
+  size_t grown = static_cast<size_t>(mallinfo().uordblks) - before;
+  // Before the repair each error lost about 816 bytes in scheme_error. What is
+  // left, about 200 bytes per error, is Chez's own: S_call_help allocates a
+  // record for each call from C into Scheme and does not free it when an error
+  // leaves through that call (valgrind: malloc in S_call_help). The bound
+  // allows for that and not for CREST's own leak.
+  EXPECT_LT(grown, static_cast<size_t>(kErrors) * 400)
+      << grown << " bytes in use more after " << kErrors << " errors";
+}
+#endif
 
 // What a run costs: one creation and one release.
 TEST_F(InterpreterTest, FromProcedureCostPerRun) {
