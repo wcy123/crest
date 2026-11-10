@@ -73,6 +73,57 @@ void registerIROperationStateBindings() {
                    ? 1
                    : 0;
       });
+
+  // The NamedAttrList of an op that is being created: what the
+  // :populate-default-attrs of an op gets. It is the list MLIR is filling,
+  // valid for the call. A name is a string; a missing attribute is 0.
+  Sregister_symbol(
+      "mlir::NamedAttrList::get",
+      (void*)+[](uint64_t list_ptr, const char* name) -> uint64_t {
+        if (!list_ptr) {
+          scheme_error("mlir::NamedAttrList::get",
+                       "attribute list pointer is null");
+        }
+        mlir::Attribute attr =
+            reinterpret_cast<mlir::NamedAttrList*>(list_ptr)->get(name);
+        return reinterpret_cast<uint64_t>(attr.getAsOpaquePointer());
+      });
+  Sregister_symbol(
+      "mlir::NamedAttrList::append",
+      (void*)+[](uint64_t list_ptr, const char* name,
+                 uint64_t attr_ptr) -> void {
+        if (!list_ptr || !attr_ptr) {
+          scheme_error("mlir::NamedAttrList::append",
+                       "attribute list or attribute pointer is null");
+        }
+        reinterpret_cast<mlir::NamedAttrList*>(list_ptr)->append(
+            name, mlir::Attribute::getFromOpaquePointer(
+                      reinterpret_cast<const void*>(attr_ptr)));
+      });
+  Sregister_symbol(
+      "mlir::NamedAttrList::set",
+      (void*)+[](uint64_t list_ptr, const char* name,
+                 uint64_t attr_ptr) -> void {
+        if (!list_ptr || !attr_ptr) {
+          scheme_error("mlir::NamedAttrList::set",
+                       "attribute list or attribute pointer is null");
+        }
+        reinterpret_cast<mlir::NamedAttrList*>(list_ptr)->set(
+            name, mlir::Attribute::getFromOpaquePointer(
+                      reinterpret_cast<const void*>(attr_ptr)));
+      });
+
+  // The OperationName that :populate-default-attrs gets, valid for the call.
+  Sregister_symbol(
+      "mlir::OperationName::getContext",
+      (void*)+[](uint64_t name_ptr) -> uint64_t {
+        if (!name_ptr) {
+          scheme_error("mlir::OperationName::getContext",
+                       "operation name pointer is null");
+        }
+        return reinterpret_cast<uint64_t>(
+            reinterpret_cast<mlir::OperationName*>(name_ptr)->getContext());
+      });
 }
 
 } // namespace crest

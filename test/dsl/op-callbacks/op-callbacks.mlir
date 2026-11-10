@@ -14,10 +14,19 @@
 
 // CHECK: "ocb.regions"() : () -> ()
 // CHECK: "ocb.verified"() : () -> ()
-// CHECK: "ocb.defaults"() : () -> ()
+// :populate-default-attrs fills the NamedAttrList of an op that is created without the attribute, and
+// leaves the one it finds (the second ocb.defaults has its own level), as `get` and `append` say; `set`
+// replaces the mode of ocb.overrides and adds it when it is missing.
+// CHECK: "ocb.defaults"() {level = 7 : i32} : () -> ()
+// CHECK: "ocb.defaults"() {level = 3 : i32} : () -> ()
+// CHECK: "ocb.overrides"() {mode = "default"} : () -> ()
+// CHECK: "ocb.overrides"() {mode = "default"} : () -> ()
 
 module {
   "ocb.regions"() : () -> ()
   "ocb.verified"() : () -> ()
   "ocb.defaults"() : () -> ()
+  "ocb.defaults"() {level = 3 : i32} : () -> ()
+  "ocb.overrides"() : () -> ()
+  "ocb.overrides"() {mode = "mine"} : () -> ()
 }

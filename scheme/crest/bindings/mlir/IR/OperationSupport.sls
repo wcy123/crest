@@ -19,6 +19,10 @@
     mlir::OperationState::addTypes
     mlir::OperationState::addRegion
     mlir::OperationState::addAttribute
+    mlir::NamedAttrList::get
+    mlir::NamedAttrList::append
+    mlir::NamedAttrList::set
+    mlir::OperationName::getContext
     crest::isa<CrestBox<mlir::OperationState>>?
     with-OperationState)
   (import (rnrs)
@@ -34,6 +38,12 @@
   (define mlir::OperationState::addTypes     %mlir::OperationState::addTypes)
   (define mlir::OperationState::addRegion    %mlir::OperationState::addRegion)
   (define mlir::OperationState::addAttribute %mlir::OperationState::addAttribute)
+
+  ;; The NamedAttrList that the :populate-default-attrs of an op gets, and the OperationName.
+  (define mlir::NamedAttrList::get %mlir::NamedAttrList::get)
+  (define mlir::NamedAttrList::append %mlir::NamedAttrList::append)
+  (define mlir::NamedAttrList::set %mlir::NamedAttrList::set)
+  (define mlir::OperationName::getContext %mlir::OperationName::getContext)
 
   ;; @brief with-OperationState — RAII for a heap-allocated mlir::OperationState.
   ;; @param var   identifier bound to the CrestBox<OperationState>* uptr for BODY
