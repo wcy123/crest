@@ -11,7 +11,8 @@
         (only (mlir IR SymbolInterfaces) mlir::SymbolOpInterface::getInterfaceID)
         (only (mlir Interfaces SideEffectInterfaces)
               mlir::MemoryEffectOpInterface::getInterfaceID
-              mlir::ConditionallySpeculatable::getInterfaceID))
+              mlir::ConditionallySpeculatable::getInterfaceID)
+        (only (mlir Transforms InliningUtils) mlir::DialectInlinerInterface::getInterfaceID))
 
 (define getters
   (list (cons 'InferTypeOpInterface mlir::InferTypeOpInterface::getInterfaceID)
@@ -21,7 +22,8 @@
         (cons 'ArgAndResultAttrsOpInterface mlir::ArgAndResultAttrsOpInterface::getInterfaceID)
         (cons 'SymbolOpInterface mlir::SymbolOpInterface::getInterfaceID)
         (cons 'MemoryEffectOpInterface mlir::MemoryEffectOpInterface::getInterfaceID)
-        (cons 'ConditionallySpeculatable mlir::ConditionallySpeculatable::getInterfaceID)))
+        (cons 'ConditionallySpeculatable mlir::ConditionallySpeculatable::getInterfaceID)
+        (cons 'DialectInlinerInterface mlir::DialectInlinerInterface::getInterfaceID)))
 
 (for-each
  (lambda (entry)

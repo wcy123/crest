@@ -22,6 +22,7 @@
 #include "mlir/Interfaces/CallInterfaces.h"
 #include "mlir/Interfaces/FunctionInterfaces.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
+#include "mlir/Transforms/InliningUtils.h"
 #include "gtest/gtest.h"
 #include <cstdlib>
 
@@ -172,6 +173,20 @@ TEST_F(InterfaceTest, EveryContextThatLoadsTheDialectHasThem) {
                           mlir::MLIRContext::Threading::DISABLED);
     EXPECT_TRUE(
         name(ctx, "ifacemap.func").hasInterface<mlir::FunctionOpInterface>())
+        << "context " << i;
+  }
+}
+
+// The dialect-level :interfaces clause gives the dialect its inliner interface,
+// in every context that loads the dialect, and not a dialect that has none.
+TEST_F(InterfaceTest, TheDialectHasItsInlinerInterface) {
+  for (int i = 0; i < 3; ++i) {
+    mlir::MLIRContext ctx(makeRegistry(),
+                          mlir::MLIRContext::Threading::DISABLED);
+    mlir::Dialect* dialect = ctx.getOrLoadDialect("ifacemap");
+    ASSERT_NE(dialect, nullptr);
+    EXPECT_NE(dialect->getRegisteredInterface<mlir::DialectInlinerInterface>(),
+              nullptr)
         << "context " << i;
   }
 }

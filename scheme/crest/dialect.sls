@@ -106,33 +106,22 @@
   (define-syntax define-dialect
     (lambda (stx)
 
-      ;; Parse a list of (interface-name method-clause ...) syntax objects into
-      ;; a list of interface-entry records: the :interfaces clause of the dialect.
-      (define (%%parse-iface-specs iface-specs-stx)
-        (map (lambda (spec-stx)
-               (syntax-case spec-stx ()
-                 [(iface-name method-clause ...)
-                  (identifier? #'iface-name)
-                  (make-interface-entry
-                   #'iface-name
-                   (map (lambda (mc)
-                          (syntax-case mc ()
-                            [(mname formals body ...)
-                             (identifier? #'mname)
-                             (make-interface-method
-                              (syntax->datum #'mname)
-                              #'formals
-                              #'(body ...))]
-                            [_
-                             (syntax-violation ':interfaces
-                                               "expected (method-name (formals...) body...)"
-                                               mc)]))
-                        (syntax->list #'(method-clause ...))))]
-                 [_
-                  (syntax-violation ':interfaces
-                                    "expected (interface-name method-clause ...)"
-                                    spec-stx)]))
-             (syntax->list iface-specs-stx)))
+      ;; The entries of an :interfaces clause, of an op or of the dialect: each is
+      ;; (interface-name method-clause ...), and is used as it was written: the interface name is a
+      ;; macro of the library of the interface, which makes the pair of the TypeID of the interface
+      ;; and the dispatcher of C of its clauses.
+      (define (%%interface-entries who clause-stx entries-stx)
+        (let ([entries (syntax->list entries-stx)])
+          (unless (and entries
+                       (andmap (lambda (entry)
+                                 (syntax-case entry ()
+                                   [(iface-name method-clause ...) (identifier? #'iface-name) #t]
+                                   [_ #f]))
+                               entries))
+            (syntax-violation who
+                              ":interfaces expects a list of (interface-name method-clause ...)"
+                              clause-stx))
+          entries))
 
       (define (parse-clauses clauses-stx dialect-id-stx)
         ;; cbs slot order matches CrestDialect::Callbacks — index set directly
@@ -244,12 +233,13 @@
                                            :populate-default-attrs)
                   [(:summary     _ . rest)  (loop-sub #'rest)]
                   [(:description _ . rest)  (loop-sub #'rest)]
-                  [(:interfaces ((iface-name method-clause ...) ...) . rest)
-                   (andmap identifier? (syntax->list #'(iface-name ...)))
+                  [(:interfaces (entry ...) . rest)
                    (begin
                      (when interfaces
                        (syntax-violation 'define-op "repeated :interfaces" (car (syntax->list stx))))
-                     (set! interfaces (syntax->list #'((iface-name method-clause ...) ...)))
+                     (set! interfaces
+                           (%%interface-entries 'define-op (car (syntax->list stx))
+                                                #'(entry ...)))
                      (loop-sub #'rest))]
                   [(:interfaces . _)
                    (syntax-violation 'define-op
@@ -439,14 +429,19 @@
                       (identifier? #'result-index) (identifier? #'attr))
                  (begin (vector-set! cbs 10 #'(lambda (op region-index result-index attr) body ...)) (loop #'rest))]
                 ;; Dialect-level interfaces — the same entries as the :interfaces clause of an op.
-                ;; Each spec is (interface-name method-clause ...) where method-clause
+                ;; Each is (interface-name method-clause ...) where method-clause
                 ;; is (method-name (formals) body ...).
-                [((:interfaces (iface-spec ...)) . rest)
+                [((:interfaces (entry ...)) . rest)
                  (begin
                    (set! dialect-ifaces
                          (append dialect-ifaces
-                                 (%%parse-iface-specs #'(iface-spec ...))))
+                                 (%%interface-entries 'define-dialect (car (syntax->list stx))
+                                                      #'(entry ...))))
                    (loop #'rest))]
+                [((:interfaces . _) . rest)
+                 (syntax-violation 'define-dialect
+                                   ":interfaces expects a list of (interface-name method-clause ...)"
+                                   (car (syntax->list stx)))]
                 [(bad . _)
                  (syntax-violation 'define-dialect
                                    "unrecognised clause — expected (define-op ...) or (:keyword (args) body ...)"

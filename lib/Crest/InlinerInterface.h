@@ -4,6 +4,7 @@
  */
 #pragma once
 #include "../Bindings/Support/ArrayRef.h"
+#include "../Bindings/Support/LockedSchemeObject.h"
 #include "mlir/IR/IRMapping.h"
 #include "mlir/Transforms/InliningUtils.h"
 
@@ -11,8 +12,8 @@ namespace crest {
 
 // CrestInlinerInterface — Scheme-backed mlir::DialectInlinerInterface.
 //
-// Registered on a CrestDialect when the Scheme dialect calls
-// (mlir::DialectInlinerInterface dialect dispatcher).  Each virtual method
+// Added to a CrestDialect by its :interfaces clause (the dialect-level one),
+// through attachDialectInlinerInterface.  Each virtual method
 // calls the entry point of a Scheme foreign-callable made once for the
 // dialect's library (see scheme/crest/callback.sls); the optional ones may be
 // nullptr.
@@ -53,6 +54,13 @@ struct CrestInlinerInterface : public mlir::DialectInlinerInterface {
                                              mlir::Location loc) const final;
 };
 
-void registerCrestInlinerInterfaceBindings();
+class CrestDialect;
+
+/// Give `dialect` its inliner interface from `dispatcher`, the Scheme procedure
+/// that the interface's macro answers (see (mlir Transforms InliningUtils)):
+/// from a method name to the entry point of a callable made once, when the
+/// library of the dialect was loaded, or 0. The caller keeps it locked.
+void attachDialectInlinerInterface(CrestDialect& dialect,
+                                   const LockedSchemeObject& dispatcher);
 
 } // namespace crest

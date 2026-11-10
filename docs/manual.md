@@ -1039,12 +1039,17 @@ by placing an `:interfaces` clause directly inside `define-dialect`, before any
   (define-op constant ...) ...)
 ```
 
-The expander generates a dispatcher function `%%toy:mlir::DialectInlinerInterface`
-and splices a registration call into the dialect's initialize callback. The registration
-(`mlir::DialectInlinerInterface` of `(mlir Transforms InliningUtils)`) makes a C function with
-`foreign-callable` for each method, once for the dialect's library, and C++ keeps their addresses.
-`mlir::DialectInlinerInterface` is the only dialect-level interface there is; another name is a
-syntax error.
+The clause has the shape of the op-level `:interfaces`: entries `(interface-name method-clause ...)`,
+whose name is a macro that the dialect's library must import
+(`(only (mlir Transforms InliningUtils) mlir::DialectInlinerInterface)`). The macro makes a C function with
+`foreign-callable` for each clause, once, when the library is loaded, and answers the pair of the interface's
+`TypeID` (`mlir::DialectInlinerInterface::getInterfaceID`) and a dispatcher of those functions. The expander
+keeps the list of the dialect's pairs as slot 11 of the callbacks vector. When a context loads the dialect,
+C++ gives it each interface through a table keyed by the `TypeID` (`lib/Crest/Dialect.cpp`), so a context
+makes no callable of its own (`test/dsl/call-op-interface/inliner-leak.mlir`) and
+`dialect->getRegisteredInterface<mlir::DialectInlinerInterface>()` finds it. `mlir::DialectInlinerInterface`
+is the only dialect-level interface there is: another name loads with the error "no way to install an
+interface of :interfaces". The clause is parsed as the op-level one is, and may appear more than once.
 
 ### Dialect-level callbacks
 

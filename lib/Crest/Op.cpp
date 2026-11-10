@@ -13,6 +13,7 @@
 #include "../Bindings/Support/LockedSchemeObject.h"
 #include "../Bindings/Support/SchemeWrapper.h"
 #include "InferType.h"
+#include "Interface.h"
 #include "Trait.h"
 #include "llvm/ADT/DenseMap.h"
 #include "mlir/IR/ExtensibleDialect.h"
@@ -65,35 +66,6 @@ const llvm::DenseMap<mlir::TypeID, AttachInterfaceFn>& getAttachInterfaceFns() {
        attachConditionallySpeculatable},
   };
   return fns;
-}
-
-// Install each interface of `interfaces`, the list of (TypeID . dispatcher)
-// pairs of the :interfaces entries of the op: the TypeID is the address that
-// the TypeID of the interface wraps.
-void attachInterfaces(mlir::DynamicOpDefinition& def,
-                      const LockedSchemeObject& interfaces) {
-  const auto& attachFns = getAttachInterfaceFns();
-  // Attaching calls Scheme, which can move the objects that the list points to,
-  // so each pair is read again from the list, which is locked.
-  for (iptr i = 0;; ++i) {
-    ptr tail = interfaces.get();
-    for (iptr k = 0; k < i && Spairp(tail); ++k) {
-      tail = Scdr(tail);
-    }
-    if (!Spairp(tail)) {
-      return;
-    }
-    ptr pair = Scar(tail);
-    mlir::TypeID id = mlir::TypeID::getFromOpaquePointer(
-        reinterpret_cast<const void*>(Sunsigned64_value(Scar(pair))));
-    LockedSchemeObject dispatcher(Scdr(pair));
-    auto attach = attachFns.find(id);
-    if (attach == attachFns.end()) {
-      scheme_error("crest::register-dynamic-op!",
-                   "no way to install an interface of :interfaces");
-    }
-    attach->second(def, dispatcher);
-  }
 }
 
 } // namespace
@@ -267,7 +239,8 @@ void CrestOp::registerInto(mlir::ExtensibleDialect* dialect,
                  op_name.str() + ": " + trait_error);
   }
 
-  attachInterfaces(*def, interfaces);
+  attachInterfaces(*def, interfaces, getAttachInterfaceFns(),
+                   "crest::register-dynamic-op!");
   dialect->registerDynamicOp(std::move(def));
 }
 

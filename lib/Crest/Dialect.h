@@ -7,6 +7,7 @@
 #ifndef CREST_DIALECT_H
 #define CREST_DIALECT_H
 
+#include "../Bindings/Support/LockedSchemeObject.h"
 #include "../Interpreter/ChezSchemeInterpreter.h"
 #include "mlir/IR/Dialect.h"
 #include "mlir/IR/ExtensibleDialect.h"
@@ -102,7 +103,9 @@ public:
   static bool classof(const mlir::Dialect* d);
 
   // --- mlir::Dialect virtual interface ---
-  void initialize();
+  /// `interfaces`: the list of (TypeID . dispatcher) pairs of the :interfaces
+  /// clause of the dialect, locked by the caller.
+  void initialize(const LockedSchemeObject& interfaces);
 
   mlir::Attribute parseAttribute(mlir::DialectAsmParser& parser,
                                  mlir::Type type) const override;

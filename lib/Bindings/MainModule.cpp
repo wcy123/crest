@@ -10,7 +10,6 @@
 // Dialect/, or Interfaces/ sub-tree.
 
 #include "../Crest/Dialect.h"
-#include "../Crest/InlinerInterface.h"
 #include "../Crest/Op.h"
 #include "../Crest/SchemePass.h"
 #include "../Crest/Type.h"
@@ -99,7 +98,6 @@ void registerMlirForeignFunctions() {
   registerIRDialectBindings();
   registerIRDialectRegistryBindings();
   registerIRExtensibleDialectBindings();
-  registerCrestInlinerInterfaceBindings();
   registerTransformsInliningUtilsBindings();
   registerPassPassManagerBindings();
   registerCrestDynamicOpBindings();

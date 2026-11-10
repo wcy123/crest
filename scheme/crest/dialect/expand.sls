@@ -11,8 +11,7 @@
           (crest dialect expand verifiers)
           (crest dialect callbacks)          ; crest-dialect-callback-entries
           (crest dialect expand interfaces)  ; dialect-cbs-with-interfaces
-          (mlir IR Operation)
-          (only (mlir Transforms InliningUtils) mlir::DialectInlinerInterface))
+          (mlir IR Operation))
 
   ;; ── Accessor generators ────────────────────────────────────────────────────
 
@@ -149,48 +148,20 @@
                   [(cb ...) (dialect-cbs-with-interfaces ctx dialect-cbs ops)])
       (list #'(define dialect-value (crest-dialect-callback-entries cb ...)))))
 
-  ;; Top-level: %%<dialect>:initialize + <dialect>:dialect-callbacks
-  ;; <dialect>:register! is gone — use load-scheme-dialect! or
-  ;; --crest-scheme-dialect= for standalone / pass-pipeline use respectively.
-  ;; Interface concepts are registered at library-load time via toplevel-iface-calls.
-  ;; Generate (define (%%<dialect>:<iface-name> method) (case method ...)) and
-  ;; the registration call inside %%<dialect>:initialize for each dialect-level
-  ;; interface entry.  Returns (values (list define-stx ...) (list init-call-stx ...)).
-  (define (%%generate-dialect-iface-defs ctx dialect-ifaces)
-    (let loop ([entries dialect-ifaces] [defs '()] [init-calls '()])
-      (if (null? entries)
-          (values (reverse defs) (reverse init-calls))
-          (let* ([entry     (car entries)]
-                 [iface-stx (interface-entry-name entry)]
-                 [iface-str (%%id->str iface-stx)]
-                 [_         (unless (string=? iface-str "mlir::DialectInlinerInterface")
-                              (syntax-violation 'define-dialect
-                                                "unsupported dialect-level interface"
-                                                iface-stx))]
-                 [methods   (interface-entry-methods entry)]
-                 ;; %%<dialect>:<iface-name>  e.g. %%toy:mlir::DialectInlinerInterface
-                 [proc-id   (%%id ctx "%%" ctx ":" iface-stx)])
-            (with-syntax
-                ([dispatch-proc proc-id]
-                 [(method-clause ...)
-                  (map (lambda (m)
-                         (with-syntax
-                             ([mname   (datum->syntax ctx (interface-method-name m))]
-                              [formals (interface-method-formals m)]
-                              [body    (interface-method-body m)])
-                           #'((mname) (lambda formals . body))))
-                       methods)])
-              (loop
-               (cdr entries)
-               (cons #'(define (dispatch-proc method)
-                         (case method
-                           method-clause ...
-                           (else #f)))
-                     defs)
-               ;; Registration call: inside %%<dialect>:initialize it has access to
-               ;; dialect-ptr, so emit as a form to be spliced into the body.
-               (cons #'(mlir::DialectInlinerInterface dialect-ptr dispatch-proc)
-                     init-calls)))))))
+  ;; The name of the library-level variable that holds the (TypeID . dispatcher) pairs of the
+  ;; :interfaces entries of the dialect itself (an op's are in %%<dialect>.<op>:interfaces). Each
+  ;; entry is a use of a macro of the library of its interface, which makes the C functions of the
+  ;; clauses: they are made once, when the library is loaded. The list is slot 11 of the callbacks
+  ;; vector, and C++ installs each interface in the dialect when a context loads it
+  ;; (lib/Crest/Dialect.cpp).
+  (define (%%dialect-interfaces-id ctx)
+    (%%id ctx "%%" ctx ":interfaces"))
+
+  ;; (define %%toy:interfaces (list (mlir::DialectInlinerInterface clause ...) ...))
+  (define (%%generate-dialect-interfaces-def ctx dialect-ifaces)
+    (with-syntax ([interfaces (%%dialect-interfaces-id ctx)]
+                  [(entry ...) dialect-ifaces])
+      #'(define interfaces (list entry ...))))
 
   (define (generate-register-dialect ctx dialect-cbs ops reg-op-stx stash-stx
                                      . rest)
@@ -200,8 +171,7 @@
           [types          (if (or (null? rest) (null? (cdr rest))) '() (cadr rest))]
           [reg-type-stx   (if (or (null? rest) (null? (cdr rest))) #f (caddr rest))])
       (let ([op-prefix (string-append (%%id->str ctx) ".")])
-        (let-values ([(diface-defs diface-init-calls)
-                      (%%generate-dialect-iface-defs ctx dialect-ifaces)])
+        (let ()
           (let ([base-defs
                  (with-syntax
                      ([%%toy.initialize (%%id ctx "%%" ctx ":initialize")]
@@ -211,15 +181,14 @@
                       [(op-reg ...)     (map (lambda (op)
                                                (%%generate-register-op! ctx op-prefix op reg-op-stx))
                                              ops)]
-                      [(diface-call ...) diface-init-calls]
                       [(user-init ...)   (let ([u (vector-ref dialect-cbs 0)])
                                            (if u (list #`(#,u dialect-ptr)) '()))])
                    (list
                     #'(define (%%toy.initialize dialect-ptr)
-                        type-reg ... op-reg ... diface-call ... user-init ...)))]
+                        type-reg ... op-reg ... user-init ...)))]
                 ;; stash-stx kept in signature for forward compat but unused now
                 [dialect-cbs-defs (%%generate-dialect-callbacks ctx dialect-cbs ops stash-stx)])
-            (append diface-defs
+            (append (list (%%generate-dialect-interfaces-def ctx dialect-ifaces))
                     (map (lambda (op) (%%generate-interfaces-def ctx op)) ops)
                     (map (lambda (op) (%%generate-op-callbacks-def ctx op-prefix op)) ops)
                     (map (lambda (type) (%%generate-type-callbacks-def ctx type)) types)

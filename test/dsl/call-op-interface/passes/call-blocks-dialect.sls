@@ -9,7 +9,8 @@
           (mlir IR Operation)
           (mlir IR BuiltinAttributes)
           (only (mlir Interfaces FunctionInterfaces) mlir::FunctionOpInterface)
-          (only (mlir Interfaces CallInterfaces) mlir::CallOpInterface))
+          (only (mlir Interfaces CallInterfaces) mlir::CallOpInterface)
+          (only (mlir Transforms InliningUtils) mlir::DialectInlinerInterface))
 
   (define-dialect callblocks
     (:interfaces ((mlir::DialectInlinerInterface

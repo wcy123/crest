@@ -11,6 +11,7 @@
           (mlir IR Operation)
           (only (mlir Interfaces FunctionInterfaces) mlir::FunctionOpInterface)
           (only (mlir Interfaces CallInterfaces) mlir::CallOpInterface)
+          (only (mlir Transforms InliningUtils) mlir::DialectInlinerInterface)
           (only (mlir support array-ref) crest::CArrayRef::size crest::CArrayRef::at))
 
   (define-dialect calltest

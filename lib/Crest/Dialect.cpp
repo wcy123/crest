@@ -7,6 +7,8 @@
 #include "Dialect.h"
 #include "../Bindings/Support/CrestObject.h"
 #include "../Bindings/Support/SchemeWrapper.h"
+#include "InlinerInterface.h"
+#include "Interface.h"
 #include "llvm/ADT/DenseMap.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/DialectImplementation.h"
@@ -15,6 +17,7 @@
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Support/TypeID.h"
+#include "mlir/Transforms/InliningUtils.h"
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -76,7 +79,24 @@ mlir::LogicalResult verifyResult(mlir::Operation* op, int answer) {
 }
 } // namespace
 
-void CrestDialect::initialize() {
+namespace {
+// How an interface whose methods come from Scheme is installed in a dialect:
+// from its dispatcher of C, locked by the caller for the call. Keyed by the
+// TypeID of the interface, like the table of the ops in lib/Crest/Op.cpp.
+using AttachDialectInterfaceFn = void (*)(CrestDialect& dialect,
+                                          const LockedSchemeObject& dispatcher);
+
+const llvm::DenseMap<mlir::TypeID, AttachDialectInterfaceFn>&
+getAttachDialectInterfaceFns() {
+  static const llvm::DenseMap<mlir::TypeID, AttachDialectInterfaceFn> fns = {
+      {mlir::DialectInlinerInterface::getInterfaceID(),
+       attachDialectInlinerInterface},
+  };
+  return fns;
+}
+} // namespace
+
+void CrestDialect::initialize(const LockedSchemeObject& interfaces) {
   // Load dependent dialects first. The callback gives each name of a dialect
   // namespace (e.g. "arith") to crest::CrestDialect::loadDependentDialect,
   // which calls getOrLoadDialect(name); MLIR finds the factory in the
@@ -87,6 +107,8 @@ void CrestDialect::initialize() {
   if (cbs_.get_dependent_dialects) {
     cbs_.get_dependent_dialects(reinterpret_cast<uint64_t>(this));
   }
+  attachInterfaces(*this, interfaces, getAttachDialectInterfaceFns(),
+                   "crest::CrestDialect");
   if (cbs_.initialize) {
     cbs_.initialize(reinterpret_cast<uint64_t>(this));
   }
@@ -325,7 +347,7 @@ CrestDialect::CrestDialect(mlir::TypeID id, const std::string& module_name,
   // define-dialect using the call-site identifier, so it has the same scope
   // as the user's (export testd). Stop_level_value finds it after import.
   ptr cbs_vec = Stop_level_value(Sstring_to_symbol(dialect_name.c_str()));
-  if (!Svectorp(cbs_vec)) {
+  if (!Svectorp(cbs_vec) || Svector_length(cbs_vec) != 12) {
     // validateSchemeDialect reports this before a factory is registered; this
     // is the backstop for a caller that skipped it.
     llvm::report_fatal_error(
@@ -333,8 +355,11 @@ CrestDialect::CrestDialect(mlir::TypeID id, const std::string& module_name,
         "' of Scheme library '" + module_name +
         "' is not the callbacks vector define-dialect makes");
   }
+  // The list of the dialect's interfaces, slot 11, is locked before anything
+  // that can call Scheme: the garbage collector moves objects.
+  LockedSchemeObject interfaces(Svector_ref(cbs_vec, 11));
   cbs_ = unpack_callbacks(cbs_vec);
-  initialize();
+  initialize(interfaces);
 }
 
 std::optional<std::string>

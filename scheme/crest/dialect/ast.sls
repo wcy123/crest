@@ -41,18 +41,7 @@
           make-result-field
           result-field?
           result-field-name
-          result-field-type
-          interface-entry
-          make-interface-entry
-          interface-entry?
-          interface-entry-name
-          interface-entry-methods
-          interface-method
-          make-interface-method
-          interface-method?
-          interface-method-name
-          interface-method-formals
-          interface-method-body)
+          result-field-type)
   (import (chezscheme))
 
   ;; A single operand field declaration inside (define-op ... :operands (...)).
@@ -138,18 +127,4 @@
   ;; each used as it was written: the interface-name is a macro of the library of the interface,
   ;; which makes the pair of the TypeID of the interface and the C dispatcher of its clauses.
 
-  ;; One entry in the :interfaces list of a dialect.
-  ;;   name    — identifier syntax for the interface, e.g. #'mlir::FunctionOpInterface
-  ;;   methods — list of interface-method records; empty = use default C++ concept
-  (define-record-type interface-entry
-    (fields (immutable name    interface-entry-name)
-            (immutable methods interface-entry-methods)))
-
-  ;; One method override inside an interface-entry.
-  ;;   name    — symbol, e.g. 'getFunctionType
-  ;;   formals — syntax for the formal parameter list, e.g. #'(self)
-  ;;   body    — syntax for the method body, e.g. #'(begin ...)
-  (define-record-type interface-method
-    (fields (immutable name    interface-method-name)
-            (immutable formals interface-method-formals)
-            (immutable body    interface-method-body))))
+  ) ;; end library (crest dialect ast)

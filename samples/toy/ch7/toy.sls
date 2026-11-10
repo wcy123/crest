@@ -24,6 +24,7 @@
           (mlir IR Builders)
           (mlir IR OperationSupport)
           (only (mlir Interfaces CallInterfaces) mlir::CallOpInterface)
+          (only (mlir Transforms InliningUtils) mlir::DialectInlinerInterface)
           (only (mlir Interfaces InferTypeOpInterface) mlir::InferTypeOpInterface)
           (only (mlir Interfaces FunctionInterfaces)
                 mlir::FunctionOpInterface

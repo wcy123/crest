@@ -7,17 +7,14 @@
 ;;===----------------------------------------------------------------------===;;
 ;; Mirrors mlir/Transforms/InliningUtils.h
 (library (mlir Transforms InliningUtils ffi)
-  (export %mlir::DialectInlinerInterface
+  (export %mlir::DialectInlinerInterface::getInterfaceID
           %mlir::DialectInlinerInterface::materializeCallConversion
           %mlir::createInlinerPass)
   (import (chezscheme) (mlir support BuilderBinding))
 
-  ;; The dialect, then the entry point of the foreign-callable of each method (isLegalToInline/call,
-  ;; /region, /op, handleTerminator/value, /block, materializeCallConversion), 0 for a method the
-  ;; dialect does not have.
-  (define %mlir::DialectInlinerInterface
-    (foreign-procedure "mlir::DialectInlinerInterface"
-                       (uptr uptr uptr uptr uptr uptr uptr) void))
+  ;; () -> uptr: the TypeID of the interface, as the address that the TypeID wraps.
+  (define %mlir::DialectInlinerInterface::getInterfaceID
+    (foreign-procedure "mlir::DialectInlinerInterface::getInterfaceID" () uptr))
 
   (define-builder-binding %mlir::DialectInlinerInterface::materializeCallConversion
     "mlir::DialectInlinerInterface::materializeCallConversion" (uptr uptr uptr uptr uptr) uptr)
