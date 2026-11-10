@@ -234,9 +234,10 @@ depend on how long the callable is used:
   the procedure, adapted to the C types, as a `scheme-object`, and the binding makes the owner with
   `crest::ForeignCallable<R(Args...)>::fromProcedure(procedure)` (`lib/Bindings/Support/ForeignCallable.h`),
   which deduces the prototype from the C++ type, compiles the maker once per prototype, and unlocks the callable
-  when what calls it is destroyed. Making it runs Scheme, which can move the objects of the Scheme heap: copy a
-  `const char*` into a `std::string` and read a Scheme list first, then make the owner before an early return or a
-  check that can raise (an error that leaves through Scheme skips destructors).
+  when what calls it is destroyed. Making it runs Scheme, which can move the objects of the Scheme heap: first copy
+  what you need out of Scheme memory (a `const char*` into a `std::string`, the elements of a Scheme list), then do the
+  checks that can raise an error, then make the owner. An error raised while the owner exists skips its destructor and
+  leaves the function locked. The comment of the class has the details and two examples.
 
 C++ calls a callable directly through its function pointer. Chez Scheme's `foreign-callable` on Windows x64 used
 to zero the upper halves of XMM6-XMM11, which that ABI makes callee-saved, and C++ compiled for LLVM 23 keeps
