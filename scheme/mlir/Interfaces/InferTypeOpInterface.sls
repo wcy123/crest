@@ -1,7 +1,7 @@
 #!r6rs
 ;; Mirrors mlir/Interfaces/InferTypeOpInterface.h
 ;;
-;; mlir::InferTypeOpInterface is a macro, not an FFI binding: the head of an entry of the :interface2
+;; mlir::InferTypeOpInterface is a macro, not an FFI binding: the head of an entry of the :interfaces
 ;; clause of define-op, which gives the op the methods of the interface that its clauses write.
 ;; MLIR calls inferReturnTypes through a plain function pointer that gets neither the op nor a
 ;; Concept, so the function has to be made per op: a foreign-callable, whose address C++ gets from
@@ -117,7 +117,7 @@
   ;; The C functions of the clauses of an op. `dispatcher` is (lambda (method) ...): a method name
   ;; answers its clause or #f. The answer is the dispatcher of C: (lambda (method) ...) that answers,
   ;; for each method the dispatcher has a clause for, the entry point of its foreign-callable, and 0
-  ;; for the others. The callables are made here, once: the entry of :interface2 is evaluated when
+  ;; for the others. The callables are made here, once: the entry of :interfaces is evaluated when
   ;; the library of the dialect is loaded, and C++ gets the dispatcher with the TypeID of the
   ;; interface, asks it for the entries while it registers the op, and installs them in the Concept
   ;; of the op (lib/Crest/InferType.cpp). It does not keep the dispatcher.
@@ -137,7 +137,7 @@
            [(assq method entries) => cdr]
            [else 0])))))
 
-  ;; An entry of the :interface2 clause of define-op:
+  ;; An entry of the :interfaces clause of define-op:
   ;;   (mlir::InferTypeOpInterface
   ;;     (inferReturnTypes (context location operands attributes) body ...)
   ;;     (refineReturnTypes (context location operands attributes return-types) body ...)

@@ -18,7 +18,7 @@ namespace crest {
 /// Give `def` an InferTypeOpInterface model: insert it in the interface map of
 /// `def`, look it up and fill in the function pointers of its Concept from
 /// `dispatcher`. That is the Scheme procedure that the entry of the op's
-/// :interface2 clause holds (see (mlir Interfaces InferTypeOpInterface)), from
+/// :interfaces clause holds (see (mlir Interfaces InferTypeOpInterface)), from
 /// a method name to the entry point of its callable (0 for a method the op has
 /// no clause for, which keeps its default); the caller keeps it locked for the
 /// call. An entry is a C function that Scheme made once for the clause (a Chez

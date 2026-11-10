@@ -16,14 +16,14 @@
     (define-op add
       :operands ((lhs mlir::Value?) (rhs mlir::Value?))
       :results  ((out mlir::Value?))
-      :interface2 ((mlir::InferTypeOpInterface
+      :interfaces ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes)
                                       (list (mlir::Value::getType (car operands)))))))
 
     ;; No operands: the answer comes from nothing but the op itself.
     (define-op zero
       :results ((out mlir::Value?))
-      :interface2 ((mlir::InferTypeOpInterface
+      :interfaces ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes)
                                       (list (mlir::IntegerType::get<i64>))))))
 
@@ -32,7 +32,7 @@
     (define-op loose
       :operands   ((x mlir::Value?))
       :results    ((out mlir::Value?))
-      :interface2 ((mlir::InferTypeOpInterface
+      :interfaces ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes)
                                       (list (mlir::Value::getType (car operands))))
                     (isCompatibleReturnTypes (inferred actual)
@@ -43,7 +43,7 @@
     (define-op refined
       :operands   ((x mlir::Value?))
       :results    ((out mlir::Value?))
-      :interface2 ((mlir::InferTypeOpInterface
+      :interfaces ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes)
                                       (list (mlir::Value::getType (car operands))))
                     (refineReturnTypes (context location operands attributes return-types)

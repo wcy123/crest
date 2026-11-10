@@ -10,7 +10,7 @@
           (crest dialect expand utils)
           (crest dialect expand verifiers)
           (crest dialect callbacks)          ; crest-dialect-callback-entries
-          (crest dialect expand interfaces)  ; generate-interface-registrations, dialect-cbs-with-interfaces
+          (crest dialect expand interfaces)  ; dialect-cbs-with-interfaces
           (mlir IR Operation)
           (only (mlir Transforms InliningUtils) mlir::DialectInlinerInterface))
 
@@ -82,25 +82,25 @@
         #'(define callbacks (crest-op-callback-entries op-name cb ...)))))
 
   ;; The name of the library-level variable that holds the (TypeID . dispatcher) pairs of the
-  ;; :interface2 entries of an op. Each entry is a use of a macro of the library of its interface, which
+  ;; :interfaces entries of an op. Each entry is a use of a macro of the library of its interface, which
   ;; makes the C functions of the clauses: they are made once, when the library is loaded.
-  (define (%%interface2-id ctx op)
-    (%%id ctx "%%" ctx "." (op-parse-name op) ":interface2"))
+  (define (%%interfaces-id ctx op)
+    (%%id ctx "%%" ctx "." (op-parse-name op) ":interfaces"))
 
-  ;; (define %%toy.add:interface2 (list (mlir::InferTypeOpInterface clause ...) ...)) for one op.
-  (define (%%generate-interface2-def ctx op)
-    (with-syntax ([interfaces (%%interface2-id ctx op)]
-                  [(entry ...) (op-parse-interface2 op)])
+  ;; (define %%toy.add:interfaces (list (mlir::InferTypeOpInterface clause ...) ...)) for one op.
+  (define (%%generate-interfaces-def ctx op)
+    (with-syntax ([interfaces (%%interfaces-id ctx op)]
+                  [(entry ...) (op-parse-interfaces op)])
       #'(define interfaces (list entry ...))))
 
-  ;; (reg-op dialect-ptr "toy.constant" %%toy.constant:op-callbacks %%toy.constant:interface2) call
+  ;; (reg-op dialect-ptr "toy.constant" %%toy.constant:op-callbacks %%toy.constant:interfaces) call
   ;; for one op.
   (define (%%generate-register-op! ctx op-prefix op reg-op-stx)
     (let ([name-str (string-append op-prefix (%%id->str (op-parse-name op)))])
       (with-syntax ([reg-op reg-op-stx]
                     [op-name name-str]
                     [callbacks (%%op-callbacks-id ctx op)]
-                    [interfaces (%%interface2-id ctx op)])
+                    [interfaces (%%interfaces-id ctx op)])
         #'(reg-op dialect-ptr op-name callbacks interfaces))))
 
   ;; ── Dialect types (define-type) ─────────────────────────────────────────────
@@ -200,9 +200,7 @@
           [types          (if (or (null? rest) (null? (cdr rest))) '() (cadr rest))]
           [reg-type-stx   (if (or (null? rest) (null? (cdr rest))) #f (caddr rest))])
       (let ([op-prefix (string-append (%%id->str ctx) ".")])
-        (let-values ([(iface-defs iface-calls)
-                      (generate-interface-registrations ctx ops)]
-                     [(diface-defs diface-init-calls)
+        (let-values ([(diface-defs diface-init-calls)
                       (%%generate-dialect-iface-defs ctx dialect-ifaces)])
           (let ([base-defs
                  (with-syntax
@@ -220,20 +218,11 @@
                     #'(define (%%toy.initialize dialect-ptr)
                         type-reg ... op-reg ... diface-call ... user-init ...)))]
                 ;; stash-stx kept in signature for forward compat but unused now
-                [dialect-cbs-defs (%%generate-dialect-callbacks ctx dialect-cbs ops stash-stx)]
-                ;; Emit op iface-calls at library-load time so interface concepts are
-                ;; registered when the library is imported.
-                ;; Wrapped as a define to avoid "invalid context" in R6RS library bodies.
-                [toplevel-iface-calls
-                 (if (null? iface-calls)
-                     '()
-                     (with-syntax ([%%iface-marker (%%id ctx "%%" ctx "-iface-init")]
-                                   [(iface-call ...) iface-calls])
-                       (list #'(define %%iface-marker (begin iface-call ... #t)))))])
-            (append diface-defs iface-defs
-                    (map (lambda (op) (%%generate-interface2-def ctx op)) ops)
+                [dialect-cbs-defs (%%generate-dialect-callbacks ctx dialect-cbs ops stash-stx)])
+            (append diface-defs
+                    (map (lambda (op) (%%generate-interfaces-def ctx op)) ops)
                     (map (lambda (op) (%%generate-op-callbacks-def ctx op-prefix op)) ops)
                     (map (lambda (type) (%%generate-type-callbacks-def ctx type)) types)
-                    base-defs dialect-cbs-defs toplevel-iface-calls))))))
+                    base-defs dialect-cbs-defs))))))
 
   ) ;; end library (crest dialect expand)

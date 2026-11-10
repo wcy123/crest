@@ -7,7 +7,6 @@
 #include "Dialect.h"
 #include "../Bindings/Support/CrestObject.h"
 #include "../Bindings/Support/SchemeWrapper.h"
-#include "Interface.h"
 #include "llvm/ADT/DenseMap.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/DialectImplementation.h"
@@ -21,47 +20,6 @@
 #include <unordered_map>
 
 namespace crest {
-
-// ---------------------------------------------------------------------------
-// Op-interface registry — file-local; accessed only via RegisterInterfaceForOp
-// and getRegisteredInterfaceForOp.
-// DenseMap is used because std::unordered_map requires std::hash<mlir::TypeID>
-// which is not provided; llvm::DenseMapInfo<mlir::TypeID> is.
-// ---------------------------------------------------------------------------
-
-using OpInterfaceRegistry =
-    llvm::DenseMap<mlir::TypeID,
-                   std::unordered_map<std::string, std::shared_ptr<void>>>;
-static OpInterfaceRegistry g_op_interface_registry;
-
-bool RegisterInterfaceForOp(mlir::TypeID id, const std::string& op_name,
-                            std::shared_ptr<void> concept_ptr) {
-  auto& inner = g_op_interface_registry[id];
-  if (inner.count(op_name)) {
-    llvm::report_fatal_error(
-        llvm::Twine("RegisterInterfaceForOp: duplicate registration for op '") +
-        op_name + "'");
-  }
-  inner[op_name] = std::move(concept_ptr);
-  return true;
-}
-
-void* CrestDialect::getRegisteredInterfaceForOp(mlir::TypeID interfaceID,
-                                                mlir::OperationName opName) {
-  return LookupInterfaceForOp(interfaceID, opName.getStringRef().str());
-}
-
-void* LookupInterfaceForOp(mlir::TypeID id, const std::string& op_name) {
-  void* ret = nullptr;
-  auto it = g_op_interface_registry.find(id);
-  if (it != g_op_interface_registry.end()) {
-    auto it2 = it->second.find(op_name);
-    if (it2 != it->second.end()) {
-      ret = it2->second.get();
-    }
-  }
-  return ret;
-}
 
 // ---------------------------------------------------------------------------
 // Scheme dialects have no C++ class, so MLIR_DECLARE_EXPLICIT_TYPE_ID is

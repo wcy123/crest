@@ -2,6 +2,7 @@
 ;; Mirrors mlir/Interfaces/FunctionInterfaces.h
 (library (mlir Interfaces FunctionInterfaces)
   (export mlir::FunctionOpInterface
+          mlir::FunctionOpInterface::getInterfaceID
           mlir::function_interface_impl::parseFunctionOp
           mlir::function_interface_impl::printFunctionOp
           mlir::FunctionOpInterface::getFunctionType
@@ -25,32 +26,53 @@
                      0])
          (if (eq? (proc op) #t) 1 0)))))
 
-  ;; dispatcher: made by define-op for the op's :interfaces entry; 'operation_name answers the
-  ;; op's name and a method name the clause or #f. Each clause becomes a foreign-callable whose
-  ;; address C++ keeps (a method without a clause is 0 and keeps the default):
+  ;; `dispatcher` is (lambda (method) ...): a method name answers its clause or #f. Each clause
+  ;; becomes a foreign-callable, made once, whose address C++ keeps (a method without a clause is 0
+  ;; and keeps the default):
   ;;   getFunctionType (op) -> Type            setFunctionTypeAttr (op attr)
   ;;   cloneTypeWith (op inputs results) -> Type, the two ranges as lists of Types
   ;;   verifyBody (op) -> boolean              verifyType (op) -> boolean
-  (define (mlir::FunctionOpInterface dispatcher)
+  (define (%%function-dispatcher dispatcher)
     (let ([get-type (dispatcher 'getFunctionType)]
           [set-attr (dispatcher 'setFunctionTypeAttr)]
           [clone    (dispatcher 'cloneTypeWith)]
           [body     (dispatcher 'verifyBody)]
           [type     (dispatcher 'verifyType)])
-      (%mlir::FunctionOpInterface
-       (dispatcher 'operation_name)
-       (if get-type (crest-callback-entry-point (uptr) uptr get-type) 0)
-       (if set-attr (crest-callback-entry-point (uptr uptr) void set-attr) 0)
-       (if clone
-           (crest-callback-entry-point
-            (uptr uptr uptr uptr uptr) uptr
-            (lambda (op inputs input-count results result-count)
-              (clone op
-                     (crest-callback-pointer-list inputs input-count)
-                     (crest-callback-pointer-list results result-count))))
-           0)
-       (if body (%%verifier-entry-point body) 0)
-       (if type (%%verifier-entry-point type) 0))))
+      (crest-callback-entry-dispatcher
+       (list
+        (cons 'getFunctionType
+              (if get-type (crest-callback-entry-point (uptr) uptr get-type) 0))
+        (cons 'setFunctionTypeAttr
+              (if set-attr (crest-callback-entry-point (uptr uptr) void set-attr) 0))
+        (cons 'cloneTypeWith
+              (if clone
+                  (crest-callback-entry-point
+                   (uptr uptr uptr uptr uptr) uptr
+                   (lambda (op inputs input-count results result-count)
+                     (clone op
+                            (crest-callback-pointer-list inputs input-count)
+                            (crest-callback-pointer-list results result-count))))
+                  0))
+        (cons 'verifyBody (if body (%%verifier-entry-point body) 0))
+        (cons 'verifyType (if type (%%verifier-entry-point type) 0))))))
+
+  ;; An entry of the :interfaces clause of define-op (see (mlir Interfaces InferTypeOpInterface)):
+  ;;   (mlir::FunctionOpInterface
+  ;;     (getFunctionType (op) body ...) (setFunctionTypeAttr (op attr) body ...) ...)
+  ;; the pair of the TypeID of the interface and the dispatcher of its clauses. The interfaces it
+  ;; extends (SymbolOpInterface, ArgAndResultAttrsOpInterface, CallableOpInterface) come with it.
+  (define-syntax mlir::FunctionOpInterface
+    (syntax-rules ()
+      [(_ (method (formal ...) body ...) ...)
+       (cons (mlir::FunctionOpInterface::getInterfaceID)
+             (%%function-dispatcher
+              (lambda (name)
+                (case name
+                  [(method) (lambda (formal ...) body ...)] ...
+                  [else #f]))))]))
+
+  (define mlir::FunctionOpInterface::getInterfaceID
+    %mlir::FunctionOpInterface::getInterfaceID)
 
   (define mlir::FunctionOpInterface::getFunctionType
     %mlir::FunctionOpInterface::getFunctionType)

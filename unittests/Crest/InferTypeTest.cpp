@@ -125,7 +125,7 @@ TEST_F(InferTypeTest, DirectCallInfersTheTypeOfTheLeftOperand) {
 }
 
 // A Scheme op gets the three methods of the interface, from the clauses of its
-// :interface2 entry, and the default for a method it has no clause for.
+// :interfaces entry, and the default for a method it has no clause for.
 TEST_F(InferTypeTest, CompatibleReturnTypesIsTheClauseOrEquality) {
   mlir::MLIRContext ctx(makeRegistry(), mlir::MLIRContext::Threading::DISABLED);
   mlir::Type i32 = mlir::IntegerType::get(&ctx, 32);

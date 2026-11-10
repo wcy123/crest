@@ -247,7 +247,7 @@ into a sink that C++ passes. A callback that has a verdict (a verifier, a parser
 `guard`, gives its text to C++ (`reportFailure`) and answers failure, so the diagnostic has the text instead of
 the process ending. `scheme_call` stays for the control plane (a top-level name, or the procedure that Scheme
 gave as an argument of the foreign call that is running), and for one more case: a procedure that C++ needs only
-while it registers something (the `(TypeID . dispatcher)` pairs of an op's `:interface2` entries,
+while it registers something (the `(TypeID . dispatcher)` pairs of an op's `:interfaces` entries,
 `lib/Crest/Op.cpp`) is held in a `crest::LockedSchemeObject` for that call, and C++ gets the entry points from the
 dispatcher with `scheme_call`. The dispatcher answers entries that Scheme made once, when the library was loaded. A test that makes the callable per run checks that
 it is released (`test/dsl/apply-conversion/leak.mlir`).

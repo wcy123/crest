@@ -1,22 +1,23 @@
 #!r6rs
 ;; Mirrors mlir/Interfaces/CallInterfaces.h
 (library (mlir Interfaces CallInterfaces ffi)
-  (export %mlir::CallableOpInterface
-          %mlir::CallOpInterface
-          %mlir::ArgAndResultAttrsOpInterface
+  (export %mlir::CallableOpInterface::getInterfaceID
+          %mlir::CallOpInterface::getInterfaceID
+          %mlir::ArgAndResultAttrsOpInterface::getInterfaceID
           %mlir::CallableOpInterface::getCallableRegion
           %mlir::ArgAndResultAttrsOpInterface::getArgAttrsAttr
           %mlir::ArgAndResultAttrsOpInterface::getResAttrsAttr)
   (import (chezscheme))
 
-  (define %mlir::CallableOpInterface
-    (foreign-procedure "mlir::CallableOpInterface" (string uptr) void))
+  ;; () -> uptr: the TypeID of the interface, as the address that the TypeID wraps.
+  (define %mlir::CallableOpInterface::getInterfaceID
+    (foreign-procedure "mlir::CallableOpInterface::getInterfaceID" () uptr))
 
-  (define %mlir::CallOpInterface
-    (foreign-procedure "mlir::CallOpInterface" (string) void))
+  (define %mlir::CallOpInterface::getInterfaceID
+    (foreign-procedure "mlir::CallOpInterface::getInterfaceID" () uptr))
 
-  (define %mlir::ArgAndResultAttrsOpInterface
-    (foreign-procedure "mlir::ArgAndResultAttrsOpInterface" (string) void))
+  (define %mlir::ArgAndResultAttrsOpInterface::getInterfaceID
+    (foreign-procedure "mlir::ArgAndResultAttrsOpInterface::getInterfaceID" () uptr))
 
   (define %mlir::CallableOpInterface::getCallableRegion
     (foreign-procedure "mlir::CallableOpInterface::getCallableRegion" (uptr) uptr))

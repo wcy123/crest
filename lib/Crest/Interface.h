@@ -3,82 +3,50 @@
  * Licensed under the MIT License.
  */
 #pragma once
+#include "../Bindings/Support/LockedSchemeObject.h"
 #include "../Bindings/Support/SchemeWrapper.h"
-#include "mlir/Support/TypeID.h"
-#include <cassert>
-#include <memory>
-#include <string>
+#include "mlir/IR/Operation.h"
+#include "mlir/IR/OperationSupport.h"
+#include "mlir/Support/InterfaceSupport.h"
 
 namespace crest {
 
-// ---------------------------------------------------------------------------
-// RegisterInterfaceForOp — insert a concept into the op-interface registry.
-//
-// Returns true on success, false if an entry for (id, op_name) already exists
-// (no overwrite — first registration wins).
-//
-// The registry is a file-local static in Dialect.cpp; callers never touch it
-// directly.
-// ---------------------------------------------------------------------------
-bool RegisterInterfaceForOp(mlir::TypeID id, const std::string& op_name,
-                            std::shared_ptr<void> concept_ptr);
+// An op that Scheme defines gets an interface by inserting a model into the
+// InterfaceMap of its DynamicOpDefinition (the attach function of the
+// interface, found by its TypeID in lib/Crest/Op.cpp). A model is a struct
+// derived from the Concept of the interface, with `using Interface = ...;` and
+// a default constructor; the methods that Scheme implements keep the entry
+// point of their callable in it, which the Concept's own function reads through
+// `self`.
 
-// Look up a registered concept by (interface TypeID, op name).
-// Returns nullptr if absent.
-void* LookupInterfaceForOp(mlir::TypeID id, const std::string& op_name);
+/// The entry point of the callable that `dispatcher` has for `method`, or null.
+/// `dispatcher` is the Scheme procedure that the interface's macro answers,
+/// from a method name to the entry point of a callable made once, when the
+/// library of the dialect was loaded, or 0.
+inline void* interfaceEntryPoint(const LockedSchemeObject& dispatcher,
+                                 const char* method) {
+  return reinterpret_cast<void*>(Sunsigned64_value(
+      scheme_call(dispatcher.get(), Sstring_to_symbol(method))));
+}
 
-// ---------------------------------------------------------------------------
-// SupportedInterfaces<Interface>
-// ---------------------------------------------------------------------------
-template <typename Interface> struct SupportedInterfaces {
-  struct ConcreteConceptType; // undefined by design
-  using ConceptType = typename Interface::Concept;
-  // Lazily create the default concept, register it under "." — the registry
-  // takes ownership of the raw pointer.
-  template <typename ConcreateConceptType>
-  static ConceptType*
-  getOrCreateDefaultConcept(std::unique_ptr<ConcreateConceptType> data) {
-    auto ret = data.release();
-    RegisterInterfaceForOp(Interface::getInterfaceID(), ".",
-                           std::shared_ptr<void>(ret, [](void* p) {
-                             delete static_cast<ConcreateConceptType*>(p);
-                           }));
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-    return reinterpret_cast<ConceptType*>(ret);
+/// Insert `Model` unless the map has its interface already. The interfaces that
+/// inherit from another one (FunctionOpInterface from SymbolOpInterface, ...)
+/// need the base in the map first: MLIR's Concept looks it up when the model is
+/// inserted.
+template <typename Model>
+void insertModelOnce(mlir::detail::InterfaceMap& map) {
+  if (!map.lookup<typename Model::Interface>()) {
+    map.insertModels<Model>();
   }
-  static ConceptType* getOrCreateDefaultConcept(); // undefined by design.
-  // Clone the concept pointed to by `from` into a new owning allocation.
-  // Returns shared_ptr<void> to propagate the concrete type's custom deleter.
-  static std::shared_ptr<void>
-  CloneConcept(const ConceptType* from); // undefined by design
+}
 
-  // Create the concept of one op, register it under `op_name` and return it. An
-  // interface whose methods can come from Scheme returns its own concept type,
-  // which the registering function downcasts to set the entry points.
-  static ConceptType*
-  CreateConcept(const std::string& op_name); // undefined by design
-};
-
-// Return the typed concept for (Interface, op_name).
-// If no op-specific entry exists, copy the default concept, register it under
-// op_name, and return the new pointer.
+/// The Concept of `Interface` in the interface map of `op`'s registered name,
+/// or null when the op does not have the interface.
 template <typename Interface>
-typename Interface::Concept* getOrCreateConcept(const std::string& op_name) {
-  using ConceptType = typename Interface::Concept;
-  mlir::TypeID id = Interface::getInterfaceID();
-  if (void* existing = LookupInterfaceForOp(id, op_name)) {
-    return static_cast<ConceptType*>(existing);
-  }
-  ConceptType* def =
-      SupportedInterfaces<Interface>::getOrCreateDefaultConcept();
-  auto cloned = SupportedInterfaces<Interface>::CloneConcept(def);
-  ConceptType* cloned_ptr = static_cast<ConceptType*>(cloned.get());
-  RegisterInterfaceForOp(id, op_name, std::move(cloned));
-  ConceptType* registered =
-      static_cast<ConceptType*>(LookupInterfaceForOp(id, op_name));
-  assert(registered == cloned_ptr);
-  (void)cloned_ptr;
-  return registered;
+typename Interface::Concept* lookupConcept(mlir::Operation* op) {
+  std::optional<mlir::RegisteredOperationName> info =
+      op->getName().getRegisteredInfo();
+  return info ? info->getInterface<Interface>() : nullptr;
 }
 
 } // namespace crest

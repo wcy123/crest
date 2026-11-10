@@ -5,7 +5,7 @@
 // Traits of Scheme-defined ops — requires LLVM 23+ (DynamicOpTrait / addTrait).
 
 #include "Trait.h"
-#include "Interface.h"
+#include "../Bindings/Interfaces/SideEffectInterfaces.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/Support/raw_ostream.h"
 #include "mlir/IR/ExtensibleDialect.h"
@@ -90,7 +90,7 @@ template <typename T> Factory simple() {
 // `pure` is AlwaysSpeculatable plus NoMemoryEffect. MLIR answers both through
 // interfaces (isSpeculatable, isMemoryEffectFree), so they are attached to the
 // op next to the trait.
-std::string addPure(mlir::DynamicOpDefinition& def, llvm::StringRef opName,
+std::string addPure(mlir::DynamicOpDefinition& def, llvm::StringRef,
                     Args args) {
   if (!args.empty()) {
     return "takes no arguments";
@@ -100,8 +100,8 @@ std::string addPure(mlir::DynamicOpDefinition& def, llvm::StringRef opName,
               CrestTrait<mlir::OpTrait::AlwaysSpeculatableImplTrait>>())) {
     return "repeated";
   }
-  getOrCreateConcept<mlir::MemoryEffectOpInterface>(opName.str());
-  getOrCreateConcept<mlir::ConditionallySpeculatable>(opName.str());
+  ensureMemoryEffectOpInterface(def.getInterfaceMap());
+  ensureConditionallySpeculatable(def.getInterfaceMap());
   return "";
 }
 

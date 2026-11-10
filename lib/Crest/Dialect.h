@@ -8,7 +8,6 @@
 #define CREST_DIALECT_H
 
 #include "../Interpreter/ChezSchemeInterpreter.h"
-#include "Interface.h"
 #include "mlir/IR/Dialect.h"
 #include "mlir/IR/ExtensibleDialect.h"
 #include "mlir/Support/TypeID.h"
@@ -131,9 +130,6 @@ public:
   verifyRegionResultAttribute(mlir::Operation* op, unsigned regionIndex,
                               unsigned resultIndex,
                               mlir::NamedAttribute attr) override;
-
-  void* getRegisteredInterfaceForOp(mlir::TypeID interfaceID,
-                                    mlir::OperationName opName) override;
 
 private:
   Callbacks cbs_;

@@ -6,9 +6,6 @@
 // RUN:   %scheme-mlir %S/passes/interface-dsl.sls %s \
 // RUN:   | %FileCheck %s
 
-// CHECK: dispatcher-op-name: ifacetest.func
-// CHECK: dispatcher-getFunctionType: #f
-// CHECK: dispatcher-verifyBody: #f
 // CHECK: getFunctionType: #t
 // CHECK: verifyBody: #t
 // CHECK: verifyType: #t

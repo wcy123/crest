@@ -11,6 +11,7 @@
 ;;   (crest-callback-entry-point (argument-type ...) result-type proc)   an address
 ;;   (crest-callback-pointer-list pointer count)                          a list of integers
 ;;   (crest-callback-condition-text condition)                            a string
+;;   (crest-callback-entry-dispatcher entries)                            a procedure
 ;;
 ;; C++ cannot keep a Scheme procedure without telling the garbage collector, so a procedure that
 ;; C++ is to call later gets a C function of its own: a foreign-callable, which is locked, and
@@ -31,7 +32,8 @@
 (library (crest callback)
   (export crest-callback-entry-point
           crest-callback-pointer-list
-          crest-callback-condition-text)
+          crest-callback-condition-text
+          crest-callback-entry-dispatcher)
   (import (chezscheme))
 
   (define-syntax crest-callback-entry-point
@@ -49,5 +51,15 @@
   (define (crest-callback-condition-text condition)
     (call-with-string-output-port
      (lambda (port) (display-condition condition port))))
+
+  ;; What the macro of an interface hands to C++ (the :interfaces clause of define-op): from a method
+  ;; name to the entry point of its callable, 0 for a method that the op has no clause for. C++ asks
+  ;; for each method of the interface while it registers the op (lib/Crest/Interface.h). `entries`
+  ;; is an alist of (method . entry point).
+  (define (crest-callback-entry-dispatcher entries)
+    (lambda (method)
+      (cond
+       [(assq method entries) => cdr]
+       [else 0])))
 
   ) ;; end library (crest callback)

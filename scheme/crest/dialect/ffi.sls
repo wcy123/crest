@@ -25,7 +25,7 @@
   ;; (uptr dialect) (string op-name) (scheme-object vector/8) (scheme-object interfaces) → void
   ;; slots: the entry points of verify, verify-regions, parse, print, fold,
   ;; get-canonicalization-patterns, populate-default-attrs, then the list of traits;
-  ;; interfaces: the list of (TypeID . dispatcher) pairs of the op's :interface2 entries
+  ;; interfaces: the list of (TypeID . dispatcher) pairs of the op's :interfaces entries
   ;; (see lib/Crest/Op.cpp)
   (define %crest::register-dynamic-op!
     (foreign-procedure "crest::register-dynamic-op!" (uptr string scheme-object scheme-object)

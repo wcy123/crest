@@ -8,12 +8,14 @@
 #include "SymbolInterfaces.h"
 #include "../../Crest/Interface.h"
 #include "../Support/SchemeWrapper.h"
+#include "mlir/IR/ExtensibleDialect.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/IR/SymbolTable.h"
 #include <memory>
 
 namespace {
 struct SymbolConceptData : public mlir::SymbolOpInterface::Concept {
+  using Interface = mlir::SymbolOpInterface;
   SymbolConceptData()
       : mlir::SymbolOpInterface::Concept{
             [](const mlir::SymbolOpInterface::Concept*,
@@ -90,55 +92,31 @@ struct SymbolConceptData : public mlir::SymbolOpInterface::Concept {
 
 namespace crest {
 
-template <>
-mlir::SymbolOpInterface::Concept*
-SupportedInterfaces<mlir::SymbolOpInterface>::getOrCreateDefaultConcept() {
-  static mlir::SymbolOpInterface::Concept* ptr = [] {
-    return getOrCreateDefaultConcept(std::make_unique<SymbolConceptData>());
-  }();
-  return ptr;
+void ensureSymbolOpInterface(mlir::detail::InterfaceMap& map) {
+  insertModelOnce<SymbolConceptData>(map);
 }
 
-template <>
-std::shared_ptr<void>
-SupportedInterfaces<mlir::SymbolOpInterface>::CloneConcept(
-    const mlir::SymbolOpInterface::Concept* from) {
-  const auto* src = static_cast<const SymbolConceptData*>(from);
-  auto new_data = std::make_unique<SymbolConceptData>(*src);
-  return std::shared_ptr<void>(new_data.release(), [](void* p) {
-    delete static_cast<SymbolConceptData*>(p);
-  });
-}
-
-template <>
-mlir::SymbolOpInterface::Concept*
-SupportedInterfaces<mlir::SymbolOpInterface>::CreateConcept(
-    const std::string& op_name) {
-  auto data = std::make_unique<SymbolConceptData>();
-
-  SymbolConceptData* raw = data.get();
-  RegisterInterfaceForOp(mlir::SymbolOpInterface::getInterfaceID(), op_name,
-                         std::shared_ptr<void>(data.release(), [](void* p) {
-                           delete static_cast<SymbolConceptData*>(p);
-                         }));
-  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-  return reinterpret_cast<mlir::SymbolOpInterface::Concept*>(raw);
+void attachSymbolOpInterface(mlir::DynamicOpDefinition& def,
+                             const LockedSchemeObject&) {
+  ensureSymbolOpInterface(def.getInterfaceMap());
 }
 
 void registerIRSymbolInterfacesBindings() {
+  // mlir::SymbolOpInterface::getInterfaceID () -> uptr
+  //
+  // The address that the TypeID of the interface wraps, which C++ turns back
+  // with TypeID::getFromOpaquePointer to find how to install the interface.
   Sregister_symbol(
-      "mlir::SymbolOpInterface", (void*)+[](const char* op_name) {
-        crest::SupportedInterfaces<mlir::SymbolOpInterface>::CreateConcept(
-            op_name);
+      "mlir::SymbolOpInterface::getInterfaceID", (void*)+[]() -> uint64_t {
+        return reinterpret_cast<uint64_t>(
+            mlir::SymbolOpInterface::getInterfaceID().getAsOpaquePointer());
       });
 
   Sregister_symbol(
       "mlir::SymbolOpInterface::getNameAttr",
       (void*)+[](uint64_t op_ptr) -> uint64_t {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-        auto* c = static_cast<mlir::SymbolOpInterface::Concept*>(
-            LookupInterfaceForOp(mlir::SymbolOpInterface::getInterfaceID(),
-                                 op->getName().getStringRef().str()));
+        auto* c = lookupConcept<mlir::SymbolOpInterface>(op);
         if (!c) {
           scheme_error("mlir::SymbolOpInterface::getNameAttr",
                        "op does not implement SymbolOpInterface:",
@@ -152,9 +130,7 @@ void registerIRSymbolInterfacesBindings() {
       "mlir::SymbolOpInterface::setName",
       (void*)+[](uint64_t op_ptr, uint64_t name_ptr) -> void {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-        auto* c = static_cast<mlir::SymbolOpInterface::Concept*>(
-            LookupInterfaceForOp(mlir::SymbolOpInterface::getInterfaceID(),
-                                 op->getName().getStringRef().str()));
+        auto* c = lookupConcept<mlir::SymbolOpInterface>(op);
         if (!c) {
           scheme_error("mlir::SymbolOpInterface::setName",
                        "op does not implement SymbolOpInterface:",

@@ -1,9 +1,17 @@
 #!r6rs
 ;; Mirrors mlir/Interfaces/CallInterfaces.h
+;;
+;; The three interfaces are macros, the heads of the entries of the :interfaces clause of define-op
+;; (see (mlir Interfaces InferTypeOpInterface)): an entry is the pair of the TypeID of the interface
+;; (mlir::X::getInterfaceID) and the dispatcher of its clauses, which C++ asks for the entry point of
+;; each method that Scheme implements while it registers the op (lib/Crest/Op.cpp).
 (library (mlir Interfaces CallInterfaces)
   (export mlir::CallableOpInterface
           mlir::CallOpInterface
           mlir::ArgAndResultAttrsOpInterface
+          mlir::CallableOpInterface::getInterfaceID
+          mlir::CallOpInterface::getInterfaceID
+          mlir::ArgAndResultAttrsOpInterface::getInterfaceID
           mlir::CallableOpInterface::getCallableRegion
           mlir::ArgAndResultAttrsOpInterface::getArgAttrsAttr
           mlir::ArgAndResultAttrsOpInterface::getResAttrsAttr)
@@ -11,23 +19,56 @@
           (crest callback)
           (mlir Interfaces CallInterfaces ffi))
 
-  ;; dispatcher: made by define-op for the op's :interfaces entry; 'operation_name answers the
-  ;; op's name and a method name the clause or #f. Only getCallableRegion is a method that Scheme
-  ;; can implement: its foreign-callable gets the op and answers the Region; without the clause the
-  ;; op's callable region is its first region.
-  (define (mlir::CallableOpInterface dispatcher)
+  ;; `dispatcher` is (lambda (method) ...): a method name answers its clause or #f. Only
+  ;; getCallableRegion is a method that Scheme can implement: its foreign-callable gets the op and
+  ;; answers the Region; without the clause the op's callable region is its first region.
+  ;;   (mlir::CallableOpInterface (getCallableRegion (op) body ...))
+  (define (%%callable-dispatcher dispatcher)
     (let ([get-region (dispatcher 'getCallableRegion)])
-      (%mlir::CallableOpInterface
-       (dispatcher 'operation_name)
-       (if get-region
-           (crest-callback-entry-point (uptr) uptr get-region)
-           0))))
+      (crest-callback-entry-dispatcher
+       (list (cons 'getCallableRegion
+                   (if get-region
+                       (crest-callback-entry-point (uptr) uptr get-region)
+                       0))))))
 
-  (define (mlir::CallOpInterface dispatcher)
-    (%mlir::CallOpInterface (dispatcher 'operation_name)))
+  (define-syntax mlir::CallableOpInterface
+    (syntax-rules ()
+      [(_ (method (formal ...) body ...) ...)
+       (cons (mlir::CallableOpInterface::getInterfaceID)
+             (%%callable-dispatcher
+              (lambda (name)
+                (case name
+                  [(method) (lambda (formal ...) body ...)] ...
+                  [else #f]))))]))
 
-  (define (mlir::ArgAndResultAttrsOpInterface dispatcher)
-    (%mlir::ArgAndResultAttrsOpInterface (dispatcher 'operation_name)))
+  ;; The callee is the callee attribute and the arguments are the operands: no method for Scheme.
+  (define-syntax mlir::CallOpInterface
+    (lambda (stx)
+      (syntax-case stx ()
+        [(_) #'(cons (mlir::CallOpInterface::getInterfaceID) (crest-callback-entry-dispatcher '()))]
+        [(_ clause ...)
+         (syntax-violation ':interfaces
+                           "mlir::CallOpInterface takes no method clauses: the callee is the callee attribute and the arguments are the operands"
+                           stx)])))
+
+  (define-syntax mlir::ArgAndResultAttrsOpInterface
+    (lambda (stx)
+      (syntax-case stx ()
+        [(_) #'(cons (mlir::ArgAndResultAttrsOpInterface::getInterfaceID)
+                     (crest-callback-entry-dispatcher '()))]
+        [(_ clause ...)
+         (syntax-violation ':interfaces
+                           "mlir::ArgAndResultAttrsOpInterface takes no method clauses"
+                           stx)])))
+
+  (define mlir::CallableOpInterface::getInterfaceID
+    %mlir::CallableOpInterface::getInterfaceID)
+
+  (define mlir::CallOpInterface::getInterfaceID
+    %mlir::CallOpInterface::getInterfaceID)
+
+  (define mlir::ArgAndResultAttrsOpInterface::getInterfaceID
+    %mlir::ArgAndResultAttrsOpInterface::getInterfaceID)
 
   (define (mlir::CallableOpInterface::getCallableRegion op)
     (%mlir::CallableOpInterface::getCallableRegion op))

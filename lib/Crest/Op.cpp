@@ -5,6 +5,10 @@
 // CrestOp bridge — lib/Crest/Op.cpp
 
 #include "Op.h"
+#include "../Bindings/IR/SymbolInterfaces.h"
+#include "../Bindings/Interfaces/CallInterfaces.h"
+#include "../Bindings/Interfaces/FunctionInterfaces.h"
+#include "../Bindings/Interfaces/SideEffectInterfaces.h"
 #include "../Bindings/Support/CrestObject.h"
 #include "../Bindings/Support/LockedSchemeObject.h"
 #include "../Bindings/Support/SchemeWrapper.h"
@@ -14,7 +18,11 @@
 #include "mlir/IR/ExtensibleDialect.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/IR/PatternMatch.h"
+#include "mlir/IR/SymbolTable.h"
+#include "mlir/Interfaces/CallInterfaces.h"
+#include "mlir/Interfaces/FunctionInterfaces.h"
 #include "mlir/Interfaces/InferTypeOpInterface.h"
+#include "mlir/Interfaces/SideEffectInterfaces.h"
 #include "mlir/Support/TypeID.h"
 
 namespace crest {
@@ -45,12 +53,22 @@ const llvm::DenseMap<mlir::TypeID, AttachInterfaceFn>& getAttachInterfaceFns() {
   static const llvm::DenseMap<mlir::TypeID, AttachInterfaceFn> fns = {
       {mlir::InferTypeOpInterface::getInterfaceID(),
        attachInferTypeOpInterface},
+      {mlir::CallableOpInterface::getInterfaceID(), attachCallableOpInterface},
+      {mlir::CallOpInterface::getInterfaceID(), attachCallOpInterface},
+      {mlir::ArgAndResultAttrsOpInterface::getInterfaceID(),
+       attachArgAndResultAttrsOpInterface},
+      {mlir::FunctionOpInterface::getInterfaceID(), attachFunctionOpInterface},
+      {mlir::SymbolOpInterface::getInterfaceID(), attachSymbolOpInterface},
+      {mlir::MemoryEffectOpInterface::getInterfaceID(),
+       attachMemoryEffectOpInterface},
+      {mlir::ConditionallySpeculatable::getInterfaceID(),
+       attachConditionallySpeculatable},
   };
   return fns;
 }
 
 // Install each interface of `interfaces`, the list of (TypeID . dispatcher)
-// pairs of the :interface2 entries of the op: the TypeID is the address that
+// pairs of the :interfaces entries of the op: the TypeID is the address that
 // the TypeID of the interface wraps.
 void attachInterfaces(mlir::DynamicOpDefinition& def,
                       const LockedSchemeObject& interfaces) {
@@ -72,7 +90,7 @@ void attachInterfaces(mlir::DynamicOpDefinition& def,
     auto attach = attachFns.find(id);
     if (attach == attachFns.end()) {
       scheme_error("crest::register-dynamic-op!",
-                   "no way to install an interface of :interface2");
+                   "no way to install an interface of :interfaces");
     }
     attach->second(def, dispatcher);
   }
@@ -304,7 +322,7 @@ void registerCrestDynamicOpBindings() {
   //   7 traits                        list of (name arg ...) lists of strings
   //
   // `interfaces` is the list of (TypeID . dispatcher) pairs of the op's
-  // :interface2 entries. The dispatchers are only needed while the op is
+  // :interfaces entries. The dispatchers are only needed while the op is
   // registered, so the list is locked for this call and not kept.
   Sregister_symbol(
       "crest::register-dynamic-op!",

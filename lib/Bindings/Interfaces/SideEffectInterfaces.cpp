@@ -8,6 +8,7 @@
 #include "SideEffectInterfaces.h"
 #include "../../Crest/Interface.h"
 #include "../Support/SchemeWrapper.h"
+#include "mlir/IR/ExtensibleDialect.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 #include <memory>
 
@@ -16,6 +17,7 @@ namespace {
 // and may be speculated. This is what `pure` means; an op that wants anything
 // else does not declare them.
 struct MemoryEffectConceptData : public mlir::MemoryEffectOpInterface::Concept {
+  using Interface = mlir::MemoryEffectOpInterface;
   MemoryEffectConceptData()
       : mlir::MemoryEffectOpInterface::Concept{
             [](const mlir::MemoryEffectOpInterface::Concept*, mlir::Operation*,
@@ -26,6 +28,7 @@ struct MemoryEffectConceptData : public mlir::MemoryEffectOpInterface::Concept {
 
 struct SpeculatableConceptData
     : public mlir::ConditionallySpeculatable::Concept {
+  using Interface = mlir::ConditionallySpeculatable;
   SpeculatableConceptData()
       : mlir::ConditionallySpeculatable::Concept{
             [](const mlir::ConditionallySpeculatable::Concept*,
@@ -35,74 +38,47 @@ struct SpeculatableConceptData
         } {}
 };
 
-template <typename Interface, typename Data>
-typename Interface::Concept* createConcept(const std::string& op_name) {
-  auto data = std::make_unique<Data>();
-  Data* raw = data.get();
-  crest::RegisterInterfaceForOp(
-      Interface::getInterfaceID(), op_name,
-      std::shared_ptr<void>(data.release(),
-                            [](void* p) { delete static_cast<Data*>(p); }));
-  return reinterpret_cast<typename Interface::Concept*>(raw);
-}
 } // anonymous namespace
 
 namespace crest {
 
-template <>
-mlir::MemoryEffectOpInterface::Concept* SupportedInterfaces<
-    mlir::MemoryEffectOpInterface>::getOrCreateDefaultConcept() {
-  static mlir::MemoryEffectOpInterface::Concept* ptr = [] {
-    return getOrCreateDefaultConcept(
-        std::make_unique<MemoryEffectConceptData>());
-  }();
-  return ptr;
+void ensureMemoryEffectOpInterface(mlir::detail::InterfaceMap& map) {
+  insertModelOnce<MemoryEffectConceptData>(map);
 }
 
-template <>
-mlir::ConditionallySpeculatable::Concept* SupportedInterfaces<
-    mlir::ConditionallySpeculatable>::getOrCreateDefaultConcept() {
-  static mlir::ConditionallySpeculatable::Concept* ptr = [] {
-    return getOrCreateDefaultConcept(
-        std::make_unique<SpeculatableConceptData>());
-  }();
-  return ptr;
+void ensureConditionallySpeculatable(mlir::detail::InterfaceMap& map) {
+  insertModelOnce<SpeculatableConceptData>(map);
 }
 
-template <>
-std::shared_ptr<void>
-SupportedInterfaces<mlir::MemoryEffectOpInterface>::CloneConcept(
-    const mlir::MemoryEffectOpInterface::Concept* from) {
-  const auto* src = static_cast<const MemoryEffectConceptData*>(from);
-  return std::shared_ptr<void>(new MemoryEffectConceptData(*src), [](void* p) {
-    delete static_cast<MemoryEffectConceptData*>(p);
-  });
+void attachMemoryEffectOpInterface(mlir::DynamicOpDefinition& def,
+                                   const LockedSchemeObject&) {
+  ensureMemoryEffectOpInterface(def.getInterfaceMap());
 }
 
-template <>
-std::shared_ptr<void>
-SupportedInterfaces<mlir::ConditionallySpeculatable>::CloneConcept(
-    const mlir::ConditionallySpeculatable::Concept* from) {
-  const auto* src = static_cast<const SpeculatableConceptData*>(from);
-  return std::shared_ptr<void>(new SpeculatableConceptData(*src), [](void* p) {
-    delete static_cast<SpeculatableConceptData*>(p);
-  });
+void attachConditionallySpeculatable(mlir::DynamicOpDefinition& def,
+                                     const LockedSchemeObject&) {
+  ensureConditionallySpeculatable(def.getInterfaceMap());
 }
 
 void registerInterfacesSideEffectInterfacesBindings() {
-  SupportedInterfaces<
-      mlir::MemoryEffectOpInterface>::getOrCreateDefaultConcept();
-  SupportedInterfaces<
-      mlir::ConditionallySpeculatable>::getOrCreateDefaultConcept();
+  // mlir::MemoryEffectOpInterface::getInterfaceID () -> uptr
+  // mlir::ConditionallySpeculatable::getInterfaceID () -> uptr
+  //
+  // The address that the TypeID of the interface wraps, which C++ turns back
+  // with TypeID::getFromOpaquePointer to find how to install the interface.
   Sregister_symbol(
-      "mlir::MemoryEffectOpInterface", (void*)+[](const char* op_name) {
-        createConcept<mlir::MemoryEffectOpInterface, MemoryEffectConceptData>(
-            op_name);
+      "mlir::MemoryEffectOpInterface::getInterfaceID",
+      (void*)+[]() -> uint64_t {
+        return reinterpret_cast<uint64_t>(
+            mlir::MemoryEffectOpInterface::getInterfaceID()
+                .getAsOpaquePointer());
       });
   Sregister_symbol(
-      "mlir::ConditionallySpeculatable", (void*)+[](const char* op_name) {
-        createConcept<mlir::ConditionallySpeculatable, SpeculatableConceptData>(
-            op_name);
+      "mlir::ConditionallySpeculatable::getInterfaceID",
+      (void*)+[]() -> uint64_t {
+        return reinterpret_cast<uint64_t>(
+            mlir::ConditionallySpeculatable::getInterfaceID()
+                .getAsOpaquePointer());
       });
 }
 

@@ -667,7 +667,7 @@
                 [else #f]))
             elements))
 
-  ;; implements-infer-type?: the op has mlir::InferTypeOpInterface in its :interface2, so the format may
+  ;; implements-infer-type?: the op has mlir::InferTypeOpInterface in its :interfaces, so the format may
   ;; leave out all of its result types.
   (define (generate-assembly-format fmt-stx operands attributes results implements-infer-type?)
     (let ([str (syntax->datum fmt-stx)])

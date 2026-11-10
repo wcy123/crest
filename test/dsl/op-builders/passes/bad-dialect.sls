@@ -11,6 +11,6 @@
     (define-op op
       :operands   ((x mlir::Value?))
       :results    ((out mlir::Value?))
-      :interface2 ((mlir::InferTypeOpInterface
+      :interfaces ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes)
                                       (error 'infer "boom")))))))

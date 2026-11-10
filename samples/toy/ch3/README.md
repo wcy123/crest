@@ -69,32 +69,30 @@ tools/debug-define-dialect samples/toy/ch3/toy.sls > /tmp/toy3.sls
 
 `define-dialect toy` expands to a `begin` containing:
 
-**`%%toy.func:mlir::FunctionOpInterface`** — the generated per-op dispatch
-procedure for `toy.func`'s `FunctionOpInterface` overrides.  Methods declared
-in `:interfaces` are dispatched via `case`; unrecognised methods return `#f`:
+**`%%toy.func:interfaces`** — the pairs of the `:interfaces` entries of `toy.func`, made once when the library is
+loaded. `mlir::FunctionOpInterface` is a macro of `(mlir Interfaces FunctionInterfaces)`: it makes a C function
+(a `foreign-callable`) for each method clause and answers the pair of the interface's `TypeID` and a dispatcher of
+them:
 
 ```scheme
-(define (%%toy.func:mlir::FunctionOpInterface method)
-  (case method
-    [(operation_name) "toy.func"]
-    [(getFunctionType)
-     (lambda (self)
-       (mlir::TypeAttr::getValue
-        (mlir::Operation::getAttr self "function_type")))]
-    [(setFunctionTypeAttr)
-     (lambda (self attr)
-       (mlir::Operation::setAttr! self "function_type" attr))]
-    [else #f]))
+(define %%toy.func:interfaces
+  (list (mlir::FunctionOpInterface
+         (getFunctionType (self)
+           (mlir::TypeAttr::getValue
+            (mlir::Operation::getAttr self "function_type")))
+         (setFunctionTypeAttr (self attr)
+           (mlir::Operation::setAttr! self "function_type" attr)))))
 ```
 
 **`%%toy:initialize`** — called at dialect registration time; registers every
-op via `%crest::register-dynamic-op!`:
+op via `%crest::register-dynamic-op!`, which installs the interfaces of the op in its definition:
 
 ```scheme
 (define (%%toy:initialize dialect-ptr)
   (%crest::register-dynamic-op! dialect-ptr "toy.constant" ...)
   ...
-  (%crest::register-dynamic-op! dialect-ptr "toy.func" ...)
+  (%crest::register-dynamic-op! dialect-ptr "toy.func"
+                                %%toy.func:op-callbacks %%toy.func:interfaces)
   ...)
 ```
 
@@ -103,18 +101,6 @@ op via `%crest::register-dynamic-op!`:
 ```scheme
 (define toy
   (vector %%toy:initialize #f #f #f #f #f #f #f #f #f #f))
-```
-
-**`%%toy-iface-init`** — eagerly wires the Scheme dispatch procedure into the
-C++ `FunctionOpInterface` concept at library load time:
-
-```scheme
-(define %%toy-iface-init
-  (begin
-    ((foreign-procedure "mlir::FunctionOpInterface"
-       (scheme-object) void)
-     %%toy.func:mlir::FunctionOpInterface)
-    #t))
 ```
 
 **Accessor predicates and field getters** — one `?` predicate and one getter

@@ -15,7 +15,7 @@
 // type serves all ops and the pointer is filled in per op.
 
 #include "InferType.h"
-#include "../Bindings/Support/SchemeWrapper.h"
+#include "Interface.h"
 #include "mlir/IR/ExtensibleDialect.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/Interfaces/InferTypeOpInterface.h"
@@ -50,12 +50,6 @@ struct DynamicInferTypeModel : public mlir::InferTypeOpInterface::Concept {
       : Concept{nullptr, defaultRefine, defaultCompatible} {}
 };
 
-// The entry point of the callable that `dispatcher` has for `method`, or null.
-void* entryPoint(const LockedSchemeObject& dispatcher, const char* method) {
-  return reinterpret_cast<void*>(Sunsigned64_value(
-      scheme_call(dispatcher.get(), Sstring_to_symbol(method))));
-}
-
 } // namespace
 
 void attachInferTypeOpInterface(mlir::DynamicOpDefinition& def,
@@ -66,14 +60,15 @@ void attachInferTypeOpInterface(mlir::DynamicOpDefinition& def,
       map.lookup<mlir::InferTypeOpInterface>();
   // The entry of each method the dispatcher has a clause for; the others keep
   // the default.
-  if (void* infer = entryPoint(dispatcher, "inferReturnTypes")) {
+  if (void* infer = interfaceEntryPoint(dispatcher, "inferReturnTypes")) {
     concept_->inferReturnTypes = reinterpret_cast<InferFn>(infer);
   }
-  if (void* refine = entryPoint(dispatcher, "refineReturnTypes")) {
+  if (void* refine = interfaceEntryPoint(dispatcher, "refineReturnTypes")) {
     concept_->refineReturnTypes =
         reinterpret_cast<decltype(concept_->refineReturnTypes)>(refine);
   }
-  if (void* compatible = entryPoint(dispatcher, "isCompatibleReturnTypes")) {
+  if (void* compatible =
+          interfaceEntryPoint(dispatcher, "isCompatibleReturnTypes")) {
     concept_->isCompatibleReturnTypes =
         reinterpret_cast<decltype(concept_->isCompatibleReturnTypes)>(
             compatible);
