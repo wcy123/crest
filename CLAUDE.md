@@ -234,13 +234,12 @@ side makes a C function for it with `crest-callback-entry-point` (`(crest callba
   calls it is destroyed. Construct the owner first in the binding, before an early return or a check that can
   raise (an error that leaves through Scheme skips destructors).
 
-C++ calls a callable through `crest::callForeign(fn, args...)` (`lib/Bindings/Support/XmmGuard.h`;
-`ForeignCallable::operator()` does it): Chez Scheme's `foreign-callable` on Windows x64 did not preserve the upper
-halves of XMM6-XMM11, which that ABI makes callee-saved (its entry and exit code saved them as 64-bit doubles), and
-C++ compiled for LLVM 23 keeps values in them across a callback (a 16-byte `Block::iterator`), so the call saves and
-restores them (`XmmGuard_x64.asm`). The Chez that `cmake/deps.cmake` pins is past the upstream repair of that
-(cisco/ChezScheme#1064), so a callable that MLIR calls through a function pointer of its own (the methods of
-`InferTypeOpInterface`) is stored in that pointer as it is.
+C++ calls a callable directly through its function pointer. Chez Scheme's `foreign-callable` on Windows x64 used
+to zero the upper halves of XMM6-XMM11, which that ABI makes callee-saved, and C++ compiled for LLVM 23 keeps
+values in them across a call (a 16-byte `Block::iterator`). The Chez that `cmake/deps.cmake` pins is past the
+upstream repair (cisco/ChezScheme#1064), so no guard is needed, not even for the function pointers that MLIR
+calls by itself (the methods of `InferTypeOpInterface`); `docs/tech-note.md` ("Chez Scheme pin") has the story
+and the steps to move the pin.
 
 Only scalars cross the boundary (`uptr`, `int`, `unsigned-32`, strings); a range is a pointer and a count, read
 back with `crest-callback-pointer-list`, and a list that Scheme answers is pushed through a `foreign-procedure`

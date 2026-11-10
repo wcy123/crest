@@ -6,7 +6,6 @@
 
 #include "Type.h"
 #include "../Bindings/Support/SchemeWrapper.h"
-#include "../Bindings/Support/XmmGuard.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/Diagnostics.h"
 #include "mlir/IR/ExtensibleDialect.h"
@@ -130,9 +129,9 @@ void registerCrestDynamicTypeBindings() {
           }
           auto pointers = opaquePointers(params);
           TypeSink sink;
-          int answer = callForeign(verify, pointers.data(),
-                                   static_cast<uint64_t>(pointers.size()),
-                                   reinterpret_cast<uint64_t>(&sink));
+          int answer =
+              verify(pointers.data(), static_cast<uint64_t>(pointers.size()),
+                     reinterpret_cast<uint64_t>(&sink));
           if (answer == 1) {
             return mlir::success();
           }
@@ -152,8 +151,8 @@ void registerCrestDynamicTypeBindings() {
               -> mlir::ParseResult {
             TypeSink sink;
             sink.parsed = &parsed;
-            int answer = callForeign(parse, reinterpret_cast<uint64_t>(&p),
-                                     reinterpret_cast<uint64_t>(&sink));
+            int answer = parse(reinterpret_cast<uint64_t>(&p),
+                               reinterpret_cast<uint64_t>(&sink));
             if (answer == 1) {
               return mlir::success();
             }
@@ -168,9 +167,8 @@ void registerCrestDynamicTypeBindings() {
               [print](mlir::AsmPrinter& p,
                       llvm::ArrayRef<mlir::Attribute> params) {
                 auto pointers = opaquePointers(params);
-                callForeign(print, reinterpret_cast<uint64_t>(&p),
-                            pointers.data(),
-                            static_cast<uint64_t>(pointers.size()));
+                print(reinterpret_cast<uint64_t>(&p), pointers.data(),
+                      static_cast<uint64_t>(pointers.size()));
               };
           def = mlir::DynamicTypeDefinition::get(
               name, dialect, std::move(verifier), std::move(parser),

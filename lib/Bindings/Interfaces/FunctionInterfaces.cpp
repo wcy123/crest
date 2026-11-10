@@ -9,7 +9,6 @@
 #include "../../Crest/Interface.h"
 #include "../IR/SymbolInterfaces.h"
 #include "../Support/SchemeWrapper.h"
-#include "../Support/XmmGuard.h"
 #include "CallInterfaces.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinTypes.h"
@@ -97,22 +96,21 @@ struct FunctionConceptData : public mlir::FunctionOpInterface::Concept {
       getFunctionType =
           +[](const Concept* self, mlir::Operation* op) -> mlir::Type {
         const auto* d = static_cast<const FunctionConceptData*>(self);
-        return mlir::Type::getFromOpaquePointer(
-            reinterpret_cast<const void*>(crest::callForeign(
-                d->get_function_type, reinterpret_cast<uint64_t>(op))));
+        return mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(
+            d->get_function_type(reinterpret_cast<uint64_t>(op))));
       };
     }
     if (setFunctionTypeAttrEntry != 0) {
       set_function_type_attr =
           reinterpret_cast<decltype(set_function_type_attr)>(
               setFunctionTypeAttrEntry);
-      setFunctionTypeAttr = +[](const Concept* self, mlir::Operation* op,
-                                mlir::TypeAttr t) {
-        const auto* d = static_cast<const FunctionConceptData*>(self);
-        crest::callForeign(d->set_function_type_attr,
-                           reinterpret_cast<uint64_t>(op),
-                           reinterpret_cast<uint64_t>(t.getAsOpaquePointer()));
-      };
+      setFunctionTypeAttr =
+          +[](const Concept* self, mlir::Operation* op, mlir::TypeAttr t) {
+            const auto* d = static_cast<const FunctionConceptData*>(self);
+            d->set_function_type_attr(
+                reinterpret_cast<uint64_t>(op),
+                reinterpret_cast<uint64_t>(t.getAsOpaquePointer()));
+          };
     }
     if (cloneTypeWithEntry != 0) {
       clone_type_with =
@@ -130,8 +128,7 @@ struct FunctionConceptData : public mlir::FunctionOpInterface::Concept {
           resultPointers.push_back(t.getAsOpaquePointer());
         }
         return mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(
-            crest::callForeign(d->clone_type_with,
-                               reinterpret_cast<uint64_t>(op),
+            d->clone_type_with(reinterpret_cast<uint64_t>(op),
                                inputPointers.data(), inputPointers.size(),
                                resultPointers.data(), resultPointers.size())));
       };
@@ -141,9 +138,7 @@ struct FunctionConceptData : public mlir::FunctionOpInterface::Concept {
       verifyBody =
           +[](const Concept* self, mlir::Operation* op) -> llvm::LogicalResult {
         const auto* d = static_cast<const FunctionConceptData*>(self);
-        return verifyResult(
-            op,
-            crest::callForeign(d->verify_body, reinterpret_cast<uint64_t>(op)));
+        return verifyResult(op, d->verify_body(reinterpret_cast<uint64_t>(op)));
       };
     }
     if (verifyTypeEntry != 0) {
@@ -151,9 +146,7 @@ struct FunctionConceptData : public mlir::FunctionOpInterface::Concept {
       verifyType =
           +[](const Concept* self, mlir::Operation* op) -> llvm::LogicalResult {
         const auto* d = static_cast<const FunctionConceptData*>(self);
-        return verifyResult(
-            op,
-            crest::callForeign(d->verify_type, reinterpret_cast<uint64_t>(op)));
+        return verifyResult(op, d->verify_type(reinterpret_cast<uint64_t>(op)));
       };
     }
   }

@@ -79,9 +79,10 @@ TEST_F(InterpreterTest, ForeignCallableMovedFromDoesNotUnlock) {
 }
 
 #if defined(__SSE2__) || defined(_M_X64)
-// Chez Scheme's foreign-callable on Windows x64 clobbers XMM6-XMM15, which that
-// ABI makes callee-saved; ForeignCallable restores them (XmmGuard.h). Ten
-// vectors are live across the call, which the compiler keeps in those
+// REGRESSION (Windows x64): Chez Scheme's foreign-callable used to zero the
+// upper halves of XMM6-XMM11, which that ABI makes callee-saved (fixed
+// upstream, cisco/ChezScheme#1064; see "Chez Scheme pin" in docs/tech-note.md).
+// Ten vectors are live across the call, which the compiler keeps in those
 // registers (a 16-byte Block::iterator is what LLVM 23 code keeps there).
 static volatile float g_vector_seed = 1.0f;
 
