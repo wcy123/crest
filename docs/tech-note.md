@@ -296,3 +296,52 @@ Both paths arrive at the same concept pointer and make the same final dispatch. 
 **However**, if the Scheme-defined dialect's ops appear in the **input MLIR file**, the ops are parsed as `UnregisteredOpModel` instances (before `getDependentDialects` runs). When the dialect is later registered, those models are freed, leaving existing `Operation` objects with dangling `OperationName` pointers.
 
 The `interface-dsl` test exercises this case: `ifacetest.func` is in the input IR. The idiomatic fix (mirroring Pattern 2 above) is a top-level `--crest-preload-scheme-dialect=passes/ifacetest` flag in `crest-opt.cpp` that, before `MlirOptMain` runs, initializes the Chez interpreter, imports the library, and inserts the dialect factory into the global `DialectRegistry`. The parser then lazy-loads `ifacetest` on first encounter — no `UnregisteredOpModel`, no use-after-free. Alternatively, the test can be restructured so `ifacetest.func` ops are created programmatically by the pass rather than parsed from input.
+
+## Chez Scheme pin
+
+`cmake/deps.cmake` fetches Chez Scheme from `https://github.com/cisco/ChezScheme.git` at a fixed commit.
+
+| | Commit | Committed | Version |
+|---|---|---|---|
+| now | `d533f2e156d4eddeafe24bd7cc4de87fdc88caeb` ("use native fused multiply-add instructions for flfma (#1095)") | 2026-11-07 | 10.5.0 (`scheme-version` `#x0a050002`) |
+| before | `e95a7efbafa2cf3bd5343ea542e6bc909a7ab2c4` | 2026-05-11 | 10.4.1 |
+
+### Why the pin moved (2026-11-10)
+
+A Chez `foreign-callable` on Windows x64 did not preserve `xmm6` to `xmm15` in full. The Windows x64 ABI makes
+them callee-saved. The entry and exit code of the callable (`s/x86_64.ss`, `asm-foreign-callable`) saved
+`xmm6` to `xmm11` as 64-bit doubles, and restoring with `movsd` zeroes the upper 64 bits of the register. Chez
+never uses `xmm12` to `xmm15`, so those were not affected. C++ compiled for LLVM 23 keeps 16-byte values in these
+registers across a call (a `Block::iterator`, restored by an `InsertionGuard`), so a call into a callable
+changed them. The upstream repair is
+[cisco/ChezScheme#1064](https://github.com/cisco/ChezScheme/pull/1064) "Windows x64: repair XMM register
+preservation by callables", merged 2026-09-17 (`f6a0279d4`); the issue is
+[racket/ChezScheme#66](https://github.com/racket/ChezScheme/issues/66). The pin of 2026-05-11 predates it.
+
+CREST calls most callables through `crest::callForeign` (`lib/Bindings/Support/XmmGuard.h`), which saves and
+restores the registers around the call. MLIR calls the function pointers of the `InferTypeOpInterface` Concept by
+itself, so the callable has to preserve them: `unittests/Crest/InferTypeTest.cpp`,
+`DirectCallPreservesVectorRegisters`, fails on Windows x64 with a Chez that does not.
+
+### Why this commit
+
+It is the newest commit of the upstream `main` when the pin was moved, 2026-11-10, not the merge of #1064 alone
+(`f6a0279d4`, 2026-09-17): that way the pin has the repairs since, among them those of the x86-64 foreign call and
+callable arguments (`048879e36`, 2026-11-05). The titles of the upstream commits after #1064 (checked 2026-11-10) show no revert of it and no repair of a
+bug in it.
+
+### How to move the pin again
+
+1. Take a commit of `main` that is past the repair you need and look at its history for reverts.
+2. Set `GIT_TAG` in `cmake/deps.cmake`, and update the comment above it (commit, date, version, reason).
+3. The Windows build names the kernel library after the version, `csv<major><minor><patch>.lib`: `csv1050.lib` for
+   10.5.0. Change `CHEZ_KERNEL_LIB` in the `WIN32` branch of `cmake/deps.cmake` when the version changes. The
+   version is `scheme-version` in `s/cmacros.ss` of the Chez source.
+4. The Windows CI keeps the Chez source, build and stamps in `C:\Develop\crest-deps`, which survive a wiped
+   `build\`. A new pin needs a new build directory, or the stamps say it is built already: change
+   `-DCHEZ_BUILD_DIR=...` in `.github/workflows/ci.yml` to a new name (it is named after the short commit). The
+   stamps are named after the build directory.
+5. The Linux CI caches the Chez build under a key of `hashFiles('cmake/deps.cmake')`, so editing `deps.cmake`
+   rebuilds it.
+6. Run both LLVM suites (`check-crest` and `CrestInterpreterTests`, `CrestInferTypeTests`) on Linux and let the
+   Windows CI run.

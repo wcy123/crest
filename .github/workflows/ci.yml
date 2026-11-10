@@ -169,7 +169,7 @@ jobs:
           cmake -B build -G Ninja ^
             -DFETCHCONTENT_BASE_DIR=C:\Develop\crest-deps ^
             -DFETCHCONTENT_UPDATES_DISCONNECTED=ON ^
-            -DCHEZ_BUILD_DIR=C:\Develop\crest-deps\chezscheme-build ^
+            -DCHEZ_BUILD_DIR=C:\Develop\crest-deps\chezscheme-build-d533f2e ^
             -DCMAKE_BUILD_TYPE=RelWithDebInfo ^
             -DCMAKE_C_COMPILER=cl ^
             -DCMAKE_CXX_COMPILER=cl ^

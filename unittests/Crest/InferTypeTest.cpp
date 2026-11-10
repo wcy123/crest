@@ -9,7 +9,6 @@
 // through crest::callForeign. The pointer is that of a Chez foreign-callable.
 // These tests call it as MLIR does.
 
-#include "../../lib/Bindings/Support/XmmGuard.h"
 #include "../../lib/Crest/Dialect.h"
 #include "../../lib/Interpreter/ChezSchemeInterpreter.h"
 #include "mlir/IR/Block.h"
@@ -89,35 +88,25 @@ protected:
       return concept_;
     }
 
-    // The call that MLIR's code makes, through the function pointer. It is not
-    // guarded: Chez's foreign-callable clobbers XMM6 to XMM15 on Windows x64.
-    mlir::LogicalResult
-    inferUnguarded(llvm::SmallVectorImpl<mlir::Type>& types) {
+    // The call that MLIR's code makes, through the function pointer of the
+    // Concept: not through crest::callForeign.
+    mlir::LogicalResult infer(llvm::SmallVectorImpl<mlir::Type>& types) {
       return getConcept()->inferReturnTypes(
           op->getContext(), op->getLoc(), op->getOperands(),
           op->getRawDictionaryAttrs(), op->getPropertiesStorage(),
           mlir::RegionRange(op->getRegions()), types);
     }
 
-    // The same, as crest::callForeign calls a callable.
-    mlir::LogicalResult infer(llvm::SmallVectorImpl<mlir::Type>& types) {
-      return withXmmPreserved([&] { return inferUnguarded(types); });
-    }
-
     // `types` are the result types the op has, and what refining leaves.
     mlir::LogicalResult refine(llvm::SmallVectorImpl<mlir::Type>& types) {
-      return withXmmPreserved([&] {
-        return getConcept()->refineReturnTypes(
-            op->getContext(), op->getLoc(), op->getOperands(),
-            op->getRawDictionaryAttrs(), op->getPropertiesStorage(),
-            mlir::RegionRange(op->getRegions()), types);
-      });
+      return getConcept()->refineReturnTypes(
+          op->getContext(), op->getLoc(), op->getOperands(),
+          op->getRawDictionaryAttrs(), op->getPropertiesStorage(),
+          mlir::RegionRange(op->getRegions()), types);
     }
 
     bool compatible(mlir::TypeRange inferred, mlir::TypeRange actual) {
-      return withXmmPreserved([&] {
-        return getConcept()->isCompatibleReturnTypes(inferred, actual);
-      });
+      return getConcept()->isCompatibleReturnTypes(inferred, actual);
     }
 
     mlir::Block block;
@@ -186,12 +175,14 @@ TEST_F(InferTypeTest, EveryContextThatLoadsTheDialectInfers) {
 }
 
 #if defined(__SSE2__) || defined(_M_X64)
-// REGRESSION (Windows x64): Chez's foreign-callable does not preserve XMM6 to
-// XMM15, which that ABI makes callee-saved, and LLVM 23 code keeps a 16-byte
-// Block::iterator there across a call. crest::callForeign saves them around
-// the calls that C++ makes into a callable, but MLIR's own call through the
-// Concept is not one of them. Everywhere else the registers are caller-saved,
-// so the test only checks the setup there.
+// REGRESSION (Windows x64): Chez's foreign-callable saved and restored XMM6 to
+// XMM11 as 64-bit doubles, so the upper halves of those registers came back
+// zero, which that ABI makes callee-saved; LLVM 23 code keeps a 16-byte
+// Block::iterator there across a call. MLIR calls the function pointers of the
+// Concept itself, not through crest::callForeign, so the callable has to
+// preserve them: cmake/deps.cmake pins a Chez with the upstream repair
+// (cisco/ChezScheme#1064). Everywhere else the registers are caller-saved, so
+// the test only checks the setup there.
 static volatile float g_vector_seed = 1.0f;
 
 TEST_F(InferTypeTest, DirectCallPreservesVectorRegisters) {
@@ -209,7 +200,7 @@ TEST_F(InferTypeTest, DirectCallPreservesVectorRegisters) {
   __m128 v8 = _mm_set_ps(seed + 33, seed + 34, seed + 35, seed + 36);
   __m128 v9 = _mm_set_ps(seed + 37, seed + 38, seed + 39, seed + 40);
   llvm::SmallVector<mlir::Type, 2> types;
-  EXPECT_TRUE(mlir::succeeded(add.inferUnguarded(types)));
+  EXPECT_TRUE(mlir::succeeded(add.infer(types)));
   const __m128 vectors[10] = {v0, v1, v2, v3, v4, v5, v6, v7, v8, v9};
   for (int i = 0; i < 10; ++i) {
     alignas(16) float lanes[4];

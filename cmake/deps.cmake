@@ -38,9 +38,19 @@ endif()
 
 # ─── ChezScheme: fetch source ─────────────────────────────────────────────────
 # GIT_SUBMODULES_RECURSE populates zuo, zlib, lz4, nanopass, stex automatically.
+# Pin: d533f2e156d4eddeafe24bd7cc4de87fdc88caeb, committed 2026-11-07 (Chez Scheme 10.5.0), the
+# newest commit of cisco/ChezScheme main when the pin was moved (2026-11-10); the previous pin was
+# e95a7ef, 2026-05-11 (10.4.1). Why it moved: cisco/ChezScheme#1064, merged 2026-09-17, repairs
+# "Windows x64: XMM register preservation by callables". Before it, the entry and exit code of a
+# foreign-callable saved XMM6-XMM11 as 64-bit doubles and the restore zeroed their upper halves,
+# which that ABI makes callee-saved, so MLIR code that keeps a 16-byte value there across a call
+# into a callable (LLVM 23: Block::iterator) saw it change. The newest commit was taken, not the
+# merge of #1064 alone, to get the other repairs since (e.g. x86_64 foreign call and callable
+# arguments); the commit titles after #1064 show no revert. Details and the steps to bump the pin again:
+# docs/tech-note.md, "Chez Scheme pin".
 FetchContent_Declare(ChezScheme
   GIT_REPOSITORY         https://github.com/cisco/ChezScheme.git
-  GIT_TAG                e95a7efbafa2cf3bd5343ea542e6bc909a7ab2c4
+  GIT_TAG                d533f2e156d4eddeafe24bd7cc4de87fdc88caeb
   GIT_SUBMODULES_RECURSE TRUE
   GIT_PROGRESS           TRUE
 )
@@ -49,6 +59,7 @@ if(NOT chezscheme_POPULATED)
   FetchContent_Populate(ChezScheme)
 endif()
 set(ChezScheme_SOURCE_DIR "${chezscheme_SOURCE_DIR}" CACHE INTERNAL "")
+
 # CHEZ_BUILD_DIR: redirect the ChezScheme build tree outside CMAKE_BINARY_DIR
 # so compiled artifacts survive a cmake clean / rmdir build between CI runs.
 # Windows CI sets -DCHEZ_BUILD_DIR=C:/Develop/crest-deps/chezscheme-build.
@@ -56,7 +67,10 @@ set(ChezScheme_SOURCE_DIR "${chezscheme_SOURCE_DIR}" CACHE INTERNAL "")
 if(DEFINED CHEZ_BUILD_DIR)
   set(ChezScheme_BINARY_DIR "${CHEZ_BUILD_DIR}" CACHE INTERNAL "" FORCE)
   # Keep ExternalProject stamps alongside the build dir so they also survive.
-  set(_chez_stamp_dir "${CHEZ_BUILD_DIR}/../chezscheme-stamp")
+  # Named after the build directory: a new build directory (CI names it after
+  # the pin, so a bump of GIT_TAG builds Chez again) must not find the stamps of
+  # the old one and skip its build.
+  set(_chez_stamp_dir "${CHEZ_BUILD_DIR}-stamp")
 else()
   set(ChezScheme_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/ChezScheme-build" CACHE INTERNAL "")
   set(_chez_stamp_dir "${CMAKE_CURRENT_BINARY_DIR}/ChezScheme-prefix/src/ChezScheme-stamp")
@@ -68,8 +82,8 @@ endif()
 # this tree's LLVMConfig.cmake applies to every consumer. Unix keeps
 # configure + make.
 if(WIN32)
-  # csv1041.lib = Chez Scheme 10.4.1, pinned at GIT_TAG e95a7ef. Update when bumping GIT_TAG.
-  set(CHEZ_KERNEL_LIB "${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/csv1041.lib" CACHE INTERNAL "" FORCE)
+  # csv1050.lib = Chez Scheme 10.5.0, pinned at GIT_TAG d533f2e. Update when bumping GIT_TAG.
+  set(CHEZ_KERNEL_LIB "${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/csv1050.lib" CACHE INTERNAL "" FORCE)
   set(CHEZ_ZLIB_LIB   "${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/zlibmts/zlib.lib"                 CACHE INTERNAL "" FORCE)
   set(CHEZ_LZ4_LIB    "${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/lz4mts/lib/liblz4.lib"            CACHE INTERNAL "" FORCE)
   # cmd /c: CreateProcess cannot launch a .bat. cmake -E true is a no-op
@@ -118,7 +132,10 @@ add_custom_command(
           --var    petite_boot_data
           --output ${ChezBootHeaders_BINARY_DIR}/ChezBootPetite.h
           ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/petite.boot
-  DEPENDS ChezScheme
+  # The boot file itself, not only the ChezScheme target: a target gives no file-level dependency,
+  # so after a new GIT_TAG an existing build tree kept embedding the old boot file
+  # ("petite.boot is for Version 10.4.1; need Version 10.5.0").
+  DEPENDS ChezScheme ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/petite.boot
   COMMENT "Embedding petite.boot"
   VERBATIM
 )
@@ -130,7 +147,10 @@ add_custom_command(
           --var    scheme_boot_data
           --output ${ChezBootHeaders_BINARY_DIR}/ChezBootScheme.h
           ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/scheme.boot
-  DEPENDS ChezScheme
+  # The boot file itself, not only the ChezScheme target: a target gives no file-level dependency,
+  # so after a new GIT_TAG an existing build tree kept embedding the old boot file
+  # ("petite.boot is for Version 10.4.1; need Version 10.5.0").
+  DEPENDS ChezScheme ${ChezScheme_BINARY_DIR}/${CHEZ_MACHINE}/boot/${CHEZ_MACHINE}/scheme.boot
   COMMENT "Embedding scheme.boot"
   VERBATIM
 )
