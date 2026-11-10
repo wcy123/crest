@@ -135,29 +135,29 @@ template <typename Signature> class ForeignCallable;
 /// @par Example: a callback that MLIR keeps
 /// A type conversion is stored by the `TypeConverter` and called later, so the
 /// callable must live as long as the converter does. MLIR copies the lambda, so
-/// the owner is shared:
+/// the owner is shared, and the last copy releases the function:
 /// @code
-/// using TypeConversionFn = uint64_t(uint64_t);   // Type in, Type or 0 out
+/// // A Scheme procedure that takes a Type and answers a Type, or 0.
+/// using Conversion = crest::ForeignCallable<uint64_t(uint64_t)>;
 /// Sregister_symbol(
 ///     "mlir::TypeConverter::addConversion",
 ///     (void*)+[](uint64_t converter_ptr, ptr callback) -> void {
-///       auto owned =
-///       std::make_shared<crest::ForeignCallable<TypeConversionFn>>(
-///           crest::ForeignCallable<TypeConversionFn>::fromProcedure(callback));
+///       auto owned = std::make_shared<Conversion>(
+///           Conversion::fromProcedure(callback));
 ///       auto& converter = crest::CrestBox<mlir::TypeConverter>::inner(
 ///           converter_ptr, "mlir::TypeConverter::addConversion");
 ///       converter.addConversion(
 ///           [owned](mlir::Type type) -> std::optional<mlir::Type> {
-///             uint64_t result =
+///             uint64_t answer =
 ///                 (*owned)(reinterpret_cast<uint64_t>(type.getAsOpaquePointer()));
-///             if (!result) {
-///               return std::nullopt;                  // Scheme said "not
-///               mine"
+///             // 0 means that Scheme does not convert this type.
+///             if (answer == 0) {
+///               return std::nullopt;
 ///             }
 ///             return mlir::Type::getFromOpaquePointer(
-///                 reinterpret_cast<const void*>(result));
+///                 reinterpret_cast<const void*>(answer));
 ///           });
-///     });  // the last copy of `owned` dies with the converter: released then
+///     });
 /// @endcode
 template <typename R, typename... Args> class ForeignCallable<R(Args...)> {
 public:
