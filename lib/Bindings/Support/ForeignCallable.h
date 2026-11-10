@@ -79,8 +79,9 @@ template <typename Signature> class ForeignCallable;
 /// `uint8_t`, `void` (as a result) and any pointer (it crosses as an integer,
 /// the address). A Scheme object such as an `mlir::Operation*`, a `Type` or a
 /// `Value` crosses as its address, `uint64_t`, and Scheme wraps it again. A
-/// range crosses as a pointer and a count. Strings and lists do not cross; pass
-/// them through a `foreign-procedure` that C++ gives to Scheme.
+/// range crosses as a pointer and a count. A string or a list does not cross as
+/// a Scheme value: C++ gives Scheme a `foreign-procedure` that takes it and
+/// pushes it into a C++ object.
 ///
 /// @par What the Scheme procedure must do
 /// It takes exactly the arguments of `Args` and answers `R`: a number for `int`
@@ -110,7 +111,7 @@ template <typename Signature> class ForeignCallable;
 /// @par Cost
 /// The first use of a prototype compiles a small maker procedure in Scheme and
 /// keeps it. After that, creating and releasing a callable takes about a
-/// microsecond.
+/// microsecond (measured).
 ///
 /// @par Example: a callback that is used while the binding runs
 /// The Scheme call is `(mlir::Operation::walk op (lambda (nested-op) ...))`;
@@ -143,6 +144,8 @@ template <typename Signature> class ForeignCallable;
 ///       auto owned =
 ///       std::make_shared<crest::ForeignCallable<TypeConversionFn>>(
 ///           crest::ForeignCallable<TypeConversionFn>::fromProcedure(callback));
+///       auto& converter = crest::CrestBox<mlir::TypeConverter>::inner(
+///           converter_ptr, "mlir::TypeConverter::addConversion");
 ///       converter.addConversion(
 ///           [owned](mlir::Type type) -> std::optional<mlir::Type> {
 ///             uint64_t result =
