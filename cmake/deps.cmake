@@ -62,7 +62,8 @@ set(ChezScheme_SOURCE_DIR "${chezscheme_SOURCE_DIR}" CACHE INTERNAL "")
 
 # CHEZ_BUILD_DIR: redirect the ChezScheme build tree outside CMAKE_BINARY_DIR
 # so compiled artifacts survive a cmake clean / rmdir build between CI runs.
-# Windows CI sets -DCHEZ_BUILD_DIR=C:/Develop/crest-deps/chezscheme-build.
+# Windows CI sets -DCHEZ_BUILD_DIR=C:/Develop/crest-deps/<pin>/chezscheme-build, a directory per
+# pin (see docs/tech-note.md, "Chez Scheme pin").
 # Linux CI uses actions/cache to restore the default in-tree location.
 if(DEFINED CHEZ_BUILD_DIR)
   set(ChezScheme_BINARY_DIR "${CHEZ_BUILD_DIR}" CACHE INTERNAL "" FORCE)

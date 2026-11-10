@@ -338,9 +338,12 @@ bug in it.
    10.5.0. Change `CHEZ_KERNEL_LIB` in the `WIN32` branch of `cmake/deps.cmake` when the version changes. The
    version is `scheme-version` in `s/cmacros.ss` of the Chez source.
 4. The Windows CI keeps the Chez source, build and stamps in `C:\Develop\crest-deps`, which survive a wiped
-   `build\`. A new pin needs a new build directory, or the stamps say it is built already: change
-   `-DCHEZ_BUILD_DIR=...` in `.github/workflows/ci.yml` to a new name (it is named after the short commit). The
-   stamps are named after the build directory.
+   `build\`, and passes `FETCHCONTENT_UPDATES_DISCONNECTED=ON`, which skips the git update: an existing source
+   directory is **not** moved to a new `GIT_TAG` (the first CI run after the 2026-11-10 bump compiled the old
+   10.4.1 source and failed to find `csv1050.lib`). A new pin therefore needs new directories: in
+   `.github/workflows/ci.yml` change `FETCHCONTENT_BASE_DIR`, `CHEZ_BUILD_DIR` and the `safe.directory` of the
+   Windows configure step to a directory named after the short commit (`C:\Develop\crest-deps\d533f2e`).
+   The stamps are named after the build directory.
 5. The Linux CI caches the Chez build under a key of `hashFiles('cmake/deps.cmake')`, so editing `deps.cmake`
    rebuilds it.
 6. Run both LLVM suites (`check-crest` and `CrestInterpreterTests`, `CrestInferTypeTests`) on Linux and let the
