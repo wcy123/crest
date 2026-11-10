@@ -235,18 +235,22 @@ side makes a C function for it with `crest-callback-entry-point` (`(crest callba
   raise (an error that leaves through Scheme skips destructors).
 
 C++ calls a callable through `crest::callForeign(fn, args...)` (`lib/Bindings/Support/XmmGuard.h`;
-`ForeignCallable::operator()` does it): Chez Scheme's `foreign-callable` on Windows x64 clobbers XMM6-XMM15,
-which that ABI makes callee-saved, and C++ compiled for LLVM 23 keeps values in them across a callback (a
-16-byte `Block::iterator`), so the call saves and restores them (`XmmGuard_x64.asm`). A callable that MLIR
-calls through a function pointer of its own (`inferReturnTypes`) is called from C++ inside
-`crest::withXmmPreserved`.
+`ForeignCallable::operator()` does it): Chez Scheme's `foreign-callable` on Windows x64 did not preserve the upper
+halves of XMM6-XMM11, which that ABI makes callee-saved (its entry and exit code saved them as 64-bit doubles), and
+C++ compiled for LLVM 23 keeps values in them across a callback (a 16-byte `Block::iterator`), so the call saves and
+restores them (`XmmGuard_x64.asm`). The Chez that `cmake/deps.cmake` pins is past the upstream repair of that
+(cisco/ChezScheme#1064), so a callable that MLIR calls through a function pointer of its own (the methods of
+`InferTypeOpInterface`) is stored in that pointer as it is.
 
 Only scalars cross the boundary (`uptr`, `int`, `unsigned-32`, strings); a range is a pointer and a count, read
 back with `crest-callback-pointer-list`, and a list that Scheme answers is pushed through a `foreign-procedure`
 into a sink that C++ passes. A callback that has a verdict (a verifier, a parser, a pass) catches an error with
 `guard`, gives its text to C++ (`reportFailure`) and answers failure, so the diagnostic has the text instead of
 the process ending. `scheme_call` stays for the control plane (a top-level name, or the procedure that Scheme
-gave as an argument of the foreign call that is running). A test that makes the callable per run checks that
+gave as an argument of the foreign call that is running), and for one more case: a procedure that C++ needs only
+while it registers something (the `(TypeID . dispatcher)` pairs of an op's `:interface2` entries,
+`lib/Crest/Op.cpp`) is held in a `crest::LockedSchemeObject` for that call, and C++ gets the entry points from the
+dispatcher with `scheme_call`. The dispatcher answers entries that Scheme made once, when the library was loaded. A test that makes the callable per run checks that
 it is released (`test/dsl/apply-conversion/leak.mlir`).
 
 ---

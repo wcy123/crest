@@ -164,6 +164,21 @@ inline ptr scheme_call(F f, const T1& a1, const T2& a2, const T3& a3,
                                   Scons(Conversion<T4, ptr>{}(a4), Snil)))));
 }
 
+// N=5: the same
+template <typename F, typename T1, typename T2, typename T3, typename T4,
+          typename T5>
+inline ptr scheme_call(F f, const T1& a1, const T2& a2, const T3& a3,
+                       const T4& a4, const T5& a5) {
+  ptr apply = Stop_level_value(Sstring_to_symbol("apply"));
+  return Scall2(
+      apply, convert_to_scheme_func(f),
+      Scons(Conversion<T1, ptr>{}(a1),
+            Scons(Conversion<T2, ptr>{}(a2),
+                  Scons(Conversion<T3, ptr>{}(a3),
+                        Scons(Conversion<T4, ptr>{}(a4),
+                              Scons(Conversion<T5, ptr>{}(a5), Snil))))));
+}
+
 // ---------------------------------------------------------------------------
 // Conversion<From,To> explicit specialisations (inline — all in header)
 // ---------------------------------------------------------------------------

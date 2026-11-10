@@ -2,9 +2,9 @@
 ;; Mirrors mlir/Interfaces/InferTypeOpInterface.h
 (library (mlir Interfaces InferTypeOpInterface ffi)
   (export %crest::InferTypeOpInterface::reportFailure
-          %crest::InferTypeOpInterface::registerCompatibility
-          %crest::InferTypeOpInterface::registerEntry
+          %mlir::InferTypeOpInterface::getInterfaceID
           %crest::InferTypeOpInterface::adapt
+          %crest::InferTypeOpInterface::adaptCompatible
           %mlir::InferTypeOpInterface::inferReturnTypes<OperationState>
           %mlir::InferTypeOpInterface::inferReturnTypes<OperationState*>)
   (import (chezscheme))
@@ -12,15 +12,18 @@
   (define %crest::InferTypeOpInterface::reportFailure
     (foreign-procedure "crest::InferTypeOpInterface::reportFailure" (string) void))
 
-  (define %crest::InferTypeOpInterface::registerCompatibility
-    (foreign-procedure "crest::InferTypeOpInterface::registerCompatibility" (string uptr) void))
-
-  (define %crest::InferTypeOpInterface::registerEntry
-    (foreign-procedure "crest::InferTypeOpInterface::registerEntry" (string uptr) void))
+  ;; () → uptr — the TypeID of mlir::InferTypeOpInterface, as the address that TypeID wraps.
+  (define %mlir::InferTypeOpInterface::getInterfaceID
+    (foreign-procedure "mlir::InferTypeOpInterface::getInterfaceID" () uptr))
 
   (define %crest::InferTypeOpInterface::adapt
     (foreign-procedure "crest::InferTypeOpInterface::adapt"
-                       (scheme-object uptr uptr uptr uptr uptr uptr uptr uptr uptr uptr uptr)
+                       (scheme-object uptr uptr uptr uptr uptr uptr uptr uptr uptr uptr uptr int)
+                       unsigned-8))
+
+  (define %crest::InferTypeOpInterface::adaptCompatible
+    (foreign-procedure "crest::InferTypeOpInterface::adaptCompatible"
+                       (scheme-object uptr uptr uptr uptr)
                        unsigned-8))
 
   (define %mlir::InferTypeOpInterface::inferReturnTypes<OperationState>

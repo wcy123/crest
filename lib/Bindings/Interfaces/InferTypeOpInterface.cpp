@@ -7,8 +7,8 @@
 //
 // InferTypeOpInterface::inferReturnTypes is called through a function pointer
 // that gets no Concept* and no Operation*, so Scheme gives every op a function
-// of its own (a foreign-callable, see (mlir Interfaces InferTypeOpInterface))
-// and registers its address with registerEntry. That function receives the
+// of its own (a foreign-callable, see (mlir Interfaces InferTypeOpInterface)),
+// which lib/Crest/InferType.cpp installs in the op. That function receives the
 // arguments of the C++ call as machine words, in the layout the platform ABI
 // gives them, and hands them to `adapt`, which rebuilds the C++ values and
 // calls the op's Scheme procedure with plain Scheme data.
@@ -68,31 +68,8 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
         g_reported_failure = message;
       });
 
-  // crest::InferTypeOpInterface::registerCompatibility (string op-name)
-  //                                                    (uptr entry)
-  //
-  // `entry` is the address of the foreign-callable of the
-  // isCompatibleReturnTypes method of the op, which the verifier of the op
-  // calls.
-  Sregister_symbol(
-      "crest::InferTypeOpInterface::registerCompatibility",
-      (void*)+[](const char* op_name, uint64_t entry) -> void {
-        crest::registerCompatibleReturnTypes(std::string(op_name),
-                                             reinterpret_cast<void*>(entry));
-      });
-
-  // crest::InferTypeOpInterface::registerEntry (string op-name) (uptr entry)
-  //
-  // `entry` is the address of the op's foreign-callable.
-  Sregister_symbol(
-      "crest::InferTypeOpInterface::registerEntry",
-      (void*)+[](const char* op_name, uint64_t entry) -> void {
-        crest::registerInferReturnTypes(std::string(op_name),
-                                        reinterpret_cast<void*>(entry));
-      });
-
   // crest::InferTypeOpInterface::adapt (scheme-object proc) (uptr w0 ... w10)
-  //   -> unsigned-8 (1 = success, 0 = failure)
+  //   (int refine) -> unsigned-8 (1 = success, 0 = failure)
   //
   // w0 ... w10 are the numbers of MLIR's call to inferReturnTypes(context,
   // location, operands, attributes, properties, regions, result types), as
@@ -107,11 +84,17 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
   // pointer, the location pointer or #f, the list of operand Values, and the
   // alist of (name . Attribute). It returns the list of result Types, or #f
   // when the types cannot be inferred.
+  //
+  // With `refine` the call is to refineReturnTypes, whose last argument is not
+  // only the place for the answer: it holds the result types that the op has.
+  // `proc` then gets them as a fifth argument, the list of Types, and what it
+  // answers replaces them.
   Sregister_symbol(
       "crest::InferTypeOpInterface::adapt",
       (void*)+[](ptr proc, uint64_t w0, uint64_t w1, uint64_t w2, uint64_t w3,
                  uint64_t w4, uint64_t w5, uint64_t w6, uint64_t w7,
-                 uint64_t w8, uint64_t w9, uint64_t w10) -> uint8_t {
+                 uint64_t w8, uint64_t w9, uint64_t w10,
+                 int refine) -> uint8_t {
         static_assert(sizeof(std::optional<mlir::Location>) == 16 &&
                       sizeof(mlir::ValueRange) == 16 &&
                       sizeof(mlir::RegionRange) == 16 &&
@@ -162,17 +145,70 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
             attributesArg = Scons(Scons(name, attr), attributesArg);
           }
         }
-        ptr types = scheme_call(
-            proc, Sunsigned64(reinterpret_cast<uint64_t>(ctx)), locationArg,
-            Conversion<mlir::ValueRange, ptr>{}(operands), attributesArg);
+        ptr contextArg = Sunsigned64(reinterpret_cast<uint64_t>(ctx));
+        ptr operandsArg = Conversion<mlir::ValueRange, ptr>{}(operands);
+        ptr types;
+        if (refine) {
+          types = scheme_call(
+              proc, contextArg, locationArg, operandsArg, attributesArg,
+              Conversion<mlir::TypeRange, ptr>{}(mlir::TypeRange(*result)));
+        } else {
+          types = scheme_call(proc, contextArg, locationArg, operandsArg,
+                              attributesArg);
+        }
         if (types == Sfalse) {
           return 0;
+        }
+        if (refine) {
+          result->clear();
         }
         for (; Spairp(types); types = Scdr(types)) {
           result->push_back(mlir::Type::getFromOpaquePointer(
               reinterpret_cast<const void*>(Sunsigned64_value(Scar(types)))));
         }
         return 1;
+      });
+
+  // mlir::InferTypeOpInterface::getInterfaceID () -> uptr
+  //
+  // The address that the TypeID of the interface wraps, which C++ turns back
+  // with TypeID::getFromOpaquePointer to find how to install the interface.
+  Sregister_symbol(
+      "mlir::InferTypeOpInterface::getInterfaceID", (void*)+[]() -> uint64_t {
+        return reinterpret_cast<uint64_t>(
+            mlir::InferTypeOpInterface::getInterfaceID().getAsOpaquePointer());
+      });
+
+  // crest::InferTypeOpInterface::adaptCompatible (scheme-object proc)
+  //   (uptr w0 w1 w2 w3) -> unsigned-8 (1 = compatible, 0 = not)
+  //
+  // w0 ... w3 are the numbers of MLIR's call to isCompatibleReturnTypes(
+  // TypeRange lhs, TypeRange rhs), as (mlir Interfaces InferTypeOpInterface)
+  // receives them: on Linux each 16-byte TypeRange is two numbers (w0 w1, w2
+  // w3), on Windows one, the address of a copy (w0, w1). `proc` is called with
+  // the two lists of Types.
+  Sregister_symbol(
+      "crest::InferTypeOpInterface::adaptCompatible",
+      (void*)+[](ptr proc, uint64_t w0, uint64_t w1, uint64_t w2,
+                 uint64_t w3) -> uint8_t {
+        static_assert(sizeof(mlir::TypeRange) == 16 &&
+                      std::is_trivially_copyable_v<mlir::TypeRange>);
+        mlir::TypeRange lhs;
+        mlir::TypeRange rhs;
+#ifdef _WIN32
+        lhs = *reinterpret_cast<mlir::TypeRange*>(w0);
+        rhs = *reinterpret_cast<mlir::TypeRange*>(w1);
+        (void)w2, (void)w3;
+#else
+        const uint64_t lhsWords[2] = {w0, w1};
+        const uint64_t rhsWords[2] = {w2, w3};
+        std::memcpy(&lhs, lhsWords, sizeof(lhs));
+        std::memcpy(&rhs, rhsWords, sizeof(rhs));
+#endif
+        return scheme_call(proc, Conversion<mlir::TypeRange, ptr>{}(lhs),
+                           Conversion<mlir::TypeRange, ptr>{}(rhs)) != Sfalse
+                   ? 1
+                   : 0;
       });
 
   // The result types of the op named by `state`, from the operands, attributes
@@ -191,12 +227,10 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
     mlir::MLIRContext* ctx = state.getContext();
     llvm::SmallVector<mlir::Type, 4> types;
     g_reported_failure.clear();
-    if (mlir::failed(crest::withXmmPreserved([&] {
-          return model->inferReturnTypes(
-              ctx, state.location, state.operands,
-              state.attributes.getDictionary(ctx), state.getRawProperties(),
-              mlir::RegionRange(state.regions), types);
-        }))) {
+    if (mlir::failed(model->inferReturnTypes(
+            ctx, state.location, state.operands,
+            state.attributes.getDictionary(ctx), state.getRawProperties(),
+            mlir::RegionRange(state.regions), types))) {
       std::string message =
           "cannot infer the result types of " + state.name.getStringRef().str();
       if (!g_reported_failure.empty()) {

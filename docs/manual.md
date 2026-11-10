@@ -363,9 +363,7 @@ The `-> result-type` can be left out when the op implements `mlir::InferTypeOpIn
 given to the op-form, as `builder.create<AddOp>(loc, lhs, rhs)` gets them in C++. The regions are
 not there yet: an op-form fills them after the op exists, so an op whose inference reads them
 (`scf.if`) needs its `-> type`, as the `scf::IfOp` builders of C++ take the result types; the error
-says so (`test/dsl/op-builders/regions.mlir`). An explicit `->` is used as written, and the verifier
-checks it against the interface like that of a C++ op (`inferred type(s) ... are incompatible with
-return type(s) of operation ...`). Leaving it out for an op that is not registered, or does not
+says so (`test/dsl/op-builders/regions.mlir`). An explicit `->` is used as written. Leaving it out for an op that is not registered, or does not
 implement the interface, raises `no result type for <op>: ... write -> type`; an error that the
 op's own `inferReturnTypes` raises is part of the message.
 
@@ -872,7 +870,7 @@ required ones leave). The printed spacing is that of `mlir-tblgen` (`OpFormatGen
 elements except around `(`, `)`, `[`, `]`, `<`, `>` and `,`, so a format prints what its C++ twin prints.
 Mistakes in the string are reported when the library compiles, with the column.
 
-**Result types left out.** An op that has `mlir::InferTypeOpInterface` in its `:interfaces` may leave every
+**Result types left out.** An op that has `mlir::InferTypeOpInterface` in its `:interface2` may leave every
 result type out of the format: the parser asks the interface for them once the operands and attributes are
 in, and the printer prints none (`%0 = inf.add %a, %b : i32, i32` has the type of `%a`). Some result types in
 the format and some not is an error; so is leaving them all out in an op without the interface
@@ -960,8 +958,9 @@ With `FunctionOpInterface` on the function op, `CallOpInterface` on the call op,
 `DialectInlinerInterface` and a terminator (`:traits (terminator)`, LLVM 23), MLIR's own `--inline`
 pass inlines calls in a Scheme dialect (`test/dsl/call-op-interface`).
 
-`InferTypeOpInterface` lets an op-form leave out `-> type` (see [§5](#5-begin-mlir-code)). Its
-method clause is `inferReturnTypes`, which gets the context, the location (or `#f`), the list of
+`InferTypeOpInterface` lets an op-form leave out `-> type` (see [§5](#5-begin-mlir-code)). It is
+written in the `:interface2` clause, whose entries are `(interface-name method-clause ...)` like those of
+`:interfaces` (below). Its method clause is `inferReturnTypes`, which gets the context, the location (or `#f`), the list of
 operand `Value`s and the alist of `(name . Attribute)`, and returns the list of result `Type`s
 (`#f` to say it cannot tell). An error it raises is part of the message of the diagnostic:
 
@@ -971,24 +970,29 @@ operand `Value`s and the alist of `(name . Attribute)`, and returns the list of 
 (define-op add
   :operands   ((lhs mlir::Value?) (rhs mlir::Value?))
   :results    ((out mlir::Value?))
-  :interfaces ((mlir::InferTypeOpInterface
+  :interface2 ((mlir::InferTypeOpInterface
                 (inferReturnTypes (context location operands attributes)
                   (list (mlir::Value::getType (car operands)))))))
 ```
 
-The verifier of the op checks its result types against the inference, as that of a C++ op with the
-interface does: an `add` that says `i64` where the inference says `i32` is an error. The second
-clause, `isCompatibleReturnTypes (inferred actual)`, says what fits (two lists of `Type`s, a boolean);
-without it the types must be equal. An op whose inference is general and whose results are refined
-later needs it, as the ODS ops of C++ that override `isCompatibleReturnTypes` do: Toy's `add`,
-`mul`, `transpose` and `constant` infer `tensor<*xf64>` and shape inference makes the result ranked,
-so they accept any `f64` tensor (`test/dsl/op-builders/compatible-types.mlir`). The op's own `:verify`
-runs first.
+The clauses are the methods of the interface, which C++ code that uses it calls through the op's
+`Concept` (`unittests/Crest/InferTypeTest.cpp`). A second clause, `isCompatibleReturnTypes (inferred
+actual)`, says whether the result types of the op fit what `inferReturnTypes` answered (two lists of
+`Type`s, a boolean); without it they must be equal. A third, `refineReturnTypes (context location
+operands attributes return-types)`, gets the result types the op has and answers the types it may have
+(`#f` to refuse); without it everything is accepted. Toy's `add`, `mul`, `transpose` and `constant` have
+the second: they infer `tensor<*xf64>` and shape inference makes the result ranked, so they say that any
+`f64` tensor fits, as the ODS ops of C++ that override `isCompatibleReturnTypes` do. CREST does not check
+the result types of an op against the interface when it verifies the op: a `:verify` that wants that
+calls the methods itself.
 
-The name in `:interfaces` is a Scheme procedure that the dialect's library must import: it takes
-the dispatcher that `define-op` makes for the entry. `mlir::InferTypeOpInterface` makes a C function
-for the method with `foreign-callable`, because MLIR calls `inferReturnTypes` through a function
-pointer that carries neither the op nor a `Concept`. `mlir::FunctionOpInterface` and
+The name in `:interface2` is a macro that the dialect's library must import. `mlir::InferTypeOpInterface`
+makes a C function for each of its clauses with `foreign-callable`, once, when the library is loaded,
+because MLIR calls `inferReturnTypes` through a function pointer that carries neither the op nor a
+`Concept`; it answers the pair of the interface's `TypeID` (`mlir::InferTypeOpInterface::getInterfaceID`)
+and a dispatcher of those functions, and C++ puts them in the op's `Concept` when a context registers
+the op. The name in `:interfaces` is a Scheme procedure that the dialect's library must import: it takes
+the dispatcher that `define-op` makes for the entry. `mlir::FunctionOpInterface` and
 `mlir::CallableOpInterface` make one for each clause as well (`(crest callback)`), and C++ keeps its
 address instead of the Scheme procedure. So does everything else that C++ calls back into Scheme: the
 callbacks of a dialect, of its ops and types, passes, and conversions (see

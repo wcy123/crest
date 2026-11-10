@@ -18,4 +18,5 @@ function(add_crest_unittest test_name)
   add_test(NAME ${test_name} COMMAND ${test_name})
 endfunction()
 
+add_subdirectory(Crest)
 add_subdirectory(Interpreter)

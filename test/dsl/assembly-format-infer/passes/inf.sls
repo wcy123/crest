@@ -14,7 +14,7 @@
     (define-op add
       :operands   ((lhs mlir::Value?) (rhs mlir::Value?))
       :results    ((out mlir::Value?))
-      :interfaces ((mlir::InferTypeOpInterface
+      :interface2 ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes)
                                       (list (mlir::Value::getType (car operands))))))
       :assembly-format "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs)")
@@ -22,7 +22,7 @@
     ;; No operands: nothing in the text says the type.
     (define-op zero
       :results    ((out mlir::Value?))
-      :interfaces ((mlir::InferTypeOpInterface
+      :interface2 ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes)
                                       (list (mlir::IntegerType::get<i64>)))))
       :assembly-format "attr-dict")
@@ -31,7 +31,7 @@
     (define-op pair
       :operands   ((x mlir::Value?))
       :results    ((first mlir::Value?) (second mlir::Value?))
-      :interfaces ((mlir::InferTypeOpInterface
+      :interface2 ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes)
                                       (let ([type (mlir::Value::getType (car operands))])
                                         (list type type)))))

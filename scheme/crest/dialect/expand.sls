@@ -81,13 +81,27 @@
                     [(cb ...) (%%op-cbs ctx full-name op)])
         #'(define callbacks (crest-op-callback-entries op-name cb ...)))))
 
-  ;; (reg-op dialect-ptr "toy.constant" %%toy.constant:op-callbacks) call for one op.
+  ;; The name of the library-level variable that holds the (TypeID . dispatcher) pairs of the
+  ;; :interface2 entries of an op. Each entry is a use of a macro of the library of its interface, which
+  ;; makes the C functions of the clauses: they are made once, when the library is loaded.
+  (define (%%interface2-id ctx op)
+    (%%id ctx "%%" ctx "." (op-parse-name op) ":interface2"))
+
+  ;; (define %%toy.add:interface2 (list (mlir::InferTypeOpInterface clause ...) ...)) for one op.
+  (define (%%generate-interface2-def ctx op)
+    (with-syntax ([interfaces (%%interface2-id ctx op)]
+                  [(entry ...) (op-parse-interface2 op)])
+      #'(define interfaces (list entry ...))))
+
+  ;; (reg-op dialect-ptr "toy.constant" %%toy.constant:op-callbacks %%toy.constant:interface2) call
+  ;; for one op.
   (define (%%generate-register-op! ctx op-prefix op reg-op-stx)
     (let ([name-str (string-append op-prefix (%%id->str (op-parse-name op)))])
       (with-syntax ([reg-op reg-op-stx]
                     [op-name name-str]
-                    [callbacks (%%op-callbacks-id ctx op)])
-        #'(reg-op dialect-ptr op-name callbacks))))
+                    [callbacks (%%op-callbacks-id ctx op)]
+                    [interfaces (%%interface2-id ctx op)])
+        #'(reg-op dialect-ptr op-name callbacks interfaces))))
 
   ;; ── Dialect types (define-type) ─────────────────────────────────────────────
 
@@ -217,6 +231,7 @@
                                    [(iface-call ...) iface-calls])
                        (list #'(define %%iface-marker (begin iface-call ... #t)))))])
             (append diface-defs iface-defs
+                    (map (lambda (op) (%%generate-interface2-def ctx op)) ops)
                     (map (lambda (op) (%%generate-op-callbacks-def ctx op-prefix op)) ops)
                     (map (lambda (type) (%%generate-type-callbacks-def ctx type)) types)
                     base-defs dialect-cbs-defs toplevel-iface-calls))))))
