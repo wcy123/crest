@@ -21,7 +21,7 @@ void registerIRSymbolInterfacesBindings();
 void ensureSymbolOpInterface(mlir::detail::InterfaceMap& map);
 
 // Install the interface in the definition of an op from the dispatcher of its
-// :interface2 entry (lib/Crest/Op.cpp).
+// :interfaces entry (lib/Crest/Op.cpp).
 void attachSymbolOpInterface(mlir::DynamicOpDefinition& def,
                              const LockedSchemeObject& dispatcher);
 } // namespace crest

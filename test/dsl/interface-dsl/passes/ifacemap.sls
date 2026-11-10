@@ -1,5 +1,5 @@
 #!r6rs
-;; A dialect with one op per interface of the :interface2 clause, and one with none: the ops of
+;; A dialect with one op per interface of the :interfaces clause, and one with none: the ops of
 ;; unittests/Crest/InterfaceTest.cpp, which asks the interface map of each what it has.
 (library (passes ifacemap)
   (export ifacemap)
@@ -13,10 +13,10 @@
                 mlir::MemoryEffectOpInterface mlir::ConditionallySpeculatable))
 
   (define-dialect ifacemap
-    (define-op func   :interface2 ((mlir::FunctionOpInterface)))
-    (define-op callee :interface2 ((mlir::CallableOpInterface)))
-    (define-op call   :interface2 ((mlir::CallOpInterface)))
-    (define-op attrs  :interface2 ((mlir::ArgAndResultAttrsOpInterface)))
-    (define-op symbol :interface2 ((mlir::SymbolOpInterface)))
-    (define-op effect :interface2 ((mlir::MemoryEffectOpInterface) (mlir::ConditionallySpeculatable)))
+    (define-op func   :interfaces ((mlir::FunctionOpInterface)))
+    (define-op callee :interfaces ((mlir::CallableOpInterface)))
+    (define-op call   :interfaces ((mlir::CallOpInterface)))
+    (define-op attrs  :interfaces ((mlir::ArgAndResultAttrsOpInterface)))
+    (define-op symbol :interfaces ((mlir::SymbolOpInterface)))
+    (define-op effect :interfaces ((mlir::MemoryEffectOpInterface) (mlir::ConditionallySpeculatable)))
     (define-op bare)))

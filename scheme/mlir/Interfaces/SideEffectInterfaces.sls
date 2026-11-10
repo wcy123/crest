@@ -9,7 +9,7 @@
           (crest callback)
           (mlir Interfaces SideEffectInterfaces ffi))
 
-  ;; The heads of entries of the :interface2 clause of define-op (see
+  ;; The heads of entries of the :interfaces clause of define-op (see
   ;; (mlir Interfaces InferTypeOpInterface)): the pair of the TypeID of the interface and the
   ;; dispatcher of its clauses. Neither interface has a method that Scheme implements: the op has no
   ;; memory effects and may be speculated.
@@ -19,7 +19,7 @@
         [(_) #'(cons (mlir::MemoryEffectOpInterface::getInterfaceID)
                      (crest-callback-entry-dispatcher '()))]
         [(_ clause ...)
-         (syntax-violation ':interface2 "mlir::MemoryEffectOpInterface takes no method clauses" stx)])))
+         (syntax-violation ':interfaces "mlir::MemoryEffectOpInterface takes no method clauses" stx)])))
 
   (define-syntax mlir::ConditionallySpeculatable
     (lambda (stx)
@@ -27,7 +27,7 @@
         [(_) #'(cons (mlir::ConditionallySpeculatable::getInterfaceID)
                      (crest-callback-entry-dispatcher '()))]
         [(_ clause ...)
-         (syntax-violation ':interface2 "mlir::ConditionallySpeculatable takes no method clauses" stx)])))
+         (syntax-violation ':interfaces "mlir::ConditionallySpeculatable takes no method clauses" stx)])))
 
   (define mlir::MemoryEffectOpInterface::getInterfaceID
     %mlir::MemoryEffectOpInterface::getInterfaceID)

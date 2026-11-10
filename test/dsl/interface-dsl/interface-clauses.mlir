@@ -1,4 +1,4 @@
-// Method clauses of :interface2 entries are what MLIR's call through the Concept reaches.
+// Method clauses of :interfaces entries are what MLIR's call through the Concept reaches.
 // An op that gives no clause for a method keeps the default (see interface-dsl.mlir).
 
 // RUN: rm -rf %t/iface-clauses-scheme && mkdir -p %t/iface-clauses-scheme

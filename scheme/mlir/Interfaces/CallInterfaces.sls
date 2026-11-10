@@ -1,7 +1,7 @@
 #!r6rs
 ;; Mirrors mlir/Interfaces/CallInterfaces.h
 ;;
-;; The three interfaces are macros, the heads of the entries of the :interface2 clause of define-op
+;; The three interfaces are macros, the heads of the entries of the :interfaces clause of define-op
 ;; (see (mlir Interfaces InferTypeOpInterface)): an entry is the pair of the TypeID of the interface
 ;; (mlir::X::getInterfaceID) and the dispatcher of its clauses, which C++ asks for the entry point of
 ;; each method that Scheme implements while it registers the op (lib/Crest/Op.cpp).
@@ -47,7 +47,7 @@
       (syntax-case stx ()
         [(_) #'(cons (mlir::CallOpInterface::getInterfaceID) (crest-callback-entry-dispatcher '()))]
         [(_ clause ...)
-         (syntax-violation ':interface2
+         (syntax-violation ':interfaces
                            "mlir::CallOpInterface takes no method clauses: the callee is the callee attribute and the arguments are the operands"
                            stx)])))
 
@@ -57,7 +57,7 @@
         [(_) #'(cons (mlir::ArgAndResultAttrsOpInterface::getInterfaceID)
                      (crest-callback-entry-dispatcher '()))]
         [(_ clause ...)
-         (syntax-violation ':interface2
+         (syntax-violation ':interfaces
                            "mlir::ArgAndResultAttrsOpInterface takes no method clauses"
                            stx)])))
 

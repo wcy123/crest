@@ -318,7 +318,7 @@
       :traits     (constant-like pure)
       :attributes ((value %%f64-elements-attr?))
       :results    ((output %%f64-tensor?))
-      :interface2 ((mlir::InferTypeOpInterface
+      :interfaces ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes)
                                       (%%constant-result-types attributes))
                     (isCompatibleReturnTypes (inferred actual)
@@ -346,7 +346,7 @@
       :operands   ((lhs %%f64-tensor-value?)
                    (rhs %%f64-tensor-value?))
       :results    ((output %%f64-tensor?))
-      :interface2 ((mlir::InferTypeOpInterface
+      :interfaces ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes)
                                       (%%unranked-f64-tensor-types))
                     (isCompatibleReturnTypes (inferred actual)
@@ -360,7 +360,7 @@
       :operands   ((lhs %%f64-tensor-value?)
                    (rhs %%f64-tensor-value?))
       :results    ((output %%f64-tensor?))
-      :interface2 ((mlir::InferTypeOpInterface
+      :interfaces ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes)
                                       (%%unranked-f64-tensor-types))
                     (isCompatibleReturnTypes (inferred actual)
@@ -373,7 +373,7 @@
       :traits     (pure)
       :operands   ((input %%f64-tensor-value?))
       :results    ((output %%f64-tensor?))
-      :interface2 ((mlir::InferTypeOpInterface
+      :interfaces ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes)
                                       (%%unranked-f64-tensor-types))
                     (isCompatibleReturnTypes (inferred actual)
@@ -408,7 +408,7 @@
 
     (define-op generic_call
       :summary    "generic function call"
-      :interface2 ((mlir::CallOpInterface))
+      :interfaces ((mlir::CallOpInterface))
       :attributes ((callee %%flat-symbol-ref-attr?))
       :results    ((output %%toy-type?))
       :operands   ((inputs %%toy-type-value? :variadic))
@@ -417,7 +417,7 @@
     (define-op func
       :summary    "toy function definition"
       :traits     (isolated-from-above)
-      :interface2 ((mlir::FunctionOpInterface
+      :interfaces ((mlir::FunctionOpInterface
                     (getFunctionType (self)
                                      (mlir::TypeAttr::getValue
                                       (mlir::Operation::getAttr self "function_type")))
@@ -459,7 +459,7 @@
       :operands   ((input %%struct-type-value?))
       :attributes ((index %%integer-attr? :buildable-type :i64))
       :results    ((output %%toy-type?))
-      :interface2 ((mlir::InferTypeOpInterface
+      :interfaces ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes)
                                       (%%struct-access-result-types operands attributes))))
       :assembly-format "$input `[` $index `]` attr-dict `:` type($input) `->` type($output)"

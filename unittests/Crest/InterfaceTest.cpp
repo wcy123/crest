@@ -4,7 +4,7 @@
  */
 //===- InterfaceTest.cpp - the interfaces of a Scheme op ------------------===//
 //
-// An op that Scheme defines gets its interfaces from the :interface2 entries of
+// An op that Scheme defines gets its interfaces from the :interfaces entries of
 // define-op: models in the InterfaceMap of its definition, the base interfaces
 // among them. The tests ask the map, as MLIR's own code does, and call the
 // default methods through the interface.
@@ -72,7 +72,7 @@ protected:
 
 } // namespace
 
-// Each interface is in the map of the op that has it in its :interface2 entry,
+// Each interface is in the map of the op that has it in its :interfaces entry,
 // and not in the map of one that has not.
 TEST_F(InterfaceTest, TheMapHasTheInterfacesOfTheEntries) {
   mlir::MLIRContext ctx(makeRegistry(), mlir::MLIRContext::Threading::DISABLED);

@@ -56,7 +56,7 @@
         (cons 'verifyBody (if body (%%verifier-entry-point body) 0))
         (cons 'verifyType (if type (%%verifier-entry-point type) 0))))))
 
-  ;; An entry of the :interface2 clause of define-op (see (mlir Interfaces InferTypeOpInterface)):
+  ;; An entry of the :interfaces clause of define-op (see (mlir Interfaces InferTypeOpInterface)):
   ;;   (mlir::FunctionOpInterface
   ;;     (getFunctionType (op) body ...) (setFunctionTypeAttr (op attr) body ...) ...)
   ;; the pair of the TypeID of the interface and the dispatcher of its clauses. The interfaces it

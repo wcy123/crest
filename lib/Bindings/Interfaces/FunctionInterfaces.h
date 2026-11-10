@@ -18,7 +18,7 @@ class LockedSchemeObject;
 void registerInterfacesFunctionInterfacesBindings();
 
 // Install the interface in the definition of an op from the dispatcher of its
-// :interface2 entry (lib/Crest/Op.cpp). The models of the interfaces it
+// :interfaces entry (lib/Crest/Op.cpp). The models of the interfaces it
 // inherits from (Symbol, ArgAndResultAttrs, Callable) go in first.
 void attachFunctionOpInterface(mlir::DynamicOpDefinition& def,
                                const LockedSchemeObject& dispatcher);

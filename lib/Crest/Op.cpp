@@ -68,7 +68,7 @@ const llvm::DenseMap<mlir::TypeID, AttachInterfaceFn>& getAttachInterfaceFns() {
 }
 
 // Install each interface of `interfaces`, the list of (TypeID . dispatcher)
-// pairs of the :interface2 entries of the op: the TypeID is the address that
+// pairs of the :interfaces entries of the op: the TypeID is the address that
 // the TypeID of the interface wraps.
 void attachInterfaces(mlir::DynamicOpDefinition& def,
                       const LockedSchemeObject& interfaces) {
@@ -90,7 +90,7 @@ void attachInterfaces(mlir::DynamicOpDefinition& def,
     auto attach = attachFns.find(id);
     if (attach == attachFns.end()) {
       scheme_error("crest::register-dynamic-op!",
-                   "no way to install an interface of :interface2");
+                   "no way to install an interface of :interfaces");
     }
     attach->second(def, dispatcher);
   }
@@ -322,7 +322,7 @@ void registerCrestDynamicOpBindings() {
   //   7 traits                        list of (name arg ...) lists of strings
   //
   // `interfaces` is the list of (TypeID . dispatcher) pairs of the op's
-  // :interface2 entries. The dispatchers are only needed while the op is
+  // :interfaces entries. The dispatchers are only needed while the op is
   // registered, so the list is locked for this call and not kept.
   Sregister_symbol(
       "crest::register-dynamic-op!",

@@ -9,7 +9,7 @@
           (crest callback)
           (mlir IR SymbolInterfaces ffi))
 
-  ;; The head of an entry of the :interface2 clause of define-op (see
+  ;; The head of an entry of the :interfaces clause of define-op (see
   ;; (mlir Interfaces InferTypeOpInterface)): the pair of the TypeID of the interface and the
   ;; dispatcher of its clauses. The interface has no method that Scheme implements.
   (define-syntax mlir::SymbolOpInterface
@@ -18,7 +18,7 @@
         [(_) #'(cons (mlir::SymbolOpInterface::getInterfaceID)
                      (crest-callback-entry-dispatcher '()))]
         [(_ clause ...)
-         (syntax-violation ':interface2 "mlir::SymbolOpInterface takes no method clauses" stx)])))
+         (syntax-violation ':interfaces "mlir::SymbolOpInterface takes no method clauses" stx)])))
 
   (define mlir::SymbolOpInterface::getInterfaceID
     %mlir::SymbolOpInterface::getInterfaceID)

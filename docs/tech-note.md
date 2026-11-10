@@ -204,15 +204,15 @@ An op of a C++ dialect gets every interface at compile time: `RegisteredOperatio
 pointers, the vtable of the interface). `mlir::dyn_cast<FunctionOpInterface>(op)` and
 `op->getName().hasInterface<FunctionOpInterface>()` are one lookup in that map.
 
-A Scheme op is a `DynamicOpDefinition`, which is such an `Impl` with an empty map. Until the interfaces were moved to
-`:interface2` (2026-11) CREST kept its `Concept`s in a separate table keyed by interface and op *name*
+A Scheme op is a `DynamicOpDefinition`, which is such an `Impl` with an empty map. Until the op-level
+`:interfaces` clause was reworked (2026-11) CREST kept its `Concept`s in a separate table keyed by interface and op *name*
 (`g_op_interface_registry`), reached through the `getRegisteredInterfaceForOp` hook of the dialect, which is only
 consulted by `dyn_cast` on an `Operation`. `hasInterface`, `getInterface` and the checks of passes that run on an
 interface (`InterfacePass::canScheduleOn`) read the `InterfaceMap` only, so they said "no" for every Scheme op. The
 table was also process-wide: an op name had its interfaces in a context that never loaded the dialect.
 
 Now the interfaces are part of the definition. `register-dynamic-op!` takes the list of `(TypeID . dispatcher)` pairs
-of the op's `:interface2` entries (the macro of each interface library makes the pair, see
+of the op's `:interfaces` entries (the macro of each interface library makes the pair, see
 `scheme/mlir/Interfaces/InferTypeOpInterface.sls`), and `lib/Crest/Op.cpp` finds the **attach function** of each
 interface by its `TypeID` in a static table. The attach function inserts a *model* into
 `def.getInterfaceMap()`: a struct derived from the interface's `Concept` with `using Interface = ...;`

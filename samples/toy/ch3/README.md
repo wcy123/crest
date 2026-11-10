@@ -69,13 +69,13 @@ tools/debug-define-dialect samples/toy/ch3/toy.sls > /tmp/toy3.sls
 
 `define-dialect toy` expands to a `begin` containing:
 
-**`%%toy.func:interface2`** — the pairs of the `:interface2` entries of `toy.func`, made once when the library is
+**`%%toy.func:interfaces`** — the pairs of the `:interfaces` entries of `toy.func`, made once when the library is
 loaded. `mlir::FunctionOpInterface` is a macro of `(mlir Interfaces FunctionInterfaces)`: it makes a C function
 (a `foreign-callable`) for each method clause and answers the pair of the interface's `TypeID` and a dispatcher of
 them:
 
 ```scheme
-(define %%toy.func:interface2
+(define %%toy.func:interfaces
   (list (mlir::FunctionOpInterface
          (getFunctionType (self)
            (mlir::TypeAttr::getValue
@@ -92,7 +92,7 @@ op via `%crest::register-dynamic-op!`, which installs the interfaces of the op i
   (%crest::register-dynamic-op! dialect-ptr "toy.constant" ...)
   ...
   (%crest::register-dynamic-op! dialect-ptr "toy.func"
-                                %%toy.func:op-callbacks %%toy.func:interface2)
+                                %%toy.func:op-callbacks %%toy.func:interfaces)
   ...)
 ```
 

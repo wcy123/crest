@@ -1,4 +1,4 @@
-// A clause of :interface2 that raises a Scheme error must not end the process: the verifier
+// A clause of :interfaces that raises a Scheme error must not end the process: the verifier
 // answers failure and the diagnostic carries the text of the error.
 
 // RUN: rm -rf %t/iface-clause-errors-scheme && mkdir -p %t/iface-clause-errors-scheme

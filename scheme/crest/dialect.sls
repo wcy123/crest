@@ -31,7 +31,6 @@
           :attributes
           :results
           :interfaces
-          :interface2
           :traits
           :assembly-format
           :required
@@ -75,7 +74,6 @@
   (define :buildable-type              ':buildable-type)
   (define :variadic                    ':variadic)
   (define :interfaces                  ':interfaces)
-  (define :interface2                  ':interface2)
   (define :traits                      ':traits)
   (define :assembly-format             ':assembly-format)
 
@@ -232,13 +230,13 @@
             (let ([operands   '()]
                   [attributes '()]
                   [results    '()]
-                  [interface2 #f]
+                  [interfaces #f]
                   [assembly-format #f]
                   [op-cbs     (make-vector 8 #f)])
               (let loop-sub ([stx sub-clauses-stx])
                 (syntax-case stx (:summary :description
                                            :operands :attributes :results
-                                           :interfaces :interface2 :traits :assembly-format
+                                           :interfaces :traits :assembly-format
                                            :verify :verify-regions
                                            :parse :print :fold
                                            :required :optional
@@ -246,20 +244,16 @@
                                            :populate-default-attrs)
                   [(:summary     _ . rest)  (loop-sub #'rest)]
                   [(:description _ . rest)  (loop-sub #'rest)]
-                  [(:interfaces . _)
-                   (syntax-violation 'define-op
-                                     ":interfaces is gone from define-op: write its interfaces as the entries of :interface2"
-                                     (car (syntax->list stx)))]
-                  [(:interface2 ((iface-name method-clause ...) ...) . rest)
+                  [(:interfaces ((iface-name method-clause ...) ...) . rest)
                    (andmap identifier? (syntax->list #'(iface-name ...)))
                    (begin
-                     (when interface2
-                       (syntax-violation 'define-op "repeated :interface2" (car (syntax->list stx))))
-                     (set! interface2 (syntax->list #'((iface-name method-clause ...) ...)))
+                     (when interfaces
+                       (syntax-violation 'define-op "repeated :interfaces" (car (syntax->list stx))))
+                     (set! interfaces (syntax->list #'((iface-name method-clause ...) ...)))
                      (loop-sub #'rest))]
-                  [(:interface2 . _)
+                  [(:interfaces . _)
                    (syntax-violation 'define-op
-                                     ":interface2 expects a list of (interface-name method-clause ...)"
+                                     ":interfaces expects a list of (interface-name method-clause ...)"
                                      (car (syntax->list stx)))]
                   [(:assembly-format format . rest)
                    (string? (syntax->datum #'format))
@@ -368,7 +362,7 @@
                                       (exists (lambda (entry)
                                                 (eq? (syntax->datum (car (syntax->list entry)))
                                                      'mlir::InferTypeOpInterface))
-                                              (or interface2 '())))])
+                                              (or interfaces '())))])
                          (vector-set! op-cbs 2 parse)
                          (vector-set! op-cbs 3 print)))
                      (unless assembly-format
@@ -379,7 +373,7 @@
                                                        (attribute-field-name field))))
                                  attributes)))
                    (make-op-parse op-name-stx operands attributes results op-cbs
-                                  (or interface2 '()))]))))
+                                  (or interfaces '()))]))))
 
 
           (let ([dialect-ifaces '()])
@@ -444,7 +438,7 @@
                  (and (identifier? #'op)           (identifier? #'region-index)
                       (identifier? #'result-index) (identifier? #'attr))
                  (begin (vector-set! cbs 10 #'(lambda (op region-index result-index attr) body ...)) (loop #'rest))]
-                ;; Dialect-level interfaces — the same entries as the :interface2 clause of an op.
+                ;; Dialect-level interfaces — the same entries as the :interfaces clause of an op.
                 ;; Each spec is (interface-name method-clause ...) where method-clause
                 ;; is (method-name (formals) body ...).
                 [((:interfaces (iface-spec ...)) . rest)

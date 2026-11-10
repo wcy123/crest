@@ -1,4 +1,4 @@
-;; Calls the interface methods of ops whose :interface2 entries have method clauses.
+;; Calls the interface methods of ops whose :interfaces entries have method clauses.
 (import (chezscheme)
         (crest dialect)
         (mlir IR Operation)

@@ -52,7 +52,7 @@
     (call-with-string-output-port
      (lambda (port) (display-condition condition port))))
 
-  ;; What the macro of an interface hands to C++ (the :interface2 clause of define-op): from a method
+  ;; What the macro of an interface hands to C++ (the :interfaces clause of define-op): from a method
   ;; name to the entry point of its callable, 0 for a method that the op has no clause for. C++ asks
   ;; for each method of the interface while it registers the op (lib/Crest/Interface.h). `entries`
   ;; is an alist of (method . entry point).

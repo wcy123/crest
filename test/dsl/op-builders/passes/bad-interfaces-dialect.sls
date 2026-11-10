@@ -1,6 +1,6 @@
 #!r6rs
-;; :interface2 takes a list of entries, not an interface name.
-(library (passes bad-interface2-dialect)
+;; :interfaces takes a list of entries, not an interface name.
+(library (passes bad-interfaces-dialect)
   (export badi)
   (import (except (chezscheme) =)
           (crest dialect)
@@ -11,4 +11,4 @@
     (define-op op
       :operands   ((x mlir::Value?))
       :results    ((out mlir::Value?))
-      :interface2 mlir::InferTypeOpInterface)))
+      :interfaces mlir::InferTypeOpInterface)))

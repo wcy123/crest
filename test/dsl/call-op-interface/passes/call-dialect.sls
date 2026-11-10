@@ -28,7 +28,7 @@
                    (materializeCallConversion (builder input result-type loc) 0))))
     (define-op func
       :summary    "function"
-      :interface2 ((mlir::FunctionOpInterface
+      :interfaces ((mlir::FunctionOpInterface
                     (getFunctionType (self)
                                      (mlir::TypeAttr::getValue (mlir::Operation::getAttr self "function_type")))
                     (setFunctionTypeAttr (self attr)
@@ -36,7 +36,7 @@
     (define-op call
       :summary    "call a function by symbol name"
       :results    ((output mlir::Value?))
-      :interface2 ((mlir::CallOpInterface)))
+      :interfaces ((mlir::CallOpInterface)))
     (define-op ret
       :summary "return from calltest.func"
       :traits (terminator))))

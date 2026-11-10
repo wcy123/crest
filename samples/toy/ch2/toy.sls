@@ -192,7 +192,7 @@
       :traits     (pure)
       :attributes ((value %%f64-elements-attr?))
       :results    ((output %%f64-tensor?))
-      :interface2 ((mlir::InferTypeOpInterface
+      :interfaces ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes)
                                       (%%constant-result-types attributes))
                     (isCompatibleReturnTypes (inferred actual)
@@ -215,7 +215,7 @@
       :operands   ((lhs %%f64-tensor-value?)
                    (rhs %%f64-tensor-value?))
       :results    ((output %%f64-tensor?))
-      :interface2 ((mlir::InferTypeOpInterface
+      :interfaces ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes)
                                       (%%unranked-f64-tensor-types))
                     (isCompatibleReturnTypes (inferred actual)
@@ -229,7 +229,7 @@
       :operands   ((lhs %%f64-tensor-value?)
                    (rhs %%f64-tensor-value?))
       :results    ((output %%f64-tensor?))
-      :interface2 ((mlir::InferTypeOpInterface
+      :interfaces ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes)
                                       (%%unranked-f64-tensor-types))
                     (isCompatibleReturnTypes (inferred actual)
@@ -242,7 +242,7 @@
       :summary    "transpose a 2D tensor"
       :operands   ((input %%f64-tensor-value?))
       :results    ((output %%f64-tensor?))
-      :interface2 ((mlir::InferTypeOpInterface
+      :interfaces ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes)
                                       (%%unranked-f64-tensor-types))
                     (isCompatibleReturnTypes (inferred actual)
@@ -269,7 +269,7 @@
     (define-op func
       :summary    "toy function definition"
       :traits     (isolated-from-above)
-      :interface2 ((mlir::FunctionOpInterface
+      :interfaces ((mlir::FunctionOpInterface
                     (getFunctionType (self)
                                      (mlir::TypeAttr::getValue
                                       (mlir::Operation::getAttr self "function_type")))

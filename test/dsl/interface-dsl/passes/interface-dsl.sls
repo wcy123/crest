@@ -1,4 +1,4 @@
-;; Unit test for the :interface2 DSL — top-level program for scheme-mlir.
+;; Unit test for the :interfaces DSL — top-level program for scheme-mlir.
 (import (chezscheme)
         (crest dialect)
         (mlir IR Operation)

@@ -1,5 +1,5 @@
 ;; The callbacks vector of a dialect: slot 0 is %%<dialect>:initialize, which registers the ops of
-;; the dialect (an op gets its interfaces from its :interface2 entries, see (crest dialect expand)).
+;; the dialect (an op gets its interfaces from its :interfaces entries, see (crest dialect expand)).
 (library (crest dialect expand interfaces)
   (export dialect-cbs-with-interfaces)
   (import (chezscheme)

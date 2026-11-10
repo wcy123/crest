@@ -5,6 +5,6 @@
 // RUN:   %crest-opt %s --crest-pass="passes=passes/call-override" 2>&1 \
 // RUN:   | %FileCheck %s
 
-// CHECK: Failed to import Scheme library: passes/call-override: Exception in :interface2: mlir::CallOpInterface takes no method clauses
+// CHECK: Failed to import Scheme library: passes/call-override: Exception in :interfaces: mlir::CallOpInterface takes no method clauses
 
 module {}

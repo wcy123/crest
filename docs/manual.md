@@ -359,7 +359,7 @@ dialect.op-name (operands...) modifiers...
 
 The `-> result-type` can be left out when the op implements `mlir::InferTypeOpInterface`
 (a C++ op such as `arith.addi`, checked in `test/dsl/op-builders/cxx-ops.mlir`, or an op of a Scheme dialect, see
-[Op-level `:interface2`](#op-level-interface2)): the types come from the operands and attributes
+[Op-level `:interfaces`](#op-level-interfaces)): the types come from the operands and attributes
 given to the op-form, as `builder.create<AddOp>(loc, lhs, rhs)` gets them in C++. The regions are
 not there yet: an op-form fills them after the op exists, so an op whose inference reads them
 (`scf.if`) needs its `-> type`, as the `scf::IfOp` builders of C++ take the result types; the error
@@ -870,7 +870,7 @@ required ones leave). The printed spacing is that of `mlir-tblgen` (`OpFormatGen
 elements except around `(`, `)`, `[`, `]`, `<`, `>` and `,`, so a format prints what its C++ twin prints.
 Mistakes in the string are reported when the library compiles, with the column.
 
-**Result types left out.** An op that has `mlir::InferTypeOpInterface` in its `:interface2` may leave every
+**Result types left out.** An op that has `mlir::InferTypeOpInterface` in its `:interfaces` may leave every
 result type out of the format: the parser asks the interface for them once the operands and attributes are
 in, and the printer prints none (`%0 = inf.add %a, %b : i32, i32` has the type of `%a`). Some result types in
 the format and some not is an error; so is leaving them all out in an op without the interface
@@ -914,14 +914,14 @@ CREST's, in one table in `lib/Crest/Trait.cpp`:
 A non-list value is reported when the library compiles; an unknown or repeated name, or wrong arguments,
 when the dialect loads. Before LLVM 23 `addTrait` does not exist, and a dialect that asks for a trait fails
 to load with a message saying so. The two interfaces behind `pure` can also be listed by hand in
-`:interface2` (`mlir::MemoryEffectOpInterface`, `mlir::ConditionallySpeculatable`, from
+`:interfaces` (`mlir::MemoryEffectOpInterface`, `mlir::ConditionallySpeculatable`, from
 `(mlir Interfaces SideEffectInterfaces)`). Passes that run on a dialect with Scheme callbacks (verifiers,
 folders) must not run multithreaded: pass `--mlir-disable-threading` to `crest-opt`.
 
-### Op-level `:interface2`
+### Op-level `:interfaces`
 
 An op can implement MLIR op interfaces (like `FunctionOpInterface`) by listing
-them in the `:interface2` clause of `define-op`. Each entry is `(interface-name method-clause ...)`, and each
+them in the `:interfaces` clause of `define-op`. Each entry is `(interface-name method-clause ...)`, and each
 method clause is `(method-name (formals) body ...)`. Methods not listed use the default C++ concept implementation.
 The interfaces are part of the definition of the op: they exist in a context that loads the dialect
 (`op->getName().hasInterface<...>()` is true there), and in no other.
@@ -929,7 +929,7 @@ The interfaces are part of the definition of the op: they exist in a context tha
 ```scheme
 (define-op func
   :summary "function definition"
-  :interface2 ((mlir::FunctionOpInterface
+  :interfaces ((mlir::FunctionOpInterface
                 (getFunctionType (self)
                   (mlir::TypeAttr::getValue
                     (mlir::Operation::getAttr self "function_type")))
@@ -953,7 +953,7 @@ arguments are all its operands; it takes no method clauses (a clause is an error
 ```scheme
 (define-op call
   :results    ((output mlir::Value?))
-  :interface2 ((mlir::CallOpInterface)))
+  :interfaces ((mlir::CallOpInterface)))
 ```
 
 With `FunctionOpInterface` on the function op, `CallOpInterface` on the call op, the dialect's
@@ -971,7 +971,7 @@ operand `Value`s and the alist of `(name . Attribute)`, and returns the list of 
 (define-op add
   :operands   ((lhs mlir::Value?) (rhs mlir::Value?))
   :results    ((out mlir::Value?))
-  :interface2 ((mlir::InferTypeOpInterface
+  :interfaces ((mlir::InferTypeOpInterface
                 (inferReturnTypes (context location operands attributes)
                   (list (mlir::Value::getType (car operands)))))))
 ```
@@ -987,7 +987,7 @@ the second: they infer `tensor<*xf64>` and shape inference makes the result rank
 the result types of an op against the interface when it verifies the op: a `:verify` that wants that
 calls the methods itself.
 
-The name of an interface in `:interface2` is a macro that the dialect's library must import from the library of
+The name of an interface in `:interfaces` is a macro that the dialect's library must import from the library of
 the interface (`(mlir Interfaces FunctionInterfaces)`, `(mlir Interfaces CallInterfaces)`, `(mlir IR SymbolInterfaces)`,
 `(mlir Interfaces SideEffectInterfaces)`, `(mlir Interfaces InferTypeOpInterface)`). It makes a C function for each
 of the clauses with `foreign-callable` (`(crest callback)`), once, when the library is loaded, and answers the pair

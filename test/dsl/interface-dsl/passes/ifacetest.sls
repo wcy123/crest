@@ -1,5 +1,5 @@
 #!r6rs
-;; Dialect definition isolated so define-dialect :interface2 compilation
+;; Dialect definition isolated so define-dialect :interfaces compilation
 ;; does not interact with MLIR interface method imports.
 (library (passes ifacetest)
   (export ifacetest)
@@ -9,4 +9,4 @@
 
   (define-dialect ifacetest
     (define-op func
-      :interface2 ((mlir::FunctionOpInterface)))))
+      :interfaces ((mlir::FunctionOpInterface)))))

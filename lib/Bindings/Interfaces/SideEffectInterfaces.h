@@ -22,7 +22,7 @@ void ensureMemoryEffectOpInterface(mlir::detail::InterfaceMap& map);
 void ensureConditionallySpeculatable(mlir::detail::InterfaceMap& map);
 
 // Install the interface in the definition of an op from the dispatcher of its
-// :interface2 entry (lib/Crest/Op.cpp).
+// :interfaces entry (lib/Crest/Op.cpp).
 void attachMemoryEffectOpInterface(mlir::DynamicOpDefinition& def,
                                    const LockedSchemeObject& dispatcher);
 void attachConditionallySpeculatable(mlir::DynamicOpDefinition& def,

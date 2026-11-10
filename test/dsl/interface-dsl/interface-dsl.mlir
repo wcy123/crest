@@ -1,4 +1,4 @@
-// Tests the :interface2 DSL end-to-end.
+// Tests the :interfaces DSL end-to-end.
 // Uses an isolated scheme binary dir to avoid stale cache issues.
 
 // RUN: rm -rf %t/iface-scheme && mkdir -p %t/iface-scheme
