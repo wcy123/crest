@@ -257,6 +257,33 @@ void registerInterfacesFunctionInterfacesBindings() {
             c->getFunctionType(c, op).getAsOpaquePointer());
       });
 
+  // mlir::FunctionOpInterface::cloneTypeWith (uptr op) (list inputs) (list
+  // results) -> uptr Type: the function type of the op with these inputs and
+  // results, as the Concept of the op says (the default is a FunctionType).
+  Sregister_symbol(
+      "mlir::FunctionOpInterface::cloneTypeWith",
+      (void*)+[](uint64_t op_ptr, ptr inputs, ptr results) -> uint64_t {
+        auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
+        auto* c = lookupConcept<mlir::FunctionOpInterface>(op);
+        if (!c) {
+          scheme_error("mlir::FunctionOpInterface::cloneTypeWith",
+                       "op does not implement FunctionOpInterface:",
+                       op->getName().getStringRef().str().c_str());
+        }
+        llvm::SmallVector<mlir::Type> inputTypes, resultTypes;
+        for (ptr cur = inputs; cur != Snil; cur = Scdr(cur)) {
+          inputTypes.push_back(mlir::Type::getFromOpaquePointer(
+              reinterpret_cast<const void*>(Sunsigned64_value(Scar(cur)))));
+        }
+        for (ptr cur = results; cur != Snil; cur = Scdr(cur)) {
+          resultTypes.push_back(mlir::Type::getFromOpaquePointer(
+              reinterpret_cast<const void*>(Sunsigned64_value(Scar(cur)))));
+        }
+        return reinterpret_cast<uint64_t>(
+            c->cloneTypeWith(c, op, inputTypes, resultTypes)
+                .getAsOpaquePointer());
+      });
+
   Sregister_symbol(
       "mlir::FunctionOpInterface::setFunctionTypeAttr",
       (void*)+[](uint64_t op_ptr, uint64_t attr_ptr) -> void {

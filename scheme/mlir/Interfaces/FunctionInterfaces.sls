@@ -7,6 +7,7 @@
           mlir::function_interface_impl::printFunctionOp
           mlir::FunctionOpInterface::getFunctionType
           mlir::FunctionOpInterface::setFunctionTypeAttr
+          mlir::FunctionOpInterface::cloneTypeWith
           mlir::FunctionOpInterface::verifyBody
           mlir::FunctionOpInterface::verifyType)
   (import (chezscheme)
@@ -76,6 +77,11 @@
 
   (define mlir::FunctionOpInterface::getFunctionType
     %mlir::FunctionOpInterface::getFunctionType)
+
+  ;; The function type of the op with these inputs and results (two lists of Types), as its
+  ;; cloneTypeWith clause says, or the default (a FunctionType).
+  (define mlir::FunctionOpInterface::cloneTypeWith
+    %mlir::FunctionOpInterface::cloneTypeWith)
 
   (define mlir::FunctionOpInterface::setFunctionTypeAttr
     %mlir::FunctionOpInterface::setFunctionTypeAttr)

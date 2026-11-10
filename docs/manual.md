@@ -941,7 +941,10 @@ Two interfaces have method clauses that matter. `FunctionOpInterface`: `getFunct
 the `Type`, `setFunctionTypeAttr (op attr)`, `cloneTypeWith (op inputs results)` answers a `Type` (the two
 ranges are lists of `Type`s), and `verifyBody (op)` and `verifyType (op)` answer `#t` for success. An error
 that a verifier raises does not end the process: the verifier fails and the diagnostic carries the text of
-the error. `CallableOpInterface`: `getCallableRegion (op)` answers the `Region` (the first one by default).
+the error. `mlir::FunctionOpInterface::cloneTypeWith` of `(mlir Interfaces FunctionInterfaces)` calls the method
+on an op from Scheme: `(mlir::FunctionOpInterface::cloneTypeWith op inputs results)` answers the clause's
+`Type`, or the default `FunctionType` (`test/dsl/interface-dsl/interface-clauses.mlir`).
+`CallableOpInterface`: `getCallableRegion (op)` answers the `Region` (the first one by default).
 A clause with any other name is ignored.
 
 The op interfaces a Scheme op can implement: `FunctionOpInterface` (which also brings
@@ -1066,9 +1069,28 @@ A parse callback that fails answers `#f`. A verifier says yes with any value but
 own message (`mlir::Operation::emitError`) and answers `#f`. An error that a verifier raises does not end
 the process: the verifier fails and the diagnostic has the text of the error. The callbacks are made
 into C functions once, when the library of the dialect is loaded, and a context that loads the dialect
-shares them (`test/dsl/dialect-callbacks`). There is no way for Scheme to print into a `DialectAsmPrinter`
-yet, so `:print-type` and `:print-attribute` are only reached for a type or attribute of the dialect
-that C++ made.
+shares them (`test/dsl/dialect-callbacks`).
+
+The verifiers of the attributes (`:verify-op-attr` and the two for a function's arguments and results)
+get a `NamedAttribute`: `mlir::NamedAttribute::getName` answers its name (a `StringAttr`, read with
+`mlir::StringAttr::getValue`), `mlir::NamedAttribute::getValue` its value, and `mlir::Attribute::print` the
+text of an attribute, all of `(mlir IR Attributes)`. The `NamedAttribute` lives for the call of the verifier.
+
+The printer that `:print-type` and `:print-attribute` get is a `DialectAsmPrinter`, an `mlir::AsmPrinter`.
+`(mlir IR OpImplementation)` has its methods: `mlir::AsmPrinter::printType`, `printAttribute`,
+`printKeywordOrString` (a keyword as it is, anything else quoted) and `printString` (quoted), and
+`mlir::AsmPrinter::getStream`, whose stream takes raw text with `llvm::raw_ostream::write` of
+`(llvm Support raw_ostream)`. A dialect type of `define-type` prints through `:print-type` when the dialect
+has one (`test/dsl/dialect-callbacks/dialect-callback-print.mlir`: `!dcp.pair<i32, f32>` is parsed and
+printed as `!dcp.pair<i32 & f32>`). MLIR keeps the pretty `!dialect.name<...>` form only when what the callback
+printed after the dialect name is an identifier followed by `<...>`; anything else comes out as
+`!dialect<...>`. `:print-attribute` is reached for an attribute of the dialect, and a Scheme dialect has none
+(there is no `define-attribute`), so it has no test.
+
+The `:populate-default-attrs` clause of an op gets the `OperationName` and the `NamedAttrList` that MLIR is
+filling: `mlir::NamedAttrList::get` (0 when the list has no such attribute), `append` (adds one) and `set`
+(replaces or adds), and `mlir::OperationName::getContext`, all of `(mlir IR OperationSupport)`
+(`test/dsl/op-callbacks`).
 
 ### Loading the dialect
 

@@ -16,6 +16,9 @@
 // CHECK: getCallableRegion: true
 // CHECK: bad verifyBody: false
 // CHECK: bad verifyType: false
+// CHECK: clause cloneTypeWith
+// CHECK-NEXT: good cloneTypeWith: (f32, i32) -> i64
+// CHECK-NEXT: bad cloneTypeWith: (i32, f32) -> i64
 
 module {
   "ifaceclauses.good"() ({
