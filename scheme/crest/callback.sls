@@ -8,7 +8,7 @@
 ;;
 ;; (crest callback) — C function pointers made from Scheme procedures.
 ;;
-;;   (crest-callback-entry-point (argument-type ...) result-type proc)   an address
+;;   (crest-make-static-c-callable (argument-type ...) result-type proc)   an address
 ;;   (crest-callback-pointer-list pointer count)                          a list of integers
 ;;   (crest-callback-condition-text condition)                            a string
 ;;   (crest-callback-entry-dispatcher entries)                            a procedure
@@ -32,7 +32,8 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 (library (crest callback)
-  (export crest-callback-entry-point
+  (export crest-make-static-c-callable
+          with-c-callable
           crest-callback-pointer-list
           crest-callback-condition-text
           crest-callback-entry-dispatcher
@@ -56,12 +57,42 @@
            [n (string-length name)])
       (and (>= n 2) (string=? (substring name (- n 2) n) "nt"))))
 
-  (define-syntax crest-callback-entry-point
+  (define-syntax crest-make-static-c-callable
     (syntax-rules ()
       [(_ (argument-type ...) result-type proc)
        (let ([code (foreign-callable proc (argument-type ...) result-type)])
          (lock-object code)
          (foreign-callable-entry-point code))]))
+
+  ;; (with-c-callable (name (argument-type ...) result-type value) body ...)
+  ;;
+  ;; Runs BODY with NAME bound to the address of a C function that calls what VALUE is:
+  ;;
+  ;;   a procedure: the macro makes the foreign-callable, locks it, and unlocks it when BODY ends, also
+  ;;   when it ends by an error. Use it for a callback that C++ calls while BODY runs.
+  ;;
+  ;;   a code object that the caller made with foreign-callable and locked with lock-object, to reuse it
+  ;;   (making one costs about 200 ns): the macro uses it as it is and never unlocks it, because it is
+  ;;   the caller's. An unlocked code object is an error: the garbage collector could move it, and C++
+  ;;   would call a stale address.
+  ;;
+  ;; The address is only valid inside BODY: if C++ keeps it after BODY ends, use
+  ;; crest-make-static-c-callable.
+  (define-syntax with-c-callable
+    (syntax-rules ()
+      [(_ (name (type ...) result value) body ...)
+       (let* ([given value]
+              [made? (procedure? given)]
+              [code (if made? (foreign-callable given (type ...) result) given)])
+         (when made? (lock-object code))
+         (unless (locked-object? code)
+           (assertion-violation 'with-c-callable
+                                "the callable must be a procedure, or a code object that is locked with lock-object"
+                                given))
+         (dynamic-wind
+             (lambda () #f)
+             (lambda () (let ([name (foreign-callable-entry-point code)]) body ...))
+             (lambda () (when made? (unlock-object code)))))]))
 
   (define (crest-callback-pointer-list pointer count)
     (map (lambda (i) (foreign-ref 'uptr pointer (* i 8))) (iota count)))
@@ -99,7 +130,7 @@
   ;;                through the place that the caller gives, as for an object
   ;;   range        an ArrayRef or an OperandRange: the procedure answers (data . size)
   ;; The procedure gets only the arguments, not the Concept. Answers the entry point, as
-  ;; crest-callback-entry-point does.
+  ;; crest-make-static-c-callable does.
   (define-syntax crest-slot-callable
     (lambda (stx)
       (define (argument-info kind windows?)
@@ -120,31 +151,31 @@
                [values (map (lambda (info formal) ((cdr info) formal)) infos formals)])
           (case (syntax->datum result)
             [(void uptr int unsigned-8 unsigned-32)
-             #`(crest-callback-entry-point
+             #`(crest-make-static-c-callable
                 (uptr #,@types) #,result
                 (lambda (concept #,@formals) (#,procedure #,@values)))]
             [(object)
              (if windows?
-                 #`(crest-callback-entry-point
+                 #`(crest-make-static-c-callable
                     (uptr uptr #,@types) uptr
                     (lambda (answer concept #,@formals)
                       (foreign-set! 'uptr answer 0 (#,procedure #,@values))
                       answer))
-                 #`(crest-callback-entry-point
+                 #`(crest-make-static-c-callable
                     (uptr #,@types) uptr
                     (lambda (concept #,@formals) (#,procedure #,@values))))]
             [(logical-result)
              (if windows?
-                 #`(crest-callback-entry-point
+                 #`(crest-make-static-c-callable
                     (uptr uptr #,@types) uptr
                     (lambda (answer concept #,@formals)
                       (foreign-set! 'unsigned-8 answer 0 (#,procedure #,@values))
                       answer))
-                 #`(crest-callback-entry-point
+                 #`(crest-make-static-c-callable
                     (uptr #,@types) unsigned-8
                     (lambda (concept #,@formals) (#,procedure #,@values))))]
             [(range)
-             #`(crest-callback-entry-point
+             #`(crest-make-static-c-callable
                 (uptr #,@types) (& %%SlotRange)
                 (lambda (answer concept #,@formals)
                   (let ([pair (#,procedure #,@values)])

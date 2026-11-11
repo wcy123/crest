@@ -155,6 +155,6 @@
 
   (define %mlir::RewriterBase::modifyOpInPlace
     (foreign-procedure "mlir::RewriterBase::modifyOpInPlace"
-                       (uptr uptr scheme-object) void))
+                       (uptr uptr uptr) void))
 
   ) ;; end library (mlir Transforms DialectConversion ffi)

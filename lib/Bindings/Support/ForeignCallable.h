@@ -162,13 +162,14 @@ template <typename Signature> class ForeignCallable;
 /// @par When not to use it
 /// Some callbacks live as long as the program: the verifier of an op, or a
 /// clause of an interface. The library that defines them builds their C
-/// functions once, when the library is loaded (`crest-callback-entry-point` in
-/// scheme/crest/callback.sls). C++ keeps only the function pointer and never
+/// functions once, when the library is loaded (`crest-make-static-c-callable`
+/// in scheme/crest/callback.sls). C++ keeps only the function pointer and never
 /// frees it. Do not use this class for those.
 ///
 /// Use this class for callbacks that a caller passes in for one run. If a
-/// function was built by `crest-callback-entry-point` but must be freed later,
-/// the constructor that takes an entry point lets this object take it over.
+/// function was built by `crest-make-static-c-callable` but must be freed
+/// later, the constructor that takes an entry point lets this object take it
+/// over.
 ///
 /// @par Cost
 /// The first time a prototype is used, Scheme compiles a small helper for it,
@@ -232,7 +233,7 @@ public:
   ForeignCallable() = default;
 
   /// Takes over a C function that Scheme has already built and locked with
-  /// `crest-callback-entry-point`. The destructor releases it. Create the
+  /// `crest-make-static-c-callable`. The destructor releases it. Create the
   /// object as the first thing in the binding: until then, an early `return`
   /// leaves the function locked.
   explicit ForeignCallable(uint64_t entry) : entry_(entry) {}

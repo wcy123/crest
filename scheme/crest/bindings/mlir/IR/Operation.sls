@@ -54,6 +54,7 @@
     mlir::Operation::getParentOfType<ModuleOp>
     operation-get-operands)
   (import (rnrs)
+          (only (crest callback) with-c-callable)
           (mlir IR Operation ffi)
           (rename (rime loop) (:with :rime-with))
           (only (mlir IR BuiltinAttributes)
@@ -140,13 +141,18 @@
 
   ;; @brief mlir::Operation::walk — walk all nested ops, calling callback for each.
   ;; @param op        Operation* uptr (root of walk)
-  ;; @param callback  procedure invoked with each Operation* uptr (its answer is ignored); C++ makes
-  ;;                  it into a C function for the walk and releases it when the walk is over
+  ;; @param callback  an expression for a procedure invoked with each Operation* uptr (its answer is
+  ;;                  ignored), or for a code object that the caller made and locked (see
+  ;;                  with-c-callable in (crest callback)). It is a C function for the length of the
+  ;;                  walk, and released when the walk is over, also on an error.
   ;; @return          void
   ;; @see             mlir/IR/Operation.h
-  ;; @note            Defined in lib/Bindings/IR/Operation.cpp
-  (define (mlir::Operation::walk op callback)
-    (%walk op callback))
+  ;; @note            A macro. Defined in lib/Bindings/IR/Operation.cpp
+  (define-syntax mlir::Operation::walk
+    (syntax-rules ()
+      [(_ op callback)
+       (with-c-callable (visit (uptr) void callback)
+         (%walk op visit))]))
 
   ;; @brief mlir::Operation::setOperand — replace the i-th operand with a new value.
   ;; @param op     Operation* uptr

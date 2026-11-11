@@ -53,8 +53,8 @@
            #'(begin
                (define entry
                  (let ([run (lambda (op) body ...)])
-                   (crest-callback-entry-point (uptr) int
-                                               (lambda (x) (%%verdict (lambda () (run x)))))))
+                   (crest-make-static-c-callable (uptr) int
+                                                 (lambda (x) (%%verdict (lambda () (run x)))))))
                (define (name)
                  (%crest::createSchemePass name-string entry))))]
         [(_ . _)

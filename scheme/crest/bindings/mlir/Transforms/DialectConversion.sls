@@ -153,9 +153,14 @@
 
   (define mlir::applyPartialConversion  %mlir::applyPartialConversion)
   ;; @brief RewriterBase::modifyOpInPlace: THUNK changes the op, and the rewriter is told.
-  ;; THUNK is made into a C function for this call by C++ and released when it returns.
-  (define (mlir::RewriterBase::modifyOpInPlace rewriter op thunk)
-    (%mlir::RewriterBase::modifyOpInPlace rewriter op thunk))
+  ;; THUNK is an expression for a procedure of no arguments (or a code object that the caller made and
+  ;; locked, see with-c-callable). It is a C function for the length of the call and released when it
+  ;; returns, also on an error. A macro.
+  (define-syntax mlir::RewriterBase::modifyOpInPlace
+    (syntax-rules ()
+      [(_ rewriter op thunk)
+       (with-c-callable (c-thunk () void thunk)
+         (%mlir::RewriterBase::modifyOpInPlace rewriter op c-thunk))]))
 
   ;; The callback of a pattern succeeds when it answers #t (and only #t).
   (define (%%conversion-pattern who proc)

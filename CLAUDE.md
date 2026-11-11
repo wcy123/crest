@@ -255,7 +255,7 @@ function of its own, a `foreign-callable` whose code object is locked. Who makes
 depend on how long the callable is used:
 
 - **made once per library** (an op's clause, a dialect's callback, the body of a `define-pass`): the Scheme side
-  makes it at the library level with `crest-callback-entry-point` (`(crest callback)`), which answers its entry
+  makes it at the library level with `crest-make-static-c-callable` (`(crest callback)`), which answers its entry
   point, so a context makes none of its own; the C++ binding takes that address as a `uptr` and keeps a plain
   function pointer, and never releases it;
 - **made for a run** (a closure the user passes to a pattern, a type converter, a walk): Scheme gives the binding
@@ -318,6 +318,6 @@ callable that Scheme made for a clause (`installInterfaceEntry`), so MLIR calls 
 - [ ] Every `foreign-procedure` string matches a `Sregister_symbol` key in C++ (Rule 14)
 - [ ] `%%` on internal Scheme helpers; `%` only on raw FFI bindings
 - [ ] A binding that takes a builder: `register_builder_binding` in C++, `define-builder-binding` in `ffi.sls`
-- [ ] A binding that calls back into Scheme: a callable from `crest-callback-entry-point`, owned per Rule 17
+- [ ] A binding that calls back into Scheme: a callable from `crest-make-static-c-callable`, owned per Rule 17
 - [ ] A new op interface: its macro is a table for `op-interface-expand`, the C++ attach function only calls
       `installInterfaceEntry` (Rule 19), and a slot with a new kind of C++ type gets a case in `SlotAbiTest`

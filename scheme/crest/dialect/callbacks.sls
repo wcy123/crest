@@ -60,7 +60,7 @@
   ;; constant); its answer is pushed into `folded` one result at a time. 0 is no fold, or an error
   ;; that was reported; 1 is a fold, with no result at all when the op was changed in place.
   (define (%%fold-entry-point fold)
-    (crest-callback-entry-point
+    (crest-make-static-c-callable
      (uptr uptr uptr uptr) int
      (lambda (op attributes count folded)
        (guard (c [#t (%crest::DynamicOp::reportFailure (crest-callback-condition-text c)) 0])
@@ -88,52 +88,52 @@
                                           verify-region-result-attr interfaces)
     (vector
      (if initialize
-         (crest-callback-entry-point (uptr) void initialize)
+         (crest-make-static-c-callable (uptr) void initialize)
          0)
      (if get-dependent-dialects
-         (crest-callback-entry-point
+         (crest-make-static-c-callable
           (uptr) void
           (lambda (dialect)
             (for-each (lambda (name) (%crest::CrestDialect::loadDependentDialect dialect name))
                       (get-dependent-dialects))))
          0)
      (if parse-attribute
-         (crest-callback-entry-point
+         (crest-make-static-c-callable
           (uptr uptr) uptr
           (lambda (parser type) (or (parse-attribute parser type) 0)))
          0)
      (if print-attribute
-         (crest-callback-entry-point (uptr uptr) void print-attribute)
+         (crest-make-static-c-callable (uptr uptr) void print-attribute)
          0)
      (if parse-type
-         (crest-callback-entry-point
+         (crest-make-static-c-callable
           (uptr) uptr
           (lambda (parser) (or (parse-type parser) 0)))
          0)
      (if print-type
-         (crest-callback-entry-point (uptr uptr) void print-type)
+         (crest-make-static-c-callable (uptr uptr) void print-type)
          0)
      (if materialize-constant
-         (crest-callback-entry-point
+         (crest-make-static-c-callable
           (uptr uptr uptr uptr) uptr
           (lambda (builder value type loc) (or (materialize-constant builder value type loc) 0)))
          0)
      (if get-canonicalization-patterns
-         (crest-callback-entry-point (uptr) void get-canonicalization-patterns)
+         (crest-make-static-c-callable (uptr) void get-canonicalization-patterns)
          0)
      (if verify-op-attr
-         (crest-callback-entry-point
+         (crest-make-static-c-callable
           (uptr uptr) int
           (lambda (op attr) (%%verdict (lambda () (verify-op-attr op attr)))))
          0)
      (if verify-region-arg-attr
-         (crest-callback-entry-point
+         (crest-make-static-c-callable
           (uptr unsigned-32 unsigned-32 uptr) int
           (lambda (op region-index arg-index attr)
             (%%verdict (lambda () (verify-region-arg-attr op region-index arg-index attr)))))
          0)
      (if verify-region-result-attr
-         (crest-callback-entry-point
+         (crest-make-static-c-callable
           (uptr unsigned-32 unsigned-32 uptr) int
           (lambda (op region-index result-index attr)
             (%%verdict (lambda ()
@@ -149,27 +149,27 @@
                                      get-canonicalization-patterns populate-default-attrs traits)
     (vector
      (if verify
-         (crest-callback-entry-point (uptr) int (lambda (op) (%%op-verdict (lambda () (verify op)))))
+         (crest-make-static-c-callable (uptr) int (lambda (op) (%%op-verdict (lambda () (verify op)))))
          0)
      (if verify-regions
-         (crest-callback-entry-point
+         (crest-make-static-c-callable
           (uptr) int
           (lambda (op) (%%op-verdict (lambda () (verify-regions op)))))
          0)
      (if parse
-         (crest-callback-entry-point
+         (crest-make-static-c-callable
           (uptr uptr) int
           (lambda (parser state) (%%op-verdict (lambda () (parse parser state)))))
          0)
      (if print
-         (crest-callback-entry-point (uptr uptr) void (lambda (op printer) (print op printer op-name)))
+         (crest-make-static-c-callable (uptr uptr) void (lambda (op printer) (print op printer op-name)))
          0)
      (if fold (%%fold-entry-point fold) 0)
      (if get-canonicalization-patterns
-         (crest-callback-entry-point (uptr) void get-canonicalization-patterns)
+         (crest-make-static-c-callable (uptr) void get-canonicalization-patterns)
          0)
      (if populate-default-attrs
-         (crest-callback-entry-point (uptr uptr) void populate-default-attrs)
+         (crest-make-static-c-callable (uptr uptr) void populate-default-attrs)
          0)
      traits))
 
@@ -180,7 +180,7 @@
   (define (crest-type-callback-entries verify parse print)
     (vector
      (if verify
-         (crest-callback-entry-point
+         (crest-make-static-c-callable
           (uptr uptr uptr) int
           (lambda (params count sink)
             (guard (c [#t (%crest::DynamicType::setMessage sink (crest-callback-condition-text c))
@@ -192,7 +192,7 @@
                  [else 0])))))
          0)
      (if parse
-         (crest-callback-entry-point
+         (crest-make-static-c-callable
           (uptr uptr) int
           (lambda (parser sink)
             (guard (c [#t (%crest::DynamicType::setMessage sink (crest-callback-condition-text c))
@@ -206,7 +206,7 @@
                  [else 0])))))
          0)
      (if print
-         (crest-callback-entry-point
+         (crest-make-static-c-callable
           (uptr uptr uptr) void
           (lambda (printer params count)
             (print printer (crest-callback-pointer-list params count))))

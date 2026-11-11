@@ -41,7 +41,7 @@ TEST_F(InterpreterTest, EvalSimpleExpression) {
   EXPECT_TRUE(g_interp->eval("(+ 1 2)"));
 }
 
-// What crest-callback-entry-point (scheme/crest/callback.sls) does: make a
+// What crest-make-static-c-callable (scheme/crest/callback.sls) does: make a
 // foreign-callable, lock its code object once, answer its address.
 static uint64_t makeCallableEntry() {
   ptr port = scheme_call(

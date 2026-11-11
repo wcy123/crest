@@ -1462,7 +1462,7 @@ symbol takes exactly one. Register it with `register_builder_binding`
 Rule 4.
 
 A binding that calls back into Scheme does not keep a Scheme procedure: the garbage collector moves
-it. The Scheme side makes a C function for it with `crest-callback-entry-point` from `(crest callback)`,
+it. The Scheme side makes a C function for it with `crest-make-static-c-callable` from `(crest callback)`,
 which locks the code object and answers its address, and the binding takes that address as a `uptr`.
 A callback that lives as long as the library (the clause of an op, a callback of a dialect) is made once,
 where the library defines it, and C++ keeps the address as a function pointer. One that lives for a run (a
