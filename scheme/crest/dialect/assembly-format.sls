@@ -525,9 +525,16 @@
                         [(s ...) (map (lambda (e) (step e #f)) elements)]
                         [(r ...) resolve-steps]
                         [(rs ...) result-steps])
+            ;; The lists of operands that the parser answered are freed when the parse ends,
+            ;; whether it succeeds, fails or raises an error: resolveOperands only reads them.
             #'(lambda (P S)
                 (let ([ops 0] ... [type #f] ... [rtype #f] ... [all-ops 0] [ft #f])
-                  (and s ... r ... rs ... #t))))))))
+                  (dynamic-wind
+                      (lambda () #f)
+                      (lambda () (and s ... r ... rs ... #t))
+                      (lambda ()
+                        (crest::OpAsmParser::freeOperands ops) ...
+                        (crest::OpAsmParser::freeOperands all-ops))))))))))
 
   ;; ── Printer ─────────────────────────────────────────────────────────────────
 

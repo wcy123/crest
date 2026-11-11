@@ -16,6 +16,8 @@ namespace crest {
 void registerPassPassManagerBindings() {
   /// ctx_ptr: CrestBox<MLIRContext>* | MLIRContext* →
   /// CrestBox<mlir::PassManager>*
+  // LEAK WARNING: the box is on the C++ heap and only the caller frees it. Use
+  // with-PassManager, which frees it after its body.
   Sregister_symbol(
       "mlir::PassManager::new", (void*)+[](uint64_t ctx_ptr) -> uint64_t {
         if (!ctx_ptr) {
@@ -30,6 +32,8 @@ void registerPassPassManagerBindings() {
   // mlir::Pass* that nothing owns yet, so this is where ownership starts.
   // Adding the same pass twice gives it two owners: the caller must not.
   /// pm_ptr: CrestBox<mlir::PassManager>*, pass_ptr: mlir::Pass*
+  // LEAK WARNING: a pass that is made by a create...Pass binding and never
+  // added to a pass manager leaks: nothing else owns it.
   Sregister_symbol(
       "mlir::PassManager::addPass",
       (void*)+[](uint64_t pm_ptr, uint64_t pass_ptr) -> void {

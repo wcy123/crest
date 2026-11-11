@@ -245,6 +245,9 @@ void registerIROpImplementationBindings() {
   using UnresolvedOperands =
       CrestBox<llvm::SmallVector<mlir::OpAsmParser::UnresolvedOperand, 4>>;
 
+  // LEAK WARNING: the list is on the C++ heap. Free it with
+  // crest::OpAsmParser::freeOperands when it is no longer needed (the generated
+  // parser of an assembly format does); resolveOperands only reads it.
   Sregister_symbol(
       "mlir::OpAsmParser::parseOperandList",
       (void*)+[](uint64_t parser_ptr, int64_t required) -> uint64_t {
@@ -262,6 +265,9 @@ void registerIROpImplementationBindings() {
         return reinterpret_cast<uint64_t>(ops);
       });
 
+  // LEAK WARNING: the list is on the C++ heap. Free it with
+  // crest::OpAsmParser::freeOperands when it is no longer needed (the generated
+  // parser of an assembly format does); resolveOperands only reads it.
   Sregister_symbol(
       "mlir::OpAsmParser::parseOperand",
       (void*)+[](uint64_t parser_ptr) -> uint64_t {
@@ -275,6 +281,9 @@ void registerIROpImplementationBindings() {
         return reinterpret_cast<uint64_t>(ops);
       });
 
+  // LEAK WARNING: the list is on the C++ heap. Free it with
+  // crest::OpAsmParser::freeOperands when it is no longer needed (the generated
+  // parser of an assembly format does); resolveOperands only reads it.
   Sregister_symbol(
       "mlir::OpAsmParser::parseOptionalOperand",
       (void*)+[](uint64_t parser_ptr) -> uint64_t {
@@ -314,6 +323,17 @@ void registerIROpImplementationBindings() {
         auto& state = *reinterpret_cast<mlir::OperationState*>(state_ptr);
         return !p->resolveOperands(ops->inner(), ft.getInputs(),
                                    p->getNameLoc(), state.operands);
+      });
+
+  // crest::OpAsmParser::freeOperands (uptr operands) → void
+  //
+  // Frees the list that parseOperand, parseOptionalOperand or parseOperandList
+  // answered (0 is nothing). Nothing else frees it: resolveOperands only reads
+  // it, so whoever parsed the list frees it when it is no longer needed.
+  Sregister_symbol(
+      "crest::OpAsmParser::freeOperands",
+      (void*)+[](uint64_t ops_handle) -> void {
+        delete reinterpret_cast<UnresolvedOperands*>(ops_handle);
       });
 
   Sregister_symbol(

@@ -15,6 +15,9 @@ namespace crest {
 
 void registerIRDialectRegistryBindings() {
   /// → CrestBox<mlir::DialectRegistry>*
+  // LEAK WARNING: the box is on the C++ heap and only the caller frees it. Use
+  // with-DialectRegistry, which frees it after its body. A registry made by
+  // calling this directly and never freed leaks.
   Sregister_symbol(
       "mlir::DialectRegistry::new", (void*)+[]() -> uint64_t {
         return reinterpret_cast<uint64_t>(
