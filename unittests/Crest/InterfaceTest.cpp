@@ -363,6 +363,17 @@ TEST_F(SlotAbiTest, BoolAndEnumResults) {
             mlir::SymbolTable::Visibility::Nested);
 }
 
+// A LogicalResult answered by value, as verifyBody and verifyType do: one byte.
+TEST_F(SlotAbiTest, LogicalResultResult) {
+  using Slot = llvm::LogicalResult (*)(const void*, mlir::Operation*);
+  auto ok =
+      slot<Slot>("(crest-slot-callable (uptr) unsigned-8 (lambda (op) 1))");
+  auto bad =
+      slot<Slot>("(crest-slot-callable (uptr) unsigned-8 (lambda (op) 0))");
+  EXPECT_TRUE(mlir::succeeded(ok(nullptr, op(0x1000))));
+  EXPECT_TRUE(mlir::failed(bad(nullptr, op(0x1000))));
+}
+
 // An enum taken by value and a pointer taken by reference, as setVisibility and
 // getEffects take them.
 TEST_F(SlotAbiTest, EnumAndReferenceArguments) {
