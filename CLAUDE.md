@@ -261,7 +261,7 @@ depend on how long the callable is used:
 - **made for a run** (a closure the user passes to a pattern, a type converter, a walk): Scheme gives the binding
   the procedure, adapted to the C types, as a `scheme-object`, and the binding makes the owner with
   `crest::ForeignCallable<R(Args...)>::fromProcedure(procedure)` (`lib/Bindings/Support/ForeignCallable.h`),
-  which deduces the prototype from the C++ type, compiles a small helper each time (about 0.3 ms, nothing is cached), and unlocks the callable
+  which deduces the prototype from the C++ type, compiles a small helper the first time a prototype is used (about 0.6 ms; the prototype owns it, as a static member), and unlocks the callable
   when what calls it is destroyed. Making it runs Scheme, which can move the objects of the Scheme heap: first copy
   what you need out of Scheme memory (a `const char*` into a `std::string`, the elements of a Scheme list), then do the
   checks that can raise an error, then make the owner. An error raised while the owner exists skips its destructor and

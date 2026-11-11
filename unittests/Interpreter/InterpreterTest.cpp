@@ -157,6 +157,19 @@ TEST_F(InterpreterTest, FromProcedureSurvivesCollections) {
   EXPECT_EQ(callable(5), 15);
 }
 
+// Each prototype owns one maker, as a static member: the same maker comes back,
+// it is kept locked, and another prototype has its own.
+TEST_F(InterpreterTest, EachPrototypeOwnsItsMaker) {
+  using Signature = detail::ForeignSignature<int, int>;
+  using Other = detail::ForeignSignature<void, uint64_t>;
+  EXPECT_EQ(Signature::text(), "(int) int");
+  EXPECT_EQ(Other::text(), "(uptr) void");
+  ptr maker = Signature::maker();
+  EXPECT_TRUE(Slocked_objectp(maker));
+  EXPECT_EQ(Signature::maker(), maker);
+  EXPECT_NE(Other::maker(), maker);
+}
+
 // Two callables of the same prototype work independently: each one is made from
 // its own procedure, and nothing is kept between them.
 TEST_F(InterpreterTest, FromProcedureMakesIndependentCallablesOfOnePrototype) {
