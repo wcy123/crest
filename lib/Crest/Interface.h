@@ -11,14 +11,16 @@
 #include "mlir/Support/InterfaceSupport.h"
 #include "mlir/Support/TypeID.h"
 #include <type_traits>
+#include <utility>
 
 namespace crest {
 
 // An op that Scheme defines gets an interface by inserting a model into the
 // InterfaceMap of its DynamicOpDefinition (the attach function of the
 // interface, found by its TypeID in lib/Crest/Op.cpp). A model is a struct
-// derived from the Concept of the interface, with `using Interface = ...;` and
-// a default constructor. When the interface has a FallbackModel, derive from it
+// derived from CrestModel<mlir::XInterface>, which is the Concept of the
+// interface with `using Interface = ...;`, and has a default constructor.
+// When the interface has a FallbackModel, a model can derive from it instead
 // (`struct M : mlir::XInterface::FallbackModel<M>`): it has both, and fills the
 // slots with calls to the members of `M`, which are the default methods.
 //
@@ -33,6 +35,24 @@ namespace crest {
 // value, or answer a LogicalResult with a diagnostic. For such a slot the model
 // keeps the entry point in a field (installInterfaceEntry fills it), and the
 // Concept's own function reads it through `self` and adapts the arguments.
+
+/// The model of `InterfaceT` for an op that Scheme defines: its Concept, a
+/// table of function pointers, with the alias `InterfaceMap::insertModels`
+/// asks for. Every slot is null until something fills it. A model that has
+/// defaults derives from this and gives them to the constructor in the order of
+/// the slots, which are the members of the Concept, or assigns them in its own
+/// constructor; the arguments are those of the Concept's aggregate
+/// initialization, so a lambda without captures converts to its slot.
+template <typename InterfaceT> struct CrestModel : InterfaceT::Concept {
+  using Interface = InterfaceT;
+  using Concept = typename InterfaceT::Concept;
+
+  CrestModel() = default;
+
+  template <typename... Args,
+            typename = std::enable_if_t<(sizeof...(Args) > 0)>>
+  explicit CrestModel(Args&&... args) : Concept{std::forward<Args>(args)...} {}
+};
 
 /// The entry point of the callable that `dispatcher` has for `method`, as the
 /// function pointer type `Fn`, or null. `dispatcher` is the Scheme procedure

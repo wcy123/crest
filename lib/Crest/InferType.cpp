@@ -24,9 +24,7 @@ namespace crest {
 
 namespace {
 
-struct DynamicInferTypeModel : public mlir::InferTypeOpInterface::Concept {
-  using Interface = mlir::InferTypeOpInterface;
-
+struct DynamicInferTypeModel : public CrestModel<mlir::InferTypeOpInterface> {
   // What an op gets for a method its dispatcher has no clause for. The default
   // refineReturnTypes of an ODS op calls the other two methods of the op, which
   // a function pointer without the op cannot do, so it accepts anything.
@@ -41,8 +39,11 @@ struct DynamicInferTypeModel : public mlir::InferTypeOpInterface::Concept {
     return lhs == rhs;
   }
 
-  DynamicInferTypeModel()
-      : Concept{nullptr, defaultRefine, defaultCompatible} {}
+  // defaultRefine is a template: the slot says which instance.
+  DynamicInferTypeModel() {
+    refineReturnTypes = defaultRefine;
+    isCompatibleReturnTypes = defaultCompatible;
+  }
 };
 
 } // namespace

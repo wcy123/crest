@@ -215,7 +215,8 @@ Now the interfaces are part of the definition. `register-dynamic-op!` takes the 
 of the op's `:interfaces` entries (the macro of each interface library makes the pair, see
 `scheme/mlir/Interfaces/InferTypeOpInterface.sls`), and `lib/Crest/Op.cpp` finds the **attach function** of each
 interface by its `TypeID` in a static table. The attach function inserts a *model* into
-`def.getInterfaceMap()`: a struct derived from the interface's `Concept` with `using Interface = ...;`
+`def.getInterfaceMap()`: a struct derived from `crest::CrestModel<mlir::XInterface>` (`lib/Crest/Interface.h`), which is the
+interface's `Concept` with `using Interface = ...;`
 (`lib/Bindings/Interfaces/*.cpp`, `lib/Bindings/IR/SymbolInterfaces.cpp`, `lib/Crest/InferType.cpp`).
 `InterfaceMap::insertModels` default-constructs it in `malloc`ed memory and frees it with the map, so a model must be
 trivially destructible. A slot of the `Concept` is a plain function pointer, so when its arguments and its answer are

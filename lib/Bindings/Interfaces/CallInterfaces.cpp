@@ -27,9 +27,8 @@ namespace {
 // the other two keep their entry point here (a Type answered by ArrayRef is
 // not something a C function can return). The constructor leaves a slot empty
 // until attachCallableOpInterface fills it.
-struct CrestCallableOpModel : public mlir::CallableOpInterface::Concept {
-  using Interface = mlir::CallableOpInterface;
-  using Concept = mlir::CallableOpInterface::Concept;
+struct CrestCallableOpModel
+    : public crest::CrestModel<mlir::CallableOpInterface> {
 
   // Each pushes the types it answers into `sink`, a SmallVector<Type>*, with
   // crest::CallableOpInterface::addType.
@@ -37,7 +36,7 @@ struct CrestCallableOpModel : public mlir::CallableOpInterface::Concept {
   void (*get_result_types)(uint64_t op, uint64_t sink) = nullptr;
 
   CrestCallableOpModel()
-      : Concept{
+      : CrestModel{
             nullptr,
             [](const Concept* self,
                mlir::Operation* op) -> llvm::ArrayRef<mlir::Type> {
@@ -86,12 +85,9 @@ private:
 
 // A call op's callee is its "callee" attribute, a symbol reference or (as in
 // Toy) a string naming one; its arguments are all of its operands.
-struct CallConceptData : public mlir::CallOpInterface::Concept {
-  using Interface = mlir::CallOpInterface;
-  using Concept = mlir::CallOpInterface::Concept;
-
+struct CallConceptData : public crest::CrestModel<mlir::CallOpInterface> {
   CallConceptData()
-      : Concept{
+      : CrestModel{
             [](const Concept*,
                mlir::Operation* op) -> mlir::CallInterfaceCallable {
               mlir::Attribute callee = op->getAttr("callee");
@@ -148,12 +144,11 @@ struct CallConceptData : public mlir::CallOpInterface::Concept {
 };
 
 struct ArgAndResultAttrsConceptData
-    : public mlir::ArgAndResultAttrsOpInterface::Concept {
-  using Interface = mlir::ArgAndResultAttrsOpInterface;
+    : public crest::CrestModel<mlir::ArgAndResultAttrsOpInterface> {
   // printFunctionOp only calls getArgAttrsAttr/getResAttrsAttr; nullptr is
   // safe.
   ArgAndResultAttrsConceptData()
-      : mlir::ArgAndResultAttrsOpInterface::Concept{
+      : CrestModel{
             [](const mlir::ArgAndResultAttrsOpInterface::Concept*,
                mlir::Operation*) -> mlir::ArrayAttr { return nullptr; },
             [](const mlir::ArgAndResultAttrsOpInterface::Concept*,

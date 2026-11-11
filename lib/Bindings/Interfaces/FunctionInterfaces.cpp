@@ -55,10 +55,8 @@ llvm::LogicalResult verifyResult(mlir::Operation* op, int answer) {
   return op->emitOpError() << message;
 }
 
-struct FunctionConceptData : public mlir::FunctionOpInterface::Concept {
-  using Interface = mlir::FunctionOpInterface;
-  using Concept = mlir::FunctionOpInterface::Concept;
-
+struct FunctionConceptData
+    : public crest::CrestModel<mlir::FunctionOpInterface> {
   uint64_t (*get_function_type)(uint64_t op) = nullptr;
   void (*set_function_type_attr)(uint64_t op, uint64_t attr) = nullptr;
   uint64_t (*clone_type_with)(uint64_t op, const void* const* inputs,
@@ -68,7 +66,7 @@ struct FunctionConceptData : public mlir::FunctionOpInterface::Concept {
   int (*verify_type)(uint64_t op) = nullptr;
 
   FunctionConceptData()
-      : Concept{
+      : CrestModel{
             [](const Concept*, mlir::Operation* op) -> mlir::Type {
               return mlir::cast<mlir::TypeAttr>(op->getAttr("function_type"))
                   .getValue();
