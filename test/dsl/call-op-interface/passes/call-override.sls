@@ -3,9 +3,10 @@
   (export badcall)
   (import (chezscheme)
           (crest dialect)
-          (only (mlir Interfaces CallInterfaces) mlir::CallOpInterface))
+          (only (mlir Interfaces CallInterfaces) mlir::CallOpInterface mlir::ArgAndResultAttrsOpInterface mlir::CallInterfaceCallable::get<SymbolRefAttr> mlir::CallInterfaceCallable::dyn_cast<SymbolRefAttr> crest::OperandRange::get))
 
   (define-dialect badcall
     (define-op call
-      :interfaces ((mlir::CallOpInterface
+      :interfaces ((mlir::ArgAndResultAttrsOpInterface :standard)
+                   (mlir::CallOpInterface
                     (getArgOperands (self) 0))))))

@@ -49,6 +49,7 @@
     %erase
     %get-attr
     %set-attr
+    %remove-attr
     %get-float-attr
     %mlir::Operation::getAttrDictionary
     %mlir::Operation::setAttrs)
@@ -280,6 +281,16 @@
   (define %set-attr
     (foreign-procedure "mlir::Operation::setAttr"
                        (uptr string uptr) void))
+
+  ;; @brief mlir::Operation::removeAttr — remove an attribute and answer it.
+  ;; @param op         Operation* uptr
+  ;; @param attr-name  Attribute name (string)
+  ;; @return           Attribute* as uptr, or 0 when the op has no attribute of that name
+  ;; @see              mlir/IR/Operation.h
+  ;; @note             Defined in lib/Bindings/IR/Operation.cpp
+  (define %remove-attr
+    (foreign-procedure "mlir::Operation::removeAttr"
+                       (uptr string) uptr))
 
   ;; @brief mlir::FloatAttr::getValueAsDouble — get a float attribute value.
   ;; @param op         Operation* uptr

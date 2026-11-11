@@ -10,7 +10,7 @@
           (mlir IR BuiltinAttributes)
           (mlir IR Operation)
           (only (mlir Interfaces FunctionInterfaces) mlir::FunctionOpInterface)
-          (only (mlir Interfaces CallInterfaces) mlir::CallOpInterface mlir::CallableOpInterface)
+          (only (mlir Interfaces CallInterfaces) mlir::CallOpInterface mlir::CallableOpInterface mlir::ArgAndResultAttrsOpInterface mlir::CallInterfaceCallable::get<SymbolRefAttr> mlir::CallInterfaceCallable::dyn_cast<SymbolRefAttr> crest::OperandRange::get)
           (only (mlir IR BuiltinTypes) mlir::FunctionType::getInputs mlir::FunctionType::getResults)
           (only (mlir Transforms InliningUtils) mlir::DialectInlinerInterface)
           (only (mlir support array-ref) crest::CArrayRef::size crest::CArrayRef::at))
@@ -30,7 +30,8 @@
                    (materializeCallConversion (builder input result-type loc) 0))))
     (define-op func
       :summary    "function"
-      :interfaces ((mlir::CallableOpInterface
+      :interfaces ((mlir::ArgAndResultAttrsOpInterface :standard)
+                   (mlir::CallableOpInterface
                     (getCallableRegion (self) (mlir::Operation::getRegion self 0))
                     (getArgumentTypes (self)
                                       (mlir::FunctionType::getInputs
@@ -46,7 +47,18 @@
     (define-op call
       :summary    "call a function by symbol name"
       :results    ((output mlir::Value?))
-      :interfaces ((mlir::CallOpInterface)))
+      :interfaces ((mlir::ArgAndResultAttrsOpInterface :standard)
+                   (mlir::CallOpInterface
+                    (getCallableForCallee (self)
+                                          (mlir::CallInterfaceCallable::get<SymbolRefAttr>
+                                           (mlir::Operation::getAttr self "callee")))
+                    (setCalleeFromCallable (self callee)
+                                           (mlir::Operation::setAttr!
+                                            self "callee"
+                                            (mlir::CallInterfaceCallable::dyn_cast<SymbolRefAttr> callee)))
+                    (getArgOperands (self)
+                                    (crest::OperandRange::get self 0 (mlir::Operation::getNumOperands self)))
+                    (getArgOperandsMutable :all-operands))))
     (define-op ret
       :summary "return from calltest.func"
       :traits (terminator))))

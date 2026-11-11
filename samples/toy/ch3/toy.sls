@@ -21,7 +21,7 @@
           (mlir IR Region)
           (mlir IR OpImplementation)
           (only (mlir Interfaces InferTypeOpInterface) mlir::InferTypeOpInterface)
-          (only (mlir Interfaces CallInterfaces) mlir::CallableOpInterface)
+          (only (mlir Interfaces CallInterfaces) mlir::CallableOpInterface mlir::ArgAndResultAttrsOpInterface)
           (only (mlir Interfaces FunctionInterfaces)
                 mlir::FunctionOpInterface
                 mlir::function_interface_impl::printFunctionOp
@@ -287,7 +287,8 @@
     (define-op func
       :summary    "toy function definition"
       :traits     (isolated-from-above)
-      :interfaces ((mlir::CallableOpInterface
+      :interfaces ((mlir::ArgAndResultAttrsOpInterface :standard)
+                   (mlir::CallableOpInterface
                     (getCallableRegion (self) (mlir::Operation::getRegion self 0))
                     (getArgumentTypes (self)
                                       (mlir::FunctionType::getInputs

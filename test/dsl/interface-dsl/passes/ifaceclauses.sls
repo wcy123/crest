@@ -9,11 +9,12 @@
           (mlir IR BuiltinAttributes)
           (only (mlir IR BuiltinTypes) mlir::FunctionType::get)
           (only (mlir Interfaces FunctionInterfaces) mlir::FunctionOpInterface)
-          (only (mlir Interfaces CallInterfaces) mlir::CallableOpInterface))
+          (only (mlir Interfaces CallInterfaces) mlir::CallableOpInterface mlir::ArgAndResultAttrsOpInterface))
 
   (define-dialect ifaceclauses
     (define-op good
-      :interfaces ((mlir::CallableOpInterface
+      :interfaces ((mlir::ArgAndResultAttrsOpInterface :standard)
+                   (mlir::CallableOpInterface
                     (getCallableRegion (self)
                                        (display "clause getCallableRegion\n")
                                        (mlir::Operation::getRegion self 0))
@@ -33,7 +34,8 @@
                                    (display "clause cloneTypeWith\n")
                                    (mlir::FunctionType::get (mlir::Operation::getContext self) (reverse inputs) results)))))
     (define-op settable
-      :interfaces ((mlir::CallableOpInterface
+      :interfaces ((mlir::ArgAndResultAttrsOpInterface :standard)
+                   (mlir::CallableOpInterface
                     (getCallableRegion (self) (mlir::Operation::getRegion self 0))
                     (getArgumentTypes (self) '())
                     (getResultTypes (self) '()))
@@ -45,7 +47,8 @@
                                          (display "clause setFunctionTypeAttr\n")
                                          (mlir::Operation::setAttr! self "function_type" attr)))))
     (define-op bad
-      :interfaces ((mlir::CallableOpInterface
+      :interfaces ((mlir::ArgAndResultAttrsOpInterface :standard)
+                   (mlir::CallableOpInterface
                     (getCallableRegion (self) (mlir::Operation::getRegion self 0))
                     (getArgumentTypes (self) '())
                     (getResultTypes (self) '()))
@@ -58,7 +61,8 @@
                     (verifyBody (self) #f)
                     (verifyType (self) #f))))
     (define-op raises
-      :interfaces ((mlir::CallableOpInterface
+      :interfaces ((mlir::ArgAndResultAttrsOpInterface :standard)
+                   (mlir::CallableOpInterface
                     (getCallableRegion (self) (mlir::Operation::getRegion self 0))
                     (getArgumentTypes (self) '())
                     (getResultTypes (self) '()))

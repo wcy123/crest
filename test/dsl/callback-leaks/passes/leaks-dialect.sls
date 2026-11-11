@@ -12,7 +12,7 @@
           (only (mlir IR BuiltinTypes) mlir::FunctionType::get)
           (only (mlir Interfaces FunctionInterfaces) mlir::FunctionOpInterface)
           (only (mlir Interfaces CallInterfaces)
-                mlir::CallableOpInterface mlir::CallOpInterface mlir::ArgAndResultAttrsOpInterface)
+                mlir::CallableOpInterface mlir::CallOpInterface mlir::ArgAndResultAttrsOpInterface mlir::CallInterfaceCallable::get<SymbolRefAttr> mlir::CallInterfaceCallable::dyn_cast<SymbolRefAttr> crest::OperandRange::get)
           (only (mlir IR SymbolInterfaces) mlir::SymbolOpInterface)
           (only (mlir Transforms InliningUtils) mlir::DialectInlinerInterface)
           (only (mlir Interfaces SideEffectInterfaces)
@@ -31,7 +31,8 @@
     (define-type simple
       (:verify (params) #t))
     (define-op func
-      :interfaces ((mlir::CallableOpInterface
+      :interfaces ((mlir::ArgAndResultAttrsOpInterface :standard)
+                   (mlir::CallableOpInterface
                     (getCallableRegion (self) (mlir::Operation::getRegion self 0))
                     (getArgumentTypes (self) '())
                     (getResultTypes (self) '()))
@@ -47,9 +48,20 @@
                                    (mlir::FunctionType::get (mlir::Operation::getContext self)
                                                             inputs results)))))
     (define-op call
-      :interfaces ((mlir::CallOpInterface)))
+      :interfaces ((mlir::ArgAndResultAttrsOpInterface :standard)
+                   (mlir::CallOpInterface
+                    (getCallableForCallee (self)
+                                          (mlir::CallInterfaceCallable::get<SymbolRefAttr>
+                                           (mlir::Operation::getAttr self "callee")))
+                    (setCalleeFromCallable (self callee)
+                                           (mlir::Operation::setAttr!
+                                            self "callee"
+                                            (mlir::CallInterfaceCallable::dyn_cast<SymbolRefAttr> callee)))
+                    (getArgOperands (self)
+                                    (crest::OperandRange::get self 0 (mlir::Operation::getNumOperands self)))
+                    (getArgOperandsMutable :all-operands))))
     (define-op attrs
-      :interfaces ((mlir::ArgAndResultAttrsOpInterface)))
+      :interfaces ((mlir::ArgAndResultAttrsOpInterface :standard)))
     (define-op symbol
       :interfaces ((mlir::SymbolOpInterface)))
     (define-op effect

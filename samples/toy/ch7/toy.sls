@@ -23,7 +23,7 @@
           (mlir IR OpImplementation)
           (mlir IR Builders)
           (mlir IR OperationSupport)
-          (only (mlir Interfaces CallInterfaces) mlir::CallOpInterface mlir::CallableOpInterface)
+          (only (mlir Interfaces CallInterfaces) mlir::CallOpInterface mlir::CallableOpInterface mlir::ArgAndResultAttrsOpInterface mlir::CallInterfaceCallable::get<SymbolRefAttr> mlir::CallInterfaceCallable::dyn_cast<SymbolRefAttr> crest::OperandRange::get)
           (only (mlir Transforms InliningUtils) mlir::DialectInlinerInterface)
           (only (mlir Interfaces InferTypeOpInterface) mlir::InferTypeOpInterface)
           (only (mlir Interfaces FunctionInterfaces)
@@ -409,7 +409,18 @@
 
     (define-op generic_call
       :summary    "generic function call"
-      :interfaces ((mlir::CallOpInterface))
+      :interfaces ((mlir::ArgAndResultAttrsOpInterface :standard)
+                   (mlir::CallOpInterface
+                    (getCallableForCallee (self)
+                                          (mlir::CallInterfaceCallable::get<SymbolRefAttr>
+                                           (mlir::Operation::getAttr self "callee")))
+                    (setCalleeFromCallable (self callee)
+                                           (mlir::Operation::setAttr!
+                                            self "callee"
+                                            (mlir::CallInterfaceCallable::dyn_cast<SymbolRefAttr> callee)))
+                    (getArgOperands (self)
+                                    (crest::OperandRange::get self 0 (mlir::Operation::getNumOperands self)))
+                    (getArgOperandsMutable :all-operands)))
       :attributes ((callee %%flat-symbol-ref-attr?))
       :results    ((output %%toy-type?))
       :operands   ((inputs %%toy-type-value? :variadic))
@@ -418,7 +429,8 @@
     (define-op func
       :summary    "toy function definition"
       :traits     (isolated-from-above)
-      :interfaces ((mlir::CallableOpInterface
+      :interfaces ((mlir::ArgAndResultAttrsOpInterface :standard)
+                   (mlir::CallableOpInterface
                     (getCallableRegion (self) (mlir::Operation::getRegion self 0))
                     (getArgumentTypes (self)
                                       (mlir::FunctionType::getInputs

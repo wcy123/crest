@@ -25,8 +25,9 @@
 ;;   adapter   #f, or a procedure from the procedure of the clause to the procedure that the slot
 ;;             calls with the numbers and lists of the kinds (it turns a list of types into a range,
 ;;             a verdict into 1 or 0 with a diagnostic, ...)
-;;   default   #f when the op has to give the method; else the procedure that stands for the method
-;;             of an op that does not, which is what MLIR does when it has a default for it
+;;   default   #f when the op has to give the method; else what stands for the method of an op that
+;;             does not give it, which is what MLIR does when it has a default for it: a procedure,
+;;             or (cpp expression) for a C function that CREST ships (its address)
 ;;   keywords  an alist ((:keyword . (scheme procedure)) or (:keyword . (cpp entry-point)) ...): a
 ;;             clause (method :keyword) is the procedure, or the C function that CREST ships for a
 ;;             slot that Scheme cannot implement. :standard is special: (X :standard clause ...) uses
@@ -146,7 +147,10 @@
           => (lambda (found)
                (syntax-case (cdr found) ()
                  [(kind expression) (cons (syntax->datum #'kind) #'expression)]))]
-         [(not (no-default? m)) (cons 'scheme (method-default m))]
+         [(not (no-default? m))
+          (syntax-case (method-default m) (cpp)
+            [(cpp expression) (cons 'cpp #'expression)]
+            [procedure (cons 'scheme #'procedure)])]
          [else #f])))
 
     (define (entry m)

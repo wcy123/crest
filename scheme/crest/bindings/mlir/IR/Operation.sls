@@ -44,6 +44,7 @@
     mlir::Operation::erase
     mlir::Operation::getAttr
     mlir::Operation::setAttr!
+    mlir::Operation::removeAttr
     mlir::Operation::getAttrOfType<FloatAttr>
     mlir::Operation::getAttrDictionary
     mlir::Operation::setAttrs
@@ -260,6 +261,16 @@
   ;; @see              mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note             Defined in lib/Bindings/IR/Operation.cpp
   (define (mlir::Operation::setAttr! op name attr) (%set-attr op name attr))
+
+  ;; @brief mlir::Operation::removeAttr — remove an attribute and answer it.
+  ;; @param op         Operation* uptr
+  ;; @param attr-name  Attribute name (string)
+  ;; @return           the Attribute* that was removed as uptr, or #f when the op had none
+  ;; @see              mlir/IR/Operation.h
+  ;; @note             Defined in lib/Bindings/IR/Operation.cpp
+  (define (mlir::Operation::removeAttr op name)
+    (let ([v (%remove-attr op name)])
+      (if (zero? v) #f v)))
 
   ;; @brief mlir::FloatAttr::getValueAsDouble — get a float attribute value.
   ;; @param op         Operation* uptr
