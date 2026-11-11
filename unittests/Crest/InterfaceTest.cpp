@@ -200,6 +200,34 @@ TEST_F(InterfaceTest, TheSideEffectInterfacesAnswerWhatTheOpSays) {
 #endif
 }
 
+// An interface that extends others has the pointers to their Concepts in its
+// own Concept (implSymbolOpInterface, ...), which MLIR's code follows to call a
+// method of a base through the interface that extends it. InterfaceMap sets
+// them when it inserts the model (initializeInterfaceConcept), so each is the
+// Concept that the map has for the base.
+TEST_F(InterfaceTest, TheConceptOfAnInterfaceHasThePointersToItsBases) {
+  mlir::MLIRContext ctx(makeRegistry(), mlir::MLIRContext::Threading::DISABLED);
+  mlir::RegisteredOperationName func = name(ctx, "ifacemap.func");
+  auto* function = func.getInterface<mlir::FunctionOpInterface>();
+  auto* symbol = func.getInterface<mlir::SymbolOpInterface>();
+  auto* attrs = func.getInterface<mlir::ArgAndResultAttrsOpInterface>();
+  auto* callable = func.getInterface<mlir::CallableOpInterface>();
+  ASSERT_NE(function, nullptr);
+  ASSERT_NE(symbol, nullptr);
+  ASSERT_NE(attrs, nullptr);
+  ASSERT_NE(callable, nullptr);
+  EXPECT_EQ(function->implSymbolOpInterface, symbol);
+  EXPECT_EQ(function->implArgAndResultAttrsOpInterface, attrs);
+  EXPECT_EQ(function->implCallableOpInterface, callable);
+  EXPECT_EQ(callable->implArgAndResultAttrsOpInterface, attrs);
+
+  mlir::RegisteredOperationName call = name(ctx, "ifacemap.call");
+  auto* callOp = call.getInterface<mlir::CallOpInterface>();
+  ASSERT_NE(callOp, nullptr);
+  EXPECT_EQ(callOp->implArgAndResultAttrsOpInterface,
+            call.getInterface<mlir::ArgAndResultAttrsOpInterface>());
+}
+
 // The interface is part of the definition of the op, so another context that
 // loads the dialect gets its own map with the same interfaces.
 TEST_F(InterfaceTest, EveryContextThatLoadsTheDialectHasThem) {
