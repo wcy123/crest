@@ -14,6 +14,8 @@
   (import (chezscheme)
           (crest callback)
           (mlir IR MLIRContext)
+          (only (mlir IR Diagnostics) mlir::emitError)
+          (only (mlir IR Types) mlir::Type::print)
           (mlir Interfaces InferTypeOpInterface ffi))
 
   ;; How MLIR's call reaches this function. MLIR calls it like any C function, and a C call is a
@@ -114,55 +116,117 @@
                    "the calling convention of this machine type is not supported"
                    (machine-type))]))
 
+  ;; What MLIR does for an op that does not override the method (InferTypeOpInterface.td), written
+  ;; here so that nothing hides in C++.
+  ;;
+  ;; isCompatibleReturnTypes: the types are the same.
+  (define (%%default-compatible inferred actual)
+    (equal? inferred actual))
+
+  ;; refineReturnTypes: infer the result types with the clause of inferReturnTypes, and check that
+  ;; they are compatible with the types the op has. An incompatible pair is an error at the location
+  ;; (if there is one) and a failure; else the types stay as they are.
+  (define (%%default-refine infer compatible)
+    (lambda (context location operands attributes return-types)
+      (let ([inferred (infer context location operands attributes)])
+        (cond
+         [(not inferred) #f]
+         [(compatible inferred return-types) return-types]
+         [else
+          (when location
+            (mlir::emitError
+             location
+             (string-append "op inferred type(s) " (%%types->string inferred)
+                            " are incompatible with return type(s) of operation "
+                            (%%types->string return-types))))
+          #f]))))
+
+  (define (%%types->string types)
+    (let loop ([rest types] [text ""])
+      (cond [(null? rest) text]
+            [else (loop (cdr rest)
+                        (string-append text (if (string=? text "") "" ", ")
+                                       (mlir::Type::print (car rest))))])))
+
   ;; The C functions of the clauses of an op. `dispatcher` is (lambda (method) ...): a method name
-  ;; answers its clause or #f. The answer is the dispatcher of C: (lambda (method) ...) that answers,
-  ;; for each method the dispatcher has a clause for, the entry point of its foreign-callable, and 0
-  ;; for the others. The callables are made here, once: the entry of :interfaces is evaluated when
-  ;; the library of the dialect is loaded, and C++ gets the dispatcher with the TypeID of the
-  ;; interface, asks it for the entries while it registers the op, and installs them in the Concept
-  ;; of the op (lib/Crest/InferType.cpp). It does not keep the dispatcher.
+  ;; answers its clause or #f. The answer is the dispatcher of C: (lambda (method) ...) that answers
+  ;; the entry point of the foreign-callable of each method. The callables are made here, once: the
+  ;; entry of :interfaces is evaluated when the library of the dialect is loaded, and C++ gets the
+  ;; dispatcher with the TypeID of the interface, asks it for the entries while it registers the op,
+  ;; and puts them in the slots of the Concept of the op (lib/Crest/InferType.cpp). It does not keep
+  ;; the dispatcher. The clauses of refineReturnTypes and isCompatibleReturnTypes that the op does not
+  ;; give are MLIR's.
   (define (%%c-dispatcher dispatcher)
-    (let ([infer      (dispatcher 'inferReturnTypes)]
-          [refine     (dispatcher 'refineReturnTypes)]
-          [compatible (dispatcher 'isCompatibleReturnTypes)])
-      (unless infer
-        (error 'mlir::InferTypeOpInterface
-               "the interface needs an inferReturnTypes clause (context location operands attributes)"))
-      (let ([entries (list (cons 'inferReturnTypes (%%entry-point infer 0))
-                           (cons 'refineReturnTypes (if refine (%%entry-point refine 1) 0))
-                           (cons 'isCompatibleReturnTypes
-                                 (if compatible (%%compatible-entry-point compatible) 0)))])
-        (lambda (method)
-          (cond
-           [(assq method entries) => cdr]
-           [else 0])))))
+    (let* ([infer      (dispatcher 'inferReturnTypes)]
+           [compatible (or (dispatcher 'isCompatibleReturnTypes) %%default-compatible)]
+           [refine     (or (dispatcher 'refineReturnTypes) (%%default-refine infer compatible))]
+           [entries (list (cons 'inferReturnTypes (%%entry-point infer 0))
+                          (cons 'refineReturnTypes (%%entry-point refine 1))
+                          (cons 'isCompatibleReturnTypes (%%compatible-entry-point compatible)))])
+      (lambda (method)
+        (cond
+         [(assq method entries) => cdr]
+         [else 0]))))
 
   ;; An entry of the :interfaces clause of define-op:
   ;;   (mlir::InferTypeOpInterface
   ;;     (inferReturnTypes (context location operands attributes) body ...)
   ;;     (refineReturnTypes (context location operands attributes return-types) body ...)
   ;;     (isCompatibleReturnTypes (inferred actual) body ...))
-  ;; The clauses are optional but inferReturnTypes.
+  ;; MLIR has no default for inferReturnTypes, so the op gives it; for the others it has, and an op
+  ;; that does not give them gets MLIR's.
   ;;   inferReturnTypes         the result types, a list of Types, or #f when it cannot tell
   ;;   refineReturnTypes        the result types the op may have, given those it has (a list of
-  ;;                            Types), or #f; without it everything is accepted
+  ;;                            Types), or #f. By default: the result of inferReturnTypes has to be
+  ;;                            compatible with the types the op has, or it is an error at the location
   ;;   isCompatibleReturnTypes  whether the result types of an op (a list of Types) fit what
-  ;;                            inferReturnTypes answered (a list of Types); without it they must be
+  ;;                            inferReturnTypes answered (a list of Types). By default they must be
   ;;                            equal. An op whose inference is general and whose results get refined
   ;;                            later (a ranked tensor where the inference says tensor<*xf64>) says
   ;;                            what fits, as the ODS ops of C++ that override it do.
   ;; They are the methods that C++ code using the interface calls. Nothing checks the result types of
   ;; the op against them when the op is verified.
-  ;; An entry is the pair of the TypeID of the interface and the dispatcher of C of its clauses.
+  ;; An entry is the pair of the TypeID of the interface and the dispatcher of C of its clauses. The
+  ;; clauses are checked when the library compiles: inferReturnTypes is needed, a clause with another
+  ;; name or two for one method are errors.
   (define-syntax mlir::InferTypeOpInterface
-    (syntax-rules ()
-      [(_ (method (formal ...) body ...) ...)
-       (cons (mlir::InferTypeOpInterface::getInterfaceID)
-             (%%c-dispatcher
-              (lambda (name)
-                (case name
-                  [(method) (lambda (formal ...) body ...)] ...
-                  [else #f]))))]))
+    (lambda (stx)
+      (syntax-case stx ()
+        [(_ (method (formal ...) body ...) ...)
+         (let ([given (map syntax->datum #'(method ...))]
+               [methods '(inferReturnTypes refineReturnTypes isCompatibleReturnTypes)])
+           (for-each
+            (lambda (name)
+              (unless (memq name methods)
+                (syntax-violation
+                 ':interfaces
+                 (string-append "mlir::InferTypeOpInterface has no method " (symbol->string name)
+                                ": its methods are inferReturnTypes, refineReturnTypes and isCompatibleReturnTypes")
+                 stx)))
+            given)
+           (for-each
+            (lambda (name)
+              (when (> (length (filter (lambda (other) (eq? other name)) given)) 1)
+                (syntax-violation
+                 ':interfaces
+                 (string-append "mlir::InferTypeOpInterface has two clauses for " (symbol->string name))
+                 stx)))
+            given)
+           (unless (memq 'inferReturnTypes given)
+             (syntax-violation
+              ':interfaces
+              "mlir::InferTypeOpInterface needs a clause for inferReturnTypes: MLIR has no default, the op gives it"
+              stx))
+           #'(cons (mlir::InferTypeOpInterface::getInterfaceID)
+                   (%%c-dispatcher
+                    (lambda (name)
+                      (case name
+                        [(method) (lambda (formal ...) body ...)] ...
+                        [else #f])))))]
+        [(_ clause ...)
+         (syntax-violation ':interfaces
+                           "mlir::InferTypeOpInterface clauses are written (method (formal ...) body ...)"
+                           stx)])))
 
   (define mlir::InferTypeOpInterface::getInterfaceID
     %mlir::InferTypeOpInterface::getInterfaceID)

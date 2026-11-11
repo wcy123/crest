@@ -22,40 +22,15 @@
 
 namespace crest {
 
-namespace {
-
-struct DynamicInferTypeModel : public CrestModel<mlir::InferTypeOpInterface> {
-  // What an op gets for a method its dispatcher has no clause for. The default
-  // refineReturnTypes of an ODS op calls the other two methods of the op, which
-  // a function pointer without the op cannot do, so it accepts anything.
-  template <typename Properties>
-  static llvm::LogicalResult
-  defaultRefine(mlir::MLIRContext*, std::optional<mlir::Location>,
-                mlir::ValueRange, mlir::DictionaryAttr, Properties,
-                mlir::RegionRange, llvm::SmallVectorImpl<mlir::Type>&) {
-    return mlir::success();
-  }
-  static bool defaultCompatible(mlir::TypeRange lhs, mlir::TypeRange rhs) {
-    return lhs == rhs;
-  }
-
-  // defaultRefine is a template: the slot says which instance.
-  DynamicInferTypeModel() {
-    refineReturnTypes = defaultRefine;
-    isCompatibleReturnTypes = defaultCompatible;
-  }
-};
-
-} // namespace
-
+// MLIR has no default for inferReturnTypes, and the macro writes the defaults
+// of the other two methods in Scheme, so every slot is the callable that Scheme
+// made. Each method here has no Concept* and no Operation*: MLIR calls it as a
+// static function, so Scheme makes a callable per op.
 void attachInferTypeOpInterface(mlir::DynamicOpDefinition& def,
                                 const LockedSchemeObject& dispatcher) {
   mlir::detail::InterfaceMap& map = def.getInterfaceMap();
-  map.insertModels<DynamicInferTypeModel>();
-  mlir::InferTypeOpInterface::Concept* concept_ =
-      map.lookup<mlir::InferTypeOpInterface>();
-  // The entry of each method the dispatcher has a clause for; the others keep
-  // the default.
+  insertModelOnce<mlir::InferTypeOpInterface>(map);
+  auto* concept_ = map.lookup<mlir::InferTypeOpInterface>();
   installInterfaceEntry(concept_->inferReturnTypes, dispatcher,
                         "inferReturnTypes");
   installInterfaceEntry(concept_->refineReturnTypes, dispatcher,
