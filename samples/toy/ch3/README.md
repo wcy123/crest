@@ -70,14 +70,19 @@ tools/debug-define-dialect samples/toy/ch3/toy.sls > /tmp/toy3.sls
 `define-dialect toy` expands to a `begin` containing:
 
 **`%%toy.func:interfaces`** — the pairs of the `:interfaces` entries of `toy.func`, made once when the library is
-loaded. `mlir::CallableOpInterface` and `mlir::FunctionOpInterface` are macros of `(mlir Interfaces CallInterfaces)` and
-`(mlir Interfaces FunctionInterfaces)`: each makes a C function
-(a `foreign-callable`) for each method clause and answers the pair of the interface's `TypeID` and a dispatcher of
-them:
+loaded. `mlir::SymbolOpInterface`, `mlir::ArgAndResultAttrsOpInterface`, `mlir::CallableOpInterface` and
+`mlir::FunctionOpInterface` are macros of `(mlir IR SymbolInterfaces)`, `(mlir Interfaces CallInterfaces)` and
+`(mlir Interfaces FunctionInterfaces)`: each makes a C function (a `foreign-callable`) for each method and answers the
+pair of the interface's `TypeID` and a dispatcher of them. MLIR has no default for the methods of
+`CallableOpInterface` and `FunctionOpInterface`, as in C++ the op class gives them, so `toy.func` gives them as
+clauses; for `SymbolOpInterface` MLIR has one for each method (the `sym_name` attribute and the others), and
+`(mlir::ArgAndResultAttrsOpInterface :standard)` keeps the `arg_attrs` and `res_attrs` attributes:
 
 ```scheme
 (define %%toy.func:interfaces
-  (list (mlir::CallableOpInterface
+  (list (mlir::SymbolOpInterface)
+        (mlir::ArgAndResultAttrsOpInterface :standard)
+        (mlir::CallableOpInterface
          (getCallableRegion (self) (mlir::Operation::getRegion self 0))
          (getArgumentTypes (self)
            (mlir::FunctionType::getInputs

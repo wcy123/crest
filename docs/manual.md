@@ -922,15 +922,40 @@ folders) must not run multithreaded: pass `--mlir-disable-threading` to `crest-o
 
 An op can implement MLIR op interfaces (like `FunctionOpInterface`) by listing
 them in the `:interfaces` clause of `define-op`. Each entry is `(interface-name method-clause ...)`, and each
-method clause is `(method-name (formals) body ...)`. A method that is not listed keeps the default of the interface,
-where MLIR has one; `CallableOpInterface` has none, so its clauses are all required (below).
-The interfaces are part of the definition of the op: they exist in a context that loads the dialect
-(`op->getName().hasInterface<...>()` is true there), and in no other.
+method clause is `(method-name (formals) body ...)`, where the first formal is the op. The interfaces are part of
+the definition of the op: they exist in a context that loads the dialect (`op->getName().hasInterface<...>()` is
+true there), and in no other.
+
+**CREST has no default for an interface.** In C++ the op class gives the methods of its interfaces, and a Scheme op
+has no class, so the op gives them as clauses. Where MLIR has a default for a method (the `Trait` of the interface
+has one), an op that does not give the clause gets MLIR's default, and the macro of the interface writes it in
+Scheme (`scheme/mlir/Interfaces/*.sls`), so nothing hides in C++. For a method that Scheme cannot implement (an
+answer that is a `MutableOperandRange`, or a use range of a symbol) CREST ships a C function, and a clause names it
+with a keyword. The clauses are checked when the library compiles: a missing clause, a clause for a method that the
+interface does not have, two clauses for one method and a clause with the wrong number of arguments are errors.
+
+| Interface | The op gives | MLIR's default, if the op gives none | The op also declares |
+|---|---|---|---|
+| `CallableOpInterface` | `getCallableRegion`, `getArgumentTypes`, `getResultTypes` | | `ArgAndResultAttrsOpInterface` |
+| `FunctionOpInterface` | `getFunctionType`, `setFunctionTypeAttr` | `cloneTypeWith`, `verifyBody` (the entry block matches the function type), `verifyType` | `SymbolOpInterface`, `CallableOpInterface`, `ArgAndResultAttrsOpInterface` |
+| `CallOpInterface` | `getCallableForCallee`, `setCalleeFromCallable`, `getArgOperands`, `getArgOperandsMutable` (`:all-operands`) | `resolveCallable`, `resolveCallableInTable` (a symbol lookup) | `ArgAndResultAttrsOpInterface` |
+| `ArgAndResultAttrsOpInterface` | the six methods, or `:standard` (the `arg_attrs` and `res_attrs` attributes) | | |
+| `SymbolOpInterface` | nothing | all sixteen: `sym_name`, `sym_visibility`, the uses of `SymbolTable` | |
+| `MemoryEffectOpInterface` | `getEffects` (`:none`: no effects) | | |
+| `ConditionallySpeculatable` | `getSpeculatability` (`:always`, or 0, 1, 2) | | |
+| `InferTypeOpInterface` | `inferReturnTypes` | `refineReturnTypes`, `isCompatibleReturnTypes` | |
+
+The trait `pure` gives an op `MemoryEffectOpInterface` with no effects and `ConditionallySpeculatable` with
+`:always`; a clause for either interface replaces the answer. An op that declares an interface that extends another
+declares the other too (the third column): an op that does not cannot be registered, and the error says which
+(`test/dsl/interface-dsl/callable-clauses-errors.mlir`). A function op and a call op in full, as Toy writes them:
 
 ```scheme
 (define-op func
   :summary "function definition"
-  :interfaces ((mlir::CallableOpInterface
+  :interfaces ((mlir::SymbolOpInterface)
+               (mlir::ArgAndResultAttrsOpInterface :standard)
+               (mlir::CallableOpInterface
                 (getCallableRegion (self) (mlir::Operation::getRegion self 0))
                 (getArgumentTypes (self)
                   (mlir::FunctionType::getInputs
@@ -946,44 +971,50 @@ The interfaces are part of the definition of the op: they exist in a context tha
                     (mlir::Operation::getAttr self "function_type")))
                 (setFunctionTypeAttr (self attr)
                   (mlir::Operation::setAttr! self "function_type" attr)))))
-```
 
-Two interfaces have method clauses that matter. `FunctionOpInterface`: `getFunctionType (op)` answers
-the `Type`, `setFunctionTypeAttr (op attr)`, `cloneTypeWith (op inputs results)` answers a `Type` (the two
-ranges are lists of `Type`s), and `verifyBody (op)` and `verifyType (op)` answer `#t` for success. An error
-that a verifier raises does not end the process: the verifier fails and the diagnostic carries the text of
-the error. `mlir::FunctionOpInterface::cloneTypeWith` of `(mlir Interfaces FunctionInterfaces)` calls the method
-on an op from Scheme: `(mlir::FunctionOpInterface::cloneTypeWith op inputs results)` answers the clause's
-`Type`, or the default `FunctionType` (`test/dsl/interface-dsl/interface-clauses.mlir`).
-`CallableOpInterface` has three clauses, and an op that declares it gives all of them, because MLIR has no
-default for its methods and a dialect keeps its signature where it wants: `getCallableRegion (op)` answers the
-`Region`, `getArgumentTypes (op)` and `getResultTypes (op)` answer a list of `Type`s. A missing clause, a second
-clause for the same method and a clause with another name are errors when the library compiles
-(`test/dsl/interface-dsl/callable-clauses-errors.mlir`); a clause of `FunctionOpInterface` with another name is
-ignored. `mlir::CallableOpInterface::getArgumentTypes op` and `getResultTypes` of `(mlir Interfaces CallInterfaces)`
-call the methods on an op from Scheme (`test/dsl/interface-dsl/callable-methods.mlir`).
-
-The op interfaces a Scheme op can implement: `FunctionOpInterface` (which also brings
-`SymbolOpInterface` and `ArgAndResultAttrsOpInterface`, and needs `CallableOpInterface` to be declared too, with its
-clauses), `CallableOpInterface`,
-`SymbolOpInterface`, `ArgAndResultAttrsOpInterface`, `CallOpInterface` and `InferTypeOpInterface`. For `CallOpInterface`
-the callee is the op's `callee` attribute (a symbol reference, or a string naming one) and the
-arguments are all its operands; it takes no method clauses (a clause is an error):
-
-```scheme
 (define-op call
   :results    ((output mlir::Value?))
-  :interfaces ((mlir::CallOpInterface)))
+  :interfaces ((mlir::ArgAndResultAttrsOpInterface :standard)
+               (mlir::CallOpInterface
+                (getCallableForCallee (self)
+                  (mlir::CallInterfaceCallable::get<SymbolRefAttr>
+                   (mlir::Operation::getAttr self "callee")))
+                (setCalleeFromCallable (self callee)
+                  (mlir::Operation::setAttr! self "callee"
+                   (mlir::CallInterfaceCallable::dyn_cast<SymbolRefAttr> callee)))
+                (getArgOperands (self)
+                  (crest::OperandRange::get self 0 (mlir::Operation::getNumOperands self)))
+                (getArgOperandsMutable :all-operands))))
 ```
 
-With `FunctionOpInterface` on the function op, `CallOpInterface` on the call op, the dialect's
-`DialectInlinerInterface` and a terminator (`:traits (terminator)`, LLVM 23), MLIR's own `--inline`
-pass inlines calls in a Scheme dialect (`test/dsl/call-op-interface`).
+The clauses in more detail:
 
-`InferTypeOpInterface` lets an op-form leave out `-> type` (see [§5](#5-begin-mlir-code)). Its
-method clause is `inferReturnTypes`, which gets the context, the location (or `#f`), the list of
-operand `Value`s and the alist of `(name . Attribute)`, and returns the list of result `Type`s
-(`#f` to say it cannot tell). An error it raises is part of the message of the diagnostic:
+- `FunctionOpInterface`: `getFunctionType` answers the `Type`, `setFunctionTypeAttr (op attr)` gets a `TypeAttr`,
+  `cloneTypeWith (op inputs results)` answers a `Type` (the two ranges are lists of `Type`s), and `verifyBody` and
+  `verifyType` answer `#t` for success. An error that a verifier raises does not end the process: the verifier
+  fails and the diagnostic carries the text of the error (`mlir::Operation::emitOpError`).
+- `CallableOpInterface`: `getCallableRegion` answers the `Region`, `getArgumentTypes` and `getResultTypes` a list
+  of `Type`s.
+- `CallOpInterface`: a callee is a `CallInterfaceCallable`, a symbol reference or a value, as a number: make one
+  with `mlir::CallInterfaceCallable::get<SymbolRefAttr>` or `get<Value>` and take it apart with `dyn_cast<...>`,
+  which answers `#f` for the other kind. `getArgOperands` answers an operand range, made with
+  `(crest::OperandRange::get op start count)`.
+- `SymbolOpInterface`: the visibility is a number, 0 public, 1 private, 2 nested. The methods are callable on an op
+  from Scheme: `mlir::SymbolOpInterface::getVisibility`, `isPrivate`, `setPrivate`, ... of
+  `(mlir IR SymbolInterfaces)`.
+- `MemoryEffectOpInterface` and `ConditionallySpeculatable`: 0 is not speculatable, 1 speculatable, 2 speculatable
+  if the operations in its regions are.
+- `InferTypeOpInterface` lets an op-form leave out `-> type` (see [§5](#5-begin-mlir-code)). `inferReturnTypes`
+  gets the context, the location (or `#f`), the list of operand `Value`s and the alist of `(name . Attribute)`,
+  and returns the list of result `Type`s (`#f` to say it cannot tell). `isCompatibleReturnTypes (inferred
+  actual)` says whether the result types of the op fit what `inferReturnTypes` answered (two lists of `Type`s, a
+  boolean); MLIR's default is that they are equal. `refineReturnTypes (context location operands attributes
+  return-types)` gets the result types the op has and answers the types it may have (`#f` to refuse); MLIR's
+  default checks that what `inferReturnTypes` answers is compatible with them, with an error at the location if
+  not. Toy's `add`, `mul`, `transpose` and `constant` give the second: they infer `tensor<*xf64>` and shape
+  inference makes the result ranked, so they say that any `f64` tensor fits, as the ODS ops of C++ that override
+  `isCompatibleReturnTypes` do. CREST does not check the result types of an op against the interface when it
+  verifies the op: a `:verify` that wants that calls the methods itself.
 
 ```scheme
 (import (only (mlir Interfaces InferTypeOpInterface) mlir::InferTypeOpInterface))
@@ -996,34 +1027,26 @@ operand `Value`s and the alist of `(name . Attribute)`, and returns the list of 
                   (list (mlir::Value::getType (car operands)))))))
 ```
 
-The clauses are the methods of the interface, which C++ code that uses it calls through the op's
-`Concept` (`unittests/Crest/InferTypeTest.cpp`). A second clause, `isCompatibleReturnTypes (inferred
-actual)`, says whether the result types of the op fit what `inferReturnTypes` answered (two lists of
-`Type`s, a boolean); without it they must be equal. A third, `refineReturnTypes (context location
-operands attributes return-types)`, gets the result types the op has and answers the types it may have
-(`#f` to refuse); without it everything is accepted. Toy's `add`, `mul`, `transpose` and `constant` have
-the second: they infer `tensor<*xf64>` and shape inference makes the result ranked, so they say that any
-`f64` tensor fits, as the ODS ops of C++ that override `isCompatibleReturnTypes` do. CREST does not check
-the result types of an op against the interface when it verifies the op: a `:verify` that wants that
-calls the methods itself.
+With `FunctionOpInterface` on the function op, `CallOpInterface` on the call op, the dialect's
+`DialectInlinerInterface` and a terminator (`:traits (terminator)`, LLVM 23), MLIR's own `--inline`
+pass inlines calls in a Scheme dialect (`test/dsl/call-op-interface`).
 
 The name of an interface in `:interfaces` is a macro that the dialect's library must import from the library of
 the interface (`(mlir Interfaces FunctionInterfaces)`, `(mlir Interfaces CallInterfaces)`, `(mlir IR SymbolInterfaces)`,
 `(mlir Interfaces SideEffectInterfaces)`, `(mlir Interfaces InferTypeOpInterface)`). It makes a C function for each
-of the clauses with `foreign-callable` (`(crest callback)`), once, when the library is loaded, and answers the pair
-of the interface's `TypeID` (`mlir::FunctionOpInterface::getInterfaceID`, and so on) and a dispatcher of those
-functions. When a context registers the op, C++ finds how to install the interface by the `TypeID` and puts a model
-of it, with the entry points of the clauses, in the interface map of the op's definition (`docs/tech-note.md`,
-"Interfaces of a Scheme op"). The interfaces that extend others bring them: `FunctionOpInterface` has
-`SymbolOpInterface` and `ArgAndResultAttrsOpInterface` in its map as well; `CallableOpInterface` has clauses of its own,
-so an op that declares `FunctionOpInterface` without it cannot be registered. This is what
-`MLIR`'s `--inline`, `dyn_cast` and `hasInterface` see, and what C++ keeps instead of the Scheme procedure, as
-for everything else that C++ calls back into Scheme: the callbacks of a dialect, of its ops and types, passes,
-and conversions (see [Extending with custom C++ bindings](#11-extending-with-custom-c-bindings)). The dialect has
-to be loaded into the context (`dialects-in-scheme=` or `--crest-scheme-dialect=` with an op in the input, or
-`load-scheme-dialect!`) for MLIR to see the interfaces (`test/dsl/op-builders`, `unittests/Crest/InterfaceTest.cpp`).
-Platforms: System V x86-64 and Windows x64; on another machine type a dialect with an `InferTypeOpInterface`
-fails to load with a message saying so.
+method with `foreign-callable` (`(crest interface)` and `(crest callback)`), once, when the library is loaded, and
+answers the pair of the interface's `TypeID` (`mlir::FunctionOpInterface::getInterfaceID`, and so on) and a
+dispatcher of those functions. When a context registers the op, C++ finds how to install the interface by the
+`TypeID`, inserts `CrestModel<Interface>` (the `Concept` of the interface with every slot null) in the interface
+map of the op's definition, and puts each function in its slot (`docs/tech-note.md`, "Interfaces of a Scheme
+op"). MLIR then calls Scheme directly. This is what `MLIR`'s `--inline`, `dyn_cast` and `hasInterface` see, and what
+C++ keeps instead of the Scheme procedure, as for everything else that C++ calls back into Scheme: the callbacks of
+a dialect, of its ops and types, passes, and conversions (see
+[Extending with custom C++ bindings](#11-extending-with-custom-c-bindings)). The dialect has to be loaded into the
+context (`dialects-in-scheme=` or `--crest-scheme-dialect=` with an op in the input, or `load-scheme-dialect!`) for
+MLIR to see the interfaces (`test/dsl/op-builders`, `unittests/Crest/InterfaceTest.cpp`). Platforms: Linux x86-64
+and Windows x64 are tested; the prototype of each slot as a C function depends on the platform
+(`crest-slot-callable`), and arm64 is not tested.
 
 ### Dialect-level `:interfaces`
 

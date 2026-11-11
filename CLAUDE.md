@@ -287,6 +287,27 @@ it is released (`test/dsl/apply-conversion/leak.mlir`).
 
 ---
 
+## Rule 19 — An interface of a Scheme op has no implementation in C++
+
+The model of an interface is `crest::CrestModel<mlir::XInterface>` (`lib/Crest/Interface.h`): its `Concept` with every
+slot null. C++ implements no method, and there is no model with defaults and no trampoline. Each slot holds the
+callable that Scheme made for a clause (`installInterfaceEntry`), so MLIR calls Scheme directly.
+
+- Where MLIR has a default for a method (the `Trait` of the interface has one), the macro of the interface writes it in
+  Scheme (`scheme/mlir/**`); where MLIR has none, the op gives the clause, and a missing clause is an error when the
+  library compiles. The macro is a table for `op-interface-expand` (`(crest interface)`), which checks the clauses.
+- A slot that Scheme cannot write (its answer is a C++ object that Scheme cannot build, such as a `MutableOperandRange`
+  or a use range) gets a C function that CREST ships, named by a keyword of the clause (`:all-operands`) or as MLIR's
+  default.
+- The prototype of a slot as a C function depends on the platform (a class of one pointer is answered through a pointer
+  on Windows x64). `crest-slot-callable` (`(crest callback)`) writes it from the C++ types of the slot, and
+  `SlotAbiTest` (`unittests/Crest/InterfaceTest.cpp`) calls a callable of each kind through a function pointer of the
+  exact type of the slot, on Linux and Windows.
+- An interface that extends others needs them in the map first, and the op declares them: `require*Clauses` raises an
+  error at registration when a base has a null slot.
+
+---
+
 ## Checklist for a new binding
 
 - [ ] `lib/Bindings/<Path>/<Name>.cpp` with `// Mirrors mlir/<Path>/<Name>.h` on line 6
@@ -298,3 +319,5 @@ it is released (`test/dsl/apply-conversion/leak.mlir`).
 - [ ] `%%` on internal Scheme helpers; `%` only on raw FFI bindings
 - [ ] A binding that takes a builder: `register_builder_binding` in C++, `define-builder-binding` in `ffi.sls`
 - [ ] A binding that calls back into Scheme: a callable from `crest-callback-entry-point`, owned per Rule 17
+- [ ] A new op interface: its macro is a table for `op-interface-expand`, the C++ attach function only calls
+      `installInterfaceEntry` (Rule 19), and a slot with a new kind of C++ type gets a case in `SlotAbiTest`
