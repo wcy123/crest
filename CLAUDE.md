@@ -200,7 +200,7 @@ methods the conversion rewriter overrides. A raw `OpBuilder*` is never a valid h
 | `with-OpBuilder` | `(mlir IR Builders)` | `mlir/IR/Builders.h` |
 | `with-TypeConverter` | `(mlir Transforms DialectConversion)` | `mlir/Transforms/DialectConversion.h` |
 | `with-ConversionTarget` | `(mlir Transforms DialectConversion)` | `mlir/Transforms/DialectConversion.h` |
-| `with-mlir::OwningOpRef<mlir::ModuleOp>` | `(mlir IR OwningOpRef)` | `mlir/IR/OwningOpRef.h` |
+| `with-mlir::OwningOpRef` | `(mlir IR OwningOpRef)` | `mlir/IR/OwningOpRef.h` |
 | `with-CrestObject` | `(mlir support CrestObject)` | `lib/Bindings/Support/CrestObject.h` (CREST-specific) |
 | `with-raii` | `(mlir support RAII)` | none: generic, CREST-specific |
 
@@ -209,13 +209,15 @@ methods the conversion rewriter overrides. A raw `OpBuilder*` is never a valid h
 Rules 10 and 12 name a macro after the C++ class it wraps, without the namespace. Some macros
 wrap a *function* that returns an owning object, or have no class at all. Name them like this:
 
-1. A macro for a function that returns an owning object is named `with-` followed by the full C++
-   type of the object, with its namespace and template arguments, as the symbols of Rule 4 are.
-   `mlir::parseSourceFile` returns `mlir::OwningOpRef<mlir::ModuleOp>`, so the macro is
-   `with-mlir::OwningOpRef<mlir::ModuleOp>`. It lives in the module of the header of that type
-   (Rule 12). After the variable comes the call that makes the object, as it is written in
-   Scheme: `(with-mlir::OwningOpRef<mlir::ModuleOp> module (mlir::parseSourceFile ctx filename) body ...)`.
+1. A macro for a function that returns an owning object is named `with-` followed by the C++ name
+   of the owning class, with its namespace, as the symbols of Rule 4 are. `mlir::parseSourceFile`
+   returns an `mlir::OwningOpRef`, so the macro is `with-mlir::OwningOpRef`. It lives in the module
+   of the header of that class (Rule 12). After the variable comes the call that makes the object,
+   as it is written in Scheme: `(with-mlir::OwningOpRef module (mlir::parseSourceFile ctx filename) body ...)`.
    The C++ line it replaces goes in its comment.
+   Write the template arguments in `<>`, as in Rule 4, only when the macro behaves differently for
+   different arguments. `mlir::Operation::erase` works for every operation, so `with-mlir::OwningOpRef`
+   has none.
 2. A helper with no C++ counterpart is generic. It lives under `(mlir support ...)` and is named
    for what it does (`with-raii`, `with-CrestObject`). Use it to build the macros of point 1.
 3. Do not invent a name that no C++ API has, such as `with-MLIRModule` (MLIR has `ModuleOp` and

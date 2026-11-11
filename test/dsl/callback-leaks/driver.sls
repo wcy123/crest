@@ -31,8 +31,8 @@
     (with-MLIRContext ctx (reg)
       (mlir::MLIRContext::allowUnregisteredDialects ctx #t)
       (mlir::MLIRContext::getOrLoadDialect ctx "func")
-      (with-mlir::OwningOpRef<mlir::ModuleOp> module (mlir::parseSourceFile ctx path)
-                                              (action ctx module)))))
+      (with-mlir::OwningOpRef module (mlir::parseSourceFile ctx path)
+        (action ctx module)))))
 
 ;; The error is the point of the scenario: it is caught here, in Scheme, so the run goes on.
 (define (ignoring-errors thunk)

@@ -20,8 +20,8 @@
     (with-MLIRContext ctx (reg)
       (mlir::MLIRContext::allowUnregisteredDialects ctx #t)
       (mlir::MLIRContext::getOrLoadDialect ctx "func")
-      (with-mlir::OwningOpRef<mlir::ModuleOp> module (mlir::parseSourceFile ctx path)
-                                              (run-pass module)))))
+      (with-mlir::OwningOpRef module (mlir::parseSourceFile ctx path)
+        (run-pass module)))))
 
 (enable-object-counts #t)
 (once)

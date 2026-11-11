@@ -22,14 +22,14 @@
     (mlir::DialectRegistry::insert<mlir::affine::AffineDialect> reg)
     (with-MLIRContext ctx (reg)
       (mlir::MLIRContext::getOrLoadDialect ctx "affine")
-      (with-mlir::OwningOpRef<mlir::ModuleOp> module (mlir::parseSourceFile ctx path)
-                                              (mlir::Operation::walk module (lambda (op) #t))
-                                              (with-current-MLIRContext ctx
-                                                (let ([block (mlir::Region::front (mlir::Operation::getRegion module 0))])
-                                                  (with-OpBuilder builder (mlir::OpBuilder::atBlockEnd block)
-                                                    (mlir::affine::buildAffineLoopNest
-                                                     builder (mlir::Operation::getLoc module) '(0) '(4) '(1)
-                                                     (lambda (nested-builder loc ivs) #t)))))))))
+      (with-mlir::OwningOpRef module (mlir::parseSourceFile ctx path)
+        (mlir::Operation::walk module (lambda (op) #t))
+        (with-current-MLIRContext ctx
+          (let ([block (mlir::Region::front (mlir::Operation::getRegion module 0))])
+            (with-OpBuilder builder (mlir::OpBuilder::atBlockEnd block)
+              (mlir::affine::buildAffineLoopNest
+               builder (mlir::Operation::getLoc module) '(0) '(4) '(1)
+               (lambda (nested-builder loc ivs) #t)))))))))
 
 (enable-object-counts #t)
 (once)
