@@ -23,129 +23,10 @@
 #include "mlir/Support/InterfaceSupport.h"
 #include <memory>
 
-// ---------------------------------------------------------------------------
-// FunctionConceptData — file-local; no template, no header.
-//
-// Inherits from mlir::FunctionOpInterface::Concept so FunctionConceptData*
-// is implicitly convertible to Concept*, and static_cast downcasts are valid.
-// A method that Scheme implements has the entry point of a foreign-callable in
-// the field of its name, and the Concept has a function of its own that reads
-// it through `self`: no slot of this Concept can hold the callable, because a
-// Type or a TypeAttr is not passed in a register on every platform (the
-// Windows x64 ABI passes and returns such a class through a hidden pointer, so
-// a C callable that takes or answers one crashes), a range is passed by value,
-// and a verifier answers a LogicalResult with a diagnostic. The default
-// implementation stays in the Concept until a clause replaces it.
-// ---------------------------------------------------------------------------
-namespace {
-// What a Scheme verifyBody or verifyType said: 1 is success. A Scheme error
-// makes the callable report its text before it answers 0, so the diagnostic
-// can carry it.
-std::string g_reported_failure;
-
-llvm::LogicalResult verifyResult(mlir::Operation* op, int answer) {
-  if (answer != 0) {
-    return mlir::success();
-  }
-  if (g_reported_failure.empty()) {
-    return mlir::failure();
-  }
-  std::string message = std::move(g_reported_failure);
-  g_reported_failure.clear();
-  return op->emitOpError() << message;
-}
-
-struct FunctionConceptData
-    : public crest::CrestModel<mlir::FunctionOpInterface> {
-  uint64_t (*get_function_type)(uint64_t op) = nullptr;
-  void (*set_function_type_attr)(uint64_t op, uint64_t attr) = nullptr;
-  uint64_t (*clone_type_with)(uint64_t op, const void* const* inputs,
-                              uint64_t input_count, const void* const* results,
-                              uint64_t result_count) = nullptr;
-  int (*verify_body)(uint64_t op) = nullptr;
-  int (*verify_type)(uint64_t op) = nullptr;
-
-  FunctionConceptData()
-      : CrestModel{
-            [](const Concept*, mlir::Operation* op) -> mlir::Type {
-              return mlir::cast<mlir::TypeAttr>(op->getAttr("function_type"))
-                  .getValue();
-            },
-            [](const Concept*, mlir::Operation* op, mlir::TypeAttr t) {
-              op->setAttr("function_type", t);
-            },
-            [](const Concept*, mlir::Operation* op, mlir::TypeRange inputs,
-               mlir::TypeRange results) -> mlir::Type {
-              return mlir::FunctionType::get(op->getContext(), inputs, results);
-            },
-            [](const Concept*, mlir::Operation*) -> llvm::LogicalResult {
-              return mlir::success();
-            },
-            [](const Concept*, mlir::Operation*) -> llvm::LogicalResult {
-              return mlir::success();
-            }} {}
-
-  // A method that the dispatcher has no clause for keeps its default.
-  void install(const crest::LockedSchemeObject& dispatcher) {
-    if (crest::installInterfaceEntry(get_function_type, dispatcher,
-                                     "getFunctionType")) {
-      getFunctionType =
-          +[](const Concept* self, mlir::Operation* op) -> mlir::Type {
-        const auto* d = static_cast<const FunctionConceptData*>(self);
-        return mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(
-            d->get_function_type(reinterpret_cast<uint64_t>(op))));
-      };
-    }
-    if (crest::installInterfaceEntry(set_function_type_attr, dispatcher,
-                                     "setFunctionTypeAttr")) {
-      setFunctionTypeAttr =
-          +[](const Concept* self, mlir::Operation* op, mlir::TypeAttr t) {
-            const auto* d = static_cast<const FunctionConceptData*>(self);
-            d->set_function_type_attr(
-                reinterpret_cast<uint64_t>(op),
-                reinterpret_cast<uint64_t>(t.getAsOpaquePointer()));
-          };
-    }
-    if (crest::installInterfaceEntry(clone_type_with, dispatcher,
-                                     "cloneTypeWith")) {
-      cloneTypeWith =
-          +[](const Concept* self, mlir::Operation* op, mlir::TypeRange inputs,
-              mlir::TypeRange results) -> mlir::Type {
-        const auto* d = static_cast<const FunctionConceptData*>(self);
-        llvm::SmallVector<const void*, 8> inputPointers;
-        llvm::SmallVector<const void*, 8> resultPointers;
-        for (mlir::Type t : inputs) {
-          inputPointers.push_back(t.getAsOpaquePointer());
-        }
-        for (mlir::Type t : results) {
-          resultPointers.push_back(t.getAsOpaquePointer());
-        }
-        return mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(
-            d->clone_type_with(reinterpret_cast<uint64_t>(op),
-                               inputPointers.data(), inputPointers.size(),
-                               resultPointers.data(), resultPointers.size())));
-      };
-    }
-    if (crest::installInterfaceEntry(verify_body, dispatcher, "verifyBody")) {
-      verifyBody =
-          +[](const Concept* self, mlir::Operation* op) -> llvm::LogicalResult {
-        const auto* d = static_cast<const FunctionConceptData*>(self);
-        return verifyResult(op, d->verify_body(reinterpret_cast<uint64_t>(op)));
-      };
-    }
-    if (crest::installInterfaceEntry(verify_type, dispatcher, "verifyType")) {
-      verifyType =
-          +[](const Concept* self, mlir::Operation* op) -> llvm::LogicalResult {
-        const auto* d = static_cast<const FunctionConceptData*>(self);
-        return verifyResult(op, d->verify_type(reinterpret_cast<uint64_t>(op)));
-      };
-    }
-  }
-};
-} // anonymous namespace
-
 namespace crest {
 
+// Each method is the callable that Scheme made for its clause, or for the MLIR
+// default that the macro writes in Scheme, in its slot.
 void attachFunctionOpInterface(mlir::DynamicOpDefinition& def,
                                const LockedSchemeObject& dispatcher) {
   mlir::detail::InterfaceMap& map = def.getInterfaceMap();
@@ -155,9 +36,15 @@ void attachFunctionOpInterface(mlir::DynamicOpDefinition& def,
   ensureSymbolOpInterface(map);
   ensureArgAndResultAttrsOpInterface(map);
   ensureCallableOpInterface(map);
-  insertCustomModelOnce<FunctionConceptData>(map);
-  static_cast<FunctionConceptData*>(map.lookup<mlir::FunctionOpInterface>())
-      ->install(dispatcher);
+  insertModelOnce<mlir::FunctionOpInterface>(map);
+  auto* concept_ = map.lookup<mlir::FunctionOpInterface>();
+  installInterfaceEntry(concept_->getFunctionType, dispatcher,
+                        "getFunctionType");
+  installInterfaceEntry(concept_->setFunctionTypeAttr, dispatcher,
+                        "setFunctionTypeAttr");
+  installInterfaceEntry(concept_->cloneTypeWith, dispatcher, "cloneTypeWith");
+  installInterfaceEntry(concept_->verifyBody, dispatcher, "verifyBody");
+  installInterfaceEntry(concept_->verifyType, dispatcher, "verifyType");
 }
 
 void registerInterfacesFunctionInterfacesBindings() {
@@ -169,16 +56,6 @@ void registerInterfacesFunctionInterfacesBindings() {
       "mlir::FunctionOpInterface::getInterfaceID", (void*)+[]() -> uint64_t {
         return reinterpret_cast<uint64_t>(
             mlir::FunctionOpInterface::getInterfaceID().getAsOpaquePointer());
-      });
-
-  // crest::FunctionOpInterface::reportFailure (string message)
-  //
-  // The callable of a verifier calls it with the text of the error its Scheme
-  // method raised, before it answers failure, so that the diagnostic shows it.
-  Sregister_symbol(
-      "crest::FunctionOpInterface::reportFailure",
-      (void*)+[](const char* message) -> void {
-        g_reported_failure = message;
       });
 
   Sregister_symbol(

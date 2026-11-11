@@ -1,6 +1,6 @@
 // A method clause of an :interfaces entry answers what MLIR's Concept asks for: the clause gets the
 // op (not the Concept), and what it answers is what the caller gets. setFunctionTypeAttr reaches the
-// clause of an op that has one and the default of an op that has none.
+// clause of each op: one that announces itself, and one that only stores the attribute.
 
 // RUN: rm -rf %t/iface-slots-scheme && mkdir -p %t/iface-slots-scheme
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/iface-slots-scheme \
@@ -13,7 +13,7 @@
 // CHECK-NEXT: function type: () -> ()
 // CHECK: clause setFunctionTypeAttr
 // CHECK-NEXT: type after set (clause): (i32) -> i64
-// CHECK-NEXT: type after set (default): (i32) -> i64
+// CHECK-NEXT: type after set (plain): (i32) -> i64
 
 module {
   "ifaceclauses.good"() ({

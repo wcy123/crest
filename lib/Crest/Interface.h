@@ -11,7 +11,6 @@
 #include "mlir/Support/InterfaceSupport.h"
 #include "mlir/Support/TypeID.h"
 #include <type_traits>
-#include <utility>
 
 namespace crest {
 
@@ -19,33 +18,28 @@ namespace crest {
 // InterfaceMap of its DynamicOpDefinition (the attach function of the
 // interface, found by its TypeID in lib/Crest/Op.cpp). The model is
 // CrestModel<mlir::XInterface>: the Concept of the interface, a table of
-// function pointers that MLIR calls, with every slot null. There is no default
-// implementation: the op gives the methods, as the op class does in C++.
+// function pointers that MLIR calls, and C++ has no implementation of any
+// method: the op gives them, as the op class does in C++, or the macro of the
+// interface supplies what MLIR does by default, written in Scheme
+// (scheme/crest/interface.sls), or the name of a function that CREST ships for
+// a slot that Scheme cannot write (an answer that is a use range, say).
 //
-// A method that Scheme implements has a callable that Scheme made once, when
-// the library was loaded, and the callable goes into the slot itself
-// (installInterfaceEntry), so MLIR calls Scheme directly. The callable has the
-// prototype of the slot as a C function: the `const Concept*` that MLIR passes
-// first (ignored), then the arguments. A class that C++ passes or returns by
-// value is a number, a pointer or a struct for the C function, as the ABI of
-// the platform says: Scheme writes the prototype with that in mind.
+// A method has a callable that Scheme made once, when the library was loaded,
+// and the callable goes into the slot itself (installInterfaceEntry), so MLIR
+// calls Scheme directly. The callable has the prototype of the slot as a C
+// function: the `const Concept*` that MLIR passes first (ignored), then the
+// arguments. A class that C++ passes or returns by value is a number, a
+// pointer or a struct for the C function, as the ABI of the platform says:
+// crest-slot-callable (scheme/crest/callback.sls) writes the prototype from
+// the C++ types, and SlotAbiTest checks each kind on every platform.
 
 /// The model of `InterfaceT` for an op that Scheme defines: its Concept, with
 /// the alias `InterfaceMap::insertModels` asks for. Every slot is null until
-/// something fills it (installInterfaceEntry does). A model that still has
-/// defaults derives from this and gives them to the constructor in the order of
-/// the slots, which are the members of the Concept, or assigns them in its own
-/// constructor; the arguments are those of the Concept's aggregate
-/// initialization, so a lambda without captures converts to its slot.
+/// something fills it (installInterfaceEntry does, for each method that the op
+/// gives or that has a default written in Scheme or shipped as a C function).
 template <typename InterfaceT> struct CrestModel : InterfaceT::Concept {
   using Interface = InterfaceT;
   using Concept = typename InterfaceT::Concept;
-
-  CrestModel() = default;
-
-  template <typename... Args,
-            typename = std::enable_if_t<(sizeof...(Args) > 0)>>
-  explicit CrestModel(Args&&... args) : Concept{std::forward<Args>(args)...} {}
 };
 
 /// The entry point of the callable that `dispatcher` has for `method`, as the
@@ -118,15 +112,6 @@ template <typename InterfaceT>
 void insertModelOnce(mlir::detail::InterfaceMap& map) {
   if (!map.lookup<InterfaceT>()) {
     map.insertModels<CrestModel<InterfaceT>>();
-  }
-}
-
-/// Insert `Model`, a model of its own that has defaults, unless the map has its
-/// interface already.
-template <typename Model>
-void insertCustomModelOnce(mlir::detail::InterfaceMap& map) {
-  if (!map.lookup<typename Model::Interface>()) {
-    map.insertModels<Model>();
   }
 }
 

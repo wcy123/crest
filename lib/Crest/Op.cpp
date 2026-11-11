@@ -242,6 +242,8 @@ void CrestOp::registerInto(mlir::ExtensibleDialect* dialect,
   attachInterfaces(*def, interfaces, getAttachInterfaceFns(),
                    "crest::register-dynamic-op!");
   requireCallableOpInterfaceClauses(*def, op_name.str());
+  requireArgAndResultAttrsOpInterfaceClauses(*def, op_name.str());
+  requireSymbolOpInterfaceClauses(*def, op_name.str());
   dialect->registerDynamicOp(std::move(def));
 }
 

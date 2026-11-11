@@ -35,6 +35,7 @@
 
     mlir::Operation::hasAttr?
     mlir::Operation::emitError
+    mlir::Operation::emitOpError
     mlir::Operation::verify?
     mlir::Operation::emitWarning
     mlir::Operation::emitRemark
@@ -43,6 +44,7 @@
     mlir::Operation::erase
     mlir::Operation::getAttr
     mlir::Operation::setAttr!
+    mlir::Operation::removeAttr
     mlir::Operation::getAttrOfType<FloatAttr>
     mlir::Operation::getAttrDictionary
     mlir::Operation::setAttrs
@@ -195,6 +197,13 @@
   ;; @note       Defined in lib/Bindings/IR/Operation.cpp
   (define mlir::Operation::emitError       %emit-error)
 
+  ;; @brief mlir::Operation::emitOpError — emit an error that names the op ("'dialect.op' op ...").
+  ;; @param op   Operation* uptr
+  ;; @param msg  Error message (string)
+  ;; @see        mlir/IR/Operation.h
+  ;; @note       Defined in lib/Bindings/IR/Operation.cpp
+  (define mlir::Operation::emitOpError     %emit-op-error)
+
   ;; @brief mlir::verify — verify the operation and everything nested in it.
   ;; @param op   Operation* uptr
   ;; @return     #t when it verifies, #f after emitting the diagnostics
@@ -252,6 +261,16 @@
   ;; @see              mlir/IR/Operation.h, mlir/IR/BuiltinAttributes.h
   ;; @note             Defined in lib/Bindings/IR/Operation.cpp
   (define (mlir::Operation::setAttr! op name attr) (%set-attr op name attr))
+
+  ;; @brief mlir::Operation::removeAttr — remove an attribute and answer it.
+  ;; @param op         Operation* uptr
+  ;; @param attr-name  Attribute name (string)
+  ;; @return           the Attribute* that was removed as uptr, or #f when the op had none
+  ;; @see              mlir/IR/Operation.h
+  ;; @note             Defined in lib/Bindings/IR/Operation.cpp
+  (define (mlir::Operation::removeAttr op name)
+    (let ([v (%remove-attr op name)])
+      (if (zero? v) #f v)))
 
   ;; @brief mlir::FloatAttr::getValueAsDouble — get a float attribute value.
   ;; @param op         Operation* uptr

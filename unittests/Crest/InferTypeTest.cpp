@@ -140,15 +140,20 @@ TEST_F(InferTypeTest, CompatibleReturnTypesIsTheClauseOrEquality) {
   EXPECT_FALSE(loose.compatible({i32}, {i32, i32}));
 }
 
-TEST_F(InferTypeTest, RefineReturnTypesIsTheClauseOrAcceptsAnything) {
+TEST_F(InferTypeTest, RefineReturnTypesIsTheClauseOrWhatMlirDoes) {
   mlir::MLIRContext ctx(makeRegistry(), mlir::MLIRContext::Threading::DISABLED);
+  mlir::Type i32 = mlir::IntegerType::get(&ctx, 32);
   mlir::Type i64 = mlir::IntegerType::get(&ctx, 64);
   mlir::Type f32 = mlir::Float32Type::get(&ctx);
-  // bld.add has no clause: the default accepts, and leaves the types.
+  // bld.add has no clause, so it gets MLIR's default: the types it infers (the
+  // type of its left operand, i32) have to be compatible with the types it
+  // has, and are equal when it has the one it infers. The types stay.
   BldOp add(ctx, "bld.add", 2);
-  llvm::SmallVector<mlir::Type, 2> types = {i64};
+  llvm::SmallVector<mlir::Type, 2> types = {i32};
   EXPECT_TRUE(mlir::succeeded(add.refine(types)));
   EXPECT_EQ(types.size(), 1u);
+  types = {i64};
+  EXPECT_TRUE(mlir::failed(add.refine(types)));
   // bld.refined takes any single type but i64, and gets the types it has.
   BldOp refined(ctx, "bld.refined", 1);
   types = {f32};

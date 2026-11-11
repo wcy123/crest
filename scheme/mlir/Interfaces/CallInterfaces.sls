@@ -16,106 +16,110 @@
           mlir::CallableOpInterface::getArgumentTypes
           mlir::CallableOpInterface::getResultTypes
           mlir::ArgAndResultAttrsOpInterface::getArgAttrsAttr
-          mlir::ArgAndResultAttrsOpInterface::getResAttrsAttr)
+          mlir::ArgAndResultAttrsOpInterface::getResAttrsAttr
+          mlir::ArgAndResultAttrsOpInterface::setArgAttrsAttr
+          mlir::ArgAndResultAttrsOpInterface::setResAttrsAttr
+          mlir::ArgAndResultAttrsOpInterface::removeArgAttrsAttr
+          mlir::ArgAndResultAttrsOpInterface::removeResAttrsAttr
+          mlir::CallInterfaceCallable::get<SymbolRefAttr>
+          mlir::CallInterfaceCallable::get<Value>
+          mlir::CallInterfaceCallable::dyn_cast<SymbolRefAttr>
+          mlir::CallInterfaceCallable::dyn_cast<Value>
+          crest::OperandRange::get)
   (import (chezscheme)
           (crest callback)
+          (for (crest interface) expand)
+          (only (mlir IR Operation)
+                mlir::Operation::getAttr
+                mlir::Operation::setAttr!
+                mlir::Operation::removeAttr)
           (mlir Interfaces CallInterfaces ffi))
 
-  ;; llvm::ArrayRef<Type>: a pointer and a count. C++ returns it by value, and Chez makes a callable
-  ;; that answers a struct follow the rules of the platform (two registers, or a pointer to the
-  ;; place for the answer): the procedure gets that place as its first argument.
-  (define-ftype %%ArrayRef (struct [data uptr] [size uptr]))
-
-  ;; `dispatcher` is (lambda (method) ...): a method name answers its clause. MLIR has no default for
-  ;; the methods of CallableOpInterface (an op class gives them), and a dialect keeps its signature
-  ;; where it wants, so an entry has all three clauses:
+  ;; MLIR has no default for the methods of CallableOpInterface (an op class gives them), and a dialect
+  ;; keeps its signature where it wants, so an entry has all three clauses:
   ;;   (mlir::CallableOpInterface
   ;;     (getCallableRegion (op) body ...)   the Region that holds the body, or 0 for a declaration
   ;;     (getArgumentTypes (op) body ...)    a list of Types
   ;;     (getResultTypes (op) body ...))     a list of Types
-  ;; Each becomes a foreign-callable, made once, whose address C++ puts in the slot of the Concept,
-  ;; so MLIR calls it with the Concept first and then the op (the Concept is ignored).
-  (define (%%callable-dispatcher dispatcher)
-    (let ([get-region (dispatcher 'getCallableRegion)]
-          [get-arguments (dispatcher 'getArgumentTypes)]
-          [get-results (dispatcher 'getResultTypes)])
-      (define (types-entry-point get-types)
-        (crest-callback-entry-point
-         (uptr uptr) (& %%ArrayRef)
-         (lambda (answer concept op)
-           (let ([types (get-types op)])
-             (ftype-set! %%ArrayRef (data) answer (%crest::CallableOpInterface::keepTypes op types))
-             (ftype-set! %%ArrayRef (size) answer (length types))))))
-      (crest-callback-entry-dispatcher
-       (list (cons 'getCallableRegion
-                   (crest-callback-entry-point (uptr uptr) uptr
-                                               (lambda (concept op) (get-region op))))
-             (cons 'getArgumentTypes (types-entry-point get-arguments))
-             (cons 'getResultTypes (types-entry-point get-results))))))
+  ;; Each becomes a foreign-callable, made once, whose address C++ puts in the slot of the Concept.
+  ;; The slots that answer an ArrayRef get the types kept where the context owns them, so that the
+  ;; ArrayRef outlives the call.
+  (define (%%types->range clause)
+    (lambda (op)
+      (let ([types (clause op)])
+        (cons (%crest::CallableOpInterface::keepTypes op types) (length types)))))
 
-  ;; The clauses are checked when the library compiles: all three, each once, and no other name.
   (define-syntax mlir::CallableOpInterface
     (lambda (stx)
-      (syntax-case stx ()
-        [(_ (method (formal ...) body ...) ...)
-         (let ([given (map syntax->datum #'(method ...))]
-               [required '(getCallableRegion getArgumentTypes getResultTypes)])
-           (for-each
-            (lambda (name)
-              (unless (memq name required)
-                (syntax-violation
-                 ':interfaces
-                 (string-append "mlir::CallableOpInterface has no method " (symbol->string name)
-                                ": its methods are getCallableRegion, getArgumentTypes and getResultTypes")
-                 stx)))
-            given)
-           (for-each
-            (lambda (name)
-              (when (> (length (filter (lambda (other) (eq? other name)) given)) 1)
-                (syntax-violation
-                 ':interfaces
-                 (string-append "mlir::CallableOpInterface has two clauses for " (symbol->string name))
-                 stx)))
-            given)
-           (for-each
-            (lambda (name)
-              (unless (memq name given)
-                (syntax-violation
-                 ':interfaces
-                 (string-append "mlir::CallableOpInterface needs a clause for " (symbol->string name)
-                                ": MLIR has no default, the op gives getCallableRegion, getArgumentTypes and getResultTypes")
-                 stx)))
-            required)
-           #'(cons (mlir::CallableOpInterface::getInterfaceID)
-                   (%%callable-dispatcher
-                    (lambda (name)
-                      (case name
-                        [(method) (lambda (formal ...) body ...)] ...
-                        [else #f])))))]
-        [(_ clause ...)
-         (syntax-violation ':interfaces
-                           "mlir::CallableOpInterface clauses are written (method (op) body ...)"
-                           stx)])))
+      (op-interface-expand
+       stx 'mlir::CallableOpInterface #'(mlir::CallableOpInterface::getInterfaceID)
+       #'((getCallableRegion (uptr) uptr #f #f ())
+          (getArgumentTypes (uptr) range %%types->range #f ())
+          (getResultTypes (uptr) range %%types->range #f ())))))
 
-  ;; The callee is the callee attribute and the arguments are the operands: no method for Scheme.
+  ;; An entry of the :interfaces clause of define-op for CallOpInterface:
+  ;;   (mlir::CallOpInterface
+  ;;     (getCallableForCallee (op) body ...)       the callee: a CallInterfaceCallable
+  ;;     (setCalleeFromCallable (op callee) body ...)
+  ;;     (getArgOperands (op) body ...)             the arguments: (crest::OperandRange::get op start count)
+  ;;     (getArgOperandsMutable :all-operands))     a C function that CREST ships: all the operands
+  ;; MLIR has no default for these four (the op class gives them), so the op gives them. For
+  ;; resolveCallableInTable and resolveCallable it has one, which looks the callee up as a symbol, and
+  ;; an op that does not give them gets the same: a C function that CREST ships.
+  ;; A CallInterfaceCallable is a SymbolRefAttr or a Value, as a number: make one with
+  ;; mlir::CallInterfaceCallable::get<SymbolRefAttr> or get<Value>, and take it apart with dyn_cast<>,
+  ;; which answers 0 for the other kind.
   (define-syntax mlir::CallOpInterface
     (lambda (stx)
-      (syntax-case stx ()
-        [(_) #'(cons (mlir::CallOpInterface::getInterfaceID) (crest-callback-entry-dispatcher '()))]
-        [(_ clause ...)
-         (syntax-violation ':interfaces
-                           "mlir::CallOpInterface takes no method clauses: the callee is the callee attribute and the arguments are the operands"
-                           stx)])))
+      (op-interface-expand
+       stx 'mlir::CallOpInterface #'(mlir::CallOpInterface::getInterfaceID)
+       #'((getCallableForCallee (uptr) object #f #f ())
+          (setCalleeFromCallable (uptr object) void #f #f ())
+          (getArgOperands (uptr) range #f #f ())
+          (getArgOperandsMutable (uptr) uptr #f #f
+                                 ((:all-operands cpp (%crest::CallOpInterface::getArgOperandsMutable))))
+          (resolveCallableInTable (uptr uptr) uptr #f
+                                  (cpp (%crest::CallOpInterface::resolveCallableInTable)) ())
+          (resolveCallable (uptr) uptr #f (cpp (%crest::CallOpInterface::resolveCallable)) ())))))
 
+  ;; The standard clauses of ArgAndResultAttrsOpInterface keep the attributes in the op's
+  ;; "arg_attrs" and "res_attrs" attributes, as an ODS op with those attributes does. A null
+  ;; attribute is no attribute.
+  (define (%%attribute-getter name)
+    (lambda (op) (or (mlir::Operation::getAttr op name) 0)))
+
+  (define (%%attribute-setter name)
+    (lambda (op attrs)
+      (if (zero? attrs)
+          (mlir::Operation::removeAttr op name)
+          (mlir::Operation::setAttr! op name attrs))))
+
+  (define (%%attribute-remover name)
+    (lambda (op) (or (mlir::Operation::removeAttr op name) 0)))
+
+  ;; An entry of the :interfaces clause of define-op for ArgAndResultAttrsOpInterface, which
+  ;; CallableOpInterface, CallOpInterface and FunctionOpInterface extend, so an op that has one of
+  ;; them declares it too. MLIR has no default for its six methods, so the op gives them as clauses
+  ;; (getArgAttrsAttr, getResAttrsAttr, setArgAttrsAttr, setResAttrsAttr, removeArgAttrsAttr,
+  ;; removeResAttrsAttr), or writes
+  ;;   (mlir::ArgAndResultAttrsOpInterface :standard)
+  ;; for the clauses that keep "arg_attrs" and "res_attrs" attributes.
   (define-syntax mlir::ArgAndResultAttrsOpInterface
     (lambda (stx)
-      (syntax-case stx ()
-        [(_) #'(cons (mlir::ArgAndResultAttrsOpInterface::getInterfaceID)
-                     (crest-callback-entry-dispatcher '()))]
-        [(_ clause ...)
-         (syntax-violation ':interfaces
-                           "mlir::ArgAndResultAttrsOpInterface takes no method clauses"
-                           stx)])))
+      (op-interface-expand
+       stx 'mlir::ArgAndResultAttrsOpInterface #'(mlir::ArgAndResultAttrsOpInterface::getInterfaceID)
+       #'((getArgAttrsAttr (uptr) object #f #f
+                           ((:standard scheme (%%attribute-getter "arg_attrs"))))
+          (getResAttrsAttr (uptr) object #f #f
+                           ((:standard scheme (%%attribute-getter "res_attrs"))))
+          (setArgAttrsAttr (uptr object) void #f #f
+                           ((:standard scheme (%%attribute-setter "arg_attrs"))))
+          (setResAttrsAttr (uptr object) void #f #f
+                           ((:standard scheme (%%attribute-setter "res_attrs"))))
+          (removeArgAttrsAttr (uptr) object #f #f
+                              ((:standard scheme (%%attribute-remover "arg_attrs"))))
+          (removeResAttrsAttr (uptr) object #f #f
+                              ((:standard scheme (%%attribute-remover "res_attrs"))))))))
 
   (define mlir::CallableOpInterface::getInterfaceID
     %mlir::CallableOpInterface::getInterfaceID)
@@ -140,5 +144,37 @@
 
   (define (mlir::ArgAndResultAttrsOpInterface::getResAttrsAttr op)
     (%mlir::ArgAndResultAttrsOpInterface::getResAttrsAttr op))
+
+  (define (mlir::ArgAndResultAttrsOpInterface::setArgAttrsAttr op attrs)
+    (%mlir::ArgAndResultAttrsOpInterface::setArgAttrsAttr op attrs))
+
+  (define (mlir::ArgAndResultAttrsOpInterface::setResAttrsAttr op attrs)
+    (%mlir::ArgAndResultAttrsOpInterface::setResAttrsAttr op attrs))
+
+  (define (mlir::ArgAndResultAttrsOpInterface::removeArgAttrsAttr op)
+    (%mlir::ArgAndResultAttrsOpInterface::removeArgAttrsAttr op))
+
+  (define (mlir::ArgAndResultAttrsOpInterface::removeResAttrsAttr op)
+    (%mlir::ArgAndResultAttrsOpInterface::removeResAttrsAttr op))
+
+  (define mlir::CallInterfaceCallable::get<SymbolRefAttr>
+    %mlir::CallInterfaceCallable::get<SymbolRefAttr>)
+
+  (define mlir::CallInterfaceCallable::get<Value>
+    %mlir::CallInterfaceCallable::get<Value>)
+
+  ;; The SymbolRefAttr of a callee that is one, or #f for a Value.
+  (define (mlir::CallInterfaceCallable::dyn_cast<SymbolRefAttr> callable)
+    (let ([attr (%mlir::CallInterfaceCallable::dyn_cast<SymbolRefAttr> callable)])
+      (if (zero? attr) #f attr)))
+
+  ;; The Value of a callee that is one, or #f for a SymbolRefAttr.
+  (define (mlir::CallInterfaceCallable::dyn_cast<Value> callable)
+    (let ([value (%mlir::CallInterfaceCallable::dyn_cast<Value> callable)])
+      (if (zero? value) #f value)))
+
+  ;; The operands of the op from `start`, `count` of them, as the answer of getArgOperands.
+  (define (crest::OperandRange::get op start count)
+    (%crest::OperandRange::get op start count))
 
   ) ;; end library (mlir Interfaces CallInterfaces)

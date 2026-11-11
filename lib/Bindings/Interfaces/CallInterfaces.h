@@ -34,6 +34,10 @@ void attachCallableOpInterface(mlir::DynamicOpDefinition& def,
 // without them).
 void requireCallableOpInterfaceClauses(mlir::DynamicOpDefinition& def,
                                        const std::string& opName);
+// An op that has ArgAndResultAttrsOpInterface (a base of the interfaces above)
+// must have all its clauses; raises a Scheme error when it does not.
+void requireArgAndResultAttrsOpInterfaceClauses(mlir::DynamicOpDefinition& def,
+                                                const std::string& opName);
 void attachCallOpInterface(mlir::DynamicOpDefinition& def,
                            const LockedSchemeObject& dispatcher);
 void attachArgAndResultAttrsOpInterface(mlir::DynamicOpDefinition& def,

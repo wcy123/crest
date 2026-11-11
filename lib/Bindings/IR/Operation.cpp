@@ -250,6 +250,14 @@ void registerIROperationBindings() {
         }
         reinterpret_cast<mlir::Operation*>(op_ptr)->emitError(msg);
       });
+  // mlir::Operation::emitOpError (uptr op, string message) -> void
+  //
+  // An error that names the op: "'dialect.op' op message".
+  Sregister_symbol(
+      "mlir::Operation::emitOpError",
+      (void*)+[](uint64_t op_ptr, const char* msg) -> void {
+        reinterpret_cast<mlir::Operation*>(op_ptr)->emitOpError(msg);
+      });
   Sregister_symbol(
       "mlir::Operation::emitWarning",
       (void*)+[](uint64_t op_ptr, const char* msg) -> void {
@@ -379,6 +387,20 @@ void registerIROperationBindings() {
         reinterpret_cast<mlir::Operation*>(op_ptr)->setAttr(
             name, mlir::Attribute::getFromOpaquePointer(
                       reinterpret_cast<const void*>(attr_ptr)));
+      });
+  // mlir::Operation::removeAttr (uptr op, string name) -> uptr
+  //
+  // Removes the attribute and answers it, or 0 when the op has none of that
+  // name.
+  Sregister_symbol(
+      "mlir::Operation::removeAttr",
+      (void*)+[](uint64_t op_ptr, const char* name) -> uint64_t {
+        if (!op_ptr || !name) {
+          return 0;
+        }
+        mlir::Attribute removed =
+            reinterpret_cast<mlir::Operation*>(op_ptr)->removeAttr(name);
+        return reinterpret_cast<uint64_t>(removed.getAsOpaquePointer());
       });
   Sregister_symbol(
       "mlir::Operation::emitError!",

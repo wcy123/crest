@@ -100,8 +100,8 @@ std::string addPure(mlir::DynamicOpDefinition& def, llvm::StringRef,
               CrestTrait<mlir::OpTrait::AlwaysSpeculatableImplTrait>>())) {
     return "repeated";
   }
-  ensureMemoryEffectOpInterface(def.getInterfaceMap());
-  ensureConditionallySpeculatable(def.getInterfaceMap());
+  addNoMemoryEffects(def.getInterfaceMap());
+  addAlwaysSpeculatable(def.getInterfaceMap());
   return "";
 }
 

@@ -8,17 +8,19 @@
           (mlir IR Operation)
           (only (mlir IR BuiltinTypes) mlir::IntegerType::get<i32> mlir::IntegerType::get<i64>
                 mlir::Float32Type::get)
-          (only (mlir Interfaces CallInterfaces) mlir::CallableOpInterface))
+          (only (mlir Interfaces CallInterfaces) mlir::CallableOpInterface mlir::ArgAndResultAttrsOpInterface))
 
   (define-dialect callablemethods
     (define-op one
-      :interfaces ((mlir::CallableOpInterface
+      :interfaces ((mlir::ArgAndResultAttrsOpInterface :standard)
+                   (mlir::CallableOpInterface
                     (getCallableRegion (self) (mlir::Operation::getRegion self 1))
                     (getArgumentTypes (self)
                                       (list (mlir::IntegerType::get<i32>) (mlir::Float32Type::get)))
                     (getResultTypes (self) (list (mlir::IntegerType::get<i64>))))))
     (define-op two
-      :interfaces ((mlir::CallableOpInterface
+      :interfaces ((mlir::ArgAndResultAttrsOpInterface :standard)
+                   (mlir::CallableOpInterface
                     (getCallableRegion (self) (mlir::Operation::getRegion self 0))
                     (getArgumentTypes (self) '())
                     (getResultTypes (self)

@@ -3,8 +3,19 @@
   (export nocallable)
   (import (chezscheme)
           (crest dialect)
-          (only (mlir Interfaces FunctionInterfaces) mlir::FunctionOpInterface))
+          (mlir IR Operation)
+          (mlir IR BuiltinAttributes)
+          (only (mlir IR SymbolInterfaces) mlir::SymbolOpInterface)
+          (only (mlir Interfaces FunctionInterfaces) mlir::FunctionOpInterface)
+          (only (mlir Interfaces CallInterfaces) mlir::ArgAndResultAttrsOpInterface))
 
   (define-dialect nocallable
     (define-op func
-      :interfaces ((mlir::FunctionOpInterface)))))
+      :interfaces ((mlir::SymbolOpInterface)
+                   (mlir::ArgAndResultAttrsOpInterface :standard)
+                   (mlir::FunctionOpInterface
+                    (getFunctionType (self)
+                                     (mlir::TypeAttr::getValue
+                                      (mlir::Operation::getAttr self "function_type")))
+                    (setFunctionTypeAttr (self attr)
+                                         (mlir::Operation::setAttr! self "function_type" attr)))))))

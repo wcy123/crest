@@ -4,7 +4,8 @@ Ch4 inlines `toy.generic_call` and adds `toy.cast` to handle ranked/unranked
 tensor mismatches that appear at call boundaries after inlining.
 
 The inlining is done by MLIR's inliner pass, as in the C++ tutorial. It needs
-`toy.generic_call` to implement `CallOpInterface` (`:interfaces ((mlir::CallOpInterface))`),
+`toy.generic_call` to implement `CallOpInterface` (its `:interfaces` give the callee, the argument operands and
+`(getArgOperandsMutable :all-operands)`, as the C++ op does with `getCallableForCallee` and `getArgOperands`),
 `toy.func` to be callable (it is: its `:interfaces` give `CallableOpInterface` its three clauses, as the C++ op does with
 `getCallableRegion`, `getArgumentTypes` and `getResultTypes`), `toy.return` to be a
 terminator (`:traits (terminator)`), and the dialect's `DialectInlinerInterface` to say

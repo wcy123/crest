@@ -5,6 +5,8 @@
 // Mirrors mlir/IR/SymbolInterfaces.h
 #pragma once
 
+#include <string>
+
 namespace mlir {
 class DynamicOpDefinition;
 namespace detail {
@@ -19,6 +21,11 @@ void registerIRSymbolInterfacesBindings();
 
 // Insert the model of the interface into the map unless it is there.
 void ensureSymbolOpInterface(mlir::detail::InterfaceMap& map);
+
+// An op that has SymbolOpInterface (a base of FunctionOpInterface) must have
+// all its clauses; raises a Scheme error when it does not.
+void requireSymbolOpInterfaceClauses(mlir::DynamicOpDefinition& def,
+                                     const std::string& opName);
 
 // Install the interface in the definition of an op from the dispatcher of its
 // :interfaces entry (lib/Crest/Op.cpp).
