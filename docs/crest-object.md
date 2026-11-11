@@ -312,6 +312,8 @@ body. The list is `()` when there are no arguments.
 | `with-ArrayRef v (ref)` or `v (data size)` | a `CArrayRef`; the elements are never freed |
 | `with-OpBuilder v (create-call)` | frees the shell that `(create-call)` makes, and binds `v` to that shell |
 | `with-DialectRegistry v ()`, `with-MLIRContext v (registry)`, `with-PassManager v (ctx)` | a `DialectRegistry`, an `MLIRContext` made from a registry, a `PassManager` |
+| `with-mlir::OwningOpRef<mlir::ModuleOp> v (creation)` | the module that `creation` returns, usually `(mlir::parseSourceFile ctx filename)`; erased at the end (not a `CrestObject`) |
+| `with-raii v constructor destructor` | any resource: calls `(destructor v)` on exit, also with `dynamic-wind`; the generic helper that `with-mlir::OwningOpRef<mlir::ModuleOp>` is built on |
 
 Nested macros free in reverse order: the innermost shell is freed first.
 

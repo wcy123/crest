@@ -7,7 +7,7 @@
 (import (except (rnrs) =)
         (only (crest dialect) load-scheme-dialect!)
         (only (chezscheme) collect object-counts enable-object-counts command-line-arguments)
-        (mlir IR DialectRegistry) (mlir IR MLIRContext) (mlir IR Operation)
+        (mlir IR DialectRegistry) (mlir IR MLIRContext) (mlir IR Operation) (mlir IR OwningOpRef)
         (mlir Dialect Func IR FuncOps)
         (mlir Transforms DialectConversion)
         (only (mlir IR PatternMatch) with-RewritePatternSet)
@@ -31,7 +31,8 @@
     (with-MLIRContext ctx (reg)
       (mlir::MLIRContext::allowUnregisteredDialects ctx #t)
       (mlir::MLIRContext::getOrLoadDialect ctx "func")
-      (action ctx (mlir::parseSourceFile ctx path)))))
+      (with-mlir::OwningOpRef<mlir::ModuleOp> module (mlir::parseSourceFile ctx path)
+                                              (action ctx module)))))
 
 ;; The error is the point of the scenario: it is caught here, in Scheme, so the run goes on.
 (define (ignoring-errors thunk)
