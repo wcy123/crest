@@ -9,6 +9,7 @@
 // among them. The tests ask the map, as MLIR's own code does, and call the
 // default methods through the interface.
 
+#include "../../lib/Bindings/Support/SchemeWrapper.h"
 #include "../../lib/Crest/Dialect.h"
 #include "../../lib/Interpreter/ChezSchemeInterpreter.h"
 #include "mlir/IR/Builders.h"
@@ -25,6 +26,8 @@
 #include "mlir/Transforms/InliningUtils.h"
 #include "gtest/gtest.h"
 #include <cstdlib>
+#include <string>
+#include <vector>
 
 using namespace crest;
 
@@ -189,4 +192,176 @@ TEST_F(InterfaceTest, TheDialectHasItsInlinerInterface) {
               nullptr)
         << "context " << i;
   }
+}
+
+//===----------------------------------------------------------------------===//
+// The prototype of a slot
+//
+// A slot of a Concept is a C function pointer that MLIR calls, and Scheme fills
+// it with a foreign-callable (crest-slot-callable in
+// scheme/crest/callback.sls). C++ passes and returns some types by value in a
+// way that depends on the platform: a class of one pointer (Type, TypeAttr,
+// StringAttr, ...) goes through a pointer on Windows x64, and a TypeRange or an
+// OperandRange is two words in registers or a pointer to a copy. Each test
+// makes the callable with the kinds that the macro takes, calls it through a
+// function pointer of the exact type of the slot, and checks what arrived: it
+// is the test that tells, on every platform, that a kind of slot can be
+// implemented in Scheme.
+//===----------------------------------------------------------------------===//
+
+namespace {
+
+class SlotAbiTest : public InterfaceTest {
+protected:
+  static void SetUpTestSuite() {
+    InterfaceTest::SetUpTestSuite();
+    EXPECT_TRUE(g_interp->eval("(import (crest callback))"));
+    EXPECT_TRUE(g_interp->eval("(define slot-seen 0)"));
+  }
+
+  static ptr evalScheme(const std::string& code) {
+    ptr port = scheme_call("open-string-input-port", Sstring(code.c_str()));
+    ptr expr = scheme_call("read", port);
+    return scheme_call("eval", expr);
+  }
+
+  // The entry point of the callable that crest-slot-callable makes.
+  template <typename Fn> static Fn slot(const std::string& call) {
+    return reinterpret_cast<Fn>(Sunsigned64_value(evalScheme(call)));
+  }
+
+  static std::vector<uint64_t> numbers(ptr list) {
+    std::vector<uint64_t> result;
+    for (; Spairp(list); list = Scdr(list)) {
+      result.push_back(Sunsigned64_value(Scar(list)));
+    }
+    return result;
+  }
+
+  static uint64_t address(const void* pointer) {
+    return reinterpret_cast<uint64_t>(pointer);
+  }
+
+  static mlir::Operation* op(uint64_t fake) {
+    return reinterpret_cast<mlir::Operation*>(fake);
+  }
+};
+
+} // namespace
+
+// A class of one pointer answered by value: Type, as getFunctionType does.
+TEST_F(SlotAbiTest, ObjectResult) {
+  using Slot = mlir::Type (*)(const void*, mlir::Operation*);
+  auto f =
+      slot<Slot>("(crest-slot-callable (uptr) object (lambda (op) (+ op 8)))");
+  mlir::Type type = f(nullptr, op(0x1000));
+  EXPECT_EQ(address(type.getAsOpaquePointer()), 0x1008u);
+}
+
+// The same for a PointerUnion, as getCallableForCallee does.
+TEST_F(SlotAbiTest, UnionResult) {
+  using Slot = mlir::CallInterfaceCallable (*)(const void*, mlir::Operation*);
+  auto f =
+      slot<Slot>("(crest-slot-callable (uptr) object (lambda (op) (+ op 16)))");
+  mlir::CallInterfaceCallable callable = f(nullptr, op(0x2000));
+  EXPECT_EQ(address(callable.getOpaqueValue()), 0x2010u);
+}
+
+// A class of one pointer taken by value: TypeAttr, as setFunctionTypeAttr does.
+TEST_F(SlotAbiTest, ObjectArgument) {
+  using Slot = void (*)(const void*, mlir::Operation*, mlir::TypeAttr);
+  auto f = slot<Slot>("(crest-slot-callable (uptr object) void (lambda (op "
+                      "attr) (set! slot-seen (list op attr))))");
+  mlir::MLIRContext ctx;
+  mlir::TypeAttr attr = mlir::TypeAttr::get(mlir::IntegerType::get(&ctx, 32));
+  f(nullptr, op(0x3000), attr);
+  std::vector<uint64_t> seen = numbers(evalScheme("slot-seen"));
+  ASSERT_EQ(seen.size(), 2u);
+  EXPECT_EQ(seen[0], 0x3000u);
+  EXPECT_EQ(seen[1], address(attr.getAsOpaquePointer()));
+}
+
+// Two TypeRanges by value, as cloneTypeWith takes: the procedure sees the lists
+// of the types, whatever the first word of the range is.
+TEST_F(SlotAbiTest, TypeRangeArguments) {
+  using Slot = mlir::Type (*)(const void*, mlir::Operation*, mlir::TypeRange,
+                              mlir::TypeRange);
+  auto f = slot<Slot>("(crest-slot-callable (uptr type-range type-range) object"
+                      "  (lambda (op inputs results) (set! slot-seen (list "
+                      "inputs results)) 0))");
+  mlir::MLIRContext ctx;
+  mlir::Type i32 = mlir::IntegerType::get(&ctx, 32);
+  mlir::Type f32 = mlir::Float32Type::get(&ctx);
+  mlir::Type i64 = mlir::IntegerType::get(&ctx, 64);
+  llvm::SmallVector<mlir::Type> inputs{i32, f32};
+  llvm::SmallVector<mlir::Type> results{i64};
+  f(nullptr, op(0x4000), mlir::TypeRange(inputs), mlir::TypeRange(results));
+  ptr seen = evalScheme("slot-seen");
+  ASSERT_TRUE(Spairp(seen));
+  EXPECT_EQ(numbers(Scar(seen)),
+            (std::vector<uint64_t>{address(i32.getAsOpaquePointer()),
+                                   address(f32.getAsOpaquePointer())}));
+  EXPECT_EQ(numbers(Scar(Scdr(seen))),
+            (std::vector<uint64_t>{address(i64.getAsOpaquePointer())}));
+}
+
+// An ArrayRef answered by value, as getArgumentTypes does.
+TEST_F(SlotAbiTest, ArrayRefResult) {
+  using Slot = llvm::ArrayRef<mlir::Type> (*)(const void*, mlir::Operation*);
+  mlir::MLIRContext ctx;
+  static mlir::Type types[2];
+  types[0] = mlir::IntegerType::get(&ctx, 8);
+  types[1] = mlir::Float64Type::get(&ctx);
+  auto f = slot<Slot>("(crest-slot-callable (uptr) range (lambda (op) (cons " +
+                      std::to_string(address(types)) + " 2)))");
+  llvm::ArrayRef<mlir::Type> answer = f(nullptr, op(0x5000));
+  ASSERT_EQ(answer.size(), 2u);
+  EXPECT_EQ(answer.data(), types);
+}
+
+// An OperandRange answered by value, as getArgOperands does.
+TEST_F(SlotAbiTest, OperandRangeResult) {
+  using Slot = mlir::OperandRange (*)(const void*, mlir::Operation*);
+  auto f = slot<Slot>(
+      "(crest-slot-callable (uptr) range (lambda (op) (cons #x6000 3)))");
+  mlir::OperandRange range = f(nullptr, op(0x5000));
+  EXPECT_EQ(range.size(), 3u);
+  EXPECT_EQ(address(range.getBase()), 0x6000u);
+}
+
+// A bool and an enum, as isPrivate and getVisibility answer.
+TEST_F(SlotAbiTest, BoolAndEnumResults) {
+  using BoolSlot = bool (*)(const void*, mlir::Operation*);
+  auto yes =
+      slot<BoolSlot>("(crest-slot-callable (uptr) unsigned-8 (lambda (op) 1))");
+  auto no =
+      slot<BoolSlot>("(crest-slot-callable (uptr) unsigned-8 (lambda (op) 0))");
+  EXPECT_TRUE(yes(nullptr, op(0x1000)));
+  EXPECT_FALSE(no(nullptr, op(0x1000)));
+
+  using VisibilitySlot =
+      mlir::SymbolTable::Visibility (*)(const void*, mlir::Operation*);
+  auto visibility =
+      slot<VisibilitySlot>("(crest-slot-callable (uptr) int (lambda (op) 2))");
+  EXPECT_EQ(visibility(nullptr, op(0x1000)),
+            mlir::SymbolTable::Visibility::Nested);
+}
+
+// An enum taken by value and a pointer taken by reference, as setVisibility and
+// getEffects take them.
+TEST_F(SlotAbiTest, EnumAndReferenceArguments) {
+  using Slot =
+      void (*)(const void*, mlir::Operation*, mlir::SymbolTable::Visibility,
+               llvm::SmallVectorImpl<int>&);
+  auto f = slot<Slot>("(crest-slot-callable (uptr int uptr) void"
+                      "  (lambda (op visibility sink) (set! slot-seen (list op "
+                      "visibility sink))))");
+  llvm::SmallVector<int> sink;
+  f(nullptr, op(0x7000), mlir::SymbolTable::Visibility::Private, sink);
+  std::vector<uint64_t> seen = numbers(evalScheme("slot-seen"));
+  ASSERT_EQ(seen.size(), 3u);
+  EXPECT_EQ(seen[0], 0x7000u);
+  EXPECT_EQ(seen[1],
+            static_cast<uint64_t>(mlir::SymbolTable::Visibility::Private));
+  EXPECT_EQ(seen[2], address(&sink));
 }
