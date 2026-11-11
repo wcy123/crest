@@ -95,6 +95,8 @@
   ;; result kinds: void, uptr, int, unsigned-8, unsigned-32, and
   ;;   object       the procedure answers the pointer; Windows x64 answers a class that has a
   ;;                constructor through the place that the caller gives (a pointer before the Concept)
+  ;;   logical-result  an llvm::LogicalResult (one byte, 1 for success): Windows x64 answers it
+  ;;                through the place that the caller gives, as for an object
   ;;   range        an ArrayRef or an OperandRange: the procedure answers (data . size)
   ;; The procedure gets only the arguments, not the Concept. Answers the entry point, as
   ;; crest-callback-entry-point does.
@@ -130,6 +132,16 @@
                       answer))
                  #`(crest-callback-entry-point
                     (uptr #,@types) uptr
+                    (lambda (concept #,@formals) (#,procedure #,@values))))]
+            [(logical-result)
+             (if windows?
+                 #`(crest-callback-entry-point
+                    (uptr uptr #,@types) uptr
+                    (lambda (answer concept #,@formals)
+                      (foreign-set! 'unsigned-8 answer 0 (#,procedure #,@values))
+                      answer))
+                 #`(crest-callback-entry-point
+                    (uptr #,@types) unsigned-8
                     (lambda (concept #,@formals) (#,procedure #,@values))))]
             [(range)
              #`(crest-callback-entry-point
