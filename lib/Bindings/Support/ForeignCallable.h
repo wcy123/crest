@@ -17,8 +17,16 @@ namespace crest {
 
 namespace detail {
 
-/// The name that a foreign-callable gives a C++ type in its prototype.
-template <typename T> struct ForeignTypeName;
+template <typename T> inline constexpr bool kAlwaysFalse = false;
+
+/// The name that a foreign-callable gives a C++ type in its prototype. A type
+/// that is not listed below cannot cross the boundary.
+template <typename T> struct ForeignTypeName {
+  static_assert(kAlwaysFalse<T>,
+                "this type cannot cross the boundary of a ForeignCallable: use "
+                "uint64_t, int, unsigned, uint8_t, void or a pointer");
+  static constexpr const char* value = "";
+};
 #define CREST_FOREIGN_TYPE_NAME(Type, Name)                                    \
   template <> struct ForeignTypeName<Type> {                                   \
     static constexpr const char* value = Name;                                 \
@@ -38,16 +46,32 @@ template <typename T> struct ForeignTypeName<T*> {
 /// The Scheme procedure that makes a callable of one prototype: `(lambda
 /// (procedure) ...)` answers the entry point of a `foreign-callable` of the
 /// procedure, with its code object locked. It is compiled on every call; the
-/// caller keeps the result (see `ForeignSignature`).
+/// caller keeps the result (see `ForeignSignature::maker`).
 ptr foreignCallableMaker(const std::string& signature);
 
 /// A prototype R(Args...), and the maker of the callables of that prototype.
 ///
 /// Every prototype is its own type, so the maker is a static member: there is
 /// no table, and nothing is allocated in C++. The maker is compiled the first
-/// time the prototype is used. This object owns it and keeps it locked until
-/// the process ends, then unlocks it.
+/// time the prototype is used. This type owns it and keeps it locked until the
+/// process ends, then unlocks it.
+///
+/// The unlock happens while the process exits. It is safe because Chez does not
+/// free its memory then: nothing calls `Sscheme_deinit`, and the `(exit)` of
+/// Scheme ends in the C `exit()`. The test
+/// test/dsl/one-shot-callbacks/exit.mlir ends a program both ways. If a
+/// shutdown of Chez is ever added, it must come after these unlocks.
 template <typename R, typename... Args> struct ForeignSignature {
+  /// The maker, compiled on first use. Scheme must be running. Call it on the
+  /// thread that runs Scheme: it is not thread-safe.
+  static ptr maker() {
+    if (maker_.get() == Sfalse) {
+      maker_ = LockedSchemeObject(foreignCallableMaker(text()));
+    }
+    return maker_.get();
+  }
+
+private:
   /// The prototype as Scheme writes it, for example "(uptr int) void".
   static std::string text() {
     std::string signature = "(";
@@ -60,15 +84,6 @@ template <typename R, typename... Args> struct ForeignSignature {
     return signature;
   }
 
-  /// The maker, compiled on first use. Scheme must be running.
-  static ptr maker() {
-    if (maker_.get() == Sfalse) {
-      maker_ = LockedSchemeObject(foreignCallableMaker(text()));
-    }
-    return maker_.get();
-  }
-
-private:
   static inline LockedSchemeObject maker_;
 };
 

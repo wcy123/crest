@@ -162,8 +162,6 @@ TEST_F(InterpreterTest, FromProcedureSurvivesCollections) {
 TEST_F(InterpreterTest, EachPrototypeOwnsItsMaker) {
   using Signature = detail::ForeignSignature<int, int>;
   using Other = detail::ForeignSignature<void, uint64_t>;
-  EXPECT_EQ(Signature::text(), "(int) int");
-  EXPECT_EQ(Other::text(), "(uptr) void");
   ptr maker = Signature::maker();
   EXPECT_TRUE(Slocked_objectp(maker));
   EXPECT_EQ(Signature::maker(), maker);
