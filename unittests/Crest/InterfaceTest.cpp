@@ -369,7 +369,7 @@ TEST_F(SlotAbiTest, LogicalResultResult) {
   auto ok =
       slot<Slot>("(crest-slot-callable (uptr) logical-result (lambda (op) 1))");
   auto bad =
-      slot<Slot>("(crest-slot-callable (uptr) unsigned-8 (lambda (op) 0))");
+      slot<Slot>("(crest-slot-callable (uptr) logical-result (lambda (op) 0))");
   EXPECT_TRUE(mlir::succeeded(ok(nullptr, op(0x1000))));
   EXPECT_TRUE(mlir::failed(bad(nullptr, op(0x1000))));
 }
