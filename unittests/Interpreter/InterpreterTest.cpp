@@ -157,18 +157,26 @@ TEST_F(InterpreterTest, FromProcedureSurvivesCollections) {
   EXPECT_EQ(callable(5), 15);
 }
 
-// The Scheme procedure that makes the callables of one prototype is compiled
-// once and shared.
-TEST_F(InterpreterTest, FromProcedureCompilesTheMakerOncePerPrototype) {
-  size_t before = detail::foreignCallableMakerCount();
+// Each prototype owns one maker, as a static member: the same maker comes back,
+// it is kept locked, and another prototype has its own.
+TEST_F(InterpreterTest, EachPrototypeOwnsItsMaker) {
+  using Signature = detail::ForeignSignature<int, int>;
+  using Other = detail::ForeignSignature<void, uint64_t>;
+  ptr maker = Signature::maker();
+  EXPECT_TRUE(Slocked_objectp(maker));
+  EXPECT_EQ(Signature::maker(), maker);
+  EXPECT_NE(Other::maker(), maker);
+}
+
+// Two callables of the same prototype work independently: each one is made from
+// its own procedure, and nothing is kept between them.
+TEST_F(InterpreterTest, FromProcedureMakesIndependentCallablesOfOnePrototype) {
   auto first =
       ForeignCallable<uint64_t(uint64_t, uint64_t, uint64_t)>::fromProcedure(
           evalScheme("(lambda (a b c) (+ a b c))"));
-  EXPECT_EQ(detail::foreignCallableMakerCount(), before + 1);
   auto second =
       ForeignCallable<uint64_t(uint64_t, uint64_t, uint64_t)>::fromProcedure(
           evalScheme("(lambda (a b c) (* a b c))"));
-  EXPECT_EQ(detail::foreignCallableMakerCount(), before + 1);
   EXPECT_EQ(first(1, 2, 3), 6u);
   EXPECT_EQ(second(2, 3, 4), 24u);
 }

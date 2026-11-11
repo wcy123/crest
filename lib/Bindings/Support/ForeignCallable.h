@@ -17,8 +17,16 @@ namespace crest {
 
 namespace detail {
 
-/// The name that a foreign-callable gives a C++ type in its prototype.
-template <typename T> struct ForeignTypeName;
+template <typename T> inline constexpr bool kAlwaysFalse = false;
+
+/// The name that a foreign-callable gives a C++ type in its prototype. A type
+/// that is not listed below cannot cross the boundary.
+template <typename T> struct ForeignTypeName {
+  static_assert(kAlwaysFalse<T>,
+                "this type cannot cross the boundary of a ForeignCallable: use "
+                "uint64_t, int, unsigned, uint8_t, void or a pointer");
+  static constexpr const char* value = "";
+};
 #define CREST_FOREIGN_TYPE_NAME(Type, Name)                                    \
   template <> struct ForeignTypeName<Type> {                                   \
     static constexpr const char* value = Name;                                 \
@@ -35,26 +43,49 @@ template <typename T> struct ForeignTypeName<T*> {
   static constexpr const char* value = "uptr";
 };
 
-/// The prototype of a foreign-callable as Scheme writes it, "(uptr int) void".
-template <typename R, typename... Args> std::string foreignSignature() {
-  std::string signature = "(";
-  const char* separator = "";
-  ((signature += separator, signature += ForeignTypeName<Args>::value,
-    separator = " "),
-   ...);
-  signature += ") ";
-  signature += ForeignTypeName<R>::value;
-  return signature;
-}
-
-/// The Scheme procedure that makes the callables of one prototype: (lambda
-/// (procedure) ...) answers the entry point of a foreign-callable of the
-/// procedure, with its code object locked. It is compiled the first time the
-/// prototype is used and kept, locked, for the life of the process.
+/// The Scheme procedure that makes a callable of one prototype: `(lambda
+/// (procedure) ...)` answers the entry point of a `foreign-callable` of the
+/// procedure, with its code object locked. It is compiled on every call; the
+/// caller keeps the result (see `ForeignSignature::maker`).
 ptr foreignCallableMaker(const std::string& signature);
 
-/// How many makers there are: one per prototype that was used.
-size_t foreignCallableMakerCount();
+/// A prototype R(Args...), and the maker of the callables of that prototype.
+///
+/// Every prototype is its own type, so the maker is a static member: there is
+/// no table, and nothing is allocated in C++. The maker is compiled the first
+/// time the prototype is used. This type owns it and keeps it locked until the
+/// process ends, then unlocks it.
+///
+/// The unlock happens while the process exits. It is safe because Chez does not
+/// free its memory then: nothing calls `Sscheme_deinit`, and the `(exit)` of
+/// Scheme ends in the C `exit()`. The test
+/// test/dsl/one-shot-callbacks/exit.mlir ends a program both ways. If a
+/// shutdown of Chez is ever added, it must come after these unlocks.
+template <typename R, typename... Args> struct ForeignSignature {
+  /// The maker, compiled on first use. Scheme must be running. Call it on the
+  /// thread that runs Scheme: it is not thread-safe.
+  static ptr maker() {
+    if (maker_.get() == Sfalse) {
+      maker_ = LockedSchemeObject(foreignCallableMaker(text()));
+    }
+    return maker_.get();
+  }
+
+private:
+  /// The prototype as Scheme writes it, for example "(uptr int) void".
+  static std::string text() {
+    std::string signature = "(";
+    const char* separator = "";
+    ((signature += separator, signature += ForeignTypeName<Args>::value,
+      separator = " "),
+     ...);
+    signature += ") ";
+    signature += ForeignTypeName<R>::value;
+    return signature;
+  }
+
+  static inline LockedSchemeObject maker_;
+};
 
 } // namespace detail
 
@@ -141,8 +172,9 @@ template <typename Signature> class ForeignCallable;
 ///
 /// @par Cost
 /// The first time a prototype is used, Scheme compiles a small helper for it,
-/// and the helper is kept. After that, creating and releasing a function takes
-/// about one microsecond (measured).
+/// which takes about 0.6 milliseconds (measured). The helper belongs to the
+/// prototype and is kept until the process ends. After that, creating and
+/// releasing a function takes about 0.6 microseconds (measured).
 ///
 /// @par Example: a callback that is used while the binding runs
 /// The Scheme call is `(mlir::Operation::walk op (lambda (nested-op) ...))`.
@@ -241,8 +273,7 @@ public:
       scheme_error("crest::ForeignCallable::fromProcedure",
                    "the callback is not a procedure");
     }
-    ptr maker =
-        detail::foreignCallableMaker(detail::foreignSignature<R, Args...>());
+    ptr maker = detail::ForeignSignature<R, Args...>::maker();
     return ForeignCallable(Sunsigned64_value(scheme_call(maker, locked.get())));
   }
 
