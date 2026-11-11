@@ -54,5 +54,12 @@
                                     (getArgOperandsMutable :all-operands))))
     (define-op attrs  :interfaces ((mlir::ArgAndResultAttrsOpInterface :standard)))
     (define-op symbol :interfaces ((mlir::SymbolOpInterface)))
-    (define-op effect :interfaces ((mlir::MemoryEffectOpInterface) (mlir::ConditionallySpeculatable)))
+    (define-op effect
+      :interfaces ((mlir::MemoryEffectOpInterface (getEffects :none))
+                   (mlir::ConditionallySpeculatable (getSpeculatability :always))))
+    ;; The trait pure gives both answers; a clause replaces one of them.
+    (define-op pure-op :traits (pure))
+    (define-op not-speculatable
+      :traits (pure)
+      :interfaces ((mlir::ConditionallySpeculatable (getSpeculatability (self) 0))))
     (define-op bare)))

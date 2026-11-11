@@ -168,6 +168,27 @@ TEST_F(InterfaceTest, TheDefaultMethodsWork) {
   op->destroy();
 }
 
+// The side-effect interfaces answer what the op says: the trait pure and the
+// keywords of the clauses say "no effects" and "speculatable", and a clause of
+// the op replaces the answer that the trait gave.
+TEST_F(InterfaceTest, TheSideEffectInterfacesAnswerWhatTheOpSays) {
+  mlir::MLIRContext ctx(makeRegistry(), mlir::MLIRContext::Threading::DISABLED);
+  mlir::Location loc = mlir::UnknownLoc::get(&ctx);
+  auto answers = [&](const char* opName) {
+    name(ctx, opName);
+    mlir::OperationState state(loc, opName);
+    mlir::Operation* op = mlir::Operation::create(state);
+    std::pair<bool, bool> result{mlir::isMemoryEffectFree(op),
+                                 mlir::isSpeculatable(op)};
+    op->destroy();
+    return result;
+  };
+  EXPECT_EQ(answers("ifacemap.effect"), (std::pair<bool, bool>{true, true}));
+  EXPECT_EQ(answers("ifacemap.pure-op"), (std::pair<bool, bool>{true, true}));
+  EXPECT_EQ(answers("ifacemap.not-speculatable"),
+            (std::pair<bool, bool>{true, false}));
+}
+
 // The interface is part of the definition of the op, so another context that
 // loads the dialect gets its own map with the same interfaces.
 TEST_F(InterfaceTest, EveryContextThatLoadsTheDialectHasThem) {

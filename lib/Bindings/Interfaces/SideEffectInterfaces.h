@@ -17,9 +17,10 @@ class LockedSchemeObject;
 
 void registerInterfacesSideEffectInterfacesBindings();
 
-// Insert the models of the interfaces into the map unless they are there.
-void ensureMemoryEffectOpInterface(mlir::detail::InterfaceMap& map);
-void ensureConditionallySpeculatable(mlir::detail::InterfaceMap& map);
+// What the trait `pure` adds: the models of the interfaces with the answers "no
+// memory effects" and "always speculatable".
+void addNoMemoryEffects(mlir::detail::InterfaceMap& map);
+void addAlwaysSpeculatable(mlir::detail::InterfaceMap& map);
 
 // Install the interface in the definition of an op from the dispatcher of its
 // :interfaces entry (lib/Crest/Op.cpp).

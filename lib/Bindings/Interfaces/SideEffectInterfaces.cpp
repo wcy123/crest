@@ -13,50 +13,56 @@
 #include <memory>
 
 namespace {
-// Both interfaces are answered once and for all: the op has no memory effects
-// and may be speculated. This is what `pure` means; an op that wants anything
-// else does not declare them.
-struct MemoryEffectConceptData
-    : public crest::CrestModel<mlir::MemoryEffectOpInterface> {
-  MemoryEffectConceptData()
-      : CrestModel{
-            [](const mlir::MemoryEffectOpInterface::Concept*, mlir::Operation*,
-               llvm::SmallVectorImpl<mlir::SideEffects::EffectInstance<
-                   mlir::MemoryEffects::Effect>>&) {},
-        } {}
-};
 
-struct SpeculatableConceptData
-    : public crest::CrestModel<mlir::ConditionallySpeculatable> {
-  SpeculatableConceptData()
-      : CrestModel{
-            [](const mlir::ConditionallySpeculatable::Concept*,
-               mlir::Operation*) -> mlir::Speculation::Speculatability {
-              return mlir::Speculation::Speculatable;
-            },
-        } {}
-};
+using MemoryEffectConcept = mlir::MemoryEffectOpInterface::Concept;
+using SpeculatableConcept = mlir::ConditionallySpeculatable::Concept;
+
+// The function that stands for "no memory effects": what the trait `pure`
+// puts in the slot, and what the clause (getEffects :none) names.
+void noMemoryEffects(
+    const MemoryEffectConcept*, mlir::Operation*,
+    llvm::SmallVectorImpl<
+        mlir::SideEffects::EffectInstance<mlir::MemoryEffects::Effect>>&) {}
+
+// The same for "always speculatable".
+mlir::Speculation::Speculatability
+alwaysSpeculatable(const SpeculatableConcept*, mlir::Operation*) {
+  return mlir::Speculation::Speculatable;
+}
 
 } // anonymous namespace
 
 namespace crest {
 
-void ensureMemoryEffectOpInterface(mlir::detail::InterfaceMap& map) {
-  insertCustomModelOnce<MemoryEffectConceptData>(map);
+// The trait `pure` means no memory effects and always speculatable: it fills
+// the slots with those answers, which are its definition. A clause of the op
+// for the interface replaces them.
+void addNoMemoryEffects(mlir::detail::InterfaceMap& map) {
+  insertModelOnce<mlir::MemoryEffectOpInterface>(map);
+  map.lookup<mlir::MemoryEffectOpInterface>()->getEffects = noMemoryEffects;
 }
 
-void ensureConditionallySpeculatable(mlir::detail::InterfaceMap& map) {
-  insertCustomModelOnce<SpeculatableConceptData>(map);
+void addAlwaysSpeculatable(mlir::detail::InterfaceMap& map) {
+  insertModelOnce<mlir::ConditionallySpeculatable>(map);
+  map.lookup<mlir::ConditionallySpeculatable>()->getSpeculatability =
+      alwaysSpeculatable;
 }
 
 void attachMemoryEffectOpInterface(mlir::DynamicOpDefinition& def,
-                                   const LockedSchemeObject&) {
-  ensureMemoryEffectOpInterface(def.getInterfaceMap());
+                                   const LockedSchemeObject& dispatcher) {
+  mlir::detail::InterfaceMap& map = def.getInterfaceMap();
+  insertModelOnce<mlir::MemoryEffectOpInterface>(map);
+  installInterfaceEntry(map.lookup<mlir::MemoryEffectOpInterface>()->getEffects,
+                        dispatcher, "getEffects");
 }
 
 void attachConditionallySpeculatable(mlir::DynamicOpDefinition& def,
-                                     const LockedSchemeObject&) {
-  ensureConditionallySpeculatable(def.getInterfaceMap());
+                                     const LockedSchemeObject& dispatcher) {
+  mlir::detail::InterfaceMap& map = def.getInterfaceMap();
+  insertModelOnce<mlir::ConditionallySpeculatable>(map);
+  installInterfaceEntry(
+      map.lookup<mlir::ConditionallySpeculatable>()->getSpeculatability,
+      dispatcher, "getSpeculatability");
 }
 
 void registerInterfacesSideEffectInterfacesBindings() {
@@ -71,6 +77,14 @@ void registerInterfacesSideEffectInterfacesBindings() {
         return reinterpret_cast<uint64_t>(
             mlir::MemoryEffectOpInterface::getInterfaceID()
                 .getAsOpaquePointer());
+      });
+  // crest::MemoryEffectOpInterface::noEffects () -> uptr
+  //
+  // The address of the C function that stands for "no memory effects", for the
+  // clause (getEffects :none).
+  Sregister_symbol(
+      "crest::MemoryEffectOpInterface::noEffects", (void*)+[]() -> uint64_t {
+        return reinterpret_cast<uint64_t>(&noMemoryEffects);
       });
   Sregister_symbol(
       "mlir::ConditionallySpeculatable::getInterfaceID",

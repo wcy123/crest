@@ -66,7 +66,8 @@
     (define-op symbol
       :interfaces ((mlir::SymbolOpInterface)))
     (define-op effect
-      :interfaces ((mlir::MemoryEffectOpInterface) (mlir::ConditionallySpeculatable)))
+      :interfaces ((mlir::MemoryEffectOpInterface (getEffects :none))
+                   (mlir::ConditionallySpeculatable (getSpeculatability :always))))
     (define-op infer
       :interfaces ((mlir::InferTypeOpInterface
                     (inferReturnTypes (context location operands attributes) '())
