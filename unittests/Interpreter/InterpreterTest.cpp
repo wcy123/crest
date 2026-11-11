@@ -40,16 +40,20 @@ TEST_F(InterpreterTest, EvalSimpleExpression) {
   EXPECT_TRUE(g_interp->eval("(+ 1 2)"));
 }
 
+// A Scheme value from its text.
+static ptr evalScheme(const char* code) {
+  ptr port = scheme_call("open-string-input-port", Sstring(code));
+  ptr expr = scheme_call("read", port);
+  return scheme_call("eval", expr);
+}
+
 // What crest-make-static-c-callable (scheme/crest/callback.sls) does: make a
 // foreign-callable, lock its code object once, answer its address.
 static uint64_t makeCallableEntry() {
-  ptr port = scheme_call(
-      "open-string-input-port",
-      Sstring("(let ([code (foreign-callable (lambda (x) (+ x 1)) (int) int)])"
-              "  (lock-object code)"
-              "  (foreign-callable-entry-point code))"));
-  ptr expr = scheme_call("read", port);
-  return Sunsigned64_value(scheme_call("eval", expr));
+  return Sunsigned64_value(evalScheme(
+      "(let ([code (foreign-callable (lambda (x) (+ x 1)) (int) int)])"
+      "  (lock-object code)"
+      "  (foreign-callable-entry-point code))"));
 }
 
 // C++ calls the C function that Scheme made as it calls any function pointer.
@@ -57,13 +61,6 @@ TEST_F(InterpreterTest, CallableCallsTheSchemeProcedure) {
   auto callable = reinterpret_cast<int (*)(int)>(makeCallableEntry());
   ASSERT_NE(callable, nullptr);
   EXPECT_EQ(callable(41), 42);
-}
-
-// A Scheme value from its text.
-static ptr evalScheme(const char* code) {
-  ptr port = scheme_call("open-string-input-port", Sstring(code));
-  ptr expr = scheme_call("read", port);
-  return scheme_call("eval", expr);
 }
 
 // REGRESSION: scheme_error built its message with a std::ostringstream and a
