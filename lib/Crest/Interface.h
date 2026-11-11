@@ -36,14 +36,22 @@ namespace crest {
 // keeps the entry point in a field (installInterfaceEntry fills it), and the
 // Concept's own function reads it through `self` and adapts the arguments.
 
+/// What a model carries besides its Concept when it needs nothing.
+struct NoModelData {};
+
 /// The model of `InterfaceT` for an op that Scheme defines: its Concept, a
 /// table of function pointers, with the alias `InterfaceMap::insertModels`
-/// asks for. Every slot is null until something fills it. A model that has
-/// defaults derives from this and gives them to the constructor in the order of
-/// the slots, which are the members of the Concept, or assigns them in its own
-/// constructor; the arguments are those of the Concept's aggregate
-/// initialization, so a lambda without captures converts to its slot.
-template <typename InterfaceT> struct CrestModel : InterfaceT::Concept {
+/// asks for. Every slot is null until something fills it (installInterfaceEntry
+/// does), and there is no default implementation: the op gives the methods.
+/// `Data` holds what the slots that cannot be a Scheme callable need to find
+/// it: a trampoline in the slot reads it back from `self`, which is the model.
+/// A model that has defaults derives from this and gives them to the
+/// constructor in the order of the slots, which are the members of the Concept,
+/// or assigns them in its own constructor; the arguments are those of the
+/// Concept's aggregate initialization, so a lambda without captures converts to
+/// its slot.
+template <typename InterfaceT, typename Data = NoModelData>
+struct CrestModel : InterfaceT::Concept, Data {
   using Interface = InterfaceT;
   using Concept = typename InterfaceT::Concept;
 

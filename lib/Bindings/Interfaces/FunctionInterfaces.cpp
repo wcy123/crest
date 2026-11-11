@@ -160,22 +160,6 @@ void attachFunctionOpInterface(mlir::DynamicOpDefinition& def,
       ->install(dispatcher);
 }
 
-namespace {
-// What printFunctionOp uses for an op that is not declared a
-// FunctionOpInterface (Toy ch2 and ch3): the default methods, over a map of its
-// own with the bases they need.
-mlir::FunctionOpInterface::Concept* defaultFunctionConcept() {
-  static mlir::detail::InterfaceMap map = [] {
-    mlir::detail::InterfaceMap m;
-    ensureSymbolOpInterface(m);
-    ensurePrintingCallableOpInterface(m);
-    insertModelOnce<FunctionConceptData>(m);
-    return m;
-  }();
-  return map.lookup<mlir::FunctionOpInterface>();
-}
-} // namespace
-
 void registerInterfacesFunctionInterfacesBindings() {
   // mlir::FunctionOpInterface::getInterfaceID () -> uptr
   //
@@ -223,7 +207,9 @@ void registerInterfacesFunctionInterfacesBindings() {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto* c = lookupConcept<mlir::FunctionOpInterface>(op);
         if (!c) {
-          c = defaultFunctionConcept();
+          scheme_error("mlir::function_interface_impl::printFunctionOp",
+                       "op does not implement FunctionOpInterface:",
+                       op->getName().getStringRef().str().c_str());
         }
         mlir::FunctionOpInterface fn(op, c);
         auto* ctx = op->getContext();

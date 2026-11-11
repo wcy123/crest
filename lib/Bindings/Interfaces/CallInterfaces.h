@@ -24,9 +24,6 @@ void registerInterfacesCallInterfacesBindings();
 // inherits from, into the map unless they are there.
 void ensureArgAndResultAttrsOpInterface(mlir::detail::InterfaceMap& map);
 void ensureCallableOpInterface(mlir::detail::InterfaceMap& map);
-// The model that printFunctionOp needs for an op that declares no interface: it
-// reads the "function_type" attribute. Not for an op that Scheme defines.
-void ensurePrintingCallableOpInterface(mlir::detail::InterfaceMap& map);
 
 // Install the interface in the definition of an op from the dispatcher of its
 // :interfaces entry (lib/Crest/Op.cpp).

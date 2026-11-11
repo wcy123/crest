@@ -237,9 +237,10 @@ declares `FunctionOpInterface` has `SymbolOpInterface` and `ArgAndResultAttrsOpI
 `CallableOpInterface` is different: MLIR has no default for its three methods, and a dialect keeps its signature where
 it wants, so the op gives all three as clauses. `FunctionOpInterface` puts the model of `CallableOpInterface` in the map
 because its `Concept` needs it, and `requireCallableOpInterfaceClauses` (`lib/Bindings/Interfaces/CallInterfaces.cpp`)
-raises a Scheme error, when the op is registered, if its clauses did not fill the model. The one default that is left
-is private: `printFunctionOp` prints an op that declares no interface with a model that reads the `function_type`
-attribute (`PrintingCallableOpModel`), and nothing attaches it to an op that Scheme defines.
+raises a Scheme error, when the op is registered, if its clauses did not fill the model. Every slot of that model is
+null until the clauses fill it: `CrestModel<mlir::CallableOpInterface, CallableEntries>` keeps only the two entry points
+that the trampolines of `getArgumentTypes` and `getResultTypes` need. `mlir::function_interface_impl::printFunctionOp`
+on an op that does not declare `FunctionOpInterface` is an error, not a guess.
 
 The Scheme-callable accessors (`mlir::FunctionOpInterface::getFunctionType` and the others) look the `Concept` up in the
 registered name of the op (`lookupConcept`), so they work for C++ ops as well. The one thing a context needs is the
