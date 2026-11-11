@@ -40,6 +40,7 @@
 
     %has-attr
     %emit-error
+    %emit-op-error
     %verify
     %emit-warning
     %emit-remark
@@ -212,6 +213,14 @@
 
   (define %emit-error
     (foreign-procedure "mlir::Operation::emitError" (uptr string) void))
+
+  ;; @brief mlir::Operation::emitOpError — emit an error that names the op ("'dialect.op' op ...").
+  ;; @param op   Operation* uptr
+  ;; @param msg  Error message (string)
+  ;; @see        mlir/IR/Operation.h
+  ;; @note       Defined in lib/Bindings/IR/Operation.cpp
+  (define %emit-op-error
+    (foreign-procedure "mlir::Operation::emitOpError" (uptr string) void))
 
   ;; @brief mlir::Operation::emitWarning — emit a compiler warning diagnostic.
   ;; @param op   Operation* uptr (may be null; falls back to logging)

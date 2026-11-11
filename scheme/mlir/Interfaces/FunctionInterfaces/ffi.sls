@@ -2,7 +2,6 @@
 ;; Mirrors mlir/Interfaces/FunctionInterfaces.h
 (library (mlir Interfaces FunctionInterfaces ffi)
   (export %mlir::FunctionOpInterface::getInterfaceID
-          %crest::FunctionOpInterface::reportFailure
           %mlir::function_interface_impl::parseFunctionOp
           %mlir::function_interface_impl::printFunctionOp
           %mlir::FunctionOpInterface::getFunctionType
@@ -15,10 +14,6 @@
   ;; () -> uptr: the TypeID of the interface, as the address that the TypeID wraps.
   (define %mlir::FunctionOpInterface::getInterfaceID
     (foreign-procedure "mlir::FunctionOpInterface::getInterfaceID" () uptr))
-
-  ;; The text of an error that a verifier raised, for the diagnostic that its failure makes.
-  (define %crest::FunctionOpInterface::reportFailure
-    (foreign-procedure "crest::FunctionOpInterface::reportFailure" (string) void))
 
   ;; Interface method calls — look up the concept in the interface map of the op and dispatch.
   (define %mlir::FunctionOpInterface::getFunctionType

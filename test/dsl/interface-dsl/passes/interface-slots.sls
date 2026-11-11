@@ -62,7 +62,7 @@
           (display (type-of settable))
           (newline)
           (mlir::FunctionOpInterface::setFunctionTypeAttr bad new-type)
-          (display "type after set (default): ")
+          (display "type after set (plain): ")
           (display (type-of bad))
           (newline))))))
 

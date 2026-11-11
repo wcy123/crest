@@ -7,6 +7,7 @@
   (import (chezscheme)
           (crest dialect)
           (mlir IR Operation)
+          (mlir IR BuiltinAttributes)
           (only (mlir Interfaces FunctionInterfaces) mlir::FunctionOpInterface)
           (only (mlir Interfaces CallInterfaces)
                 mlir::CallableOpInterface mlir::CallOpInterface mlir::ArgAndResultAttrsOpInterface)
@@ -25,7 +26,12 @@
                     (getCallableRegion (self) (mlir::Operation::getRegion self 0))
                     (getArgumentTypes (self) '())
                     (getResultTypes (self) '()))
-                   (mlir::FunctionOpInterface)))
+                   (mlir::FunctionOpInterface
+                    (getFunctionType (self)
+                                     (mlir::TypeAttr::getValue
+                                      (mlir::Operation::getAttr self "function_type")))
+                    (setFunctionTypeAttr (self attr)
+                                         (mlir::Operation::setAttr! self "function_type" attr)))))
     (define-op callee
       :interfaces ((mlir::CallableOpInterface
                     (getCallableRegion (self) (mlir::Operation::getRegion self 0))

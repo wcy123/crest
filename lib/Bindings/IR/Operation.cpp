@@ -250,6 +250,14 @@ void registerIROperationBindings() {
         }
         reinterpret_cast<mlir::Operation*>(op_ptr)->emitError(msg);
       });
+  // mlir::Operation::emitOpError (uptr op, string message) -> void
+  //
+  // An error that names the op: "'dialect.op' op message".
+  Sregister_symbol(
+      "mlir::Operation::emitOpError",
+      (void*)+[](uint64_t op_ptr, const char* msg) -> void {
+        reinterpret_cast<mlir::Operation*>(op_ptr)->emitOpError(msg);
+      });
   Sregister_symbol(
       "mlir::Operation::emitWarning",
       (void*)+[](uint64_t op_ptr, const char* msg) -> void {

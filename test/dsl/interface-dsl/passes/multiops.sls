@@ -69,4 +69,9 @@
                     (getCallableRegion (self) (mlir::Operation::getRegion self 0))
                     (getArgumentTypes (self) '())
                     (getResultTypes (self) '()))
-                   (mlir::FunctionOpInterface)))))
+                   (mlir::FunctionOpInterface
+                    (getFunctionType (self)
+                                     (mlir::TypeAttr::getValue
+                                      (mlir::Operation::getAttr self "function_type")))
+                    (setFunctionTypeAttr (self attr)
+                                         (mlir::Operation::setAttr! self "function_type" attr)))))))

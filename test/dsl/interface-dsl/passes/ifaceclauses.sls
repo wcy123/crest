@@ -24,6 +24,8 @@
                                      (display "clause getFunctionType\n")
                                      (mlir::TypeAttr::getValue
                                       (mlir::Operation::getAttr self "function_type")))
+                    (setFunctionTypeAttr (self attr)
+                                         (mlir::Operation::setAttr! self "function_type" attr))
                     (verifyBody (self) (display "clause verifyBody\n") #t)
                     (verifyType (self) (display "clause verifyType\n") #t)
                     ;; Not the default: the inputs come back in the other order.
@@ -36,6 +38,9 @@
                     (getArgumentTypes (self) '())
                     (getResultTypes (self) '()))
                    (mlir::FunctionOpInterface
+                    (getFunctionType (self)
+                                     (mlir::TypeAttr::getValue
+                                      (mlir::Operation::getAttr self "function_type")))
                     (setFunctionTypeAttr (self attr)
                                          (display "clause setFunctionTypeAttr\n")
                                          (mlir::Operation::setAttr! self "function_type" attr)))))
@@ -45,6 +50,11 @@
                     (getArgumentTypes (self) '())
                     (getResultTypes (self) '()))
                    (mlir::FunctionOpInterface
+                    (getFunctionType (self)
+                                     (mlir::TypeAttr::getValue
+                                      (mlir::Operation::getAttr self "function_type")))
+                    (setFunctionTypeAttr (self attr)
+                                         (mlir::Operation::setAttr! self "function_type" attr))
                     (verifyBody (self) #f)
                     (verifyType (self) #f))))
     (define-op raises
@@ -53,5 +63,10 @@
                     (getArgumentTypes (self) '())
                     (getResultTypes (self) '()))
                    (mlir::FunctionOpInterface
+                    (getFunctionType (self)
+                                     (mlir::TypeAttr::getValue
+                                      (mlir::Operation::getAttr self "function_type")))
+                    (setFunctionTypeAttr (self attr)
+                                         (mlir::Operation::setAttr! self "function_type" attr))
                     (verifyBody (self) (error 'verifyBody "the body is broken"))
                     (verifyType (self) (error 'verifyType "the type is broken")))))))

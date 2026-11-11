@@ -35,6 +35,7 @@
 
     mlir::Operation::hasAttr?
     mlir::Operation::emitError
+    mlir::Operation::emitOpError
     mlir::Operation::verify?
     mlir::Operation::emitWarning
     mlir::Operation::emitRemark
@@ -194,6 +195,13 @@
   ;; @see        mlir/IR/Operation.h, mlir/IR/Diagnostics.h
   ;; @note       Defined in lib/Bindings/IR/Operation.cpp
   (define mlir::Operation::emitError       %emit-error)
+
+  ;; @brief mlir::Operation::emitOpError — emit an error that names the op ("'dialect.op' op ...").
+  ;; @param op   Operation* uptr
+  ;; @param msg  Error message (string)
+  ;; @see        mlir/IR/Operation.h
+  ;; @note       Defined in lib/Bindings/IR/Operation.cpp
+  (define mlir::Operation::emitOpError     %emit-op-error)
 
   ;; @brief mlir::verify — verify the operation and everything nested in it.
   ;; @param op   Operation* uptr

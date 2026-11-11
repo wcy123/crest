@@ -39,6 +39,8 @@
                     (getFunctionType (self)
                                      (mlir::TypeAttr::getValue
                                       (mlir::Operation::getAttr self "function_type")))
+                    (setFunctionTypeAttr (self attr)
+                                         (mlir::Operation::setAttr! self "function_type" attr))
                     (verifyBody (self) #t)
                     (verifyType (self) #t)
                     (cloneTypeWith (self inputs results)
