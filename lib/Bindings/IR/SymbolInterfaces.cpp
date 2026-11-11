@@ -92,7 +92,7 @@ struct SymbolConceptData : public crest::CrestModel<mlir::SymbolOpInterface> {
 namespace crest {
 
 void ensureSymbolOpInterface(mlir::detail::InterfaceMap& map) {
-  insertModelOnce<SymbolConceptData>(map);
+  insertCustomModelOnce<SymbolConceptData>(map);
 }
 
 void attachSymbolOpInterface(mlir::DynamicOpDefinition& def,

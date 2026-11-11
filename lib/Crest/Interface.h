@@ -17,41 +17,27 @@ namespace crest {
 
 // An op that Scheme defines gets an interface by inserting a model into the
 // InterfaceMap of its DynamicOpDefinition (the attach function of the
-// interface, found by its TypeID in lib/Crest/Op.cpp). A model is a struct
-// derived from CrestModel<mlir::XInterface>, which is the Concept of the
-// interface with `using Interface = ...;`, and has a default constructor.
-// When the interface has a FallbackModel, a model can derive from it instead
-// (`struct M : mlir::XInterface::FallbackModel<M>`): it has both, and fills the
-// slots with calls to the members of `M`, which are the default methods.
+// interface, found by its TypeID in lib/Crest/Op.cpp). The model is
+// CrestModel<mlir::XInterface>: the Concept of the interface, a table of
+// function pointers that MLIR calls, with every slot null. There is no default
+// implementation: the op gives the methods, as the op class does in C++.
 //
 // A method that Scheme implements has a callable that Scheme made once, when
-// the library was loaded. When the slot of the Concept is a plain function
-// whose arguments and answer are numbers or pointers, the callable goes into
-// the slot itself (installInterfaceEntry): MLIR calls Scheme directly, and the
-// callable takes the `const Concept*` that MLIR passes first, and ignores it
-// (getCallableRegion). A class such as Type or TypeAttr is not a number: the
-// Windows x64 ABI passes and returns it through a hidden pointer, so a C
-// callable cannot take or answer one. Nor can the callable take a range by
-// value, or answer a LogicalResult with a diagnostic. For such a slot the model
-// keeps the entry point in a field (installInterfaceEntry fills it), and the
-// Concept's own function reads it through `self` and adapts the arguments.
+// the library was loaded, and the callable goes into the slot itself
+// (installInterfaceEntry), so MLIR calls Scheme directly. The callable has the
+// prototype of the slot as a C function: the `const Concept*` that MLIR passes
+// first (ignored), then the arguments. A class that C++ passes or returns by
+// value is a number, a pointer or a struct for the C function, as the ABI of
+// the platform says: Scheme writes the prototype with that in mind.
 
-/// What a model carries besides its Concept when it needs nothing.
-struct NoModelData {};
-
-/// The model of `InterfaceT` for an op that Scheme defines: its Concept, a
-/// table of function pointers, with the alias `InterfaceMap::insertModels`
-/// asks for. Every slot is null until something fills it (installInterfaceEntry
-/// does), and there is no default implementation: the op gives the methods.
-/// `Data` holds what the slots that cannot be a Scheme callable need to find
-/// it: a trampoline in the slot reads it back from `self`, which is the model.
-/// A model that has defaults derives from this and gives them to the
-/// constructor in the order of the slots, which are the members of the Concept,
-/// or assigns them in its own constructor; the arguments are those of the
-/// Concept's aggregate initialization, so a lambda without captures converts to
-/// its slot.
-template <typename InterfaceT, typename Data = NoModelData>
-struct CrestModel : InterfaceT::Concept, Data {
+/// The model of `InterfaceT` for an op that Scheme defines: its Concept, with
+/// the alias `InterfaceMap::insertModels` asks for. Every slot is null until
+/// something fills it (installInterfaceEntry does). A model that still has
+/// defaults derives from this and gives them to the constructor in the order of
+/// the slots, which are the members of the Concept, or assigns them in its own
+/// constructor; the arguments are those of the Concept's aggregate
+/// initialization, so a lambda without captures converts to its slot.
+template <typename InterfaceT> struct CrestModel : InterfaceT::Concept {
   using Interface = InterfaceT;
   using Concept = typename InterfaceT::Concept;
 
@@ -124,12 +110,21 @@ void attachInterfaces(Target& target, const LockedSchemeObject& interfaces,
   }
 }
 
-/// Insert `Model` unless the map has its interface already. The interfaces that
-/// inherit from another one (FunctionOpInterface from SymbolOpInterface, ...)
-/// need the base in the map first: MLIR's Concept looks it up when the model is
-/// inserted.
-template <typename Model>
+/// Insert `CrestModel<InterfaceT>`, with every slot null, unless the map has
+/// the interface already. The interfaces that inherit from another one
+/// (FunctionOpInterface from SymbolOpInterface, ...) need the base in the map
+/// first: MLIR's Concept looks it up when the model is inserted.
+template <typename InterfaceT>
 void insertModelOnce(mlir::detail::InterfaceMap& map) {
+  if (!map.lookup<InterfaceT>()) {
+    map.insertModels<CrestModel<InterfaceT>>();
+  }
+}
+
+/// Insert `Model`, a model of its own that has defaults, unless the map has its
+/// interface already.
+template <typename Model>
+void insertCustomModelOnce(mlir::detail::InterfaceMap& map) {
   if (!map.lookup<typename Model::Interface>()) {
     map.insertModels<Model>();
   }

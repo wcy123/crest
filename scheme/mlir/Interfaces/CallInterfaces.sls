@@ -21,6 +21,11 @@
           (crest callback)
           (mlir Interfaces CallInterfaces ffi))
 
+  ;; llvm::ArrayRef<Type>: a pointer and a count. C++ returns it by value, and Chez makes a callable
+  ;; that answers a struct follow the rules of the platform (two registers, or a pointer to the
+  ;; place for the answer): the procedure gets that place as its first argument.
+  (define-ftype %%ArrayRef (struct [data uptr] [size uptr]))
+
   ;; `dispatcher` is (lambda (method) ...): a method name answers its clause. MLIR has no default for
   ;; the methods of CallableOpInterface (an op class gives them), and a dialect keeps its signature
   ;; where it wants, so an entry has all three clauses:
@@ -28,20 +33,19 @@
   ;;     (getCallableRegion (op) body ...)   the Region that holds the body, or 0 for a declaration
   ;;     (getArgumentTypes (op) body ...)    a list of Types
   ;;     (getResultTypes (op) body ...))     a list of Types
-  ;; Each becomes a foreign-callable, made once, whose address C++ keeps. getCallableRegion goes into
-  ;; the slot of the Concept, so MLIR calls it with the Concept first and then the op (the Concept is
-  ;; ignored). The two others are called by C++ with the op and a sink, and give each type of the
-  ;; list to the sink (C++ answers an ArrayRef, which a C function cannot).
+  ;; Each becomes a foreign-callable, made once, whose address C++ puts in the slot of the Concept,
+  ;; so MLIR calls it with the Concept first and then the op (the Concept is ignored).
   (define (%%callable-dispatcher dispatcher)
     (let ([get-region (dispatcher 'getCallableRegion)]
           [get-arguments (dispatcher 'getArgumentTypes)]
           [get-results (dispatcher 'getResultTypes)])
       (define (types-entry-point get-types)
         (crest-callback-entry-point
-         (uptr uptr) void
-         (lambda (op sink)
-           (for-each (lambda (type) (%crest::CallableOpInterface::addType sink type))
-                     (get-types op)))))
+         (uptr uptr) (& %%ArrayRef)
+         (lambda (answer concept op)
+           (let ([types (get-types op)])
+             (ftype-set! %%ArrayRef (data) answer (%crest::CallableOpInterface::keepTypes op types))
+             (ftype-set! %%ArrayRef (size) answer (length types))))))
       (crest-callback-entry-dispatcher
        (list (cons 'getCallableRegion
                    (crest-callback-entry-point (uptr uptr) uptr

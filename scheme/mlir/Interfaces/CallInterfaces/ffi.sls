@@ -7,7 +7,7 @@
           %mlir::CallableOpInterface::getCallableRegion
           %mlir::CallableOpInterface::getArgumentTypes
           %mlir::CallableOpInterface::getResultTypes
-          %crest::CallableOpInterface::addType
+          %crest::CallableOpInterface::keepTypes
           %mlir::ArgAndResultAttrsOpInterface::getArgAttrsAttr
           %mlir::ArgAndResultAttrsOpInterface::getResAttrsAttr)
   (import (chezscheme))
@@ -32,10 +32,11 @@
   (define %mlir::CallableOpInterface::getResultTypes
     (foreign-procedure "mlir::CallableOpInterface::getResultTypes" (uptr) scheme-object))
 
-  ;; (uptr sink, uptr type) -> void: what the callable of getArgumentTypes or getResultTypes calls
-  ;; for each type it answers, with the sink that C++ gave it.
-  (define %crest::CallableOpInterface::addType
-    (foreign-procedure "crest::CallableOpInterface::addType" (uptr uptr) void))
+  ;; (uptr op, list types) -> uptr: keeps the types where the context of the op owns them and
+  ;; answers the address of the first, for the ArrayRef that a callable of getArgumentTypes or
+  ;; getResultTypes answers.
+  (define %crest::CallableOpInterface::keepTypes
+    (foreign-procedure "crest::CallableOpInterface::keepTypes" (uptr scheme-object) uptr))
 
   (define %mlir::ArgAndResultAttrsOpInterface::getArgAttrsAttr
     (foreign-procedure "mlir::ArgAndResultAttrsOpInterface::getArgAttrsAttr" (uptr) uptr))

@@ -42,11 +42,11 @@ struct SpeculatableConceptData
 namespace crest {
 
 void ensureMemoryEffectOpInterface(mlir::detail::InterfaceMap& map) {
-  insertModelOnce<MemoryEffectConceptData>(map);
+  insertCustomModelOnce<MemoryEffectConceptData>(map);
 }
 
 void ensureConditionallySpeculatable(mlir::detail::InterfaceMap& map) {
-  insertModelOnce<SpeculatableConceptData>(map);
+  insertCustomModelOnce<SpeculatableConceptData>(map);
 }
 
 void attachMemoryEffectOpInterface(mlir::DynamicOpDefinition& def,

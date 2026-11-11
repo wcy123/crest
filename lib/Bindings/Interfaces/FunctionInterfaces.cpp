@@ -155,7 +155,7 @@ void attachFunctionOpInterface(mlir::DynamicOpDefinition& def,
   ensureSymbolOpInterface(map);
   ensureArgAndResultAttrsOpInterface(map);
   ensureCallableOpInterface(map);
-  insertModelOnce<FunctionConceptData>(map);
+  insertCustomModelOnce<FunctionConceptData>(map);
   static_cast<FunctionConceptData*>(map.lookup<mlir::FunctionOpInterface>())
       ->install(dispatcher);
 }
