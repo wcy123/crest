@@ -47,14 +47,11 @@ template <typename R, typename... Args> std::string foreignSignature() {
   return signature;
 }
 
-/// The Scheme procedure that makes the callables of one prototype: (lambda
-/// (procedure) ...) answers the entry point of a foreign-callable of the
-/// procedure, with its code object locked. It is compiled the first time the
-/// prototype is used and kept, locked, for the life of the process.
+/// The Scheme procedure that makes a callable of one prototype: `(lambda
+/// (procedure) ...)` answers the entry point of a `foreign-callable` of the
+/// procedure, with its code object locked. It is compiled on every call and is
+/// not kept: the caller uses it at once, and Scheme collects it afterwards.
 ptr foreignCallableMaker(const std::string& signature);
-
-/// How many makers there are: one per prototype that was used.
-size_t foreignCallableMakerCount();
 
 } // namespace detail
 
@@ -140,9 +137,11 @@ template <typename Signature> class ForeignCallable;
 /// the constructor that takes an entry point lets this object take it over.
 ///
 /// @par Cost
-/// The first time a prototype is used, Scheme compiles a small helper for it,
-/// and the helper is kept. After that, creating and releasing a function takes
-/// about one microsecond (measured).
+/// Every call to `fromProcedure` compiles a small helper in Scheme and throws
+/// it away afterwards, so nothing is kept in C++. Creating and releasing a
+/// function takes about 0.3 milliseconds (measured). That is fine for a
+/// callback that is made once per call or per pass. Do not make one for every
+/// operation in a loop that runs for many operations.
 ///
 /// @par Example: a callback that is used while the binding runs
 /// The Scheme call is `(mlir::Operation::walk op (lambda (nested-op) ...))`.
