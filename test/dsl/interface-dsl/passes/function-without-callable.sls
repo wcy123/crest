@@ -5,12 +5,14 @@
           (crest dialect)
           (mlir IR Operation)
           (mlir IR BuiltinAttributes)
+          (only (mlir IR SymbolInterfaces) mlir::SymbolOpInterface)
           (only (mlir Interfaces FunctionInterfaces) mlir::FunctionOpInterface)
           (only (mlir Interfaces CallInterfaces) mlir::ArgAndResultAttrsOpInterface))
 
   (define-dialect nocallable
     (define-op func
-      :interfaces ((mlir::ArgAndResultAttrsOpInterface :standard)
+      :interfaces ((mlir::SymbolOpInterface)
+                   (mlir::ArgAndResultAttrsOpInterface :standard)
                    (mlir::FunctionOpInterface
                     (getFunctionType (self)
                                      (mlir::TypeAttr::getValue

@@ -31,7 +31,8 @@
     (define-type simple
       (:verify (params) #t))
     (define-op func
-      :interfaces ((mlir::ArgAndResultAttrsOpInterface :standard)
+      :interfaces ((mlir::SymbolOpInterface)
+                   (mlir::ArgAndResultAttrsOpInterface :standard)
                    (mlir::CallableOpInterface
                     (getCallableRegion (self) (mlir::Operation::getRegion self 0))
                     (getArgumentTypes (self) '())

@@ -22,7 +22,8 @@
                    (isLegalToInline/region (dest src would-be-cloned) #t)
                    (isLegalToInline/op     (op dest would-be-cloned) #t))))
     (define-op func
-      :interfaces ((mlir::ArgAndResultAttrsOpInterface :standard)
+      :interfaces ((mlir::SymbolOpInterface)
+                   (mlir::ArgAndResultAttrsOpInterface :standard)
                    (mlir::CallableOpInterface
                     (getCallableRegion (self) (mlir::Operation::getRegion self 0))
                     (getArgumentTypes (self) '())

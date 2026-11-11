@@ -5,6 +5,7 @@
   (export ifacetest)
   (import (chezscheme)
           (crest dialect)
+          (only (mlir IR SymbolInterfaces) mlir::SymbolOpInterface)
           (only (mlir Interfaces FunctionInterfaces) mlir::FunctionOpInterface)
           (only (mlir Interfaces CallInterfaces) mlir::CallableOpInterface mlir::ArgAndResultAttrsOpInterface)
           (mlir IR Operation)
@@ -12,7 +13,8 @@
 
   (define-dialect ifacetest
     (define-op func
-      :interfaces ((mlir::ArgAndResultAttrsOpInterface :standard)
+      :interfaces ((mlir::SymbolOpInterface)
+                   (mlir::ArgAndResultAttrsOpInterface :standard)
                    (mlir::CallableOpInterface
                     (getCallableRegion (self) (mlir::Operation::getRegion self 0))
                     (getArgumentTypes (self) '())

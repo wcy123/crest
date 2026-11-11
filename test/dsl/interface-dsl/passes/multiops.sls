@@ -9,6 +9,7 @@
           (mlir IR BuiltinAttributes)
           (only (mlir IR BuiltinTypes) mlir::FunctionType::get mlir::IntegerType::get<i32>
                 mlir::IntegerType::get<i64>)
+          (only (mlir IR SymbolInterfaces) mlir::SymbolOpInterface)
           (only (mlir Interfaces FunctionInterfaces) mlir::FunctionOpInterface)
           (only (mlir Interfaces CallInterfaces) mlir::CallableOpInterface mlir::ArgAndResultAttrsOpInterface))
 
@@ -43,7 +44,8 @@
                     (getResultTypes (self) '()))))
     ;; Function ops: each has its own type, verifier and setter.
     (define-op fn-a
-      :interfaces ((mlir::ArgAndResultAttrsOpInterface :standard)
+      :interfaces ((mlir::SymbolOpInterface)
+                   (mlir::ArgAndResultAttrsOpInterface :standard)
                    (mlir::CallableOpInterface
                     (getCallableRegion (self) (mlir::Operation::getRegion self 0))
                     (getArgumentTypes (self) '())
@@ -57,7 +59,8 @@
                                          (mlir::Operation::setAttr! self "set_by_a" attr))
                     (verifyBody (self) #t))))
     (define-op fn-b
-      :interfaces ((mlir::ArgAndResultAttrsOpInterface :standard)
+      :interfaces ((mlir::SymbolOpInterface)
+                   (mlir::ArgAndResultAttrsOpInterface :standard)
                    (mlir::CallableOpInterface
                     (getCallableRegion (self) (mlir::Operation::getRegion self 0))
                     (getArgumentTypes (self) '())
@@ -71,7 +74,8 @@
                                          (mlir::Operation::setAttr! self "set_by_b" attr))
                     (verifyBody (self) #f))))
     (define-op fn-c
-      :interfaces ((mlir::ArgAndResultAttrsOpInterface :standard)
+      :interfaces ((mlir::SymbolOpInterface)
+                   (mlir::ArgAndResultAttrsOpInterface :standard)
                    (mlir::CallableOpInterface
                     (getCallableRegion (self) (mlir::Operation::getRegion self 0))
                     (getArgumentTypes (self) '())
