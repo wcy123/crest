@@ -5,6 +5,9 @@
           %mlir::CallOpInterface::getInterfaceID
           %mlir::ArgAndResultAttrsOpInterface::getInterfaceID
           %mlir::CallableOpInterface::getCallableRegion
+          %mlir::CallableOpInterface::getArgumentTypes
+          %mlir::CallableOpInterface::getResultTypes
+          %crest::CallableOpInterface::addType
           %mlir::ArgAndResultAttrsOpInterface::getArgAttrsAttr
           %mlir::ArgAndResultAttrsOpInterface::getResAttrsAttr)
   (import (chezscheme))
@@ -21,6 +24,18 @@
 
   (define %mlir::CallableOpInterface::getCallableRegion
     (foreign-procedure "mlir::CallableOpInterface::getCallableRegion" (uptr) uptr))
+
+  ;; (uptr op) -> list of Type
+  (define %mlir::CallableOpInterface::getArgumentTypes
+    (foreign-procedure "mlir::CallableOpInterface::getArgumentTypes" (uptr) scheme-object))
+
+  (define %mlir::CallableOpInterface::getResultTypes
+    (foreign-procedure "mlir::CallableOpInterface::getResultTypes" (uptr) scheme-object))
+
+  ;; (uptr sink, uptr type) -> void: what the callable of getArgumentTypes or getResultTypes calls
+  ;; for each type it answers, with the sink that C++ gave it.
+  (define %crest::CallableOpInterface::addType
+    (foreign-procedure "crest::CallableOpInterface::addType" (uptr uptr) void))
 
   (define %mlir::ArgAndResultAttrsOpInterface::getArgAttrsAttr
     (foreign-procedure "mlir::ArgAndResultAttrsOpInterface::getArgAttrsAttr" (uptr) uptr))

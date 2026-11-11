@@ -458,6 +458,37 @@ void registerIRBuiltinTypesBindings() {
             mlir::FunctionType::get(ctx, inputTypes, resultTypes)
                 .getAsOpaquePointer());
       });
+
+  // mlir::FunctionType::getInputs (uptr type) -> list of Type
+  // mlir::FunctionType::getResults (uptr type) -> list of Type
+  Sregister_symbol(
+      "mlir::FunctionType::getInputs", (void*)+[](uint64_t type_ptr) -> ptr {
+        auto type =
+            mlir::cast<mlir::FunctionType>(mlir::Type::getFromOpaquePointer(
+                reinterpret_cast<const void*>(type_ptr)));
+        ptr list = Snil;
+        for (auto it = type.getInputs().rbegin(); it != type.getInputs().rend();
+             ++it) {
+          list = Scons(
+              Sunsigned64(reinterpret_cast<uint64_t>(it->getAsOpaquePointer())),
+              list);
+        }
+        return list;
+      });
+  Sregister_symbol(
+      "mlir::FunctionType::getResults", (void*)+[](uint64_t type_ptr) -> ptr {
+        auto type =
+            mlir::cast<mlir::FunctionType>(mlir::Type::getFromOpaquePointer(
+                reinterpret_cast<const void*>(type_ptr)));
+        ptr list = Snil;
+        for (auto it = type.getResults().rbegin();
+             it != type.getResults().rend(); ++it) {
+          list = Scons(
+              Sunsigned64(reinterpret_cast<uint64_t>(it->getAsOpaquePointer())),
+              list);
+        }
+        return list;
+      });
 }
 
 } // namespace crest

@@ -55,7 +55,9 @@
     %mlir::MemRefType::getMemorySpace
     %mlir::RankedTensorType::get
     %mlir::UnrankedTensorType::get
-    %mlir::FunctionType::get)
+    %mlir::FunctionType::get
+    %mlir::FunctionType::getInputs
+    %mlir::FunctionType::getResults)
   (import (rnrs) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::IndexType::get — construct an index type in the given context.
@@ -240,5 +242,13 @@
     (foreign-procedure "mlir::UnrankedTensorType::get" (uptr) uptr))
   (define %mlir::FunctionType::get
     (foreign-procedure "mlir::FunctionType::get" (uptr scheme-object scheme-object) uptr))
+  ;; @brief mlir::FunctionType::getInputs / getResults — the input or result types of a function
+  ;;        type, in order.
+  ;; @param type  FunctionType opaque pointer uptr
+  ;; @return      a list of Type opaque pointers
+  (define %mlir::FunctionType::getInputs
+    (foreign-procedure "mlir::FunctionType::getInputs" (uptr) scheme-object))
+  (define %mlir::FunctionType::getResults
+    (foreign-procedure "mlir::FunctionType::getResults" (uptr) scheme-object))
 
   ) ;; end library (mlir IR BuiltinTypes ffi)

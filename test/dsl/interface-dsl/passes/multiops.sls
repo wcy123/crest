@@ -19,18 +19,31 @@
     ;; Callable ops: the region that the clause answers is its own.
     (define-op first
       :interfaces ((mlir::CallableOpInterface
-                    (getCallableRegion (self) (mlir::Operation::getRegion self 0)))))
+                    (getCallableRegion (self) (mlir::Operation::getRegion self 0))
+                    (getArgumentTypes (self) '())
+                    (getResultTypes (self) '()))))
     (define-op second
       :interfaces ((mlir::CallableOpInterface
-                    (getCallableRegion (self) (mlir::Operation::getRegion self 1)))))
+                    (getCallableRegion (self) (mlir::Operation::getRegion self 1))
+                    (getArgumentTypes (self) '())
+                    (getResultTypes (self) '()))))
     (define-op third
       :interfaces ((mlir::CallableOpInterface
-                    (getCallableRegion (self) (mlir::Operation::getRegion self 2)))))
+                    (getCallableRegion (self) (mlir::Operation::getRegion self 2))
+                    (getArgumentTypes (self) '())
+                    (getResultTypes (self) '()))))
     (define-op plain
-      :interfaces ((mlir::CallableOpInterface)))
+      :interfaces ((mlir::CallableOpInterface
+                    (getCallableRegion (self) (mlir::Operation::getRegion self 0))
+                    (getArgumentTypes (self) '())
+                    (getResultTypes (self) '()))))
     ;; Function ops: each has its own type, verifier and setter.
     (define-op fn-a
-      :interfaces ((mlir::FunctionOpInterface
+      :interfaces ((mlir::CallableOpInterface
+                    (getCallableRegion (self) (mlir::Operation::getRegion self 0))
+                    (getArgumentTypes (self) '())
+                    (getResultTypes (self) '()))
+                   (mlir::FunctionOpInterface
                     (getFunctionType (self)
                                      (function-type (mlir::Operation::getContext self)
                                                     (mlir::IntegerType::get<i32>)
@@ -39,7 +52,11 @@
                                          (mlir::Operation::setAttr! self "set_by_a" attr))
                     (verifyBody (self) #t))))
     (define-op fn-b
-      :interfaces ((mlir::FunctionOpInterface
+      :interfaces ((mlir::CallableOpInterface
+                    (getCallableRegion (self) (mlir::Operation::getRegion self 0))
+                    (getArgumentTypes (self) '())
+                    (getResultTypes (self) '()))
+                   (mlir::FunctionOpInterface
                     (getFunctionType (self)
                                      (function-type (mlir::Operation::getContext self)
                                                     (mlir::IntegerType::get<i64>)
@@ -48,4 +65,8 @@
                                          (mlir::Operation::setAttr! self "set_by_b" attr))
                     (verifyBody (self) #f))))
     (define-op fn-c
-      :interfaces ((mlir::FunctionOpInterface)))))
+      :interfaces ((mlir::CallableOpInterface
+                    (getCallableRegion (self) (mlir::Operation::getRegion self 0))
+                    (getArgumentTypes (self) '())
+                    (getResultTypes (self) '()))
+                   (mlir::FunctionOpInterface)))))

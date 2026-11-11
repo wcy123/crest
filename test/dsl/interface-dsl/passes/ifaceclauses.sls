@@ -16,7 +16,9 @@
       :interfaces ((mlir::CallableOpInterface
                     (getCallableRegion (self)
                                        (display "clause getCallableRegion\n")
-                                       (mlir::Operation::getRegion self 0)))
+                                       (mlir::Operation::getRegion self 0))
+                    (getArgumentTypes (self) '())
+                    (getResultTypes (self) '()))
                    (mlir::FunctionOpInterface
                     (getFunctionType (self)
                                      (display "clause getFunctionType\n")
@@ -29,15 +31,27 @@
                                    (display "clause cloneTypeWith\n")
                                    (mlir::FunctionType::get (mlir::Operation::getContext self) (reverse inputs) results)))))
     (define-op settable
-      :interfaces ((mlir::FunctionOpInterface
+      :interfaces ((mlir::CallableOpInterface
+                    (getCallableRegion (self) (mlir::Operation::getRegion self 0))
+                    (getArgumentTypes (self) '())
+                    (getResultTypes (self) '()))
+                   (mlir::FunctionOpInterface
                     (setFunctionTypeAttr (self attr)
                                          (display "clause setFunctionTypeAttr\n")
                                          (mlir::Operation::setAttr! self "function_type" attr)))))
     (define-op bad
-      :interfaces ((mlir::FunctionOpInterface
+      :interfaces ((mlir::CallableOpInterface
+                    (getCallableRegion (self) (mlir::Operation::getRegion self 0))
+                    (getArgumentTypes (self) '())
+                    (getResultTypes (self) '()))
+                   (mlir::FunctionOpInterface
                     (verifyBody (self) #f)
                     (verifyType (self) #f))))
     (define-op raises
-      :interfaces ((mlir::FunctionOpInterface
+      :interfaces ((mlir::CallableOpInterface
+                    (getCallableRegion (self) (mlir::Operation::getRegion self 0))
+                    (getArgumentTypes (self) '())
+                    (getResultTypes (self) '()))
+                   (mlir::FunctionOpInterface
                     (verifyBody (self) (error 'verifyBody "the body is broken"))
                     (verifyType (self) (error 'verifyType "the type is broken")))))))

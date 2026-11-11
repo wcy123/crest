@@ -17,20 +17,59 @@
 #include "mlir/IR/Types.h"
 #include "mlir/Interfaces/CallInterfaces.h"
 #include <memory>
+#include <string>
 
 namespace {
-// The model of CallableOpInterface for an op that Scheme defines, which has no
-// C++ class: FallbackModel fills the slots of the Concept with functions that
-// call these members, the defaults. A clause of Scheme replaces a slot
-// (attachCallableOpInterface).
-struct CrestCallableOpModel
-    : public mlir::CallableOpInterface::FallbackModel<CrestCallableOpModel> {
-  // The first region of the op.
+// The model of CallableOpInterface for an op that Scheme defines. MLIR has no
+// default for any of its methods (the op class gives them), and a dialect keeps
+// its signature where it wants, so the op gives all three as clauses: the
+// callable of getCallableRegion goes into the slot of the Concept itself, and
+// the other two keep their entry point here (a Type answered by ArrayRef is
+// not something a C function can return). The constructor leaves a slot empty
+// until attachCallableOpInterface fills it.
+struct CrestCallableOpModel : public mlir::CallableOpInterface::Concept {
+  using Interface = mlir::CallableOpInterface;
+  using Concept = mlir::CallableOpInterface::Concept;
+
+  // Each pushes the types it answers into `sink`, a SmallVector<Type>*, with
+  // crest::CallableOpInterface::addType.
+  void (*get_argument_types)(uint64_t op, uint64_t sink) = nullptr;
+  void (*get_result_types)(uint64_t op, uint64_t sink) = nullptr;
+
+  CrestCallableOpModel()
+      : Concept{
+            nullptr,
+            [](const Concept* self,
+               mlir::Operation* op) -> llvm::ArrayRef<mlir::Type> {
+              const auto* d = static_cast<const CrestCallableOpModel*>(self);
+              llvm::SmallVector<mlir::Type> types;
+              d->get_argument_types(reinterpret_cast<uint64_t>(op),
+                                    reinterpret_cast<uint64_t>(&types));
+              // The context keeps a function type, and so its inputs: storage
+              // that outlives this call.
+              return mlir::FunctionType::get(op->getContext(), types, {})
+                  .getInputs();
+            },
+            [](const Concept* self,
+               mlir::Operation* op) -> llvm::ArrayRef<mlir::Type> {
+              const auto* d = static_cast<const CrestCallableOpModel*>(self);
+              llvm::SmallVector<mlir::Type> types;
+              d->get_result_types(reinterpret_cast<uint64_t>(op),
+                                  reinterpret_cast<uint64_t>(&types));
+              return mlir::FunctionType::get(op->getContext(), {}, types)
+                  .getResults();
+            },
+        } {}
+};
+
+// What printFunctionOp uses for an op that declares no interface (Toy's
+// function op before it has them): the first region, and the types of a
+// "function_type" attribute. Never attached to an op that Scheme defines.
+struct PrintingCallableOpModel
+    : public mlir::CallableOpInterface::FallbackModel<PrintingCallableOpModel> {
   mlir::Region* getCallableRegion(mlir::Operation* op) const {
     return &op->getRegion(0);
   }
-
-  // The inputs and results of its "function_type" attribute.
   llvm::ArrayRef<mlir::Type> getArgumentTypes(mlir::Operation* op) const {
     return functionType(op).getInputs();
   }
@@ -138,21 +177,44 @@ void ensureArgAndResultAttrsOpInterface(mlir::detail::InterfaceMap& map) {
 }
 
 // CallableOpInterface extends ArgAndResultAttrsOpInterface: the model finds the
-// base in the map, so the base comes first.
+// base in the map, so the base comes first. The model has no entries yet.
 void ensureCallableOpInterface(mlir::detail::InterfaceMap& map) {
   ensureArgAndResultAttrsOpInterface(map);
   insertModelOnce<CrestCallableOpModel>(map);
 }
 
-// getCallableRegion is the callable that Scheme made for the clause; without a
-// clause the default is the first region of the op.
+void ensurePrintingCallableOpInterface(mlir::detail::InterfaceMap& map) {
+  ensureArgAndResultAttrsOpInterface(map);
+  insertModelOnce<PrintingCallableOpModel>(map);
+}
+
+// The three methods are the callables that Scheme made for the clauses.
 void attachCallableOpInterface(mlir::DynamicOpDefinition& def,
                                const LockedSchemeObject& dispatcher) {
   mlir::detail::InterfaceMap& map = def.getInterfaceMap();
   ensureCallableOpInterface(map);
-  installInterfaceEntry(
-      map.lookup<mlir::CallableOpInterface>()->getCallableRegion, dispatcher,
-      "getCallableRegion");
+  auto* model = static_cast<CrestCallableOpModel*>(
+      map.lookup<mlir::CallableOpInterface>());
+  installInterfaceEntry(model->getCallableRegion, dispatcher,
+                        "getCallableRegion");
+  installInterfaceEntry(model->get_argument_types, dispatcher,
+                        "getArgumentTypes");
+  installInterfaceEntry(model->get_result_types, dispatcher, "getResultTypes");
+}
+
+// FunctionOpInterface puts the model in the map as its base, so an op can have
+// the interface without having given the clauses.
+void requireCallableOpInterfaceClauses(mlir::DynamicOpDefinition& def,
+                                       const std::string& opName) {
+  auto* model = static_cast<CrestCallableOpModel*>(
+      def.getInterfaceMap().lookup<mlir::CallableOpInterface>());
+  if (model && (!model->getCallableRegion || !model->get_argument_types ||
+                !model->get_result_types)) {
+    scheme_error("crest::register-dynamic-op!",
+                 "FunctionOpInterface extends CallableOpInterface, so the op "
+                 "has to declare it with its three clauses:",
+                 opName.c_str());
+  }
 }
 
 void attachCallOpInterface(mlir::DynamicOpDefinition& def,
@@ -190,6 +252,59 @@ void registerInterfacesCallInterfacesBindings() {
         return reinterpret_cast<uint64_t>(
             mlir::ArgAndResultAttrsOpInterface::getInterfaceID()
                 .getAsOpaquePointer());
+      });
+
+  // crest::CallableOpInterface::addType (uptr sink, uptr type) -> void
+  //
+  // What the callable of getArgumentTypes or getResultTypes calls for each
+  // type it answers; `sink` is the SmallVector<Type>* that C++ passed.
+  Sregister_symbol(
+      "crest::CallableOpInterface::addType",
+      (void*)+[](uint64_t sink, uint64_t type) -> void {
+        reinterpret_cast<llvm::SmallVectorImpl<mlir::Type>*>(sink)->push_back(
+            mlir::Type::getFromOpaquePointer(
+                reinterpret_cast<const void*>(type)));
+      });
+
+  // mlir::CallableOpInterface::getArgumentTypes (uptr op) -> list of Type
+  // mlir::CallableOpInterface::getResultTypes (uptr op) -> list of Type
+  Sregister_symbol(
+      "mlir::CallableOpInterface::getArgumentTypes",
+      (void*)+[](uint64_t op_ptr) -> ptr {
+        auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
+        auto* c = lookupConcept<mlir::CallableOpInterface>(op);
+        if (!c) {
+          scheme_error("mlir::CallableOpInterface::getArgumentTypes",
+                       "op does not implement CallableOpInterface:",
+                       op->getName().getStringRef().str().c_str());
+        }
+        llvm::SmallVector<mlir::Type> types(c->getArgumentTypes(c, op));
+        ptr list = Snil;
+        for (auto it = types.rbegin(); it != types.rend(); ++it) {
+          list = Scons(
+              Sunsigned64(reinterpret_cast<uint64_t>(it->getAsOpaquePointer())),
+              list);
+        }
+        return list;
+      });
+  Sregister_symbol(
+      "mlir::CallableOpInterface::getResultTypes",
+      (void*)+[](uint64_t op_ptr) -> ptr {
+        auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
+        auto* c = lookupConcept<mlir::CallableOpInterface>(op);
+        if (!c) {
+          scheme_error("mlir::CallableOpInterface::getResultTypes",
+                       "op does not implement CallableOpInterface:",
+                       op->getName().getStringRef().str().c_str());
+        }
+        llvm::SmallVector<mlir::Type> types(c->getResultTypes(c, op));
+        ptr list = Snil;
+        for (auto it = types.rbegin(); it != types.rend(); ++it) {
+          list = Scons(
+              Sunsigned64(reinterpret_cast<uint64_t>(it->getAsOpaquePointer())),
+              list);
+        }
+        return list;
       });
 
   Sregister_symbol(

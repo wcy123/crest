@@ -13,36 +13,85 @@
           mlir::CallOpInterface::getInterfaceID
           mlir::ArgAndResultAttrsOpInterface::getInterfaceID
           mlir::CallableOpInterface::getCallableRegion
+          mlir::CallableOpInterface::getArgumentTypes
+          mlir::CallableOpInterface::getResultTypes
           mlir::ArgAndResultAttrsOpInterface::getArgAttrsAttr
           mlir::ArgAndResultAttrsOpInterface::getResAttrsAttr)
   (import (chezscheme)
           (crest callback)
           (mlir Interfaces CallInterfaces ffi))
 
-  ;; `dispatcher` is (lambda (method) ...): a method name answers its clause or #f. Only
-  ;; getCallableRegion is a method that Scheme can implement: its foreign-callable goes into the slot
-  ;; of the Concept, so MLIR calls it with the Concept first and then the op (the Concept is
-  ;; ignored), and it answers the Region; without the clause the op's callable region is its first
-  ;; region.
-  ;;   (mlir::CallableOpInterface (getCallableRegion (op) body ...))
+  ;; `dispatcher` is (lambda (method) ...): a method name answers its clause. MLIR has no default for
+  ;; the methods of CallableOpInterface (an op class gives them), and a dialect keeps its signature
+  ;; where it wants, so an entry has all three clauses:
+  ;;   (mlir::CallableOpInterface
+  ;;     (getCallableRegion (op) body ...)   the Region that holds the body, or 0 for a declaration
+  ;;     (getArgumentTypes (op) body ...)    a list of Types
+  ;;     (getResultTypes (op) body ...))     a list of Types
+  ;; Each becomes a foreign-callable, made once, whose address C++ keeps. getCallableRegion goes into
+  ;; the slot of the Concept, so MLIR calls it with the Concept first and then the op (the Concept is
+  ;; ignored). The two others are called by C++ with the op and a sink, and give each type of the
+  ;; list to the sink (C++ answers an ArrayRef, which a C function cannot).
   (define (%%callable-dispatcher dispatcher)
-    (let ([get-region (dispatcher 'getCallableRegion)])
+    (let ([get-region (dispatcher 'getCallableRegion)]
+          [get-arguments (dispatcher 'getArgumentTypes)]
+          [get-results (dispatcher 'getResultTypes)])
+      (define (types-entry-point get-types)
+        (crest-callback-entry-point
+         (uptr uptr) void
+         (lambda (op sink)
+           (for-each (lambda (type) (%crest::CallableOpInterface::addType sink type))
+                     (get-types op)))))
       (crest-callback-entry-dispatcher
        (list (cons 'getCallableRegion
-                   (if get-region
-                       (crest-callback-entry-point (uptr uptr) uptr
-                                                   (lambda (concept op) (get-region op)))
-                       0))))))
+                   (crest-callback-entry-point (uptr uptr) uptr
+                                               (lambda (concept op) (get-region op))))
+             (cons 'getArgumentTypes (types-entry-point get-arguments))
+             (cons 'getResultTypes (types-entry-point get-results))))))
 
+  ;; The clauses are checked when the library compiles: all three, each once, and no other name.
   (define-syntax mlir::CallableOpInterface
-    (syntax-rules ()
-      [(_ (method (formal ...) body ...) ...)
-       (cons (mlir::CallableOpInterface::getInterfaceID)
-             (%%callable-dispatcher
-              (lambda (name)
-                (case name
-                  [(method) (lambda (formal ...) body ...)] ...
-                  [else #f]))))]))
+    (lambda (stx)
+      (syntax-case stx ()
+        [(_ (method (formal ...) body ...) ...)
+         (let ([given (map syntax->datum #'(method ...))]
+               [required '(getCallableRegion getArgumentTypes getResultTypes)])
+           (for-each
+            (lambda (name)
+              (unless (memq name required)
+                (syntax-violation
+                 ':interfaces
+                 (string-append "mlir::CallableOpInterface has no method " (symbol->string name)
+                                ": its methods are getCallableRegion, getArgumentTypes and getResultTypes")
+                 stx)))
+            given)
+           (for-each
+            (lambda (name)
+              (when (> (length (filter (lambda (other) (eq? other name)) given)) 1)
+                (syntax-violation
+                 ':interfaces
+                 (string-append "mlir::CallableOpInterface has two clauses for " (symbol->string name))
+                 stx)))
+            given)
+           (for-each
+            (lambda (name)
+              (unless (memq name given)
+                (syntax-violation
+                 ':interfaces
+                 (string-append "mlir::CallableOpInterface needs a clause for " (symbol->string name)
+                                ": MLIR has no default, the op gives getCallableRegion, getArgumentTypes and getResultTypes")
+                 stx)))
+            required)
+           #'(cons (mlir::CallableOpInterface::getInterfaceID)
+                   (%%callable-dispatcher
+                    (lambda (name)
+                      (case name
+                        [(method) (lambda (formal ...) body ...)] ...
+                        [else #f])))))]
+        [(_ clause ...)
+         (syntax-violation ':interfaces
+                           "mlir::CallableOpInterface clauses are written (method (op) body ...)"
+                           stx)])))
 
   ;; The callee is the callee attribute and the arguments are the operands: no method for Scheme.
   (define-syntax mlir::CallOpInterface
@@ -75,6 +124,12 @@
 
   (define (mlir::CallableOpInterface::getCallableRegion op)
     (%mlir::CallableOpInterface::getCallableRegion op))
+
+  (define (mlir::CallableOpInterface::getArgumentTypes op)
+    (%mlir::CallableOpInterface::getArgumentTypes op))
+
+  (define (mlir::CallableOpInterface::getResultTypes op)
+    (%mlir::CallableOpInterface::getResultTypes op))
 
   (define (mlir::ArgAndResultAttrsOpInterface::getArgAttrsAttr op)
     (%mlir::ArgAndResultAttrsOpInterface::getArgAttrsAttr op))

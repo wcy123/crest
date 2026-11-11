@@ -61,6 +61,8 @@
     mlir::UnrankedTensorType::get
     ;; FunctionType
     mlir::FunctionType::get
+    mlir::FunctionType::getInputs
+    mlir::FunctionType::getResults
     ;; MemRefType
     mlir::isa<MemRefType>?
     mlir::isa<UnrankedMemRefType>?
@@ -265,5 +267,7 @@
   (define mlir::RankedTensorType::get   %mlir::RankedTensorType::get)
   (define mlir::UnrankedTensorType::get %mlir::UnrankedTensorType::get)
   (define mlir::FunctionType::get       %mlir::FunctionType::get)
+  (define mlir::FunctionType::getInputs  %mlir::FunctionType::getInputs)
+  (define mlir::FunctionType::getResults %mlir::FunctionType::getResults)
 
   ) ;; end library (mlir IR BuiltinTypes)

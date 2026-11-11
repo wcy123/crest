@@ -32,7 +32,9 @@
       (:verify (params) #t))
     (define-op func
       :interfaces ((mlir::CallableOpInterface
-                    (getCallableRegion (self) (mlir::Operation::getRegion self 0)))
+                    (getCallableRegion (self) (mlir::Operation::getRegion self 0))
+                    (getArgumentTypes (self) '())
+                    (getResultTypes (self) '()))
                    (mlir::FunctionOpInterface
                     (getFunctionType (self)
                                      (mlir::TypeAttr::getValue

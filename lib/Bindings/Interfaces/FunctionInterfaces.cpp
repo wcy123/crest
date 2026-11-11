@@ -152,7 +152,8 @@ void attachFunctionOpInterface(mlir::DynamicOpDefinition& def,
                                const LockedSchemeObject& dispatcher) {
   mlir::detail::InterfaceMap& map = def.getInterfaceMap();
   // The Concept of FunctionOpInterface looks its three bases up in the map when
-  // the model is inserted.
+  // the model is inserted. The model of CallableOpInterface has no entries
+  // until the clauses of the op fill it; Op.cpp raises an error if they do not.
   ensureSymbolOpInterface(map);
   ensureArgAndResultAttrsOpInterface(map);
   ensureCallableOpInterface(map);
@@ -169,7 +170,7 @@ mlir::FunctionOpInterface::Concept* defaultFunctionConcept() {
   static mlir::detail::InterfaceMap map = [] {
     mlir::detail::InterfaceMap m;
     ensureSymbolOpInterface(m);
-    ensureCallableOpInterface(m);
+    ensurePrintingCallableOpInterface(m);
     insertModelOnce<FunctionConceptData>(m);
     return m;
   }();
