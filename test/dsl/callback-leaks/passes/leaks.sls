@@ -44,24 +44,24 @@
 
   ;; Every kind of callback of a conversion, as the clauses of the scope macros give them: a type
   ;; conversion, both materializations, a pattern with and one without the type converter, a legality
-  ;; check of an op, and one of all the other ops. The clauses make the C functions and release them
+  ;; check of an op, one that uses the type converter, and one of all the other ops. The clauses make the C functions and release them
   ;; when the body ends.
   (define-syntax with-every-callback
     (syntax-rules ()
       [(_ (ctx tc target patterns) body ...)
-       (with-TypeConverter tc (:conversions ((lambda (type) type))
-                                            :source-materializations ((lambda (builder type inputs loc) #f))
-                                            :target-materializations ((lambda (builder type inputs loc) #f)))
-         (with-ConversionTarget target (ctx :dynamically-legal (("test.a" (lambda (op) #f))
-                                                                ("test.b" (lambda (op) #f)))
-                                            :unknown-legal (lambda (op) #t))
-           (with-RewritePatternSet patterns (ctx :conversion-patterns (("test.a" %%a tc 1))
-                                                 :conversion-patterns/ctx (("test.b" %%b 1)))
-             (target-add-legal-dialect target "func")
-             (target-add-legal-dialect target "builtin")
-             (target-add-legal-op target ctx "test.a_done")
-             (target-add-legal-op target ctx "test.b_done")
-             body ...)))]))
+       (with-TypeConverter tc :conversions ((lambda (type) type))
+                           :source-materializations ((lambda (builder type inputs loc) #f))
+                           :target-materializations ((lambda (builder type inputs loc) #f))
+                           (with-ConversionTarget target (ctx :dynamically-legal (("test.a" (lambda (op) #f))
+                                                                                  ("test.b" (lambda (op) (type-converter-is-legal tc op) #f)))
+                                                              :unknown-legal (lambda (op) #t))
+                             (with-RewritePatternSet patterns (ctx :conversion-patterns (("test.a" %%a tc 1))
+                                                                   :conversion-patterns/ctx (("test.b" %%b 1)))
+                               (target-add-legal-dialect target "func")
+                               (target-add-legal-dialect target "builtin")
+                               (target-add-legal-op target ctx "test.a_done")
+                               (target-add-legal-op target ctx "test.b_done")
+                               body ...)))]))
 
   (define (conversion-full module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])

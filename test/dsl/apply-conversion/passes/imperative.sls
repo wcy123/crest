@@ -37,19 +37,19 @@
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
-        (with-TypeConverter tc (:conversions ((lambda (type) type)))
-          (with-ConversionTarget target (ctx
-                                         :dynamically-legal (("test.keep" (lambda (op) #t))))
-            (target-add-legal-dialect target "func")
-            (target-add-legal-dialect target "builtin")
-            (target-add-illegal-dialect target "test")
-            (target-add-legal-op target ctx "test.a_done")
-            (target-add-legal-op target ctx "test.b_done")
-            (target-add-legal-op target ctx "test.c_done")
-            (with-RewritePatternSet patterns (ctx
-                                              :conversion-patterns (("test.a" %%a tc 1)
-                                                                    ("test.c" %%c tc 1))
-                                              :conversion-patterns/ctx (("test.b" %%b 1)))
-              (eqv? 1 (mlir::applyPartialConversion module-op target patterns))))))))
+        (with-TypeConverter tc :conversions ((lambda (type) type))
+                            (with-ConversionTarget target (ctx
+                                                           :dynamically-legal (("test.keep" (lambda (op) #t))))
+                              (target-add-legal-dialect target "func")
+                              (target-add-legal-dialect target "builtin")
+                              (target-add-illegal-dialect target "test")
+                              (target-add-legal-op target ctx "test.a_done")
+                              (target-add-legal-op target ctx "test.b_done")
+                              (target-add-legal-op target ctx "test.c_done")
+                              (with-RewritePatternSet patterns (ctx
+                                                                :conversion-patterns (("test.a" %%a tc 1)
+                                                                                      ("test.c" %%c tc 1))
+                                                                :conversion-patterns/ctx (("test.b" %%b 1)))
+                                (eqv? 1 (mlir::applyPartialConversion module-op target patterns))))))))
 
   ) ;; end library

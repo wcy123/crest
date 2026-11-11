@@ -13,6 +13,7 @@
 ;;===----------------------------------------------------------------------===;;
 (library (mlir Transforms DialectConversion options)
   (export conversion-options
+          conversion-leading-options
           conversion-option-list
           conversion-keyword?)
   (import (rnrs)
@@ -30,6 +31,17 @@
         (syntax-violation who "the option needs a value" stx (car rest))]
        [else (loop (cddr rest)
                    (cons (cons (syntax->datum (car rest)) (cadr rest)) options))])))
+
+  ;; The items split into the leading (:keyword value) pairs and the rest, which is the body. A keyword that is
+  ;; not in allowed, or a keyword without a value, is an error when the program compiles.
+  (define (conversion-leading-options who stx items allowed)
+    (let loop ([rest items] [leading '()])
+      (if (and (pair? rest) (conversion-keyword? (car rest)))
+          (begin
+            (unless (and (pair? (cdr rest)) (memq (syntax->datum (car rest)) allowed))
+              (conversion-options who stx (list (car rest)) allowed))
+            (loop (cddr rest) (cons (cadr rest) (cons (car rest) leading))))
+          (values (conversion-options who stx (reverse leading) allowed) rest))))
 
   ;; The elements of the list that the option has as its value (none when it is absent).
   (define (conversion-option-list options keyword)

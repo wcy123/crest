@@ -740,18 +740,22 @@ functions around its body and releases them after it, so running a conversion ma
 (`test/dsl/callback-leaks`):
 
 ```scheme
-(with-TypeConverter tc (:conversions ((lambda (type) type))
-                        :source-materializations ((lambda (builder type inputs loc) #f)))
-  (with-ConversionTarget target (ctx :dynamically-legal (("func.func" (lambda (op) #t)))
+(with-TypeConverter type-converter
+    :conversions             ((lambda (type) type))
+    :source-materializations ((lambda (builder type inputs loc) #f))
+  (with-ConversionTarget target (ctx :dynamically-legal
+                                     (("func.func"
+                                       (lambda (op) (= 1 (type-converter-is-signature-legal type-converter op)))))
                                      :unknown-legal (lambda (op) #t))
-    (with-RewritePatternSet patterns (ctx :conversion-patterns (("onnx.Cast" my-pattern tc 1))
+    (with-RewritePatternSet patterns (ctx :conversion-patterns (("onnx.Cast" my-pattern type-converter 1))
                                           :rewrite-patterns (("test.rw" other-pattern 1)))
       (apply-full-conversion module-op target patterns))))
 ```
 
-A callback that no clause fits (a helper that registers it and returns before the conversion runs) is made once
-with `crest-make-static-c-callable` from `(crest callback)`, at the library level when it takes no
-per-run state; it stays for the whole program.
+A callback that uses the type converter or the target is written inside these scopes, as the second entry
+above uses `type-converter`, so the scope releases it. `crest-make-static-c-callable` from `(crest callback)`
+is for a callback that uses no state of a run, made once at the library level: a pattern, or a type
+conversion that does not look at the converter.
 
 ---
 

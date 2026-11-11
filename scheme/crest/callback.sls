@@ -18,8 +18,8 @@
 ;; code objects) and whoever calls the low-level function decides how long it lives. The types are
 ;; those of foreign-callable (uptr, int, void, ...).
 ;;
-;;   crest-make-static-c-callable   locks it for good: a callback made once, at the library level, or
-;;                                  one that a helper makes and cannot scope (about 400 bytes each).
+;;   crest-make-static-c-callable   locks it for good: only for a callback made once, at the library
+;;                                  level, that uses no state of a run.
 ;;   with-c-callable                locks it for the body and unlocks it after, also on an error. The
 ;;                                  value is a procedure, or a locked code object or the address of a
 ;;                                  locked callable that the caller made (reused, never unlocked here).

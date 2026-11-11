@@ -35,7 +35,7 @@
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
-        (with-TypeConverter tc ()
+        (with-TypeConverter tc
           (%%configure-type-converter! tc)
           (with-ConversionTarget target (ctx)
             (%%configure-target! target ctx tc)

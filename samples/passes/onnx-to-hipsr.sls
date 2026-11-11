@@ -43,7 +43,13 @@
           (only (mlir Interfaces DestinationStyleOp)
                 mlir::DestinationStyleOpInterface::getNumDpsInits
                 mlir::DestinationStyleOpInterface::getDpsInitOperand)
-          (only (crest conversion) apply-conversion)
+          (only (mlir Transforms DialectConversion)
+                with-TypeConverter
+                with-ConversionTarget
+                type-converter-is-legal
+                type-converter-is-signature-legal
+                apply-full-conversion)
+          (only (mlir IR PatternMatch) with-RewritePatternSet)
           (mlir dialects hipsr)
           (mlir Dialect Func IR FuncOps)
           (mlir support logging)
@@ -122,23 +128,35 @@
     (let ((ctx (mlir::Operation::getContext module-op)))
       (with-current-MLIRContext ctx
         (crest::logging::debug "Applying full conversion...")
-        (if (apply-conversion module-op ctx
-                              :configure-type-converter hipsr-type-converter-add-device-memory-conversions!
-                              :configure-target (lambda (target type-converter)
-                                                  (hipsr-configure-conversion-target! target ctx type-converter))
-                              :patterns (("onnx.Return" onnx-return->func-return))
-                              :populate (lambda (type-converter patterns)
-                                          (populate-cast-patterns       type-converter patterns ctx)
-                                          (populate-scatter-nd-patterns type-converter patterns ctx)
-                                          (populate-equal-patterns      type-converter patterns ctx)
-                                          (populate-matmul-patterns     type-converter patterns ctx)
-                                          (populate-min-patterns        type-converter patterns ctx)
-                                          (populate-transpose-patterns  type-converter patterns ctx)
-                                          (populate-gather-patterns     type-converter patterns ctx)
-                                          (populate-expand-patterns     type-converter patterns ctx)
-                                          (populate-constant-patterns   type-converter patterns ctx)
-                                          (populate-shape-patterns      type-converter patterns ctx)
-                                          (mlir-populate-func-type-conversion-pattern patterns type-converter)))
+        (if (with-TypeConverter type-converter
+              :conversions             (identity-conversion device-memory-conversion)
+              :source-materializations (tensor-cast-materialization)
+              :target-materializations (tensor-cast-materialization)
+              (with-ConversionTarget target
+                  (ctx
+                   :dynamically-legal
+                   (("func.func"
+                     (lambda (op) (= 1 (type-converter-is-signature-legal type-converter op))))
+                    ("func.return"
+                     (lambda (op) (= 1 (type-converter-is-legal type-converter op)))))
+                   :unknown-legal unknown-ops-legal)
+                (hipsr-configure-conversion-target! target ctx)
+                (with-RewritePatternSet patterns
+                    (ctx
+                     :conversion-patterns
+                     (("onnx.Return" onnx-return->func-return type-converter 1)))
+                  (populate-cast-patterns       type-converter patterns ctx)
+                  (populate-scatter-nd-patterns type-converter patterns ctx)
+                  (populate-equal-patterns      type-converter patterns ctx)
+                  (populate-matmul-patterns     type-converter patterns ctx)
+                  (populate-min-patterns        type-converter patterns ctx)
+                  (populate-transpose-patterns  type-converter patterns ctx)
+                  (populate-gather-patterns     type-converter patterns ctx)
+                  (populate-expand-patterns     type-converter patterns ctx)
+                  (populate-constant-patterns   type-converter patterns ctx)
+                  (populate-shape-patterns      type-converter patterns ctx)
+                  (mlir-populate-func-type-conversion-pattern patterns type-converter)
+                  (eqv? 1 (apply-full-conversion module-op target patterns)))))
             (begin
               (crest::logging::debug "Erasing dead NoValue ops...")
               (erase-dead-novalue! module-op)

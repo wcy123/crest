@@ -18,7 +18,7 @@
 
 (with-DialectRegistry reg ()
   (with-MLIRContext ctx (reg)
-    (with-TypeConverter tc ()
+    (with-TypeConverter tc
       (with-ConversionTarget target (ctx)
         (with-RewritePatternSet patterns (ctx)
           (report "conversion" (lambda () (type-converter-add-conversion tc (lambda (t) t))))

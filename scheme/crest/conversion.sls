@@ -180,8 +180,8 @@
                        #`(let ([op* module-op] [ctx* ctx])
                            (with-LLVMTypeConverter tc (ctx*) #,body))
                        #`(let ([op* module-op] [ctx* ctx])
-                           (with-TypeConverter tc (tc-option ...)
-                             configure-tc-form ...
-                             #,body))))))))])))
+                           (with-TypeConverter tc tc-option ...
+                                               configure-tc-form ...
+                                               #,body))))))))])))
 
   ) ;; end library (crest conversion)

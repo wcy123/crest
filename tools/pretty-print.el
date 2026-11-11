@@ -60,7 +60,7 @@
     (with-CrestObject . 2)
     (with-OpBuilder . 2)
     (with-RewritePatternSet . 2)
-    (with-TypeConverter . 2)
+    (with-TypeConverter . 1)
     (with-LLVMTypeConverter . 2)
     (with-ConversionTarget . 2)
     (with-ExecutionEngine . 2)

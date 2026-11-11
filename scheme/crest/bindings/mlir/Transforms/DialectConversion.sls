@@ -227,18 +227,20 @@
   ;;   :source-materializations  (proc ...)  (builder result-type inputs loc) → a Value or #f
   ;;   :target-materializations  (proc ...)  the same
   ;; @example
-  ;;   (with-TypeConverter tc (:conversions ((lambda (type) type)))
+  ;;   (with-TypeConverter type-converter :conversions ((lambda (type) type))
   ;;     ...)
   (define-syntax with-TypeConverter
     (lambda (stx)
       (syntax-case stx ()
-        [(_ var (option ...) body ...)
-         (let ([options (conversion-options
-                         'with-TypeConverter stx (syntax->list #'(option ...))
-                         '(:conversions :source-materializations :target-materializations))])
+        [(_ var item ...)
+         (let-values ([(options body)
+                       (conversion-leading-options
+                        'with-TypeConverter stx (syntax->list #'(item ...))
+                        '(:conversions :source-materializations :target-materializations))])
            (with-syntax ([(conversion ...) (conversion-option-list options ':conversions)]
                          [(source ...) (conversion-option-list options ':source-materializations)]
-                         [(target ...) (conversion-option-list options ':target-materializations)])
+                         [(target ...) (conversion-option-list options ':target-materializations)]
+                         [(form ...) body])
              (with-syntax ([(conversion-callable ...) (generate-temporaries #'(conversion ...))]
                            [(source-callable ...) (generate-temporaries #'(source ...))]
                            [(target-callable ...) (generate-temporaries #'(target ...))])
@@ -250,7 +252,7 @@
                      (type-converter-add-conversion var conversion-callable) ...
                      (mlir::TypeConverter::addSourceMaterialization var source-callable) ...
                      (mlir::TypeConverter::addTargetMaterialization var target-callable) ...
-                     body ...)))))])))
+                     form ...)))))])))
 
   ;; @brief RAII macro — create a ConversionTarget, execute BODY, then destroy on exit.
   ;; @param var identifier bound to the CrestBox<ConversionTarget>* uptr for BODY

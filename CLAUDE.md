@@ -162,14 +162,15 @@ by macros on either side.
 
 ```scheme
 (with-current-MLIRContext ctx body ...)    ; installs a dynamic parameter
-(with-TypeConverter tc () body ...)        ; manages lifetime, no dynamic param
+(with-TypeConverter type-converter body ...)  ; manages lifetime, no dynamic param
 (with-ConversionTarget target (ctx) body ...)
 ```
 
 A macro that creates an object, binds it to a variable and frees it takes the variable first,
 then the creation arguments in a list (empty when there are none):
 `(with-<C++ClassName> variable (arguments ...) body ...)`. The variable is never grouped with
-the arguments.
+the arguments. `with-TypeConverter` has no creation arguments, so its keyword clauses (Rule 17) follow the
+variable directly: `(with-TypeConverter type-converter :conversions (...) body ...)`.
 
 The generic helper `with-raii` (`(mlir support RAII)`) has no C++ class. It takes the variable, an
 expression that makes the resource and a procedure that frees it:
@@ -256,9 +257,10 @@ whose code object is locked (the garbage collector moves Scheme objects, so a pr
 `ptr`), and whoever calls the low-level function decides how long it lives (`(crest callback)`):
 
 - `(crest-make-static-c-callable (type ...) result proc)` makes it, locks it for good and answers its address.
-  Use it at the library level for a callback that takes no per-run state (an op's clause, a dialect's callback,
-  the body of a `define-pass`, a pattern made by `define-conversion-pattern`). A helper that has to make one per
-  run and return before the conversion runs may use it too: it leaks about 400 bytes per call, say so in a comment.
+  Use it only at the library level, for a callback that uses no state of a run (an op's clause, a dialect's
+  callback, the body of a `define-pass`, a pattern made by `define-conversion-pattern`): it is made once, when the
+  library loads. A callback that uses the state of a run (a type converter, a target) is made by `with-c-callable`
+  or by a clause, so that a scope releases it; never make one per run with this.
 - `(with-c-callable (name (type ...) result value) body ...)` makes it for `body` and unlocks it after, also on an
   error. `value` is a procedure, or a code object that the caller made and locked, or the address of a locked
   callable (reused, never unlocked by the macro; an error if it is not locked).

@@ -20,7 +20,10 @@
     make-hipsr-device-space-attr
     make-hipsr-barrier-type-attr
     mlir-get-hipsr-context-arg
-    hipsr-type-converter-add-device-memory-conversions!
+    identity-conversion
+    device-memory-conversion
+    tensor-cast-materialization
+    unknown-ops-legal
     hipsr-configure-conversion-target!
     mlir-type-is-device-tensor
     make-mlir-tensor-in-host-space
@@ -113,8 +116,7 @@
   ;; Type converter configuration
   ;;===--------------------------------------------------------------------===;;
 
-  ;; The callbacks that do not use the converter or the target are made once, when the library is
-  ;; loaded, and kept for the whole program.
+  ;; These callbacks use no state of a run: they are made once, when the library is loaded.
 
   ;; Bridge a #hipsr.mem<device> tensor to a plain tensor (or vice versa)
   ;; at conversion boundaries using tensor.cast.
@@ -150,12 +152,6 @@
                                                                              "#hipsr.mem<device>"))
             #f)))))
 
-  (define (hipsr-type-converter-add-device-memory-conversions! type-converter)
-    (type-converter-add-conversion type-converter identity-conversion)
-    (type-converter-add-conversion type-converter device-memory-conversion)
-    (mlir::TypeConverter::addSourceMaterialization type-converter tensor-cast-materialization)
-    (mlir::TypeConverter::addTargetMaterialization type-converter tensor-cast-materialization))
-
   ;;===--------------------------------------------------------------------===;;
   ;; Conversion target configuration
   ;;===--------------------------------------------------------------------===;;
@@ -167,26 +163,12 @@
                     (or (hipsr-has-compute-ancestor? op)
                         (hipsr-has-placeholder-ancestor? op))))))
 
-  (define (hipsr-configure-conversion-target! target ctx type-converter)
+  (define (hipsr-configure-conversion-target! target ctx)
     (target-add-illegal-dialect target "onnx")
     (target-add-legal-op target ctx "onnx.NoValue")
     (target-add-legal-dialect target "hipsr")
     (target-add-legal-op target ctx "builtin.module")
     (target-add-legal-op target ctx "arith.constant")
-    (target-add-legal-op target ctx "tensor.cast")
-    ;; The two checks use this converter, so each run makes its own C functions. They are kept for the
-    ;; whole program (about 400 bytes each): this helper returns before the conversion runs, so no scope
-    ;; of its own could release them.
-    (target-add-dynamically-legal-op
-     target ctx "func.func"
-     (crest-make-static-c-callable
-      (uptr) int
-      (legality->c (lambda (op) (= 1 (type-converter-is-signature-legal type-converter op))))))
-    (target-add-dynamically-legal-op
-     target ctx "func.return"
-     (crest-make-static-c-callable
-      (uptr) int
-      (legality->c (lambda (op) (= 1 (type-converter-is-legal type-converter op))))))
-    (target-mark-unknown-ops-dynamically-legal target unknown-ops-legal))
+    (target-add-legal-op target ctx "tensor.cast"))
 
   ) ;; end library (mlir dialects hipsr)

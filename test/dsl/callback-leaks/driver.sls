@@ -79,7 +79,7 @@
 ;; callable with with-c-callable first, so a C function exists by then, and it must be released on this
 ;; path too.
 (scenario "wrong-handle-conversion" (ctx module)
-          (with-TypeConverter tc ()
+          (with-TypeConverter tc
             (with-ConversionTarget target (ctx)
               (ignoring-errors
                (lambda ()
@@ -87,7 +87,7 @@
                    (type-converter-add-conversion target c)))))))
 
 (scenario "wrong-handle-materialization" (ctx module)
-          (with-TypeConverter tc ()
+          (with-TypeConverter tc
             (with-ConversionTarget target (ctx)
               (ignoring-errors
                (lambda ()
@@ -99,7 +99,7 @@
                    (mlir::TypeConverter::addTargetMaterialization target c)))))))
 
 (scenario "wrong-handle-legality" (ctx module)
-          (with-TypeConverter tc ()
+          (with-TypeConverter tc
             (ignoring-errors
              (lambda ()
                (with-c-callable (c (uptr) int (lambda (op) 0))
@@ -110,7 +110,7 @@
                  (target-mark-unknown-ops-dynamically-legal tc c))))))
 
 (scenario "wrong-handle-patterns" (ctx module)
-          (with-TypeConverter tc ()
+          (with-TypeConverter tc
             (with-ConversionTarget target (ctx)
               (with-RewritePatternSet patterns (ctx)
                 (ignoring-errors
@@ -127,7 +127,7 @@
                      (add-conversion-pattern/ctx tc "test.a" c 1))))))))
 
 (scenario "wrong-handle-modify" (ctx module)
-          (with-TypeConverter tc ()
+          (with-TypeConverter tc
             (ignoring-errors
              (lambda () (mlir::RewriterBase::modifyOpInPlace tc module (lambda () #t))))))
 
