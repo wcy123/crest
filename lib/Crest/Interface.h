@@ -18,7 +18,9 @@ namespace crest {
 // InterfaceMap of its DynamicOpDefinition (the attach function of the
 // interface, found by its TypeID in lib/Crest/Op.cpp). A model is a struct
 // derived from the Concept of the interface, with `using Interface = ...;` and
-// a default constructor.
+// a default constructor. When the interface has a FallbackModel, derive from it
+// (`struct M : mlir::XInterface::FallbackModel<M>`): it has both, and fills the
+// slots with calls to the members of `M`, which are the default methods.
 //
 // A method that Scheme implements has a callable that Scheme made once, when
 // the library was loaded. When the slot of the Concept is a plain function

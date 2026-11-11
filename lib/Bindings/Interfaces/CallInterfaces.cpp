@@ -19,31 +19,30 @@
 #include <memory>
 
 namespace {
-struct CallableConceptData : public mlir::CallableOpInterface::Concept {
-  using Interface = mlir::CallableOpInterface;
-  using Concept = mlir::CallableOpInterface::Concept;
+// The model of CallableOpInterface for an op that Scheme defines, which has no
+// C++ class: FallbackModel fills the slots of the Concept with functions that
+// call these members, the defaults. A clause of Scheme replaces a slot
+// (attachCallableOpInterface).
+struct CrestCallableOpModel
+    : public mlir::CallableOpInterface::FallbackModel<CrestCallableOpModel> {
+  // The first region of the op.
+  mlir::Region* getCallableRegion(mlir::Operation* op) const {
+    return &op->getRegion(0);
+  }
 
-  CallableConceptData()
-      : mlir::CallableOpInterface::Concept{
-            [](const mlir::CallableOpInterface::Concept*, mlir::Operation* op)
-                -> mlir::Region* { return &op->getRegion(0); },
-            [](const mlir::CallableOpInterface::Concept*,
-               mlir::Operation* op) -> llvm::ArrayRef<mlir::Type> {
-              return mlir::cast<mlir::FunctionType>(
-                         mlir::cast<mlir::TypeAttr>(
-                             op->getAttr("function_type"))
-                             .getValue())
-                  .getInputs();
-            },
-            [](const mlir::CallableOpInterface::Concept*,
-               mlir::Operation* op) -> llvm::ArrayRef<mlir::Type> {
-              return mlir::cast<mlir::FunctionType>(
-                         mlir::cast<mlir::TypeAttr>(
-                             op->getAttr("function_type"))
-                             .getValue())
-                  .getResults();
-            },
-        } {}
+  // The inputs and results of its "function_type" attribute.
+  llvm::ArrayRef<mlir::Type> getArgumentTypes(mlir::Operation* op) const {
+    return functionType(op).getInputs();
+  }
+  llvm::ArrayRef<mlir::Type> getResultTypes(mlir::Operation* op) const {
+    return functionType(op).getResults();
+  }
+
+private:
+  static mlir::FunctionType functionType(mlir::Operation* op) {
+    return mlir::cast<mlir::FunctionType>(
+        mlir::cast<mlir::TypeAttr>(op->getAttr("function_type")).getValue());
+  }
 };
 
 // A call op's callee is its "callee" attribute, a symbol reference or (as in
@@ -142,7 +141,7 @@ void ensureArgAndResultAttrsOpInterface(mlir::detail::InterfaceMap& map) {
 // base in the map, so the base comes first.
 void ensureCallableOpInterface(mlir::detail::InterfaceMap& map) {
   ensureArgAndResultAttrsOpInterface(map);
-  insertModelOnce<CallableConceptData>(map);
+  insertModelOnce<CrestCallableOpModel>(map);
 }
 
 // getCallableRegion is the callable that Scheme made for the clause; without a
