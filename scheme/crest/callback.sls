@@ -49,8 +49,8 @@
   (define %%type-range->list
     (foreign-procedure "crest::TypeRange::toList" (uptr uptr) scheme-object))
 
-  ;; Windows x64 (a6nt, ta6nt): a class with a constructor is passed and returned through a pointer
-  ;; even when it is one word.
+  ;; Windows x64 (a6nt, ta6nt): a class with a constructor is returned through a pointer even when
+  ;; it is one word (Type, StringAttr, a PointerUnion), where it is passed in a register.
   (define (%%windows?)
     (let* ([name (symbol->string (machine-type))]
            [n (string-length name)])
@@ -90,11 +90,11 @@
   ;;
   ;; argument kinds: uptr, int, unsigned-8 (a bool), unsigned-32, and
   ;;   object       a class of one pointer (Type, TypeAttr, StringAttr, ...), by value: the procedure gets
-  ;;                the pointer; Windows passes the class through a pointer to a copy
+  ;;                the pointer, on every platform (an argument of one word is passed in a register)
   ;;   type-range   a TypeRange by value: the procedure gets the list of the types
   ;; result kinds: void, uptr, int, unsigned-8, unsigned-32, and
-  ;;   object       the procedure answers the pointer; Windows answers it through the place that the
-  ;;                caller gives (a pointer before the Concept)
+  ;;   object       the procedure answers the pointer; Windows x64 answers a class that has a
+  ;;                constructor through the place that the caller gives (a pointer before the Concept)
   ;;   range        an ArrayRef or an OperandRange: the procedure answers (data . size)
   ;; The procedure gets only the arguments, not the Concept. Answers the entry point, as
   ;; crest-callback-entry-point does.
@@ -104,10 +104,7 @@
         ;; a pair: the C type, and a procedure from the formal to the expression
         (case (syntax->datum kind)
           [(uptr int unsigned-8 unsigned-32) (cons kind (lambda (formal) formal))]
-          [(object) (cons #'uptr
-                          (if windows?
-                              (lambda (formal) #`(foreign-ref 'uptr #,formal 0))
-                              (lambda (formal) formal)))]
+          [(object) (cons #'uptr (lambda (formal) formal))]
           [(type-range)
            (cons #'(& %%SlotRange)
                  (lambda (formal)

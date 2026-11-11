@@ -281,6 +281,22 @@ TEST_F(SlotAbiTest, ObjectArgument) {
   EXPECT_EQ(seen[1], address(attr.getAsOpaquePointer()));
 }
 
+// A PointerUnion taken by value, as setCalleeFromCallable takes it.
+TEST_F(SlotAbiTest, UnionArgument) {
+  using Slot =
+      void (*)(const void*, mlir::Operation*, mlir::CallInterfaceCallable);
+  auto f = slot<Slot>("(crest-slot-callable (uptr object) void (lambda (op "
+                      "callee) (set! slot-seen (list op callee))))");
+  mlir::MLIRContext ctx;
+  mlir::SymbolRefAttr ref = mlir::SymbolRefAttr::get(&ctx, "callee");
+  f(nullptr, op(0x3000), mlir::CallInterfaceCallable(ref));
+  std::vector<uint64_t> seen = numbers(evalScheme("slot-seen"));
+  ASSERT_EQ(seen.size(), 2u);
+  EXPECT_EQ(seen[0], 0x3000u);
+  EXPECT_EQ(seen[1],
+            address(mlir::CallInterfaceCallable(ref).getOpaqueValue()));
+}
+
 // Two TypeRanges by value, as cloneTypeWith takes: the procedure sees the lists
 // of the types, whatever the first word of the range is.
 TEST_F(SlotAbiTest, TypeRangeArguments) {
