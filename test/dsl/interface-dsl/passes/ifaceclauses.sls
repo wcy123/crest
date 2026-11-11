@@ -28,6 +28,11 @@
                     (cloneTypeWith (self inputs results)
                                    (display "clause cloneTypeWith\n")
                                    (mlir::FunctionType::get (mlir::Operation::getContext self) (reverse inputs) results)))))
+    (define-op settable
+      :interfaces ((mlir::FunctionOpInterface
+                    (setFunctionTypeAttr (self attr)
+                                         (display "clause setFunctionTypeAttr\n")
+                                         (mlir::Operation::setAttr! self "function_type" attr)))))
     (define-op bad
       :interfaces ((mlir::FunctionOpInterface
                     (verifyBody (self) #f)

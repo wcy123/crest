@@ -20,15 +20,18 @@
           (mlir Interfaces CallInterfaces ffi))
 
   ;; `dispatcher` is (lambda (method) ...): a method name answers its clause or #f. Only
-  ;; getCallableRegion is a method that Scheme can implement: its foreign-callable gets the op and
-  ;; answers the Region; without the clause the op's callable region is its first region.
+  ;; getCallableRegion is a method that Scheme can implement: its foreign-callable goes into the slot
+  ;; of the Concept, so MLIR calls it with the Concept first and then the op (the Concept is
+  ;; ignored), and it answers the Region; without the clause the op's callable region is its first
+  ;; region.
   ;;   (mlir::CallableOpInterface (getCallableRegion (op) body ...))
   (define (%%callable-dispatcher dispatcher)
     (let ([get-region (dispatcher 'getCallableRegion)])
       (crest-callback-entry-dispatcher
        (list (cons 'getCallableRegion
                    (if get-region
-                       (crest-callback-entry-point (uptr) uptr get-region)
+                       (crest-callback-entry-point (uptr uptr) uptr
+                                                   (lambda (concept op) (get-region op)))
                        0))))))
 
   (define-syntax mlir::CallableOpInterface

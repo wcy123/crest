@@ -10,6 +10,7 @@
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/Support/InterfaceSupport.h"
 #include "mlir/Support/TypeID.h"
+#include <type_traits>
 
 namespace crest {
 
@@ -17,18 +18,46 @@ namespace crest {
 // InterfaceMap of its DynamicOpDefinition (the attach function of the
 // interface, found by its TypeID in lib/Crest/Op.cpp). A model is a struct
 // derived from the Concept of the interface, with `using Interface = ...;` and
-// a default constructor; the methods that Scheme implements keep the entry
-// point of their callable in it, which the Concept's own function reads through
-// `self`.
+// a default constructor.
+//
+// A method that Scheme implements has a callable that Scheme made once, when
+// the library was loaded. When the slot of the Concept is a plain function
+// whose arguments are numbers or pointers, the callable goes into the slot
+// itself (installInterfaceEntry): MLIR calls Scheme directly, and the callable
+// takes the `const Concept*` that MLIR passes first, and ignores it. When the
+// slot cannot be a Scheme callable (a range by value, a LogicalResult with a
+// diagnostic), the model keeps the entry point in a field, and the Concept's
+// own function reads it through `self` and adapts the arguments.
 
-/// The entry point of the callable that `dispatcher` has for `method`, or null.
-/// `dispatcher` is the Scheme procedure that the interface's macro answers,
-/// from a method name to the entry point of a callable made once, when the
-/// library of the dialect was loaded, or 0.
-inline void* interfaceEntryPoint(const LockedSchemeObject& dispatcher,
-                                 const char* method) {
-  return reinterpret_cast<void*>(Sunsigned64_value(
+/// The entry point of the callable that `dispatcher` has for `method`, as the
+/// function pointer type `Fn`, or null. `dispatcher` is the Scheme procedure
+/// that the interface's macro answers, from a method name to the entry point of
+/// a callable made once, when the library of the dialect was loaded, or 0.
+/// `Fn` must be the prototype of that callable: Scheme and C++ each write it.
+template <typename Fn>
+Fn interfaceEntryPoint(const LockedSchemeObject& dispatcher,
+                       const char* method) {
+  static_assert(std::is_pointer_v<Fn> &&
+                    std::is_function_v<std::remove_pointer_t<Fn>>,
+                "an entry point is a pointer to a function");
+  return reinterpret_cast<Fn>(Sunsigned64_value(
       scheme_call(dispatcher.get(), Sstring_to_symbol(method))));
+}
+
+/// Put the entry point that `dispatcher` has for `method` into `slot`, a
+/// function pointer of a Concept (or of a model) whose type is the prototype of
+/// the callable, and answer whether there was one. A method without a clause
+/// keeps what `slot` holds, the default. The slot is called by MLIR itself, so
+/// the Scheme callable takes the arguments of the slot, `const Concept* self`
+/// first, and ignores `self`.
+template <typename Fn>
+bool installInterfaceEntry(Fn& slot, const LockedSchemeObject& dispatcher,
+                           const char* method) {
+  if (Fn entry = interfaceEntryPoint<Fn>(dispatcher, method)) {
+    slot = entry;
+    return true;
+  }
+  return false;
 }
 
 /// Install each interface of `interfaces`, the list of (TypeID . dispatcher)

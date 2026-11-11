@@ -23,10 +23,6 @@ struct CallableConceptData : public mlir::CallableOpInterface::Concept {
   using Interface = mlir::CallableOpInterface;
   using Concept = mlir::CallableOpInterface::Concept;
 
-  // The entry point of a foreign-callable made in Scheme; nullptr keeps the
-  // default implementation, which is the first region of the op.
-  uint64_t (*get_callable_region)(uint64_t op) = nullptr;
-
   CallableConceptData()
       : mlir::CallableOpInterface::Concept{
             [](const mlir::CallableOpInterface::Concept*, mlir::Operation* op)
@@ -48,20 +44,6 @@ struct CallableConceptData : public mlir::CallableOpInterface::Concept {
                   .getResults();
             },
         } {}
-
-  // An entry of 0 leaves the default implementation of the method.
-  void install(uint64_t getCallableRegionEntry) {
-    if (getCallableRegionEntry != 0) {
-      get_callable_region = reinterpret_cast<decltype(get_callable_region)>(
-          getCallableRegionEntry);
-      getCallableRegion =
-          +[](const Concept* self, mlir::Operation* op) -> mlir::Region* {
-        const auto* d = static_cast<const CallableConceptData*>(self);
-        return reinterpret_cast<mlir::Region*>(
-            d->get_callable_region(reinterpret_cast<uint64_t>(op)));
-      };
-    }
-  }
 };
 
 // A call op's callee is its "callee" attribute, a symbol reference or (as in
@@ -163,13 +145,15 @@ void ensureCallableOpInterface(mlir::detail::InterfaceMap& map) {
   insertModelOnce<CallableConceptData>(map);
 }
 
+// getCallableRegion is the callable that Scheme made for the clause; without a
+// clause the default is the first region of the op.
 void attachCallableOpInterface(mlir::DynamicOpDefinition& def,
                                const LockedSchemeObject& dispatcher) {
   mlir::detail::InterfaceMap& map = def.getInterfaceMap();
   ensureCallableOpInterface(map);
-  static_cast<CallableConceptData*>(map.lookup<mlir::CallableOpInterface>())
-      ->install(reinterpret_cast<uint64_t>(
-          interfaceEntryPoint(dispatcher, "getCallableRegion")));
+  installInterfaceEntry(
+      map.lookup<mlir::CallableOpInterface>()->getCallableRegion, dispatcher,
+      "getCallableRegion");
 }
 
 void attachCallOpInterface(mlir::DynamicOpDefinition& def,

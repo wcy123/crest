@@ -218,9 +218,13 @@ interface by its `TypeID` in a static table. The attach function inserts a *mode
 `def.getInterfaceMap()`: a struct derived from the interface's `Concept` with `using Interface = ...;`
 (`lib/Bindings/Interfaces/*.cpp`, `lib/Bindings/IR/SymbolInterfaces.cpp`, `lib/Crest/InferType.cpp`).
 `InterfaceMap::insertModels` default-constructs it in `malloc`ed memory and frees it with the map, so a model must be
-trivially destructible. The methods that Scheme implements keep the entry point of their callable in the model, and the
-`Concept`'s own function reads it through `self`. An interface whose method has no `self` (`inferReturnTypes`, static)
-gets the entry point itself in the `Concept`.
+trivially destructible. A slot of the `Concept` is a plain function pointer, so when its arguments are numbers or
+pointers (`getCallableRegion`, `getFunctionType`, `setFunctionTypeAttr`, `inferReturnTypes`) the callable that Scheme
+made goes into the slot itself (`installInterfaceEntry` in `lib/Crest/Interface.h`), and MLIR calls Scheme directly. A
+slot that has `self` gives it to the callable as the first argument, which the Scheme side takes and ignores; a static
+method such as `inferReturnTypes` has none. A slot that cannot be a Scheme callable (`cloneTypeWith` takes two ranges by
+value, a verifier answers a `LogicalResult` with a diagnostic) keeps the entry point in the model, and the `Concept`'s own
+function reads it through `self` and adapts the arguments.
 
 An interface that extends others (`FunctionOpInterface` extends `SymbolOpInterface`, `ArgAndResultAttrsOpInterface` and
 `CallableOpInterface`; `CallableOpInterface` and `CallOpInterface` extend `ArgAndResultAttrsOpInterface`) needs them in the
