@@ -29,8 +29,13 @@
 // Inherits from mlir::FunctionOpInterface::Concept so FunctionConceptData*
 // is implicitly convertible to Concept*, and static_cast downcasts are valid.
 // A method that Scheme implements has the entry point of a foreign-callable in
-// the field of its name; the default implementation stays in the Concept
-// until then.
+// the field of its name, and the Concept has a function of its own that reads
+// it through `self`: no slot of this Concept can hold the callable, because a
+// Type or a TypeAttr is not passed in a register on every platform (the
+// Windows x64 ABI passes and returns such a class through a hidden pointer, so
+// a C callable that takes or answers one crashes), a range is passed by value,
+// and a verifier answers a LogicalResult with a diagnostic. The default
+// implementation stays in the Concept until a clause replaces it.
 // ---------------------------------------------------------------------------
 namespace {
 // What a Scheme verifyBody or verifyType said: 1 is success. A Scheme error
@@ -50,10 +55,8 @@ llvm::LogicalResult verifyResult(mlir::Operation* op, int answer) {
   return op->emitOpError() << message;
 }
 
-struct FunctionConceptData : public mlir::FunctionOpInterface::Concept {
-  using Interface = mlir::FunctionOpInterface;
-  using Concept = mlir::FunctionOpInterface::Concept;
-
+struct FunctionConceptData
+    : public crest::CrestModel<mlir::FunctionOpInterface> {
   uint64_t (*get_function_type)(uint64_t op) = nullptr;
   void (*set_function_type_attr)(uint64_t op, uint64_t attr) = nullptr;
   uint64_t (*clone_type_with)(uint64_t op, const void* const* inputs,
@@ -63,7 +66,7 @@ struct FunctionConceptData : public mlir::FunctionOpInterface::Concept {
   int (*verify_type)(uint64_t op) = nullptr;
 
   FunctionConceptData()
-      : Concept{
+      : CrestModel{
             [](const Concept*, mlir::Operation* op) -> mlir::Type {
               return mlir::cast<mlir::TypeAttr>(op->getAttr("function_type"))
                   .getValue();
@@ -82,13 +85,10 @@ struct FunctionConceptData : public mlir::FunctionOpInterface::Concept {
               return mlir::success();
             }} {}
 
-  // An entry of 0 leaves the default implementation of that method.
-  void install(uint64_t getFunctionTypeEntry, uint64_t setFunctionTypeAttrEntry,
-               uint64_t cloneTypeWithEntry, uint64_t verifyBodyEntry,
-               uint64_t verifyTypeEntry) {
-    if (getFunctionTypeEntry != 0) {
-      get_function_type =
-          reinterpret_cast<decltype(get_function_type)>(getFunctionTypeEntry);
+  // A method that the dispatcher has no clause for keeps its default.
+  void install(const crest::LockedSchemeObject& dispatcher) {
+    if (crest::installInterfaceEntry(get_function_type, dispatcher,
+                                     "getFunctionType")) {
       getFunctionType =
           +[](const Concept* self, mlir::Operation* op) -> mlir::Type {
         const auto* d = static_cast<const FunctionConceptData*>(self);
@@ -96,10 +96,8 @@ struct FunctionConceptData : public mlir::FunctionOpInterface::Concept {
             d->get_function_type(reinterpret_cast<uint64_t>(op))));
       };
     }
-    if (setFunctionTypeAttrEntry != 0) {
-      set_function_type_attr =
-          reinterpret_cast<decltype(set_function_type_attr)>(
-              setFunctionTypeAttrEntry);
+    if (crest::installInterfaceEntry(set_function_type_attr, dispatcher,
+                                     "setFunctionTypeAttr")) {
       setFunctionTypeAttr =
           +[](const Concept* self, mlir::Operation* op, mlir::TypeAttr t) {
             const auto* d = static_cast<const FunctionConceptData*>(self);
@@ -108,9 +106,8 @@ struct FunctionConceptData : public mlir::FunctionOpInterface::Concept {
                 reinterpret_cast<uint64_t>(t.getAsOpaquePointer()));
           };
     }
-    if (cloneTypeWithEntry != 0) {
-      clone_type_with =
-          reinterpret_cast<decltype(clone_type_with)>(cloneTypeWithEntry);
+    if (crest::installInterfaceEntry(clone_type_with, dispatcher,
+                                     "cloneTypeWith")) {
       cloneTypeWith =
           +[](const Concept* self, mlir::Operation* op, mlir::TypeRange inputs,
               mlir::TypeRange results) -> mlir::Type {
@@ -129,16 +126,14 @@ struct FunctionConceptData : public mlir::FunctionOpInterface::Concept {
                                resultPointers.data(), resultPointers.size())));
       };
     }
-    if (verifyBodyEntry != 0) {
-      verify_body = reinterpret_cast<decltype(verify_body)>(verifyBodyEntry);
+    if (crest::installInterfaceEntry(verify_body, dispatcher, "verifyBody")) {
       verifyBody =
           +[](const Concept* self, mlir::Operation* op) -> llvm::LogicalResult {
         const auto* d = static_cast<const FunctionConceptData*>(self);
         return verifyResult(op, d->verify_body(reinterpret_cast<uint64_t>(op)));
       };
     }
-    if (verifyTypeEntry != 0) {
-      verify_type = reinterpret_cast<decltype(verify_type)>(verifyTypeEntry);
+    if (crest::installInterfaceEntry(verify_type, dispatcher, "verifyType")) {
       verifyType =
           +[](const Concept* self, mlir::Operation* op) -> llvm::LogicalResult {
         const auto* d = static_cast<const FunctionConceptData*>(self);
@@ -155,35 +150,15 @@ void attachFunctionOpInterface(mlir::DynamicOpDefinition& def,
                                const LockedSchemeObject& dispatcher) {
   mlir::detail::InterfaceMap& map = def.getInterfaceMap();
   // The Concept of FunctionOpInterface looks its three bases up in the map when
-  // the model is inserted.
+  // the model is inserted. The model of CallableOpInterface has no entries
+  // until the clauses of the op fill it; Op.cpp raises an error if they do not.
   ensureSymbolOpInterface(map);
   ensureArgAndResultAttrsOpInterface(map);
   ensureCallableOpInterface(map);
-  insertModelOnce<FunctionConceptData>(map);
-  auto entry = [&](const char* method) {
-    return reinterpret_cast<uint64_t>(interfaceEntryPoint(dispatcher, method));
-  };
+  insertCustomModelOnce<FunctionConceptData>(map);
   static_cast<FunctionConceptData*>(map.lookup<mlir::FunctionOpInterface>())
-      ->install(entry("getFunctionType"), entry("setFunctionTypeAttr"),
-                entry("cloneTypeWith"), entry("verifyBody"),
-                entry("verifyType"));
+      ->install(dispatcher);
 }
-
-namespace {
-// What printFunctionOp uses for an op that is not declared a
-// FunctionOpInterface (Toy ch2 and ch3): the default methods, over a map of its
-// own with the bases they need.
-mlir::FunctionOpInterface::Concept* defaultFunctionConcept() {
-  static mlir::detail::InterfaceMap map = [] {
-    mlir::detail::InterfaceMap m;
-    ensureSymbolOpInterface(m);
-    ensureCallableOpInterface(m);
-    insertModelOnce<FunctionConceptData>(m);
-    return m;
-  }();
-  return map.lookup<mlir::FunctionOpInterface>();
-}
-} // namespace
 
 void registerInterfacesFunctionInterfacesBindings() {
   // mlir::FunctionOpInterface::getInterfaceID () -> uptr
@@ -232,7 +207,9 @@ void registerInterfacesFunctionInterfacesBindings() {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto* c = lookupConcept<mlir::FunctionOpInterface>(op);
         if (!c) {
-          c = defaultFunctionConcept();
+          scheme_error("mlir::function_interface_impl::printFunctionOp",
+                       "op does not implement FunctionOpInterface:",
+                       op->getName().getStringRef().str().c_str());
         }
         mlir::FunctionOpInterface fn(op, c);
         auto* ctx = op->getContext();

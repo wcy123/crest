@@ -215,18 +215,34 @@ Now the interfaces are part of the definition. `register-dynamic-op!` takes the 
 of the op's `:interfaces` entries (the macro of each interface library makes the pair, see
 `scheme/mlir/Interfaces/InferTypeOpInterface.sls`), and `lib/Crest/Op.cpp` finds the **attach function** of each
 interface by its `TypeID` in a static table. The attach function inserts a *model* into
-`def.getInterfaceMap()`: a struct derived from the interface's `Concept` with `using Interface = ...;`
+`def.getInterfaceMap()`: a struct derived from `crest::CrestModel<mlir::XInterface>` (`lib/Crest/Interface.h`), which is the
+interface's `Concept` with `using Interface = ...;`
 (`lib/Bindings/Interfaces/*.cpp`, `lib/Bindings/IR/SymbolInterfaces.cpp`, `lib/Crest/InferType.cpp`).
 `InterfaceMap::insertModels` default-constructs it in `malloc`ed memory and frees it with the map, so a model must be
-trivially destructible. The methods that Scheme implements keep the entry point of their callable in the model, and the
-`Concept`'s own function reads it through `self`. An interface whose method has no `self` (`inferReturnTypes`, static)
-gets the entry point itself in the `Concept`.
+trivially destructible. A slot of the `Concept` is a plain function pointer, so when its arguments and its answer are
+numbers or pointers the callable that Scheme made goes into the slot itself (`installInterfaceEntry` in
+`lib/Crest/Interface.h`), and MLIR calls Scheme directly: `getCallableRegion` is such a slot. A slot that has `self` gives
+it to the callable as the first argument, which the Scheme side takes and ignores; a static method such as
+`inferReturnTypes` has none. A slot that cannot be a Scheme callable keeps the entry point in the model, and the
+`Concept`'s own function reads it through `self` and adapts the arguments: `getFunctionType` and `setFunctionTypeAttr`
+(a `Type` or a `TypeAttr` is a class, which the Windows x64 ABI passes and returns through a hidden pointer, so a C
+callable that took or answered one crashed on Windows CI), `cloneTypeWith` (two ranges by value) and the two verifiers (a
+`LogicalResult` with a diagnostic).
 
 An interface that extends others (`FunctionOpInterface` extends `SymbolOpInterface`, `ArgAndResultAttrsOpInterface` and
 `CallableOpInterface`; `CallableOpInterface` and `CallOpInterface` extend `ArgAndResultAttrsOpInterface`) needs them in the
 map first: the `Concept` looks them up in `initializeInterfaceConcept`, which `insertModels` calls. The attach
 functions insert the bases once (`insertModelOnce` in `lib/Crest/Interface.h`) and then their own model, so an op that
-declares `FunctionOpInterface` has the other three as well, as `func.func` does.
+declares `FunctionOpInterface` has `SymbolOpInterface` and `ArgAndResultAttrsOpInterface` as well, as `func.func` does.
+`CallableOpInterface` is different: MLIR has no default for its three methods, and a dialect keeps its signature where
+it wants, so the op gives all three as clauses. `FunctionOpInterface` puts the model of `CallableOpInterface` in the map
+because its `Concept` needs it, and `requireCallableOpInterfaceClauses` (`lib/Bindings/Interfaces/CallInterfaces.cpp`)
+raises a Scheme error, when the op is registered, if its clauses did not fill the model. Its model is
+`CrestModel<mlir::CallableOpInterface>`: every slot is null until the clauses fill it, and each slot holds the callable of
+its clause directly, with no trampoline. `getArgumentTypes` and `getResultTypes` answer an `ArrayRef`, so their callables
+answer a struct (`(& ftype)` of Chez, which follows the rules of the platform), and `crest::CallableOpInterface::keepTypes`
+keeps the types where the context owns them, so that the `ArrayRef` outlives the call. `mlir::function_interface_impl::printFunctionOp`
+on an op that does not declare `FunctionOpInterface` is an error, not a guess.
 
 The Scheme-callable accessors (`mlir::FunctionOpInterface::getFunctionType` and the others) look the `Concept` up in the
 registered name of the op (`lookupConcept`), so they work for C++ ops as well. The one thing a context needs is the

@@ -82,26 +82,20 @@ mlir::Operation* CrestInlinerInterface::materializeCallConversion(
 void attachDialectInlinerInterface(CrestDialect& dialect,
                                    const LockedSchemeObject& dispatcher) {
   auto iface = std::make_unique<CrestInlinerInterface>(&dialect);
-  iface->isLegalToInlineCallFn =
-      reinterpret_cast<decltype(iface->isLegalToInlineCallFn)>(
-          interfaceEntryPoint(dispatcher, "isLegalToInline/call"));
-  iface->isLegalToInlineRegionFn =
-      reinterpret_cast<decltype(iface->isLegalToInlineRegionFn)>(
-          interfaceEntryPoint(dispatcher, "isLegalToInline/region"));
-  iface->isLegalToInlineOpFn =
-      reinterpret_cast<decltype(iface->isLegalToInlineOpFn)>(
-          interfaceEntryPoint(dispatcher, "isLegalToInline/op"));
-  // Optional: a method the dialect has no clause for is null and keeps the
-  // default.
-  iface->handleTerminatorValueFn =
-      reinterpret_cast<decltype(iface->handleTerminatorValueFn)>(
-          interfaceEntryPoint(dispatcher, "handleTerminator/value"));
-  iface->handleTerminatorBlockFn =
-      reinterpret_cast<decltype(iface->handleTerminatorBlockFn)>(
-          interfaceEntryPoint(dispatcher, "handleTerminator/block"));
-  iface->materializeCallConversionFn =
-      reinterpret_cast<decltype(iface->materializeCallConversionFn)>(
-          interfaceEntryPoint(dispatcher, "materializeCallConversion"));
+  // Optional ones keep the default when the dialect has no clause: their
+  // function stays null.
+  installInterfaceEntry(iface->isLegalToInlineCallFn, dispatcher,
+                        "isLegalToInline/call");
+  installInterfaceEntry(iface->isLegalToInlineRegionFn, dispatcher,
+                        "isLegalToInline/region");
+  installInterfaceEntry(iface->isLegalToInlineOpFn, dispatcher,
+                        "isLegalToInline/op");
+  installInterfaceEntry(iface->handleTerminatorValueFn, dispatcher,
+                        "handleTerminator/value");
+  installInterfaceEntry(iface->handleTerminatorBlockFn, dispatcher,
+                        "handleTerminator/block");
+  installInterfaceEntry(iface->materializeCallConversionFn, dispatcher,
+                        "materializeCallConversion");
   dialect.addInterface(std::move(iface));
 }
 

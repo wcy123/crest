@@ -5,7 +5,8 @@ tensor mismatches that appear at call boundaries after inlining.
 
 The inlining is done by MLIR's inliner pass, as in the C++ tutorial. It needs
 `toy.generic_call` to implement `CallOpInterface` (`:interfaces ((mlir::CallOpInterface))`),
-`toy.func` to be callable (it is, through `FunctionOpInterface`), `toy.return` to be a
+`toy.func` to be callable (it is: its `:interfaces` give `CallableOpInterface` its three clauses, as the C++ op does with
+`getCallableRegion`, `getArgumentTypes` and `getResultTypes`), `toy.return` to be a
 terminator (`:traits (terminator)`), and the dialect's `DialectInlinerInterface` to say
 that inlining is legal and how to convert a call operand to the callee's parameter type. This
 needs LLVM 23 (`:traits` uses `DynamicOpDefinition::addTrait`), so the Toy chapters from Ch2

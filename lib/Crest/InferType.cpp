@@ -24,14 +24,7 @@ namespace crest {
 
 namespace {
 
-// The signature differs between LLVM versions (the properties argument is an
-// OpaqueProperties before LLVM 23 and a PropertyRef from LLVM 23), so take it
-// from the Concept.
-using InferFn = decltype(mlir::InferTypeOpInterface::Concept::inferReturnTypes);
-
-struct DynamicInferTypeModel : public mlir::InferTypeOpInterface::Concept {
-  using Interface = mlir::InferTypeOpInterface;
-
+struct DynamicInferTypeModel : public CrestModel<mlir::InferTypeOpInterface> {
   // What an op gets for a method its dispatcher has no clause for. The default
   // refineReturnTypes of an ODS op calls the other two methods of the op, which
   // a function pointer without the op cannot do, so it accepts anything.
@@ -46,8 +39,11 @@ struct DynamicInferTypeModel : public mlir::InferTypeOpInterface::Concept {
     return lhs == rhs;
   }
 
-  DynamicInferTypeModel()
-      : Concept{nullptr, defaultRefine, defaultCompatible} {}
+  // defaultRefine is a template: the slot says which instance.
+  DynamicInferTypeModel() {
+    refineReturnTypes = defaultRefine;
+    isCompatibleReturnTypes = defaultCompatible;
+  }
 };
 
 } // namespace
@@ -60,19 +56,12 @@ void attachInferTypeOpInterface(mlir::DynamicOpDefinition& def,
       map.lookup<mlir::InferTypeOpInterface>();
   // The entry of each method the dispatcher has a clause for; the others keep
   // the default.
-  if (void* infer = interfaceEntryPoint(dispatcher, "inferReturnTypes")) {
-    concept_->inferReturnTypes = reinterpret_cast<InferFn>(infer);
-  }
-  if (void* refine = interfaceEntryPoint(dispatcher, "refineReturnTypes")) {
-    concept_->refineReturnTypes =
-        reinterpret_cast<decltype(concept_->refineReturnTypes)>(refine);
-  }
-  if (void* compatible =
-          interfaceEntryPoint(dispatcher, "isCompatibleReturnTypes")) {
-    concept_->isCompatibleReturnTypes =
-        reinterpret_cast<decltype(concept_->isCompatibleReturnTypes)>(
-            compatible);
-  }
+  installInterfaceEntry(concept_->inferReturnTypes, dispatcher,
+                        "inferReturnTypes");
+  installInterfaceEntry(concept_->refineReturnTypes, dispatcher,
+                        "refineReturnTypes");
+  installInterfaceEntry(concept_->isCompatibleReturnTypes, dispatcher,
+                        "isCompatibleReturnTypes");
 }
 
 } // namespace crest

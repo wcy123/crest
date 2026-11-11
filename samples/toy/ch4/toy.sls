@@ -23,7 +23,7 @@
           (mlir IR OpImplementation)
           (mlir IR Builders)
           (mlir IR OperationSupport)
-          (only (mlir Interfaces CallInterfaces) mlir::CallOpInterface)
+          (only (mlir Interfaces CallInterfaces) mlir::CallOpInterface mlir::CallableOpInterface)
           (only (mlir Transforms InliningUtils) mlir::DialectInlinerInterface)
           (only (mlir Interfaces InferTypeOpInterface) mlir::InferTypeOpInterface)
           (only (mlir Interfaces FunctionInterfaces)
@@ -307,7 +307,17 @@
     (define-op func
       :summary    "toy function definition"
       :traits     (isolated-from-above)
-      :interfaces ((mlir::FunctionOpInterface
+      :interfaces ((mlir::CallableOpInterface
+                    (getCallableRegion (self) (mlir::Operation::getRegion self 0))
+                    (getArgumentTypes (self)
+                                      (mlir::FunctionType::getInputs
+                                       (mlir::TypeAttr::getValue
+                                        (mlir::Operation::getAttr self "function_type"))))
+                    (getResultTypes (self)
+                                    (mlir::FunctionType::getResults
+                                     (mlir::TypeAttr::getValue
+                                      (mlir::Operation::getAttr self "function_type")))))
+                   (mlir::FunctionOpInterface
                     (getFunctionType (self)
                                      (mlir::TypeAttr::getValue
                                       (mlir::Operation::getAttr self "function_type")))

@@ -14,10 +14,9 @@
 #include <memory>
 
 namespace {
-struct SymbolConceptData : public mlir::SymbolOpInterface::Concept {
-  using Interface = mlir::SymbolOpInterface;
+struct SymbolConceptData : public crest::CrestModel<mlir::SymbolOpInterface> {
   SymbolConceptData()
-      : mlir::SymbolOpInterface::Concept{
+      : CrestModel{
             [](const mlir::SymbolOpInterface::Concept*,
                mlir::Operation* op) -> mlir::StringAttr {
               return mlir::cast<mlir::StringAttr>(op->getAttr("sym_name"));
@@ -93,7 +92,7 @@ struct SymbolConceptData : public mlir::SymbolOpInterface::Concept {
 namespace crest {
 
 void ensureSymbolOpInterface(mlir::detail::InterfaceMap& map) {
-  insertModelOnce<SymbolConceptData>(map);
+  insertCustomModelOnce<SymbolConceptData>(map);
 }
 
 void attachSymbolOpInterface(mlir::DynamicOpDefinition& def,

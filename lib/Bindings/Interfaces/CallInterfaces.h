@@ -6,6 +6,8 @@
 // Mirrors mlir/Interfaces/CallInterfaces.h
 #pragma once
 
+#include <string>
+
 namespace mlir {
 class DynamicOpDefinition;
 namespace detail {
@@ -27,6 +29,11 @@ void ensureCallableOpInterface(mlir::detail::InterfaceMap& map);
 // :interfaces entry (lib/Crest/Op.cpp).
 void attachCallableOpInterface(mlir::DynamicOpDefinition& def,
                                const LockedSchemeObject& dispatcher);
+// An op that has CallableOpInterface must have all three clauses; raises a
+// Scheme error when it does not (FunctionOpInterface adds the interface
+// without them).
+void requireCallableOpInterfaceClauses(mlir::DynamicOpDefinition& def,
+                                       const std::string& opName);
 void attachCallOpInterface(mlir::DynamicOpDefinition& def,
                            const LockedSchemeObject& dispatcher);
 void attachArgAndResultAttrsOpInterface(mlir::DynamicOpDefinition& def,

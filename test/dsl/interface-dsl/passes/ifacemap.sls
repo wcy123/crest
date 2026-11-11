@@ -6,6 +6,7 @@
   (export ifacemap)
   (import (chezscheme)
           (crest dialect)
+          (mlir IR Operation)
           (only (mlir Interfaces FunctionInterfaces) mlir::FunctionOpInterface)
           (only (mlir Interfaces CallInterfaces)
                 mlir::CallableOpInterface mlir::CallOpInterface mlir::ArgAndResultAttrsOpInterface)
@@ -19,8 +20,17 @@
                    (isLegalToInline/call   (call callable would-be-cloned) #t)
                    (isLegalToInline/region (dest src would-be-cloned) #t)
                    (isLegalToInline/op     (op dest would-be-cloned) #t))))
-    (define-op func   :interfaces ((mlir::FunctionOpInterface)))
-    (define-op callee :interfaces ((mlir::CallableOpInterface)))
+    (define-op func
+      :interfaces ((mlir::CallableOpInterface
+                    (getCallableRegion (self) (mlir::Operation::getRegion self 0))
+                    (getArgumentTypes (self) '())
+                    (getResultTypes (self) '()))
+                   (mlir::FunctionOpInterface)))
+    (define-op callee
+      :interfaces ((mlir::CallableOpInterface
+                    (getCallableRegion (self) (mlir::Operation::getRegion self 0))
+                    (getArgumentTypes (self) '())
+                    (getResultTypes (self) '()))))
     (define-op call   :interfaces ((mlir::CallOpInterface)))
     (define-op attrs  :interfaces ((mlir::ArgAndResultAttrsOpInterface)))
     (define-op symbol :interfaces ((mlir::SymbolOpInterface)))

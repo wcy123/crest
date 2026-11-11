@@ -60,8 +60,10 @@
   ;; An entry of the :interfaces clause of define-op (see (mlir Interfaces InferTypeOpInterface)):
   ;;   (mlir::FunctionOpInterface
   ;;     (getFunctionType (op) body ...) (setFunctionTypeAttr (op attr) body ...) ...)
-  ;; the pair of the TypeID of the interface and the dispatcher of its clauses. The interfaces it
-  ;; extends (SymbolOpInterface, ArgAndResultAttrsOpInterface, CallableOpInterface) come with it.
+  ;; the pair of the TypeID of the interface and the dispatcher of its clauses. SymbolOpInterface
+  ;; and ArgAndResultAttrsOpInterface, which it extends, come with it. CallableOpInterface does not:
+  ;; MLIR has no default for its methods, so the op declares it with its three clauses too (an op
+  ;; that does not cannot be registered).
   (define-syntax mlir::FunctionOpInterface
     (syntax-rules ()
       [(_ (method (formal ...) body ...) ...)

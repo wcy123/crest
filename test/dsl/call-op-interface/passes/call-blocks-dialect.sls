@@ -9,7 +9,8 @@
           (mlir IR Operation)
           (mlir IR BuiltinAttributes)
           (only (mlir Interfaces FunctionInterfaces) mlir::FunctionOpInterface)
-          (only (mlir Interfaces CallInterfaces) mlir::CallOpInterface)
+          (only (mlir Interfaces CallInterfaces) mlir::CallOpInterface mlir::CallableOpInterface)
+          (only (mlir IR BuiltinTypes) mlir::FunctionType::getInputs mlir::FunctionType::getResults)
           (only (mlir Transforms InliningUtils) mlir::DialectInlinerInterface))
 
   (define-dialect callblocks
@@ -25,7 +26,15 @@
                    (materializeCallConversion (builder input result-type loc) 0))))
     (define-op func
       :summary    "function"
-      :interfaces ((mlir::FunctionOpInterface
+      :interfaces ((mlir::CallableOpInterface
+                    (getCallableRegion (self) (mlir::Operation::getRegion self 0))
+                    (getArgumentTypes (self)
+                                      (mlir::FunctionType::getInputs
+                                       (mlir::TypeAttr::getValue (mlir::Operation::getAttr self "function_type"))))
+                    (getResultTypes (self)
+                                    (mlir::FunctionType::getResults
+                                     (mlir::TypeAttr::getValue (mlir::Operation::getAttr self "function_type")))))
+                   (mlir::FunctionOpInterface
                     (getFunctionType (self)
                                      (mlir::TypeAttr::getValue (mlir::Operation::getAttr self "function_type")))
                     (setFunctionTypeAttr (self attr)

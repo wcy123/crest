@@ -70,13 +70,24 @@ tools/debug-define-dialect samples/toy/ch3/toy.sls > /tmp/toy3.sls
 `define-dialect toy` expands to a `begin` containing:
 
 **`%%toy.func:interfaces`** — the pairs of the `:interfaces` entries of `toy.func`, made once when the library is
-loaded. `mlir::FunctionOpInterface` is a macro of `(mlir Interfaces FunctionInterfaces)`: it makes a C function
+loaded. `mlir::CallableOpInterface` and `mlir::FunctionOpInterface` are macros of `(mlir Interfaces CallInterfaces)` and
+`(mlir Interfaces FunctionInterfaces)`: each makes a C function
 (a `foreign-callable`) for each method clause and answers the pair of the interface's `TypeID` and a dispatcher of
 them:
 
 ```scheme
 (define %%toy.func:interfaces
-  (list (mlir::FunctionOpInterface
+  (list (mlir::CallableOpInterface
+         (getCallableRegion (self) (mlir::Operation::getRegion self 0))
+         (getArgumentTypes (self)
+           (mlir::FunctionType::getInputs
+            (mlir::TypeAttr::getValue
+             (mlir::Operation::getAttr self "function_type"))))
+         (getResultTypes (self)
+           (mlir::FunctionType::getResults
+            (mlir::TypeAttr::getValue
+             (mlir::Operation::getAttr self "function_type")))))
+        (mlir::FunctionOpInterface
          (getFunctionType (self)
            (mlir::TypeAttr::getValue
             (mlir::Operation::getAttr self "function_type")))

@@ -16,10 +16,10 @@ namespace {
 // Both interfaces are answered once and for all: the op has no memory effects
 // and may be speculated. This is what `pure` means; an op that wants anything
 // else does not declare them.
-struct MemoryEffectConceptData : public mlir::MemoryEffectOpInterface::Concept {
-  using Interface = mlir::MemoryEffectOpInterface;
+struct MemoryEffectConceptData
+    : public crest::CrestModel<mlir::MemoryEffectOpInterface> {
   MemoryEffectConceptData()
-      : mlir::MemoryEffectOpInterface::Concept{
+      : CrestModel{
             [](const mlir::MemoryEffectOpInterface::Concept*, mlir::Operation*,
                llvm::SmallVectorImpl<mlir::SideEffects::EffectInstance<
                    mlir::MemoryEffects::Effect>>&) {},
@@ -27,10 +27,9 @@ struct MemoryEffectConceptData : public mlir::MemoryEffectOpInterface::Concept {
 };
 
 struct SpeculatableConceptData
-    : public mlir::ConditionallySpeculatable::Concept {
-  using Interface = mlir::ConditionallySpeculatable;
+    : public crest::CrestModel<mlir::ConditionallySpeculatable> {
   SpeculatableConceptData()
-      : mlir::ConditionallySpeculatable::Concept{
+      : CrestModel{
             [](const mlir::ConditionallySpeculatable::Concept*,
                mlir::Operation*) -> mlir::Speculation::Speculatability {
               return mlir::Speculation::Speculatable;
@@ -43,11 +42,11 @@ struct SpeculatableConceptData
 namespace crest {
 
 void ensureMemoryEffectOpInterface(mlir::detail::InterfaceMap& map) {
-  insertModelOnce<MemoryEffectConceptData>(map);
+  insertCustomModelOnce<MemoryEffectConceptData>(map);
 }
 
 void ensureConditionallySpeculatable(mlir::detail::InterfaceMap& map) {
-  insertModelOnce<SpeculatableConceptData>(map);
+  insertCustomModelOnce<SpeculatableConceptData>(map);
 }
 
 void attachMemoryEffectOpInterface(mlir::DynamicOpDefinition& def,

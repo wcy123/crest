@@ -922,14 +922,25 @@ folders) must not run multithreaded: pass `--mlir-disable-threading` to `crest-o
 
 An op can implement MLIR op interfaces (like `FunctionOpInterface`) by listing
 them in the `:interfaces` clause of `define-op`. Each entry is `(interface-name method-clause ...)`, and each
-method clause is `(method-name (formals) body ...)`. Methods not listed use the default C++ concept implementation.
+method clause is `(method-name (formals) body ...)`. A method that is not listed keeps the default of the interface,
+where MLIR has one; `CallableOpInterface` has none, so its clauses are all required (below).
 The interfaces are part of the definition of the op: they exist in a context that loads the dialect
 (`op->getName().hasInterface<...>()` is true there), and in no other.
 
 ```scheme
 (define-op func
   :summary "function definition"
-  :interfaces ((mlir::FunctionOpInterface
+  :interfaces ((mlir::CallableOpInterface
+                (getCallableRegion (self) (mlir::Operation::getRegion self 0))
+                (getArgumentTypes (self)
+                  (mlir::FunctionType::getInputs
+                    (mlir::TypeAttr::getValue
+                      (mlir::Operation::getAttr self "function_type"))))
+                (getResultTypes (self)
+                  (mlir::FunctionType::getResults
+                    (mlir::TypeAttr::getValue
+                      (mlir::Operation::getAttr self "function_type")))))
+               (mlir::FunctionOpInterface
                 (getFunctionType (self)
                   (mlir::TypeAttr::getValue
                     (mlir::Operation::getAttr self "function_type")))
@@ -944,11 +955,17 @@ that a verifier raises does not end the process: the verifier fails and the diag
 the error. `mlir::FunctionOpInterface::cloneTypeWith` of `(mlir Interfaces FunctionInterfaces)` calls the method
 on an op from Scheme: `(mlir::FunctionOpInterface::cloneTypeWith op inputs results)` answers the clause's
 `Type`, or the default `FunctionType` (`test/dsl/interface-dsl/interface-clauses.mlir`).
-`CallableOpInterface`: `getCallableRegion (op)` answers the `Region` (the first one by default).
-A clause with any other name is ignored.
+`CallableOpInterface` has three clauses, and an op that declares it gives all of them, because MLIR has no
+default for its methods and a dialect keeps its signature where it wants: `getCallableRegion (op)` answers the
+`Region`, `getArgumentTypes (op)` and `getResultTypes (op)` answer a list of `Type`s. A missing clause, a second
+clause for the same method and a clause with another name are errors when the library compiles
+(`test/dsl/interface-dsl/callable-clauses-errors.mlir`); a clause of `FunctionOpInterface` with another name is
+ignored. `mlir::CallableOpInterface::getArgumentTypes op` and `getResultTypes` of `(mlir Interfaces CallInterfaces)`
+call the methods on an op from Scheme (`test/dsl/interface-dsl/callable-methods.mlir`).
 
 The op interfaces a Scheme op can implement: `FunctionOpInterface` (which also brings
-`SymbolOpInterface`, `CallableOpInterface` and `ArgAndResultAttrsOpInterface`), `CallableOpInterface`,
+`SymbolOpInterface` and `ArgAndResultAttrsOpInterface`, and needs `CallableOpInterface` to be declared too, with its
+clauses), `CallableOpInterface`,
 `SymbolOpInterface`, `ArgAndResultAttrsOpInterface`, `CallOpInterface` and `InferTypeOpInterface`. For `CallOpInterface`
 the callee is the op's `callee` attribute (a symbol reference, or a string naming one) and the
 arguments are all its operands; it takes no method clauses (a clause is an error):
@@ -998,7 +1015,8 @@ of the interface's `TypeID` (`mlir::FunctionOpInterface::getInterfaceID`, and so
 functions. When a context registers the op, C++ finds how to install the interface by the `TypeID` and puts a model
 of it, with the entry points of the clauses, in the interface map of the op's definition (`docs/tech-note.md`,
 "Interfaces of a Scheme op"). The interfaces that extend others bring them: `FunctionOpInterface` has
-`SymbolOpInterface`, `ArgAndResultAttrsOpInterface` and `CallableOpInterface` in its map as well. This is what
+`SymbolOpInterface` and `ArgAndResultAttrsOpInterface` in its map as well; `CallableOpInterface` has clauses of its own,
+so an op that declares `FunctionOpInterface` without it cannot be registered. This is what
 `MLIR`'s `--inline`, `dyn_cast` and `hasInterface` see, and what C++ keeps instead of the Scheme procedure, as
 for everything else that C++ calls back into Scheme: the callbacks of a dialect, of its ops and types, passes,
 and conversions (see [Extending with custom C++ bindings](#11-extending-with-custom-c-bindings)). The dialect has
