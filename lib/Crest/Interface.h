@@ -22,12 +22,15 @@ namespace crest {
 //
 // A method that Scheme implements has a callable that Scheme made once, when
 // the library was loaded. When the slot of the Concept is a plain function
-// whose arguments are numbers or pointers, the callable goes into the slot
-// itself (installInterfaceEntry): MLIR calls Scheme directly, and the callable
-// takes the `const Concept*` that MLIR passes first, and ignores it. When the
-// slot cannot be a Scheme callable (a range by value, a LogicalResult with a
-// diagnostic), the model keeps the entry point in a field, and the Concept's
-// own function reads it through `self` and adapts the arguments.
+// whose arguments and answer are numbers or pointers, the callable goes into
+// the slot itself (installInterfaceEntry): MLIR calls Scheme directly, and the
+// callable takes the `const Concept*` that MLIR passes first, and ignores it
+// (getCallableRegion). A class such as Type or TypeAttr is not a number: the
+// Windows x64 ABI passes and returns it through a hidden pointer, so a C
+// callable cannot take or answer one. Nor can the callable take a range by
+// value, or answer a LogicalResult with a diagnostic. For such a slot the model
+// keeps the entry point in a field (installInterfaceEntry fills it), and the
+// Concept's own function reads it through `self` and adapts the arguments.
 
 /// The entry point of the callable that `dispatcher` has for `method`, as the
 /// function pointer type `Fn`, or null. `dispatcher` is the Scheme procedure

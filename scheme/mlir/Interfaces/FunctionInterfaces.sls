@@ -33,8 +33,6 @@
   ;;   getFunctionType (op) -> Type            setFunctionTypeAttr (op attr)
   ;;   cloneTypeWith (op inputs results) -> Type, the two ranges as lists of Types
   ;;   verifyBody (op) -> boolean              verifyType (op) -> boolean
-  ;; The callables of getFunctionType and setFunctionTypeAttr go into the slots of the Concept, which
-  ;; MLIR calls with the Concept first: they take it and ignore it.
   (define (%%function-dispatcher dispatcher)
     (let ([get-type (dispatcher 'getFunctionType)]
           [set-attr (dispatcher 'setFunctionTypeAttr)]
@@ -44,15 +42,9 @@
       (crest-callback-entry-dispatcher
        (list
         (cons 'getFunctionType
-              (if get-type
-                  (crest-callback-entry-point (uptr uptr) uptr
-                                              (lambda (concept op) (get-type op)))
-                  0))
+              (if get-type (crest-callback-entry-point (uptr) uptr get-type) 0))
         (cons 'setFunctionTypeAttr
-              (if set-attr
-                  (crest-callback-entry-point (uptr uptr uptr) void
-                                              (lambda (concept op attr) (set-attr op attr)))
-                  0))
+              (if set-attr (crest-callback-entry-point (uptr uptr) void set-attr) 0))
         (cons 'cloneTypeWith
               (if clone
                   (crest-callback-entry-point

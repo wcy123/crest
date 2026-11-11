@@ -28,13 +28,14 @@
 //
 // Inherits from mlir::FunctionOpInterface::Concept so FunctionConceptData*
 // is implicitly convertible to Concept*, and static_cast downcasts are valid.
-// getFunctionType and setFunctionTypeAttr go to the callable that Scheme made
-// for the clause, which is stored in the slot of the Concept itself. The other
-// three methods keep the entry point in a field of this model and have a
-// function of their own in the Concept: cloneTypeWith takes ranges that a C
-// function cannot take by value on every platform, and the two verifiers turn
-// the answer into a LogicalResult and a diagnostic. The default implementation
-// stays in the Concept until a clause replaces it.
+// A method that Scheme implements has the entry point of a foreign-callable in
+// the field of its name, and the Concept has a function of its own that reads
+// it through `self`: no slot of this Concept can hold the callable, because a
+// Type or a TypeAttr is not passed in a register on every platform (the
+// Windows x64 ABI passes and returns such a class through a hidden pointer, so
+// a C callable that takes or answers one crashes), a range is passed by value,
+// and a verifier answers a LogicalResult with a diagnostic. The default
+// implementation stays in the Concept until a clause replaces it.
 // ---------------------------------------------------------------------------
 namespace {
 // What a Scheme verifyBody or verifyType said: 1 is success. A Scheme error
@@ -58,6 +59,8 @@ struct FunctionConceptData : public mlir::FunctionOpInterface::Concept {
   using Interface = mlir::FunctionOpInterface;
   using Concept = mlir::FunctionOpInterface::Concept;
 
+  uint64_t (*get_function_type)(uint64_t op) = nullptr;
+  void (*set_function_type_attr)(uint64_t op, uint64_t attr) = nullptr;
   uint64_t (*clone_type_with)(uint64_t op, const void* const* inputs,
                               uint64_t input_count, const void* const* results,
                               uint64_t result_count) = nullptr;
@@ -86,10 +89,25 @@ struct FunctionConceptData : public mlir::FunctionOpInterface::Concept {
 
   // A method that the dispatcher has no clause for keeps its default.
   void install(const crest::LockedSchemeObject& dispatcher) {
-    crest::installInterfaceEntry(getFunctionType, dispatcher,
-                                 "getFunctionType");
-    crest::installInterfaceEntry(setFunctionTypeAttr, dispatcher,
-                                 "setFunctionTypeAttr");
+    if (crest::installInterfaceEntry(get_function_type, dispatcher,
+                                     "getFunctionType")) {
+      getFunctionType =
+          +[](const Concept* self, mlir::Operation* op) -> mlir::Type {
+        const auto* d = static_cast<const FunctionConceptData*>(self);
+        return mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(
+            d->get_function_type(reinterpret_cast<uint64_t>(op))));
+      };
+    }
+    if (crest::installInterfaceEntry(set_function_type_attr, dispatcher,
+                                     "setFunctionTypeAttr")) {
+      setFunctionTypeAttr =
+          +[](const Concept* self, mlir::Operation* op, mlir::TypeAttr t) {
+            const auto* d = static_cast<const FunctionConceptData*>(self);
+            d->set_function_type_attr(
+                reinterpret_cast<uint64_t>(op),
+                reinterpret_cast<uint64_t>(t.getAsOpaquePointer()));
+          };
+    }
     if (crest::installInterfaceEntry(clone_type_with, dispatcher,
                                      "cloneTypeWith")) {
       cloneTypeWith =
