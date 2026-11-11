@@ -10,27 +10,27 @@
 
 ;; the body returns: the value of the last expression is the value of the macro
 (note (with-raii a (begin (note 'make-1) 1) free-it
-                 (note 'body-1)
-                 'result))
+        (note 'body-1)
+        'result))
 
 ;; the body raises an error
 (guard (c [#t (note 'caught)])
   (with-raii b 2 free-it
-             (error 'body "boom")))
+    (error 'body "boom")))
 
 ;; the body escapes
 (call/cc (lambda (k)
            (with-raii c 3 free-it
-                      (k 'out))))
+             (k 'out))))
 
 ;; nested: the inner resource is freed first
 (with-raii d 4 free-it
-           (with-raii e 5 free-it
-                      (note 'both)))
+  (with-raii e 5 free-it
+    (note 'both)))
 
 ;; the constructor raises an error: nothing to free
 (guard (c [#t (note 'caught-constructor)])
   (with-raii f (error 'constructor "boom") free-it
-             (note 'not-reached)))
+    (note 'not-reached)))
 
 (for-each (lambda (x) (write x) (newline)) (reverse log))

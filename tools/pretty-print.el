@@ -51,8 +51,11 @@
     (let*-values . 1)
     (guard . 1)
     (parameterize . 1)
-    ;; CREST RAII macros: every `with-*' form is covered by pp/indent-prefix-spec.
-    ;; Only list one here if it needs a level other than the prefix default.
+    ;; CREST RAII macros. The default for a `with-*' form (pp/indent-prefix-spec) is level 1, for a
+    ;; macro with one leading argument: (with-current-MLIRContext ctx body ...). A macro that has
+    ;; more leading parts on its first line, for example a variable and the call that makes the
+    ;; object, needs the level of that count, or Emacs lines the body up under the first argument.
+    ;; List every such macro here.
     (with-OperationState . 2)
     (with-CrestObject . 2)
     (with-OpBuilder . 2)
@@ -65,6 +68,8 @@
     (with-DialectRegistry . 2)
     (with-MLIRContext . 2)
     (with-PassManager . 2)
+    (with-mlir::OwningOpRef . 2)
+    (with-raii . 3)
     ;; begin-mlir-code: first arg is builder (like with-*), rest are op-forms
     (begin-mlir-code . 1)
     ;; define-op DSL callbacks: (:keyword (formals) body ...) — like when
@@ -101,8 +106,9 @@
   "Alist of (PREFIX . indent-level) for operators matched by name prefix.
 Applies to every operator symbol in the buffer that starts with PREFIX and has
 no explicit entry in `pp/indent-spec' and no indentation rule already set by
-Emacs.  This indents all RAII macros (`with-LLVMTypeConverter',
-`with-current-MLIRContext', ...) like `when', including ones added later."
+Emacs.  This indents the RAII macros with one leading argument
+(`with-current-MLIRContext', ...) like `when', including ones added later.
+A macro with more leading parts must be listed in `pp/indent-spec'."
   :type '(alist :key-type string :value-type integer)
   :group 'pp)
 

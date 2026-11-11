@@ -6,46 +6,42 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 ;;
-;; (mlir IR OwningOpRef) — frees the operation that a parse returns.
+;; (mlir IR OwningOpRef) — frees the operation that a call returns, such as a parsed module.
 ;;
 ;; Mirrors mlir/IR/OwningOpRef.h.
 ;;
 ;; mlir::parseSourceFile answers the module as a plain address. Nothing owns it, so it is
-;; never freed unless the program erases it. with-mlir::OwningOpRef<mlir::ModuleOp> does that.
+;; never freed unless the program erases it. with-mlir::OwningOpRef does that.
 ;;
 ;;===----------------------------------------------------------------------===;;
 (library (mlir IR OwningOpRef)
-  (export with-mlir::OwningOpRef<mlir::ModuleOp>)
+  (export with-mlir::OwningOpRef)
   (import (rnrs)
           (mlir IR Operation)
           (mlir support RAII))
 
-  ;; The destructor of the module: 0 means that the parse failed and there is nothing to free.
-  (define (%%erase-module module)
-    (unless (eqv? module 0)
-      (mlir::Operation::erase module)))
-
-  ;; @brief with-mlir::OwningOpRef<mlir::ModuleOp> — binds MODULE to the module that CREATION
-  ;; returns, runs BODY, then erases the module when BODY ends: by returning, by an error, or by an
-  ;; escape.
-  ;; @param module    identifier that names the module inside BODY
-  ;; @param creation  the call that makes the module, usually (mlir::parseSourceFile ctx filename);
+  ;; @brief with-mlir::OwningOpRef — binds OP to the operation that CREATION returns, runs BODY,
+  ;; then erases the operation when BODY ends: by returning, by an error, or by an escape.
+  ;; @param op        identifier that names the operation inside BODY
+  ;; @param creation  the call that makes the operation, usually (mlir::parseSourceFile ctx filename);
   ;;                  evaluated once, before BODY
-  ;; @note  The C++ code that this replaces is
+  ;; @note  It works for any operation, as mlir::OwningOpRef<OpTy> does in C++: the C++ code that
+  ;;        this replaces is
   ;;          mlir::OwningOpRef<mlir::ModuleOp> module = mlir::parseSourceFile<mlir::ModuleOp>(filename, config);
-  ;; @note  MODULE is 0 when the file cannot be parsed (the parser has already printed why);
-  ;;        nothing is erased then, so BODY must check for 0.
-  ;; @note  Do not erase MODULE, or anything that owns it, inside BODY: it is erased once, at
-  ;;        the end.
+  ;; @note  OP is 0 when the file cannot be parsed (the parser has already printed why). Erasing 0
+  ;;        does nothing, so BODY only has to check for 0 if it uses the operation.
+  ;; @note  CREATION must return an operation that nothing else owns: a parse result, or an
+  ;;        operation that you made and did not insert into another one. Do not erase OP, or
+  ;;        anything that owns it, inside BODY: it is erased once, at the end.
   ;; @example
-  ;;   (with-mlir::OwningOpRef<mlir::ModuleOp> module (mlir::parseSourceFile ctx "input.mlir")
+  ;;   (with-mlir::OwningOpRef module (mlir::parseSourceFile ctx "input.mlir")
   ;;     (if (zero? module)
   ;;         (display "cannot parse\n")
   ;;         (display (mlir::Operation::print module))))
-  (define-syntax with-mlir::OwningOpRef<mlir::ModuleOp>
+  (define-syntax with-mlir::OwningOpRef
     (syntax-rules ()
-      [(_ module creation body ...)
-       (with-raii module creation %%erase-module
-                  body ...)]))
+      [(_ op creation body ...)
+       (with-raii op creation mlir::Operation::erase
+         body ...)]))
 
   ) ;; end library (mlir IR OwningOpRef)

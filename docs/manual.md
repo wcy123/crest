@@ -1122,20 +1122,21 @@ only when no ops of this dialect appear in input IR yet):
 `mlir::parseSourceFile` answers the module as a plain address. Nothing owns it, so it is never freed
 unless the program erases it with `mlir::Operation::erase`. A program that parses once and exits does not
 need to care. A program that parses many files, or runs in a loop, loses about one kilobyte per small
-module. Use `with-mlir::OwningOpRef<mlir::ModuleOp>` of `(mlir IR OwningOpRef)`. It runs its body and
+module. Use `with-mlir::OwningOpRef` of `(mlir IR OwningOpRef)`. It runs its body and
 erases the module when the body ends, by returning, by an error or by an escape (it is built on the
 generic `with-raii` of `(mlir support RAII)`, which you can use for any resource that a function frees).
-The name is the C++ type that owns the module, and the second part is the call that makes it:
+The name is the C++ class that owns the module, and the second part is the call that makes it:
 
 ```scheme
-(with-mlir::OwningOpRef<mlir::ModuleOp> module (mlir::parseSourceFile ctx "input.mlir")
+(with-mlir::OwningOpRef module (mlir::parseSourceFile ctx "input.mlir")
   (if (zero? module)                       ; 0: the file could not be parsed, the parser said why
       (display "cannot parse\n")
       (display (mlir::Operation::print module))))
 ```
 
-Do not erase the module inside the body. The call can be any call that returns a module, so a module that
-you build (`mlir::ModuleOp::create`) can be given to the macro too.
+Do not erase the module inside the body. It works for any operation that nothing else owns, as
+`mlir::OwningOpRef` does in C++: the call can be any call that returns one, so a module that you build
+(`mlir::ModuleOp::create`) can be given to the macro too.
 
 A library that does not load (not found, an error in it or when it runs, or the dialect name not
 exported) is reported when the dialect is registered, not when its first op is parsed:
