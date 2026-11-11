@@ -10,6 +10,8 @@
 // CHECK: locked after an error: no
 // CHECK: reused answers: 42
 // CHECK: reused still locked: yes
+// CHECK: address answers: 101 same address: yes
+// CHECK: address still locked: yes
 // CHECK: unlocked code rejected
 // CHECK: still not locked: yes
 // CHECK: a number rejected

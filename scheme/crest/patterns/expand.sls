@@ -11,7 +11,7 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (crest patterns expand)
-  (export list-of pattern-entry-form)
+  (export list-of pattern-entry pattern-entry-form)
   (import (rnrs)
           (only (chezscheme) syntax->list)
           (only (mlir Transforms DialectConversion) add-rewrite-pattern))
@@ -22,13 +22,18 @@
       [(e ...) (syntax->list x)]
       [_ #f]))
 
-  ;; (name pattern [benefit]) → the form that registers it in the set named by patterns.
-  ;; who is the macro's name for the error message.
-  (define (pattern-entry-form who entry patterns)
+  ;; (name pattern [benefit]) → the entry (name pattern benefit) of the :rewrite-patterns clause of
+  ;; with-RewritePatternSet. who is the macro's name for the error message.
+  (define (pattern-entry who entry)
     (let ([parts (or (list-of entry) '())])
       (unless (and (>= (length parts) 2) (<= (length parts) 3))
         (syntax-violation who "a pattern is (name pattern [benefit])" entry))
-      #`(add-rewrite-pattern #,patterns #,(car parts) #,(cadr parts)
-                             #,(if (null? (cddr parts)) #'1 (caddr parts)))))
+      #`(#,(car parts) #,(cadr parts) #,(if (null? (cddr parts)) #'1 (caddr parts)))))
+
+  ;; (name pattern [benefit]) → the form that registers it in the set named by patterns, where the
+  ;; pattern is a callable (what define-rewrite-pattern defines).
+  (define (pattern-entry-form who entry patterns)
+    (syntax-case (pattern-entry who entry) ()
+      [(name pattern benefit) #`(add-rewrite-pattern #,patterns name pattern benefit)]))
 
   ) ;; end library (crest patterns expand)

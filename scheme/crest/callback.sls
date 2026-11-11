@@ -13,19 +13,20 @@
 ;;   (crest-callback-condition-text condition)                            a string
 ;;   (crest-callback-entry-dispatcher entries)                            a procedure
 ;;
-;; C++ cannot keep a Scheme procedure without telling the garbage collector, so a procedure that
-;; C++ is to call later gets a C function of its own: a foreign-callable, which is locked, and
-;; whose address is what C++ stores. The types are those of foreign-callable (uptr, int, void, ...).
-;; The lock is taken once, here, and who releases it depends on how long the callable is used:
+;; C++ never makes, owns, locks or releases a callback. A binding that needs one takes a plain C
+;; function pointer; Scheme makes the foreign-callable (locked, because the garbage collector moves
+;; code objects) and whoever calls the low-level function decides how long it lives. The types are
+;; those of foreign-callable (uptr, int, void, ...).
 ;;
-;;   made once per library (an op's clause, a dialect's callback, the body of a pass): define it at
-;;   the library level; C++ keeps the address as a plain function pointer and never releases it.
+;;   crest-make-static-c-callable   locks it for good: a callback made once, at the library level, or
+;;                                  one that a helper makes and cannot scope (about 400 bytes each).
+;;   with-c-callable                locks it for the body and unlocks it after, also on an error. The
+;;                                  value is a procedure, or a locked code object or the address of a
+;;                                  locked callable that the caller made (reused, never unlocked here).
+;;   with-c-callables               the same for several, nested in order.
 ;;
-;;   made for a run (a closure that the user passes to a pattern, a type converter, a walk): not made
-;;   here. Scheme gives C++ the procedure, adapted to the C types, and C++ makes the callable with
-;;   crest::ForeignCallable<R(Args...)>::fromProcedure (lib/Bindings/Support/ForeignCallable.h), which
-;;   deduces the prototype from the C++ type and releases the lock when whatever calls the function
-;;   is destroyed.
+;; The conversion clauses (with-TypeConverter, with-ConversionTarget, with-RewritePatternSet) use
+;; with-c-callables around their body.
 ;;
 ;; C++ gives a range (a TypeRange, say) as a pointer to an array and a count, not as a Scheme
 ;; list; crest-callback-pointer-list reads the count elements of 8 bytes at pointer.
@@ -34,6 +35,7 @@
 (library (crest callback)
   (export crest-make-static-c-callable
           with-c-callable
+          with-c-callables
           crest-callback-pointer-list
           crest-callback-condition-text
           crest-callback-entry-dispatcher
@@ -71,10 +73,11 @@
   ;;   a procedure: the macro makes the foreign-callable, locks it, and unlocks it when BODY ends, also
   ;;   when it ends by an error. Use it for a callback that C++ calls while BODY runs.
   ;;
-  ;;   a code object that the caller made with foreign-callable and locked with lock-object, to reuse it
-  ;;   (making one costs about 200 ns): the macro uses it as it is and never unlocks it, because it is
-  ;;   the caller's. An unlocked code object is an error: the garbage collector could move it, and C++
-  ;;   would call a stale address.
+  ;;   a callable that the caller made and keeps locked, to reuse it (making one costs about 200 ns):
+  ;;   the code object of foreign-callable after lock-object, or an address that
+  ;;   crest-make-static-c-callable answered. The macro uses it as it is and never unlocks it, because
+  ;;   it is the caller's. An unlocked code object is an error: the garbage collector could move it,
+  ;;   and C++ would call a stale address.
   ;;
   ;; The address is only valid inside BODY: if C++ keeps it after BODY ends, use
   ;; crest-make-static-c-callable.
@@ -83,16 +86,27 @@
       [(_ (name (type ...) result value) body ...)
        (let* ([given value]
               [made? (procedure? given)]
-              [code (if made? (foreign-callable given (type ...) result) given)])
+              [code (cond
+                     [made? (foreign-callable given (type ...) result)]
+                     [(and (integer? given) (exact? given)) (foreign-callable-code-object given)]
+                     [else given])])
          (when made? (lock-object code))
          (unless (locked-object? code)
            (assertion-violation 'with-c-callable
-                                "the callable must be a procedure, or a code object that is locked with lock-object"
+                                "the callable must be a procedure, or a locked code object, or the address of a locked callable"
                                 given))
          (dynamic-wind
              (lambda () #f)
              (lambda () (let ([name (foreign-callable-entry-point code)]) body ...))
              (lambda () (when made? (unlock-object code)))))]))
+
+  ;; (with-c-callables ((name (type ...) result value) ...) body ...): with-c-callable for each binding,
+  ;; the first made first and released last. A binding may use the names of the ones before it.
+  (define-syntax with-c-callables
+    (syntax-rules ()
+      [(_ () body ...) (let () body ...)]
+      [(_ (binding rest ...) body ...)
+       (with-c-callable binding (with-c-callables (rest ...) body ...))]))
 
   (define (crest-callback-pointer-list pointer count)
     (map (lambda (i) (foreign-ref 'uptr pointer (* i 8))) (iota count)))

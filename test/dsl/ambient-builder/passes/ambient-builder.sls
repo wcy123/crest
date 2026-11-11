@@ -68,10 +68,10 @@
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
-        (with-RewritePatternSet ps (ctx)
-          (add-rewrite-pattern ps "test.one" %%one 10)
-          (add-rewrite-pattern ps "test.two" %%two 10)
-          (add-rewrite-pattern ps "test.three" %%three 10)
+        (with-RewritePatternSet ps (ctx
+                                    :rewrite-patterns (("test.one" %%one 10)
+                                                       ("test.two" %%two 10)
+                                                       ("test.three" %%three 10)))
           (mlir::applyPatternsGreedily module-op ps)))))
 
   ) ;; end library

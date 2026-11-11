@@ -8,7 +8,6 @@
 #include "mlir/Transforms/DialectConversion.h"
 #include "../Support/ArrayRef.h"
 #include "../Support/CrestObject.h"
-#include "../Support/ForeignCallable.h"
 #include "../Support/Logging.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
@@ -19,15 +18,12 @@
 #include "mlir/IR/Value.h"
 
 // The callbacks of these patterns, legality checks and type conversions are
-// closures that the user gives for one conversion: the binding gets a Scheme
-// procedure and makes a foreign-callable of it for the conversion
-// (ForeignCallable::fromProcedure), and the owner releases it when whatever
-// calls it, the pattern set, the target or the type converter, is destroyed.
-// Making it runs Scheme, which can move the objects of the Scheme heap, so a
-// binding first copies what it needs from Scheme memory (its strings) and takes
-// its handles, which can raise a Scheme error, and only then makes the owner:
-// an error that happens while the owner exists skips its destructor and leaves
-// the C function locked. Objects cross as integers.
+// C functions that Scheme made of the closures that the user gives for one
+// conversion. C++ only keeps their addresses: it makes, owns and releases
+// nothing. Scheme keeps each function alive for as long as the C++ object that
+// calls it (the pattern set, the conversion target or the type converter) can
+// be used, and a function called after Scheme released it crashes. Objects
+// cross as integers.
 
 // A conversion pattern calls (op operands-ref rewriter type-converter) → 1/0.
 // operands-ref and rewriter are shells that C++ owns for the call; Scheme uses
@@ -45,21 +41,19 @@ using MaterializationFn = uint64_t(uint64_t builder, uint64_t result_type,
 class SchemeConversionPattern : public mlir::ConversionPattern {
 public:
   // With TypeConverter: operands are remapped before matchAndRewrite.
-  SchemeConversionPattern(
-      mlir::TypeConverter* typeConverter, mlir::MLIRContext* ctx,
-      crest::ForeignCallable<ConversionPatternFn>&& callback,
-      llvm::StringRef opName, int benefit, uint64_t schemeConverterPtr)
+  SchemeConversionPattern(mlir::TypeConverter* typeConverter,
+                          mlir::MLIRContext* ctx, ConversionPatternFn* callback,
+                          llvm::StringRef opName, int benefit,
+                          uint64_t schemeConverterPtr)
       : ConversionPattern(*typeConverter, opName, benefit, ctx),
-        callback_(std::move(callback)), targetOpName(opName.str()),
+        callback_(callback), targetOpName(opName.str()),
         schemeTypeConverterPtr_(schemeConverterPtr) {}
 
   // Without TypeConverter: operands are passed as-is (no type remapping).
-  SchemeConversionPattern(
-      mlir::MLIRContext* ctx,
-      crest::ForeignCallable<ConversionPatternFn>&& callback,
-      llvm::StringRef opName, int benefit)
+  SchemeConversionPattern(mlir::MLIRContext* ctx, ConversionPatternFn* callback,
+                          llvm::StringRef opName, int benefit)
       : ConversionPattern(opName, static_cast<unsigned>(benefit), ctx),
-        callback_(std::move(callback)), targetOpName(opName.str()),
+        callback_(callback), targetOpName(opName.str()),
         schemeTypeConverterPtr_(0) {}
 
   mlir::LogicalResult
@@ -82,7 +76,7 @@ public:
   }
 
 private:
-  crest::ForeignCallable<ConversionPatternFn> callback_;
+  ConversionPatternFn* callback_;
   std::string targetOpName;
   uint64_t schemeTypeConverterPtr_;
 };
@@ -91,11 +85,10 @@ private:
 // owns for the call.
 class SchemeRewritePattern : public mlir::RewritePattern {
 public:
-  SchemeRewritePattern(mlir::MLIRContext* ctx,
-                       crest::ForeignCallable<RewritePatternFn>&& callback,
+  SchemeRewritePattern(mlir::MLIRContext* ctx, RewritePatternFn* callback,
                        llvm::StringRef opName, int benefit = 1)
       : RewritePattern(opName, static_cast<unsigned>(benefit), ctx),
-        callback_(std::move(callback)), targetOpName(opName.str()) {}
+        callback_(callback), targetOpName(opName.str()) {}
 
   mlir::LogicalResult
   matchAndRewrite(mlir::Operation* op,
@@ -111,7 +104,7 @@ public:
   }
 
 private:
-  crest::ForeignCallable<RewritePatternFn> callback_;
+  RewritePatternFn* callback_;
   std::string targetOpName;
 };
 
@@ -120,10 +113,9 @@ namespace {
 // The materialization of a type converter: Scheme gets the builder as a
 // borrowed shell that lives for the call (insertion point changes are made on
 // the builder itself, so nothing is copied), and the inputs as pointers.
-mlir::Value
-materialize(const crest::ForeignCallable<MaterializationFn>& callback,
-            mlir::OpBuilder& builder, mlir::Type resultType,
-            mlir::ValueRange inputs, mlir::Location loc) {
+mlir::Value materialize(MaterializationFn* callback, mlir::OpBuilder& builder,
+                        mlir::Type resultType, mlir::ValueRange inputs,
+                        mlir::Location loc) {
   crest::CrestBox<mlir::OpBuilder*> builder_shell(&builder);
   llvm::SmallVector<uint64_t, 4> input_pointers;
   for (mlir::Value input : inputs) {
@@ -149,54 +141,47 @@ namespace crest {
 void registerTransformsDialectConversionBindings() {
   Sregister_symbol(
       "crest::DialectConversion::addConversionPattern",
-      (void*)+[](uint64_t patterns_ptr, const char* op_name_arg, ptr callback,
-                 uint64_t type_converter_ptr, int benefit) -> void {
+      (void*)+[](uint64_t patterns_ptr, const char* op_name_arg,
+                 ConversionPatternFn* callback, uint64_t type_converter_ptr,
+                 int benefit) -> void {
         const std::string op_name(op_name_arg);
         auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
             patterns_ptr, "crest::DialectConversion::addConversionPattern");
         auto& typeConverter = crest::CrestBox<mlir::TypeConverter>::inner(
             type_converter_ptr,
             "crest::DialectConversion::addConversionPattern");
-        auto owned = crest::ForeignCallable<ConversionPatternFn>::fromProcedure(
-            callback);
         mlir_support_logging_info(
             (std::string("Registering Scheme pattern for ") + op_name).c_str());
         patterns.add<SchemeConversionPattern>(
-            &typeConverter, patterns.getContext(), std::move(owned),
+            &typeConverter, patterns.getContext(), callback,
             llvm::StringRef(op_name), benefit, type_converter_ptr);
       });
   // Variant with no TypeConverter: operands are passed as original values.
   // Use for patterns that consume original (unconverted) operand types.
   Sregister_symbol(
       "crest::DialectConversion::addConversionPattern/ctx",
-      (void*)+[](uint64_t patterns_ptr, const char* op_name_arg, ptr callback,
-                 int benefit) -> void {
+      (void*)+[](uint64_t patterns_ptr, const char* op_name_arg,
+                 ConversionPatternFn* callback, int benefit) -> void {
         const std::string op_name(op_name_arg);
         auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
             patterns_ptr, "crest::DialectConversion::addConversionPattern/ctx");
-        auto owned = crest::ForeignCallable<ConversionPatternFn>::fromProcedure(
-            callback);
         mlir_support_logging_info(
             (std::string("Registering Scheme pattern (no TC) for ") + op_name)
                 .c_str());
         patterns.add<SchemeConversionPattern>(
-            patterns.getContext(), std::move(owned), llvm::StringRef(op_name),
-            benefit);
+            patterns.getContext(), callback, llvm::StringRef(op_name), benefit);
       });
   Sregister_symbol(
       "crest::DialectConversion::addRewritePattern",
-      (void*)+[](uint64_t patterns_ptr, const char* op_name_arg, ptr callback,
-                 int benefit) -> void {
+      (void*)+[](uint64_t patterns_ptr, const char* op_name_arg,
+                 RewritePatternFn* callback, int benefit) -> void {
         const std::string op_name(op_name_arg);
         auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
             patterns_ptr, "crest::DialectConversion::addRewritePattern");
-        auto owned =
-            crest::ForeignCallable<RewritePatternFn>::fromProcedure(callback);
         mlir_support_logging_info(
             (std::string("Registering Scheme rewrite pattern for ") + op_name)
                 .c_str());
-        patterns.add<SchemeRewritePattern>(patterns.getContext(),
-                                           std::move(owned),
+        patterns.add<SchemeRewritePattern>(patterns.getContext(), callback,
                                            llvm::StringRef(op_name), benefit);
       });
   Sregister_symbol(
@@ -249,7 +234,7 @@ void registerTransformsDialectConversionBindings() {
   Sregister_symbol(
       "mlir::ConversionTarget::addDynamicallyLegalOp",
       (void*)+[](uint64_t target_ptr, uint64_t ctx_ptr, const char* op_name_arg,
-                 ptr callback) -> void {
+                 LegalityFn* callback) -> void {
         const bool hasName = op_name_arg != nullptr;
         const std::string op_name(hasName ? op_name_arg : "");
         if (!ctx_ptr || !hasName) {
@@ -258,37 +243,31 @@ void registerTransformsDialectConversionBindings() {
         auto& target = crest::CrestBox<mlir::ConversionTarget>::inner(
             target_ptr, "mlir::ConversionTarget::addDynamicallyLegalOp");
         auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
-        auto owned = std::make_shared<crest::ForeignCallable<LegalityFn>>(
-            crest::ForeignCallable<LegalityFn>::fromProcedure(callback));
         target.addDynamicallyLegalOp(
             mlir::OperationName(op_name, ctx),
-            [owned](mlir::Operation* op) -> bool {
-              return (*owned)(reinterpret_cast<uint64_t>(op)) != 0;
+            [callback](mlir::Operation* op) -> bool {
+              return callback(reinterpret_cast<uint64_t>(op)) != 0;
             });
       });
   Sregister_symbol(
       "mlir::ConversionTarget::markUnknownOpsDynamicallyLegal",
-      (void*)+[](uint64_t target_ptr, ptr callback) -> void {
+      (void*)+[](uint64_t target_ptr, LegalityFn* callback) -> void {
         auto& target = crest::CrestBox<mlir::ConversionTarget>::inner(
             target_ptr,
             "mlir::ConversionTarget::markUnknownOpsDynamicallyLegal");
-        auto owned = std::make_shared<crest::ForeignCallable<LegalityFn>>(
-            crest::ForeignCallable<LegalityFn>::fromProcedure(callback));
         target.markUnknownOpDynamicallyLegal(
-            [owned](mlir::Operation* op) -> bool {
-              return (*owned)(reinterpret_cast<uint64_t>(op)) != 0;
+            [callback](mlir::Operation* op) -> bool {
+              return callback(reinterpret_cast<uint64_t>(op)) != 0;
             });
       });
   Sregister_symbol(
       "mlir::TypeConverter::addConversion",
-      (void*)+[](uint64_t converter_ptr, ptr callback) -> void {
+      (void*)+[](uint64_t converter_ptr, TypeConversionFn* callback) -> void {
         auto& converter = crest::CrestBox<mlir::TypeConverter>::inner(
             converter_ptr, "mlir::TypeConverter::addConversion");
-        auto owned = std::make_shared<crest::ForeignCallable<TypeConversionFn>>(
-            crest::ForeignCallable<TypeConversionFn>::fromProcedure(callback));
         converter.addConversion(
-            [owned](mlir::Type type) -> std::optional<mlir::Type> {
-              uint64_t result = (*owned)(
+            [callback](mlir::Type type) -> std::optional<mlir::Type> {
+              uint64_t result = callback(
                   reinterpret_cast<uint64_t>(type.getAsOpaquePointer()));
               if (result == 0) {
                 return std::nullopt;
@@ -377,34 +356,26 @@ void registerTransformsDialectConversionBindings() {
       });
   Sregister_symbol(
       "mlir::TypeConverter::addSourceMaterialization",
-      (void*)+[](uint64_t converter_ptr, ptr callback) -> void {
+      (void*)+[](uint64_t converter_ptr, MaterializationFn* callback) -> void {
         auto& converter = crest::CrestBox<mlir::TypeConverter>::inner(
             converter_ptr, "mlir::TypeConverter::addSourceMaterialization");
-        auto owned =
-            std::make_shared<crest::ForeignCallable<MaterializationFn>>(
-                crest::ForeignCallable<MaterializationFn>::fromProcedure(
-                    callback));
         converter.addSourceMaterialization(
-            [owned](mlir::OpBuilder& builder, mlir::Type resultType,
-                    mlir::ValueRange inputs,
-                    mlir::Location loc) -> mlir::Value {
-              return materialize(*owned, builder, resultType, inputs, loc);
+            [callback](mlir::OpBuilder& builder, mlir::Type resultType,
+                       mlir::ValueRange inputs,
+                       mlir::Location loc) -> mlir::Value {
+              return materialize(callback, builder, resultType, inputs, loc);
             });
       });
   Sregister_symbol(
       "mlir::TypeConverter::addTargetMaterialization",
-      (void*)+[](uint64_t converter_ptr, ptr callback) -> void {
+      (void*)+[](uint64_t converter_ptr, MaterializationFn* callback) -> void {
         auto& converter = crest::CrestBox<mlir::TypeConverter>::inner(
             converter_ptr, "mlir::TypeConverter::addTargetMaterialization");
-        auto owned =
-            std::make_shared<crest::ForeignCallable<MaterializationFn>>(
-                crest::ForeignCallable<MaterializationFn>::fromProcedure(
-                    callback));
         converter.addTargetMaterialization(
-            [owned](mlir::OpBuilder& builder, mlir::Type resultType,
-                    mlir::ValueRange inputs,
-                    mlir::Location loc) -> mlir::Value {
-              return materialize(*owned, builder, resultType, inputs, loc);
+            [callback](mlir::OpBuilder& builder, mlir::Type resultType,
+                       mlir::ValueRange inputs,
+                       mlir::Location loc) -> mlir::Value {
+              return materialize(callback, builder, resultType, inputs, loc);
             });
       });
   Sregister_symbol(

@@ -30,13 +30,13 @@
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
-        (with-ConversionTarget target (ctx)
-          (target-add-dynamically-legal-op target ctx "test.src" (lambda (op) #f))
-          (target-add-dynamically-legal-op target ctx "test.inner" (lambda (op) #f))
-          (target-mark-unknown-ops-dynamically-legal target (lambda (op) #t))
-          (with-RewritePatternSet patterns (ctx)
-            (add-conversion-pattern/ctx patterns "test.src" %%wrap 1)
-            (add-conversion-pattern/ctx patterns "test.inner" %%inner->done 1)
+        (with-ConversionTarget target (ctx
+                                       :dynamically-legal (("test.src" (lambda (op) #f))
+                                                           ("test.inner" (lambda (op) #f)))
+                                       :unknown-legal (lambda (op) #t))
+          (with-RewritePatternSet patterns (ctx
+                                            :conversion-patterns/ctx (("test.src" %%wrap 1)
+                                                                      ("test.inner" %%inner->done 1)))
             (apply-full-conversion module-op target patterns))))))
 
   ) ;; end library

@@ -50,12 +50,12 @@
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
-        (with-RewritePatternSet patterns (ctx)
-          (add-rewrite-pattern patterns "test.a" %%a 10)
-          (add-rewrite-pattern patterns "test.b" %%b 1)
-          (add-rewrite-pattern patterns "test.x" %%x-low 1)
-          (add-rewrite-pattern patterns "test.x" %%x-high 5)
-          (add-rewrite-pattern patterns "test.c" %%c 1)
+        (with-RewritePatternSet patterns (ctx
+                                          :rewrite-patterns (("test.a" %%a 10)
+                                                             ("test.b" %%b 1)
+                                                             ("test.x" %%x-low 1)
+                                                             ("test.x" %%x-high 5)
+                                                             ("test.c" %%c 1)))
           (eqv? 1 (mlir::applyPatternsGreedily module-op patterns))))))
 
   ) ;; end library

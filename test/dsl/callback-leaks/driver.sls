@@ -15,6 +15,7 @@
               with-PassManager mlir::PassManager::nest mlir::PassManager::addPass
               mlir::OpPassManager::addPass mlir::PassManager::run!)
         (crest pass)
+        (only (crest callback) with-c-callable)
         (passes leaks))
 
 (define (code-count)
@@ -74,41 +75,56 @@
             (mlir::OpPassManager::addPass (mlir::PassManager::nest pm "func.func") (leak-pass))
             (mlir::PassManager::run! pm module)))
 
-;; A mistake of the caller: a handle of the wrong kind. The binding raises an error. The callback was
-;; given first, so a C function exists by then, and it must be released on this path too.
+;; A mistake of the caller: a handle of the wrong kind. The binding raises an error. The caller made the
+;; callable with with-c-callable first, so a C function exists by then, and it must be released on this
+;; path too.
 (scenario "wrong-handle-conversion" (ctx module)
           (with-TypeConverter tc ()
             (with-ConversionTarget target (ctx)
               (ignoring-errors
-               (lambda () (type-converter-add-conversion target (lambda (type) type)))))))
+               (lambda ()
+                 (with-c-callable (c (uptr) uptr (lambda (type) type))
+                   (type-converter-add-conversion target c)))))))
 
 (scenario "wrong-handle-materialization" (ctx module)
           (with-TypeConverter tc ()
             (with-ConversionTarget target (ctx)
               (ignoring-errors
                (lambda ()
-                 (mlir::TypeConverter::addSourceMaterialization target (lambda (b t i l) #f))))
+                 (with-c-callable (c (uptr uptr uptr uptr uptr) uptr (lambda (b t i n l) 0))
+                   (mlir::TypeConverter::addSourceMaterialization target c))))
               (ignoring-errors
                (lambda ()
-                 (mlir::TypeConverter::addTargetMaterialization target (lambda (b t i l) #f)))))))
+                 (with-c-callable (c (uptr uptr uptr uptr uptr) uptr (lambda (b t i n l) 0))
+                   (mlir::TypeConverter::addTargetMaterialization target c)))))))
 
 (scenario "wrong-handle-legality" (ctx module)
           (with-TypeConverter tc ()
             (ignoring-errors
-             (lambda () (target-add-dynamically-legal-op tc ctx "test.a" (lambda (op) #f))))
+             (lambda ()
+               (with-c-callable (c (uptr) int (lambda (op) 0))
+                 (target-add-dynamically-legal-op tc ctx "test.a" c))))
             (ignoring-errors
-             (lambda () (target-mark-unknown-ops-dynamically-legal tc (lambda (op) #t))))))
+             (lambda ()
+               (with-c-callable (c (uptr) int (lambda (op) 1))
+                 (target-mark-unknown-ops-dynamically-legal tc c))))))
 
 (scenario "wrong-handle-patterns" (ctx module)
           (with-TypeConverter tc ()
             (with-ConversionTarget target (ctx)
               (with-RewritePatternSet patterns (ctx)
                 (ignoring-errors
-                 (lambda () (add-rewrite-pattern tc "test.a" (lambda (op rewriter) #f) 1)))
+                 (lambda ()
+                   (with-c-callable (c (uptr uptr) int (lambda (op rewriter) 0))
+                     (add-rewrite-pattern tc "test.a" c 1))))
                 (ignoring-errors
-                 (lambda () (add-conversion-pattern patterns "test.a" (lambda (op o r t) #f) target 1)))
+                 (lambda ()
+                   (with-c-callable (c (uptr uptr uptr uptr) int (lambda (op o r t) 0))
+                     (add-conversion-pattern patterns "test.a" c target 1))))
                 (ignoring-errors
-                 (lambda () (add-conversion-pattern/ctx tc "test.a" (lambda (op o r t) #f) 1)))))))
+                 (lambda ()
+                   (with-c-callable (c (uptr uptr uptr uptr) int (lambda (op o r t) 0))
+                     (add-conversion-pattern/ctx tc "test.a" c 1))))))))
 
 (scenario "wrong-handle-modify" (ctx module)
           (with-TypeConverter tc ()

@@ -5,15 +5,20 @@
   (import (except (rnrs) =)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
+          (only (crest callback) crest-make-static-c-callable)
           (only (mlir IR PatternMatch) with-RewritePatternSet)
           (mlir Transforms DialectConversion)
           (crest))
 
   (define converter-configured? #f)
 
+  ;; The conversion is made once, when the library is loaded, and kept for the whole program.
+  (define identity-conversion
+    (crest-make-static-c-callable (uptr) uptr (lambda (type) type)))
+
   (define (%%configure-type-converter! tc)
     (set! converter-configured? #t)
-    (type-converter-add-conversion tc (lambda (type) type)))
+    (type-converter-add-conversion tc identity-conversion))
 
   (define (%%configure-target! target ctx tc)
     (target-add-legal-dialect target "func")
@@ -34,8 +39,8 @@
           (%%configure-type-converter! tc)
           (with-ConversionTarget target (ctx)
             (%%configure-target! target ctx tc)
-            (with-RewritePatternSet patterns (ctx)
-              (add-conversion-pattern patterns "test.a" %%a tc 1)
+            (with-RewritePatternSet patterns (ctx
+                                              :conversion-patterns (("test.a" %%a tc 1)))
               (unless (eqv? 1 (mlir::applyPartialConversion module-op target patterns))
                 (error 'run-pass "conversion failed"))))))
       (unless converter-configured? (error 'run-pass "converter hook did not run"))))

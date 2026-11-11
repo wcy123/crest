@@ -22,7 +22,9 @@
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
           (mlir support array-ref)
-          (only (mlir IR PatternMatch) mlir::RewriterBase::replaceOp mlir::RewriterBase::setInsertionPoint)
+          (only (mlir IR PatternMatch) mlir::RewriterBase::replaceOp mlir::RewriterBase::setInsertionPoint
+                conversion-pattern->c)
+          (only (crest callback) crest-make-static-c-callable)
           (only (mlir IR Builders) with-current-OpBuilder)
           (mlir Transforms DialectConversion)
           (mlir dialects hipsr)
@@ -75,7 +77,7 @@
             -> out-type
             r = hipsr.min (ctx lhs rhs ph) -> out-type))))
 
-  (define (onnx-min-general->hipsr op operands-ref rewriter type-converter)
+  (define (%%min-general op operands-ref rewriter type-converter)
     (let ([n (crest::CArrayRef::size operands-ref)])
       (cond
        [(eqv? n 1)
@@ -97,6 +99,10 @@
                       (make-binary-min! rewriter op ctx acc
                                         (crest::CArrayRef::at operands-ref i) out-type)))))]
        [else #f])))
+
+  ;; Made once, when the library is loaded, and kept for the whole program.
+  (define onnx-min-general->hipsr
+    (crest-make-static-c-callable (uptr uptr uptr uptr) int (conversion-pattern->c %%min-general)))
 
   (define (populate-min-patterns type-converter patterns ctx)
     ;; DSL pattern for the common binary case (N=2) — inline shape region

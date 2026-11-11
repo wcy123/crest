@@ -33,6 +33,13 @@
   (say "reused still locked: " (yes/no (locked-object? code)))
   (unlock-object code))
 
+;; The address that crest-make-static-c-callable answered: used as it is, still locked after.
+(let ([address (crest-make-static-c-callable (int) int (lambda (x) (+ x 100)))])
+  (with-c-callable (entry (int) int address)
+    (say "address answers: " (call-c entry 1)
+         " same address: " (yes/no (= entry address))))
+  (say "address still locked: " (yes/no (locked? address))))
+
 ;; A code object that is not locked is an error, and it is not locked by the macro.
 (let* ([code (foreign-callable (lambda (x) x) (int) int)])
   (guard (c [#t (say "unlocked code rejected")])

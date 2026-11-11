@@ -304,7 +304,7 @@ Until 2026-11-10 CREST worked around it: every call from C++ into a callable wen
 That did not cover MLIR calling the function pointers of the `InferTypeOpInterface` Concept by itself. With the
 repaired Chez the callable preserves the registers, and the guard was removed. The regression tests are
 `unittests/Crest/InferTypeTest.cpp`, `DirectCallPreservesVectorRegisters`, and
-`unittests/Interpreter/InterpreterTest.cpp`, `ForeignCallablePreservesVectorRegisters`: both fail on Windows x64
+`unittests/Interpreter/InterpreterTest.cpp`, `CallablePreservesVectorRegisters`: both fail on Windows x64
 with a Chez that does not preserve them.
 
 ### Why this commit

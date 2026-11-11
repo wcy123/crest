@@ -42,49 +42,46 @@
               (lambda () (mlir::Operation::setAttr! op "marked" (mlir::UnitAttr::get))))
              #t))))
 
-  ;; Every kind of callback of a conversion: a type conversion, both materializations, a pattern with
-  ;; and one without the type converter, a legality check of an op, and one of all the other ops.
-  (define (%%register! ctx tc target patterns)
-    (type-converter-add-conversion tc (lambda (type) type))
-    (mlir::TypeConverter::addSourceMaterialization tc (lambda (builder type inputs loc) #f))
-    (mlir::TypeConverter::addTargetMaterialization tc (lambda (builder type inputs loc) #f))
-    (target-add-legal-dialect target "func")
-    (target-add-legal-dialect target "builtin")
-    (target-add-legal-op target ctx "test.a_done")
-    (target-add-legal-op target ctx "test.b_done")
-    (target-add-dynamically-legal-op target ctx "test.a" (lambda (op) #f))
-    (target-add-dynamically-legal-op target ctx "test.b" (lambda (op) #f))
-    (target-mark-unknown-ops-dynamically-legal target (lambda (op) #t))
-    (add-conversion-pattern patterns "test.a" %%a tc 1)
-    (add-conversion-pattern/ctx patterns "test.b" %%b 1))
+  ;; Every kind of callback of a conversion, as the clauses of the scope macros give them: a type
+  ;; conversion, both materializations, a pattern with and one without the type converter, a legality
+  ;; check of an op, and one of all the other ops. The clauses make the C functions and release them
+  ;; when the body ends.
+  (define-syntax with-every-callback
+    (syntax-rules ()
+      [(_ (ctx tc target patterns) body ...)
+       (with-TypeConverter tc (:conversions ((lambda (type) type))
+                                            :source-materializations ((lambda (builder type inputs loc) #f))
+                                            :target-materializations ((lambda (builder type inputs loc) #f)))
+         (with-ConversionTarget target (ctx :dynamically-legal (("test.a" (lambda (op) #f))
+                                                                ("test.b" (lambda (op) #f)))
+                                            :unknown-legal (lambda (op) #t))
+           (with-RewritePatternSet patterns (ctx :conversion-patterns (("test.a" %%a tc 1))
+                                                 :conversion-patterns/ctx (("test.b" %%b 1)))
+             (target-add-legal-dialect target "func")
+             (target-add-legal-dialect target "builtin")
+             (target-add-legal-op target ctx "test.a_done")
+             (target-add-legal-op target ctx "test.b_done")
+             body ...)))]))
 
   (define (conversion-full module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
-        (with-TypeConverter tc ()
-          (with-ConversionTarget target (ctx)
-            (with-RewritePatternSet patterns (ctx)
-              (%%register! ctx tc target patterns)
-              (apply-full-conversion module-op target patterns)))))))
+        (with-every-callback (ctx tc target patterns)
+          (apply-full-conversion module-op target patterns)))))
 
   (define (conversion-partial module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
-        (with-TypeConverter tc ()
-          (with-ConversionTarget target (ctx)
-            (with-RewritePatternSet patterns (ctx)
-              (%%register! ctx tc target patterns)
-              (mlir::applyPartialConversion module-op target patterns)))))))
+        (with-every-callback (ctx tc target patterns)
+          (mlir::applyPartialConversion module-op target patterns)))))
 
-  ;; Registered and never applied: the callbacks are released when the three objects are freed.
+  ;; Made and never applied: the callbacks are released when the scopes end.
   (define (unused-sets module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
-        (with-TypeConverter tc ()
-          (with-ConversionTarget target (ctx)
-            (with-RewritePatternSet patterns (ctx)
-              (%%register! ctx tc target patterns)
-              (add-rewrite-pattern patterns "test.rw" (lambda (op rewriter) #f) 1)))))))
+        (with-every-callback (ctx tc target patterns)
+          (with-RewritePatternSet more (ctx :rewrite-patterns (("test.rw" (lambda (op rewriter) #f) 1)))
+            #t)))))
 
   (define (rewrite-greedy module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
