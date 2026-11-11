@@ -161,9 +161,9 @@ void registerIROperationBindings() {
       });
   Sregister_symbol(
       "mlir::Operation::walk", (void*)+[](uint64_t op, ptr callback) -> void {
-        // The callback is a Scheme procedure that is made into a
-        // foreign-callable for this call; the owner releases it when the walk
-        // is over. Make it first: the return below must not leak it.
+        // The callback is a Scheme procedure. It is made into a C function for
+        // this call, and the owner releases the function when the binding
+        // returns, on every path.
         auto owned =
             crest::ForeignCallable<void(uint64_t)>::fromProcedure(callback);
         if (!op) {
