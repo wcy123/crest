@@ -15,12 +15,11 @@ namespace crest {
 
 void registerDialectLLVMIRTransformsPassesBindings() {
   // mlir::LLVM::createDIScopeForLLVMFuncOpPass
-  // () → CrestBox<unique_ptr<Pass>>* uptr
+  // () → mlir::Pass* uptr, owned by the pass manager that it is added to
   Sregister_symbol(
       "mlir::LLVM::createDIScopeForLLVMFuncOpPass", (void*)+[]() -> uint64_t {
         return reinterpret_cast<uint64_t>(
-            new CrestBox<std::unique_ptr<mlir::Pass>>(
-                mlir::LLVM::createDIScopeForLLVMFuncOpPass()));
+            mlir::LLVM::createDIScopeForLLVMFuncOpPass().release());
       });
 }
 

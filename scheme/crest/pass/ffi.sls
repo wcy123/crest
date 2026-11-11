@@ -4,7 +4,7 @@
           %crest::SchemePass::reportFailure)
   (import (chezscheme))
 
-  ;; (string name) (uptr entry) → CrestBox<unique_ptr<mlir::Pass>>*
+  ;; (string name) (uptr entry) → mlir::Pass* (the pass manager that it is added to owns it)
   ;; entry: the entry point of the foreign-callable of the body of the pass (see (crest pass))
   (define %crest::createSchemePass
     (foreign-procedure "crest::createSchemePass" (string uptr) uptr))

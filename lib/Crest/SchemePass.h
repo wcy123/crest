@@ -5,9 +5,9 @@
 // Passes written in Scheme — lib/Crest/SchemePass.h
 //
 // `define-pass` makes an mlir::Pass whose runOnOperation calls a Scheme
-// procedure on the anchor op. The pass is returned in the same
-// CrestBox<unique_ptr<Pass>> shell as mlir::createInlinerPass, so
-// PassManager::addPass takes it.
+// procedure on the anchor op. The pass is returned as a raw mlir::Pass*, like
+// every create...Pass binding, and the pass manager that addPass adds it to
+// owns it.
 
 #ifndef CREST_SCHEME_PASS_H
 #define CREST_SCHEME_PASS_H

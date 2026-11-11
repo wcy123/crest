@@ -16,16 +16,14 @@ void registerDialectAffineTransformsPassesBindings() {
   Sregister_symbol(
       "mlir::affine::createLoopFusionPass", (void*)+[]() -> uint64_t {
         return reinterpret_cast<uint64_t>(
-            new CrestBox<std::unique_ptr<mlir::Pass>>(
-                mlir::affine::createLoopFusionPass()));
+            mlir::affine::createLoopFusionPass().release());
       });
 
   Sregister_symbol(
       "mlir::affine::createAffineScalarReplacementPass",
       (void*)+[]() -> uint64_t {
         return reinterpret_cast<uint64_t>(
-            new CrestBox<std::unique_ptr<mlir::Pass>>(
-                mlir::affine::createAffineScalarReplacementPass()));
+            mlir::affine::createAffineScalarReplacementPass().release());
       });
 }
 

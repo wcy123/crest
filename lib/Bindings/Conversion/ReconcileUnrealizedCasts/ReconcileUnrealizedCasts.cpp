@@ -17,8 +17,7 @@ void registerConversionReconcileUnrealizedCastsBindings() {
   Sregister_symbol(
       "mlir::createReconcileUnrealizedCastsPass", (void*)+[]() -> uint64_t {
         return reinterpret_cast<uint64_t>(
-            new CrestBox<std::unique_ptr<mlir::Pass>>(
-                mlir::createReconcileUnrealizedCastsPass()));
+            mlir::createReconcileUnrealizedCastsPass().release());
       });
 }
 

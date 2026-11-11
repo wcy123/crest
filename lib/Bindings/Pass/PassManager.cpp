@@ -25,23 +25,21 @@ void registerPassPassManagerBindings() {
             crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__)));
       });
 
-  // Moves the pass out of CrestBox<unique_ptr<Pass>> into the PassManager.
-  // Calling addPass twice with the same holder is an error (moved-from ==
-  // null).
-  /// pm_ptr: CrestBox<mlir::PassManager>*, pass_ptr:
-  /// CrestBox<unique_ptr<Pass>>*
+  // The pass manager takes ownership of the pass, as in C++, where addPass
+  // takes a std::unique_ptr<Pass>. A create...Pass binding answers a raw
+  // mlir::Pass* that nothing owns yet, so this is where ownership starts.
+  // Adding the same pass twice gives it two owners: the caller must not.
+  /// pm_ptr: CrestBox<mlir::PassManager>*, pass_ptr: mlir::Pass*
   Sregister_symbol(
       "mlir::PassManager::addPass",
       (void*)+[](uint64_t pm_ptr, uint64_t pass_ptr) -> void {
         auto& pm = crest::CrestBox<mlir::PassManager>::inner(
             pm_ptr, "mlir::PassManager::addPass");
-        auto& pass = crest::CrestBox<std::unique_ptr<mlir::Pass>>::inner(
-            pass_ptr, "mlir::PassManager::addPass");
-        if (!pass) {
-          scheme_error("mlir::PassManager::addPass",
-                       "pass already consumed by a previous addPass call");
+        if (!pass_ptr) {
+          scheme_error("mlir::PassManager::addPass", "null pass pointer");
         }
-        pm.addPass(std::move(pass));
+        pm.addPass(std::unique_ptr<mlir::Pass>(
+            reinterpret_cast<mlir::Pass*>(pass_ptr)));
       });
 
   /// pm_ptr: CrestBox<mlir::PassManager>*, module_ptr: mlir::Operation* → 1
@@ -75,19 +73,18 @@ void registerPassPassManagerBindings() {
         return reinterpret_cast<uint64_t>(&pm.nest(op_name));
       });
 
-  // Add a pass to a nested OpPassManager (raw ptr, not owned).
-  // nested_pm_ptr: OpPassManager*, pass_ptr: CrestBox<unique_ptr<Pass>>*
+  // Add a pass to a nested OpPassManager (raw ptr, not owned); the pass manager
+  // takes ownership of the pass, as above.
+  // nested_pm_ptr: OpPassManager*, pass_ptr: mlir::Pass*
   Sregister_symbol(
       "mlir::OpPassManager::addPass",
       (void*)+[](uint64_t nested_pm_ptr, uint64_t pass_ptr) -> void {
         auto* nested = reinterpret_cast<mlir::OpPassManager*>(nested_pm_ptr);
-        auto& pass = crest::CrestBox<std::unique_ptr<mlir::Pass>>::inner(
-            pass_ptr, "mlir::OpPassManager::addPass");
-        if (!pass) {
-          scheme_error("mlir::OpPassManager::addPass",
-                       "pass already consumed by a previous addPass call");
+        if (!pass_ptr) {
+          scheme_error("mlir::OpPassManager::addPass", "null pass pointer");
         }
-        nested->addPass(std::move(pass));
+        nested->addPass(std::unique_ptr<mlir::Pass>(
+            reinterpret_cast<mlir::Pass*>(pass_ptr)));
       });
 }
 
