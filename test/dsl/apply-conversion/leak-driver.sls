@@ -4,7 +4,7 @@
 ;; objects that Chez keeps locked until C++ unlocks them: a leak shows as one per callback per run.
 (import (chezscheme)
         (passes imperative)
-        (mlir IR DialectRegistry) (mlir IR MLIRContext) (mlir IR Operation)
+        (mlir IR DialectRegistry) (mlir IR MLIRContext) (mlir IR Operation) (mlir IR OwningOpRef)
         (mlir Dialect Func IR FuncOps))
 
 (define (code-count)
@@ -20,7 +20,8 @@
     (with-MLIRContext ctx (reg)
       (mlir::MLIRContext::allowUnregisteredDialects ctx #t)
       (mlir::MLIRContext::getOrLoadDialect ctx "func")
-      (run-pass (mlir::parseSourceFile ctx path)))))
+      (with-mlir::OwningOpRef<mlir::ModuleOp> module (mlir::parseSourceFile ctx path)
+                                              (run-pass module)))))
 
 (enable-object-counts #t)
 (once)

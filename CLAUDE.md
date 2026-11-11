@@ -171,6 +171,11 @@ then the creation arguments in a list (empty when there are none):
 `(with-<C++ClassName> variable (arguments ...) body ...)`. The variable is never grouped with
 the arguments.
 
+The generic helper `with-raii` (`(mlir support RAII)`) has no C++ class. It takes the variable, an
+expression that makes the resource and a procedure that frees it:
+`(with-raii variable constructor destructor body ...)`. Write a `with-<C++ClassName>` macro on top
+of it when the cleanup is a function call (Rule 18).
+
 ### Rule 11 — Dynamic parameters: `current-<C++ClassName>`
 
 ```scheme
@@ -195,7 +200,28 @@ methods the conversion rewriter overrides. A raw `OpBuilder*` is never a valid h
 | `with-OpBuilder` | `(mlir IR Builders)` | `mlir/IR/Builders.h` |
 | `with-TypeConverter` | `(mlir Transforms DialectConversion)` | `mlir/Transforms/DialectConversion.h` |
 | `with-ConversionTarget` | `(mlir Transforms DialectConversion)` | `mlir/Transforms/DialectConversion.h` |
+| `with-mlir::OwningOpRef<mlir::ModuleOp>` | `(mlir IR OwningOpRef)` | `mlir/IR/OwningOpRef.h` |
 | `with-CrestObject` | `(mlir support CrestObject)` | `lib/Bindings/Support/CrestObject.h` (CREST-specific) |
+| `with-raii` | `(mlir support RAII)` | none: generic, CREST-specific |
+
+### Rule 18 — Naming a macro that is not one constructor
+
+Rules 10 and 12 name a macro after the C++ class it wraps, without the namespace. Some macros
+wrap a *function* that returns an owning object, or have no class at all. Name them like this:
+
+1. A macro for a function that returns an owning object is named `with-` followed by the full C++
+   type of the object, with its namespace and template arguments, as the symbols of Rule 4 are.
+   `mlir::parseSourceFile` returns `mlir::OwningOpRef<mlir::ModuleOp>`, so the macro is
+   `with-mlir::OwningOpRef<mlir::ModuleOp>`. It lives in the module of the header of that type
+   (Rule 12). After the variable comes the call that makes the object, as it is written in
+   Scheme: `(with-mlir::OwningOpRef<mlir::ModuleOp> module (mlir::parseSourceFile ctx filename) body ...)`.
+   The C++ line it replaces goes in its comment.
+2. A helper with no C++ counterpart is generic. It lives under `(mlir support ...)` and is named
+   for what it does (`with-raii`, `with-CrestObject`). Use it to build the macros of point 1.
+3. Do not invent a name that no C++ API has, such as `with-MLIRModule` (MLIR has `ModuleOp` and
+   `OwningOpRef`, not `MLIRModule`). Someone who knows MLIR should be able to guess the macro.
+4. The macros of Rule 10 keep their short names (`with-MLIRContext`, `with-PassManager`); only
+   new macros of the kind in point 1 use the full name.
 
 ---
 

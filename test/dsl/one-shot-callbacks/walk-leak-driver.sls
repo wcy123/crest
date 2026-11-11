@@ -3,7 +3,7 @@
 ;; They are code objects that Chez keeps locked until C++ unlocks them: a leak shows as one per call.
 (import (except (rnrs) =)
         (only (chezscheme) collect object-counts enable-object-counts command-line-arguments)
-        (mlir IR DialectRegistry) (mlir IR MLIRContext) (mlir IR Operation)
+        (mlir IR DialectRegistry) (mlir IR MLIRContext) (mlir IR Operation) (mlir IR OwningOpRef)
         (only (mlir IR Region) mlir::Region::front)
         (only (mlir IR Builders) with-OpBuilder mlir::OpBuilder::atBlockEnd)
         (only (mlir Dialect Affine IR AffineOps)
@@ -22,14 +22,14 @@
     (mlir::DialectRegistry::insert<mlir::affine::AffineDialect> reg)
     (with-MLIRContext ctx (reg)
       (mlir::MLIRContext::getOrLoadDialect ctx "affine")
-      (let ([module (mlir::parseSourceFile ctx path)])
-        (mlir::Operation::walk module (lambda (op) #t))
-        (with-current-MLIRContext ctx
-          (let ([block (mlir::Region::front (mlir::Operation::getRegion module 0))])
-            (with-OpBuilder builder (mlir::OpBuilder::atBlockEnd block)
-              (mlir::affine::buildAffineLoopNest
-               builder (mlir::Operation::getLoc module) '(0) '(4) '(1)
-               (lambda (nested-builder loc ivs) #t)))))))))
+      (with-mlir::OwningOpRef<mlir::ModuleOp> module (mlir::parseSourceFile ctx path)
+                                              (mlir::Operation::walk module (lambda (op) #t))
+                                              (with-current-MLIRContext ctx
+                                                (let ([block (mlir::Region::front (mlir::Operation::getRegion module 0))])
+                                                  (with-OpBuilder builder (mlir::OpBuilder::atBlockEnd block)
+                                                    (mlir::affine::buildAffineLoopNest
+                                                     builder (mlir::Operation::getLoc module) '(0) '(4) '(1)
+                                                     (lambda (nested-builder loc ivs) #t)))))))))
 
 (enable-object-counts #t)
 (once)
