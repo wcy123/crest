@@ -30,7 +30,6 @@
     mlir::RewriterBase::eraseOp
     mlir::RewriterBase::create<OperationState>
     mlir::RewriterBase::inlineRegionBefore
-    mlir::RewritePatternSet::RewritePatternSet
     ;; Type predicates
     crest::isa<CrestBox<mlir::RewriterBase*>>?
     crest::isa<CrestBox<mlir::RewritePatternSet>>?
@@ -99,6 +98,7 @@
   ;; @param src   Region* uptr; empty afterwards
   ;; @param dest  Region* uptr
   (define mlir::RewriterBase::inlineRegionBefore %mlir::RewriterBase::inlineRegionBefore)
+  ;; Not exported: it answers a heap object that only with-RewritePatternSet frees (a raw call leaks it).
   (define mlir::RewritePatternSet::RewritePatternSet  %mlir::RewritePatternSet::RewritePatternSet)
 
   ;; @brief crest::isa<CrestBox<mlir::RewriterBase*>>? — is this ptr the pattern's rewriter shell?

@@ -90,8 +90,8 @@ every object, and the object is freed exactly when the body ends. It is not free
 when the garbage collector happens to run.
 
 ```scheme
-(with-CrestObject state (mlir::OperationState::create loc "my.op")
-  ...)            ; leaving the body, normally or by exception, deletes `state`
+(with-CrestObject builder (mlir::OpBuilder::atBlockEnd block)
+  ...)            ; leaving the body, normally or by exception, deletes `builder`
 ```
 
 ### Two kinds of shell
@@ -275,7 +275,7 @@ and the `with-*` macros are how you do it.
 ```
 
 `(create-call)` is the whole call that makes the shell, for example
-`(mlir::OperationState::create loc "my.op")`. The macro binds `name` to that shell, runs the
+`(mlir::OpBuilder::atBlockEnd block)`. The macro binds `name` to that shell, runs the
 body, and then calls `crest::CrestObject::delete` on the shell. It expands to this:
 
 ```scheme
@@ -327,7 +327,7 @@ often nested inside one of the macros above, for example `with-OpBuilder` for th
 #### How to avoid a leak
 
 - **Create a `CrestBox` shell only inside a `with-*` macro.** If you call a binding that
-  returns a shell (`mlir::OpBuilder::atBlockEnd`, `mlir::MLIRContext::new`, and so on) and
+  returns a shell (`mlir::OpBuilder::atBlockEnd`, `mlir::ModuleOp::create`, and so on) and
   do not pass the result to one of these macros or to `crest::CrestObject::delete`, it leaks.
 - **Do not return the shell out of the body.** It is freed when the body ends, so the
   returned address would point at freed memory. Return what you need from it instead, for

@@ -1350,7 +1350,7 @@ The context hierarchy during a pattern rewrite:
 
 | Import | Key exports |
 |---|---|
-| `(mlir IR MLIRContext)` | `current-MLIRContext`, `with-current-MLIRContext`, `mlir::MLIRContext::new` |
+| `(mlir IR MLIRContext)` | `current-MLIRContext`, `with-current-MLIRContext`, `mlir::parseSourceFile` |
 | `(mlir IR Operation)` | `mlir::Operation::getName`, `getResult`, `getRegion`, `getAttr`, `setAttr!`, `getContext`, `getNumResults`, `getNumOperands` |
 | `(mlir IR Value)` | `mlir::Value::getType`, `getDefiningOp`, `getUses`, `mlir::OpResult::getResultNumber` |
 | `(mlir IR Block)` | `mlir::Block::getArgument`, `getNumArguments`, `current-Block`, `with-current-Block` |

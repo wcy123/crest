@@ -16,8 +16,7 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir IR DialectRegistry)
-  (export mlir::DialectRegistry::new
-          mlir::DialectRegistry::insert
+  (export mlir::DialectRegistry::insert
           with-DialectRegistry
           with-MLIRContext)
   (import (rnrs)
@@ -25,6 +24,7 @@
           (mlir IR MLIRContext ffi)
           (only (mlir support CrestObject) with-CrestObject))
 
+  ;; Not exported: it answers a heap object that only with-DialectRegistry frees (a raw call leaks it).
   (define mlir::DialectRegistry::new
     %mlir::DialectRegistry::new)
 

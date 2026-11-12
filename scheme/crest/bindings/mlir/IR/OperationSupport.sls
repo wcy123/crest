@@ -14,7 +14,6 @@
 
 (library (mlir IR OperationSupport)
   (export
-    mlir::OperationState::create
     mlir::OperationState::addOperands
     mlir::OperationState::addTypes
     mlir::OperationState::addRegion
@@ -33,6 +32,7 @@
   (define (crest::isa<CrestBox<mlir::OperationState>>? ptr)
     (not (zero? (%crest::isa<CrestBox<mlir::OperationState>> ptr))))
 
+  ;; Not exported: it answers a heap object that only with-OperationState frees (a raw call leaks it).
   (define mlir::OperationState::create       %mlir::OperationState::create)
   (define mlir::OperationState::addOperands  %mlir::OperationState::addOperands)
   (define mlir::OperationState::addTypes     %mlir::OperationState::addTypes)
