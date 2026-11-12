@@ -1,12 +1,12 @@
 #!r6rs
 ;; Mirrors mlir/ExecutionEngine/ExecutionEngine.h
 (library (mlir ExecutionEngine ExecutionEngine)
-  (export mlir::ExecutionEngine::create
-          mlir::ExecutionEngine::invoke
+  (export mlir::ExecutionEngine::invoke
           with-ExecutionEngine)
   (import (rnrs)
           (mlir ExecutionEngine ExecutionEngine ffi)
           (only (mlir support CrestObject) with-CrestObject))
+  ;; Not exported: it answers a heap object that only with-ExecutionEngine frees (a raw call leaks it).
   ;; (create module) or (create module opt-level): JIT-compile with LLVM's optimizing pipeline at
   ;; opt-level 0 (default) to 3; 0 is returned when the engine cannot be created.
   (define mlir::ExecutionEngine::create

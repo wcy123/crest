@@ -19,7 +19,6 @@
     current-MLIRContext
     with-current-MLIRContext
     define-ctx-optional
-    mlir::MLIRContext::new
     mlir::MLIRContext::allowUnregisteredDialects
     mlir::MLIRContext::allowsUnregisteredDialects?
     mlir::MLIRContext::enableMultithreading
@@ -34,11 +33,6 @@
   (import (rnrs)
           (only (chezscheme) make-parameter parameterize)
           (mlir IR MLIRContext ffi))
-
-  (define mlir::MLIRContext::new
-    (case-lambda
-     [()         (%mlir::MLIRContext::new)]
-     [(registry) (%mlir::MLIRContext::new/registry registry)]))
 
   (define current-MLIRContext (make-parameter #f))
 

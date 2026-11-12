@@ -31,7 +31,6 @@
     target-add-legal-op
     target-add-dynamically-legal-op
     target-mark-unknown-ops-dynamically-legal
-    pattern-set-create
     apply-full-conversion
     mlir::applyPartialConversion
     mlir::RewriterBase::modifyOpInPlace
@@ -54,8 +53,6 @@
           (for (mlir Transforms DialectConversion options) expand)
           (crest callback)
           (mlir Transforms DialectConversion ffi)
-          (only (mlir IR PatternMatch)
-                mlir::RewritePatternSet::RewritePatternSet)
           (only (mlir support CrestObject) with-CrestObject)
           (only (mlir IR MLIRContext) current-MLIRContext))
 
@@ -167,12 +164,6 @@
   (define (target-mark-unknown-ops-dynamically-legal target callable)
     (%target-mark-unknown-ops-dynamically-legal
      target (%%callable 'target-mark-unknown-ops-dynamically-legal callable)))
-
-  ;; @brief mlir::RewritePatternSet constructor.
-  ;; @param ctx MLIRContext* uptr
-  ;; @return    CrestBox<RewritePatternSet>* uptr — freed via with-CrestObject
-  (define pattern-set-create
-    mlir::RewritePatternSet::RewritePatternSet)
 
   ;; @brief mlir::applyFullConversion.
   (define apply-full-conversion

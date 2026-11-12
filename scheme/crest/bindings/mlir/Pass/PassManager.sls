@@ -8,7 +8,7 @@
 ;;
 ;; (mlir Pass PassManager) — Public API for mlir/Pass/PassManager.h.
 ;;
-;; Provides mlir::PassManager::new, addPass, run!, enableVerifier, and
+;; Provides addPass, run!, enableVerifier, and
 ;; with-PassManager (RAII macro freeing the PassManager after use).
 ;;
 ;; Example:
@@ -21,8 +21,7 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir Pass PassManager)
-  (export mlir::PassManager::new
-          mlir::PassManager::addPass
+  (export mlir::PassManager::addPass
           mlir::PassManager::run!
           mlir::PassManager::enableVerifier
           mlir::PassManager::nest
@@ -32,6 +31,7 @@
           (mlir Pass PassManager ffi)
           (only (mlir support CrestObject) with-CrestObject))
 
+  ;; Not exported: it answers a heap object that only with-PassManager frees (a raw call leaks it).
   (define mlir::PassManager::new %mlir::PassManager::new)
 
   (define mlir::PassManager::addPass %mlir::PassManager::addPass)
