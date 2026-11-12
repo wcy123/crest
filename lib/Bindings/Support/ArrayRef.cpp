@@ -18,8 +18,9 @@ void registerArrayRefBindings() {
   //
   // A TypeRange that C++ passed by value, as its two words: a TypeRange is not
   // an array, its first word is a tagged union, so the elements are read here.
-  register_binding(
-      "crest::TypeRange::toList", [](uint64_t base, uint64_t size) -> ptr {
+  Sregister_symbol(
+      "crest::TypeRange::toList",
+      (void*)+[](uint64_t base, uint64_t size) -> ptr {
         static_assert(sizeof(mlir::TypeRange) == 2 * sizeof(uint64_t),
                       "a TypeRange is two words");
         uint64_t words[2] = {base, size};
@@ -38,11 +39,13 @@ void registerArrayRefBindings() {
   // CrestObject::isa<CArrayRef<T>> — type predicates.
   // Non-capturing lambdas converted to plain function pointers via unary +.
   // The isa logic (deletor address comparison) stays in C++ where it belongs.
-  register_binding("crest::CArrayRef<uptr>?", [](uint64_t p) -> int {
-    return reinterpret_cast<crest::CrestObject*>(p)->isa<CArrayRef<uintptr_t>>()
-               ? 1
-               : 0;
-  });
+  Sregister_symbol(
+      "crest::CArrayRef<uptr>?", (void*)+[](uint64_t p) -> ptr {
+        return Sinteger64(reinterpret_cast<crest::CrestObject*>(p)
+                                  ->isa<CArrayRef<uintptr_t>>()
+                              ? 1
+                              : 0);
+      });
 }
 
 } // namespace crest

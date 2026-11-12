@@ -30,13 +30,13 @@
   ;; @param body     an expression for a procedure (nested-builder loc ivs): the builder shell for the
   ;;                 body (valid during the call) and the list of the induction variables. It is a C
   ;;                 function for the length of the call, released when the call returns, also on an
-  ;;                 error.
+  ;;                 error. An error of the procedure is reported as a diagnostic at loc.
   ;; @note           A macro.
   (define-syntax mlir::affine::buildAffineLoopNest
     (syntax-rules ()
       [(_ builder loc lbs ubs steps body)
        (let ([user body])
-         (with-c-callable (c-body (uptr uptr uptr uptr) void
+         (with-c-callable (c-body (uptr uptr uptr uptr)
                                   (lambda (nested-builder nested-loc ivs count)
                                     (user nested-builder nested-loc
                                           (crest-callback-pointer-list ivs count))))

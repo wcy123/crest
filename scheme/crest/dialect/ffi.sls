@@ -7,8 +7,6 @@
           %crest::DynamicType::isa
           %crest::DynamicType::getParams
           %crest::CrestDialect::loadDependentDialect
-          %crest::CrestDialect::reportFailure
-          %crest::DynamicOp::reportFailure
           %crest::Fold::addValue
           %crest::Fold::addAttribute
           %crest::DynamicType::addParam
@@ -53,16 +51,6 @@
   ;; in the registry is a fatal error.
   (define %crest::CrestDialect::loadDependentDialect
     (crest-foreign-procedure "crest::CrestDialect::loadDependentDialect" (uptr string) void))
-
-  ;; (string message) → void — the text of an error that a verifier of the dialect raised, for the
-  ;; diagnostic of its failure.
-  (define %crest::CrestDialect::reportFailure
-    (crest-foreign-procedure "crest::CrestDialect::reportFailure" (string) void))
-
-  ;; (string message) → void — the text of an error that a verifier, parser or folder of an op raised,
-  ;; or why a fold result is wrong, for the diagnostic of its failure.
-  (define %crest::DynamicOp::reportFailure
-    (crest-foreign-procedure "crest::DynamicOp::reportFailure" (string) void))
 
   ;; (uptr folded) (uptr value) → void, (uptr folded) (uptr attribute) → void — a result of a fold.
   (define %crest::Fold::addValue

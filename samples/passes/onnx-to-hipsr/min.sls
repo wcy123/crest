@@ -102,7 +102,7 @@
 
   ;; Made once, when the library is loaded, and kept for the whole program.
   (define onnx-min-general->hipsr
-    (crest-make-static-c-callable (uptr uptr uptr uptr) int (conversion-pattern->c %%min-general)))
+    (crest-make-static-c-callable (uptr uptr uptr uptr) (conversion-pattern->c %%min-general)))
 
   (define (populate-min-patterns type-converter patterns ctx)
     ;; DSL pattern for the common binary case (N=2) — inline shape region

@@ -20,14 +20,16 @@ void registerConversionLLVMCommonTypeConverterBindings() {
   // LEAK WARNING: the box is on the C++ heap and only the caller frees it. Use
   // with-LLVMTypeConverter, which frees it after its body; a box that is never
   // freed leaks.
-  register_binding(
+  Sregister_symbol(
       "mlir::LLVMTypeConverter::LLVMTypeConverter",
-      [](uint64_t ctx_ptr) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx,
-                  crest::as_ptr<mlir::MLIRContext>(
-                      ctx_ptr, "mlir::LLVMTypeConverter::LLVMTypeConverter"));
-        return reinterpret_cast<uint64_t>(
-            new crest::CrestBox<mlir::LLVMTypeConverter>(ctx));
+      (void*)+[](uint64_t ctx_ptr) -> ptr {
+        auto* ctx = crest::as_context(ctx_ptr);
+        if (!ctx) {
+          return scheme_error("mlir::LLVMTypeConverter::LLVMTypeConverter",
+                              "null MLIRContext pointer");
+        }
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            new crest::CrestBox<mlir::LLVMTypeConverter>(ctx)));
       });
 }
 

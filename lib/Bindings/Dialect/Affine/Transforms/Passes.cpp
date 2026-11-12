@@ -18,19 +18,20 @@ void registerDialectAffineTransformsPassesBindings() {
   // mlir::PassManager::addPass or mlir::OpPassManager::addPass takes it
   // (lib/Bindings/Pass/PassManager.cpp): a pass that is made and never added
   // leaks.
-  register_binding("mlir::affine::createLoopFusionPass", []() -> uint64_t {
-    return reinterpret_cast<uint64_t>(
-        mlir::affine::createLoopFusionPass().release());
-  });
+  Sregister_symbol(
+      "mlir::affine::createLoopFusionPass", (void*)+[]() -> ptr {
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            mlir::affine::createLoopFusionPass().release()));
+      });
 
   // LEAK WARNING: a raw mlir::Pass*. Nothing owns it until
   // mlir::PassManager::addPass or mlir::OpPassManager::addPass takes it
   // (lib/Bindings/Pass/PassManager.cpp): a pass that is made and never added
   // leaks.
-  register_binding(
-      "mlir::affine::createAffineScalarReplacementPass", []() -> uint64_t {
-        return reinterpret_cast<uint64_t>(
-            mlir::affine::createAffineScalarReplacementPass().release());
+  Sregister_symbol(
+      "mlir::affine::createAffineScalarReplacementPass", (void*)+[]() -> ptr {
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            mlir::affine::createAffineScalarReplacementPass().release()));
       });
 }
 

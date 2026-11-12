@@ -15,78 +15,85 @@
 namespace crest {
 
 void registerIRBlockBindings() {
-  register_binding(
+  Sregister_symbol(
       "mlir::Block::getArgument",
-      [](uint64_t block_ptr, int idx) -> llvm::Expected<uint64_t> {
+      (void*)+[](uint64_t block_ptr, int idx) -> ptr {
         if (!block_ptr) {
-          return fail("mlir::Block::getArgument", "block pointer is null");
+          return scheme_error("mlir::Block::getArgument",
+                              "block pointer is null");
         }
         auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
         if (idx < 0 || idx >= (int)block->getNumArguments()) {
-          return fail(
+          return scheme_error(
               "mlir::Block::getArgument",
-              "index out of range: idx=" + llvm::Twine(idx) +
+              llvm::Twine("index out of range: idx=") + llvm::Twine(idx) +
                   ", num-args=" + llvm::Twine(block->getNumArguments()));
         }
-        return reinterpret_cast<uint64_t>(
+        return Sunsigned64(reinterpret_cast<uint64_t>(
             block->getArgument(static_cast<unsigned>(idx))
-                .getAsOpaquePointer());
+                .getAsOpaquePointer()));
       });
-  register_binding(
-      "mlir::Block::getNumArguments", [](uint64_t block_ptr) -> uint64_t {
-        return reinterpret_cast<mlir::Block*>(block_ptr)->getNumArguments();
+  Sregister_symbol(
+      "mlir::Block::getNumArguments", (void*)+[](uint64_t block_ptr) -> ptr {
+        return Sunsigned64(
+            reinterpret_cast<mlir::Block*>(block_ptr)->getNumArguments());
       });
   // LEAK WARNING: the block belongs to nobody. A block that is never added to a
   // region and never erased leaks.
-  register_binding("mlir::Block::new", []() -> uint64_t {
-    return reinterpret_cast<uint64_t>(new mlir::Block());
-  });
-  register_binding("mlir::Block::addArgument",
-                   [](uint64_t block_ptr, uint64_t type_ptr,
-                      uint64_t loc_ptr) -> llvm::Expected<uint64_t> {
-                     if (!block_ptr) {
-                       return fail("mlir::Block::addArgument",
-                                   "block pointer is null");
-                     }
-                     auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
-                     auto type = mlir::Type::getFromOpaquePointer(
-                         reinterpret_cast<const void*>(type_ptr));
-                     auto loc = mlir::Location::getFromOpaquePointer(
-                         reinterpret_cast<const void*>(loc_ptr));
-                     mlir::BlockArgument arg = block->addArgument(type, loc);
-                     return reinterpret_cast<uint64_t>(
-                         const_cast<void*>(arg.getAsOpaquePointer()));
-                   });
+  Sregister_symbol(
+      "mlir::Block::new", (void*)+[]() -> ptr {
+        return Sunsigned64(reinterpret_cast<uint64_t>(new mlir::Block()));
+      });
+  Sregister_symbol(
+      "mlir::Block::addArgument",
+      (void*)+[](uint64_t block_ptr, uint64_t type_ptr,
+                 uint64_t loc_ptr) -> ptr {
+        if (!block_ptr) {
+          return scheme_error("mlir::Block::addArgument",
+                              "block pointer is null");
+        }
+        auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
+        auto type = mlir::Type::getFromOpaquePointer(
+            reinterpret_cast<const void*>(type_ptr));
+        auto loc = mlir::Location::getFromOpaquePointer(
+            reinterpret_cast<const void*>(loc_ptr));
+        mlir::BlockArgument arg = block->addArgument(type, loc);
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            const_cast<void*>(arg.getAsOpaquePointer())));
+      });
 
-  register_binding("mlir::Block::empty", [](uint64_t block_ptr) -> int {
-    if (!block_ptr) {
-      return 1;
-    }
-    auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
-    return block->empty() ? 1 : 0;
-  });
+  Sregister_symbol(
+      "mlir::Block::empty", (void*)+[](uint64_t block_ptr) -> ptr {
+        if (!block_ptr) {
+          return Sinteger64(1);
+        }
+        auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
+        return Sinteger64(block->empty() ? 1 : 0);
+      });
 
-  register_binding("mlir::Block::back", [](uint64_t block_ptr) -> uint64_t {
-    if (!block_ptr) {
-      return 0;
-    }
-    auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
-    if (block->empty()) {
-      return 0;
-    }
-    return reinterpret_cast<uint64_t>(&block->back());
-  });
+  Sregister_symbol(
+      "mlir::Block::back", (void*)+[](uint64_t block_ptr) -> ptr {
+        if (!block_ptr) {
+          return Sunsigned64(0);
+        }
+        auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
+        if (block->empty()) {
+          return Sunsigned64(0);
+        }
+        return Sunsigned64(reinterpret_cast<uint64_t>(&block->back()));
+      });
 
-  register_binding("mlir::Block::front", [](uint64_t block_ptr) -> uint64_t {
-    if (!block_ptr) {
-      return 0;
-    }
-    auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
-    if (block->empty()) {
-      return 0;
-    }
-    return reinterpret_cast<uint64_t>(&block->front());
-  });
+  Sregister_symbol(
+      "mlir::Block::front", (void*)+[](uint64_t block_ptr) -> ptr {
+        if (!block_ptr) {
+          return Sunsigned64(0);
+        }
+        auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
+        if (block->empty()) {
+          return Sunsigned64(0);
+        }
+        return Sunsigned64(reinterpret_cast<uint64_t>(&block->front()));
+      });
 }
 
 } // namespace crest

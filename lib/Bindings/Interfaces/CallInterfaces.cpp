@@ -133,21 +133,23 @@ void registerInterfacesCallInterfacesBindings() {
   //
   // The address that the TypeID of the interface wraps, which C++ turns back
   // with TypeID::getFromOpaquePointer to find how to install the interface.
-  register_binding(
-      "mlir::CallableOpInterface::getInterfaceID", []() -> uint64_t {
-        return reinterpret_cast<uint64_t>(
-            mlir::CallableOpInterface::getInterfaceID().getAsOpaquePointer());
+  Sregister_symbol(
+      "mlir::CallableOpInterface::getInterfaceID", (void*)+[]() -> ptr {
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            mlir::CallableOpInterface::getInterfaceID().getAsOpaquePointer()));
       });
-  register_binding("mlir::CallOpInterface::getInterfaceID", []() -> uint64_t {
-    return reinterpret_cast<uint64_t>(
-        mlir::CallOpInterface::getInterfaceID().getAsOpaquePointer());
-  });
-  register_binding("mlir::ArgAndResultAttrsOpInterface::getInterfaceID",
-                   []() -> uint64_t {
-                     return reinterpret_cast<uint64_t>(
-                         mlir::ArgAndResultAttrsOpInterface::getInterfaceID()
-                             .getAsOpaquePointer());
-                   });
+  Sregister_symbol(
+      "mlir::CallOpInterface::getInterfaceID", (void*)+[]() -> ptr {
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            mlir::CallOpInterface::getInterfaceID().getAsOpaquePointer()));
+      });
+  Sregister_symbol(
+      "mlir::ArgAndResultAttrsOpInterface::getInterfaceID",
+      (void*)+[]() -> ptr {
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            mlir::ArgAndResultAttrsOpInterface::getInterfaceID()
+                .getAsOpaquePointer()));
+      });
 
   // crest::CallableOpInterface::keepTypes (uptr op, list types) -> uptr
   //
@@ -156,30 +158,30 @@ void registerInterfacesCallInterfacesBindings() {
   // `op` owns them (as the inputs of a function type) and answers the address
   // of the first one, which the callable writes into its ArrayRef with the
   // number of types.
-  register_binding(
+  Sregister_symbol(
       "crest::CallableOpInterface::keepTypes",
-      [](uint64_t op_ptr, ptr types) -> uint64_t {
+      (void*)+[](uint64_t op_ptr, ptr types) -> ptr {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         llvm::SmallVector<mlir::Type> list;
         for (ptr cur = types; cur != Snil; cur = Scdr(cur)) {
           list.push_back(mlir::Type::getFromOpaquePointer(
               reinterpret_cast<const void*>(Sunsigned64_value(Scar(cur)))));
         }
-        return reinterpret_cast<uint64_t>(
+        return Sunsigned64(reinterpret_cast<uint64_t>(
             mlir::FunctionType::get(op->getContext(), list, {})
                 .getInputs()
-                .data());
+                .data()));
       });
 
   // mlir::CallableOpInterface::getArgumentTypes (uptr op) -> list of Type
   // mlir::CallableOpInterface::getResultTypes (uptr op) -> list of Type
-  register_binding(
+  Sregister_symbol(
       "mlir::CallableOpInterface::getArgumentTypes",
-      [](uint64_t op_ptr) -> llvm::Expected<ptr> {
+      (void*)+[](uint64_t op_ptr) -> ptr {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto* c = lookupConcept<mlir::CallableOpInterface>(op);
         if (!c) {
-          return fail(
+          return scheme_error(
               "mlir::CallableOpInterface::getArgumentTypes",
               llvm::Twine("op does not implement CallableOpInterface:") + " " +
                   llvm::Twine(op->getName().getStringRef()));
@@ -193,13 +195,13 @@ void registerInterfacesCallInterfacesBindings() {
         }
         return list;
       });
-  register_binding(
+  Sregister_symbol(
       "mlir::CallableOpInterface::getResultTypes",
-      [](uint64_t op_ptr) -> llvm::Expected<ptr> {
+      (void*)+[](uint64_t op_ptr) -> ptr {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto* c = lookupConcept<mlir::CallableOpInterface>(op);
         if (!c) {
-          return fail(
+          return scheme_error(
               "mlir::CallableOpInterface::getResultTypes",
               llvm::Twine("op does not implement CallableOpInterface:") + " " +
                   llvm::Twine(op->getName().getStringRef()));
@@ -222,17 +224,17 @@ void registerInterfacesCallInterfacesBindings() {
   // crest::CallOpInterface::resolveCallableInTable () -> uptr
   // crest::CallOpInterface::resolveCallable () -> uptr
   //   what MLIR does by default: look the callee up as a symbol.
-  register_binding(
-      "crest::CallOpInterface::getArgOperandsMutable", []() -> uint64_t {
+  Sregister_symbol(
+      "crest::CallOpInterface::getArgOperandsMutable", (void*)+[]() -> ptr {
         using Concept = mlir::CallOpInterface::Concept;
         auto function = +[](const Concept*,
                             mlir::Operation* op) -> mlir::MutableOperandRange {
           return mlir::MutableOperandRange(op);
         };
-        return reinterpret_cast<uint64_t>(function);
+        return Sunsigned64(reinterpret_cast<uint64_t>(function));
       });
-  register_binding(
-      "crest::CallOpInterface::resolveCallableInTable", []() -> uint64_t {
+  Sregister_symbol(
+      "crest::CallOpInterface::resolveCallableInTable", (void*)+[]() -> ptr {
         using Concept = mlir::CallOpInterface::Concept;
         auto function =
             +[](const Concept* self, mlir::Operation* op,
@@ -240,17 +242,18 @@ void registerInterfacesCallInterfacesBindings() {
           return mlir::call_interface_impl::resolveCallable(
               mlir::CallOpInterface(op, self), table);
         };
-        return reinterpret_cast<uint64_t>(function);
+        return Sunsigned64(reinterpret_cast<uint64_t>(function));
       });
-  register_binding("crest::CallOpInterface::resolveCallable", []() -> uint64_t {
-    using Concept = mlir::CallOpInterface::Concept;
-    auto function =
-        +[](const Concept* self, mlir::Operation* op) -> mlir::Operation* {
-      return mlir::call_interface_impl::resolveCallable(
-          mlir::CallOpInterface(op, self));
-    };
-    return reinterpret_cast<uint64_t>(function);
-  });
+  Sregister_symbol(
+      "crest::CallOpInterface::resolveCallable", (void*)+[]() -> ptr {
+        using Concept = mlir::CallOpInterface::Concept;
+        auto function =
+            +[](const Concept* self, mlir::Operation* op) -> mlir::Operation* {
+          return mlir::call_interface_impl::resolveCallable(
+              mlir::CallOpInterface(op, self));
+        };
+        return Sunsigned64(reinterpret_cast<uint64_t>(function));
+      });
 
   // The callee of a call is a PointerUnion<SymbolRefAttr, Value>, whose first
   // word has a tag: Scheme builds and takes it apart here.
@@ -260,37 +263,40 @@ void registerInterfacesCallInterfacesBindings() {
   // mlir::CallInterfaceCallable::dyn_cast<SymbolRefAttr> (uptr callable) ->
   // uptr or 0 mlir::CallInterfaceCallable::dyn_cast<Value> (uptr callable) ->
   // uptr or 0
-  register_binding(
+  Sregister_symbol(
       "mlir::CallInterfaceCallable::get<SymbolRefAttr>",
-      [](uint64_t attr) -> uint64_t {
+      (void*)+[](uint64_t attr) -> ptr {
         mlir::CallInterfaceCallable callable(mlir::cast<mlir::SymbolRefAttr>(
             mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<const void*>(attr))));
-        return reinterpret_cast<uint64_t>(callable.getOpaqueValue());
+        return Sunsigned64(
+            reinterpret_cast<uint64_t>(callable.getOpaqueValue()));
       });
-  register_binding(
+  Sregister_symbol(
       "mlir::CallInterfaceCallable::get<Value>",
-      [](uint64_t value) -> uint64_t {
+      (void*)+[](uint64_t value) -> ptr {
         mlir::CallInterfaceCallable callable(mlir::Value::getFromOpaquePointer(
             reinterpret_cast<const void*>(value)));
-        return reinterpret_cast<uint64_t>(callable.getOpaqueValue());
+        return Sunsigned64(
+            reinterpret_cast<uint64_t>(callable.getOpaqueValue()));
       });
-  register_binding(
+  Sregister_symbol(
       "mlir::CallInterfaceCallable::dyn_cast<SymbolRefAttr>",
-      [](uint64_t callable) -> uint64_t {
+      (void*)+[](uint64_t callable) -> ptr {
         auto opaque = mlir::CallInterfaceCallable::getFromOpaqueValue(
             reinterpret_cast<void*>(callable));
         auto ref = llvm::dyn_cast_if_present<mlir::SymbolRefAttr>(opaque);
-        return ref ? reinterpret_cast<uint64_t>(ref.getAsOpaquePointer()) : 0;
+        return Sunsigned64(
+            ref ? reinterpret_cast<uint64_t>(ref.getAsOpaquePointer()) : 0);
       });
-  register_binding(
+  Sregister_symbol(
       "mlir::CallInterfaceCallable::dyn_cast<Value>",
-      [](uint64_t callable) -> uint64_t {
+      (void*)+[](uint64_t callable) -> ptr {
         auto opaque = mlir::CallInterfaceCallable::getFromOpaqueValue(
             reinterpret_cast<void*>(callable));
         auto value = llvm::dyn_cast_if_present<mlir::Value>(opaque);
-        return value ? reinterpret_cast<uint64_t>(value.getAsOpaquePointer())
-                     : 0;
+        return Sunsigned64(
+            value ? reinterpret_cast<uint64_t>(value.getAsOpaquePointer()) : 0);
       });
 
   // crest::OperandRange::get (uptr op, unsigned start, unsigned count)
@@ -298,43 +304,45 @@ void registerInterfacesCallInterfacesBindings() {
   //
   // The operands of `op` from `start`, `count` of them: what getArgOperands
   // answers.
-  register_binding(
+  Sregister_symbol(
       "crest::OperandRange::get",
-      [](uint64_t op_ptr, unsigned start, unsigned count) -> ptr {
+      (void*)+[](uint64_t op_ptr, unsigned start, unsigned count) -> ptr {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         mlir::OperandRange range = op->getOperands().slice(start, count);
         return Scons(Sunsigned64(reinterpret_cast<uint64_t>(range.getBase())),
                      Sunsigned64(range.size()));
       });
 
-  register_binding(
+  Sregister_symbol(
       "mlir::CallableOpInterface::getCallableRegion",
-      [](uint64_t op_ptr) -> llvm::Expected<uint64_t> {
+      (void*)+[](uint64_t op_ptr) -> ptr {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto* c = lookupConcept<mlir::CallableOpInterface>(op);
         if (!c) {
-          return fail(
+          return scheme_error(
               "mlir::CallableOpInterface::getCallableRegion",
               llvm::Twine("op does not implement CallableOpInterface:") + " " +
                   llvm::Twine(op->getName().getStringRef()));
         }
-        return reinterpret_cast<uint64_t>(c->getCallableRegion(c, op));
+        return Sunsigned64(
+            reinterpret_cast<uint64_t>(c->getCallableRegion(c, op)));
       });
 
-  register_binding(
+  Sregister_symbol(
       "mlir::ArgAndResultAttrsOpInterface::getArgAttrsAttr",
-      [](uint64_t op_ptr) -> llvm::Expected<uint64_t> {
+      (void*)+[](uint64_t op_ptr) -> ptr {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto* c = lookupConcept<mlir::ArgAndResultAttrsOpInterface>(op);
         if (!c) {
-          return fail(
+          return scheme_error(
               "mlir::ArgAndResultAttrsOpInterface::getArgAttrsAttr",
               llvm::Twine(
                   "op does not implement ArgAndResultAttrsOpInterface:") +
                   " " + llvm::Twine(op->getName().getStringRef()));
         }
         mlir::ArrayAttr a = c->getArgAttrsAttr(c, op);
-        return a ? reinterpret_cast<uint64_t>(a.getAsOpaquePointer()) : 0;
+        return Sunsigned64(
+            a ? reinterpret_cast<uint64_t>(a.getAsOpaquePointer()) : 0);
       });
 
   // mlir::ArgAndResultAttrsOpInterface::setArgAttrsAttr (uptr op, uptr attrs)
@@ -342,13 +350,13 @@ void registerInterfacesCallInterfacesBindings() {
   // attrs) -> void mlir::ArgAndResultAttrsOpInterface::removeArgAttrsAttr (uptr
   // op) -> uptr or 0 mlir::ArgAndResultAttrsOpInterface::removeResAttrsAttr
   // (uptr op) -> uptr or 0
-  register_binding(
+  Sregister_symbol(
       "mlir::ArgAndResultAttrsOpInterface::setArgAttrsAttr",
-      [](uint64_t op_ptr, uint64_t attrs) -> llvm::Error {
+      (void*)+[](uint64_t op_ptr, uint64_t attrs) -> ptr {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto* c = lookupConcept<mlir::ArgAndResultAttrsOpInterface>(op);
         if (!c) {
-          return fail(
+          return scheme_error(
               "mlir::ArgAndResultAttrsOpInterface::setArgAttrsAttr",
               llvm::Twine(
                   "op does not implement ArgAndResultAttrsOpInterface:") +
@@ -358,15 +366,15 @@ void registerInterfacesCallInterfacesBindings() {
                            mlir::cast_if_present<mlir::ArrayAttr>(
                                mlir::Attribute::getFromOpaquePointer(
                                    reinterpret_cast<const void*>(attrs))));
-        return llvm::Error::success();
+        return Svoid;
       });
-  register_binding(
+  Sregister_symbol(
       "mlir::ArgAndResultAttrsOpInterface::setResAttrsAttr",
-      [](uint64_t op_ptr, uint64_t attrs) -> llvm::Error {
+      (void*)+[](uint64_t op_ptr, uint64_t attrs) -> ptr {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto* c = lookupConcept<mlir::ArgAndResultAttrsOpInterface>(op);
         if (!c) {
-          return fail(
+          return scheme_error(
               "mlir::ArgAndResultAttrsOpInterface::setResAttrsAttr",
               llvm::Twine(
                   "op does not implement ArgAndResultAttrsOpInterface:") +
@@ -376,53 +384,54 @@ void registerInterfacesCallInterfacesBindings() {
                            mlir::cast_if_present<mlir::ArrayAttr>(
                                mlir::Attribute::getFromOpaquePointer(
                                    reinterpret_cast<const void*>(attrs))));
-        return llvm::Error::success();
+        return Svoid;
       });
-  register_binding(
+  Sregister_symbol(
       "mlir::ArgAndResultAttrsOpInterface::removeArgAttrsAttr",
-      [](uint64_t op_ptr) -> llvm::Expected<uint64_t> {
+      (void*)+[](uint64_t op_ptr) -> ptr {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto* c = lookupConcept<mlir::ArgAndResultAttrsOpInterface>(op);
         if (!c) {
-          return fail(
+          return scheme_error(
               "mlir::ArgAndResultAttrsOpInterface::removeArgAttrsAttr",
               llvm::Twine(
                   "op does not implement ArgAndResultAttrsOpInterface:") +
                   " " + llvm::Twine(op->getName().getStringRef()));
         }
-        return reinterpret_cast<uint64_t>(
-            c->removeArgAttrsAttr(c, op).getAsOpaquePointer());
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            c->removeArgAttrsAttr(c, op).getAsOpaquePointer()));
       });
-  register_binding(
+  Sregister_symbol(
       "mlir::ArgAndResultAttrsOpInterface::removeResAttrsAttr",
-      [](uint64_t op_ptr) -> llvm::Expected<uint64_t> {
+      (void*)+[](uint64_t op_ptr) -> ptr {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto* c = lookupConcept<mlir::ArgAndResultAttrsOpInterface>(op);
         if (!c) {
-          return fail(
+          return scheme_error(
               "mlir::ArgAndResultAttrsOpInterface::removeResAttrsAttr",
               llvm::Twine(
                   "op does not implement ArgAndResultAttrsOpInterface:") +
                   " " + llvm::Twine(op->getName().getStringRef()));
         }
-        return reinterpret_cast<uint64_t>(
-            c->removeResAttrsAttr(c, op).getAsOpaquePointer());
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            c->removeResAttrsAttr(c, op).getAsOpaquePointer()));
       });
 
-  register_binding(
+  Sregister_symbol(
       "mlir::ArgAndResultAttrsOpInterface::getResAttrsAttr",
-      [](uint64_t op_ptr) -> llvm::Expected<uint64_t> {
+      (void*)+[](uint64_t op_ptr) -> ptr {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto* c = lookupConcept<mlir::ArgAndResultAttrsOpInterface>(op);
         if (!c) {
-          return fail(
+          return scheme_error(
               "mlir::ArgAndResultAttrsOpInterface::getResAttrsAttr",
               llvm::Twine(
                   "op does not implement ArgAndResultAttrsOpInterface:") +
                   " " + llvm::Twine(op->getName().getStringRef()));
         }
         mlir::ArrayAttr a = c->getResAttrsAttr(c, op);
-        return a ? reinterpret_cast<uint64_t>(a.getAsOpaquePointer()) : 0;
+        return Sunsigned64(
+            a ? reinterpret_cast<uint64_t>(a.getAsOpaquePointer()) : 0);
       });
 }
 

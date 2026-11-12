@@ -22,14 +22,15 @@ namespace crest {
 void registerDialectMemRefIRMemRefBindings() {
   // MemRefType::get: create a MemRefType from a RankedTensorType.
   // (ranked-tensor-type-ptr) → Type uptr
-  register_binding(
-      "mlir::MemRefType::get", [](uint64_t tensor_type_ptr) -> uint64_t {
+  Sregister_symbol(
+      "mlir::MemRefType::get", (void*)+[](uint64_t tensor_type_ptr) -> ptr {
         auto t =
             mlir::cast<mlir::RankedTensorType>(mlir::Type::getFromOpaquePointer(
                 reinterpret_cast<const void*>(tensor_type_ptr)));
         auto memref_type =
             mlir::MemRefType::get(t.getShape(), t.getElementType());
-        return reinterpret_cast<uint64_t>(memref_type.getAsOpaquePointer());
+        return Sunsigned64(
+            reinterpret_cast<uint64_t>(memref_type.getAsOpaquePointer()));
       });
 
   // memref::AllocOp::create: allocate a MemRefType on the heap.
@@ -37,15 +38,15 @@ void registerDialectMemRefIRMemRefBindings() {
   register_builder_binding(
       "mlir::memref::AllocOp::create",
       [](mlir::OpBuilder& builder, uint64_t loc_ptr,
-         uint64_t memref_type_ptr) -> uint64_t {
+         uint64_t memref_type_ptr) -> ptr {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto memref_type =
             mlir::cast<mlir::MemRefType>(mlir::Type::getFromOpaquePointer(
                 reinterpret_cast<const void*>(memref_type_ptr)));
         auto alloc = mlir::memref::AllocOp::create(builder, loc, memref_type);
-        return reinterpret_cast<uint64_t>(
-            alloc.getResult().getAsOpaquePointer());
+        return Sunsigned64(
+            reinterpret_cast<uint64_t>(alloc.getResult().getAsOpaquePointer()));
       });
 
   // memref::DeallocOp::create: free a memref allocation.
@@ -53,13 +54,13 @@ void registerDialectMemRefIRMemRefBindings() {
   register_builder_binding(
       "mlir::memref::DeallocOp::create",
       [](mlir::OpBuilder& builder, uint64_t loc_ptr,
-         uint64_t memref_ptr) -> uint64_t {
+         uint64_t memref_ptr) -> ptr {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto memref = mlir::Value::getFromOpaquePointer(
             reinterpret_cast<const void*>(memref_ptr));
         auto dealloc = mlir::memref::DeallocOp::create(builder, loc, memref);
-        return reinterpret_cast<uint64_t>(dealloc.getOperation());
+        return Sunsigned64(reinterpret_cast<uint64_t>(dealloc.getOperation()));
       });
 
   // memref::LoadOp::create: load from a memref at given indices.
@@ -68,7 +69,7 @@ void registerDialectMemRefIRMemRefBindings() {
   register_builder_binding(
       "mlir::memref::LoadOp::create",
       [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t memref_ptr,
-         ptr indices_list) -> uint64_t {
+         ptr indices_list) -> ptr {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto memref = mlir::Value::getFromOpaquePointer(
@@ -80,22 +81,25 @@ void registerDialectMemRefIRMemRefBindings() {
               reinterpret_cast<const void*>(uval)));
         }
         auto load = mlir::memref::LoadOp::create(builder, loc, memref, indices);
-        return reinterpret_cast<uint64_t>(
-            load.getResult().getAsOpaquePointer());
+        return Sunsigned64(
+            reinterpret_cast<uint64_t>(load.getResult().getAsOpaquePointer()));
       });
 
   // Register MemRefDialect into a DialectRegistry.
-  register_binding(
+  Sregister_symbol(
       "mlir::DialectRegistry::insert<mlir::memref::MemRefDialect>",
-      [](uint64_t registry_ptr) -> llvm::Error {
-        CREST_TRY(
-            crest_lookup1,
-            crest::CrestBox<mlir::DialectRegistry>::inner(
-                registry_ptr,
-                "mlir::DialectRegistry::insert<mlir::memref::MemRefDialect>"));
+      (void*)+[](uint64_t registry_ptr) -> ptr {
+        auto* crest_lookup1_box =
+            crest::CrestBox<mlir::DialectRegistry>::inner(registry_ptr);
+        if (!crest_lookup1_box) {
+          return scheme_error(
+              "mlir::DialectRegistry::insert<mlir::memref::MemRefDialect>",
+              "null pointer or not a CrestBox<mlir::DialectRegistry>");
+        }
+        auto& crest_lookup1 = *crest_lookup1_box;
 
         crest_lookup1.insert<mlir::memref::MemRefDialect>();
-        return llvm::Error::success();
+        return Svoid;
       });
 }
 

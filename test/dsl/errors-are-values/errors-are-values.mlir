@@ -1,4 +1,4 @@
-// A binding that fails answers an error object and Scheme raises it after the C++ call has returned
+// A binding that fails answers an error (who . why) and Scheme raises it after the C++ call has returned
 // (plans/04-errors-are-values.md). No error crosses a C function, so nothing is left behind: stock Chez
 // keeps about 208 bytes for every error that does, which this test would see as growth of the C++ heap.
 // The message is the same as before the change, and a guard catches the error.

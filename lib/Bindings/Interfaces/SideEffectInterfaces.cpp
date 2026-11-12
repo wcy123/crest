@@ -72,26 +72,26 @@ void registerInterfacesSideEffectInterfacesBindings() {
   //
   // The address that the TypeID of the interface wraps, which C++ turns back
   // with TypeID::getFromOpaquePointer to find how to install the interface.
-  register_binding("mlir::MemoryEffectOpInterface::getInterfaceID",
-                   []() -> uint64_t {
-                     return reinterpret_cast<uint64_t>(
-                         mlir::MemoryEffectOpInterface::getInterfaceID()
-                             .getAsOpaquePointer());
-                   });
+  Sregister_symbol(
+      "mlir::MemoryEffectOpInterface::getInterfaceID", (void*)+[]() -> ptr {
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            mlir::MemoryEffectOpInterface::getInterfaceID()
+                .getAsOpaquePointer()));
+      });
   // crest::MemoryEffectOpInterface::noEffects () -> uptr
   //
   // The address of the C function that stands for "no memory effects", for the
   // clause (getEffects :none).
-  register_binding("crest::MemoryEffectOpInterface::noEffects",
-                   []() -> uint64_t {
-                     return reinterpret_cast<uint64_t>(&noMemoryEffects);
-                   });
-  register_binding("mlir::ConditionallySpeculatable::getInterfaceID",
-                   []() -> uint64_t {
-                     return reinterpret_cast<uint64_t>(
-                         mlir::ConditionallySpeculatable::getInterfaceID()
-                             .getAsOpaquePointer());
-                   });
+  Sregister_symbol(
+      "crest::MemoryEffectOpInterface::noEffects", (void*)+[]() -> ptr {
+        return Sunsigned64(reinterpret_cast<uint64_t>(&noMemoryEffects));
+      });
+  Sregister_symbol(
+      "mlir::ConditionallySpeculatable::getInterfaceID", (void*)+[]() -> ptr {
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            mlir::ConditionallySpeculatable::getInterfaceID()
+                .getAsOpaquePointer()));
+      });
 }
 
 } // namespace crest

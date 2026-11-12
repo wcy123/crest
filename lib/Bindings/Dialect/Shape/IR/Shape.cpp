@@ -16,48 +16,42 @@ namespace crest {
 void registerDialectShapeBindings() {
   /// ctx_ptr: CrestBox<MLIRContext>* | MLIRContext* → mlir::shape::ShapeType
   /// (opaque)
-  register_binding(
-      "mlir::shape::ShapeType::get",
-      [](uint64_t ctx_ptr) -> llvm::Expected<uint64_t> {
+  Sregister_symbol(
+      "mlir::shape::ShapeType::get", (void*)+[](uint64_t ctx_ptr) -> ptr {
         if (!ctx_ptr) {
-          return fail("mlir::shape::ShapeType::get",
-                      llvm::Twine("ctx must not be null"));
+          return scheme_error("mlir::shape::ShapeType::get",
+                              "ctx must not be null");
         }
-        CREST_TRY(crest_lookup1,
-                  crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        auto* crest_lookup1 = crest::as_context(ctx_ptr);
 
-        return reinterpret_cast<uint64_t>(
-            mlir::shape::ShapeType::get(crest_lookup1).getAsOpaquePointer());
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            mlir::shape::ShapeType::get(crest_lookup1).getAsOpaquePointer()));
       });
   /// ctx_ptr: CrestBox<MLIRContext>* | MLIRContext* → mlir::shape::SizeType
   /// (opaque)
-  register_binding(
-      "mlir::shape::SizeType::get",
-      [](uint64_t ctx_ptr) -> llvm::Expected<uint64_t> {
+  Sregister_symbol(
+      "mlir::shape::SizeType::get", (void*)+[](uint64_t ctx_ptr) -> ptr {
         if (!ctx_ptr) {
-          return fail("mlir::shape::SizeType::get",
-                      llvm::Twine("ctx must not be null"));
+          return scheme_error("mlir::shape::SizeType::get",
+                              "ctx must not be null");
         }
-        CREST_TRY(crest_lookup1,
-                  crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        auto* crest_lookup1 = crest::as_context(ctx_ptr);
 
-        return reinterpret_cast<uint64_t>(
-            mlir::shape::SizeType::get(crest_lookup1).getAsOpaquePointer());
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            mlir::shape::SizeType::get(crest_lookup1).getAsOpaquePointer()));
       });
   /// ctx_ptr: CrestBox<MLIRContext>* | MLIRContext* →
   /// mlir::shape::WitnessType (opaque)
-  register_binding(
-      "mlir::shape::WitnessType::get",
-      [](uint64_t ctx_ptr) -> llvm::Expected<uint64_t> {
+  Sregister_symbol(
+      "mlir::shape::WitnessType::get", (void*)+[](uint64_t ctx_ptr) -> ptr {
         if (!ctx_ptr) {
-          return fail("mlir::shape::WitnessType::get",
-                      llvm::Twine("ctx must not be null"));
+          return scheme_error("mlir::shape::WitnessType::get",
+                              "ctx must not be null");
         }
-        CREST_TRY(crest_lookup1,
-                  crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        auto* crest_lookup1 = crest::as_context(ctx_ptr);
 
-        return reinterpret_cast<uint64_t>(
-            mlir::shape::WitnessType::get(crest_lookup1).getAsOpaquePointer());
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            mlir::shape::WitnessType::get(crest_lookup1).getAsOpaquePointer()));
       });
 }
 

@@ -40,32 +40,18 @@ extern "C" {
 #endif
 }
 
-namespace crest {
-
-// as_ptr<T>(address, who): a T* from the address that Scheme gives, or an error
-// (see CREST_TRY in Error.h; plans/04-errors-are-values.md). Only for the types
-// whose objects arrive in more than one form (specialised below); every other
-// type casts the address to its shell type and calls inner(address, who).
-template <typename T>
-[[nodiscard]] llvm::Expected<T*> as_ptr(uint64_t ptr_val,
-                                        const char* who) = delete;
-
-} // namespace crest
-
-// Forward declarations for the as_ptr specializations.
 namespace mlir {
 class MLIRContext;
 } // namespace mlir
 
 namespace crest {
-// Explicit specialisation for mlir::MLIRContext: accepts
-// CrestBox<MLIRContext>* (user-created) or a raw MLIRContext* returned by
-// MLIR APIs such as op->getContext() and type.getContext(). Raw pointers are
-// valid MLIR-managed memory and need no CrestObject wrapper — they are never
-// freed by Scheme.
-template <>
-[[nodiscard]] llvm::Expected<mlir::MLIRContext*>
-as_ptr<mlir::MLIRContext>(uint64_t ptr_val, const char* who);
+
+// The MLIRContext* that Scheme's address stands for, or nullptr when the
+// address is 0: a CrestBox<MLIRContext>* from mlir::MLIRContext::new, or a raw
+// MLIRContext* from an MLIR getter (op->getContext(), type.getContext()). A raw
+// pointer is owned by MLIR and needs no CrestObject wrapper.
+mlir::MLIRContext* as_context(uint64_t address);
+
 } // namespace crest
 
 // ---------------------------------------------------------------------------

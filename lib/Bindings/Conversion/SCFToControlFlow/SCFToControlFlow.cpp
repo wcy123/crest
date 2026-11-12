@@ -17,15 +17,20 @@ namespace crest {
 void registerConversionSCFToControlFlowBindings() {
   // populateSCFToControlFlowConversionPatterns: lower SCF to cf dialect.
   // (patterns-ptr) → void
-  register_binding(
+  Sregister_symbol(
       "mlir::populateSCFToControlFlowConversionPatterns",
-      [](uint64_t patterns_ptr) -> llvm::Error {
-        CREST_TRY(patterns,
-                  crest::as_ref<mlir::RewritePatternSet>(
-                      patterns_ptr,
-                      "mlir::populateSCFToControlFlowConversionPatterns"));
+      (void*)+[](uint64_t patterns_ptr) -> ptr {
+        auto* patterns_box =
+            crest::as_ref<mlir::RewritePatternSet>(patterns_ptr);
+        if (!patterns_box) {
+          return scheme_error(
+              "mlir::populateSCFToControlFlowConversionPatterns",
+              "null pointer or not a CrestBox<mlir::RewritePatternSet> or "
+              "CrestBox<mlir::RewritePatternSet*>");
+        }
+        auto& patterns = *patterns_box;
         mlir::populateSCFToControlFlowConversionPatterns(patterns);
-        return llvm::Error::success();
+        return Svoid;
       });
 }
 

@@ -14,31 +14,27 @@
 namespace crest {
 
 void registerIRLocationBindings() {
-  register_binding(
-      "mlir::UnknownLoc::get",
-      [](uint64_t ctx_ptr) -> llvm::Expected<uint64_t> {
+  Sregister_symbol(
+      "mlir::UnknownLoc::get", (void*)+[](uint64_t ctx_ptr) -> ptr {
         if (!ctx_ptr) {
-          return fail("mlir::UnknownLoc::get",
-                      llvm::Twine("ctx must not be null"));
-          return 0;
+          return scheme_error("mlir::UnknownLoc::get", "ctx must not be null");
         }
-        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
-        return reinterpret_cast<uint64_t>(
-            mlir::UnknownLoc::get(ctx).getAsOpaquePointer());
+        auto* ctx = crest::as_context(ctx_ptr);
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            mlir::UnknownLoc::get(ctx).getAsOpaquePointer()));
       });
-  register_binding(
+  Sregister_symbol(
       "mlir::FileLineColLoc::get",
-      [](uint64_t ctx_ptr, const char* filename, unsigned line,
-         unsigned col) -> llvm::Expected<uint64_t> {
+      (void*)+[](uint64_t ctx_ptr, const char* filename, unsigned line,
+                 unsigned col) -> ptr {
         if (!ctx_ptr) {
-          return fail("mlir::FileLineColLoc::get",
-                      llvm::Twine("ctx must not be null"));
-          return 0;
+          return scheme_error("mlir::FileLineColLoc::get",
+                              "ctx must not be null");
         }
-        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
-        return reinterpret_cast<uint64_t>(
+        auto* ctx = crest::as_context(ctx_ptr);
+        return Sunsigned64(reinterpret_cast<uint64_t>(
             mlir::FileLineColLoc::get(ctx, filename, line, col)
-                .getAsOpaquePointer());
+                .getAsOpaquePointer()));
       });
 }
 

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Error.h"
 #include <cstdint> // uint64_t
 #include <utility> // std::forward for CrestBox<T> constructor
 
@@ -51,22 +50,16 @@ template <typename T> struct AsCrest : public CrestObject {
 
   AsCrest() : CrestObject{type_deletor} {}
 
-  // Checked downcast from the raw address Scheme passes: an error naming `who`
-  // when the address is null or its type tag is not T's
-  // (plans/04-errors-are-values.md): see CREST_TRY in Error.h. The null test is
-  // on the integer, so it is well-defined (a null `this` is undefined behavior
-  // and compilers delete such tests). The same check as an error value, for a
-  // binding that answers its error to Scheme instead of raising it
-  // (plans/04-errors-are-values.md): see CREST_TRY in Error.h.
-  static llvm::Expected<T&> checked(uint64_t addr, const char* who) {
+  // Checked downcast from the raw address Scheme passes: nullptr when the
+  // address is 0 or its type tag is not T's. The null test is on the integer,
+  // so it is well-defined (a null `this` is undefined behavior and compilers
+  // delete such tests).
+  static T* checked(uint64_t addr) {
     if (!addr) {
-      return fail(who, "null pointer");
+      return nullptr;
     }
     auto* obj = reinterpret_cast<CrestObject*>(addr);
-    if (!obj->isa<T>()) {
-      return fail(who, "wrong CrestObject type");
-    }
-    return *static_cast<T*>(obj);
+    return obj->isa<T>() ? static_cast<T*>(obj) : nullptr;
   }
 };
 
@@ -83,19 +76,17 @@ template <typename T> inline bool CrestObject::isa() const {
 //   OperationState, RewritePatternSet, TypeConverter, ConversionTarget,
 //   OpBuilder.
 // inner() reaches the boxed T of a typed shell; the static inner(addr, who)
-// first verifies that a raw address from Scheme really is a CrestBox<T>.
+// first verifies that a raw address from Scheme really is a CrestBox<T>:
+// the boxed T, or nullptr.
 template <typename T> struct CrestBox : public AsCrest<CrestBox<T>> {
   template <typename... Args>
   explicit CrestBox(Args&&... args)
       : AsCrest<CrestBox<T>>(), value_(std::forward<Args>(args)...) {}
   T& inner() { return value_; }
   const T& inner() const { return value_; }
-  static llvm::Expected<T&> inner(uint64_t addr, const char* who) {
-    auto box = AsCrest<CrestBox<T>>::checked(addr, who);
-    if (!box) {
-      return box.takeError();
-    }
-    return (*box).value_;
+  static T* inner(uint64_t addr) {
+    auto* box = AsCrest<CrestBox<T>>::checked(addr);
+    return box ? &box->value_ : nullptr;
   }
 
 private:
@@ -106,33 +97,29 @@ private:
 // the shell, T lives elsewhere. Use for objects MLIR owns and passes into
 // callbacks (e.g. RewriterBase in patterns, whose destructor is protected, so
 // CrestBox<RewriterBase> cannot exist). inner() dereferences, so it returns
-// T& exactly like CrestBox<T>::inner(). A raw pointer can therefore never be
-// boxed by value.
+// T* exactly like CrestBox<T>::inner(addr). A raw pointer can therefore never
+// be boxed by value.
 template <typename T> struct CrestBox<T*> : public AsCrest<CrestBox<T*>> {
   explicit CrestBox(T* p) : AsCrest<CrestBox<T*>>(), ptr_(p) {}
   T& inner() const { return *ptr_; }
-  static llvm::Expected<T&> inner(uint64_t addr, const char* who) {
-    auto box = AsCrest<CrestBox<T*>>::checked(addr, who);
-    if (!box) {
-      return box.takeError();
-    }
-    return *(*box).ptr_;
+  static T* inner(uint64_t addr) {
+    auto* box = AsCrest<CrestBox<T*>>::checked(addr);
+    return box ? box->ptr_ : nullptr;
   }
 
 private:
   T* ptr_;
 };
 
-// A T& from either kind of shell a Scheme program can hold for T: the
+// A T* from either kind of shell a Scheme program can hold for T: the
 // CrestBox<T> it made itself or the CrestBox<T*> that borrows an object MLIR
 // owns (as the pattern set a dialect's :get-canonicalization-patterns hook
-// receives), or an error.
-template <typename T>
-llvm::Expected<T&> as_ref(uint64_t addr, const char* who) {
+// receives), or nullptr.
+template <typename T> T* as_ref(uint64_t addr) {
   if (addr && reinterpret_cast<CrestObject*>(addr)->isa<CrestBox<T*>>()) {
-    return CrestBox<T*>::inner(addr, who);
+    return CrestBox<T*>::inner(addr);
   }
-  return CrestBox<T>::inner(addr, who);
+  return CrestBox<T>::inner(addr);
 }
 
 void registerCrestObjectBindings();

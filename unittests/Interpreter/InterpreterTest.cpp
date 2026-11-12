@@ -48,8 +48,9 @@ static ptr evalScheme(const char* code) {
   return scheme_call("eval", expr);
 }
 
-// What crest-make-static-c-callable (scheme/crest/callback.sls) does: make a
-// foreign-callable, lock its code object once, answer its address.
+// What crest-make-raw-c-callable (scheme/crest/callback.sls, the callable of a
+// slot) does: make a foreign-callable with a C result, lock its code object
+// once, answer its address.
 static uint64_t makeCallableEntry() {
   return Sunsigned64_value(evalScheme(
       "(let ([code (foreign-callable (lambda (x) (+ x 1)) (int) int)])"
@@ -66,10 +67,10 @@ TEST_F(InterpreterTest, CallableCallsTheSchemeProcedure) {
 
 // REGRESSION: a failing binding must leave nothing behind
 // (plans/04-errors-are-values.md). It used to raise the error from C++
-// (scheme_error): the error crossed the C++ frame, which skipped its
-// destructors (about 550 bytes of C++ memory per error) and left about 200
-// bytes in Chez itself (S_call_help). Now a binding answers an error object,
-// and Scheme raises it after the C++ call has returned.
+// (a Scheme error raised in C++): the error crossed the C++ frame, which
+// skipped its destructors (about 550 bytes of C++ memory per error) and left
+// about 200 bytes in Chez itself (S_call_help). Now a binding answers an error
+// (who . why), and Scheme raises it after the C++ call has returned.
 #if defined(__GLIBC__)
 // The bytes that malloc has given out and not got back. mallinfo2 replaces
 // mallinfo (glibc 2.33), which newer glibc marks as deprecated.
@@ -82,20 +83,22 @@ static size_t bytesInUse() {
 }
 
 TEST_F(InterpreterTest, FailingBindingDoesNotLeakCppMemory) {
-  crest::register_binding("crest::test::fail", []() -> llvm::Error {
-    return crest::fail("crest::test",
-                       "a message that is long enough to matter " +
-                           llvm::Twine(42) + " and a second part");
-  });
+  Sregister_symbol(
+      "crest::test::fail", (void*)+[]() -> ptr {
+        return crest::scheme_error(
+            "crest::test",
+            llvm::Twine("a message that is long enough to matter ") +
+                llvm::Twine(42) + " and a second part");
+      });
   // What crest-foreign-procedure does, by hand: call for a scheme-object and
-  // raise the error object.
+  // raise the error.
   evalScheme("(define crest-test-fail"
              "  (foreign-procedure \"crest::test::fail\" () scheme-object))");
   ptr once = evalScheme("(lambda ()"
                         "  (guard (c [#t #f])"
                         "    (let ([r (crest-test-fail)])"
-                        "      (when (and (pair? r) (eof-object? (car r))) "
-                        "(error (cadr r) (cddr r))))))");
+                        "      (when (and (pair? r) (symbol? (car r))) "
+                        "(error (symbol->string (car r)) (cdr r))))))");
   LockedSchemeObject locked(once);
   auto run = [&](int times) {
     for (int i = 0; i < times; ++i) {

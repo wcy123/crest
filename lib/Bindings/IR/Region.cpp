@@ -15,52 +15,48 @@
 namespace crest {
 
 void registerIRRegionBindings() {
-  register_binding("mlir::Region::push_back",
-                   [](uint64_t region_ptr, uint64_t block_ptr) -> llvm::Error {
-                     if (!region_ptr) {
-                       return fail("mlir::Region::push_back",
-                                   llvm::Twine("region pointer is null"));
-                       return llvm::Error::success();
-                     }
-                     reinterpret_cast<mlir::Region*>(region_ptr)
-                         ->push_back(reinterpret_cast<mlir::Block*>(block_ptr));
-                     return llvm::Error::success();
-                   });
-  register_binding(
-      "mlir::Region::getParentOp",
-      [](uint64_t region_ptr) -> llvm::Expected<uint64_t> {
+  Sregister_symbol(
+      "mlir::Region::push_back",
+      (void*)+[](uint64_t region_ptr, uint64_t block_ptr) -> ptr {
         if (!region_ptr) {
-          return fail("mlir::Region::getParentOp",
-                      llvm::Twine("region pointer is null"));
-          return 0;
+          return scheme_error("mlir::Region::push_back",
+                              "region pointer is null");
         }
-        return reinterpret_cast<uint64_t>(
-            reinterpret_cast<mlir::Region*>(region_ptr)->getParentOp());
+        reinterpret_cast<mlir::Region*>(region_ptr)
+            ->push_back(reinterpret_cast<mlir::Block*>(block_ptr));
+        return Svoid;
       });
-  register_binding("mlir::Region::front",
-                   [](uint64_t region_ptr) -> llvm::Expected<uint64_t> {
-                     if (!region_ptr) {
-                       return fail("mlir::Region::front",
-                                   llvm::Twine("region pointer is null"));
-                       return 0;
-                     }
-                     auto* region = reinterpret_cast<mlir::Region*>(region_ptr);
-                     if (region->empty()) {
-                       return 0;
-                     }
-                     return reinterpret_cast<uint64_t>(&region->front());
-                   });
+  Sregister_symbol(
+      "mlir::Region::getParentOp", (void*)+[](uint64_t region_ptr) -> ptr {
+        if (!region_ptr) {
+          return scheme_error("mlir::Region::getParentOp",
+                              "region pointer is null");
+        }
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            reinterpret_cast<mlir::Region*>(region_ptr)->getParentOp()));
+      });
+  Sregister_symbol(
+      "mlir::Region::front", (void*)+[](uint64_t region_ptr) -> ptr {
+        if (!region_ptr) {
+          return scheme_error("mlir::Region::front", "region pointer is null");
+        }
+        auto* region = reinterpret_cast<mlir::Region*>(region_ptr);
+        if (region->empty()) {
+          return Sunsigned64(0);
+        }
+        return Sunsigned64(reinterpret_cast<uint64_t>(&region->front()));
+      });
 
-  register_binding("mlir::Region::emplaceBlock",
-                   [](uint64_t region_ptr) -> uint64_t {
-                     if (!region_ptr) {
-                       return 0;
-                     }
-                     auto* region = reinterpret_cast<mlir::Region*>(region_ptr);
-                     auto* block = new mlir::Block();
-                     region->push_back(block);
-                     return reinterpret_cast<uint64_t>(block);
-                   });
+  Sregister_symbol(
+      "mlir::Region::emplaceBlock", (void*)+[](uint64_t region_ptr) -> ptr {
+        if (!region_ptr) {
+          return Sunsigned64(0);
+        }
+        auto* region = reinterpret_cast<mlir::Region*>(region_ptr);
+        auto* block = new mlir::Block();
+        region->push_back(block);
+        return Sunsigned64(reinterpret_cast<uint64_t>(block));
+      });
 }
 
 } // namespace crest

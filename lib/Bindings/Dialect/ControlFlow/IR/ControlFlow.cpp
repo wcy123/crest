@@ -16,17 +16,20 @@ namespace crest {
 void registerDialectControlFlowIRControlFlowBindings() {
   // Register ControlFlowDialect into a DialectRegistry.
   // (registry-ptr) → void
-  register_binding(
+  Sregister_symbol(
       "mlir::DialectRegistry::insert<mlir::cf::ControlFlowDialect>",
-      [](uint64_t registry_ptr) -> llvm::Error {
-        CREST_TRY(
-            crest_lookup1,
-            crest::CrestBox<mlir::DialectRegistry>::inner(
-                registry_ptr,
-                "mlir::DialectRegistry::insert<mlir::cf::ControlFlowDialect>"));
+      (void*)+[](uint64_t registry_ptr) -> ptr {
+        auto* crest_lookup1_box =
+            crest::CrestBox<mlir::DialectRegistry>::inner(registry_ptr);
+        if (!crest_lookup1_box) {
+          return scheme_error(
+              "mlir::DialectRegistry::insert<mlir::cf::ControlFlowDialect>",
+              "null pointer or not a CrestBox<mlir::DialectRegistry>");
+        }
+        auto& crest_lookup1 = *crest_lookup1_box;
 
         crest_lookup1.insert<mlir::cf::ControlFlowDialect>();
-        return llvm::Error::success();
+        return Svoid;
       });
 }
 

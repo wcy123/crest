@@ -20,55 +20,68 @@ namespace crest {
 void registerDialectFuncIRFuncOpsBindings() {
   // func::FuncOp::create: create a func.func operation via rewriter.
   // (rw-ptr loc-ptr name-str functype-ptr) → Operation* uptr
-  register_binding("mlir::func::FuncOp::create",
-                   [](uint64_t rw_ptr, uint64_t loc_ptr, const char* name,
-                      uint64_t functype_ptr) -> llvm::Expected<uint64_t> {
-                     CREST_TRY(rw, crest::CrestBox<mlir::RewriterBase*>::inner(
-                                       rw_ptr, "mlir::func::FuncOp::create"));
-                     auto loc = mlir::Location::getFromOpaquePointer(
-                         reinterpret_cast<const void*>(loc_ptr));
-                     auto functype = mlir::cast<mlir::FunctionType>(
-                         mlir::Type::getFromOpaquePointer(
-                             reinterpret_cast<const void*>(functype_ptr)));
-                     auto func =
-                         mlir::func::FuncOp::create(rw, loc, name, functype);
-                     return reinterpret_cast<uint64_t>(func.getOperation());
-                   });
+  Sregister_symbol(
+      "mlir::func::FuncOp::create",
+      (void*)+[](uint64_t rw_ptr, uint64_t loc_ptr, const char* name,
+                 uint64_t functype_ptr) -> ptr {
+        auto* rw_box = crest::CrestBox<mlir::RewriterBase*>::inner(rw_ptr);
+        if (!rw_box) {
+          return scheme_error(
+              "mlir::func::FuncOp::create",
+              "null pointer or not a CrestBox<mlir::RewriterBase*>");
+        }
+        auto& rw = *rw_box;
+        auto loc = mlir::Location::getFromOpaquePointer(
+            reinterpret_cast<const void*>(loc_ptr));
+        auto functype =
+            mlir::cast<mlir::FunctionType>(mlir::Type::getFromOpaquePointer(
+                reinterpret_cast<const void*>(functype_ptr)));
+        auto func = mlir::func::FuncOp::create(rw, loc, name, functype);
+        return Sunsigned64(reinterpret_cast<uint64_t>(func.getOperation()));
+      });
 
   // func::ReturnOp::create: create a void func.return via rewriter.
   // (rw-ptr loc-ptr) → Operation* uptr
-  register_binding(
+  Sregister_symbol(
       "mlir::func::ReturnOp::create",
-      [](uint64_t rw_ptr, uint64_t loc_ptr) -> llvm::Expected<uint64_t> {
-        CREST_TRY(rw, crest::CrestBox<mlir::RewriterBase*>::inner(
-                          rw_ptr, "mlir::func::ReturnOp::create"));
+      (void*)+[](uint64_t rw_ptr, uint64_t loc_ptr) -> ptr {
+        auto* rw_box = crest::CrestBox<mlir::RewriterBase*>::inner(rw_ptr);
+        if (!rw_box) {
+          return scheme_error(
+              "mlir::func::ReturnOp::create",
+              "null pointer or not a CrestBox<mlir::RewriterBase*>");
+        }
+        auto& rw = *rw_box;
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto ret = mlir::func::ReturnOp::create(rw, loc);
-        return reinterpret_cast<uint64_t>(ret.getOperation());
+        return Sunsigned64(reinterpret_cast<uint64_t>(ret.getOperation()));
       });
 
   // func::FuncOp::getBody: get the function body region.
   // (op-ptr) → Region uptr
-  register_binding("mlir::func::FuncOp::getBody",
-                   [](uint64_t op_ptr) -> uint64_t {
-                     auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-                     auto func = mlir::cast<mlir::func::FuncOp>(op);
-                     return reinterpret_cast<uint64_t>(&func.getBody());
-                   });
+  Sregister_symbol(
+      "mlir::func::FuncOp::getBody", (void*)+[](uint64_t op_ptr) -> ptr {
+        auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
+        auto func = mlir::cast<mlir::func::FuncOp>(op);
+        return Sunsigned64(reinterpret_cast<uint64_t>(&func.getBody()));
+      });
 
   // Register FuncDialect into a DialectRegistry.
-  register_binding(
+  Sregister_symbol(
       "mlir::DialectRegistry::insert<mlir::func::FuncDialect>",
-      [](uint64_t registry_ptr) -> llvm::Error {
-        CREST_TRY(
-            crest_lookup1,
-            crest::CrestBox<mlir::DialectRegistry>::inner(
-                registry_ptr,
-                "mlir::DialectRegistry::insert<mlir::func::FuncDialect>"));
+      (void*)+[](uint64_t registry_ptr) -> ptr {
+        auto* crest_lookup1_box =
+            crest::CrestBox<mlir::DialectRegistry>::inner(registry_ptr);
+        if (!crest_lookup1_box) {
+          return scheme_error(
+              "mlir::DialectRegistry::insert<mlir::func::FuncDialect>",
+              "null pointer or not a CrestBox<mlir::DialectRegistry>");
+        }
+        auto& crest_lookup1 = *crest_lookup1_box;
 
         crest_lookup1.insert<mlir::func::FuncDialect>();
-        return llvm::Error::success();
+        return Svoid;
       });
 }
 

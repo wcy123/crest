@@ -33,13 +33,6 @@
 
 namespace crest {
 
-namespace {
-// The text of the error that a Scheme inferReturnTypes raised, given by its
-// callable (reportFailure) before it answers failure, for the message of the
-// error that comes back through the function pointer. Cleared when used.
-std::string g_reported_failure;
-} // namespace
-
 void registerInterfacesInferTypeOpInterfaceBindings() {
   // The Scheme foreign-callable answers with one byte (1 = success, 0 =
   // failure), which is how a LogicalResult is stored: a single bool. Windows
@@ -57,14 +50,6 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
           "InferTypeOpInterface: LogicalResult is not stored as 1 / 0");
     }
   }
-
-  // crest::InferTypeOpInterface::reportFailure (string message)
-  //
-  // The callable of an op calls it with the text of the error its Scheme
-  // method raised, before it answers failure, so that the diagnostic shows it.
-  register_binding(
-      "crest::InferTypeOpInterface::reportFailure",
-      [](const char* message) -> void { g_reported_failure = message; });
 
   // crest::InferTypeOpInterface::adapt (scheme-object proc) (uptr w0 ... w10)
   //   (int refine) -> unsigned-8 (1 = success, 0 = failure)
@@ -87,11 +72,11 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
   // only the place for the answer: it holds the result types that the op has.
   // `proc` then gets them as a fifth argument, the list of Types, and what it
   // answers replaces them.
-  register_binding(
+  Sregister_symbol(
       "crest::InferTypeOpInterface::adapt",
-      [](ptr proc, uint64_t w0, uint64_t w1, uint64_t w2, uint64_t w3,
-         uint64_t w4, uint64_t w5, uint64_t w6, uint64_t w7, uint64_t w8,
-         uint64_t w9, uint64_t w10, int refine) -> uint8_t {
+      (void*)+[](ptr proc, uint64_t w0, uint64_t w1, uint64_t w2, uint64_t w3,
+                 uint64_t w4, uint64_t w5, uint64_t w6, uint64_t w7,
+                 uint64_t w8, uint64_t w9, uint64_t w10, int refine) -> ptr {
         static_assert(sizeof(std::optional<mlir::Location>) == 16 &&
                       sizeof(mlir::ValueRange) == 16 &&
                       sizeof(mlir::RegionRange) == 16 &&
@@ -154,7 +139,7 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
                               attributesArg);
         }
         if (types == Sfalse) {
-          return 0;
+          return Sunsigned64(0);
         }
         if (refine) {
           result->clear();
@@ -163,17 +148,17 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
           result->push_back(mlir::Type::getFromOpaquePointer(
               reinterpret_cast<const void*>(Sunsigned64_value(Scar(types)))));
         }
-        return 1;
+        return Sunsigned64(1);
       });
 
   // mlir::InferTypeOpInterface::getInterfaceID () -> uptr
   //
   // The address that the TypeID of the interface wraps, which C++ turns back
   // with TypeID::getFromOpaquePointer to find how to install the interface.
-  register_binding(
-      "mlir::InferTypeOpInterface::getInterfaceID", []() -> uint64_t {
-        return reinterpret_cast<uint64_t>(
-            mlir::InferTypeOpInterface::getInterfaceID().getAsOpaquePointer());
+  Sregister_symbol(
+      "mlir::InferTypeOpInterface::getInterfaceID", (void*)+[]() -> ptr {
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            mlir::InferTypeOpInterface::getInterfaceID().getAsOpaquePointer()));
       });
 
   // crest::InferTypeOpInterface::adaptCompatible (scheme-object proc)
@@ -184,10 +169,10 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
   // receives them: on Linux each 16-byte TypeRange is two numbers (w0 w1, w2
   // w3), on Windows one, the address of a copy (w0, w1). `proc` is called with
   // the two lists of Types.
-  register_binding(
+  Sregister_symbol(
       "crest::InferTypeOpInterface::adaptCompatible",
-      [](ptr proc, uint64_t w0, uint64_t w1, uint64_t w2,
-         uint64_t w3) -> uint8_t {
+      (void*)+[](ptr proc, uint64_t w0, uint64_t w1, uint64_t w2,
+                 uint64_t w3) -> ptr {
         static_assert(sizeof(mlir::TypeRange) == 16 &&
                       std::is_trivially_copyable_v<mlir::TypeRange>);
         mlir::TypeRange lhs;
@@ -202,10 +187,11 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
         std::memcpy(&lhs, lhsWords, sizeof(lhs));
         std::memcpy(&rhs, rhsWords, sizeof(rhs));
 #endif
-        return scheme_call(proc, Conversion<mlir::TypeRange, ptr>{}(lhs),
-                           Conversion<mlir::TypeRange, ptr>{}(rhs)) != Sfalse
-                   ? 1
-                   : 0;
+        return Sunsigned64(
+            scheme_call(proc, Conversion<mlir::TypeRange, ptr>{}(lhs),
+                        Conversion<mlir::TypeRange, ptr>{}(rhs)) != Sfalse
+                ? 1
+                : 0);
       });
 
   // The result types of the op named by `state`, from the operands, attributes
@@ -213,8 +199,7 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
   // implement InferTypeOpInterface. An OperationState reaches Scheme in two
   // forms (a box from with-OperationState, a raw pointer in a :parse callback),
   // and each has a binding that calls this.
-  static const auto infer =
-      [](mlir::OperationState& state) -> llvm::Expected<ptr> {
+  static const auto infer = [](mlir::OperationState& state) -> ptr {
     std::optional<mlir::RegisteredOperationName> info =
         state.name.getRegisteredInfo();
     auto* model =
@@ -224,46 +209,47 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
     }
     mlir::MLIRContext* ctx = state.getContext();
     llvm::SmallVector<mlir::Type, 4> types;
-    g_reported_failure.clear();
     if (mlir::failed(model->inferReturnTypes(
             ctx, state.location, state.operands,
             state.attributes.getDictionary(ctx), state.getRawProperties(),
             mlir::RegionRange(state.regions), types))) {
       std::string message =
           "cannot infer the result types of " + state.name.getStringRef().str();
-      if (!g_reported_failure.empty()) {
-        message += ": " + g_reported_failure;
-      } else if (!state.regions.empty()) {
+      if (!state.regions.empty()) {
         // An op-form fills the regions after the op exists, as the builders
         // of C++ need the op to own the block: an inference that reads them
         // (scf.if) finds them empty.
         message += ": its regions are still empty when the types are inferred "
                    "(they are filled after the op is created); write -> type";
       }
-      g_reported_failure.clear();
-      return fail("mlir::InferTypeOpInterface::inferReturnTypes", message);
+      return scheme_error("mlir::InferTypeOpInterface::inferReturnTypes",
+                          message);
     }
     return Conversion<mlir::TypeRange, ptr>{}(types);
   };
 
   // mlir::InferTypeOpInterface::inferReturnTypes<OperationState> (uptr state)
   //   state: a CrestBox<OperationState>, as with-OperationState makes
-  register_binding(
+  Sregister_symbol(
       "mlir::InferTypeOpInterface::inferReturnTypes<OperationState>",
-      [](uint64_t state_ptr) -> llvm::Expected<ptr> {
-        CREST_TRY(
-            crest_lookup1,
-            crest::CrestBox<mlir::OperationState>::inner(
-                state_ptr, "mlir::InferTypeOpInterface::inferReturnTypes"));
+      (void*)+[](uint64_t state_ptr) -> ptr {
+        auto* crest_lookup1_box =
+            crest::CrestBox<mlir::OperationState>::inner(state_ptr);
+        if (!crest_lookup1_box) {
+          return scheme_error(
+              "mlir::InferTypeOpInterface::inferReturnTypes<OperationState>",
+              "null pointer or not a CrestBox<mlir::OperationState>");
+        }
+        auto& crest_lookup1 = *crest_lookup1_box;
 
         return infer(crest_lookup1);
       });
 
   // mlir::InferTypeOpInterface::inferReturnTypes<OperationState*> (uptr state)
   //   state: the raw OperationState* of a :parse callback
-  register_binding(
+  Sregister_symbol(
       "mlir::InferTypeOpInterface::inferReturnTypes<OperationState*>",
-      [](uint64_t state_ptr) -> llvm::Expected<ptr> {
+      (void*)+[](uint64_t state_ptr) -> ptr {
         return infer(*reinterpret_cast<mlir::OperationState*>(state_ptr));
       });
 }

@@ -24,19 +24,20 @@ void registerDialectAffineIRAffineOpsBindings() {
   //   lbs, ubs, steps: Scheme lists of integers
   //   body-fn: a C function that Scheme made and keeps alive until the call
   //   returns, (nested-builder loc ivs count) → void, the callback of the C++
-  //   function
+  //   function; an error of it is the answer of the binding
   //     nested-builder: builder shell, valid only during the call
   //     ivs: pointer to the Value uptrs (the induction variables), and count
   register_builder_binding(
       "mlir::affine::buildAffineLoopNest",
       [](mlir::OpBuilder& builder, uint64_t loc_ptr, ptr lbs, ptr ubs,
          ptr steps,
-         void (*body)(uint64_t, uint64_t, const uint64_t*, uint64_t)) -> void {
+         ptr (*body)(uint64_t, uint64_t, const uint64_t*, uint64_t)) -> ptr {
         auto lowerBounds = convert_to_cpp<llvm::SmallVector<int64_t>>(lbs);
         auto upperBounds = convert_to_cpp<llvm::SmallVector<int64_t>>(ubs);
         auto stepValues = convert_to_cpp<llvm::SmallVector<int64_t>>(steps);
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
+        crest::FirstSchemeError error;
         mlir::affine::buildAffineLoopNest(
             builder, loc, lowerBounds, upperBounds, stepValues,
             [&](mlir::OpBuilder& nb, mlir::Location nb_loc,
@@ -48,10 +49,12 @@ void registerDialectAffineIRAffineOpsBindings() {
                 iv_pointers.push_back(
                     reinterpret_cast<uint64_t>(iv.getAsOpaquePointer()));
               }
-              body(reinterpret_cast<uint64_t>(&nb_shell),
-                   reinterpret_cast<uint64_t>(nb_loc.getAsOpaquePointer()),
-                   iv_pointers.data(), iv_pointers.size());
+              error.record(
+                  body(reinterpret_cast<uint64_t>(&nb_shell),
+                       reinterpret_cast<uint64_t>(nb_loc.getAsOpaquePointer()),
+                       iv_pointers.data(), iv_pointers.size()));
             });
+        return error ? error.answer() : Svoid;
       });
 
   // AffineLoadOp::create(OpBuilder&, Location, Value memref, ValueRange
@@ -60,7 +63,7 @@ void registerDialectAffineIRAffineOpsBindings() {
   register_builder_binding(
       "mlir::affine::AffineLoadOp::create",
       [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t memref_ptr,
-         ptr indices) -> uint64_t {
+         ptr indices) -> ptr {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto memref = mlir::Value::getFromOpaquePointer(
@@ -68,8 +71,8 @@ void registerDialectAffineIRAffineOpsBindings() {
         auto loaded = mlir::affine::AffineLoadOp::create(
             builder, loc, memref,
             convert_to_cpp<llvm::SmallVector<mlir::Value>>(indices));
-        return reinterpret_cast<uint64_t>(
-            loaded.getResult().getAsOpaquePointer());
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            loaded.getResult().getAsOpaquePointer()));
       });
 
   // AffineStoreOp::create(OpBuilder&, Location, Value value, Value memref,
@@ -79,7 +82,7 @@ void registerDialectAffineIRAffineOpsBindings() {
   register_builder_binding(
       "mlir::affine::AffineStoreOp::create",
       [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t value_ptr,
-         uint64_t memref_ptr, ptr indices) -> void {
+         uint64_t memref_ptr, ptr indices) -> ptr {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto value = mlir::Value::getFromOpaquePointer(
@@ -89,6 +92,7 @@ void registerDialectAffineIRAffineOpsBindings() {
         mlir::affine::AffineStoreOp::create(
             builder, loc, value, memref,
             convert_to_cpp<llvm::SmallVector<mlir::Value>>(indices));
+        return Svoid;
       });
 
   // AffineLoadOp::create(OpBuilder&, Location, Value memref, AffineMap map,
@@ -98,7 +102,7 @@ void registerDialectAffineIRAffineOpsBindings() {
   register_builder_binding(
       "mlir::affine::AffineLoadOp::create<AffineMap>",
       [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t memref_ptr,
-         uint64_t map_ptr, ptr map_operands) -> uint64_t {
+         uint64_t map_ptr, ptr map_operands) -> ptr {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto memref = mlir::Value::getFromOpaquePointer(
@@ -108,8 +112,8 @@ void registerDialectAffineIRAffineOpsBindings() {
         auto loaded = mlir::affine::AffineLoadOp::create(
             builder, loc, memref, map,
             convert_to_cpp<llvm::SmallVector<mlir::Value>>(map_operands));
-        return reinterpret_cast<uint64_t>(
-            loaded.getResult().getAsOpaquePointer());
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            loaded.getResult().getAsOpaquePointer()));
       });
 
   // AffineStoreOp::create(OpBuilder&, Location, Value value, Value memref,
@@ -119,7 +123,7 @@ void registerDialectAffineIRAffineOpsBindings() {
   register_builder_binding(
       "mlir::affine::AffineStoreOp::create<AffineMap>",
       [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t value_ptr,
-         uint64_t memref_ptr, uint64_t map_ptr, ptr map_operands) -> void {
+         uint64_t memref_ptr, uint64_t map_ptr, ptr map_operands) -> ptr {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto value = mlir::Value::getFromOpaquePointer(
@@ -131,20 +135,24 @@ void registerDialectAffineIRAffineOpsBindings() {
         mlir::affine::AffineStoreOp::create(
             builder, loc, value, memref, map,
             convert_to_cpp<llvm::SmallVector<mlir::Value>>(map_operands));
+        return Svoid;
       });
 
   // Register AffineDialect into a DialectRegistry.
-  register_binding(
+  Sregister_symbol(
       "mlir::DialectRegistry::insert<mlir::affine::AffineDialect>",
-      [](uint64_t registry_ptr) -> llvm::Error {
-        CREST_TRY(
-            crest_lookup1,
-            crest::CrestBox<mlir::DialectRegistry>::inner(
-                registry_ptr,
-                "mlir::DialectRegistry::insert<mlir::affine::AffineDialect>"));
+      (void*)+[](uint64_t registry_ptr) -> ptr {
+        auto* crest_lookup1_box =
+            crest::CrestBox<mlir::DialectRegistry>::inner(registry_ptr);
+        if (!crest_lookup1_box) {
+          return scheme_error(
+              "mlir::DialectRegistry::insert<mlir::affine::AffineDialect>",
+              "null pointer or not a CrestBox<mlir::DialectRegistry>");
+        }
+        auto& crest_lookup1 = *crest_lookup1_box;
 
         crest_lookup1.insert<mlir::affine::AffineDialect>();
-        return llvm::Error::success();
+        return Svoid;
       });
 }
 

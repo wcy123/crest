@@ -8,15 +8,16 @@
 ;;
 ;; (crest callback) — C function pointers made from Scheme procedures.
 ;;
-;;   (crest-make-static-c-callable (argument-type ...) result-type proc)   an address
-;;   (crest-callback-pointer-list pointer count)                          a list of integers
-;;   (crest-callback-condition-text condition)                            a string
-;;   (crest-callback-entry-dispatcher entries)                            a procedure
+;;   (crest-make-static-c-callable (argument-type ...) proc)   an address
+;;   (crest-callback-pointer-list pointer count)              a list of integers
+;;   (crest-callback-entry-dispatcher entries)                a procedure
 ;;
 ;; C++ never makes, owns, locks or releases a callback. A binding that needs one takes a plain C
 ;; function pointer; Scheme makes the foreign-callable (locked, because the garbage collector moves
-;; code objects) and whoever calls the low-level function decides how long it lives. The types are
-;; those of foreign-callable (uptr, int, void, ...).
+;; code objects) and whoever calls the low-level function decides how long it lives. The argument
+;; types are those of foreign-callable (uptr, int, ...). The C function answers a Scheme object: what
+;; the procedure answered (a number, #t, #f, void), or the pair (who . why) when it raised an error:
+;; the procedure never raises into C++, and C++ reads the answer (lib/Bindings/Support/Result.h).
 ;;
 ;;   crest-make-static-c-callable   locks it for good: only for a callback made once, at the library
 ;;                                  level, that uses no state of a run.
@@ -37,9 +38,8 @@
           with-c-callable
           with-c-callables
           crest-call-guarded
-          crest-guard-procedure
+          crest-make-raw-c-callable
           crest-callback-pointer-list
-          crest-callback-condition-text
           crest-callback-entry-dispatcher
           crest-slot-callable)
   (import (chezscheme)
@@ -48,11 +48,14 @@
   ;; ---- no error leaves a callable ------------------------------------------------------------------
   ;;
   ;; C++ calls a callable through a C function pointer. An error that escaped it would cross the C++
-  ;; frames (skipping their destructors, and leaving a record in Chez for each: plans/04-errors-are-values.md),
-  ;; so every callable catches the error itself: it stores the who and the text in the C++ slot
-  ;; (crest::error::set, first error wins) and answers the zero value of its result type. C++ goes on with
-  ;; that value (a pattern that did not match, a null type, ...); the binding that C++ was running answers
-  ;; the stored error to Scheme when it returns, and Scheme raises it there.
+  ;; frames (skipping their destructors, and leaving a record in Chez for each), so every callable
+  ;; catches the error itself and answers it as a value: the pair (who . why), who a symbol and why a
+  ;; string. Its answer is a Scheme object (a number, #t, #f, void, or that pair), and the C++ code that
+  ;; made the call reads it (lib/Bindings/Support/Result.h: isSchemeError, emitSchemeError) and reports
+  ;; the error as a diagnostic.
+  ;;
+  ;; The callables of an interface slot are the exception: MLIR calls them with its own prototype, so
+  ;; they cannot answer a pair, and their procedures must not raise.
 
   ;; The who of the condition, as a string ("" when it has none).
   (define (%%condition-who c)
@@ -76,61 +79,16 @@
         [(condition? c) (display-condition c port)]
         [else (write c port)]))))
 
-  (define (%%report-callback-error! c)
-    (%crest::error::set (%%condition-who c) (%%condition-message c)))
-
-  ;; What a callable answers C++ after an error: the zero of its result type.
-  (define-syntax %%zero-of
-    (lambda (stx)
-      (syntax-case stx ()
-        [(_ type)
-         (let ([datum (syntax->datum #'type)])
-           (cond
-            [(pair? datum) #'(void)]
-            [(memq datum '(void)) #'(void)]
-            [(memq datum '(boolean scheme-object)) #'#f]
-            [(memq datum '(double-float single-float double float)) #'0.0]
-            [else #'0]))])))
-
-  ;; (%%guarded (argument-type ...) result-type procedure): the procedure, with its error caught.
-  (define-syntax %%guarded
-    (lambda (stx)
-      (syntax-case stx ()
-        [(_ (argument-type ...) result procedure)
-         ;; A result of the form (& ftype) is written through a place that Chez passes as an extra
-         ;; first argument.
-         (with-syntax ([(answer ...) (if (pair? (syntax->datum #'result))
-                                         (generate-temporaries '(answer))
-                                         '())]
-                       [(argument ...) (generate-temporaries #'(argument-type ...))])
-           #'(let ([p procedure])
-               (lambda (answer ... argument ...)
-                 (if (crest-callback-error-pending?)
-                     (%%zero-of result)
-                     (guard (c [#t (%%report-callback-error! c) (%%zero-of result)])
-                       (p answer ... argument ...))))))])))
-
-  ;; For the callable of a slot, whose answer is written through a place that C++ gives: the guard sits
-  ;; inside, and answers the default that the kind of the result stands for.
-  (define (%%slot-guard procedure default)
+  ;; The procedure, with its error answered as (who . why).
+  (define (%%guard procedure)
     (lambda arguments
-      (if (crest-callback-error-pending?)
-          default
-          (guard (c [#t (%%report-callback-error! c) default])
-            (apply procedure arguments)))))
+      (guard (c [#t (cons (string->symbol (%%condition-who c)) (%%condition-message c))])
+        (apply procedure arguments))))
 
-  ;; (crest-call-guarded procedure argument ...): the control plane. C++ calls it where it used to call the
-  ;; procedure itself (the pass of --crest-pass): an error is stored in the slot, as a callable does, and
-  ;; the answer is #f, so no error crosses the C++ frame; C++ looks at the slot when this returns.
+  ;; (crest-call-guarded procedure argument ...): C++ calls a Scheme procedure itself (the pass of
+  ;; --crest-pass): the answer of the procedure, or the pair (who . why) when it raised an error.
   (define (crest-call-guarded procedure . arguments)
-    (guard (c [#t (%%report-callback-error! c) #f])
-      (apply procedure arguments)))
-
-  ;; (crest-guard-procedure procedure default): the procedure with its error caught: stored in the slot,
-  ;; and the answer is `default`. For a Scheme procedure that C++ calls through a binding (the clauses of
-  ;; InferTypeOpInterface, which `adapt` calls).
-  (define (crest-guard-procedure procedure default)
-    (%%slot-guard procedure default))
+    (apply (%%guard procedure) arguments))
 
   ;; A pair of words that C++ passes or returns by value: an llvm::ArrayRef, a TypeRange, an
   ;; OperandRange (a pointer and a count). Chez makes a foreign-callable that takes or answers such a
@@ -149,15 +107,26 @@
            [n (string-length name)])
       (and (>= n 2) (string=? (substring name (- n 2) n) "nt"))))
 
+  ;; (crest-make-static-c-callable (argument-type ...) procedure): the address of a C function that calls
+  ;; the procedure and answers a Scheme object: its answer, or (who . why) when it raised an error.
   (define-syntax crest-make-static-c-callable
     (syntax-rules ()
-      [(_ (argument-type ...) result-type proc)
-       (let ([code (foreign-callable (%%guarded (argument-type ...) result-type proc)
-                                     (argument-type ...) result-type)])
+      [(_ (argument-type ...) proc)
+       (let ([code (foreign-callable (%%guard proc) (argument-type ...) scheme-object)])
          (lock-object code)
          (foreign-callable-entry-point code))]))
 
-  ;; (with-c-callable (name (argument-type ...) result-type value) body ...)
+  ;; (crest-make-raw-c-callable (argument-type ...) result-type procedure): the same for a slot of a
+  ;; Concept, which MLIR calls with its own prototype: the procedure is not guarded (it must not raise),
+  ;; and the C function has the C result type of the slot.
+  (define-syntax crest-make-raw-c-callable
+    (syntax-rules ()
+      [(_ (argument-type ...) result-type proc)
+       (let ([code (foreign-callable proc (argument-type ...) result-type)])
+         (lock-object code)
+         (foreign-callable-entry-point code))]))
+
+  ;; (with-c-callable (name (argument-type ...) value) body ...)
   ;;
   ;; Runs BODY with NAME bound to the address of a C function that calls what VALUE is:
   ;;
@@ -174,11 +143,11 @@
   ;; crest-make-static-c-callable.
   (define-syntax with-c-callable
     (syntax-rules ()
-      [(_ (name (type ...) result value) body ...)
+      [(_ (name (type ...) value) body ...)
        (let* ([given value]
               [made? (procedure? given)]
               [code (cond
-                     [made? (foreign-callable (%%guarded (type ...) result given) (type ...) result)]
+                     [made? (foreign-callable (%%guard given) (type ...) scheme-object)]
                      [(and (integer? given) (exact? given)) (foreign-callable-code-object given)]
                      [else given])])
          (when made? (lock-object code))
@@ -191,7 +160,7 @@
              (lambda () (let ([name (foreign-callable-entry-point code)]) body ...))
              (lambda () (when made? (unlock-object code)))))]))
 
-  ;; (with-c-callables ((name (type ...) result value) ...) body ...): with-c-callable for each binding,
+  ;; (with-c-callables ((name (type ...) value) ...) body ...): with-c-callable for each binding,
   ;; the first made first and released last. A binding may use the names of the ones before it.
   (define-syntax with-c-callables
     (syntax-rules ()
@@ -201,12 +170,6 @@
 
   (define (crest-callback-pointer-list pointer count)
     (map (lambda (i) (foreign-ref 'uptr pointer (* i 8))) (iota count)))
-
-  ;; The text of the condition of an error that a callable catches, which goes to C++ so that the
-  ;; diagnostic of the failure shows it.
-  (define (crest-callback-condition-text condition)
-    (call-with-string-output-port
-     (lambda (port) (display-condition condition port))))
 
   ;; What the macro of an interface hands to C++ (the :interfaces clause of define-op): from a method
   ;; name to the entry point of its callable, 0 for a method that the op has no clause for. C++ asks
@@ -256,31 +219,31 @@
                [values (map (lambda (info formal) ((cdr info) formal)) infos formals)])
           (case (syntax->datum result)
             [(void uptr int unsigned-8 unsigned-32)
-             #`(crest-make-static-c-callable
+             #`(crest-make-raw-c-callable
                 (uptr #,@types) #,result
                 (lambda (concept #,@formals) (#,procedure #,@values)))]
             [(object)
              (if windows?
-                 #`(crest-make-static-c-callable
+                 #`(crest-make-raw-c-callable
                     (uptr uptr #,@types) uptr
                     (lambda (answer concept #,@formals)
                       (foreign-set! 'uptr answer 0 (#,procedure #,@values))
                       answer))
-                 #`(crest-make-static-c-callable
+                 #`(crest-make-raw-c-callable
                     (uptr #,@types) uptr
                     (lambda (concept #,@formals) (#,procedure #,@values))))]
             [(logical-result)
              (if windows?
-                 #`(crest-make-static-c-callable
+                 #`(crest-make-raw-c-callable
                     (uptr uptr #,@types) uptr
                     (lambda (answer concept #,@formals)
                       (foreign-set! 'unsigned-8 answer 0 (#,procedure #,@values))
                       answer))
-                 #`(crest-make-static-c-callable
+                 #`(crest-make-raw-c-callable
                     (uptr #,@types) unsigned-8
                     (lambda (concept #,@formals) (#,procedure #,@values))))]
             [(range)
-             #`(crest-make-static-c-callable
+             #`(crest-make-raw-c-callable
                 (uptr #,@types) (& %%SlotRange)
                 (lambda (answer concept #,@formals)
                   (let ([pair (#,procedure #,@values)])
@@ -289,11 +252,7 @@
             [else (syntax-violation 'crest-slot-callable "unknown kind of result" stx result)])))
       (syntax-case stx ()
         [(_ (kind ...) result procedure)
-         #`(let ([p (%%slot-guard procedure
-                                  #,(case (syntax->datum #'result)
-                                      [(range) #'(cons 0 0)]
-                                      [(void) #'(void)]
-                                      [else #'0]))])
+         #`(let ([p procedure])
              (if (%%windows?)
                  #,(callable #t #'(kind ...) #'result #'p)
                  #,(callable #f #'(kind ...) #'result #'p)))])))

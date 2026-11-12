@@ -19,43 +19,42 @@ void registerIRAttributeBindings() {
   //
   // `named` is the address of the NamedAttribute that a verifier of the
   // dialect gets: it lives for the call of the verifier.
-  register_binding(
-      "mlir::NamedAttribute::getName",
-      [](uint64_t named_ptr) -> llvm::Expected<uint64_t> {
+  Sregister_symbol(
+      "mlir::NamedAttribute::getName", (void*)+[](uint64_t named_ptr) -> ptr {
         if (!named_ptr) {
-          return fail("mlir::NamedAttribute::getName",
-                      llvm::Twine("named attribute pointer is null"));
+          return scheme_error("mlir::NamedAttribute::getName",
+                              "named attribute pointer is null");
         }
-        return reinterpret_cast<uint64_t>(
+        return Sunsigned64(reinterpret_cast<uint64_t>(
             reinterpret_cast<const mlir::NamedAttribute*>(named_ptr)
                 ->getName()
-                .getAsOpaquePointer());
+                .getAsOpaquePointer()));
       });
-  register_binding(
-      "mlir::NamedAttribute::getValue",
-      [](uint64_t named_ptr) -> llvm::Expected<uint64_t> {
+  Sregister_symbol(
+      "mlir::NamedAttribute::getValue", (void*)+[](uint64_t named_ptr) -> ptr {
         if (!named_ptr) {
-          return fail("mlir::NamedAttribute::getValue",
-                      llvm::Twine("named attribute pointer is null"));
+          return scheme_error("mlir::NamedAttribute::getValue",
+                              "named attribute pointer is null");
         }
-        return reinterpret_cast<uint64_t>(
+        return Sunsigned64(reinterpret_cast<uint64_t>(
             reinterpret_cast<const mlir::NamedAttribute*>(named_ptr)
                 ->getValue()
-                .getAsOpaquePointer());
+                .getAsOpaquePointer()));
       });
 
   // The attribute in its textual form, as MLIR prints it.
-  register_binding("mlir::Attribute::print", [](uint64_t attr_ptr) -> ptr {
-    if (!attr_ptr) {
-      return Sstring("");
-    }
-    std::string str;
-    llvm::raw_string_ostream os(str);
-    mlir::Attribute::getFromOpaquePointer(
-        reinterpret_cast<const void*>(attr_ptr))
-        .print(os);
-    return Sstring(str.c_str());
-  });
+  Sregister_symbol(
+      "mlir::Attribute::print", (void*)+[](uint64_t attr_ptr) -> ptr {
+        if (!attr_ptr) {
+          return Sstring("");
+        }
+        std::string str;
+        llvm::raw_string_ostream os(str);
+        mlir::Attribute::getFromOpaquePointer(
+            reinterpret_cast<const void*>(attr_ptr))
+            .print(os);
+        return Sstring(str.c_str());
+      });
 }
 
 } // namespace crest

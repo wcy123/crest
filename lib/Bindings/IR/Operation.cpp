@@ -24,467 +24,501 @@
 namespace crest {
 
 void registerIROperationBindings() {
-  register_binding("mlir::Operation::getName", [](uint64_t op) -> const char* {
-    if (!op) {
-      return "";
-    }
-    return reinterpret_cast<mlir::Operation*>(op)
-        ->getName()
-        .getStringRef()
-        .data();
-  });
-  register_binding("mlir::Operation::getContext",
-                   [](uint64_t op) -> llvm::Expected<uint64_t> {
-                     if (!op) {
-                       return fail("mlir::Operation::getContext",
-                                   llvm::Twine("operation must not be null"));
-                     }
-                     return reinterpret_cast<uint64_t>(
-                         reinterpret_cast<mlir::Operation*>(op)->getContext());
-                   });
-  register_binding(
-      "mlir::Operation::getNumOperands",
-      [](uint64_t op) -> llvm::Expected<int64_t> {
+  Sregister_symbol(
+      "mlir::Operation::getName", (void*)+[](uint64_t op) -> ptr {
         if (!op) {
-          return fail("mlir::Operation::getNumOperands",
-                      llvm::Twine("operation must not be null"));
+          return scheme_string("");
         }
-        return reinterpret_cast<mlir::Operation*>(op)->getNumOperands();
+        return scheme_string(reinterpret_cast<mlir::Operation*>(op)
+                                 ->getName()
+                                 .getStringRef()
+                                 .data());
       });
-  register_binding(
-      "mlir::Operation::getNumResults",
-      [](uint64_t op) -> llvm::Expected<int64_t> {
+  Sregister_symbol(
+      "mlir::Operation::getContext", (void*)+[](uint64_t op) -> ptr {
         if (!op) {
-          return fail("mlir::Operation::getNumResults",
-                      llvm::Twine("operation must not be null"));
+          return scheme_error("mlir::Operation::getContext",
+                              "operation must not be null");
         }
-        return reinterpret_cast<mlir::Operation*>(op)->getNumResults();
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            reinterpret_cast<mlir::Operation*>(op)->getContext()));
       });
-  register_binding(
+  Sregister_symbol(
+      "mlir::Operation::getNumOperands", (void*)+[](uint64_t op) -> ptr {
+        if (!op) {
+          return scheme_error("mlir::Operation::getNumOperands",
+                              "operation must not be null");
+        }
+        return Sinteger64(
+            reinterpret_cast<mlir::Operation*>(op)->getNumOperands());
+      });
+  Sregister_symbol(
+      "mlir::Operation::getNumResults", (void*)+[](uint64_t op) -> ptr {
+        if (!op) {
+          return scheme_error("mlir::Operation::getNumResults",
+                              "operation must not be null");
+        }
+        return Sinteger64(
+            reinterpret_cast<mlir::Operation*>(op)->getNumResults());
+      });
+  Sregister_symbol(
       "mlir::Operation::getOperand",
-      [](uint64_t op, int64_t index) -> llvm::Expected<uint64_t> {
+      (void*)+[](uint64_t op, int64_t index) -> ptr {
         if (!op) {
-          return fail("mlir::Operation::getOperand",
-                      llvm::Twine("operation must not be null"));
+          return scheme_error("mlir::Operation::getOperand",
+                              "operation must not be null");
         }
         auto* cppOp = reinterpret_cast<mlir::Operation*>(op);
         if (index < 0 || index >= (int64_t)cppOp->getNumOperands()) {
-          return fail("mlir::Operation::getOperand",
-                      llvm::Twine("index out of range: ") + " " +
-                          llvm::Twine(index) + " " + " (size " + " " +
-                          llvm::Twine((int64_t)cppOp->getNumOperands()) + " " +
-                          ")");
+          return scheme_error(
+              "mlir::Operation::getOperand",
+              llvm::Twine("index out of range: ") + " " + llvm::Twine(index) +
+                  " " + " (size " + " " +
+                  llvm::Twine((int64_t)cppOp->getNumOperands()) + " " + ")");
         }
-        return reinterpret_cast<uint64_t>(
+        return Sunsigned64(reinterpret_cast<uint64_t>(
             cppOp->getOperand(static_cast<unsigned>(index))
-                .getAsOpaquePointer());
+                .getAsOpaquePointer()));
       });
-  register_binding(
+  Sregister_symbol(
       "mlir::Operation::getOpOperand",
-      [](uint64_t op, int64_t index) -> llvm::Expected<uint64_t> {
+      (void*)+[](uint64_t op, int64_t index) -> ptr {
         if (!op) {
-          return fail("mlir::Operation::getOpOperand",
-                      llvm::Twine("operation must not be null"));
+          return scheme_error("mlir::Operation::getOpOperand",
+                              "operation must not be null");
         }
         mlir::Operation* cppOp = reinterpret_cast<mlir::Operation*>(op);
         if (index < 0 || index >= (int64_t)cppOp->getNumOperands()) {
-          return fail("mlir::Operation::getOpOperand",
-                      llvm::Twine("index out of range: ") + " " +
-                          llvm::Twine(index) + " " + " (size " + " " +
-                          llvm::Twine((int64_t)cppOp->getNumOperands()) + " " +
-                          ")");
+          return scheme_error(
+              "mlir::Operation::getOpOperand",
+              llvm::Twine("index out of range: ") + " " + llvm::Twine(index) +
+                  " " + " (size " + " " +
+                  llvm::Twine((int64_t)cppOp->getNumOperands()) + " " + ")");
         }
         mlir::Value val = cppOp->getOperand(static_cast<unsigned>(index));
         MlirValue cVal = wrap(val);
-        return reinterpret_cast<uint64_t>(const_cast<void*>(cVal.ptr));
+        return Sunsigned64(
+            reinterpret_cast<uint64_t>(const_cast<void*>(cVal.ptr)));
       });
-  register_binding(
+  Sregister_symbol(
       "mlir::Operation::getResult",
-      [](uint64_t op, int64_t index) -> llvm::Expected<uint64_t> {
+      (void*)+[](uint64_t op, int64_t index) -> ptr {
         if (!op) {
-          return fail("mlir::Operation::getResult",
-                      llvm::Twine("operation must not be null"));
+          return scheme_error("mlir::Operation::getResult",
+                              "operation must not be null");
         }
         mlir::Operation* cppOp = reinterpret_cast<mlir::Operation*>(op);
         if (index < 0 || index >= (int64_t)cppOp->getNumResults()) {
-          return fail("mlir::Operation::getResult",
-                      llvm::Twine("index out of range: ") + " " +
-                          llvm::Twine(index) + " " + " (size " + " " +
-                          llvm::Twine((int64_t)cppOp->getNumResults()) + " " +
-                          ")");
+          return scheme_error("mlir::Operation::getResult",
+                              llvm::Twine("index out of range: ") + " " +
+                                  llvm::Twine(index) + " " + " (size " + " " +
+                                  llvm::Twine((int64_t)cppOp->getNumResults()) +
+                                  " " + ")");
         }
         mlir::Value val = cppOp->getResult(static_cast<unsigned>(index));
         MlirValue cVal = wrap(val);
-        return reinterpret_cast<uint64_t>(const_cast<void*>(cVal.ptr));
+        return Sunsigned64(
+            reinterpret_cast<uint64_t>(const_cast<void*>(cVal.ptr)));
       });
-  register_binding(
-      "mlir::Operation::getParentOp",
-      [](uint64_t op_ptr) -> llvm::Expected<uint64_t> {
+  Sregister_symbol(
+      "mlir::Operation::getParentOp", (void*)+[](uint64_t op_ptr) -> ptr {
         if (!op_ptr) {
-          return fail("mlir::Operation::getParentOp",
-                      llvm::Twine("operation must not be null"));
+          return scheme_error("mlir::Operation::getParentOp",
+                              "operation must not be null");
         }
-        return reinterpret_cast<uint64_t>(
-            reinterpret_cast<mlir::Operation*>(op_ptr)->getParentOp());
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            reinterpret_cast<mlir::Operation*>(op_ptr)->getParentOp()));
       });
-  register_binding(
+  Sregister_symbol(
       "mlir::OpOperand::get",
-      [](uint64_t op_ptr, int64_t index) -> llvm::Expected<uint64_t> {
+      (void*)+[](uint64_t op_ptr, int64_t index) -> ptr {
         if (!op_ptr) {
-          return fail("mlir::OpOperand::get",
-                      llvm::Twine("operation must not be null"));
+          return scheme_error("mlir::OpOperand::get",
+                              "operation must not be null");
         }
         mlir::Operation* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         if (index < 0 || index >= (int64_t)op->getNumOperands()) {
-          return fail("mlir::OpOperand::get",
-                      llvm::Twine("index out of range: ") + " " +
-                          llvm::Twine(index) + " " + " (size " + " " +
-                          llvm::Twine((int64_t)op->getNumOperands()) + " " +
-                          ")");
+          return scheme_error("mlir::OpOperand::get",
+                              llvm::Twine("index out of range: ") + " " +
+                                  llvm::Twine(index) + " " + " (size " + " " +
+                                  llvm::Twine((int64_t)op->getNumOperands()) +
+                                  " " + ")");
         }
-        return reinterpret_cast<uint64_t>(const_cast<void*>(
-            op->getOperand(static_cast<unsigned>(index)).getAsOpaquePointer()));
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            const_cast<void*>(op->getOperand(static_cast<unsigned>(index))
+                                  .getAsOpaquePointer())));
       });
-  register_binding(
+  Sregister_symbol(
       "mlir::OpResult::getOwner",
-      [](uint64_t op_ptr, int64_t index) -> llvm::Expected<uint64_t> {
+      (void*)+[](uint64_t op_ptr, int64_t index) -> ptr {
         if (!op_ptr) {
-          return fail("mlir::OpResult::getOwner",
-                      llvm::Twine("operation must not be null"));
+          return scheme_error("mlir::OpResult::getOwner",
+                              "operation must not be null");
         }
         mlir::Operation* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         if (index < 0 || index >= (int64_t)op->getNumResults()) {
-          return fail("mlir::OpResult::getOwner",
-                      llvm::Twine("index out of range: ") + " " +
-                          llvm::Twine(index) + " " + " (size " + " " +
-                          llvm::Twine((int64_t)op->getNumResults()) + " " +
-                          ")");
+          return scheme_error("mlir::OpResult::getOwner",
+                              llvm::Twine("index out of range: ") + " " +
+                                  llvm::Twine(index) + " " + " (size " + " " +
+                                  llvm::Twine((int64_t)op->getNumResults()) +
+                                  " " + ")");
         }
-        return reinterpret_cast<uint64_t>(const_cast<void*>(
-            op->getResult(static_cast<unsigned>(index)).getAsOpaquePointer()));
+        return Sunsigned64(reinterpret_cast<uint64_t>(const_cast<void*>(
+            op->getResult(static_cast<unsigned>(index)).getAsOpaquePointer())));
       });
-  register_binding("mlir::Operation::getLoc",
-                   [](uint64_t op_ptr) -> llvm::Expected<uint64_t> {
-                     if (!op_ptr) {
-                       return fail("mlir::Operation::getLoc",
-                                   llvm::Twine("operation must not be null"));
-                     }
-                     return reinterpret_cast<uint64_t>(const_cast<void*>(
-                         reinterpret_cast<mlir::Operation*>(op_ptr)
-                             ->getLoc()
-                             .getAsOpaquePointer()));
-                   });
-  register_binding("mlir::Operation::walk",
-                   [](uint64_t op, void (*visit)(uint64_t)) -> void {
-                     // `visit` is a C function that Scheme made, and Scheme
-                     // keeps it alive until the walk returns.
-                     if (!op) {
-                       return;
-                     }
-                     mlir::Operation* cppOp =
-                         reinterpret_cast<mlir::Operation*>(op);
-                     cppOp->walk([visit](mlir::Operation* walkOp) {
-                       visit(reinterpret_cast<uint64_t>(walkOp));
-                     });
-                   });
-  register_binding("mlir::Operation::setOperand",
-                   [](uint64_t op_ptr, int index, uint64_t value) -> void {
-                     if (!op_ptr || !value) {
-                       return;
-                     }
-                     mlir::Operation* op =
-                         reinterpret_cast<mlir::Operation*>(op_ptr);
-                     mlir::Value val = unwrap(
-                         MlirValue{reinterpret_cast<const void*>(value)});
-                     op->setOperand(static_cast<unsigned>(index), val);
-                   });
-  register_binding("mlir::Operation::use_empty", [](uint64_t op_ptr) -> int {
-    if (!op_ptr) {
-      return 1;
-    }
-    return reinterpret_cast<mlir::Operation*>(op_ptr)->use_empty() ? 1 : 0;
-  });
-  register_binding("mlir::Operation::getAttrOfType<StringAttr>",
-                   [](uint64_t op_ptr, const char* attr_name) -> const char* {
-                     if (!op_ptr) {
-                       return "";
-                     }
-                     auto attr =
-                         reinterpret_cast<mlir::Operation*>(op_ptr)
-                             ->getAttrOfType<mlir::StringAttr>(attr_name);
-                     if (!attr) {
-                       return "";
-                     }
-                     return attr.getValue().data();
-                   });
-  register_binding(
-      "mlir::Operation::getAttrOfType<IntegerAttr>",
-      [](uint64_t op_ptr, const char* attr_name,
-         int64_t default_val) -> int64_t {
+  Sregister_symbol(
+      "mlir::Operation::getLoc", (void*)+[](uint64_t op_ptr) -> ptr {
         if (!op_ptr) {
-          return default_val;
+          return scheme_error("mlir::Operation::getLoc",
+                              "operation must not be null");
+        }
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            const_cast<void*>(reinterpret_cast<mlir::Operation*>(op_ptr)
+                                  ->getLoc()
+                                  .getAsOpaquePointer())));
+      });
+  Sregister_symbol(
+      "mlir::Operation::walk",
+      (void*)+[](uint64_t op, ptr (*visit)(uint64_t)) -> ptr {
+        // `visit` is a C function that Scheme made, and Scheme
+        // keeps it alive until the walk returns. It answers an error as
+        // (who . why): the walk stops and the binding answers that error.
+        if (!op) {
+          return Svoid;
+        }
+        mlir::Operation* cppOp = reinterpret_cast<mlir::Operation*>(op);
+        crest::FirstSchemeError error;
+        cppOp->walk([&](mlir::Operation* walkOp) {
+          if (error.record(visit(reinterpret_cast<uint64_t>(walkOp)))) {
+            return mlir::WalkResult::interrupt();
+          }
+          return mlir::WalkResult::advance();
+        });
+        return error ? error.answer() : Svoid;
+      });
+  Sregister_symbol(
+      "mlir::Operation::setOperand",
+      (void*)+[](uint64_t op_ptr, int index, uint64_t value) -> ptr {
+        if (!op_ptr || !value) {
+          return Svoid;
+        }
+        mlir::Operation* op = reinterpret_cast<mlir::Operation*>(op_ptr);
+        mlir::Value val =
+            unwrap(MlirValue{reinterpret_cast<const void*>(value)});
+        op->setOperand(static_cast<unsigned>(index), val);
+        return Svoid;
+      });
+  Sregister_symbol(
+      "mlir::Operation::use_empty", (void*)+[](uint64_t op_ptr) -> ptr {
+        if (!op_ptr) {
+          return Sinteger64(1);
+        }
+        return Sinteger64(
+            reinterpret_cast<mlir::Operation*>(op_ptr)->use_empty() ? 1 : 0);
+      });
+  Sregister_symbol(
+      "mlir::Operation::getAttrOfType<StringAttr>",
+      (void*)+[](uint64_t op_ptr, const char* attr_name) -> ptr {
+        if (!op_ptr) {
+          return scheme_string("");
+        }
+        auto attr = reinterpret_cast<mlir::Operation*>(op_ptr)
+                        ->getAttrOfType<mlir::StringAttr>(attr_name);
+        if (!attr) {
+          return scheme_string("");
+        }
+        return scheme_string(attr.getValue().data());
+      });
+  Sregister_symbol(
+      "mlir::Operation::getAttrOfType<IntegerAttr>",
+      (void*)+[](uint64_t op_ptr, const char* attr_name,
+                 int64_t default_val) -> ptr {
+        if (!op_ptr) {
+          return Sinteger64(default_val);
         }
         if (auto attr = reinterpret_cast<mlir::Operation*>(op_ptr)
                             ->getAttrOfType<mlir::IntegerAttr>(attr_name)) {
-          return attr.getValue().getSExtValue();
+          return Sinteger64(attr.getValue().getSExtValue());
         }
-        return default_val;
+        return Sinteger64(default_val);
       });
-  register_binding(
+  Sregister_symbol(
       "mlir::Operation::hasAttr",
-      [](uint64_t op_ptr, const char* attr_name) -> llvm::Expected<int> {
+      (void*)+[](uint64_t op_ptr, const char* attr_name) -> ptr {
         if (!op_ptr) {
-          return fail("mlir::Operation::hasAttr",
-                      llvm::Twine("operation must not be null"));
+          return scheme_error("mlir::Operation::hasAttr",
+                              "operation must not be null");
         }
-        return reinterpret_cast<mlir::Operation*>(op_ptr)->hasAttr(attr_name)
-                   ? 1
-                   : 0;
+        return Sinteger64(
+            reinterpret_cast<mlir::Operation*>(op_ptr)->hasAttr(attr_name) ? 1
+                                                                           : 0);
       });
   // mlir::verify: 1 when the operation and everything nested in it verifies,
   // else 0 (the diagnostics are emitted).
-  register_binding(
-      "mlir::Operation::verify", [](uint64_t op_ptr) -> llvm::Expected<int> {
+  Sregister_symbol(
+      "mlir::Operation::verify", (void*)+[](uint64_t op_ptr) -> ptr {
         if (!op_ptr) {
-          return fail("mlir::Operation::verify",
-                      llvm::Twine("operation must not be null"));
+          return scheme_error("mlir::Operation::verify",
+                              "operation must not be null");
         }
-        return mlir::succeeded(
-                   mlir::verify(reinterpret_cast<mlir::Operation*>(op_ptr)))
-                   ? 1
-                   : 0;
+        return Sinteger64(mlir::succeeded(mlir::verify(
+                              reinterpret_cast<mlir::Operation*>(op_ptr)))
+                              ? 1
+                              : 0);
       });
-  register_binding("mlir::Operation::emitError",
-                   [](uint64_t op_ptr, const char* msg) -> void {
-                     if (!op_ptr) {
-                       mlir_support_logging_error(msg);
-                       return;
-                     }
-                     reinterpret_cast<mlir::Operation*>(op_ptr)->emitError(msg);
-                   });
+  Sregister_symbol(
+      "mlir::Operation::emitError",
+      (void*)+[](uint64_t op_ptr, const char* msg) -> ptr {
+        if (!op_ptr) {
+          mlir_support_logging_error(msg);
+          return Svoid;
+        }
+        reinterpret_cast<mlir::Operation*>(op_ptr)->emitError(msg);
+        return Svoid;
+      });
   // mlir::Operation::emitOpError (uptr op, string message) -> void
   //
   // An error that names the op: "'dialect.op' op message".
-  register_binding("mlir::Operation::emitOpError",
-                   [](uint64_t op_ptr, const char* msg) -> void {
-                     reinterpret_cast<mlir::Operation*>(op_ptr)->emitOpError(
-                         msg);
-                   });
-  register_binding("mlir::Operation::emitWarning",
-                   [](uint64_t op_ptr, const char* msg) -> void {
-                     if (!op_ptr) {
-                       mlir_support_logging_warning(msg);
-                       return;
-                     }
-                     reinterpret_cast<mlir::Operation*>(op_ptr)->emitWarning(
-                         msg);
-                   });
-  register_binding("mlir::Operation::emitRemark",
-                   [](uint64_t op_ptr, const char* msg) -> void {
-                     if (!op_ptr) {
-                       mlir_support_logging_info(msg);
-                       return;
-                     }
-                     reinterpret_cast<mlir::Operation*>(op_ptr)->emitRemark(
-                         msg);
-                   });
-  register_binding("mlir::Operation::print", [](uint64_t op_ptr) -> ptr {
-    if (!op_ptr) {
-      return Sstring("");
-    }
-    std::string str;
-    llvm::raw_string_ostream os(str);
-    reinterpret_cast<mlir::Operation*>(op_ptr)->print(
-        os, mlir::OpPrintingFlags().assumeVerified());
-    return Sstring(str.c_str());
-  });
-  register_binding("mlir::Operation::erase", [](uint64_t op_ptr) -> void {
-    if (!op_ptr) {
-      return;
-    }
-    reinterpret_cast<mlir::Operation*>(op_ptr)->erase();
-  });
-  register_binding("mlir::Operation::getAttrDictionary",
-                   [](uint64_t op_ptr) -> llvm::Expected<uint64_t> {
-                     if (!op_ptr) {
-                       return fail("mlir::Operation::getAttrDictionary",
-                                   llvm::Twine("null op pointer"));
-                     }
-                     return reinterpret_cast<uint64_t>(
-                         reinterpret_cast<mlir::Operation*>(op_ptr)
-                             ->getAttrDictionary()
-                             .getAsOpaquePointer());
-                   });
-  register_binding("mlir::Operation::setAttrs",
-                   [](uint64_t op_ptr, uint64_t dict_ptr) -> llvm::Error {
-                     if (!op_ptr) {
-                       return fail("mlir::Operation::setAttrs",
-                                   llvm::Twine("null op pointer"));
-                     }
-                     if (!dict_ptr) {
-                       return fail("mlir::Operation::setAttrs",
-                                   llvm::Twine("null dict pointer"));
-                     }
-                     reinterpret_cast<mlir::Operation*>(op_ptr)->setAttrs(
-                         mlir::DictionaryAttr::getFromOpaquePointer(
-                             reinterpret_cast<const void*>(dict_ptr)));
-                     return llvm::Error::success();
-                   });
-  register_binding(
-      "mlir::Operation::getRegion",
-      [](uint64_t op_ptr, int region_idx) -> llvm::Expected<uint64_t> {
+  Sregister_symbol(
+      "mlir::Operation::emitOpError",
+      (void*)+[](uint64_t op_ptr, const char* msg) -> ptr {
+        reinterpret_cast<mlir::Operation*>(op_ptr)->emitOpError(msg);
+        return Svoid;
+      });
+  Sregister_symbol(
+      "mlir::Operation::emitWarning",
+      (void*)+[](uint64_t op_ptr, const char* msg) -> ptr {
         if (!op_ptr) {
-          return fail("mlir::Operation::getRegion",
-                      llvm::Twine("operation must not be null"));
+          mlir_support_logging_warning(msg);
+          return Svoid;
+        }
+        reinterpret_cast<mlir::Operation*>(op_ptr)->emitWarning(msg);
+        return Svoid;
+      });
+  Sregister_symbol(
+      "mlir::Operation::emitRemark",
+      (void*)+[](uint64_t op_ptr, const char* msg) -> ptr {
+        if (!op_ptr) {
+          mlir_support_logging_info(msg);
+          return Svoid;
+        }
+        reinterpret_cast<mlir::Operation*>(op_ptr)->emitRemark(msg);
+        return Svoid;
+      });
+  Sregister_symbol(
+      "mlir::Operation::print", (void*)+[](uint64_t op_ptr) -> ptr {
+        if (!op_ptr) {
+          return Sstring("");
+        }
+        std::string str;
+        llvm::raw_string_ostream os(str);
+        reinterpret_cast<mlir::Operation*>(op_ptr)->print(
+            os, mlir::OpPrintingFlags().assumeVerified());
+        return Sstring(str.c_str());
+      });
+  Sregister_symbol(
+      "mlir::Operation::erase", (void*)+[](uint64_t op_ptr) -> ptr {
+        if (!op_ptr) {
+          return Svoid;
+        }
+        reinterpret_cast<mlir::Operation*>(op_ptr)->erase();
+        return Svoid;
+      });
+  Sregister_symbol(
+      "mlir::Operation::getAttrDictionary", (void*)+[](uint64_t op_ptr) -> ptr {
+        if (!op_ptr) {
+          return scheme_error("mlir::Operation::getAttrDictionary",
+                              "null op pointer");
+        }
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            reinterpret_cast<mlir::Operation*>(op_ptr)
+                ->getAttrDictionary()
+                .getAsOpaquePointer()));
+      });
+  Sregister_symbol(
+      "mlir::Operation::setAttrs",
+      (void*)+[](uint64_t op_ptr, uint64_t dict_ptr) -> ptr {
+        if (!op_ptr) {
+          return scheme_error("mlir::Operation::setAttrs", "null op pointer");
+        }
+        if (!dict_ptr) {
+          return scheme_error("mlir::Operation::setAttrs", "null dict pointer");
+        }
+        reinterpret_cast<mlir::Operation*>(op_ptr)->setAttrs(
+            mlir::DictionaryAttr::getFromOpaquePointer(
+                reinterpret_cast<const void*>(dict_ptr)));
+        return Svoid;
+      });
+  Sregister_symbol(
+      "mlir::Operation::getRegion",
+      (void*)+[](uint64_t op_ptr, int region_idx) -> ptr {
+        if (!op_ptr) {
+          return scheme_error("mlir::Operation::getRegion",
+                              "operation must not be null");
         }
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         if (region_idx < 0 || region_idx >= (int)op->getNumRegions()) {
-          return fail("mlir::Operation::getRegion",
-                      llvm::Twine("index out of range: ") + " " +
-                          llvm::Twine((int64_t)region_idx) + " " + " (size " +
-                          " " + llvm::Twine((int64_t)op->getNumRegions()) +
-                          " " + ")");
+          return scheme_error(
+              "mlir::Operation::getRegion",
+              llvm::Twine("index out of range: ") + " " +
+                  llvm::Twine((int64_t)region_idx) + " " + " (size " + " " +
+                  llvm::Twine((int64_t)op->getNumRegions()) + " " + ")");
         }
-        return reinterpret_cast<uint64_t>(
-            &op->getRegion(static_cast<unsigned>(region_idx)));
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            &op->getRegion(static_cast<unsigned>(region_idx))));
       });
-  register_binding(
+  Sregister_symbol(
       "mlir::Operation::getAttr",
-      [](uint64_t op_ptr, const char* name) -> llvm::Expected<uint64_t> {
+      (void*)+[](uint64_t op_ptr, const char* name) -> ptr {
         if (!op_ptr) {
-          return fail("mlir::Operation::getAttr",
-                      llvm::Twine("operation must not be null"));
+          return scheme_error("mlir::Operation::getAttr",
+                              "operation must not be null");
         }
         if (!name) {
-          return fail("mlir::Operation::getAttr",
-                      llvm::Twine("attribute name must not be null"));
+          return scheme_error("mlir::Operation::getAttr",
+                              "attribute name must not be null");
         }
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto attr = op->getAttr(name);
-        return attr ? reinterpret_cast<uint64_t>(attr.getAsOpaquePointer()) : 0;
+        return Sunsigned64(
+            attr ? reinterpret_cast<uint64_t>(attr.getAsOpaquePointer()) : 0);
       });
-  register_binding(
+  Sregister_symbol(
       "mlir::Operation::setAttr",
-      [](uint64_t op_ptr, const char* name, uint64_t attr_ptr) -> void {
+      (void*)+[](uint64_t op_ptr, const char* name, uint64_t attr_ptr) -> ptr {
         if (!op_ptr || !attr_ptr) {
-          return;
+          return Svoid;
         }
         reinterpret_cast<mlir::Operation*>(op_ptr)->setAttr(
             name, mlir::Attribute::getFromOpaquePointer(
                       reinterpret_cast<const void*>(attr_ptr)));
+        return Svoid;
       });
   // Aliases with ? and ! suffix (Scheme predicate/mutator convention)
-  register_binding("mlir::Operation::use_empty?", [](uint64_t op_ptr) -> int {
-    if (!op_ptr) {
-      return 1;
-    }
-    return reinterpret_cast<mlir::Operation*>(op_ptr)->use_empty() ? 1 : 0;
-  });
-  register_binding(
-      "mlir::Operation::hasAttr?",
-      [](uint64_t op_ptr, const char* attr_name) -> llvm::Expected<int> {
+  Sregister_symbol(
+      "mlir::Operation::use_empty?", (void*)+[](uint64_t op_ptr) -> ptr {
         if (!op_ptr) {
-          return fail("mlir::Operation::hasAttr?",
-                      llvm::Twine("operation must not be null"));
+          return Sinteger64(1);
         }
-        return reinterpret_cast<mlir::Operation*>(op_ptr)->hasAttr(attr_name)
-                   ? 1
-                   : 0;
+        return Sinteger64(
+            reinterpret_cast<mlir::Operation*>(op_ptr)->use_empty() ? 1 : 0);
       });
-  register_binding(
+  Sregister_symbol(
+      "mlir::Operation::hasAttr?",
+      (void*)+[](uint64_t op_ptr, const char* attr_name) -> ptr {
+        if (!op_ptr) {
+          return scheme_error("mlir::Operation::hasAttr?",
+                              "operation must not be null");
+        }
+        return Sinteger64(
+            reinterpret_cast<mlir::Operation*>(op_ptr)->hasAttr(attr_name) ? 1
+                                                                           : 0);
+      });
+  Sregister_symbol(
       "mlir::Operation::setAttr!",
-      [](uint64_t op_ptr, const char* name, uint64_t attr_ptr) -> void {
+      (void*)+[](uint64_t op_ptr, const char* name, uint64_t attr_ptr) -> ptr {
         if (!op_ptr || !attr_ptr) {
-          return;
+          return Svoid;
         }
         reinterpret_cast<mlir::Operation*>(op_ptr)->setAttr(
             name, mlir::Attribute::getFromOpaquePointer(
                       reinterpret_cast<const void*>(attr_ptr)));
+        return Svoid;
       });
   // mlir::Operation::removeAttr (uptr op, string name) -> uptr
   //
   // Removes the attribute and answers it, or 0 when the op has none of that
   // name.
-  register_binding(
+  Sregister_symbol(
       "mlir::Operation::removeAttr",
-      [](uint64_t op_ptr, const char* name) -> uint64_t {
+      (void*)+[](uint64_t op_ptr, const char* name) -> ptr {
         if (!op_ptr || !name) {
-          return 0;
+          return Sunsigned64(0);
         }
         mlir::Attribute removed =
             reinterpret_cast<mlir::Operation*>(op_ptr)->removeAttr(name);
-        return reinterpret_cast<uint64_t>(removed.getAsOpaquePointer());
+        return Sunsigned64(
+            reinterpret_cast<uint64_t>(removed.getAsOpaquePointer()));
       });
-  register_binding("mlir::Operation::emitError!",
-                   [](uint64_t op_ptr, const char* msg) -> void {
-                     if (!op_ptr) {
-                       mlir_support_logging_error(msg);
-                       return;
-                     }
-                     reinterpret_cast<mlir::Operation*>(op_ptr)->emitError(msg);
-                   });
-  register_binding("mlir::Operation::getAttrOfType<FloatAttr>",
-                   [](uint64_t op_ptr, const char* name) -> double {
-                     if (!op_ptr || !name) {
-                       return std::numeric_limits<double>::quiet_NaN();
-                     }
-                     auto attr = reinterpret_cast<mlir::Operation*>(op_ptr)
-                                     ->getAttrOfType<mlir::FloatAttr>(name);
-                     return attr ? attr.getValueAsDouble()
-                                 : std::numeric_limits<double>::quiet_NaN();
-                   });
-
-  register_binding("mlir::Operation::dump", [](uint64_t op_ptr) -> void {
-    if (!op_ptr) {
-      return;
-    }
-    reinterpret_cast<mlir::Operation*>(op_ptr)->dump();
-  });
-
-  register_binding("mlir::OperationName::getStringRef",
-                   [](uint64_t op_name_ptr) -> const char* {
-                     auto* name =
-                         reinterpret_cast<mlir::OperationName*>(op_name_ptr);
-                     return name->getStringRef().data();
-                   });
-
-  register_binding(
-      "mlir::Operation::getBlock", [](uint64_t op_ptr) -> uint64_t {
-        return reinterpret_cast<uint64_t>(
-            reinterpret_cast<mlir::Operation*>(op_ptr)->getBlock());
+  Sregister_symbol(
+      "mlir::Operation::emitError!",
+      (void*)+[](uint64_t op_ptr, const char* msg) -> ptr {
+        if (!op_ptr) {
+          mlir_support_logging_error(msg);
+          return Svoid;
+        }
+        reinterpret_cast<mlir::Operation*>(op_ptr)->emitError(msg);
+        return Svoid;
+      });
+  Sregister_symbol(
+      "mlir::Operation::getAttrOfType<FloatAttr>",
+      (void*)+[](uint64_t op_ptr, const char* name) -> ptr {
+        if (!op_ptr || !name) {
+          return Sflonum(std::numeric_limits<double>::quiet_NaN());
+        }
+        auto attr = reinterpret_cast<mlir::Operation*>(op_ptr)
+                        ->getAttrOfType<mlir::FloatAttr>(name);
+        return Sflonum(attr ? attr.getValueAsDouble()
+                            : std::numeric_limits<double>::quiet_NaN());
       });
 
-  register_binding("mlir::Operation::moveBefore",
-                   [](uint64_t op_ptr, uint64_t other_ptr) -> void {
-                     reinterpret_cast<mlir::Operation*>(op_ptr)->moveBefore(
-                         reinterpret_cast<mlir::Operation*>(other_ptr));
-                   });
+  Sregister_symbol(
+      "mlir::Operation::dump", (void*)+[](uint64_t op_ptr) -> ptr {
+        if (!op_ptr) {
+          return Svoid;
+        }
+        reinterpret_cast<mlir::Operation*>(op_ptr)->dump();
+        return Svoid;
+      });
 
-  register_binding("mlir::Operation::setOperands",
-                   [](uint64_t op_ptr, uint64_t arr_ptr) -> void {
-                     auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-                     auto* arr =
-                         reinterpret_cast<CArrayRef<uintptr_t>*>(arr_ptr);
-                     llvm::SmallVector<mlir::Value> values;
-                     values.reserve(arr->size);
-                     for (size_t i = 0; i < arr->size; ++i) {
-                       values.push_back(mlir::Value::getFromOpaquePointer(
-                           reinterpret_cast<const void*>(arr->data[i])));
-                     }
-                     op->setOperands(values);
-                   });
+  Sregister_symbol(
+      "mlir::OperationName::getStringRef",
+      (void*)+[](uint64_t op_name_ptr) -> ptr {
+        auto* name = reinterpret_cast<mlir::OperationName*>(op_name_ptr);
+        return scheme_string(name->getStringRef().data());
+      });
+
+  Sregister_symbol(
+      "mlir::Operation::getBlock", (void*)+[](uint64_t op_ptr) -> ptr {
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            reinterpret_cast<mlir::Operation*>(op_ptr)->getBlock()));
+      });
+
+  Sregister_symbol(
+      "mlir::Operation::moveBefore",
+      (void*)+[](uint64_t op_ptr, uint64_t other_ptr) -> ptr {
+        reinterpret_cast<mlir::Operation*>(op_ptr)->moveBefore(
+            reinterpret_cast<mlir::Operation*>(other_ptr));
+        return Svoid;
+      });
+
+  Sregister_symbol(
+      "mlir::Operation::setOperands",
+      (void*)+[](uint64_t op_ptr, uint64_t arr_ptr) -> ptr {
+        auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
+        auto* arr = reinterpret_cast<CArrayRef<uintptr_t>*>(arr_ptr);
+        llvm::SmallVector<mlir::Value> values;
+        values.reserve(arr->size);
+        for (size_t i = 0; i < arr->size; ++i) {
+          values.push_back(mlir::Value::getFromOpaquePointer(
+              reinterpret_cast<const void*>(arr->data[i])));
+        }
+        op->setOperands(values);
+        return Svoid;
+      });
 
   // mlir::Operation::getParentOfType<ModuleOp>: get enclosing module.
   // (op-ptr) → Operation* uptr (or 0)
-  register_binding("mlir::Operation::getParentOfType<ModuleOp>",
-                   [](uint64_t op_ptr) -> uint64_t {
-                     auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-                     auto parent = op->getParentOfType<mlir::ModuleOp>();
-                     if (!parent) {
-                       return 0;
-                     }
-                     return reinterpret_cast<uint64_t>(parent.getOperation());
-                   });
+  Sregister_symbol(
+      "mlir::Operation::getParentOfType<ModuleOp>",
+      (void*)+[](uint64_t op_ptr) -> ptr {
+        auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
+        auto parent = op->getParentOfType<mlir::ModuleOp>();
+        if (!parent) {
+          return Sunsigned64(0);
+        }
+        return Sunsigned64(reinterpret_cast<uint64_t>(parent.getOperation()));
+      });
 }
 
 } // namespace crest

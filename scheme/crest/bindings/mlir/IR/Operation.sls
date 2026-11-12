@@ -144,14 +144,15 @@
   ;; @param callback  an expression for a procedure invoked with each Operation* uptr (its answer is
   ;;                  ignored), or for a code object that the caller made and locked (see
   ;;                  with-c-callable in (crest callback)). It is a C function for the length of the
-  ;;                  walk, and released when the walk is over, also on an error.
+  ;;                  walk, and released when the walk is over, also on an error. An error of the
+  ;;                  procedure is reported as a diagnostic at the op it was called with.
   ;; @return          void
   ;; @see             mlir/IR/Operation.h
   ;; @note            A macro. Defined in lib/Bindings/IR/Operation.cpp
   (define-syntax mlir::Operation::walk
     (syntax-rules ()
       [(_ op callback)
-       (with-c-callable (visit (uptr) void callback)
+       (with-c-callable (visit (uptr) callback)
          (%walk op visit))]))
 
   ;; @brief mlir::Operation::setOperand — replace the i-th operand with a new value.

@@ -20,17 +20,19 @@ namespace crest {
 struct CrestInlinerInterface : public mlir::DialectInlinerInterface {
   using mlir::DialectInlinerInterface::DialectInlinerInterface;
 
-  int (*isLegalToInlineCallFn)(uint64_t call, uint64_t callable,
+  // Each answers a Scheme object: a number, or (who . why) when the Scheme
+  // procedure raised an error, which is reported as a diagnostic.
+  ptr (*isLegalToInlineCallFn)(uint64_t call, uint64_t callable,
                                int wouldBeCloned) = nullptr;
-  int (*isLegalToInlineRegionFn)(uint64_t dest, uint64_t src,
+  ptr (*isLegalToInlineRegionFn)(uint64_t dest, uint64_t src,
                                  int wouldBeCloned) = nullptr;
-  int (*isLegalToInlineOpFn)(uint64_t op, uint64_t dest,
+  ptr (*isLegalToInlineOpFn)(uint64_t op, uint64_t dest,
                              int wouldBeCloned) = nullptr;
-  void (*handleTerminatorValueFn)(uint64_t op, uint64_t values) = nullptr;
-  void (*handleTerminatorBlockFn)(uint64_t op, uint64_t newDest) = nullptr;
-  uint64_t (*materializeCallConversionFn)(uint64_t builder, uint64_t input,
-                                          uint64_t resultType,
-                                          uint64_t loc) = nullptr;
+  ptr (*handleTerminatorValueFn)(uint64_t op, uint64_t values) = nullptr;
+  ptr (*handleTerminatorBlockFn)(uint64_t op, uint64_t newDest) = nullptr;
+  ptr (*materializeCallConversionFn)(uint64_t builder, uint64_t input,
+                                     uint64_t resultType,
+                                     uint64_t loc) = nullptr;
 
   bool isLegalToInline(mlir::Operation* call, mlir::Operation* callable,
                        bool wouldBeCloned) const final;

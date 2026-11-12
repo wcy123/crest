@@ -68,21 +68,24 @@ class CrestDialect : public mlir::ExtensibleDialect {
 public:
   /// One entry point per virtual method; nullptr means absent (fall through to
   /// the ExtensibleDialect default). Pointers and the dialect itself cross as
-  /// integers; the Scheme side adapts the answers (a failed parse is 0).
+  /// integers; the Scheme side adapts the answers (a failed parse is 0). Each
+  /// callable answers a Scheme object: the value, or the pair (who . why) when
+  /// its Scheme procedure raised an error (Result.h: isSchemeError). The hook
+  /// reports the error as a diagnostic and fails.
   struct Callbacks {
-    void (*initialize)(uint64_t dialect) = nullptr;
-    void (*get_dependent_dialects)(uint64_t dialect) = nullptr;
-    uint64_t (*parse_attribute)(uint64_t parser, uint64_t type) = nullptr;
-    void (*print_attribute)(uint64_t attr, uint64_t printer) = nullptr;
-    uint64_t (*parse_type)(uint64_t parser) = nullptr;
-    void (*print_type)(uint64_t type, uint64_t printer) = nullptr;
-    uint64_t (*materialize_constant)(uint64_t builder, uint64_t value,
-                                     uint64_t type, uint64_t loc) = nullptr;
-    void (*get_canonicalization_patterns)(uint64_t patterns) = nullptr;
-    int (*verify_op_attr)(uint64_t op, uint64_t attr) = nullptr;
-    int (*verify_region_arg_attr)(uint64_t op, uint32_t region_index,
+    ptr (*initialize)(uint64_t dialect) = nullptr;
+    ptr (*get_dependent_dialects)(uint64_t dialect) = nullptr;
+    ptr (*parse_attribute)(uint64_t parser, uint64_t type) = nullptr;
+    ptr (*print_attribute)(uint64_t attr, uint64_t printer) = nullptr;
+    ptr (*parse_type)(uint64_t parser) = nullptr;
+    ptr (*print_type)(uint64_t type, uint64_t printer) = nullptr;
+    ptr (*materialize_constant)(uint64_t builder, uint64_t value, uint64_t type,
+                                uint64_t loc) = nullptr;
+    ptr (*get_canonicalization_patterns)(uint64_t patterns) = nullptr;
+    ptr (*verify_op_attr)(uint64_t op, uint64_t attr) = nullptr;
+    ptr (*verify_region_arg_attr)(uint64_t op, uint32_t region_index,
                                   uint32_t arg_index, uint64_t attr) = nullptr;
-    int (*verify_region_result_attr)(uint64_t op, uint32_t region_index,
+    ptr (*verify_region_result_attr)(uint64_t op, uint32_t region_index,
                                      uint32_t result_index,
                                      uint64_t attr) = nullptr;
   };

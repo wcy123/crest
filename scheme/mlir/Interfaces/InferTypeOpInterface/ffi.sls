@@ -1,17 +1,13 @@
 #!r6rs
 ;; Mirrors mlir/Interfaces/InferTypeOpInterface.h
 (library (mlir Interfaces InferTypeOpInterface ffi)
-  (export %crest::InferTypeOpInterface::reportFailure
-          %mlir::InferTypeOpInterface::getInterfaceID
+  (export %mlir::InferTypeOpInterface::getInterfaceID
           %crest::InferTypeOpInterface::adapt
           %crest::InferTypeOpInterface::adaptCompatible
           %mlir::InferTypeOpInterface::inferReturnTypes<OperationState>
           %mlir::InferTypeOpInterface::inferReturnTypes<OperationState*>)
   (import (chezscheme)
           (mlir support foreign))
-
-  (define %crest::InferTypeOpInterface::reportFailure
-    (crest-foreign-procedure "crest::InferTypeOpInterface::reportFailure" (string) void))
 
   ;; () → uptr — the TypeID of mlir::InferTypeOpInterface, as the address that TypeID wraps.
   (define %mlir::InferTypeOpInterface::getInterfaceID

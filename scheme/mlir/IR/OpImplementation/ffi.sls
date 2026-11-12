@@ -151,10 +151,10 @@
     (crest-foreign-procedure "crest::OpAsmParser::freeOperands" (uptr) void))
 
   (define %mlir::OpAsmParser::resolveOperands
-    (crest-foreign-procedure "mlir::OpAsmParser::resolveOperands" (uptr uptr uptr uptr) boolean))
+    (crest-foreign-procedure "mlir::OpAsmParser::resolveOperands" (uptr uptr uptr uptr) ptr))
 
   (define %mlir::OpAsmParser::resolveOperandsFunctional
-    (crest-foreign-procedure "mlir::OpAsmParser::resolveOperandsFunctional" (uptr uptr uptr uptr) boolean))
+    (crest-foreign-procedure "mlir::OpAsmParser::resolveOperandsFunctional" (uptr uptr uptr uptr) ptr))
 
   (define %mlir::OpAsmParser::parseColonType
     (crest-foreign-procedure "mlir::OpAsmParser::parseColonType" (uptr) uptr))
@@ -166,7 +166,7 @@
     (crest-foreign-procedure "mlir::OpAsmParser::parseFunctionalType" (uptr) uptr))
 
   (define %mlir::OpAsmParser::parseOptionalAttrDict
-    (crest-foreign-procedure "mlir::OpAsmParser::parseOptionalAttrDict" (uptr uptr) boolean))
+    (crest-foreign-procedure "mlir::OpAsmParser::parseOptionalAttrDict" (uptr uptr) ptr))
 
   (define %mlir::OpAsmParser::parseAttribute
     (crest-foreign-procedure "mlir::OpAsmParser::parseAttribute" (uptr uptr string) uptr))
@@ -178,25 +178,25 @@
     (crest-foreign-procedure "mlir::AsmParser::getContext" (uptr) uptr))
 
   (define %mlir::OpAsmParser::parseKeyword
-    (crest-foreign-procedure "mlir::OpAsmParser::parseKeyword" (uptr string) boolean))
+    (crest-foreign-procedure "mlir::OpAsmParser::parseKeyword" (uptr string) ptr))
 
   (define %mlir::OpAsmParser::parseLParen
-    (crest-foreign-procedure "mlir::OpAsmParser::parseLParen" (uptr) boolean))
+    (crest-foreign-procedure "mlir::OpAsmParser::parseLParen" (uptr) ptr))
 
   (define %mlir::OpAsmParser::parseRParen
-    (crest-foreign-procedure "mlir::OpAsmParser::parseRParen" (uptr) boolean))
+    (crest-foreign-procedure "mlir::OpAsmParser::parseRParen" (uptr) ptr))
 
   (define %mlir::OpAsmParser::parseColon
-    (crest-foreign-procedure "mlir::OpAsmParser::parseColon" (uptr) boolean))
+    (crest-foreign-procedure "mlir::OpAsmParser::parseColon" (uptr) ptr))
 
   (define %mlir::OpAsmParser::parseComma
-    (crest-foreign-procedure "mlir::OpAsmParser::parseComma" (uptr) boolean))
+    (crest-foreign-procedure "mlir::OpAsmParser::parseComma" (uptr) ptr))
 
   (define %mlir::OpAsmParser::parseOptionalComma
-    (crest-foreign-procedure "mlir::OpAsmParser::parseOptionalComma" (uptr) boolean))
+    (crest-foreign-procedure "mlir::OpAsmParser::parseOptionalComma" (uptr) ptr))
 
   (define %mlir::OpAsmParser::parseArrow
-    (crest-foreign-procedure "mlir::OpAsmParser::parseArrow" (uptr) boolean))
+    (crest-foreign-procedure "mlir::OpAsmParser::parseArrow" (uptr) ptr))
 
   (define %mlir::OpAsmParser::emitError
     (crest-foreign-procedure "mlir::OpAsmParser::emitError" (uptr string) void))
@@ -205,18 +205,18 @@
     (crest-foreign-procedure "mlir::OpAsmParser::parseSymbolName" (uptr uptr string) scheme-object))
 
   (define %mlir::isa<FunctionType>
-    (crest-foreign-procedure "mlir::isa<FunctionType>" (uptr) boolean))
+    (crest-foreign-procedure "mlir::isa<FunctionType>" (uptr) ptr))
 
   (define %mlir::OperationState::addType
     (crest-foreign-procedure "mlir::OperationState::addType" (uptr uptr) void))
 
   (define %mlir::OpAsmParser::parseLess
-    (crest-foreign-procedure "mlir::OpAsmParser::parseLess" (uptr) boolean))
+    (crest-foreign-procedure "mlir::OpAsmParser::parseLess" (uptr) ptr))
   (define %mlir::OpAsmParser::parseGreater
-    (crest-foreign-procedure "mlir::OpAsmParser::parseGreater" (uptr) boolean))
+    (crest-foreign-procedure "mlir::OpAsmParser::parseGreater" (uptr) ptr))
   (define %mlir::OpAsmParser::parseLSquare
-    (crest-foreign-procedure "mlir::OpAsmParser::parseLSquare" (uptr) boolean))
+    (crest-foreign-procedure "mlir::OpAsmParser::parseLSquare" (uptr) ptr))
   (define %mlir::OpAsmParser::parseRSquare
-    (crest-foreign-procedure "mlir::OpAsmParser::parseRSquare" (uptr) boolean))
+    (crest-foreign-procedure "mlir::OpAsmParser::parseRSquare" (uptr) ptr))
 
   ) ;; end library (mlir IR OpImplementation ffi)

@@ -24,7 +24,7 @@ void ensureSymbolOpInterface(mlir::detail::InterfaceMap& map);
 
 // An op that has SymbolOpInterface (a base of FunctionOpInterface) must have
 // all its clauses. Answers the text of the error when it does not, and "" when
-// it does; it does not raise (see Error.h).
+// it does; it does not raise (see Result.h).
 std::string requireSymbolOpInterfaceClauses(mlir::DynamicOpDefinition& def,
                                             const std::string& opName);
 
