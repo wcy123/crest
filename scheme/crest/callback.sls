@@ -43,7 +43,8 @@
           crest-callback-entry-dispatcher
           crest-slot-callable)
   (import (chezscheme)
-          (mlir support foreign))
+          (mlir support foreign)
+          (mlir support RAII))
 
   ;; ---- no error leaves a callable ------------------------------------------------------------------
   ;;
@@ -155,10 +156,9 @@
            (assertion-violation 'with-c-callable
                                 "the callable must be a procedure, or a locked code object, or the address of a locked callable"
                                 given))
-         (dynamic-wind
-             (lambda () #f)
-             (lambda () (let ([name (foreign-callable-entry-point code)]) body ...))
-             (lambda () (when made? (unlock-object code)))))]))
+         (with-raii locked (and made? code)
+                    (lambda (locked) (when locked (unlock-object locked)))
+           (let ([name (foreign-callable-entry-point code)]) body ...)))]))
 
   ;; (with-c-callables ((name (type ...) value) ...) body ...): with-c-callable for each binding,
   ;; the first made first and released last. A binding may use the names of the ones before it.

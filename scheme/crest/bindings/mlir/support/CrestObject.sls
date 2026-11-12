@@ -23,6 +23,7 @@
   (import (rnrs)
           (for (rnrs) expand)
           (only (chezscheme) foreign-ref)
+          (mlir support RAII)
           (mlir support CrestObject ffi))
 
   ;; @brief crest::CrestObject::deletor — read the deletor (type tag) from a CrestObject.
@@ -45,10 +46,6 @@
       (syntax-case stx ()
         [(_ name init body ...)
          (identifier? #'name)
-         #'(let ([name init])
-             (dynamic-wind
-                 (lambda () #f)
-                 (lambda () body ...)
-                 (lambda () (crest::CrestObject::delete name))))])))
+         #'(with-raii name init crest::CrestObject::delete body ...)])))
 
   ) ;; end library (mlir support CrestObject)
