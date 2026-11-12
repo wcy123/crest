@@ -48,12 +48,16 @@ endif()
 # merge of #1064 alone, to get the other repairs since (e.g. x86_64 foreign call and callable
 # arguments); the commit titles after #1064 show no revert. Details and the steps to bump the pin again:
 # docs/tech-note.md, "Chez Scheme pin".
-# LEAK WARNING: Chez 10.5.0 leaks about 200 bytes and the code-object locks of the C frames that an
-# error escapes (S_call_help, c/schlib.c: `CCHAIN(tc) = yp;` before the loop that releases them).
-# cmake/patches/chez-release-escaped-frames.patch removes that line. It is applied here, once, to a
-# fresh source tree (the command first checks that the tree is not patched already), and not on
-# Windows, where it is untested: a Windows build keeps the leak. Every error that unwinds through a
-# C call, here or on Windows, still leaks what C++ held in those frames (scheme_error).
+# LEAK WARNING: Chez 10.5.0 (upstream main too) leaks about 208 bytes every time a Scheme error escapes
+# through a C function that had called into Scheme (a C++ binding that raises, or a callback that raises
+# and is caught by a guard outside it). The cause is one line in S_call_help (c/schlib.c). The full
+# explanation, a 20-line standalone repro (cmake/patches/chez-error-escape-leak/), which of our tests
+# reach it, what is known about upstream, and how sure we are that the fix is right are all in the
+# header of cmake/patches/chez-release-escaped-frames.patch.
+# The patch is applied here, once, to a fresh source tree (the command first checks that the tree is
+# not patched already). It is NOT applied on Windows, where it is untested, so a Windows build keeps
+# the leak. It has not been reviewed by the Chez team: if you doubt it, delete it and relax the bound in
+# unittests/Interpreter/InterpreterTest.cpp (SchemeErrorDoesNotLeakCppMemory).
 set(_chez_patch_command "")
 if(NOT WIN32)
   set(_chez_patch_file "${CMAKE_CURRENT_SOURCE_DIR}/cmake/patches/chez-release-escaped-frames.patch")
