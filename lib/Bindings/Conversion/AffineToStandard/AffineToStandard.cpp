@@ -17,14 +17,20 @@ namespace crest {
 void registerConversionAffineToStandardBindings() {
   // populateAffineToStdConversionPatterns: lower Affine to SCF/Standard.
   // (patterns-ptr) → void
-  register_binding(
+  Sregister_symbol(
       "mlir::populateAffineToStdConversionPatterns",
-      [](uint64_t patterns_ptr) -> llvm::Error {
-        CREST_TRY(patterns, crest::as_ref<mlir::RewritePatternSet>(
-                                patterns_ptr,
-                                "mlir::populateAffineToStdConversionPatterns"));
+      (void*)+[](uint64_t patterns_ptr) -> ptr {
+        auto* patterns_box =
+            crest::as_ref<mlir::RewritePatternSet>(patterns_ptr);
+        if (!patterns_box) {
+          return scheme_error(
+              "mlir::populateAffineToStdConversionPatterns",
+              "null pointer or not a CrestBox<mlir::RewritePatternSet> or "
+              "CrestBox<mlir::RewritePatternSet*>");
+        }
+        auto& patterns = *patterns_box;
         mlir::populateAffineToStdConversionPatterns(patterns);
-        return llvm::Error::success();
+        return Svoid;
       });
 }
 

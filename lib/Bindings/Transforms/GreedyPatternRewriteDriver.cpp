@@ -15,22 +15,26 @@
 namespace crest {
 
 void registerTransformsGreedyPatternRewriteDriverBindings() {
-  register_binding(
+  Sregister_symbol(
       "mlir_transforms_greedy_pattern_rewrite_driver_apply",
-      [](uint64_t op_ptr, uint64_t patterns_ptr) -> llvm::Expected<int> {
+      (void*)+[](uint64_t op_ptr, uint64_t patterns_ptr) -> ptr {
         if (!op_ptr) {
-          return fail("mlir_transforms_greedy_pattern_rewrite_driver_apply",
-                      llvm::Twine("null op"));
+          return scheme_error(
+              "mlir_transforms_greedy_pattern_rewrite_driver_apply", "null op");
         }
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-        CREST_TRY(patterns,
-                  crest::CrestBox<mlir::RewritePatternSet>::inner(
-                      patterns_ptr,
-                      "mlir_transforms_greedy_pattern_rewrite_driver_apply"));
-        return mlir::succeeded(
-                   mlir::applyPatternsGreedily(op, std::move(patterns)))
-                   ? 1
-                   : 0;
+        auto* patterns_box =
+            crest::CrestBox<mlir::RewritePatternSet>::inner(patterns_ptr);
+        if (!patterns_box) {
+          return scheme_error(
+              "mlir_transforms_greedy_pattern_rewrite_driver_apply",
+              "null pointer or not a CrestBox<mlir::RewritePatternSet>");
+        }
+        auto& patterns = *patterns_box;
+        return Sinteger64(mlir::succeeded(mlir::applyPatternsGreedily(
+                              op, std::move(patterns)))
+                              ? 1
+                              : 0);
       });
 }
 

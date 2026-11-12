@@ -51,7 +51,7 @@ public:
   /// :interfaces entries, locked by the caller; it is not kept after the call.
   /// Answers the text of the error when the op cannot be registered, and ""
   /// when it was. It does not raise: the caller answers it to Scheme after it
-  /// has destroyed its objects and unlocked `interfaces` (see Error.h).
+  /// has destroyed its objects and unlocked `interfaces` (see Result.h).
   static std::string registerInto(mlir::ExtensibleDialect* dialect,
                                   llvm::StringRef op_name, Callbacks cbs,
                                   const LockedSchemeObject& interfaces);

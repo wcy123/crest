@@ -3,97 +3,56 @@
  * Licensed under the MIT License.
  */
 
-// How a binding answers Scheme (plans/04-errors-are-values.md).
+// How a binding answers Scheme.
 //
-// register_binding("name", [](args) -> R { ... }) replaces
-// Sregister_symbol("name", (void*)+[](args) -> R { ... }). The lambda answers a
-// C++ value, nothing, an llvm::Error, or an llvm::Expected<T>. The function
-// that Scheme calls answers a Scheme OBJECT:
-//   - a success is the value itself (an integer, #t/#f, a string, a list, the
-//   void object);
-//   - a failure is the error object (#!eof who . message), a pair whose first
-//   element is the eof
-//     object, which no list that a binding answers can start with.
-// Scheme calls the symbol through crest-foreign-procedure ((mlir support
-// foreign)), which raises the error object in Scheme, after the C++ call has
-// returned: no error crosses a C function.
+// A binding is a plain C function that answers a Scheme object:
+//   - on success the value itself (Sunsigned64, Strue, Svoid, a string, a
+//   list);
+//   - on failure scheme_error(who, why): the pair (who . why), who a symbol and
+//     why a string.
+// Scheme calls it through crest-foreign-procedure ((mlir support foreign)),
+// which raises the pair as a Scheme error after the C function has returned.
+// C++ never raises: no error crosses a C function (Chez leaks the frames of a C
+// call that an error escapes, cmake/patches/chez-release-escaped-frames.patch).
 //
 // A callback that Scheme made (scheme/crest/callback.sls) never raises either:
 // it catches the error, stores it in the slot below, and answers the zero
-// value. The function registered here checks the slot when the lambda returns,
-// and answers the stored error instead of the result.
+// value. crest-foreign-procedure raises the stored error when the binding that
+// ran the callback returns.
 
 #ifndef CREST_BINDINGS_SUPPORT_RESULT_H
 #define CREST_BINDINGS_SUPPORT_RESULT_H
 
-#include "Error.h"
 #include "SchemeWrapper.h"
-#include <cstdint>
+#include "llvm/ADT/Twine.h"
+#include "llvm/Support/ErrorHandling.h"
 #include <cstring>
-#include <optional>
-#include <set>
 #include <string>
-#include <tuple>
-#include <type_traits>
-#include <utility>
 
 namespace crest {
 
-// The error object: (#!eof who . message), who and message as strings (UTF-8).
-inline ptr errorObject(const std::string& who, const std::string& message) {
-  ptr whoText = Sstring_utf8(who.data(), static_cast<iptr>(who.size()));
-  ptr messageText =
-      Sstring_utf8(message.data(), static_cast<iptr>(message.size()));
-  return Scons(Seof_object, Scons(whoText, messageText));
+// The failure of a binding: (who . why), who the name of the binding.
+inline ptr scheme_error(const char* who, const llvm::Twine& why) {
+  std::string text = why.str();
+  return Scons(Sstring_to_symbol(who),
+               Sstring_utf8(text.data(), static_cast<iptr>(text.size())));
 }
 
-inline ptr errorObject(llvm::Error error) {
-  std::string who, message;
-  llvm::handleAllErrors(
-      std::move(error),
-      [&](const CrestError& e) {
-        who = e.who();
-        message = e.message();
-      },
-      [&](const llvm::ErrorInfoBase& other) { message = other.message(); });
-  return errorObject(who, message);
-}
-
-// ---- the C++ value as a Scheme object ----
-
-inline ptr toScheme(ptr value) { return value; }
-inline ptr toScheme(uint64_t value) { return Sunsigned64(value); }
-inline ptr toScheme(int64_t value) { return Sinteger64(value); }
-inline ptr toScheme(uint32_t value) { return Sunsigned64(value); }
-inline ptr toScheme(int32_t value) { return Sinteger64(value); }
-inline ptr toScheme(bool value) { return value ? Strue : Sfalse; }
-inline ptr toScheme(double value) { return Sflonum(value); }
-inline ptr toScheme(const char* text) {
+// A string answer; a null const char* is #f.
+inline ptr scheme_string(const char* text) {
   return text ? Sstring_utf8(text, static_cast<iptr>(std::strlen(text)))
               : Sfalse;
 }
-inline ptr toScheme(const std::string& text) {
+inline ptr scheme_string(const std::string& text) {
   return Sstring_utf8(text.data(), static_cast<iptr>(text.size()));
-}
-inline ptr toScheme(llvm::Error error) {
-  if (!error) {
-    return Svoid;
-  }
-  return errorObject(std::move(error));
-}
-template <typename T> inline ptr toScheme(llvm::Expected<T> value) {
-  if (!value) {
-    return errorObject(value.takeError());
-  }
-  return toScheme(std::move(*value));
 }
 
 // ---- the error of a callback ----
 //
 // Scheme (the guard of a callable) puts the text of the error here through
 // crest::error::set and answers the zero value to C++. The first error wins.
-// Scheme never reads the slot: the function that was registered with
-// register_binding answers it as the error object when the binding returns.
+// crest-foreign-procedure asks for it with crest::error::take when the binding
+// returns.
 
 struct CallbackError {
   bool pending = false;
@@ -116,24 +75,25 @@ inline void setCallbackError(const std::string& who,
   }
 }
 
-inline ptr takeCallbackErrorObject() {
+inline ptr takeCallbackError() {
   CallbackError& slot = callbackError();
-  ptr object = errorObject(slot.who, slot.message);
+  ptr error = scheme_error(slot.who.c_str(), slot.message);
   slot = CallbackError();
-  return object;
+  return error;
 }
 
-// How many bindings are on the stack: a binding answers the error of a callback
-// that ran inside it. With none (crest-opt, which MLIR drives, loading a Scheme
-// dialect while it parses) nobody will answer.
+// How many bindings are on the stack: crest-foreign-procedure counts them, at
+// the address that crest::error::depthAddress gives. A binding raises the error
+// of a callback that ran inside it. With none (crest-opt, which MLIR drives,
+// loading a Scheme dialect while it parses) nobody will raise it.
 inline int& bindingDepth() {
   static thread_local int depth = 0;
   return depth;
 }
 
-// The error in the slot has nobody to answer it (see bindingDepth): stop with
-// the text, as an uncaught error did. Call it where C++ has just run a Scheme
-// callback outside of any binding.
+// The error in the slot has nobody to raise it (see bindingDepth): stop with
+// the text. Call it where C++ has just run a Scheme callback outside of any
+// binding.
 inline void failIfUnanswered() {
   CallbackError& slot = callbackError();
   if (slot.pending && bindingDepth() == 0) {
@@ -142,78 +102,6 @@ inline void failIfUnanswered() {
     slot = CallbackError();
     llvm::report_fatal_error(llvm::Twine(text), /*gen_crash_diag=*/false);
   }
-}
-
-// answer(fn): call fn() and answer its result to Scheme: the value as an
-// object, an error as the error object, and the error of a callback, if there
-// is one, instead of either.
-template <typename Fn> ptr answer(Fn&& fn) {
-  using R = std::invoke_result_t<Fn>;
-  struct Depth {
-    Depth() { ++bindingDepth(); }
-    ~Depth() { --bindingDepth(); }
-  } depth;
-  ptr result;
-  if constexpr (std::is_void_v<R>) {
-    fn();
-    result = Svoid;
-  } else {
-    result = toScheme(fn());
-  }
-  if (callbackError().pending) {
-    result = takeCallbackErrorObject();
-  }
-  return result;
-}
-
-// ---- register_binding ----
-
-namespace detail {
-
-template <typename F>
-struct LambdaTraits : LambdaTraits<decltype(&F::operator())> {};
-template <typename C, typename R, typename... A>
-struct LambdaTraits<R (C::*)(A...) const> {
-  using Result = R;
-  using Arguments = std::tuple<A...>;
-};
-
-// One trampoline per lambda: the lambda is captureless, so a copy of it in a
-// static of the trampoline type (which the lambda's own type makes unique) is
-// the lambda.
-template <typename F, typename R, typename... A> struct Trampoline {
-  static inline std::optional<F> body;
-  static ptr call(A... arguments) {
-    return answer([&]() -> R { return (*body)(arguments...); });
-  }
-};
-
-// The names registered with register_binding: those answer a Scheme object, and
-// Scheme must call them through crest-foreign-procedure
-// (test/bindings/check-ffi-symbols.sls asks, through
-// crest::bindings::answersObject).
-inline std::set<std::string>& valueBindings() {
-  static std::set<std::string> names;
-  return names;
-}
-
-template <typename F, typename R, typename... A>
-void registerTrampoline(const char* name, F&& lambda, std::tuple<A...>*) {
-  valueBindings().insert(name);
-  Trampoline<std::decay_t<F>, R, A...>::body.emplace(std::forward<F>(lambda));
-  Sregister_symbol(name, (void*)&Trampoline<std::decay_t<F>, R, A...>::call);
-}
-
-} // namespace detail
-
-// register_binding("mlir::Block::getArgument", [](uint64_t block, int index) ->
-// llvm::Expected<uint64_t> { ... }); The lambda is anonymous and captureless
-// (Rule 9).
-template <typename F> void register_binding(const char* name, F&& lambda) {
-  using Traits = detail::LambdaTraits<std::decay_t<F>>;
-  detail::registerTrampoline<F, typename Traits::Result>(
-      name, std::forward<F>(lambda),
-      static_cast<typename Traits::Arguments*>(nullptr));
 }
 
 } // namespace crest

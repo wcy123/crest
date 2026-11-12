@@ -299,47 +299,54 @@ void registerIRExtensibleDialectBindings() {
   // The callback of :get-dependent-dialects gives it each name;
   // getOrLoadDialect finds the factory in the DialectRegistry and loads the
   // dialect first.
-  register_binding(
+  Sregister_symbol(
       "crest::CrestDialect::loadDependentDialect",
-      [](uint64_t dialect_ptr, const char* name) -> void {
+      (void*)+[](uint64_t dialect_ptr, const char* name) -> ptr {
         auto* dialect = reinterpret_cast<CrestDialect*>(dialect_ptr);
         if (!dialect->getContext()->getOrLoadDialect(llvm::StringRef(name))) {
           llvm::report_fatal_error(
               llvm::Twine("crest: dependent dialect not in registry: ") + name);
         }
+        return Svoid;
       });
 
   // crest::CrestDialect::reportFailure (string message) → void
   //
   // The callable of a verifier calls it with the text of the error its Scheme
   // callback raised, before it answers 0, so that the diagnostic shows it.
-  register_binding(
+  Sregister_symbol(
       "crest::CrestDialect::reportFailure",
-      [](const char* message) -> void { g_reported_failure = message; });
+      (void*)+[](const char* message) -> ptr {
+        g_reported_failure = message;
+        return Svoid;
+      });
 
   // crest::load-scheme-dialect! (uptr ctx) (string dialect-name) (string
   // module-name) → void Loads a Scheme-defined dialect into an existing
   // MLIRContext by delegating to dialectFactory. Safe to call when
   // multiThreadedExecutionContext == 0 (e.g. standalone tools, toyc.sls).
   // Replaces the old crest::register-dialect!.
-  register_binding(
+  Sregister_symbol(
       "crest::load-scheme-dialect!",
-      [](uint64_t ctx_ptr, const char* dialect_name,
-         const char* module_name) -> llvm::Error {
-        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(
-                           ctx_ptr, "crest::load-scheme-dialect!"));
+      (void*)+[](uint64_t ctx_ptr, const char* dialect_name,
+                 const char* module_name) -> ptr {
+        auto* ctx = crest::as_context(ctx_ptr);
+        if (!ctx) {
+          return scheme_error("crest::load-scheme-dialect!",
+                              "null MLIRContext pointer");
+        }
         // Copy first: the strings point into the Scheme heap, which the Scheme
         // code that validateSchemeDialect runs may move.
         std::string dialect(dialect_name);
         std::string module(module_name);
         if (auto error = validateSchemeDialect(dialect, module)) {
-          return fail("crest::load-scheme-dialect!",
-                      "Failed to import Scheme library: " + module + ": " +
-                          *error);
+          return scheme_error("crest::load-scheme-dialect!",
+                              llvm::Twine("Failed to import Scheme library: ") +
+                                  module + ": " + *error);
         }
         auto [type_id, factory] = dialectFactory(dialect, module);
         factory(ctx);
-        return llvm::Error::success();
+        return Svoid;
       });
 }
 

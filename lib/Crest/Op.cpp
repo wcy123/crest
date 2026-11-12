@@ -335,26 +335,33 @@ void registerCrestDynamicOpBindings() {
   // The callable of a verifier, parser or folder calls it with the text of the
   // error its Scheme callback raised (or of a result that is wrong), before it
   // answers 0, so that the diagnostic shows it.
-  register_binding(
+  Sregister_symbol(
       "crest::DynamicOp::reportFailure",
-      [](const char* message) -> void { g_reported_failure = message; });
+      (void*)+[](const char* message) -> ptr {
+        g_reported_failure = message;
+        return Svoid;
+      });
 
   // crest::Fold::addValue (uptr folded) (uptr value)
   // crest::Fold::addAttribute (uptr folded) (uptr attribute)
   //
   // The folder of an op gives each result to the `folded` that C++ passed.
-  register_binding("crest::Fold::addValue",
-                   [](uint64_t folded, uint64_t value) -> void {
-                     reinterpret_cast<FoldedResults*>(folded)->push_back(
-                         mlir::Value::getFromOpaquePointer(
-                             reinterpret_cast<const void*>(value)));
-                   });
-  register_binding("crest::Fold::addAttribute",
-                   [](uint64_t folded, uint64_t attribute) -> void {
-                     reinterpret_cast<FoldedResults*>(folded)->push_back(
-                         mlir::Attribute::getFromOpaquePointer(
-                             reinterpret_cast<const void*>(attribute)));
-                   });
+  Sregister_symbol(
+      "crest::Fold::addValue",
+      (void*)+[](uint64_t folded, uint64_t value) -> ptr {
+        reinterpret_cast<FoldedResults*>(folded)->push_back(
+            mlir::Value::getFromOpaquePointer(
+                reinterpret_cast<const void*>(value)));
+        return Svoid;
+      });
+  Sregister_symbol(
+      "crest::Fold::addAttribute",
+      (void*)+[](uint64_t folded, uint64_t attribute) -> ptr {
+        reinterpret_cast<FoldedResults*>(folded)->push_back(
+            mlir::Attribute::getFromOpaquePointer(
+                reinterpret_cast<const void*>(attribute)));
+        return Svoid;
+      });
 
   // crest::register-dynamic-op! (uptr dialect) (string op-name) (scheme-object
   // vector/8) (scheme-object interfaces)
@@ -374,20 +381,21 @@ void registerCrestDynamicOpBindings() {
   // `interfaces` is the list of (TypeID . dispatcher) pairs of the op's
   // :interfaces entries. The dispatchers are only needed while the op is
   // registered, so the list is locked for this call and not kept.
-  register_binding("crest::register-dynamic-op!",
-                   [](uint64_t dialect_ptr, const char* op_name, ptr cbs_ptr,
-                      ptr interfaces_ptr) -> llvm::Error {
-                     // Everything with a destructor lives in
-                     // registerOpFromScheme, which answers the text of an
-                     // error; the answer is returned to Scheme after those
-                     // objects are destroyed and the list is unlocked.
-                     std::string error = registerOpFromScheme(
-                         dialect_ptr, op_name, cbs_ptr, interfaces_ptr);
-                     if (!error.empty()) {
-                       return fail("crest::register-dynamic-op!", error);
-                     }
-                     return llvm::Error::success();
-                   });
+  Sregister_symbol(
+      "crest::register-dynamic-op!",
+      (void*)+[](uint64_t dialect_ptr, const char* op_name, ptr cbs_ptr,
+                 ptr interfaces_ptr) -> ptr {
+        // Everything with a destructor lives in
+        // registerOpFromScheme, which answers the text of an
+        // error; the answer is returned to Scheme after those
+        // objects are destroyed and the list is unlocked.
+        std::string error =
+            registerOpFromScheme(dialect_ptr, op_name, cbs_ptr, interfaces_ptr);
+        if (!error.empty()) {
+          return scheme_error("crest::register-dynamic-op!", error);
+        }
+        return Svoid;
+      });
 }
 
 } // namespace crest

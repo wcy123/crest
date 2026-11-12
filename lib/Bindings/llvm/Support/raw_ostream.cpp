@@ -19,15 +19,16 @@ void registerLLVMRawOstreamBindings() {
   //
   // `stream` is a raw_ostream that C++ gave Scheme for the length of a
   // callback, such as mlir::AsmPrinter::getStream.
-  register_binding("llvm::raw_ostream::write",
-                   [](uint64_t stream_ptr, const char* text) -> llvm::Error {
-                     if (!stream_ptr) {
-                       return fail("llvm::raw_ostream::write",
-                                   llvm::Twine("stream pointer is null"));
-                     }
-                     *reinterpret_cast<llvm::raw_ostream*>(stream_ptr) << text;
-                     return llvm::Error::success();
-                   });
+  Sregister_symbol(
+      "llvm::raw_ostream::write",
+      (void*)+[](uint64_t stream_ptr, const char* text) -> ptr {
+        if (!stream_ptr) {
+          return scheme_error("llvm::raw_ostream::write",
+                              "stream pointer is null");
+        }
+        *reinterpret_cast<llvm::raw_ostream*>(stream_ptr) << text;
+        return Svoid;
+      });
 }
 
 } // namespace crest

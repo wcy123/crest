@@ -27,14 +27,20 @@ void registerCrestObjectBindings() {
   // crest::error::set (string who) (string message) → void
   //
   // The guard of a callable (scheme/crest/callback.sls) calls it with the text
-  // of an error that it caught: the error is kept here, first one wins, and the
-  // next binding that returns answers it to Scheme as the error object
-  // (Result.h). It cannot fail.
+  // of an error that it caught: the error is kept here, first one wins, and
+  // crest-foreign-procedure raises it when the binding that ran the callback
+  // returns (Result.h). It cannot fail.
   Sregister_symbol(
       "crest::error::set",
       (void*)+[](const char* who, const char* message) -> void {
         setCallbackError(who, message);
       });
+
+  // crest::error::take () → (who . message): the error in the slot, which is
+  // then empty. A plain foreign-procedure with a scheme-object result.
+  Sregister_symbol(
+      "crest::error::take",
+      (void*)+[]() -> ptr { return takeCallbackError(); });
 
   // crest::error::pendingFlag () → uptr: the address of the flag that says an
   // error is waiting in the slot. A callable (scheme/crest/callback.sls) reads
@@ -47,12 +53,11 @@ void registerCrestObjectBindings() {
         return reinterpret_cast<uint64_t>(&callbackError().pending);
       });
 
-  // crest::bindings::answersObject (string name) → int: 1 when `name` was
-  // registered with register_binding, so Scheme must call it through
-  // crest-foreign-procedure.
+  // crest::error::depthAddress () → uptr: the address of the int that
+  // crest-foreign-procedure keeps the number of bindings on the stack in.
   Sregister_symbol(
-      "crest::bindings::answersObject", (void*)+[](const char* name) -> int {
-        return detail::valueBindings().count(name) ? 1 : 0;
+      "crest::error::depthAddress", (void*)+[]() -> uint64_t {
+        return reinterpret_cast<uint64_t>(&bindingDepth());
       });
 }
 

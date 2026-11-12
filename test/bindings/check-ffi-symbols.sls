@@ -1,13 +1,10 @@
 ;; Test driver for scheme-mlir: checks that every C symbol the Scheme sources name is registered
 ;; (CLAUDE.md Rule 14). It reads every .sls file under the Scheme roots and looks for
 ;;   (foreign-procedure "name" ...)                          the symbol "name"
-;;   (crest-foreign-procedure "name" ...)                    the symbol "name", which C++ registered with
-;;                                                           register_binding (it answers a Scheme object)
+;;   (crest-foreign-procedure "name" ...)                    the symbol "name"
 ;;   (define-builder-binding var "name" ...)                 the three variants NAME<OpBuilder>,
 ;;                                                           NAME<RewriterBase*>, NAME<OpBuilder*>
-;; and asks Chez whether each is a registered entry. A symbol that C++ registered with register_binding must
-;; be called through crest-foreign-procedure, and one that it did not through foreign-procedure: the two
-;; sides read the answer differently, and a mismatch is a crash, not an error. A missing symbol raises "no entry" when the
+;; and asks Chez whether each is a registered entry. A missing symbol raises "no entry" when the
 ;; library is instantiated, so it stays hidden until a pass imports that library; this finds it in
 ;; every library, including ones nothing imports yet.
 ;;
@@ -55,7 +52,6 @@
 
 (define scheme (car (command-line-arguments)))
 (define seen (make-hashtable string-hash string=?))
-(define answers-object? (foreign-procedure "crest::bindings::answersObject" (string) int))
 (define missing 0)
 
 (for-each
@@ -71,15 +67,6 @@
               [(not (foreign-entry? name))
                (set! missing (+ missing 1))
                (display "NOT REGISTERED ") (write name)
-               (display " in ") (display (cadr entry)) (newline)]
-              [(and (eq? (caddr entry) 'foreign-procedure) (= 1 (answers-object? name)))
-               (set! missing (+ missing 1))
-               (display "REGISTERED WITH register_binding, CALLED WITH foreign-procedure ") (write name)
-               (display " in ") (display (cadr entry)) (newline)]
-              [(and (memq (caddr entry) '(crest-foreign-procedure define-builder-binding))
-                    (= 0 (answers-object? name)))
-               (set! missing (+ missing 1))
-               (display "CALLED WITH crest-foreign-procedure (or define-builder-binding), NOT REGISTERED WITH register_binding or register_builder_binding ") (write name)
                (display " in ") (display (cadr entry)) (newline)]))))
        (entries form file)))
     (read-all file)))

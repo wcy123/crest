@@ -21,10 +21,10 @@ void registerIRDialectBindings() {
   register_builder_binding(
       "mlir::Dialect::materializeConstant",
       [](mlir::OpBuilder& builder, uint64_t dialect_ptr, uint64_t value_ptr,
-         uint64_t type_ptr, uint64_t loc_ptr) -> llvm::Expected<uint64_t> {
+         uint64_t type_ptr, uint64_t loc_ptr) -> ptr {
         if (!dialect_ptr) {
-          return fail("mlir::Dialect::materializeConstant",
-                      llvm::Twine("null dialect pointer"));
+          return scheme_error("mlir::Dialect::materializeConstant",
+                              "null dialect pointer");
         }
         auto* dialect = reinterpret_cast<mlir::Dialect*>(dialect_ptr);
         auto value = mlir::Attribute::getFromOpaquePointer(
@@ -33,8 +33,8 @@ void registerIRDialectBindings() {
             reinterpret_cast<const void*>(type_ptr));
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
-        return reinterpret_cast<uint64_t>(
-            dialect->materializeConstant(builder, value, type, loc));
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            dialect->materializeConstant(builder, value, type, loc)));
       });
 }
 

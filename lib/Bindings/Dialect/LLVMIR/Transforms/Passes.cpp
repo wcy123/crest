@@ -21,10 +21,10 @@ void registerDialectLLVMIRTransformsPassesBindings() {
   // mlir::PassManager::addPass or mlir::OpPassManager::addPass takes it
   // (lib/Bindings/Pass/PassManager.cpp): a pass that is made and never added
   // leaks.
-  register_binding(
-      "mlir::LLVM::createDIScopeForLLVMFuncOpPass", []() -> uint64_t {
-        return reinterpret_cast<uint64_t>(
-            mlir::LLVM::createDIScopeForLLVMFuncOpPass().release());
+  Sregister_symbol(
+      "mlir::LLVM::createDIScopeForLLVMFuncOpPass", (void*)+[]() -> ptr {
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            mlir::LLVM::createDIScopeForLLVMFuncOpPass().release()));
       });
 }
 

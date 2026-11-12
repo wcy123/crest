@@ -340,7 +340,7 @@ C function that had called into Scheme (`S_call_help`, `c/schlib.c`, "case 1: no
 before the loop that is meant to free the escaped frames). We do not patch Chez. `cmake/patches/chez-release-escaped-frames.patch`
 is kept for the record, with a standalone repro in `cmake/patches/chez-error-escape-leak/`, the list of our tests that
 reach it, what is known about upstream and how sure we are; the build does not apply it. CREST avoids the leak by
-never letting an error cross a C function: a C++ binding returns an error object and Scheme raises it
+never letting an error cross a C function: a C++ binding returns an error `(who . why)` and Scheme raises it
 (`plans/04-errors-are-values.md`).
 
 ## Checking for memory leaks

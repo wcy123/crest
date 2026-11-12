@@ -18,25 +18,25 @@
 namespace crest {
 
 void registerDialectTensorBindings() {
-  register_binding(
+  Sregister_symbol(
       "mlir::tensor::CastOp::areCastCompatible",
-      [](uint64_t from_type_ptr, uint64_t to_type_ptr) -> int {
+      (void*)+[](uint64_t from_type_ptr, uint64_t to_type_ptr) -> ptr {
         if (!from_type_ptr || !to_type_ptr) {
-          return 0;
+          return Sinteger64(0);
         }
         auto fromType = mlir::Type::getFromOpaquePointer(
             reinterpret_cast<const void*>(from_type_ptr));
         auto toType = mlir::Type::getFromOpaquePointer(
             reinterpret_cast<const void*>(to_type_ptr));
-        return mlir::tensor::CastOp::areCastCompatible(fromType, toType) ? 1
-                                                                         : 0;
+        return Sinteger64(
+            mlir::tensor::CastOp::areCastCompatible(fromType, toType) ? 1 : 0);
       });
   register_builder_binding(
       "mlir::tensor::CastOp::create",
       [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t result_type_ptr,
-         uint64_t input_value_ptr) -> uint64_t {
+         uint64_t input_value_ptr) -> ptr {
         if (!loc_ptr || !result_type_ptr || !input_value_ptr) {
-          return 0;
+          return Sunsigned64(0);
         }
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
@@ -46,8 +46,8 @@ void registerDialectTensorBindings() {
             reinterpret_cast<const void*>(input_value_ptr));
         auto castOp =
             mlir::tensor::CastOp::create(builder, loc, resultType, input);
-        return reinterpret_cast<uint64_t>(
-            castOp.getResult().getAsOpaquePointer());
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            castOp.getResult().getAsOpaquePointer()));
       });
 }
 

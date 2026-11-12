@@ -1456,18 +1456,18 @@ Register additional MLIR APIs from a downstream project without modifying CREST:
 extern "C" void crest_register_extra_bindings(void (*fn)());
 
 crest_register_extra_bindings([]() {
-    crest::register_binding("myDialect::MyOp::getCount",
-        [](uint64_t op_ptr) -> llvm::Expected<uint64_t> {
+    Sregister_symbol("myDialect::MyOp::getCount",
+        (void*)+[](uint64_t op_ptr) -> ptr {
             if (!op_ptr)
-                return crest::fail("myDialect::MyOp::getCount", "null operation pointer");
+                return crest::scheme_error("myDialect::MyOp::getCount", "null operation pointer");
             auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-            return op->getNumOperands();
+            return Sunsigned64(op->getNumOperands());
         });
 });
 ```
 
-The lambda answers a value, nothing, an `llvm::Error` or an `llvm::Expected<T>`; a failure becomes an error that
-Scheme raises after the C++ call has returned (CLAUDE.md Rule 20). Then declare and use it in Scheme:
+The function answers a Scheme object: the value, or `crest::scheme_error` on failure, which Scheme raises after
+the C++ call has returned (CLAUDE.md Rule 20). Then declare and use it in Scheme:
 
 ```scheme
 ;; In your ffi.sls:

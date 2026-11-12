@@ -24,7 +24,7 @@
 //
 //   register_builder_binding(
 //       "mlir::arith::AddFOp::create",
-//       [](mlir::OpBuilder& builder, uint64_t loc_ptr, ...) -> uint64_t { ...
+//       [](mlir::OpBuilder& builder, uint64_t loc_ptr, ...) -> ptr { ...
 //       });
 
 #ifndef CREST_BINDINGS_SUPPORT_BUILDERBINDING_H
@@ -44,57 +44,44 @@
 namespace crest {
 namespace detail {
 
-template <typename Shell>
-llvm::Expected<mlir::OpBuilder&> builder_inner(uint64_t handle,
-                                               const char* who);
+template <typename Shell> mlir::OpBuilder* builder_inner(uint64_t handle);
 
 template <>
-inline llvm::Expected<mlir::OpBuilder&>
-builder_inner<CrestBox<mlir::OpBuilder>>(uint64_t handle, const char* who) {
-  return CrestBox<mlir::OpBuilder>::inner(handle, who);
+inline mlir::OpBuilder*
+builder_inner<CrestBox<mlir::OpBuilder>>(uint64_t handle) {
+  return CrestBox<mlir::OpBuilder>::inner(handle);
 }
 
 // RewriterBase& converts to OpBuilder& statically, which adjusts the address:
 // RewriterBase is polymorphic, so its OpBuilder base is not at offset 0.
 template <>
-inline llvm::Expected<mlir::OpBuilder&>
-builder_inner<CrestBox<mlir::RewriterBase*>>(uint64_t handle, const char* who) {
-  auto rewriter = CrestBox<mlir::RewriterBase*>::inner(handle, who);
-  if (!rewriter) {
-    return rewriter.takeError();
-  }
-  return static_cast<mlir::OpBuilder&>(*rewriter);
+inline mlir::OpBuilder*
+builder_inner<CrestBox<mlir::RewriterBase*>>(uint64_t handle) {
+  mlir::RewriterBase* rewriter = CrestBox<mlir::RewriterBase*>::inner(handle);
+  return rewriter ? static_cast<mlir::OpBuilder*>(rewriter) : nullptr;
 }
 
 template <>
-inline llvm::Expected<mlir::OpBuilder&>
-builder_inner<CrestBox<mlir::OpBuilder*>>(uint64_t handle, const char* who) {
-  return CrestBox<mlir::OpBuilder*>::inner(handle, who);
+inline mlir::OpBuilder*
+builder_inner<CrestBox<mlir::OpBuilder*>>(uint64_t handle) {
+  return CrestBox<mlir::OpBuilder*>::inner(handle);
 }
 
 // The body and the binding name live in statics per lambda type, because a C
 // symbol cannot carry state. Chez keeps the registered name pointers, so the
 // names live forever.
-template <typename F, typename R, typename... Args> struct BuilderBinding {
+template <typename F, typename... Args> struct BuilderBinding {
   static inline std::optional<F> body;
   static inline std::string name;
 
-  // The shell is checked first: a handle of the wrong kind answers the error
-  // object; then the body runs with the builder (it may answer a value,
-  // nothing, an llvm::Error or an llvm::Expected, as in register_binding).
+  // The shell is checked first: a handle of the wrong kind answers an error;
+  // then the body runs with the builder and answers a Scheme object.
   template <typename Shell> static ptr call(uint64_t handle, Args... args) {
-    return answer([&]() -> llvm::Expected<ptr> {
-      auto builder = builder_inner<Shell>(handle, name.c_str());
-      if (!builder) {
-        return builder.takeError();
-      }
-      if constexpr (std::is_void_v<R>) {
-        (*body)(*builder, std::forward<Args>(args)...);
-        return Svoid;
-      } else {
-        return toScheme((*body)(*builder, std::forward<Args>(args)...));
-      }
-    });
+    mlir::OpBuilder* builder = builder_inner<Shell>(handle);
+    if (!builder) {
+      return scheme_error(name.c_str(), "not a builder of the expected kind");
+    }
+    return (*body)(*builder, std::forward<Args>(args)...);
   }
 };
 
@@ -111,15 +98,15 @@ inline std::string with_kind(const std::string& name, const char* kind) {
   return name + "<" + kind + ">";
 }
 
-template <typename F, typename R, typename... Args>
+template <typename F, typename... Args>
 void register_builder_binding_impl(const char* name, F body,
-                                   R (F::*)(mlir::OpBuilder&, Args...) const) {
-  using Binding = BuilderBinding<F, R, Args...>;
+                                   ptr (F::*)(mlir::OpBuilder&, Args...)
+                                       const) {
+  using Binding = BuilderBinding<F, Args...>;
   Binding::body.emplace(std::move(body));
   Binding::name = name;
   auto registerKind = [&](const char* kind, void* function) {
     const char* symbol = keep(with_kind(name, kind));
-    valueBindings().insert(symbol);
     Sregister_symbol(symbol, function);
   };
   registerKind("OpBuilder",

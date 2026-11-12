@@ -18,48 +18,62 @@
 namespace crest {
 
 void registerIRRewriterBaseBindings() {
-  register_binding(
+  Sregister_symbol(
       "mlir::RewriterBase::setInsertionPoint",
-      [](uint64_t rewriter_ptr, uint64_t op_ptr) -> llvm::Error {
+      (void*)+[](uint64_t rewriter_ptr, uint64_t op_ptr) -> ptr {
         if (!op_ptr) {
-          return fail("mlir::RewriterBase::setInsertionPoint",
-                      llvm::Twine("null op pointer"));
+          return scheme_error("mlir::RewriterBase::setInsertionPoint",
+                              "null op pointer");
         }
-        CREST_TRY(crest_lookup1,
-                  crest::CrestBox<mlir::RewriterBase*>::inner(
-                      rewriter_ptr, "mlir::RewriterBase::setInsertionPoint"));
+        auto* crest_lookup1_box =
+            crest::CrestBox<mlir::RewriterBase*>::inner(rewriter_ptr);
+        if (!crest_lookup1_box) {
+          return scheme_error(
+              "mlir::RewriterBase::setInsertionPoint",
+              "null pointer or not a CrestBox<mlir::RewriterBase*>");
+        }
+        auto& crest_lookup1 = *crest_lookup1_box;
 
         crest_lookup1.setInsertionPoint(
             reinterpret_cast<mlir::Operation*>(op_ptr));
-        return llvm::Error::success();
+        return Svoid;
       });
-  register_binding(
+  Sregister_symbol(
       "mlir::RewriterBase::setInsertionPointToEnd",
-      [](uint64_t rewriter_ptr, uint64_t block_ptr) -> llvm::Error {
+      (void*)+[](uint64_t rewriter_ptr, uint64_t block_ptr) -> ptr {
         if (!block_ptr) {
-          return fail("mlir::RewriterBase::setInsertionPointToEnd",
-                      llvm::Twine("null block pointer"));
+          return scheme_error("mlir::RewriterBase::setInsertionPointToEnd",
+                              "null block pointer");
         }
-        CREST_TRY(
-            crest_lookup1,
-            crest::CrestBox<mlir::RewriterBase*>::inner(
-                rewriter_ptr, "mlir::RewriterBase::setInsertionPointToEnd"));
+        auto* crest_lookup1_box =
+            crest::CrestBox<mlir::RewriterBase*>::inner(rewriter_ptr);
+        if (!crest_lookup1_box) {
+          return scheme_error(
+              "mlir::RewriterBase::setInsertionPointToEnd",
+              "null pointer or not a CrestBox<mlir::RewriterBase*>");
+        }
+        auto& crest_lookup1 = *crest_lookup1_box;
 
         crest_lookup1.setInsertionPointToEnd(
             reinterpret_cast<mlir::Block*>(block_ptr));
-        return llvm::Error::success();
+        return Svoid;
       });
-  register_binding(
+  Sregister_symbol(
       "mlir::RewriterBase::createBlock",
-      [](uint64_t rewriter_ptr, uint64_t region_ptr,
-         ptr arg_types_list) -> llvm::Expected<uint64_t> {
+      (void*)+[](uint64_t rewriter_ptr, uint64_t region_ptr,
+                 ptr arg_types_list) -> ptr {
         if (!region_ptr) {
-          return fail("mlir::RewriterBase::createBlock",
-                      llvm::Twine("null region pointer"));
+          return scheme_error("mlir::RewriterBase::createBlock",
+                              "null region pointer");
         }
-        CREST_TRY(rewriter,
-                  crest::CrestBox<mlir::RewriterBase*>::inner(
-                      rewriter_ptr, "mlir::RewriterBase::createBlock"));
+        auto* rewriter_box =
+            crest::CrestBox<mlir::RewriterBase*>::inner(rewriter_ptr);
+        if (!rewriter_box) {
+          return scheme_error(
+              "mlir::RewriterBase::createBlock",
+              "null pointer or not a CrestBox<mlir::RewriterBase*>");
+        }
+        auto& rewriter = *rewriter_box;
         auto* region = reinterpret_cast<mlir::Region*>(region_ptr);
         mlir::Operation* parent = region->getParentOp();
         mlir::Location loc = parent
@@ -69,8 +83,8 @@ void registerIRRewriterBaseBindings() {
         for (ptr cur = static_cast<ptr>(arg_types_list); cur != Snil;
              cur = Scdr(cur)) {
           if (!Spairp(cur)) {
-            return fail("mlir::RewriterBase::createBlock",
-                        llvm::Twine("malformed arg types list"));
+            return scheme_error("mlir::RewriterBase::createBlock",
+                                "malformed arg types list");
           }
           block->addArgument(
               mlir::Type::getFromOpaquePointer(
@@ -78,109 +92,139 @@ void registerIRRewriterBaseBindings() {
               loc);
         }
         rewriter.setInsertionPointToEnd(block);
-        return reinterpret_cast<uint64_t>(block);
+        return Sunsigned64(reinterpret_cast<uint64_t>(block));
       });
-  register_binding(
+  Sregister_symbol(
       "mlir::RewriterBase::replaceOp",
-      [](uint64_t rewriter_ptr, uint64_t old_op_ptr,
-         uint64_t new_value_ptr) -> llvm::Expected<int> {
+      (void*)+[](uint64_t rewriter_ptr, uint64_t old_op_ptr,
+                 uint64_t new_value_ptr) -> ptr {
         if (!old_op_ptr) {
-          return fail("mlir::RewriterBase::replaceOp",
-                      llvm::Twine("null op pointer"));
+          return scheme_error("mlir::RewriterBase::replaceOp",
+                              "null op pointer");
         }
-        CREST_TRY(crest_lookup1,
-                  crest::CrestBox<mlir::RewriterBase*>::inner(
-                      rewriter_ptr, "mlir::RewriterBase::replaceOp"));
+        auto* crest_lookup1_box =
+            crest::CrestBox<mlir::RewriterBase*>::inner(rewriter_ptr);
+        if (!crest_lookup1_box) {
+          return scheme_error(
+              "mlir::RewriterBase::replaceOp",
+              "null pointer or not a CrestBox<mlir::RewriterBase*>");
+        }
+        auto& crest_lookup1 = *crest_lookup1_box;
 
         crest_lookup1.replaceOp(reinterpret_cast<mlir::Operation*>(old_op_ptr),
                                 mlir::Value::getFromOpaquePointer(
                                     reinterpret_cast<void*>(new_value_ptr)));
-        return 1;
+        return Sinteger64(1);
       });
-  register_binding(
+  Sregister_symbol(
       "mlir::RewriterBase::eraseOp",
-      [](uint64_t rewriter_ptr, uint64_t op_ptr) -> llvm::Expected<int> {
-        CREST_TRY(crest_lookup1,
-                  crest::CrestBox<mlir::RewriterBase*>::inner(
-                      rewriter_ptr, "mlir::RewriterBase::eraseOp"));
+      (void*)+[](uint64_t rewriter_ptr, uint64_t op_ptr) -> ptr {
+        auto* crest_lookup1_box =
+            crest::CrestBox<mlir::RewriterBase*>::inner(rewriter_ptr);
+        if (!crest_lookup1_box) {
+          return scheme_error(
+              "mlir::RewriterBase::eraseOp",
+              "null pointer or not a CrestBox<mlir::RewriterBase*>");
+        }
+        auto& crest_lookup1 = *crest_lookup1_box;
 
         crest_lookup1.eraseOp(reinterpret_cast<mlir::Operation*>(op_ptr));
-        return 1;
+        return Sinteger64(1);
       });
   // RewriterBase IS-A OpBuilder (single inheritance). The shell's inner() is
   // the RewriterBase itself, which can be safely used with
   // RewriterBase::create.
-  register_binding(
+  Sregister_symbol(
       "mlir::RewriterBase::create<OperationState>",
-      [](uint64_t rw_ptr, uint64_t state_ptr) -> llvm::Expected<uint64_t> {
-        CREST_TRY(rw,
-                  crest::CrestBox<mlir::RewriterBase*>::inner(
-                      rw_ptr, "mlir::RewriterBase::create<OperationState>"));
-        CREST_TRY(state,
-                  crest::CrestBox<mlir::OperationState>::inner(
-                      state_ptr, "mlir::RewriterBase::create<OperationState>"));
-        return reinterpret_cast<uint64_t>(rw.create(state));
+      (void*)+[](uint64_t rw_ptr, uint64_t state_ptr) -> ptr {
+        auto* rw_box = crest::CrestBox<mlir::RewriterBase*>::inner(rw_ptr);
+        if (!rw_box) {
+          return scheme_error(
+              "mlir::RewriterBase::create<OperationState>",
+              "null pointer or not a CrestBox<mlir::RewriterBase*>");
+        }
+        auto& rw = *rw_box;
+        auto* state_box =
+            crest::CrestBox<mlir::OperationState>::inner(state_ptr);
+        if (!state_box) {
+          return scheme_error(
+              "mlir::RewriterBase::create<OperationState>",
+              "null pointer or not a CrestBox<mlir::OperationState>");
+        }
+        auto& state = *state_box;
+        return Sunsigned64(reinterpret_cast<uint64_t>(rw.create(state)));
       });
   // inlineRegionBefore: move all blocks of the source region to the front of
   // the destination region. Rewriter-only: the shell must be a
   // CrestBox<RewriterBase*>, so the call reaches the real rewriter (the
   // conversion rewriter overrides several RewriterBase methods).
   // (rw-ptr src-region-ptr dest-region-ptr) -> void
-  register_binding(
+  Sregister_symbol(
       "mlir::RewriterBase::inlineRegionBefore",
-      [](uint64_t rw_ptr, uint64_t src_ptr, uint64_t dest_ptr) -> llvm::Error {
-        CREST_TRY(rw, crest::CrestBox<mlir::RewriterBase*>::inner(
-                          rw_ptr, "mlir::RewriterBase::inlineRegionBefore"));
+      (void*)+[](uint64_t rw_ptr, uint64_t src_ptr, uint64_t dest_ptr) -> ptr {
+        auto* rw_box = crest::CrestBox<mlir::RewriterBase*>::inner(rw_ptr);
+        if (!rw_box) {
+          return scheme_error(
+              "mlir::RewriterBase::inlineRegionBefore",
+              "null pointer or not a CrestBox<mlir::RewriterBase*>");
+        }
+        auto& rw = *rw_box;
         auto* src = reinterpret_cast<mlir::Region*>(src_ptr);
         auto* dest = reinterpret_cast<mlir::Region*>(dest_ptr);
         rw.inlineRegionBefore(*src, *dest, dest->begin());
-        return llvm::Error::success();
+        return Svoid;
       });
-  register_binding("crest::isa<CrestBox<mlir::RewriterBase*>>",
-                   [](uint64_t ptr) -> int {
-                     if (!ptr) {
-                       return 0;
-                     }
-                     return reinterpret_cast<CrestObject*>(ptr)
-                                    ->isa<CrestBox<mlir::RewriterBase*>>()
-                                ? 1
-                                : 0;
-                   });
+  Sregister_symbol(
+      "crest::isa<CrestBox<mlir::RewriterBase*>>",
+      (void*)+[](uint64_t address) -> ptr {
+        if (!address) {
+          return Sinteger64(0);
+        }
+        return Sinteger64(reinterpret_cast<CrestObject*>(address)
+                                  ->isa<CrestBox<mlir::RewriterBase*>>()
+                              ? 1
+                              : 0);
+      });
   // LEAK WARNING: the box is on the C++ heap and only the caller frees it. Use
   // with-RewritePatternSet, which frees it after its body; a box that is never
   // freed leaks.
-  register_binding(
+  Sregister_symbol(
       "mlir::RewritePatternSet::RewritePatternSet",
-      [](uint64_t ctx_ptr) -> llvm::Expected<uint64_t> {
+      (void*)+[](uint64_t ctx_ptr) -> ptr {
         if (!ctx_ptr) {
-          return fail("mlir::RewritePatternSet::RewritePatternSet",
-                      llvm::Twine("ctx must not be null"));
+          return scheme_error("mlir::RewritePatternSet::RewritePatternSet",
+                              "ctx must not be null");
         }
-        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
-        return reinterpret_cast<uint64_t>(
-            new CrestBox<mlir::RewritePatternSet>(ctx));
+        auto* ctx = crest::as_context(ctx_ptr);
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            new CrestBox<mlir::RewritePatternSet>(ctx)));
       });
-  register_binding("crest::isa<CrestBox<mlir::RewritePatternSet>>",
-                   [](uint64_t ptr) -> int {
-                     if (!ptr) {
-                       return 0;
-                     }
-                     return reinterpret_cast<CrestObject*>(ptr)
-                                    ->isa<CrestBox<mlir::RewritePatternSet>>()
-                                ? 1
-                                : 0;
-                   });
+  Sregister_symbol(
+      "crest::isa<CrestBox<mlir::RewritePatternSet>>",
+      (void*)+[](uint64_t address) -> ptr {
+        if (!address) {
+          return Sinteger64(0);
+        }
+        return Sinteger64(reinterpret_cast<CrestObject*>(address)
+                                  ->isa<CrestBox<mlir::RewritePatternSet>>()
+                              ? 1
+                              : 0);
+      });
 
   // mlir::RewriterBase::setInsertionPointToStart: set insertion before first op
   // in block. (rw-ptr block-ptr) → void
-  register_binding(
+  Sregister_symbol(
       "mlir::RewriterBase::setInsertionPointToStart",
-      [](uint64_t rw_ptr, uint64_t block_ptr) -> llvm::Error {
-        CREST_TRY(rw,
-                  crest::CrestBox<mlir::RewriterBase*>::inner(
-                      rw_ptr, "mlir::RewriterBase::setInsertionPointToStart"));
+      (void*)+[](uint64_t rw_ptr, uint64_t block_ptr) -> ptr {
+        auto* rw_box = crest::CrestBox<mlir::RewriterBase*>::inner(rw_ptr);
+        if (!rw_box) {
+          return scheme_error(
+              "mlir::RewriterBase::setInsertionPointToStart",
+              "null pointer or not a CrestBox<mlir::RewriterBase*>");
+        }
+        auto& rw = *rw_box;
         rw.setInsertionPointToStart(reinterpret_cast<mlir::Block*>(block_ptr));
-        return llvm::Error::success();
+        return Svoid;
       });
 }
 

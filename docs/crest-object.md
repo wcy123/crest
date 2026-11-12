@@ -349,8 +349,8 @@ what Scheme passes.
 | Function | Accepts | Returns | Type safety | Use it when |
 |---|---|---|---|---|
 | `as_raw<T>(p, who)` | a raw `T*` | `T*` | **none.** It only checks for null. Any address is cast to `T*`, so a wrong object gives undefined behavior, often a crash inside MLIR. | MLIR owns the object and there is no shell |
-| `CrestBox<T>::inner(p, who)` | `CrestBox<T>*` | `T&` | **checked.** Null is a Scheme error, `null pointer`. The type tag must be `CrestBox<T>`; otherwise a Scheme error, `wrong CrestObject type`. | Scheme owns the object |
-| `CrestBox<T*>::inner(p, who)` | `CrestBox<T*>*` | `T&` | **checked**, in the same way, against the tag of `CrestBox<T*>`. | C++ passes in an object MLIR owns, such as the `RewriterBase` of a pattern |
+| `CrestBox<T>::inner(p)` | `CrestBox<T>*` | `T*` | **checked.** Null or a type tag that is not `CrestBox<T>` answers `nullptr`; the binding then answers a Scheme error. | Scheme owns the object |
+| `CrestBox<T*>::inner(p)` | `CrestBox<T*>*` | `T*` | **checked**, in the same way, against the tag of `CrestBox<T*>`. | C++ passes in an object MLIR owns, such as the `RewriterBase` of a pattern |
 
 Only `as_raw` skips the check. The other two read the type tag first, which is the cost
 described in [the cost section](#cost-of-the-extra-level). A binding names the shell type it
@@ -360,9 +360,9 @@ is expected.
 On a typed shell (one that C++ created or already checked), the member `inner()` returns the
 `T&` with no check.
 
-Two types have a special `as_ptr`, because their objects arrive in more than one form:
+Two types have a special lookup, because their objects arrive in more than one form:
 
-- `as_ptr<mlir::MLIRContext>` also accepts a raw `MLIRContext*`, such as the one from
+- `as_context(address)` answers the `MLIRContext*` and also accepts a raw `MLIRContext*`, such as the one from
   `op->getContext()`. **It is not type-safe**: if the argument is not a
   `CrestBox<MLIRContext>`, it is cast to `MLIRContext*` with no check, like `as_raw`.
 - A builder is one of three shells: `CrestBox<OpBuilder>` (from `atBlockEnd`),

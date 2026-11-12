@@ -20,46 +20,55 @@ namespace crest {
 // MLIRContext lifetime; Scheme must not free it.
 void registerIRAffineMapBindings() {
   /// ctx_ptr: CrestBox<MLIRContext>* | MLIRContext*, num_dims: unsigned
-  register_binding(
+  Sregister_symbol(
       "mlir::AffineMap::getMultiDimIdentityMap",
-      [](uint64_t ctx_ptr, uint64_t num_dims) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(
-                           ctx_ptr, "mlir::AffineMap::getMultiDimIdentityMap"));
-        return reinterpret_cast<uint64_t>(
-            mlir::AffineMap::getMultiDimIdentityMap(
-                static_cast<unsigned>(num_dims), ctx)
-                .getAsOpaquePointer());
+      (void*)+[](uint64_t ctx_ptr, uint64_t num_dims) -> ptr {
+        auto* ctx = crest::as_context(ctx_ptr);
+        if (!ctx) {
+          return scheme_error("mlir::AffineMap::getMultiDimIdentityMap",
+                              "null MLIRContext pointer");
+        }
+        return Sunsigned64(
+            reinterpret_cast<uint64_t>(mlir::AffineMap::getMultiDimIdentityMap(
+                                           static_cast<unsigned>(num_dims), ctx)
+                                           .getAsOpaquePointer()));
       });
 
   /// ctx_ptr: CrestBox<MLIRContext>* | MLIRContext*, val: int64_t
-  register_binding(
+  Sregister_symbol(
       "mlir::AffineMap::getConstantMap",
-      [](uint64_t ctx_ptr, int64_t val) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(
-                           ctx_ptr, "mlir::AffineMap::getConstantMap"));
-        return reinterpret_cast<uint64_t>(
-            mlir::AffineMap::getConstantMap(val, ctx).getAsOpaquePointer());
+      (void*)+[](uint64_t ctx_ptr, int64_t val) -> ptr {
+        auto* ctx = crest::as_context(ctx_ptr);
+        if (!ctx) {
+          return scheme_error("mlir::AffineMap::getConstantMap",
+                              "null MLIRContext pointer");
+        }
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            mlir::AffineMap::getConstantMap(val, ctx).getAsOpaquePointer()));
       });
 
   /// AffineMap::get(dimCount, symbolCount, results, ctx).
   /// ctx_ptr: CrestBox<MLIRContext>* | MLIRContext*, results: Scheme list of
   /// AffineExpr opaque pointers (empty for a map with no results).
-  register_binding(
+  Sregister_symbol(
       "mlir::AffineMap::get",
-      [](uint64_t ctx_ptr, uint64_t dim_count, uint64_t symbol_count,
-         ptr results) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(
-                           ctx_ptr, "mlir::AffineMap::get"));
+      (void*)+[](uint64_t ctx_ptr, uint64_t dim_count, uint64_t symbol_count,
+                 ptr results) -> ptr {
+        auto* ctx = crest::as_context(ctx_ptr);
+        if (!ctx) {
+          return scheme_error("mlir::AffineMap::get",
+                              "null MLIRContext pointer");
+        }
         llvm::SmallVector<mlir::AffineExpr> exprs;
         for (ptr cur = results; cur != Snil; cur = Scdr(cur)) {
           exprs.push_back(mlir::AffineExpr::getFromOpaquePointer(
               reinterpret_cast<const void*>(Sunsigned64_value(Scar(cur)))));
         }
-        return reinterpret_cast<uint64_t>(
+        return Sunsigned64(reinterpret_cast<uint64_t>(
             mlir::AffineMap::get(static_cast<unsigned>(dim_count),
                                  static_cast<unsigned>(symbol_count), exprs,
                                  ctx)
-                .getAsOpaquePointer());
+                .getAsOpaquePointer()));
       });
 }
 

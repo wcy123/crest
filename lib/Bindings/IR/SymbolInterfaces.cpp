@@ -18,16 +18,10 @@
 
 namespace {
 
-// The Concept of SymbolOpInterface for an op, or an error.
-llvm::Expected<const mlir::SymbolOpInterface::Concept*>
-symbolConcept(uint64_t op_ptr, const char* who) {
+// The Concept of SymbolOpInterface for an op, or nullptr.
+const mlir::SymbolOpInterface::Concept* symbolConcept(uint64_t op_ptr) {
   auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-  auto* c = crest::lookupConcept<mlir::SymbolOpInterface>(op);
-  if (!c) {
-    return crest::fail(who, "op does not implement SymbolOpInterface: " +
-                                llvm::Twine(op->getName().getStringRef()));
-  }
-  return c;
+  return op ? crest::lookupConcept<mlir::SymbolOpInterface>(op) : nullptr;
 }
 
 mlir::Operation* operation(uint64_t pointer) {
@@ -97,10 +91,11 @@ void registerIRSymbolInterfacesBindings() {
   //
   // The address that the TypeID of the interface wraps, which C++ turns back
   // with TypeID::getFromOpaquePointer to find how to install the interface.
-  register_binding("mlir::SymbolOpInterface::getInterfaceID", []() -> uint64_t {
-    return reinterpret_cast<uint64_t>(
-        mlir::SymbolOpInterface::getInterfaceID().getAsOpaquePointer());
-  });
+  Sregister_symbol(
+      "mlir::SymbolOpInterface::getInterfaceID", (void*)+[]() -> ptr {
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            mlir::SymbolOpInterface::getInterfaceID().getAsOpaquePointer()));
+      });
 
   // The functions that CREST ships for the slots that Scheme cannot write: the
   // address of each, for the MLIR default of the method. They answer what
@@ -109,148 +104,196 @@ void registerIRSymbolInterfacesBindings() {
   // crest::SymbolOpInterface::getSymbolUses () -> uptr
   // crest::SymbolOpInterface::symbolKnownUseEmpty () -> uptr
   // crest::SymbolOpInterface::replaceAllSymbolUses () -> uptr
-  register_binding("crest::SymbolOpInterface::getSymbolUses", []() -> uint64_t {
-    using Concept = mlir::SymbolOpInterface::Concept;
-    auto function =
-        +[](const Concept*, mlir::Operation* op, mlir::Operation* from)
-        -> std::optional<mlir::SymbolTable::UseRange> {
-      return mlir::SymbolTable::getSymbolUses(op, from);
-    };
-    return reinterpret_cast<uint64_t>(function);
-  });
-  register_binding("crest::SymbolOpInterface::symbolKnownUseEmpty",
-                   []() -> uint64_t {
-                     using Concept = mlir::SymbolOpInterface::Concept;
-                     auto function = +[](const Concept*, mlir::Operation* op,
-                                         mlir::Operation* from) -> bool {
-                       return mlir::SymbolTable::symbolKnownUseEmpty(op, from);
-                     };
-                     return reinterpret_cast<uint64_t>(function);
-                   });
-  register_binding(
-      "crest::SymbolOpInterface::replaceAllSymbolUses", []() -> uint64_t {
+  Sregister_symbol(
+      "crest::SymbolOpInterface::getSymbolUses", (void*)+[]() -> ptr {
+        using Concept = mlir::SymbolOpInterface::Concept;
+        auto function =
+            +[](const Concept*, mlir::Operation* op, mlir::Operation* from)
+            -> std::optional<mlir::SymbolTable::UseRange> {
+          return mlir::SymbolTable::getSymbolUses(op, from);
+        };
+        return Sunsigned64(reinterpret_cast<uint64_t>(function));
+      });
+  Sregister_symbol(
+      "crest::SymbolOpInterface::symbolKnownUseEmpty", (void*)+[]() -> ptr {
+        using Concept = mlir::SymbolOpInterface::Concept;
+        auto function = +[](const Concept*, mlir::Operation* op,
+                            mlir::Operation* from) -> bool {
+          return mlir::SymbolTable::symbolKnownUseEmpty(op, from);
+        };
+        return Sunsigned64(reinterpret_cast<uint64_t>(function));
+      });
+  Sregister_symbol(
+      "crest::SymbolOpInterface::replaceAllSymbolUses", (void*)+[]() -> ptr {
         using Concept = mlir::SymbolOpInterface::Concept;
         auto function =
             +[](const Concept*, mlir::Operation* op, mlir::StringAttr newName,
                 mlir::Operation* from) -> llvm::LogicalResult {
           return mlir::SymbolTable::replaceAllSymbolUses(op, newName, from);
         };
-        return reinterpret_cast<uint64_t>(function);
+        return Sunsigned64(reinterpret_cast<uint64_t>(function));
       });
 
   // The methods of the interface on an op, through the Concept of the op.
-  register_binding(
-      "mlir::SymbolOpInterface::getNameAttr",
-      [](uint64_t op) -> llvm::Expected<uint64_t> {
-        CREST_TRY(c, symbolConcept(op, "mlir::SymbolOpInterface::getNameAttr"));
-        return reinterpret_cast<uint64_t>(
-            c->getNameAttr(c, operation(op)).getAsOpaquePointer());
+  Sregister_symbol(
+      "mlir::SymbolOpInterface::getNameAttr", (void*)+[](uint64_t op) -> ptr {
+        auto* c = symbolConcept(op);
+        if (!c) {
+          return scheme_error("mlir::SymbolOpInterface::getNameAttr",
+                              "op does not implement SymbolOpInterface");
+        }
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            c->getNameAttr(c, operation(op)).getAsOpaquePointer()));
       });
-  register_binding(
+  Sregister_symbol(
       "mlir::SymbolOpInterface::setName",
-      [](uint64_t op, uint64_t name_ptr) -> llvm::Error {
-        CREST_TRY(c, symbolConcept(op, "mlir::SymbolOpInterface::setName"));
+      (void*)+[](uint64_t op, uint64_t name_ptr) -> ptr {
+        auto* c = symbolConcept(op);
+        if (!c) {
+          return scheme_error("mlir::SymbolOpInterface::setName",
+                              "op does not implement SymbolOpInterface");
+        }
         c->setName(
             c, operation(op),
             mlir::cast<mlir::StringAttr>(mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<const void*>(name_ptr))));
-        return llvm::Error::success();
+        return Svoid;
       });
-  register_binding(
-      "mlir::SymbolOpInterface::getVisibility",
-      [](uint64_t op) -> llvm::Expected<int> {
-        CREST_TRY(c,
-                  symbolConcept(op, "mlir::SymbolOpInterface::getVisibility"));
-        return static_cast<int>(c->getVisibility(c, operation(op)));
+  Sregister_symbol(
+      "mlir::SymbolOpInterface::getVisibility", (void*)+[](uint64_t op) -> ptr {
+        auto* c = symbolConcept(op);
+        if (!c) {
+          return scheme_error("mlir::SymbolOpInterface::getVisibility",
+                              "op does not implement SymbolOpInterface");
+        }
+        return Sinteger64(static_cast<int>(c->getVisibility(c, operation(op))));
       });
-  register_binding(
-      "mlir::SymbolOpInterface::isNested",
-      [](uint64_t op) -> llvm::Expected<int> {
-        CREST_TRY(c, symbolConcept(op, "mlir::SymbolOpInterface::isNested"));
-        return c->isNested(c, operation(op)) ? 1 : 0;
+  Sregister_symbol(
+      "mlir::SymbolOpInterface::isNested", (void*)+[](uint64_t op) -> ptr {
+        auto* c = symbolConcept(op);
+        if (!c) {
+          return scheme_error("mlir::SymbolOpInterface::isNested",
+                              "op does not implement SymbolOpInterface");
+        }
+        return Sinteger64(c->isNested(c, operation(op)) ? 1 : 0);
       });
-  register_binding(
-      "mlir::SymbolOpInterface::isPrivate",
-      [](uint64_t op) -> llvm::Expected<int> {
-        CREST_TRY(c, symbolConcept(op, "mlir::SymbolOpInterface::isPrivate"));
-        return c->isPrivate(c, operation(op)) ? 1 : 0;
+  Sregister_symbol(
+      "mlir::SymbolOpInterface::isPrivate", (void*)+[](uint64_t op) -> ptr {
+        auto* c = symbolConcept(op);
+        if (!c) {
+          return scheme_error("mlir::SymbolOpInterface::isPrivate",
+                              "op does not implement SymbolOpInterface");
+        }
+        return Sinteger64(c->isPrivate(c, operation(op)) ? 1 : 0);
       });
-  register_binding(
-      "mlir::SymbolOpInterface::isPublic",
-      [](uint64_t op) -> llvm::Expected<int> {
-        CREST_TRY(c, symbolConcept(op, "mlir::SymbolOpInterface::isPublic"));
-        return c->isPublic(c, operation(op)) ? 1 : 0;
+  Sregister_symbol(
+      "mlir::SymbolOpInterface::isPublic", (void*)+[](uint64_t op) -> ptr {
+        auto* c = symbolConcept(op);
+        if (!c) {
+          return scheme_error("mlir::SymbolOpInterface::isPublic",
+                              "op does not implement SymbolOpInterface");
+        }
+        return Sinteger64(c->isPublic(c, operation(op)) ? 1 : 0);
       });
-  register_binding(
+  Sregister_symbol(
       "mlir::SymbolOpInterface::setVisibility",
-      [](uint64_t op, int visibility) -> llvm::Error {
-        CREST_TRY(c,
-                  symbolConcept(op, "mlir::SymbolOpInterface::setVisibility"));
+      (void*)+[](uint64_t op, int visibility) -> ptr {
+        auto* c = symbolConcept(op);
+        if (!c) {
+          return scheme_error("mlir::SymbolOpInterface::setVisibility",
+                              "op does not implement SymbolOpInterface");
+        }
         c->setVisibility(
             c, operation(op),
             static_cast<mlir::SymbolTable::Visibility>(visibility));
-        return llvm::Error::success();
+        return Svoid;
       });
-  register_binding(
-      "mlir::SymbolOpInterface::setNested", [](uint64_t op) -> llvm::Error {
-        CREST_TRY(c, symbolConcept(op, "mlir::SymbolOpInterface::setNested"));
+  Sregister_symbol(
+      "mlir::SymbolOpInterface::setNested", (void*)+[](uint64_t op) -> ptr {
+        auto* c = symbolConcept(op);
+        if (!c) {
+          return scheme_error("mlir::SymbolOpInterface::setNested",
+                              "op does not implement SymbolOpInterface");
+        }
         c->setNested(c, operation(op));
-        return llvm::Error::success();
+        return Svoid;
       });
-  register_binding(
-      "mlir::SymbolOpInterface::setPrivate", [](uint64_t op) -> llvm::Error {
-        CREST_TRY(c, symbolConcept(op, "mlir::SymbolOpInterface::setPrivate"));
+  Sregister_symbol(
+      "mlir::SymbolOpInterface::setPrivate", (void*)+[](uint64_t op) -> ptr {
+        auto* c = symbolConcept(op);
+        if (!c) {
+          return scheme_error("mlir::SymbolOpInterface::setPrivate",
+                              "op does not implement SymbolOpInterface");
+        }
         c->setPrivate(c, operation(op));
-        return llvm::Error::success();
+        return Svoid;
       });
-  register_binding(
-      "mlir::SymbolOpInterface::setPublic", [](uint64_t op) -> llvm::Error {
-        CREST_TRY(c, symbolConcept(op, "mlir::SymbolOpInterface::setPublic"));
+  Sregister_symbol(
+      "mlir::SymbolOpInterface::setPublic", (void*)+[](uint64_t op) -> ptr {
+        auto* c = symbolConcept(op);
+        if (!c) {
+          return scheme_error("mlir::SymbolOpInterface::setPublic",
+                              "op does not implement SymbolOpInterface");
+        }
         c->setPublic(c, operation(op));
-        return llvm::Error::success();
+        return Svoid;
       });
-  register_binding(
+  Sregister_symbol(
       "mlir::SymbolOpInterface::symbolKnownUseEmpty",
-      [](uint64_t op, uint64_t from) -> llvm::Expected<int> {
-        CREST_TRY(c, symbolConcept(
-                         op, "mlir::SymbolOpInterface::symbolKnownUseEmpty"));
-        return c->symbolKnownUseEmpty(c, operation(op), operation(from)) ? 1
-                                                                         : 0;
+      (void*)+[](uint64_t op, uint64_t from) -> ptr {
+        auto* c = symbolConcept(op);
+        if (!c) {
+          return scheme_error("mlir::SymbolOpInterface::symbolKnownUseEmpty",
+                              "op does not implement SymbolOpInterface");
+        }
+        return Sinteger64(
+            c->symbolKnownUseEmpty(c, operation(op), operation(from)) ? 1 : 0);
       });
-  register_binding(
+  Sregister_symbol(
       "mlir::SymbolOpInterface::replaceAllSymbolUses",
-      [](uint64_t op, uint64_t new_name, uint64_t from) -> llvm::Expected<int> {
-        CREST_TRY(c, symbolConcept(
-                         op, "mlir::SymbolOpInterface::replaceAllSymbolUses"));
-        return mlir::succeeded(c->replaceAllSymbolUses(
-                   c, operation(op),
-                   mlir::cast<mlir::StringAttr>(
-                       mlir::Attribute::getFromOpaquePointer(
-                           reinterpret_cast<const void*>(new_name))),
-                   operation(from)))
-                   ? 1
-                   : 0;
+      (void*)+[](uint64_t op, uint64_t new_name, uint64_t from) -> ptr {
+        auto* c = symbolConcept(op);
+        if (!c) {
+          return scheme_error("mlir::SymbolOpInterface::replaceAllSymbolUses",
+                              "op does not implement SymbolOpInterface");
+        }
+        return Sinteger64(mlir::succeeded(c->replaceAllSymbolUses(
+                              c, operation(op),
+                              mlir::cast<mlir::StringAttr>(
+                                  mlir::Attribute::getFromOpaquePointer(
+                                      reinterpret_cast<const void*>(new_name))),
+                              operation(from)))
+                              ? 1
+                              : 0);
       });
-  register_binding(
+  Sregister_symbol(
       "mlir::SymbolOpInterface::isOptionalSymbol",
-      [](uint64_t op) -> llvm::Expected<int> {
-        CREST_TRY(
-            c, symbolConcept(op, "mlir::SymbolOpInterface::isOptionalSymbol"));
-        return c->isOptionalSymbol(c, operation(op)) ? 1 : 0;
+      (void*)+[](uint64_t op) -> ptr {
+        auto* c = symbolConcept(op);
+        if (!c) {
+          return scheme_error("mlir::SymbolOpInterface::isOptionalSymbol",
+                              "op does not implement SymbolOpInterface");
+        }
+        return Sinteger64(c->isOptionalSymbol(c, operation(op)) ? 1 : 0);
       });
-  register_binding(
+  Sregister_symbol(
       "mlir::SymbolOpInterface::canDiscardOnUseEmpty",
-      [](uint64_t op) -> llvm::Expected<int> {
-        CREST_TRY(c, symbolConcept(
-                         op, "mlir::SymbolOpInterface::canDiscardOnUseEmpty"));
-        return c->canDiscardOnUseEmpty(c, operation(op)) ? 1 : 0;
+      (void*)+[](uint64_t op) -> ptr {
+        auto* c = symbolConcept(op);
+        if (!c) {
+          return scheme_error("mlir::SymbolOpInterface::canDiscardOnUseEmpty",
+                              "op does not implement SymbolOpInterface");
+        }
+        return Sinteger64(c->canDiscardOnUseEmpty(c, operation(op)) ? 1 : 0);
       });
-  register_binding(
-      "mlir::SymbolOpInterface::isDeclaration",
-      [](uint64_t op) -> llvm::Expected<int> {
-        CREST_TRY(c,
-                  symbolConcept(op, "mlir::SymbolOpInterface::isDeclaration"));
-        return c->isDeclaration(c, operation(op)) ? 1 : 0;
+  Sregister_symbol(
+      "mlir::SymbolOpInterface::isDeclaration", (void*)+[](uint64_t op) -> ptr {
+        auto* c = symbolConcept(op);
+        if (!c) {
+          return scheme_error("mlir::SymbolOpInterface::isDeclaration",
+                              "op does not implement SymbolOpInterface");
+        }
+        return Sinteger64(c->isDeclaration(c, operation(op)) ? 1 : 0);
       });
 }
 
