@@ -108,14 +108,16 @@ TEST_F(InterpreterTest, SchemeErrorDoesNotLeakCppMemory) {
   run(kErrors);
   collect();
   size_t grown = bytesInUse() - before;
-  // Before the repair each error lost about 816 bytes in scheme_error. What is
-  // left, about 200 bytes per error, is Chez's own: S_call_help allocates a
-  // record for each call from C into Scheme and does not free it when an error
-  // leaves through that call (valgrind: malloc in S_call_help). The bound
-  // allows for that and not for CREST's own leak. LEAK WARNING: the patch of
-  // cmake/patches/chez-release-escaped-frames.patch removes Chez's share of it,
-  // but only on a build that applies it (not Windows).
-  EXPECT_LT(grown, static_cast<size_t>(kErrors) * 400)
+  // Before the repair each error lost about 816 bytes in scheme_error, and
+  // about 200 more in Chez itself: S_call_help allocates a jump buffer for each
+  // call from C into Scheme and, as shipped, does not free it when an error
+  // leaves through that call (valgrind: malloc in S_call_help). The Chez of
+  // this build has cmake/patches/chez-release-escaped-frames.patch (not applied
+  // on Windows, where this test does not run), so an error leaves nothing
+  // behind: the bound is a few bytes per error, for the allocator's own noise.
+  // If it fails with about 200 bytes per error, the patch was not applied to
+  // Chez.
+  EXPECT_LT(grown, static_cast<size_t>(kErrors) * 24)
       << grown << " bytes in use more after " << kErrors << " errors";
 }
 #endif
