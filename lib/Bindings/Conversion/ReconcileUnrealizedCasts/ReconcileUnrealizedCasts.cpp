@@ -7,6 +7,7 @@
 
 #include "ReconcileUnrealizedCasts.h"
 #include "../../Support/CrestObject.h"
+#include "../../Support/Result.h"
 #include "../../Support/SchemeWrapper.h"
 #include "mlir/Conversion/ReconcileUnrealizedCasts/ReconcileUnrealizedCasts.h"
 #include "mlir/Pass/Pass.h"
@@ -18,11 +19,11 @@ void registerConversionReconcileUnrealizedCastsBindings() {
   // mlir::PassManager::addPass or mlir::OpPassManager::addPass takes it
   // (lib/Bindings/Pass/PassManager.cpp): a pass that is made and never added
   // leaks.
-  Sregister_symbol(
-      "mlir::createReconcileUnrealizedCastsPass", (void*)+[]() -> uint64_t {
-        return reinterpret_cast<uint64_t>(
-            mlir::createReconcileUnrealizedCastsPass().release());
-      });
+  register_binding("mlir::createReconcileUnrealizedCastsPass",
+                   []() -> uint64_t {
+                     return reinterpret_cast<uint64_t>(
+                         mlir::createReconcileUnrealizedCastsPass().release());
+                   });
 }
 
 } // namespace crest

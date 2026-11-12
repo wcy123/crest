@@ -11,18 +11,19 @@
           %mlir::func::ReturnOp::create
           %mlir::func::FuncOp::getBody
           %mlir::DialectRegistry::insert<mlir::func::FuncDialect>)
-  (import (chezscheme))
+  (import (chezscheme)
+          (mlir support foreign))
 
   (define %mlir::func::FuncOp::create
-    (foreign-procedure "mlir::func::FuncOp::create" (uptr uptr string uptr) uptr))
+    (crest-foreign-procedure "mlir::func::FuncOp::create" (uptr uptr string uptr) uptr))
 
   (define %mlir::func::ReturnOp::create
-    (foreign-procedure "mlir::func::ReturnOp::create" (uptr uptr) uptr))
+    (crest-foreign-procedure "mlir::func::ReturnOp::create" (uptr uptr) uptr))
 
   (define %mlir::func::FuncOp::getBody
-    (foreign-procedure "mlir::func::FuncOp::getBody" (uptr) uptr))
+    (crest-foreign-procedure "mlir::func::FuncOp::getBody" (uptr) uptr))
 
   (define %mlir::DialectRegistry::insert<mlir::func::FuncDialect>
-    (foreign-procedure "mlir::DialectRegistry::insert<mlir::func::FuncDialect>" (uptr) void))
+    (crest-foreign-procedure "mlir::DialectRegistry::insert<mlir::func::FuncDialect>" (uptr) void))
 
   ) ;; end library (mlir Dialect Func IR FuncOps ffi)

@@ -2,6 +2,7 @@
 ;; Mirrors mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h
 (library (mlir Conversion SCFToControlFlow SCFToControlFlow ffi)
   (export %mlir::populateSCFToControlFlowConversionPatterns)
-  (import (chezscheme))
+  (import (chezscheme)
+          (mlir support foreign))
   (define %mlir::populateSCFToControlFlowConversionPatterns
-    (foreign-procedure "mlir::populateSCFToControlFlowConversionPatterns" (uptr) void)))
+    (crest-foreign-procedure "mlir::populateSCFToControlFlowConversionPatterns" (uptr) void)))

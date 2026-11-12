@@ -5,6 +5,7 @@
 // Dialect types defined in Scheme — lib/Crest/Type.cpp
 
 #include "Type.h"
+#include "../Bindings/Support/Result.h"
 #include "../Bindings/Support/SchemeWrapper.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/Diagnostics.h"
@@ -69,18 +70,16 @@ void registerCrestDynamicTypeBindings() {
   // crest::DynamicType::setMessage (uptr sink) (string message)
   //
   // The callables of a type give their answers to the `sink` that C++ passed.
-  Sregister_symbol(
-      "crest::DynamicType::addParam",
-      (void*)+[](uint64_t sink, uint64_t attribute) -> void {
-        reinterpret_cast<TypeSink*>(sink)->parsed->push_back(
-            mlir::Attribute::getFromOpaquePointer(
-                reinterpret_cast<const void*>(attribute)));
-      });
-  Sregister_symbol(
-      "crest::DynamicType::setMessage",
-      (void*)+[](uint64_t sink, const char* message) -> void {
-        reinterpret_cast<TypeSink*>(sink)->message = message;
-      });
+  register_binding("crest::DynamicType::addParam",
+                   [](uint64_t sink, uint64_t attribute) -> void {
+                     reinterpret_cast<TypeSink*>(sink)->parsed->push_back(
+                         mlir::Attribute::getFromOpaquePointer(
+                             reinterpret_cast<const void*>(attribute)));
+                   });
+  register_binding("crest::DynamicType::setMessage",
+                   [](uint64_t sink, const char* message) -> void {
+                     reinterpret_cast<TypeSink*>(sink)->message = message;
+                   });
 
   // crest::register-dynamic-type! (uptr dialect) (string name) (scheme-object
   // vector/3) → void
@@ -96,9 +95,9 @@ void registerCrestDynamicTypeBindings() {
   //             with the message in the sink
   //   2 print   (uptr printer, uptr params, uptr n) → void   (the text after
   //             the type name)
-  Sregister_symbol(
+  register_binding(
       "crest::register-dynamic-type!",
-      (void*)+[](uint64_t dialect_ptr, const char* name, ptr cbs) -> void {
+      [](uint64_t dialect_ptr, const char* name, ptr cbs) -> llvm::Error {
         auto* dialect = reinterpret_cast<mlir::ExtensibleDialect*>(dialect_ptr);
         auto entry = [&](int slot) -> uint64_t {
           ptr value = Svector_ref(cbs, slot);
@@ -116,8 +115,9 @@ void registerCrestDynamicTypeBindings() {
         auto parse = reinterpret_cast<ParseFn>(entry(1));
         auto print = reinterpret_cast<PrintFn>(entry(2));
         if ((parse != nullptr) != (print != nullptr)) {
-          scheme_error("crest::register-dynamic-type!",
-                       "a type needs both :parse and :print, or neither");
+          return fail(
+              "crest::register-dynamic-type!",
+              llvm::Twine("a type needs both :parse and :print, or neither"));
         }
 
         mlir::DynamicTypeDefinition::VerifierFn verifier =
@@ -180,20 +180,23 @@ void registerCrestDynamicTypeBindings() {
         registry()[{dialect->getContext(), dialect->getNamespace().str(),
                     name}] = def.get();
         dialect->registerDynamicType(std::move(def));
+        return llvm::Error::success();
       });
 
   // crest::DynamicType::get (string dialect) (string name) (scheme-object
   // params) (uptr ctx) → uptr The type with these attribute parameters,
   // verified; 0 when verification fails.
-  Sregister_symbol(
+  register_binding(
       "crest::DynamicType::get",
-      (void*)+[](const char* dialect, const char* name, ptr params,
-                 uint64_t ctx_ptr) -> uint64_t {
-        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
+      [](const char* dialect, const char* name, ptr params,
+         uint64_t ctx_ptr) -> llvm::Expected<uint64_t> {
+        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         auto* def = lookup(ctx, dialect, name);
         if (!def) {
-          scheme_error("crest::DynamicType::get", "unknown type ", dialect, ".",
-                       name);
+          return fail("crest::DynamicType::get",
+                      llvm::Twine("unknown type ") + " " +
+                          llvm::Twine(dialect) + " " + "." + " " +
+                          llvm::Twine(name));
         }
         llvm::SmallVector<mlir::Attribute> attrs;
         for (ptr l = params; Spairp(l); l = Scdr(l)) {
@@ -207,10 +210,9 @@ void registerCrestDynamicTypeBindings() {
       });
 
   // crest::DynamicType::isa (string dialect) (string name) (uptr type) → int
-  Sregister_symbol(
+  register_binding(
       "crest::DynamicType::isa",
-      (void*)+[](const char* dialect, const char* name,
-                 uint64_t type_ptr) -> int {
+      [](const char* dialect, const char* name, uint64_t type_ptr) -> int {
         if (!type_ptr) {
           return 0;
         }
@@ -224,16 +226,18 @@ void registerCrestDynamicTypeBindings() {
       });
 
   // crest::DynamicType::getParams (uptr type) → list of attribute pointers
-  Sregister_symbol(
-      "crest::DynamicType::getParams", (void*)+[](uint64_t type_ptr) -> ptr {
-        auto dynamic = mlir::dyn_cast_if_present<mlir::DynamicType>(
-            mlir::Type::getFromOpaquePointer(
-                reinterpret_cast<const void*>(type_ptr)));
-        if (!dynamic) {
-          scheme_error("crest::DynamicType::getParams", "not a dynamic type");
-        }
-        return attributeList(dynamic.getParams());
-      });
+  register_binding("crest::DynamicType::getParams",
+                   [](uint64_t type_ptr) -> llvm::Expected<ptr> {
+                     auto dynamic =
+                         mlir::dyn_cast_if_present<mlir::DynamicType>(
+                             mlir::Type::getFromOpaquePointer(
+                                 reinterpret_cast<const void*>(type_ptr)));
+                     if (!dynamic) {
+                       return fail("crest::DynamicType::getParams",
+                                   llvm::Twine("not a dynamic type"));
+                     }
+                     return attributeList(dynamic.getParams());
+                   });
 }
 
 } // namespace crest

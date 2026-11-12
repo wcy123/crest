@@ -123,6 +123,24 @@ inline ptr takeCallbackErrorObject() {
   return object;
 }
 
+// answer(fn): call fn() and answer its result to Scheme (Result.h, top): the
+// value as an object, an error as the error object, and the error of a
+// callback, if there is one, instead of either.
+template <typename Fn> ptr answer(Fn&& fn) {
+  using R = std::invoke_result_t<Fn>;
+  ptr result;
+  if constexpr (std::is_void_v<R>) {
+    fn();
+    result = Svoid;
+  } else {
+    result = toScheme(fn());
+  }
+  if (callbackError().pending) {
+    result = takeCallbackErrorObject();
+  }
+  return result;
+}
+
 // ---- register_binding ----
 
 namespace detail {
@@ -141,17 +159,7 @@ struct LambdaTraits<R (C::*)(A...) const> {
 template <typename F, typename R, typename... A> struct Trampoline {
   static inline std::optional<F> body;
   static ptr call(A... arguments) {
-    ptr result;
-    if constexpr (std::is_void_v<R>) {
-      (*body)(arguments...);
-      result = Svoid;
-    } else {
-      result = toScheme((*body)(arguments...));
-    }
-    if (callbackError().pending) {
-      result = takeCallbackErrorObject();
-    }
-    return result;
+    return answer([&]() -> R { return (*body)(arguments...); });
   }
 };
 

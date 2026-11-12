@@ -40,7 +40,8 @@
           crest-callback-condition-text
           crest-callback-entry-dispatcher
           crest-slot-callable)
-  (import (chezscheme))
+  (import (chezscheme)
+          (mlir support foreign))
 
   ;; A pair of words that C++ passes or returns by value: an llvm::ArrayRef, a TypeRange, an
   ;; OperandRange (a pointer and a count). Chez makes a foreign-callable that takes or answers such a
@@ -50,7 +51,7 @@
   ;; The elements of a range C++ gave as two words (crest::TypeRange::toList): a TypeRange is not an
   ;; array, its first word has a tag.
   (define %%type-range->list
-    (foreign-procedure "crest::TypeRange::toList" (uptr uptr) scheme-object))
+    (crest-foreign-procedure "crest::TypeRange::toList" (uptr uptr) scheme-object))
 
   ;; Windows x64 (a6nt, ta6nt): a class with a constructor is returned through a pointer even when
   ;; it is one word (Type, StringAttr, a PointerUnion), where it is passed in a register.

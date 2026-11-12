@@ -7,6 +7,7 @@
 
 #include "Tensor.h"
 #include "../../../Support/BuilderBinding.h"
+#include "../../../Support/Result.h"
 #include "../../../Support/SchemeWrapper.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/IR/Builders.h"
@@ -17,9 +18,9 @@
 namespace crest {
 
 void registerDialectTensorBindings() {
-  Sregister_symbol(
+  register_binding(
       "mlir::tensor::CastOp::areCastCompatible",
-      (void*)+[](uint64_t from_type_ptr, uint64_t to_type_ptr) -> int {
+      [](uint64_t from_type_ptr, uint64_t to_type_ptr) -> int {
         if (!from_type_ptr || !to_type_ptr) {
           return 0;
         }

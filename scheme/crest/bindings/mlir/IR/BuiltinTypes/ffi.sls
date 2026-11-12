@@ -58,7 +58,8 @@
     %mlir::FunctionType::get
     %mlir::FunctionType::getInputs
     %mlir::FunctionType::getResults)
-  (import (rnrs) (only (chezscheme) foreign-procedure))
+  (import (rnrs)
+          (mlir support foreign) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::IndexType::get — construct an index type in the given context.
   ;; @param ctx  MLIRContext opaque pointer uptr
@@ -66,7 +67,7 @@
   ;; @see        mlir/IR/BuiltinTypes.h
   ;; @note       Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %mlir::IndexType::get
-    (foreign-procedure "mlir::IndexType::get" (uptr) uptr))
+    (crest-foreign-procedure "mlir::IndexType::get" (uptr) uptr))
 
   ;; @brief mlir::IntegerType::get(ctx, 64) — construct a 64-bit integer type.
   ;; @param ctx  MLIRContext opaque pointer uptr
@@ -74,7 +75,7 @@
   ;; @see        mlir/IR/BuiltinTypes.h
   ;; @note       Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %mlir::IntegerType::get<i64>
-    (foreign-procedure "mlir::IntegerType::get<i64>" (uptr) uptr))
+    (crest-foreign-procedure "mlir::IntegerType::get<i64>" (uptr) uptr))
 
   ;; @brief mlir::IntegerType::get(ctx, 1) — construct a 1-bit integer type.
   ;; @param ctx  MLIRContext opaque pointer uptr
@@ -82,7 +83,7 @@
   ;; @see        mlir/IR/BuiltinTypes.h
   ;; @note       Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %mlir::IntegerType::get<i1>
-    (foreign-procedure "mlir::IntegerType::get<i1>" (uptr) uptr))
+    (crest-foreign-procedure "mlir::IntegerType::get<i1>" (uptr) uptr))
 
   ;; @brief mlir::isa<mlir::RankedTensorType>(type) — check if type is a ranked tensor.
   ;; @param type  Type opaque pointer uptr
@@ -90,7 +91,7 @@
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %mlir::isa<RankedTensorType>-isa
-    (foreign-procedure "mlir::isa<RankedTensorType>" (uptr) int))
+    (crest-foreign-procedure "mlir::isa<RankedTensorType>" (uptr) int))
 
   ;; @brief mlir::RankedTensorType::getRank() — return the rank of a ranked tensor type.
   ;; @param type  RankedTensorType opaque pointer uptr
@@ -98,8 +99,8 @@
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %mlir::RankedTensorType::getRank
-    (foreign-procedure "mlir::RankedTensorType::getRank"
-                       (uptr) integer-64))
+    (crest-foreign-procedure "mlir::RankedTensorType::getRank"
+                             (uptr) integer-64))
 
   ;; @brief mlir::RankedTensorType::getElementType() — return the element type of a ranked tensor.
   ;; @param type  RankedTensorType opaque pointer uptr
@@ -107,7 +108,7 @@
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %mlir::RankedTensorType::getElementType
-    (foreign-procedure
+    (crest-foreign-procedure
      "mlir::RankedTensorType::getElementType" (uptr) uptr))
 
   ;; @brief mlir::RankedTensorType::getShape() — return the shape of a ranked tensor as a Scheme list.
@@ -116,8 +117,8 @@
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %mlir::RankedTensorType::getShape
-    (foreign-procedure "mlir::RankedTensorType::getShape"
-                       (uptr) scheme-object))
+    (crest-foreign-procedure "mlir::RankedTensorType::getShape"
+                             (uptr) scheme-object))
 
   ;; @brief mlir::RankedTensorType::getEncoding() — return the encoding attribute of a ranked tensor.
   ;; @param type  RankedTensorType opaque pointer uptr
@@ -125,8 +126,8 @@
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %mlir::RankedTensorType::getEncoding
-    (foreign-procedure "mlir::RankedTensorType::getEncoding"
-                       (uptr) uptr))
+    (crest-foreign-procedure "mlir::RankedTensorType::getEncoding"
+                             (uptr) uptr))
 
   ;; @brief mlir::RankedTensorType::cloneWithEncoding(attr) — clone a ranked tensor type with a new encoding.
   ;; @param type  RankedTensorType opaque pointer uptr
@@ -135,15 +136,15 @@
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %mlir::RankedTensorType::cloneWithEncoding
-    (foreign-procedure
+    (crest-foreign-procedure
      "mlir::RankedTensorType::cloneWithEncoding"
      (uptr uptr) uptr))
 
   ;; @brief ShapedType::getShape() — return the shape as a Scheme list of integers.
   ;; Works for MemRefType, RankedTensorType, and any other ShapedType.
   (define %mlir::ShapedType::getShape
-    (foreign-procedure "mlir::ShapedType::getShape"
-                       (uptr) scheme-object))
+    (crest-foreign-procedure "mlir::ShapedType::getShape"
+                             (uptr) scheme-object))
 
   ;; @brief ShapedType::getElementType() — return the element type of a shaped type.
   ;; @param type  ShapedType opaque pointer uptr
@@ -151,8 +152,8 @@
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %mlir::ShapedType::getElementType
-    (foreign-procedure "mlir::ShapedType::getElementType"
-                       (uptr) uptr))
+    (crest-foreign-procedure "mlir::ShapedType::getElementType"
+                             (uptr) uptr))
 
   ;; @brief mlir::IntegerType::getWidth() — return the bit width of an integer type.
   ;; @param type  IntegerType opaque pointer uptr
@@ -160,8 +161,8 @@
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %mlir::IntegerType::getWidth
-    (foreign-procedure "mlir::IntegerType::getWidth"
-                       (uptr) uptr))
+    (crest-foreign-procedure "mlir::IntegerType::getWidth"
+                             (uptr) uptr))
 
   ;; @brief mlir::IntegerType::isUnsigned() — check if an integer type is unsigned.
   ;; @param type  IntegerType opaque pointer uptr
@@ -169,86 +170,86 @@
   ;; @see         mlir/IR/BuiltinTypes.h
   ;; @note        Defined in lib/Bindings/IR/BuiltinTypes.cpp
   (define %mlir::IntegerType::isUnsigned
-    (foreign-procedure "mlir::IntegerType::isUnsigned"
-                       (uptr) int))
+    (crest-foreign-procedure "mlir::IntegerType::isUnsigned"
+                             (uptr) int))
 
   ;; Additional integer type constructors
   (define %mlir::IntegerType::get<i8>
-    (foreign-procedure "mlir::IntegerType::get<i8>" (uptr) uptr))
+    (crest-foreign-procedure "mlir::IntegerType::get<i8>" (uptr) uptr))
   (define %mlir::IntegerType::get<i16>
-    (foreign-procedure "mlir::IntegerType::get<i16>" (uptr) uptr))
+    (crest-foreign-procedure "mlir::IntegerType::get<i16>" (uptr) uptr))
   (define %mlir::IntegerType::get<i32>
-    (foreign-procedure "mlir::IntegerType::get<i32>" (uptr) uptr))
+    (crest-foreign-procedure "mlir::IntegerType::get<i32>" (uptr) uptr))
   (define %mlir::IntegerType::get
-    (foreign-procedure "mlir::IntegerType::get" (uptr iptr) uptr))
+    (crest-foreign-procedure "mlir::IntegerType::get" (uptr iptr) uptr))
 
   ;; Float type constructors
   (define %mlir::Float16Type::get
-    (foreign-procedure "mlir::Float16Type::get" (uptr) uptr))
+    (crest-foreign-procedure "mlir::Float16Type::get" (uptr) uptr))
   (define %mlir::BFloat16Type::get
-    (foreign-procedure "mlir::BFloat16Type::get" (uptr) uptr))
+    (crest-foreign-procedure "mlir::BFloat16Type::get" (uptr) uptr))
   (define %mlir::Float32Type::get
-    (foreign-procedure "mlir::Float32Type::get" (uptr) uptr))
+    (crest-foreign-procedure "mlir::Float32Type::get" (uptr) uptr))
   (define %mlir::Float64Type::get
-    (foreign-procedure "mlir::Float64Type::get" (uptr) uptr))
+    (crest-foreign-procedure "mlir::Float64Type::get" (uptr) uptr))
 
   ;; NoneType constructor
   (define %mlir::NoneType::get
-    (foreign-procedure "mlir::NoneType::get" (uptr) uptr))
+    (crest-foreign-procedure "mlir::NoneType::get" (uptr) uptr))
 
   ;; isa<> predicates — suffix -isa to avoid name collision with ? predicates
   (define %mlir::isa<IntegerType>-isa
-    (foreign-procedure "mlir::isa<IntegerType>" (uptr) int))
+    (crest-foreign-procedure "mlir::isa<IntegerType>" (uptr) int))
   (define %mlir::isa<FloatType>-isa
-    (foreign-procedure "mlir::isa<FloatType>" (uptr) int))
+    (crest-foreign-procedure "mlir::isa<FloatType>" (uptr) int))
   (define %mlir::isa<MemRefType>-isa
-    (foreign-procedure "mlir::isa<MemRefType>" (uptr) int))
+    (crest-foreign-procedure "mlir::isa<MemRefType>" (uptr) int))
   (define %mlir::isa<UnrankedMemRefType>-isa
-    (foreign-procedure "mlir::isa<UnrankedMemRefType>" (uptr) int))
+    (crest-foreign-procedure "mlir::isa<UnrankedMemRefType>" (uptr) int))
   (define %mlir::isa<UnrankedTensorType>-isa
-    (foreign-procedure "mlir::isa<UnrankedTensorType>" (uptr) int))
+    (crest-foreign-procedure "mlir::isa<UnrankedTensorType>" (uptr) int))
   (define %mlir::isa<TensorType>-isa
-    (foreign-procedure "mlir::isa<TensorType>" (uptr) int))
+    (crest-foreign-procedure "mlir::isa<TensorType>" (uptr) int))
   (define %mlir::TensorType::getElementType
-    (foreign-procedure "mlir::TensorType::getElementType" (uptr) uptr))
+    (crest-foreign-procedure "mlir::TensorType::getElementType" (uptr) uptr))
   (define %mlir::isa<VectorType>-isa
-    (foreign-procedure "mlir::isa<VectorType>" (uptr) int))
+    (crest-foreign-procedure "mlir::isa<VectorType>" (uptr) int))
   (define %mlir::isa<ComplexType>-isa
-    (foreign-procedure "mlir::isa<ComplexType>" (uptr) int))
+    (crest-foreign-procedure "mlir::isa<ComplexType>" (uptr) int))
 
   ;; Float type accessor
   (define %mlir::FloatType::getWidth
-    (foreign-procedure "mlir::FloatType::getWidth" (uptr) integer-64))
+    (crest-foreign-procedure "mlir::FloatType::getWidth" (uptr) integer-64))
 
   ;; ComplexType accessor
   (define %mlir::ComplexType::getElementType
-    (foreign-procedure "mlir::ComplexType::getElementType" (uptr) uptr))
+    (crest-foreign-procedure "mlir::ComplexType::getElementType" (uptr) uptr))
 
   ;; VectorType accessors
   (define %mlir::VectorType::getRank
-    (foreign-procedure "mlir::VectorType::getRank" (uptr) integer-64))
+    (crest-foreign-procedure "mlir::VectorType::getRank" (uptr) integer-64))
   (define %mlir::VectorType::getElementType
-    (foreign-procedure "mlir::VectorType::getElementType" (uptr) uptr))
+    (crest-foreign-procedure "mlir::VectorType::getElementType" (uptr) uptr))
 
   ;; MemRefType accessors
   (define %mlir::MemRefType::getElementType
-    (foreign-procedure "mlir::MemRefType::getElementType" (uptr) uptr))
+    (crest-foreign-procedure "mlir::MemRefType::getElementType" (uptr) uptr))
   (define %mlir::MemRefType::getMemorySpace
-    (foreign-procedure "mlir::MemRefType::getMemorySpace" (uptr) uptr))
+    (crest-foreign-procedure "mlir::MemRefType::getMemorySpace" (uptr) uptr))
 
   (define %mlir::RankedTensorType::get
-    (foreign-procedure "mlir::RankedTensorType::get" (scheme-object uptr) uptr))
+    (crest-foreign-procedure "mlir::RankedTensorType::get" (scheme-object uptr) uptr))
   (define %mlir::UnrankedTensorType::get
-    (foreign-procedure "mlir::UnrankedTensorType::get" (uptr) uptr))
+    (crest-foreign-procedure "mlir::UnrankedTensorType::get" (uptr) uptr))
   (define %mlir::FunctionType::get
-    (foreign-procedure "mlir::FunctionType::get" (uptr scheme-object scheme-object) uptr))
+    (crest-foreign-procedure "mlir::FunctionType::get" (uptr scheme-object scheme-object) uptr))
   ;; @brief mlir::FunctionType::getInputs / getResults — the input or result types of a function
   ;;        type, in order.
   ;; @param type  FunctionType opaque pointer uptr
   ;; @return      a list of Type opaque pointers
   (define %mlir::FunctionType::getInputs
-    (foreign-procedure "mlir::FunctionType::getInputs" (uptr) scheme-object))
+    (crest-foreign-procedure "mlir::FunctionType::getInputs" (uptr) scheme-object))
   (define %mlir::FunctionType::getResults
-    (foreign-procedure "mlir::FunctionType::getResults" (uptr) scheme-object))
+    (crest-foreign-procedure "mlir::FunctionType::getResults" (uptr) scheme-object))
 
   ) ;; end library (mlir IR BuiltinTypes ffi)

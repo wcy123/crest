@@ -15,11 +15,12 @@
 
 (library (mlir support array-ref ffi)
   (export %crest::CArrayRef<uptr>?)
-  (import (rnrs) (only (chezscheme) foreign-procedure))
+  (import (rnrs)
+          (mlir support foreign) (only (chezscheme) foreign-procedure))
 
   ;; @brief Type predicates — is this CrestObject a CArrayRef<T>?
   ;; Returns 1 (true) or 0 (false). The isa logic (deletor comparison) is in C++.
   (define %crest::CArrayRef<uptr>?
-    (foreign-procedure "crest::CArrayRef<uptr>?" (uptr) int))
+    (crest-foreign-procedure "crest::CArrayRef<uptr>?" (uptr) int))
 
   ) ;; end library (mlir support array-ref ffi)

@@ -7,6 +7,7 @@
 
 #include "MemRefToLLVM.h"
 #include "../../Support/CrestObject.h"
+#include "../../Support/Result.h"
 #include "../../Support/SchemeWrapper.h"
 #include "mlir/Conversion/LLVMCommon/TypeConverter.h"
 #include "mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h"
@@ -17,15 +18,19 @@ namespace crest {
 void registerConversionMemRefToLLVMBindings() {
   // mlir::populateFinalizeMemRefToLLVMConversionPatterns
   // (type-converter-ptr patterns-ptr) → void
-  Sregister_symbol(
+  register_binding(
       "mlir::populateFinalizeMemRefToLLVMConversionPatterns",
-      (void*)+[](uint64_t tc_ptr, uint64_t patterns_ptr) -> void {
-        auto& tc = crest::CrestBox<mlir::LLVMTypeConverter>::inner(
-            tc_ptr, "mlir::populateFinalizeMemRefToLLVMConversionPatterns");
-        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
-            patterns_ptr,
-            "mlir::populateFinalizeMemRefToLLVMConversionPatterns");
+      [](uint64_t tc_ptr, uint64_t patterns_ptr) -> llvm::Error {
+        CREST_TRY(tc,
+                  crest::CrestBox<mlir::LLVMTypeConverter>::tryInner(
+                      tc_ptr,
+                      "mlir::populateFinalizeMemRefToLLVMConversionPatterns"));
+        CREST_TRY(patterns,
+                  crest::try_as_ref<mlir::RewritePatternSet>(
+                      patterns_ptr,
+                      "mlir::populateFinalizeMemRefToLLVMConversionPatterns"));
         mlir::populateFinalizeMemRefToLLVMConversionPatterns(tc, patterns);
+        return llvm::Error::success();
       });
 }
 

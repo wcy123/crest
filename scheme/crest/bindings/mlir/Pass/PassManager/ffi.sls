@@ -13,24 +13,25 @@
           %mlir::PassManager::enableVerifier
           %mlir::PassManager::nest
           %mlir::OpPassManager::addPass)
-  (import (chezscheme))
+  (import (chezscheme)
+          (mlir support foreign))
 
   (define %mlir::PassManager::new
-    (foreign-procedure "mlir::PassManager::new" (uptr) uptr))
+    (crest-foreign-procedure "mlir::PassManager::new" (uptr) uptr))
 
   (define %mlir::PassManager::addPass
-    (foreign-procedure "mlir::PassManager::addPass" (uptr uptr) void))
+    (crest-foreign-procedure "mlir::PassManager::addPass" (uptr uptr) void))
 
   (define %mlir::PassManager::run!
-    (foreign-procedure "mlir::PassManager::run!" (uptr uptr) int))
+    (crest-foreign-procedure "mlir::PassManager::run!" (uptr uptr) int))
 
   (define %mlir::PassManager::enableVerifier
-    (foreign-procedure "mlir::PassManager::enableVerifier" (uptr int) void))
+    (crest-foreign-procedure "mlir::PassManager::enableVerifier" (uptr int) void))
 
   (define %mlir::PassManager::nest
-    (foreign-procedure "mlir::PassManager::nest" (uptr string) uptr))
+    (crest-foreign-procedure "mlir::PassManager::nest" (uptr string) uptr))
 
   (define %mlir::OpPassManager::addPass
-    (foreign-procedure "mlir::OpPassManager::addPass" (uptr uptr) void))
+    (crest-foreign-procedure "mlir::OpPassManager::addPass" (uptr uptr) void))
 
   ) ;; end library (mlir Pass PassManager ffi)

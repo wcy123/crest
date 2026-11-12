@@ -6,6 +6,7 @@
 // Mirrors mlir/Dialect/ControlFlow/IR/ControlFlow.h
 
 #include "ControlFlow.h"
+#include "../../../Support/Result.h"
 #include "../../../Support/SchemeWrapper.h"
 #include "mlir/Dialect/ControlFlow/IR/ControlFlow.h"
 #include "mlir/IR/DialectRegistry.h"
@@ -15,13 +16,17 @@ namespace crest {
 void registerDialectControlFlowIRControlFlowBindings() {
   // Register ControlFlowDialect into a DialectRegistry.
   // (registry-ptr) → void
-  Sregister_symbol(
+  register_binding(
       "mlir::DialectRegistry::insert<mlir::cf::ControlFlowDialect>",
-      (void*)+[](uint64_t registry_ptr) -> void {
-        crest::CrestBox<mlir::DialectRegistry>::inner(
-            registry_ptr,
-            "mlir::DialectRegistry::insert<mlir::cf::ControlFlowDialect>")
-            .insert<mlir::cf::ControlFlowDialect>();
+      [](uint64_t registry_ptr) -> llvm::Error {
+        CREST_TRY(
+            crest_lookup1,
+            crest::CrestBox<mlir::DialectRegistry>::tryInner(
+                registry_ptr,
+                "mlir::DialectRegistry::insert<mlir::cf::ControlFlowDialect>"));
+
+        crest_lookup1.insert<mlir::cf::ControlFlowDialect>();
+        return llvm::Error::success();
       });
 }
 

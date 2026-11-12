@@ -4,18 +4,19 @@
   (export %mlir::NamedAttribute::getName
           %mlir::NamedAttribute::getValue
           %mlir::Attribute::print)
-  (import (chezscheme))
+  (import (chezscheme)
+          (mlir support foreign))
 
   ;; (uptr named) -> uptr: the StringAttr that names the attribute.
   (define %mlir::NamedAttribute::getName
-    (foreign-procedure "mlir::NamedAttribute::getName" (uptr) uptr))
+    (crest-foreign-procedure "mlir::NamedAttribute::getName" (uptr) uptr))
 
   ;; (uptr named) -> uptr: the value of the attribute.
   (define %mlir::NamedAttribute::getValue
-    (foreign-procedure "mlir::NamedAttribute::getValue" (uptr) uptr))
+    (crest-foreign-procedure "mlir::NamedAttribute::getValue" (uptr) uptr))
 
   ;; (uptr attribute) -> string: the attribute as MLIR prints it.
   (define %mlir::Attribute::print
-    (foreign-procedure "mlir::Attribute::print" (uptr) scheme-object))
+    (crest-foreign-procedure "mlir::Attribute::print" (uptr) scheme-object))
 
   ) ;; end library (mlir IR Attributes ffi)

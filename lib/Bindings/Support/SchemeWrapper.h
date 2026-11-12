@@ -100,6 +100,12 @@ namespace crest {
 template <typename T>
 [[nodiscard]] T* as_ptr(uint64_t ptr_val, const char* who) = delete;
 
+// try_as_ptr: as_ptr as an error value (plans/04-errors-are-values.md): see
+// CREST_TRY in Error.h.
+template <typename T>
+[[nodiscard]] llvm::Expected<T*> try_as_ptr(uint64_t ptr_val,
+                                            const char* who) = delete;
+
 } // namespace crest
 
 // Forward declarations for the as_ptr specializations.
@@ -116,6 +122,9 @@ namespace crest {
 template <>
 [[nodiscard]] mlir::MLIRContext* as_ptr<mlir::MLIRContext>(uint64_t ptr_val,
                                                            const char* who);
+template <>
+[[nodiscard]] llvm::Expected<mlir::MLIRContext*>
+try_as_ptr<mlir::MLIRContext>(uint64_t ptr_val, const char* who);
 } // namespace crest
 
 // ---------------------------------------------------------------------------

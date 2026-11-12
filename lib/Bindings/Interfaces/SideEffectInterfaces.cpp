@@ -7,6 +7,7 @@
 
 #include "SideEffectInterfaces.h"
 #include "../../Crest/Interface.h"
+#include "../Support/Result.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/ExtensibleDialect.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
@@ -71,28 +72,26 @@ void registerInterfacesSideEffectInterfacesBindings() {
   //
   // The address that the TypeID of the interface wraps, which C++ turns back
   // with TypeID::getFromOpaquePointer to find how to install the interface.
-  Sregister_symbol(
-      "mlir::MemoryEffectOpInterface::getInterfaceID",
-      (void*)+[]() -> uint64_t {
-        return reinterpret_cast<uint64_t>(
-            mlir::MemoryEffectOpInterface::getInterfaceID()
-                .getAsOpaquePointer());
-      });
+  register_binding("mlir::MemoryEffectOpInterface::getInterfaceID",
+                   []() -> uint64_t {
+                     return reinterpret_cast<uint64_t>(
+                         mlir::MemoryEffectOpInterface::getInterfaceID()
+                             .getAsOpaquePointer());
+                   });
   // crest::MemoryEffectOpInterface::noEffects () -> uptr
   //
   // The address of the C function that stands for "no memory effects", for the
   // clause (getEffects :none).
-  Sregister_symbol(
-      "crest::MemoryEffectOpInterface::noEffects", (void*)+[]() -> uint64_t {
-        return reinterpret_cast<uint64_t>(&noMemoryEffects);
-      });
-  Sregister_symbol(
-      "mlir::ConditionallySpeculatable::getInterfaceID",
-      (void*)+[]() -> uint64_t {
-        return reinterpret_cast<uint64_t>(
-            mlir::ConditionallySpeculatable::getInterfaceID()
-                .getAsOpaquePointer());
-      });
+  register_binding("crest::MemoryEffectOpInterface::noEffects",
+                   []() -> uint64_t {
+                     return reinterpret_cast<uint64_t>(&noMemoryEffects);
+                   });
+  register_binding("mlir::ConditionallySpeculatable::getInterfaceID",
+                   []() -> uint64_t {
+                     return reinterpret_cast<uint64_t>(
+                         mlir::ConditionallySpeculatable::getInterfaceID()
+                             .getAsOpaquePointer());
+                   });
 }
 
 } // namespace crest

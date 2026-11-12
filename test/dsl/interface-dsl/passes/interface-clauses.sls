@@ -1,5 +1,6 @@
 ;; Calls the interface methods of ops whose :interfaces entries have method clauses.
 (import (chezscheme)
+        (mlir support foreign)
         (crest dialect)
         (mlir IR Operation)
         (mlir IR Region)
@@ -13,13 +14,13 @@
         (only (mlir Interfaces FunctionInterfaces) mlir::FunctionOpInterface::cloneTypeWith))
 
 (define mlir::FunctionOpInterface::getFunctionType
-  (foreign-procedure "mlir::FunctionOpInterface::getFunctionType" (uptr) uptr))
+  (crest-foreign-procedure "mlir::FunctionOpInterface::getFunctionType" (uptr) uptr))
 (define mlir::FunctionOpInterface::verifyBody
-  (foreign-procedure "mlir::FunctionOpInterface::verifyBody" (uptr) boolean))
+  (crest-foreign-procedure "mlir::FunctionOpInterface::verifyBody" (uptr) boolean))
 (define mlir::FunctionOpInterface::verifyType
-  (foreign-procedure "mlir::FunctionOpInterface::verifyType" (uptr) boolean))
+  (crest-foreign-procedure "mlir::FunctionOpInterface::verifyType" (uptr) boolean))
 (define mlir::CallableOpInterface::getCallableRegion
-  (foreign-procedure "mlir::CallableOpInterface::getCallableRegion" (uptr) uptr))
+  (crest-foreign-procedure "mlir::CallableOpInterface::getCallableRegion" (uptr) uptr))
 
 (define (show label b)
   (display label)

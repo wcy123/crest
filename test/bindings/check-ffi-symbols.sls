@@ -72,14 +72,14 @@
                (set! missing (+ missing 1))
                (display "NOT REGISTERED ") (write name)
                (display " in ") (display (cadr entry)) (newline)]
-              ;; define-builder-binding is converted with the builder bindings; until then it is the old kind.
               [(and (eq? (caddr entry) 'foreign-procedure) (= 1 (answers-object? name)))
                (set! missing (+ missing 1))
                (display "REGISTERED WITH register_binding, CALLED WITH foreign-procedure ") (write name)
                (display " in ") (display (cadr entry)) (newline)]
-              [(and (eq? (caddr entry) 'crest-foreign-procedure) (= 0 (answers-object? name)))
+              [(and (memq (caddr entry) '(crest-foreign-procedure define-builder-binding))
+                    (= 0 (answers-object? name)))
                (set! missing (+ missing 1))
-               (display "CALLED WITH crest-foreign-procedure, NOT REGISTERED WITH register_binding ") (write name)
+               (display "CALLED WITH crest-foreign-procedure (or define-builder-binding), NOT REGISTERED WITH register_binding or register_builder_binding ") (write name)
                (display " in ") (display (cadr entry)) (newline)]))))
        (entries form file)))
     (read-all file)))

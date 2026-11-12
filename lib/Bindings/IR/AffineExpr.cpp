@@ -6,6 +6,7 @@
 // Mirrors mlir/IR/AffineExpr.h
 
 #include "AffineExpr.h"
+#include "../Support/Result.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/AffineExpr.h"
 #include "mlir/IR/MLIRContext.h"
@@ -19,96 +20,93 @@ namespace crest {
 // operation on getAffineConstantExpr(v).
 void registerIRAffineExprBindings() {
   /// ctx_ptr: CrestBox<MLIRContext>* | MLIRContext*, position: unsigned
-  Sregister_symbol(
+  register_binding(
       "mlir::getAffineDimExpr",
-      (void*)+[](uint64_t ctx_ptr, uint64_t position) -> uint64_t {
-        auto* ctx =
-            crest::as_ptr<mlir::MLIRContext>(ctx_ptr, "mlir::getAffineDimExpr");
+      [](uint64_t ctx_ptr, uint64_t position) -> llvm::Expected<uint64_t> {
+        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(
+                           ctx_ptr, "mlir::getAffineDimExpr"));
         return reinterpret_cast<uint64_t>(
             mlir::getAffineDimExpr(static_cast<unsigned>(position), ctx)
                 .getAsOpaquePointer());
       });
 
-  Sregister_symbol(
+  register_binding(
       "mlir::getAffineSymbolExpr",
-      (void*)+[](uint64_t ctx_ptr, uint64_t position) -> uint64_t {
-        auto* ctx = crest::as_ptr<mlir::MLIRContext>(
-            ctx_ptr, "mlir::getAffineSymbolExpr");
+      [](uint64_t ctx_ptr, uint64_t position) -> llvm::Expected<uint64_t> {
+        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(
+                           ctx_ptr, "mlir::getAffineSymbolExpr"));
         return reinterpret_cast<uint64_t>(
             mlir::getAffineSymbolExpr(static_cast<unsigned>(position), ctx)
                 .getAsOpaquePointer());
       });
 
   /// ctx_ptr: CrestBox<MLIRContext>* | MLIRContext*, constant: int64_t
-  Sregister_symbol(
+  register_binding(
       "mlir::getAffineConstantExpr",
-      (void*)+[](uint64_t ctx_ptr, int64_t constant) -> uint64_t {
-        auto* ctx = crest::as_ptr<mlir::MLIRContext>(
-            ctx_ptr, "mlir::getAffineConstantExpr");
+      [](uint64_t ctx_ptr, int64_t constant) -> llvm::Expected<uint64_t> {
+        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(
+                           ctx_ptr, "mlir::getAffineConstantExpr"));
         return reinterpret_cast<uint64_t>(
             mlir::getAffineConstantExpr(constant, ctx).getAsOpaquePointer());
       });
 
   /// expr_ptr: AffineExpr opaque pointer. Returns the raw MLIRContext*.
-  Sregister_symbol(
-      "mlir::AffineExpr::getContext",
-      (void*)+[](uint64_t expr_ptr) -> uint64_t {
-        auto expr = mlir::AffineExpr::getFromOpaquePointer(
-            reinterpret_cast<const void*>(expr_ptr));
-        return reinterpret_cast<uint64_t>(expr.getContext());
-      });
+  register_binding("mlir::AffineExpr::getContext",
+                   [](uint64_t expr_ptr) -> uint64_t {
+                     auto expr = mlir::AffineExpr::getFromOpaquePointer(
+                         reinterpret_cast<const void*>(expr_ptr));
+                     return reinterpret_cast<uint64_t>(expr.getContext());
+                   });
 
-  Sregister_symbol(
-      "mlir::AffineExpr::operator+",
-      (void*)+[](uint64_t lhs_ptr, uint64_t rhs_ptr) -> uint64_t {
-        auto lhs = mlir::AffineExpr::getFromOpaquePointer(
-            reinterpret_cast<const void*>(lhs_ptr));
-        auto rhs = mlir::AffineExpr::getFromOpaquePointer(
-            reinterpret_cast<const void*>(rhs_ptr));
-        return reinterpret_cast<uint64_t>((lhs + rhs).getAsOpaquePointer());
-      });
+  register_binding("mlir::AffineExpr::operator+",
+                   [](uint64_t lhs_ptr, uint64_t rhs_ptr) -> uint64_t {
+                     auto lhs = mlir::AffineExpr::getFromOpaquePointer(
+                         reinterpret_cast<const void*>(lhs_ptr));
+                     auto rhs = mlir::AffineExpr::getFromOpaquePointer(
+                         reinterpret_cast<const void*>(rhs_ptr));
+                     return reinterpret_cast<uint64_t>(
+                         (lhs + rhs).getAsOpaquePointer());
+                   });
 
-  Sregister_symbol(
-      "mlir::AffineExpr::operator*",
-      (void*)+[](uint64_t lhs_ptr, uint64_t rhs_ptr) -> uint64_t {
-        auto lhs = mlir::AffineExpr::getFromOpaquePointer(
-            reinterpret_cast<const void*>(lhs_ptr));
-        auto rhs = mlir::AffineExpr::getFromOpaquePointer(
-            reinterpret_cast<const void*>(rhs_ptr));
-        return reinterpret_cast<uint64_t>((lhs * rhs).getAsOpaquePointer());
-      });
+  register_binding("mlir::AffineExpr::operator*",
+                   [](uint64_t lhs_ptr, uint64_t rhs_ptr) -> uint64_t {
+                     auto lhs = mlir::AffineExpr::getFromOpaquePointer(
+                         reinterpret_cast<const void*>(lhs_ptr));
+                     auto rhs = mlir::AffineExpr::getFromOpaquePointer(
+                         reinterpret_cast<const void*>(rhs_ptr));
+                     return reinterpret_cast<uint64_t>(
+                         (lhs * rhs).getAsOpaquePointer());
+                   });
 
-  Sregister_symbol(
-      "mlir::AffineExpr::floorDiv",
-      (void*)+[](uint64_t lhs_ptr, uint64_t rhs_ptr) -> uint64_t {
-        auto lhs = mlir::AffineExpr::getFromOpaquePointer(
-            reinterpret_cast<const void*>(lhs_ptr));
-        auto rhs = mlir::AffineExpr::getFromOpaquePointer(
-            reinterpret_cast<const void*>(rhs_ptr));
-        return reinterpret_cast<uint64_t>(
-            lhs.floorDiv(rhs).getAsOpaquePointer());
-      });
+  register_binding("mlir::AffineExpr::floorDiv",
+                   [](uint64_t lhs_ptr, uint64_t rhs_ptr) -> uint64_t {
+                     auto lhs = mlir::AffineExpr::getFromOpaquePointer(
+                         reinterpret_cast<const void*>(lhs_ptr));
+                     auto rhs = mlir::AffineExpr::getFromOpaquePointer(
+                         reinterpret_cast<const void*>(rhs_ptr));
+                     return reinterpret_cast<uint64_t>(
+                         lhs.floorDiv(rhs).getAsOpaquePointer());
+                   });
 
-  Sregister_symbol(
-      "mlir::AffineExpr::ceilDiv",
-      (void*)+[](uint64_t lhs_ptr, uint64_t rhs_ptr) -> uint64_t {
-        auto lhs = mlir::AffineExpr::getFromOpaquePointer(
-            reinterpret_cast<const void*>(lhs_ptr));
-        auto rhs = mlir::AffineExpr::getFromOpaquePointer(
-            reinterpret_cast<const void*>(rhs_ptr));
-        return reinterpret_cast<uint64_t>(
-            lhs.ceilDiv(rhs).getAsOpaquePointer());
-      });
+  register_binding("mlir::AffineExpr::ceilDiv",
+                   [](uint64_t lhs_ptr, uint64_t rhs_ptr) -> uint64_t {
+                     auto lhs = mlir::AffineExpr::getFromOpaquePointer(
+                         reinterpret_cast<const void*>(lhs_ptr));
+                     auto rhs = mlir::AffineExpr::getFromOpaquePointer(
+                         reinterpret_cast<const void*>(rhs_ptr));
+                     return reinterpret_cast<uint64_t>(
+                         lhs.ceilDiv(rhs).getAsOpaquePointer());
+                   });
 
-  Sregister_symbol(
-      "mlir::AffineExpr::operator%",
-      (void*)+[](uint64_t lhs_ptr, uint64_t rhs_ptr) -> uint64_t {
-        auto lhs = mlir::AffineExpr::getFromOpaquePointer(
-            reinterpret_cast<const void*>(lhs_ptr));
-        auto rhs = mlir::AffineExpr::getFromOpaquePointer(
-            reinterpret_cast<const void*>(rhs_ptr));
-        return reinterpret_cast<uint64_t>((lhs % rhs).getAsOpaquePointer());
-      });
+  register_binding("mlir::AffineExpr::operator%",
+                   [](uint64_t lhs_ptr, uint64_t rhs_ptr) -> uint64_t {
+                     auto lhs = mlir::AffineExpr::getFromOpaquePointer(
+                         reinterpret_cast<const void*>(lhs_ptr));
+                     auto rhs = mlir::AffineExpr::getFromOpaquePointer(
+                         reinterpret_cast<const void*>(rhs_ptr));
+                     return reinterpret_cast<uint64_t>(
+                         (lhs % rhs).getAsOpaquePointer());
+                   });
 }
 
 } // namespace crest

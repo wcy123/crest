@@ -3,8 +3,9 @@
 (library (mlir Dialect LLVMIR IR LLVMDialect ffi)
   (export %mlir::DialectRegistry::insert<mlir::LLVM::LLVMDialect>
           %mlir::LLVM::registerInlinerInterface)
-  (import (chezscheme))
+  (import (chezscheme)
+          (mlir support foreign))
   (define %mlir::DialectRegistry::insert<mlir::LLVM::LLVMDialect>
-    (foreign-procedure "mlir::DialectRegistry::insert<mlir::LLVM::LLVMDialect>" (uptr) void))
+    (crest-foreign-procedure "mlir::DialectRegistry::insert<mlir::LLVM::LLVMDialect>" (uptr) void))
   (define %mlir::LLVM::registerInlinerInterface
-    (foreign-procedure "mlir::LLVM::registerInlinerInterface" (uptr) void)))
+    (crest-foreign-procedure "mlir::LLVM::registerInlinerInterface" (uptr) void)))

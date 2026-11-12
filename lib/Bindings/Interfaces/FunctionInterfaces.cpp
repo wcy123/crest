@@ -8,6 +8,7 @@
 #include "FunctionInterfaces.h"
 #include "../../Crest/Interface.h"
 #include "../IR/SymbolInterfaces.h"
+#include "../Support/Result.h"
 #include "../Support/SchemeWrapper.h"
 #include "CallInterfaces.h"
 #include "mlir/IR/BuiltinAttributes.h"
@@ -58,15 +59,15 @@ void registerInterfacesFunctionInterfacesBindings() {
   //
   // The address that the TypeID of the interface wraps, which C++ turns back
   // with TypeID::getFromOpaquePointer to find how to install the interface.
-  Sregister_symbol(
-      "mlir::FunctionOpInterface::getInterfaceID", (void*)+[]() -> uint64_t {
+  register_binding(
+      "mlir::FunctionOpInterface::getInterfaceID", []() -> uint64_t {
         return reinterpret_cast<uint64_t>(
             mlir::FunctionOpInterface::getInterfaceID().getAsOpaquePointer());
       });
 
-  Sregister_symbol(
+  register_binding(
       "mlir::function_interface_impl::parseFunctionOp",
-      (void*)+[](uint64_t parser_ptr, uint64_t state_ptr) -> int {
+      [](uint64_t parser_ptr, uint64_t state_ptr) -> int {
         auto* p = reinterpret_cast<mlir::OpAsmParser*>(parser_ptr);
         auto& state = *reinterpret_cast<mlir::OperationState*>(state_ptr);
         auto typeBuilder = [](mlir::Builder& builder,
@@ -83,16 +84,17 @@ void registerInterfacesFunctionInterfacesBindings() {
             mlir::StringAttr::get(state.getContext(), "res_attrs"));
       });
 
-  Sregister_symbol(
+  register_binding(
       "mlir::function_interface_impl::printFunctionOp",
-      (void*)+[](uint64_t printer_ptr, uint64_t op_ptr) -> void {
+      [](uint64_t printer_ptr, uint64_t op_ptr) -> llvm::Error {
         auto* p = reinterpret_cast<mlir::OpAsmPrinter*>(printer_ptr);
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto* c = lookupConcept<mlir::FunctionOpInterface>(op);
         if (!c) {
-          scheme_error("mlir::function_interface_impl::printFunctionOp",
-                       "op does not implement FunctionOpInterface:",
-                       op->getName().getStringRef());
+          return fail(
+              "mlir::function_interface_impl::printFunctionOp",
+              llvm::Twine("op does not implement FunctionOpInterface:") + " " +
+                  llvm::Twine(op->getName().getStringRef()));
         }
         mlir::FunctionOpInterface fn(op, c);
         auto* ctx = op->getContext();
@@ -100,17 +102,19 @@ void registerInterfacesFunctionInterfacesBindings() {
             *p, fn, /*isVariadic=*/false, "function_type",
             mlir::StringAttr::get(ctx, "arg_attrs"),
             mlir::StringAttr::get(ctx, "res_attrs"));
+        return llvm::Error::success();
       });
 
-  Sregister_symbol(
+  register_binding(
       "mlir::FunctionOpInterface::getFunctionType",
-      (void*)+[](uint64_t op_ptr) -> uint64_t {
+      [](uint64_t op_ptr) -> llvm::Expected<uint64_t> {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto* c = lookupConcept<mlir::FunctionOpInterface>(op);
         if (!c) {
-          scheme_error("mlir::FunctionOpInterface::getFunctionType",
-                       "op does not implement FunctionOpInterface:",
-                       op->getName().getStringRef());
+          return fail(
+              "mlir::FunctionOpInterface::getFunctionType",
+              llvm::Twine("op does not implement FunctionOpInterface:") + " " +
+                  llvm::Twine(op->getName().getStringRef()));
         }
         return reinterpret_cast<uint64_t>(
             c->getFunctionType(c, op).getAsOpaquePointer());
@@ -119,15 +123,16 @@ void registerInterfacesFunctionInterfacesBindings() {
   // mlir::FunctionOpInterface::cloneTypeWith (uptr op) (list inputs) (list
   // results) -> uptr Type: the function type of the op with these inputs and
   // results, as the Concept of the op says (the default is a FunctionType).
-  Sregister_symbol(
+  register_binding(
       "mlir::FunctionOpInterface::cloneTypeWith",
-      (void*)+[](uint64_t op_ptr, ptr inputs, ptr results) -> uint64_t {
+      [](uint64_t op_ptr, ptr inputs, ptr results) -> llvm::Expected<uint64_t> {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto* c = lookupConcept<mlir::FunctionOpInterface>(op);
         if (!c) {
-          scheme_error("mlir::FunctionOpInterface::cloneTypeWith",
-                       "op does not implement FunctionOpInterface:",
-                       op->getName().getStringRef());
+          return fail(
+              "mlir::FunctionOpInterface::cloneTypeWith",
+              llvm::Twine("op does not implement FunctionOpInterface:") + " " +
+                  llvm::Twine(op->getName().getStringRef()));
         }
         llvm::SmallVector<mlir::Type> inputTypes, resultTypes;
         for (ptr cur = inputs; cur != Snil; cur = Scdr(cur)) {
@@ -143,44 +148,48 @@ void registerInterfacesFunctionInterfacesBindings() {
                 .getAsOpaquePointer());
       });
 
-  Sregister_symbol(
+  register_binding(
       "mlir::FunctionOpInterface::setFunctionTypeAttr",
-      (void*)+[](uint64_t op_ptr, uint64_t attr_ptr) -> void {
+      [](uint64_t op_ptr, uint64_t attr_ptr) -> llvm::Error {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto* c = lookupConcept<mlir::FunctionOpInterface>(op);
         if (!c) {
-          scheme_error("mlir::FunctionOpInterface::setFunctionTypeAttr",
-                       "op does not implement FunctionOpInterface:",
-                       op->getName().getStringRef());
+          return fail(
+              "mlir::FunctionOpInterface::setFunctionTypeAttr",
+              llvm::Twine("op does not implement FunctionOpInterface:") + " " +
+                  llvm::Twine(op->getName().getStringRef()));
         }
         mlir::TypeAttr t =
             mlir::cast<mlir::TypeAttr>(mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<const void*>(attr_ptr)));
         c->setFunctionTypeAttr(c, op, t);
+        return llvm::Error::success();
       });
 
-  Sregister_symbol(
+  register_binding(
       "mlir::FunctionOpInterface::verifyBody",
-      (void*)+[](uint64_t op_ptr) -> int {
+      [](uint64_t op_ptr) -> llvm::Expected<int> {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto* c = lookupConcept<mlir::FunctionOpInterface>(op);
         if (!c) {
-          scheme_error("mlir::FunctionOpInterface::verifyBody",
-                       "op does not implement FunctionOpInterface:",
-                       op->getName().getStringRef());
+          return fail(
+              "mlir::FunctionOpInterface::verifyBody",
+              llvm::Twine("op does not implement FunctionOpInterface:") + " " +
+                  llvm::Twine(op->getName().getStringRef()));
         }
         return mlir::succeeded(c->verifyBody(c, op)) ? 1 : 0;
       });
 
-  Sregister_symbol(
+  register_binding(
       "mlir::FunctionOpInterface::verifyType",
-      (void*)+[](uint64_t op_ptr) -> int {
+      [](uint64_t op_ptr) -> llvm::Expected<int> {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto* c = lookupConcept<mlir::FunctionOpInterface>(op);
         if (!c) {
-          scheme_error("mlir::FunctionOpInterface::verifyType",
-                       "op does not implement FunctionOpInterface:",
-                       op->getName().getStringRef());
+          return fail(
+              "mlir::FunctionOpInterface::verifyType",
+              llvm::Twine("op does not implement FunctionOpInterface:") + " " +
+                  llvm::Twine(op->getName().getStringRef()));
         }
         return mlir::succeeded(c->verifyType(c, op)) ? 1 : 0;
       });

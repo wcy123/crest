@@ -11,6 +11,7 @@
 #include "../Bindings/Interfaces/SideEffectInterfaces.h"
 #include "../Bindings/Support/CrestObject.h"
 #include "../Bindings/Support/LockedSchemeObject.h"
+#include "../Bindings/Support/Result.h"
 #include "../Bindings/Support/SchemeWrapper.h"
 #include "InferType.h"
 #include "Interface.h"
@@ -335,30 +336,26 @@ void registerCrestDynamicOpBindings() {
   // The callable of a verifier, parser or folder calls it with the text of the
   // error its Scheme callback raised (or of a result that is wrong), before it
   // answers 0, so that the diagnostic shows it.
-  Sregister_symbol(
+  register_binding(
       "crest::DynamicOp::reportFailure",
-      (void*)+[](const char* message) -> void {
-        g_reported_failure = message;
-      });
+      [](const char* message) -> void { g_reported_failure = message; });
 
   // crest::Fold::addValue (uptr folded) (uptr value)
   // crest::Fold::addAttribute (uptr folded) (uptr attribute)
   //
   // The folder of an op gives each result to the `folded` that C++ passed.
-  Sregister_symbol(
-      "crest::Fold::addValue",
-      (void*)+[](uint64_t folded, uint64_t value) -> void {
-        reinterpret_cast<FoldedResults*>(folded)->push_back(
-            mlir::Value::getFromOpaquePointer(
-                reinterpret_cast<const void*>(value)));
-      });
-  Sregister_symbol(
-      "crest::Fold::addAttribute",
-      (void*)+[](uint64_t folded, uint64_t attribute) -> void {
-        reinterpret_cast<FoldedResults*>(folded)->push_back(
-            mlir::Attribute::getFromOpaquePointer(
-                reinterpret_cast<const void*>(attribute)));
-      });
+  register_binding("crest::Fold::addValue",
+                   [](uint64_t folded, uint64_t value) -> void {
+                     reinterpret_cast<FoldedResults*>(folded)->push_back(
+                         mlir::Value::getFromOpaquePointer(
+                             reinterpret_cast<const void*>(value)));
+                   });
+  register_binding("crest::Fold::addAttribute",
+                   [](uint64_t folded, uint64_t attribute) -> void {
+                     reinterpret_cast<FoldedResults*>(folded)->push_back(
+                         mlir::Attribute::getFromOpaquePointer(
+                             reinterpret_cast<const void*>(attribute)));
+                   });
 
   // crest::register-dynamic-op! (uptr dialect) (string op-name) (scheme-object
   // vector/8) (scheme-object interfaces)
@@ -378,32 +375,33 @@ void registerCrestDynamicOpBindings() {
   // `interfaces` is the list of (TypeID . dispatcher) pairs of the op's
   // :interfaces entries. The dispatchers are only needed while the op is
   // registered, so the list is locked for this call and not kept.
-  Sregister_symbol(
-      "crest::register-dynamic-op!",
-      (void*)+[](uint64_t dialect_ptr, const char* op_name, ptr cbs_ptr,
-                 ptr interfaces_ptr) -> void {
-        // Everything with a destructor lives in registerOpFromScheme, which
-        // answers the text of an error. Scheme raises it here, after those
-        // objects are destroyed and the list is unlocked: raising skips
-        // destructors (see scheme_error).
-        ptr failure = Sfalse;
-        {
-          std::string error = registerOpFromScheme(dialect_ptr, op_name,
-                                                   cbs_ptr, interfaces_ptr);
-          if (!error.empty()) {
-            failure = Sstring(error.c_str());
-          }
-        }
-        if (failure != Sfalse) {
-          // LEAK WARNING: this registration runs inside MLIR's loading of the
-          // dialect, and that may run inside MLIR's parser (crest-opt parses
-          // the module, which loads the dialect). Scheme unwinds MLIR's frames
-          // too, so what they hold (the module being parsed) leaks. Nothing
-          // here can undo that: a define-dialect form with an error ends the
-          // program in practice (see scheme_error).
-          scheme_raise("crest::register-dynamic-op!", failure);
-        }
-      });
+  register_binding("crest::register-dynamic-op!",
+                   [](uint64_t dialect_ptr, const char* op_name, ptr cbs_ptr,
+                      ptr interfaces_ptr) -> void {
+                     // Everything with a destructor lives in
+                     // registerOpFromScheme, which answers the text of an
+                     // error. Scheme raises it here, after those objects are
+                     // destroyed and the list is unlocked: raising skips
+                     // destructors (see scheme_error).
+                     ptr failure = Sfalse;
+                     {
+                       std::string error = registerOpFromScheme(
+                           dialect_ptr, op_name, cbs_ptr, interfaces_ptr);
+                       if (!error.empty()) {
+                         failure = Sstring(error.c_str());
+                       }
+                     }
+                     if (failure != Sfalse) {
+                       // LEAK WARNING: this registration runs inside MLIR's
+                       // loading of the dialect, and that may run inside MLIR's
+                       // parser (crest-opt parses the module, which loads the
+                       // dialect). Scheme unwinds MLIR's frames too, so what
+                       // they hold (the module being parsed) leaks. Nothing
+                       // here can undo that: a define-dialect form with an
+                       // error ends the program in practice (see scheme_error).
+                       scheme_raise("crest::register-dynamic-op!", failure);
+                     }
+                   });
 }
 
 } // namespace crest

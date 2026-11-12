@@ -26,19 +26,20 @@
   (export define-builder-binding)
 
   (import (rnrs)
+          (mlir support foreign)
           (for (rnrs) expand)
           (only (chezscheme) foreign-procedure))
 
   (define %isa-builder?
-    (let ([f (foreign-procedure "crest::isa<CrestBox<mlir::OpBuilder>>" (uptr) int)])
+    (let ([f (crest-foreign-procedure "crest::isa<CrestBox<mlir::OpBuilder>>" (uptr) int)])
       (lambda (p) (not (zero? (f p))))))
 
   (define %isa-rewriter?
-    (let ([f (foreign-procedure "crest::isa<CrestBox<mlir::RewriterBase*>>" (uptr) int)])
+    (let ([f (crest-foreign-procedure "crest::isa<CrestBox<mlir::RewriterBase*>>" (uptr) int)])
       (lambda (p) (not (zero? (f p))))))
 
   (define %isa-borrowed?
-    (let ([f (foreign-procedure "crest::isa<CrestBox<mlir::OpBuilder*>>" (uptr) int)])
+    (let ([f (crest-foreign-procedure "crest::isa<CrestBox<mlir::OpBuilder*>>" (uptr) int)])
       (lambda (p) (not (zero? (f p))))))
 
   ;; @brief define-builder-binding — define VAR as a procedure over the three builder variants.
@@ -64,9 +65,9 @@
                        [sym-borrowed (datum->syntax #'var (with-kind (syntax->datum #'name) "OpBuilder*"))]
                        [(arg ...) (generate-temporaries #'(arg-type ...))])
            #'(define var
-               (let ([call-builder  (foreign-procedure sym-builder  (builder-type arg-type ...) ret)]
-                     [call-rewriter (foreign-procedure sym-rewriter (builder-type arg-type ...) ret)]
-                     [call-borrowed (foreign-procedure sym-borrowed (builder-type arg-type ...) ret)])
+               (let ([call-builder  (crest-foreign-procedure sym-builder  (builder-type arg-type ...) ret)]
+                     [call-rewriter (crest-foreign-procedure sym-rewriter (builder-type arg-type ...) ret)]
+                     [call-borrowed (crest-foreign-procedure sym-borrowed (builder-type arg-type ...) ret)])
                  (lambda (builder arg ...)
                    (cond
                     [(%isa-rewriter? builder) (call-rewriter builder arg ...)]

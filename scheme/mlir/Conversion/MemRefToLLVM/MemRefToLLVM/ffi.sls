@@ -2,6 +2,7 @@
 ;; Mirrors mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h
 (library (mlir Conversion MemRefToLLVM MemRefToLLVM ffi)
   (export %mlir::populateFinalizeMemRefToLLVMConversionPatterns)
-  (import (chezscheme))
+  (import (chezscheme)
+          (mlir support foreign))
   (define %mlir::populateFinalizeMemRefToLLVMConversionPatterns
-    (foreign-procedure "mlir::populateFinalizeMemRefToLLVMConversionPatterns" (uptr uptr) void)))
+    (crest-foreign-procedure "mlir::populateFinalizeMemRefToLLVMConversionPatterns" (uptr uptr) void)))

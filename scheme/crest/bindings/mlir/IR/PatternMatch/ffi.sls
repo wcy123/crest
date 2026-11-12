@@ -28,56 +28,57 @@
     %crest::isa<CrestBox<mlir::RewriterBase*>>
     %mlir::RewritePatternSet::RewritePatternSet
     %crest::isa<CrestBox<mlir::RewritePatternSet>>)
-  (import (rnrs) (only (chezscheme) foreign-procedure))
+  (import (rnrs)
+          (mlir support foreign) (only (chezscheme) foreign-procedure))
 
   (define %mlir::RewriterBase::setInsertionPoint
-    (foreign-procedure "mlir::RewriterBase::setInsertionPoint"
-                       (uptr uptr) void))
+    (crest-foreign-procedure "mlir::RewriterBase::setInsertionPoint"
+                             (uptr uptr) void))
 
   (define %mlir::RewriterBase::setInsertionPointToEnd
-    (foreign-procedure "mlir::RewriterBase::setInsertionPointToEnd"
-                       (uptr uptr) void))
+    (crest-foreign-procedure "mlir::RewriterBase::setInsertionPointToEnd"
+                             (uptr uptr) void))
 
   (define %mlir::RewriterBase::setInsertionPointToStart
-    (foreign-procedure "mlir::RewriterBase::setInsertionPointToStart"
-                       (uptr uptr) void))
+    (crest-foreign-procedure "mlir::RewriterBase::setInsertionPointToStart"
+                             (uptr uptr) void))
 
   (define %mlir::RewriterBase::createBlock
-    (foreign-procedure "mlir::RewriterBase::createBlock"
-                       (uptr uptr scheme-object) uptr))
+    (crest-foreign-procedure "mlir::RewriterBase::createBlock"
+                             (uptr uptr scheme-object) uptr))
 
   (define %mlir::RewriterBase::replaceOp
-    (foreign-procedure "mlir::RewriterBase::replaceOp"
-                       (uptr uptr uptr) int))
+    (crest-foreign-procedure "mlir::RewriterBase::replaceOp"
+                             (uptr uptr uptr) int))
 
   (define %mlir::RewriterBase::eraseOp
-    (foreign-procedure "mlir::RewriterBase::eraseOp"
-                       (uptr uptr) int))
+    (crest-foreign-procedure "mlir::RewriterBase::eraseOp"
+                             (uptr uptr) int))
 
   ;; Accepts CrestBox<RewriterBase*>* and CrestBox<OperationState>*; extracts
   ;; inner pointers in C++. See lib/Bindings/IR/PatternMatch.cpp.
   (define %mlir::RewriterBase::create<OperationState>
-    (foreign-procedure "mlir::RewriterBase::create<OperationState>" (uptr uptr) uptr))
+    (crest-foreign-procedure "mlir::RewriterBase::create<OperationState>" (uptr uptr) uptr))
 
   ;; @brief Move all blocks of a region to the front of another.
   ;; @param rw    CrestBox<RewriterBase*>* uptr — rewriter-only, a plain builder is an error
   ;; @param src   Region* uptr, left empty
   ;; @param dest  Region* uptr
   (define %mlir::RewriterBase::inlineRegionBefore
-    (foreign-procedure "mlir::RewriterBase::inlineRegionBefore" (uptr uptr uptr) void))
+    (crest-foreign-procedure "mlir::RewriterBase::inlineRegionBefore" (uptr uptr uptr) void))
 
   ;; @brief Is this ptr a CrestBox<RewriterBase*> shell? 1 or 0.
   (define %crest::isa<CrestBox<mlir::RewriterBase*>>
-    (foreign-procedure "crest::isa<CrestBox<mlir::RewriterBase*>>" (uptr) int))
+    (crest-foreign-procedure "crest::isa<CrestBox<mlir::RewriterBase*>>" (uptr) int))
 
   ;; @brief mlir::RewritePatternSet constructor — heap-allocate a CrestBox pattern set.
   ;; @param ctx  MLIRContext* uptr
   ;; @return     CrestBox<RewritePatternSet>* uptr — freed via with-CrestObject
   (define %mlir::RewritePatternSet::RewritePatternSet
-    (foreign-procedure "mlir::RewritePatternSet::RewritePatternSet" (uptr) uptr))
+    (crest-foreign-procedure "mlir::RewritePatternSet::RewritePatternSet" (uptr) uptr))
 
   ;; @brief Type predicates via CrestObject::isa<T>.
   (define %crest::isa<CrestBox<mlir::RewritePatternSet>>
-    (foreign-procedure "crest::isa<CrestBox<mlir::RewritePatternSet>>" (uptr) int))
+    (crest-foreign-procedure "crest::isa<CrestBox<mlir::RewritePatternSet>>" (uptr) int))
 
   ) ;; end library (mlir IR PatternMatch ffi)

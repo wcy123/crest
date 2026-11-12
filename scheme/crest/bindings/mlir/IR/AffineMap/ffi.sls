@@ -20,19 +20,20 @@
     %mlir::AffineMap::getMultiDimIdentityMap
     %mlir::AffineMap::getConstantMap
     %mlir::AffineMap::get)
-  (import (rnrs) (only (chezscheme) foreign-procedure))
+  (import (rnrs)
+          (mlir support foreign) (only (chezscheme) foreign-procedure))
 
   ;; @param ctx       mlir::MLIRContext* uptr
   ;; @param num-dims  number of dimensions
   ;; @return          AffineMap opaque pointer uptr: (d0, ..., dn-1) -> (d0, ..., dn-1)
   (define %mlir::AffineMap::getMultiDimIdentityMap
-    (foreign-procedure "mlir::AffineMap::getMultiDimIdentityMap" (uptr uptr) uptr))
+    (crest-foreign-procedure "mlir::AffineMap::getMultiDimIdentityMap" (uptr uptr) uptr))
 
   ;; @param ctx  mlir::MLIRContext* uptr
   ;; @param val  Scheme exact integer mapped to int64_t
   ;; @return     AffineMap opaque pointer uptr: () -> (val)
   (define %mlir::AffineMap::getConstantMap
-    (foreign-procedure "mlir::AffineMap::getConstantMap" (uptr integer-64) uptr))
+    (crest-foreign-procedure "mlir::AffineMap::getConstantMap" (uptr integer-64) uptr))
 
   ;; @brief AffineMap::get(dimCount, symbolCount, results, ctx).
   ;; @param ctx           mlir::MLIRContext* uptr
@@ -41,6 +42,6 @@
   ;; @param results       Scheme list of AffineExpr opaque pointers (empty: no results)
   ;; @return              AffineMap opaque pointer uptr
   (define %mlir::AffineMap::get
-    (foreign-procedure "mlir::AffineMap::get" (uptr uptr uptr scheme-object) uptr))
+    (crest-foreign-procedure "mlir::AffineMap::get" (uptr uptr uptr scheme-object) uptr))
 
   ) ;; end library (mlir IR AffineMap ffi)

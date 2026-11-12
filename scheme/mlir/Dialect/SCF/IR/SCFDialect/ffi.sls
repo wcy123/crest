@@ -2,6 +2,7 @@
 ;; Mirrors mlir/Dialect/SCF/IR/SCFDialect.h
 (library (mlir Dialect SCF IR SCFDialect ffi)
   (export %mlir::DialectRegistry::insert<mlir::scf::SCFDialect>)
-  (import (chezscheme))
+  (import (chezscheme)
+          (mlir support foreign))
   (define %mlir::DialectRegistry::insert<mlir::scf::SCFDialect>
-    (foreign-procedure "mlir::DialectRegistry::insert<mlir::scf::SCFDialect>" (uptr) void)))
+    (crest-foreign-procedure "mlir::DialectRegistry::insert<mlir::scf::SCFDialect>" (uptr) void)))

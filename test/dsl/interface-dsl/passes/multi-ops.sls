@@ -1,5 +1,6 @@
 ;; Calls the interface methods of every op of the multiops dialect and prints what each answers.
 (import (chezscheme)
+        (mlir support foreign)
         (crest dialect)
         (mlir IR Operation)
         (mlir IR MLIRContext)
@@ -10,13 +11,13 @@
         (only (mlir IR BuiltinTypes) mlir::FunctionType::get mlir::IntegerType::get<i32>))
 
 (define mlir::FunctionOpInterface::getFunctionType
-  (foreign-procedure "mlir::FunctionOpInterface::getFunctionType" (uptr) uptr))
+  (crest-foreign-procedure "mlir::FunctionOpInterface::getFunctionType" (uptr) uptr))
 (define mlir::FunctionOpInterface::setFunctionTypeAttr
-  (foreign-procedure "mlir::FunctionOpInterface::setFunctionTypeAttr" (uptr uptr) void))
+  (crest-foreign-procedure "mlir::FunctionOpInterface::setFunctionTypeAttr" (uptr uptr) void))
 (define mlir::FunctionOpInterface::verifyBody
-  (foreign-procedure "mlir::FunctionOpInterface::verifyBody" (uptr) boolean))
+  (crest-foreign-procedure "mlir::FunctionOpInterface::verifyBody" (uptr) boolean))
 (define mlir::CallableOpInterface::getCallableRegion
-  (foreign-procedure "mlir::CallableOpInterface::getCallableRegion" (uptr) uptr))
+  (crest-foreign-procedure "mlir::CallableOpInterface::getCallableRegion" (uptr) uptr))
 
 (define (say . parts) (for-each display parts) (newline))
 

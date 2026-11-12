@@ -8,6 +8,7 @@
 #include "AffineOps.h"
 #include "../../../Support/BuilderBinding.h"
 #include "../../../Support/CrestObject.h"
+#include "../../../Support/Result.h"
 #include "../../../Support/SchemeWrapper.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Affine/Utils.h"
@@ -133,13 +134,17 @@ void registerDialectAffineIRAffineOpsBindings() {
       });
 
   // Register AffineDialect into a DialectRegistry.
-  Sregister_symbol(
+  register_binding(
       "mlir::DialectRegistry::insert<mlir::affine::AffineDialect>",
-      (void*)+[](uint64_t registry_ptr) -> void {
-        crest::CrestBox<mlir::DialectRegistry>::inner(
-            registry_ptr,
-            "mlir::DialectRegistry::insert<mlir::affine::AffineDialect>")
-            .insert<mlir::affine::AffineDialect>();
+      [](uint64_t registry_ptr) -> llvm::Error {
+        CREST_TRY(
+            crest_lookup1,
+            crest::CrestBox<mlir::DialectRegistry>::tryInner(
+                registry_ptr,
+                "mlir::DialectRegistry::insert<mlir::affine::AffineDialect>"));
+
+        crest_lookup1.insert<mlir::affine::AffineDialect>();
+        return llvm::Error::success();
       });
 }
 

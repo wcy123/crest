@@ -6,6 +6,7 @@
 // Mirrors mlir/Interfaces/DestinationStyleOpInterface.h
 
 #include "DestinationStyleOpInterface.h"
+#include "../Support/Result.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/Interfaces/DestinationStyleOpInterface.h"
@@ -13,12 +14,12 @@
 namespace crest {
 
 void registerInterfacesDpsBindings() {
-  Sregister_symbol(
+  register_binding(
       "mlir::DestinationStyleOpInterface::getNumDpsInits",
-      (void*)+[](uint64_t op_ptr) -> int {
+      [](uint64_t op_ptr) -> llvm::Expected<int> {
         if (!op_ptr) {
-          scheme_error("mlir::DestinationStyleOpInterface::getNumDpsInits",
-                       "op must not be null");
+          return fail("mlir::DestinationStyleOpInterface::getNumDpsInits",
+                      llvm::Twine("op must not be null"));
         }
         mlir::Operation* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto dpsOp = mlir::dyn_cast<mlir::DestinationStyleOpInterface>(op);
@@ -27,22 +28,23 @@ void registerInterfacesDpsBindings() {
         }
         return static_cast<int>(dpsOp.getNumDpsInits());
       });
-  Sregister_symbol(
+  register_binding(
       "mlir::DestinationStyleOpInterface::getDpsInitOperand",
-      (void*)+[](uint64_t op_ptr, int index) -> uint64_t {
+      [](uint64_t op_ptr, int index) -> llvm::Expected<uint64_t> {
         if (!op_ptr) {
-          scheme_error("mlir::DestinationStyleOpInterface::getDpsInitOperand",
-                       "op must not be null");
+          return fail("mlir::DestinationStyleOpInterface::getDpsInitOperand",
+                      llvm::Twine("op must not be null"));
         }
         mlir::Operation* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto dpsOp = mlir::dyn_cast<mlir::DestinationStyleOpInterface>(op);
         if (!dpsOp) {
-          scheme_error("mlir::DestinationStyleOpInterface::getDpsInitOperand",
-                       "op does not implement DestinationStyleOpInterface");
+          return fail(
+              "mlir::DestinationStyleOpInterface::getDpsInitOperand",
+              llvm::Twine("op does not implement DestinationStyleOpInterface"));
         }
         if (index < 0 || index >= static_cast<int>(dpsOp.getNumDpsInits())) {
-          scheme_error("mlir::DestinationStyleOpInterface::getDpsInitOperand",
-                       "index out of range");
+          return fail("mlir::DestinationStyleOpInterface::getDpsInitOperand",
+                      llvm::Twine("index out of range"));
         }
         return reinterpret_cast<uint64_t>(
             dpsOp.getDpsInits()[static_cast<size_t>(index)]

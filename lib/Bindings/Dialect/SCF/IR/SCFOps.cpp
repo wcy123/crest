@@ -7,6 +7,7 @@
 
 #include "SCFOps.h"
 #include "../../../Support/BuilderBinding.h"
+#include "../../../Support/Result.h"
 #include "../../../Support/SchemeWrapper.h"
 #include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/IR/Builders.h"
@@ -35,23 +36,22 @@ void registerDialectSCFIRSCFOpsBindings() {
 
   // scf::ForOp::getBody: get the loop body block.
   // (op-ptr) → Block* uptr
-  Sregister_symbol(
-      "mlir::scf::ForOp::getBody", (void*)+[](uint64_t op_ptr) -> uint64_t {
-        auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-        auto forOp = mlir::cast<mlir::scf::ForOp>(op);
-        return reinterpret_cast<uint64_t>(forOp.getBody());
-      });
+  register_binding("mlir::scf::ForOp::getBody",
+                   [](uint64_t op_ptr) -> uint64_t {
+                     auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
+                     auto forOp = mlir::cast<mlir::scf::ForOp>(op);
+                     return reinterpret_cast<uint64_t>(forOp.getBody());
+                   });
 
   // scf::ForOp::getInductionVar: get the loop induction variable.
   // (op-ptr) → Value uptr
-  Sregister_symbol(
-      "mlir::scf::ForOp::getInductionVar",
-      (void*)+[](uint64_t op_ptr) -> uint64_t {
-        auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-        auto forOp = mlir::cast<mlir::scf::ForOp>(op);
-        return reinterpret_cast<uint64_t>(
-            forOp.getInductionVar().getAsOpaquePointer());
-      });
+  register_binding("mlir::scf::ForOp::getInductionVar",
+                   [](uint64_t op_ptr) -> uint64_t {
+                     auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
+                     auto forOp = mlir::cast<mlir::scf::ForOp>(op);
+                     return reinterpret_cast<uint64_t>(
+                         forOp.getInductionVar().getAsOpaquePointer());
+                   });
 
   // scf::YieldOp::create: create an SCF yield.
   // (builder-ptr loc-ptr) → void

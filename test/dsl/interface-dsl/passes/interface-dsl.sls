@@ -1,5 +1,6 @@
 ;; Unit test for the :interfaces DSL — top-level program for scheme-mlir.
 (import (chezscheme)
+        (mlir support foreign)
         (crest dialect)
         (mlir IR Operation)
         (mlir IR Region)
@@ -9,15 +10,15 @@
         (mlir IR DialectRegistry))
 
 (define mlir::FunctionOpInterface::getFunctionType
-  (foreign-procedure "mlir::FunctionOpInterface::getFunctionType" (uptr) uptr))
+  (crest-foreign-procedure "mlir::FunctionOpInterface::getFunctionType" (uptr) uptr))
 (define mlir::FunctionOpInterface::verifyBody
-  (foreign-procedure "mlir::FunctionOpInterface::verifyBody" (uptr) boolean))
+  (crest-foreign-procedure "mlir::FunctionOpInterface::verifyBody" (uptr) boolean))
 (define mlir::FunctionOpInterface::verifyType
-  (foreign-procedure "mlir::FunctionOpInterface::verifyType" (uptr) boolean))
+  (crest-foreign-procedure "mlir::FunctionOpInterface::verifyType" (uptr) boolean))
 (define mlir::CallableOpInterface::getCallableRegion
-  (foreign-procedure "mlir::CallableOpInterface::getCallableRegion" (uptr) uptr))
+  (crest-foreign-procedure "mlir::CallableOpInterface::getCallableRegion" (uptr) uptr))
 (define mlir::SymbolOpInterface::getNameAttr
-  (foreign-procedure "mlir::SymbolOpInterface::getNameAttr" (uptr) uptr))
+  (crest-foreign-procedure "mlir::SymbolOpInterface::getNameAttr" (uptr) uptr))
 
 (define (main)
   ;; LEAK WARNING: what this makes (the context, the module, the builder) lives in a with- scope and is

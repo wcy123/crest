@@ -22,7 +22,8 @@
     %mlir::OpBuilder::getListener
     %mlir::OpBuilder::setInsertionPointToEnd
     %mlir::OpBuilder::InsertionGuard::InsertionGuard)
-  (import (rnrs) (only (chezscheme) foreign-procedure) (mlir support BuilderBinding))
+  (import (rnrs)
+          (mlir support foreign) (only (chezscheme) foreign-procedure) (mlir support BuilderBinding))
 
   ;; @brief Heap-allocate a CrestBox<mlir::OpBuilder> positioned at end of block.
   ;; @param ctx       MLIRContext* uptr — needed when block is not yet attached to an op
@@ -31,7 +32,7 @@
   ;; @return        CrestBox<OpBuilder>* uptr — freed via with-CrestObject
   ;; @see           mlir/IR/Builders.h
   (define %mlir::OpBuilder::atBlockEnd
-    (foreign-procedure "mlir::OpBuilder::atBlockEnd" (uptr uptr uptr) uptr))
+    (crest-foreign-procedure "mlir::OpBuilder::atBlockEnd" (uptr uptr uptr) uptr))
 
   ;; @brief Create an op from a prepared OperationState via an OpBuilder.
   ;; @param builder     builder shell uptr

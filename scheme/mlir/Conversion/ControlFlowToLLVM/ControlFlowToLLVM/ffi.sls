@@ -3,8 +3,9 @@
 (library (mlir Conversion ControlFlowToLLVM ControlFlowToLLVM ffi)
   (export %mlir::cf::populateControlFlowToLLVMConversionPatterns
           %mlir::cf::populateAssertToLLVMConversionPattern)
-  (import (chezscheme))
+  (import (chezscheme)
+          (mlir support foreign))
   (define %mlir::cf::populateControlFlowToLLVMConversionPatterns
-    (foreign-procedure "mlir::cf::populateControlFlowToLLVMConversionPatterns" (uptr uptr) void))
+    (crest-foreign-procedure "mlir::cf::populateControlFlowToLLVMConversionPatterns" (uptr uptr) void))
   (define %mlir::cf::populateAssertToLLVMConversionPattern
-    (foreign-procedure "mlir::cf::populateAssertToLLVMConversionPattern" (uptr uptr) void)))
+    (crest-foreign-procedure "mlir::cf::populateAssertToLLVMConversionPattern" (uptr uptr) void)))

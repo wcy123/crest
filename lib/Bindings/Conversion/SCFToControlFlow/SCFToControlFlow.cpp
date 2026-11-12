@@ -7,6 +7,7 @@
 
 #include "SCFToControlFlow.h"
 #include "../../Support/CrestObject.h"
+#include "../../Support/Result.h"
 #include "../../Support/SchemeWrapper.h"
 #include "mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h"
 #include "mlir/IR/PatternMatch.h"
@@ -16,12 +17,15 @@ namespace crest {
 void registerConversionSCFToControlFlowBindings() {
   // populateSCFToControlFlowConversionPatterns: lower SCF to cf dialect.
   // (patterns-ptr) → void
-  Sregister_symbol(
+  register_binding(
       "mlir::populateSCFToControlFlowConversionPatterns",
-      (void*)+[](uint64_t patterns_ptr) -> void {
-        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
-            patterns_ptr, "mlir::populateSCFToControlFlowConversionPatterns");
+      [](uint64_t patterns_ptr) -> llvm::Error {
+        CREST_TRY(patterns,
+                  crest::try_as_ref<mlir::RewritePatternSet>(
+                      patterns_ptr,
+                      "mlir::populateSCFToControlFlowConversionPatterns"));
         mlir::populateSCFToControlFlowConversionPatterns(patterns);
+        return llvm::Error::success();
       });
 }
 

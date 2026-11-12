@@ -9,6 +9,7 @@
 #include "../../../Support/ArrayRef.h"
 #include "../../../Support/BuilderBinding.h"
 #include "../../../Support/CrestObject.h"
+#include "../../../Support/Result.h"
 #include "../../../Support/SchemeWrapper.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/IR/Builders.h"
@@ -21,9 +22,8 @@ namespace crest {
 void registerDialectMemRefIRMemRefBindings() {
   // MemRefType::get: create a MemRefType from a RankedTensorType.
   // (ranked-tensor-type-ptr) → Type uptr
-  Sregister_symbol(
-      "mlir::MemRefType::get",
-      (void*)+[](uint64_t tensor_type_ptr) -> uint64_t {
+  register_binding(
+      "mlir::MemRefType::get", [](uint64_t tensor_type_ptr) -> uint64_t {
         auto t =
             mlir::cast<mlir::RankedTensorType>(mlir::Type::getFromOpaquePointer(
                 reinterpret_cast<const void*>(tensor_type_ptr)));
@@ -85,13 +85,17 @@ void registerDialectMemRefIRMemRefBindings() {
       });
 
   // Register MemRefDialect into a DialectRegistry.
-  Sregister_symbol(
+  register_binding(
       "mlir::DialectRegistry::insert<mlir::memref::MemRefDialect>",
-      (void*)+[](uint64_t registry_ptr) -> void {
-        crest::CrestBox<mlir::DialectRegistry>::inner(
-            registry_ptr,
-            "mlir::DialectRegistry::insert<mlir::memref::MemRefDialect>")
-            .insert<mlir::memref::MemRefDialect>();
+      [](uint64_t registry_ptr) -> llvm::Error {
+        CREST_TRY(
+            crest_lookup1,
+            crest::CrestBox<mlir::DialectRegistry>::tryInner(
+                registry_ptr,
+                "mlir::DialectRegistry::insert<mlir::memref::MemRefDialect>"));
+
+        crest_lookup1.insert<mlir::memref::MemRefDialect>();
+        return llvm::Error::success();
       });
 }
 

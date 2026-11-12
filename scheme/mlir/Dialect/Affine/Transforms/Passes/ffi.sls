@@ -9,12 +9,13 @@
 (library (mlir Dialect Affine Transforms Passes ffi)
   (export %mlir::affine::createLoopFusionPass
           %mlir::affine::createAffineScalarReplacementPass)
-  (import (chezscheme))
+  (import (chezscheme)
+          (mlir support foreign))
 
   (define %mlir::affine::createLoopFusionPass
-    (foreign-procedure "mlir::affine::createLoopFusionPass" () uptr))
+    (crest-foreign-procedure "mlir::affine::createLoopFusionPass" () uptr))
 
   (define %mlir::affine::createAffineScalarReplacementPass
-    (foreign-procedure "mlir::affine::createAffineScalarReplacementPass" () uptr))
+    (crest-foreign-procedure "mlir::affine::createAffineScalarReplacementPass" () uptr))
 
   ) ;; end library (mlir Dialect Affine Transforms Passes ffi)

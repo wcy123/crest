@@ -16,12 +16,13 @@
   (export
     %mlir::UnknownLoc::get
     %mlir::FileLineColLoc::get)
-  (import (rnrs) (only (chezscheme) foreign-procedure))
+  (import (rnrs)
+          (mlir support foreign) (only (chezscheme) foreign-procedure))
 
   (define %mlir::UnknownLoc::get
-    (foreign-procedure "mlir::UnknownLoc::get" (uptr) uptr))
+    (crest-foreign-procedure "mlir::UnknownLoc::get" (uptr) uptr))
 
   (define %mlir::FileLineColLoc::get
-    (foreign-procedure "mlir::FileLineColLoc::get" (uptr string unsigned-32 unsigned-32) uptr))
+    (crest-foreign-procedure "mlir::FileLineColLoc::get" (uptr string unsigned-32 unsigned-32) uptr))
 
   ) ;; end library (mlir IR Location ffi)
