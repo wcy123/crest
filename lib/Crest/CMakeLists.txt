@@ -15,7 +15,7 @@
 
 # DynamicOpDefinition::addTrait() requires LLVM 23+.
 # Compile the real Trait.cpp on LLVM 23+; fall back to TraitStub.cpp
-# which registers a scheme_error stub so Scheme gets a clear diagnostic.
+# which registers an error stub so Scheme gets a clear diagnostic.
 if(LLVM_VERSION_MAJOR GREATER_EQUAL 23)
   message(STATUS "CREST: LLVM ${LLVM_VERSION_MAJOR} >= 23 — DynamicOpTrait enabled")
   set(CREST_TRAIT_SOURCE Trait.cpp Trait.h)

@@ -7,6 +7,7 @@
 
 #include "ControlFlowToLLVM.h"
 #include "../../Support/CrestObject.h"
+#include "../../Support/Result.h"
 #include "../../Support/SchemeWrapper.h"
 #include "mlir/Conversion/ControlFlowToLLVM/ControlFlowToLLVM.h"
 #include "mlir/Conversion/LLVMCommon/TypeConverter.h"
@@ -17,27 +18,35 @@ namespace crest {
 void registerConversionControlFlowToLLVMBindings() {
   // mlir::cf::populateControlFlowToLLVMConversionPatterns
   // (type-converter-ptr patterns-ptr) → void
-  Sregister_symbol(
+  register_binding(
       "mlir::cf::populateControlFlowToLLVMConversionPatterns",
-      (void*)+[](uint64_t tc_ptr, uint64_t patterns_ptr) -> void {
-        auto& tc = crest::CrestBox<mlir::LLVMTypeConverter>::inner(
-            tc_ptr, "mlir::cf::populateControlFlowToLLVMConversionPatterns");
-        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
-            patterns_ptr,
-            "mlir::cf::populateControlFlowToLLVMConversionPatterns");
+      [](uint64_t tc_ptr, uint64_t patterns_ptr) -> llvm::Error {
+        CREST_TRY(tc,
+                  crest::CrestBox<mlir::LLVMTypeConverter>::inner(
+                      tc_ptr,
+                      "mlir::cf::populateControlFlowToLLVMConversionPatterns"));
+        CREST_TRY(patterns,
+                  crest::as_ref<mlir::RewritePatternSet>(
+                      patterns_ptr,
+                      "mlir::cf::populateControlFlowToLLVMConversionPatterns"));
         mlir::cf::populateControlFlowToLLVMConversionPatterns(tc, patterns);
+        return llvm::Error::success();
       });
 
   // mlir::cf::populateAssertToLLVMConversionPattern (Ch7 addition)
   // (type-converter-ptr patterns-ptr) → void
-  Sregister_symbol(
+  register_binding(
       "mlir::cf::populateAssertToLLVMConversionPattern",
-      (void*)+[](uint64_t tc_ptr, uint64_t patterns_ptr) -> void {
-        auto& tc = crest::CrestBox<mlir::LLVMTypeConverter>::inner(
-            tc_ptr, "mlir::cf::populateAssertToLLVMConversionPattern");
-        auto& patterns = crest::as_ref<mlir::RewritePatternSet>(
-            patterns_ptr, "mlir::cf::populateAssertToLLVMConversionPattern");
+      [](uint64_t tc_ptr, uint64_t patterns_ptr) -> llvm::Error {
+        CREST_TRY(
+            tc, crest::CrestBox<mlir::LLVMTypeConverter>::inner(
+                    tc_ptr, "mlir::cf::populateAssertToLLVMConversionPattern"));
+        CREST_TRY(patterns,
+                  crest::as_ref<mlir::RewritePatternSet>(
+                      patterns_ptr,
+                      "mlir::cf::populateAssertToLLVMConversionPattern"));
         mlir::cf::populateAssertToLLVMConversionPattern(tc, patterns);
+        return llvm::Error::success();
       });
 }
 

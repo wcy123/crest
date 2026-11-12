@@ -1,0 +1,88 @@
+NOT APPLIED BY THE BUILD. Kept for the record (decision of 2026-11-12: CREST does not patch Chez; it
+avoids the leak by never letting an error cross a C function, plans/04-errors-are-values.md).
+
+Chez Scheme: free the records of the C calls that a Scheme error escapes
+(c/schlib.c, S_call_help, "case 1: normal return")
+
+THE LEAK, IN PLAIN WORDS
+  Every call from C into Scheme (Scall0, Scall1, ... ) goes through S_call_help. It allocates a jump
+  buffer (about 200 bytes), adds a record for the call to a list of the active C calls (CCHAIN), and
+  locks the code object of the caller. When the call returns normally, S_call_help removes the record,
+  frees the buffer and unlocks the code object.
+  When a Scheme error is caught by a `guard` that lies OUTSIDE a C function that called into Scheme,
+  the error escapes through that C function: its call never returns, so its buffer, its record and its
+  lock stay. Stock Chez leaks about 208 bytes for every such error.
+
+WHY (THE CODE)
+  When the outer call finally returns, S_call_help has a loop whose comment says it unlocks the code
+  objects "that we're escaping past" and frees their buffers: it walks the list from its head down to
+  the outer call's own record. The line `CCHAIN(tc) = yp;` just before the loop cuts the list down to
+  the outer call's own record first, so the loop has nothing else to walk. The comment of S_return
+  says the same thing about what the return handler does ("will release frames not in the yp sublist").
+  This patch deletes the line, so the loop starts at the real head of the list, as its comment says.
+
+THE SMALLEST REPRO (standalone, no CREST): cmake/patches/chez-error-escape-leak/{repro.c,repro.ss}
+  C:       call_scheme()  { call the Scheme procedure raise-it }       <- the C function in the middle
+           main()         { loop 100000 times: call the Scheme procedure try }
+  Scheme:  raise-it = (lambda () (error 'x "boom"))
+           call-c   = (foreign-procedure "call_scheme" () void)        <- Scheme calls call_scheme
+           try      = (lambda () (guard (c [#t #f]) (call-c)))         <- the guard is outside call_scheme
+  Result: stock Chez "heap grew 20800000 bytes over 100000 errors (208.0 per error)"; patched: 0 bytes.
+  Under valgrind the stock run reports "definitely lost ... malloc ... S_call_help".
+
+HOW OUR TESTS HIT IT
+  A Scheme error caught by a `guard` outside a C++ binding or callback, in a program that scheme-mlir
+  or crest-opt started with a call from C into Scheme (that call is the outer frame).
+  Measured 2026-11-12:
+    valgrind over the 227 lit tests, with scheme-mlir and crest-opt linked against stock Chez. 32 tests
+    leave records of escaped calls behind (about 208 bytes each), but valgrind does NOT report them as
+    "lost": scheme-mlir and crest-opt run the whole program inside ONE call from C that has not returned
+    when the process exits, so the records are still on Chez's list ("still reachable"). They are freed
+    only when that outer call returns, so in these processes they are held until the end.
+    - 21 tests have exactly one record: the error that ends the program (nothing to free).
+    - 11 tests have more, i.e. errors that a guard caught: dsl/error-path-leak (6200, it raises on
+      purpose), dsl/callback-leaks (909), dsl/interface-dsl/callable-clauses-errors (9),
+      toy/ch7/undefined-function (5), dsl/dialect-traits/traits-errors-llvm23 (4), toy/ch4/driver (4), and
+      2 each in toy/ch4/diagnostics, dsl/op-builders/infer-error, dsl/op-builders/regions,
+      dsl/dialect-load-errors, dsl/op-traits/op-traits-errors.
+    - Which call made the escaped frame: 7121 of the 7162 records come from scheme_error
+      (lib/Bindings/Support/SchemeWrapper.h: a C++ binding raises, so the C function in the middle is the
+      binding itself); 35 from other C++ calls into Scheme.
+    Where the leak is a real loss: a host that calls Scheme again and again from C, each call returning
+    (CrestInterpreterTests: 20000 calls, 4 MB lost before the patch), and any process in which the
+    outermost call returns after errors were caught.
+  CrestInterpreterTests, SchemeErrorDoesNotLeakCppMemory, is the same scenario as the repro with 20000
+  errors: it fails (about 200 bytes per error) if this patch is not applied.
+
+UPSTREAM
+  Not fixed upstream: the same line is in cisco/ChezScheme main (d533f2e, 2026-11-07) and in
+  racket/ChezScheme master, and `git log -S'CCHAIN(tc) = yp'` finds only the first open-source commit
+  of 2016, so it has been there since then. A web search found no issue or pull request about it
+  (2026-11-12). It has not been reported: nobody on the Chez team has reviewed this patch.
+
+HOW SURE WE ARE
+  - That stock Chez leaks here: high (repro above, valgrind, and the explanation in the code).
+  - That this patch is correct in general: moderate. For it: after the jump the escaped C frames are
+    dead, and each was locked once at the start and is unlocked once by the loop; the whole CREST suite
+    (228 lit tests, 3 gtest binaries) passes on Linux and valgrind reports no invalid free.
+    Not tested: call/cc re-entering a frame, threads, engines (timer interrupts), an error raised
+    while unwinding, Windows.
+  - If it is wrong, the failure is a crash or a double free, which is worse than the leak.
+
+WHY IT WAS NOT TO BE USED ON WINDOWS
+  The list of active C calls is also what Windows may use when the operating system unwinds the stack
+  (SEH). The comment in S_return says "Windows might need the full chain for unwind handling". The
+  patch changes WHEN the list is shortened, and we cannot test Windows.
+
+diff --git a/c/schlib.c b/c/schlib.c
+index 2be486d0..5d519b54 100644
+--- a/c/schlib.c
++++ b/c/schlib.c
+@@ -276,7 +276,6 @@ void S_call_help(ptr tc_in, IBOOL singlep, IBOOL lock_ts) {
+             break;
+         case 1: { /* normal return */
+             ptr yp = FRAME(tc, 1);
+-            CCHAIN(tc) = yp;
+             {
+               /* unlock code objects that we're escaping past */
+               ptr xp;

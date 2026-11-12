@@ -30,9 +30,9 @@ File must start with `// Mirrors mlir/IR/BuiltinTypes.h` on line 6.
 ### Rule 4 — C symbol name = full C++ qualified name
 
 ```cpp
-Sregister_symbol("mlir::RankedTensorType::cloneWithEncoding", ...);
-Sregister_symbol("mlir::IntegerType::get<i64>", ...);       // template param in <>
-Sregister_symbol("crest::logging::info", ...);              // crest:: for FFI plumbing only
+register_binding("mlir::RankedTensorType::cloneWithEncoding", ...);
+register_binding("mlir::IntegerType::get<i64>", ...);       // template param in <>
+register_binding("crest::logging::info", ...);              // crest:: for FFI plumbing only
 ```
 
 `crest::` is only for inherent FFI boundary problems (type adapters, memory lifecycle, I/O).
@@ -59,11 +59,12 @@ AffineMap, ValueRange)`; with a builder, the symbol is `...create<AffineMap,OpBu
 ;; Mirrors mlir/IR/BuiltinTypes.h
 (library (mlir IR BuiltinTypes ffi)
   (export %mlir::RankedTensorType::cloneWithEncoding ...)
+  (import (rnrs) (mlir support foreign))
   (define %mlir::RankedTensorType::cloneWithEncoding
-    (foreign-procedure "mlir::RankedTensorType::cloneWithEncoding" (uptr uptr) uptr)))
+    (crest-foreign-procedure "mlir::RankedTensorType::cloneWithEncoding" (uptr uptr) uptr)))
 ```
 
-The `foreign-procedure` string must exactly match the `Sregister_symbol` key (see Rule 14).
+The `crest-foreign-procedure` string must exactly match the `register_binding` key (see Rule 14).
 
 ### Rule 6 — Public binding re-exports without `%`
 
@@ -94,22 +95,26 @@ used internally within the same `.sls` file, omit it from `(export ...)` entirel
 
 When a function moves to a new module, update all callers. No alias wrappers.
 
-### Rule 9 — Use anonymous lambdas in `Sregister_symbol` calls
+### Rule 9 — Use anonymous lambdas in `register_binding` calls
 
 ```cpp
 // CORRECT
-Sregister_symbol("mlir::IndexType::get",
-    (void*)+[](uint64_t ctx_ptr) -> uint64_t { ... });
+register_binding("mlir::IndexType::get",
+    [](uint64_t ctx_ptr) -> llvm::Expected<uint64_t> { ... });
 ```
 
-The unary `+` converts a non-capturing lambda to a function pointer. Named static functions
-are forbidden (they leak into the TU symbol table). Exception: functions declared in shared
-headers that require external linkage by definition. A builder-taking binding passes its
-non-capturing lambda to `register_builder_binding` instead, which registers the three symbols.
+`register_binding` (`lib/Bindings/Support/Result.h`) takes a non-capturing lambda and registers a C function
+that calls it. Named static functions are forbidden (they leak into the TU symbol table). Exception: functions
+declared in shared headers that require external linkage by definition. A builder-taking binding passes its
+non-capturing lambda to `register_builder_binding` instead, which registers the three symbols. `Sregister_symbol`
+itself is for the few C functions that do not answer a Scheme object (`crest::logging::*`, `crest::error::*`).
+
+The lambda answers a C++ value, nothing, an `llvm::Error`, or an `llvm::Expected<T>` (Rule 20). The registered
+function answers a Scheme object, and Scheme calls it with `crest-foreign-procedure`, not `foreign-procedure`.
 
 ### Rule 13 — Internal Scheme helpers use `%%` prefix
 
-- `%name` — raw FFI binding (`foreign-procedure` wrapper, in `ffi.sls`)
+- `%name` — raw FFI binding (`crest-foreign-procedure` wrapper, in `ffi.sls`)
 - `%%name` — internal Scheme helper (not exported, not an FFI binding)
 
 Only apply `%%` to library-level private functions. Local helpers inside a function body
@@ -127,32 +132,37 @@ type or validity test), the Scheme export is encouraged to end in `?`:
   (not (zero? (%crest::isa<CrestBox<mlir::OperationState>> ptr))))
 ```
 
-The `Sregister_symbol` key follows Rule 4 and needs no `?`. Append `?` to the key only when it
+The `register_binding` key follows Rule 4 and needs no `?`. Append `?` to the key only when it
 would otherwise be a bare class name, so the predicate stays distinct from other bindings of
 that class:
 
 ```cpp
-Sregister_symbol("mlir::BlockArgument?", ...);                  // bare class name
-Sregister_symbol("crest::isa<CrestBox<mlir::OperationState>>", ...); // already a predicate
+register_binding("mlir::BlockArgument?", ...);                  // bare class name
+register_binding("crest::isa<CrestBox<mlir::OperationState>>", ...); // already a predicate
 ```
 
-### Rule 14 — Every `foreign-procedure` must have a matching `Sregister_symbol`
+### Rule 14 — Every `crest-foreign-procedure` must have a matching `register_binding`
 
 Chez Scheme resolves **all** `foreign-procedure` bindings at library load time — including
-ones never imported or called. If a symbol string has no matching `Sregister_symbol` in C++,
+ones never imported or called. If a symbol string has no matching registration in C++,
 `Sforeign_symbol` returns NULL, corrupting the library's binding table and crashing at load.
 
 ```scheme
-;; WRONG — crashes at load time if C++ never calls Sregister_symbol("crest::Foo::bar", ...)
-(define %crest::Foo::bar (foreign-procedure "crest::Foo::bar" (uptr) uptr))
+;; WRONG — crashes at load time if C++ never calls register_binding("crest::Foo::bar", ...)
+(define %crest::Foo::bar (crest-foreign-procedure "crest::Foo::bar" (uptr) uptr))
 ```
 
+The two sides must also agree on the convention: a symbol registered with `register_binding` (or
+`register_builder_binding`) answers a Scheme object and is called with `crest-foreign-procedure`; a symbol
+registered with `Sregister_symbol` answers the C type its `foreign-procedure` declares. Mixing them is a crash,
+not an error.
+
 Audit: `test/bindings/ffi-symbols.mlir` reads every `.sls` file and asks Chez (`foreign-entry?`)
-whether each symbol named by a `foreign-procedure`, and each of the three variants of a
-`define-builder-binding "NAME"` (`NAME<OpBuilder>`, `NAME<RewriterBase*>`, `NAME<OpBuilder*>`),
-is registered. It runs with the suite, so a symbol without a `Sregister_symbol` (or a
-`register_builder_binding`) fails it. A grep of the sources cannot do this: some names are made
-by macros on either side.
+whether each symbol named by a `foreign-procedure` or a `crest-foreign-procedure`, and each of the three
+variants of a `define-builder-binding "NAME"` (`NAME<OpBuilder>`, `NAME<RewriterBase*>`, `NAME<OpBuilder*>`),
+is registered, and asks C++ (`crest::bindings::answersObject`) which convention it was registered with. It runs
+with the suite, so a missing symbol or a mismatch fails it. A grep of the sources cannot do this: some names are
+made by macros on either side.
 
 ---
 
@@ -276,6 +286,17 @@ whose code object is locked (the garbage collector moves Scheme objects, so a pr
   `conversion-pattern->c`, `type-conversion->c`, `materialization->c`, `legality->c`) turn a friendly procedure
   into one with C types; they pass an address through.
 
+**No error leaves a callable.** C++ calls a callable through a C function pointer, so an error that escaped it
+would cross the C++ frames (Rule 20). Every callable made by the macros above, and by `crest-slot-callable`,
+catches it with `guard`, stores the who and the text in the C++ slot (`crest::error::set`, first error wins) and
+answers the zero value of its result type (`void`, 0, `#f`, 0.0, `(0 . 0)` for a range). While an error is pending
+a callable runs nothing and answers the zero value, so C++ code that retries does not loop. The Scheme binding that
+was running the callback answers the stored error when it returns (`register_binding` checks the slot), and
+Scheme raises it there. With no binding on the stack (`crest-opt` loading a dialect, `--crest-pass`) the C++ code
+that ran the callback looks at the slot (`failIfUnanswered`, or the pass reports it). A Scheme procedure that a
+binding calls from C++ (the clauses of `InferTypeOpInterface`) is wrapped with `crest-guard-procedure`, and the
+pass of `--crest-pass` is called through `crest-call-guarded`. `test/dsl/callback-errors` checks each kind.
+
 C++ does not check the prototype: a mismatch between the Scheme types and the C++ function pointer type crashes.
 A callback used after its scope ends crashes too. `test/dsl/callback-leaks` checks that scoped callables are
 released, `test/dsl/c-callable` the macro.
@@ -320,16 +341,56 @@ callable that Scheme made for a clause (`installInterfaceEntry`), so MLIR calls 
 
 ---
 
+## Rule 20 — Errors are values; no error crosses a C function
+
+C++ never raises a Scheme error. (There is no `scheme_error`.) An error that escaped a C++ frame would skip every
+destructor in it and in the frames above it (leaks, locks never undone), and Chez keeps about 200 bytes for each
+such escape (`S_call_help`; `cmake/patches/chez-release-escaped-frames.patch` explains it and is not applied).
+So failure is an ordinary return value, and Scheme raises it after the C++ call has returned.
+
+- **A C++ function that can fail** answers `llvm::Error` (no result) or `llvm::Expected<T>` (a result), built with
+  `fail("mlir::Block::getArgument", "block pointer is null")` (`lib/Bindings/Support/Error.h`; the text is a Twine:
+  `"index " + llvm::Twine(i)`). A caller propagates with `CREST_TRY(name, expression)`. The lookups of a handle that
+  Scheme gives (`CrestBox<T>::inner(address, who)`, `as_ref<T>`, `as_ptr<T>`) answer `llvm::Expected`.
+- **A registered binding** (`register_binding`, `register_builder_binding`, Rule 9) answers a Scheme object: the
+  value, or the error object `(#!eof who . message)`. Scheme calls it through `crest-foreign-procedure`
+  (`(mlir support foreign)`), which raises the error object with `(error who message)` in Scheme. The message is what
+  `scheme_error` used to produce, so tests keep matching it.
+- **A callback that fails** (Rule 17) stores its error in the C++ slot; the binding that ran it answers it.
+- **No raising from C++ at all**: not `llvm::report_fatal_error` for an error in the program's input (it is for an
+  internal invariant that generated code broke, and for a dialect that fails to load with no binding on the stack).
+- **Destructors run**: because nothing is skipped, a binding may hold `std::string`, `SmallVector`,
+  `unique_ptr` and `LockedSchemeObject` when it fails. `test/dsl/errors-are-values`, `test/dsl/error-path-leak` and
+  `FailingBindingDoesNotLeakCppMemory` (`unittests/Interpreter`) check that a failing binding leaves no heap behind.
+
+**An object the caller must free has a warning.** A binding that answers an object that nothing else owns (a `new`
+box, a module, a block, a pass not yet added) carries a `LEAK WARNING:` comment that names the `with-` macro that
+frees it (`with-MLIRContext`, `with-DialectRegistry`, `with-PassManager`, `with-OpBuilder`, `with-mlir::OwningOpRef`,
+`crest::OpAsmParser::freeOperands`). Samples and tests use the macro; none calls the raw binding and forgets it.
+A Scheme program does not call `exit` inside a scope: `exit` does not unwind, so the scope's cleanup never runs.
+Raise a value, and call `exit` from a `guard` at the top (`toyc.sls` does, with `%%quit`).
+
+**MLIR keeps some names and strings as pointers, not copies.** The name that a dialect is given (the table of loaded
+dialects, every printed `!name.type`) must live as long as the context: intern it with
+`mlir::StringAttr::get(ctx, name).getValue()`, never pass a `std::string` of the call (`use-after-free`;
+`test/dsl/dialect-name-lifetime`).
+
+**Checking.** `docs/tech-note.md`, "Checking for memory leaks", runs the whole suite under valgrind.
+
+---
+
 ## Checklist for a new binding
 
 - [ ] `lib/Bindings/<Path>/<Name>.cpp` with `// Mirrors mlir/<Path>/<Name>.h` on line 6
-- [ ] `Sregister_symbol("mlir::Class::method", (void*)+[](…){…})` — anonymous lambda
+- [ ] `register_binding("mlir::Class::method", [](…) -> llvm::Expected<T> {…})` — anonymous lambda (Rule 9)
 - [ ] `scheme/mlir/<Path>/<Name>/ffi.sls` — `%`-prefixed exports, `Mirrors` comment
 - [ ] `scheme/mlir/<Path>/<Name>.sls` — clean-name re-exports, `Mirrors` comment
 - [ ] Module name `(mlir Path Name)` matches header path exactly
-- [ ] Every `foreign-procedure` string matches a `Sregister_symbol` key in C++ (Rule 14)
+- [ ] Every `crest-foreign-procedure` string matches a `register_binding` key in C++ (Rule 14)
 - [ ] `%%` on internal Scheme helpers; `%` only on raw FFI bindings
 - [ ] A binding that takes a builder: `register_builder_binding` in C++, `define-builder-binding` in `ffi.sls`
 - [ ] A binding that calls back into Scheme: a callable from `crest-make-static-c-callable`, owned per Rule 17
 - [ ] A new op interface: its macro is a table for `op-interface-expand`, the C++ attach function only calls
       `installInterfaceEntry` (Rule 19), and a slot with a new kind of C++ type gets a case in `SlotAbiTest`
+- [ ] A binding that answers an object nothing else owns: a `LEAK WARNING:` comment and a `with-` macro that frees it
+      (Rule 20); a binding that fails answers an error (`fail(...)`), it never raises (Rule 20)

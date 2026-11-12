@@ -6,6 +6,7 @@
 
 #include "Dialect.h"
 #include "../Bindings/Support/CrestObject.h"
+#include "../Bindings/Support/Result.h"
 #include "../Bindings/Support/SchemeWrapper.h"
 #include "InlinerInterface.h"
 #include "Interface.h"
@@ -107,11 +108,25 @@ void CrestDialect::initialize(const LockedSchemeObject& interfaces) {
   if (cbs_.get_dependent_dialects) {
     cbs_.get_dependent_dialects(reinterpret_cast<uint64_t>(this));
   }
-  attachInterfaces(*this, interfaces, getAttachDialectInterfaceFns(),
-                   "crest::CrestDialect");
+  std::string attachError =
+      attachInterfaces(*this, interfaces, getAttachDialectInterfaceFns());
+  if (!attachError.empty()) {
+    // This runs inside MLIR's construction of the dialect, so there is no way
+    // to return the error to MLIR. It is kept for the Scheme binding that is
+    // loading the dialect (load-scheme-dialect!, getOrLoadDialect,
+    // parseSourceFile), which answers it; with no binding on the stack
+    // (crest-opt) it stops the process with the text (failIfUnanswered). A
+    // mistake in the define-dialect form.
+    setCallbackError("crest::CrestDialect", attachError);
+    failIfUnanswered();
+    return;
+  }
   if (cbs_.initialize) {
     cbs_.initialize(reinterpret_cast<uint64_t>(this));
   }
+  // An error of the callback (a register-dynamic-op! that failed, ...) is in
+  // the slot: see above.
+  failIfUnanswered();
 }
 
 mlir::Attribute CrestDialect::parseAttribute(mlir::DialectAsmParser& parser,
@@ -245,8 +260,9 @@ static CrestDialect::Callbacks unpack_callbacks(ptr v) {
   auto entry = [&](int slot) -> uint64_t {
     ptr value = Svector_ref(v, slot);
     if (!Sfixnump(value) && !Sbignump(value)) {
-      scheme_error("crest::CrestDialect",
-                   "callback slot must be the entry point of a callable or 0");
+      llvm::report_fatal_error("crest::CrestDialect: callback slot must be the "
+                               "entry point of a callable or 0",
+                               /*gen_crash_diag=*/false);
     }
     return static_cast<uint64_t>(Sinteger64_value(value));
   };
@@ -283,9 +299,9 @@ void registerIRExtensibleDialectBindings() {
   // The callback of :get-dependent-dialects gives it each name;
   // getOrLoadDialect finds the factory in the DialectRegistry and loads the
   // dialect first.
-  Sregister_symbol(
+  register_binding(
       "crest::CrestDialect::loadDependentDialect",
-      (void*)+[](uint64_t dialect_ptr, const char* name) -> void {
+      [](uint64_t dialect_ptr, const char* name) -> void {
         auto* dialect = reinterpret_cast<CrestDialect*>(dialect_ptr);
         if (!dialect->getContext()->getOrLoadDialect(llvm::StringRef(name))) {
           llvm::report_fatal_error(
@@ -297,34 +313,33 @@ void registerIRExtensibleDialectBindings() {
   //
   // The callable of a verifier calls it with the text of the error its Scheme
   // callback raised, before it answers 0, so that the diagnostic shows it.
-  Sregister_symbol(
+  register_binding(
       "crest::CrestDialect::reportFailure",
-      (void*)+[](const char* message) -> void {
-        g_reported_failure = message;
-      });
+      [](const char* message) -> void { g_reported_failure = message; });
 
   // crest::load-scheme-dialect! (uptr ctx) (string dialect-name) (string
   // module-name) → void Loads a Scheme-defined dialect into an existing
   // MLIRContext by delegating to dialectFactory. Safe to call when
   // multiThreadedExecutionContext == 0 (e.g. standalone tools, toyc.sls).
   // Replaces the old crest::register-dialect!.
-  Sregister_symbol(
+  register_binding(
       "crest::load-scheme-dialect!",
-      (void*)+[](uint64_t ctx_ptr, const char* dialect_name,
-                 const char* module_name) -> void {
-        auto* ctx = crest::as_ptr<mlir::MLIRContext>(
-            ctx_ptr, "crest::load-scheme-dialect!");
+      [](uint64_t ctx_ptr, const char* dialect_name,
+         const char* module_name) -> llvm::Error {
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(
+                           ctx_ptr, "crest::load-scheme-dialect!"));
         // Copy first: the strings point into the Scheme heap, which the Scheme
         // code that validateSchemeDialect runs may move.
         std::string dialect(dialect_name);
         std::string module(module_name);
         if (auto error = validateSchemeDialect(dialect, module)) {
-          scheme_error("crest::load-scheme-dialect!",
-                       "Failed to import Scheme library: " + module + ": " +
-                           *error);
+          return fail("crest::load-scheme-dialect!",
+                      "Failed to import Scheme library: " + module + ": " +
+                          *error);
         }
         auto [type_id, factory] = dialectFactory(dialect, module);
         factory(ctx);
+        return llvm::Error::success();
       });
 }
 
@@ -335,7 +350,14 @@ void registerIRExtensibleDialectBindings() {
 CrestDialect::CrestDialect(mlir::TypeID id, const std::string& module_name,
                            const std::string& dialect_name,
                            mlir::MLIRContext* ctx)
-    : mlir::ExtensibleDialect(dialect_name, ctx, id),
+    // USE-AFTER-FREE WARNING: MLIR keeps the name that it is given as a
+    // pointer, not a copy, and reads it for as long as the context lives (the
+    // table of loaded dialects, the sort in getLoadedDialects, every printed
+    // `!name.type`). dialect_name belongs to the factory, which is destroyed
+    // when the call that loads the dialect returns. The context interns the
+    // name: it lives as long as the context does.
+    : mlir::ExtensibleDialect(
+          mlir::StringAttr::get(ctx, dialect_name).getValue(), ctx, id),
       interp_(ChezSchemeInterpreter::instance(
           SchemeLogLevel::Warning, crest::registerMlirForeignFunctions)) {
   if (auto importError = interp_->importLibrary(module_name)) {
@@ -376,8 +398,13 @@ dialectFactory(std::string dialect_name, std::string module_name) {
   return {type_id,
           [type_id, dialect_name,
            module_name](mlir::MLIRContext* ctx) -> mlir::Dialect* {
+            // USE-AFTER-FREE WARNING: the context keeps this name as a pointer
+            // for as long as it lives, and `dialect_name` dies with the
+            // factory. Give it the interned copy, which the context owns.
+            llvm::StringRef name =
+                mlir::StringAttr::get(ctx, dialect_name).getValue();
             return ctx->getOrLoadDialect(
-                dialect_name, type_id, [&]() -> std::unique_ptr<mlir::Dialect> {
+                name, type_id, [&]() -> std::unique_ptr<mlir::Dialect> {
                   return std::make_unique<CrestDialect>(type_id, module_name,
                                                         dialect_name, ctx);
                 });

@@ -35,8 +35,7 @@
           (crest)
           (only (mlir IR Operation)
                 mlir::Operation::getResult mlir::Operation::setAttr! mlir::Operation::getAttr)
-          (only (mlir IR BuiltinAttributes) mlir::DenseI64ArrayAttr::intoArrayRef)
-          (only (mlir support array-ref) with-ArrayRef crest::CArrayRef::at crest::CArrayRef::size)
+          (only (mlir IR BuiltinAttributes) mlir::DenseI64ArrayAttr::asArrayRef)
           (rename (rime loop) (:with :rime-with))
 
           (only (mlir IR BuiltinTypes)
@@ -69,10 +68,7 @@
                           (let ([rank (mlir::RankedTensorType::getRank !in-type)])
                             (let loop ([i 0] [acc '()])
                               (if (eqv? i rank) acc (loop (+ i 1) (cons i acc)))))
-                          (with-ArrayRef ref ((mlir::DenseI64ArrayAttr::intoArrayRef attr))
-                            (list->vector
-                             (loop :for i :from 0 :below (crest::CArrayRef::size ref)
-                                   :collect (crest::CArrayRef::at ref i))))))])
+                          (list->vector (mlir::DenseI64ArrayAttr::asArrayRef attr))))])
     :rewrite %output :with
       placeholder = "hipsr.placeholder" (%ctx %input)
       (^bb0 ((%is : !shape-type))

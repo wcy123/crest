@@ -42,13 +42,23 @@
   ;;
   ;; An error inside `proc` must not escape into the C++ code above us: its text goes to C++, whose
   ;; diagnostic shows it, and the answer is "failed" (0).
+  ;; The clause is called by C++ (adapt), so its own error must not escape through that frame either:
+  ;; its text goes to C++, as above, and the answer is `default`.
+  (define (%%guard-clause proc default)
+    (lambda arguments
+      (guard (c [#t (%crest::InferTypeOpInterface::reportFailure
+                     (call-with-string-output-port
+                      (lambda (port) (display-condition c port))))
+                    default])
+        (apply proc arguments))))
+
   (define (%%infer proc refine w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10)
     (guard (c [#t (%crest::InferTypeOpInterface::reportFailure
                    (call-with-string-output-port
                     (lambda (port) (display-condition c port))))
                   0])
       (with-current-MLIRContext w0
-        (%crest::InferTypeOpInterface::adapt proc w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 refine))))
+        (%crest::InferTypeOpInterface::adapt (%%guard-clause proc #f) w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 refine))))
 
   (define (%%system-v-entry-point proc refine)
     (crest-make-static-c-callable
@@ -106,12 +116,12 @@
        (crest-make-static-c-callable
         (uptr uptr uptr uptr) unsigned-8
         (lambda (w0 w1 w2 w3)
-          (%crest::InferTypeOpInterface::adaptCompatible compatible w0 w1 w2 w3)))]
+          (%crest::InferTypeOpInterface::adaptCompatible (crest-guard-procedure compatible #f) w0 w1 w2 w3)))]
       [(a6nt ta6nt)
        (crest-make-static-c-callable
         (uptr uptr) unsigned-8
         (lambda (w0 w1)
-          (%crest::InferTypeOpInterface::adaptCompatible compatible w0 w1 0 0)))]
+          (%crest::InferTypeOpInterface::adaptCompatible (crest-guard-procedure compatible #f) w0 w1 0 0)))]
       [else (error 'mlir::InferTypeOpInterface
                    "the calling convention of this machine type is not supported"
                    (machine-type))]))

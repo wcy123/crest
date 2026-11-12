@@ -6,13 +6,17 @@
 ;;   cast      the inliner interface's materializeCallConversion on the first op's result of
 ;;             input.mlir, to the unranked tensor<*xf64>
 (import (chezscheme)
-        (mlir IR DialectRegistry) (mlir IR MLIRContext) (mlir IR Operation)
+        (mlir IR DialectRegistry) (mlir IR MLIRContext)
+        (mlir IR OwningOpRef) (mlir IR Operation)
         (mlir IR Builders) (mlir IR BuiltinOps) (mlir IR Block) (mlir IR Location)
         (mlir IR BuiltinAttributes) (mlir IR Dialect) (mlir Transforms InliningUtils))
 
 (define (%%type text)
   (mlir::TypeAttr::getValue (mlir::parseAttribute text)))
 
+;; LEAK WARNING: what this makes (the context, the module, the builder) lives in a with- scope and is
+;; freed when the scope ends. A raw MLIRContext::new, ModuleOp::create or parseSourceFile result that is
+;; never freed leaked, and exit inside a scope skips the cleanup: raise, and exit at the top (%%quit).
 (let* ([args    (command-line-arguments)]
        [lib     (car args)]
        [mode    (cadr args)])
@@ -21,20 +25,20 @@
     (with-MLIRContext ctx (reg)
       (with-current-MLIRContext ctx
         (let* ([dialect (mlir::MLIRContext::getOrLoadDialect ctx "toy")]
-               [loc     (mlir::UnknownLoc::get ctx)]
-               [module  (if (string=? mode "cast")
-                            (mlir::parseSourceFile ctx (caddr args))
-                            (mlir::ModuleOp::create loc))]
-               [body    (mlir::ModuleOp::getBody module)])
-          (with-OpBuilder builder (mlir::OpBuilder::atBlockEnd body)
-            (let ([op (if (string=? mode "constant")
-                          (mlir::Dialect::materializeConstant
-                           builder dialect
-                           (mlir::parseAttribute "dense<[1.0, 2.0]> : tensor<2xf64>")
-                           (%%type "tensor<2xf64>") loc)
-                          (mlir::DialectInlinerInterface::materializeCallConversion
-                           builder dialect
-                           (mlir::Operation::getResult (mlir::Block::front body) 0)
-                           (%%type "tensor<*xf64>") loc))])
-              (display (mlir::Operation::print op))
-              (newline))))))))
+               [loc     (mlir::UnknownLoc::get ctx)])
+          (with-mlir::OwningOpRef module (if (string=? mode "cast")
+                                             (mlir::parseSourceFile ctx (caddr args))
+                                             (mlir::ModuleOp::create loc))
+            (let* ([body    (mlir::ModuleOp::getBody module)])
+              (with-OpBuilder builder (mlir::OpBuilder::atBlockEnd body)
+                (let ([op (if (string=? mode "constant")
+                              (mlir::Dialect::materializeConstant
+                               builder dialect
+                               (mlir::parseAttribute "dense<[1.0, 2.0]> : tensor<2xf64>")
+                               (%%type "tensor<2xf64>") loc)
+                              (mlir::DialectInlinerInterface::materializeCallConversion
+                               builder dialect
+                               (mlir::Operation::getResult (mlir::Block::front body) 0)
+                               (%%type "tensor<*xf64>") loc))])
+                  (display (mlir::Operation::print op))
+                  (newline))))))))))

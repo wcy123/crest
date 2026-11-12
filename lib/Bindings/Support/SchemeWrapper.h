@@ -40,38 +40,15 @@ extern "C" {
 #endif
 }
 
-template <typename... Ts>
-[[noreturn]] inline void scheme_error(const char* who, const Ts&... args) {
-  // The Scheme procedure `error` does not return: it unwinds, and the
-  // destructors of the C++ objects of this frame do not run. So the message is
-  // copied into a Scheme string and the stream is destroyed before Scheme is
-  // called. Calling it first leaked the stream and its text on every error.
-  ptr message;
-  {
-    std::ostringstream stream;
-    bool first = true;
-    auto append = [&](const auto& v) {
-      if (!first) {
-        stream << ' ';
-      }
-      first = false;
-      stream << v;
-    };
-    (append(args), ...);
-    message = Sstring(stream.str().c_str());
-  }
-  Scall2(Stop_level_value(Sstring_to_symbol("error")), Sstring(who), message);
-  crest_unreachable();
-}
-
 namespace crest {
 
-// Pointer-returning lookup, only for the types whose objects arrive in more
-// than one form (specialised below). Everything else casts the address to its
-// shell type and calls inner(who), e.g.
-// reinterpret_cast<CrestBox<T>*>(addr)->inner(who).
+// as_ptr<T>(address, who): a T* from the address that Scheme gives, or an error
+// (see CREST_TRY in Error.h; plans/04-errors-are-values.md). Only for the types
+// whose objects arrive in more than one form (specialised below); every other
+// type casts the address to its shell type and calls inner(address, who).
 template <typename T>
-[[nodiscard]] T* as_ptr(uint64_t ptr_val, const char* who) = delete;
+[[nodiscard]] llvm::Expected<T*> as_ptr(uint64_t ptr_val,
+                                        const char* who) = delete;
 
 } // namespace crest
 
@@ -87,8 +64,8 @@ namespace crest {
 // valid MLIR-managed memory and need no CrestObject wrapper — they are never
 // freed by Scheme.
 template <>
-[[nodiscard]] mlir::MLIRContext* as_ptr<mlir::MLIRContext>(uint64_t ptr_val,
-                                                           const char* who);
+[[nodiscard]] llvm::Expected<mlir::MLIRContext*>
+as_ptr<mlir::MLIRContext>(uint64_t ptr_val, const char* who);
 } // namespace crest
 
 // ---------------------------------------------------------------------------

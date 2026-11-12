@@ -76,6 +76,7 @@
           (for (mlir IR BuiltinAttributes) expand)
           (only (mlir IR Builders)
                 mlir::OpBuilder::create<OperationState>
+                mlir::OpBuilder::createBlock
                 current-OpBuilder)
           (only (mlir Interfaces InferTypeOpInterface)
                 mlir::InferTypeOpInterface::inferReturnTypes<OperationState>)
@@ -92,15 +93,16 @@
           (for (only (mlir IR Location)
                      mlir::UnknownLoc::get
                      mlir::FileLineColLoc::get) expand)
-          (for (only (mlir IR Region) mlir::Region::push_back<Block>) expand)
+          (for (only (mlir IR Region) mlir::Region::getParentOp) expand)
           (for (only (mlir IR PatternMatch) mlir::RewriterBase::inlineRegionBefore) expand)
           (only (mlir IR PatternMatch) crest::isa<CrestBox<mlir::RewriterBase*>>?)
           (for (only (mlir IR Block)
+                     mlir::Block::addArgument
                      mlir::Block::getArgument
                      current-Block
                      with-current-Block) expand)
           (only (mlir IR Block) current-Block with-current-Block)
-          (for (only (mlir IR Operation) mlir::Operation::getRegion) expand)
+          (for (only (mlir IR Operation) mlir::Operation::getRegion mlir::Operation::getLoc) expand)
           (for (only (mlir IR Operation) mlir::Operation::getResult) expand)
           (for (only (crest pattern-dsl ast)
                      make-ast-emit-op ast-emit-op?
@@ -433,10 +435,17 @@
                       [(b ...) body-stxs])
           (lambda (region-stx)
             (with-syntax ([region region-stx])
-              #`(let* ([#,block-id (mlir::Region::push_back<Block> region types)]
-                       arg-binding ...)
-                  (with-current-Block #,block-id
-                    (with-InsertionGuard guard ((%%current-builder))
+              ;; The block is made through the builder, so that a rewriter's listener sees it: a
+              ;; dialect conversion that fails rolls back only the blocks it knows. createBlock moves
+              ;; the insertion point into the new block, so the guard that restores it starts first.
+              #`(with-InsertionGuard guard ((%%current-builder))
+                                     (let* ([#,block-id
+                                             (let* ([loc   (mlir::Operation::getLoc (mlir::Region::getParentOp region))]
+                                                    [block (mlir::OpBuilder::createBlock (%%current-builder) region)])
+                                               (for-each (lambda (t) (mlir::Block::addArgument block t loc)) types)
+                                               block)]
+                                            arg-binding ...)
+                                       (with-current-Block #,block-id
                                          (mlir::OpBuilder::setInsertionPointToEnd (%%current-builder) #,block-id)
                                          (begin-mlir-code b ...))))))))
 

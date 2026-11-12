@@ -3,10 +3,9 @@
 (library (mlir Target LLVMIR Export ffi)
   (export %mlir::translateModuleToLLVMIR
           %mlir::translateModuleToLLVMIR<int>)
-  (import (chezscheme))
-  ;; Both answer the address of a NUL-terminated UTF-8 text that C++ made with malloc. The caller copies
-  ;; it and frees it (foreign-free): a `string` result would copy it and leave the buffer behind.
+  (import (chezscheme)
+          (mlir support foreign))
   (define %mlir::translateModuleToLLVMIR
-    (foreign-procedure "mlir::translateModuleToLLVMIR" (uptr) uptr))
+    (crest-foreign-procedure "mlir::translateModuleToLLVMIR" (uptr) string))
   (define %mlir::translateModuleToLLVMIR<int>
-    (foreign-procedure "mlir::translateModuleToLLVMIR<int>" (uptr int) uptr)))
+    (crest-foreign-procedure "mlir::translateModuleToLLVMIR<int>" (uptr int) string)))

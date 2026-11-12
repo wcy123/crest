@@ -9,12 +9,18 @@
         (crest dialect))
 
 (define (try who thunk)
+  ;; LEAK WARNING: what this makes (the context, the module, the builder) lives in a with- scope and is
+  ;; freed when the scope ends. A raw MLIRContext::new, ModuleOp::create or parseSourceFile result that is
+  ;; never freed leaked, and exit inside a scope skips the cleanup: raise, and exit at the top (%%quit).
   (guard (e [#t (display who) (display ": ") (display-condition e) (newline)])
     (thunk)
     (display who) (display ": loaded") (newline)))
 
 (try "load-scheme-dialect!"
-     (lambda () (load-scheme-dialect! (mlir::MLIRContext::new) "bad" "passes/body-error")))
+     (lambda ()
+       (with-DialectRegistry reg ()
+         (with-MLIRContext ctx (reg)
+           (load-scheme-dialect! ctx "bad" "passes/body-error")))))
 (try "DialectRegistry::insert"
      (lambda ()
        (with-DialectRegistry reg ()

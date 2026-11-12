@@ -16,12 +16,14 @@
   (export
     %mlir::OpBuilder::atBlockEnd
     %mlir::OpBuilder::create<OperationState>
+    %mlir::OpBuilder::createBlock
     %mlir::OpBuilder::setInsertionPoint
     %mlir::OpBuilder::getContext
     %mlir::OpBuilder::getListener
     %mlir::OpBuilder::setInsertionPointToEnd
     %mlir::OpBuilder::InsertionGuard::InsertionGuard)
-  (import (rnrs) (only (chezscheme) foreign-procedure) (mlir support BuilderBinding))
+  (import (rnrs)
+          (mlir support foreign) (only (chezscheme) foreign-procedure) (mlir support BuilderBinding))
 
   ;; @brief Heap-allocate a CrestBox<mlir::OpBuilder> positioned at end of block.
   ;; @param ctx       MLIRContext* uptr — needed when block is not yet attached to an op
@@ -30,7 +32,7 @@
   ;; @return        CrestBox<OpBuilder>* uptr — freed via with-CrestObject
   ;; @see           mlir/IR/Builders.h
   (define %mlir::OpBuilder::atBlockEnd
-    (foreign-procedure "mlir::OpBuilder::atBlockEnd" (uptr uptr uptr) uptr))
+    (crest-foreign-procedure "mlir::OpBuilder::atBlockEnd" (uptr uptr uptr) uptr))
 
   ;; @brief Create an op from a prepared OperationState via an OpBuilder.
   ;; @param builder     builder shell uptr
@@ -39,6 +41,13 @@
   ;; @see               mlir/IR/Builders.h, mlir/IR/OperationSupport.h
   (define-builder-binding %mlir::OpBuilder::create<OperationState>
     "mlir::OpBuilder::create<OperationState>" (uptr uptr) uptr)
+
+  ;; @brief Append a new empty block to a region, through the builder.
+  ;; @param builder  builder shell uptr
+  ;; @param region   Region* uptr
+  ;; @return         Block* uptr, owned by the region
+  (define-builder-binding %mlir::OpBuilder::createBlock
+    "mlir::OpBuilder::createBlock" (uptr uptr) uptr)
 
   ;; @brief Return the raw OpBuilder::Listener* of a builder, 0 if none.
   ;; @param builder  builder shell uptr

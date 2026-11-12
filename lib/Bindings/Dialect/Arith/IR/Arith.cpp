@@ -8,6 +8,7 @@
 #include "Arith.h"
 #include "../../../Support/BuilderBinding.h"
 #include "../../../Support/CrestObject.h"
+#include "../../../Support/Result.h"
 #include "../../../Support/SchemeWrapper.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/IR/Builders.h"
@@ -82,13 +83,17 @@ void registerDialectArithIRArithBindings() {
       });
 
   // Register ArithDialect into a DialectRegistry.
-  Sregister_symbol(
+  register_binding(
       "mlir::DialectRegistry::insert<mlir::arith::ArithDialect>",
-      (void*)+[](uint64_t registry_ptr) -> void {
-        crest::CrestBox<mlir::DialectRegistry>::inner(
-            registry_ptr,
-            "mlir::DialectRegistry::insert<mlir::arith::ArithDialect>")
-            .insert<mlir::arith::ArithDialect>();
+      [](uint64_t registry_ptr) -> llvm::Error {
+        CREST_TRY(
+            crest_lookup1,
+            crest::CrestBox<mlir::DialectRegistry>::inner(
+                registry_ptr,
+                "mlir::DialectRegistry::insert<mlir::arith::ArithDialect>"));
+
+        crest_lookup1.insert<mlir::arith::ArithDialect>();
+        return llvm::Error::success();
       });
 }
 

@@ -27,37 +27,38 @@
     %mlir::AffineExpr::floorDiv
     %mlir::AffineExpr::ceilDiv
     %mlir::AffineExpr::operator%)
-  (import (rnrs) (only (chezscheme) foreign-procedure))
+  (import (rnrs)
+          (mlir support foreign) (only (chezscheme) foreign-procedure))
 
   ;; @param ctx       mlir::MLIRContext* uptr
   ;; @param position  dimension position
   (define %mlir::getAffineDimExpr
-    (foreign-procedure "mlir::getAffineDimExpr" (uptr uptr) uptr))
+    (crest-foreign-procedure "mlir::getAffineDimExpr" (uptr uptr) uptr))
 
   ;; @param ctx       mlir::MLIRContext* uptr
   ;; @param position  symbol position
   (define %mlir::getAffineSymbolExpr
-    (foreign-procedure "mlir::getAffineSymbolExpr" (uptr uptr) uptr))
+    (crest-foreign-procedure "mlir::getAffineSymbolExpr" (uptr uptr) uptr))
 
   ;; @param ctx       mlir::MLIRContext* uptr
   ;; @param constant  Scheme exact integer mapped to int64_t
   (define %mlir::getAffineConstantExpr
-    (foreign-procedure "mlir::getAffineConstantExpr" (uptr integer-64) uptr))
+    (crest-foreign-procedure "mlir::getAffineConstantExpr" (uptr integer-64) uptr))
 
   ;; @param expr  AffineExpr opaque pointer uptr
   ;; @return      the raw mlir::MLIRContext* uptr
   (define %mlir::AffineExpr::getContext
-    (foreign-procedure "mlir::AffineExpr::getContext" (uptr) uptr))
+    (crest-foreign-procedure "mlir::AffineExpr::getContext" (uptr) uptr))
 
   (define %mlir::AffineExpr::operator+
-    (foreign-procedure "mlir::AffineExpr::operator+" (uptr uptr) uptr))
+    (crest-foreign-procedure "mlir::AffineExpr::operator+" (uptr uptr) uptr))
   (define %mlir::AffineExpr::operator*
-    (foreign-procedure "mlir::AffineExpr::operator*" (uptr uptr) uptr))
+    (crest-foreign-procedure "mlir::AffineExpr::operator*" (uptr uptr) uptr))
   (define %mlir::AffineExpr::floorDiv
-    (foreign-procedure "mlir::AffineExpr::floorDiv" (uptr uptr) uptr))
+    (crest-foreign-procedure "mlir::AffineExpr::floorDiv" (uptr uptr) uptr))
   (define %mlir::AffineExpr::ceilDiv
-    (foreign-procedure "mlir::AffineExpr::ceilDiv" (uptr uptr) uptr))
+    (crest-foreign-procedure "mlir::AffineExpr::ceilDiv" (uptr uptr) uptr))
   (define %mlir::AffineExpr::operator%
-    (foreign-procedure "mlir::AffineExpr::operator%" (uptr uptr) uptr))
+    (crest-foreign-procedure "mlir::AffineExpr::operator%" (uptr uptr) uptr))
 
   ) ;; end library (mlir IR AffineExpr ffi)

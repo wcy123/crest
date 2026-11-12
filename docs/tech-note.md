@@ -332,3 +332,30 @@ bug in it.
    rebuilds it.
 6. Run both LLVM suites (`check-crest` and `CrestInterpreterTests`, `CrestInferTypeTests`) on Linux and let the
    Windows CI run.
+
+## Chez Scheme leak: errors that escape through a C function
+
+Chez 10.5.0 (`d533f2e`, and upstream `main` today) leaks about 208 bytes every time a Scheme error escapes through a
+C function that had called into Scheme (`S_call_help`, `c/schlib.c`, "case 1: normal return": `CCHAIN(tc) = yp;` runs
+before the loop that is meant to free the escaped frames). We do not patch Chez. `cmake/patches/chez-release-escaped-frames.patch`
+is kept for the record, with a standalone repro in `cmake/patches/chez-error-escape-leak/`, the list of our tests that
+reach it, what is known about upstream and how sure we are; the build does not apply it. CREST avoids the leak by
+never letting an error cross a C function: a C++ binding returns an error object and Scheme raises it
+(`plans/04-errors-are-values.md`).
+
+## Checking for memory leaks
+
+The suite can run under valgrind, one test at a time, so that each record names its test. Copy the generated
+`lit.site.cfg.py` of the build to another directory and add, after its `load_config` line:
+
+    config.substitutions.insert(0, ("%scheme-mlir", "/tmp/vgbin/scheme-mlir"))
+    config.substitutions.insert(0, ("%crest-opt", "/tmp/vgbin/crest-opt"))
+    import os
+    config.environment["VG_TAG"] = os.environ.get("VG_TAG", "none")
+
+where each wrapper is `exec valgrind -q --leak-check=full --show-leak-kinds=definite,possible --num-callers=14
+--log-file=/tmp/vglogs/${VG_TAG}.<tool>.%p.log <real binary> "$@"`. Run
+`VG_TAG=<name> lit -q <dir> --filter "CREST :: <test>$"` for each test, then read the logs: "definitely lost" is a
+leak, "Invalid read" is a use-after-free. `pass-leak`, `assembly-format-leak` and `llvm-ir-leak` fail under valgrind
+(they measure the heap themselves) and report warnings that come from inside LLVM's printer and optimizer. The
+first two found the leaks of Rule 20 in 2026-11.

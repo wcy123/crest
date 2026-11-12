@@ -9,12 +9,13 @@
 (library (mlir Transforms Passes ffi)
   (export %mlir::createCanonicalizerPass
           %mlir::createCSEPass)
-  (import (chezscheme))
+  (import (chezscheme)
+          (mlir support foreign))
 
   (define %mlir::createCanonicalizerPass
-    (foreign-procedure "mlir::createCanonicalizerPass" () uptr))
+    (crest-foreign-procedure "mlir::createCanonicalizerPass" () uptr))
 
   (define %mlir::createCSEPass
-    (foreign-procedure "mlir::createCSEPass" () uptr))
+    (crest-foreign-procedure "mlir::createCSEPass" () uptr))
 
   ) ;; end library (mlir Transforms Passes ffi)

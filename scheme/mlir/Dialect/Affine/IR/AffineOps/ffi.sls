@@ -13,7 +13,8 @@
           %mlir::affine::AffineLoadOp::create<AffineMap>
           %mlir::affine::AffineStoreOp::create<AffineMap>
           %mlir::DialectRegistry::insert<mlir::affine::AffineDialect>)
-  (import (chezscheme) (mlir support BuilderBinding))
+  (import (chezscheme)
+          (mlir support foreign) (mlir support BuilderBinding))
 
   (define-builder-binding %mlir::affine::buildAffineLoopNest
     "mlir::affine::buildAffineLoopNest"
@@ -34,6 +35,6 @@
     (uptr uptr uptr uptr uptr scheme-object) void)
 
   (define %mlir::DialectRegistry::insert<mlir::affine::AffineDialect>
-    (foreign-procedure "mlir::DialectRegistry::insert<mlir::affine::AffineDialect>" (uptr) void))
+    (crest-foreign-procedure "mlir::DialectRegistry::insert<mlir::affine::AffineDialect>" (uptr) void))
 
   ) ;; end library (mlir Dialect Affine IR AffineOps ffi)

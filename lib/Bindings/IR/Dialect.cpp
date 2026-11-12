@@ -7,6 +7,7 @@
 
 #include "Dialect.h"
 #include "../Support/BuilderBinding.h"
+#include "../Support/Result.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/Dialect.h"
@@ -20,10 +21,10 @@ void registerIRDialectBindings() {
   register_builder_binding(
       "mlir::Dialect::materializeConstant",
       [](mlir::OpBuilder& builder, uint64_t dialect_ptr, uint64_t value_ptr,
-         uint64_t type_ptr, uint64_t loc_ptr) -> uint64_t {
+         uint64_t type_ptr, uint64_t loc_ptr) -> llvm::Expected<uint64_t> {
         if (!dialect_ptr) {
-          scheme_error("mlir::Dialect::materializeConstant",
-                       "null dialect pointer");
+          return fail("mlir::Dialect::materializeConstant",
+                      llvm::Twine("null dialect pointer"));
         }
         auto* dialect = reinterpret_cast<mlir::Dialect*>(dialect_ptr);
         auto value = mlir::Attribute::getFromOpaquePointer(

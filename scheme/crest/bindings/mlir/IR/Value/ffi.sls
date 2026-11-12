@@ -26,6 +26,7 @@
     %mlir::OpResult::getResultNumber)
 
   (import (rnrs)
+          (mlir support foreign)
           (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::Value::getDefiningOp() — return the operation that defines this value.
@@ -34,7 +35,7 @@
   ;; @see          mlir/IR/Value.h
   ;; @note         Defined in lib/Bindings/IR/Value.cpp
   (define %mlir::Value::getDefiningOp
-    (foreign-procedure "mlir::Value::getDefiningOp" (uptr) uptr))
+    (crest-foreign-procedure "mlir::Value::getDefiningOp" (uptr) uptr))
 
   ;; mlir::BlockArgument? — check if value is a block argument.
   ;; @param value  Value opaque pointer uptr
@@ -42,7 +43,7 @@
   ;; @see          mlir/IR/Value.h
   ;; @note         Defined in lib/Bindings/IR/Value.cpp
   (define %mlir::BlockArgument?
-    (foreign-procedure "mlir::BlockArgument?" (uptr) int))
+    (crest-foreign-procedure "mlir::BlockArgument?" (uptr) int))
 
   ;; @brief mlir::Value::use_begin/use_end — count the number of uses of this value.
   ;; @param value  Value opaque pointer uptr
@@ -50,7 +51,7 @@
   ;; @see          mlir/IR/Value.h
   ;; @note         Defined in lib/Bindings/IR/Value.cpp
   (define %mlir::Value::getUses
-    (foreign-procedure "mlir::Value::getUses" (uptr) uptr))
+    (crest-foreign-procedure "mlir::Value::getUses" (uptr) uptr))
 
   ;; @brief mlir::Value::getType() — return the type of this value.
   ;; @param value  Value opaque pointer uptr
@@ -58,13 +59,13 @@
   ;; @see          mlir/IR/Value.h
   ;; @note         Defined in lib/Bindings/IR/Value.cpp
   (define %mlir::Value::getType
-    (foreign-procedure "mlir::Value::getType" (uptr) uptr))
+    (crest-foreign-procedure "mlir::Value::getType" (uptr) uptr))
 
   (define %mlir::Value::setType
-    (foreign-procedure "mlir::Value::setType" (uptr uptr) void))
+    (crest-foreign-procedure "mlir::Value::setType" (uptr uptr) void))
 
   (define %mlir::Value::replaceAllUsesWith
-    (foreign-procedure "mlir::Value::replaceAllUsesWith" (uptr uptr) void))
+    (crest-foreign-procedure "mlir::Value::replaceAllUsesWith" (uptr uptr) void))
 
   ;; @brief mlir::OpResult::getResultNumber — return the result index within the defining op.
   ;; @param value  Opaque Value* (mlir::OpResult) as uptr
@@ -73,6 +74,6 @@
   ;; @note         Defined in lib/Bindings/IR/OpResult.cpp; also registered as
   ;;               mlir_ir_value_get_result_number (C symbol alias)
   (define %mlir::OpResult::getResultNumber
-    (foreign-procedure "mlir::OpResult::getResultNumber" (uptr) uptr))
+    (crest-foreign-procedure "mlir::OpResult::getResultNumber" (uptr) uptr))
 
   ) ;; end library (mlir IR Value ffi)

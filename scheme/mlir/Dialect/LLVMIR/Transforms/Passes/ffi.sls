@@ -2,6 +2,7 @@
 ;; Mirrors mlir/Dialect/LLVMIR/Transforms/Passes.h
 (library (mlir Dialect LLVMIR Transforms Passes ffi)
   (export %mlir::LLVM::createDIScopeForLLVMFuncOpPass)
-  (import (chezscheme))
+  (import (chezscheme)
+          (mlir support foreign))
   (define %mlir::LLVM::createDIScopeForLLVMFuncOpPass
-    (foreign-procedure "mlir::LLVM::createDIScopeForLLVMFuncOpPass" () uptr)))
+    (crest-foreign-procedure "mlir::LLVM::createDIScopeForLLVMFuncOpPass" () uptr)))

@@ -21,7 +21,8 @@
 (library (mlir Dialect Tensor IR ffi)
   (export %mlir::tensor::CastOp::areCastCompatible
           %mlir::tensor::CastOp::create)
-  (import (rnrs) (only (chezscheme) foreign-procedure) (mlir support BuilderBinding))
+  (import (rnrs)
+          (mlir support foreign) (only (chezscheme) foreign-procedure) (mlir support BuilderBinding))
 
   ;; @brief tensor::CastOp::areCastCompatible — test whether a tensor.cast
   ;;        between two types is valid.
@@ -30,8 +31,8 @@
   ;; @return               1 if compatible, 0 otherwise
   ;; @note  Defined in lib/Bindings/Dialect/Tensor/Tensor.cpp
   (define %mlir::tensor::CastOp::areCastCompatible
-    (foreign-procedure "mlir::tensor::CastOp::areCastCompatible"
-                       (uptr uptr) int))
+    (crest-foreign-procedure "mlir::tensor::CastOp::areCastCompatible"
+                             (uptr uptr) int))
 
   ;; @brief tensor::CastOp::create — insert a tensor.cast op.
   ;; @param builder-uptr      OpBuilder* uptr

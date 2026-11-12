@@ -7,6 +7,7 @@
 
 #include "Export.h"
 #include "../../Support/CrestObject.h"
+#include "../../Support/Result.h"
 #include "../../Support/SchemeWrapper.h"
 #include "llvm/ExecutionEngine/Orc/JITTargetMachineBuilder.h"
 #include "llvm/IR/LLVMContext.h"
@@ -22,16 +23,19 @@
 #include <cstdlib>
 #include <cstring>
 
+// Both bindings answer the IR text as a std::string, which the registration
+// (Result.h) turns into a Scheme string. They used to answer a malloc'd buffer
+// that Scheme had to copy and free: a Scheme `string` result copies the text
+// and never frees the buffer, which leaked the whole IR text on every call.
+
 namespace crest {
 
 void registerTargetLLVMIRExportBindings() {
   // mlir::translateModuleToLLVMIR: translate an MLIR module to LLVM IR text.
   // Registers builtin+LLVM dialect translations, then translates.
-  // (module-ptr) → uptr: a malloc'd NUL-terminated buffer of LLVM IR text. The
-  // Scheme side copies it and frees it (foreign-free).
-  Sregister_symbol(
-      "mlir::translateModuleToLLVMIR",
-      (void*)+[](uint64_t module_ptr) -> const char* {
+  // (module-ptr) → the LLVM IR text, as a Scheme string (no buffer to free).
+  register_binding(
+      "mlir::translateModuleToLLVMIR", [](uint64_t module_ptr) -> std::string {
         auto* op = reinterpret_cast<mlir::Operation*>(module_ptr);
         auto module = mlir::cast<mlir::ModuleOp>(op);
         auto* ctx = module->getContext();
@@ -42,28 +46,23 @@ void registerTargetLLVMIRExportBindings() {
         llvm::LLVMContext llvmCtx;
         auto llvmModule = mlir::translateModuleToLLVMIR(module, llvmCtx);
         if (!llvmModule) {
-          static const char* kFail = "(translation failed)";
-          return kFail;
+          return std::string("(translation failed)");
         }
 
         std::string result;
         llvm::raw_string_ostream os(result);
         llvmModule->print(os, nullptr);
         os.flush();
-        // Chez's foreign-procedure with `string` return type copies the C
-        // string.
-        char* buf = static_cast<char*>(malloc(result.size() + 1));
-        memcpy(buf, result.data(), result.size() + 1);
-        return buf;
+        return result;
       });
 
   // mlir::translateModuleToLLVMIR<int>: as above, then what the C++ Toy
   // tutorial's dumpLLVMIR does: set the target triple and data layout of the
   // host and run the optimizing pipeline at the given level (0 to 3).
-  // (module-ptr opt-level) → uptr: a malloc'd buffer, as above.
-  Sregister_symbol(
+  // (module-ptr opt-level) → the LLVM IR text, as above.
+  register_binding(
       "mlir::translateModuleToLLVMIR<int>",
-      (void*)+[](uint64_t module_ptr, int opt_level) -> const char* {
+      [](uint64_t module_ptr, int opt_level) -> llvm::Expected<std::string> {
         auto* op = reinterpret_cast<mlir::Operation*>(module_ptr);
         auto module = mlir::cast<mlir::ModuleOp>(op);
         auto* ctx = module->getContext();
@@ -76,21 +75,20 @@ void registerTargetLLVMIRExportBindings() {
         llvm::LLVMContext llvmCtx;
         auto llvmModule = mlir::translateModuleToLLVMIR(module, llvmCtx);
         if (!llvmModule) {
-          static const char* kFail = "(translation failed)";
-          return kFail;
+          return std::string("(translation failed)");
         }
 
         auto tmBuilder = llvm::orc::JITTargetMachineBuilder::detectHost();
         if (!tmBuilder) {
           llvm::consumeError(tmBuilder.takeError());
-          scheme_error("mlir::translateModuleToLLVMIR<int>",
-                       "could not detect the host target machine");
+          return fail("mlir::translateModuleToLLVMIR<int>",
+                      llvm::Twine("could not detect the host target machine"));
         }
         auto targetMachine = tmBuilder->createTargetMachine();
         if (!targetMachine) {
           llvm::consumeError(targetMachine.takeError());
-          scheme_error("mlir::translateModuleToLLVMIR<int>",
-                       "could not create the host target machine");
+          return fail("mlir::translateModuleToLLVMIR<int>",
+                      llvm::Twine("could not create the host target machine"));
         }
         mlir::ExecutionEngine::setupTargetTripleAndDataLayout(
             llvmModule.get(), targetMachine->get());
@@ -100,17 +98,15 @@ void registerTargetLLVMIRExportBindings() {
             /*targetMachine=*/nullptr);
         if (auto err = optPipeline(llvmModule.get())) {
           llvm::consumeError(std::move(err));
-          scheme_error("mlir::translateModuleToLLVMIR<int>",
-                       "failed to optimize the LLVM module");
+          return fail("mlir::translateModuleToLLVMIR<int>",
+                      llvm::Twine("failed to optimize the LLVM module"));
         }
 
         std::string result;
         llvm::raw_string_ostream os(result);
         llvmModule->print(os, nullptr);
         os.flush();
-        char* buf = static_cast<char*>(malloc(result.size() + 1));
-        memcpy(buf, result.data(), result.size() + 1);
-        return buf;
+        return result;
       });
 }
 

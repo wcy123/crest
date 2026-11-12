@@ -7,31 +7,32 @@
           %crest::InferTypeOpInterface::adaptCompatible
           %mlir::InferTypeOpInterface::inferReturnTypes<OperationState>
           %mlir::InferTypeOpInterface::inferReturnTypes<OperationState*>)
-  (import (chezscheme))
+  (import (chezscheme)
+          (mlir support foreign))
 
   (define %crest::InferTypeOpInterface::reportFailure
-    (foreign-procedure "crest::InferTypeOpInterface::reportFailure" (string) void))
+    (crest-foreign-procedure "crest::InferTypeOpInterface::reportFailure" (string) void))
 
   ;; () → uptr — the TypeID of mlir::InferTypeOpInterface, as the address that TypeID wraps.
   (define %mlir::InferTypeOpInterface::getInterfaceID
-    (foreign-procedure "mlir::InferTypeOpInterface::getInterfaceID" () uptr))
+    (crest-foreign-procedure "mlir::InferTypeOpInterface::getInterfaceID" () uptr))
 
   (define %crest::InferTypeOpInterface::adapt
-    (foreign-procedure "crest::InferTypeOpInterface::adapt"
-                       (scheme-object uptr uptr uptr uptr uptr uptr uptr uptr uptr uptr uptr int)
-                       unsigned-8))
+    (crest-foreign-procedure "crest::InferTypeOpInterface::adapt"
+                             (scheme-object uptr uptr uptr uptr uptr uptr uptr uptr uptr uptr uptr int)
+                             unsigned-8))
 
   (define %crest::InferTypeOpInterface::adaptCompatible
-    (foreign-procedure "crest::InferTypeOpInterface::adaptCompatible"
-                       (scheme-object uptr uptr uptr uptr)
-                       unsigned-8))
+    (crest-foreign-procedure "crest::InferTypeOpInterface::adaptCompatible"
+                             (scheme-object uptr uptr uptr uptr)
+                             unsigned-8))
 
   (define %mlir::InferTypeOpInterface::inferReturnTypes<OperationState>
-    (foreign-procedure "mlir::InferTypeOpInterface::inferReturnTypes<OperationState>"
-                       (uptr) scheme-object))
+    (crest-foreign-procedure "mlir::InferTypeOpInterface::inferReturnTypes<OperationState>"
+                             (uptr) scheme-object))
 
   (define %mlir::InferTypeOpInterface::inferReturnTypes<OperationState*>
-    (foreign-procedure "mlir::InferTypeOpInterface::inferReturnTypes<OperationState*>"
-                       (uptr) scheme-object))
+    (crest-foreign-procedure "mlir::InferTypeOpInterface::inferReturnTypes<OperationState*>"
+                             (uptr) scheme-object))
 
   ) ;; end library (mlir Interfaces InferTypeOpInterface ffi)

@@ -9,6 +9,7 @@
         (mlir IR DialectRegistry)
         (mlir IR MLIRContext)
         (mlir IR Operation)
+        (mlir IR OwningOpRef)
         (mlir IR BuiltinOps)
         (toy ch3 parser)
         (toy ch3 ast)
@@ -29,7 +30,7 @@
       (display "No action specified (parsing only?), use -emit=<action>
 "
                (current-error-port))
-      (exit 255)])))
+      (%%quit 255)])))
 
 ;; The command line, as the C++ toyc's cl::opts read it: the input file (default "-": standard input),
 ;; -emit=<action> (also --emit=<action> and -emit <action>), -opt (also --opt) and -x <toy|mlir>
@@ -62,9 +63,9 @@
 (define (%%dump-ast filename)
   (when (eq? %%input-type 'mlir)
     (display "Can't dump a Toy AST when the input is MLIR\n" (current-error-port))
-    (exit 5))
+    (%%quit 5))
   (let ([module-ast (parse-input-file filename)])
-    (unless module-ast (exit 1))
+    (unless module-ast (%%quit 1))
     (toy:dump module-ast)))
 
 ;; A pass manager nested on toy.func, as the C++ toyc builds it (pm.nest<toy::FuncOp>()); a failing pass
@@ -76,48 +77,52 @@
                 make-passes))
     (unless (mlir::PassManager::run! pm module-op)
       (display "Optimization pipeline failed\n" (current-error-port))
-      (exit 4))))
+      (%%quit 4))))
 
 (define (%%dump-mlir filename opt?)
-  (let-values ([(ctx module-op) (%%build-module filename)])
-    (let ([op (%%module-op->op module-op)])
-      (when opt?
-        (%%run-toy-func-passes! op ctx mlir::createCanonicalizerPass))
-      (display (mlir::Operation::print op))
-      (newline))))
+  (with-DialectRegistry reg ()
+    (mlir::DialectRegistry::insert reg "toy" "toy/ch3/toy")
+    (with-MLIRContext ctx (reg)
+      (mlir::MLIRContext::getOrLoadDialect ctx "toy")
+      ;; LEAK WARNING: the module belongs to nobody; with-mlir::OwningOpRef erases it when this scope ends.
+      ;; A plain let never erased it, and neither did exit, which skips the cleanup (see %%quit).
+      (with-mlir::OwningOpRef module-op (%%module-op->op (%%build-module filename ctx))
+        (when opt?
+          (%%run-toy-func-passes! module-op ctx mlir::createCanonicalizerPass))
+        (display (mlir::Operation::print module-op))
+        (newline)))))
 
-(define (%%build-module filename)
+(define (%%build-module filename ctx)
   (if (or (eq? %%input-type 'mlir)
           (let ([n (string-length filename)])
             (and (>= n 5) (string=? (substring filename (- n 5) n) ".mlir"))))
-      (%%build-module-from-mlir filename)
-      (%%build-module-from-toy  filename)))
+      (%%build-module-from-mlir filename ctx)
+      (%%build-module-from-toy  filename ctx)))
 
 (define (%%module-op->op m)
   (if (integer? m) m (mlir::ModuleOp::getOperation m)))
 
-(define (%%make-ctx)
-  (with-DialectRegistry reg ()
-    (mlir::DialectRegistry::insert reg "toy" "toy/ch3/toy")
-    (let ([ctx (mlir::MLIRContext::new reg)])
-      (mlir::MLIRContext::getOrLoadDialect ctx "toy")
-      ctx)))
 
-(define (%%build-module-from-toy filename)
+
+(define (%%build-module-from-toy filename ctx)
   (let ([module-ast (parse-input-file filename)])
-    (unless module-ast (exit 6))
-    (let* ([ctx       (%%make-ctx)]
-           [module-op (mlir-gen ctx module-ast)])
-      (unless module-op (exit 1))
-      (values ctx module-op))))
+    (unless module-ast (%%quit 6))
+    (let ([module-op (mlir-gen ctx module-ast)])
+      (unless module-op (%%quit 1))
+      module-op)))
 
-(define (%%build-module-from-mlir filename)
-  (let* ([ctx (%%make-ctx)]
-         [op  (mlir::parseSourceFile ctx filename)])
+(define (%%build-module-from-mlir filename ctx)
+  (let ([op (mlir::parseSourceFile ctx filename)])
     (when (zero? op)
       (display (string-append "Error can't load file " filename "\n")
                (current-error-port))
-      (exit 3))
-    (values ctx op)))
+      (%%quit 3))
+    op))
 
-(main)
+;; A failure raises instead of calling exit: exit does not run the cleanup of the scopes around it
+;; (the context, the module), and raising does.
+(define (%%quit code)
+  (raise (list 'toyc-exit code)))
+
+(guard (e [(and (pair? e) (eq? (car e) 'toyc-exit)) (exit (cadr e))])
+  (main))

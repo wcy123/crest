@@ -7,22 +7,29 @@
 
 #include "Passes.h"
 #include "../Support/CrestObject.h"
+#include "../Support/Result.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/Transforms/Passes.h"
 
 namespace crest {
 
 void registerTransformsPassesBindings() {
-  Sregister_symbol(
-      "mlir::createCanonicalizerPass", (void*)+[]() -> uint64_t {
-        return reinterpret_cast<uint64_t>(
-            mlir::createCanonicalizerPass().release());
-      });
+  // LEAK WARNING: a raw mlir::Pass*. Nothing owns it until
+  // mlir::PassManager::addPass or mlir::OpPassManager::addPass takes it
+  // (lib/Bindings/Pass/PassManager.cpp): a pass that is made and never added
+  // leaks.
+  register_binding("mlir::createCanonicalizerPass", []() -> uint64_t {
+    return reinterpret_cast<uint64_t>(
+        mlir::createCanonicalizerPass().release());
+  });
 
-  Sregister_symbol(
-      "mlir::createCSEPass", (void*)+[]() -> uint64_t {
-        return reinterpret_cast<uint64_t>(mlir::createCSEPass().release());
-      });
+  // LEAK WARNING: a raw mlir::Pass*. Nothing owns it until
+  // mlir::PassManager::addPass or mlir::OpPassManager::addPass takes it
+  // (lib/Bindings/Pass/PassManager.cpp): a pass that is made and never added
+  // leaks.
+  register_binding("mlir::createCSEPass", []() -> uint64_t {
+    return reinterpret_cast<uint64_t>(mlir::createCSEPass().release());
+  });
 }
 
 } // namespace crest

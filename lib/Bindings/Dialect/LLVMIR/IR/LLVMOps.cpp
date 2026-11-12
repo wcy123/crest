@@ -8,6 +8,7 @@
 #include "LLVMOps.h"
 #include "../../../Support/BuilderBinding.h"
 #include "../../../Support/CrestObject.h"
+#include "../../../Support/Result.h"
 #include "../../../Support/SchemeWrapper.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/LLVMIR/LLVMTypes.h"
@@ -20,41 +21,39 @@ namespace crest {
 void registerDialectLLVMIRIRLLVMOpsBindings() {
   // mlir::LLVM::LLVMFunctionType::get: create LLVM function type i32(ptr, ...).
   // (ctx-ptr return-type-ptr param-type-ptr is-var-arg) → Type uptr
-  Sregister_symbol(
-      "mlir::LLVM::LLVMFunctionType::get",
-      (void*)+[](uint64_t /*ctx_ptr*/, uint64_t ret_ptr, uint64_t param_ptr,
-                 int is_var_arg) -> uint64_t {
-        auto ret = mlir::Type::getFromOpaquePointer(
-            reinterpret_cast<const void*>(ret_ptr));
-        auto param = mlir::Type::getFromOpaquePointer(
-            reinterpret_cast<const void*>(param_ptr));
-        auto ft =
-            mlir::LLVM::LLVMFunctionType::get(ret, {param}, is_var_arg != 0);
-        return reinterpret_cast<uint64_t>(ft.getAsOpaquePointer());
-      });
+  register_binding("mlir::LLVM::LLVMFunctionType::get",
+                   [](uint64_t /*ctx_ptr*/, uint64_t ret_ptr,
+                      uint64_t param_ptr, int is_var_arg) -> uint64_t {
+                     auto ret = mlir::Type::getFromOpaquePointer(
+                         reinterpret_cast<const void*>(ret_ptr));
+                     auto param = mlir::Type::getFromOpaquePointer(
+                         reinterpret_cast<const void*>(param_ptr));
+                     auto ft = mlir::LLVM::LLVMFunctionType::get(
+                         ret, {param}, is_var_arg != 0);
+                     return reinterpret_cast<uint64_t>(ft.getAsOpaquePointer());
+                   });
 
   // mlir::LLVM::LLVMPointerType::get: create opaque LLVM pointer type.
   // (ctx-ptr) → Type uptr
-  Sregister_symbol(
-      "mlir::LLVM::LLVMPointerType::get",
-      (void*)+[](uint64_t ctx_ptr) -> uint64_t {
-        auto* ctx = crest::as_ptr<mlir::MLIRContext>(
-            ctx_ptr, "mlir::LLVM::LLVMPointerType::get");
-        auto t = mlir::LLVM::LLVMPointerType::get(ctx);
-        return reinterpret_cast<uint64_t>(t.getAsOpaquePointer());
-      });
+  register_binding("mlir::LLVM::LLVMPointerType::get",
+                   [](uint64_t ctx_ptr) -> llvm::Expected<uint64_t> {
+                     CREST_TRY(
+                         ctx, crest::as_ptr<mlir::MLIRContext>(
+                                  ctx_ptr, "mlir::LLVM::LLVMPointerType::get"));
+                     auto t = mlir::LLVM::LLVMPointerType::get(ctx);
+                     return reinterpret_cast<uint64_t>(t.getAsOpaquePointer());
+                   });
 
   // mlir::LLVM::LLVMArrayType::get: create LLVM array type [N x T].
   // (elem-type-ptr num-elements) → Type uptr
-  Sregister_symbol(
-      "mlir::LLVM::LLVMArrayType::get",
-      (void*)+[](uint64_t elem_ptr, uint64_t num_elems) -> uint64_t {
-        auto elem = mlir::Type::getFromOpaquePointer(
-            reinterpret_cast<const void*>(elem_ptr));
-        auto t = mlir::LLVM::LLVMArrayType::get(
-            elem, static_cast<unsigned>(num_elems));
-        return reinterpret_cast<uint64_t>(t.getAsOpaquePointer());
-      });
+  register_binding("mlir::LLVM::LLVMArrayType::get",
+                   [](uint64_t elem_ptr, uint64_t num_elems) -> uint64_t {
+                     auto elem = mlir::Type::getFromOpaquePointer(
+                         reinterpret_cast<const void*>(elem_ptr));
+                     auto t = mlir::LLVM::LLVMArrayType::get(
+                         elem, static_cast<unsigned>(num_elems));
+                     return reinterpret_cast<uint64_t>(t.getAsOpaquePointer());
+                   });
 
   // mlir::LLVM::LLVMFuncOp::create: declare an LLVM function in the module.
   // (builder-ptr loc-ptr name-str func-type-ptr) → Operation* uptr
@@ -94,9 +93,8 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
 
   // mlir::LLVM::GlobalOp::getType: return the value type of a GlobalOp.
   // (global-op-ptr) → Type uptr
-  Sregister_symbol(
-      "mlir::LLVM::GlobalOp::getType",
-      (void*)+[](uint64_t global_op_ptr) -> uint64_t {
+  register_binding(
+      "mlir::LLVM::GlobalOp::getType", [](uint64_t global_op_ptr) -> uint64_t {
         auto* op = reinterpret_cast<mlir::Operation*>(global_op_ptr);
         auto global = mlir::cast<mlir::LLVM::GlobalOp>(op);
         return reinterpret_cast<uint64_t>(
@@ -183,22 +181,21 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
 
   // mlir::ModuleOp::lookupSymbol: look up a named symbol in the module.
   // (module-op-ptr name-str) → Operation* uptr (or 0 if not found)
-  Sregister_symbol(
-      "mlir::ModuleOp::lookupSymbol",
-      (void*)+[](uint64_t op_ptr, const char* name) -> uint64_t {
-        auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-        auto module = mlir::cast<mlir::ModuleOp>(op);
-        auto* sym = module.lookupSymbol(name);
-        return reinterpret_cast<uint64_t>(sym);
-      });
+  register_binding("mlir::ModuleOp::lookupSymbol",
+                   [](uint64_t op_ptr, const char* name) -> uint64_t {
+                     auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
+                     auto module = mlir::cast<mlir::ModuleOp>(op);
+                     auto* sym = module.lookupSymbol(name);
+                     return reinterpret_cast<uint64_t>(sym);
+                   });
 
   // mlir::FlatSymbolRefAttr::get: create a flat symbol reference.
   // (ctx-ptr name-str) → Attribute uptr
-  Sregister_symbol(
+  register_binding(
       "mlir::FlatSymbolRefAttr::get",
-      (void*)+[](uint64_t ctx_ptr, const char* name) -> uint64_t {
-        auto* ctx = crest::as_ptr<mlir::MLIRContext>(
-            ctx_ptr, "mlir::FlatSymbolRefAttr::get");
+      [](uint64_t ctx_ptr, const char* name) -> llvm::Expected<uint64_t> {
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(
+                           ctx_ptr, "mlir::FlatSymbolRefAttr::get"));
         auto attr = mlir::FlatSymbolRefAttr::get(ctx, name);
         return reinterpret_cast<uint64_t>(attr.getAsOpaquePointer());
       });

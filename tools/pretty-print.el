@@ -64,7 +64,6 @@
     (with-LLVMTypeConverter . 2)
     (with-ConversionTarget . 2)
     (with-ExecutionEngine . 2)
-    (with-ArrayRef . 2)
     (with-DialectRegistry . 2)
     (with-MLIRContext . 2)
     (with-PassManager . 2)

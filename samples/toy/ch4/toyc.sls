@@ -12,6 +12,7 @@
         (mlir IR DialectRegistry)
         (mlir IR MLIRContext)
         (mlir IR Operation)
+        (mlir IR OwningOpRef)
         (mlir IR OperationSupport)
         (mlir IR BuiltinOps)
         (mlir IR Value)
@@ -42,7 +43,7 @@
       (display "No action specified (parsing only?), use -emit=<action>
 "
                (current-error-port))
-      (exit 255)])))
+      (%%quit 255)])))
 
 ;; The command line, as the C++ toyc's cl::opts read it: the input file (default "-": standard input),
 ;; -emit=<action> (also --emit=<action> and -emit <action>), -opt (also --opt) and -x <toy|mlir>
@@ -75,9 +76,9 @@
 (define (%%dump-ast filename)
   (when (eq? %%input-type 'mlir)
     (display "Can't dump a Toy AST when the input is MLIR\n" (current-error-port))
-    (exit 5))
+    (%%quit 5))
   (let ([module-ast (parse-input-file filename)])
-    (unless module-ast (exit 1))
+    (unless module-ast (%%quit 1))
     (toy:dump module-ast)))
 
 (define (%%dump-mlir filename opt?)
@@ -85,7 +86,9 @@
     (mlir::DialectRegistry::insert reg "toy" "toy/ch4/toy")
     (with-MLIRContext ctx (reg)
       (mlir::MLIRContext::getOrLoadDialect ctx "toy")
-      (let ([module-op (%%build-module filename ctx)])
+      ;; LEAK WARNING: the module belongs to nobody; with-mlir::OwningOpRef erases it when this scope ends.
+      ;; A plain let never erased it, and neither did exit, which skips the cleanup (see %%quit).
+      (with-mlir::OwningOpRef module-op (%%build-module filename ctx)
         (when opt?
           (%%run-opt-pipeline! module-op ctx))
         (display (mlir::Operation::print module-op))
@@ -94,7 +97,7 @@
 (define (%%run-passes! pm module-op)
   (unless (mlir::PassManager::run! pm module-op)
     (display "Optimization pipeline failed\n" (current-error-port))
-    (exit 4)))
+    (%%quit 4)))
 
 (define (%%run-opt-pipeline! module-op ctx)
   ;; As the C++ toyc: the inliner, then shape inference, canonicalizer and CSE nested on toy.func.
@@ -116,9 +119,9 @@
 
 (define (%%build-module-from-toy filename ctx)
   (let ([module-ast (parse-input-file filename)])
-    (unless module-ast (exit 6))
+    (unless module-ast (%%quit 6))
     (let ([module-op (mlir-gen ctx module-ast)])
-      (unless module-op (exit 1))
+      (unless module-op (%%quit 1))
       module-op)))
 
 (define (%%build-module-from-mlir filename ctx)
@@ -126,7 +129,13 @@
     (when (zero? op)
       (display (string-append "Error can't load file " filename "\n")
                (current-error-port))
-      (exit 3))
+      (%%quit 3))
     op))
 
-(main)
+;; A failure raises instead of calling exit: exit does not run the cleanup of the scopes around it
+;; (the context, the module, the execution engine), and raising does.
+(define (%%quit code)
+  (raise (list 'toyc-exit code)))
+
+(guard (e [(and (pair? e) (eq? (car e) 'toyc-exit)) (exit (cadr e))])
+  (main))

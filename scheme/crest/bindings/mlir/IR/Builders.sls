@@ -24,6 +24,7 @@
     mlir::OpBuilder::atBlockEnd
     mlir::OpBuilder::getListener
     mlir::OpBuilder::create<OperationState>
+    mlir::OpBuilder::createBlock
     mlir::OpBuilder::setInsertionPoint
     mlir::OpBuilder::setInsertionPointToEnd
     current-OpBuilder
@@ -61,6 +62,13 @@
 
   (define mlir::OpBuilder::create<OperationState>
     %mlir::OpBuilder::create<OperationState>)
+
+  ;; @brief OpBuilder::createBlock — append a new empty block to a region, through the builder, so
+  ;; that the listener of a rewriter sees it and a failed dialect conversion can undo it.
+  ;; @param builder  builder shell uptr
+  ;; @param region   Region* uptr
+  ;; @return         Block* uptr, owned by the region
+  (define mlir::OpBuilder::createBlock %mlir::OpBuilder::createBlock)
 
   ;; @brief current-OpBuilder — dynamic parameter holding the builder begin-mlir-code creates
   ;; ops with: a builder shell (CrestBox<OpBuilder>, or the pattern's CrestBox<RewriterBase*>),

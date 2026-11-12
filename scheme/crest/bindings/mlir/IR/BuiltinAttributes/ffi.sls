@@ -51,8 +51,8 @@
     %mlir::IntegerAttr::getValue
     %mlir::FloatAttr::getValueAsDouble
     %mlir::FloatAttr::getValueAsDouble.f32
-    %mlir::DenseI64ArrayAttr::intoArrayRef
-    %mlir::DenseI32ArrayAttr::intoArrayRef
+    %mlir::DenseI64ArrayAttr::asArrayRef
+    %mlir::DenseI32ArrayAttr::asArrayRef
     %mlir::DenseElementsAttr::getSplatValue<APFloat>
     %mlir::DenseElementsAttr::getSplatValue<APInt>
     %mlir::DenseElementsAttr::getType
@@ -69,7 +69,8 @@
     %mlir::isa<FlatSymbolRefAttr>
     %mlir::FlatSymbolRefAttr::getValue
     %mlir::ArrayAttr::size)
-  (import (rnrs) (only (chezscheme) foreign-procedure))
+  (import (rnrs)
+          (mlir support foreign) (only (chezscheme) foreign-procedure))
 
   ;; @brief mlir::StringAttr::get — construct a StringAttr from a Scheme string.
   ;; @param ctx    MLIRContext* uptr
@@ -78,12 +79,12 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
   (define %mlir::StringAttr::get
-    (foreign-procedure "mlir::StringAttr::get" (uptr string) uptr))
+    (crest-foreign-procedure "mlir::StringAttr::get" (uptr string) uptr))
 
   ;; @brief mlir::StringAttr::get/len — construct a StringAttr with explicit byte count.
   ;; Required when the string contains embedded NUL bytes (e.g. C format strings).
   (define %mlir::StringAttr::get/len
-    (foreign-procedure "mlir::StringAttr::get/len" (uptr string uptr) uptr))
+    (crest-foreign-procedure "mlir::StringAttr::get/len" (uptr string uptr) uptr))
 
   ;; @brief mlir::TypeAttr::get — wrap an mlir::Type as a TypeAttr.
   ;; @param type   Type opaque pointer uptr
@@ -91,28 +92,28 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
   (define %mlir::TypeAttr::get
-    (foreign-procedure "mlir::TypeAttr::get" (uptr) uptr))
+    (crest-foreign-procedure "mlir::TypeAttr::get" (uptr) uptr))
 
   ;; @brief mlir::TypeAttr::getValue — extract the mlir::Type wrapped in a TypeAttr.
   ;; @param attr  TypeAttr opaque pointer uptr
   ;; @return      Type opaque pointer uptr
   (define %mlir::TypeAttr::getValue
-    (foreign-procedure "mlir::TypeAttr::getValue" (uptr) uptr))
+    (crest-foreign-procedure "mlir::TypeAttr::getValue" (uptr) uptr))
 
   ;; @brief mlir::AffineMapAttr::get — wrap an AffineMap as an AffineMapAttr.
   ;; @param map  AffineMap opaque pointer uptr (see (mlir IR AffineMap))
   ;; @return     AffineMapAttr opaque pointer uptr
   (define %mlir::AffineMapAttr::get
-    (foreign-procedure "mlir::AffineMapAttr::get" (uptr) uptr))
+    (crest-foreign-procedure "mlir::AffineMapAttr::get" (uptr) uptr))
 
   ;; @brief mlir::AffineMapAttr::getValue — extract the AffineMap wrapped in an AffineMapAttr.
   ;; @param attr  AffineMapAttr opaque pointer uptr
   ;; @return      AffineMap opaque pointer uptr
   (define %mlir::AffineMapAttr::getValue
-    (foreign-procedure "mlir::AffineMapAttr::getValue" (uptr) uptr))
+    (crest-foreign-procedure "mlir::AffineMapAttr::getValue" (uptr) uptr))
 
   (define %mlir::DenseElementsAttr::get<f64>
-    (foreign-procedure "mlir::DenseElementsAttr::get<f64>" (uptr scheme-object) uptr))
+    (crest-foreign-procedure "mlir::DenseElementsAttr::get<f64>" (uptr scheme-object) uptr))
 
   ;; @brief mlir::IntegerAttr::get — construct an IntegerAttr with i64 (integer<64>) type.
   ;; @param ctx    MLIRContext* uptr
@@ -121,19 +122,19 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
   (define %mlir::IntegerAttr::get<i64>
-    (foreign-procedure "mlir::IntegerAttr::get<i64>"
-                       (uptr scheme-object) uptr))
+    (crest-foreign-procedure "mlir::IntegerAttr::get<i64>"
+                             (uptr scheme-object) uptr))
 
   ;; @brief mlir::IntegerAttr::get — construct an IntegerAttr with i8, i16 or i32 type.
   ;; @param ctx    MLIRContext* uptr
   ;; @param value  Scheme exact integer (narrowed to the width)
   ;; @return       IntegerAttr opaque pointer uptr
   (define %mlir::IntegerAttr::get<i8>
-    (foreign-procedure "mlir::IntegerAttr::get<i8>" (uptr scheme-object) uptr))
+    (crest-foreign-procedure "mlir::IntegerAttr::get<i8>" (uptr scheme-object) uptr))
   (define %mlir::IntegerAttr::get<i16>
-    (foreign-procedure "mlir::IntegerAttr::get<i16>" (uptr scheme-object) uptr))
+    (crest-foreign-procedure "mlir::IntegerAttr::get<i16>" (uptr scheme-object) uptr))
   (define %mlir::IntegerAttr::get<i32>
-    (foreign-procedure "mlir::IntegerAttr::get<i32>" (uptr scheme-object) uptr))
+    (crest-foreign-procedure "mlir::IntegerAttr::get<i32>" (uptr scheme-object) uptr))
 
   ;; @brief mlir::IntegerAttr::get — construct an IntegerAttr with IndexType.
   ;; @param ctx    MLIRContext* uptr
@@ -142,8 +143,8 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
   (define %mlir::IntegerAttr::get<index>
-    (foreign-procedure "mlir::IntegerAttr::get<index>"
-                       (uptr scheme-object) uptr))
+    (crest-foreign-procedure "mlir::IntegerAttr::get<index>"
+                             (uptr scheme-object) uptr))
 
   ;; @brief mlir::FloatAttr::get — construct a FloatAttr with f32 (Float32) type.
   ;; @param ctx    MLIRContext* uptr
@@ -152,17 +153,17 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
   (define %mlir::FloatAttr::get<f32>
-    (foreign-procedure "mlir::FloatAttr::get<f32>"
-                       (uptr scheme-object) uptr))
+    (crest-foreign-procedure "mlir::FloatAttr::get<f32>"
+                             (uptr scheme-object) uptr))
 
   ;; @brief mlir::DenseI8ArrayAttr::get, mlir::DenseI16ArrayAttr::get — from a Scheme list or vector.
   ;; @param ctx    MLIRContext* uptr
   ;; @param value  Scheme list or vector of exact integers (each narrowed to the element type)
   ;; @return       the attribute's opaque pointer uptr
   (define %mlir::DenseI8ArrayAttr::get
-    (foreign-procedure "mlir::DenseI8ArrayAttr::get" (uptr scheme-object) uptr))
+    (crest-foreign-procedure "mlir::DenseI8ArrayAttr::get" (uptr scheme-object) uptr))
   (define %mlir::DenseI16ArrayAttr::get
-    (foreign-procedure "mlir::DenseI16ArrayAttr::get" (uptr scheme-object) uptr))
+    (crest-foreign-procedure "mlir::DenseI16ArrayAttr::get" (uptr scheme-object) uptr))
 
   ;; @brief mlir::DenseI32ArrayAttr::get — construct a DenseI32ArrayAttr from a Scheme list.
   ;; @param ctx    MLIRContext* uptr
@@ -171,8 +172,8 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
   (define %mlir::DenseI32ArrayAttr::get
-    (foreign-procedure "mlir::DenseI32ArrayAttr::get"
-                       (uptr scheme-object) uptr))
+    (crest-foreign-procedure "mlir::DenseI32ArrayAttr::get"
+                             (uptr scheme-object) uptr))
 
   ;; @brief mlir::DenseI64ArrayAttr::get — construct a DenseI64ArrayAttr from a Scheme list.
   ;; @param ctx    MLIRContext* uptr
@@ -181,8 +182,8 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
   (define %mlir::DenseI64ArrayAttr::get
-    (foreign-procedure "mlir::DenseI64ArrayAttr::get"
-                       (uptr scheme-object) uptr))
+    (crest-foreign-procedure "mlir::DenseI64ArrayAttr::get"
+                             (uptr scheme-object) uptr))
 
   ;; @brief mlir::parseAttribute — parse an attribute from MLIR textual syntax.
   ;; @param ctx    MLIRContext* uptr
@@ -191,8 +192,8 @@
   ;; @see          mlir/AsmParser/AsmParser.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
   (define %mlir::parseAttribute
-    (foreign-procedure "mlir::parseAttribute"
-                       (uptr string) uptr))
+    (crest-foreign-procedure "mlir::parseAttribute"
+                             (uptr string) uptr))
 
   ;; @brief mlir::DenseResourceElementsAttr::get — construct a DenseResourceElementsAttr.
   ;; @param ctx    MLIRContext* uptr (unused; type carries the context)
@@ -204,8 +205,8 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
   (define %mlir::DenseResourceElementsAttr::get
-    (foreign-procedure "mlir::DenseResourceElementsAttr::get"
-                       (uptr scheme-object) uptr))
+    (crest-foreign-procedure "mlir::DenseResourceElementsAttr::get"
+                             (uptr scheme-object) uptr))
 
   ;; @brief mlir::isa<IntegerAttr> — test whether an opaque attribute pointer is an IntegerAttr.
   ;; @param attr   mlir::Attribute opaque pointer uptr (0 treated as false)
@@ -213,7 +214,7 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
   (define %mlir::isa<IntegerAttr>
-    (foreign-procedure "mlir::isa<IntegerAttr>" (uptr) int))
+    (crest-foreign-procedure "mlir::isa<IntegerAttr>" (uptr) int))
 
   ;; @brief mlir::isa<FloatAttr> — test whether an opaque attribute pointer is a FloatAttr.
   ;; @param attr   mlir::Attribute opaque pointer uptr (0 treated as false)
@@ -221,7 +222,7 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
   (define %mlir::isa<FloatAttr>
-    (foreign-procedure "mlir::isa<FloatAttr>" (uptr) int))
+    (crest-foreign-procedure "mlir::isa<FloatAttr>" (uptr) int))
 
   ;; @brief mlir::isa<StringAttr> — test whether an opaque attribute pointer is a StringAttr.
   ;; @param attr   mlir::Attribute opaque pointer uptr (0 treated as false)
@@ -229,7 +230,7 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
   (define %mlir::isa<StringAttr>
-    (foreign-procedure "mlir::isa<StringAttr>" (uptr) int))
+    (crest-foreign-procedure "mlir::isa<StringAttr>" (uptr) int))
 
   ;; @brief mlir::isa<DenseI32ArrayAttr> — test whether an opaque attribute pointer is a DenseI32ArrayAttr.
   ;; @param attr   mlir::Attribute opaque pointer uptr (0 treated as false)
@@ -237,8 +238,8 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
   (define %mlir::isa<DenseI32ArrayAttr>
-    (foreign-procedure "mlir::isa<DenseI32ArrayAttr>"
-                       (uptr) int))
+    (crest-foreign-procedure "mlir::isa<DenseI32ArrayAttr>"
+                             (uptr) int))
 
   ;; @brief mlir::isa<DenseElementsAttr> — test whether an opaque attribute pointer is a DenseElementsAttr.
   ;; @param attr   mlir::Attribute opaque pointer uptr (0 treated as false)
@@ -246,8 +247,8 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
   (define %mlir::isa<DenseElementsAttr>
-    (foreign-procedure "mlir::isa<DenseElementsAttr>"
-                       (uptr) int))
+    (crest-foreign-procedure "mlir::isa<DenseElementsAttr>"
+                             (uptr) int))
 
   ;; @brief mlir::DenseElementsAttr::isSplat — test whether a DenseElementsAttr is a splat.
   ;; @param attr   mlir::Attribute opaque pointer uptr (0 treated as false)
@@ -255,8 +256,8 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
   (define %mlir::DenseElementsAttr::isSplat
-    (foreign-procedure "mlir::DenseElementsAttr::isSplat"
-                       (uptr) int))
+    (crest-foreign-procedure "mlir::DenseElementsAttr::isSplat"
+                             (uptr) int))
 
   ;; @brief mlir::isa<FloatAttr> (f32 alias) — alias for %mlir::isa<FloatAttr>, tests mlir::FloatAttr.
   ;; @param attr   mlir::Attribute opaque pointer uptr (0 treated as false)
@@ -264,7 +265,7 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp; delegates to float_attr_isa
   (define %mlir::isa<FloatAttr.f32>
-    (foreign-procedure "mlir::isa<FloatAttr>.f32" (uptr) int))
+    (crest-foreign-procedure "mlir::isa<FloatAttr>.f32" (uptr) int))
 
   ;; @brief mlir::IntegerAttr::getValue — extract the integer value of an IntegerAttr.
   ;; @param attr   mlir::IntegerAttr opaque pointer uptr; raises error if null or wrong type
@@ -272,8 +273,8 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
   (define %mlir::IntegerAttr::getValue
-    (foreign-procedure "mlir::IntegerAttr::getValue"
-                       (uptr) scheme-object))
+    (crest-foreign-procedure "mlir::IntegerAttr::getValue"
+                             (uptr) scheme-object))
 
   ;; @brief mlir::FloatAttr::getValueAsDouble — extract the float value of a FloatAttr.
   ;; @param attr   mlir::FloatAttr opaque pointer uptr; raises error if null or wrong type
@@ -281,8 +282,8 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
   (define %mlir::FloatAttr::getValueAsDouble
-    (foreign-procedure "mlir::FloatAttr::getValueAsDouble"
-                       (uptr) scheme-object))
+    (crest-foreign-procedure "mlir::FloatAttr::getValueAsDouble"
+                             (uptr) scheme-object))
 
   ;; @brief mlir::FloatAttr::getValueAsDouble (f32 alias) — alias for %mlir::FloatAttr::getValueAsDouble.
   ;; @param attr   mlir::FloatAttr opaque pointer uptr; raises error if null or wrong type
@@ -290,25 +291,24 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp; delegates to float_attr_get_value
   (define %mlir::FloatAttr::getValueAsDouble.f32
-    (foreign-procedure "mlir::FloatAttr::getValueAsDouble.f32"
-                       (uptr) scheme-object))
+    (crest-foreign-procedure "mlir::FloatAttr::getValueAsDouble.f32"
+                             (uptr) scheme-object))
 
-  ;; @brief mlir::DenseI64ArrayAttr::intoArrayRef — return a CArrayRef* for a DenseI64ArrayAttr.
+  ;; @brief mlir::DenseI64ArrayAttr::asArrayRef — the elements of a DenseI64ArrayAttr, copied into a list.
   ;; @param attr   mlir::DenseI64ArrayAttr opaque pointer uptr; raises error if null or wrong type
-  ;; @return       CArrayRef* uptr — heap-allocated {data-ptr uptr, size uint64} pair; element type :i64
+  ;; @return       list of integers (a copy: nothing for the caller to free)
   ;; @see          mlir/IR/BuiltinAttributes.h
-  (define %mlir::DenseI64ArrayAttr::intoArrayRef
-    (foreign-procedure "mlir::DenseI64ArrayAttr::intoArrayRef"
-                       (uptr) uptr))
+  (define %mlir::DenseI64ArrayAttr::asArrayRef
+    (crest-foreign-procedure "mlir::DenseI64ArrayAttr::asArrayRef"
+                             (uptr) scheme-object))
 
-  ;; @brief mlir::DenseI32ArrayAttr::intoArrayRef — return a CArrayRef* for a DenseI32ArrayAttr.
+  ;; @brief mlir::DenseI32ArrayAttr::asArrayRef — the elements of a DenseI32ArrayAttr, copied into a list.
   ;; @param attr   mlir::DenseI32ArrayAttr opaque pointer uptr; raises error if null or wrong type
-  ;; @return       CArrayRef* uptr — heap-allocated {data-ptr uptr, size uint64} pair
+  ;; @return       list of integers (a copy: nothing for the caller to free)
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp; caller owns the CArrayRef
-  (define %mlir::DenseI32ArrayAttr::intoArrayRef
-    (foreign-procedure "mlir::DenseI32ArrayAttr::intoArrayRef"
-                       (uptr) uptr))
+  (define %mlir::DenseI32ArrayAttr::asArrayRef
+    (crest-foreign-procedure "mlir::DenseI32ArrayAttr::asArrayRef"
+                             (uptr) scheme-object))
 
   ;; @brief mlir::DenseElementsAttr::getSplatValue<APFloat> — extract the splat float value.
   ;; @param attr   mlir::DenseFPElementsAttr opaque pointer uptr; raises error if null, wrong type, or not splat
@@ -316,8 +316,8 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
   (define %mlir::DenseElementsAttr::getSplatValue<APFloat>
-    (foreign-procedure "mlir::DenseElementsAttr::getSplatValue<APFloat>"
-                       (uptr) scheme-object))
+    (crest-foreign-procedure "mlir::DenseElementsAttr::getSplatValue<APFloat>"
+                             (uptr) scheme-object))
 
   ;; @brief mlir::DenseElementsAttr::getSplatValue<APInt> — extract the splat integer value.
   ;; @param attr   mlir::DenseIntElementsAttr opaque pointer uptr; raises error if null, wrong type, or not splat
@@ -325,65 +325,65 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp
   (define %mlir::DenseElementsAttr::getSplatValue<APInt>
-    (foreign-procedure "mlir::DenseElementsAttr::getSplatValue<APInt>"
-                       (uptr) scheme-object))
+    (crest-foreign-procedure "mlir::DenseElementsAttr::getSplatValue<APInt>"
+                             (uptr) scheme-object))
 
   ;; @brief mlir::DenseI32ArrayAttr::toVector — convert a DenseI32ArrayAttr to a Scheme vector.
   ;; @param attr   mlir::DenseI32ArrayAttr opaque pointer uptr; raises error if null or wrong type
   ;; @return       Scheme vector of fixnums, one per element
   ;; @see          mlir/IR/BuiltinAttributes.h
   (define %mlir::DenseI32ArrayAttr::toVector
-    (foreign-procedure "mlir::DenseI32ArrayAttr::toVector" (uptr) scheme-object))
+    (crest-foreign-procedure "mlir::DenseI32ArrayAttr::toVector" (uptr) scheme-object))
 
   ;; @brief mlir::DenseI64ArrayAttr::toVector — convert a DenseI64ArrayAttr to a Scheme vector.
   ;; @param attr   mlir::DenseI64ArrayAttr opaque pointer uptr; raises error if null or wrong type
   ;; @return       Scheme vector of integers, one per element
   ;; @see          mlir/IR/BuiltinAttributes.h
   (define %mlir::DenseI64ArrayAttr::toVector
-    (foreign-procedure "mlir::DenseI64ArrayAttr::toVector" (uptr) scheme-object))
+    (crest-foreign-procedure "mlir::DenseI64ArrayAttr::toVector" (uptr) scheme-object))
 
   ;; @brief mlir::UnitAttr::get — create a UnitAttr (presence-only flag).
   ;; @param ctx  MLIRContext* uptr
   ;; @return     UnitAttr opaque ptr as uptr
   ;; @see        mlir/IR/BuiltinAttributes.h
   (define %mlir::UnitAttr::get
-    (foreign-procedure "mlir::UnitAttr::get" (uptr) uptr))
+    (crest-foreign-procedure "mlir::UnitAttr::get" (uptr) uptr))
 
 
   (define %mlir::DenseElementsAttr::getType
-    (foreign-procedure "mlir::DenseElementsAttr::getType" (uptr) uptr))
+    (crest-foreign-procedure "mlir::DenseElementsAttr::getType" (uptr) uptr))
 
   (define %mlir::DenseElementsAttr::reshape
-    (foreign-procedure "mlir::DenseElementsAttr::reshape" (uptr uptr) uptr))
+    (crest-foreign-procedure "mlir::DenseElementsAttr::reshape" (uptr uptr) uptr))
 
   (define %mlir::FloatAttr::get<f64>
-    (foreign-procedure "mlir::FloatAttr::get<f64>" (uptr double) uptr))
+    (crest-foreign-procedure "mlir::FloatAttr::get<f64>" (uptr double) uptr))
 
   (define %mlir::DenseElementsAttr::getNumElements
-    (foreign-procedure "mlir::DenseElementsAttr::getNumElements" (uptr) uptr))
+    (crest-foreign-procedure "mlir::DenseElementsAttr::getNumElements" (uptr) uptr))
 
   (define %mlir::DenseElementsAttr::getValueAt<f64>
-    (foreign-procedure "mlir::DenseElementsAttr::getValueAt<f64>" (uptr uptr) uptr))
+    (crest-foreign-procedure "mlir::DenseElementsAttr::getValueAt<f64>" (uptr uptr) uptr))
 
   (define %mlir::ArrayAttr::get
-    (foreign-procedure "mlir::ArrayAttr::get" (uptr scheme-object) uptr))
+    (crest-foreign-procedure "mlir::ArrayAttr::get" (uptr scheme-object) uptr))
 
   (define %mlir::ArrayAttr::getElement
-    (foreign-procedure "mlir::ArrayAttr::getElement" (uptr uptr) uptr))
+    (crest-foreign-procedure "mlir::ArrayAttr::getElement" (uptr uptr) uptr))
 
   (define %mlir::FlatSymbolRefAttr::get
-    (foreign-procedure "mlir::FlatSymbolRefAttr::get" (uptr string) uptr))
+    (crest-foreign-procedure "mlir::FlatSymbolRefAttr::get" (uptr string) uptr))
 
   (define %mlir::isa<FlatSymbolRefAttr>
-    (foreign-procedure "mlir::isa<FlatSymbolRefAttr>" (uptr) int))
+    (crest-foreign-procedure "mlir::isa<FlatSymbolRefAttr>" (uptr) int))
 
   (define %mlir::FlatSymbolRefAttr::getValue
-    (foreign-procedure "mlir::FlatSymbolRefAttr::getValue" (uptr) string))
+    (crest-foreign-procedure "mlir::FlatSymbolRefAttr::getValue" (uptr) string))
 
   (define %mlir::isa<ArrayAttr>
-    (foreign-procedure "mlir::isa<ArrayAttr>" (uptr) int))
+    (crest-foreign-procedure "mlir::isa<ArrayAttr>" (uptr) int))
 
   (define %mlir::ArrayAttr::size
-    (foreign-procedure "mlir::ArrayAttr::size" (uptr) integer-64))
+    (crest-foreign-procedure "mlir::ArrayAttr::size" (uptr) integer-64))
 
   ) ;; end library (mlir IR BuiltinAttributes ffi)

@@ -5,6 +5,7 @@
 // Passes written in Scheme — lib/Crest/SchemePass.cpp
 
 #include "SchemePass.h"
+#include "../Bindings/Support/Result.h"
 #include "../Bindings/Support/SchemeWrapper.h"
 #include "mlir/Pass/Pass.h"
 #include <memory>
@@ -66,11 +67,9 @@ void registerCrestSchemePassBindings() {
   //
   // The callable of a pass body calls it with the text of the error the body
   // raised, before it answers 0, so that the diagnostic shows it.
-  Sregister_symbol(
+  register_binding(
       "crest::SchemePass::reportFailure",
-      (void*)+[](const char* message) -> void {
-        g_reported_failure = message;
-      });
+      [](const char* message) -> void { g_reported_failure = message; });
 
   // crest::createSchemePass (string name) (uptr entry) → mlir::Pass* uptr
   //
@@ -79,9 +78,9 @@ void registerCrestSchemePassBindings() {
   //
   // `entry` is the entry point of the foreign-callable that define-pass made,
   // once, for the body of the pass.
-  Sregister_symbol(
+  register_binding(
       "crest::createSchemePass",
-      (void*)+[](const char* name, uint64_t entry) -> uint64_t {
+      [](const char* name, uint64_t entry) -> uint64_t {
         return reinterpret_cast<uint64_t>(static_cast<mlir::Pass*>(
             new SchemePass(name, reinterpret_cast<int (*)(uint64_t)>(entry))));
       });

@@ -48,6 +48,13 @@ endif()
 # merge of #1064 alone, to get the other repairs since (e.g. x86_64 foreign call and callable
 # arguments); the commit titles after #1064 show no revert. Details and the steps to bump the pin again:
 # docs/tech-note.md, "Chez Scheme pin".
+# LEAK WARNING: Chez 10.5.0 (upstream main too) leaks about 208 bytes every time a Scheme error escapes
+# through a C function that had called into Scheme (a C++ binding that raises, or a callback that raises
+# and is caught by a guard outside it). The cause is one line in S_call_help (c/schlib.c). We do NOT
+# patch Chez: cmake/patches/chez-release-escaped-frames.patch is kept for the record (it explains the
+# leak, has a standalone repro in cmake/patches/chez-error-escape-leak/, and says what is known about
+# upstream and how sure we are), and it is not applied by this build. CREST avoids the leak instead by
+# never letting an error cross a C function: plans/04-errors-are-values.md.
 FetchContent_Declare(ChezScheme
   GIT_REPOSITORY         https://github.com/cisco/ChezScheme.git
   GIT_TAG                d533f2e156d4eddeafe24bd7cc4de87fdc88caeb

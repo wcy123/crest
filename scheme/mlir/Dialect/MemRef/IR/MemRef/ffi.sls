@@ -12,10 +12,11 @@
           %mlir::memref::DeallocOp::create
           %mlir::DialectRegistry::insert<mlir::memref::MemRefDialect>
           %mlir::memref::LoadOp::create)
-  (import (chezscheme) (mlir support BuilderBinding))
+  (import (chezscheme)
+          (mlir support foreign) (mlir support BuilderBinding))
 
   (define %mlir::MemRefType::get
-    (foreign-procedure "mlir::MemRefType::get" (uptr) uptr))
+    (crest-foreign-procedure "mlir::MemRefType::get" (uptr) uptr))
 
   (define-builder-binding %mlir::memref::AllocOp::create
     "mlir::memref::AllocOp::create" (uptr uptr uptr) uptr)
@@ -24,7 +25,7 @@
     "mlir::memref::DeallocOp::create" (uptr uptr uptr) uptr)
 
   (define %mlir::DialectRegistry::insert<mlir::memref::MemRefDialect>
-    (foreign-procedure "mlir::DialectRegistry::insert<mlir::memref::MemRefDialect>" (uptr) void))
+    (crest-foreign-procedure "mlir::DialectRegistry::insert<mlir::memref::MemRefDialect>" (uptr) void))
 
   (define-builder-binding %mlir::memref::LoadOp::create
     "mlir::memref::LoadOp::create" (uptr uptr uptr scheme-object) uptr)

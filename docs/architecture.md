@@ -355,7 +355,7 @@ add_subdirectory(crest)
 ## Operational costs
 
 **FFI maintenance.** Each MLIR C API function used from Scheme requires a C++
-`Sregister_symbol` registration and a Scheme `foreign-procedure` declaration.
+`register_binding` registration and a Scheme `crest-foreign-procedure` declaration.
 The `foreign-entry?` dynamic dispatch eliminates this for attribute types;
 everything else requires a manual pairing per function.
 

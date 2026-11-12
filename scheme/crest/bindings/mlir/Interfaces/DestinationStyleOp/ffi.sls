@@ -16,14 +16,15 @@
   (export
     %mlir::DestinationStyleOpInterface::getNumDpsInits
     %mlir::DestinationStyleOpInterface::getDpsInitOperand)
-  (import (rnrs) (only (chezscheme) foreign-procedure))
+  (import (rnrs)
+          (mlir support foreign) (only (chezscheme) foreign-procedure))
 
   (define %mlir::DestinationStyleOpInterface::getNumDpsInits
-    (foreign-procedure "mlir::DestinationStyleOpInterface::getNumDpsInits"
-                       (uptr) int))
+    (crest-foreign-procedure "mlir::DestinationStyleOpInterface::getNumDpsInits"
+                             (uptr) int))
 
   (define %mlir::DestinationStyleOpInterface::getDpsInitOperand
-    (foreign-procedure "mlir::DestinationStyleOpInterface::getDpsInitOperand"
-                       (uptr int) uptr))
+    (crest-foreign-procedure "mlir::DestinationStyleOpInterface::getDpsInitOperand"
+                             (uptr int) uptr))
 
   ) ;; end library (mlir Interfaces DestinationStyleOp ffi)

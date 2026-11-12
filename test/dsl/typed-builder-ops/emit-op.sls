@@ -9,7 +9,8 @@
 ;;
 ;; Usage: scheme-mlir emit-op.sls <input.mlir> <memref.load|affine.load|affine.load-map|maps|factories|exprs>
 (import (except (chezscheme) =)
-        (mlir IR DialectRegistry) (mlir IR MLIRContext) (mlir IR Operation) (mlir IR Value)
+        (mlir IR DialectRegistry) (mlir IR MLIRContext)
+        (mlir IR OwningOpRef) (mlir IR Operation) (mlir IR Value)
         (mlir IR PatternMatch) (mlir IR Builders)
         (mlir Transforms GreedyPatternRewriteDriver) (mlir Transforms DialectConversion)
         (mlir Transforms Passes) (mlir Pass PassManager) (mlir IR BuiltinAttributes) (mlir IR AffineMap)
@@ -87,25 +88,33 @@
         (mlir::RewriterBase::replaceOp rw op r)
         #t))))
 
-(let* ([args  (command-line-arguments)]
-       [file  (car args)]
-       [which (cadr args)])
-  (with-DialectRegistry reg ()
-    (mlir::DialectRegistry::insert<mlir::affine::AffineDialect> reg)
-    (mlir::DialectRegistry::insert<mlir::arith::ArithDialect> reg)
-    (mlir::DialectRegistry::insert<mlir::memref::MemRefDialect> reg)
-    (mlir::DialectRegistry::insert<mlir::func::FuncDialect> reg)
-    (with-MLIRContext ctx (reg)
-      (mlir::MLIRContext::allowUnregisteredDialects ctx #t)
-      (for-each (lambda (d) (mlir::MLIRContext::getOrLoadDialect ctx d))
-                '("affine" "arith" "memref" "func"))
-      (let ([module-op (mlir::parseSourceFile ctx file)])
-        (with-current-MLIRContext ctx
-          (with-RewritePatternSet ps (ctx
-                                      :rewrite-patterns (("test.k" (%%make-rewrite which) 10)))
-            (mlir::applyPatternsGreedily module-op ps)))
-        (with-PassManager pm (ctx)
-          (mlir::PassManager::addPass pm (mlir::createCanonicalizerPass))
-          (if (mlir::PassManager::run! pm module-op)
-              (begin (display (mlir::Operation::print module-op)) (newline))
-              (begin (display "verification failed\n") (exit 1))))))))
+;; A failure raises instead of calling exit: exit does not run the cleanup of the scopes around it.
+(define (%%quit code)
+  (raise (list 'exit code)))
+
+;; LEAK WARNING: what this makes (the context, the module, the builder) lives in a with- scope and is
+;; freed when the scope ends. A raw MLIRContext::new, ModuleOp::create or parseSourceFile result that is
+;; never freed leaked, and exit inside a scope skips the cleanup: raise, and exit at the top (%%quit).
+(guard (e [(and (pair? e) (eq? (car e) 'exit)) (exit (cadr e))])
+  (let* ([args  (command-line-arguments)]
+         [file  (car args)]
+         [which (cadr args)])
+    (with-DialectRegistry reg ()
+      (mlir::DialectRegistry::insert<mlir::affine::AffineDialect> reg)
+      (mlir::DialectRegistry::insert<mlir::arith::ArithDialect> reg)
+      (mlir::DialectRegistry::insert<mlir::memref::MemRefDialect> reg)
+      (mlir::DialectRegistry::insert<mlir::func::FuncDialect> reg)
+      (with-MLIRContext ctx (reg)
+        (mlir::MLIRContext::allowUnregisteredDialects ctx #t)
+        (for-each (lambda (d) (mlir::MLIRContext::getOrLoadDialect ctx d))
+                  '("affine" "arith" "memref" "func"))
+        (with-mlir::OwningOpRef module-op (mlir::parseSourceFile ctx file)
+          (with-current-MLIRContext ctx
+            (with-RewritePatternSet ps (ctx
+                                        :rewrite-patterns (("test.k" (%%make-rewrite which) 10)))
+              (mlir::applyPatternsGreedily module-op ps)))
+          (with-PassManager pm (ctx)
+            (mlir::PassManager::addPass pm (mlir::createCanonicalizerPass))
+            (if (mlir::PassManager::run! pm module-op)
+                (begin (display (mlir::Operation::print module-op)) (newline))
+                (begin (display "verification failed\n") (%%quit 1)))))))))

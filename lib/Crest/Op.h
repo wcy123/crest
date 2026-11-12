@@ -49,9 +49,12 @@ public:
   /// the given dialect. Must be called from inside the dialect's initialize().
   /// `interfaces` is the list of (TypeID . dispatcher) pairs of the op's
   /// :interfaces entries, locked by the caller; it is not kept after the call.
-  static void registerInto(mlir::ExtensibleDialect* dialect,
-                           llvm::StringRef op_name, Callbacks cbs,
-                           const LockedSchemeObject& interfaces);
+  /// Answers the text of the error when the op cannot be registered, and ""
+  /// when it was. It does not raise: the caller answers it to Scheme after it
+  /// has destroyed its objects and unlocked `interfaces` (see Error.h).
+  static std::string registerInto(mlir::ExtensibleDialect* dialect,
+                                  llvm::StringRef op_name, Callbacks cbs,
+                                  const LockedSchemeObject& interfaces);
 };
 
 void registerCrestDynamicOpBindings();

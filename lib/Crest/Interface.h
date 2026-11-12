@@ -78,10 +78,13 @@ bool installInterfaceEntry(Fn& slot, const LockedSchemeObject& dispatcher,
 /// address that the TypeID of the interface wraps, and `attachFns` finds the
 /// function that installs the interface in `target`. `interfaces` is locked by
 /// the caller; each dispatcher is locked while its interface is attached.
+/// Answers the text of the error when an interface cannot be installed, and ""
+/// when all were. It does not raise: the caller answers it to Scheme after it
+/// has unlocked and destroyed what it holds (see Error.h).
 template <typename Target, typename AttachFn>
-void attachInterfaces(Target& target, const LockedSchemeObject& interfaces,
-                      const llvm::DenseMap<mlir::TypeID, AttachFn>& attachFns,
-                      const char* who) {
+std::string
+attachInterfaces(Target& target, const LockedSchemeObject& interfaces,
+                 const llvm::DenseMap<mlir::TypeID, AttachFn>& attachFns) {
   // Attaching calls Scheme, which can move the objects that the list points to,
   // so each pair is read again from the list, which is locked.
   for (iptr i = 0;; ++i) {
@@ -90,16 +93,16 @@ void attachInterfaces(Target& target, const LockedSchemeObject& interfaces,
       tail = Scdr(tail);
     }
     if (!Spairp(tail)) {
-      return;
+      return "";
     }
     ptr pair = Scar(tail);
     mlir::TypeID id = mlir::TypeID::getFromOpaquePointer(
         reinterpret_cast<const void*>(Sunsigned64_value(Scar(pair))));
-    LockedSchemeObject dispatcher(Scdr(pair));
     auto attach = attachFns.find(id);
     if (attach == attachFns.end()) {
-      scheme_error(who, "no way to install an interface of :interfaces");
+      return "no way to install an interface of :interfaces";
     }
+    LockedSchemeObject dispatcher(Scdr(pair));
     attach->second(target, dispatcher);
   }
 }

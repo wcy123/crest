@@ -17,23 +17,20 @@
     %mlir::Region::push_back
     %mlir::Region::getParentOp
     %mlir::Region::front
-    %mlir::Region::emplaceBlock
-    %mlir::Block::new)
-  (import (rnrs) (only (chezscheme) foreign-procedure))
-
-  (define %mlir::Block::new
-    (foreign-procedure "mlir::Block::new" () uptr))
+    %mlir::Region::emplaceBlock)
+  (import (rnrs)
+          (mlir support foreign) (only (chezscheme) foreign-procedure))
 
   (define %mlir::Region::push_back
-    (foreign-procedure "mlir::Region::push_back" (uptr uptr) void))
+    (crest-foreign-procedure "mlir::Region::push_back" (uptr uptr) void))
 
   (define %mlir::Region::getParentOp
-    (foreign-procedure "mlir::Region::getParentOp" (uptr) uptr))
+    (crest-foreign-procedure "mlir::Region::getParentOp" (uptr) uptr))
 
   (define %mlir::Region::front
-    (foreign-procedure "mlir::Region::front" (uptr) uptr))
+    (crest-foreign-procedure "mlir::Region::front" (uptr) uptr))
 
   (define %mlir::Region::emplaceBlock
-    (foreign-procedure "mlir::Region::emplaceBlock" (uptr) uptr))
+    (crest-foreign-procedure "mlir::Region::emplaceBlock" (uptr) uptr))
 
   ) ;; end library (mlir IR Region ffi)

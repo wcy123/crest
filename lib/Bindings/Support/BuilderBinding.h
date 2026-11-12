@@ -31,6 +31,7 @@
 #define CREST_BINDINGS_SUPPORT_BUILDERBINDING_H
 
 #include "CrestObject.h"
+#include "Result.h"
 #include "SchemeWrapper.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/PatternMatch.h"
@@ -44,10 +45,11 @@ namespace crest {
 namespace detail {
 
 template <typename Shell>
-mlir::OpBuilder& builder_inner(uint64_t handle, const char* who);
+llvm::Expected<mlir::OpBuilder&> builder_inner(uint64_t handle,
+                                               const char* who);
 
 template <>
-inline mlir::OpBuilder&
+inline llvm::Expected<mlir::OpBuilder&>
 builder_inner<CrestBox<mlir::OpBuilder>>(uint64_t handle, const char* who) {
   return CrestBox<mlir::OpBuilder>::inner(handle, who);
 }
@@ -55,13 +57,17 @@ builder_inner<CrestBox<mlir::OpBuilder>>(uint64_t handle, const char* who) {
 // RewriterBase& converts to OpBuilder& statically, which adjusts the address:
 // RewriterBase is polymorphic, so its OpBuilder base is not at offset 0.
 template <>
-inline mlir::OpBuilder&
+inline llvm::Expected<mlir::OpBuilder&>
 builder_inner<CrestBox<mlir::RewriterBase*>>(uint64_t handle, const char* who) {
-  return CrestBox<mlir::RewriterBase*>::inner(handle, who);
+  auto rewriter = CrestBox<mlir::RewriterBase*>::inner(handle, who);
+  if (!rewriter) {
+    return rewriter.takeError();
+  }
+  return static_cast<mlir::OpBuilder&>(*rewriter);
 }
 
 template <>
-inline mlir::OpBuilder&
+inline llvm::Expected<mlir::OpBuilder&>
 builder_inner<CrestBox<mlir::OpBuilder*>>(uint64_t handle, const char* who) {
   return CrestBox<mlir::OpBuilder*>::inner(handle, who);
 }
@@ -73,9 +79,22 @@ template <typename F, typename R, typename... Args> struct BuilderBinding {
   static inline std::optional<F> body;
   static inline std::string name;
 
-  template <typename Shell> static R call(uint64_t handle, Args... args) {
-    return (*body)(builder_inner<Shell>(handle, name.c_str()),
-                   std::forward<Args>(args)...);
+  // The shell is checked first: a handle of the wrong kind answers the error
+  // object; then the body runs with the builder (it may answer a value,
+  // nothing, an llvm::Error or an llvm::Expected, as in register_binding).
+  template <typename Shell> static ptr call(uint64_t handle, Args... args) {
+    return answer([&]() -> llvm::Expected<ptr> {
+      auto builder = builder_inner<Shell>(handle, name.c_str());
+      if (!builder) {
+        return builder.takeError();
+      }
+      if constexpr (std::is_void_v<R>) {
+        (*body)(*builder, std::forward<Args>(args)...);
+        return Svoid;
+      } else {
+        return toScheme((*body)(*builder, std::forward<Args>(args)...));
+      }
+    });
   }
 };
 
@@ -98,15 +117,20 @@ void register_builder_binding_impl(const char* name, F body,
   using Binding = BuilderBinding<F, R, Args...>;
   Binding::body.emplace(std::move(body));
   Binding::name = name;
-  Sregister_symbol(keep(with_kind(name, "OpBuilder")),
-                   reinterpret_cast<void*>(
-                       &Binding::template call<CrestBox<mlir::OpBuilder>>));
-  Sregister_symbol(keep(with_kind(name, "RewriterBase*")),
-                   reinterpret_cast<void*>(
-                       &Binding::template call<CrestBox<mlir::RewriterBase*>>));
-  Sregister_symbol(keep(with_kind(name, "OpBuilder*")),
-                   reinterpret_cast<void*>(
-                       &Binding::template call<CrestBox<mlir::OpBuilder*>>));
+  auto registerKind = [&](const char* kind, void* function) {
+    const char* symbol = keep(with_kind(name, kind));
+    valueBindings().insert(symbol);
+    Sregister_symbol(symbol, function);
+  };
+  registerKind("OpBuilder",
+               reinterpret_cast<void*>(
+                   &Binding::template call<CrestBox<mlir::OpBuilder>>));
+  registerKind("RewriterBase*",
+               reinterpret_cast<void*>(
+                   &Binding::template call<CrestBox<mlir::RewriterBase*>>));
+  registerKind("OpBuilder*",
+               reinterpret_cast<void*>(
+                   &Binding::template call<CrestBox<mlir::OpBuilder*>>));
 }
 
 } // namespace detail

@@ -278,42 +278,44 @@
                                  (%%get-var-type (var-decl-expr:type a) struct-map)
                                  (%%f64-unranked-tensor)))
                            args)]
-           [func-type (mlir::FunctionType::get (current-MLIRContext) arg-types '())]
-           [%%fn-bld  (mlir::OpBuilder::atBlockEnd module-body)])
-      (let ([func-op
-             (with-current-OpBuilder %%fn-bld
-               (begin-mlir-code
-                   toy.func ()
-                   (sym_name      : name :string)
-                   (function_type : (mlir::TypeAttr::get func-type))
-                   (^bb0 ,@arg-types
-                         (for-each (lambda (arg-ast idx)
-                                     (let ([arg-name (if (var-decl-expr? arg-ast)
-                                                         (var-decl-expr:name arg-ast)
-                                                         (var-expr:name arg-ast))])
-                                       (%%declare! (%%loc (prototype:loc proto)) symtab arg-name (:arg idx))))
-                                   args (iota (length args)))
-                         (%%mlir-gen-block symtab struct-map body)
-                         (when (or (mlir::Block::empty? (current-Block))
-                                   (not (toy.return? (mlir::Block::back (current-Block)))))
-                           (begin-mlir-code
-                               toy.return () :loc (%%loc proto-loc)))
-                         ;; As C++ MLIRGen does: a function that returns a value has one
-                         ;; unranked tensor result (shape inference refines it later).
-                         (let ([ret (mlir::Block::back (current-Block))])
-                           (when (> (mlir::Operation::getNumOperands ret) 0)
-                             (mlir::Operation::setAttr!
-                              (mlir::Operation::getParentOp ret) "function_type"
-                              (mlir::TypeAttr::get
-                               (mlir::FunctionType::get (current-MLIRContext) arg-types
-                                                        (list (%%f64-unranked-tensor))))))))
-                   :loc ((location:file proto-loc)
-                         (location:line proto-loc)
-                         (location:col  proto-loc))))])
-        (unless (string=? name "main")
-          (mlir::Operation::setAttr! func-op "sym_visibility"
-                                     (mlir::StringAttr::get "private")))
-        func-op)))
+           [func-type (mlir::FunctionType::get (current-MLIRContext) arg-types '())])
+      ;; LEAK WARNING: atBlockEnd makes the builder on the C++ heap and only the caller frees it. A plain let
+      ;; leaked it for every function; with-OpBuilder frees it when the function is done.
+      (with-OpBuilder %%fn-bld (mlir::OpBuilder::atBlockEnd module-body)
+        (let ([func-op
+               (with-current-OpBuilder %%fn-bld
+                 (begin-mlir-code
+                     toy.func ()
+                     (sym_name      : name :string)
+                     (function_type : (mlir::TypeAttr::get func-type))
+                     (^bb0 ,@arg-types
+                           (for-each (lambda (arg-ast idx)
+                                       (let ([arg-name (if (var-decl-expr? arg-ast)
+                                                           (var-decl-expr:name arg-ast)
+                                                           (var-expr:name arg-ast))])
+                                         (%%declare! (%%loc (prototype:loc proto)) symtab arg-name (:arg idx))))
+                                     args (iota (length args)))
+                           (%%mlir-gen-block symtab struct-map body)
+                           (when (or (mlir::Block::empty? (current-Block))
+                                     (not (toy.return? (mlir::Block::back (current-Block)))))
+                             (begin-mlir-code
+                                 toy.return () :loc (%%loc proto-loc)))
+                           ;; As C++ MLIRGen does: a function that returns a value has one
+                           ;; unranked tensor result (shape inference refines it later).
+                           (let ([ret (mlir::Block::back (current-Block))])
+                             (when (> (mlir::Operation::getNumOperands ret) 0)
+                               (mlir::Operation::setAttr!
+                                (mlir::Operation::getParentOp ret) "function_type"
+                                (mlir::TypeAttr::get
+                                 (mlir::FunctionType::get (current-MLIRContext) arg-types
+                                                          (list (%%f64-unranked-tensor))))))))
+                     :loc ((location:file proto-loc)
+                           (location:line proto-loc)
+                           (location:col  proto-loc))))])
+          (unless (string=? name "main")
+            (mlir::Operation::setAttr! func-op "sym_visibility"
+                                       (mlir::StringAttr::get "private")))
+          func-op))))
 
   (define (%%mlir-gen-struct struct-map s)
     ;; Register a StructType for the named struct
@@ -331,27 +333,38 @@
         (hashtable-set! struct-map (struct-ast:name s) (cons stype s)))))
 
   (define (mlir-gen ctx module)
-    (guard (e [(eq? e 'toy-mlir-gen-failed) #f])
-      (with-current-MLIRContext ctx
-        (let* ([module-op   (mlir::ModuleOp::create (mlir::UnknownLoc::get ctx))]
-               [module-body (mlir::ModuleOp::getBody module-op)]
-               [struct-map  (make-hashtable equal-hash equal?)]
-               [functions   (make-hashtable equal-hash equal?)])
-          ;; Register struct types first
-          (for-each (lambda (s) (%%mlir-gen-struct struct-map s))
-                    (module-ast:structs module))
-          ;; Generate function bodies
-          (parameterize ([%%defined-functions functions])
-            (for-each (lambda (fn)
-                        (let ([symtab (make-hashtable equal-hash equal?)])
-                          (%%mlir-gen-function module-body symtab struct-map fn)
-                          (hashtable-set! functions (prototype:name (function:proto fn)) #t)))
-                      (module-ast:functions module)))
-          ;; As C++ MLIRGen: the module must verify.
-          (cond
-           [(mlir::Operation::verify? (mlir::ModuleOp::getOperation module-op)) module-op]
-           [else
-            (mlir::Operation::emitError (mlir::ModuleOp::getOperation module-op)
-                                        "module verification error")
-            #f])))))
+    ;; The module is erased when generation fails or raises: only a module that is returned
+    ;; (verified) belongs to the caller, who erases it (with-mlir::OwningOpRef).
+    (let ([created #f] [keep? #f])
+      (dynamic-wind
+          (lambda () #f)
+          (lambda ()
+            (let ([result (guard (e [(eq? e 'toy-mlir-gen-failed) #f])
+                            (with-current-MLIRContext ctx
+                              (let* ([module-op   (let ([m (mlir::ModuleOp::create (mlir::UnknownLoc::get ctx))]) (set! created m) m)]
+                                     [module-body (mlir::ModuleOp::getBody module-op)]
+                                     [struct-map  (make-hashtable equal-hash equal?)]
+                                     [functions   (make-hashtable equal-hash equal?)])
+                                ;; Register struct types first
+                                (for-each (lambda (s) (%%mlir-gen-struct struct-map s))
+                                          (module-ast:structs module))
+                                ;; Generate function bodies
+                                (parameterize ([%%defined-functions functions])
+                                  (for-each (lambda (fn)
+                                              (let ([symtab (make-hashtable equal-hash equal?)])
+                                                (%%mlir-gen-function module-body symtab struct-map fn)
+                                                (hashtable-set! functions (prototype:name (function:proto fn)) #t)))
+                                            (module-ast:functions module)))
+                                ;; As C++ MLIRGen: the module must verify.
+                                (cond
+                                 [(mlir::Operation::verify? (mlir::ModuleOp::getOperation module-op)) module-op]
+                                 [else
+                                  (mlir::Operation::emitError (mlir::ModuleOp::getOperation module-op)
+                                                              "module verification error")
+                                  #f]))))])
+              (when result (set! keep? #t))
+              result))
+          (lambda ()
+            (when (and created (not keep?))
+              (mlir::Operation::erase (mlir::ModuleOp::getOperation created)))))))
   )

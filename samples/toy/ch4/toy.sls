@@ -21,6 +21,7 @@
           (mlir IR Block)
           (mlir IR Region)
           (mlir IR OpImplementation)
+          (only (mlir support RAII) with-raii)
           (mlir IR Builders)
           (mlir IR OperationSupport)
           (only (mlir Interfaces CallInterfaces) mlir::CallOpInterface mlir::CallableOpInterface mlir::ArgAndResultAttrsOpInterface mlir::CallInterfaceCallable::get<SymbolRefAttr> mlir::CallInterfaceCallable::dyn_cast<SymbolRefAttr> crest::OperandRange::get)
@@ -58,7 +59,8 @@
       (and value (list (mlir::DenseElementsAttr::getType (cdr value))))))
 
   (define (%%parse-binary-op parser state)
-    (let ([ops (mlir::OpAsmParser::parseOperandList parser 2)])
+    (with-raii ops (mlir::OpAsmParser::parseOperandList parser 2)
+               crest::OpAsmParser::freeOperands ;; frees the list when the parse ends (nothing else does)
       (and (%%parsed? ops)
            (mlir::OpAsmParser::parseOptionalAttrDict parser state)
            (let ([type (mlir::OpAsmParser::parseColonType parser)])

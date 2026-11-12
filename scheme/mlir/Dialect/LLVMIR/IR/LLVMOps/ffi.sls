@@ -19,16 +19,17 @@
           %mlir::LLVM::CallOp::create
           %mlir::ModuleOp::lookupSymbol
           %mlir::FlatSymbolRefAttr::get)
-  (import (chezscheme) (mlir support BuilderBinding))
+  (import (chezscheme)
+          (mlir support foreign) (mlir support BuilderBinding))
 
   (define %mlir::LLVM::LLVMFunctionType::get
-    (foreign-procedure "mlir::LLVM::LLVMFunctionType::get" (uptr uptr uptr int) uptr))
+    (crest-foreign-procedure "mlir::LLVM::LLVMFunctionType::get" (uptr uptr uptr int) uptr))
 
   (define %mlir::LLVM::LLVMPointerType::get
-    (foreign-procedure "mlir::LLVM::LLVMPointerType::get" (uptr) uptr))
+    (crest-foreign-procedure "mlir::LLVM::LLVMPointerType::get" (uptr) uptr))
 
   (define %mlir::LLVM::LLVMArrayType::get
-    (foreign-procedure "mlir::LLVM::LLVMArrayType::get" (uptr uptr) uptr))
+    (crest-foreign-procedure "mlir::LLVM::LLVMArrayType::get" (uptr uptr) uptr))
 
   (define-builder-binding %mlir::LLVM::LLVMFuncOp::create
     "mlir::LLVM::LLVMFuncOp::create" (uptr uptr string uptr) uptr)
@@ -37,7 +38,7 @@
     "mlir::LLVM::GlobalOp::create" (uptr uptr uptr int int string uptr) uptr)
 
   (define %mlir::LLVM::GlobalOp::getType
-    (foreign-procedure "mlir::LLVM::GlobalOp::getType" (uptr) uptr))
+    (crest-foreign-procedure "mlir::LLVM::GlobalOp::getType" (uptr) uptr))
 
   (define-builder-binding %mlir::LLVM::AddressOfOp::create
     "mlir::LLVM::AddressOfOp::create" (uptr uptr uptr) uptr)
@@ -52,9 +53,9 @@
     "mlir::LLVM::CallOp::create" (uptr uptr uptr uptr scheme-object) uptr)
 
   (define %mlir::ModuleOp::lookupSymbol
-    (foreign-procedure "mlir::ModuleOp::lookupSymbol" (uptr string) uptr))
+    (crest-foreign-procedure "mlir::ModuleOp::lookupSymbol" (uptr string) uptr))
 
   (define %mlir::FlatSymbolRefAttr::get
-    (foreign-procedure "mlir::FlatSymbolRefAttr::get" (uptr string) uptr))
+    (crest-foreign-procedure "mlir::FlatSymbolRefAttr::get" (uptr string) uptr))
 
   ) ;; end library (mlir Dialect LLVMIR IR LLVMOps ffi)

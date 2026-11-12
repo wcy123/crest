@@ -11,16 +11,17 @@
           %mlir::scf::ForOp::getBody
           %mlir::scf::ForOp::getInductionVar
           %mlir::scf::YieldOp::create)
-  (import (chezscheme) (mlir support BuilderBinding))
+  (import (chezscheme)
+          (mlir support foreign) (mlir support BuilderBinding))
 
   (define-builder-binding %mlir::scf::ForOp::create
     "mlir::scf::ForOp::create" (uptr uptr uptr uptr uptr) uptr)
 
   (define %mlir::scf::ForOp::getBody
-    (foreign-procedure "mlir::scf::ForOp::getBody" (uptr) uptr))
+    (crest-foreign-procedure "mlir::scf::ForOp::getBody" (uptr) uptr))
 
   (define %mlir::scf::ForOp::getInductionVar
-    (foreign-procedure "mlir::scf::ForOp::getInductionVar" (uptr) uptr))
+    (crest-foreign-procedure "mlir::scf::ForOp::getInductionVar" (uptr) uptr))
 
   (define-builder-binding %mlir::scf::YieldOp::create
     "mlir::scf::YieldOp::create" (uptr uptr) void)

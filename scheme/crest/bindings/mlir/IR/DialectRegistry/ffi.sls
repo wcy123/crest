@@ -9,13 +9,14 @@
 (library (mlir IR DialectRegistry ffi)
   (export %mlir::DialectRegistry::new
           %mlir::DialectRegistry::insert)
-  (import (chezscheme))
+  (import (chezscheme)
+          (mlir support foreign))
 
   (define %mlir::DialectRegistry::new
-    (foreign-procedure "mlir::DialectRegistry::new" () uptr))
+    (crest-foreign-procedure "mlir::DialectRegistry::new" () uptr))
 
   (define %mlir::DialectRegistry::insert
-    (foreign-procedure "mlir::DialectRegistry::insert"
-                       (uptr string string) void))
+    (crest-foreign-procedure "mlir::DialectRegistry::insert"
+                             (uptr string string) void))
 
   ) ;; end library (mlir IR DialectRegistry ffi)

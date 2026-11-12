@@ -8,6 +8,7 @@
 #include "InliningUtils.h"
 #include "../Support/BuilderBinding.h"
 #include "../Support/CrestObject.h"
+#include "../Support/Result.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/Dialect.h"
@@ -23,24 +24,26 @@ void registerTransformsInliningUtilsBindings() {
   // The address that the TypeID of the interface wraps: the :interfaces clause
   // of a dialect pairs it with the dispatcher, and C++ finds how to install the
   // interface by it (lib/Crest/Dialect.cpp).
-  Sregister_symbol(
-      "mlir::DialectInlinerInterface::getInterfaceID",
-      (void*)+[]() -> uint64_t {
-        return reinterpret_cast<uint64_t>(
-            mlir::DialectInlinerInterface::getInterfaceID()
-                .getAsOpaquePointer());
-      });
-  Sregister_symbol(
-      "mlir::createInlinerPass", (void*)+[]() -> uint64_t {
-        return reinterpret_cast<uint64_t>(mlir::createInlinerPass().release());
-      });
+  register_binding("mlir::DialectInlinerInterface::getInterfaceID",
+                   []() -> uint64_t {
+                     return reinterpret_cast<uint64_t>(
+                         mlir::DialectInlinerInterface::getInterfaceID()
+                             .getAsOpaquePointer());
+                   });
+  // LEAK WARNING: a raw mlir::Pass*. Nothing owns it until
+  // mlir::PassManager::addPass or mlir::OpPassManager::addPass takes it
+  // (lib/Bindings/Pass/PassManager.cpp): a pass that is made and never added
+  // leaks.
+  register_binding("mlir::createInlinerPass", []() -> uint64_t {
+    return reinterpret_cast<uint64_t>(mlir::createInlinerPass().release());
+  });
   // DialectInlinerInterface::materializeCallConversion(OpBuilder&, Value, Type,
   // Location) on the inliner interface the dialect registers. (builder dialect
   // input result-type loc) → Operation* uptr, 0 when none
   register_builder_binding(
       "mlir::DialectInlinerInterface::materializeCallConversion",
       [](mlir::OpBuilder& builder, uint64_t dialect_ptr, uint64_t input_ptr,
-         uint64_t type_ptr, uint64_t loc_ptr) -> uint64_t {
+         uint64_t type_ptr, uint64_t loc_ptr) -> llvm::Expected<uint64_t> {
         auto* dialect = reinterpret_cast<mlir::Dialect*>(dialect_ptr);
         auto* iface =
             dialect
@@ -48,9 +51,9 @@ void registerTransformsInliningUtilsBindings() {
                       ->getRegisteredInterface<mlir::DialectInlinerInterface>()
                 : nullptr;
         if (!iface) {
-          scheme_error(
+          return fail(
               "mlir::DialectInlinerInterface::materializeCallConversion",
-              "the dialect has no DialectInlinerInterface");
+              llvm::Twine("the dialect has no DialectInlinerInterface"));
         }
         auto input = mlir::Value::getFromOpaquePointer(
             reinterpret_cast<const void*>(input_ptr));

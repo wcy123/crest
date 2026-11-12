@@ -8,9 +8,10 @@
 ;; Mirrors mlir/Conversion/ReconcileUnrealizedCasts/ReconcileUnrealizedCasts.h
 (library (mlir Conversion ReconcileUnrealizedCasts ReconcileUnrealizedCasts ffi)
   (export %mlir::createReconcileUnrealizedCastsPass)
-  (import (chezscheme))
+  (import (chezscheme)
+          (mlir support foreign))
 
   (define %mlir::createReconcileUnrealizedCastsPass
-    (foreign-procedure "mlir::createReconcileUnrealizedCastsPass" () uptr))
+    (crest-foreign-procedure "mlir::createReconcileUnrealizedCastsPass" () uptr))
 
   ) ;; end library (mlir Conversion ReconcileUnrealizedCasts ReconcileUnrealizedCasts ffi)

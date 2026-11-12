@@ -8,6 +8,7 @@
 #include "Builders.h"
 #include "../Support/BuilderBinding.h"
 #include "../Support/CrestObject.h"
+#include "../Support/Result.h"
 #include "../Support/SchemeWrapper.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/Operation.h"
@@ -19,14 +20,15 @@ void registerIROpBuilderBindings() {
   // LEAK WARNING: the box is on the C++ heap and only the caller frees it. Use
   // with-OpBuilder, which frees it after its body. A builder that is bound with
   // a plain let and never freed leaks.
-  Sregister_symbol(
+  register_binding(
       "mlir::OpBuilder::atBlockEnd",
-      (void*)+[](uint64_t ctx_ptr, uint64_t block_ptr,
-                 uint64_t listener_ptr) -> uint64_t {
+      [](uint64_t ctx_ptr, uint64_t block_ptr,
+         uint64_t listener_ptr) -> llvm::Expected<uint64_t> {
         if (!block_ptr) {
-          scheme_error("mlir::OpBuilder::atBlockEnd", "null block pointer");
+          return fail("mlir::OpBuilder::atBlockEnd",
+                      llvm::Twine("null block pointer"));
         }
-        auto* ctx = crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__);
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
         // listener_ptr: raw OpBuilder::Listener*, 0 for none. A builder that
         // shares the listener of the builder that created the enclosing op
@@ -43,10 +45,29 @@ void registerIROpBuilderBindings() {
       });
   register_builder_binding(
       "mlir::OpBuilder::create<OperationState>",
-      [](mlir::OpBuilder& builder, uint64_t state_ptr) -> uint64_t {
-        auto& state = crest::CrestBox<mlir::OperationState>::inner(
-            state_ptr, "mlir::OpBuilder::create<OperationState>");
+      [](mlir::OpBuilder& builder,
+         uint64_t state_ptr) -> llvm::Expected<uint64_t> {
+        CREST_TRY(state,
+                  crest::CrestBox<mlir::OperationState>::inner(
+                      state_ptr, "mlir::OpBuilder::create<OperationState>"));
         return reinterpret_cast<uint64_t>(builder.create(state));
+      });
+  // mlir::OpBuilder::createBlock (builder region) → Block*: a new empty block
+  // at the end of the region. The block is inserted through the builder, so the
+  // listener of a rewriter (dialect conversion) knows it and undoes it when the
+  // conversion fails. LEAK WARNING: a block made with mlir::Block::new and
+  // pushed into a region directly is unknown to the conversion, and a
+  // conversion that fails leaves it behind.
+  register_builder_binding(
+      "mlir::OpBuilder::createBlock",
+      [](mlir::OpBuilder& builder,
+         uint64_t region_ptr) -> llvm::Expected<uint64_t> {
+        if (!region_ptr) {
+          return fail("mlir::OpBuilder::createBlock",
+                      llvm::Twine("region pointer is null"));
+        }
+        return reinterpret_cast<uint64_t>(
+            builder.createBlock(reinterpret_cast<mlir::Region*>(region_ptr)));
       });
   /// builder_ptr: builder shell, op_ptr: mlir::Operation*
   register_builder_binding(
@@ -65,27 +86,27 @@ void registerIROpBuilderBindings() {
       });
   // Type predicates for the builder shells: Scheme picks the binding variant by
   // the shell's type (define-builder-binding in (mlir support BuilderBinding)).
-  Sregister_symbol(
-      "crest::isa<CrestBox<mlir::OpBuilder>>", (void*)+[](uint64_t ptr) -> int {
-        return ptr && reinterpret_cast<CrestObject*>(ptr)
-                          ->isa<CrestBox<mlir::OpBuilder>>();
-      });
-  Sregister_symbol(
-      "crest::isa<CrestBox<mlir::OpBuilder*>>",
-      (void*)+[](uint64_t ptr) -> int {
-        return ptr && reinterpret_cast<CrestObject*>(ptr)
-                          ->isa<CrestBox<mlir::OpBuilder*>>();
-      });
+  register_binding("crest::isa<CrestBox<mlir::OpBuilder>>",
+                   [](uint64_t ptr) -> int {
+                     return ptr && reinterpret_cast<CrestObject*>(ptr)
+                                       ->isa<CrestBox<mlir::OpBuilder>>();
+                   });
+  register_binding("crest::isa<CrestBox<mlir::OpBuilder*>>",
+                   [](uint64_t ptr) -> int {
+                     return ptr && reinterpret_cast<CrestObject*>(ptr)
+                                       ->isa<CrestBox<mlir::OpBuilder*>>();
+                   });
   // builder_ptr: builder shell, block_ptr: mlir::Block*
   register_builder_binding(
       "mlir::OpBuilder::setInsertionPointToEnd",
-      [](mlir::OpBuilder& builder, uint64_t block_ptr) -> void {
+      [](mlir::OpBuilder& builder, uint64_t block_ptr) -> llvm::Error {
         if (!block_ptr) {
-          scheme_error("mlir::OpBuilder::setInsertionPointToEnd",
-                       "null block pointer");
+          return fail("mlir::OpBuilder::setInsertionPointToEnd",
+                      llvm::Twine("null block pointer"));
         }
         builder.setInsertionPointToEnd(
             reinterpret_cast<mlir::Block*>(block_ptr));
+        return llvm::Error::success();
       });
   // Saves the builder's insertion point; deleting the shell restores it.
   // builder_ptr: builder shell. Returns CrestBox<InsertionGuard>* uptr.
