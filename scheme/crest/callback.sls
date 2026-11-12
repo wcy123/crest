@@ -214,7 +214,7 @@
         [(_ (type ...) result proc . options)
          (with-syntax ([location (datum->syntax
                                   #'stx
-                                  (or (syntax->file+line+col (source-of #'options #'proc))
+                                  (or (syntax->first-file+line+col (source-of #'options #'proc))
                                       (syntax->file+line+col stx)))])
            #'(let ([code (%%make-code (type ...) result proc location)])
                (lock-object code)
@@ -258,7 +258,7 @@
         [(_ (name (type ...) result value . options) body ...)
          (with-syntax ([location (datum->syntax
                                   #'stx
-                                  (or (syntax->file+line+col (source-of #'options #'value))
+                                  (or (syntax->first-file+line+col (source-of #'options #'value))
                                       (syntax->file+line+col stx)))])
            #'(let* ([given value]
                     [made? (procedure? given)]

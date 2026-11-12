@@ -44,6 +44,7 @@
 
 #include "../Bindings/Support/Result.h"
 #include "../Bindings/Support/SchemeWrapper.h"
+#include "../Crest/CurrentContext.h"
 #include "../Crest/Dialect.h"
 #include "../Interpreter/ChezSchemeInterpreter.h"
 #include "crest/Passes/Passes.h"
@@ -245,6 +246,7 @@ struct CrestPass : public mlir::OperationPass<mlir::ModuleOp> {
     // The pass raises no error into this frame: crest-call-guarded answers
     // the value of run-pass, or the pair (who . why) when it raised one.
     interp->eval("(import (crest callback))");
+    setCurrentContext(*interp, getOperation()->getContext());
     ptr answer =
         scheme_call("crest-call-guarded", convert_to_scheme_func("run-pass"),
                     getOperation().getOperation());
