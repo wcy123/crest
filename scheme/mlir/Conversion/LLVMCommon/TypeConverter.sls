@@ -1,13 +1,13 @@
 #!r6rs
 ;; Mirrors mlir/Conversion/LLVMCommon/TypeConverter.h
 (library (mlir Conversion LLVMCommon TypeConverter)
-  (export mlir::LLVMTypeConverter::LLVMTypeConverter
-          with-LLVMTypeConverter)
+  (export with-LLVMTypeConverter)
   (import (rnrs)
           (mlir Conversion LLVMCommon TypeConverter ffi)
           (only (mlir support CrestObject) with-CrestObject)
           (only (mlir IR MLIRContext) current-MLIRContext))
 
+  ;; Not exported: it answers a heap box that only with-LLVMTypeConverter frees (a raw call leaks it).
   (define mlir::LLVMTypeConverter::LLVMTypeConverter
     (case-lambda
      [()      (%mlir::LLVMTypeConverter::LLVMTypeConverter (current-MLIRContext))]
