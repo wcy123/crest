@@ -36,7 +36,7 @@
     (syntax-rules ()
       [(_ builder loc lbs ubs steps body)
        (let ([user body])
-         (with-c-callable (c-body (uptr uptr uptr uptr)
+         (with-c-callable (c-body (uptr uptr uptr uptr) scheme-object
                                   (lambda (nested-builder nested-loc ivs count)
                                     (user nested-builder nested-loc
                                           (crest-callback-pointer-list ivs count))))

@@ -50,7 +50,7 @@
   ;; with no result at all when the op was changed in place.
   (define (%%fold-entry-point fold)
     (crest-make-static-c-callable
-     (uptr uptr uptr uptr)
+     (uptr uptr uptr uptr) scheme-object
      (lambda (op attributes count folded)
        (let ([result (fold op (map (lambda (attribute) (if (eqv? attribute 0) #f attribute))
                                    (crest-callback-pointer-list attributes count)))])
@@ -74,53 +74,53 @@
                                           verify-region-result-attr interfaces)
     (vector
      (if initialize
-         (crest-make-static-c-callable (uptr) initialize)
+         (crest-make-static-c-callable (uptr) scheme-object initialize)
          0)
      (if get-dependent-dialects
          (crest-make-static-c-callable
-          (uptr)
+          (uptr) scheme-object
           (lambda (dialect)
             (for-each (lambda (name) (%crest::CrestDialect::loadDependentDialect dialect name))
                       (get-dependent-dialects))))
          0)
      (if parse-attribute
          (crest-make-static-c-callable
-          (uptr uptr)
+          (uptr uptr) scheme-object
           (lambda (parser type) (or (parse-attribute parser type) 0)))
          0)
      (if print-attribute
-         (crest-make-static-c-callable (uptr uptr) print-attribute)
+         (crest-make-static-c-callable (uptr uptr) scheme-object print-attribute)
          0)
      (if parse-type
          (crest-make-static-c-callable
-          (uptr)
+          (uptr) scheme-object
           (lambda (parser) (or (parse-type parser) 0)))
          0)
      (if print-type
-         (crest-make-static-c-callable (uptr uptr) print-type)
+         (crest-make-static-c-callable (uptr uptr) scheme-object print-type)
          0)
      (if materialize-constant
          (crest-make-static-c-callable
-          (uptr uptr uptr uptr)
+          (uptr uptr uptr uptr) scheme-object
           (lambda (builder value type loc) (or (materialize-constant builder value type loc) 0)))
          0)
      (if get-canonicalization-patterns
-         (crest-make-static-c-callable (uptr) get-canonicalization-patterns)
+         (crest-make-static-c-callable (uptr) scheme-object get-canonicalization-patterns)
          0)
      (if verify-op-attr
          (crest-make-static-c-callable
-          (uptr uptr)
+          (uptr uptr) scheme-object
           (lambda (op attr) (if (verify-op-attr op attr) 1 0)))
          0)
      (if verify-region-arg-attr
          (crest-make-static-c-callable
-          (uptr unsigned-32 unsigned-32 uptr)
+          (uptr unsigned-32 unsigned-32 uptr) scheme-object
           (lambda (op region-index arg-index attr)
             (if (verify-region-arg-attr op region-index arg-index attr) 1 0)))
          0)
      (if verify-region-result-attr
          (crest-make-static-c-callable
-          (uptr unsigned-32 unsigned-32 uptr)
+          (uptr unsigned-32 unsigned-32 uptr) scheme-object
           (lambda (op region-index result-index attr)
             (if (verify-region-result-attr op region-index result-index attr) 1 0)))
          0)
@@ -134,27 +134,27 @@
                                      get-canonicalization-patterns populate-default-attrs traits)
     (vector
      (if verify
-         (crest-make-static-c-callable (uptr) (lambda (op) (if (verify op) 1 0)))
+         (crest-make-static-c-callable (uptr) scheme-object (lambda (op) (if (verify op) 1 0)))
          0)
      (if verify-regions
          (crest-make-static-c-callable
-          (uptr)
+          (uptr) scheme-object
           (lambda (op) (if (verify-regions op) 1 0)))
          0)
      (if parse
          (crest-make-static-c-callable
-          (uptr uptr)
+          (uptr uptr) scheme-object
           (lambda (parser state) (if (parse parser state) 1 0)))
          0)
      (if print
-         (crest-make-static-c-callable (uptr uptr) (lambda (op printer) (print op printer op-name)))
+         (crest-make-static-c-callable (uptr uptr) scheme-object (lambda (op printer) (print op printer op-name)))
          0)
      (if fold (%%fold-entry-point fold) 0)
      (if get-canonicalization-patterns
-         (crest-make-static-c-callable (uptr) get-canonicalization-patterns)
+         (crest-make-static-c-callable (uptr) scheme-object get-canonicalization-patterns)
          0)
      (if populate-default-attrs
-         (crest-make-static-c-callable (uptr uptr) populate-default-attrs)
+         (crest-make-static-c-callable (uptr uptr) scheme-object populate-default-attrs)
          0)
      traits))
 
@@ -167,7 +167,7 @@
     (vector
      (if verify
          (crest-make-static-c-callable
-          (uptr uptr uptr)
+          (uptr uptr uptr) scheme-object
           (lambda (params count sink)
             (let ([answer (verify (crest-callback-pointer-list params count))])
               (cond
@@ -177,7 +177,7 @@
          0)
      (if parse
          (crest-make-static-c-callable
-          (uptr uptr)
+          (uptr uptr) scheme-object
           (lambda (parser sink)
             (let ([parsed (parse parser)])
               (cond
@@ -189,7 +189,7 @@
          0)
      (if print
          (crest-make-static-c-callable
-          (uptr uptr uptr)
+          (uptr uptr uptr) scheme-object
           (lambda (printer params count)
             (print printer (crest-callback-pointer-list params count))))
          0)))

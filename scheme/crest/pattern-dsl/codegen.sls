@@ -160,10 +160,10 @@
                     ;; with-RewritePatternSet take.
                     (if operands-ref
                         #'(define fname
-                            (crest-make-static-c-callable (uptr uptr uptr uptr)
+                            (crest-make-static-c-callable (uptr uptr uptr uptr) scheme-object
                                                           (conversion-pattern->c procedure)))
                         #'(define fname
-                            (crest-make-static-c-callable (uptr uptr)
+                            (crest-make-static-c-callable (uptr uptr) scheme-object
                                                           (rewrite-pattern->c procedure)))))))))))))
 
   ;;=======================================================================

@@ -27,6 +27,6 @@
           (lambda () (target-mark-unknown-ops-dynamically-legal target (lambda (op) #t))))
   (report "pattern"
           (lambda () (add-rewrite-pattern patterns "test.a" (lambda (op rw) #t) 1)))
-  (let ([address (crest-make-static-c-callable (uptr) (lambda (t) t))])
+  (let ([address (crest-make-static-c-callable (uptr) scheme-object (lambda (t) t))])
     (type-converter-add-conversion tc address)
     (printf "static address accepted: yes\n")))

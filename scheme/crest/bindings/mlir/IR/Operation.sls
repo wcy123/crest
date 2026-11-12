@@ -152,7 +152,7 @@
   (define-syntax mlir::Operation::walk
     (syntax-rules ()
       [(_ op callback)
-       (with-c-callable (visit (uptr) callback)
+       (with-c-callable (visit (uptr) scheme-object callback)
          (%walk op visit))]))
 
   ;; @brief mlir::Operation::setOperand — replace the i-th operand with a new value.

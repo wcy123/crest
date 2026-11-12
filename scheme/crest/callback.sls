@@ -43,8 +43,13 @@
           crest-callback-entry-dispatcher
           crest-slot-callable)
   (import (chezscheme)
+          (for (mlir support srcloc) expand)
           (mlir support foreign)
-          (mlir support RAII))
+          (mlir support RAII)
+          (only (mlir IR MLIRContext) current-MLIRContext)
+          (only (mlir IR Location ffi) %mlir::FileLineColLoc::get %mlir::UnknownLoc::get)
+          (only (mlir IR Diagnostics ffi) %mlir::emitError)
+          (only (llvm Support ErrorHandling ffi) %llvm::report_fatal_error))
 
   ;; ---- no error leaves a callable ------------------------------------------------------------------
   ;;
@@ -86,6 +91,88 @@
       (guard (c [#t (cons (string->symbol (%%condition-who c)) (%%condition-message c))])
         (apply procedure arguments))))
 
+  ;; ---- the guard of a callable whose C result is not a Scheme object (plan 05) ------------------------
+  ;;
+  ;; MLIR declares the prototype, and it has no room for an error. The guard reports the error through
+  ;; MLIR's own channel and answers what the prototype can hold:
+  ;;   result void       nothing can say "failed": the process ends with the text (llvm::report_fatal_error)
+  ;;   any other result  a diagnostic at the Scheme source of the callback, then the failure value of the type
+  ;;                     (0, #f, interrupt for a WalkResult)
+  ;; LOCATION is (file line column) of the callback in the Scheme source, read when the macro expands, or #f.
+  ;; A location belongs to a context: it is made in (current-MLIRContext). With no current context the process
+  ;; ends with the text and the position.
+
+  ;; "who: message", or the message when the condition has no who.
+  (define (%%error-text c)
+    (let ([who (%%condition-who c)]
+          [message (%%condition-message c)])
+      (if (string=? who "") message (string-append who ": " message))))
+
+  (define (%%position-text location)
+    (if location
+        (format "~a:~a:~a" (car location) (cadr location) (caddr location))
+        "unknown position"))
+
+  ;; Ends the process: nothing after the call runs.
+  (define (%%die c location)
+    (%llvm::report_fatal_error
+     (string-append (%%error-text c) " (" (%%position-text location) ")")))
+
+  (define (%%report c location)
+    (let ([context (current-MLIRContext)])
+      (if context
+          (guard (reporting-error [#t (%%die c location)])
+            (%mlir::emitError
+             (if location
+                 (%mlir::FileLineColLoc::get context (car location) (cadr location) (caddr location))
+                 (%mlir::UnknownLoc::get context))
+             (%%error-text c)))
+          (%%die c location))))
+
+  ;; The procedure, with its error reported and ZERO answered (the failure value of the C result type).
+  (define (%%report-guard procedure location zero)
+    (lambda arguments
+      (guard (c [#t (%%report c location) zero])
+        (apply procedure arguments))))
+
+  ;; The procedure, with its error ending the process (the C result is void).
+  (define (%%fatal-guard procedure location)
+    (lambda arguments
+      (guard (c [#t (%%die c location)])
+        (apply procedure arguments))))
+
+  ;; Windows x64 answers a WalkResult (a class with constructors) through the place that the caller
+  ;; gives, a pointer before the arguments, as it does for a LogicalResult (crest-slot-callable).
+  (define (%%windows-result procedure)
+    (lambda (answer . arguments)
+      (foreign-set! 'unsigned-32 answer 0 (apply procedure arguments))
+      answer))
+
+  ;; (%%make-code (argument-type ...) result-type procedure location): the code object of the foreign-callable
+  ;; for that result type. scheme-object keeps the answer as (who . why) while the hooks move to their natural
+  ;; type; walk-result is the C++ class mlir::WalkResult (4 bytes, constants in (mlir Support WalkResult)).
+  (define-syntax %%make-code
+    (lambda (stx)
+      (syntax-case stx ()
+        [(_ (type ...) result procedure location)
+         (case (syntax->datum #'result)
+           [(scheme-object)
+            #'(foreign-callable (%%guard procedure) (type ...) scheme-object)]
+           [(void)
+            #'(foreign-callable (%%fatal-guard procedure 'location) (type ...) void)]
+           [(boolean)
+            #'(foreign-callable (%%report-guard procedure 'location #f) (type ...) boolean)]
+           [(int uptr unsigned-8 unsigned-32)
+            #'(foreign-callable (%%report-guard procedure 'location 0) (type ...) result)]
+           [(walk-result)
+            #'(if (%%windows?)
+                  (foreign-callable (%%windows-result (%%report-guard procedure 'location 0))
+                                    (uptr type ...) uptr)
+                  (foreign-callable (%%report-guard procedure 'location 0) (type ...) int))]
+           [else
+            (syntax-violation 'crest-make-static-c-callable "unknown result type of a callable" stx
+                              #'result)])])))
+
   ;; (crest-call-guarded procedure argument ...): C++ calls a Scheme procedure itself (the pass of
   ;; --crest-pass): the answer of the procedure, or the pair (who . why) when it raised an error.
   (define (crest-call-guarded procedure . arguments)
@@ -108,14 +195,20 @@
            [n (string-length name)])
       (and (>= n 2) (string=? (substring name (- n 2) n) "nt"))))
 
-  ;; (crest-make-static-c-callable (argument-type ...) procedure): the address of a C function that calls
-  ;; the procedure and answers a Scheme object: its answer, or (who . why) when it raised an error.
+  ;; (crest-make-static-c-callable (argument-type ...) result-type procedure): the address of a C function
+  ;; with the prototype of C++: those argument types and that result type. It locks the callable for good:
+  ;; use it only at the library level, for a callback that uses no state of a run.
+  ;; result-type: scheme-object (the answer, or (who . why) for an error), void, int, uptr, unsigned-8,
+  ;; unsigned-32, boolean, walk-result. An error of the procedure is reported by its guard (see above).
   (define-syntax crest-make-static-c-callable
-    (syntax-rules ()
-      [(_ (argument-type ...) proc)
-       (let ([code (foreign-callable (%%guard proc) (argument-type ...) scheme-object)])
-         (lock-object code)
-         (foreign-callable-entry-point code))]))
+    (lambda (stx)
+      (syntax-case stx ()
+        [(_ (type ...) result proc)
+         (with-syntax ([location (datum->syntax #'stx (or (syntax->file+line+col #'proc)
+                                                          (syntax->file+line+col stx)))])
+           #'(let ([code (%%make-code (type ...) result proc location)])
+               (lock-object code)
+               (foreign-callable-entry-point code)))])))
 
   ;; (crest-make-raw-c-callable (argument-type ...) result-type procedure): the same for a slot of a
   ;; Concept, which MLIR calls with its own prototype: the procedure is not guarded (it must not raise),
@@ -127,9 +220,10 @@
          (lock-object code)
          (foreign-callable-entry-point code))]))
 
-  ;; (with-c-callable (name (argument-type ...) value) body ...)
+  ;; (with-c-callable (name (argument-type ...) result-type value) body ...)
   ;;
-  ;; Runs BODY with NAME bound to the address of a C function that calls what VALUE is:
+  ;; Runs BODY with NAME bound to the address of a C function with the prototype of C++ (those argument types
+  ;; and that result type, as for crest-make-static-c-callable) that calls what VALUE is:
   ;;
   ;;   a procedure: the macro makes the foreign-callable, locks it, and unlocks it when BODY ends, also
   ;;   when it ends by an error. Use it for a callback that C++ calls while BODY runs.
@@ -138,27 +232,30 @@
   ;;   the code object of foreign-callable after lock-object, or an address that
   ;;   crest-make-static-c-callable answered. The macro uses it as it is and never unlocks it, because
   ;;   it is the caller's. An unlocked code object is an error: the garbage collector could move it,
-  ;;   and C++ would call a stale address.
+  ;;   and C++ would call a stale address. The types are not used for these.
   ;;
   ;; The address is only valid inside BODY: if C++ keeps it after BODY ends, use
   ;; crest-make-static-c-callable.
   (define-syntax with-c-callable
-    (syntax-rules ()
-      [(_ (name (type ...) value) body ...)
-       (let* ([given value]
-              [made? (procedure? given)]
-              [code (cond
-                     [made? (foreign-callable (%%guard given) (type ...) scheme-object)]
-                     [(and (integer? given) (exact? given)) (foreign-callable-code-object given)]
-                     [else given])])
-         (when made? (lock-object code))
-         (unless (locked-object? code)
-           (assertion-violation 'with-c-callable
-                                "the callable must be a procedure, or a locked code object, or the address of a locked callable"
-                                given))
-         (with-raii locked (and made? code)
-                    (lambda (locked) (when locked (unlock-object locked)))
-           (let ([name (foreign-callable-entry-point code)]) body ...)))]))
+    (lambda (stx)
+      (syntax-case stx ()
+        [(_ (name (type ...) result value) body ...)
+         (with-syntax ([location (datum->syntax #'stx (or (syntax->file+line+col #'value)
+                                                          (syntax->file+line+col stx)))])
+           #'(let* ([given value]
+                    [made? (procedure? given)]
+                    [code (cond
+                           [made? (%%make-code (type ...) result given location)]
+                           [(and (integer? given) (exact? given)) (foreign-callable-code-object given)]
+                           [else given])])
+               (when made? (lock-object code))
+               (unless (locked-object? code)
+                 (assertion-violation 'with-c-callable
+                                      "the callable must be a procedure, or a locked code object, or the address of a locked callable"
+                                      given))
+               (with-raii locked (and made? code)
+                          (lambda (locked) (when locked (unlock-object locked)))
+                 (let ([name (foreign-callable-entry-point code)]) body ...))))])))
 
   ;; (with-c-callables ((name (type ...) value) ...) body ...): with-c-callable for each binding,
   ;; the first made first and released last. A binding may use the names of the ones before it.

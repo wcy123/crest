@@ -83,7 +83,7 @@
             (with-ConversionTarget target (ctx)
               (ignoring-errors
                (lambda ()
-                 (with-c-callable (c (uptr) (lambda (type) type))
+                 (with-c-callable (c (uptr) scheme-object (lambda (type) type))
                    (type-converter-add-conversion target c)))))))
 
 (scenario "wrong-handle-materialization" (ctx module)
@@ -91,22 +91,22 @@
             (with-ConversionTarget target (ctx)
               (ignoring-errors
                (lambda ()
-                 (with-c-callable (c (uptr uptr uptr uptr uptr) (lambda (b t i n l) 0))
+                 (with-c-callable (c (uptr uptr uptr uptr uptr) scheme-object (lambda (b t i n l) 0))
                    (mlir::TypeConverter::addSourceMaterialization target c))))
               (ignoring-errors
                (lambda ()
-                 (with-c-callable (c (uptr uptr uptr uptr uptr) (lambda (b t i n l) 0))
+                 (with-c-callable (c (uptr uptr uptr uptr uptr) scheme-object (lambda (b t i n l) 0))
                    (mlir::TypeConverter::addTargetMaterialization target c)))))))
 
 (scenario "wrong-handle-legality" (ctx module)
           (with-TypeConverter tc
             (ignoring-errors
              (lambda ()
-               (with-c-callable (c (uptr) (lambda (op) 0))
+               (with-c-callable (c (uptr) scheme-object (lambda (op) 0))
                  (target-add-dynamically-legal-op tc ctx "test.a" c))))
             (ignoring-errors
              (lambda ()
-               (with-c-callable (c (uptr) (lambda (op) 1))
+               (with-c-callable (c (uptr) scheme-object (lambda (op) 1))
                  (target-mark-unknown-ops-dynamically-legal tc c))))))
 
 (scenario "wrong-handle-patterns" (ctx module)
@@ -115,15 +115,15 @@
                   (with-RewritePatternSet patterns (ctx)))
             (ignoring-errors
              (lambda ()
-               (with-c-callable (c (uptr uptr) (lambda (op rewriter) 0))
+               (with-c-callable (c (uptr uptr) scheme-object (lambda (op rewriter) 0))
                  (add-rewrite-pattern tc "test.a" c 1))))
             (ignoring-errors
              (lambda ()
-               (with-c-callable (c (uptr uptr uptr uptr) (lambda (op o r t) 0))
+               (with-c-callable (c (uptr uptr uptr uptr) scheme-object (lambda (op o r t) 0))
                  (add-conversion-pattern patterns "test.a" c target 1))))
             (ignoring-errors
              (lambda ()
-               (with-c-callable (c (uptr uptr uptr uptr) (lambda (op o r t) 0))
+               (with-c-callable (c (uptr uptr uptr uptr) scheme-object (lambda (op o r t) 0))
                  (add-conversion-pattern/ctx tc "test.a" c 1))))))
 
 (scenario "wrong-handle-modify" (ctx module)
