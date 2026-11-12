@@ -613,12 +613,12 @@ void registerTransformsDialectConversionBindings() {
       });
 
   // modifyOpInPlace: mutate an op inside a rewriter notification.
-  // (rw-ptr op-ptr thunk) → void  where thunk is a C function () that Scheme
-  // made and keeps alive until the call returns. An error of the thunk is
-  // the answer of the binding.
+  // (rw-ptr op-ptr thunk) → void  where thunk is a C function void() that
+  // Scheme made and keeps alive until the call returns. MLIR's callback is
+  // void, so an error of the thunk ends the process (Rule 20).
   Sregister_symbol(
       "mlir::RewriterBase::modifyOpInPlace",
-      (void*)+[](uint64_t rw_ptr, uint64_t op_ptr, ptr (*thunk)()) -> ptr {
+      (void*)+[](uint64_t rw_ptr, uint64_t op_ptr, void (*thunk)()) -> ptr {
         auto* rw_box = crest::CrestBox<mlir::RewriterBase*>::inner(rw_ptr);
         if (!rw_box) {
           return scheme_error(
@@ -627,17 +627,7 @@ void registerTransformsDialectConversionBindings() {
         }
         auto& rw = *rw_box;
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-        // modifyOpInPlace, written out: a thunk that failed abandons the
-        // modification, or the driver would see the op modified again and
-        // again.
-        crest::FirstSchemeError error;
-        rw.startOpModification(op);
-        error.record(thunk());
-        if (error) {
-          rw.cancelOpModification(op);
-          return error.answer();
-        }
-        rw.finalizeOpModification(op);
+        rw.modifyOpInPlace(op, [&]() { thunk(); });
         return Svoid;
       });
 }

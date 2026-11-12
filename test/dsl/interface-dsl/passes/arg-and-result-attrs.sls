@@ -1,5 +1,6 @@
 ;; Gets, removes and sets the argument attributes of an op through ArgAndResultAttrsOpInterface.
-(import (chezscheme)
+(import (only (mlir Support WalkResult) mlir::WalkResult::advance)
+        (chezscheme)
         (crest dialect)
         (mlir IR Operation)
         (mlir IR MLIRContext)
@@ -33,7 +34,7 @@
                (lambda (op)
                  (when (equal? (mlir::Operation::getName op) "aarattrs.fn")
                    (set! ops (cons op ops)))
-                 #t))
+                 #t mlir::WalkResult::advance))
               (let* ([with (cadr ops)]
                      [without (car ops)]
                      [original (mlir::ArgAndResultAttrsOpInterface::getArgAttrsAttr with)])

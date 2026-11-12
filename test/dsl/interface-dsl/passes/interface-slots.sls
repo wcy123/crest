@@ -1,6 +1,7 @@
 ;; Calls getCallableRegion, getFunctionType and setFunctionTypeAttr of ops of the ifaceclauses
 ;; dialect, and prints what each answers or leaves behind.
-(import (chezscheme)
+(import (only (mlir Support WalkResult) mlir::WalkResult::advance)
+        (chezscheme)
         (mlir support foreign)
         (crest dialect)
         (mlir IR Operation)
@@ -45,7 +46,7 @@
                                     (lambda (op)
                                       (when (equal? (mlir::Operation::getName op) name)
                                         (set! found op))
-                                      #t))
+                                      #t mlir::WalkResult::advance))
                                    found))]
                      [good     (find "ifaceclauses.good")]
                      [settable (find "ifaceclauses.settable")]

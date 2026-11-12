@@ -11,7 +11,8 @@
 (library (toy ch7 shape-inference)
   (export toy:add-shape-inference-patterns!
           toy:shape-inference-pass)
-  (import (except (rnrs) =)
+  (import (only (mlir Support WalkResult) mlir::WalkResult::advance)
+          (except (rnrs) =)
           (only (mlir IR Value)
                 mlir::Value::getType)
           (only (mlir IR Operation)
@@ -113,7 +114,7 @@
                  (and (< i (mlir::Operation::getNumResults op))
                       (or (not (%%ranked? (mlir::Operation::getResult op i)))
                           (loop (+ i 1)))))
-           (set! remaining (+ remaining 1)))))
+           (set! remaining (+ remaining 1))) mlir::WalkResult::advance))
       (or (zero? remaining)
           (begin
             (mlir::Operation::emitError

@@ -3,7 +3,8 @@
 ;; C++, while the inner one runs.
 (library (passes walk-nested)
   (export run-pass)
-  (import (rnrs)
+  (import (only (mlir Support WalkResult) mlir::WalkResult::advance)
+          (rnrs)
           (only (mlir IR Operation)
                 mlir::Operation::walk
                 mlir::Operation::setAttr!
@@ -18,7 +19,7 @@
          module-op
          (lambda (op)
            (set! outer (+ outer 1))
-           (mlir::Operation::walk op (lambda (nested) (set! inner (+ inner 1))))))
+           (mlir::Operation::walk op (lambda (nested) (set! inner (+ inner 1)) mlir::WalkResult::advance)) mlir::WalkResult::advance))
         (mlir::Operation::setAttr! module-op "test.outer" (mlir::IntegerAttr::get<i64> outer))
         (mlir::Operation::setAttr! module-op "test.inner" (mlir::IntegerAttr::get<i64> inner)))))
 

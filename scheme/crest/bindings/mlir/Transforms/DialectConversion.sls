@@ -174,11 +174,12 @@
   ;; @brief RewriterBase::modifyOpInPlace: THUNK changes the op, and the rewriter is told.
   ;; THUNK is an expression for a procedure of no arguments (or a code object that the caller made and
   ;; locked, see with-c-callable). It is a C function for the length of the call and released when it
-  ;; returns, also on an error. A macro.
+  ;; returns, also on an error. MLIR's callback is void, so an error of THUNK ends the process with the
+  ;; text of the error. A macro.
   (define-syntax mlir::RewriterBase::modifyOpInPlace
     (syntax-rules ()
       [(_ rewriter op thunk)
-       (with-c-callable (c-thunk () scheme-object thunk)
+       (with-c-callable (c-thunk () void thunk)
          (%mlir::RewriterBase::modifyOpInPlace rewriter op c-thunk))]))
 
   ;; @brief Register a Scheme ConversionPattern. CALLABLE is the address of a C function

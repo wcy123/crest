@@ -195,17 +195,27 @@
            [n (string-length name)])
       (and (>= n 2) (string=? (substring name (- n 2) n) "nt"))))
 
-  ;; (crest-make-static-c-callable (argument-type ...) result-type procedure): the address of a C function
-  ;; with the prototype of C++: those argument types and that result type. It locks the callable for good:
-  ;; use it only at the library level, for a callback that uses no state of a run.
+  ;; (crest-make-static-c-callable (argument-type ...) result-type procedure [:source expression]): the
+  ;; address of a C function with the prototype of C++: those argument types and that result type. It locks
+  ;; the callable for good: use it only at the library level, for a callback that uses no state of a run.
   ;; result-type: scheme-object (the answer, or (who . why) for an error), void, int, uptr, unsigned-8,
-  ;; unsigned-32, boolean, walk-result. An error of the procedure is reported by its guard (see above).
+  ;; unsigned-32, boolean, walk-result. An error of the procedure is reported by its guard (see above), at
+  ;; the Scheme position of PROCEDURE, or of the expression after :source when a macro wraps the procedure of
+  ;; its user in a lambda of its own and the position of the user is the useful one.
   (define-syntax crest-make-static-c-callable
     (lambda (stx)
+      (define (source-of options default)
+        (syntax-case options ()
+          [() default]
+          [(key source) (eq? (syntax->datum #'key) ':source) #'source]
+          [_ (syntax-violation 'crest-make-static-c-callable "expected :source expression" stx
+                               options)]))
       (syntax-case stx ()
-        [(_ (type ...) result proc)
-         (with-syntax ([location (datum->syntax #'stx (or (syntax->file+line+col #'proc)
-                                                          (syntax->file+line+col stx)))])
+        [(_ (type ...) result proc . options)
+         (with-syntax ([location (datum->syntax
+                                  #'stx
+                                  (or (syntax->file+line+col (source-of #'options #'proc))
+                                      (syntax->file+line+col stx)))])
            #'(let ([code (%%make-code (type ...) result proc location)])
                (lock-object code)
                (foreign-callable-entry-point code)))])))
@@ -220,7 +230,7 @@
          (lock-object code)
          (foreign-callable-entry-point code))]))
 
-  ;; (with-c-callable (name (argument-type ...) result-type value) body ...)
+  ;; (with-c-callable (name (argument-type ...) result-type value [:source expression]) body ...)
   ;;
   ;; Runs BODY with NAME bound to the address of a C function with the prototype of C++ (those argument types
   ;; and that result type, as for crest-make-static-c-callable) that calls what VALUE is:
@@ -235,13 +245,21 @@
   ;;   and C++ would call a stale address. The types are not used for these.
   ;;
   ;; The address is only valid inside BODY: if C++ keeps it after BODY ends, use
-  ;; crest-make-static-c-callable.
+  ;; crest-make-static-c-callable. The diagnostic of an error is at the Scheme position of VALUE, or of the
+  ;; expression after :source (see crest-make-static-c-callable).
   (define-syntax with-c-callable
     (lambda (stx)
+      (define (source-of options default)
+        (syntax-case options ()
+          [() default]
+          [(key source) (eq? (syntax->datum #'key) ':source) #'source]
+          [_ (syntax-violation 'with-c-callable "expected :source expression" stx options)]))
       (syntax-case stx ()
-        [(_ (name (type ...) result value) body ...)
-         (with-syntax ([location (datum->syntax #'stx (or (syntax->file+line+col #'value)
-                                                          (syntax->file+line+col stx)))])
+        [(_ (name (type ...) result value . options) body ...)
+         (with-syntax ([location (datum->syntax
+                                  #'stx
+                                  (or (syntax->file+line+col (source-of #'options #'value))
+                                      (syntax->file+line+col stx)))])
            #'(let* ([given value]
                     [made? (procedure? given)]
                     [code (cond

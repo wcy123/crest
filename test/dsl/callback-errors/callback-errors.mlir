@@ -1,7 +1,9 @@
 // A callback that raises must not let the error cross the C++ frames above it. The callable catches it and
 // answers (who . why); the C++ code that called it reads the answer:
-//   - a binding that calls the callable itself (walk) stops and answers the error, and Scheme raises it there,
-//     with the text of the original;
+//   - a walk visitor has the C++ prototype WalkResult(Operation*): the error is a diagnostic at the Scheme source of
+//     the visitor and the callable answers interrupt, which stops the walk; nothing is raised in Scheme;
+//   - a callback whose C++ result is void (the thunk of modifyOpInPlace) has no place for an error and ends the
+//     process: test/dsl/callback-diagnostics;
 //   - MLIR code that calls the callable (the legality check, a conversion pattern, a type conversion, a rewrite
 //     pattern) gets a diagnostic and a failure: the error does not come out as a Scheme error.
 // Nothing is left behind, so the C++ heap does not grow however many errors there are.
@@ -12,16 +14,16 @@
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/callback-errors-scheme \
 // RUN:   %scheme-mlir %S/driver.sls %s 2>&1 >/dev/null | %FileCheck %s --check-prefix=DIAG
 
-// CHECK: walk: Exception in callback: boom
+// CHECK: walk: no error
 // CHECK-NEXT: legality: no error
 // CHECK-NEXT: pattern: no error
 // CHECK-NEXT: conversion: no error
-// CHECK-NEXT: modify: no error
 // CHECK-NEXT: callback-errors: ok
 
 // The diagnostics of the first round: the callbacks of the legality check, the conversion pattern, the type
 // conversion and the rewrite pattern.
 // DIAG-DAG: callback-errors.mlir":{{[0-9]+}}:3): error: callback: boom
+// DIAG-DAG: errors.sls":{{[0-9]+}}:{{[0-9]+}}): error: callback: boom
 // DIAG-DAG: error: failed to legalize operation 'test.a' that was explicitly marked illegal
 
 func.func @f() {

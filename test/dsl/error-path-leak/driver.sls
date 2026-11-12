@@ -1,7 +1,8 @@
 ;; scheme-mlir driver: a binding fails many times on operations whose names are short (no heap) and long (heap),
 ;; and Region::push_back<Block> fails after a block could have been made; the C++ heap must not grow for any.
 ;; Prints "error-path-leak: ok" and "block-leak: ok". Linux only (mallinfo of glibc).
-(import (chezscheme)
+(import (only (mlir Support WalkResult) mlir::WalkResult::advance)
+        (chezscheme)
         (mlir IR DialectRegistry) (mlir IR MLIRContext) (mlir IR Operation) (mlir IR OwningOpRef)
         (only (mlir Interfaces FunctionInterfaces) mlir::FunctionOpInterface::getFunctionType)
         (only (mlir IR Location) mlir::UnknownLoc::get)
@@ -47,7 +48,7 @@
 ;; The operations of the module, in order.
 (define (operations module)
   (let ([found '()])
-    (mlir::Operation::walk module (lambda (op) (set! found (cons op found))))
+    (mlir::Operation::walk module (lambda (op) (set! found (cons op found)) mlir::WalkResult::advance))
     (reverse found)))
 
 (define runs 3000)

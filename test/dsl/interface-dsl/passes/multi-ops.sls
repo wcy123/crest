@@ -1,5 +1,6 @@
 ;; Calls the interface methods of every op of the multiops dialect and prints what each answers.
-(import (chezscheme)
+(import (only (mlir Support WalkResult) mlir::WalkResult::advance)
+        (chezscheme)
         (mlir support foreign)
         (crest dialect)
         (mlir IR Operation)
@@ -42,7 +43,7 @@
                              (lambda (op)
                                (when (equal? (mlir::Operation::getName op) (string-append "multiops." name))
                                  (set! found op))
-                               #t))
+                               #t mlir::WalkResult::advance))
                             found))])
               (for-each
                (lambda (name)

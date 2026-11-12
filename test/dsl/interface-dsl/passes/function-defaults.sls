@@ -1,5 +1,6 @@
 ;; Calls verifyBody, verifyType and cloneTypeWith on function ops that give none of them.
-(import (chezscheme)
+(import (only (mlir Support WalkResult) mlir::WalkResult::advance)
+        (chezscheme)
         (crest dialect)
         (mlir IR Operation)
         (mlir IR MLIRContext)
@@ -34,7 +35,7 @@
                (lambda (op)
                  (when (equal? (mlir::Operation::getName op) "fdefaults.fn")
                    (set! ops (cons op ops)))
-                 #t))
+                 #t mlir::WalkResult::advance))
               (for-each
                (lambda (op)
                  (let ([name (mlir::Operation::getAttr op "sym_name")])
