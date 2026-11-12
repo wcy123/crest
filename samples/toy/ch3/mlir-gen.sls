@@ -256,5 +256,8 @@
               result))
           (lambda ()
             (when (and created (not keep?))
-              (mlir::Operation::erase (mlir::ModuleOp::getOperation created)))))))
+              ;; once: a guard without a clause for an error leaves this extent twice
+              (let ([module created])
+                (set! created #f)
+                (mlir::Operation::erase (mlir::ModuleOp::getOperation module))))))))
   )

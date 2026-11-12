@@ -13,7 +13,8 @@
                 mlir::Float32Type::get mlir::Float64Type::get)
           (only (mlir Interfaces InferTypeOpInterface)
                 mlir::InferTypeOpInterface::inferReturnTypes<OperationState*>)
-          (mlir IR OpImplementation))
+          (mlir IR OpImplementation)
+          (mlir support RAII))
 
   (define (%%fail fmt-stx message . parts)
     (syntax-violation 'define-op (apply string-append "assembly-format: " message
@@ -529,12 +530,11 @@
             ;; whether it succeeds, fails or raises an error: resolveOperands only reads them.
             #'(lambda (P S)
                 (let ([ops 0] ... [type #f] ... [rtype #f] ... [all-ops 0] [ft #f])
-                  (dynamic-wind
-                      (lambda () #f)
-                      (lambda () (and s ... r ... rs ... #t))
-                      (lambda ()
-                        (crest::OpAsmParser::freeOperands ops) ...
-                        (crest::OpAsmParser::freeOperands all-ops))))))))))
+                  (with-raii unused #f
+                             (lambda (unused)
+                               (crest::OpAsmParser::freeOperands ops) ...
+                               (crest::OpAsmParser::freeOperands all-ops))
+                    (and s ... r ... rs ... #t)))))))))
 
   ;; ── Printer ─────────────────────────────────────────────────────────────────
 
