@@ -32,17 +32,6 @@
           crest-callback-error-pending?)
   (import (chezscheme))
 
-  ;; The error is a pair (who . why): a symbol and a string. No value that a binding answers looks like it.
-  (define (%%error? x)
-    (and (pair? x) (symbol? (car x)) (string? (cdr x))))
-
-  (define (%%raise-error x)
-    (let ([who (symbol->string (car x))])
-      (error (if (string=? who "") #f who) (cdr x))))
-
-  (define (%%boolean x)
-    (if (boolean? x) x (not (eqv? x 0))))
-
   ;; The guard of a callable puts the text of an error here, for the binding that is running to raise.
   (define %crest::error::set
     (foreign-procedure "crest::error::set" (string string) void))
@@ -51,12 +40,20 @@
   (define %%take-error
     (foreign-procedure "crest::error::take" () scheme-object))
 
-  (define %%pending
-    (foreign-procedure "crest::error::pending" () int))
-
   ;; Is an error waiting in the slot?
-  (define (crest-callback-error-pending?)
-    (not (zero? (%%pending))))
+  (define crest-callback-error-pending?
+    (foreign-procedure "crest::error::pending" () boolean))
+
+  ;; The answer of a binding, or its error: the one of a callback that ran inside it, if there is one,
+  ;; else the binding's own, a pair (who . why) of a symbol and a string. No value that a binding
+  ;; answers looks like that pair.
+  (define (%%result answer)
+    (let ([failure (or (%%take-error)
+                       (and (pair? answer) (symbol? (car answer)) (string? (cdr answer)) answer))])
+      (if failure
+          (let ([who (symbol->string (car failure))])
+            (error (if (string=? who "") #f who) (cdr failure)))
+          answer)))
 
   (define-syntax crest-foreign-procedure
     (lambda (stx)
@@ -64,15 +61,10 @@
         [(_ name (type ...) result)
          (with-syntax ([(argument ...) (generate-temporaries #'(type ...))]
                        [read (case (syntax->datum #'result)
-                               [(boolean) #'%%boolean]
+                               [(boolean) #'(lambda (x) (if (boolean? x) x (not (eqv? x 0))))]
                                [else #'values])])
            #'(let ([procedure (foreign-procedure name (type ...) scheme-object)])
                (lambda (argument ...)
-                 (let* ([answer (procedure argument ...)]
-                        [callback-error (%%take-error)])
-                   (cond
-                    [callback-error (%%raise-error callback-error)]
-                    [(%%error? answer) (%%raise-error answer)]
-                    [else (read answer)])))))])))
+                 (read (%%result (procedure argument ...))))))])))
 
   ) ;; end library (mlir support foreign)
