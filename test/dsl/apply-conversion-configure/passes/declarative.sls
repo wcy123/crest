@@ -17,7 +17,7 @@
 
   ;; The conversion is made once, when the library is loaded, and kept for the whole program.
   (define identity-conversion
-    (crest-make-static-c-callable (uptr) scheme-object (lambda (type) type)))
+    (crest-make-static-c-callable (uptr) uptr (lambda (type) type)))
 
   (define (%%configure-type-converter! tc)
     (set! converter-configured? #t)

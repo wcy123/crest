@@ -66,9 +66,10 @@
   ;; used: the caller keeps each function alive for that long (with-c-callable, or
   ;; crest-make-static-c-callable for the whole program). The procedures that take one take its
   ;; address; the with-TypeConverter and with-ConversionTarget clauses below make the functions around
-  ;; their body, and the adapters make a procedure with the C types of a friendly one:
+  ;; their body (the C result types are int for a verdict and uptr for a type or a value), and the
+  ;; adapters make a procedure with the C types of a friendly one:
   ;;
-  ;;   (with-c-callable (legal (uptr) (legality->c (lambda (op) ...)))
+  ;;   (with-c-callable (legal (uptr) int (legality->c (lambda (op) ...)))
   ;;     (target-add-dynamically-legal-op target ctx "func.func" legal)
   ;;     ...)
   ;;
@@ -78,8 +79,8 @@
   ;; inputs count loc) → value or 0 with the inputs as a pointer and a count, a legality check (op) → 1
   ;; or 0, a conversion pattern (op operands rewriter type-converter) → 1 or 0, a rewrite pattern
   ;; (op rewriter) → 1 or 0 (their adapters are in (mlir IR PatternMatch)); every argument is an
-  ;; address or an integer (uptr). The C function answers a Scheme object: the answer of the procedure,
-  ;; or (who . why) when it raised an error, which C++ reports as a diagnostic.
+  ;; address or an integer (uptr). An error of the procedure is a diagnostic at its Scheme source, and the
+  ;; C function answers 0.
 
   ;; A type conversion: (type) → the converted type, or #f when this conversion does not apply.
   (define (type-conversion->c proc)
@@ -239,9 +240,11 @@
                            [(target-callable ...) (generate-temporaries #'(target ...))])
                #'(with-CrestObject var (type-converter-create)
                    (with-c-callables
-                       ((conversion-callable (uptr) scheme-object (type-conversion->c conversion)) ...
-                        (source-callable (uptr uptr uptr uptr uptr) scheme-object (materialization->c source)) ...
-                        (target-callable (uptr uptr uptr uptr uptr) scheme-object (materialization->c target)) ...)
+                       ((conversion-callable (uptr) uptr (type-conversion->c conversion) :source conversion) ...
+                        (source-callable (uptr uptr uptr uptr uptr) uptr (materialization->c source)
+                                         :source source) ...
+                                         (target-callable (uptr uptr uptr uptr uptr) uptr (materialization->c target)
+                                                          :source target) ...)
                      (type-converter-add-conversion var conversion-callable) ...
                      (mlir::TypeConverter::addSourceMaterialization var source-callable) ...
                      (mlir::TypeConverter::addTargetMaterialization var target-callable) ...
@@ -285,8 +288,8 @@
                #'(let ([context context-expression])
                    (with-CrestObject var (target-create context)
                      (with-c-callables
-                         ((legal-callable (uptr) scheme-object (legality->c legal-proc)) ...
-                          (unknown-callable (uptr) scheme-object (legality->c unknown-proc)) ...)
+                         ((legal-callable (uptr) int (legality->c legal-proc) :source legal-proc) ...
+                          (unknown-callable (uptr) int (legality->c unknown-proc) :source unknown-proc) ...)
                        (target-add-dynamically-legal-op var context legal-name legal-callable) ...
                        (target-mark-unknown-ops-dynamically-legal var unknown-callable) ...
                        body ...))))))])))

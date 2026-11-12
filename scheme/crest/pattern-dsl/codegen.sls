@@ -160,11 +160,13 @@
                     ;; with-RewritePatternSet take.
                     (if operands-ref
                         #'(define fname
-                            (crest-make-static-c-callable (uptr uptr uptr uptr) scheme-object
-                                                          (conversion-pattern->c procedure)))
+                            (crest-make-static-c-callable (uptr uptr uptr uptr) int
+                                                          (conversion-pattern->c procedure)
+                                                          :source procedure))
                         #'(define fname
-                            (crest-make-static-c-callable (uptr uptr) scheme-object
-                                                          (rewrite-pattern->c procedure)))))))))))))
+                            (crest-make-static-c-callable (uptr uptr) int
+                                                          (rewrite-pattern->c procedure)
+                                                          :source procedure))))))))))))
 
   ;;=======================================================================
   ;; Rewrite code — thin wrapper delegating to begin-mlir-code
