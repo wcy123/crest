@@ -20,7 +20,7 @@
           %mlir::Block::empty
           %mlir::Block::back
           %mlir::Block::front)
-  (import (rnrs) (only (chezscheme) foreign-procedure))
+  (import (rnrs) (mlir support foreign))
 
   ;; @brief mlir::Block::getArgument — return the idx-th block argument.
   ;; @param block  Block* uptr
@@ -30,7 +30,7 @@
   ;; @see          mlir/IR/Block.h
   ;; @note         Defined in lib/Bindings/IR/Block.cpp
   (define %mlir::Block::getArgument
-    (foreign-procedure "mlir::Block::getArgument" (uptr int) uptr))
+    (crest-foreign-procedure "mlir::Block::getArgument" (uptr int) uptr))
 
   ;; @brief mlir::Block::getNumArguments — return the number of block arguments.
   ;; @param block  Block* uptr (must be non-null)
@@ -38,13 +38,13 @@
   ;; @see          mlir/IR/Block.h
   ;; @note         Defined in lib/Bindings/IR/Block.cpp
   (define %mlir::Block::getNumArguments
-    (foreign-procedure "mlir::Block::getNumArguments" (uptr) uptr))
+    (crest-foreign-procedure "mlir::Block::getNumArguments" (uptr) uptr))
 
   ;; @brief mlir::Block::new — heap-allocate an empty Block.
   ;; @return  Block* uptr — ownership transferred to region on push_back
   ;; @see     mlir/IR/Block.h
   (define %mlir::Block::new
-    (foreign-procedure "mlir::Block::new" () uptr))
+    (crest-foreign-procedure "mlir::Block::new" () uptr))
 
   ;; @brief mlir::Block::addArgument — append one typed argument to a block.
   ;; @param block  Block* uptr
@@ -53,13 +53,13 @@
   ;; @return       mlir::BlockArgument opaque pointer uptr (subclass of mlir::Value)
   ;; @see          mlir/IR/Block.h
   (define %mlir::Block::addArgument
-    (foreign-procedure "mlir::Block::addArgument" (uptr uptr uptr) uptr))
+    (crest-foreign-procedure "mlir::Block::addArgument" (uptr uptr uptr) uptr))
 
   (define %mlir::Block::empty
-    (foreign-procedure "mlir::Block::empty" (uptr) int))
+    (crest-foreign-procedure "mlir::Block::empty" (uptr) int))
   (define %mlir::Block::back
-    (foreign-procedure "mlir::Block::back" (uptr) uptr))
+    (crest-foreign-procedure "mlir::Block::back" (uptr) uptr))
   (define %mlir::Block::front
-    (foreign-procedure "mlir::Block::front" (uptr) uptr))
+    (crest-foreign-procedure "mlir::Block::front" (uptr) uptr))
 
   ) ;; end library (mlir IR Block ffi)

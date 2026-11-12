@@ -10,6 +10,7 @@
 //   (define (crest::CrestObject::deletor obj) (foreign-ref 'uptr obj 0))
 
 #include "CrestObject.h"
+#include "Result.h"
 #include "SchemeWrapper.h"
 
 namespace crest {
@@ -25,6 +26,26 @@ void registerCrestObjectBindings() {
       "crest::CrestObject::delete", (void*)+[](uint64_t obj_ptr) -> void {
         auto* obj = reinterpret_cast<crest::CrestObject*>(obj_ptr);
         obj->deletor(obj);
+      });
+
+  // crest::error::set (string who) (string message) → void
+  //
+  // The guard of a callable (scheme/crest/callback.sls) calls it with the text
+  // of an error that it caught: the error is kept here, first one wins, and the
+  // next binding that returns answers it to Scheme as the error object
+  // (Result.h). It cannot fail.
+  Sregister_symbol(
+      "crest::error::set",
+      (void*)+[](const char* who, const char* message) -> void {
+        setCallbackError(who, message);
+      });
+
+  // crest::bindings::answersObject (string name) → int: 1 when `name` was
+  // registered with register_binding, so Scheme must call it through
+  // crest-foreign-procedure.
+  Sregister_symbol(
+      "crest::bindings::answersObject", (void*)+[](const char* name) -> int {
+        return detail::valueBindings().count(name) ? 1 : 0;
       });
 }
 

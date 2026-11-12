@@ -22,6 +22,7 @@
     mlir::Region::front)
   (import (rnrs)
           (mlir IR Region ffi)
+          (only (mlir IR Block ffi) %mlir::Block::new)
           (only (mlir IR Block) mlir::Block::addArgument)
           (only (mlir IR Operation) mlir::Operation::getLoc)
           (only (mlir IR Location) mlir::UnknownLoc::get))

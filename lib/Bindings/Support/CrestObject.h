@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Error.h"
 #include <cstdint> // uint64_t
 #include <utility> // std::forward for CrestBox<T> constructor
 
@@ -68,6 +69,20 @@ template <typename T> struct AsCrest : public CrestObject {
     }
     return *static_cast<T*>(obj);
   }
+
+  // The same check as an error value, for a binding that answers its error to
+  // Scheme instead of raising it (plans/04-errors-are-values.md): see CREST_TRY
+  // in Error.h.
+  static llvm::Expected<T&> tryChecked(uint64_t addr, const char* who) {
+    if (!addr) {
+      return fail(who, "null pointer");
+    }
+    auto* obj = reinterpret_cast<CrestObject*>(addr);
+    if (!obj->isa<T>()) {
+      return fail(who, "wrong CrestObject type");
+    }
+    return *static_cast<T*>(obj);
+  }
 };
 
 // Deferred definition at namespace scope — requires AsCrest<T> to be complete.
@@ -93,6 +108,13 @@ template <typename T> struct CrestBox : public AsCrest<CrestBox<T>> {
   static T& inner(uint64_t addr, const char* who) {
     return AsCrest<CrestBox<T>>::checked(addr, who).value_;
   }
+  static llvm::Expected<T&> tryInner(uint64_t addr, const char* who) {
+    auto box = AsCrest<CrestBox<T>>::tryChecked(addr, who);
+    if (!box) {
+      return box.takeError();
+    }
+    return (*box).value_;
+  }
 
 private:
   T value_;
@@ -110,6 +132,13 @@ template <typename T> struct CrestBox<T*> : public AsCrest<CrestBox<T*>> {
   static T& inner(uint64_t addr, const char* who) {
     return *AsCrest<CrestBox<T*>>::checked(addr, who).ptr_;
   }
+  static llvm::Expected<T&> tryInner(uint64_t addr, const char* who) {
+    auto box = AsCrest<CrestBox<T*>>::tryChecked(addr, who);
+    if (!box) {
+      return box.takeError();
+    }
+    return *(*box).ptr_;
+  }
 
 private:
   T* ptr_;
@@ -124,6 +153,15 @@ template <typename T> T& as_ref(uint64_t addr, const char* who) {
     return CrestBox<T*>::inner(addr, who);
   }
   return CrestBox<T>::inner(addr, who);
+}
+
+// try_as_ref: as_ref as an error value.
+template <typename T>
+llvm::Expected<T&> try_as_ref(uint64_t addr, const char* who) {
+  if (addr && reinterpret_cast<CrestObject*>(addr)->isa<CrestBox<T*>>()) {
+    return CrestBox<T*>::tryInner(addr, who);
+  }
+  return CrestBox<T>::tryInner(addr, who);
 }
 
 void registerCrestObjectBindings();

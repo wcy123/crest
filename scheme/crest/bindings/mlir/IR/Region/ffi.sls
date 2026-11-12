@@ -17,12 +17,8 @@
     %mlir::Region::push_back
     %mlir::Region::getParentOp
     %mlir::Region::front
-    %mlir::Region::emplaceBlock
-    %mlir::Block::new)
+    %mlir::Region::emplaceBlock)
   (import (rnrs) (only (chezscheme) foreign-procedure))
-
-  (define %mlir::Block::new
-    (foreign-procedure "mlir::Block::new" () uptr))
 
   (define %mlir::Region::push_back
     (foreign-procedure "mlir::Region::push_back" (uptr uptr) void))
