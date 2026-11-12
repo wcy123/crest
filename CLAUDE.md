@@ -110,8 +110,8 @@ definition. A builder-taking binding passes its non-capturing lambda to `registe
 
 A binding answers a Scheme object (`ptr`): the value (`Sunsigned64`, `Sinteger64`, `Strue`, `Svoid`, ...), or
 `scheme_error("who", "why")` on failure (Rule 20). Scheme calls it with `crest-foreign-procedure`, not
-`foreign-procedure`. A few plumbing functions (`crest::logging::*`, `crest::error::*`) answer a C type and are
-called with `foreign-procedure`.
+`foreign-procedure`. A few plumbing functions (`crest::logging::*`) answer a C type and are called with
+`foreign-procedure`.
 
 ### Rule 13 — Internal Scheme helpers use `%%` prefix
 
@@ -261,16 +261,19 @@ Named `let` is still fine for irregular recursion (mutual, non-linear stepping).
 ## Rule 17 — Scheme makes every callback; the caller owns its lifetime
 
 C++ never makes, owns, locks or releases a callback. A binding that needs one takes a plain C function pointer
-as its parameter (`void (*visit)(uint64_t)`) and calls it. Scheme makes the C function, a `foreign-callable`
+as its parameter (`ptr (*visit)(uint64_t)`) and calls it. Scheme makes the C function, a `foreign-callable`
 whose code object is locked (the garbage collector moves Scheme objects, so a procedure is never stored as a
-`ptr`), and whoever calls the low-level function decides how long it lives (`(crest callback)`):
+`ptr`), and whoever calls the low-level function decides how long it lives (`(crest callback)`). The C function
+answers a Scheme object: what the procedure answered (a number, `#t`, `#f`, void), or the pair `(who . why)` when it
+raised an error, which the C++ that called it reports as a diagnostic (`isSchemeError`, `emitSchemeError` in
+`lib/Bindings/Support/Result.h`):
 
-- `(crest-make-static-c-callable (type ...) result proc)` makes it, locks it for good and answers its address.
+- `(crest-make-static-c-callable (type ...) proc)` makes it, locks it for good and answers its address.
   Use it only at the library level, for a callback that uses no state of a run (an op's clause, a dialect's
   callback, the body of a `define-pass`, a pattern made by `define-conversion-pattern`): it is made once, when the
   library loads. A callback that uses the state of a run (a type converter, a target) is made by `with-c-callable`
   or by a clause, so that a scope releases it; never make one per run with this.
-- `(with-c-callable (name (type ...) result value) body ...)` makes it for `body` and unlocks it after, also on an
+- `(with-c-callable (name (type ...) value) body ...)` makes it for `body` and unlocks it after, also on an
   error. `value` is a procedure, or a code object that the caller made and locked, or the address of a locked
   callable (reused, never unlocked by the macro; an error if it is not locked).
 - A function that only calls the callback while it runs (`mlir::Operation::walk`,
@@ -286,15 +289,21 @@ whose code object is locked (the garbage collector moves Scheme objects, so a pr
   into one with C types; they pass an address through.
 
 **No error leaves a callable.** C++ calls a callable through a C function pointer, so an error that escaped it
-would cross the C++ frames (Rule 20). Every callable made by the macros above, and by `crest-slot-callable`,
-catches it with `guard`, stores the who and the text in the C++ slot (`crest::error::set`, first error wins) and
-answers the zero value of its result type (`void`, 0, `#f`, 0.0, `(0 . 0)` for a range). While an error is pending
-a callable runs nothing and answers the zero value, so C++ code that retries does not loop. The Scheme binding that
-was running the callback answers the stored error when it returns (`register_binding` checks the slot), and
-Scheme raises it there. With no binding on the stack (`crest-opt` loading a dialect, `--crest-pass`) the C++ code
-that ran the callback looks at the slot (`failIfUnanswered`, or the pass reports it). A Scheme procedure that a
-binding calls from C++ (the clauses of `InferTypeOpInterface`) is wrapped with `crest-guard-procedure`, and the
-pass of `--crest-pass` is called through `crest-call-guarded`. `test/dsl/callback-errors` checks each kind.
+would cross the C++ frames (Rule 20). Every callable made by `crest-make-static-c-callable`, `with-c-callable` and
+`with-c-callables` catches it with `guard` and answers a Scheme object: what the procedure answered (an integer,
+`#t`/`#f`, void), or the pair `(who . why)` when it raised. These macros take no result type. The C++ code that
+made the call reads the answer (`isSchemeError`, `lib/Bindings/Support/Result.h`):
+
+- MLIR code that calls the callable (a pattern, the legality check, a type conversion, a dialect, op or type hook,
+  a pass) reports the error as a diagnostic (`emitSchemeError`) and answers failure to MLIR.
+- A binding that calls the callable itself (`mlir::Operation::walk`, `mlir::RewriterBase::modifyOpInPlace`,
+  `mlir::affine::buildAffineLoopNest`) stops at the first error and answers it (`FirstSchemeError`), and Scheme
+  raises it there.
+- The pass of `--crest-pass` is called through `crest-call-guarded`, which answers the value or the pair.
+
+The callables of an interface slot (`crest-slot-callable`, `crest-make-raw-c-callable`) are not guarded: MLIR
+calls them with its own prototype, so they cannot answer a pair, and their procedures must not raise.
+`test/dsl/callback-errors` checks each kind.
 
 C++ does not check the prototype: a mismatch between the Scheme types and the C++ function pointer type crashes.
 A callback used after its scope ends crashes too. `test/dsl/callback-leaks` checks that scoped callables are
@@ -309,9 +318,8 @@ and the steps to move the pin.
 
 Only scalars cross the boundary (`uptr`, `int`, `unsigned-32`, strings); a range is a pointer and a count, read
 back with `crest-callback-pointer-list`, and a list that Scheme answers is pushed through a `foreign-procedure`
-into a sink that C++ passes. A callback that has a verdict (a verifier, a parser, a pass) catches an error with
-`guard`, gives its text to C++ (`reportFailure`) and answers failure, so the diagnostic has the text instead of
-the process ending. `scheme_call` stays for the control plane (a top-level name, or the procedure that Scheme
+into a sink that C++ passes. A callback that has a verdict (a verifier, a parser, a pass) answers its verdict, and its error is a
+diagnostic, as above. `scheme_call` stays for the control plane (a top-level name, or the procedure that Scheme
 gave as an argument of the foreign call that is running), and for one more case: a procedure that C++ needs only
 while it registers something (the `(TypeID . dispatcher)` pairs of an op's `:interfaces` entries,
 `lib/Crest/Op.cpp`) is held in a `crest::LockedSchemeObject` for that call, and C++ gets the entry points from the
@@ -354,10 +362,11 @@ So failure is an ordinary return value, and Scheme raises it after the C++ call 
   answers is a pair of a symbol and a string.
 - **The lookups of a handle that Scheme gives** answer a pointer, or `nullptr`: `CrestBox<T>::inner(address)`,
   `as_ref<T>(address)` and `as_context(address)`. The binding checks it and answers `scheme_error`.
-- **A callback that fails** (Rule 17) stores its error in the C++ slot; `crest-foreign-procedure` raises it when
-  the binding that ran the callback returns.
+- **C++ calls Scheme** (Rule 17): the callable answers a Scheme object, the value or `(who . why)`; C++ reads it
+  and reports the error as a diagnostic, or (a binding that calls the callable itself) answers it to Scheme. There
+  is no side channel: no slot, no flag, no counter.
 - **No raising from C++ at all**: not `llvm::report_fatal_error` for an error in the program's input (it is for an
-  internal invariant that generated code broke, and for a dialect that fails to load with no binding on the stack).
+  internal invariant that generated code broke).
 - **Destructors run**: because nothing is skipped, a binding may hold `std::string`, `SmallVector`,
   `unique_ptr` and `LockedSchemeObject` when it fails. `test/dsl/errors-are-values`, `test/dsl/error-path-leak` and
   `FailingBindingDoesNotLeakCppMemory` (`unittests/Interpreter`) check that a failing binding leaves no heap behind.

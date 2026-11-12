@@ -179,17 +179,22 @@ void registerIROperationBindings() {
       });
   Sregister_symbol(
       "mlir::Operation::walk",
-      (void*)+[](uint64_t op, void (*visit)(uint64_t)) -> ptr {
+      (void*)+[](uint64_t op, ptr (*visit)(uint64_t)) -> ptr {
         // `visit` is a C function that Scheme made, and Scheme
-        // keeps it alive until the walk returns.
+        // keeps it alive until the walk returns. It answers an error as
+        // (who . why): the walk stops and the binding answers that error.
         if (!op) {
           return Svoid;
         }
         mlir::Operation* cppOp = reinterpret_cast<mlir::Operation*>(op);
-        cppOp->walk([visit](mlir::Operation* walkOp) {
-          visit(reinterpret_cast<uint64_t>(walkOp));
+        crest::FirstSchemeError error;
+        cppOp->walk([&](mlir::Operation* walkOp) {
+          if (error.record(visit(reinterpret_cast<uint64_t>(walkOp)))) {
+            return mlir::WalkResult::interrupt();
+          }
+          return mlir::WalkResult::advance();
         });
-        return Svoid;
+        return error ? error.answer() : Svoid;
       });
   Sregister_symbol(
       "mlir::Operation::setOperand",

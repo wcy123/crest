@@ -16,7 +16,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "../lib/Bindings/Support/Result.h"
 #include "../lib/Crest/Dialect.h"
 #include "crest/Passes/Passes.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
@@ -43,9 +42,6 @@ static llvm::cl::list<std::string> SchemeDialects(
     llvm::cl::ZeroOrMore);
 
 int main(int argc, char** argv) {
-  // MLIR drives, and loads a Scheme dialect while it parses: no Scheme program
-  // is there to raise the error of a callback (see unansweredErrorStops).
-  crest::unansweredErrorStops() = true;
   mlir::DialectRegistry registry;
   // The dialects the Scheme passes and the Toy tutorial create ops of, as toyc
   // registers them.

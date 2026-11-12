@@ -24,19 +24,20 @@ void registerDialectAffineIRAffineOpsBindings() {
   //   lbs, ubs, steps: Scheme lists of integers
   //   body-fn: a C function that Scheme made and keeps alive until the call
   //   returns, (nested-builder loc ivs count) → void, the callback of the C++
-  //   function
+  //   function; an error of it is the answer of the binding
   //     nested-builder: builder shell, valid only during the call
   //     ivs: pointer to the Value uptrs (the induction variables), and count
   register_builder_binding(
       "mlir::affine::buildAffineLoopNest",
       [](mlir::OpBuilder& builder, uint64_t loc_ptr, ptr lbs, ptr ubs,
          ptr steps,
-         void (*body)(uint64_t, uint64_t, const uint64_t*, uint64_t)) -> ptr {
+         ptr (*body)(uint64_t, uint64_t, const uint64_t*, uint64_t)) -> ptr {
         auto lowerBounds = convert_to_cpp<llvm::SmallVector<int64_t>>(lbs);
         auto upperBounds = convert_to_cpp<llvm::SmallVector<int64_t>>(ubs);
         auto stepValues = convert_to_cpp<llvm::SmallVector<int64_t>>(steps);
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
+        crest::FirstSchemeError error;
         mlir::affine::buildAffineLoopNest(
             builder, loc, lowerBounds, upperBounds, stepValues,
             [&](mlir::OpBuilder& nb, mlir::Location nb_loc,
@@ -48,11 +49,12 @@ void registerDialectAffineIRAffineOpsBindings() {
                 iv_pointers.push_back(
                     reinterpret_cast<uint64_t>(iv.getAsOpaquePointer()));
               }
-              body(reinterpret_cast<uint64_t>(&nb_shell),
-                   reinterpret_cast<uint64_t>(nb_loc.getAsOpaquePointer()),
-                   iv_pointers.data(), iv_pointers.size());
+              error.record(
+                  body(reinterpret_cast<uint64_t>(&nb_shell),
+                       reinterpret_cast<uint64_t>(nb_loc.getAsOpaquePointer()),
+                       iv_pointers.data(), iv_pointers.size()));
             });
-        return Svoid;
+        return error ? error.answer() : Svoid;
       });
 
   // AffineLoadOp::create(OpBuilder&, Location, Value memref, ValueRange

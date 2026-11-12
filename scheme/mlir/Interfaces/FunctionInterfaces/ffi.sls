@@ -29,14 +29,14 @@
     (crest-foreign-procedure "mlir::FunctionOpInterface::setFunctionTypeAttr" (uptr uptr) void))
 
   (define %mlir::FunctionOpInterface::verifyBody
-    (crest-foreign-procedure "mlir::FunctionOpInterface::verifyBody" (uptr) boolean))
+    (crest-foreign-procedure "mlir::FunctionOpInterface::verifyBody" (uptr) ptr))
 
   (define %mlir::FunctionOpInterface::verifyType
-    (crest-foreign-procedure "mlir::FunctionOpInterface::verifyType" (uptr) boolean))
+    (crest-foreign-procedure "mlir::FunctionOpInterface::verifyType" (uptr) ptr))
 
   (define %mlir::function_interface_impl::parseFunctionOp
     (crest-foreign-procedure "mlir::function_interface_impl::parseFunctionOp"
-                             (uptr uptr) boolean))
+                             (uptr uptr) ptr))
 
   (define %mlir::function_interface_impl::printFunctionOp
     (crest-foreign-procedure "mlir::function_interface_impl::printFunctionOp"

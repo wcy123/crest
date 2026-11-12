@@ -325,7 +325,7 @@ void registerIROpImplementationBindings() {
         auto type = mlir::Type::getFromOpaquePointer(
             reinterpret_cast<const void*>(type_ptr));
         auto& state = *reinterpret_cast<mlir::OperationState*>(state_ptr);
-        return Sinteger64(
+        return scheme_bool(
             !p->resolveOperands(ops->inner(), type, state.operands));
       });
 
@@ -339,8 +339,8 @@ void registerIROpImplementationBindings() {
             mlir::cast<mlir::FunctionType>(mlir::Type::getFromOpaquePointer(
                 reinterpret_cast<const void*>(func_type_ptr)));
         auto& state = *reinterpret_cast<mlir::OperationState*>(state_ptr);
-        return Sinteger64(!p->resolveOperands(ops->inner(), ft.getInputs(),
-                                              p->getNameLoc(), state.operands));
+        return scheme_bool(!p->resolveOperands(
+            ops->inner(), ft.getInputs(), p->getNameLoc(), state.operands));
       });
 
   // crest::OpAsmParser::freeOperands (uptr operands) → void
@@ -393,7 +393,7 @@ void registerIROpImplementationBindings() {
       (void*)+[](uint64_t parser_ptr, uint64_t state_ptr) -> ptr {
         auto* p = reinterpret_cast<mlir::OpAsmParser*>(parser_ptr);
         auto& state = *reinterpret_cast<mlir::OperationState*>(state_ptr);
-        return Sinteger64(!p->parseOptionalAttrDict(state.attributes));
+        return scheme_bool(!p->parseOptionalAttrDict(state.attributes));
       });
 
   Sregister_symbol(
@@ -438,27 +438,27 @@ void registerIROpImplementationBindings() {
       "mlir::OpAsmParser::parseKeyword",
       (void*)+[](uint64_t parser_ptr, const char* kw) -> ptr {
         auto* p = reinterpret_cast<mlir::OpAsmParser*>(parser_ptr);
-        return Sinteger64(!p->parseKeyword(kw));
+        return scheme_bool(!p->parseKeyword(kw));
       });
 
   Sregister_symbol(
       "mlir::OpAsmParser::parseLParen", (void*)+[](uint64_t parser_ptr) -> ptr {
-        return Sinteger64(
+        return scheme_bool(
             !reinterpret_cast<mlir::OpAsmParser*>(parser_ptr)->parseLParen());
       });
   Sregister_symbol(
       "mlir::OpAsmParser::parseRParen", (void*)+[](uint64_t parser_ptr) -> ptr {
-        return Sinteger64(
+        return scheme_bool(
             !reinterpret_cast<mlir::OpAsmParser*>(parser_ptr)->parseRParen());
       });
   Sregister_symbol(
       "mlir::OpAsmParser::parseColon", (void*)+[](uint64_t parser_ptr) -> ptr {
-        return Sinteger64(
+        return scheme_bool(
             !reinterpret_cast<mlir::OpAsmParser*>(parser_ptr)->parseColon());
       });
   Sregister_symbol(
       "mlir::OpAsmParser::parseComma", (void*)+[](uint64_t parser_ptr) -> ptr {
-        return Sinteger64(
+        return scheme_bool(
             !reinterpret_cast<mlir::OpAsmParser*>(parser_ptr)->parseComma());
       });
   // parseOptionalComma — succeeds silently if no comma; returns 1 if comma
@@ -466,35 +466,35 @@ void registerIROpImplementationBindings() {
   Sregister_symbol(
       "mlir::OpAsmParser::parseOptionalComma",
       (void*)+[](uint64_t parser_ptr) -> ptr {
-        return Sinteger64(!reinterpret_cast<mlir::OpAsmParser*>(parser_ptr)
-                               ->parseOptionalComma());
+        return scheme_bool(!reinterpret_cast<mlir::OpAsmParser*>(parser_ptr)
+                                ->parseOptionalComma());
       });
   Sregister_symbol(
       "mlir::OpAsmParser::parseArrow", (void*)+[](uint64_t parser_ptr) -> ptr {
-        return Sinteger64(
+        return scheme_bool(
             !reinterpret_cast<mlir::OpAsmParser*>(parser_ptr)->parseArrow());
       });
   Sregister_symbol(
       "mlir::OpAsmParser::parseLess", (void*)+[](uint64_t parser_ptr) -> ptr {
-        return Sinteger64(
+        return scheme_bool(
             !reinterpret_cast<mlir::OpAsmParser*>(parser_ptr)->parseLess());
       });
   Sregister_symbol(
       "mlir::OpAsmParser::parseGreater",
       (void*)+[](uint64_t parser_ptr) -> ptr {
-        return Sinteger64(
+        return scheme_bool(
             !reinterpret_cast<mlir::OpAsmParser*>(parser_ptr)->parseGreater());
       });
   Sregister_symbol(
       "mlir::OpAsmParser::parseLSquare",
       (void*)+[](uint64_t parser_ptr) -> ptr {
-        return Sinteger64(
+        return scheme_bool(
             !reinterpret_cast<mlir::OpAsmParser*>(parser_ptr)->parseLSquare());
       });
   Sregister_symbol(
       "mlir::OpAsmParser::parseRSquare",
       (void*)+[](uint64_t parser_ptr) -> ptr {
-        return Sinteger64(
+        return scheme_bool(
             !reinterpret_cast<mlir::OpAsmParser*>(parser_ptr)->parseRSquare());
       });
 
@@ -521,11 +521,9 @@ void registerIROpImplementationBindings() {
 
   Sregister_symbol(
       "mlir::isa<FunctionType>", (void*)+[](uint64_t type_ptr) -> ptr {
-        return Sinteger64(
+        return scheme_bool(
             mlir::isa<mlir::FunctionType>(mlir::Type::getFromOpaquePointer(
-                reinterpret_cast<void*>(type_ptr)))
-                ? 1
-                : 0);
+                reinterpret_cast<void*>(type_ptr))));
       });
 
   Sregister_symbol(

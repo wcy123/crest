@@ -71,7 +71,7 @@ void registerInterfacesFunctionInterfacesBindings() {
                               std::string&) -> mlir::Type {
           return builder.getFunctionType(argTypes, resTypes);
         };
-        return Sinteger64(!mlir::function_interface_impl::parseFunctionOp(
+        return scheme_bool(!mlir::function_interface_impl::parseFunctionOp(
             *p, state, /*allowVariadic=*/false,
             mlir::StringAttr::get(state.getContext(), "function_type"),
             typeBuilder, mlir::StringAttr::get(state.getContext(), "arg_attrs"),
@@ -171,7 +171,7 @@ void registerInterfacesFunctionInterfacesBindings() {
               llvm::Twine("op does not implement FunctionOpInterface:") + " " +
                   llvm::Twine(op->getName().getStringRef()));
         }
-        return Sinteger64(mlir::succeeded(c->verifyBody(c, op)) ? 1 : 0);
+        return scheme_bool(mlir::succeeded(c->verifyBody(c, op)));
       });
 
   Sregister_symbol(
@@ -185,7 +185,7 @@ void registerInterfacesFunctionInterfacesBindings() {
               llvm::Twine("op does not implement FunctionOpInterface:") + " " +
                   llvm::Twine(op->getName().getStringRef()));
         }
-        return Sinteger64(mlir::succeeded(c->verifyType(c, op)) ? 1 : 0);
+        return scheme_bool(mlir::succeeded(c->verifyType(c, op)));
       });
 }
 

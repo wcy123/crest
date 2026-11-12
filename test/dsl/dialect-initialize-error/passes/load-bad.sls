@@ -1,5 +1,5 @@
 #!r6rs
-;; A pass that loads the dialect of bad-dialect.sls and catches the error.
+;; A pass that loads the dialect of bad-dialect.sls.
 (library (passes load-bad)
   (export run-pass)
   (import (chezscheme)

@@ -27,22 +27,23 @@ namespace crest {
 /// The entry points are those of foreign-callables that the dialect's library
 /// made once (scheme/crest/dialect/callbacks.sls); they stay valid for the
 /// process, so a closure over one is all the unique_function needs. Objects
-/// cross as integers; an answer of 0 from a verifier or a parser is a failure,
-/// and when the Scheme side raised an error it first said why
-/// (crest::DynamicOp::reportFailure).
+/// cross as integers. Each callable answers a Scheme object: the value (an
+/// answer of 0 from a verifier or a parser is a failure), or the pair
+/// (who . why) when its Scheme procedure raised an error (Result.h:
+/// isSchemeError), which the hook reports as a diagnostic and fails.
 class CrestOp {
 public:
   struct Callbacks {
-    int (*verify)(uint64_t op) = nullptr;                               // 0
-    int (*verify_regions)(uint64_t op) = nullptr;                       // 1
-    int (*parse)(uint64_t parser, uint64_t state) = nullptr;            // 2
-    void (*print)(uint64_t op, uint64_t printer) = nullptr;             // 3
-    int (*fold)(uint64_t op, const void* const* operand_attrs, uint64_t n,
-                void* folded) = nullptr;                                // 4
-    void (*get_canonicalization_patterns)(uint64_t patterns) = nullptr; // 5
-    void (*populate_default_attrs)(uint64_t name,
-                                   uint64_t attrs) = nullptr;           // 6
-    std::vector<std::vector<std::string>> traits;                       // 7
+    ptr (*verify)(uint64_t op) = nullptr;                              // 0
+    ptr (*verify_regions)(uint64_t op) = nullptr;                      // 1
+    ptr (*parse)(uint64_t parser, uint64_t state) = nullptr;           // 2
+    ptr (*print)(uint64_t op, uint64_t printer) = nullptr;             // 3
+    ptr (*fold)(uint64_t op, const void* const* operand_attrs, uint64_t n,
+                void* folded) = nullptr;                               // 4
+    ptr (*get_canonicalization_patterns)(uint64_t patterns) = nullptr; // 5
+    ptr (*populate_default_attrs)(uint64_t name,
+                                  uint64_t attrs) = nullptr;           // 6
+    std::vector<std::vector<std::string>> traits;                      // 7
   };
 
   /// Build a DynamicOpDefinition from the callbacks and register it into

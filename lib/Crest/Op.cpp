@@ -31,17 +31,6 @@ namespace crest {
 
 namespace {
 
-// The text of an error that a Scheme callback raised, which its callable gives
-// (crest::DynamicOp::reportFailure) before it answers 0, so that the diagnostic
-// can carry it. Empty when the callback just said no.
-std::string g_reported_failure;
-
-std::string takeReportedFailure() {
-  std::string message = std::move(g_reported_failure);
-  g_reported_failure.clear();
-  return message;
-}
-
 // What MLIR collects while a folder runs; Scheme pushes into it.
 using FoldedResults = llvm::SmallVector<mlir::OpFoldResult>;
 
@@ -79,42 +68,36 @@ const llvm::DenseMap<mlir::TypeID, AttachInterfaceFn>& getAttachInterfaceFns() {
 // ---------------------------------------------------------------------------
 
 static mlir::OperationName::VerifyInvariantsFn
-make_verify_fn(int (*fn)(uint64_t)) {
+make_verify_fn(ptr (*fn)(uint64_t)) {
   if (!fn) {
     return [](mlir::Operation*) { return mlir::success(); };
   }
   return [fn](mlir::Operation* op) -> llvm::LogicalResult {
-    if (fn(reinterpret_cast<uint64_t>(op)) != 0) {
-      return mlir::success();
+    ptr answer = fn(reinterpret_cast<uint64_t>(op));
+    if (isSchemeError(answer)) {
+      return op->emitOpError() << schemeErrorText(answer);
     }
-    std::string message = takeReportedFailure();
-    if (message.empty()) {
-      return mlir::failure();
-    }
-    return op->emitOpError() << message;
+    return Sinteger64_value(answer) != 0 ? mlir::success() : mlir::failure();
   };
 }
 
-static mlir::OperationName::ParseAssemblyFn make_parse_fn(int (*fn)(uint64_t,
+static mlir::OperationName::ParseAssemblyFn make_parse_fn(ptr (*fn)(uint64_t,
                                                                     uint64_t)) {
   return [fn](mlir::OpAsmParser& parser,
               mlir::OperationState& state) -> mlir::ParseResult {
-    if (fn(reinterpret_cast<uint64_t>(&parser),
-           reinterpret_cast<uint64_t>(&state)) != 0) {
-      return mlir::ParseResult::success();
+    ptr answer = fn(reinterpret_cast<uint64_t>(&parser),
+                    reinterpret_cast<uint64_t>(&state));
+    if (isSchemeError(answer)) {
+      parser.emitError(parser.getCurrentLocation()) << schemeErrorText(answer);
+      return mlir::ParseResult::failure();
     }
-    std::string message = takeReportedFailure();
-    if (!message.empty()) {
-      mlir::InFlightDiagnostic diagnostic =
-          parser.emitError(parser.getCurrentLocation());
-      diagnostic << message;
-    }
-    return mlir::ParseResult::failure();
+    return Sinteger64_value(answer) != 0 ? mlir::ParseResult::success()
+                                         : mlir::ParseResult::failure();
   };
 }
 
-static mlir::OperationName::PrintAssemblyFn
-make_print_fn(void (*fn)(uint64_t, uint64_t)) {
+static mlir::OperationName::PrintAssemblyFn make_print_fn(ptr (*fn)(uint64_t,
+                                                                    uint64_t)) {
   return [fn](mlir::Operation* op, mlir::OpAsmPrinter& printer,
               llvm::StringRef defaultDialect) {
     // printAssembly must print the op name first, then the rest.
@@ -124,12 +107,16 @@ make_print_fn(void (*fn)(uint64_t, uint64_t)) {
       opName = opName.drop_front(defaultDialect.size() + 1);
     }
     printer << opName;
-    fn(reinterpret_cast<uint64_t>(op), reinterpret_cast<uint64_t>(&printer));
+    ptr answer = fn(reinterpret_cast<uint64_t>(op),
+                    reinterpret_cast<uint64_t>(&printer));
+    if (isSchemeError(answer)) {
+      emitSchemeError(op->getLoc(), answer);
+    }
   };
 }
 
 static mlir::OperationName::FoldHookFn
-make_fold_fn(int (*fn)(uint64_t, const void* const*, uint64_t, void*)) {
+make_fold_fn(ptr (*fn)(uint64_t, const void* const*, uint64_t, void*)) {
   if (!fn) {
     return [](mlir::Operation*, llvm::ArrayRef<mlir::Attribute>,
               llvm::SmallVectorImpl<mlir::OpFoldResult>&) {
@@ -141,8 +128,8 @@ make_fold_fn(int (*fn)(uint64_t, const void* const*, uint64_t, void*)) {
   // folds to or #f (0 here). A result is (value . v) or (attribute . a), as
   // made by fold-value and fold-attribute; Scheme pushes each into `folded`
   // (crest::Fold::addValue / addAttribute). Answering 1 with nothing pushed
-  // means the op was folded in place; 0 is no fold, or an error when Scheme
-  // said why.
+  // means the op was folded in place; 0 is no fold, and (who . why) is an
+  // error of the Scheme procedure.
   return [fn](mlir::Operation* op, llvm::ArrayRef<mlir::Attribute> operandAttrs,
               llvm::SmallVectorImpl<mlir::OpFoldResult>& results) {
     llvm::SmallVector<const void*, 4> attrs;
@@ -150,13 +137,14 @@ make_fold_fn(int (*fn)(uint64_t, const void* const*, uint64_t, void*)) {
       attrs.push_back(attr ? attr.getAsOpaquePointer() : nullptr);
     }
     FoldedResults folded;
-    if (fn(reinterpret_cast<uint64_t>(op), attrs.data(),
-           static_cast<uint64_t>(attrs.size()),
-           static_cast<void*>(&folded)) == 0) {
-      std::string message = takeReportedFailure();
-      if (!message.empty()) {
-        op->emitError(message);
-      }
+    ptr answer =
+        fn(reinterpret_cast<uint64_t>(op), attrs.data(),
+           static_cast<uint64_t>(attrs.size()), static_cast<void*>(&folded));
+    if (isSchemeError(answer)) {
+      emitSchemeError(op->getLoc(), answer);
+      return mlir::failure();
+    }
+    if (Sinteger64_value(answer) == 0) {
       return mlir::failure();
     }
     if (!folded.empty() && folded.size() != op->getNumResults()) {
@@ -170,25 +158,33 @@ make_fold_fn(int (*fn)(uint64_t, const void* const*, uint64_t, void*)) {
 }
 
 static mlir::DynamicOpDefinition::GetCanonicalizationPatternsFn
-make_canon_fn(void (*fn)(uint64_t)) {
+make_canon_fn(ptr (*fn)(uint64_t)) {
   if (!fn) {
     return [](mlir::RewritePatternSet&, mlir::MLIRContext*) {};
   }
   // The callback gets the pattern set as a borrowed shell, valid for the call
   // only.
-  return [fn](mlir::RewritePatternSet& patterns, mlir::MLIRContext*) {
+  return [fn](mlir::RewritePatternSet& patterns, mlir::MLIRContext* ctx) {
     CrestBox<mlir::RewritePatternSet*> shell(&patterns);
-    fn(reinterpret_cast<uint64_t>(&shell));
+    ptr answer = fn(reinterpret_cast<uint64_t>(&shell));
+    if (isSchemeError(answer)) {
+      emitSchemeError(mlir::UnknownLoc::get(ctx), answer);
+    }
   };
 }
 
 static mlir::OperationName::PopulateDefaultAttrsFn
-make_default_attrs_fn(void (*fn)(uint64_t, uint64_t)) {
+make_default_attrs_fn(ptr (*fn)(uint64_t, uint64_t)) {
   if (!fn) {
     return [](const mlir::OperationName&, mlir::NamedAttrList&) {};
   }
   return [fn](const mlir::OperationName& name, mlir::NamedAttrList& attrs) {
-    fn(reinterpret_cast<uint64_t>(&name), reinterpret_cast<uint64_t>(&attrs));
+    ptr answer = fn(reinterpret_cast<uint64_t>(&name),
+                    reinterpret_cast<uint64_t>(&attrs));
+    if (isSchemeError(answer)) {
+      mlir::OperationName copy = name;
+      emitSchemeError(mlir::UnknownLoc::get(copy.getContext()), answer);
+    }
   };
 }
 
@@ -330,18 +326,6 @@ static std::string registerOpFromScheme(uint64_t dialect_ptr,
 }
 
 void registerCrestDynamicOpBindings() {
-  // crest::DynamicOp::reportFailure (string message)
-  //
-  // The callable of a verifier, parser or folder calls it with the text of the
-  // error its Scheme callback raised (or of a result that is wrong), before it
-  // answers 0, so that the diagnostic shows it.
-  Sregister_symbol(
-      "crest::DynamicOp::reportFailure",
-      (void*)+[](const char* message) -> ptr {
-        g_reported_failure = message;
-        return Svoid;
-      });
-
   // crest::Fold::addValue (uptr folded) (uptr value)
   // crest::Fold::addAttribute (uptr folded) (uptr attribute)
   //

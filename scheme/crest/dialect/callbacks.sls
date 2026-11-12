@@ -28,8 +28,8 @@
 ;;   - a pointer that is #f is 0 (a parse that failed, no constant);
 ;;   - get-dependent-dialects answers a list of dialect names (strings);
 ;;   - a verifier says yes with any value but #f. An error that it raises does not leave the
-;;     callable: its text goes to the diagnostic and the verifier fails. So does a parser's, and a
-;;     folder's;
+;;     callable: the callable answers it to C++ as (who . why), which reports it as the diagnostic of
+;;     the failure. So it does for every procedure here (a parser, a folder, a printer, ...);
 ;;   - a folder answers #f (no fold) or a list of (fold-value v) and (fold-attribute a), the empty
 ;;     list for an op that it changed in place; its operand attributes are a list of one entry per
 ;;     operand, the constant attribute or #f;
@@ -45,41 +45,27 @@
           (crest callback)
           (crest dialect ffi))
 
-  ;; The verdict of a verifier as C wants it: 1 or 0.
-  (define (%%verdict thunk)
-    (guard (c [#t (%crest::CrestDialect::reportFailure (crest-callback-condition-text c)) 0])
-      (if (thunk) 1 0)))
-
-  ;; The same for the verifier, the parser and the folder of an op: 1 or 0, and an error that
-  ;; they raise is reported.
-  (define (%%op-verdict thunk)
-    (guard (c [#t (%crest::DynamicOp::reportFailure (crest-callback-condition-text c)) 0])
-      (if (thunk) 1 0)))
-
   ;; The folder of an op as C wants it. Its operands come as a pointer and a count (0 for no
-  ;; constant); its answer is pushed into `folded` one result at a time. 0 is no fold, or an error
-  ;; that was reported; 1 is a fold, with no result at all when the op was changed in place.
+  ;; constant); its answer is pushed into `folded` one result at a time. 0 is no fold; 1 is a fold,
+  ;; with no result at all when the op was changed in place.
   (define (%%fold-entry-point fold)
     (crest-make-static-c-callable
-     (uptr uptr uptr uptr) int
+     (uptr uptr uptr uptr)
      (lambda (op attributes count folded)
-       (guard (c [#t (%crest::DynamicOp::reportFailure (crest-callback-condition-text c)) 0])
-         (let ([result (fold op (map (lambda (attribute) (if (eqv? attribute 0) #f attribute))
-                                     (crest-callback-pointer-list attributes count)))])
-           (let push ([results result])
-             (cond
-              [(not results) 0]
-              [(not (pair? results)) 1]
-              [(and (pair? (car results)) (eq? (caar results) 'value))
-               (%crest::Fold::addValue folded (cdar results))
-               (push (cdr results))]
-              [(and (pair? (car results)) (eq? (caar results) 'attribute))
-               (%crest::Fold::addAttribute folded (cdar results))
-               (push (cdr results))]
-              [else
-               (%crest::DynamicOp::reportFailure
-                "fold callback: a result must be made by fold-value or fold-attribute")
-               0])))))))
+       (let ([result (fold op (map (lambda (attribute) (if (eqv? attribute 0) #f attribute))
+                                   (crest-callback-pointer-list attributes count)))])
+         (let push ([results result])
+           (cond
+            [(not results) 0]
+            [(not (pair? results)) 1]
+            [(and (pair? (car results)) (eq? (caar results) 'value))
+             (%crest::Fold::addValue folded (cdar results))
+             (push (cdr results))]
+            [(and (pair? (car results)) (eq? (caar results) 'attribute))
+             (%crest::Fold::addAttribute folded (cdar results))
+             (push (cdr results))]
+            [else
+             (error #f "fold callback: a result must be made by fold-value or fold-attribute")]))))))
 
   (define (crest-dialect-callback-entries initialize get-dependent-dialects parse-attribute
                                           print-attribute parse-type print-type
@@ -88,56 +74,55 @@
                                           verify-region-result-attr interfaces)
     (vector
      (if initialize
-         (crest-make-static-c-callable (uptr) void initialize)
+         (crest-make-static-c-callable (uptr) initialize)
          0)
      (if get-dependent-dialects
          (crest-make-static-c-callable
-          (uptr) void
+          (uptr)
           (lambda (dialect)
             (for-each (lambda (name) (%crest::CrestDialect::loadDependentDialect dialect name))
                       (get-dependent-dialects))))
          0)
      (if parse-attribute
          (crest-make-static-c-callable
-          (uptr uptr) uptr
+          (uptr uptr)
           (lambda (parser type) (or (parse-attribute parser type) 0)))
          0)
      (if print-attribute
-         (crest-make-static-c-callable (uptr uptr) void print-attribute)
+         (crest-make-static-c-callable (uptr uptr) print-attribute)
          0)
      (if parse-type
          (crest-make-static-c-callable
-          (uptr) uptr
+          (uptr)
           (lambda (parser) (or (parse-type parser) 0)))
          0)
      (if print-type
-         (crest-make-static-c-callable (uptr uptr) void print-type)
+         (crest-make-static-c-callable (uptr uptr) print-type)
          0)
      (if materialize-constant
          (crest-make-static-c-callable
-          (uptr uptr uptr uptr) uptr
+          (uptr uptr uptr uptr)
           (lambda (builder value type loc) (or (materialize-constant builder value type loc) 0)))
          0)
      (if get-canonicalization-patterns
-         (crest-make-static-c-callable (uptr) void get-canonicalization-patterns)
+         (crest-make-static-c-callable (uptr) get-canonicalization-patterns)
          0)
      (if verify-op-attr
          (crest-make-static-c-callable
-          (uptr uptr) int
-          (lambda (op attr) (%%verdict (lambda () (verify-op-attr op attr)))))
+          (uptr uptr)
+          (lambda (op attr) (if (verify-op-attr op attr) 1 0)))
          0)
      (if verify-region-arg-attr
          (crest-make-static-c-callable
-          (uptr unsigned-32 unsigned-32 uptr) int
+          (uptr unsigned-32 unsigned-32 uptr)
           (lambda (op region-index arg-index attr)
-            (%%verdict (lambda () (verify-region-arg-attr op region-index arg-index attr)))))
+            (if (verify-region-arg-attr op region-index arg-index attr) 1 0)))
          0)
      (if verify-region-result-attr
          (crest-make-static-c-callable
-          (uptr unsigned-32 unsigned-32 uptr) int
+          (uptr unsigned-32 unsigned-32 uptr)
           (lambda (op region-index result-index attr)
-            (%%verdict (lambda ()
-                         (verify-region-result-attr op region-index result-index attr)))))
+            (if (verify-region-result-attr op region-index result-index attr) 1 0)))
          0)
      ;; Slot 11, data: the list of (TypeID . dispatcher) pairs of the dialect's :interfaces entries.
      interfaces))
@@ -149,65 +134,62 @@
                                      get-canonicalization-patterns populate-default-attrs traits)
     (vector
      (if verify
-         (crest-make-static-c-callable (uptr) int (lambda (op) (%%op-verdict (lambda () (verify op)))))
+         (crest-make-static-c-callable (uptr) (lambda (op) (if (verify op) 1 0)))
          0)
      (if verify-regions
          (crest-make-static-c-callable
-          (uptr) int
-          (lambda (op) (%%op-verdict (lambda () (verify-regions op)))))
+          (uptr)
+          (lambda (op) (if (verify-regions op) 1 0)))
          0)
      (if parse
          (crest-make-static-c-callable
-          (uptr uptr) int
-          (lambda (parser state) (%%op-verdict (lambda () (parse parser state)))))
+          (uptr uptr)
+          (lambda (parser state) (if (parse parser state) 1 0)))
          0)
      (if print
-         (crest-make-static-c-callable (uptr uptr) void (lambda (op printer) (print op printer op-name)))
+         (crest-make-static-c-callable (uptr uptr) (lambda (op printer) (print op printer op-name)))
          0)
      (if fold (%%fold-entry-point fold) 0)
      (if get-canonicalization-patterns
-         (crest-make-static-c-callable (uptr) void get-canonicalization-patterns)
+         (crest-make-static-c-callable (uptr) get-canonicalization-patterns)
          0)
      (if populate-default-attrs
-         (crest-make-static-c-callable (uptr uptr) void populate-default-attrs)
+         (crest-make-static-c-callable (uptr uptr) populate-default-attrs)
          0)
      traits))
 
-  ;; The slots of a type: verify, parse, print.
+  ;; The slots of a type: verify, parse, print. An error that a procedure raises is answered to C++ as
+  ;; (who . why) by the callable, and C++ reports it.
   ;;   verify  (params) → #t | #f | a message. C: 1, 0 (MLIR's message) or 2 (the message is in sink)
-  ;;   parse   (parser) → a list of attributes | #f. C: 1 (the parameters are in sink), 0 or 2
+  ;;   parse   (parser) → a list of attributes | #f. C: 1 (the parameters are in sink), 0
   ;;   print   (printer params). C gets the parameters as a pointer and a count
   (define (crest-type-callback-entries verify parse print)
     (vector
      (if verify
          (crest-make-static-c-callable
-          (uptr uptr uptr) int
+          (uptr uptr uptr)
           (lambda (params count sink)
-            (guard (c [#t (%crest::DynamicType::setMessage sink (crest-callback-condition-text c))
-                          2])
-              (let ([answer (verify (crest-callback-pointer-list params count))])
-                (cond
-                 [(string? answer) (%crest::DynamicType::setMessage sink answer) 2]
-                 [answer 1]
-                 [else 0])))))
+            (let ([answer (verify (crest-callback-pointer-list params count))])
+              (cond
+               [(string? answer) (%crest::DynamicType::setMessage sink answer) 2]
+               [answer 1]
+               [else 0]))))
          0)
      (if parse
          (crest-make-static-c-callable
-          (uptr uptr) int
+          (uptr uptr)
           (lambda (parser sink)
-            (guard (c [#t (%crest::DynamicType::setMessage sink (crest-callback-condition-text c))
-                          2])
-              (let ([parsed (parse parser)])
-                (cond
-                 [parsed
-                  (for-each (lambda (attribute) (%crest::DynamicType::addParam sink attribute))
-                            parsed)
-                  1]
-                 [else 0])))))
+            (let ([parsed (parse parser)])
+              (cond
+               [parsed
+                (for-each (lambda (attribute) (%crest::DynamicType::addParam sink attribute))
+                          parsed)
+                1]
+               [else 0]))))
          0)
      (if print
          (crest-make-static-c-callable
-          (uptr uptr uptr) void
+          (uptr uptr uptr)
           (lambda (printer params count)
             (print printer (crest-callback-pointer-list params count))))
          0)))

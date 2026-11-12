@@ -88,7 +88,9 @@ void registerCrestDynamicTypeBindings() {
   //
   // Must be called from the dialect's :initialize. The vector is made once by
   // define-dialect ((crest dialect callbacks)). Slots (0 = default; the others
-  // are the entry point of a foreign-callable):
+  // are the entry point of a foreign-callable, which answers a Scheme object:
+  // what is written below as int or void, or the pair (who . why) when its
+  // Scheme procedure raised an error, which is reported as a diagnostic):
   //   0 verify  (uptr params, uptr n, uptr sink) → int
   //             1 ok, 0 invalid (MLIR's message), 2 invalid, message in the
   //             sink
@@ -114,9 +116,11 @@ void registerCrestDynamicTypeBindings() {
           return static_cast<uint64_t>(
               Sinteger64_value(Svector_ref(cbs, slot)));
         };
-        using VerifyFn = int (*)(const void* const*, uint64_t, uint64_t);
-        using ParseFn = int (*)(uint64_t, uint64_t);
-        using PrintFn = void (*)(uint64_t, const void* const*, uint64_t);
+        // Each callable answers a Scheme object: the number above, or the pair
+        // (who . why) when its Scheme procedure raised an error.
+        using VerifyFn = ptr (*)(const void* const*, uint64_t, uint64_t);
+        using ParseFn = ptr (*)(uint64_t, uint64_t);
+        using PrintFn = ptr (*)(uint64_t, const void* const*, uint64_t);
         auto verify = reinterpret_cast<VerifyFn>(entry(0));
         auto parse = reinterpret_cast<ParseFn>(entry(1));
         auto print = reinterpret_cast<PrintFn>(entry(2));
@@ -135,9 +139,14 @@ void registerCrestDynamicTypeBindings() {
           }
           auto pointers = opaquePointers(params);
           TypeSink sink;
-          int answer =
+          ptr scheme_answer =
               verify(pointers.data(), static_cast<uint64_t>(pointers.size()),
                      reinterpret_cast<uint64_t>(&sink));
+          if (isSchemeError(scheme_answer)) {
+            emitError() << schemeErrorText(scheme_answer);
+            return mlir::failure();
+          }
+          int answer = static_cast<int>(Sinteger64_value(scheme_answer));
           if (answer == 1) {
             return mlir::success();
           }
@@ -157,8 +166,15 @@ void registerCrestDynamicTypeBindings() {
               -> mlir::ParseResult {
             TypeSink sink;
             sink.parsed = &parsed;
-            int answer = parse(reinterpret_cast<uint64_t>(&p),
-                               reinterpret_cast<uint64_t>(&sink));
+            ptr scheme_answer = parse(reinterpret_cast<uint64_t>(&p),
+                                      reinterpret_cast<uint64_t>(&sink));
+            if (isSchemeError(scheme_answer)) {
+              mlir::InFlightDiagnostic diagnostic =
+                  p.emitError(p.getCurrentLocation());
+              diagnostic << schemeErrorText(scheme_answer);
+              return mlir::failure();
+            }
+            int answer = static_cast<int>(Sinteger64_value(scheme_answer));
             if (answer == 1) {
               return mlir::success();
             }
@@ -170,11 +186,16 @@ void registerCrestDynamicTypeBindings() {
             return mlir::failure();
           };
           mlir::DynamicTypeDefinition::PrinterFn printer =
-              [print](mlir::AsmPrinter& p,
-                      llvm::ArrayRef<mlir::Attribute> params) {
+              [print, dialect](mlir::AsmPrinter& p,
+                               llvm::ArrayRef<mlir::Attribute> params) {
                 auto pointers = opaquePointers(params);
-                print(reinterpret_cast<uint64_t>(&p), pointers.data(),
-                      static_cast<uint64_t>(pointers.size()));
+                ptr answer =
+                    print(reinterpret_cast<uint64_t>(&p), pointers.data(),
+                          static_cast<uint64_t>(pointers.size()));
+                if (isSchemeError(answer)) {
+                  emitSchemeError(mlir::UnknownLoc::get(dialect->getContext()),
+                                  answer);
+                }
               };
           def = mlir::DynamicTypeDefinition::get(
               name, dialect, std::move(verifier), std::move(parser),

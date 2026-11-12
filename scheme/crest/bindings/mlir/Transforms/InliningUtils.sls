@@ -48,27 +48,27 @@
              (list
               (cons 'isLegalToInline/call
                     (crest-make-static-c-callable
-                     (uptr uptr int) int
+                     (uptr uptr int)
                      (lambda (call-op callable would-be-cloned)
                        (if (call call-op callable (eqv? would-be-cloned 1)) 1 0))))
               (cons 'isLegalToInline/region
                     (crest-make-static-c-callable
-                     (uptr uptr int) int
+                     (uptr uptr int)
                      (lambda (dest src would-be-cloned)
                        (if (region dest src (eqv? would-be-cloned 1)) 1 0))))
               (cons 'isLegalToInline/op
                     (crest-make-static-c-callable
-                     (uptr uptr int) int
+                     (uptr uptr int)
                      (lambda (inlined-op dest would-be-cloned)
                        (if (op inlined-op dest (eqv? would-be-cloned 1)) 1 0))))
               (cons 'handleTerminator/value
-                    (if value (crest-make-static-c-callable (uptr uptr) void value) 0))
+                    (if value (crest-make-static-c-callable (uptr uptr) value) 0))
               (cons 'handleTerminator/block
-                    (if block (crest-make-static-c-callable (uptr uptr) void block) 0))
+                    (if block (crest-make-static-c-callable (uptr uptr) block) 0))
               (cons 'materializeCallConversion
                     (if materialize
                         (crest-make-static-c-callable
-                         (uptr uptr uptr uptr) uptr
+                         (uptr uptr uptr uptr)
                          (lambda (builder input result-type loc)
                            (or (materialize builder input result-type loc) 0)))
                         0)))])

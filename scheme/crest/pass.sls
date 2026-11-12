@@ -38,12 +38,6 @@
           (crest callback)
           (crest pass ffi))
 
-  ;; The verdict of the body of a pass as C wants it: 1 or 0. An error that the body raises is
-  ;; reported.
-  (define (%%verdict thunk)
-    (guard (c [#t (%crest::SchemePass::reportFailure (crest-callback-condition-text c)) 0])
-      (if (thunk) 1 0)))
-
   (define-syntax define-pass
     (lambda (stx)
       (syntax-case stx ()
@@ -53,8 +47,9 @@
            #'(begin
                (define entry
                  (let ([run (lambda (op) body ...)])
-                   (crest-make-static-c-callable (uptr) int
-                                                 (lambda (x) (%%verdict (lambda () (run x)))))))
+                   ;; 1 or 0 for C; an error of the body is answered as (who . why).
+                   (crest-make-static-c-callable (uptr)
+                                                 (lambda (x) (if (run x) 1 0)))))
                (define (name)
                  (%crest::createSchemePass name-string entry))))]
         [(_ . _)

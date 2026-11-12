@@ -15,22 +15,19 @@ namespace crest {
 
 namespace {
 
-// The text of an error that the body of a pass raised, which its callable gives
-// (crest::SchemePass::reportFailure) before it answers 0, so that the
-// diagnostic can carry it.
-std::string g_reported_failure;
-
 // An operation pass that runs on any op (a nested PassManager chooses where)
-// and calls the entry point of a Scheme foreign-callable (uptr op) → int: 0
-// fails the pass, anything else is success. The callable is made once for the
-// define-pass, so every pass made from it shares it and nothing is released.
+// and calls the entry point of a Scheme foreign-callable (uptr op), which
+// answers a Scheme object: 0 fails the pass, any other number is success, and
+// the pair (who . why) is an error of the body, which becomes the diagnostic of
+// the failure. The callable is made once for the define-pass, so every pass
+// made from it shares it and nothing is released.
 // Scheme is single-threaded: run it on a context with multithreading disabled
 // (contexts made from Scheme are).
 class SchemePass : public mlir::OperationPass<> {
 public:
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SchemePass)
 
-  SchemePass(std::string name, int (*callback)(uint64_t op))
+  SchemePass(std::string name, ptr (*callback)(uint64_t op))
       : mlir::OperationPass<>(mlir::TypeID::get<SchemePass>()),
         name_(std::move(name)), callback_(callback) {}
 
@@ -45,35 +42,23 @@ public:
   }
 
   void runOnOperation() override {
-    if (callback_(reinterpret_cast<uint64_t>(getOperation())) == 0) {
-      std::string message = std::move(g_reported_failure);
-      g_reported_failure.clear();
-      if (!message.empty()) {
-        getOperation()->emitError() << message;
-      }
+    ptr answer = callback_(reinterpret_cast<uint64_t>(getOperation()));
+    if (isSchemeError(answer)) {
+      emitSchemeError(getOperation()->getLoc(), answer);
+      signalPassFailure();
+    } else if (Sinteger64_value(answer) == 0) {
       signalPassFailure();
     }
   }
 
 private:
   std::string name_;
-  int (*callback_)(uint64_t op);
+  ptr (*callback_)(uint64_t op);
 };
 
 } // namespace
 
 void registerCrestSchemePassBindings() {
-  // crest::SchemePass::reportFailure (string message)
-  //
-  // The callable of a pass body calls it with the text of the error the body
-  // raised, before it answers 0, so that the diagnostic shows it.
-  Sregister_symbol(
-      "crest::SchemePass::reportFailure",
-      (void*)+[](const char* message) -> ptr {
-        g_reported_failure = message;
-        return Svoid;
-      });
-
   // crest::createSchemePass (string name) (uptr entry) → mlir::Pass* uptr
   //
   // The pass manager that the pass is added to owns it
@@ -85,7 +70,7 @@ void registerCrestSchemePassBindings() {
       "crest::createSchemePass",
       (void*)+[](const char* name, uint64_t entry) -> ptr {
         return Sunsigned64(reinterpret_cast<uint64_t>(static_cast<mlir::Pass*>(
-            new SchemePass(name, reinterpret_cast<int (*)(uint64_t)>(entry)))));
+            new SchemePass(name, reinterpret_cast<ptr (*)(uint64_t)>(entry)))));
       });
 }
 

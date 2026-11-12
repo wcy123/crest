@@ -122,7 +122,7 @@
   ;; at conversion boundaries using tensor.cast.
   (define tensor-cast-materialization
     (crest-make-static-c-callable
-     (uptr uptr uptr uptr uptr) uptr
+     (uptr uptr uptr uptr uptr)
      (materialization->c
       (lambda (builder result-type inputs loc)
         (if (not (and (pair? inputs) (null? (cdr inputs))))
@@ -137,11 +137,11 @@
                   (mlir::tensor::CastOp::create builder loc result-type input))))))))
 
   (define identity-conversion
-    (crest-make-static-c-callable (uptr) uptr (type-conversion->c (lambda (t) t))))
+    (crest-make-static-c-callable (uptr) (type-conversion->c (lambda (t) t))))
 
   (define device-memory-conversion
     (crest-make-static-c-callable
-     (uptr) uptr
+     (uptr)
      (type-conversion->c
       (lambda (type)
         (if (and (mlir::isa<RankedTensorType>? type)
@@ -158,7 +158,7 @@
 
   (define unknown-ops-legal
     (crest-make-static-c-callable
-     (uptr) int
+     (uptr)
      (legality->c (lambda (op)
                     (or (hipsr-has-compute-ancestor? op)
                         (hipsr-has-placeholder-ancestor? op))))))
