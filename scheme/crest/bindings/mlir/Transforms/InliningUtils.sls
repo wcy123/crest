@@ -22,6 +22,7 @@
           mlir::createInlinerPass)
   (import (chezscheme)
           (crest callback)
+          (for (mlir support srcloc) expand)
           (mlir Transforms InliningUtils ffi))
 
   (define (%%required dispatcher name)
@@ -30,7 +31,9 @@
                (string-append (symbol->string name) " is required but not provided"))))
 
   ;; The C functions of the clauses of a dialect. `dispatcher` is (lambda (method) ...): a method
-  ;; name answers its clause or #f; isLegalToInline/call, /region and /op are required. The answer
+  ;; name answers its clause or #f; a clause is the pair (procedure . position), the position of the
+  ;; clause in the Scheme source, (file line column) or #f, where an error of the procedure is
+  ;; reported; isLegalToInline/call, /region and /op are required. The answer
   ;; is the dispatcher of C: (lambda (method) ...) that answers, for each method the dispatcher has
   ;; a clause for, the entry point of its foreign-callable, and 0 for the others. The callables are
   ;; made here, once: the entry of the :interfaces clause is evaluated when the library of the dialect
@@ -48,29 +51,37 @@
              (list
               (cons 'isLegalToInline/call
                     (crest-make-static-c-callable
-                     (uptr uptr int) scheme-object
+                     (uptr uptr int) int
                      (lambda (call-op callable would-be-cloned)
-                       (if (call call-op callable (eqv? would-be-cloned 1)) 1 0))))
+                       (if ((car call) call-op callable (eqv? would-be-cloned 1)) 1 0))
+                     :location (cdr call)))
               (cons 'isLegalToInline/region
                     (crest-make-static-c-callable
-                     (uptr uptr int) scheme-object
+                     (uptr uptr int) int
                      (lambda (dest src would-be-cloned)
-                       (if (region dest src (eqv? would-be-cloned 1)) 1 0))))
+                       (if ((car region) dest src (eqv? would-be-cloned 1)) 1 0))
+                     :location (cdr region)))
               (cons 'isLegalToInline/op
                     (crest-make-static-c-callable
-                     (uptr uptr int) scheme-object
+                     (uptr uptr int) int
                      (lambda (inlined-op dest would-be-cloned)
-                       (if (op inlined-op dest (eqv? would-be-cloned 1)) 1 0))))
+                       (if ((car op) inlined-op dest (eqv? would-be-cloned 1)) 1 0))
+                     :location (cdr op)))
               (cons 'handleTerminator/value
-                    (if value (crest-make-static-c-callable (uptr uptr) scheme-object value) 0))
+                    (if value
+                        (crest-make-static-c-callable (uptr uptr) void (car value) :location (cdr value))
+                        0))
               (cons 'handleTerminator/block
-                    (if block (crest-make-static-c-callable (uptr uptr) scheme-object block) 0))
+                    (if block
+                        (crest-make-static-c-callable (uptr uptr) void (car block) :location (cdr block))
+                        0))
               (cons 'materializeCallConversion
                     (if materialize
                         (crest-make-static-c-callable
-                         (uptr uptr uptr uptr) scheme-object
+                         (uptr uptr uptr uptr) uptr
                          (lambda (builder input result-type loc)
-                           (or (materialize builder input result-type loc) 0)))
+                           (or ((car materialize) builder input result-type loc) 0))
+                         :location (cdr materialize))
                         0)))])
         (lambda (method)
           (cond
@@ -87,14 +98,19 @@
   ;;     (materializeCallConversion (builder input result-type loc) body ...))
   ;; An entry is the pair of the TypeID of the interface and the dispatcher of C of its clauses.
   (define-syntax mlir::DialectInlinerInterface
-    (syntax-rules ()
-      [(_ (method (formal ...) body ...) ...)
-       (cons (mlir::DialectInlinerInterface::getInterfaceID)
-             (%%c-dispatcher
-              (lambda (name)
-                (case name
-                  [(method) (lambda (formal ...) body ...)] ...
-                  [else #f]))))]))
+    (lambda (stx)
+      (syntax-case stx ()
+        [(_ (method (formal ...) body ...) ...)
+         (with-syntax ([(position ...)
+                        (map (lambda (clause)
+                               (datum->syntax #'stx (syntax->first-file+line+col clause)))
+                             (syntax->list #'((method (formal ...) body ...) ...)))])
+           #'(cons (mlir::DialectInlinerInterface::getInterfaceID)
+                   (%%c-dispatcher
+                    (lambda (name)
+                      (case name
+                        [(method) (cons (lambda (formal ...) body ...) 'position)] ...
+                        [else #f])))))])))
 
   (define mlir::DialectInlinerInterface::getInterfaceID
     %mlir::DialectInlinerInterface::getInterfaceID)

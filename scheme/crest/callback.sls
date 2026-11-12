@@ -148,7 +148,8 @@
       (foreign-set! 'unsigned-32 answer 0 (apply procedure arguments))
       answer))
 
-  ;; (%%make-code (argument-type ...) result-type procedure location): the code object of the foreign-callable
+  ;; (%%make-code (argument-type ...) result-type procedure location): LOCATION is an expression for the
+  ;; position of the callback, (file line column) or #f. The code object of the foreign-callable
   ;; for that result type. scheme-object keeps the answer as (who . why) while the hooks move to their natural
   ;; type; walk-result is the C++ class mlir::WalkResult (4 bytes, constants in (mlir Support WalkResult)).
   (define-syntax %%make-code
@@ -159,16 +160,16 @@
            [(scheme-object)
             #'(foreign-callable (%%guard procedure) (type ...) scheme-object)]
            [(void)
-            #'(foreign-callable (%%fatal-guard procedure 'location) (type ...) void)]
+            #'(foreign-callable (%%fatal-guard procedure location) (type ...) void)]
            [(boolean)
-            #'(foreign-callable (%%report-guard procedure 'location #f) (type ...) boolean)]
+            #'(foreign-callable (%%report-guard procedure location #f) (type ...) boolean)]
            [(int uptr unsigned-8 unsigned-32)
-            #'(foreign-callable (%%report-guard procedure 'location 0) (type ...) result)]
+            #'(foreign-callable (%%report-guard procedure location 0) (type ...) result)]
            [(walk-result)
             #'(if (%%windows?)
-                  (foreign-callable (%%windows-result (%%report-guard procedure 'location 0))
+                  (foreign-callable (%%windows-result (%%report-guard procedure location 0))
                                     (uptr type ...) uptr)
-                  (foreign-callable (%%report-guard procedure 'location 0) (type ...) int))]
+                  (foreign-callable (%%report-guard procedure location 0) (type ...) int))]
            [else
             (syntax-violation 'crest-make-static-c-callable "unknown result type of a callable" stx
                               #'result)])])))
@@ -195,27 +196,33 @@
            [n (string-length name)])
       (and (>= n 2) (string=? (substring name (- n 2) n) "nt"))))
 
-  ;; (crest-make-static-c-callable (argument-type ...) result-type procedure [:source expression]): the
+  ;; (crest-make-static-c-callable (argument-type ...) result-type procedure [:source expression | :location expression]): the
   ;; address of a C function with the prototype of C++: those argument types and that result type. It locks
   ;; the callable for good: use it only at the library level, for a callback that uses no state of a run.
   ;; result-type: scheme-object (the answer, or (who . why) for an error), void, int, uptr, unsigned-8,
   ;; unsigned-32, boolean, walk-result. An error of the procedure is reported by its guard (see above), at
   ;; the Scheme position of PROCEDURE, or of the expression after :source when a macro wraps the procedure of
-  ;; its user in a lambda of its own and the position of the user is the useful one.
+  ;; its user in a lambda of its own and the position of the user is the useful one. :location gives the
+  ;; position as an expression that is evaluated when the callable is made, (file line column) or #f: for a
+  ;; procedure that reaches the macro as a value and whose position was read where it was written.
   (define-syntax crest-make-static-c-callable
     (lambda (stx)
-      (define (source-of options default)
+      (define (location-of options default)
         (syntax-case options ()
-          [() default]
-          [(key source) (eq? (syntax->datum #'key) ':source) #'source]
-          [_ (syntax-violation 'crest-make-static-c-callable "expected :source expression" stx
+          [() (position-of default)]
+          [(key source) (eq? (syntax->datum #'key) ':source) (position-of #'source)]
+          [(key expression) (eq? (syntax->datum #'key) ':location) #'expression]
+          [_ (syntax-violation 'crest-make-static-c-callable "expected :source or :location" stx
                                options)]))
+      (define (position-of form)
+        (with-syntax ([position (datum->syntax
+                                 #'stx
+                                 (or (syntax->first-file+line+col form)
+                                     (syntax->file+line+col stx)))])
+          #''position))
       (syntax-case stx ()
         [(_ (type ...) result proc . options)
-         (with-syntax ([location (datum->syntax
-                                  #'stx
-                                  (or (syntax->first-file+line+col (source-of #'options #'proc))
-                                      (syntax->file+line+col stx)))])
+         (with-syntax ([location (location-of #'options #'proc)])
            #'(let ([code (%%make-code (type ...) result proc location)])
                (lock-object code)
                (foreign-callable-entry-point code)))])))
@@ -230,7 +237,7 @@
          (lock-object code)
          (foreign-callable-entry-point code))]))
 
-  ;; (with-c-callable (name (argument-type ...) result-type value [:source expression]) body ...)
+  ;; (with-c-callable (name (argument-type ...) result-type value [:source expression | :location expression]) body ...)
   ;;
   ;; Runs BODY with NAME bound to the address of a C function with the prototype of C++ (those argument types
   ;; and that result type, as for crest-make-static-c-callable) that calls what VALUE is:
@@ -249,17 +256,21 @@
   ;; expression after :source (see crest-make-static-c-callable).
   (define-syntax with-c-callable
     (lambda (stx)
-      (define (source-of options default)
+      (define (location-of options default)
         (syntax-case options ()
-          [() default]
-          [(key source) (eq? (syntax->datum #'key) ':source) #'source]
-          [_ (syntax-violation 'with-c-callable "expected :source expression" stx options)]))
+          [() (position-of default)]
+          [(key source) (eq? (syntax->datum #'key) ':source) (position-of #'source)]
+          [(key expression) (eq? (syntax->datum #'key) ':location) #'expression]
+          [_ (syntax-violation 'with-c-callable "expected :source or :location" stx options)]))
+      (define (position-of form)
+        (with-syntax ([position (datum->syntax
+                                 #'stx
+                                 (or (syntax->first-file+line+col form)
+                                     (syntax->file+line+col stx)))])
+          #''position))
       (syntax-case stx ()
         [(_ (name (type ...) result value . options) body ...)
-         (with-syntax ([location (datum->syntax
-                                  #'stx
-                                  (or (syntax->first-file+line+col (source-of #'options #'value))
-                                      (syntax->file+line+col stx)))])
+         (with-syntax ([location (location-of #'options #'value)])
            #'(let* ([given value]
                     [made? (procedure? given)]
                     [code (cond

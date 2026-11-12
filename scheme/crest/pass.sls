@@ -47,9 +47,10 @@
            #'(begin
                (define entry
                  (let ([run (lambda (op) body ...)])
-                   ;; 1 or 0 for C; an error of the body is answered as (who . why).
-                   (crest-make-static-c-callable (uptr) scheme-object
-                                                 (lambda (x) (if (run x) 1 0)))))
+                   ;; 1 or 0 for C; an error of the body is a diagnostic at the body, and 0.
+                   (crest-make-static-c-callable (uptr) int
+                                                 (lambda (x) (if (run x) 1 0))
+                                                 :source (begin body ...))))
                (define (name)
                  (%crest::createSchemePass name-string entry))))]
         [(_ . _)
