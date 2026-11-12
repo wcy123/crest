@@ -1,6 +1,6 @@
-;; scheme-mlir driver: raises the same error from a binding many times on two operations, one with a short
-;; name and one with a long one, and prints "error-path-leak: ok" when the C++ heap grew by the same amount
-;; for both. Linux only (mallinfo of glibc).
+;; scheme-mlir driver: a binding fails many times on operations whose names are short (no heap) and long (heap),
+;; and Region::push_back<Block> fails after a block could have been made; the C++ heap must not grow for any.
+;; Prints "error-path-leak: ok" and "block-leak: ok". Linux only (mallinfo of glibc).
 (import (chezscheme)
         (mlir IR DialectRegistry) (mlir IR MLIRContext) (mlir IR Operation) (mlir IR OwningOpRef)
         (only (mlir Interfaces FunctionInterfaces) mlir::FunctionOpInterface::getFunctionType)
@@ -74,11 +74,11 @@
                           (operations module))]
              [short (growth-of (lambda () (mlir::FunctionOpInterface::getFunctionType (car ops))))]
              [long (growth-of (lambda () (mlir::FunctionOpInterface::getFunctionType (cadr ops))))])
-        (report "error-path-leak" (- long short) (* runs 8)))
+        (report "error-path-leak" (max short long) (* runs 24)))
       ;; push_back<Block> makes a block and then asks for a location, which raises when no context is
       ;; current. The block must not be left behind: compare with the same error raised alone.
       (with-OperationState state ((mlir::UnknownLoc::get ctx) "test.x")
         (let* ([region (mlir::OperationState::addRegion state)]
                [alone (growth-of (lambda () (mlir::UnknownLoc::get)))]
                [with-block (growth-of (lambda () (mlir::Region::push_back<Block> region '())))])
-          (report "block-leak" (- with-block alone) (* runs 20)))))))
+          (report "block-leak" (max with-block alone) (* runs 24)))))))

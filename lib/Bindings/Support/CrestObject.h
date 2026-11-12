@@ -33,10 +33,6 @@ struct CrestObject {
   template <typename T> bool isa() const;
 }; // struct CrestObject
 
-// Raises a Scheme error "<who>: <what>". Defined in CrestObject.cpp so this
-// header does not depend on Chez Scheme.
-[[noreturn]] void crestObjectError(const char* who, const char* what);
-
 // CRTP mixin: inheriting from AsCrest<T> automatically fills in the deletor.
 // type_deletor is a plain static function whose address is the runtime type
 // tag for T — unique and stable per instantiation.
@@ -55,25 +51,14 @@ template <typename T> struct AsCrest : public CrestObject {
 
   AsCrest() : CrestObject{type_deletor} {}
 
-  // Checked downcast from the raw address Scheme passes: reports `who` when the
-  // address is null or its type tag is not T's. The null test is on the
-  // integer, so it is well-defined (a null `this` is undefined behavior and
-  // compilers delete such tests).
-  static T& checked(uint64_t addr, const char* who) {
-    if (!addr) {
-      crestObjectError(who, "null pointer");
-    }
-    auto* obj = reinterpret_cast<CrestObject*>(addr);
-    if (!obj->isa<T>()) {
-      crestObjectError(who, "wrong CrestObject type");
-    }
-    return *static_cast<T*>(obj);
-  }
-
-  // The same check as an error value, for a binding that answers its error to
-  // Scheme instead of raising it (plans/04-errors-are-values.md): see CREST_TRY
-  // in Error.h.
-  static llvm::Expected<T&> tryChecked(uint64_t addr, const char* who) {
+  // Checked downcast from the raw address Scheme passes: an error naming `who`
+  // when the address is null or its type tag is not T's
+  // (plans/04-errors-are-values.md): see CREST_TRY in Error.h. The null test is
+  // on the integer, so it is well-defined (a null `this` is undefined behavior
+  // and compilers delete such tests). The same check as an error value, for a
+  // binding that answers its error to Scheme instead of raising it
+  // (plans/04-errors-are-values.md): see CREST_TRY in Error.h.
+  static llvm::Expected<T&> checked(uint64_t addr, const char* who) {
     if (!addr) {
       return fail(who, "null pointer");
     }
@@ -105,11 +90,8 @@ template <typename T> struct CrestBox : public AsCrest<CrestBox<T>> {
       : AsCrest<CrestBox<T>>(), value_(std::forward<Args>(args)...) {}
   T& inner() { return value_; }
   const T& inner() const { return value_; }
-  static T& inner(uint64_t addr, const char* who) {
-    return AsCrest<CrestBox<T>>::checked(addr, who).value_;
-  }
-  static llvm::Expected<T&> tryInner(uint64_t addr, const char* who) {
-    auto box = AsCrest<CrestBox<T>>::tryChecked(addr, who);
+  static llvm::Expected<T&> inner(uint64_t addr, const char* who) {
+    auto box = AsCrest<CrestBox<T>>::checked(addr, who);
     if (!box) {
       return box.takeError();
     }
@@ -129,11 +111,8 @@ private:
 template <typename T> struct CrestBox<T*> : public AsCrest<CrestBox<T*>> {
   explicit CrestBox(T* p) : AsCrest<CrestBox<T*>>(), ptr_(p) {}
   T& inner() const { return *ptr_; }
-  static T& inner(uint64_t addr, const char* who) {
-    return *AsCrest<CrestBox<T*>>::checked(addr, who).ptr_;
-  }
-  static llvm::Expected<T&> tryInner(uint64_t addr, const char* who) {
-    auto box = AsCrest<CrestBox<T*>>::tryChecked(addr, who);
+  static llvm::Expected<T&> inner(uint64_t addr, const char* who) {
+    auto box = AsCrest<CrestBox<T*>>::checked(addr, who);
     if (!box) {
       return box.takeError();
     }
@@ -147,21 +126,13 @@ private:
 // A T& from either kind of shell a Scheme program can hold for T: the
 // CrestBox<T> it made itself or the CrestBox<T*> that borrows an object MLIR
 // owns (as the pattern set a dialect's :get-canonicalization-patterns hook
-// receives).
-template <typename T> T& as_ref(uint64_t addr, const char* who) {
+// receives), or an error.
+template <typename T>
+llvm::Expected<T&> as_ref(uint64_t addr, const char* who) {
   if (addr && reinterpret_cast<CrestObject*>(addr)->isa<CrestBox<T*>>()) {
     return CrestBox<T*>::inner(addr, who);
   }
   return CrestBox<T>::inner(addr, who);
-}
-
-// try_as_ref: as_ref as an error value.
-template <typename T>
-llvm::Expected<T&> try_as_ref(uint64_t addr, const char* who) {
-  if (addr && reinterpret_cast<CrestObject*>(addr)->isa<CrestBox<T*>>()) {
-    return CrestBox<T*>::tryInner(addr, who);
-  }
-  return CrestBox<T>::tryInner(addr, who);
 }
 
 void registerCrestObjectBindings();

@@ -21,7 +21,7 @@ void registerConversionSCFToControlFlowBindings() {
       "mlir::populateSCFToControlFlowConversionPatterns",
       [](uint64_t patterns_ptr) -> llvm::Error {
         CREST_TRY(patterns,
-                  crest::try_as_ref<mlir::RewritePatternSet>(
+                  crest::as_ref<mlir::RewritePatternSet>(
                       patterns_ptr,
                       "mlir::populateSCFToControlFlowConversionPatterns"));
         mlir::populateSCFToControlFlowConversionPatterns(patterns);

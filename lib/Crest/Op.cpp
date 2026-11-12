@@ -234,9 +234,8 @@ std::string CrestOp::registerInto(mlir::ExtensibleDialect* dialect,
         make_default_attrs_fn(cbs.populate_default_attrs));
   }
 
-  // None of these raises: each answers the text of its error, and the caller
-  // raises after it has destroyed `def` and unlocked what it holds (see
-  // scheme_error).
+  // None of these raises: each answers the text of its error, which the caller
+  // returns to Scheme after it has destroyed `def` and unlocked what it holds.
   std::string trait_error = addOpTraits(*def, op_name, cbs.traits);
   if (!trait_error.empty()) {
     return op_name.str() + ": " + trait_error;

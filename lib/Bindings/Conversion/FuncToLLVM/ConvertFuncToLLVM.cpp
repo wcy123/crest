@@ -22,9 +22,9 @@ void registerConversionFuncToLLVMBindings() {
       "mlir::populateFuncToLLVMConversionPatterns",
       [](uint64_t tc_ptr, uint64_t patterns_ptr) -> llvm::Error {
         CREST_TRY(tc,
-                  crest::CrestBox<mlir::LLVMTypeConverter>::tryInner(
+                  crest::CrestBox<mlir::LLVMTypeConverter>::inner(
                       tc_ptr, "mlir::populateFuncToLLVMConversionPatterns"));
-        CREST_TRY(patterns, crest::try_as_ref<mlir::RewritePatternSet>(
+        CREST_TRY(patterns, crest::as_ref<mlir::RewritePatternSet>(
                                 patterns_ptr,
                                 "mlir::populateFuncToLLVMConversionPatterns"));
         mlir::populateFuncToLLVMConversionPatterns(tc, patterns);

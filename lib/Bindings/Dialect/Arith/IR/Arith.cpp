@@ -88,7 +88,7 @@ void registerDialectArithIRArithBindings() {
       [](uint64_t registry_ptr) -> llvm::Error {
         CREST_TRY(
             crest_lookup1,
-            crest::CrestBox<mlir::DialectRegistry>::tryInner(
+            crest::CrestBox<mlir::DialectRegistry>::inner(
                 registry_ptr,
                 "mlir::DialectRegistry::insert<mlir::arith::ArithDialect>"));
 

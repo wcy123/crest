@@ -26,8 +26,7 @@ endif()
 
 if(MSVC)
   # LLVM headers (e.g. llvm/Support/Error.h) trigger C4702 under /O2 because
-  # MSVC cannot prove that [[noreturn]] callsites are unreachable. scheme_error
-  # has the same issue. We cannot modify LLVM headers, so global suppression is
+  # MSVC cannot prove that [[noreturn]] callsites are unreachable. We cannot modify LLVM headers, so global suppression is
   # required — matching what LLVM itself does in HandleLLVMOptions.cmake.
   add_compile_options(/wd4702)
 endif()

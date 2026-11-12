@@ -22,7 +22,7 @@ void registerIRLocationBindings() {
                       llvm::Twine("ctx must not be null"));
           return 0;
         }
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         return reinterpret_cast<uint64_t>(
             mlir::UnknownLoc::get(ctx).getAsOpaquePointer());
       });
@@ -35,7 +35,7 @@ void registerIRLocationBindings() {
                       llvm::Twine("ctx must not be null"));
           return 0;
         }
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         return reinterpret_cast<uint64_t>(
             mlir::FileLineColLoc::get(ctx, filename, line, col)
                 .getAsOpaquePointer());

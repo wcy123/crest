@@ -326,7 +326,7 @@ void registerIRExtensibleDialectBindings() {
       "crest::load-scheme-dialect!",
       [](uint64_t ctx_ptr, const char* dialect_name,
          const char* module_name) -> llvm::Error {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(
                            ctx_ptr, "crest::load-scheme-dialect!"));
         // Copy first: the strings point into the Scheme heap, which the Scheme
         // code that validateSchemeDialect runs may move.

@@ -147,11 +147,11 @@ void registerTransformsDialectConversionBindings() {
          int benefit) -> llvm::Error {
         const std::string op_name(op_name_arg);
         CREST_TRY(patterns,
-                  crest::try_as_ref<mlir::RewritePatternSet>(
+                  crest::as_ref<mlir::RewritePatternSet>(
                       patterns_ptr,
                       "crest::DialectConversion::addConversionPattern"));
         CREST_TRY(typeConverter,
-                  crest::CrestBox<mlir::TypeConverter>::tryInner(
+                  crest::CrestBox<mlir::TypeConverter>::inner(
                       type_converter_ptr,
                       "crest::DialectConversion::addConversionPattern"));
         mlir_support_logging_info(
@@ -169,7 +169,7 @@ void registerTransformsDialectConversionBindings() {
          ConversionPatternFn* callback, int benefit) -> llvm::Error {
         const std::string op_name(op_name_arg);
         CREST_TRY(patterns,
-                  crest::try_as_ref<mlir::RewritePatternSet>(
+                  crest::as_ref<mlir::RewritePatternSet>(
                       patterns_ptr,
                       "crest::DialectConversion::addConversionPattern/ctx"));
         mlir_support_logging_info(
@@ -184,7 +184,7 @@ void registerTransformsDialectConversionBindings() {
       [](uint64_t patterns_ptr, const char* op_name_arg,
          RewritePatternFn* callback, int benefit) -> llvm::Error {
         const std::string op_name(op_name_arg);
-        CREST_TRY(patterns, crest::try_as_ref<mlir::RewritePatternSet>(
+        CREST_TRY(patterns, crest::as_ref<mlir::RewritePatternSet>(
                                 patterns_ptr,
                                 "crest::DialectConversion::addRewritePattern"));
         mlir_support_logging_info(
@@ -210,7 +210,7 @@ void registerTransformsDialectConversionBindings() {
           return fail("mlir::ConversionTarget::ConversionTarget",
                       llvm::Twine("ctx must not be null"));
         }
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         return reinterpret_cast<uint64_t>(
             new CrestBox<mlir::ConversionTarget>(*ctx));
       });
@@ -221,7 +221,7 @@ void registerTransformsDialectConversionBindings() {
           return llvm::Error::success();
         }
         CREST_TRY(crest_lookup1,
-                  crest::CrestBox<mlir::ConversionTarget>::tryInner(
+                  crest::CrestBox<mlir::ConversionTarget>::inner(
                       target_ptr, "mlir::ConversionTarget::addIllegalDialect"));
 
         crest_lookup1.addIllegalDialect(dialect_name);
@@ -234,7 +234,7 @@ void registerTransformsDialectConversionBindings() {
           return llvm::Error::success();
         }
         CREST_TRY(crest_lookup1,
-                  crest::CrestBox<mlir::ConversionTarget>::tryInner(
+                  crest::CrestBox<mlir::ConversionTarget>::inner(
                       target_ptr, "mlir::ConversionTarget::addLegalDialect"));
 
         crest_lookup1.addLegalDialect(dialect_name);
@@ -247,9 +247,9 @@ void registerTransformsDialectConversionBindings() {
         if (!ctx_ptr || !op_name) {
           return llvm::Error::success();
         }
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         CREST_TRY(crest_lookup1,
-                  crest::CrestBox<mlir::ConversionTarget>::tryInner(
+                  crest::CrestBox<mlir::ConversionTarget>::inner(
                       target_ptr, "mlir::ConversionTarget::addLegalOp"));
 
         crest_lookup1.addLegalOp(mlir::OperationName(op_name, ctx));
@@ -264,10 +264,10 @@ void registerTransformsDialectConversionBindings() {
         if (!ctx_ptr || !hasName) {
           return llvm::Error::success();
         }
-        CREST_TRY(target, crest::CrestBox<mlir::ConversionTarget>::tryInner(
+        CREST_TRY(target, crest::CrestBox<mlir::ConversionTarget>::inner(
                               target_ptr,
                               "mlir::ConversionTarget::addDynamicallyLegalOp"));
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         target.addDynamicallyLegalOp(
             mlir::OperationName(op_name, ctx),
             [callback](mlir::Operation* op) -> bool {
@@ -280,7 +280,7 @@ void registerTransformsDialectConversionBindings() {
       [](uint64_t target_ptr, LegalityFn* callback) -> llvm::Error {
         CREST_TRY(
             target,
-            crest::CrestBox<mlir::ConversionTarget>::tryInner(
+            crest::CrestBox<mlir::ConversionTarget>::inner(
                 target_ptr,
                 "mlir::ConversionTarget::markUnknownOpsDynamicallyLegal"));
         target.markUnknownOpDynamicallyLegal(
@@ -293,7 +293,7 @@ void registerTransformsDialectConversionBindings() {
       "mlir::TypeConverter::addConversion",
       [](uint64_t converter_ptr, TypeConversionFn* callback) -> llvm::Error {
         CREST_TRY(converter,
-                  crest::CrestBox<mlir::TypeConverter>::tryInner(
+                  crest::CrestBox<mlir::TypeConverter>::inner(
                       converter_ptr, "mlir::TypeConverter::addConversion"));
         converter.addConversion(
             [callback](mlir::Type type) -> std::optional<mlir::Type> {
@@ -315,7 +315,7 @@ void registerTransformsDialectConversionBindings() {
                       llvm::Twine("null type"));
         }
         CREST_TRY(converter,
-                  crest::CrestBox<mlir::TypeConverter>::tryInner(
+                  crest::CrestBox<mlir::TypeConverter>::inner(
                       converter_ptr, "mlir::TypeConverter::isLegal<Type>"));
         mlir::Type type = mlir::Type::getFromOpaquePointer(
             reinterpret_cast<const void*>(type_ptr));
@@ -328,7 +328,7 @@ void registerTransformsDialectConversionBindings() {
           return fail("mlir::TypeConverter::isLegal<Operation>",
                       llvm::Twine("null op"));
         }
-        CREST_TRY(converter, crest::CrestBox<mlir::TypeConverter>::tryInner(
+        CREST_TRY(converter, crest::CrestBox<mlir::TypeConverter>::inner(
                                  converter_ptr,
                                  "mlir::TypeConverter::isLegal<Operation>"));
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
@@ -342,7 +342,7 @@ void registerTransformsDialectConversionBindings() {
                       llvm::Twine("null func-op"));
         }
         CREST_TRY(converter,
-                  crest::CrestBox<mlir::TypeConverter>::tryInner(
+                  crest::CrestBox<mlir::TypeConverter>::inner(
                       converter_ptr, "mlir::TypeConverter::isSignatureLegal"));
         auto func_op = mlir::dyn_cast<mlir::func::FuncOp>(
             reinterpret_cast<mlir::Operation*>(func_op_ptr));
@@ -370,12 +370,12 @@ void registerTransformsDialectConversionBindings() {
         }
         CREST_TRY(
             target,
-            crest::CrestBox<mlir::ConversionTarget>::tryInner(
+            crest::CrestBox<mlir::ConversionTarget>::inner(
                 target_ptr,
                 "mlir_transforms_dialect_conversion_apply_full_conversion"));
         CREST_TRY(
             patterns,
-            crest::try_as_ref<mlir::RewritePatternSet>(
+            crest::as_ref<mlir::RewritePatternSet>(
                 patterns_ptr,
                 "mlir_transforms_dialect_conversion_apply_full_conversion"));
         return mlir::succeeded(mlir::applyFullConversion(module, target,
@@ -387,12 +387,12 @@ void registerTransformsDialectConversionBindings() {
       "mlir::populateFunctionOpInterfaceTypeConversionPattern<FuncOp>",
       [](uint64_t patterns_ptr, uint64_t converter_ptr) -> llvm::Error {
         CREST_TRY(patterns,
-                  crest::try_as_ref<mlir::RewritePatternSet>(
+                  crest::as_ref<mlir::RewritePatternSet>(
                       patterns_ptr,
                       "mlir::populateFunctionOpInterfaceTypeConversionPattern<"
                       "FuncOp>"));
         CREST_TRY(converter,
-                  crest::CrestBox<mlir::TypeConverter>::tryInner(
+                  crest::CrestBox<mlir::TypeConverter>::inner(
                       converter_ptr,
                       "mlir::populateFunctionOpInterfaceTypeConversionPattern<"
                       "FuncOp>"));
@@ -404,7 +404,7 @@ void registerTransformsDialectConversionBindings() {
       "mlir::TypeConverter::addSourceMaterialization",
       [](uint64_t converter_ptr, MaterializationFn* callback) -> llvm::Error {
         CREST_TRY(converter,
-                  crest::CrestBox<mlir::TypeConverter>::tryInner(
+                  crest::CrestBox<mlir::TypeConverter>::inner(
                       converter_ptr,
                       "mlir::TypeConverter::addSourceMaterialization"));
         converter.addSourceMaterialization(
@@ -419,7 +419,7 @@ void registerTransformsDialectConversionBindings() {
       "mlir::TypeConverter::addTargetMaterialization",
       [](uint64_t converter_ptr, MaterializationFn* callback) -> llvm::Error {
         CREST_TRY(converter,
-                  crest::CrestBox<mlir::TypeConverter>::tryInner(
+                  crest::CrestBox<mlir::TypeConverter>::inner(
                       converter_ptr,
                       "mlir::TypeConverter::addTargetMaterialization"));
         converter.addTargetMaterialization(
@@ -458,9 +458,9 @@ void registerTransformsDialectConversionBindings() {
       [](uint64_t op_ptr, uint64_t target_ptr,
          uint64_t patterns_ptr) -> llvm::Expected<int> {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-        CREST_TRY(target, crest::CrestBox<mlir::ConversionTarget>::tryInner(
+        CREST_TRY(target, crest::CrestBox<mlir::ConversionTarget>::inner(
                               target_ptr, "mlir::applyPartialConversion"));
-        CREST_TRY(patterns, crest::try_as_ref<mlir::RewritePatternSet>(
+        CREST_TRY(patterns, crest::as_ref<mlir::RewritePatternSet>(
                                 patterns_ptr, "mlir::applyPartialConversion"));
         return mlir::succeeded(mlir::applyPartialConversion(
                    op, target, std::move(patterns)))
@@ -474,7 +474,7 @@ void registerTransformsDialectConversionBindings() {
   register_binding(
       "mlir::RewriterBase::modifyOpInPlace",
       [](uint64_t rw_ptr, uint64_t op_ptr, void (*thunk)()) -> llvm::Error {
-        CREST_TRY(rw, crest::CrestBox<mlir::RewriterBase*>::tryInner(
+        CREST_TRY(rw, crest::CrestBox<mlir::RewriterBase*>::inner(
                           rw_ptr, "mlir::RewriterBase::modifyOpInPlace"));
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         rw.modifyOpInPlace(op, [&] { thunk(); });

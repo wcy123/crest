@@ -22,7 +22,7 @@ void registerIRBuiltinTypesBindings() {
                       llvm::Twine("null MLIRContext pointer"));
         }
         CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+                  crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
 
         return reinterpret_cast<uint64_t>(
             mlir::IndexType::get(crest_lookup1).getAsOpaquePointer());
@@ -35,7 +35,7 @@ void registerIRBuiltinTypesBindings() {
                       llvm::Twine("null MLIRContext pointer"));
         }
         CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+                  crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
 
         return reinterpret_cast<uint64_t>(
             mlir::IntegerType::get(crest_lookup1, 64).getAsOpaquePointer());
@@ -48,7 +48,7 @@ void registerIRBuiltinTypesBindings() {
                       llvm::Twine("null MLIRContext pointer"));
         }
         CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+                  crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
 
         return reinterpret_cast<uint64_t>(
             mlir::IntegerType::get(crest_lookup1, 1).getAsOpaquePointer());
@@ -224,7 +224,7 @@ void registerIRBuiltinTypesBindings() {
                       llvm::Twine("null MLIRContext pointer"));
         }
         CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+                  crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
 
         return reinterpret_cast<uint64_t>(
             mlir::IntegerType::get(crest_lookup1, 8).getAsOpaquePointer());
@@ -237,7 +237,7 @@ void registerIRBuiltinTypesBindings() {
                       llvm::Twine("null MLIRContext pointer"));
         }
         CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+                  crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
 
         return reinterpret_cast<uint64_t>(
             mlir::IntegerType::get(crest_lookup1, 16).getAsOpaquePointer());
@@ -250,7 +250,7 @@ void registerIRBuiltinTypesBindings() {
                       llvm::Twine("null MLIRContext pointer"));
         }
         CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+                  crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
 
         return reinterpret_cast<uint64_t>(
             mlir::IntegerType::get(crest_lookup1, 32).getAsOpaquePointer());
@@ -263,7 +263,7 @@ void registerIRBuiltinTypesBindings() {
                       llvm::Twine("null MLIRContext pointer"));
         }
         CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+                  crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
 
         return reinterpret_cast<uint64_t>(
             mlir::IntegerType::get(crest_lookup1, static_cast<unsigned>(width))
@@ -278,7 +278,7 @@ void registerIRBuiltinTypesBindings() {
                       llvm::Twine("null MLIRContext pointer"));
         }
         CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+                  crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
 
         return reinterpret_cast<uint64_t>(
             mlir::Float16Type::get(crest_lookup1).getAsOpaquePointer());
@@ -291,7 +291,7 @@ void registerIRBuiltinTypesBindings() {
                       llvm::Twine("null MLIRContext pointer"));
         }
         CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+                  crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
 
         return reinterpret_cast<uint64_t>(
             mlir::BFloat16Type::get(crest_lookup1).getAsOpaquePointer());
@@ -304,7 +304,7 @@ void registerIRBuiltinTypesBindings() {
                       llvm::Twine("null MLIRContext pointer"));
         }
         CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+                  crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
 
         return reinterpret_cast<uint64_t>(
             mlir::Float32Type::get(crest_lookup1).getAsOpaquePointer());
@@ -317,7 +317,7 @@ void registerIRBuiltinTypesBindings() {
                       llvm::Twine("null MLIRContext pointer"));
         }
         CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+                  crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
 
         return reinterpret_cast<uint64_t>(
             mlir::Float64Type::get(crest_lookup1).getAsOpaquePointer());
@@ -330,7 +330,7 @@ void registerIRBuiltinTypesBindings() {
                       llvm::Twine("null MLIRContext pointer"));
         }
         CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+                  crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
 
         return reinterpret_cast<uint64_t>(
             mlir::NoneType::get(crest_lookup1).getAsOpaquePointer());
@@ -493,7 +493,7 @@ void registerIRBuiltinTypesBindings() {
       "mlir::FunctionType::get",
       [](uint64_t ctx_ptr, ptr inputs,
          ptr results) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         llvm::SmallVector<mlir::Type> inputTypes, resultTypes;
         for (ptr cur = inputs; cur != Snil; cur = Scdr(cur)) {
           inputTypes.push_back(mlir::Type::getFromOpaquePointer(

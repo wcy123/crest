@@ -31,8 +31,8 @@ void attachCallableOpInterface(mlir::DynamicOpDefinition& def,
                                const LockedSchemeObject& dispatcher);
 // An op that has CallableOpInterface must have all three clauses. Answers the
 // text of the error when it does not (FunctionOpInterface adds the interface
-// without them), and "" when it does. It does not raise: the caller raises
-// after it has destroyed its objects (see scheme_error).
+// without them), and "" when it does. It does not raise: the caller answers it
+// to Scheme after it has destroyed its objects (see Error.h).
 std::string requireCallableOpInterfaceClauses(mlir::DynamicOpDefinition& def,
                                               const std::string& opName);
 // An op that has ArgAndResultAttrsOpInterface (a base of the interfaces above)

@@ -64,7 +64,7 @@ void registerExecutionEngineBindings() {
       [](uint64_t engine_ptr, const char* name) -> llvm::Expected<int> {
         CREST_TRY(
             engine_uptr,
-            crest::CrestBox<std::unique_ptr<mlir::ExecutionEngine>>::tryInner(
+            crest::CrestBox<std::unique_ptr<mlir::ExecutionEngine>>::inner(
                 engine_ptr, "mlir::ExecutionEngine::invoke"));
         auto result = engine_uptr->invokePacked(name);
         if (result) {

@@ -33,7 +33,7 @@ void registerIROperationStateBindings() {
       "mlir::OperationState::addOperands",
       [](uint64_t state_ptr, uint64_t value_ptr) -> llvm::Error {
         CREST_TRY(crest_lookup1,
-                  crest::CrestBox<mlir::OperationState>::tryInner(
+                  crest::CrestBox<mlir::OperationState>::inner(
                       state_ptr, "mlir::OperationState::addOperands"));
 
         crest_lookup1.addOperands(mlir::Value::getFromOpaquePointer(
@@ -44,7 +44,7 @@ void registerIROperationStateBindings() {
                    [](uint64_t state_ptr, uint64_t type_ptr) -> llvm::Error {
                      CREST_TRY(
                          crest_lookup1,
-                         crest::CrestBox<mlir::OperationState>::tryInner(
+                         crest::CrestBox<mlir::OperationState>::inner(
                              state_ptr, "mlir::OperationState::addTypes"));
 
                      crest_lookup1.addTypes(mlir::Type::getFromOpaquePointer(
@@ -55,7 +55,7 @@ void registerIROperationStateBindings() {
                    [](uint64_t state_ptr) -> llvm::Expected<uint64_t> {
                      CREST_TRY(
                          crest_lookup1,
-                         crest::CrestBox<mlir::OperationState>::tryInner(
+                         crest::CrestBox<mlir::OperationState>::inner(
                              state_ptr, "mlir::OperationState::addRegion"));
 
                      mlir::Region* region = crest_lookup1.addRegion();
@@ -69,7 +69,7 @@ void registerIROperationStateBindings() {
                      }
                      CREST_TRY(
                          crest_lookup1,
-                         crest::CrestBox<mlir::OperationState>::tryInner(
+                         crest::CrestBox<mlir::OperationState>::inner(
                              state_ptr, "mlir::OperationState::addAttribute"));
 
                      crest_lookup1.addAttribute(

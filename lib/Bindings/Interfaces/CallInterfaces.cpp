@@ -20,12 +20,6 @@
 #include <memory>
 #include <string>
 
-// LEAK WARNING: a scheme_error argument is an llvm::StringRef
-// (op->getName().getStringRef()), never
-// `.str().c_str()`: the std::string temporary is not destroyed when Scheme
-// raises, and a name of more than 15 characters leaked it on every error (see
-// scheme_error, SchemeWrapper.h).
-
 namespace crest {
 
 // ArgAndResultAttrsOpInterface is a base of CallableOpInterface and

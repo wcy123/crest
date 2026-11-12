@@ -19,19 +19,18 @@ void registerPassPassManagerBindings() {
   /// CrestBox<mlir::PassManager>*
   // LEAK WARNING: the box is on the C++ heap and only the caller frees it. Use
   // with-PassManager, which frees it after its body.
-  register_binding(
-      "mlir::PassManager::new",
-      [](uint64_t ctx_ptr) -> llvm::Expected<uint64_t> {
-        if (!ctx_ptr) {
-          return fail("mlir::PassManager::new",
-                      llvm::Twine("null MLIRContext pointer"));
-        }
-        CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+  register_binding("mlir::PassManager::new",
+                   [](uint64_t ctx_ptr) -> llvm::Expected<uint64_t> {
+                     if (!ctx_ptr) {
+                       return fail("mlir::PassManager::new",
+                                   llvm::Twine("null MLIRContext pointer"));
+                     }
+                     CREST_TRY(crest_lookup1, crest::as_ptr<mlir::MLIRContext>(
+                                                  ctx_ptr, __func__));
 
-        return reinterpret_cast<uint64_t>(
-            new CrestBox<mlir::PassManager>(crest_lookup1));
-      });
+                     return reinterpret_cast<uint64_t>(
+                         new CrestBox<mlir::PassManager>(crest_lookup1));
+                   });
 
   // The pass manager takes ownership of the pass, as in C++, where addPass
   // takes a std::unique_ptr<Pass>. A create...Pass binding answers a raw
@@ -42,7 +41,7 @@ void registerPassPassManagerBindings() {
   // added to a pass manager leaks: nothing else owns it.
   register_binding("mlir::PassManager::addPass",
                    [](uint64_t pm_ptr, uint64_t pass_ptr) -> llvm::Error {
-                     CREST_TRY(pm, crest::CrestBox<mlir::PassManager>::tryInner(
+                     CREST_TRY(pm, crest::CrestBox<mlir::PassManager>::inner(
                                        pm_ptr, "mlir::PassManager::addPass"));
                      if (!pass_ptr) {
                        return fail("mlir::PassManager::addPass",
@@ -58,7 +57,7 @@ void registerPassPassManagerBindings() {
   register_binding(
       "mlir::PassManager::run!",
       [](uint64_t pm_ptr, uint64_t module_ptr) -> llvm::Expected<int> {
-        CREST_TRY(pm, crest::CrestBox<mlir::PassManager>::tryInner(
+        CREST_TRY(pm, crest::CrestBox<mlir::PassManager>::inner(
                           pm_ptr, "mlir::PassManager::run!"));
         auto* op = reinterpret_cast<mlir::Operation*>(module_ptr);
         return mlir::succeeded(pm.run(op)) ? 1 : 0;
@@ -69,7 +68,7 @@ void registerPassPassManagerBindings() {
                    [](uint64_t pm_ptr, int enabled) -> llvm::Error {
                      CREST_TRY(
                          crest_lookup1,
-                         crest::CrestBox<mlir::PassManager>::tryInner(
+                         crest::CrestBox<mlir::PassManager>::inner(
                              pm_ptr, "mlir::PassManager::enableVerifier"));
 
                      crest_lookup1.enableVerifier(enabled != 0);
@@ -82,7 +81,7 @@ void registerPassPassManagerBindings() {
   register_binding(
       "mlir::PassManager::nest",
       [](uint64_t pm_ptr, const char* op_name) -> llvm::Expected<uint64_t> {
-        CREST_TRY(pm, crest::CrestBox<mlir::PassManager>::tryInner(
+        CREST_TRY(pm, crest::CrestBox<mlir::PassManager>::inner(
                           pm_ptr, "mlir::PassManager::nest"));
         return reinterpret_cast<uint64_t>(&pm.nest(op_name));
       });

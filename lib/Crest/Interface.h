@@ -79,8 +79,8 @@ bool installInterfaceEntry(Fn& slot, const LockedSchemeObject& dispatcher,
 /// function that installs the interface in `target`. `interfaces` is locked by
 /// the caller; each dispatcher is locked while its interface is attached.
 /// Answers the text of the error when an interface cannot be installed, and ""
-/// when all were. It does not raise: the caller raises after it has unlocked
-/// and destroyed what it holds (see scheme_error).
+/// when all were. It does not raise: the caller answers it to Scheme after it
+/// has unlocked and destroyed what it holds (see Error.h).
 template <typename Target, typename AttachFn>
 std::string
 attachInterfaces(Target& target, const LockedSchemeObject& interfaces,

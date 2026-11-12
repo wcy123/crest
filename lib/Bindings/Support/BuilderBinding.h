@@ -51,7 +51,7 @@ llvm::Expected<mlir::OpBuilder&> builder_inner(uint64_t handle,
 template <>
 inline llvm::Expected<mlir::OpBuilder&>
 builder_inner<CrestBox<mlir::OpBuilder>>(uint64_t handle, const char* who) {
-  return CrestBox<mlir::OpBuilder>::tryInner(handle, who);
+  return CrestBox<mlir::OpBuilder>::inner(handle, who);
 }
 
 // RewriterBase& converts to OpBuilder& statically, which adjusts the address:
@@ -59,7 +59,7 @@ builder_inner<CrestBox<mlir::OpBuilder>>(uint64_t handle, const char* who) {
 template <>
 inline llvm::Expected<mlir::OpBuilder&>
 builder_inner<CrestBox<mlir::RewriterBase*>>(uint64_t handle, const char* who) {
-  auto rewriter = CrestBox<mlir::RewriterBase*>::tryInner(handle, who);
+  auto rewriter = CrestBox<mlir::RewriterBase*>::inner(handle, who);
   if (!rewriter) {
     return rewriter.takeError();
   }
@@ -69,7 +69,7 @@ builder_inner<CrestBox<mlir::RewriterBase*>>(uint64_t handle, const char* who) {
 template <>
 inline llvm::Expected<mlir::OpBuilder&>
 builder_inner<CrestBox<mlir::OpBuilder*>>(uint64_t handle, const char* who) {
-  return CrestBox<mlir::OpBuilder*>::tryInner(handle, who);
+  return CrestBox<mlir::OpBuilder*>::inner(handle, who);
 }
 
 // The body and the binding name live in statics per lambda type, because a C

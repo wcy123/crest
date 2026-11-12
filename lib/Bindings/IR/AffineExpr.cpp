@@ -23,7 +23,7 @@ void registerIRAffineExprBindings() {
   register_binding(
       "mlir::getAffineDimExpr",
       [](uint64_t ctx_ptr, uint64_t position) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(
                            ctx_ptr, "mlir::getAffineDimExpr"));
         return reinterpret_cast<uint64_t>(
             mlir::getAffineDimExpr(static_cast<unsigned>(position), ctx)
@@ -33,7 +33,7 @@ void registerIRAffineExprBindings() {
   register_binding(
       "mlir::getAffineSymbolExpr",
       [](uint64_t ctx_ptr, uint64_t position) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(
                            ctx_ptr, "mlir::getAffineSymbolExpr"));
         return reinterpret_cast<uint64_t>(
             mlir::getAffineSymbolExpr(static_cast<unsigned>(position), ctx)
@@ -44,7 +44,7 @@ void registerIRAffineExprBindings() {
   register_binding(
       "mlir::getAffineConstantExpr",
       [](uint64_t ctx_ptr, int64_t constant) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(
                            ctx_ptr, "mlir::getAffineConstantExpr"));
         return reinterpret_cast<uint64_t>(
             mlir::getAffineConstantExpr(constant, ctx).getAsOpaquePointer());

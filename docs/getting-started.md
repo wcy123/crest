@@ -178,6 +178,8 @@ Downstream projects register additional C++ bindings without modifying CREST:
 extern "C" void crest_register_extra_bindings(void (*fn)());
 
 crest_register_extra_bindings([]() {
-  Sregister_symbol("myDialect::MyOp::create", (void*)my_dialect_op_create);
+  crest::register_binding("myDialect::MyOp::create", [](uint64_t loc) -> uint64_t {
+    return my_dialect_op_create(loc);
+  });
 });
 ```

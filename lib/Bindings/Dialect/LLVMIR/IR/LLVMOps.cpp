@@ -38,7 +38,7 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
   register_binding("mlir::LLVM::LLVMPointerType::get",
                    [](uint64_t ctx_ptr) -> llvm::Expected<uint64_t> {
                      CREST_TRY(
-                         ctx, crest::try_as_ptr<mlir::MLIRContext>(
+                         ctx, crest::as_ptr<mlir::MLIRContext>(
                                   ctx_ptr, "mlir::LLVM::LLVMPointerType::get"));
                      auto t = mlir::LLVM::LLVMPointerType::get(ctx);
                      return reinterpret_cast<uint64_t>(t.getAsOpaquePointer());
@@ -194,7 +194,7 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
   register_binding(
       "mlir::FlatSymbolRefAttr::get",
       [](uint64_t ctx_ptr, const char* name) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(
                            ctx_ptr, "mlir::FlatSymbolRefAttr::get"));
         auto attr = mlir::FlatSymbolRefAttr::get(ctx, name);
         return reinterpret_cast<uint64_t>(attr.getAsOpaquePointer());

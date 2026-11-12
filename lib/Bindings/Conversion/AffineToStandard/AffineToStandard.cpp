@@ -20,7 +20,7 @@ void registerConversionAffineToStandardBindings() {
   register_binding(
       "mlir::populateAffineToStdConversionPatterns",
       [](uint64_t patterns_ptr) -> llvm::Error {
-        CREST_TRY(patterns, crest::try_as_ref<mlir::RewritePatternSet>(
+        CREST_TRY(patterns, crest::as_ref<mlir::RewritePatternSet>(
                                 patterns_ptr,
                                 "mlir::populateAffineToStdConversionPatterns"));
         mlir::populateAffineToStdConversionPatterns(patterns);

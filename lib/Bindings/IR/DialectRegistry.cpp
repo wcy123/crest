@@ -29,7 +29,7 @@ void registerIRDialectRegistryBindings() {
       "mlir::DialectRegistry::insert",
       [](uint64_t registry_ptr, const char* dialect_name,
          const char* module_name) -> llvm::Error {
-        CREST_TRY(registry, crest::CrestBox<mlir::DialectRegistry>::tryInner(
+        CREST_TRY(registry, crest::CrestBox<mlir::DialectRegistry>::inner(
                                 registry_ptr, "mlir::DialectRegistry::insert"));
         // Copy first: the strings point into the Scheme heap, which the Scheme
         // code that validateSchemeDialect runs may move.

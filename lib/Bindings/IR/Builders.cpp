@@ -28,7 +28,7 @@ void registerIROpBuilderBindings() {
           return fail("mlir::OpBuilder::atBlockEnd",
                       llvm::Twine("null block pointer"));
         }
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
         // listener_ptr: raw OpBuilder::Listener*, 0 for none. A builder that
         // shares the listener of the builder that created the enclosing op
@@ -48,7 +48,7 @@ void registerIROpBuilderBindings() {
       [](mlir::OpBuilder& builder,
          uint64_t state_ptr) -> llvm::Expected<uint64_t> {
         CREST_TRY(state,
-                  crest::CrestBox<mlir::OperationState>::tryInner(
+                  crest::CrestBox<mlir::OperationState>::inner(
                       state_ptr, "mlir::OpBuilder::create<OperationState>"));
         return reinterpret_cast<uint64_t>(builder.create(state));
       });

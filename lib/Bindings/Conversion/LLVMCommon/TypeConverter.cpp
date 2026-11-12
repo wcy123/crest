@@ -24,7 +24,7 @@ void registerConversionLLVMCommonTypeConverterBindings() {
       "mlir::LLVMTypeConverter::LLVMTypeConverter",
       [](uint64_t ctx_ptr) -> llvm::Expected<uint64_t> {
         CREST_TRY(ctx,
-                  crest::try_as_ptr<mlir::MLIRContext>(
+                  crest::as_ptr<mlir::MLIRContext>(
                       ctx_ptr, "mlir::LLVMTypeConverter::LLVMTypeConverter"));
         return reinterpret_cast<uint64_t>(
             new crest::CrestBox<mlir::LLVMTypeConverter>(ctx));

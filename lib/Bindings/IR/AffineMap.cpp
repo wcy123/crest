@@ -23,7 +23,7 @@ void registerIRAffineMapBindings() {
   register_binding(
       "mlir::AffineMap::getMultiDimIdentityMap",
       [](uint64_t ctx_ptr, uint64_t num_dims) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(
                            ctx_ptr, "mlir::AffineMap::getMultiDimIdentityMap"));
         return reinterpret_cast<uint64_t>(
             mlir::AffineMap::getMultiDimIdentityMap(
@@ -35,7 +35,7 @@ void registerIRAffineMapBindings() {
   register_binding(
       "mlir::AffineMap::getConstantMap",
       [](uint64_t ctx_ptr, int64_t val) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(
                            ctx_ptr, "mlir::AffineMap::getConstantMap"));
         return reinterpret_cast<uint64_t>(
             mlir::AffineMap::getConstantMap(val, ctx).getAsOpaquePointer());
@@ -48,7 +48,7 @@ void registerIRAffineMapBindings() {
       "mlir::AffineMap::get",
       [](uint64_t ctx_ptr, uint64_t dim_count, uint64_t symbol_count,
          ptr results) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(
                            ctx_ptr, "mlir::AffineMap::get"));
         llvm::SmallVector<mlir::AffineExpr> exprs;
         for (ptr cur = results; cur != Snil; cur = Scdr(cur)) {

@@ -253,7 +253,7 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
       [](uint64_t state_ptr) -> llvm::Expected<ptr> {
         CREST_TRY(
             crest_lookup1,
-            crest::CrestBox<mlir::OperationState>::tryInner(
+            crest::CrestBox<mlir::OperationState>::inner(
                 state_ptr, "mlir::InferTypeOpInterface::inferReturnTypes"));
 
         return infer(crest_lookup1);

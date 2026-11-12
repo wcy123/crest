@@ -20,27 +20,27 @@ namespace crest {
 void registerDialectFuncIRFuncOpsBindings() {
   // func::FuncOp::create: create a func.func operation via rewriter.
   // (rw-ptr loc-ptr name-str functype-ptr) → Operation* uptr
-  register_binding(
-      "mlir::func::FuncOp::create",
-      [](uint64_t rw_ptr, uint64_t loc_ptr, const char* name,
-         uint64_t functype_ptr) -> llvm::Expected<uint64_t> {
-        CREST_TRY(rw, crest::CrestBox<mlir::RewriterBase*>::tryInner(
-                          rw_ptr, "mlir::func::FuncOp::create"));
-        auto loc = mlir::Location::getFromOpaquePointer(
-            reinterpret_cast<const void*>(loc_ptr));
-        auto functype =
-            mlir::cast<mlir::FunctionType>(mlir::Type::getFromOpaquePointer(
-                reinterpret_cast<const void*>(functype_ptr)));
-        auto func = mlir::func::FuncOp::create(rw, loc, name, functype);
-        return reinterpret_cast<uint64_t>(func.getOperation());
-      });
+  register_binding("mlir::func::FuncOp::create",
+                   [](uint64_t rw_ptr, uint64_t loc_ptr, const char* name,
+                      uint64_t functype_ptr) -> llvm::Expected<uint64_t> {
+                     CREST_TRY(rw, crest::CrestBox<mlir::RewriterBase*>::inner(
+                                       rw_ptr, "mlir::func::FuncOp::create"));
+                     auto loc = mlir::Location::getFromOpaquePointer(
+                         reinterpret_cast<const void*>(loc_ptr));
+                     auto functype = mlir::cast<mlir::FunctionType>(
+                         mlir::Type::getFromOpaquePointer(
+                             reinterpret_cast<const void*>(functype_ptr)));
+                     auto func =
+                         mlir::func::FuncOp::create(rw, loc, name, functype);
+                     return reinterpret_cast<uint64_t>(func.getOperation());
+                   });
 
   // func::ReturnOp::create: create a void func.return via rewriter.
   // (rw-ptr loc-ptr) → Operation* uptr
   register_binding(
       "mlir::func::ReturnOp::create",
       [](uint64_t rw_ptr, uint64_t loc_ptr) -> llvm::Expected<uint64_t> {
-        CREST_TRY(rw, crest::CrestBox<mlir::RewriterBase*>::tryInner(
+        CREST_TRY(rw, crest::CrestBox<mlir::RewriterBase*>::inner(
                           rw_ptr, "mlir::func::ReturnOp::create"));
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
@@ -63,7 +63,7 @@ void registerDialectFuncIRFuncOpsBindings() {
       [](uint64_t registry_ptr) -> llvm::Error {
         CREST_TRY(
             crest_lookup1,
-            crest::CrestBox<mlir::DialectRegistry>::tryInner(
+            crest::CrestBox<mlir::DialectRegistry>::inner(
                 registry_ptr,
                 "mlir::DialectRegistry::insert<mlir::func::FuncDialect>"));
 

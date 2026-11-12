@@ -24,7 +24,7 @@ void registerTransformsGreedyPatternRewriteDriverBindings() {
         }
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         CREST_TRY(patterns,
-                  crest::CrestBox<mlir::RewritePatternSet>::tryInner(
+                  crest::CrestBox<mlir::RewritePatternSet>::inner(
                       patterns_ptr,
                       "mlir_transforms_greedy_pattern_rewrite_driver_apply"));
         return mlir::succeeded(

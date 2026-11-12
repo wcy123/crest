@@ -25,7 +25,7 @@ void registerIRBuiltinAttributesBindings() {
   register_binding(
       "mlir::IntegerAttr::get<i64>",
       [](uint64_t ctx_ptr, ptr value) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         return reinterpret_cast<uint64_t>(
             mlir::IntegerAttr::get(mlir::IntegerType::get(ctx, 64),
                                    Sinteger64_value(value))
@@ -35,7 +35,7 @@ void registerIRBuiltinAttributesBindings() {
   register_binding(
       "mlir::IntegerAttr::get<i8>",
       [](uint64_t ctx_ptr, ptr value) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         return reinterpret_cast<uint64_t>(
             mlir::IntegerAttr::get(mlir::IntegerType::get(ctx, 8),
                                    Sinteger64_value(value))
@@ -45,7 +45,7 @@ void registerIRBuiltinAttributesBindings() {
   register_binding(
       "mlir::IntegerAttr::get<i16>",
       [](uint64_t ctx_ptr, ptr value) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         return reinterpret_cast<uint64_t>(
             mlir::IntegerAttr::get(mlir::IntegerType::get(ctx, 16),
                                    Sinteger64_value(value))
@@ -55,7 +55,7 @@ void registerIRBuiltinAttributesBindings() {
   register_binding(
       "mlir::IntegerAttr::get<i32>",
       [](uint64_t ctx_ptr, ptr value) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         return reinterpret_cast<uint64_t>(
             mlir::IntegerAttr::get(mlir::IntegerType::get(ctx, 32),
                                    Sinteger64_value(value))
@@ -65,7 +65,7 @@ void registerIRBuiltinAttributesBindings() {
   register_binding(
       "mlir::IntegerAttr::get<index>",
       [](uint64_t ctx_ptr, ptr value) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         return reinterpret_cast<uint64_t>(
             mlir::IntegerAttr::get(mlir::IndexType::get(ctx),
                                    Sinteger64_value(value))
@@ -75,7 +75,7 @@ void registerIRBuiltinAttributesBindings() {
   register_binding(
       "mlir::FloatAttr::get<f32>",
       [](uint64_t ctx_ptr, ptr value) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         return reinterpret_cast<uint64_t>(
             mlir::FloatAttr::get(mlir::Float32Type::get(ctx),
                                  static_cast<float>(Sflonum_value(value)))
@@ -85,7 +85,7 @@ void registerIRBuiltinAttributesBindings() {
   register_binding(
       "mlir::DenseI32ArrayAttr::get",
       [](uint64_t ctx_ptr, ptr value) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         llvm::SmallVector<int32_t> vec;
         if (Svectorp(value)) {
           iptr n = Svector_length(value);
@@ -108,7 +108,7 @@ void registerIRBuiltinAttributesBindings() {
   register_binding(
       "mlir::DenseI64ArrayAttr::get",
       [](uint64_t ctx_ptr, ptr value) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         llvm::SmallVector<int64_t> vec;
         if (Svectorp(value)) {
           iptr n = Svector_length(value);
@@ -132,7 +132,7 @@ void registerIRBuiltinAttributesBindings() {
   register_binding(
       "mlir::DenseI8ArrayAttr::get",
       [](uint64_t ctx_ptr, ptr value) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         llvm::SmallVector<int8_t> vec;
         for (int64_t v : convert_to_cpp<llvm::SmallVector<int64_t>>(value)) {
           vec.push_back(static_cast<int8_t>(v));
@@ -144,7 +144,7 @@ void registerIRBuiltinAttributesBindings() {
   register_binding(
       "mlir::DenseI16ArrayAttr::get",
       [](uint64_t ctx_ptr, ptr value) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         llvm::SmallVector<int16_t> vec;
         for (int64_t v : convert_to_cpp<llvm::SmallVector<int64_t>>(value)) {
           vec.push_back(static_cast<int16_t>(v));
@@ -156,7 +156,7 @@ void registerIRBuiltinAttributesBindings() {
   register_binding(
       "mlir::parseAttribute",
       [](uint64_t ctx_ptr, const char* spec) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         mlir::Attribute attr = mlir::parseAttribute(spec, ctx);
         if (!attr) {
           return fail("mlir::parseAttribute",
@@ -200,7 +200,7 @@ void registerIRBuiltinAttributesBindings() {
   register_binding(
       "mlir::UnitAttr::get", [](uint64_t ctx_ptr) -> llvm::Expected<uint64_t> {
         CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+                  crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
 
         return reinterpret_cast<uint64_t>(
             mlir::UnitAttr::get(crest_lookup1).getAsOpaquePointer());
@@ -225,7 +225,7 @@ void registerIRBuiltinAttributesBindings() {
   register_binding(
       "mlir::StringAttr::get",
       [](uint64_t ctx_ptr, const char* str) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         return reinterpret_cast<uint64_t>(
             mlir::StringAttr::get(ctx, str).getAsOpaquePointer());
       });
@@ -234,7 +234,7 @@ void registerIRBuiltinAttributesBindings() {
       "mlir::StringAttr::get/len",
       [](uint64_t ctx_ptr, const char* str,
          uint64_t len) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         return reinterpret_cast<uint64_t>(
             mlir::StringAttr::get(ctx, llvm::StringRef(str, len))
                 .getAsOpaquePointer());
@@ -543,7 +543,7 @@ void registerIRBuiltinAttributesBindings() {
   register_binding(
       "mlir::FloatAttr::get<f64>",
       [](uint64_t ctx_ptr, double val) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         auto attr = mlir::FloatAttr::get(mlir::Float64Type::get(ctx), val);
         return reinterpret_cast<uint64_t>(attr.getAsOpaquePointer());
       });
@@ -573,7 +573,7 @@ void registerIRBuiltinAttributesBindings() {
   register_binding(
       "mlir::ArrayAttr::get",
       [](uint64_t ctx_ptr, ptr attr_list) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(
                            ctx_ptr, "mlir::ArrayAttr::get"));
         llvm::SmallVector<mlir::Attribute> attrs;
         for (ptr p = attr_list; p != Snil; p = Scdr(p)) {
@@ -602,7 +602,7 @@ void registerIRBuiltinAttributesBindings() {
   register_binding(
       "mlir::FlatSymbolRefAttr::get",
       [](uint64_t ctx_ptr, const char* name) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         return reinterpret_cast<uint64_t>(
             mlir::FlatSymbolRefAttr::get(ctx, name).getAsOpaquePointer());
       });

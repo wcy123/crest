@@ -193,7 +193,7 @@ void registerCrestDynamicTypeBindings() {
       "crest::DynamicType::get",
       [](const char* dialect, const char* name, ptr params,
          uint64_t ctx_ptr) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         auto* def = lookup(ctx, dialect, name);
         if (!def) {
           return fail("crest::DynamicType::get",

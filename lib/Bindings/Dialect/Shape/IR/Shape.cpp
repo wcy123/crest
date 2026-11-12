@@ -24,7 +24,7 @@ void registerDialectShapeBindings() {
                       llvm::Twine("ctx must not be null"));
         }
         CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+                  crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
 
         return reinterpret_cast<uint64_t>(
             mlir::shape::ShapeType::get(crest_lookup1).getAsOpaquePointer());
@@ -39,7 +39,7 @@ void registerDialectShapeBindings() {
                       llvm::Twine("ctx must not be null"));
         }
         CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+                  crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
 
         return reinterpret_cast<uint64_t>(
             mlir::shape::SizeType::get(crest_lookup1).getAsOpaquePointer());
@@ -54,7 +54,7 @@ void registerDialectShapeBindings() {
                       llvm::Twine("ctx must not be null"));
         }
         CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+                  crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
 
         return reinterpret_cast<uint64_t>(
             mlir::shape::WitnessType::get(crest_lookup1).getAsOpaquePointer());

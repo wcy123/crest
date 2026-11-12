@@ -5,6 +5,7 @@
 //===- InterpreterTest.cpp - Unit tests for ChezSchemeInterpreter ---------===//
 
 #include "../../lib/Bindings/Support/LockedSchemeObject.h"
+#include "../../lib/Bindings/Support/Result.h"
 #include "../../lib/Interpreter/ChezSchemeInterpreter.h"
 #include "gtest/gtest.h"
 #include <chrono>
@@ -63,11 +64,12 @@ TEST_F(InterpreterTest, CallableCallsTheSchemeProcedure) {
   EXPECT_EQ(callable(41), 42);
 }
 
-// REGRESSION: scheme_error built its message with a std::ostringstream and a
-// std::string, then called the Scheme procedure `error`, which never returns:
-// the destructors of both were skipped, and every error leaked about 550 bytes
-// of C++ memory. Valgrind showed it. The message must be copied into a Scheme
-// string and the C++ objects destroyed before Scheme is called.
+// REGRESSION: a failing binding must leave nothing behind
+// (plans/04-errors-are-values.md). It used to raise the error from C++
+// (scheme_error): the error crossed the C++ frame, which skipped its
+// destructors (about 550 bytes of C++ memory per error) and left about 200
+// bytes in Chez itself (S_call_help). Now a binding answers an error object,
+// and Scheme raises it after the C++ call has returned.
 #if defined(__GLIBC__)
 // The bytes that malloc has given out and not got back. mallinfo2 replaces
 // mallinfo (glibc 2.33), which newer glibc marks as deprecated.
@@ -79,15 +81,21 @@ static size_t bytesInUse() {
 #  endif
 }
 
-TEST_F(InterpreterTest, SchemeErrorDoesNotLeakCppMemory) {
-  Sregister_symbol(
-      "crest::test::raise", (void*)+[]() -> void {
-        scheme_error("crest::test", "a message that is long enough to matter",
-                     42, "and a second part");
-      });
-  evalScheme("(define crest-test-raise"
-             "  (foreign-procedure \"crest::test::raise\" () void))");
-  ptr once = evalScheme("(lambda () (guard (c [#t #f]) (crest-test-raise)))");
+TEST_F(InterpreterTest, FailingBindingDoesNotLeakCppMemory) {
+  crest::register_binding("crest::test::fail", []() -> llvm::Error {
+    return crest::fail("crest::test",
+                       "a message that is long enough to matter " +
+                           llvm::Twine(42) + " and a second part");
+  });
+  // What crest-foreign-procedure does, by hand: call for a scheme-object and
+  // raise the error object.
+  evalScheme("(define crest-test-fail"
+             "  (foreign-procedure \"crest::test::fail\" () scheme-object))");
+  ptr once = evalScheme("(lambda ()"
+                        "  (guard (c [#t #f])"
+                        "    (let ([r (crest-test-fail)])"
+                        "      (when (and (pair? r) (eof-object? (car r))) "
+                        "(error (cadr r) (cddr r))))))");
   LockedSchemeObject locked(once);
   auto run = [&](int times) {
     for (int i = 0; i < times; ++i) {
@@ -108,12 +116,9 @@ TEST_F(InterpreterTest, SchemeErrorDoesNotLeakCppMemory) {
   run(kErrors);
   collect();
   size_t grown = bytesInUse() - before;
-  // Before the repair each error lost about 816 bytes in scheme_error. What is
-  // left, about 200 bytes per error, is Chez's own: S_call_help allocates a
-  // record for each call from C into Scheme and does not free it when an error
-  // leaves through that call (valgrind: malloc in S_call_help). The bound
-  // allows for that and not for CREST's own leak.
-  EXPECT_LT(grown, static_cast<size_t>(kErrors) * 400)
+  // Nothing crosses a C function, so nothing is left: a few bytes per error at
+  // most, for the allocator.
+  EXPECT_LT(grown, static_cast<size_t>(kErrors) * 24)
       << grown << " bytes in use more after " << kErrors << " errors";
 }
 #endif

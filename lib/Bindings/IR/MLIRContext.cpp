@@ -38,99 +38,90 @@ void registerIRMLIRContextBindings() {
                    [](uint64_t registry_ptr) -> llvm::Expected<uint64_t> {
                      CREST_TRY(
                          registry,
-                         crest::CrestBox<mlir::DialectRegistry>::tryInner(
+                         crest::CrestBox<mlir::DialectRegistry>::inner(
                              registry_ptr, "mlir::MLIRContext::new/registry"));
                      auto* box = new CrestBox<mlir::MLIRContext>(registry);
                      box->inner().disableMultithreading();
                      return reinterpret_cast<uint64_t>(box);
                    });
 
-  register_binding(
-      "mlir::MLIRContext::allowUnregisteredDialects",
-      [](uint64_t ctx_ptr, int allow) -> llvm::Error {
-        CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+  register_binding("mlir::MLIRContext::allowUnregisteredDialects",
+                   [](uint64_t ctx_ptr, int allow) -> llvm::Error {
+                     CREST_TRY(crest_lookup1, crest::as_ptr<mlir::MLIRContext>(
+                                                  ctx_ptr, __func__));
 
-        crest_lookup1->allowUnregisteredDialects(allow != 0);
-        return llvm::Error::success();
-      });
-  register_binding(
-      "mlir::MLIRContext::allowsUnregisteredDialects",
-      [](uint64_t ctx_ptr) -> llvm::Expected<int> {
-        CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+                     crest_lookup1->allowUnregisteredDialects(allow != 0);
+                     return llvm::Error::success();
+                   });
+  register_binding("mlir::MLIRContext::allowsUnregisteredDialects",
+                   [](uint64_t ctx_ptr) -> llvm::Expected<int> {
+                     CREST_TRY(crest_lookup1, crest::as_ptr<mlir::MLIRContext>(
+                                                  ctx_ptr, __func__));
 
-        return crest_lookup1->allowsUnregisteredDialects() ? 1 : 0;
-      });
-  register_binding(
-      "mlir::MLIRContext::enableMultithreading",
-      [](uint64_t ctx_ptr, int enable) -> llvm::Error {
-        CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+                     return crest_lookup1->allowsUnregisteredDialects() ? 1 : 0;
+                   });
+  register_binding("mlir::MLIRContext::enableMultithreading",
+                   [](uint64_t ctx_ptr, int enable) -> llvm::Error {
+                     CREST_TRY(crest_lookup1, crest::as_ptr<mlir::MLIRContext>(
+                                                  ctx_ptr, __func__));
 
-        crest_lookup1->enableMultithreading(enable != 0);
-        return llvm::Error::success();
-      });
-  register_binding(
-      "mlir::MLIRContext::disableMultithreading",
-      [](uint64_t ctx_ptr, int disable) -> llvm::Error {
-        CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+                     crest_lookup1->enableMultithreading(enable != 0);
+                     return llvm::Error::success();
+                   });
+  register_binding("mlir::MLIRContext::disableMultithreading",
+                   [](uint64_t ctx_ptr, int disable) -> llvm::Error {
+                     CREST_TRY(crest_lookup1, crest::as_ptr<mlir::MLIRContext>(
+                                                  ctx_ptr, __func__));
 
-        crest_lookup1->disableMultithreading(disable != 0);
-        return llvm::Error::success();
-      });
-  register_binding(
-      "mlir::MLIRContext::isMultithreadingEnabled",
-      [](uint64_t ctx_ptr) -> llvm::Expected<int> {
-        CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+                     crest_lookup1->disableMultithreading(disable != 0);
+                     return llvm::Error::success();
+                   });
+  register_binding("mlir::MLIRContext::isMultithreadingEnabled",
+                   [](uint64_t ctx_ptr) -> llvm::Expected<int> {
+                     CREST_TRY(crest_lookup1, crest::as_ptr<mlir::MLIRContext>(
+                                                  ctx_ptr, __func__));
 
-        return crest_lookup1->isMultithreadingEnabled() ? 1 : 0;
-      });
+                     return crest_lookup1->isMultithreadingEnabled() ? 1 : 0;
+                   });
   register_binding(
       "mlir::MLIRContext::getOrLoadDialect",
       [](uint64_t ctx_ptr, const char* ns) -> llvm::Expected<uint64_t> {
         CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+                  crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
 
         return reinterpret_cast<uint64_t>(crest_lookup1->getOrLoadDialect(ns));
       });
-  register_binding(
-      "mlir::MLIRContext::loadAllAvailableDialects",
-      [](uint64_t ctx_ptr) -> llvm::Error {
-        CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+  register_binding("mlir::MLIRContext::loadAllAvailableDialects",
+                   [](uint64_t ctx_ptr) -> llvm::Error {
+                     CREST_TRY(crest_lookup1, crest::as_ptr<mlir::MLIRContext>(
+                                                  ctx_ptr, __func__));
 
-        crest_lookup1->loadAllAvailableDialects();
-        return llvm::Error::success();
-      });
-  register_binding(
-      "mlir::MLIRContext::printOpOnDiagnostic",
-      [](uint64_t ctx_ptr, int enable) -> llvm::Error {
-        CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+                     crest_lookup1->loadAllAvailableDialects();
+                     return llvm::Error::success();
+                   });
+  register_binding("mlir::MLIRContext::printOpOnDiagnostic",
+                   [](uint64_t ctx_ptr, int enable) -> llvm::Error {
+                     CREST_TRY(crest_lookup1, crest::as_ptr<mlir::MLIRContext>(
+                                                  ctx_ptr, __func__));
 
-        crest_lookup1->printOpOnDiagnostic(enable != 0);
-        return llvm::Error::success();
-      });
-  register_binding(
-      "mlir::MLIRContext::shouldPrintOpOnDiagnostic",
-      [](uint64_t ctx_ptr) -> llvm::Expected<int> {
-        CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+                     crest_lookup1->printOpOnDiagnostic(enable != 0);
+                     return llvm::Error::success();
+                   });
+  register_binding("mlir::MLIRContext::shouldPrintOpOnDiagnostic",
+                   [](uint64_t ctx_ptr) -> llvm::Expected<int> {
+                     CREST_TRY(crest_lookup1, crest::as_ptr<mlir::MLIRContext>(
+                                                  ctx_ptr, __func__));
 
-        return crest_lookup1->shouldPrintOpOnDiagnostic() ? 1 : 0;
-      });
-  register_binding(
-      "mlir::MLIRContext::printStackTraceOnDiagnostic",
-      [](uint64_t ctx_ptr, int enable) -> llvm::Error {
-        CREST_TRY(crest_lookup1,
-                  crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+                     return crest_lookup1->shouldPrintOpOnDiagnostic() ? 1 : 0;
+                   });
+  register_binding("mlir::MLIRContext::printStackTraceOnDiagnostic",
+                   [](uint64_t ctx_ptr, int enable) -> llvm::Error {
+                     CREST_TRY(crest_lookup1, crest::as_ptr<mlir::MLIRContext>(
+                                                  ctx_ptr, __func__));
 
-        crest_lookup1->printStackTraceOnDiagnostic(enable != 0);
-        return llvm::Error::success();
-      });
+                     crest_lookup1->printStackTraceOnDiagnostic(enable != 0);
+                     return llvm::Error::success();
+                   });
 
   // LEAK WARNING: the module belongs to nobody. The caller must erase it. Use
   // with-mlir::OwningOpRef, which erases it after its body; a module that is
@@ -138,7 +129,7 @@ void registerIRMLIRContextBindings() {
   register_binding(
       "mlir::parseSourceFile",
       [](uint64_t ctx_ptr, const char* filename) -> llvm::Expected<uint64_t> {
-        CREST_TRY(ctx, crest::try_as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
+        CREST_TRY(ctx, crest::as_ptr<mlir::MLIRContext>(ctx_ptr, __func__));
         // verifyAfterParse=false: skip structural verification so that
         // dynamic ops without Terminator/HasParent traits can be parsed.
         mlir::ParserConfig config(ctx, /*verifyAfterParse=*/false);
@@ -155,22 +146,8 @@ void registerIRMLIRContextBindings() {
 // (op->getContext(), type.getContext(), etc.). Raw pointers are MLIR-managed
 // and need no CrestObject wrapper.
 template <>
-mlir::MLIRContext* as_ptr<mlir::MLIRContext>(uint64_t ptr_val,
-                                             const char* who) {
-  if (!ptr_val) {
-    scheme_error(who, "null MLIRContext pointer");
-  }
-  auto* obj = reinterpret_cast<crest::CrestObject*>(ptr_val);
-  if (obj->isa<crest::CrestBox<mlir::MLIRContext>>()) {
-    return &static_cast<crest::CrestBox<mlir::MLIRContext>*>(obj)->inner();
-  }
-  // Raw MLIRContext* from MLIR APIs — valid MLIR-managed pointer, no wrapper.
-  return reinterpret_cast<mlir::MLIRContext*>(ptr_val);
-}
-
-template <>
-llvm::Expected<mlir::MLIRContext*>
-try_as_ptr<mlir::MLIRContext>(uint64_t ptr_val, const char* who) {
+llvm::Expected<mlir::MLIRContext*> as_ptr<mlir::MLIRContext>(uint64_t ptr_val,
+                                                             const char* who) {
   if (!ptr_val) {
     return fail(who, "null MLIRContext pointer");
   }

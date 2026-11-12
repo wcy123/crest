@@ -15,10 +15,6 @@
 
 namespace crest {
 
-void crestObjectError(const char* who, const char* what) {
-  scheme_error(who, what);
-}
-
 void registerCrestObjectBindings() {
   // Call the deletor stored at offset 0 of a CrestObject.
   // Needed as a C trampoline because Scheme cannot call a raw function pointer.

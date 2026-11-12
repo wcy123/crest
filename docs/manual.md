@@ -1456,20 +1456,24 @@ Register additional MLIR APIs from a downstream project without modifying CREST:
 extern "C" void crest_register_extra_bindings(void (*fn)());
 
 crest_register_extra_bindings([]() {
-    Sregister_symbol("myDialect::MyOp::getCount",
-        (void*)+[](uint64_t op_ptr) -> uint64_t {
+    crest::register_binding("myDialect::MyOp::getCount",
+        [](uint64_t op_ptr) -> llvm::Expected<uint64_t> {
+            if (!op_ptr)
+                return crest::fail("myDialect::MyOp::getCount", "null operation pointer");
             auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
             return op->getNumOperands();
         });
 });
 ```
 
-Then declare and use in Scheme:
+The lambda answers a value, nothing, an `llvm::Error` or an `llvm::Expected<T>`; a failure becomes an error that
+Scheme raises after the C++ call has returned (CLAUDE.md Rule 20). Then declare and use it in Scheme:
 
 ```scheme
 ;; In your ffi.sls:
+(import (mlir support foreign))
 (define %myDialect::MyOp::getCount
-  (foreign-procedure "myDialect::MyOp::getCount" (uptr) uptr))
+  (crest-foreign-procedure "myDialect::MyOp::getCount" (uptr) uptr))
 
 ;; In your public .sls:
 (define myDialect::MyOp::getCount %myDialect::MyOp::getCount)
