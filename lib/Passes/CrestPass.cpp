@@ -42,6 +42,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "../Bindings/Support/Result.h"
+#include "../Bindings/Support/SchemeWrapper.h"
 #include "../Crest/Dialect.h"
 #include "../Interpreter/ChezSchemeInterpreter.h"
 #include "crest/Passes/Passes.h"
@@ -240,7 +242,19 @@ struct CrestPass : public mlir::OperationPass<mlir::ModuleOp> {
       return signalPassFailure();
     }
 
-    scheme_call("run-pass", getOperation().getOperation());
+    // The pass raises no error into this frame: crest-call-guarded stores it,
+    // and it is reported here.
+    interp->eval("(import (crest callback))");
+    scheme_call("crest-call-guarded", convert_to_scheme_func("run-pass"),
+                getOperation().getOperation());
+    crest::CallbackError& slot = crest::callbackError();
+    if (slot.pending) {
+      std::string text =
+          slot.who.empty() ? slot.message : slot.who + ": " + slot.message;
+      slot = crest::CallbackError();
+      getOperation().emitError(text);
+      return signalPassFailure();
+    }
   }
 
 private:

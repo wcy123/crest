@@ -40,6 +40,17 @@ void registerCrestObjectBindings() {
         setCallbackError(who, message);
       });
 
+  // crest::error::pendingFlag () → uptr: the address of the flag that says an
+  // error is waiting in the slot. A callable (scheme/crest/callback.sls) reads
+  // it before it runs Scheme: while an error is pending it answers the zero
+  // value and runs nothing, so C++ code that retries (a greedy rewrite that
+  // sees an op modified again and again) comes to an end, and the first error
+  // is the one that is reported.
+  Sregister_symbol(
+      "crest::error::pendingFlag", (void*)+[]() -> uint64_t {
+        return reinterpret_cast<uint64_t>(&callbackError().pending);
+      });
+
   // crest::bindings::answersObject (string name) → int: 1 when `name` was
   // registered with register_binding, so Scheme must call it through
   // crest-foreign-procedure.

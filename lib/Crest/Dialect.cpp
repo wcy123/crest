@@ -111,17 +111,22 @@ void CrestDialect::initialize(const LockedSchemeObject& interfaces) {
   std::string attachError =
       attachInterfaces(*this, interfaces, getAttachDialectInterfaceFns());
   if (!attachError.empty()) {
-    // LEAK WARNING: this runs inside MLIR's construction of the dialect, so
-    // Scheme unwinds MLIR's frames too and whatever they hold leaks (see
-    // scheme_error). It is a mistake in the define-dialect form, found when the
-    // dialect loads.
-    ptr message = Sstring(attachError.c_str());
-    attachError = std::string();
-    scheme_raise("crest::CrestDialect", message);
+    // This runs inside MLIR's construction of the dialect, so there is no way
+    // to return the error to MLIR. It is kept for the Scheme binding that is
+    // loading the dialect (load-scheme-dialect!, getOrLoadDialect,
+    // parseSourceFile), which answers it; with no binding on the stack
+    // (crest-opt) it stops the process with the text (failIfUnanswered). A
+    // mistake in the define-dialect form.
+    setCallbackError("crest::CrestDialect", attachError);
+    failIfUnanswered();
+    return;
   }
   if (cbs_.initialize) {
     cbs_.initialize(reinterpret_cast<uint64_t>(this));
   }
+  // An error of the callback (a register-dynamic-op! that failed, ...) is in
+  // the slot: see above.
+  failIfUnanswered();
 }
 
 mlir::Attribute CrestDialect::parseAttribute(mlir::DialectAsmParser& parser,
@@ -255,8 +260,9 @@ static CrestDialect::Callbacks unpack_callbacks(ptr v) {
   auto entry = [&](int slot) -> uint64_t {
     ptr value = Svector_ref(v, slot);
     if (!Sfixnump(value) && !Sbignump(value)) {
-      scheme_error("crest::CrestDialect",
-                   "callback slot must be the entry point of a callable or 0");
+      llvm::report_fatal_error("crest::CrestDialect: callback slot must be the "
+                               "entry point of a callable or 0",
+                               /*gen_crash_diag=*/false);
     }
     return static_cast<uint64_t>(Sinteger64_value(value));
   };
@@ -324,24 +330,15 @@ void registerIRExtensibleDialectBindings() {
                            ctx_ptr, "crest::load-scheme-dialect!"));
         // Copy first: the strings point into the Scheme heap, which the Scheme
         // code that validateSchemeDialect runs may move.
-        // The strings end their scope before Scheme raises the error: raising
-        // skips destructors (see scheme_error).
-        ptr failure = Sfalse;
-        {
-          std::string dialect(dialect_name);
-          std::string module(module_name);
-          if (auto error = validateSchemeDialect(dialect, module)) {
-            failure = Sstring(
-                ("Failed to import Scheme library: " + module + ": " + *error)
-                    .c_str());
-          } else {
-            auto [type_id, factory] = dialectFactory(dialect, module);
-            factory(ctx);
-          }
+        std::string dialect(dialect_name);
+        std::string module(module_name);
+        if (auto error = validateSchemeDialect(dialect, module)) {
+          return fail("crest::load-scheme-dialect!",
+                      "Failed to import Scheme library: " + module + ": " +
+                          *error);
         }
-        if (failure != Sfalse) {
-          scheme_raise("crest::load-scheme-dialect!", failure);
-        }
+        auto [type_id, factory] = dialectFactory(dialect, module);
+        factory(ctx);
         return llvm::Error::success();
       });
 }

@@ -377,30 +377,17 @@ void registerCrestDynamicOpBindings() {
   // registered, so the list is locked for this call and not kept.
   register_binding("crest::register-dynamic-op!",
                    [](uint64_t dialect_ptr, const char* op_name, ptr cbs_ptr,
-                      ptr interfaces_ptr) -> void {
+                      ptr interfaces_ptr) -> llvm::Error {
                      // Everything with a destructor lives in
                      // registerOpFromScheme, which answers the text of an
-                     // error. Scheme raises it here, after those objects are
-                     // destroyed and the list is unlocked: raising skips
-                     // destructors (see scheme_error).
-                     ptr failure = Sfalse;
-                     {
-                       std::string error = registerOpFromScheme(
-                           dialect_ptr, op_name, cbs_ptr, interfaces_ptr);
-                       if (!error.empty()) {
-                         failure = Sstring(error.c_str());
-                       }
+                     // error; the answer is returned to Scheme after those
+                     // objects are destroyed and the list is unlocked.
+                     std::string error = registerOpFromScheme(
+                         dialect_ptr, op_name, cbs_ptr, interfaces_ptr);
+                     if (!error.empty()) {
+                       return fail("crest::register-dynamic-op!", error);
                      }
-                     if (failure != Sfalse) {
-                       // LEAK WARNING: this registration runs inside MLIR's
-                       // loading of the dialect, and that may run inside MLIR's
-                       // parser (crest-opt parses the module, which loads the
-                       // dialect). Scheme unwinds MLIR's frames too, so what
-                       // they hold (the module being parsed) leaks. Nothing
-                       // here can undo that: a define-dialect form with an
-                       // error ends the program in practice (see scheme_error).
-                       scheme_raise("crest::register-dynamic-op!", failure);
-                     }
+                     return llvm::Error::success();
                    });
 }
 

@@ -123,11 +123,36 @@ inline ptr takeCallbackErrorObject() {
   return object;
 }
 
-// answer(fn): call fn() and answer its result to Scheme (Result.h, top): the
-// value as an object, an error as the error object, and the error of a
-// callback, if there is one, instead of either.
+// How many bindings are on the stack: a binding answers the error of a callback
+// that ran inside it. With none (crest-opt, which MLIR drives, loading a Scheme
+// dialect while it parses) nobody will answer.
+inline int& bindingDepth() {
+  static thread_local int depth = 0;
+  return depth;
+}
+
+// The error in the slot has nobody to answer it (see bindingDepth): stop with
+// the text, as an uncaught error did. Call it where C++ has just run a Scheme
+// callback outside of any binding.
+inline void failIfUnanswered() {
+  CallbackError& slot = callbackError();
+  if (slot.pending && bindingDepth() == 0) {
+    std::string text =
+        slot.who.empty() ? slot.message : slot.who + ": " + slot.message;
+    slot = CallbackError();
+    llvm::report_fatal_error(llvm::Twine(text), /*gen_crash_diag=*/false);
+  }
+}
+
+// answer(fn): call fn() and answer its result to Scheme: the value as an
+// object, an error as the error object, and the error of a callback, if there
+// is one, instead of either.
 template <typename Fn> ptr answer(Fn&& fn) {
   using R = std::invoke_result_t<Fn>;
+  struct Depth {
+    Depth() { ++bindingDepth(); }
+    ~Depth() { --bindingDepth(); }
+  } depth;
   ptr result;
   if constexpr (std::is_void_v<R>) {
     fn();

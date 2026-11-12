@@ -25,7 +25,8 @@
 
 (library (mlir support foreign)
   (export crest-foreign-procedure
-          %crest::error::set)
+          %crest::error::set
+          crest-callback-error-pending?)
   (import (chezscheme))
 
   ;; The error object is a pair whose first element is the eof object.
@@ -34,7 +35,7 @@
 
   ;; who is the name of the binding, message the text; both are strings.
   (define (%%raise-error-object x)
-    (error (cadr x) (cddr x)))
+    (error (if (string=? (cadr x) "") #f (cadr x)) (cddr x)))
 
   (define (%%boolean x)
     (if (boolean? x) x (not (eqv? x 0))))
@@ -42,6 +43,13 @@
   ;; The guard of a callable puts the text of an error here, for the next binding that returns to answer.
   (define %crest::error::set
     (foreign-procedure "crest::error::set" (string string) void))
+
+  ;; Is an error waiting in the slot? The flag is one byte at an address that C++ gives once.
+  (define %%pending-flag-address
+    ((foreign-procedure "crest::error::pendingFlag" () uptr)))
+
+  (define (crest-callback-error-pending?)
+    (not (zero? (foreign-ref 'unsigned-8 %%pending-flag-address 0))))
 
   (define-syntax crest-foreign-procedure
     (lambda (stx)

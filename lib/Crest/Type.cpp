@@ -99,14 +99,17 @@ void registerCrestDynamicTypeBindings() {
       "crest::register-dynamic-type!",
       [](uint64_t dialect_ptr, const char* name, ptr cbs) -> llvm::Error {
         auto* dialect = reinterpret_cast<mlir::ExtensibleDialect*>(dialect_ptr);
-        auto entry = [&](int slot) -> uint64_t {
+        for (int slot = 0; slot < 3; ++slot) {
           ptr value = Svector_ref(cbs, slot);
           if (!Sfixnump(value) && !Sbignump(value)) {
-            scheme_error("crest::register-dynamic-type!",
-                         "callback slot must be the entry point of a callable "
-                         "or 0");
+            return fail("crest::register-dynamic-type!",
+                        "callback slot must be the entry point of a callable "
+                        "or 0");
           }
-          return static_cast<uint64_t>(Sinteger64_value(value));
+        }
+        auto entry = [&](int slot) -> uint64_t {
+          return static_cast<uint64_t>(
+              Sinteger64_value(Svector_ref(cbs, slot)));
         };
         using VerifyFn = int (*)(const void* const*, uint64_t, uint64_t);
         using ParseFn = int (*)(uint64_t, uint64_t);

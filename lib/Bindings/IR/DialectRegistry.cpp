@@ -33,24 +33,15 @@ void registerIRDialectRegistryBindings() {
                                 registry_ptr, "mlir::DialectRegistry::insert"));
         // Copy first: the strings point into the Scheme heap, which the Scheme
         // code that validateSchemeDialect runs may move.
-        // The strings end their scope before Scheme raises the error: raising
-        // skips destructors (see scheme_error).
-        ptr failure = Sfalse;
-        {
-          std::string dialect(dialect_name);
-          std::string module(module_name);
-          if (auto error = crest::validateSchemeDialect(dialect, module)) {
-            failure = Sstring(
-                ("Failed to import Scheme library: " + module + ": " + *error)
-                    .c_str());
-          } else {
-            auto [type_id, factory] = crest::dialectFactory(dialect, module);
-            registry.insert(type_id, dialect, factory);
-          }
+        std::string dialect(dialect_name);
+        std::string module(module_name);
+        if (auto error = crest::validateSchemeDialect(dialect, module)) {
+          return fail("mlir::DialectRegistry::insert",
+                      "Failed to import Scheme library: " + module + ": " +
+                          *error);
         }
-        if (failure != Sfalse) {
-          scheme_raise("mlir::DialectRegistry::insert", failure);
-        }
+        auto [type_id, factory] = crest::dialectFactory(dialect, module);
+        registry.insert(type_id, dialect, factory);
         return llvm::Error::success();
       });
 }

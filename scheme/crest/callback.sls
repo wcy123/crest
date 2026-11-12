@@ -36,12 +36,101 @@
   (export crest-make-static-c-callable
           with-c-callable
           with-c-callables
+          crest-call-guarded
+          crest-guard-procedure
           crest-callback-pointer-list
           crest-callback-condition-text
           crest-callback-entry-dispatcher
           crest-slot-callable)
   (import (chezscheme)
           (mlir support foreign))
+
+  ;; ---- no error leaves a callable ------------------------------------------------------------------
+  ;;
+  ;; C++ calls a callable through a C function pointer. An error that escaped it would cross the C++
+  ;; frames (skipping their destructors, and leaving a record in Chez for each: plans/04-errors-are-values.md),
+  ;; so every callable catches the error itself: it stores the who and the text in the C++ slot
+  ;; (crest::error::set, first error wins) and answers the zero value of its result type. C++ goes on with
+  ;; that value (a pattern that did not match, a null type, ...); the binding that C++ was running answers
+  ;; the stored error to Scheme when it returns, and Scheme raises it there.
+
+  ;; The who of the condition, as a string ("" when it has none).
+  (define (%%condition-who c)
+    (if (and (condition? c) (who-condition? c) (condition-who c))
+        (let ([who (condition-who c)])
+          (cond [(string? who) who]
+                [(symbol? who) (symbol->string who)]
+                [else (call-with-string-output-port (lambda (port) (write who port)))]))
+        ""))
+
+  ;; The text of the condition: the message and the irritants, as `error` was given them.
+  (define (%%condition-message c)
+    (call-with-string-output-port
+     (lambda (port)
+       (cond
+        [(and (condition? c) (message-condition? c))
+         (display (condition-message c) port)
+         (when (irritants-condition? c)
+           (for-each (lambda (irritant) (display " " port) (write irritant port))
+                     (condition-irritants c)))]
+        [(condition? c) (display-condition c port)]
+        [else (write c port)]))))
+
+  (define (%%report-callback-error! c)
+    (%crest::error::set (%%condition-who c) (%%condition-message c)))
+
+  ;; What a callable answers C++ after an error: the zero of its result type.
+  (define-syntax %%zero-of
+    (lambda (stx)
+      (syntax-case stx ()
+        [(_ type)
+         (let ([datum (syntax->datum #'type)])
+           (cond
+            [(pair? datum) #'(void)]
+            [(memq datum '(void)) #'(void)]
+            [(memq datum '(boolean scheme-object)) #'#f]
+            [(memq datum '(double-float single-float double float)) #'0.0]
+            [else #'0]))])))
+
+  ;; (%%guarded (argument-type ...) result-type procedure): the procedure, with its error caught.
+  (define-syntax %%guarded
+    (lambda (stx)
+      (syntax-case stx ()
+        [(_ (argument-type ...) result procedure)
+         ;; A result of the form (& ftype) is written through a place that Chez passes as an extra
+         ;; first argument.
+         (with-syntax ([(answer ...) (if (pair? (syntax->datum #'result))
+                                         (generate-temporaries '(answer))
+                                         '())]
+                       [(argument ...) (generate-temporaries #'(argument-type ...))])
+           #'(let ([p procedure])
+               (lambda (answer ... argument ...)
+                 (if (crest-callback-error-pending?)
+                     (%%zero-of result)
+                     (guard (c [#t (%%report-callback-error! c) (%%zero-of result)])
+                       (p answer ... argument ...))))))])))
+
+  ;; For the callable of a slot, whose answer is written through a place that C++ gives: the guard sits
+  ;; inside, and answers the default that the kind of the result stands for.
+  (define (%%slot-guard procedure default)
+    (lambda arguments
+      (if (crest-callback-error-pending?)
+          default
+          (guard (c [#t (%%report-callback-error! c) default])
+            (apply procedure arguments)))))
+
+  ;; (crest-call-guarded procedure argument ...): the control plane. C++ calls it where it used to call the
+  ;; procedure itself (the pass of --crest-pass): an error is stored in the slot, as a callable does, and
+  ;; the answer is #f, so no error crosses the C++ frame; C++ looks at the slot when this returns.
+  (define (crest-call-guarded procedure . arguments)
+    (guard (c [#t (%%report-callback-error! c) #f])
+      (apply procedure arguments)))
+
+  ;; (crest-guard-procedure procedure default): the procedure with its error caught: stored in the slot,
+  ;; and the answer is `default`. For a Scheme procedure that C++ calls through a binding (the clauses of
+  ;; InferTypeOpInterface, which `adapt` calls).
+  (define (crest-guard-procedure procedure default)
+    (%%slot-guard procedure default))
 
   ;; A pair of words that C++ passes or returns by value: an llvm::ArrayRef, a TypeRange, an
   ;; OperandRange (a pointer and a count). Chez makes a foreign-callable that takes or answers such a
@@ -63,7 +152,8 @@
   (define-syntax crest-make-static-c-callable
     (syntax-rules ()
       [(_ (argument-type ...) result-type proc)
-       (let ([code (foreign-callable proc (argument-type ...) result-type)])
+       (let ([code (foreign-callable (%%guarded (argument-type ...) result-type proc)
+                                     (argument-type ...) result-type)])
          (lock-object code)
          (foreign-callable-entry-point code))]))
 
@@ -88,7 +178,7 @@
        (let* ([given value]
               [made? (procedure? given)]
               [code (cond
-                     [made? (foreign-callable given (type ...) result)]
+                     [made? (foreign-callable (%%guarded (type ...) result given) (type ...) result)]
                      [(and (integer? given) (exact? given)) (foreign-callable-code-object given)]
                      [else given])])
          (when made? (lock-object code))
@@ -199,7 +289,11 @@
             [else (syntax-violation 'crest-slot-callable "unknown kind of result" stx result)])))
       (syntax-case stx ()
         [(_ (kind ...) result procedure)
-         #`(let ([p procedure])
+         #`(let ([p (%%slot-guard procedure
+                                  #,(case (syntax->datum #'result)
+                                      [(range) #'(cons 0 0)]
+                                      [(void) #'(void)]
+                                      [else #'0]))])
              (if (%%windows?)
                  #,(callable #t #'(kind ...) #'result #'p)
                  #,(callable #f #'(kind ...) #'result #'p)))])))
