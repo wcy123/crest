@@ -78,14 +78,16 @@
                            [(list-of patterns) => (lambda (l) l)]
                            [else (fail patterns ":patterns expects a list")])])
            (with-syntax ([(op* ctx* set) (generate-temporaries '(module-op ctx patterns))])
-             (with-syntax ([(pattern-form ...)
-                            (map (lambda (e) (pattern-entry-form 'apply-patterns e #'set))
-                                 entries)]
+             (with-syntax ([(pattern-option ...)
+                            (if (null? entries)
+                                '()
+                                (list #':rewrite-patterns
+                                      #`(#,@(map (lambda (e) (pattern-entry 'apply-patterns e))
+                                                 entries))))]
                            [(populate-form ...)
                             (if populate (list #`(%%populate! #,populate set)) '())])
                #'(let ([op* module-op] [ctx* ctx])
-                   (with-RewritePatternSet set (ctx*)
-                     pattern-form ...
+                   (with-RewritePatternSet set (ctx* pattern-option ...)
                      populate-form ...
                      (eqv? 1 (mlir::applyPatternsGreedily op* set)))))))])))
 

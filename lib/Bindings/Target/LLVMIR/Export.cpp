@@ -27,7 +27,8 @@ namespace crest {
 void registerTargetLLVMIRExportBindings() {
   // mlir::translateModuleToLLVMIR: translate an MLIR module to LLVM IR text.
   // Registers builtin+LLVM dialect translations, then translates.
-  // (module-ptr) → Scheme string (LLVM IR text)
+  // (module-ptr) → uptr: a malloc'd NUL-terminated buffer of LLVM IR text. The
+  // Scheme side copies it and frees it (foreign-free).
   Sregister_symbol(
       "mlir::translateModuleToLLVMIR",
       (void*)+[](uint64_t module_ptr) -> const char* {
@@ -59,7 +60,7 @@ void registerTargetLLVMIRExportBindings() {
   // mlir::translateModuleToLLVMIR<int>: as above, then what the C++ Toy
   // tutorial's dumpLLVMIR does: set the target triple and data layout of the
   // host and run the optimizing pipeline at the given level (0 to 3).
-  // (module-ptr opt-level) → Scheme string (LLVM IR text)
+  // (module-ptr opt-level) → uptr: a malloc'd buffer, as above.
   Sregister_symbol(
       "mlir::translateModuleToLLVMIR<int>",
       (void*)+[](uint64_t module_ptr, int opt_level) -> const char* {

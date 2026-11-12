@@ -40,15 +40,14 @@
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
-        (with-TypeConverter tc ()
-          (type-converter-add-conversion tc (lambda (type) type))
-          (type-converter-add-conversion tc %%convert)
-          (mlir::TypeConverter::addTargetMaterialization tc %%materialize)
-          (with-ConversionTarget target (ctx)
-            (target-add-dynamically-legal-op target ctx "test.conv" (lambda (op) #f))
-            (target-mark-unknown-ops-dynamically-legal target (lambda (op) #t))
-            (with-RewritePatternSet patterns (ctx)
-              (add-conversion-pattern patterns "test.conv" %%conv tc 1)
-              (apply-full-conversion module-op target patterns)))))))
+        (with-TypeConverter tc :conversions ((lambda (type) type)
+                                             %%convert)
+                            :target-materializations (%%materialize)
+                            (with-ConversionTarget target (ctx
+                                                           :dynamically-legal (("test.conv" (lambda (op) #f)))
+                                                           :unknown-legal (lambda (op) #t))
+                              (with-RewritePatternSet patterns (ctx
+                                                                :conversion-patterns (("test.conv" %%conv tc 1)))
+                                (apply-full-conversion module-op target patterns)))))))
 
   ) ;; end library

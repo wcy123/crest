@@ -101,8 +101,8 @@
                 '("affine" "arith" "memref" "func"))
       (let ([module-op (mlir::parseSourceFile ctx file)])
         (with-current-MLIRContext ctx
-          (with-RewritePatternSet ps (ctx)
-            (add-rewrite-pattern ps "test.k" (%%make-rewrite which) 10)
+          (with-RewritePatternSet ps (ctx
+                                      :rewrite-patterns (("test.k" (%%make-rewrite which) 10)))
             (mlir::applyPatternsGreedily module-op ps)))
         (with-PassManager pm (ctx)
           (mlir::PassManager::addPass pm (mlir::createCanonicalizerPass))

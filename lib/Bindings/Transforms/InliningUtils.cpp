@@ -32,9 +32,7 @@ void registerTransformsInliningUtilsBindings() {
       });
   Sregister_symbol(
       "mlir::createInlinerPass", (void*)+[]() -> uint64_t {
-        return reinterpret_cast<uint64_t>(
-            new CrestBox<std::unique_ptr<mlir::Pass>>(
-                mlir::createInlinerPass()));
+        return reinterpret_cast<uint64_t>(mlir::createInlinerPass().release());
       });
   // DialectInlinerInterface::materializeCallConversion(OpBuilder&, Value, Type,
   // Location) on the inliner interface the dialect registers. (builder dialect

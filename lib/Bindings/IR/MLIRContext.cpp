@@ -19,6 +19,9 @@
 namespace crest {
 void registerIRMLIRContextBindings() {
   /// → CrestBox<mlir::MLIRContext>*
+  // LEAK WARNING: the box is on the C++ heap and only the caller frees it. Use
+  // with-MLIRContext, which frees it after its body. A context made by calling
+  // this directly and never freed leaks.
   Sregister_symbol(
       "mlir::MLIRContext::new", (void*)+[]() -> uint64_t {
         // Scheme callbacks (verifiers, folders, patterns) cannot run on MLIR's
@@ -30,6 +33,7 @@ void registerIRMLIRContextBindings() {
 
   /// registry_ptr: CrestBox<mlir::DialectRegistry>* →
   /// CrestBox<mlir::MLIRContext>*
+  // LEAK WARNING: as for mlir::MLIRContext::new: use with-MLIRContext.
   Sregister_symbol(
       "mlir::MLIRContext::new/registry",
       (void*)+[](uint64_t registry_ptr) -> uint64_t {
@@ -108,6 +112,9 @@ void registerIRMLIRContextBindings() {
             ->printStackTraceOnDiagnostic(enable != 0);
       });
 
+  // LEAK WARNING: the module belongs to nobody. The caller must erase it. Use
+  // with-mlir::OwningOpRef, which erases it after its body; a module that is
+  // never erased leaks.
   Sregister_symbol(
       "mlir::parseSourceFile",
       (void*)+[](uint64_t ctx_ptr, const char* filename) -> uint64_t {

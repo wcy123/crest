@@ -34,10 +34,21 @@
     ;; Type predicates
     crest::isa<CrestBox<mlir::RewriterBase*>>?
     crest::isa<CrestBox<mlir::RewritePatternSet>>?
+    ;; Adapters: a friendly procedure to one with the C types
+    rewrite-pattern->c
+    conversion-pattern->c
     ;; RAII macros
     with-RewritePatternSet)
 
   (import (rnrs)
+          (for (rnrs) expand)
+          (for (only (chezscheme) syntax->list) expand)
+          (for (mlir Transforms DialectConversion options) expand)
+          (only (crest callback) with-c-callables)
+          (only (mlir Transforms DialectConversion ffi)
+                %add-conversion-pattern
+                %add-conversion-pattern/ctx
+                %add-rewrite-pattern)
           (only (mlir support CrestObject) with-CrestObject)
           (only (chezscheme) void)
           (only (mlir IR PatternMatch ffi)
@@ -124,15 +135,86 @@
        [(rw name operands types source-loc nregions)
         (build rw name operands types source-loc nregions)])))
 
+  ;; A rewrite pattern (op rewriter) → #t when it rewrote the op; only #t succeeds. The procedure
+  ;; with the C types: (op rewriter) → 1 or 0, every argument an address (uptr).
+  ;; Something that is not a procedure is a callable that was made already (an address from
+  ;; crest-make-static-c-callable, as define-rewrite-pattern gives): it is returned as it is.
+  (define (rewrite-pattern->c proc)
+    (if (procedure? proc)
+        (lambda (op rewriter) (if (eq? (proc op rewriter) #t) 1 0))
+        proc))
+
+  ;; A conversion pattern (op operands-ref rewriter type-converter) → #t when it rewrote the op; only
+  ;; #t succeeds. The C types: (op operands rewriter type-converter) → 1 or 0, all uptr.
+  (define (conversion-pattern->c proc)
+    (if (procedure? proc)
+        (lambda (op operands rewriter type-converter)
+          (if (eq? (proc op operands rewriter type-converter) #t) 1 0))
+        proc))
+
   ;; @brief with-RewritePatternSet — RAII for a heap-allocated RewritePatternSet.
-  ;; @note  Lifetime managed by CrestObject deletor; no explicit destructor needed.
+  ;; @param var  identifier bound to the CrestBox<RewritePatternSet>* uptr for BODY
+  ;; @param ctx  MLIRContext* uptr (optional, first; defaults to current-MLIRContext)
+  ;; The options give the patterns as ordinary procedures. Each is a C function for the length of
+  ;; BODY, released after the set is freed, so the set can be applied inside BODY:
+  ;;   :rewrite-patterns        ((op-name proc [benefit]) ...)          proc (op rewriter) → #t
+  ;;   :conversion-patterns     ((op-name proc type-converter [benefit]) ...)
+  ;;                                          proc (op operands rewriter type-converter) → #t
+  ;;   :conversion-patterns/ctx ((op-name proc [benefit]) ...)   the same without a type converter:
+  ;;                                          the operands are the original ones
+  ;; The benefit is 1 when it is not given.
+  ;; @example
+  ;;   (with-RewritePatternSet patterns (ctx :rewrite-patterns (("test.src" %%lower 10)))
+  ;;     (mlir::applyPatternsGreedily module patterns))
   (define-syntax with-RewritePatternSet
-    (syntax-rules ()
-      [(_ var () body ...)
-       (with-CrestObject var (mlir::RewritePatternSet::RewritePatternSet (current-MLIRContext))
-         body ...)]
-      [(_ var (ctx) body ...)
-       (with-CrestObject var (mlir::RewritePatternSet::RewritePatternSet ctx)
-         body ...)]))
+    (lambda (stx)
+      (define (parts entry low high usage)
+        (let ([l (syntax->list entry)])
+          (unless (and l (<= low (length l) high))
+            (syntax-violation 'with-RewritePatternSet usage stx entry))
+          l))
+      (define (benefit-of l position)
+        (if (> (length l) position) (list-ref l position) #'1))
+      (syntax-case stx ()
+        [(_ var (argument ...) body ...)
+         (let* ([arguments (syntax->list #'(argument ...))]
+                [has-context? (and (pair? arguments) (not (conversion-keyword? (car arguments))))]
+                [options (conversion-options
+                          'with-RewritePatternSet stx
+                          (if has-context? (cdr arguments) arguments)
+                          '(:rewrite-patterns :conversion-patterns :conversion-patterns/ctx))]
+                [rewrite (map (lambda (e) (parts e 2 3 "a :rewrite-patterns entry is (op-name proc [benefit])"))
+                              (conversion-option-list options ':rewrite-patterns))]
+                [conversion (map (lambda (e)
+                                   (parts e 3 4 "a :conversion-patterns entry is (op-name proc type-converter [benefit])"))
+                                 (conversion-option-list options ':conversion-patterns))]
+                [plain (map (lambda (e)
+                              (parts e 2 3 "a :conversion-patterns/ctx entry is (op-name proc [benefit])"))
+                            (conversion-option-list options ':conversion-patterns/ctx))])
+           (with-syntax ([context-expression (if has-context? (car arguments) #'(current-MLIRContext))]
+                         [(rewrite-name ...) (map car rewrite)]
+                         [(rewrite-proc ...) (map cadr rewrite)]
+                         [(rewrite-benefit ...) (map (lambda (l) (benefit-of l 2)) rewrite)]
+                         [(conversion-name ...) (map car conversion)]
+                         [(conversion-proc ...) (map cadr conversion)]
+                         [(conversion-converter ...) (map caddr conversion)]
+                         [(conversion-benefit ...) (map (lambda (l) (benefit-of l 3)) conversion)]
+                         [(plain-name ...) (map car plain)]
+                         [(plain-proc ...) (map cadr plain)]
+                         [(plain-benefit ...) (map (lambda (l) (benefit-of l 2)) plain)])
+             (with-syntax ([(rewrite-callable ...) (generate-temporaries #'(rewrite-name ...))]
+                           [(conversion-callable ...) (generate-temporaries #'(conversion-name ...))]
+                           [(plain-callable ...) (generate-temporaries #'(plain-name ...))])
+               #'(let ([context context-expression])
+                   (with-c-callables
+                       ((rewrite-callable (uptr uptr) int (rewrite-pattern->c rewrite-proc)) ...
+                        (conversion-callable (uptr uptr uptr uptr) int (conversion-pattern->c conversion-proc)) ...
+                        (plain-callable (uptr uptr uptr uptr) int (conversion-pattern->c plain-proc)) ...)
+                     (with-CrestObject var (mlir::RewritePatternSet::RewritePatternSet context)
+                       (%add-rewrite-pattern var rewrite-name rewrite-callable rewrite-benefit) ...
+                       (%add-conversion-pattern var conversion-name conversion-callable
+                                                conversion-converter conversion-benefit) ...
+                                                (%add-conversion-pattern/ctx var plain-name plain-callable plain-benefit) ...
+                                                body ...))))))])))
 
   ) ;; end library (mlir IR PatternMatch)

@@ -7,7 +7,6 @@
 
 #include "Operation.h"
 #include "../Support/ArrayRef.h"
-#include "../Support/ForeignCallable.h"
 #include "../Support/Logging.h"
 #include "../Support/SchemeWrapper.h"
 #include "llvm/Support/raw_ostream.h"
@@ -160,18 +159,16 @@ void registerIROperationBindings() {
                                   .getAsOpaquePointer()));
       });
   Sregister_symbol(
-      "mlir::Operation::walk", (void*)+[](uint64_t op, ptr callback) -> void {
-        // The callback is a Scheme procedure. It is made into a C function for
-        // this call, and the owner releases the function when the binding
-        // returns, on every path.
-        auto owned =
-            crest::ForeignCallable<void(uint64_t)>::fromProcedure(callback);
+      "mlir::Operation::walk",
+      (void*)+[](uint64_t op, void (*visit)(uint64_t)) -> void {
+        // `visit` is a C function that Scheme made, and Scheme keeps it alive
+        // until the walk returns.
         if (!op) {
           return;
         }
         mlir::Operation* cppOp = reinterpret_cast<mlir::Operation*>(op);
-        cppOp->walk([&owned](mlir::Operation* walkOp) {
-          owned(reinterpret_cast<uint64_t>(walkOp));
+        cppOp->walk([visit](mlir::Operation* walkOp) {
+          visit(reinterpret_cast<uint64_t>(walkOp));
         });
       });
   Sregister_symbol(

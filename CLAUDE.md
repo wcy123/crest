@@ -162,14 +162,15 @@ by macros on either side.
 
 ```scheme
 (with-current-MLIRContext ctx body ...)    ; installs a dynamic parameter
-(with-TypeConverter tc () body ...)        ; manages lifetime, no dynamic param
+(with-TypeConverter type-converter body ...)  ; manages lifetime, no dynamic param
 (with-ConversionTarget target (ctx) body ...)
 ```
 
 A macro that creates an object, binds it to a variable and frees it takes the variable first,
 then the creation arguments in a list (empty when there are none):
 `(with-<C++ClassName> variable (arguments ...) body ...)`. The variable is never grouped with
-the arguments.
+the arguments. `with-TypeConverter` has no creation arguments, so its keyword clauses (Rule 17) follow the
+variable directly: `(with-TypeConverter type-converter :conversions (...) body ...)`.
 
 The generic helper `with-raii` (`(mlir support RAII)`) has no C++ class. It takes the variable, an
 expression that makes the resource and a procedure that frees it:
@@ -248,24 +249,36 @@ Named `let` is still fine for irregular recursion (mutual, non-linear stepping).
 
 ---
 
-## Rule 17 — C++ keeps C functions, not Scheme procedures
+## Rule 17 — Scheme makes every callback; the caller owns its lifetime
 
-A Scheme procedure that C++ calls later is never stored as a `ptr`: the garbage collector moves it. It gets a C
-function of its own, a `foreign-callable` whose code object is locked. Who makes it and who releases the lock
-depend on how long the callable is used:
+C++ never makes, owns, locks or releases a callback. A binding that needs one takes a plain C function pointer
+as its parameter (`void (*visit)(uint64_t)`) and calls it. Scheme makes the C function, a `foreign-callable`
+whose code object is locked (the garbage collector moves Scheme objects, so a procedure is never stored as a
+`ptr`), and whoever calls the low-level function decides how long it lives (`(crest callback)`):
 
-- **made once per library** (an op's clause, a dialect's callback, the body of a `define-pass`): the Scheme side
-  makes it at the library level with `crest-callback-entry-point` (`(crest callback)`), which answers its entry
-  point, so a context makes none of its own; the C++ binding takes that address as a `uptr` and keeps a plain
-  function pointer, and never releases it;
-- **made for a run** (a closure the user passes to a pattern, a type converter, a walk): Scheme gives the binding
-  the procedure, adapted to the C types, as a `scheme-object`, and the binding makes the owner with
-  `crest::ForeignCallable<R(Args...)>::fromProcedure(procedure)` (`lib/Bindings/Support/ForeignCallable.h`),
-  which deduces the prototype from the C++ type, compiles a small helper the first time a prototype is used (about 0.6 ms; the prototype owns it, as a static member), and unlocks the callable
-  when what calls it is destroyed. Making it runs Scheme, which can move the objects of the Scheme heap: first copy
-  what you need out of Scheme memory (a `const char*` into a `std::string`, the elements of a Scheme list), then do the
-  checks that can raise an error, then make the owner. An error raised while the owner exists skips its destructor and
-  leaves the function locked. The comment of the class has the details and two examples.
+- `(crest-make-static-c-callable (type ...) result proc)` makes it, locks it for good and answers its address.
+  Use it only at the library level, for a callback that uses no state of a run (an op's clause, a dialect's
+  callback, the body of a `define-pass`, a pattern made by `define-conversion-pattern`): it is made once, when the
+  library loads. A callback that uses the state of a run (a type converter, a target) is made by `with-c-callable`
+  or by a clause, so that a scope releases it; never make one per run with this.
+- `(with-c-callable (name (type ...) result value) body ...)` makes it for `body` and unlocks it after, also on an
+  error. `value` is a procedure, or a code object that the caller made and locked, or the address of a locked
+  callable (reused, never unlocked by the macro; an error if it is not locked).
+- A function that only calls the callback while it runs (`mlir::Operation::walk`,
+  `mlir::affine::buildAffineLoopNest`, `mlir::RewriterBase::modifyOpInPlace`) is a Scheme macro that takes a
+  procedure and wraps it in `with-c-callable`.
+- A function that C++ keeps the callback in (`type-converter-add-conversion`, `add-conversion-pattern`,
+  `target-add-dynamically-legal-op`, ...) takes the **address** and raises an error for a procedure. The friendly
+  form is a clause of the macro that makes the C++ object, which makes the callables around its body:
+  `with-TypeConverter` (`:conversions`, `:source-materializations`, `:target-materializations`),
+  `with-ConversionTarget` (`:dynamically-legal`, `:unknown-legal`), `with-RewritePatternSet` (`:rewrite-patterns`,
+  `:conversion-patterns`, `:conversion-patterns/ctx`). The adapters (`rewrite-pattern->c`,
+  `conversion-pattern->c`, `type-conversion->c`, `materialization->c`, `legality->c`) turn a friendly procedure
+  into one with C types; they pass an address through.
+
+C++ does not check the prototype: a mismatch between the Scheme types and the C++ function pointer type crashes.
+A callback used after its scope ends crashes too. `test/dsl/callback-leaks` checks that scoped callables are
+released, `test/dsl/c-callable` the macro.
 
 C++ calls a callable directly through its function pointer. Chez Scheme's `foreign-callable` on Windows x64 used
 to zero the upper halves of XMM6-XMM11, which that ABI makes callee-saved, and C++ compiled for LLVM 23 keeps
@@ -282,8 +295,7 @@ the process ending. `scheme_call` stays for the control plane (a top-level name,
 gave as an argument of the foreign call that is running), and for one more case: a procedure that C++ needs only
 while it registers something (the `(TypeID . dispatcher)` pairs of an op's `:interfaces` entries,
 `lib/Crest/Op.cpp`) is held in a `crest::LockedSchemeObject` for that call, and C++ gets the entry points from the
-dispatcher with `scheme_call`. The dispatcher answers entries that Scheme made once, when the library was loaded. A test that makes the callable per run checks that
-it is released (`test/dsl/apply-conversion/leak.mlir`).
+dispatcher with `scheme_call`. The dispatcher answers entries that Scheme made once, when the library was loaded.
 
 ---
 
@@ -318,6 +330,6 @@ callable that Scheme made for a clause (`installInterfaceEntry`), so MLIR calls 
 - [ ] Every `foreign-procedure` string matches a `Sregister_symbol` key in C++ (Rule 14)
 - [ ] `%%` on internal Scheme helpers; `%` only on raw FFI bindings
 - [ ] A binding that takes a builder: `register_builder_binding` in C++, `define-builder-binding` in `ffi.sls`
-- [ ] A binding that calls back into Scheme: a callable from `crest-callback-entry-point`, owned per Rule 17
+- [ ] A binding that calls back into Scheme: a callable from `crest-make-static-c-callable`, owned per Rule 17
 - [ ] A new op interface: its macro is a table for `op-interface-expand`, the C++ attach function only calls
       `installInterfaceEntry` (Rule 19), and a slot with a new kind of C++ type gets a case in `SlotAbiTest`

@@ -730,12 +730,32 @@ lambdas are ordinary expressions. The low-level pieces it is built from stay ava
 `(mlir Transforms DialectConversion)`: `with-TypeConverter`, `with-ConversionTarget`,
 `type-converter-add-conversion`, `target-add-legal-dialect`, `target-add-illegal-dialect`,
 `target-add-legal-op`, `target-add-dynamically-legal-op`, `add-conversion-pattern`,
-`add-conversion-pattern/ctx`, `mlir::applyPartialConversion` and `apply-full-conversion`. The
-procedures they take (patterns, legality checks, type conversions, materializations) are closures for
-one conversion: each is made into a C function when it is registered, and C++ releases it when the
-pattern set, the target or the type converter that calls it is destroyed, so running a conversion many
-times does not leak (`test/dsl/apply-conversion/leak.mlir`). A value that is not a procedure is an error
-when it is registered.
+`add-conversion-pattern/ctx`, `mlir::applyPartialConversion` and `apply-full-conversion`.
+
+`add-conversion-pattern`, `type-converter-add-conversion` and the other functions that register a callback take the
+**address** of a C function, not a procedure: a procedure is an error that says how to make one.
+Patterns made by `define-conversion-pattern` and `define-rewrite-pattern` already are such addresses. The
+friendly way to give procedures is a clause of the macro that makes the C++ object, which makes the C
+functions around its body and releases them after it, so running a conversion many times does not leak
+(`test/dsl/callback-leaks`):
+
+```scheme
+(with-TypeConverter type-converter
+    :conversions             ((lambda (type) type))
+    :source-materializations ((lambda (builder type inputs loc) #f))
+  (with-ConversionTarget target (ctx :dynamically-legal
+                                     (("func.func"
+                                       (lambda (op) (= 1 (type-converter-is-signature-legal type-converter op)))))
+                                     :unknown-legal (lambda (op) #t))
+    (with-RewritePatternSet patterns (ctx :conversion-patterns (("onnx.Cast" my-pattern type-converter 1))
+                                          :rewrite-patterns (("test.rw" other-pattern 1)))
+      (apply-full-conversion module-op target patterns))))
+```
+
+A callback that uses the type converter or the target is written inside these scopes, as the second entry
+above uses `type-converter`, so the scope releases it. `crest-make-static-c-callable` from `(crest callback)`
+is for a callback that uses no state of a run, made once at the library level: a pattern, or a type
+conversion that does not look at the converter.
 
 ---
 
@@ -1461,14 +1481,15 @@ symbol takes exactly one. Register it with `register_builder_binding`
 `ffi.sls` with `define-builder-binding` from `(mlir support BuilderBinding)`. See CLAUDE.md
 Rule 4.
 
-A binding that calls back into Scheme does not keep a Scheme procedure: the garbage collector moves
-it. The Scheme side makes a C function for it with `crest-callback-entry-point` from `(crest callback)`,
-which locks the code object and answers its address, and the binding takes that address as a `uptr`.
-A callback that lives as long as the library (the clause of an op, a callback of a dialect) is made once,
-where the library defines it, and C++ keeps the address as a function pointer. One that lives for a run (a
-pattern, a walk, a type conversion) is held by a `crest::ForeignCallable`
-(`lib/Bindings/Support/ForeignCallable.h`), which unlocks it when what calls it is destroyed. Only scalars
-cross: pointers, integers, strings, and a range as a pointer and a count that `crest-callback-pointer-list`
+A binding that calls back into Scheme never makes or releases the callback: it takes a plain C function pointer
+(a `uptr` on the Scheme side) and calls it. The Scheme side makes the C function, because the garbage collector
+moves Scheme procedures. `crest-make-static-c-callable` from `(crest callback)` makes one that lives for the whole
+program (the clause of an op, a callback of a dialect, a pattern) and answers its address; `with-c-callable`
+makes one for the length of a body and releases it after, also on an error. A function that only calls it while
+it runs (`walk`, `buildAffineLoopNest`, `modifyOpInPlace`) is a Scheme macro that takes a procedure. A function
+that C++ keeps the callback in (a type conversion, a legality check, a pattern) takes the address, and its
+friendly form is a clause of `with-TypeConverter`, `with-ConversionTarget` or `with-RewritePatternSet`. Only
+scalars cross: pointers, integers, strings, and a range as a pointer and a count that `crest-callback-pointer-list`
 reads back as a list. See CLAUDE.md Rule 17.
 
 Follow the CLAUDE.md binding convention: one header → one module, `%`-prefix

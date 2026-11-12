@@ -51,7 +51,7 @@
         (%crest::InferTypeOpInterface::adapt proc w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 refine))))
 
   (define (%%system-v-entry-point proc refine)
-    (crest-callback-entry-point
+    (crest-make-static-c-callable
      (uptr uptr uptr uptr uptr uptr uptr uptr uptr uptr uptr) unsigned-8
      (lambda (w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10)
        (%%infer proc refine w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10))))
@@ -81,7 +81,7 @@
   ;; Windows uses a box because LogicalResult is a class with a private field. It hands plain
   ;; values such as a bool back directly, but not a class like this one.
   (define (%%windows-entry-point proc refine)
-    (crest-callback-entry-point
+    (crest-make-static-c-callable
      (uptr uptr uptr uptr uptr uptr uptr uptr) uptr
      (lambda (result w0 w1 w2 w3 w4 w5 w6)
        (foreign-set! 'unsigned-8 result 0 (%%infer proc refine w0 w1 w2 w3 w4 w5 w6 0 0 0 0))
@@ -103,12 +103,12 @@
   (define (%%compatible-entry-point compatible)
     (case (machine-type)
       [(a6le ta6le a6osx ta6osx)
-       (crest-callback-entry-point
+       (crest-make-static-c-callable
         (uptr uptr uptr uptr) unsigned-8
         (lambda (w0 w1 w2 w3)
           (%crest::InferTypeOpInterface::adaptCompatible compatible w0 w1 w2 w3)))]
       [(a6nt ta6nt)
-       (crest-callback-entry-point
+       (crest-make-static-c-callable
         (uptr uptr) unsigned-8
         (lambda (w0 w1)
           (%crest::InferTypeOpInterface::adaptCompatible compatible w0 w1 0 0)))]

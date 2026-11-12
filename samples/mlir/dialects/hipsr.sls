@@ -20,7 +20,10 @@
     make-hipsr-device-space-attr
     make-hipsr-barrier-type-attr
     mlir-get-hipsr-context-arg
-    hipsr-type-converter-add-device-memory-conversions!
+    identity-conversion
+    device-memory-conversion
+    tensor-cast-materialization
+    unknown-ops-legal
     hipsr-configure-conversion-target!
     mlir-type-is-device-tensor
     make-mlir-tensor-in-host-space
@@ -33,6 +36,7 @@
                 mlir::Operation::getParentOp)
           (only (mlir IR Region) mlir::Region::front)
           (mlir Transforms DialectConversion)
+          (only (crest callback) crest-make-static-c-callable)
           (mlir Dialect Tensor IR)
           (only (mlir IR Operation) mlir::Operation::getRegion)
           (only (mlir IR Block) mlir::Block::getArgument)
@@ -112,56 +116,59 @@
   ;; Type converter configuration
   ;;===--------------------------------------------------------------------===;;
 
+  ;; These callbacks use no state of a run: they are made once, when the library is loaded.
+
   ;; Bridge a #hipsr.mem<device> tensor to a plain tensor (or vice versa)
   ;; at conversion boundaries using tensor.cast.
-  (define (hipsr-add-tensor-cast-materialization! converter)
-    (define (cast builder result-type inputs loc)
-      (if (not (and (pair? inputs) (null? (cdr inputs))))
-          #f
-          (let* ([input      (car inputs)]
-                 [input-type (mlir::Value::getType input)])
-            (if (not (and (mlir::isa<RankedTensorType>? input-type)
-                          (mlir::isa<RankedTensorType>? result-type)
-                          (= 1 (mlir::tensor::CastOp::areCastCompatible
-                                input-type result-type))))
-                #f
-                (mlir::tensor::CastOp::create builder loc result-type input)))))
-    (mlir::TypeConverter::addSourceMaterialization converter cast)
-    (mlir::TypeConverter::addTargetMaterialization converter cast))
+  (define tensor-cast-materialization
+    (crest-make-static-c-callable
+     (uptr uptr uptr uptr uptr) uptr
+     (materialization->c
+      (lambda (builder result-type inputs loc)
+        (if (not (and (pair? inputs) (null? (cdr inputs))))
+            #f
+            (let* ([input      (car inputs)]
+                   [input-type (mlir::Value::getType input)])
+              (if (not (and (mlir::isa<RankedTensorType>? input-type)
+                            (mlir::isa<RankedTensorType>? result-type)
+                            (= 1 (mlir::tensor::CastOp::areCastCompatible
+                                  input-type result-type))))
+                  #f
+                  (mlir::tensor::CastOp::create builder loc result-type input))))))))
 
-  (define (hipsr-type-converter-add-device-memory-conversions! type-converter)
-    (type-converter-add-conversion type-converter (lambda (t) t))
-    (type-converter-add-conversion type-converter
-                                   (lambda (type)
-                                     (if (and (mlir::isa<RankedTensorType>? type)
-                                              (> (mlir::RankedTensorType::getRank type) 0)
-                                              (= 0 (mlir::RankedTensorType::getEncoding type)))
-                                         (mlir::RankedTensorType::cloneWithEncoding type
-                                                                                    (mlir::parseAttribute (mlir::Type::getContext type)
-                                                                                                          "#hipsr.mem<device>"))
-                                         #f)))
-    (hipsr-add-tensor-cast-materialization! type-converter))
+  (define identity-conversion
+    (crest-make-static-c-callable (uptr) uptr (type-conversion->c (lambda (t) t))))
+
+  (define device-memory-conversion
+    (crest-make-static-c-callable
+     (uptr) uptr
+     (type-conversion->c
+      (lambda (type)
+        (if (and (mlir::isa<RankedTensorType>? type)
+                 (> (mlir::RankedTensorType::getRank type) 0)
+                 (= 0 (mlir::RankedTensorType::getEncoding type)))
+            (mlir::RankedTensorType::cloneWithEncoding type
+                                                       (mlir::parseAttribute (mlir::Type::getContext type)
+                                                                             "#hipsr.mem<device>"))
+            #f)))))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Conversion target configuration
   ;;===--------------------------------------------------------------------===;;
 
-  (define (hipsr-configure-conversion-target! target ctx type-converter)
+  (define unknown-ops-legal
+    (crest-make-static-c-callable
+     (uptr) int
+     (legality->c (lambda (op)
+                    (or (hipsr-has-compute-ancestor? op)
+                        (hipsr-has-placeholder-ancestor? op))))))
+
+  (define (hipsr-configure-conversion-target! target ctx)
     (target-add-illegal-dialect target "onnx")
     (target-add-legal-op target ctx "onnx.NoValue")
     (target-add-legal-dialect target "hipsr")
     (target-add-legal-op target ctx "builtin.module")
     (target-add-legal-op target ctx "arith.constant")
-    (target-add-legal-op target ctx "tensor.cast")
-    (target-add-dynamically-legal-op target ctx "func.func"
-                                     (lambda (op)
-                                       (= 1 (type-converter-is-signature-legal type-converter op))))
-    (target-add-dynamically-legal-op target ctx "func.return"
-                                     (lambda (op)
-                                       (= 1 (type-converter-is-legal type-converter op))))
-    (target-mark-unknown-ops-dynamically-legal target
-                                               (lambda (op)
-                                                 (or (hipsr-has-compute-ancestor? op)
-                                                     (hipsr-has-placeholder-ancestor? op)))))
+    (target-add-legal-op target ctx "tensor.cast"))
 
   ) ;; end library (mlir dialects hipsr)

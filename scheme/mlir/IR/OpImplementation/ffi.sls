@@ -31,6 +31,7 @@
           %mlir::OpAsmParser::parseOptionalOperand
           %mlir::OpAsmParser::resolveOperands
           %mlir::OpAsmParser::resolveOperandsFunctional
+          %crest::OpAsmParser::freeOperands
           %mlir::OpAsmParser::parseColonType
           %mlir::OpAsmParser::parseType
           %mlir::OpAsmParser::parseFunctionalType
@@ -143,6 +144,10 @@
 
   (define %mlir::OpAsmParser::parseOptionalOperand
     (foreign-procedure "mlir::OpAsmParser::parseOptionalOperand" (uptr) uptr))
+
+  ;; Frees what parseOperand, parseOptionalOperand or parseOperandList answered (0 is nothing).
+  (define %crest::OpAsmParser::freeOperands
+    (foreign-procedure "crest::OpAsmParser::freeOperands" (uptr) void))
 
   (define %mlir::OpAsmParser::resolveOperands
     (foreign-procedure "mlir::OpAsmParser::resolveOperands" (uptr uptr uptr uptr) boolean))

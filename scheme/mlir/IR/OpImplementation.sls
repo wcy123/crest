@@ -26,6 +26,7 @@
           mlir::OpAsmParser::parseOptionalOperand
           mlir::OpAsmParser::resolveOperands
           mlir::OpAsmParser::resolveOperandsFunctional
+          crest::OpAsmParser::freeOperands
           mlir::OpAsmParser::parseColonType
           mlir::OpAsmParser::parseType
           mlir::OpAsmParser::parseFunctionalType
@@ -124,6 +125,7 @@
   (define mlir::OpAsmParser::parseOptionalOperand %mlir::OpAsmParser::parseOptionalOperand)
   (define mlir::OpAsmParser::resolveOperands     %mlir::OpAsmParser::resolveOperands)
   (define mlir::OpAsmParser::resolveOperandsFunctional %mlir::OpAsmParser::resolveOperandsFunctional)
+  (define crest::OpAsmParser::freeOperands %crest::OpAsmParser::freeOperands)
   (define mlir::OpAsmParser::parseColonType      %mlir::OpAsmParser::parseColonType)
   (define mlir::OpAsmParser::parseType           %mlir::OpAsmParser::parseType)
   (define mlir::OpAsmParser::parseFunctionalType %mlir::OpAsmParser::parseFunctionalType)

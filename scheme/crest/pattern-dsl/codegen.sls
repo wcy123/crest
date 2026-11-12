@@ -14,6 +14,8 @@
           ;; srcloc: shared source-location utilities; cache is module-level in srcloc.sls.
           (only (crest pattern-dsl srcloc) syntax->file+line+col)
           (rename (rime loop) (:with :rime-with))
+          (only (crest callback) crest-make-static-c-callable)
+          (only (mlir IR PatternMatch) conversion-pattern->c rewrite-pattern->c)
           (for (only (chezscheme) syntax->list syntax->datum record-rtd record-type-field-names record-accessor identifier?
                      call-with-string-output-port write) expand)
 
@@ -137,21 +139,32 @@
                             [checks  check-code]
                             [rewrite rewrite-code])
                 (with-syntax ([root-op op])
-                  #'(define fname
-                      (lambda (param ...)
-                        ;; Install current-MLIRContext from the root op so that
-                        ;; make-mlir-attribute and type constructors work in :then-let
-                        ;; without requiring an explicit ctx argument.
-                        (parameterize ([current-MLIRContext
-                                        (mlir::Operation::getContext root-op)])
-                          (let ([var (make-unbound-value)] ...
-                                ;; 0 = unset; non-zero = valid Operation*.
-                                [all-operations (make-vector num-operations 0)])
-                            root-result-setter ...
-                            (if checks
-                                (let* (then-let-binding ...)
-                                  rewrite)
-                                #f)))))))))))))
+                  (with-syntax ([procedure
+                                 #'(lambda (param ...)
+                                     ;; Install current-MLIRContext from the root op so that
+                                     ;; make-mlir-attribute and type constructors work in :then-let
+                                     ;; without requiring an explicit ctx argument.
+                                     (parameterize ([current-MLIRContext
+                                                     (mlir::Operation::getContext root-op)])
+                                       (let ([var (make-unbound-value)] ...
+                                             ;; 0 = unset; non-zero = valid Operation*.
+                                             [all-operations (make-vector num-operations 0)])
+                                         root-result-setter ...
+                                         (if checks
+                                             (let* (then-let-binding ...)
+                                               rewrite)
+                                             #f))))])
+                    ;; The pattern is defined as a C callable (the address of a C function), made
+                    ;; once when the library is loaded and kept for the whole program: what
+                    ;; add-conversion-pattern, add-rewrite-pattern and the clauses of
+                    ;; with-RewritePatternSet take.
+                    (if operands-ref
+                        #'(define fname
+                            (crest-make-static-c-callable (uptr uptr uptr uptr) int
+                                                          (conversion-pattern->c procedure)))
+                        #'(define fname
+                            (crest-make-static-c-callable (uptr uptr) int
+                                                          (rewrite-pattern->c procedure)))))))))))))
 
   ;;=======================================================================
   ;; Rewrite code — thin wrapper delegating to begin-mlir-code

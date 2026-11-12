@@ -8,7 +8,6 @@
 #include "AffineOps.h"
 #include "../../../Support/BuilderBinding.h"
 #include "../../../Support/CrestObject.h"
-#include "../../../Support/ForeignCallable.h"
 #include "../../../Support/SchemeWrapper.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Affine/Utils.h"
@@ -22,22 +21,19 @@ void registerDialectAffineIRAffineOpsBindings() {
   // mlir::affine::buildAffineLoopNest(OpBuilder&, Location, lbs, ubs, steps,
   // body) (builder loc lbs ubs steps body-fn) → void
   //   lbs, ubs, steps: Scheme lists of integers
-  //   body-fn: a Scheme procedure, made into a foreign-callable for this call,
-  //   (nested-builder loc ivs count) → void, the callback of the C++ function
+  //   body-fn: a C function that Scheme made and keeps alive until the call
+  //   returns, (nested-builder loc ivs count) → void, the callback of the C++
+  //   function
   //     nested-builder: builder shell, valid only during the call
   //     ivs: pointer to the Value uptrs (the induction variables), and count
   register_builder_binding(
       "mlir::affine::buildAffineLoopNest",
       [](mlir::OpBuilder& builder, uint64_t loc_ptr, ptr lbs, ptr ubs,
-         ptr steps, ptr body_fn) -> void {
-        // Making the callable runs Scheme, which can move the lists: read them
-        // first. The owner releases the callable when the call is over.
+         ptr steps,
+         void (*body)(uint64_t, uint64_t, const uint64_t*, uint64_t)) -> void {
         auto lowerBounds = convert_to_cpp<llvm::SmallVector<int64_t>>(lbs);
         auto upperBounds = convert_to_cpp<llvm::SmallVector<int64_t>>(ubs);
         auto stepValues = convert_to_cpp<llvm::SmallVector<int64_t>>(steps);
-        auto owned =
-            crest::ForeignCallable<void(uint64_t, uint64_t, const uint64_t*,
-                                        uint64_t)>::fromProcedure(body_fn);
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         mlir::affine::buildAffineLoopNest(
@@ -51,9 +47,9 @@ void registerDialectAffineIRAffineOpsBindings() {
                 iv_pointers.push_back(
                     reinterpret_cast<uint64_t>(iv.getAsOpaquePointer()));
               }
-              owned(reinterpret_cast<uint64_t>(&nb_shell),
-                    reinterpret_cast<uint64_t>(nb_loc.getAsOpaquePointer()),
-                    iv_pointers.data(), iv_pointers.size());
+              body(reinterpret_cast<uint64_t>(&nb_shell),
+                   reinterpret_cast<uint64_t>(nb_loc.getAsOpaquePointer()),
+                   iv_pointers.data(), iv_pointers.size());
             });
       });
 

@@ -35,6 +35,8 @@ void registerIRBlockBindings() {
       (void*)+[](uint64_t block_ptr) -> uint64_t {
         return reinterpret_cast<mlir::Block*>(block_ptr)->getNumArguments();
       });
+  // LEAK WARNING: the block belongs to nobody. A block that is never added to a
+  // region and never erased leaks.
   Sregister_symbol(
       "mlir::Block::new", (void*)+[]() -> uint64_t {
         return reinterpret_cast<uint64_t>(new mlir::Block());

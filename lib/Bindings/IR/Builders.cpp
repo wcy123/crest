@@ -16,6 +16,9 @@
 namespace crest {
 
 void registerIROpBuilderBindings() {
+  // LEAK WARNING: the box is on the C++ heap and only the caller frees it. Use
+  // with-OpBuilder, which frees it after its body. A builder that is bound with
+  // a plain let and never freed leaks.
   Sregister_symbol(
       "mlir::OpBuilder::atBlockEnd",
       (void*)+[](uint64_t ctx_ptr, uint64_t block_ptr,

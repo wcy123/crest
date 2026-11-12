@@ -13,6 +13,8 @@ namespace crest {
 
 void registerIRBuiltinOpsBindings() {
 
+  // LEAK WARNING: the module belongs to nobody. The caller must erase it, for
+  // example with with-mlir::OwningOpRef; a module that is never erased leaks.
   Sregister_symbol(
       "mlir::ModuleOp::create", (void*)+[](uint64_t loc_ptr) -> uint64_t {
         auto loc = mlir::Location::getFromOpaquePointer(
