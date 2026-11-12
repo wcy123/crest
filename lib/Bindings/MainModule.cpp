@@ -75,7 +75,9 @@
 
 namespace crest {
 
-// lib/Bindings/llvm/Support/raw_ostream.cpp has no header of its own.
+// lib/Bindings/llvm/Support/ErrorHandling.cpp and raw_ostream.cpp have no
+// header of their own.
+void registerLLVMErrorHandlingBindings();
 void registerLLVMRawOstreamBindings();
 
 // Hook for downstream projects to register their own dialect-specific
@@ -121,6 +123,7 @@ void registerMlirForeignFunctions() {
   registerIRRewriterBaseBindings();
   registerIRTypeBindings();
   registerIRAttributeBindings();
+  registerLLVMErrorHandlingBindings();
   registerLLVMRawOstreamBindings();
   registerIRValueBindings();
   registerCrestObjectBindings();

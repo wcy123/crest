@@ -6,8 +6,8 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 ;;
-;; (crest pattern-dsl srcloc) — Source location utilities shared by rewrite.sls
-;; and codegen.sls.
+;; (mlir support srcloc) — Source locations of Scheme code, read from syntax objects when a macro
+;; expands: the DSL macros (pattern-dsl, dialect) and (crest callback) use them.
 ;;
 ;; %%bfp->line+col : filename bfp → (values line col)  (both 1-indexed)
 ;;   Resolves a byte-file-position to (line, col) via binary search over a
@@ -22,7 +22,7 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 
-(library (crest pattern-dsl srcloc)
+(library (mlir support srcloc)
   (export syntax->file+line+col)
   (import (rnrs)
           (only (chezscheme) make-hashtable string-hash guard quotient
@@ -86,4 +86,4 @@
               (and line (list file line col))))
           #f)))
 
-  ) ;; end library (crest pattern-dsl srcloc)
+  ) ;; end library (mlir support srcloc)

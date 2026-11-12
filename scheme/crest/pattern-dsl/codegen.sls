@@ -12,7 +12,7 @@
           ;; match-logging: unified warning helper for generated debug code.
           (only (crest pattern-dsl match-logging) warn-match)
           ;; srcloc: shared source-location utilities; cache is module-level in srcloc.sls.
-          (only (crest pattern-dsl srcloc) syntax->file+line+col)
+          (only (mlir support srcloc) syntax->file+line+col)
           (rename (rime loop) (:with :rime-with))
           (only (crest callback) crest-make-static-c-callable)
           (only (mlir IR PatternMatch) conversion-pattern->c rewrite-pattern->c)

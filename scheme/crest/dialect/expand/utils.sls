@@ -3,7 +3,7 @@
   (export %%id %%id->str %%attr-names make-error-message)
   (import (chezscheme)
           (crest dialect ast)
-          (crest pattern-dsl srcloc))
+          (mlir support srcloc))
 
   ;; Build a syntax identifier from ctx + parts.
   ;; Parts may be strings, symbols, or syntax identifiers.
