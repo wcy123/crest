@@ -101,6 +101,10 @@ public:
   CrestDialect(mlir::TypeID id, const std::string& module_name,
                const std::string& dialect_name, mlir::MLIRContext* ctx);
 
+  /// Makes current-MLIRContext #f if it still names this context, which goes
+  /// with the dialect (lib/Crest/CurrentContext.h).
+  ~CrestDialect() override;
+
   /// Allocates a stable TypeID from the process-global TypeIDAllocator.
   /// Hides the allocator implementation detail from callers.
   static mlir::TypeID allocateTypeId();

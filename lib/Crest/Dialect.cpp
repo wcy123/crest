@@ -87,6 +87,8 @@ getAttachDialectInterfaceFns() {
 }
 } // namespace
 
+CrestDialect::~CrestDialect() { clearCurrentContext(*interp_, getContext()); }
+
 void CrestDialect::initialize(const LockedSchemeObject& interfaces) {
   // Load dependent dialects first. The callback gives each name of a dialect
   // namespace (e.g. "arith") to crest::CrestDialect::loadDependentDialect,

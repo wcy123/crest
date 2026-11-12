@@ -246,7 +246,7 @@ struct CrestPass : public mlir::OperationPass<mlir::ModuleOp> {
     // The pass raises no error into this frame: crest-call-guarded answers
     // the value of run-pass, or the pair (who . why) when it raised one.
     interp->eval("(import (crest callback))");
-    setCurrentContext(*interp, getOperation()->getContext());
+    CurrentContextScope scope(*interp, getOperation()->getContext());
     ptr answer =
         scheme_call("crest-call-guarded", convert_to_scheme_func("run-pass"),
                     getOperation().getOperation());

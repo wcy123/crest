@@ -43,8 +43,8 @@ public:
   }
 
   void runOnOperation() override {
-    setCurrentContext(*ChezSchemeInterpreter::instance(),
-                      getOperation()->getContext());
+    auto interpreter = ChezSchemeInterpreter::instance();
+    CurrentContextScope scope(*interpreter, getOperation()->getContext());
     if (callback_(reinterpret_cast<uint64_t>(getOperation())) == 0) {
       signalPassFailure();
     }
