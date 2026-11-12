@@ -12,26 +12,24 @@
 #include "mlir/IR/ExtensibleDialect.h"
 #include "mlir/IR/Location.h"
 #include "mlir/IR/OpImplementation.h"
-#include <map>
 #include <string>
-#include <tuple>
 
 namespace crest {
 
 namespace {
 
-using Key = std::tuple<mlir::MLIRContext*, std::string, std::string>;
-
-std::map<Key, mlir::DynamicTypeDefinition*>& registry() {
-  static std::map<Key, mlir::DynamicTypeDefinition*> table;
-  return table;
-}
-
+// The definition of a dynamic type, found in the dialect that registered it.
+// The dialect keeps its definitions as long as its context lives. (A global map
+// from (context, dialect, name) to the definition used to be kept here: its
+// entries were never removed, so it grew with every context that loaded a
+// dialect, and its keys outlived their contexts.)
 mlir::DynamicTypeDefinition* lookup(mlir::MLIRContext* ctx,
                                     const std::string& dialect,
                                     const std::string& name) {
-  auto it = registry().find({ctx, dialect, name});
-  return it == registry().end() ? nullptr : it->second;
+  mlir::Dialect* loaded = ctx->getLoadedDialect(dialect);
+  auto* extensible =
+      loaded ? mlir::dyn_cast<mlir::ExtensibleDialect>(loaded) : nullptr;
+  return extensible ? extensible->lookupTypeDefinition(name) : nullptr;
 }
 
 // A Scheme list of attribute pointers.
@@ -180,8 +178,6 @@ void registerCrestDynamicTypeBindings() {
           def = mlir::DynamicTypeDefinition::get(name, dialect,
                                                  std::move(verifier));
         }
-        registry()[{dialect->getContext(), dialect->getNamespace().str(),
-                    name}] = def.get();
         dialect->registerDynamicType(std::move(def));
         return llvm::Error::success();
       });
