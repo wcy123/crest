@@ -48,6 +48,22 @@ void registerIROpBuilderBindings() {
             state_ptr, "mlir::OpBuilder::create<OperationState>");
         return reinterpret_cast<uint64_t>(builder.create(state));
       });
+  // mlir::OpBuilder::createBlock (builder region) → Block*: a new empty block
+  // at the end of the region. The block is inserted through the builder, so the
+  // listener of a rewriter (dialect conversion) knows it and undoes it when the
+  // conversion fails. LEAK WARNING: a block made with mlir::Block::new and
+  // pushed into a region directly is unknown to the conversion, and a
+  // conversion that fails leaves it behind.
+  register_builder_binding(
+      "mlir::OpBuilder::createBlock",
+      [](mlir::OpBuilder& builder, uint64_t region_ptr) -> uint64_t {
+        if (!region_ptr) {
+          scheme_error("mlir::OpBuilder::createBlock",
+                       "region pointer is null");
+        }
+        return reinterpret_cast<uint64_t>(
+            builder.createBlock(reinterpret_cast<mlir::Region*>(region_ptr)));
+      });
   /// builder_ptr: builder shell, op_ptr: mlir::Operation*
   register_builder_binding(
       "mlir::OpBuilder::setInsertionPoint",

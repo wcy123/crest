@@ -16,6 +16,7 @@
   (export
     %mlir::OpBuilder::atBlockEnd
     %mlir::OpBuilder::create<OperationState>
+    %mlir::OpBuilder::createBlock
     %mlir::OpBuilder::setInsertionPoint
     %mlir::OpBuilder::getContext
     %mlir::OpBuilder::getListener
@@ -39,6 +40,13 @@
   ;; @see               mlir/IR/Builders.h, mlir/IR/OperationSupport.h
   (define-builder-binding %mlir::OpBuilder::create<OperationState>
     "mlir::OpBuilder::create<OperationState>" (uptr uptr) uptr)
+
+  ;; @brief Append a new empty block to a region, through the builder.
+  ;; @param builder  builder shell uptr
+  ;; @param region   Region* uptr
+  ;; @return         Block* uptr, owned by the region
+  (define-builder-binding %mlir::OpBuilder::createBlock
+    "mlir::OpBuilder::createBlock" (uptr uptr) uptr)
 
   ;; @brief Return the raw OpBuilder::Listener* of a builder, 0 if none.
   ;; @param builder  builder shell uptr
