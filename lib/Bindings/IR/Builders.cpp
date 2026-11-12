@@ -110,6 +110,12 @@ void registerIROpBuilderBindings() {
       });
   // Saves the builder's insertion point; deleting the shell restores it.
   // builder_ptr: builder shell. Returns CrestBox<InsertionGuard>* uptr.
+  //
+  // LEAK WARNING / USE-AFTER-FREE WARNING: the box is heap memory that only
+  // `with-InsertionGuard` deletes (through `with-CrestObject`), and the saved
+  // insertion point is restored then. Call this binding only through that
+  // macro: a raw call leaks the box, and deleting the box after the builder or
+  // its block is gone makes the destructor write through a dangling builder.
   register_builder_binding(
       "mlir::OpBuilder::InsertionGuard::InsertionGuard",
       [](mlir::OpBuilder& builder) -> uint64_t {
