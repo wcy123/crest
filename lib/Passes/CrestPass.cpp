@@ -245,8 +245,17 @@ struct CrestPass : public mlir::OperationPass<mlir::ModuleOp> {
     // The pass raises no error into this frame: crest-call-guarded stores it,
     // and it is reported here.
     interp->eval("(import (crest callback))");
-    scheme_call("crest-call-guarded", convert_to_scheme_func("run-pass"),
-                getOperation().getOperation());
+    {
+      // A Scheme program runs: the bindings it calls raise the error of a
+      // callback themselves (see unansweredErrorStops).
+      struct SchemeProgram {
+        bool before = crest::unansweredErrorStops();
+        SchemeProgram() { crest::unansweredErrorStops() = false; }
+        ~SchemeProgram() { crest::unansweredErrorStops() = before; }
+      } schemeProgram;
+      scheme_call("crest-call-guarded", convert_to_scheme_func("run-pass"),
+                  getOperation().getOperation());
+    }
     crest::CallbackError& slot = crest::callbackError();
     if (slot.pending) {
       std::string text =

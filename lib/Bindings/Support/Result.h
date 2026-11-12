@@ -52,7 +52,7 @@ inline ptr scheme_string(const std::string& text) {
 // Scheme (the guard of a callable) puts the text of the error here through
 // crest::error::set and answers the zero value to C++. The first error wins.
 // crest-foreign-procedure asks for it with crest::error::take when the binding
-// returns.
+// returns, and a callable asks crest::error::pending before it runs.
 
 struct CallbackError {
   bool pending = false;
@@ -75,28 +75,33 @@ inline void setCallbackError(const std::string& who,
   }
 }
 
+// The error in the slot as (who . why), and the slot is empty; #f when there is
+// none.
 inline ptr takeCallbackError() {
   CallbackError& slot = callbackError();
+  if (!slot.pending) {
+    return Sfalse;
+  }
   ptr error = scheme_error(slot.who.c_str(), slot.message);
   slot = CallbackError();
   return error;
 }
 
-// How many bindings are on the stack: crest-foreign-procedure counts them, at
-// the address that crest::error::depthAddress gives. A binding raises the error
-// of a callback that ran inside it. With none (crest-opt, which MLIR drives,
-// loading a Scheme dialect while it parses) nobody will raise it.
-inline int& bindingDepth() {
-  static thread_local int depth = 0;
-  return depth;
+// Whether somebody will raise the error that a callback stored, when the
+// binding that ran it returns. In a Scheme program somebody does. In crest-opt
+// MLIR drives, and loads a Scheme dialect while it parses: nobody does, and
+// failIfUnanswered stops the process. crest-opt says so once at startup, and
+// the pass of --crest-pass says it is a Scheme program for the time it runs.
+inline bool& unansweredErrorStops() {
+  static bool stops = false;
+  return stops;
 }
 
-// The error in the slot has nobody to raise it (see bindingDepth): stop with
-// the text. Call it where C++ has just run a Scheme callback outside of any
-// binding.
+// Call it where C++ has just run a Scheme callback: stop with the text when
+// there is an error and nobody will raise it.
 inline void failIfUnanswered() {
   CallbackError& slot = callbackError();
-  if (slot.pending && bindingDepth() == 0) {
+  if (slot.pending && unansweredErrorStops()) {
     std::string text =
         slot.who.empty() ? slot.message : slot.who + ": " + slot.message;
     slot = CallbackError();

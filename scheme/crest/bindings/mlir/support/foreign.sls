@@ -16,9 +16,8 @@
 ;; C++ call has returned: no error crosses a C function, so no C++ destructor is skipped and Chez keeps
 ;; nothing for an escaped call.
 ;;
-;; It also does two jobs for the callbacks that C++ runs inside the binding (scheme/crest/callback.sls, which
-;; never raise): it counts the bindings on the stack, so that C++ knows whether somebody will raise the error
-;; of a callback (failIfUnanswered), and when the binding returns it raises that error, if there is one.
+;; It also raises the error of a callback that C++ ran inside the binding (scheme/crest/callback.sls, which
+;; never raises: it stores the error in C++ and answers the zero value), when the binding returns.
 ;;
 ;;   (crest-foreign-procedure "mlir::Block::getArgument" (uptr int) uptr)
 ;;
@@ -48,22 +47,16 @@
   (define %crest::error::set
     (foreign-procedure "crest::error::set" (string string) void))
 
+  ;; The error in the slot, (who . why), or #f.
   (define %%take-error
     (foreign-procedure "crest::error::take" () scheme-object))
 
-  ;; Is an error waiting in the slot? The flag is one byte at an address that C++ gives once.
-  (define %%pending-flag-address
-    ((foreign-procedure "crest::error::pendingFlag" () uptr)))
+  (define %%pending
+    (foreign-procedure "crest::error::pending" () int))
 
+  ;; Is an error waiting in the slot?
   (define (crest-callback-error-pending?)
-    (not (zero? (foreign-ref 'unsigned-8 %%pending-flag-address 0))))
-
-  ;; The number of bindings on the stack: an int at an address that C++ gives once.
-  (define %%depth-address
-    ((foreign-procedure "crest::error::depthAddress" () uptr)))
-
-  (define (%%depth-add! n)
-    (foreign-set! 'int %%depth-address 0 (+ (foreign-ref 'int %%depth-address 0) n)))
+    (not (zero? (%%pending))))
 
   (define-syntax crest-foreign-procedure
     (lambda (stx)
@@ -75,11 +68,10 @@
                                [else #'values])])
            #'(let ([procedure (foreign-procedure name (type ...) scheme-object)])
                (lambda (argument ...)
-                 (%%depth-add! 1)
-                 (let ([answer (procedure argument ...)])
-                   (%%depth-add! -1)
+                 (let* ([answer (procedure argument ...)]
+                        [callback-error (%%take-error)])
                    (cond
-                    [(crest-callback-error-pending?) (%%raise-error (%%take-error))]
+                    [callback-error (%%raise-error callback-error)]
                     [(%%error? answer) (%%raise-error answer)]
                     [else (read answer)])))))])))
 

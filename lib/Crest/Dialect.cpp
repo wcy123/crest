@@ -114,9 +114,9 @@ void CrestDialect::initialize(const LockedSchemeObject& interfaces) {
     // This runs inside MLIR's construction of the dialect, so there is no way
     // to return the error to MLIR. It is kept for the Scheme binding that is
     // loading the dialect (load-scheme-dialect!, getOrLoadDialect,
-    // parseSourceFile), which answers it; with no binding on the stack
-    // (crest-opt) it stops the process with the text (failIfUnanswered). A
-    // mistake in the define-dialect form.
+    // parseSourceFile), which raises it when it returns; in crest-opt, where
+    // MLIR drives and no Scheme program is there, failIfUnanswered stops the
+    // process with the text. A mistake in the define-dialect form.
     setCallbackError("crest::CrestDialect", attachError);
     failIfUnanswered();
     return;
