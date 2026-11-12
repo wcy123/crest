@@ -1486,10 +1486,14 @@ symbol takes exactly one. Register it with `register_builder_binding`
 Rule 4.
 
 A binding that calls back into Scheme never makes or releases the callback: it takes a plain C function pointer
-(a `uptr` on the Scheme side) and calls it. The Scheme side makes the C function, because the garbage collector
-moves Scheme procedures. `crest-make-static-c-callable` from `(crest callback)` makes one that lives for the whole
-program (the clause of an op, a callback of a dialect, a pattern) and answers its address; `with-c-callable`
-makes one for the length of a body and releases it after, also on an error. A function that only calls it while
+(a `uptr` on the Scheme side) and calls it. The function pointer has the type that C++ or MLIR declares for the
+callback, result type included (`mlir::WalkResult (*)(uint64_t)`, `int (*)(uint64_t)`, `void (*)()`), and the
+Scheme site writes the same: `(crest-make-static-c-callable (uptr) int proc)`. The Scheme side makes the C function,
+because the garbage collector moves Scheme procedures. `crest-make-static-c-callable` from `(crest callback)` makes
+one that lives for the whole program (the clause of an op, a callback of a dialect, a pattern) and answers its
+address; `with-c-callable` makes one for the length of a body and releases it after, also on an error. An error of
+the procedure is reported as a diagnostic at its Scheme source, in `(current-MLIRContext)`, and the callable
+answers the failure value of its type; a callback whose result is `void` ends the process with the text. A function that only calls it while
 it runs (`walk`, `buildAffineLoopNest`, `modifyOpInPlace`) is a Scheme macro that takes a procedure. A function
 that C++ keeps the callback in (a type conversion, a legality check, a pattern) takes the address, and its
 friendly form is a clause of `with-TypeConverter`, `with-ConversionTarget` or `with-RewritePatternSet`. Only

@@ -163,7 +163,8 @@
             (let ([procedure (if (eq? (syntax->datum (method-adapter m)) #f)
                                  (cdr from)
                                  #`(#,(method-adapter m) #,(cdr from)))])
-              #`(crest-slot-callable #,(method-kinds m) #,(method-result m) #,procedure)))))
+              #`(crest-slot-callable #,(method-kinds m) #,(method-result m) #,procedure
+                                     :source #,(cdr from))))))
 
     (duplicates!)
     (for-each (lambda (m)

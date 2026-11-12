@@ -8,16 +8,24 @@
 ;;
 ;; (crest callback) — C function pointers made from Scheme procedures.
 ;;
-;;   (crest-make-static-c-callable (argument-type ...) proc)   an address
-;;   (crest-callback-pointer-list pointer count)              a list of integers
-;;   (crest-callback-entry-dispatcher entries)                a procedure
+;;   (crest-make-static-c-callable (argument-type ...) result-type proc)   an address
+;;   (crest-callback-pointer-list pointer count)                           a list of integers
+;;   (crest-callback-entry-dispatcher entries)                             a procedure
 ;;
 ;; C++ never makes, owns, locks or releases a callback. A binding that needs one takes a plain C
 ;; function pointer; Scheme makes the foreign-callable (locked, because the garbage collector moves
-;; code objects) and whoever calls the low-level function decides how long it lives. The argument
-;; types are those of foreign-callable (uptr, int, ...). The C function answers a Scheme object: what
-;; the procedure answered (a number, #t, #f, void), or the pair (who . why) when it raised an error:
-;; the procedure never raises into C++, and C++ reads the answer (lib/Bindings/Support/Result.h).
+;; code objects) and whoever calls the low-level function decides how long it lives. The C function
+;; has the prototype that C++ or MLIR declares: its argument types and its RESULT TYPE are written at
+;; every site (uptr, int, unsigned-8, void, ...), and a mismatch crashes, as C++ does not check it.
+;;
+;; The procedure never raises into C++. MLIR's prototypes have no room for an error, so the guard of the
+;; callable reports it through MLIR's own channel and answers what the prototype can hold (plan 05):
+;;   result void       nothing can say "failed": the process ends with the text (llvm::report_fatal_error)
+;;   any other result  a diagnostic (mlir::emitError) at the Scheme source of the callback, in
+;;                     (current-MLIRContext), then the failure value of the type: 0, #f, interrupt for a
+;;                     WalkResult. With no current context the process ends with the text.
+;; Scheme code that calls C++ sets the context with with-current-MLIRContext; a tool that C++ drives
+;; (crest-opt) gets it from the C++ code that runs Scheme for a context (lib/Crest/CurrentContext.h).
 ;;
 ;;   crest-make-static-c-callable   locks it for good: only for a callback made once, at the library
 ;;                                  level, that uses no state of a run.
@@ -38,7 +46,7 @@
           with-c-callable
           with-c-callables
           crest-call-guarded
-          crest-make-raw-c-callable
+          crest-guard-procedure
           crest-callback-pointer-list
           crest-callback-entry-dispatcher
           crest-slot-callable)
@@ -55,13 +63,9 @@
   ;;
   ;; C++ calls a callable through a C function pointer. An error that escaped it would cross the C++
   ;; frames (skipping their destructors, and leaving a record in Chez for each), so every callable
-  ;; catches the error itself and answers it as a value: the pair (who . why), who a symbol and why a
-  ;; string. Its answer is a Scheme object (a number, #t, #f, void, or that pair), and the C++ code that
-  ;; made the call reads it (lib/Bindings/Support/Result.h: isSchemeError, emitSchemeError) and reports
-  ;; the error as a diagnostic.
-  ;;
-  ;; The callables of an interface slot are the exception: MLIR calls them with its own prototype, so
-  ;; they cannot answer a pair, and their procedures must not raise.
+  ;; catches the error itself and reports it, as the header says. Only crest-call-guarded, which C++ calls
+  ;; by name for the pass of --crest-pass, still answers an error as a value: the pair (who . why), who a
+  ;; symbol and why a string (lib/Bindings/Support/Result.h: isSchemeError, emitSchemeError).
 
   ;; The who of the condition, as a string ("" when it has none).
   (define (%%condition-who c)
@@ -141,24 +145,37 @@
       (guard (c [#t (%%die c location)])
         (apply procedure arguments))))
 
-  ;; Windows x64 answers a WalkResult (a class with constructors) through the place that the caller
-  ;; gives, a pointer before the arguments, as it does for a LogicalResult (crest-slot-callable).
-  (define (%%windows-result procedure)
+  ;; Windows x64 answers a class with constructors (a WalkResult, a LogicalResult) through the place that
+  ;; the caller gives, a pointer before the arguments: the procedure writes its answer, of C type SIZE, there
+  ;; and the function answers the pointer (crest-slot-callable does the same for an object).
+  (define (%%windows-result size procedure)
     (lambda (answer . arguments)
-      (foreign-set! 'unsigned-32 answer 0 (apply procedure arguments))
+      (foreign-set! size answer 0 (apply procedure arguments))
       answer))
+
+  ;; (crest-guard-procedure procedure location zero): the procedure with its error reported, as the guard
+  ;; of a callable does it, and ZERO answered. For a Scheme procedure that C++ calls itself while a
+  ;; callable runs (the clauses of InferTypeOpInterface): an error must not cross the C++ frames either.
+  (define (crest-guard-procedure procedure location zero)
+    (%%report-guard procedure location zero))
+
+  ;; The guard of a slot of a Concept (crest-slot-callable) by the kind of its result: a range answers
+  ;; (data . size), a void slot has no place for an error, the others are numbers.
+  (define (%%slot-guard result procedure location)
+    (case result
+      [(void) (%%fatal-guard procedure location)]
+      [(range) (%%report-guard procedure location (cons 0 0))]
+      [else (%%report-guard procedure location 0)]))
 
   ;; (%%make-code (argument-type ...) result-type procedure location): LOCATION is an expression for the
   ;; position of the callback, (file line column) or #f. The code object of the foreign-callable
-  ;; for that result type. scheme-object keeps the answer as (who . why) while the hooks move to their natural
-  ;; type; walk-result is the C++ class mlir::WalkResult (4 bytes, constants in (mlir Support WalkResult)).
+  ;; for that result type. walk-result is the C++ class mlir::WalkResult (4 bytes, constants in (mlir Support WalkResult)),
+  ;; logical-result is llvm::LogicalResult (1 byte, 1 for success).
   (define-syntax %%make-code
     (lambda (stx)
       (syntax-case stx ()
         [(_ (type ...) result procedure location)
          (case (syntax->datum #'result)
-           [(scheme-object)
-            #'(foreign-callable (%%guard procedure) (type ...) scheme-object)]
            [(void)
             #'(foreign-callable (%%fatal-guard procedure location) (type ...) void)]
            [(boolean)
@@ -167,9 +184,14 @@
             #'(foreign-callable (%%report-guard procedure location 0) (type ...) result)]
            [(walk-result)
             #'(if (%%windows?)
-                  (foreign-callable (%%windows-result (%%report-guard procedure location 0))
+                  (foreign-callable (%%windows-result 'unsigned-32 (%%report-guard procedure location 0))
                                     (uptr type ...) uptr)
                   (foreign-callable (%%report-guard procedure location 0) (type ...) int))]
+           [(logical-result)
+            #'(if (%%windows?)
+                  (foreign-callable (%%windows-result 'unsigned-8 (%%report-guard procedure location 0))
+                                    (uptr type ...) uptr)
+                  (foreign-callable (%%report-guard procedure location 0) (type ...) unsigned-8))]
            [else
             (syntax-violation 'crest-make-static-c-callable "unknown result type of a callable" stx
                               #'result)])])))
@@ -199,8 +221,7 @@
   ;; (crest-make-static-c-callable (argument-type ...) result-type procedure [:source expression | :location expression]): the
   ;; address of a C function with the prototype of C++: those argument types and that result type. It locks
   ;; the callable for good: use it only at the library level, for a callback that uses no state of a run.
-  ;; result-type: scheme-object (the answer, or (who . why) for an error), void, int, uptr, unsigned-8,
-  ;; unsigned-32, boolean, walk-result. An error of the procedure is reported by its guard (see above), at
+  ;; result-type: void, int, uptr, unsigned-8, unsigned-32, boolean, walk-result, logical-result. An error of the procedure is reported by its guard (see above), at
   ;; the Scheme position of PROCEDURE, or of the expression after :source when a macro wraps the procedure of
   ;; its user in a lambda of its own and the position of the user is the useful one. :location gives the
   ;; position as an expression that is evaluated when the callable is made, (file line column) or #f: for a
@@ -227,10 +248,9 @@
                (lock-object code)
                (foreign-callable-entry-point code)))])))
 
-  ;; (crest-make-raw-c-callable (argument-type ...) result-type procedure): the same for a slot of a
-  ;; Concept, which MLIR calls with its own prototype: the procedure is not guarded (it must not raise),
-  ;; and the C function has the C result type of the slot.
-  (define-syntax crest-make-raw-c-callable
+  ;; (%%make-raw-c-callable (argument-type ...) result-type procedure): the entry point of a callable
+  ;; for a slot of a Concept, with the C result type of the slot; crest-slot-callable guards the procedure.
+  (define-syntax %%make-raw-c-callable
     (syntax-rules ()
       [(_ (argument-type ...) result-type proc)
        (let ([code (foreign-callable proc (argument-type ...) result-type)])
@@ -311,7 +331,7 @@
   ;; first (ignored), then the arguments of the method. The kinds are the C++ types of the slot, and
   ;; the macro writes the prototype of the platform, so the procedure sees numbers and lists:
   ;;
-  ;;   (crest-slot-callable (argument-kind ...) result-kind procedure)
+  ;;   (crest-slot-callable (argument-kind ...) result-kind procedure [:source expression | :location expression])
   ;;
   ;; argument kinds: uptr, int, unsigned-8 (a bool), unsigned-32, and
   ;;   object       a class of one pointer (Type, TypeAttr, StringAttr, ...), by value: the procedure gets
@@ -324,7 +344,9 @@
   ;;                through the place that the caller gives, as for an object
   ;;   range        an ArrayRef or an OperandRange: the procedure answers (data . size)
   ;; The procedure gets only the arguments, not the Concept. Answers the entry point, as
-  ;; crest-make-static-c-callable does.
+  ;; crest-make-static-c-callable does, and guards the procedure as it does: an error is a diagnostic at the
+  ;; Scheme position of the procedure (:source, :location as there) and the callable answers the zero of its
+  ;; result kind; a void slot ends the process.
   (define-syntax crest-slot-callable
     (lambda (stx)
       (define (argument-info kind windows?)
@@ -345,42 +367,55 @@
                [values (map (lambda (info formal) ((cdr info) formal)) infos formals)])
           (case (syntax->datum result)
             [(void uptr int unsigned-8 unsigned-32)
-             #`(crest-make-raw-c-callable
+             #`(%%make-raw-c-callable
                 (uptr #,@types) #,result
                 (lambda (concept #,@formals) (#,procedure #,@values)))]
             [(object)
              (if windows?
-                 #`(crest-make-raw-c-callable
+                 #`(%%make-raw-c-callable
                     (uptr uptr #,@types) uptr
                     (lambda (answer concept #,@formals)
                       (foreign-set! 'uptr answer 0 (#,procedure #,@values))
                       answer))
-                 #`(crest-make-raw-c-callable
+                 #`(%%make-raw-c-callable
                     (uptr #,@types) uptr
                     (lambda (concept #,@formals) (#,procedure #,@values))))]
             [(logical-result)
              (if windows?
-                 #`(crest-make-raw-c-callable
+                 #`(%%make-raw-c-callable
                     (uptr uptr #,@types) uptr
                     (lambda (answer concept #,@formals)
                       (foreign-set! 'unsigned-8 answer 0 (#,procedure #,@values))
                       answer))
-                 #`(crest-make-raw-c-callable
+                 #`(%%make-raw-c-callable
                     (uptr #,@types) unsigned-8
                     (lambda (concept #,@formals) (#,procedure #,@values))))]
             [(range)
-             #`(crest-make-raw-c-callable
+             #`(%%make-raw-c-callable
                 (uptr #,@types) (& %%SlotRange)
                 (lambda (answer concept #,@formals)
                   (let ([pair (#,procedure #,@values)])
                     (ftype-set! %%SlotRange (data) answer (car pair))
                     (ftype-set! %%SlotRange (size) answer (cdr pair)))))]
             [else (syntax-violation 'crest-slot-callable "unknown kind of result" stx result)])))
+      (define (location-of options default)
+        (syntax-case options ()
+          [() (position-of default)]
+          [(key source) (eq? (syntax->datum #'key) ':source) (position-of #'source)]
+          [(key expression) (eq? (syntax->datum #'key) ':location) #'expression]
+          [_ (syntax-violation 'crest-slot-callable "expected :source or :location" stx options)]))
+      (define (position-of form)
+        (with-syntax ([position (datum->syntax
+                                 #'stx
+                                 (or (syntax->first-file+line+col form)
+                                     (syntax->file+line+col stx)))])
+          #''position))
       (syntax-case stx ()
-        [(_ (kind ...) result procedure)
-         #`(let ([p procedure])
-             (if (%%windows?)
-                 #,(callable #t #'(kind ...) #'result #'p)
-                 #,(callable #f #'(kind ...) #'result #'p)))])))
+        [(_ (kind ...) result procedure . options)
+         (with-syntax ([location (location-of #'options #'procedure)])
+           #`(let ([p (%%slot-guard 'result procedure location)])
+               (if (%%windows?)
+                   #,(callable #t #'(kind ...) #'result #'p)
+                   #,(callable #f #'(kind ...) #'result #'p))))])))
 
   ) ;; end library (crest callback)

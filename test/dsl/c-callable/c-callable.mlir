@@ -6,7 +6,6 @@
 // CHECK: answers: 42
 // CHECK: locked in the body: yes
 // CHECK: locked after the body: no
-// CHECK: error answered: (boom . bad)
 // CHECK: error caught
 // CHECK: locked after an error: no
 // CHECK: reused answers: 42

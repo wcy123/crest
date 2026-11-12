@@ -266,19 +266,20 @@ Named `let` is still fine for irregular recursion (mutual, non-linear stepping).
 ## Rule 17 — Scheme makes every callback; the caller owns its lifetime
 
 C++ never makes, owns, locks or releases a callback. A binding that needs one takes a plain C function pointer
-as its parameter (`ptr (*visit)(uint64_t)`) and calls it. Scheme makes the C function, a `foreign-callable`
-whose code object is locked (the garbage collector moves Scheme objects, so a procedure is never stored as a
-`ptr`), and whoever calls the low-level function decides how long it lives (`(crest callback)`). The C function
-answers a Scheme object: what the procedure answered (a number, `#t`, `#f`, void), or the pair `(who . why)` when it
-raised an error, which the C++ that called it reports as a diagnostic (`isSchemeError`, `emitSchemeError` in
-`lib/Bindings/Support/Result.h`):
+as its parameter (`mlir::WalkResult (*visit)(uint64_t)`) and calls it. Scheme makes the C function, a
+`foreign-callable` whose code object is locked (the garbage collector moves Scheme objects, so a procedure is never
+stored as a `ptr`), and whoever calls the low-level function decides how long it lives (`(crest callback)`). **The C
+function has the prototype that C++ or MLIR declares, result type included**, and the Scheme site writes it:
+`(uptr) int`, `(uptr uptr) void`, `(uptr) walk-result`. The result types are `void`, `int`, `uptr`, `unsigned-8`,
+`unsigned-32`, `boolean`, `walk-result` (`mlir::WalkResult`, constants in `(mlir Support WalkResult)`) and
+`logical-result` (`llvm::LogicalResult`). A callback never answers a Scheme object, and C++ decodes nothing:
 
-- `(crest-make-static-c-callable (type ...) proc)` makes it, locks it for good and answers its address.
+- `(crest-make-static-c-callable (type ...) result-type proc)` makes it, locks it for good and answers its address.
   Use it only at the library level, for a callback that uses no state of a run (an op's clause, a dialect's
   callback, the body of a `define-pass`, a pattern made by `define-conversion-pattern`): it is made once, when the
   library loads. A callback that uses the state of a run (a type converter, a target) is made by `with-c-callable`
   or by a clause, so that a scope releases it; never make one per run with this.
-- `(with-c-callable (name (type ...) value) body ...)` makes it for `body` and unlocks it after, also on an
+- `(with-c-callable (name (type ...) result-type value) body ...)` makes it for `body` and unlocks it after, also on an
   error. `value` is a procedure, or a code object that the caller made and locked, or the address of a locked
   callable (reused, never unlocked by the macro; an error if it is not locked).
 - A function that only calls the callback while it runs (`mlir::Operation::walk`,
@@ -294,21 +295,30 @@ raised an error, which the C++ that called it reports as a diagnostic (`isScheme
   into one with C types; they pass an address through.
 
 **No error leaves a callable.** C++ calls a callable through a C function pointer, so an error that escaped it
-would cross the C++ frames (Rule 20). Every callable made by `crest-make-static-c-callable`, `with-c-callable` and
-`with-c-callables` catches it with `guard` and answers a Scheme object: what the procedure answered (an integer,
-`#t`/`#f`, void), or the pair `(who . why)` when it raised. These macros take no result type. The C++ code that
-made the call reads the answer (`isSchemeError`, `lib/Bindings/Support/Result.h`):
+would cross the C++ frames (Rule 20). MLIR's prototypes have no room for an error, so the guard of every callable
+(`crest-make-static-c-callable`, `with-c-callable`, `with-c-callables`, `crest-slot-callable`) catches it with
+`guard` and reports it through MLIR's own channel:
 
-- MLIR code that calls the callable (a pattern, the legality check, a type conversion, a dialect, op or type hook,
-  a pass) reports the error as a diagnostic (`emitSchemeError`) and answers failure to MLIR.
-- A binding that calls the callable itself (`mlir::Operation::walk`, `mlir::RewriterBase::modifyOpInPlace`,
-  `mlir::affine::buildAffineLoopNest`) stops at the first error and answers it (`FirstSchemeError`), and Scheme
-  raises it there.
-- The pass of `--crest-pass` is called through `crest-call-guarded`, which answers the value or the pair.
+- **result `void`**: nothing can say "failed", so the process ends with the text of the error and the Scheme
+  position (`llvm::report_fatal_error`).
+- **any other result**: a diagnostic (`mlir::emitError`) at the **Scheme source of the callback**, then the failure
+  value of the type (0, `#f`, `interrupt` for a `WalkResult`). MLIR carries on from there as it does for its own
+  failures. The position is read when the macro expands (`(mlir support srcloc)`); a macro that wraps the procedure
+  of its user in a template lambda passes `:source expression` (the user's form) or, when the procedure is a value
+  that reached the macro later, `:location expression` (the position as data). A DSL such as `define-dialect` builds
+  `(lambda ...)` forms: `syntax->first-file+line+col` finds the part that is the user's.
+- **the context**: a `Location` belongs to a context. The guard uses `(current-MLIRContext)`; with none the process
+  ends with the text. Scheme code that calls C++ sets it (`with-current-MLIRContext`). A tool that C++ drives sets it
+  by calling the parameter, a Chez parameter applied to one argument (`crest::setCurrentContext`,
+  `lib/Crest/CurrentContext.h`): `CrestDialect::initialize` does for every context that loads a Scheme dialect, and
+  the pass runners (`--crest-pass`, `define-pass`) for the context of the op.
+- A Scheme procedure that C++ calls itself while a callable runs (the clauses of `InferTypeOpInterface`) is guarded
+  with `crest-guard-procedure`. The pass of `--crest-pass` is called by name through `crest-call-guarded`, the one
+  place that still answers an error as a value, the pair `(who . why)`, which the pass runner reports.
 
-The callables of an interface slot (`crest-slot-callable`, `crest-make-raw-c-callable`) are not guarded: MLIR
-calls them with its own prototype, so they cannot answer a pair, and their procedures must not raise.
-`test/dsl/callback-errors` checks each kind.
+Nesting (C++ -> Scheme -> C++ -> Scheme) needs no bookkeeping: each failure is reported where it happens. An error
+in a callable with a `void` result ends the process, so a program that has to go on makes its callbacks
+total. `test/dsl/callback-diagnostics`, `test/dsl/c-callable-results` and `test/dsl/callback-errors` check each kind.
 
 C++ does not check the prototype: a mismatch between the Scheme types and the C++ function pointer type crashes.
 A callback used after its scope ends crashes too. `test/dsl/callback-leaks` checks that scoped callables are
@@ -367,9 +377,9 @@ So failure is an ordinary return value, and Scheme raises it after the C++ call 
   answers is a pair of a symbol and a string.
 - **The lookups of a handle that Scheme gives** answer a pointer, or `nullptr`: `CrestBox<T>::inner(address)`,
   `as_ref<T>(address)` and `as_context(address)`. The binding checks it and answers `scheme_error`.
-- **C++ calls Scheme** (Rule 17): the callable answers a Scheme object, the value or `(who . why)`; C++ reads it
-  and reports the error as a diagnostic, or (a binding that calls the callable itself) answers it to Scheme. There
-  is no side channel: no slot, no flag, no counter.
+- **C++ calls Scheme** (Rule 17): the callable has the C prototype that MLIR declares and reports an error of its
+  procedure itself, as a diagnostic or, for a `void` result, by ending the process. C++ reads no error from it:
+  there is no slot, no flag, no counter, and no pair.
 - **No raising from C++ at all**: not `llvm::report_fatal_error` for an error in the program's input (it is for an
   internal invariant that generated code broke).
 - **Destructors run**: because nothing is skipped, a binding may hold `std::string`, `SmallVector`,

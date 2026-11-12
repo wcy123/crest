@@ -14,15 +14,14 @@
 // crest-foreign-procedure ((mlir support foreign)) raises the pair in Scheme,
 // after the C function has returned.
 //
-// C++ calls Scheme (a callable made by scheme/crest/callback.sls, or
-// crest-call-guarded): Scheme wraps the procedure in a guard, so it never
-// raises. It answers the value (a number, #t, #f, void) or, when the procedure
-// raised an error, the pair (who . why). The C++ code that made the call checks
-// the answer with isSchemeError, reports the error as an MLIR diagnostic, as
-// the C++ hooks of MLIR do (emitSchemeError), and answers failure to MLIR.
-//
-// The callables of an interface slot (MLIR calls them with its own prototype)
-// are not guarded: a Scheme procedure of a slot must not raise.
+// C++ calls Scheme through a callable that scheme/crest/callback.sls made: the
+// callable has the C prototype that C++ or MLIR declares, result type included,
+// and its guard reports an error of the procedure as a diagnostic at the Scheme
+// source of the callback (or ends the process for a void result), so no error
+// reaches C++ and C++ decodes nothing. Only the control plane still answers an
+// error as a value: crest-call-guarded, which the pass runner of --crest-pass
+// calls by name, answers the value or the pair (who . why), and the runner
+// reads it with isSchemeError and reports it with emitSchemeError.
 
 #ifndef CREST_BINDINGS_SUPPORT_RESULT_H
 #define CREST_BINDINGS_SUPPORT_RESULT_H
@@ -85,33 +84,6 @@ inline std::string schemeErrorText(ptr answer) {
 inline void emitSchemeError(mlir::Location loc, ptr answer) {
   mlir::emitError(loc) << schemeErrorText(answer);
 }
-
-// The first error that the callables run by one binding answered. A binding
-// that calls a callable itself (walk, modifyOpInPlace, buildAffineLoopNest)
-// keeps the error here, on its stack, stops, and answers it to Scheme, which
-// raises it there. The text is copied: Scheme may move the pair.
-class FirstSchemeError {
-public:
-  // Whether `answer` is an error; the first one is kept.
-  bool record(ptr answer) {
-    if (!isSchemeError(answer)) {
-      return false;
-    }
-    if (!failed_) {
-      failed_ = true;
-      who_ = detail::schemeText(Ssymbol_to_string(Scar(answer)));
-      why_ = detail::schemeText(Scdr(answer));
-    }
-    return true;
-  }
-  explicit operator bool() const { return failed_; }
-  ptr answer() const { return scheme_error(who_.c_str(), why_); }
-
-private:
-  bool failed_ = false;
-  std::string who_;
-  std::string why_;
-};
 
 } // namespace crest
 
