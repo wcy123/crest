@@ -186,6 +186,10 @@ expression that makes the resource and a procedure that frees it:
 `(with-raii variable constructor destructor body ...)`. Write a `with-<C++ClassName>` macro on top
 of it when the cleanup is a function call (Rule 18).
 
+Several `with-` forms in a row are written with `with*` (`(mlir support with)`), which nests them like `let*`:
+`(with* ((with-DialectRegistry registry ()) (with-MLIRContext ctx (registry))) body ...)`. A clause is a
+`with-` form without its body, so a `with-` macro must take its body last.
+
 ### Rule 11 — Dynamic parameters: `current-<C++ClassName>`
 
 ```scheme
@@ -213,6 +217,7 @@ methods the conversion rewriter overrides. A raw `OpBuilder*` is never a valid h
 | `with-mlir::OwningOpRef` | `(mlir IR OwningOpRef)` | `mlir/IR/OwningOpRef.h` |
 | `with-CrestObject` | `(mlir support CrestObject)` | `lib/Bindings/Support/CrestObject.h` (CREST-specific) |
 | `with-raii` | `(mlir support RAII)` | none: generic, CREST-specific |
+| `with*` | `(mlir support with)` | none: generic, CREST-specific |
 
 ### Rule 18 — Naming a macro that is not one constructor
 
