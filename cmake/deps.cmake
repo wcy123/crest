@@ -50,27 +50,16 @@ endif()
 # docs/tech-note.md, "Chez Scheme pin".
 # LEAK WARNING: Chez 10.5.0 (upstream main too) leaks about 208 bytes every time a Scheme error escapes
 # through a C function that had called into Scheme (a C++ binding that raises, or a callback that raises
-# and is caught by a guard outside it). The cause is one line in S_call_help (c/schlib.c). The full
-# explanation, a 20-line standalone repro (cmake/patches/chez-error-escape-leak/), which of our tests
-# reach it, what is known about upstream, and how sure we are that the fix is right are all in the
-# header of cmake/patches/chez-release-escaped-frames.patch.
-# The patch is applied here, once, to a fresh source tree (the command first checks that the tree is
-# not patched already). It is NOT applied on Windows, where it is untested, so a Windows build keeps
-# the leak. It has not been reviewed by the Chez team: if you doubt it, delete it and relax the bound in
-# unittests/Interpreter/InterpreterTest.cpp (SchemeErrorDoesNotLeakCppMemory).
-set(_chez_patch_command "")
-if(NOT WIN32)
-  set(_chez_patch_file "${CMAKE_CURRENT_SOURCE_DIR}/cmake/patches/chez-release-escaped-frames.patch")
-  set(_chez_patch_command
-    PATCH_COMMAND sh -c
-      "git apply --reverse --check '${_chez_patch_file}' 2>/dev/null || git apply '${_chez_patch_file}'")
-endif()
+# and is caught by a guard outside it). The cause is one line in S_call_help (c/schlib.c). We do NOT
+# patch Chez: cmake/patches/chez-release-escaped-frames.patch is kept for the record (it explains the
+# leak, has a standalone repro in cmake/patches/chez-error-escape-leak/, and says what is known about
+# upstream and how sure we are), and it is not applied by this build. CREST avoids the leak instead by
+# never letting an error cross a C function: plans/04-errors-are-values.md.
 FetchContent_Declare(ChezScheme
   GIT_REPOSITORY         https://github.com/cisco/ChezScheme.git
   GIT_TAG                d533f2e156d4eddeafe24bd7cc4de87fdc88caeb
   GIT_SUBMODULES_RECURSE TRUE
   GIT_PROGRESS           TRUE
-  ${_chez_patch_command}
 )
 FetchContent_GetProperties(ChezScheme)
 if(NOT chezscheme_POPULATED)

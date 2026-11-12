@@ -1,3 +1,6 @@
+NOT APPLIED BY THE BUILD. Kept for the record (decision of 2026-11-12: CREST does not patch Chez; it
+avoids the leak by never letting an error cross a C function, plans/04-errors-are-values.md).
+
 Chez Scheme: free the records of the C calls that a Scheme error escapes
 (c/schlib.c, S_call_help, "case 1: normal return")
 
@@ -66,11 +69,10 @@ HOW SURE WE ARE
     while unwinding, Windows.
   - If it is wrong, the failure is a crash or a double free, which is worse than the leak.
 
-WHY NOT ON WINDOWS
+WHY IT WAS NOT TO BE USED ON WINDOWS
   The list of active C calls is also what Windows may use when the operating system unwinds the stack
   (SEH). The comment in S_return says "Windows might need the full chain for unwind handling". The
-  patch changes WHEN the list is shortened, and we cannot test Windows, so cmake/deps.cmake does not
-  apply it there: a Windows build keeps the leak.
+  patch changes WHEN the list is shortened, and we cannot test Windows.
 
 diff --git a/c/schlib.c b/c/schlib.c
 index 2be486d0..5d519b54 100644

@@ -333,18 +333,15 @@ bug in it.
 6. Run both LLVM suites (`check-crest` and `CrestInterpreterTests`, `CrestInferTypeTests`) on Linux and let the
    Windows CI run.
 
-## Chez Scheme patch: frames that an error escapes
+## Chez Scheme leak: errors that escape through a C function
 
-Chez 10.5.0 (`d533f2e`, and upstream `main` today) leaks the jump buffer (about 200 bytes) and the code-object
-locks of every C frame that Scheme unwinds past, for example when a C++ binding raises an error with
-`scheme_error`. `S_call_help` (`c/schlib.c`, "case 1: normal return") sets `CCHAIN(tc) = yp;` before the loop whose
-comment says it unlocks the code objects "that we're escaping past": the loop then walks one frame, and nothing is
-released. `cmake/patches/chez-release-escaped-frames.patch` removes that line; `cmake/deps.cmake` applies it to a fresh
-source tree. It is not applied on Windows: the comment in `S_return` says Windows may need the full chain for unwind
-handling, and the patch is not tested there, so a Windows build keeps the leak. Valgrind shows the leak as
-`S_call_help` records in `CrestInterpreterTests` (`SchemeErrorDoesNotLeakCppMemory`, 20,000 errors).
-When the pin moves, check whether upstream fixed the line; if so delete the patch and this section. A report to
-cisco/ChezScheme has not been made.
+Chez 10.5.0 (`d533f2e`, and upstream `main` today) leaks about 208 bytes every time a Scheme error escapes through a
+C function that had called into Scheme (`S_call_help`, `c/schlib.c`, "case 1: normal return": `CCHAIN(tc) = yp;` runs
+before the loop that is meant to free the escaped frames). We do not patch Chez. `cmake/patches/chez-release-escaped-frames.patch`
+is kept for the record, with a standalone repro in `cmake/patches/chez-error-escape-leak/`, the list of our tests that
+reach it, what is known about upstream and how sure we are; the build does not apply it. CREST avoids the leak by
+never letting an error cross a C function: a C++ binding returns an error object and Scheme raises it
+(`plans/04-errors-are-values.md`).
 
 ## Checking for memory leaks
 
