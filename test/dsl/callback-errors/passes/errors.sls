@@ -8,6 +8,7 @@
                 mlir::Operation::getContext mlir::Operation::walk
                 mlir::Operation::getAttr mlir::Operation::setAttr!)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
+          (mlir support with)
           (only (mlir IR PatternMatch) with-RewritePatternSet)
           (only (mlir IR BuiltinAttributes) mlir::UnitAttr::get)
           (only (mlir IR BuiltinTypes) mlir::IndexType::get)
@@ -29,20 +30,20 @@
   ;; a legality check that raises
   (define (legality-raises module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
-      (with-current-MLIRContext ctx
-        (with-TypeConverter type-converter
-          (with-ConversionTarget target (ctx :dynamically-legal (("test.a" boom)))
-            (with-RewritePatternSet patterns (ctx :conversion-patterns (("test.a" %%convert type-converter 1)))
-              (mlir::applyPartialConversion module-op target patterns)))))))
+      (with* ((with-current-MLIRContext ctx)
+              (with-TypeConverter type-converter)
+              (with-ConversionTarget target (ctx :dynamically-legal (("test.a" boom))))
+              (with-RewritePatternSet patterns (ctx :conversion-patterns (("test.a" %%convert type-converter 1)))))
+        (mlir::applyPartialConversion module-op target patterns))))
 
   ;; a conversion pattern that raises
   (define (pattern-raises module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
-      (with-current-MLIRContext ctx
-        (with-TypeConverter type-converter
-          (with-ConversionTarget target (ctx :dynamically-legal (("test.a" (lambda (op) #f))))
-            (with-RewritePatternSet patterns (ctx :conversion-patterns (("test.a" boom type-converter 1)))
-              (mlir::applyPartialConversion module-op target patterns)))))))
+      (with* ((with-current-MLIRContext ctx)
+              (with-TypeConverter type-converter)
+              (with-ConversionTarget target (ctx :dynamically-legal (("test.a" (lambda (op) #f)))))
+              (with-RewritePatternSet patterns (ctx :conversion-patterns (("test.a" boom type-converter 1)))))
+        (mlir::applyPartialConversion module-op target patterns))))
 
   ;; a type conversion that raises: asking the converter whether a type is legal runs its conversions
   (define (conversion-raises module-op)

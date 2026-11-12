@@ -5,6 +5,7 @@
         (only (crest callback) crest-make-static-c-callable)
         (mlir IR MLIRContext)
         (mlir IR DialectRegistry)
+        (mlir support with)
         (mlir Transforms DialectConversion)
         (only (mlir IR PatternMatch) with-RewritePatternSet))
 
@@ -16,16 +17,16 @@
 (define (report name thunk)
   (printf "~a: ~a\n" name (message-of thunk)))
 
-(with-DialectRegistry reg ()
-  (with-MLIRContext ctx (reg)
-    (with-TypeConverter tc
-      (with-ConversionTarget target (ctx)
-        (with-RewritePatternSet patterns (ctx)
-          (report "conversion" (lambda () (type-converter-add-conversion tc (lambda (t) t))))
-          (report "legality"
-                  (lambda () (target-mark-unknown-ops-dynamically-legal target (lambda (op) #t))))
-          (report "pattern"
-                  (lambda () (add-rewrite-pattern patterns "test.a" (lambda (op rw) #t) 1)))
-          (let ([address (crest-make-static-c-callable (uptr) (lambda (t) t))])
-            (type-converter-add-conversion tc address)
-            (printf "static address accepted: yes\n")))))))
+(with* ((with-DialectRegistry reg ())
+        (with-MLIRContext ctx (reg))
+        (with-TypeConverter tc)
+        (with-ConversionTarget target (ctx))
+        (with-RewritePatternSet patterns (ctx)))
+  (report "conversion" (lambda () (type-converter-add-conversion tc (lambda (t) t))))
+  (report "legality"
+          (lambda () (target-mark-unknown-ops-dynamically-legal target (lambda (op) #t))))
+  (report "pattern"
+          (lambda () (add-rewrite-pattern patterns "test.a" (lambda (op rw) #t) 1)))
+  (let ([address (crest-make-static-c-callable (uptr) (lambda (t) t))])
+    (type-converter-add-conversion tc address)
+    (printf "static address accepted: yes\n")))

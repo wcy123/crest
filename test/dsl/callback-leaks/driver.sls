@@ -7,7 +7,7 @@
 (import (except (rnrs) =)
         (only (crest dialect) load-scheme-dialect!)
         (only (chezscheme) collect object-counts enable-object-counts command-line-arguments)
-        (mlir IR DialectRegistry) (mlir IR MLIRContext) (mlir IR Operation) (mlir IR OwningOpRef)
+        (mlir IR DialectRegistry) (mlir IR MLIRContext) (mlir support with) (mlir IR Operation) (mlir IR OwningOpRef)
         (mlir Dialect Func IR FuncOps)
         (mlir Transforms DialectConversion)
         (only (mlir IR PatternMatch) with-RewritePatternSet)
@@ -110,21 +110,21 @@
                  (target-mark-unknown-ops-dynamically-legal tc c))))))
 
 (scenario "wrong-handle-patterns" (ctx module)
-          (with-TypeConverter tc
-            (with-ConversionTarget target (ctx)
-              (with-RewritePatternSet patterns (ctx)
-                (ignoring-errors
-                 (lambda ()
-                   (with-c-callable (c (uptr uptr) (lambda (op rewriter) 0))
-                     (add-rewrite-pattern tc "test.a" c 1))))
-                (ignoring-errors
-                 (lambda ()
-                   (with-c-callable (c (uptr uptr uptr uptr) (lambda (op o r t) 0))
-                     (add-conversion-pattern patterns "test.a" c target 1))))
-                (ignoring-errors
-                 (lambda ()
-                   (with-c-callable (c (uptr uptr uptr uptr) (lambda (op o r t) 0))
-                     (add-conversion-pattern/ctx tc "test.a" c 1))))))))
+          (with* ((with-TypeConverter tc)
+                  (with-ConversionTarget target (ctx))
+                  (with-RewritePatternSet patterns (ctx)))
+            (ignoring-errors
+             (lambda ()
+               (with-c-callable (c (uptr uptr) (lambda (op rewriter) 0))
+                 (add-rewrite-pattern tc "test.a" c 1))))
+            (ignoring-errors
+             (lambda ()
+               (with-c-callable (c (uptr uptr uptr uptr) (lambda (op o r t) 0))
+                 (add-conversion-pattern patterns "test.a" c target 1))))
+            (ignoring-errors
+             (lambda ()
+               (with-c-callable (c (uptr uptr uptr uptr) (lambda (op o r t) 0))
+                 (add-conversion-pattern/ctx tc "test.a" c 1))))))
 
 (scenario "wrong-handle-modify" (ctx module)
           (with-TypeConverter tc

@@ -69,6 +69,8 @@
     (with-PassManager . 2)
     (with-mlir::OwningOpRef . 2)
     (with-raii . 3)
+    ;; with*: (with* ((with-X ...) ...) body ...), the clauses are the one leading argument
+    (with* . 1)
     ;; begin-mlir-code: first arg is builder (like with-*), rest are op-forms
     (begin-mlir-code . 1)
     ;; define-op DSL callbacks: (:keyword (formals) body ...) — like when
