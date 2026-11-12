@@ -107,8 +107,17 @@ void CrestDialect::initialize(const LockedSchemeObject& interfaces) {
   if (cbs_.get_dependent_dialects) {
     cbs_.get_dependent_dialects(reinterpret_cast<uint64_t>(this));
   }
-  attachInterfaces(*this, interfaces, getAttachDialectInterfaceFns(),
-                   "crest::CrestDialect");
+  std::string attachError =
+      attachInterfaces(*this, interfaces, getAttachDialectInterfaceFns());
+  if (!attachError.empty()) {
+    // LEAK WARNING: this runs inside MLIR's construction of the dialect, so
+    // Scheme unwinds MLIR's frames too and whatever they hold leaks (see
+    // scheme_error). It is a mistake in the define-dialect form, found when the
+    // dialect loads.
+    ptr message = Sstring(attachError.c_str());
+    attachError = std::string();
+    scheme_raise("crest::CrestDialect", message);
+  }
   if (cbs_.initialize) {
     cbs_.initialize(reinterpret_cast<uint64_t>(this));
   }
@@ -316,15 +325,24 @@ void registerIRExtensibleDialectBindings() {
             ctx_ptr, "crest::load-scheme-dialect!");
         // Copy first: the strings point into the Scheme heap, which the Scheme
         // code that validateSchemeDialect runs may move.
-        std::string dialect(dialect_name);
-        std::string module(module_name);
-        if (auto error = validateSchemeDialect(dialect, module)) {
-          scheme_error("crest::load-scheme-dialect!",
-                       "Failed to import Scheme library: " + module + ": " +
-                           *error);
+        // The strings end their scope before Scheme raises the error: raising
+        // skips destructors (see scheme_error).
+        ptr failure = Sfalse;
+        {
+          std::string dialect(dialect_name);
+          std::string module(module_name);
+          if (auto error = validateSchemeDialect(dialect, module)) {
+            failure = Sstring(
+                ("Failed to import Scheme library: " + module + ": " + *error)
+                    .c_str());
+          } else {
+            auto [type_id, factory] = dialectFactory(dialect, module);
+            factory(ctx);
+          }
         }
-        auto [type_id, factory] = dialectFactory(dialect, module);
-        factory(ctx);
+        if (failure != Sfalse) {
+          scheme_raise("crest::load-scheme-dialect!", failure);
+        }
       });
 }
 
@@ -335,7 +353,14 @@ void registerIRExtensibleDialectBindings() {
 CrestDialect::CrestDialect(mlir::TypeID id, const std::string& module_name,
                            const std::string& dialect_name,
                            mlir::MLIRContext* ctx)
-    : mlir::ExtensibleDialect(dialect_name, ctx, id),
+    // USE-AFTER-FREE WARNING: MLIR keeps the name that it is given as a
+    // pointer, not a copy, and reads it for as long as the context lives (the
+    // table of loaded dialects, the sort in getLoadedDialects, every printed
+    // `!name.type`). dialect_name belongs to the factory, which is destroyed
+    // when the call that loads the dialect returns. The context interns the
+    // name: it lives as long as the context does.
+    : mlir::ExtensibleDialect(
+          mlir::StringAttr::get(ctx, dialect_name).getValue(), ctx, id),
       interp_(ChezSchemeInterpreter::instance(
           SchemeLogLevel::Warning, crest::registerMlirForeignFunctions)) {
   if (auto importError = interp_->importLibrary(module_name)) {
@@ -376,8 +401,13 @@ dialectFactory(std::string dialect_name, std::string module_name) {
   return {type_id,
           [type_id, dialect_name,
            module_name](mlir::MLIRContext* ctx) -> mlir::Dialect* {
+            // USE-AFTER-FREE WARNING: the context keeps this name as a pointer
+            // for as long as it lives, and `dialect_name` dies with the
+            // factory. Give it the interned copy, which the context owns.
+            llvm::StringRef name =
+                mlir::StringAttr::get(ctx, dialect_name).getValue();
             return ctx->getOrLoadDialect(
-                dialect_name, type_id, [&]() -> std::unique_ptr<mlir::Dialect> {
+                name, type_id, [&]() -> std::unique_ptr<mlir::Dialect> {
                   return std::make_unique<CrestDialect>(type_id, module_name,
                                                         dialect_name, ctx);
                 });

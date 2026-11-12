@@ -18,6 +18,7 @@
           (mlir IR Block)
           (mlir IR Region)
           (mlir IR OpImplementation)
+          (only (mlir support RAII) with-raii)
           (only (mlir Interfaces InferTypeOpInterface) mlir::InferTypeOpInterface)
           (only (mlir Interfaces CallInterfaces) mlir::CallableOpInterface mlir::ArgAndResultAttrsOpInterface)
           (only (mlir IR SymbolInterfaces) mlir::SymbolOpInterface)
@@ -50,7 +51,8 @@
   ;; Mirrors parseBinaryOp in Dialect.cpp.
   ;; Format: %lhs, %rhs {attrs} : type-or-func-type
   (define (%%parse-binary-op parser state)
-    (let ([ops (mlir::OpAsmParser::parseOperandList parser 2)])
+    (with-raii ops (mlir::OpAsmParser::parseOperandList parser 2)
+               crest::OpAsmParser::freeOperands ;; frees the list when the parse ends (nothing else does)
       (and (%%parsed? ops)
            (mlir::OpAsmParser::parseOptionalAttrDict parser state)
            (let ([type (mlir::OpAsmParser::parseColonType parser)])

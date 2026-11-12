@@ -195,9 +195,9 @@ make_default_attrs_fn(void (*fn)(uint64_t, uint64_t)) {
 // CrestOp::registerInto
 // ---------------------------------------------------------------------------
 
-void CrestOp::registerInto(mlir::ExtensibleDialect* dialect,
-                           llvm::StringRef op_name, Callbacks cbs,
-                           const LockedSchemeObject& interfaces) {
+std::string CrestOp::registerInto(mlir::ExtensibleDialect* dialect,
+                                  llvm::StringRef op_name, Callbacks cbs,
+                                  const LockedSchemeObject& interfaces) {
   auto verify_fn = make_verify_fn(cbs.verify);
   auto verify_region_fn = make_verify_fn(cbs.verify_regions);
 
@@ -233,23 +233,101 @@ void CrestOp::registerInto(mlir::ExtensibleDialect* dialect,
         make_default_attrs_fn(cbs.populate_default_attrs));
   }
 
+  // None of these raises: each answers the text of its error, and the caller
+  // raises after it has destroyed `def` and unlocked what it holds (see
+  // scheme_error).
   std::string trait_error = addOpTraits(*def, op_name, cbs.traits);
   if (!trait_error.empty()) {
-    scheme_error("crest::register-dynamic-op!",
-                 op_name.str() + ": " + trait_error);
+    return op_name.str() + ": " + trait_error;
   }
 
-  attachInterfaces(*def, interfaces, getAttachInterfaceFns(),
-                   "crest::register-dynamic-op!");
-  requireCallableOpInterfaceClauses(*def, op_name.str());
-  requireArgAndResultAttrsOpInterfaceClauses(*def, op_name.str());
-  requireSymbolOpInterfaceClauses(*def, op_name.str());
+  if (std::string error =
+          attachInterfaces(*def, interfaces, getAttachInterfaceFns());
+      !error.empty()) {
+    return error;
+  }
+  if (std::string error =
+          requireCallableOpInterfaceClauses(*def, op_name.str());
+      !error.empty()) {
+    return error;
+  }
+  if (std::string error =
+          requireArgAndResultAttrsOpInterfaceClauses(*def, op_name.str());
+      !error.empty()) {
+    return error;
+  }
+  if (std::string error = requireSymbolOpInterfaceClauses(*def, op_name.str());
+      !error.empty()) {
+    return error;
+  }
   dialect->registerDynamicOp(std::move(def));
+  return "";
 }
 
 // ---------------------------------------------------------------------------
 // Sregister_symbol binding
 // ---------------------------------------------------------------------------
+
+// The body of crest::register-dynamic-op!. Answers the text of the error, or ""
+// when the op is registered; it never raises, so that the caller can raise
+// after the destructors here have run.
+static std::string registerOpFromScheme(uint64_t dialect_ptr,
+                                        const char* op_name, ptr cbs_ptr,
+                                        ptr interfaces_ptr) {
+  auto* dialect = reinterpret_cast<mlir::ExtensibleDialect*>(dialect_ptr);
+  ptr v = cbs_ptr;
+  // Locked before anything that can call Scheme: the garbage collector moves
+  // objects.
+  LockedSchemeObject interfaces(interfaces_ptr);
+
+  // The slots and the trait names are checked first, so that what follows has
+  // nothing left to refuse.
+  for (int slot = 0; slot < 7; ++slot) {
+    ptr value = Svector_ref(v, slot);
+    if (!Sfixnump(value) && !Sbignump(value)) {
+      return "callback slot must be the entry point of a callable or 0";
+    }
+  }
+  for (ptr l = Svector_ref(v, 7); !Snullp(l); l = Scdr(l)) {
+    for (ptr e = Scar(l); !Snullp(e); e = Scdr(e)) {
+      if (!Sstringp(Scar(e))) {
+        return "trait names and arguments must be strings";
+      }
+    }
+  }
+
+  auto entry = [&](int slot) -> uint64_t {
+    return static_cast<uint64_t>(Sinteger64_value(Svector_ref(v, slot)));
+  };
+
+  CrestOp::Callbacks cbs;
+  cbs.verify = reinterpret_cast<decltype(cbs.verify)>(entry(0));
+  cbs.verify_regions = reinterpret_cast<decltype(cbs.verify_regions)>(entry(1));
+  cbs.parse = reinterpret_cast<decltype(cbs.parse)>(entry(2));
+  cbs.print = reinterpret_cast<decltype(cbs.print)>(entry(3));
+  cbs.fold = reinterpret_cast<decltype(cbs.fold)>(entry(4));
+  cbs.get_canonicalization_patterns =
+      reinterpret_cast<decltype(cbs.get_canonicalization_patterns)>(entry(5));
+  cbs.populate_default_attrs =
+      reinterpret_cast<decltype(cbs.populate_default_attrs)>(entry(6));
+  auto to_string = [](ptr name) {
+    std::string s;
+    for (iptr i = 0; i < Sstring_length(name); ++i) {
+      s.push_back(static_cast<char>(Sstring_ref(name, i)));
+    }
+    return s;
+  };
+  // slot 7: a list of (name arg ...) lists of strings
+  for (ptr l = Svector_ref(v, 7); !Snullp(l); l = Scdr(l)) {
+    std::vector<std::string> spec;
+    for (ptr e = Scar(l); !Snullp(e); e = Scdr(e)) {
+      spec.push_back(to_string(Scar(e)));
+    }
+    cbs.traits.push_back(std::move(spec));
+  }
+
+  return CrestOp::registerInto(dialect, op_name, std::move(cbs), interfaces);
+}
 
 void registerCrestDynamicOpBindings() {
   // crest::DynamicOp::reportFailure (string message)
@@ -304,56 +382,27 @@ void registerCrestDynamicOpBindings() {
       "crest::register-dynamic-op!",
       (void*)+[](uint64_t dialect_ptr, const char* op_name, ptr cbs_ptr,
                  ptr interfaces_ptr) -> void {
-        auto* dialect = reinterpret_cast<mlir::ExtensibleDialect*>(dialect_ptr);
-        ptr v = cbs_ptr;
-        // Locked before anything that can call Scheme: the garbage collector
-        // moves objects. An error that leaves through scheme_error skips the
-        // destructor, which leaves this list locked.
-        LockedSchemeObject interfaces(interfaces_ptr);
-
-        auto entry = [&](int slot) -> uint64_t {
-          ptr value = Svector_ref(v, slot);
-          if (!Sfixnump(value) && !Sbignump(value)) {
-            scheme_error("crest::register-dynamic-op!",
-                         "callback slot must be the entry point of a callable "
-                         "or 0");
+        // Everything with a destructor lives in registerOpFromScheme, which
+        // answers the text of an error. Scheme raises it here, after those
+        // objects are destroyed and the list is unlocked: raising skips
+        // destructors (see scheme_error).
+        ptr failure = Sfalse;
+        {
+          std::string error = registerOpFromScheme(dialect_ptr, op_name,
+                                                   cbs_ptr, interfaces_ptr);
+          if (!error.empty()) {
+            failure = Sstring(error.c_str());
           }
-          return static_cast<uint64_t>(Sinteger64_value(value));
-        };
-
-        CrestOp::Callbacks cbs;
-        cbs.verify = reinterpret_cast<decltype(cbs.verify)>(entry(0));
-        cbs.verify_regions =
-            reinterpret_cast<decltype(cbs.verify_regions)>(entry(1));
-        cbs.parse = reinterpret_cast<decltype(cbs.parse)>(entry(2));
-        cbs.print = reinterpret_cast<decltype(cbs.print)>(entry(3));
-        cbs.fold = reinterpret_cast<decltype(cbs.fold)>(entry(4));
-        cbs.get_canonicalization_patterns =
-            reinterpret_cast<decltype(cbs.get_canonicalization_patterns)>(
-                entry(5));
-        cbs.populate_default_attrs =
-            reinterpret_cast<decltype(cbs.populate_default_attrs)>(entry(6));
-        auto to_string = [](ptr name) {
-          if (!Sstringp(name)) {
-            scheme_error("crest::register-dynamic-op!",
-                         "trait names and arguments must be strings");
-          }
-          std::string s;
-          for (iptr i = 0; i < Sstring_length(name); ++i) {
-            s.push_back(static_cast<char>(Sstring_ref(name, i)));
-          }
-          return s;
-        };
-        // slot 7: a list of (name arg ...) lists of strings
-        for (ptr l = Svector_ref(v, 7); !Snullp(l); l = Scdr(l)) {
-          std::vector<std::string> spec;
-          for (ptr e = Scar(l); !Snullp(e); e = Scdr(e)) {
-            spec.push_back(to_string(Scar(e)));
-          }
-          cbs.traits.push_back(std::move(spec));
         }
-
-        CrestOp::registerInto(dialect, op_name, std::move(cbs), interfaces);
+        if (failure != Sfalse) {
+          // LEAK WARNING: this registration runs inside MLIR's loading of the
+          // dialect, and that may run inside MLIR's parser (crest-opt parses
+          // the module, which loads the dialect). Scheme unwinds MLIR's frames
+          // too, so what they hold (the module being parsed) leaks. Nothing
+          // here can undo that: a define-dialect form with an error ends the
+          // program in practice (see scheme_error).
+          scheme_raise("crest::register-dynamic-op!", failure);
+        }
       });
 }
 

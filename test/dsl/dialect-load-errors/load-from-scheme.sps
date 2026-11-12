@@ -14,7 +14,10 @@
     (display who) (display ": loaded") (newline)))
 
 (try "load-scheme-dialect!"
-     (lambda () (load-scheme-dialect! (mlir::MLIRContext::new) "bad" "passes/body-error")))
+     (lambda ()
+       (with-DialectRegistry reg ()
+         (with-MLIRContext ctx (reg)
+           (load-scheme-dialect! ctx "bad" "passes/body-error")))))
 (try "DialectRegistry::insert"
      (lambda ()
        (with-DialectRegistry reg ()

@@ -35,6 +35,9 @@ void registerArrayRefBindings() {
         return list;
       });
 
+  // LEAK WARNING: the box is on the C++ heap and only the caller frees it. Use
+  // with-ArrayRef, which frees it after its body; a box that is never freed
+  // leaks.
   Sregister_symbol(
       "crest::CArrayRef<uptr>::CArrayRef",
       (void*)+[](uint64_t data_ptr, uint64_t size) -> uint64_t {

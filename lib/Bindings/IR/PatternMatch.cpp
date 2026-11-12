@@ -128,6 +128,9 @@ void registerIRRewriterBaseBindings() {
                    ? 1
                    : 0;
       });
+  // LEAK WARNING: the box is on the C++ heap and only the caller frees it. Use
+  // with-RewritePatternSet, which frees it after its body; a box that is never
+  // freed leaks.
   Sregister_symbol(
       "mlir::RewritePatternSet::RewritePatternSet",
       (void*)+[](uint64_t ctx_ptr) -> uint64_t {

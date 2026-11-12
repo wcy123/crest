@@ -24,7 +24,7 @@ const mlir::SymbolOpInterface::Concept* symbolConcept(uint64_t op_ptr,
   auto* c = crest::lookupConcept<mlir::SymbolOpInterface>(op);
   if (!c) {
     scheme_error(who, "op does not implement SymbolOpInterface:",
-                 op->getName().getStringRef().str().c_str());
+                 op->getName().getStringRef());
   }
   return c;
 }
@@ -74,8 +74,8 @@ void attachSymbolOpInterface(mlir::DynamicOpDefinition& def,
 
 // Another interface adds the model of SymbolOpInterface as its base, so an op
 // can have it without having declared it.
-void requireSymbolOpInterfaceClauses(mlir::DynamicOpDefinition& def,
-                                     const std::string& opName) {
+std::string requireSymbolOpInterfaceClauses(mlir::DynamicOpDefinition& def,
+                                            const std::string& opName) {
   auto* c = def.getInterfaceMap().lookup<mlir::SymbolOpInterface>();
   if (c &&
       (!c->getNameAttr || !c->setName || !c->getVisibility || !c->isNested ||
@@ -83,12 +83,12 @@ void requireSymbolOpInterfaceClauses(mlir::DynamicOpDefinition& def,
        !c->setPrivate || !c->setPublic || !c->getSymbolUses ||
        !c->symbolKnownUseEmpty || !c->replaceAllSymbolUses ||
        !c->isOptionalSymbol || !c->canDiscardOnUseEmpty || !c->isDeclaration)) {
-    scheme_error("crest::register-dynamic-op!",
-                 "FunctionOpInterface extends SymbolOpInterface, so the op has "
-                 "to declare it, (mlir::SymbolOpInterface) for what MLIR does "
-                 "by default:",
-                 opName.c_str());
+    return "FunctionOpInterface extends SymbolOpInterface, so the op has to "
+           "declare it, (mlir::SymbolOpInterface) for what MLIR does by "
+           "default: " +
+           opName;
   }
+  return "";
 }
 
 void registerIRSymbolInterfacesBindings() {

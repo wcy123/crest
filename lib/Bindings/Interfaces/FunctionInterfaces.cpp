@@ -86,7 +86,7 @@ void registerInterfacesFunctionInterfacesBindings() {
         if (!c) {
           scheme_error("mlir::function_interface_impl::printFunctionOp",
                        "op does not implement FunctionOpInterface:",
-                       op->getName().getStringRef().str().c_str());
+                       op->getName().getStringRef());
         }
         mlir::FunctionOpInterface fn(op, c);
         auto* ctx = op->getContext();
@@ -100,12 +100,11 @@ void registerInterfacesFunctionInterfacesBindings() {
       "mlir::FunctionOpInterface::getFunctionType",
       (void*)+[](uint64_t op_ptr) -> uint64_t {
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-        auto name_str = op->getName().getStringRef().str();
         auto* c = lookupConcept<mlir::FunctionOpInterface>(op);
         if (!c) {
-          scheme_error(
-              "mlir::FunctionOpInterface::getFunctionType",
-              "op does not implement FunctionOpInterface:", name_str.c_str());
+          scheme_error("mlir::FunctionOpInterface::getFunctionType",
+                       "op does not implement FunctionOpInterface:",
+                       op->getName().getStringRef());
         }
         return reinterpret_cast<uint64_t>(
             c->getFunctionType(c, op).getAsOpaquePointer());
@@ -122,7 +121,7 @@ void registerInterfacesFunctionInterfacesBindings() {
         if (!c) {
           scheme_error("mlir::FunctionOpInterface::cloneTypeWith",
                        "op does not implement FunctionOpInterface:",
-                       op->getName().getStringRef().str().c_str());
+                       op->getName().getStringRef());
         }
         llvm::SmallVector<mlir::Type> inputTypes, resultTypes;
         for (ptr cur = inputs; cur != Snil; cur = Scdr(cur)) {
@@ -146,7 +145,7 @@ void registerInterfacesFunctionInterfacesBindings() {
         if (!c) {
           scheme_error("mlir::FunctionOpInterface::setFunctionTypeAttr",
                        "op does not implement FunctionOpInterface:",
-                       op->getName().getStringRef().str().c_str());
+                       op->getName().getStringRef());
         }
         mlir::TypeAttr t =
             mlir::cast<mlir::TypeAttr>(mlir::Attribute::getFromOpaquePointer(
@@ -162,7 +161,7 @@ void registerInterfacesFunctionInterfacesBindings() {
         if (!c) {
           scheme_error("mlir::FunctionOpInterface::verifyBody",
                        "op does not implement FunctionOpInterface:",
-                       op->getName().getStringRef().str().c_str());
+                       op->getName().getStringRef());
         }
         return mlir::succeeded(c->verifyBody(c, op)) ? 1 : 0;
       });
@@ -175,7 +174,7 @@ void registerInterfacesFunctionInterfacesBindings() {
         if (!c) {
           scheme_error("mlir::FunctionOpInterface::verifyType",
                        "op does not implement FunctionOpInterface:",
-                       op->getName().getStringRef().str().c_str());
+                       op->getName().getStringRef());
         }
         return mlir::succeeded(c->verifyType(c, op)) ? 1 : 0;
       });

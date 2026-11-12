@@ -4,7 +4,8 @@
 ;;
 ;; Usage: scheme-mlir infer-result-types.sls <toy/chN/toy>
 (import (except (chezscheme) =)
-        (mlir IR DialectRegistry) (mlir IR MLIRContext) (mlir IR Operation)
+        (mlir IR DialectRegistry) (mlir IR MLIRContext)
+        (mlir IR OwningOpRef) (mlir IR Operation)
         (mlir IR Builders) (mlir IR BuiltinOps) (mlir IR Location)
         (mlir IR BuiltinAttributes) (mlir IR BuiltinTypes)
         (only (crest pattern-dsl rewrite) begin-mlir-code)
@@ -16,17 +17,17 @@
     (with-MLIRContext ctx (reg)
       (with-current-MLIRContext ctx
         (mlir::MLIRContext::getOrLoadDialect ctx "toy")
-        (let* ([loc    (mlir::UnknownLoc::get ctx)]
-               [module (mlir::ModuleOp::create loc)]
-               [body   (mlir::ModuleOp::getBody module)]
-               [type   (mlir::RankedTensorType::get '(2 1) (mlir::Float64Type::get))]
-               [attr   (mlir::DenseElementsAttr::get<f64> type (list 1.0 2.0))])
-          (with-OpBuilder builder (mlir::OpBuilder::atBlockEnd body)
-            (with-current-OpBuilder builder
-              (begin-mlir-code
-                  c = toy.constant () (value : attr)
-                  a = toy.add (c c)
-                  m = toy.mul (c c)
-                  t = toy.transpose (c))))
-          (display (mlir::Operation::print module))
-          (newline))))))
+        (let* ([loc    (mlir::UnknownLoc::get ctx)])
+          (with-mlir::OwningOpRef module (mlir::ModuleOp::create loc)
+            (let* ([body   (mlir::ModuleOp::getBody module)]
+                   [type   (mlir::RankedTensorType::get '(2 1) (mlir::Float64Type::get))]
+                   [attr   (mlir::DenseElementsAttr::get<f64> type (list 1.0 2.0))])
+              (with-OpBuilder builder (mlir::OpBuilder::atBlockEnd body)
+                (with-current-OpBuilder builder
+                  (begin-mlir-code
+                      c = toy.constant () (value : attr)
+                      a = toy.add (c c)
+                      m = toy.mul (c c)
+                      t = toy.transpose (c))))
+              (display (mlir::Operation::print module))
+              (newline))))))))

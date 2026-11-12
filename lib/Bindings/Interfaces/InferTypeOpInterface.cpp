@@ -224,27 +224,39 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
       return Sfalse;
     }
     mlir::MLIRContext* ctx = state.getContext();
-    llvm::SmallVector<mlir::Type, 4> types;
-    g_reported_failure.clear();
-    if (mlir::failed(model->inferReturnTypes(
-            ctx, state.location, state.operands,
-            state.attributes.getDictionary(ctx), state.getRawProperties(),
-            mlir::RegionRange(state.regions), types))) {
-      std::string message =
-          "cannot infer the result types of " + state.name.getStringRef().str();
-      if (!g_reported_failure.empty()) {
-        message += ": " + g_reported_failure;
-      } else if (!state.regions.empty()) {
-        // An op-form fills the regions after the op exists, as the builders
-        // of C++ need the op to own the block: an inference that reads them
-        // (scf.if) finds them empty.
-        message += ": its regions are still empty when the types are inferred "
-                   "(they are filled after the op is created); write -> type";
-      }
+    // The vector and the message end their scope before Scheme raises the
+    // error: raising skips destructors (see scheme_error).
+    ptr failure = Sfalse;
+    ptr result = Sfalse;
+    {
+      llvm::SmallVector<mlir::Type, 4> types;
       g_reported_failure.clear();
-      scheme_error("mlir::InferTypeOpInterface::inferReturnTypes", message);
+      if (mlir::failed(model->inferReturnTypes(
+              ctx, state.location, state.operands,
+              state.attributes.getDictionary(ctx), state.getRawProperties(),
+              mlir::RegionRange(state.regions), types))) {
+        std::string message = "cannot infer the result types of " +
+                              state.name.getStringRef().str();
+        if (!g_reported_failure.empty()) {
+          message += ": " + g_reported_failure;
+        } else if (!state.regions.empty()) {
+          // An op-form fills the regions after the op exists, as the builders
+          // of C++ need the op to own the block: an inference that reads them
+          // (scf.if) finds them empty.
+          message +=
+              ": its regions are still empty when the types are inferred "
+              "(they are filled after the op is created); write -> type";
+        }
+        g_reported_failure.clear();
+        failure = Sstring(message.c_str());
+      } else {
+        result = Conversion<mlir::TypeRange, ptr>{}(types);
+      }
     }
-    return Conversion<mlir::TypeRange, ptr>{}(types);
+    if (failure != Sfalse) {
+      scheme_raise("mlir::InferTypeOpInterface::inferReturnTypes", failure);
+    }
+    return result;
   };
 
   // mlir::InferTypeOpInterface::inferReturnTypes<OperationState> (uptr state)

@@ -40,12 +40,32 @@ extern "C" {
 #endif
 }
 
+// LEAK WARNING: scheme_error and scheme_raise do not return. Scheme unwinds the
+// stack of C and C++ frames without running a destructor, so EVERY C++ object
+// with a destructor that is alive when they are called leaks: a std::string, a
+// SmallVector, a unique_ptr, a LockedSchemeObject (a lock that is never
+// undone), in this function and in every function that called it. Chez also
+// keeps about 200 bytes of its own for each error that unwinds through a C call
+// (S_call_help). So, before raising:
+//   - do not build the message with std::string temporaries: the arguments of
+//     scheme_error may be string literals, const char*, std::string or
+//     llvm::StringRef (pass `op->getName().getStringRef()`, not
+//     `.str().c_str()`);
+//   - end the scope of every object with a destructor first, remember the
+//     failure in a ptr (a Scheme string made with Sstring) or a flag, and raise
+//     after the scope with scheme_raise;
+//   - never raise while a LockedSchemeObject is alive: unlock it first.
+// test/dsl/error-path-leak checks that an error does not grow the C++ heap.
+[[noreturn]] inline void scheme_raise(const char* who, ptr message) {
+  Scall2(Stop_level_value(Sstring_to_symbol("error")), Sstring(who), message);
+  crest_unreachable();
+}
+
 template <typename... Ts>
 [[noreturn]] inline void scheme_error(const char* who, const Ts&... args) {
-  // The Scheme procedure `error` does not return: it unwinds, and the
-  // destructors of the C++ objects of this frame do not run. So the message is
-  // copied into a Scheme string and the stream is destroyed before Scheme is
-  // called. Calling it first leaked the stream and its text on every error.
+  // The message is copied into a Scheme string and the stream is destroyed
+  // before Scheme is called. Calling it first leaked the stream and its text on
+  // every error.
   ptr message;
   {
     std::ostringstream stream;
@@ -55,13 +75,20 @@ template <typename... Ts>
         stream << ' ';
       }
       first = false;
-      stream << v;
+      using T = std::decay_t<decltype(v)>;
+      // llvm::StringRef (and anything else that views a string) streams as a
+      // string_view, with no std::string made by the caller.
+      if constexpr (!std::is_pointer_v<T> && !std::is_same_v<T, std::string> &&
+                    std::is_convertible_v<const T&, std::string_view>) {
+        stream << std::string_view(v);
+      } else {
+        stream << v;
+      }
     };
     (append(args), ...);
     message = Sstring(stream.str().c_str());
   }
-  Scall2(Stop_level_value(Sstring_to_symbol("error")), Sstring(who), message);
-  crest_unreachable();
+  scheme_raise(who, message);
 }
 
 namespace crest {

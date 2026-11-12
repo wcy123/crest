@@ -194,54 +194,65 @@
            [name      (prototype:name proto)]
            [args      (prototype:args proto)]
            [arg-types (map (lambda (_) (%%f64-unranked-tensor)) args)]
-           [func-type (mlir::FunctionType::get (current-MLIRContext) arg-types '())]
-           [%%fn-bld  (mlir::OpBuilder::atBlockEnd module-body)])
-      (with-current-OpBuilder %%fn-bld
-        (begin-mlir-code
-            toy.func ()
-            (sym_name      : name :string)
-            (function_type : (mlir::TypeAttr::get func-type))
-            (^bb0 ,@arg-types
-                  (for-each (lambda (arg-ast idx)
-                              (%%declare! (%%loc (var-expr:loc arg-ast)) symtab (var-expr:name arg-ast) (:arg idx)))
-                            args (iota (length args)))
-                  (%%mlir-gen-block symtab body)
-                  (when (or (mlir::Block::empty? (current-Block))
-                            (not (toy.return? (mlir::Block::back (current-Block)))))
-                    (begin-mlir-code
-                        toy.return () :loc (%%loc proto-loc)))
-                  ;; As C++ MLIRGen does: a function that returns a value has one
-                  ;; unranked tensor result (shape inference refines it later).
-                  (let ([ret (mlir::Block::back (current-Block))])
-                    (when (> (mlir::Operation::getNumOperands ret) 0)
-                      (mlir::Operation::setAttr!
-                       (mlir::Operation::getParentOp ret) "function_type"
-                       (mlir::TypeAttr::get
-                        (mlir::FunctionType::get (current-MLIRContext) arg-types
-                                                 (list (%%f64-unranked-tensor))))))))
-            :loc ((location:file proto-loc)
-                  (location:line proto-loc)
-                  (location:col  proto-loc))))))
+           [func-type (mlir::FunctionType::get (current-MLIRContext) arg-types '())])
+      (with-OpBuilder %%fn-bld (mlir::OpBuilder::atBlockEnd module-body)
+        (with-current-OpBuilder %%fn-bld
+          (begin-mlir-code
+              toy.func ()
+              (sym_name      : name :string)
+              (function_type : (mlir::TypeAttr::get func-type))
+              (^bb0 ,@arg-types
+                    (for-each (lambda (arg-ast idx)
+                                (%%declare! (%%loc (var-expr:loc arg-ast)) symtab (var-expr:name arg-ast) (:arg idx)))
+                              args (iota (length args)))
+                    (%%mlir-gen-block symtab body)
+                    (when (or (mlir::Block::empty? (current-Block))
+                              (not (toy.return? (mlir::Block::back (current-Block)))))
+                      (begin-mlir-code
+                          toy.return () :loc (%%loc proto-loc)))
+                    ;; As C++ MLIRGen does: a function that returns a value has one
+                    ;; unranked tensor result (shape inference refines it later).
+                    (let ([ret (mlir::Block::back (current-Block))])
+                      (when (> (mlir::Operation::getNumOperands ret) 0)
+                        (mlir::Operation::setAttr!
+                         (mlir::Operation::getParentOp ret) "function_type"
+                         (mlir::TypeAttr::get
+                          (mlir::FunctionType::get (current-MLIRContext) arg-types
+                                                   (list (%%f64-unranked-tensor))))))))
+              :loc ((location:file proto-loc)
+                    (location:line proto-loc)
+                    (location:col  proto-loc)))))))
 
   ;; -------------------------------------------------------------------------
   ;; Module code generation — public API
   ;; mirrors toy::mlirGen(MLIRContext&, ModuleAST&)
   ;; -------------------------------------------------------------------------
   (define (mlir-gen ctx module)
-    (guard (e [(eq? e 'toy-mlir-gen-failed) #f])
-      (with-current-MLIRContext ctx
-        (let* ([module-op   (mlir::ModuleOp::create
-                             (mlir::UnknownLoc::get ctx))]
-               [module-body (mlir::ModuleOp::getBody module-op)])
-          (for-each (lambda (fn)
-                      (let ([symtab (make-hashtable equal-hash equal?)])
-                        (%%mlir-gen-function module-body symtab fn)))
-                    (module-ast:functions module))
-          ;; As C++ MLIRGen: the module must verify.
-          (cond
-           [(mlir::Operation::verify? (mlir::ModuleOp::getOperation module-op)) module-op]
-           [else
-            (mlir::Operation::emitError (mlir::ModuleOp::getOperation module-op)
-                                        "module verification error")
-            #f])))))
+    ;; The module is erased when generation fails or raises: only a module that is returned
+    ;; (verified) belongs to the caller, who erases it (with-mlir::OwningOpRef).
+    (let ([created #f] [keep? #f])
+      (dynamic-wind
+          (lambda () #f)
+          (lambda ()
+            (let ([result (guard (e [(eq? e 'toy-mlir-gen-failed) #f])
+                            (with-current-MLIRContext ctx
+                              (let* ([module-op   (let ([m (mlir::ModuleOp::create
+                                                            (mlir::UnknownLoc::get ctx))]) (set! created m) m)]
+                                     [module-body (mlir::ModuleOp::getBody module-op)])
+                                (for-each (lambda (fn)
+                                            (let ([symtab (make-hashtable equal-hash equal?)])
+                                              (%%mlir-gen-function module-body symtab fn)))
+                                          (module-ast:functions module))
+                                ;; As C++ MLIRGen: the module must verify.
+                                (cond
+                                 [(mlir::Operation::verify? (mlir::ModuleOp::getOperation module-op)) module-op]
+                                 [else
+                                  (mlir::Operation::emitError (mlir::ModuleOp::getOperation module-op)
+                                                              "module verification error")
+                                  #f]))))])
+              (when result (set! keep? #t))
+              result))
+          (lambda ()
+            (when (and created (not keep?))
+              (mlir::Operation::erase (mlir::ModuleOp::getOperation created)))))))
   )

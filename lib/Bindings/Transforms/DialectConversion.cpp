@@ -184,10 +184,16 @@ void registerTransformsDialectConversionBindings() {
         patterns.add<SchemeRewritePattern>(patterns.getContext(), callback,
                                            llvm::StringRef(op_name), benefit);
       });
+  // LEAK WARNING: the box is on the C++ heap and only the caller frees it. Use
+  // with-TypeConverter, which frees it after its body; a box that is never
+  // freed leaks.
   Sregister_symbol(
       "mlir::TypeConverter::TypeConverter", (void*)+[]() -> uint64_t {
         return reinterpret_cast<uint64_t>(new CrestBox<mlir::TypeConverter>());
       });
+  // LEAK WARNING: the box is on the C++ heap and only the caller frees it. Use
+  // with-ConversionTarget, which frees it after its body; a box that is never
+  // freed leaks.
   Sregister_symbol(
       "mlir::ConversionTarget::ConversionTarget",
       (void*)+[](uint64_t ctx_ptr) -> uint64_t {

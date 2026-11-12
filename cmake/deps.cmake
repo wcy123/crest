@@ -48,11 +48,25 @@ endif()
 # merge of #1064 alone, to get the other repairs since (e.g. x86_64 foreign call and callable
 # arguments); the commit titles after #1064 show no revert. Details and the steps to bump the pin again:
 # docs/tech-note.md, "Chez Scheme pin".
+# LEAK WARNING: Chez 10.5.0 leaks about 200 bytes and the code-object locks of the C frames that an
+# error escapes (S_call_help, c/schlib.c: `CCHAIN(tc) = yp;` before the loop that releases them).
+# cmake/patches/chez-release-escaped-frames.patch removes that line. It is applied here, once, to a
+# fresh source tree (the command first checks that the tree is not patched already), and not on
+# Windows, where it is untested: a Windows build keeps the leak. Every error that unwinds through a
+# C call, here or on Windows, still leaks what C++ held in those frames (scheme_error).
+set(_chez_patch_command "")
+if(NOT WIN32)
+  set(_chez_patch_file "${CMAKE_CURRENT_SOURCE_DIR}/cmake/patches/chez-release-escaped-frames.patch")
+  set(_chez_patch_command
+    PATCH_COMMAND sh -c
+      "git apply --reverse --check '${_chez_patch_file}' 2>/dev/null || git apply '${_chez_patch_file}'")
+endif()
 FetchContent_Declare(ChezScheme
   GIT_REPOSITORY         https://github.com/cisco/ChezScheme.git
   GIT_TAG                d533f2e156d4eddeafe24bd7cc4de87fdc88caeb
   GIT_SUBMODULES_RECURSE TRUE
   GIT_PROGRESS           TRUE
+  ${_chez_patch_command}
 )
 FetchContent_GetProperties(ChezScheme)
 if(NOT chezscheme_POPULATED)

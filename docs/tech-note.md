@@ -332,3 +332,33 @@ bug in it.
    rebuilds it.
 6. Run both LLVM suites (`check-crest` and `CrestInterpreterTests`, `CrestInferTypeTests`) on Linux and let the
    Windows CI run.
+
+## Chez Scheme patch: frames that an error escapes
+
+Chez 10.5.0 (`d533f2e`, and upstream `main` today) leaks the jump buffer (about 200 bytes) and the code-object
+locks of every C frame that Scheme unwinds past, for example when a C++ binding raises an error with
+`scheme_error`. `S_call_help` (`c/schlib.c`, "case 1: normal return") sets `CCHAIN(tc) = yp;` before the loop whose
+comment says it unlocks the code objects "that we're escaping past": the loop then walks one frame, and nothing is
+released. `cmake/patches/chez-release-escaped-frames.patch` removes that line; `cmake/deps.cmake` applies it to a fresh
+source tree. It is not applied on Windows: the comment in `S_return` says Windows may need the full chain for unwind
+handling, and the patch is not tested there, so a Windows build keeps the leak. Valgrind shows the leak as
+`S_call_help` records in `CrestInterpreterTests` (`SchemeErrorDoesNotLeakCppMemory`, 20,000 errors).
+When the pin moves, check whether upstream fixed the line; if so delete the patch and this section. A report to
+cisco/ChezScheme has not been made.
+
+## Checking for memory leaks
+
+The suite can run under valgrind, one test at a time, so that each record names its test. Copy the generated
+`lit.site.cfg.py` of the build to another directory and add, after its `load_config` line:
+
+    config.substitutions.insert(0, ("%scheme-mlir", "/tmp/vgbin/scheme-mlir"))
+    config.substitutions.insert(0, ("%crest-opt", "/tmp/vgbin/crest-opt"))
+    import os
+    config.environment["VG_TAG"] = os.environ.get("VG_TAG", "none")
+
+where each wrapper is `exec valgrind -q --leak-check=full --show-leak-kinds=definite,possible --num-callers=14
+--log-file=/tmp/vglogs/${VG_TAG}.<tool>.%p.log <real binary> "$@"`. Run
+`VG_TAG=<name> lit -q <dir> --filter "CREST :: <test>$"` for each test, then read the logs: "definitely lost" is a
+leak, "Invalid read" is a use-after-free. `pass-leak`, `assembly-format-leak` and `llvm-ir-leak` fail under valgrind
+(they measure the heap themselves) and report warnings that come from inside LLVM's printer and optimizer. The
+first two found the leaks of Rule 20 in 2026-11.

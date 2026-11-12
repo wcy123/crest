@@ -1,0 +1,26 @@
+Chez Scheme: release the frames that an escape passes (c/schlib.c, S_call_help)
+
+When Scheme unwinds past C frames (an error raised through a foreign call: a C++ binding that
+raises, or a callable that raises), S_call_help is reached again by longjmp ("case 1"), and its loop
+is meant to unlock the code objects of those frames and free their jump buffers. The line
+`CCHAIN(tc) = yp;` before the loop sets the chain to the frame being returned to, so the loop
+walks only that one frame: the jump buffers (about 200 bytes) and the locks of every frame that was
+escaped past are never released. Removing the line lets the loop start at the current chain, as its
+comment says.
+
+Found with valgrind (200 bytes lost per error in S_call_help) in CREST, 2026-11-12. The same line is
+in upstream cisco/ChezScheme main (d533f2e). Not applied on Windows: the comment in S_return says
+that platform may need the full chain for unwind handling, and it is not tested there.
+
+diff --git a/c/schlib.c b/c/schlib.c
+index 2be486d0..5d519b54 100644
+--- a/c/schlib.c
++++ b/c/schlib.c
+@@ -276,7 +276,6 @@ void S_call_help(ptr tc_in, IBOOL singlep, IBOOL lock_ts) {
+             break;
+         case 1: { /* normal return */
+             ptr yp = FRAME(tc, 1);
+-            CCHAIN(tc) = yp;
+             {
+               /* unlock code objects that we're escaping past */
+               ptr xp;

@@ -110,6 +110,8 @@ void registerIRBuiltinAttributesBindings() {
               vec.push_back(ref->data[i]);
             }
           } else {
+            // vec is empty here, so it holds no heap memory that raising
+            // would leak (see scheme_error).
             scheme_error(
                 "mlir::DenseI32ArrayAttr::get",
                 "value must be a Scheme list, vector, or CArrayRef<int32_t>;"
@@ -145,6 +147,8 @@ void registerIRBuiltinAttributesBindings() {
               vec.push_back(ref->data[i]);
             }
           } else {
+            // vec is empty here, so it holds no heap memory that raising
+            // would leak (see scheme_error).
             scheme_error(
                 "mlir::DenseI64ArrayAttr::get",
                 "value must be a Scheme list, vector, or CArrayRef<int64_t>;"
@@ -200,19 +204,21 @@ void registerIRBuiltinAttributesBindings() {
         auto result_type_ptr = Sunsigned64_value(Scar(value));
         ptr skey = Scar(Scdr(value));
         iptr klen = Sstring_length(skey);
-        std::string key_str(static_cast<size_t>(klen), '\0');
-        for (iptr i = 0; i < klen; ++i) {
-          key_str[static_cast<size_t>(i)] =
-              static_cast<char>(Sstring_ref(skey, i));
-        }
         int64_t data_addr = Sinteger64_value(Scar(Scdr(Scdr(value))));
         int64_t data_size = Sinteger64_value(Scar(Scdr(Scdr(Scdr(value)))));
         auto baseType = mlir::Type::getFromOpaquePointer(
             reinterpret_cast<const void*>(result_type_ptr));
         auto resultType = llvm::dyn_cast<mlir::RankedTensorType>(baseType);
         if (!resultType) {
+          // Raised before key_str exists: raising skips destructors, so an
+          // object with one must not be alive here (see scheme_error).
           scheme_error("mlir::DenseResourceElementsAttr::get",
                        "result-type is not a RankedTensorType");
+        }
+        std::string key_str(static_cast<size_t>(klen), '\0');
+        for (iptr i = 0; i < klen; ++i) {
+          key_str[static_cast<size_t>(i)] =
+              static_cast<char>(Sstring_ref(skey, i));
         }
         llvm::ArrayRef<char> data = {
             reinterpret_cast<const char*>(static_cast<uintptr_t>(data_addr)),
@@ -418,6 +424,9 @@ void registerIRBuiltinAttributesBindings() {
         return Sflonum(fattr.getValueAsDouble());
       });
 
+  // LEAK WARNING: the box is on the C++ heap and only the caller frees it. Use
+  // with-ArrayRef, which frees it after its body; a box that is never freed
+  // leaks.
   Sregister_symbol(
       "mlir::DenseI64ArrayAttr::intoArrayRef",
       (void*)+[](uint64_t p) -> uint64_t {
@@ -436,6 +445,9 @@ void registerIRBuiltinAttributesBindings() {
             arr.asArrayRef().data(), static_cast<size_t>(arr.size())));
       });
 
+  // LEAK WARNING: the box is on the C++ heap and only the caller frees it. Use
+  // with-ArrayRef, which frees it after its body; a box that is never freed
+  // leaks.
   Sregister_symbol(
       "mlir::DenseI32ArrayAttr::intoArrayRef",
       (void*)+[](uint64_t p) -> uint64_t {

@@ -16,6 +16,9 @@ namespace crest {
 void registerConversionLLVMCommonTypeConverterBindings() {
   // mlir::LLVMTypeConverter::LLVMTypeConverter: create an LLVM type converter.
   // (ctx-ptr) → CrestBox<LLVMTypeConverter>* uptr
+  // LEAK WARNING: the box is on the C++ heap and only the caller frees it. Use
+  // with-LLVMTypeConverter, which frees it after its body; a box that is never
+  // freed leaks.
   Sregister_symbol(
       "mlir::LLVMTypeConverter::LLVMTypeConverter",
       (void*)+[](uint64_t ctx_ptr) -> uint64_t {

@@ -5,6 +5,8 @@
         (mlir IR Region)
         (mlir IR Block)
         (mlir IR MLIRContext)
+        (mlir IR OwningOpRef)
+        (mlir IR DialectRegistry)
         (mlir IR Types)
         (only (mlir IR BuiltinTypes) mlir::IntegerType::get<i32> mlir::IntegerType::get<i64>
               mlir::Float32Type::get)
@@ -30,36 +32,42 @@
     (when (null? args)
       (display "Usage: scheme-mlir passes/interface-clauses.sls <file.mlir>\n"
                (current-error-port))
-      (exit 1))
-    (let* ([ctx (mlir::MLIRContext::new)]
-           [_   (mlir::MLIRContext::allowUnregisteredDialects ctx #t)]
-           ;; The interfaces of an op are part of its definition: load the dialect.
-           [_   (load-scheme-dialect! ctx "ifaceclauses" "passes/ifaceclauses")]
-           [module (mlir::parseSourceFile ctx (car args))])
-      (when (zero? module)
-        (display (string-append "Failed to parse: " (car args) "\n") (current-error-port))
-        (exit 1))
-      (with-current-MLIRContext ctx
-        (let* ([block (mlir::Region::front (mlir::Operation::getRegion module 0))]
-               [good  (mlir::Block::front block)]
-               [bad   (mlir::Block::back block)])
-          (show "getFunctionType" (not (zero? (mlir::FunctionOpInterface::getFunctionType good))))
-          (show "verifyBody" (mlir::FunctionOpInterface::verifyBody good))
-          (show "verifyType" (mlir::FunctionOpInterface::verifyType good))
-          (show "getCallableRegion"
-                (not (zero? (mlir::CallableOpInterface::getCallableRegion good))))
-          (show "bad verifyBody" (mlir::FunctionOpInterface::verifyBody bad))
-          (show "bad verifyType" (mlir::FunctionOpInterface::verifyType bad))
-          ;; cloneTypeWith: the clause of `good` reverses the inputs, `bad` has the default.
-          (let* ([inputs    (list (mlir::IntegerType::get<i32>) (mlir::Float32Type::get))]
-                 [results   (list (mlir::IntegerType::get<i64>))]
-                 [good-type (mlir::FunctionOpInterface::cloneTypeWith good inputs results)]
-                 [bad-type  (mlir::FunctionOpInterface::cloneTypeWith bad inputs results)])
-            (display "good cloneTypeWith: ")
-            (display (mlir::Type::print good-type))
-            (newline)
-            (display "bad cloneTypeWith: ")
-            (display (mlir::Type::print bad-type))
-            (newline)))))))
+      (%%quit 1))
+    (let* ()
+      (with-DialectRegistry reg ()
+        (with-MLIRContext ctx (reg)
+          (mlir::MLIRContext::allowUnregisteredDialects ctx #t)
+          (load-scheme-dialect! ctx "ifaceclauses" "passes/ifaceclauses")
+          (with-mlir::OwningOpRef module (mlir::parseSourceFile ctx (car args))
+            (when (zero? module)
+              (display (string-append "Failed to parse: " (car args) "\n") (current-error-port))
+              (%%quit 1))
+            (with-current-MLIRContext ctx
+              (let* ([block (mlir::Region::front (mlir::Operation::getRegion module 0))]
+                     [good  (mlir::Block::front block)]
+                     [bad   (mlir::Block::back block)])
+                (show "getFunctionType" (not (zero? (mlir::FunctionOpInterface::getFunctionType good))))
+                (show "verifyBody" (mlir::FunctionOpInterface::verifyBody good))
+                (show "verifyType" (mlir::FunctionOpInterface::verifyType good))
+                (show "getCallableRegion"
+                      (not (zero? (mlir::CallableOpInterface::getCallableRegion good))))
+                (show "bad verifyBody" (mlir::FunctionOpInterface::verifyBody bad))
+                (show "bad verifyType" (mlir::FunctionOpInterface::verifyType bad))
+                ;; cloneTypeWith: the clause of `good` reverses the inputs, `bad` has the default.
+                (let* ([inputs    (list (mlir::IntegerType::get<i32>) (mlir::Float32Type::get))]
+                       [results   (list (mlir::IntegerType::get<i64>))]
+                       [good-type (mlir::FunctionOpInterface::cloneTypeWith good inputs results)]
+                       [bad-type  (mlir::FunctionOpInterface::cloneTypeWith bad inputs results)])
+                  (display "good cloneTypeWith: ")
+                  (display (mlir::Type::print good-type))
+                  (newline)
+                  (display "bad cloneTypeWith: ")
+                  (display (mlir::Type::print bad-type))
+                  (newline))))))))))
 
-(main)
+;; A failure raises instead of calling exit: exit does not run the cleanup of the scopes around it.
+(define (%%quit code)
+  (raise (list 'exit code)))
+
+(guard (e [(and (pair? e) (eq? (car e) 'exit)) (exit (cadr e))])
+  (main))

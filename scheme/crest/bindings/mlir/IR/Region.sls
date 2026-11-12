@@ -44,13 +44,16 @@
   ;; @param arg-types Scheme list of Type* uptrs
   ;; @return          Block* uptr of the new block
   (define (mlir::Region::push_back<Block> region arg-types)
-    (let* ([block    (%mlir::Block::new)]
-           [parent-op (%mlir::Region::getParentOp region)]
+    ;; LEAK WARNING: a block belongs to nobody until the region has it. Nothing that can raise an
+    ;; error may run between making it and pushing it, so the location (which raises when no context
+    ;; is current) is computed first.
+    (let* ([parent-op (%mlir::Region::getParentOp region)]
            ;; Parent op may be null when filling a region before %%crest:create-op!
            ;; (OperationState owns the region but the op doesn't exist yet).
-           [loc     (if (zero? parent-op)
-                        (mlir::UnknownLoc::get)
-                        (mlir::Operation::getLoc parent-op))])
+           [loc       (if (zero? parent-op)
+                          (mlir::UnknownLoc::get)
+                          (mlir::Operation::getLoc parent-op))]
+           [block     (%mlir::Block::new)])
       (%mlir::Region::push_back region block)
       (for-each (lambda (t) (mlir::Block::addArgument block t loc)) arg-types)
       block))

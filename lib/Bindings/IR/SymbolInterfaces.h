@@ -23,9 +23,10 @@ void registerIRSymbolInterfacesBindings();
 void ensureSymbolOpInterface(mlir::detail::InterfaceMap& map);
 
 // An op that has SymbolOpInterface (a base of FunctionOpInterface) must have
-// all its clauses; raises a Scheme error when it does not.
-void requireSymbolOpInterfaceClauses(mlir::DynamicOpDefinition& def,
-                                     const std::string& opName);
+// all its clauses. Answers the text of the error when it does not, and "" when
+// it does; it does not raise (see scheme_error).
+std::string requireSymbolOpInterfaceClauses(mlir::DynamicOpDefinition& def,
+                                            const std::string& opName);
 
 // Install the interface in the definition of an op from the dispatcher of its
 // :interfaces entry (lib/Crest/Op.cpp).

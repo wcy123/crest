@@ -22,6 +22,9 @@ void registerExecutionEngineBindings() {
   // mlir::ExecutionEngine::create: JIT-compile an MLIR module.
   // (module-ptr opt-level) → CrestBox<unique_ptr<ExecutionEngine>>* uptr, 0 on
   // failure
+  // LEAK WARNING: the box is on the C++ heap and only the caller frees it. Use
+  // with-ExecutionEngine, which frees it after its body; a box that is never
+  // freed leaks.
   Sregister_symbol(
       "mlir::ExecutionEngine::create",
       (void*)+[](uint64_t module_ptr, int opt_level) -> uint64_t {

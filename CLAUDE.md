@@ -320,6 +320,36 @@ callable that Scheme made for a clause (`installInterfaceEntry`), so MLIR calls 
 
 ---
 
+## Rule 20 — Errors, ownership and leaks
+
+**An error skips destructors.** `scheme_error` and `scheme_raise` (`lib/Bindings/Support/SchemeWrapper.h`) do not
+return: Scheme unwinds the C and C++ frames without running a destructor, so every object with a destructor that is
+alive in the raising function or in a caller leaks (a `std::string`, a `SmallVector`, a `unique_ptr`, a
+`LockedSchemeObject`, whose lock is then never undone). Before raising:
+- do not build the message with `std::string` temporaries: pass `llvm::StringRef` to `scheme_error`
+  (`op->getName().getStringRef()`, not `.str().c_str()`);
+- end the scope of every such object first, keep the failure in a `ptr` (`Sstring`) or a flag, and raise after the
+  scope with `scheme_raise`; a helper that can fail answers the text of the error (`""` for none) and does not raise;
+- never raise while a `LockedSchemeObject` is alive.
+An error raised from inside a frame that MLIR owns (a dialect being loaded while MLIR parses) still leaks what MLIR
+holds; say so in a comment. `test/dsl/error-path-leak` checks that an error does not grow the C++ heap.
+
+**An object the caller must free has a warning.** A binding that answers an object that nothing else owns (a `new`
+box, a module, a block, a pass not yet added) carries a `LEAK WARNING:` comment that names the `with-` macro that
+frees it (`with-MLIRContext`, `with-DialectRegistry`, `with-PassManager`, `with-OpBuilder`, `with-mlir::OwningOpRef`,
+`crest::OpAsmParser::freeOperands`). Samples and tests use the macro; none calls the raw binding and forgets it.
+A Scheme program does not call `exit` inside a scope: `exit` does not unwind, so the scope's cleanup never runs.
+Raise a value, and call `exit` from a `guard` at the top (`toyc.sls` does, with `%%quit`).
+
+**MLIR keeps some names and strings as pointers, not copies.** The name that a dialect is given (the table of loaded
+dialects, every printed `!name.type`) must live as long as the context: intern it with
+`mlir::StringAttr::get(ctx, name).getValue()`, never pass a `std::string` of the call (`use-after-free`;
+`test/dsl/dialect-name-lifetime`).
+
+**Checking.** `docs/tech-note.md`, "Checking for memory leaks", runs the whole suite under valgrind.
+
+---
+
 ## Checklist for a new binding
 
 - [ ] `lib/Bindings/<Path>/<Name>.cpp` with `// Mirrors mlir/<Path>/<Name>.h` on line 6
@@ -333,3 +363,5 @@ callable that Scheme made for a clause (`installInterfaceEntry`), so MLIR calls 
 - [ ] A binding that calls back into Scheme: a callable from `crest-make-static-c-callable`, owned per Rule 17
 - [ ] A new op interface: its macro is a table for `op-interface-expand`, the C++ attach function only calls
       `installInterfaceEntry` (Rule 19), and a slot with a new kind of C++ type gets a case in `SlotAbiTest`
+- [ ] A binding that answers an object nothing else owns: a `LEAK WARNING:` comment and a `with-` macro that frees it
+      (Rule 20); a binding that can raise holds no object with a destructor when it does (Rule 20)

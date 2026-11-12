@@ -53,16 +53,16 @@ void attachCallableOpInterface(mlir::DynamicOpDefinition& def,
 
 // FunctionOpInterface puts the model in the map as its base, so an op can have
 // the interface without having given the clauses.
-void requireCallableOpInterfaceClauses(mlir::DynamicOpDefinition& def,
-                                       const std::string& opName) {
+std::string requireCallableOpInterfaceClauses(mlir::DynamicOpDefinition& def,
+                                              const std::string& opName) {
   auto* concept_ = def.getInterfaceMap().lookup<mlir::CallableOpInterface>();
   if (concept_ && (!concept_->getCallableRegion ||
                    !concept_->getArgumentTypes || !concept_->getResultTypes)) {
-    scheme_error("crest::register-dynamic-op!",
-                 "FunctionOpInterface extends CallableOpInterface, so the op "
-                 "has to declare it with its three clauses:",
-                 opName.c_str());
+    return "FunctionOpInterface extends CallableOpInterface, so the op has to "
+           "declare it with its three clauses: " +
+           opName;
   }
+  return "";
 }
 
 // Each method is the callable that Scheme made for its clause, or the function
@@ -107,22 +107,22 @@ void attachArgAndResultAttrsOpInterface(mlir::DynamicOpDefinition& def,
 
 // Another interface adds the model of ArgAndResultAttrsOpInterface as its base,
 // so an op can have it without having given the clauses.
-void requireArgAndResultAttrsOpInterfaceClauses(mlir::DynamicOpDefinition& def,
-                                                const std::string& opName) {
+std::string
+requireArgAndResultAttrsOpInterfaceClauses(mlir::DynamicOpDefinition& def,
+                                           const std::string& opName) {
   auto* concept_ =
       def.getInterfaceMap().lookup<mlir::ArgAndResultAttrsOpInterface>();
   if (concept_ &&
       (!concept_->getArgAttrsAttr || !concept_->getResAttrsAttr ||
        !concept_->setArgAttrsAttr || !concept_->setResAttrsAttr ||
        !concept_->removeArgAttrsAttr || !concept_->removeResAttrsAttr)) {
-    scheme_error(
-        "crest::register-dynamic-op!",
-        "CallableOpInterface, CallOpInterface and FunctionOpInterface "
-        "extend ArgAndResultAttrsOpInterface, so the op has to declare "
-        "it (mlir::ArgAndResultAttrsOpInterface :standard keeps "
-        "arg_attrs and res_attrs attributes):",
-        opName.c_str());
+    return "CallableOpInterface, CallOpInterface and FunctionOpInterface "
+           "extend ArgAndResultAttrsOpInterface, so the op has to declare "
+           "it (mlir::ArgAndResultAttrsOpInterface :standard keeps "
+           "arg_attrs and res_attrs attributes): " +
+           opName;
   }
+  return "";
 }
 
 void registerInterfacesCallInterfacesBindings() {
@@ -182,7 +182,7 @@ void registerInterfacesCallInterfacesBindings() {
         if (!c) {
           scheme_error("mlir::CallableOpInterface::getArgumentTypes",
                        "op does not implement CallableOpInterface:",
-                       op->getName().getStringRef().str().c_str());
+                       op->getName().getStringRef());
         }
         llvm::SmallVector<mlir::Type> types(c->getArgumentTypes(c, op));
         ptr list = Snil;
@@ -201,7 +201,7 @@ void registerInterfacesCallInterfacesBindings() {
         if (!c) {
           scheme_error("mlir::CallableOpInterface::getResultTypes",
                        "op does not implement CallableOpInterface:",
-                       op->getName().getStringRef().str().c_str());
+                       op->getName().getStringRef());
         }
         llvm::SmallVector<mlir::Type> types(c->getResultTypes(c, op));
         ptr list = Snil;
@@ -317,7 +317,7 @@ void registerInterfacesCallInterfacesBindings() {
         if (!c) {
           scheme_error("mlir::CallableOpInterface::getCallableRegion",
                        "op does not implement CallableOpInterface:",
-                       op->getName().getStringRef().str().c_str());
+                       op->getName().getStringRef());
         }
         return reinterpret_cast<uint64_t>(c->getCallableRegion(c, op));
       });
@@ -330,7 +330,7 @@ void registerInterfacesCallInterfacesBindings() {
         if (!c) {
           scheme_error("mlir::ArgAndResultAttrsOpInterface::getArgAttrsAttr",
                        "op does not implement ArgAndResultAttrsOpInterface:",
-                       op->getName().getStringRef().str().c_str());
+                       op->getName().getStringRef());
         }
         mlir::ArrayAttr a = c->getArgAttrsAttr(c, op);
         return a ? reinterpret_cast<uint64_t>(a.getAsOpaquePointer()) : 0;
@@ -349,7 +349,7 @@ void registerInterfacesCallInterfacesBindings() {
         if (!c) {
           scheme_error("mlir::ArgAndResultAttrsOpInterface::setArgAttrsAttr",
                        "op does not implement ArgAndResultAttrsOpInterface:",
-                       op->getName().getStringRef().str().c_str());
+                       op->getName().getStringRef());
         }
         c->setArgAttrsAttr(c, op,
                            mlir::cast_if_present<mlir::ArrayAttr>(
@@ -364,7 +364,7 @@ void registerInterfacesCallInterfacesBindings() {
         if (!c) {
           scheme_error("mlir::ArgAndResultAttrsOpInterface::setResAttrsAttr",
                        "op does not implement ArgAndResultAttrsOpInterface:",
-                       op->getName().getStringRef().str().c_str());
+                       op->getName().getStringRef());
         }
         c->setResAttrsAttr(c, op,
                            mlir::cast_if_present<mlir::ArrayAttr>(
@@ -379,7 +379,7 @@ void registerInterfacesCallInterfacesBindings() {
         if (!c) {
           scheme_error("mlir::ArgAndResultAttrsOpInterface::removeArgAttrsAttr",
                        "op does not implement ArgAndResultAttrsOpInterface:",
-                       op->getName().getStringRef().str().c_str());
+                       op->getName().getStringRef());
         }
         return reinterpret_cast<uint64_t>(
             c->removeArgAttrsAttr(c, op).getAsOpaquePointer());
@@ -392,7 +392,7 @@ void registerInterfacesCallInterfacesBindings() {
         if (!c) {
           scheme_error("mlir::ArgAndResultAttrsOpInterface::removeResAttrsAttr",
                        "op does not implement ArgAndResultAttrsOpInterface:",
-                       op->getName().getStringRef().str().c_str());
+                       op->getName().getStringRef());
         }
         return reinterpret_cast<uint64_t>(
             c->removeResAttrsAttr(c, op).getAsOpaquePointer());
@@ -406,7 +406,7 @@ void registerInterfacesCallInterfacesBindings() {
         if (!c) {
           scheme_error("mlir::ArgAndResultAttrsOpInterface::getResAttrsAttr",
                        "op does not implement ArgAndResultAttrsOpInterface:",
-                       op->getName().getStringRef().str().c_str());
+                       op->getName().getStringRef());
         }
         mlir::ArrayAttr a = c->getResAttrsAttr(c, op);
         return a ? reinterpret_cast<uint64_t>(a.getAsOpaquePointer()) : 0;
