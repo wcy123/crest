@@ -51,8 +51,8 @@
     %mlir::IntegerAttr::getValue
     %mlir::FloatAttr::getValueAsDouble
     %mlir::FloatAttr::getValueAsDouble.f32
-    %mlir::DenseI64ArrayAttr::intoArrayRef
-    %mlir::DenseI32ArrayAttr::intoArrayRef
+    %mlir::DenseI64ArrayAttr::asArrayRef
+    %mlir::DenseI32ArrayAttr::asArrayRef
     %mlir::DenseElementsAttr::getSplatValue<APFloat>
     %mlir::DenseElementsAttr::getSplatValue<APInt>
     %mlir::DenseElementsAttr::getType
@@ -293,22 +293,21 @@
     (foreign-procedure "mlir::FloatAttr::getValueAsDouble.f32"
                        (uptr) scheme-object))
 
-  ;; @brief mlir::DenseI64ArrayAttr::intoArrayRef — return a CArrayRef* for a DenseI64ArrayAttr.
+  ;; @brief mlir::DenseI64ArrayAttr::asArrayRef — the elements of a DenseI64ArrayAttr, copied into a list.
   ;; @param attr   mlir::DenseI64ArrayAttr opaque pointer uptr; raises error if null or wrong type
-  ;; @return       CArrayRef* uptr — heap-allocated {data-ptr uptr, size uint64} pair; element type :i64
+  ;; @return       list of integers (a copy: nothing for the caller to free)
   ;; @see          mlir/IR/BuiltinAttributes.h
-  (define %mlir::DenseI64ArrayAttr::intoArrayRef
-    (foreign-procedure "mlir::DenseI64ArrayAttr::intoArrayRef"
-                       (uptr) uptr))
+  (define %mlir::DenseI64ArrayAttr::asArrayRef
+    (foreign-procedure "mlir::DenseI64ArrayAttr::asArrayRef"
+                       (uptr) scheme-object))
 
-  ;; @brief mlir::DenseI32ArrayAttr::intoArrayRef — return a CArrayRef* for a DenseI32ArrayAttr.
+  ;; @brief mlir::DenseI32ArrayAttr::asArrayRef — the elements of a DenseI32ArrayAttr, copied into a list.
   ;; @param attr   mlir::DenseI32ArrayAttr opaque pointer uptr; raises error if null or wrong type
-  ;; @return       CArrayRef* uptr — heap-allocated {data-ptr uptr, size uint64} pair
+  ;; @return       list of integers (a copy: nothing for the caller to free)
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Defined in lib/Bindings/IR/BuiltinAttributes.cpp; caller owns the CArrayRef
-  (define %mlir::DenseI32ArrayAttr::intoArrayRef
-    (foreign-procedure "mlir::DenseI32ArrayAttr::intoArrayRef"
-                       (uptr) uptr))
+  (define %mlir::DenseI32ArrayAttr::asArrayRef
+    (foreign-procedure "mlir::DenseI32ArrayAttr::asArrayRef"
+                       (uptr) scheme-object))
 
   ;; @brief mlir::DenseElementsAttr::getSplatValue<APFloat> — extract the splat float value.
   ;; @param attr   mlir::DenseFPElementsAttr opaque pointer uptr; raises error if null, wrong type, or not splat

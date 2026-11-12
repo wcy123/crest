@@ -86,6 +86,8 @@
     (mlir::DialectRegistry::insert reg "toy" "toy/ch4/toy")
     (with-MLIRContext ctx (reg)
       (mlir::MLIRContext::getOrLoadDialect ctx "toy")
+      ;; LEAK WARNING: the module belongs to nobody; with-mlir::OwningOpRef erases it when this scope ends.
+      ;; A plain let never erased it, and neither did exit, which skips the cleanup (see %%quit).
       (with-mlir::OwningOpRef module-op (%%build-module filename ctx)
         (when opt?
           (%%run-opt-pipeline! module-op ctx))

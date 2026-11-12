@@ -16,6 +16,10 @@ namespace crest {
 void registerDialectLLVMIRTransformsPassesBindings() {
   // mlir::LLVM::createDIScopeForLLVMFuncOpPass
   // () → mlir::Pass* uptr, owned by the pass manager that it is added to
+  // LEAK WARNING: a raw mlir::Pass*. Nothing owns it until
+  // mlir::PassManager::addPass or mlir::OpPassManager::addPass takes it
+  // (lib/Bindings/Pass/PassManager.cpp): a pass that is made and never added
+  // leaks.
   Sregister_symbol(
       "mlir::LLVM::createDIScopeForLLVMFuncOpPass", (void*)+[]() -> uint64_t {
         return reinterpret_cast<uint64_t>(

@@ -84,6 +84,8 @@
     (mlir::DialectRegistry::insert reg "toy" "toy/ch3/toy")
     (with-MLIRContext ctx (reg)
       (mlir::MLIRContext::getOrLoadDialect ctx "toy")
+      ;; LEAK WARNING: the module belongs to nobody; with-mlir::OwningOpRef erases it when this scope ends.
+      ;; A plain let never erased it, and neither did exit, which skips the cleanup (see %%quit).
       (with-mlir::OwningOpRef module-op (%%module-op->op (%%build-module filename ctx))
         (when opt?
           (%%run-toy-func-passes! module-op ctx mlir::createCanonicalizerPass))

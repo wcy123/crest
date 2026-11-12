@@ -309,7 +309,6 @@ body. The list is `()` when there are no arguments.
 | `with-LLVMTypeConverter v ()` or `v (ctx)` | an `LLVMTypeConverter` |
 | `with-ConversionTarget v ()` or `v (ctx)` | a `ConversionTarget` |
 | `with-ExecutionEngine v (module-op)` | an `ExecutionEngine` |
-| `with-ArrayRef v (ref)` or `v (data size)` | a `CArrayRef`; the elements are never freed |
 | `with-OpBuilder v (create-call)` | frees the shell that `(create-call)` makes, and binds `v` to that shell |
 | `with-DialectRegistry v ()`, `with-MLIRContext v (registry)`, `with-PassManager v (ctx)` | a `DialectRegistry`, an `MLIRContext` made from a registry, a `PassManager` |
 | `with-mlir::OwningOpRef v (creation)` | the operation that `creation` returns, usually the module of `(mlir::parseSourceFile ctx filename)`; erased at the end (not a `CrestObject`) |

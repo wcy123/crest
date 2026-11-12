@@ -97,26 +97,10 @@ void registerIRBuiltinAttributesBindings() {
             vec.push_back(static_cast<int32_t>(Sfixnum_value(Scar(cur))));
           }
         } else {
-          // Attempt CArrayRef<int32_t> path. After ruling out vector and list,
-          // value must be a uptr (raw C pointer as Scheme integer).
-          // RISK: UB if caller passes an arbitrary integer — contract requires
-          // list, vector, or CArrayRef<int32_t>.
-          auto* obj = reinterpret_cast<crest::CrestObject*>(
-              static_cast<uintptr_t>(Sunsigned_value(value)));
-          if (obj->isa<CArrayRef<int32_t>>()) {
-            auto* ref =
-                static_cast<CArrayRef<int32_t>*>(static_cast<void*>(obj));
-            for (size_t i = 0; i < ref->size; ++i) {
-              vec.push_back(ref->data[i]);
-            }
-          } else {
-            // vec is empty here, so it holds no heap memory that raising
-            // would leak (see scheme_error).
-            scheme_error(
-                "mlir::DenseI32ArrayAttr::get",
-                "value must be a Scheme list, vector, or CArrayRef<int32_t>;"
-                " got a CrestObject with a different type tag");
-          }
+          // vec is empty here, so it holds no heap memory that raising would
+          // leak (see scheme_error).
+          scheme_error("mlir::DenseI32ArrayAttr::get",
+                       "value must be a Scheme list or vector");
         }
         return reinterpret_cast<uint64_t>(
             mlir::DenseI32ArrayAttr::get(ctx, vec).getAsOpaquePointer());
@@ -137,23 +121,10 @@ void registerIRBuiltinAttributesBindings() {
             vec.push_back(Sinteger64_value(Scar(cur)));
           }
         } else {
-          // Attempt CArrayRef<int64_t> — same RISK as i32 above.
-          auto* obj = reinterpret_cast<crest::CrestObject*>(
-              static_cast<uintptr_t>(Sunsigned_value(value)));
-          if (obj->isa<CArrayRef<int64_t>>()) {
-            auto* ref =
-                static_cast<CArrayRef<int64_t>*>(static_cast<void*>(obj));
-            for (size_t i = 0; i < ref->size; ++i) {
-              vec.push_back(ref->data[i]);
-            }
-          } else {
-            // vec is empty here, so it holds no heap memory that raising
-            // would leak (see scheme_error).
-            scheme_error(
-                "mlir::DenseI64ArrayAttr::get",
-                "value must be a Scheme list, vector, or CArrayRef<int64_t>;"
-                " got a CrestObject with a different type tag");
-          }
+          // vec is empty here, so it holds no heap memory that raising would
+          // leak (see scheme_error).
+          scheme_error("mlir::DenseI64ArrayAttr::get",
+                       "value must be a Scheme list or vector");
         }
         return reinterpret_cast<uint64_t>(
             mlir::DenseI64ArrayAttr::get(ctx, vec).getAsOpaquePointer());
@@ -424,46 +395,52 @@ void registerIRBuiltinAttributesBindings() {
         return Sflonum(fattr.getValueAsDouble());
       });
 
-  // LEAK WARNING: the box is on the C++ heap and only the caller frees it. Use
-  // with-ArrayRef, which frees it after its body; a box that is never freed
-  // leaks.
+  // mlir::DenseI64ArrayAttr::asArrayRef (uptr attr) → list of integers.
+  // A copy of the elements as a Scheme list: the ArrayRef of C++ is a view of
+  // the attribute's storage, and a view handed to Scheme as a heap object
+  // leaked whenever the caller forgot to free it (the old intoArrayRef).
   Sregister_symbol(
-      "mlir::DenseI64ArrayAttr::intoArrayRef",
-      (void*)+[](uint64_t p) -> uint64_t {
+      "mlir::DenseI64ArrayAttr::asArrayRef", (void*)+[](uint64_t p) -> ptr {
         if (!p) {
-          scheme_error("mlir::DenseI64ArrayAttr::intoArrayRef",
+          scheme_error("mlir::DenseI64ArrayAttr::asArrayRef",
                        "null attribute pointer");
         }
         auto arr = mlir::dyn_cast<mlir::DenseI64ArrayAttr>(
             mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<const void*>(p)));
         if (!arr) {
-          scheme_error("mlir::DenseI64ArrayAttr::intoArrayRef",
+          scheme_error("mlir::DenseI64ArrayAttr::asArrayRef",
                        "attribute is not a DenseI64ArrayAttr");
         }
-        return reinterpret_cast<uint64_t>(new CArrayRef<int64_t>(
-            arr.asArrayRef().data(), static_cast<size_t>(arr.size())));
+        llvm::ArrayRef<int64_t> values = arr.asArrayRef();
+        ptr list = Snil;
+        for (size_t i = values.size(); i-- > 0;) {
+          list = Scons(Sinteger64(values[i]), list);
+        }
+        return list;
       });
 
-  // LEAK WARNING: the box is on the C++ heap and only the caller frees it. Use
-  // with-ArrayRef, which frees it after its body; a box that is never freed
-  // leaks.
+  // mlir::DenseI32ArrayAttr::asArrayRef (uptr attr) → list of integers; see the
+  // i64 one above.
   Sregister_symbol(
-      "mlir::DenseI32ArrayAttr::intoArrayRef",
-      (void*)+[](uint64_t p) -> uint64_t {
+      "mlir::DenseI32ArrayAttr::asArrayRef", (void*)+[](uint64_t p) -> ptr {
         if (!p) {
-          scheme_error("mlir::DenseI32ArrayAttr::intoArrayRef",
+          scheme_error("mlir::DenseI32ArrayAttr::asArrayRef",
                        "null attribute pointer");
         }
         auto arr = mlir::dyn_cast<mlir::DenseI32ArrayAttr>(
             mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<const void*>(p)));
         if (!arr) {
-          scheme_error("mlir::DenseI32ArrayAttr::intoArrayRef",
+          scheme_error("mlir::DenseI32ArrayAttr::asArrayRef",
                        "attribute is not a DenseI32ArrayAttr");
         }
-        return reinterpret_cast<uint64_t>(new CArrayRef<int32_t>(
-            arr.asArrayRef().data(), static_cast<size_t>(arr.size())));
+        llvm::ArrayRef<int32_t> values = arr.asArrayRef();
+        ptr list = Snil;
+        for (size_t i = values.size(); i-- > 0;) {
+          list = Scons(Sinteger32(values[i]), list);
+        }
+        return list;
       });
 
   Sregister_symbol(

@@ -58,8 +58,8 @@
           (mlir IR Operation ffi)
           (rename (rime loop) (:with :rime-with))
           (only (mlir IR BuiltinAttributes)
-                mlir::DenseI32ArrayAttr::intoArrayRef
-                mlir::DenseI64ArrayAttr::intoArrayRef)
+                mlir::DenseI32ArrayAttr::asArrayRef
+                mlir::DenseI64ArrayAttr::asArrayRef)
           (mlir support array-ref))
 
   ;; @brief mlir::Operation::getName — return the registered op name (e.g. "arith.addi").
@@ -302,32 +302,30 @@
   (define (operation-get-operands op . spec)
     (define (read-op i) (mlir::OpOperand::get op i))
     (define (%%flex-path attr n-spec)
-      (with-ArrayRef segs ((mlir::DenseI32ArrayAttr::intoArrayRef attr))
-        (let ([n (crest::CArrayRef::size segs)])
-          (and (= n n-spec)
-               (let* ([sizes (loop :for i :from 0 :below n
-                                   :collect (crest::CArrayRef::at segs i))]
-                      ;; fold-left guarantees left-to-right; map/:rime-with do not.
-                      [starts (reverse
-                               (car (fold-left (lambda (acc size)
-                                                 (cons (cons (cdr acc) (car acc))
-                                                       (+ (cdr acc) size)))
-                                               (cons '() 0)
-                                               sizes)))])
-                 (loop :for kind  :in spec
-                       :for start :in starts
-                       :for size  :in sizes
-                       :collect (case kind
-                                  [(:required) (read-op start)]
-                                  [(:optional) (if (zero? size) %%absent (read-op start))]
-                                  [(:variadic) (if (zero? size)
-                                                   %%absent
-                                                   (loop :for i :from start
-                                                         :below (+ start size)
-                                                         :collect (read-op i)))]
-                                  [else (error 'operation-get-operands
-                                               "unknown kind: expected :required/:optional/:variadic"
-                                               kind)])))))))
+      (let* ([sizes (mlir::DenseI32ArrayAttr::asArrayRef attr)]
+             [n     (length sizes)])
+        (and (= n n-spec)
+             (let* (;; fold-left guarantees left-to-right; map/:rime-with do not.
+                    [starts (reverse
+                             (car (fold-left (lambda (acc size)
+                                               (cons (cons (cdr acc) (car acc))
+                                                     (+ (cdr acc) size)))
+                                             (cons '() 0)
+                                             sizes)))])
+               (loop :for kind  :in spec
+                     :for start :in starts
+                     :for size  :in sizes
+                     :collect (case kind
+                                [(:required) (read-op start)]
+                                [(:optional) (if (zero? size) %%absent (read-op start))]
+                                [(:variadic) (if (zero? size)
+                                                 %%absent
+                                                 (loop :for i :from start
+                                                       :below (+ start size)
+                                                       :collect (read-op i)))]
+                                [else (error 'operation-get-operands
+                                             "unknown kind: expected :required/:optional/:variadic"
+                                             kind)]))))))
     (let ([n-spec (length spec)]
           [has-flex (loop :initially := #f
                           :for s :in spec

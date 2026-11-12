@@ -71,6 +71,8 @@
       (with-MLIRContext ctx (reg)
         (mlir::MLIRContext::getOrLoadDialect ctx "toy")
         ;; mlir-gen answers #f when it fails; erasing 0 does nothing.
+        ;; LEAK WARNING: the module belongs to nobody; with-mlir::OwningOpRef erases it when this scope ends.
+        ;; A plain let never erased it, and neither did exit, which skips the cleanup (see %%quit).
         (with-mlir::OwningOpRef module-op (or (mlir-gen ctx module-ast) 0)
           (when (zero? module-op) (%%quit 1))
           (display (mlir::Operation::print (mlir::ModuleOp::getOperation module-op)))

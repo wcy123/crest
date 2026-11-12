@@ -126,6 +126,8 @@
       (mlir::MLIRContext::getOrLoadDialect ctx "scf")
       (mlir::MLIRContext::getOrLoadDialect ctx "cf")
       (mlir::MLIRContext::getOrLoadDialect ctx "llvm")
+      ;; LEAK WARNING: the module belongs to nobody; with-mlir::OwningOpRef erases it when this scope ends.
+      ;; A plain let never erased it, and neither did exit, which skips the cleanup (see %%quit).
       (with-mlir::OwningOpRef module-op (%%build-module filename ctx)
         (when (or opt? emit-affine? emit-llvm?)
           (%%run-pipeline! module-op ctx opt? emit-affine? emit-llvm?))
@@ -152,6 +154,8 @@
       (mlir::MLIRContext::getOrLoadDialect ctx "scf")
       (mlir::MLIRContext::getOrLoadDialect ctx "cf")
       (mlir::MLIRContext::getOrLoadDialect ctx "llvm")
+      ;; LEAK WARNING: the module belongs to nobody; with-mlir::OwningOpRef erases it when this scope ends.
+      ;; A plain let never erased it, and neither did exit, which skips the cleanup (see %%quit).
       (with-mlir::OwningOpRef module-op (%%build-module filename ctx)
         (%%run-pipeline! module-op ctx opt? #t #t)
         (display (mlir::translateModuleToLLVMIR module-op (if opt? 3 0)))
@@ -177,6 +181,8 @@
       (mlir::MLIRContext::getOrLoadDialect ctx "scf")
       (mlir::MLIRContext::getOrLoadDialect ctx "cf")
       (mlir::MLIRContext::getOrLoadDialect ctx "llvm")
+      ;; LEAK WARNING: the module belongs to nobody; with-mlir::OwningOpRef erases it when this scope ends.
+      ;; A plain let never erased it, and neither did exit, which skips the cleanup (see %%quit).
       (with-mlir::OwningOpRef module-op (%%build-module filename ctx)
         (%%run-pipeline! module-op ctx opt? #t #t)
         (with-ExecutionEngine engine (module-op (if opt? 3 0))

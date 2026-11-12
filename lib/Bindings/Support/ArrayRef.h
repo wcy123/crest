@@ -12,14 +12,12 @@
 //   offset 8:  data    (8B) — non-owning const T* pointer to first element
 //   offset 16: size    (8B) — number of elements
 //
-// Three instantiations used in CREST:
-//   CArrayRef<int32_t>   — DenseI32ArrayAttr elements (stride 4B)
-//   CArrayRef<int64_t>   — DenseI64ArrayAttr elements (stride 8B)
+// One instantiation is used in CREST:
 //   CArrayRef<uintptr_t> — mlir::Value* operands-ref  (stride 8B)
-//
-// Each instantiation has a distinct type_deletor address, enabling typed
-// predicates crest::CArrayRef<i32>?, crest::CArrayRef<i64>?,
-// crest::CArrayRef<uptr>? in Scheme.
+// C++ owns it (a view of memory that C++ keeps): Scheme only reads it, through
+// the predicate crest::CArrayRef<uptr>?. A view that C++ makes for Scheme to
+// free leaked when Scheme forgot: DenseI32/I64ArrayAttr::asArrayRef answer a
+// Scheme list instead.
 template <typename T> struct CArrayRef : public crest::AsCrest<CArrayRef<T>> {
   const T* data; // offset 8  — non-owning, do NOT free
   size_t size;   // offset 16

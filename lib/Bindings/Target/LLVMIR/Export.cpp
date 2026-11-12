@@ -22,6 +22,11 @@
 #include <cstdlib>
 #include <cstring>
 
+// LEAK WARNING: both bindings answer a malloc'd buffer. A Scheme `string`
+// result copies the text and never frees the original, which leaked the whole
+// IR text on every call: the Scheme side declares the result as an address,
+// copies it and frees it (scheme/mlir/Target/LLVMIR/Export.sls).
+
 namespace crest {
 
 void registerTargetLLVMIRExportBindings() {

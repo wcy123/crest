@@ -12,6 +12,9 @@
         (only (crest pattern-dsl keywords) = :))
 
 (let ([lib (car (command-line-arguments))])
+  ;; LEAK WARNING: what this makes (the context, the module, the builder) lives in a with- scope and is
+  ;; freed when the scope ends. A raw MLIRContext::new, ModuleOp::create or parseSourceFile result that is
+  ;; never freed leaked, and exit inside a scope skips the cleanup: raise, and exit at the top (%%quit).
   (with-DialectRegistry reg ()
     (mlir::DialectRegistry::insert reg "toy" lib)
     (with-MLIRContext ctx (reg)

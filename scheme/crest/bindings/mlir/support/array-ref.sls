@@ -14,32 +14,24 @@
 ;;   offset 8:  data    (8B) — non-owning const T* pointer to first element
 ;;   offset 16: size    (8B) — number of elements
 ;;
-;; Three typed instantiations:
-;;   CArrayRef<i32>  — int32_t elements (stride 4B); crest::CArrayRef<i32>?
-;;   CArrayRef<i64>  — int64_t elements (stride 8B); crest::CArrayRef<i64>?
-;;   CArrayRef<uptr> — uintptr_t elements (stride 8B); crest::CArrayRef<uptr>?
-;;
-;; Each has a unique deletor address (type tag). crest::CArrayRef::at dispatches on
-;; the runtime type — no explicit element-type keyword needed.
+;; CArrayRef<uptr> — uintptr_t elements (stride 8B); crest::CArrayRef<uptr>? A C++ pattern gives
+;; one to Scheme as `operands-ref`; it is a view that C++ owns, so Scheme never makes or frees one.
+;; (The old heap-allocated CArrayRefs of DenseI32/I64 arrays, and with-ArrayRef, were removed: a view
+;; that Scheme had to free leaked when it forgot to. DenseI32ArrayAttr::asArrayRef answers a list.)
 ;;
 ;;===----------------------------------------------------------------------===;;
 
 (library (mlir support array-ref)
   (export
-    ;; Typed CArrayRef predicates
-    crest::CArrayRef<i32>?         ; (obj) → boolean
-    crest::CArrayRef<i64>?         ; (obj) → boolean
+    ;; CArrayRef predicate
     crest::CArrayRef<uptr>?        ; (obj) → boolean
     crest::CArrayRef?              ; (obj) → boolean: any CArrayRef<T>
     ;; CArrayRef accessors
     crest::CArrayRef::size          ; (ref) → fixnum: element count
-    crest::CArrayRef::at            ; (ref index) → element value (type inferred)
-    crest::CArrayRef<uptr>::CArrayRef          ; (data-ptr size) → CArrayRef<uptr> [heap alloc]
-    with-ArrayRef)          ; (syntax) RAII for CArrayRef
+    crest::CArrayRef::at)           ; (ref index) → element value
 
   (import (rnrs)
           (only (chezscheme) foreign-ref)
-          (only (mlir support CrestObject) with-CrestObject)
           (mlir support array-ref ffi))
 
   ;;===--------------------------------------------------------------------===;;
@@ -47,15 +39,11 @@
   ;; The isa logic (deletor comparison) is in C++ via %crest::CArrayRef<T>?.
   ;;===--------------------------------------------------------------------===;;
 
-  ;; @brief crest::CArrayRef<i32>? — is this a CArrayRef<int32_t>?
-  (define (crest::CArrayRef<i32>?  obj) (not (zero? (%crest::CArrayRef<i32>?  obj))))
-  ;; @brief crest::CArrayRef<i64>? — is this a CArrayRef<int64_t>?
-  (define (crest::CArrayRef<i64>?  obj) (not (zero? (%crest::CArrayRef<i64>?  obj))))
   ;; @brief crest::CArrayRef<uptr>? — is this a CArrayRef<uintptr_t>?
   (define (crest::CArrayRef<uptr>? obj) (not (zero? (%crest::CArrayRef<uptr>? obj))))
   ;; @brief crest::CArrayRef? — is this any typed CArrayRef<T>?
   (define (crest::CArrayRef? obj)
-    (or (crest::CArrayRef<i32>? obj) (crest::CArrayRef<i64>? obj) (crest::CArrayRef<uptr>? obj)))
+    (crest::CArrayRef<uptr>? obj))
 
   ;;===--------------------------------------------------------------------===;;
   ;; CArrayRef accessors.
@@ -71,7 +59,7 @@
   ;; @brief crest::CArrayRef::at — read the i-th element, dispatching on the runtime type.
   ;; @param ref    uptr — pointer to a typed CArrayRef<T>
   ;; @param index  0-based exact integer
-  ;; @return       element value (integer-32 for i32, integer-64 for i64, uptr for uptr)
+  ;; @return       element value (uptr)
   ;; @error        raises 'crest::CArrayRef::at if index out of range or unknown type
   (define (crest::CArrayRef::at ref index)
     (let ([n    (foreign-ref 'uptr ref 16)]
@@ -79,27 +67,7 @@
       (unless (and (>= index 0) (< index n))
         (error 'crest::CArrayRef::at "index out of range" index n))
       (cond
-       [(crest::CArrayRef<i32>?  ref) (foreign-ref 'integer-32 data (* index 4))]
-       [(crest::CArrayRef<i64>?  ref) (foreign-ref 'integer-64 data (* index 8))]
        [(crest::CArrayRef<uptr>? ref) (foreign-ref 'uptr       data (* index 8))]
        [else (error 'crest::CArrayRef::at "unknown CArrayRef element type")])))
-
-  ;; @brief crest::CArrayRef<uptr>::CArrayRef — allocate a CArrayRef<uintptr_t> on the C heap.
-  ;; @param data-ptr  uptr — pointer to backing array data
-  ;; @param size      uptr — element count
-  ;; @return          uptr — new CArrayRef<uptr>; use with-ArrayRef for cleanup
-  (define crest::CArrayRef<uptr>::CArrayRef %crest::CArrayRef<uptr>::CArrayRef)
-
-  ;; @brief with-ArrayRef — RAII for CArrayRef; calls crest::CrestObject::delete on exit.
-  ;;
-  ;; Two forms:
-  ;;   (with-ArrayRef name (existing-ref) body ...)  — adopt existing CArrayRef
-  ;;   (with-ArrayRef name (data-ptr size) body ...)  — allocate + adopt
-  (define-syntax with-ArrayRef
-    (syntax-rules ()
-      [(_ name (ref-expr) body ...)
-       (with-CrestObject name ref-expr body ...)]
-      [(_ name (data-ptr size) body ...)
-       (with-CrestObject name (crest::CArrayRef<uptr>::CArrayRef data-ptr size) body ...)]))
 
   ) ;; end library (mlir support array-ref)

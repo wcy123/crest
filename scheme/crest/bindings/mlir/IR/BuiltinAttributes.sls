@@ -35,7 +35,7 @@
     mlir::DenseI16ArrayAttr::get
     mlir::DenseI32ArrayAttr::get
     mlir::DenseI64ArrayAttr::get
-    mlir::DenseI64ArrayAttr::intoArrayRef
+    mlir::DenseI64ArrayAttr::asArrayRef
     mlir::parseAttribute
     mlir::DenseResourceElementsAttr::get
     mlir::StringAttr::get
@@ -57,7 +57,7 @@
     mlir::IntegerAttr::getValue
     mlir::FloatAttr::getValueAsDouble
     mlir::FloatAttr::getValueAsDouble.f32
-    mlir::DenseI32ArrayAttr::intoArrayRef
+    mlir::DenseI32ArrayAttr::asArrayRef
     mlir::DenseElementsAttr::getSplatValue<APFloat>
     mlir::DenseElementsAttr::getSplatValue<APInt>
     mlir::DenseElementsAttr::getType
@@ -273,27 +273,17 @@
   ;; @note         Direct alias for %mlir::FloatAttr::getValueAsDouble.f32 (which delegates to float_attr_get_value)
   (define mlir::FloatAttr::getValueAsDouble.f32      %mlir::FloatAttr::getValueAsDouble.f32)
 
-  ;; @brief mlir::DenseI64ArrayAttr::intoArrayRef — transfer a DenseI64ArrayAttr into a CArrayRef*.
+  ;; @brief mlir::DenseI64ArrayAttr::asArrayRef — the elements of a DenseI64ArrayAttr, as a list.
   ;; @param attr   mlir::DenseI64ArrayAttr opaque pointer uptr; raises error if null or wrong type
-  ;; @return       CArrayRef* uptr — heap-allocated {data-ptr uptr, size uint64}; element type :i64
+  ;; @return       list of integers: a copy, so there is nothing to free
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Caller owns the returned CArrayRef; always use with-ArrayRef for automatic cleanup:
-  ;;
-  ;;   (with-ArrayRef ref ((mlir::DenseI64ArrayAttr::intoArrayRef attr))
-  ;;     (loop :for i :from 0 :below (crest::CArrayRef::size ref)
-  ;;           :collect (crest::CArrayRef::at ref i :i64)))
-  (define mlir::DenseI64ArrayAttr::intoArrayRef        %mlir::DenseI64ArrayAttr::intoArrayRef)
+  (define mlir::DenseI64ArrayAttr::asArrayRef          %mlir::DenseI64ArrayAttr::asArrayRef)
 
-  ;; @brief mlir::DenseI32ArrayAttr::intoArrayRef — transfer a DenseI32ArrayAttr into a CArrayRef*.
+  ;; @brief mlir::DenseI32ArrayAttr::asArrayRef — the elements of a DenseI32ArrayAttr, as a list.
   ;; @param attr   mlir::DenseI32ArrayAttr opaque pointer uptr; raises error if null or wrong type
-  ;; @return       CArrayRef* uptr — heap-allocated {data-ptr uptr, size uint64}; element type :i32
+  ;; @return       list of integers: a copy, so there is nothing to free
   ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Caller owns the returned CArrayRef; always use with-ArrayRef for automatic cleanup:
-  ;;
-  ;;   (with-ArrayRef ref ((mlir::DenseI32ArrayAttr::intoArrayRef attr))
-  ;;     (loop :for i :from 0 :below (crest::CArrayRef::size ref)
-  ;;           :collect (crest::CArrayRef::at ref i :i32)))
-  (define mlir::DenseI32ArrayAttr::intoArrayRef        %mlir::DenseI32ArrayAttr::intoArrayRef)
+  (define mlir::DenseI32ArrayAttr::asArrayRef          %mlir::DenseI32ArrayAttr::asArrayRef)
 
   ;; @brief mlir::DenseElementsAttr::getSplatValue<APFloat> — extract the splat float value.
   ;; @param attr   mlir::DenseFPElementsAttr opaque pointer uptr; raises error if null, wrong type, or not splat

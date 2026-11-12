@@ -195,6 +195,8 @@
            [args      (prototype:args proto)]
            [arg-types (map (lambda (_) (%%f64-unranked-tensor)) args)]
            [func-type (mlir::FunctionType::get (current-MLIRContext) arg-types '())])
+      ;; LEAK WARNING: atBlockEnd makes the builder on the C++ heap and only the caller frees it. A plain let
+      ;; leaked it for every function; with-OpBuilder frees it when the function is done.
       (with-OpBuilder %%fn-bld (mlir::OpBuilder::atBlockEnd module-body)
         (with-current-OpBuilder %%fn-bld
           (begin-mlir-code

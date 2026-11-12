@@ -109,6 +109,8 @@
       (mlir::MLIRContext::getOrLoadDialect ctx "arith")
       (mlir::MLIRContext::getOrLoadDialect ctx "func")
       (mlir::MLIRContext::getOrLoadDialect ctx "memref")
+      ;; LEAK WARNING: the module belongs to nobody; with-mlir::OwningOpRef erases it when this scope ends.
+      ;; A plain let never erased it, and neither did exit, which skips the cleanup (see %%quit).
       (with-mlir::OwningOpRef module-op (%%build-module filename ctx)
         (when (or opt? emit-affine?)
           (%%run-pipeline! module-op ctx opt? emit-affine?))
