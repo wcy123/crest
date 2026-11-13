@@ -9,7 +9,6 @@
 ;; (crest callback) — C function pointers made from Scheme procedures.
 ;;
 ;;   (define-c-callable name ((variable type) ...) result-type body ...)   defines an address
-;;   (crest-callback-pointer-list pointer count)                           a list of integers
 ;;
 ;; C++ never makes, owns, locks or releases a callback. A binding that needs one takes a plain C
 ;; function pointer; Scheme makes the foreign-callable (locked, because the garbage collector moves
@@ -34,16 +33,16 @@
 ;; Several of them nest with with* ((mlir support with)). The conversion clauses (with-TypeConverter,
 ;; with-ConversionTarget, with-RewritePatternSet) do that around their body.
 ;;
-;; C++ gives a range (a TypeRange, say) as a pointer to an array and a count, not as a Scheme
-;; list; crest-callback-pointer-list reads the count elements of 8 bytes at pointer.
+;; C++ gives a range (the inputs of a materialization, the parameters of a type) as the address of a
+;; CArrayRef<uptr> on its stack, not as a Scheme list; crest::CArrayRef->list ((mlir support array-ref))
+;; reads it.
 ;;
 ;;===----------------------------------------------------------------------===;;
 (library (crest callback)
   (export define-c-callable
           with-c-callable/lambda
           with-c-callable/code
-          define-pass-entry-point
-          crest-callback-pointer-list)
+          define-pass-entry-point)
   (import (chezscheme)
           (for (mlir support srcloc) expand)
           (mlir support foreign)
@@ -147,13 +146,6 @@
                (guard (c [#t (cons (string->symbol (%%condition-who c)) (%%condition-message c))])
                  (let () body ...)
                  #f)))])))
-
-  ;; @brief crest-callback-pointer-list — read a range that C++ gave as a pointer and a count.
-  ;; @param pointer  the address of an array of 8-byte elements (a pointer or an integer each)
-  ;; @param count    the number of elements
-  ;; @return         the elements, a list of integers
-  (define (crest-callback-pointer-list pointer count)
-    (map (lambda (i) (foreign-ref 'uptr pointer (* i 8))) (iota count)))
 
   ;; ---- the C function of one callable: its prototype is the one of C++ ---------------------------------
 

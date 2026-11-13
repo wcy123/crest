@@ -9,6 +9,7 @@
 #include "../Bindings/Interfaces/CallInterfaces.h"
 #include "../Bindings/Interfaces/FunctionInterfaces.h"
 #include "../Bindings/Interfaces/SideEffectInterfaces.h"
+#include "../Bindings/Support/ArrayRef.h"
 #include "../Bindings/Support/CrestObject.h"
 #include "../Bindings/Support/LockedSchemeObject.h"
 #include "../Bindings/Support/Result.h"
@@ -105,7 +106,7 @@ make_print_fn(void (*fn)(uint64_t, uint64_t)) {
 }
 
 static mlir::OperationName::FoldHookFn
-make_fold_fn(int (*fn)(uint64_t, const void* const*, uint64_t, void*)) {
+make_fold_fn(int (*fn)(uint64_t, uint64_t, void*)) {
   if (!fn) {
     return [](mlir::Operation*, llvm::ArrayRef<mlir::Attribute>,
               llvm::SmallVectorImpl<mlir::OpFoldResult>&) {
@@ -121,14 +122,16 @@ make_fold_fn(int (*fn)(uint64_t, const void* const*, uint64_t, void*)) {
   // procedure raised an error (its callable reported it).
   return [fn](mlir::Operation* op, llvm::ArrayRef<mlir::Attribute> operandAttrs,
               llvm::SmallVectorImpl<mlir::OpFoldResult>& results) {
-    llvm::SmallVector<const void*, 4> attrs;
+    llvm::SmallVector<uintptr_t, 4> attrs;
     for (mlir::Attribute attr : operandAttrs) {
-      attrs.push_back(attr ? attr.getAsOpaquePointer() : nullptr);
+      attrs.push_back(
+          attr ? reinterpret_cast<uintptr_t>(attr.getAsOpaquePointer()) : 0);
     }
+    CArrayRef<uintptr_t> attributes(attrs.data(), attrs.size());
     FoldedResults folded;
-    int answer =
-        fn(reinterpret_cast<uint64_t>(op), attrs.data(),
-           static_cast<uint64_t>(attrs.size()), static_cast<void*>(&folded));
+    int answer = fn(reinterpret_cast<uint64_t>(op),
+                    reinterpret_cast<uint64_t>(&attributes),
+                    static_cast<void*>(&folded));
     if (answer == 0) {
       return mlir::failure();
     }

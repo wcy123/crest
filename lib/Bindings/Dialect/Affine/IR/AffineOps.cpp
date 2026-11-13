@@ -6,6 +6,7 @@
 // Mirrors mlir/Dialect/Affine/IR/AffineOps.h
 
 #include "AffineOps.h"
+#include "../../../Support/ArrayRef.h"
 #include "../../../Support/BuilderBinding.h"
 #include "../../../Support/CrestObject.h"
 #include "../../../Support/Result.h"
@@ -23,15 +24,15 @@ void registerDialectAffineIRAffineOpsBindings() {
   // body) (builder loc lbs ubs steps body-fn) → void
   //   lbs, ubs, steps: Scheme lists of integers
   //   body-fn: a C function that Scheme made and keeps alive until the call
-  //   returns, (nested-builder loc ivs count) → void, the callback of the C++
+  //   returns, (nested-builder loc ivs) → void, the callback of the C++
   //   function; MLIR's callback is void, so an error of it ends the process
   //     nested-builder: builder shell, valid only during the call
-  //     ivs: pointer to the Value uptrs (the induction variables), and count
+  //     ivs: a CArrayRef<uptr>* of the Values (the induction variables), valid
+  //     only during the call
   register_builder_binding(
       "mlir::affine::buildAffineLoopNest",
       [](mlir::OpBuilder& builder, uint64_t loc_ptr, ptr lbs, ptr ubs,
-         ptr steps,
-         void (*body)(uint64_t, uint64_t, const uint64_t*, uint64_t)) -> ptr {
+         ptr steps, void (*body)(uint64_t, uint64_t, uint64_t)) -> ptr {
         auto lowerBounds = convert_to_cpp<llvm::SmallVector<int64_t>>(lbs);
         auto upperBounds = convert_to_cpp<llvm::SmallVector<int64_t>>(ubs);
         auto stepValues = convert_to_cpp<llvm::SmallVector<int64_t>>(steps);
@@ -43,14 +44,16 @@ void registerDialectAffineIRAffineOpsBindings() {
                 mlir::ValueRange ivs) {
               // Borrowed shell, valid for the duration of the call.
               crest::CrestBox<mlir::OpBuilder*> nb_shell(&nb);
-              llvm::SmallVector<uint64_t, 4> iv_pointers;
+              llvm::SmallVector<uintptr_t, 4> iv_pointers;
               for (mlir::Value iv : ivs) {
                 iv_pointers.push_back(
-                    reinterpret_cast<uint64_t>(iv.getAsOpaquePointer()));
+                    reinterpret_cast<uintptr_t>(iv.getAsOpaquePointer()));
               }
+              CArrayRef<uintptr_t> ivs_ref(iv_pointers.data(),
+                                           iv_pointers.size());
               body(reinterpret_cast<uint64_t>(&nb_shell),
                    reinterpret_cast<uint64_t>(nb_loc.getAsOpaquePointer()),
-                   iv_pointers.data(), iv_pointers.size());
+                   reinterpret_cast<uint64_t>(&ivs_ref));
             });
         return Svoid;
       });

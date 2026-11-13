@@ -52,6 +52,7 @@
           (for (only (chezscheme) syntax->list) expand)
           (for (mlir Transforms DialectConversion options) expand)
           (crest callback)
+          (only (mlir support array-ref) crest::CArrayRef->list)
           (mlir support with)
           (mlir Transforms DialectConversion ffi)
           (only (mlir support CrestObject) with-CrestObject)
@@ -76,7 +77,7 @@
   ;;
   ;;
   ;; The C prototypes: a type conversion (type) → type or 0, a materialization (builder result-type
-  ;; inputs count loc) → value or 0 with the inputs as a pointer and a count, a legality check (op) → 1
+  ;; inputs loc) → value or 0 with the inputs as a CArrayRef, a legality check (op) → 1
   ;; or 0, a conversion pattern (op operands rewriter type-converter) → 1 or 0, a rewrite pattern
   ;; (op rewriter) → 1 or 0 (their adapters are in (mlir IR PatternMatch)); every argument is an
   ;; address or an integer (uptr). An error of the procedure is a diagnostic at its Scheme source, and the
@@ -88,8 +89,8 @@
 
   ;; A materialization: (builder result-type inputs loc) → the Value, or #f; inputs is a list.
   (define (materialization->c proc)
-    (lambda (builder result-type inputs input-count loc)
-      (or (proc builder result-type (crest-callback-pointer-list inputs input-count) loc) 0)))
+    (lambda (builder result-type inputs loc)
+      (or (proc builder result-type (crest::CArrayRef->list inputs) loc) 0)))
 
   ;; A legality check (op) → boolean: legal when it answers neither #f nor 0.
   (define (legality->c proc)
@@ -235,9 +236,9 @@
                #'(with-CrestObject var (type-converter-create)
                    (with*
                        ((with-c-callable/lambda (conversion-callable (uptr) uptr (type-conversion->c conversion))) ...
-                        (with-c-callable/lambda (source-callable (uptr uptr uptr uptr uptr) uptr
+                        (with-c-callable/lambda (source-callable (uptr uptr uptr uptr) uptr
                                                                  (materialization->c source))) ...
-                                                                 (with-c-callable/lambda (target-callable (uptr uptr uptr uptr uptr) uptr
+                                                                 (with-c-callable/lambda (target-callable (uptr uptr uptr uptr) uptr
                                                                                                           (materialization->c target))) ...)
                      (type-converter-add-conversion var conversion-callable) ...
                      (mlir::TypeConverter::addSourceMaterialization var source-callable) ...

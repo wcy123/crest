@@ -339,8 +339,9 @@ upstream repair (cisco/ChezScheme#1064), so no guard is needed, not even for the
 calls by itself (the methods of `InferTypeOpInterface`); `docs/tech-note.md` ("Chez Scheme pin") has the story
 and the steps to move the pin.
 
-Only scalars cross the boundary (`uptr`, `int`, `unsigned-32`, strings); a range is a pointer and a count, read
-back with `crest-callback-pointer-list`, and a list that Scheme answers is pushed through a `foreign-procedure`
+Only scalars cross the boundary (`uptr`, `int`, `unsigned-32`, strings); a range is the address of a stack
+`CArrayRef<uintptr_t>` (`lib/Bindings/Support/ArrayRef.h`), read back with `crest::CArrayRef->list`
+(`(mlir support array-ref)`), and a list that Scheme answers is pushed through a `foreign-procedure`
 into a sink that C++ passes. A callback that has a verdict (a verifier, a parser, a pass) answers its verdict, and its error is a
 diagnostic, as above. `scheme_call` stays for the control plane (a top-level name, or the procedure that Scheme
 gave as an argument of the foreign call that is running), and for one more case: a procedure that C++ needs only

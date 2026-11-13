@@ -20,6 +20,7 @@
           mlir::DialectRegistry::insert<mlir::affine::AffineDialect>)
   (import (rnrs)
           (crest callback)
+          (only (mlir support array-ref) crest::CArrayRef->list)
           (mlir Dialect Affine IR AffineOps ffi))
 
   ;; @brief buildAffineLoopNest: build a nest of loops with constant bounds and steps, and call
@@ -36,11 +37,11 @@
   (define-syntax mlir::affine::buildAffineLoopNest
     (syntax-rules ()
       [(_ builder loc lbs ubs steps body)
-       (with-c-callable/lambda (c-body (uptr uptr uptr uptr) void
+       (with-c-callable/lambda (c-body (uptr uptr uptr) void
                                        (let ([user body])
-                                         (lambda (nested-builder nested-loc ivs count)
+                                         (lambda (nested-builder nested-loc ivs)
                                            (user nested-builder nested-loc
-                                                 (crest-callback-pointer-list ivs count)))))
+                                                 (crest::CArrayRef->list ivs)))))
          (%mlir::affine::buildAffineLoopNest builder loc lbs ubs steps c-body))]))
 
   (define mlir::affine::AffineLoadOp::create

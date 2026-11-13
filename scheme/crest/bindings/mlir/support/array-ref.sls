@@ -28,10 +28,12 @@
     crest::CArrayRef?              ; (obj) → boolean: any CArrayRef<T>
     ;; CArrayRef accessors
     crest::CArrayRef::size          ; (ref) → fixnum: element count
-    crest::CArrayRef::at)           ; (ref index) → element value
+    crest::CArrayRef::at            ; (ref index) → element value
+    crest::CArrayRef->list)         ; (ref) → list of the elements
 
   (import (rnrs)
           (only (chezscheme) foreign-ref)
+          (rime loop)
           (mlir support array-ref ffi))
 
   ;;===--------------------------------------------------------------------===;;
@@ -69,5 +71,15 @@
       (cond
        [(crest::CArrayRef<uptr>? ref) (foreign-ref 'uptr       data (* index 8))]
        [else (error 'crest::CArrayRef::at "unknown CArrayRef element type")])))
+
+  ;; @brief crest::CArrayRef->list — the elements of a CArrayRef<uptr>, as a list.
+  ;; @param ref  uptr — pointer to a CArrayRef<uptr> that C++ owns for the call
+  ;; @return     list of the elements (uptr each); reads data and size directly, with no type check
+  ;; @note       It is how a callable gets a range (a ValueRange, the parameters of a type, the
+  ;;             operand attributes of a fold): C++ passes the address of a CArrayRef on its stack.
+  (define (crest::CArrayRef->list ref)
+    (let ([data (foreign-ref 'uptr ref 8)])
+      (loop :for i :from 0 :below (foreign-ref 'uptr ref 16)
+            :collect (foreign-ref 'uptr data (* i 8)))))
 
   ) ;; end library (mlir support array-ref)

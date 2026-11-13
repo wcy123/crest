@@ -41,8 +41,7 @@ using RewritePatternFn = int(uint64_t op, uint64_t rewriter);
 using LegalityFn = int(uint64_t op);
 using TypeConversionFn = uint64_t(uint64_t type);
 using MaterializationFn = uint64_t(uint64_t builder, uint64_t result_type,
-                                   const uint64_t* inputs, uint64_t input_count,
-                                   uint64_t loc);
+                                   uint64_t inputs, uint64_t loc);
 
 class SchemeConversionPattern : public mlir::ConversionPattern {
 public:
@@ -123,20 +122,21 @@ bool isLegal(LegalityFn* callback, mlir::Operation* op) {
 
 // The materialization of a type converter: Scheme gets the builder as a
 // borrowed shell that lives for the call (insertion point changes are made on
-// the builder itself, so nothing is copied), and the inputs as pointers.
+// the builder itself, so nothing is copied), and the inputs as a CArrayRef.
 mlir::Value materialize(MaterializationFn* callback, mlir::OpBuilder& builder,
                         mlir::Type resultType, mlir::ValueRange inputs,
                         mlir::Location loc) {
   crest::CrestBox<mlir::OpBuilder*> builder_shell(&builder);
-  llvm::SmallVector<uint64_t, 4> input_pointers;
+  llvm::SmallVector<uintptr_t, 4> input_pointers;
   for (mlir::Value input : inputs) {
     input_pointers.push_back(
-        reinterpret_cast<uint64_t>(input.getAsOpaquePointer()));
+        reinterpret_cast<uintptr_t>(input.getAsOpaquePointer()));
   }
+  CArrayRef<uintptr_t> inputs_ref(input_pointers.data(), input_pointers.size());
   uint64_t result =
       callback(reinterpret_cast<uint64_t>(&builder_shell),
                reinterpret_cast<uint64_t>(resultType.getAsOpaquePointer()),
-               input_pointers.data(), input_pointers.size(),
+               reinterpret_cast<uint64_t>(&inputs_ref),
                reinterpret_cast<uint64_t>(loc.getAsOpaquePointer()));
   if (!result) {
     return nullptr;

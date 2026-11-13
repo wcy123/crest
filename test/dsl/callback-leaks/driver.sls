@@ -91,11 +91,11 @@
             (with-ConversionTarget target (ctx)
               (ignoring-errors
                (lambda ()
-                 (with-c-callable/lambda (c (uptr uptr uptr uptr uptr) uptr (lambda (b t i n l) 0))
+                 (with-c-callable/lambda (c (uptr uptr uptr uptr) uptr (lambda (b t i l) 0))
                    (mlir::TypeConverter::addSourceMaterialization target c))))
               (ignoring-errors
                (lambda ()
-                 (with-c-callable/lambda (c (uptr uptr uptr uptr uptr) uptr (lambda (b t i n l) 0))
+                 (with-c-callable/lambda (c (uptr uptr uptr uptr) uptr (lambda (b t i l) 0))
                    (mlir::TypeConverter::addTargetMaterialization target c)))))))
 
 (scenario "wrong-handle-legality" (ctx module)

@@ -45,6 +45,7 @@
           crest-type-callback-entries)
   (import (chezscheme)
           (crest callback)
+          (only (mlir support array-ref) crest::CArrayRef->list)
           (crest dialect ffi))
 
   ;; (%%entry (argument-type ...) result-type clause adapter): the entry point of the callable for one
@@ -63,13 +64,13 @@
                    address))
              #'0)])))
 
-  ;; The folder of an op as C wants it. Its operands come as a pointer and a count (0 for no
+  ;; The folder of an op as C wants it. Its operands come as a CArrayRef (0 for no
   ;; constant); its answer is pushed into `folded` one result at a time. 0 is no fold; 1 is a fold,
   ;; with no result at all when the op was changed in place.
   (define (%%fold-adapter fold)
-    (lambda (op attributes count folded)
+    (lambda (op attributes folded)
       (let ([result (fold op (map (lambda (attribute) (if (eqv? attribute 0) #f attribute))
-                                  (crest-callback-pointer-list attributes count)))])
+                                  (crest::CArrayRef->list attributes)))])
         (let push ([results result])
           (cond
            [(not results) 0]
@@ -134,7 +135,7 @@
                  (lambda (p) (lambda (parser state) (if (p parser state) 1 0))))
         (%%entry (uptr uptr) void print
                  (lambda (p) (lambda (op printer) (p op printer op-name))))
-        (%%entry (uptr uptr uptr uptr) int fold %%fold-adapter)
+        (%%entry (uptr uptr uptr) int fold %%fold-adapter)
         (%%entry (uptr) void get-canonicalization-patterns values)
         (%%entry (uptr uptr) void populate-default-attrs values)
         traits)]))
@@ -143,15 +144,15 @@
   ;; Scheme source, and the callable answers 0 (print has no result: the process ends).
   ;;   verify  (params) → #t | #f | a message. C: 1, 0 (MLIR's message) or 2 (the message is in sink)
   ;;   parse   (parser) → a list of attributes | #f. C: 1 (the parameters are in sink), 0
-  ;;   print   (printer params). C gets the parameters as a pointer and a count
+  ;;   print   (printer params). C gets the parameters as a CArrayRef
   (define-syntax crest-type-callback-entries
     (syntax-rules ()
       [(_ verify parse print)
        (vector
-        (%%entry (uptr uptr uptr) int verify
+        (%%entry (uptr uptr) int verify
                  (lambda (p)
-                   (lambda (params count sink)
-                     (let ([answer (p (crest-callback-pointer-list params count))])
+                   (lambda (params sink)
+                     (let ([answer (p (crest::CArrayRef->list params))])
                        (cond
                         [(string? answer) (%crest::DynamicType::setMessage sink answer) 2]
                         [answer 1]
@@ -166,9 +167,9 @@
                                    parsed)
                          1]
                         [else 0])))))
-        (%%entry (uptr uptr uptr) void print
+        (%%entry (uptr uptr) void print
                  (lambda (p)
-                   (lambda (printer params count)
-                     (p printer (crest-callback-pointer-list params count))))))]))
+                   (lambda (printer params)
+                     (p printer (crest::CArrayRef->list params))))))]))
 
   ) ;; end library (crest dialect callbacks)

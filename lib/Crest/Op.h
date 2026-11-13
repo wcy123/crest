@@ -39,7 +39,7 @@ public:
     int (*verify_regions)(uint64_t op) = nullptr;                       // 1
     int (*parse)(uint64_t parser, uint64_t state) = nullptr;            // 2
     void (*print)(uint64_t op, uint64_t printer) = nullptr;             // 3
-    int (*fold)(uint64_t op, const void* const* operand_attrs, uint64_t n,
+    int (*fold)(uint64_t op, uint64_t operand_attrs,
                 void* folded) = nullptr;                                // 4
     void (*get_canonicalization_patterns)(uint64_t patterns) = nullptr; // 5
     void (*populate_default_attrs)(uint64_t name,

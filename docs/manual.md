@@ -1500,7 +1500,7 @@ whose result is `void` ends the process with the text. A function that only call
 it runs (`walk`, `buildAffineLoopNest`, `modifyOpInPlace`) is a Scheme macro that takes a procedure. A function
 that C++ keeps the callback in (a type conversion, a legality check, a pattern) takes the address, and its
 friendly form is a clause of `with-TypeConverter`, `with-ConversionTarget` or `with-RewritePatternSet`. Only
-scalars cross: pointers, integers, strings, and a range as a pointer and a count that `crest-callback-pointer-list`
+scalars cross: pointers, integers, strings, and a range as the address of a `CArrayRef` that `crest::CArrayRef->list`
 reads back as a list. See CLAUDE.md Rule 17.
 
 Follow the CLAUDE.md binding convention: one header → one module, `%`-prefix
