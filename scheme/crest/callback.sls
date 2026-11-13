@@ -178,9 +178,7 @@
          (case (syntax->datum #'result)
            [(void)
             #'(foreign-callable (%%fatal-guard procedure location) (type ...) void)]
-           [(boolean)
-            #'(foreign-callable (%%report-guard procedure location #f) (type ...) boolean)]
-           [(int uptr unsigned-8 unsigned-32)
+           [(int uptr unsigned-8)
             #'(foreign-callable (%%report-guard procedure location 0) (type ...) result)]
            [(walk-result)
             #'(if (%%windows?)
@@ -221,8 +219,8 @@
   ;; (crest-make-static-c-callable (argument-type ...) result-type procedure [:source expression | :location expression]): the
   ;; address of a C function with the prototype of C++: those argument types and that result type. It locks
   ;; the callable for good: use it only at the library level, for a callback that uses no state of a run.
-  ;; result-type: void, int, uptr, unsigned-8, unsigned-32, boolean, walk-result, logical-result. An error of the procedure is reported by its guard (see above), at
-  ;; the Scheme position of PROCEDURE, or of the expression after :source when a macro wraps the procedure of
+  ;; result-type: void, int, uptr, unsigned-8, walk-result, logical-result. An error of the procedure is reported by
+  ;; its guard (see above), at the Scheme position of PROCEDURE, or of the expression after :source when a macro wraps the procedure of
   ;; its user in a lambda of its own and the position of the user is the useful one. :location gives the
   ;; position as an expression that is evaluated when the callable is made, (file line column) or #f: for a
   ;; procedure that reaches the macro as a value and whose position was read where it was written.
@@ -257,7 +255,7 @@
          (lock-object code)
          (foreign-callable-entry-point code))]))
 
-  ;; (with-c-callable (name (argument-type ...) result-type value [:source expression | :location expression]) body ...)
+  ;; (with-c-callable (name (argument-type ...) result-type value [:source expression]) body ...)
   ;;
   ;; Runs BODY with NAME bound to the address of a C function with the prototype of C++ (those argument types
   ;; and that result type, as for crest-make-static-c-callable) that calls what VALUE is:
@@ -280,8 +278,7 @@
         (syntax-case options ()
           [() (position-of default)]
           [(key source) (eq? (syntax->datum #'key) ':source) (position-of #'source)]
-          [(key expression) (eq? (syntax->datum #'key) ':location) #'expression]
-          [_ (syntax-violation 'with-c-callable "expected :source or :location" stx options)]))
+          [_ (syntax-violation 'with-c-callable "expected :source expression" stx options)]))
       (define (position-of form)
         (with-syntax ([position (datum->syntax
                                  #'stx
@@ -331,13 +328,13 @@
   ;; first (ignored), then the arguments of the method. The kinds are the C++ types of the slot, and
   ;; the macro writes the prototype of the platform, so the procedure sees numbers and lists:
   ;;
-  ;;   (crest-slot-callable (argument-kind ...) result-kind procedure [:source expression | :location expression])
+  ;;   (crest-slot-callable (argument-kind ...) result-kind procedure [:source expression])
   ;;
-  ;; argument kinds: uptr, int, unsigned-8 (a bool), unsigned-32, and
+  ;; argument kinds: uptr, int, and
   ;;   object       a class of one pointer (Type, TypeAttr, StringAttr, ...), by value: the procedure gets
   ;;                the pointer, on every platform (an argument of one word is passed in a register)
   ;;   type-range   a TypeRange by value: the procedure gets the list of the types
-  ;; result kinds: void, uptr, int, unsigned-8, unsigned-32, and
+  ;; result kinds: void, uptr, int, unsigned-8 (a bool), and
   ;;   object       the procedure answers the pointer; Windows x64 answers a class that has a
   ;;                constructor through the place that the caller gives (a pointer before the Concept)
   ;;   logical-result  an llvm::LogicalResult (one byte, 1 for success): Windows x64 answers it
@@ -345,14 +342,14 @@
   ;;   range        an ArrayRef or an OperandRange: the procedure answers (data . size)
   ;; The procedure gets only the arguments, not the Concept. Answers the entry point, as
   ;; crest-make-static-c-callable does, and guards the procedure as it does: an error is a diagnostic at the
-  ;; Scheme position of the procedure (:source, :location as there) and the callable answers the zero of its
+  ;; Scheme position of the procedure (:source as there) and the callable answers the zero of its
   ;; result kind; a void slot ends the process.
   (define-syntax crest-slot-callable
     (lambda (stx)
-      (define (argument-info kind windows?)
+      (define (argument-info kind)
         ;; a pair: the C type, and a procedure from the formal to the expression
         (case (syntax->datum kind)
-          [(uptr int unsigned-8 unsigned-32) (cons kind (lambda (formal) formal))]
+          [(uptr int) (cons kind (lambda (formal) formal))]
           [(object) (cons #'uptr (lambda (formal) formal))]
           [(type-range)
            (cons #'(& %%SlotRange)
@@ -362,11 +359,11 @@
           [else (syntax-violation 'crest-slot-callable "unknown kind of argument" stx kind)]))
       (define (callable windows? kinds result procedure)
         (let* ([formals (generate-temporaries kinds)]
-               [infos (map (lambda (kind) (argument-info kind windows?)) kinds)]
+               [infos (map argument-info kinds)]
                [types (map car infos)]
                [values (map (lambda (info formal) ((cdr info) formal)) infos formals)])
           (case (syntax->datum result)
-            [(void uptr int unsigned-8 unsigned-32)
+            [(void uptr int unsigned-8)
              #`(%%make-raw-c-callable
                 (uptr #,@types) #,result
                 (lambda (concept #,@formals) (#,procedure #,@values)))]
@@ -402,8 +399,7 @@
         (syntax-case options ()
           [() (position-of default)]
           [(key source) (eq? (syntax->datum #'key) ':source) (position-of #'source)]
-          [(key expression) (eq? (syntax->datum #'key) ':location) #'expression]
-          [_ (syntax-violation 'crest-slot-callable "expected :source or :location" stx options)]))
+          [_ (syntax-violation 'crest-slot-callable "expected :source expression" stx options)]))
       (define (position-of form)
         (with-syntax ([position (datum->syntax
                                  #'stx

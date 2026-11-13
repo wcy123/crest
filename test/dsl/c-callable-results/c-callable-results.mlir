@@ -10,17 +10,16 @@
 // RUN: not %scheme-mlir %S/driver.sls no-context 2>&1 | %FileCheck %s --check-prefix=VOID
 
 // VALUES: int: 42
-// VALUES-NEXT: boolean: #t
 // VALUES-NEXT: unsigned-8: 1
 // VALUES-NEXT: uptr: 4096
 // VALUES-NEXT: static int: 42
 
 // FAILURE: int: 0
-// FAILURE-NEXT: boolean: #f
+// FAILURE-NEXT: unsigned-8: 0
 // FAILURE-NEXT: uptr: 0
 
 // DIAG: driver.sls":{{[0-9]+}}:{{[0-9]+}}): error: callback: int failed
-// DIAG: driver.sls":{{[0-9]+}}:{{[0-9]+}}): error: callback: boolean failed
+// DIAG: driver.sls":{{[0-9]+}}:{{[0-9]+}}): error: callback: unsigned-8 failed
 // DIAG: driver.sls":{{[0-9]+}}:{{[0-9]+}}): error: callback: uptr failed
 
 // VOID: LLVM ERROR: callback: void failed (

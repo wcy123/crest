@@ -271,7 +271,7 @@ as its parameter (`mlir::WalkResult (*visit)(uint64_t)`) and calls it. Scheme ma
 stored as a `ptr`), and whoever calls the low-level function decides how long it lives (`(crest callback)`). **The C
 function has the prototype that C++ or MLIR declares, result type included**, and the Scheme site writes it:
 `(uptr) int`, `(uptr uptr) void`, `(uptr) walk-result`. The result types are `void`, `int`, `uptr`, `unsigned-8`,
-`unsigned-32`, `boolean`, `walk-result` (`mlir::WalkResult`, constants in `(mlir Support WalkResult)`) and
+`walk-result` (`mlir::WalkResult`, constants in `(mlir Support WalkResult)`) and
 `logical-result` (`llvm::LogicalResult`). A callback never answers a Scheme object, and C++ decodes nothing:
 
 - `(crest-make-static-c-callable (type ...) result-type proc)` makes it, locks it for good and answers its address.
