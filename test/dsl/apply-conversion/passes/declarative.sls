@@ -6,7 +6,7 @@
           (only (crest callback) define-c-callable)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
-          (only (mlir Transforms DialectConversion) add-conversion-pattern)
+          (only (mlir Transforms DialectConversion) add-conversion-pattern with-TypeConverter)
           (crest))
 
   (define-conversion-pattern (%%a op operands-ref rw tc)
@@ -34,8 +34,9 @@
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (apply-conversion module-op ctx
-                          :mode              partial
-                          :type-converter    (lambda (type) type)
+                          :partial-mode
+                          :converter         (with-TypeConverter type-converter
+                                               :conversions ((lambda (type) type)))
                           :legal-dialects    ("func" "builtin")
                           :illegal-dialects  ("test")
                           :legal-ops         ("test.a_done" "test.b_done" "test.c_done")

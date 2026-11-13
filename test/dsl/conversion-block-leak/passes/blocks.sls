@@ -25,7 +25,7 @@
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (apply-conversion module-op ctx
-                          :mode partial
+                          :partial-mode
                           :legal-ops ("test.wrap" "test.inner")
                           :dynamically-legal (("test.a" (lambda (op) #f))
                                               ("test.bad" (lambda (op) #f)))

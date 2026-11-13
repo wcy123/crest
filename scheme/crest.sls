@@ -137,6 +137,10 @@
           begin-mlir-code
           affine-map affine-map-attr
           apply-conversion
+          :partial-mode :full-mode
+          :converter :legal-dialects :illegal-dialects :legal-ops
+          :dynamically-legal :patterns :populate
+          :configure-type-converter :configure-target :no-type-converter
           apply-patterns define-pattern-set
           define-pass
           define-pass-entry-point

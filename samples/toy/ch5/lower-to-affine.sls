@@ -52,6 +52,7 @@
                 mlir::MemRefType::get)
           (only (mlir IR AffineMap) mlir::AffineMap::getMultiDimIdentityMap)
           (only (mlir IR Builders) with-InsertionGuard)
+          (only (mlir Transforms DialectConversion) with-TypeConverter)
           (only (crest support array-ref) crest::CArrayRef::at crest::CArrayRef::size)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
           (crest))
@@ -265,12 +266,13 @@
 
   (define (%%toy-to-affine-lower! module-op ctx)
     (apply-conversion module-op ctx
-                      :mode partial
+                      :partial-mode
                       ;; Tensor types lower to MemRef types; everything else passes through.
-                      :type-converter (lambda (type)
-                                        (if (mlir::isa<RankedTensorType>? type)
-                                            (%%tensor->memref-type type)
-                                            type))
+                      :converter (with-TypeConverter type-converter
+                                   :conversions ((lambda (type)
+                                                   (if (mlir::isa<RankedTensorType>? type)
+                                                       (%%tensor->memref-type type)
+                                                       type))))
                       :legal-dialects ("affine" "arith" "func" "memref" "builtin")
                       :illegal-dialects ("toy")
                       ;; toy.print is legal once its operand is a memref (not a tensor).

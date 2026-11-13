@@ -172,7 +172,7 @@
   ;; Perform full lowering to LLVM dialect on module-op.
   (define (%%toy-to-llvm-lower! module-op ctx)
     (apply-conversion module-op ctx
-                      :type-converter llvm
+                      :converter (with-LLVMTypeConverter type-converter (ctx))
                       ;; LLVM dialect is legal; builtin.module too. Toy is illegal: everything must lower.
                       :legal-dialects ("llvm")
                       :legal-ops ("builtin.module")

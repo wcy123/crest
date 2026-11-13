@@ -20,7 +20,7 @@ translated to LLVM IR, or executed directly with the MLIR `ExecutionEngine`.
 ### Conversion patterns (`lower-to-llvm.sls`)
 
 `toy:lower-to-llvm-pass` is a `define-pass` around one `apply-conversion` (full mode) with an
-`LLVMTypeConverter` (`:type-converter llvm`). The `llvm` dialect and `builtin.module` are legal; the
+`LLVMTypeConverter` (`:converter (with-LLVMTypeConverter type-converter (ctx))`). The `llvm` dialect and `builtin.module` are legal; the
 `toy` dialect is illegal, so anything left over fails the conversion.
 
 | Source | Pattern set | Result |
@@ -129,7 +129,7 @@ Running `example.toy` with `--emit=jit` prints the 2x3 result of the last
 |---|---|---|
 | Everything in Ch5 | as in the Ch5 README | `lower-to-affine.sls` is unchanged |
 | `toy.print` lowered to a `printf` loop nest | `define-conversion-pattern`, with every op a `begin-mlir-code` form | see the section above: no typed builder is left |
-| Registering the LLVM conversion | `apply-conversion` (`:type-converter llvm`, `:legal-dialects`, `:legal-ops`, `:illegal-dialects`, `:patterns` with `:no-type-converter`, `:populate`) | the six `populate...Patterns` calls go in `:populate` |
+| Registering the LLVM conversion | `apply-conversion` (`:converter (with-LLVMTypeConverter ...)`, `:legal-dialects`, `:legal-ops`, `:illegal-dialects`, `:patterns` with `:no-type-converter`, `:populate`) | the six `populate...Patterns` calls go in `:populate` |
 | Shape inference | `define-rewrite-pattern`, as in Ch4 | |
 | Inlining | MLIR's inliner pass, as in Ch4 | the dialect declares what the pass needs, see the Ch4 README |
 

@@ -38,7 +38,7 @@
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (unless (apply-conversion module-op ctx
-                                  :mode                    partial
+                                  :partial-mode
                                   :configure-type-converter %%configure-type-converter!
                                   :configure-target         (lambda (target tc) (%%configure-target! target tc ctx))
                                   :patterns                (("test.a" %%a)))
