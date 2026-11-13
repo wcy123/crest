@@ -95,7 +95,7 @@
       (op-interface-expand
        stx 'mlir::FunctionOpInterface #'(mlir::FunctionOpInterface::getInterfaceID)
        #'((getFunctionType (uptr) object #f #f ())
-          (setFunctionTypeAttr (uptr object) void #f #f ())
+          (setFunctionTypeAttr (uptr uptr) void #f #f ())
           (cloneTypeWith (uptr type-range type-range) object #f %%default-clone-type-with ())
           (verifyBody (uptr) logical-result %%verifier %%default-verify-body ())
           (verifyType (uptr) logical-result %%verifier %%default-verify-type ())))))

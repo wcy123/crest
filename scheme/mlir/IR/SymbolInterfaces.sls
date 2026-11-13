@@ -87,7 +87,7 @@
       (op-interface-expand
        stx 'mlir::SymbolOpInterface #'(mlir::SymbolOpInterface::getInterfaceID)
        #'((getNameAttr (uptr) object #f %%default-get-name ())
-          (setName (uptr object) void #f %%default-set-name ())
+          (setName (uptr uptr) void #f %%default-set-name ())
           (getVisibility (uptr) int #f %%default-get-visibility ())
           (isNested (uptr) unsigned-8 %%bool %%default-is-nested ())
           (isPrivate (uptr) unsigned-8 %%bool %%default-is-private ())
@@ -99,7 +99,7 @@
           (getSymbolUses (uptr uptr) uptr #f (cpp (%crest::SymbolOpInterface::getSymbolUses)) ())
           (symbolKnownUseEmpty (uptr uptr) unsigned-8 %%bool
                                (cpp (%crest::SymbolOpInterface::symbolKnownUseEmpty)) ())
-          (replaceAllSymbolUses (uptr object uptr) logical-result #f
+          (replaceAllSymbolUses (uptr uptr uptr) logical-result #f
                                 (cpp (%crest::SymbolOpInterface::replaceAllSymbolUses)) ())
           (isOptionalSymbol (uptr) unsigned-8 %%bool %%default-false ())
           (canDiscardOnUseEmpty (uptr) unsigned-8 %%bool %%default-can-discard-on-use-empty ())

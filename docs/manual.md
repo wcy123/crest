@@ -1066,7 +1066,7 @@ a dialect, of its ops and types, passes, and conversions (see
 context (`dialects-in-scheme=` or `--crest-scheme-dialect=` with an op in the input, or `load-scheme-dialect!`) for
 MLIR to see the interfaces (`test/dsl/op-builders`, `unittests/Crest/InterfaceTest.cpp`). Platforms: Linux x86-64
 and Windows x64 are tested; the prototype of each slot as a C function depends on the platform
-(`crest-slot-callable`), and arm64 is not tested.
+(the kinds of `crest-make-static-c-callable`), and arm64 is not tested.
 
 ### Dialect-level `:interfaces`
 

@@ -74,7 +74,7 @@
       (op-interface-expand
        stx 'mlir::CallOpInterface #'(mlir::CallOpInterface::getInterfaceID)
        #'((getCallableForCallee (uptr) object #f #f ())
-          (setCalleeFromCallable (uptr object) void #f #f ())
+          (setCalleeFromCallable (uptr uptr) void #f #f ())
           (getArgOperands (uptr) range #f #f ())
           (getArgOperandsMutable (uptr) uptr #f #f
                                  ((:all-operands cpp (%crest::CallOpInterface::getArgOperandsMutable))))
@@ -112,9 +112,9 @@
                            ((:standard scheme (%%attribute-getter "arg_attrs"))))
           (getResAttrsAttr (uptr) object #f #f
                            ((:standard scheme (%%attribute-getter "res_attrs"))))
-          (setArgAttrsAttr (uptr object) void #f #f
+          (setArgAttrsAttr (uptr uptr) void #f #f
                            ((:standard scheme (%%attribute-setter "arg_attrs"))))
-          (setResAttrsAttr (uptr object) void #f #f
+          (setResAttrsAttr (uptr uptr) void #f #f
                            ((:standard scheme (%%attribute-setter "res_attrs"))))
           (removeArgAttrsAttr (uptr) object #f #f
                               ((:standard scheme (%%attribute-remover "arg_attrs"))))

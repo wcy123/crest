@@ -296,7 +296,7 @@ function has the prototype that C++ or MLIR declares, result type included**, an
 
 **No error leaves a callable.** C++ calls a callable through a C function pointer, so an error that escaped it
 would cross the C++ frames (Rule 20). MLIR's prototypes have no room for an error, so the guard of every callable
-(`crest-make-static-c-callable`, `with-c-callable`, `with-c-callables`, `crest-slot-callable`) catches it with
+(`crest-make-static-c-callable`, `with-c-callable`, `with-c-callables`) catches it with
 `guard` and reports it through MLIR's own channel:
 
 - **result `void`**: nothing can say "failed", so the process ends with the text of the error and the Scheme
@@ -355,7 +355,9 @@ callable that Scheme made for a clause (`installInterfaceEntry`), so MLIR calls 
   or a use range) gets a C function that CREST ships, named by a keyword of the clause (`:all-operands`) or as MLIR's
   default.
 - The prototype of a slot as a C function depends on the platform (a class of one pointer is answered through a pointer
-  on Windows x64). `crest-slot-callable` (`(crest callback)`) writes it from the C++ types of the slot, and
+  on Windows x64). `crest-make-static-c-callable` (`(crest callback)`) writes it from the C++ types of the slot (the
+  kinds `object`, `logical-result`, `walk-result`, `range` and `type-range`, and the `Concept*` that MLIR passes first
+  is a leading `uptr`, as `interface.sls` writes it), and
   `SlotAbiTest` (`unittests/Crest/InterfaceTest.cpp`) calls a callable of each kind through a function pointer of the
   exact type of the slot, on Linux and Windows.
 - An interface that extends others needs them in the map first, and the op declares them: `require*Clauses` raises an
