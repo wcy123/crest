@@ -299,15 +299,15 @@ would cross the C++ frames (Rule 20). MLIR's prototypes have no room for an erro
 (`crest-make-static-c-callable`, `with-c-callable`, `with-c-callables`) catches it with
 `guard` and reports it through MLIR's own channel:
 
-- **result `void`**: nothing can say "failed", so the process ends with the text of the error and the Scheme
-  position (`llvm::report_fatal_error`).
-- **any other result**: a diagnostic (`mlir::emitError`) at the **Scheme source of the callback**, then the failure
-  value of the type (0, `#f`, `interrupt` for a `WalkResult`). MLIR carries on from there as it does for its own
-  failures. The position is read when the macro expands (`(mlir support srcloc)`); a macro that wraps the procedure
+- **result `void`**: nothing can say "failed", so the process ends with the text `<file>:<line>:<column>: <who>: <why>`
+  (`llvm::report_fatal_error`): the Scheme position of the callback, then the error.
+- **any other result**: `mlir::emitError` with the same text, then the failure value of the type (0, `#f`,
+  `interrupt` for a `WalkResult`). MLIR carries on from there as it does for its own failures. The diagnostic has
+  no location of its own: the Scheme position is in the text. The position is read when the macro expands (`(mlir support srcloc)`); a macro that wraps the procedure
   of its user in a template lambda passes `:source expression` (the user's form) or, when the procedure is a value
   that reached the macro later, `:location expression` (the position as data). A DSL such as `define-dialect` builds
   `(lambda ...)` forms: `syntax->first-file+line+col` finds the part that is the user's.
-- **the context**: a `Location` belongs to a context. The guard uses `(current-MLIRContext)`; with none the process
+- **the context**: a diagnostic belongs to a context. The guard uses `(current-MLIRContext)`; with none the process
   ends with the text. Scheme code that calls C++ sets it (`with-current-MLIRContext`). A tool that C++ drives sets it
   by calling the parameter, a Chez parameter applied to one argument (`crest::setCurrentContext`,
   `lib/Crest/CurrentContext.h`): `CrestDialect::initialize` does for every context that loads a Scheme dialect, and

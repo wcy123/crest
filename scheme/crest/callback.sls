@@ -19,13 +19,11 @@
 ;; every site (uptr, int, unsigned-8, void, walk-result, ...; the kinds are listed at %%make-code), and a mismatch crashes, as C++ does not check it.
 ;;
 ;; The procedure never raises into C++. MLIR's prototypes have no room for an error, so the guard of the
-;; callable reports it through MLIR's own channel and answers what the prototype can hold (plan 05):
-;;   result void       nothing can say "failed": the process ends with the text (llvm::report_fatal_error)
-;;   any other result  a diagnostic (mlir::emitError) at the Scheme source of the callback, in
-;;                     (current-MLIRContext), then the failure value of the type: 0, #f, interrupt for a
-;;                     WalkResult. With no current context the process ends with the text.
-;; Scheme code that calls C++ sets the context with with-current-MLIRContext; a tool that C++ drives
-;; (crest-opt) gets it from the C++ code that runs Scheme for a context (lib/Crest/CurrentContext.h).
+;; callable catches it and reports "<file>:<line>:<column>: <who>: <why>": result void ends the process with
+;; that text (llvm::report_fatal_error); any other result calls mlir::emitError with it, in
+;; (current-MLIRContext), and answers the zero of the C result type (with no current context the process ends
+;; with the text). Scheme code that calls C++ sets the context with with-current-MLIRContext; a tool that
+;; C++ drives (crest-opt) gets it from the C++ code that runs Scheme for a context (lib/Crest/CurrentContext.h).
 ;;
 ;;   crest-make-static-c-callable   locks it for good: only for a callback made once, at the library
 ;;                                  level, that uses no state of a run.
@@ -54,7 +52,7 @@
           (mlir support foreign)
           (mlir support RAII)
           (only (mlir IR MLIRContext) current-MLIRContext)
-          (only (mlir IR Location ffi) %mlir::FileLineColLoc::get %mlir::UnknownLoc::get)
+          (only (mlir IR Location ffi) %mlir::UnknownLoc::get)
           (only (mlir IR Diagnostics ffi) %mlir::emitError)
           (only (llvm Support ErrorHandling ffi) %llvm::report_fatal_error))
 
@@ -94,16 +92,15 @@
       (guard (c [#t (cons (string->symbol (%%condition-who c)) (%%condition-message c))])
         (apply procedure arguments))))
 
-  ;; ---- the guard of a callable whose C result is not a Scheme object (plan 05) ------------------------
+  ;; ---- the guard of a callable (plan 05) ----------------------------------------------------------
   ;;
-  ;; MLIR declares the prototype, and it has no room for an error. The guard reports the error through
-  ;; MLIR's own channel and answers what the prototype can hold:
+  ;; MLIR declares the prototype, and it has no room for an error, so when the procedure raises the guard
+  ;; reports "<file>:<line>:<column>: <who>: <why>" (the Scheme position of the callback, then the error):
   ;;   result void       nothing can say "failed": the process ends with the text (llvm::report_fatal_error)
-  ;;   any other result  a diagnostic at the Scheme source of the callback, then the failure value of the type
-  ;;                     (0, #f, interrupt for a WalkResult)
-  ;; LOCATION is (file line column) of the callback in the Scheme source, read when the macro expands, or #f.
-  ;; A location belongs to a context: it is made in (current-MLIRContext). With no current context the process
-  ;; ends with the text and the position.
+  ;;   any other result  mlir::emitError with the text, in (current-MLIRContext), and the zero of the C
+  ;;                     result type is answered so that the function can return; with no current context
+  ;;                     nothing can be emitted, and the process ends with the text
+  ;; LOCATION is (file line column), read when the macro expands, or #f.
 
   ;; "who: message", or the message when the condition has no who.
   (define (%%error-text c)
@@ -111,28 +108,21 @@
           [message (%%condition-message c)])
       (if (string=? who "") message (string-append who ": " message))))
 
-  (define (%%position-text location)
+  ;; "<file>:<line>:<column>: <who>: <why>"
+  (define (%%diagnostic-text c location)
     (if location
-        (format "~a:~a:~a" (car location) (cadr location) (caddr location))
-        "unknown position"))
-
-  ;; Ends the process: nothing after the call runs.
-  (define (%%die c location)
-    (%llvm::report_fatal_error
-     (string-append (%%error-text c) " (" (%%position-text location) ")")))
+        (format "~a:~a:~a: ~a" (car location) (cadr location) (caddr location) (%%error-text c))
+        (%%error-text c)))
 
   (define (%%report c location)
-    (let ([context (current-MLIRContext)])
+    (let ([context (current-MLIRContext)]
+          [text (%%diagnostic-text c location)])
       (if context
-          (guard (reporting-error [#t (%%die c location)])
-            (%mlir::emitError
-             (if location
-                 (%mlir::FileLineColLoc::get context (car location) (cadr location) (caddr location))
-                 (%mlir::UnknownLoc::get context))
-             (%%error-text c)))
-          (%%die c location))))
+          (guard (reporting-error [#t (%llvm::report_fatal_error text)])
+            (%mlir::emitError (%mlir::UnknownLoc::get context) text))
+          (%llvm::report_fatal_error text))))
 
-  ;; The procedure, with its error reported and ZERO answered (the failure value of the C result type).
+  ;; The procedure, with its error reported and ZERO answered (the zero of the C result type).
   (define (%%report-guard procedure location zero)
     (lambda arguments
       (guard (c [#t (%%report c location) zero])
@@ -141,7 +131,7 @@
   ;; The procedure, with its error ending the process (the C result is void).
   (define (%%fatal-guard procedure location)
     (lambda arguments
-      (guard (c [#t (%%die c location)])
+      (guard (c [#t (%llvm::report_fatal_error (%%diagnostic-text c location))])
         (apply procedure arguments))))
 
   ;; (crest-guard-procedure procedure location zero): the procedure with its error reported, as the guard

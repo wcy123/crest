@@ -23,7 +23,7 @@
 
 // The diagnostics of the first round: the callbacks of the legality check, the conversion pattern, the type
 // conversion and the rewrite pattern.
-// DIAG-DAG: errors.sls":{{[0-9]+}}:{{[0-9]+}}): error: callback: boom
+// DIAG-DAG: error: {{.*}}errors.sls:{{[0-9]+}}:{{[0-9]+}}: callback: boom
 // DIAG-DAG: error: failed to legalize operation 'test.a' that was explicitly marked illegal
 
 func.func @f() {

@@ -7,7 +7,7 @@
 // RUN:   %crest-opt %s --split-input-file --mlir-disable-threading \
 // RUN:   --crest-scheme-dialect=ocb=passes/ocb --canonicalize 2>&1 | %FileCheck %s
 
-// CHECK: ocb.sls:{{[0-9]+}}:{{[0-9]+}}: error: fold callback: a result must be made by fold-value or fold-attribute
+// CHECK: error: {{.*}}ocb.sls:{{[0-9]+}}:{{[0-9]+}}: fold callback: a result must be made by fold-value or fold-attribute
 // CHECK: op-fold-errors.mlir:{{[0-9]+}}:{{[0-9]+}}: error: fold callback returned 2 results for an op with 1
 
 %0 = "ocb.malformed"() : () -> i64

@@ -1492,8 +1492,9 @@ Scheme site writes the same: `(crest-make-static-c-callable (uptr) int proc)`. T
 because the garbage collector moves Scheme procedures. `crest-make-static-c-callable` from `(crest callback)` makes
 one that lives for the whole program (the clause of an op, a callback of a dialect, a pattern) and answers its
 address; `with-c-callable` makes one for the length of a body and releases it after, also on an error. An error of
-the procedure is reported as a diagnostic at its Scheme source, in `(current-MLIRContext)`, and the callable
-answers the failure value of its type; a callback whose result is `void` ends the process with the text. A function that only calls it while
+the procedure is reported with its Scheme position in the text (`<file>:<line>:<column>: <who>: <why>`): by
+`mlir::emitError` in `(current-MLIRContext)`, and the callable answers the failure value of its type; a callback
+whose result is `void` ends the process with the text. A function that only calls it while
 it runs (`walk`, `buildAffineLoopNest`, `modifyOpInPlace`) is a Scheme macro that takes a procedure. A function
 that C++ keeps the callback in (a type conversion, a legality check, a pattern) takes the address, and its
 friendly form is a clause of `with-TypeConverter`, `with-ConversionTarget` or `with-RewritePatternSet`. Only

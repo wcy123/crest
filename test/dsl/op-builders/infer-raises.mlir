@@ -7,7 +7,7 @@
 // RUN:   --crest-pass="dialects-in-scheme=badr=passes/bad-raises-dialect passes=passes/use-bad-raises" 2>&1 \
 // RUN:   | %FileCheck %s
 
-// CHECK: bad-raises-dialect.sls:{{[0-9]+}}:{{[0-9]+}}: error: inferReturnTypes: the clause is broken
+// CHECK: error: {{.*}}bad-raises-dialect.sls:{{[0-9]+}}:{{[0-9]+}}: inferReturnTypes: the clause is broken
 // CHECK: cannot infer the result types of badr.op
 
 func.func @f(%a: i32, %b: i32) {

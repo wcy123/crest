@@ -6,9 +6,9 @@
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/slot-raises-scheme \
 // RUN:   %scheme-mlir %S/passes/slot-raises.sls %s 2>&1 | %FileCheck %s
 
-// CHECK: slotraises.sls":{{[0-9]+}}:{{[0-9]+}}): error: getArgumentTypes: the arguments clause is broken
+// CHECK: error: {{.*}}slotraises.sls:{{[0-9]+}}:{{[0-9]+}}: getArgumentTypes: the arguments clause is broken
 // CHECK: arguments: ()
-// CHECK: slotraises.sls":{{[0-9]+}}:{{[0-9]+}}): error: getCallableRegion: the region clause is broken
+// CHECK: error: {{.*}}slotraises.sls:{{[0-9]+}}:{{[0-9]+}}: getCallableRegion: the region clause is broken
 // CHECK: region is null: #t
 
 module {

@@ -9,7 +9,7 @@
 
 // CHECK: error: the op is not allowed
 // CHECK: error: the regions are not allowed
-// CHECK: ocb.sls:{{[0-9]+}}:{{[0-9]+}}: error: verify: the verifier is broken
+// CHECK: error: {{.*}}ocb.sls:{{[0-9]+}}:{{[0-9]+}}: verify: the verifier is broken
 
 "ocb.bad"() : () -> ()
 

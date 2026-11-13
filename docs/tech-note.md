@@ -342,7 +342,7 @@ is kept for the record, with a standalone repro in `cmake/patches/chez-error-esc
 reach it, what is known about upstream and how sure we are; the build does not apply it. CREST avoids the leak by
 never letting an error cross a C function: a C++ binding returns an error `(who . why)` and Scheme raises it
 (`plans/04-errors-are-values.md`). A callback (C++ calls Scheme) has the prototype that MLIR declares and reports an error of its
-procedure as a diagnostic at its Scheme source, or ends the process when its result is `void` (CLAUDE.md Rule 17,
+procedure as a diagnostic that names its Scheme position, or ends the process when its result is `void` (CLAUDE.md Rule 17,
 `plans/05-callables-match-mlir-prototypes.md`).
 
 ## Checking for memory leaks

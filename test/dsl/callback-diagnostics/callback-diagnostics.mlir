@@ -22,11 +22,11 @@
 // The walk is post-order: "test.a" is visited first, then "test.b", where the visitor raises.
 // WALK: visited: 2
 // WALK-NEXT: interrupted: #t
-// WALK-DIAG: driver.sls":{{[0-9]+}}:{{[0-9]+}}): error: callback: boom
+// WALK-DIAG: error: {{.*}}driver.sls:{{[0-9]+}}:{{[0-9]+}}: callback: boom
 
 // NESTED: inner interrupted: #t
 // NESTED-NEXT: outer interrupted: #f
-// NESTED-DIAG: driver.sls":{{[0-9]+}}:{{[0-9]+}}): error: callback: boom
+// NESTED-DIAG: error: {{.*}}driver.sls:{{[0-9]+}}:{{[0-9]+}}: callback: boom
 
 // NO-CONTEXT: LLVM ERROR: {{.*}}callback: boom
 // NO-CONTEXT-NOT: visited

@@ -10,7 +10,7 @@
 
 // CHECK: error: invalid type parameters
 // CHECK: error: this type cannot be parsed
-// CHECK: tcb.sls:{{[0-9]+}}:{{[0-9]+}}: error: verify: the type verifier is broken
+// CHECK: error: {{.*}}tcb.sls:{{[0-9]+}}:{{[0-9]+}}: verify: the type verifier is broken
 // CHECK: error: invalid type parameters
 
 func.func @f(%a: !tcb.bad) {

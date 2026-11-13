@@ -11,7 +11,7 @@
 
 // CHECK: error: the attribute is not allowed
 // CHECK: error: the argument attribute is not allowed
-// CHECK: dcb.sls:{{[0-9]+}}:{{[0-9]+}}: error: verify-op-attr: the attribute is broken
+// CHECK: error: {{.*}}dcb.sls:{{[0-9]+}}:{{[0-9]+}}: verify-op-attr: the attribute is broken
 // CHECK: error: attribute dcb.flag = 11 : i32 is too big
 // CHECK: error: argument attribute dcb.flag = 12 : i32 is too big
 // CHECK: error: result attribute dcb.flag = 13 : i32 is too big

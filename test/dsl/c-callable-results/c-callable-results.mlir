@@ -18,11 +18,11 @@
 // FAILURE-NEXT: unsigned-8: 0
 // FAILURE-NEXT: uptr: 0
 
-// DIAG: driver.sls":{{[0-9]+}}:{{[0-9]+}}): error: callback: int failed
-// DIAG: driver.sls":{{[0-9]+}}:{{[0-9]+}}): error: callback: unsigned-8 failed
-// DIAG: driver.sls":{{[0-9]+}}:{{[0-9]+}}): error: callback: uptr failed
+// DIAG: error: {{.*}}driver.sls:{{[0-9]+}}:{{[0-9]+}}: callback: int failed
+// DIAG: error: {{.*}}driver.sls:{{[0-9]+}}:{{[0-9]+}}: callback: unsigned-8 failed
+// DIAG: error: {{.*}}driver.sls:{{[0-9]+}}:{{[0-9]+}}: callback: uptr failed
 
-// VOID: LLVM ERROR: callback: void failed (
+// VOID: LLVM ERROR: {{.*}}driver.sls:{{[0-9]+}}:{{[0-9]+}}: callback: void failed
 // VOID-NOT: not reached
 
 module {}
