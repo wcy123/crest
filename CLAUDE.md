@@ -280,8 +280,8 @@ function has the prototype that C++ or MLIR declares, result type included**, an
   library loads. A callback that uses the state of a run (a type converter, a target) is made by `with-c-callable`
   or by a clause, so that a scope releases it; never make one per run with this.
 - `(with-c-callable (name (type ...) result-type value) body ...)` makes it for `body` and unlocks it after, also on an
-  error. `value` is a procedure, or a code object that the caller made and locked, or the address of a locked
-  callable (reused, never unlocked by the macro; an error if it is not locked).
+  error. `value` is a procedure, or the address of a locked callable that the caller made (reused, never
+  unlocked by the macro; an error if it is not locked).
 - A function that only calls the callback while it runs (`mlir::Operation::walk`,
   `mlir::affine::buildAffineLoopNest`, `mlir::RewriterBase::modifyOpInPlace`) is a Scheme macro that takes a
   procedure and wraps it in `with-c-callable`.
@@ -296,7 +296,7 @@ function has the prototype that C++ or MLIR declares, result type included**, an
 
 **No error leaves a callable.** C++ calls a callable through a C function pointer, so an error that escaped it
 would cross the C++ frames (Rule 20). MLIR's prototypes have no room for an error, so the guard of every callable
-(`crest-make-static-c-callable`, `with-c-callable`, `with-c-callables`) catches it with
+(`crest-make-static-c-callable`, `with-c-callable`) catches it with
 `guard` and reports it through MLIR's own channel:
 
 - **result `void`**: nothing can say "failed", so the process ends with the text `<file>:<line>:<column>: <who>: <why>`

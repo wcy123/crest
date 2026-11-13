@@ -1,5 +1,5 @@
-;; with-c-callable: a procedure becomes a C function for the body and is released after; a code object
-;; that the user made and locked is used as it is and never unlocked; crest-make-static-c-callable
+;; with-c-callable: a procedure becomes a C function for the body and is released after; the address of a
+;; locked callable is used as it is and never unlocked; crest-make-static-c-callable
 ;; keeps its callable locked.
 (import (chezscheme)
         (crest callback))
@@ -28,14 +28,6 @@
       (error 'test "boom")))
   (say "locked after an error: " (yes/no (locked? seen))))
 
-;; A code object that the user made and locked: used as it is, still locked after.
-(let* ([code (foreign-callable (lambda (x) (* x 2)) (int) int)])
-  (lock-object code)
-  (with-c-callable (entry (int) int code)
-    (say "reused answers: " (call-c-int entry 21)))
-  (say "reused still locked: " (yes/no (locked-object? code)))
-  (unlock-object code))
-
 ;; The address that crest-make-static-c-callable answered: used as it is, still locked after.
 (let ([address (crest-make-static-c-callable (int) int (lambda (x) (+ x 100)))])
   (with-c-callable (entry (int) int address)
@@ -43,14 +35,15 @@
          " same address: " (yes/no (= entry address))))
   (say "address still locked: " (yes/no (locked? address))))
 
-;; A code object that is not locked is an error, and it is not locked by the macro.
-(let* ([code (foreign-callable (lambda (x) x) (int) int)])
-  (guard (c [#t (say "unlocked code rejected")])
-    (with-c-callable (entry (int) int code)
+;; The address of a callable that is not locked is an error, and the macro does not lock it.
+(let* ([code (foreign-callable (lambda (x) x) (int) int)]
+       [address (foreign-callable-entry-point code)])
+  (guard (c [#t (say "unlocked address rejected")])
+    (with-c-callable (entry (int) int address)
       (say "not reached")))
   (say "still not locked: " (yes/no (not (locked-object? code)))))
 
-;; Not a procedure and not a code object.
+;; Not a procedure and not the address of a callable.
 (guard (c [#t (say "a number rejected")])
   (with-c-callable (entry (int) int 42)
     (say "not reached")))

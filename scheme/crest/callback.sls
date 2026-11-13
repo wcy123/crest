@@ -10,7 +10,6 @@
 ;;
 ;;   (crest-make-static-c-callable (argument-type ...) result-type proc)   an address
 ;;   (crest-callback-pointer-list pointer count)                           a list of integers
-;;   (crest-callback-entry-dispatcher entries)                             a procedure
 ;;
 ;; C++ never makes, owns, locks or releases a callback. A binding that needs one takes a plain C
 ;; function pointer; Scheme makes the foreign-callable (locked, because the garbage collector moves
@@ -28,12 +27,11 @@
 ;;   crest-make-static-c-callable   locks it for good: only for a callback made once, at the library
 ;;                                  level, that uses no state of a run.
 ;;   with-c-callable                locks it for the body and unlocks it after, also on an error. The
-;;                                  value is a procedure, or a locked code object or the address of a
-;;                                  locked callable that the caller made (reused, never unlocked here).
-;;   with-c-callables               the same for several, nested in order.
+;;                                  value is a procedure, or the address of a locked callable that the
+;;                                  caller made (reused, never unlocked here).
 ;;
-;; The conversion clauses (with-TypeConverter, with-ConversionTarget, with-RewritePatternSet) use
-;; with-c-callables around their body.
+;; Several of them nest with with* ((mlir support with)). The conversion clauses (with-TypeConverter,
+;; with-ConversionTarget, with-RewritePatternSet) do that around their body.
 ;;
 ;; C++ gives a range (a TypeRange, say) as a pointer to an array and a count, not as a Scheme
 ;; list; crest-callback-pointer-list reads the count elements of 8 bytes at pointer.
@@ -42,11 +40,9 @@
 (library (crest callback)
   (export crest-make-static-c-callable
           with-c-callable
-          with-c-callables
           crest-call-guarded
           crest-guard-procedure
-          crest-callback-pointer-list
-          crest-callback-entry-dispatcher)
+          crest-callback-pointer-list)
   (import (chezscheme)
           (for (mlir support srcloc) expand)
           (mlir support foreign)
@@ -267,11 +263,10 @@
   ;;   a procedure: the macro makes the foreign-callable, locks it, and unlocks it when BODY ends, also
   ;;   when it ends by an error. Use it for a callback that C++ calls while BODY runs.
   ;;
-  ;;   a callable that the caller made and keeps locked, to reuse it (making one costs about 200 ns):
-  ;;   the code object of foreign-callable after lock-object, or an address that
-  ;;   crest-make-static-c-callable answered. The macro uses it as it is and never unlocks it, because
-  ;;   it is the caller's. An unlocked code object is an error: the garbage collector could move it,
-  ;;   and C++ would call a stale address. The types are not used for these.
+  ;;   an address that crest-make-static-c-callable answered, to reuse it (making one costs about 200 ns).
+  ;;   The macro uses it as it is and never unlocks it, because it is the caller's. A callable that is
+  ;;   not locked is an error: the garbage collector could move it, and C++ would call a stale address.
+  ;;   The types are not used for it.
   ;;
   ;; The address is only valid inside BODY: if C++ keeps it after BODY ends, use
   ;; crest-make-static-c-callable. The diagnostic of an error is at the Scheme position of VALUE, or of the
@@ -297,35 +292,19 @@
                     [code (cond
                            [made? (%%make-code (type ...) result given location)]
                            [(and (integer? given) (exact? given)) (foreign-callable-code-object given)]
-                           [else given])])
+                           [else (assertion-violation 'with-c-callable
+                                                      "the value must be a procedure or the address of a locked callable"
+                                                      given)])])
                (when made? (lock-object code))
                (unless (locked-object? code)
                  (assertion-violation 'with-c-callable
-                                      "the callable must be a procedure, or a locked code object, or the address of a locked callable"
+                                      "the callable of this address is not locked"
                                       given))
                (with-raii locked (and made? code)
                           (lambda (locked) (when locked (unlock-object locked)))
                  (let ([name (foreign-callable-entry-point code)]) body ...))))])))
 
-  ;; (with-c-callables ((name (type ...) value) ...) body ...): with-c-callable for each binding,
-  ;; the first made first and released last. A binding may use the names of the ones before it.
-  (define-syntax with-c-callables
-    (syntax-rules ()
-      [(_ () body ...) (let () body ...)]
-      [(_ (binding rest ...) body ...)
-       (with-c-callable binding (with-c-callables (rest ...) body ...))]))
-
   (define (crest-callback-pointer-list pointer count)
     (map (lambda (i) (foreign-ref 'uptr pointer (* i 8))) (iota count)))
-
-  ;; What the macro of an interface hands to C++ (the :interfaces clause of define-op): from a method
-  ;; name to the entry point of its callable, 0 for a method that the op has no clause for. C++ asks
-  ;; for each method of the interface while it registers the op (lib/Crest/Interface.h). `entries`
-  ;; is an alist of (method . entry point).
-  (define (crest-callback-entry-dispatcher entries)
-    (lambda (method)
-      (cond
-       [(assq method entries) => cdr]
-       [else 0])))
 
   ) ;; end library (crest callback)

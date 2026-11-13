@@ -43,7 +43,8 @@
           (for (rnrs) expand)
           (for (only (chezscheme) syntax->list) expand)
           (for (mlir Transforms DialectConversion options) expand)
-          (only (crest callback) with-c-callables)
+          (only (crest callback) with-c-callable)
+          (mlir support with)
           (only (mlir Transforms DialectConversion ffi)
                 %add-conversion-pattern
                 %add-conversion-pattern/ctx
@@ -206,12 +207,15 @@
                            [(conversion-callable ...) (generate-temporaries #'(conversion-name ...))]
                            [(plain-callable ...) (generate-temporaries #'(plain-name ...))])
                #'(let ([context context-expression])
-                   (with-c-callables
-                       ((rewrite-callable (uptr uptr) int (rewrite-pattern->c rewrite-proc) :source rewrite-proc) ...
-                        (conversion-callable (uptr uptr uptr uptr) int (conversion-pattern->c conversion-proc)
-                                             :source conversion-proc) ...
-                                             (plain-callable (uptr uptr uptr uptr) int (conversion-pattern->c plain-proc)
-                                                             :source plain-proc) ...)
+                   (with*
+                       ((with-c-callable (rewrite-callable (uptr uptr) int (rewrite-pattern->c rewrite-proc)
+                                                           :source rewrite-proc)) ...
+                                                           (with-c-callable (conversion-callable (uptr uptr uptr uptr) int
+                                                                                                 (conversion-pattern->c conversion-proc)
+                                                                                                 :source conversion-proc)) ...
+                                                                                                 (with-c-callable (plain-callable (uptr uptr uptr uptr) int
+                                                                                                                                  (conversion-pattern->c plain-proc)
+                                                                                                                                  :source plain-proc)) ...)
                      (with-CrestObject var (mlir::RewritePatternSet::RewritePatternSet context)
                        (%add-rewrite-pattern var rewrite-name rewrite-callable rewrite-benefit) ...
                        (%add-conversion-pattern var conversion-name conversion-callable

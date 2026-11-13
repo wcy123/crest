@@ -52,6 +52,7 @@
           (for (only (chezscheme) syntax->list) expand)
           (for (mlir Transforms DialectConversion options) expand)
           (crest callback)
+          (mlir support with)
           (mlir Transforms DialectConversion ffi)
           (only (mlir support CrestObject) with-CrestObject)
           (only (mlir IR MLIRContext) current-MLIRContext))
@@ -239,12 +240,13 @@
                            [(source-callable ...) (generate-temporaries #'(source ...))]
                            [(target-callable ...) (generate-temporaries #'(target ...))])
                #'(with-CrestObject var (type-converter-create)
-                   (with-c-callables
-                       ((conversion-callable (uptr) uptr (type-conversion->c conversion) :source conversion) ...
-                        (source-callable (uptr uptr uptr uptr uptr) uptr (materialization->c source)
-                                         :source source) ...
-                                         (target-callable (uptr uptr uptr uptr uptr) uptr (materialization->c target)
-                                                          :source target) ...)
+                   (with*
+                       ((with-c-callable (conversion-callable (uptr) uptr (type-conversion->c conversion)
+                                                              :source conversion)) ...
+                                                              (with-c-callable (source-callable (uptr uptr uptr uptr uptr) uptr
+                                                                                                (materialization->c source) :source source)) ...
+                                                                                                (with-c-callable (target-callable (uptr uptr uptr uptr uptr) uptr
+                                                                                                                                  (materialization->c target) :source target)) ...)
                      (type-converter-add-conversion var conversion-callable) ...
                      (mlir::TypeConverter::addSourceMaterialization var source-callable) ...
                      (mlir::TypeConverter::addTargetMaterialization var target-callable) ...
@@ -287,9 +289,11 @@
                            [(unknown-callable ...) (generate-temporaries #'(unknown-proc ...))])
                #'(let ([context context-expression])
                    (with-CrestObject var (target-create context)
-                     (with-c-callables
-                         ((legal-callable (uptr) int (legality->c legal-proc) :source legal-proc) ...
-                          (unknown-callable (uptr) int (legality->c unknown-proc) :source unknown-proc) ...)
+                     (with*
+                         ((with-c-callable (legal-callable (uptr) int (legality->c legal-proc)
+                                                           :source legal-proc)) ...
+                                                           (with-c-callable (unknown-callable (uptr) int (legality->c unknown-proc)
+                                                                                              :source unknown-proc)) ...)
                        (target-add-dynamically-legal-op var context legal-name legal-callable) ...
                        (target-mark-unknown-ops-dynamically-legal var unknown-callable) ...
                        body ...))))))])))
