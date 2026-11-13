@@ -13,13 +13,19 @@ env:
 
 jobs:
   linux:
-    name: Build and Test — Linux (LLVM ${{ matrix.llvm }})
+    name: Build and Test — Linux (LLVM ${{ matrix.llvm }}${{ matrix.boot == 'ON' && ', Scheme boot' || '' }})
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
         # 22 is the baseline; 23 adds DynamicOpDefinition::addTrait (tests marked REQUIRES: llvm-23).
         llvm: [22, 23]
+        boot: ["OFF"]
+        include:
+          # CREST_EMBED_SCHEME_BOOT=ON compiles the Scheme libraries into the binary. Only this
+          # leg builds that mode, so a compile error in it shows up here.
+          - llvm: 22
+            boot: "ON"
 
     steps:
       # ── Checkout ────────────────────────────────────────────────────────────
@@ -70,8 +76,8 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ runner.workspace }}/ccache-dir
-          key: ccache-linux-${{ matrix.llvm }}-${{ github.run_id }}
-          restore-keys: ccache-linux-${{ matrix.llvm }}-
+          key: ccache-linux-${{ matrix.llvm }}-${{ matrix.boot }}-${{ github.run_id }}
+          restore-keys: ccache-linux-${{ matrix.llvm }}-${{ matrix.boot }}-
 
       - name: Reset ccache statistics
         run: ccache --zero-stats
@@ -99,6 +105,7 @@ jobs:
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DFETCHCONTENT_UPDATES_DISCONNECTED=ON \
+            -DCREST_EMBED_SCHEME_BOOT=${{ matrix.boot }} \
             -DMLIR_DIR=/usr/lib/llvm-${{ matrix.llvm }}/lib/cmake/mlir \
             -DLLVM_DIR=/usr/lib/llvm-${{ matrix.llvm }}/lib/cmake/llvm \
             -DLLVM_EXTERNAL_LIT="$(which lit)"
@@ -116,10 +123,11 @@ jobs:
         if: always()
         with:
           path: ${{ runner.workspace }}/ccache-dir
-          key: ccache-linux-${{ matrix.llvm }}-${{ github.run_id }}
+          key: ccache-linux-${{ matrix.llvm }}-${{ matrix.boot }}-${{ github.run_id }}
 
       # ── Tests ────────────────────────────────────────────────────────────────
       - name: Unit tests
+        if: matrix.boot != 'ON'
         run: |
           cmake --build build --target CrestInterpreterTests CrestInferTypeTests CrestInterfaceTests
           ./build/unittests/Interpreter/CrestInterpreterTests \
@@ -130,10 +138,17 @@ jobs:
             --gtest_output=xml:build/test-results/unit-tests-interface.xml
 
       - name: Lit tests
+        if: matrix.boot != 'ON'
         run: cmake --build build --target check-crest
 
+      # The boot holds only the libraries that hip-fusion imports, so the other tests, which
+      # import more, cannot run from it.
+      - name: Lit tests (Scheme boot)
+        if: matrix.boot == 'ON'
+        run: lit -sv build/test/hip-fusion
+
       - name: Upload test results
-        if: always()
+        if: always() && matrix.boot != 'ON'
         uses: actions/upload-artifact@v4
         with:
           name: test-results-linux-llvm${{ matrix.llvm }}
