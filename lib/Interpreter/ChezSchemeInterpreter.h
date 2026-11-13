@@ -35,13 +35,15 @@ enum class SchemeLogLevel {
 // Called once during Scheme runtime initialization.
 void registerMlirForeignFunctions();
 
-/// Chez Scheme runtime managed via WeakSingleton.
-/// Use instance() to obtain the shared runtime; it is initialized on first
-/// call and destroyed when all shared_ptr holders release it.
+/// The Chez Scheme runtime of the process. Use instance() to obtain it: it is
+/// made by the first call and kept until the process ends (Chez Scheme cannot
+/// be started twice in one process), whoever holds a shared_ptr to it.
 class ChezSchemeInterpreter {
 public:
-  // Only public creation point. Returns the live instance, creating and
-  // initializing it if none exists. logLevel is used only on first creation.
+  // Only public creation point. Returns the instance, creating and
+  // initializing it if this is the first call. logLevel and initHook are used
+  // by the first call only: a later call with other values gets the same
+  // instance and its values are ignored (setLogLevel changes the level).
   // initHook is called once during Sbuild_heap to register foreign functions;
   // pass crest::registerMlirForeignFunctions from CrestBindings.
   static std::shared_ptr<ChezSchemeInterpreter>

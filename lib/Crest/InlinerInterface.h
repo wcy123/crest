@@ -15,8 +15,10 @@ namespace crest {
 // Added to a CrestDialect by its :interfaces clause (the dialect-level one),
 // through attachDialectInlinerInterface.  Each virtual method
 // calls the entry point of a Scheme foreign-callable made once for the
-// dialect's library (see scheme/crest/callback.sls); the optional ones may be
-// nullptr.
+// dialect's library (see scheme/crest/callback.sls). The three legality hooks
+// are required (the macro of the clause raises an error when one is missing);
+// handleTerminator/value, handleTerminator/block and materializeCallConversion
+// may be nullptr.
 struct CrestInlinerInterface : public mlir::DialectInlinerInterface {
   using mlir::DialectInlinerInterface::DialectInlinerInterface;
 
