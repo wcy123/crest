@@ -39,7 +39,8 @@
                      mlir::Operation::getAttr
                      mlir::Operation::getName
                      mlir::Operation::emitError
-                     operation-get-operands) expand)
+                     operation-get-operands
+                     operation-get-converted-operands) expand)
           (for (only (mlir IR Value) mlir::Value::getDefiningOp) expand)
           (for (only (crest support array-ref) crest::CArrayRef::size crest::CArrayRef::at) expand)
           (for (only (crest support CrestObject) with-CrestObject) expand)
@@ -453,7 +454,8 @@
          (let* ([fields  (cdr action)]
                 [op-idx  (cdr (assq 'op-idx fields))]
                 [spec    (cdr (assq 'spec   fields))]
-                [vars    (cdr (assq 'vars   fields))])
+                [vars    (cdr (assq 'vars   fields))]
+                [converted? (cdr (assq 'converted? fields))])
            (with-syntax ([%operands  (datum->syntax #'begin '%operands)]
                          [(quoted-spec ...)
                           (map (lambda (s)
@@ -468,10 +470,18 @@
                                                  (begin (set! v (list-ref %operands idx)) #t)
                                                  (eqv? v (list-ref %operands idx)))))]
                          [op-idx* (datum->syntax #'begin op-idx)])
-             #'(let ([%operands (operation-get-operands
-                                 (vector-ref all-operations op-idx*)
-                                 quoted-spec ...)])
-                 (and %operands setting-or-comparing ...))))]
+             (if converted?
+                 ;; The root of a conversion pattern: the values are the converted operands.
+                 (with-syntax ([operands-ref* operands-ref])
+                   #'(let ([%operands (operation-get-converted-operands
+                                       (vector-ref all-operations op-idx*)
+                                       operands-ref*
+                                       quoted-spec ...)])
+                       (and %operands setting-or-comparing ...)))
+                 #'(let ([%operands (operation-get-operands
+                                     (vector-ref all-operations op-idx*)
+                                     quoted-spec ...)])
+                     (and %operands setting-or-comparing ...)))))]
 
         [else
          (error '%%action->check-code "Unknown action type" tag)])))
