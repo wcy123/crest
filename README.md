@@ -25,15 +25,17 @@ Three macros form the public surface:
 
 ## Why not PDL / DRR / C++?
 
-[PDL](https://mlir.llvm.org/docs/PDLL/) and [DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/)
-generate only `RewritePattern` subclasses. Neither supports
-[`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns),
-`TypeConverter`, or `applyFullConversion` — the machinery required for dialect
-conversion passes. **CREST is the only DSL-based option that covers dialect conversion.**
+[DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/) generates only `RewritePattern`
+subclasses, so it cannot write a dialect conversion. [PDL](https://mlir.llvm.org/docs/PDLL/)
+patterns can run inside one, with a `TypeConverter`, when MLIR is built with
+`MLIR_ENABLE_PDL_IN_PATTERNMATCH` (`PDLConversionConfig`), but their constraints and any
+non-trivial rewrite are native C++ and need a rebuild. **CREST writes
+[`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns)s
+and their guards and rewrites in one Scheme file, with no rebuild.**
 
 | | DRR | PDLL | CREST |
 |---|---|---|---|
-| `ConversionPattern` support | No | No | **Yes** |
+| Dialect conversion with `TypeConverter` | No | Partial² | **Yes** |
 | Edit → test cycle | full rebuild | full rebuild | **reload `.sls`** |
 | Match constraints without C++ | No | No | **Yes** (plain Scheme) |
 | Optional / variadic operands | No | Limited | **Yes** |
@@ -41,6 +43,8 @@ conversion passes. **CREST is the only DSL-based option that covers dialect conv
 | Debug why a pattern didn't fire | No¹ | No¹ | **Yes** (`CREST_DEBUG_MATCH=1`) |
 
 ¹ DRR/PDLL only expose a raw `pdl_interp` bytecode trace via `--debug`. For C++ patterns, `notifyMatchFailure` must be added manually throughout `matchAndRewrite`. Neither provides per-check visibility for large patterns.
+
+² Through `PDLConversionConfig`, only in MLIR builds with PDL pattern-match support; see above.
 
 For patterns DRR and PDLL cannot express, the only fallback is C++ boilerplate.
 A quantization fusion in C++:

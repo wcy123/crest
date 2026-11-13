@@ -29,7 +29,7 @@ Patterns are Scheme macros — edit a `.sls` file and re-run: no rebuild, no rel
 | `define-rewrite-pattern` | `mlir::OpRewritePattern` | Greedy rewrites: fusion, folding, simplification |
 | `define-conversion-pattern` | `mlir::ConversionPattern` | Dialect conversion with `TypeConverter` and `applyFullConversion` |
 
-DRR and PDLL only generate `RewritePattern` subclasses. CREST is the only DSL that covers dialect conversion.
+DRR generates only `RewritePattern` subclasses. PDLL patterns can run in a dialect conversion through `PDLConversionConfig` (MLIR built with `MLIR_ENABLE_PDL_IN_PATTERNMATCH`), but their constraints and non-trivial rewrites are native C++. CREST writes the whole conversion pattern in Scheme.
 
 ### Edit–reload cycle
 
