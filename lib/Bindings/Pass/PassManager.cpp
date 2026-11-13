@@ -14,6 +14,20 @@
 
 namespace crest {
 
+namespace {
+
+// Whether `manager` already holds the pass at this address.
+bool ownsPass(mlir::OpPassManager& manager, uint64_t pass_ptr) {
+  for (mlir::Pass& pass : manager) {
+    if (reinterpret_cast<uint64_t>(&pass) == pass_ptr) {
+      return true;
+    }
+  }
+  return false;
+}
+
+} // namespace
+
 void registerPassPassManagerBindings() {
   /// ctx_ptr: CrestBox<MLIRContext>* | MLIRContext* →
   /// CrestBox<mlir::PassManager>*
@@ -34,7 +48,10 @@ void registerPassPassManagerBindings() {
   // The pass manager takes ownership of the pass, as in C++, where addPass
   // takes a std::unique_ptr<Pass>. A create...Pass binding answers a raw
   // mlir::Pass* that nothing owns yet, so this is where ownership starts.
-  // Adding the same pass twice gives it two owners: the caller must not.
+  // Adding the same pass twice would give it two owners and free it twice: the
+  // second add is an error. Only this manager's own list is searched (a pass
+  // that another manager owns cannot be seen from here, and a handle is a raw
+  // address).
   /// pm_ptr: CrestBox<mlir::PassManager>*, pass_ptr: mlir::Pass*
   // LEAK WARNING: a pass that is made by a create...Pass binding and never
   // added to a pass manager leaks: nothing else owns it.
@@ -51,6 +68,10 @@ void registerPassPassManagerBindings() {
         if (!pass_ptr) {
           return scheme_error("mlir::PassManager::addPass",
                               "null pass pointer");
+        }
+        if (ownsPass(pm, pass_ptr)) {
+          return scheme_error("mlir::PassManager::addPass",
+                              "the pass is already in this pass manager");
         }
         pm.addPass(std::unique_ptr<mlir::Pass>(
             reinterpret_cast<mlir::Pass*>(pass_ptr)));
@@ -93,6 +114,8 @@ void registerPassPassManagerBindings() {
   // Nest a PassManager on the given op name; returns raw OpPassManager* (not
   // owned). pm_ptr: CrestBox<mlir::PassManager>*, op_name: string →
   // OpPassManager* uptr
+  // LIFETIME WARNING: the answer belongs to the pass manager and is freed with
+  // it. Use it only while the with-PassManager body is running.
   Sregister_symbol(
       "mlir::PassManager::nest",
       (void*)+[](uint64_t pm_ptr, const char* op_name) -> ptr {
@@ -116,6 +139,10 @@ void registerPassPassManagerBindings() {
         if (!pass_ptr) {
           return scheme_error("mlir::OpPassManager::addPass",
                               "null pass pointer");
+        }
+        if (ownsPass(*nested, pass_ptr)) {
+          return scheme_error("mlir::OpPassManager::addPass",
+                              "the pass is already in this pass manager");
         }
         nested->addPass(std::unique_ptr<mlir::Pass>(
             reinterpret_cast<mlir::Pass*>(pass_ptr)));
