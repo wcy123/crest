@@ -173,7 +173,7 @@
                 (set! acc (cons (action:check-where where-expr op-idx) acc)))))))
 
       ;; Warn about unvisited operations
-      (%%warn-unvisited-operations match-vec visited)
+      (%%error-unvisited-operations match-vec visited)
 
       ;; Return (binding-mgr . reversed-actions)
       (cons binding-mgr (reverse acc))))
@@ -288,12 +288,23 @@
   (define (%%identifier-hash id)
     (symbol-hash (syntax->datum id)))
 
-  (define (%%warn-unvisited-operations match-vec visited)
+  ;; An op of the match that no value joins to the root is never reached when the pattern matches (the match walks from
+  ;; the root through the operands and the results), so it is a mistake in the pattern.
+  (define (%%error-unvisited-operations match-vec visited)
     (loop :for op-idx :from 0 :below (vector-length match-vec)
           :rime-with match-op := (vector-ref match-vec op-idx)
           :when (not (vector-ref visited op-idx))
-          :do (format #t "WARNING: Operation ~a at index ~a is not reachable from root~%"
-                      (ast-match-expand-op-name match-op) op-idx)))
+          :do (let* ([results (ast-match-expand-result-var match-op)]
+                     [operands (ast-match-expand-operands match-op)]
+                     ;; The syntax of one of its variables, for the position.
+                     [where (cond [(pair? results) (car results)]
+                                  [(pair? operands) (ast-operand-var (car operands))]
+                                  [else #f])])
+                (syntax-violation 'pattern
+                                  (string-append "the match operation " (ast-match-expand-op-name match-op)
+                                                 " is not connected to the root: no value of it is used by an operation"
+                                                 " that leads to the root, so it is never reached")
+                                  where))))
 
   (define (%%find-root-operation match-vec root-var)
     ;; Find which operation index produces root-var as a result

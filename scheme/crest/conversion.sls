@@ -124,6 +124,9 @@
                 [populate (lookup options ':populate)]
                 [configure-tc (lookup options ':configure-type-converter)]
                 [configure-target (lookup options ':configure-target)]
+                [_       (when (and llvm? configure-tc)
+                           (fail configure-tc
+                                 ":configure-type-converter has no effect with :type-converter llvm (the LLVM type converter is made for you)"))]
                 [dynamic (let ([entries (elements options ':dynamically-legal)])
                            (for-each
                             (lambda (entry)

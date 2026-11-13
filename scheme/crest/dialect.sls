@@ -221,7 +221,13 @@
                   [results    '()]
                   [interfaces #f]
                   [assembly-format #f]
-                  [op-cbs     (make-vector 8 #f)])
+                  [op-cbs     (make-vector 8 #f)]
+                  [seen       '()])
+              ;; A clause is given once: the second would silently replace the first.
+              (define (once! key clause)
+                (when (memq key seen)
+                  (syntax-violation 'define-op (string-append "repeated " (symbol->string key)) clause))
+                (set! seen (cons key seen)))
               (let loop-sub ([stx sub-clauses-stx])
                 (syntax-case stx (:summary :description
                                            :operands :attributes :results
@@ -289,38 +295,46 @@
                                      (car (syntax->list stx)))]
                   [(:operands    (field ...) . rest)
                    (begin
+                     (once! ':operands (car (syntax->list stx)))
                      (set! operands (map parse-op-operand (syntax->list #'(field ...))))
                      (loop-sub #'rest))]
                   [(:attributes  (field ...) . rest)
                    (begin
+                     (once! ':attributes (car (syntax->list stx)))
                      (set! attributes (map parse-op-attribute (syntax->list #'(field ...))))
                      (loop-sub #'rest))]
                   [(:results     ((name type) ...) . rest)
                    (andmap identifier? (syntax->list #'(name ...)))
-                   (begin (set! results
+                   (begin (once! ':results (car (syntax->list stx)))
+                          (set! results
                                 (map make-result-field
                                      (syntax->list #'(name ...))
                                      (syntax->list #'(type ...))))
                           (loop-sub #'rest))]
                   [((:verify                       (op) body ...) . rest)
                    (identifier? #'op)
-                   (begin (vector-set! op-cbs 0 #'(lambda (op) body ...))
+                   (begin (once! ':verify (car (syntax->list stx)))
+                          (vector-set! op-cbs 0 #'(lambda (op) body ...))
                           (loop-sub #'rest))]
                   [((:verify-regions               (op) body ...) . rest)
                    (identifier? #'op)
-                   (begin (vector-set! op-cbs 1 #'(lambda (op) body ...))
+                   (begin (once! ':verify-regions (car (syntax->list stx)))
+                          (vector-set! op-cbs 1 #'(lambda (op) body ...))
                           (loop-sub #'rest))]
                   [((:parse                        (parser state) body ...) . rest)
                    (and (identifier? #'parser) (identifier? #'state))
-                   (begin (vector-set! op-cbs 2 #'(lambda (parser state) body ...))
+                   (begin (once! ':parse (car (syntax->list stx)))
+                          (vector-set! op-cbs 2 #'(lambda (parser state) body ...))
                           (loop-sub #'rest))]
                   [((:print                        (op printer name) body ...) . rest)
                    (and (identifier? #'op) (identifier? #'printer) (identifier? #'name))
-                   (begin (vector-set! op-cbs 3 #'(lambda (op printer name) body ...))
+                   (begin (once! ':print (car (syntax->list stx)))
+                          (vector-set! op-cbs 3 #'(lambda (op printer name) body ...))
                           (loop-sub #'rest))]
                   [((:fold                         (op operand-attributes) body ...) . rest)
                    (and (identifier? #'op) (identifier? #'operand-attributes))
-                   (begin (vector-set! op-cbs 4 #'(lambda (op operand-attributes) body ...))
+                   (begin (once! ':fold (car (syntax->list stx)))
+                          (vector-set! op-cbs 4 #'(lambda (op operand-attributes) body ...))
                           (loop-sub #'rest))]
                   [((:fold . _) . rest)
                    (syntax-violation 'define-op
@@ -328,11 +342,13 @@
                                      (car (syntax->list stx)))]
                   [((:get-canonicalization-patterns (pattern-set) body ...) . rest)
                    (identifier? #'pattern-set)
-                   (begin (vector-set! op-cbs 5 #'(lambda (pattern-set) body ...))
+                   (begin (once! ':get-canonicalization-patterns (car (syntax->list stx)))
+                          (vector-set! op-cbs 5 #'(lambda (pattern-set) body ...))
                           (loop-sub #'rest))]
                   [((:populate-default-attrs       (op-name attrs) body ...) . rest)
                    (and (identifier? #'op-name) (identifier? #'attrs))
-                   (begin (vector-set! op-cbs 6 #'(lambda (op-name attrs) body ...))
+                   (begin (once! ':populate-default-attrs (car (syntax->list stx)))
+                          (vector-set! op-cbs 6 #'(lambda (op-name attrs) body ...))
                           (loop-sub #'rest))]
                   [(bad . _)
                    (syntax-violation 'define-op

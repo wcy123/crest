@@ -270,8 +270,12 @@
               [match-op (make-ast-match-expand '() op-norm operands #f)])
          (%%parse-match-ops-recursive #'rest (cons match-op acc-ops) ast))]
 
-      [_ (syntax-violation '%%parse-match-ops-recursive
-                           "Invalid3 match operation (expected: result = \"op\" (...) [:where expr])" rest-stx)]))
+      ;; Point at the first form that does not fit, not at the rest of the pattern.
+      [_ (syntax-violation 'pattern
+                           (string-append "expected a match operation: %result = dialect.op (operand ...) [:where guard],"
+                                          " or dialect.op (operand ...) for an op without a result (its name has a dot)")
+                           (let ([forms (syntax->list rest-stx)])
+                             (if (and forms (pair? forms)) (car forms) rest-stx)))]))
 
 
   ;;-----------------------------------------------------------------------

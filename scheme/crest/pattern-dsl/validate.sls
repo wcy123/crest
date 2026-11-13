@@ -29,6 +29,9 @@
     ;; Rule: :where guards must be valid syntax objects (not validated for correctness)
     (%%validate-match-operations ast-rec)
 
+    ;; Rule: a :then-let variable has a name that :if-match does not bind
+    (%%validate-then-let-names ast-rec)
+
     ;; Rule: Root variable must appear in results (after normalization)
     ;; Cache: root-op-index, root-result-idx, root-op-name for codegen
     (%%validate-and-cache-root-var ast-rec)
@@ -99,6 +102,25 @@
                               (syntax-violation '%%validate-no-duplicate-result-variables
                                                 "Duplicate result variable" var))
                             (hashtable-set! seen-results var #t))))))
+
+  ;; The variables of :if-match and of :then-let share one scope in the generated code, so a name cannot be both.
+  (define (%%validate-then-let-names ast-rec)
+    (let* ([match-vec (ast-pattern-expand-match ast-rec)]
+           [match-vars (apply append
+                              (map (lambda (match-op)
+                                     (append (ast-match-expand-result-var match-op)
+                                             (map ast-operand-var (ast-match-expand-operands match-op))))
+                                   (vector->list match-vec)))])
+      (for-each
+       (lambda (binding)
+         (let ([var (ast-then-let-binding-expand-var binding)])
+           (when (and (identifier? var)
+                      (exists (lambda (match-var) (bound-identifier=? var match-var)) match-vars))
+             (syntax-violation 'pattern
+                               (string-append ":then-let binds " (symbol->string (syntax->datum var))
+                                              ", which :if-match binds already: give it another name")
+                               var))))
+       (ast-pattern-expand-then-let ast-rec))))
 
   (define (%%validate-and-cache-root-var ast-rec)
     ;; Rule: Root variable must appear as a result in at least one match operation
