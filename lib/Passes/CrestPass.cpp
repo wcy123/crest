@@ -4,14 +4,14 @@
  */
 //===- CrestPass.cpp - CREST pass runner for Scheme-defined passes --------===//
 //
-// Registers --crest-pass via mlir::PassPipelineRegistration (no tablegen).
+// Registers --crest-pass via mlir::PassRegistration (no tablegen).
 //
 // Options:
 //   passes=<name>[,<name>...]          Scheme libraries to load in order.
 //                                      Each name is a slash-separated R6RS
 //                                      library name, e.g.
 //                                      'passes/lower,passes/verify'.
-//                                      The last library must export
+//                                      Some library must export
 //                                      `pass-entry-point`.
 //   dialects-in-scheme=<name>=<lib>[,<name>=<lib>...]
 //                                      Scheme-defined dialects whose ops the
@@ -51,66 +51,46 @@ namespace crest {
 
 namespace {
 
-struct CrestPassOptions : public mlir::PassPipelineOptions<CrestPassOptions> {
-  // Comma-separated list of slash-separated R6RS library names.
-  // Uses plain Option<string> (not ListOption) to avoid MLIR's ListOption
-  // comma-separator conflicting with the pass-options comma separator.
-  // We split on ',' ourselves.
-  Option<std::string> passes{
+struct CrestPass : public mlir::OperationPass<mlir::ModuleOp> {
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(CrestPass)
+
+  CrestPass()
+      : mlir::OperationPass<mlir::ModuleOp>(mlir::TypeID::get<CrestPass>()) {}
+
+  CrestPass(const CrestPass& other)
+      : mlir::OperationPass<mlir::ModuleOp>(other) {}
+
+  llvm::StringRef getArgument() const override { return "crest-pass"; }
+  llvm::StringRef getDescription() const override {
+    return "Run one or more Scheme passes via the CREST interpreter";
+  }
+  llvm::StringRef getName() const override { return "CrestPass"; }
+
+  ListOption<std::string> passes{
       *this, "passes",
       llvm::cl::desc(
-          "Comma-separated Scheme libraries to load in order "
-          "(slash-separated R6RS names). The last library must export "
-          "`pass-entry-point`. Example: passes=passes/lower,passes/verify"),
-      llvm::cl::init("")};
-  Option<std::string> schemeDialects{
+          "Scheme libraries to load in order (slash-separated R6RS names). "
+          "Some library must export `pass-entry-point`. "
+          "Example: passes=passes/lower,passes/verify")};
+  ListOption<std::string> schemeDialects{
       *this, "dialects-in-scheme",
       llvm::cl::desc(
-          "Comma-separated name=module pairs for Scheme-defined dialects whose "
-          "ops are produced by the pass (not in the input IR). "
-          "Example: dialects-in-scheme=testd=passes/testd,teste=passes/teste"),
-      llvm::cl::init("")};
+          "name=module pairs for Scheme-defined dialects whose ops are "
+          "produced by the pass (not in the input IR). "
+          "Example: dialects-in-scheme=testd=passes/testd,teste=passes/teste")};
   Option<std::string> logLevel{
       *this, "log-level",
       llvm::cl::desc(
           "Logging level: trace, debug, info, warning, error, fatal"),
       llvm::cl::init("warning")};
 
-  static std::vector<std::string> split(llvm::StringRef s) {
-    std::vector<std::string> result;
-    while (!s.empty()) {
-      auto [head, tail] = s.split(',');
-      if (!head.empty()) {
-        result.push_back(head.str());
-      }
-      s = tail;
-    }
-    return result;
-  }
-};
-
-struct CrestPass : public mlir::OperationPass<mlir::ModuleOp> {
-  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(CrestPass)
-
-  CrestPass(std::vector<std::string> passes,
-            std::vector<std::string> schemeDialects, std::string logLevel)
-      : mlir::OperationPass<mlir::ModuleOp>(mlir::TypeID::get<CrestPass>()),
-        passes_(std::move(passes)), schemeDialects_(std::move(schemeDialects)),
-        logLevel_(std::move(logLevel)) {}
-
-  CrestPass(const CrestPass& other)
-      : mlir::OperationPass<mlir::ModuleOp>(other), passes_(other.passes_),
-        schemeDialects_(other.schemeDialects_), logLevel_(other.logLevel_) {}
-
-  llvm::StringRef getName() const override { return "crest-pass"; }
-
   // What the Scheme code creates is not known here, so every dialect that the
   // context can load is loaded before the pass runs: a dialect cannot be loaded
   // while the pass is running.
   mlir::LogicalResult initialize(mlir::MLIRContext* context) override {
-    if (!schemeDialects_.empty()) {
+    if (!schemeDialects.empty()) {
       mlir::DialectRegistry registry;
-      for (const auto& spec : schemeDialects_) {
+      for (const std::string& spec : schemeDialects) {
         auto [dialect_name, module_name] = llvm::StringRef(spec).split('=');
         if (dialect_name.empty() || module_name.empty()) {
           return mlir::emitError(mlir::UnknownLoc::get(context))
@@ -138,19 +118,19 @@ struct CrestPass : public mlir::OperationPass<mlir::ModuleOp> {
   }
 
   void runOnOperation() override {
-    if (passes_.empty()) {
+    if (passes.empty()) {
       getOperation().emitError(
           "No Scheme passes specified. "
           "Use --crest-pass=\"passes=<slash/separated/name>\"");
       return signalPassFailure();
     }
 
-    auto level = parseLogLevel(logLevel_);
+    auto level = parseLogLevel(logLevel);
     auto interp = ChezSchemeInterpreter::instance(
         level, crest::registerMlirForeignFunctions);
     interp->setLogLevel(level);
 
-    for (const auto& pass : passes_) {
+    for (const std::string& pass : passes) {
       if (auto importError = interp->importLibrary(pass)) {
         auto err = getOperation().emitError(
             "Failed to import Scheme library: " + pass + ": " + *importError);
@@ -166,17 +146,14 @@ struct CrestPass : public mlir::OperationPass<mlir::ModuleOp> {
     // exports it (the others may be helpers, as in test/dsl/multi-pass); if
     // none does, the call would go to whatever the name is bound to, or to
     // nothing.
-    bool exportsPassEntryPoint = false;
-    for (const auto& pass : passes_) {
-      exportsPassEntryPoint = exportsPassEntryPoint ||
-                              interp->libraryExports(pass, "pass-entry-point");
-    }
-    if (!exportsPassEntryPoint) {
-      std::string libraries;
-      for (const auto& pass : passes_) {
-        libraries += (libraries.empty() ? "" : ", ") + pass;
+    if (!llvm::any_of(passes, [&](const std::string& pass) {
+          return interp->libraryExports(pass, "pass-entry-point");
+        })) {
+      std::string names;
+      for (const std::string& pass : passes) {
+        names += (names.empty() ? "" : ", ") + pass;
       }
-      getOperation().emitError("Scheme library " + libraries +
+      getOperation().emitError("Scheme library " + names +
                                " does not export pass-entry-point, which "
                                "--crest-pass=passes= calls to run "
                                "the pass");
@@ -196,26 +173,10 @@ struct CrestPass : public mlir::OperationPass<mlir::ModuleOp> {
       return signalPassFailure();
     }
   }
-
-private:
-  std::vector<std::string> passes_;
-  std::vector<std::string> schemeDialects_;
-  std::string logLevel_;
 };
 
 } // namespace
 
-void registerCrestPass() {
-  mlir::PassPipelineRegistration<CrestPassOptions>(
-      "crest-pass",
-      "Run one or more Scheme passes via the CREST interpreter. "
-      "Options: passes=<name>[,<name>...], "
-      "dialects-in-scheme=<name>=<lib>[,...], log-level=<level>",
-      [](mlir::OpPassManager& pm, const CrestPassOptions& opts) {
-        pm.addPass(std::make_unique<CrestPass>(
-            CrestPassOptions::split(opts.passes),
-            CrestPassOptions::split(opts.schemeDialects), opts.logLevel));
-      });
-}
+void registerCrestPass() { mlir::PassRegistration<CrestPass>(); }
 
 } // namespace crest
