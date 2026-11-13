@@ -208,14 +208,11 @@
                            [(plain-callable ...) (generate-temporaries #'(plain-name ...))])
                #'(let ([context context-expression])
                    (with*
-                       ((with-c-callable (rewrite-callable (uptr uptr) int (rewrite-pattern->c rewrite-proc)
-                                                           :source rewrite-proc)) ...
-                                                           (with-c-callable (conversion-callable (uptr uptr uptr uptr) int
-                                                                                                 (conversion-pattern->c conversion-proc)
-                                                                                                 :source conversion-proc)) ...
-                                                                                                 (with-c-callable (plain-callable (uptr uptr uptr uptr) int
-                                                                                                                                  (conversion-pattern->c plain-proc)
-                                                                                                                                  :source plain-proc)) ...)
+                       ((with-c-callable (rewrite-callable (uptr uptr) int (rewrite-pattern->c rewrite-proc))) ...
+                        (with-c-callable (conversion-callable (uptr uptr uptr uptr) int
+                                                              (conversion-pattern->c conversion-proc))) ...
+                                                              (with-c-callable (plain-callable (uptr uptr uptr uptr) int
+                                                                                               (conversion-pattern->c plain-proc))) ...)
                      (with-CrestObject var (mlir::RewritePatternSet::RewritePatternSet context)
                        (%add-rewrite-pattern var rewrite-name rewrite-callable rewrite-benefit) ...
                        (%add-conversion-pattern var conversion-name conversion-callable

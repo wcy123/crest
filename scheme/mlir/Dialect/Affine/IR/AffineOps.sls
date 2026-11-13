@@ -36,13 +36,12 @@
   (define-syntax mlir::affine::buildAffineLoopNest
     (syntax-rules ()
       [(_ builder loc lbs ubs steps body)
-       (let ([user body])
-         (with-c-callable (c-body (uptr uptr uptr uptr) void
+       (with-c-callable (c-body (uptr uptr uptr uptr) void
+                                (let ([user body])
                                   (lambda (nested-builder nested-loc ivs count)
                                     (user nested-builder nested-loc
-                                          (crest-callback-pointer-list ivs count)))
-                                  :source body)
-           (%mlir::affine::buildAffineLoopNest builder loc lbs ubs steps c-body)))]))
+                                          (crest-callback-pointer-list ivs count)))))
+         (%mlir::affine::buildAffineLoopNest builder loc lbs ubs steps c-body))]))
 
   (define mlir::affine::AffineLoadOp::create
     %mlir::affine::AffineLoadOp::create)

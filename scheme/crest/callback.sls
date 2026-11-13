@@ -8,13 +8,13 @@
 ;;
 ;; (crest callback) — C function pointers made from Scheme procedures.
 ;;
-;;   (crest-make-static-c-callable (argument-type ...) result-type proc)   an address
+;;   (crest-make-static-c-callable (argument-kind ...) result-kind proc)   an address
 ;;   (crest-callback-pointer-list pointer count)                           a list of integers
 ;;
 ;; C++ never makes, owns, locks or releases a callback. A binding that needs one takes a plain C
 ;; function pointer; Scheme makes the foreign-callable (locked, because the garbage collector moves
 ;; code objects) and whoever calls the low-level function decides how long it lives. The C function
-;; has the prototype that C++ or MLIR declares: its argument types and its RESULT TYPE are written at
+;; has the prototype that C++ or MLIR declares: its argument kinds and its RESULT KIND are written at
 ;; every site (uptr, int, unsigned-8, void, walk-result, ...; the kinds are listed at %%make-code), and a mismatch crashes, as C++ does not check it.
 ;;
 ;; The procedure never raises into C++. MLIR's prototypes have no room for an error, so the guard of the
@@ -55,50 +55,31 @@
 
   ;; @brief crest-make-static-c-callable — make a C function with the prototype of C++ from a procedure,
   ;;        locked for good.
-  ;; @param argument-type  the C++ argument kinds, in order: uptr, int, ... (any type of foreign-callable)
+  ;; @param argument-kind  the C++ argument kinds, in order: uptr, int, ... (any type of foreign-callable)
   ;;                       or type-range (see %%make-code)
-  ;; @param result-type    the C++ result kind: void, uptr, int, unsigned-8, object, logical-result,
+  ;; @param result-kind    the C++ result kind: void, uptr, int, unsigned-8, object, logical-result,
   ;;                       walk-result or range (see %%make-code)
   ;; @param procedure      the procedure that the C function calls, with the arguments as Scheme values
-  ;; @param :source        optional: an expression whose Scheme position names the callback in an error
-  ;;                       report. For a macro that wraps the procedure of its user in a lambda of its own,
-  ;;                       when the position of the user is the useful one
-  ;; @param :location      optional: an expression, evaluated when the callable is made, for the position
-  ;;                       as data, (file line column) or #f. For a procedure that reaches the macro as a
-  ;;                       value, whose position was read where it was written
   ;; @return               the address of the C function, an exact integer
   ;; @note                 A macro. It locks the callable for good: use it only at the library level, for a
   ;;                       callback that uses no state of a run. An error of the procedure is reported by
-  ;;                       the guard (see %%guard-for-result), at the Scheme position of PROCEDURE or of
-  ;;                       :source.
+  ;;                       the guard (see %%guard-for-result), at the Scheme position of PROCEDURE: the
+  ;;                       part of the form that is the user's, when a macro built the form.
   ;; @example
   ;;   (define legal (crest-make-static-c-callable (uptr) int (lambda (op) 1)))
   (define-syntax crest-make-static-c-callable
     (lambda (stx)
-      (define (location-of options default)
-        (syntax-case options ()
-          [() (position-of default)]
-          [(key source) (eq? (syntax->datum #'key) ':source) (position-of #'source)]
-          [(key expression) (eq? (syntax->datum #'key) ':location) #'expression]
-          [_ (syntax-violation 'crest-make-static-c-callable "expected :source or :location" stx
-                               options)]))
-      (define (position-of form)
-        (with-syntax ([position (datum->syntax
-                                 #'stx
-                                 (or (syntax->first-file+line+col form)
-                                     (syntax->file+line+col stx)))])
-          #''position))
       (syntax-case stx ()
-        [(_ (type ...) result proc . options)
-         (with-syntax ([location (location-of #'options #'proc)])
-           #'(let ([code (%%make-code (type ...) result proc location)])
+        [(_ (kind ...) result proc)
+         (with-syntax ([location #`(quote #,(datum->syntax #'stx (syntax->first-file+line+col #'proc)))])
+           #'(let ([code (%%make-code (kind ...) result proc location)])
                (lock-object code)
                (foreign-callable-entry-point code)))])))
 
   ;; @brief with-c-callable — run a body with the address of a C function made from a procedure.
   ;; @param name           identifier bound to the address inside BODY
-  ;; @param argument-type  as for crest-make-static-c-callable; not used when VALUE is an address
-  ;; @param result-type    as for crest-make-static-c-callable; not used when VALUE is an address
+  ;; @param argument-kind  as for crest-make-static-c-callable; not used when VALUE is an address
+  ;; @param result-kind    as for crest-make-static-c-callable; not used when VALUE is an address
   ;; @param value          a procedure, or an address. A procedure: the macro makes the foreign-callable,
   ;;                       locks it, and unlocks it when BODY ends, also when it ends by an error; use it for
   ;;                       a callback that C++ calls while BODY runs. An address that
@@ -106,35 +87,23 @@
   ;;                       ns): used as it is and never unlocked, because it is the caller's; a callable that
   ;;                       is not locked is an error, because the garbage collector could move it and C++
   ;;                       would call a stale address
-  ;; @param :source        optional, as for crest-make-static-c-callable
   ;; @param body           expressions evaluated with NAME bound
   ;; @return               the value of the last expression of BODY
   ;; @note                 A macro. The address is valid only inside BODY: if C++ keeps it after BODY ends,
   ;;                       use crest-make-static-c-callable. An error of the procedure is reported at the
-  ;;                       Scheme position of VALUE or of :source.
+  ;;                       Scheme position of VALUE.
   ;; @example
   ;;   (with-c-callable (visit (uptr) walk-result (lambda (op) mlir::WalkResult::advance))
   ;;     (call-cpp visit))
   (define-syntax with-c-callable
     (lambda (stx)
-      (define (location-of options default)
-        (syntax-case options ()
-          [() (position-of default)]
-          [(key source) (eq? (syntax->datum #'key) ':source) (position-of #'source)]
-          [_ (syntax-violation 'with-c-callable "expected :source expression" stx options)]))
-      (define (position-of form)
-        (with-syntax ([position (datum->syntax
-                                 #'stx
-                                 (or (syntax->first-file+line+col form)
-                                     (syntax->file+line+col stx)))])
-          #''position))
       (syntax-case stx ()
-        [(_ (name (type ...) result value . options) body ...)
-         (with-syntax ([location (location-of #'options #'value)])
+        [(_ (name (kind ...) result value) body ...)
+         (with-syntax ([location #`(quote #,(datum->syntax #'stx (syntax->first-file+line+col #'value)))])
            #'(let* ([given value]
                     [made? (procedure? given)]
                     [code (cond
-                           [made? (%%make-code (type ...) result given location)]
+                           [made? (%%make-code (kind ...) result given location)]
                            [(and (integer? given) (exact? given)) (foreign-callable-code-object given)]
                            [else (assertion-violation 'with-c-callable
                                                       "the value must be a procedure or the address of a locked callable"

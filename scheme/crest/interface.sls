@@ -176,8 +176,7 @@
               ;; MLIR passes the Concept first; the procedure does not see it.
               #`(crest-make-static-c-callable
                  (uptr #,@(syntax->list (method-kinds m))) #,(method-result m)
-                 (let ([p #,procedure]) (lambda (concept . arguments) (apply p arguments)))
-                 :source #,(cdr from))))))
+                 (let ([p #,procedure]) (lambda (concept . arguments) (apply p arguments))))))))
 
     (duplicates!)
     (for-each (lambda (m)

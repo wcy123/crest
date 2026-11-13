@@ -45,12 +45,10 @@
          (and (identifier? #'name) (identifier? #'op))
          (with-syntax ([name-string (symbol->string (syntax->datum #'name))])
            #'(begin
+               ;; 1 or 0 for C; an error of the body is reported at the body, and answers 0.
                (define entry
-                 (let ([run (lambda (op) body ...)])
-                   ;; 1 or 0 for C; an error of the body is a diagnostic at the body, and 0.
-                   (crest-make-static-c-callable (uptr) int
-                                                 (lambda (x) (if (run x) 1 0))
-                                                 :source (begin body ...))))
+                 (crest-make-static-c-callable (uptr) int
+                                               (lambda (op) (if (let () body ...) 1 0))))
                (define (name)
                  (%crest::createSchemePass name-string entry))))]
         [(_ . _)

@@ -161,12 +161,10 @@
                     (if operands-ref
                         #'(define fname
                             (crest-make-static-c-callable (uptr uptr uptr uptr) int
-                                                          (conversion-pattern->c procedure)
-                                                          :source procedure))
+                                                          (conversion-pattern->c procedure)))
                         #'(define fname
                             (crest-make-static-c-callable (uptr uptr) int
-                                                          (rewrite-pattern->c procedure)
-                                                          :source procedure))))))))))))
+                                                          (rewrite-pattern->c procedure)))))))))))))
 
   ;;=======================================================================
   ;; Rewrite code — thin wrapper delegating to begin-mlir-code

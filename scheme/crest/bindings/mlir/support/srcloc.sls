@@ -121,7 +121,6 @@
                 (if items (apply append (map positions items)) '()))))
     (let ([all (positions stx)])
       (and (pair? all)
-           (or (find (lambda (position) (not (%%crest-library? (car position)))) all)
-               (car all)))))
+           (find (lambda (position) (not (%%crest-library? (car position)))) all))))
 
   ) ;; end library (mlir support srcloc)

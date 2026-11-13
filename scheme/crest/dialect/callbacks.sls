@@ -50,14 +50,14 @@
   ;; (%%entry (argument-type ...) result-type clause adapter): the entry point of the callable for one
   ;; slot, or 0 when the dialect did not write the clause (it is #f). CLAUSE is the expression of the user;
   ;; ADAPTER is applied to its value and answers the procedure that the callable calls. An error of the
-  ;; procedure is reported at the Scheme source of CLAUSE.
+  ;; procedure is reported at the Scheme position of CLAUSE, which is in the form that the callable is made from.
   (define-syntax %%entry
-    (syntax-rules ()
-      [(_ (type ...) result clause adapter)
-       (let ([procedure clause])
-         (if procedure
-             (crest-make-static-c-callable (type ...) result (adapter procedure) :source clause)
-             0))]))
+    (lambda (stx)
+      (syntax-case stx ()
+        [(_ (type ...) result clause adapter)
+         (if (syntax->datum #'clause)
+             #'(crest-make-static-c-callable (type ...) result (adapter clause))
+             #'0)])))
 
   ;; The folder of an op as C wants it. Its operands come as a pointer and a count (0 for no
   ;; constant); its answer is pushed into `folded` one result at a time. 0 is no fold; 1 is a fold,

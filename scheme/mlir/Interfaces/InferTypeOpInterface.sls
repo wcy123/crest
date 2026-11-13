@@ -13,7 +13,7 @@
           mlir::InferTypeOpInterface::inferReturnTypes<OperationState*>)
   (import (chezscheme)
           (only (crest callback) crest-make-static-c-callable)
-          (for (mlir support srcloc) expand)
+          (only (crest interface) crest-callback-entry-dispatcher)
           (mlir IR MLIRContext)
           (only (mlir IR Diagnostics) mlir::emitError)
           (only (mlir IR Types) mlir::Type::print)
@@ -56,13 +56,6 @@
         1]
        [else 0])))
 
-  (define (%%system-v-entry-point proc refine location)
-    (crest-make-static-c-callable
-     (uptr uptr uptr uptr uptr uptr uptr uptr uptr uptr uptr) logical-result
-     (lambda (w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10)
-       (%%infer proc refine w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10))
-     :location location))
-
   ;; Windows also wants the answer in a different place.
   ;;
   ;; MLIR's C++ code calls   LogicalResult r = inferReturnTypes(ctx, loc, ...);   and later tests r.
@@ -88,20 +81,28 @@
   ;; Windows uses a box because LogicalResult is a class with a private field. It hands plain
   ;; values such as a bool back directly, but not a class like this one.
   ;; (crest-make-static-c-callable adds the box as the first argument and answers it, for logical-result.)
-  (define (%%windows-entry-point proc refine location)
-    (crest-make-static-c-callable
-     (uptr uptr uptr uptr uptr uptr uptr) logical-result
-     (lambda (w0 w1 w2 w3 w4 w5 w6)
-       (%%infer proc refine w0 w1 w2 w3 w4 w5 w6 0 0 0 0))
-     :location location))
-
-  (define (%%entry-point proc refine location)
-    (case (machine-type)
-      [(a6le ta6le a6osx ta6osx) (%%system-v-entry-point proc refine location)]
-      [(a6nt ta6nt) (%%windows-entry-point proc refine location)]
-      [else (error 'mlir::InferTypeOpInterface
-                   "the calling convention of this machine type is not supported"
-                   (machine-type))]))
+  ;; (%%infer-entry clause refine): the entry point of the callable of a clause of inferReturnTypes (refine 0)
+  ;; or refineReturnTypes (refine 1), made from CLAUSE as it is written, so that an error is reported at its
+  ;; position. The words of the call are 11 on Linux and 7 on Windows.
+  (define-syntax %%infer-entry
+    (syntax-rules ()
+      [(_ clause refine)
+       (case (machine-type)
+         [(a6le ta6le a6osx ta6osx)
+          (crest-make-static-c-callable
+           (uptr uptr uptr uptr uptr uptr uptr uptr uptr uptr uptr) logical-result
+           (let ([proc clause])
+             (lambda (w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10)
+               (%%infer proc refine w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10))))]
+         [(a6nt ta6nt)
+          (crest-make-static-c-callable
+           (uptr uptr uptr uptr uptr uptr uptr) logical-result
+           (let ([proc clause])
+             (lambda (w0 w1 w2 w3 w4 w5 w6)
+               (%%infer proc refine w0 w1 w2 w3 w4 w5 w6 0 0 0 0))))]
+         [else (error 'mlir::InferTypeOpInterface
+                      "the calling convention of this machine type is not supported"
+                      (machine-type))])]))
 
   ;; The callable of an isCompatibleReturnTypes clause: MLIR calls it as
   ;; bool isCompatibleReturnTypes(TypeRange lhs, TypeRange rhs), and a TypeRange is 16 bytes, so it
@@ -112,23 +113,23 @@
     (let ([types (%crest::InferTypeOpInterface::decodeCompatible w0 w1 w2 w3)])
       (if (compatible (car types) (cadr types)) 1 0)))
 
-  (define (%%compatible-entry-point compatible location)
-    (case (machine-type)
-      [(a6le ta6le a6osx ta6osx)
-       (crest-make-static-c-callable
-        (uptr uptr uptr uptr) unsigned-8
-        (lambda (w0 w1 w2 w3)
-          (%%compatible compatible w0 w1 w2 w3))
-        :location location)]
-      [(a6nt ta6nt)
-       (crest-make-static-c-callable
-        (uptr uptr) unsigned-8
-        (lambda (w0 w1)
-          (%%compatible compatible w0 w1 0 0))
-        :location location)]
-      [else (error 'mlir::InferTypeOpInterface
-                   "the calling convention of this machine type is not supported"
-                   (machine-type))]))
+  (define-syntax %%compatible-entry
+    (syntax-rules ()
+      [(_ clause)
+       (case (machine-type)
+         [(a6le ta6le a6osx ta6osx)
+          (crest-make-static-c-callable
+           (uptr uptr uptr uptr) unsigned-8
+           (let ([compatible clause])
+             (lambda (w0 w1 w2 w3) (%%compatible compatible w0 w1 w2 w3))))]
+         [(a6nt ta6nt)
+          (crest-make-static-c-callable
+           (uptr uptr) unsigned-8
+           (let ([compatible clause])
+             (lambda (w0 w1) (%%compatible compatible w0 w1 0 0))))]
+         [else (error 'mlir::InferTypeOpInterface
+                      "the calling convention of this machine type is not supported"
+                      (machine-type))])]))
 
   ;; What MLIR does for an op that does not override the method (InferTypeOpInterface.td), written
   ;; here so that nothing hides in C++.
@@ -161,35 +162,6 @@
             [else (loop (cdr rest)
                         (string-append text (if (string=? text "") "" ", ")
                                        (mlir::Type::print (car rest))))])))
-
-  ;; The C functions of the clauses of an op. `dispatcher` is (lambda (method) ...): a method name
-  ;; answers its clause or #f. The answer is the dispatcher of C: (lambda (method) ...) that answers
-  ;; the entry point of the foreign-callable of each method. The callables are made here, once: the
-  ;; entry of :interfaces is evaluated when the library of the dialect is loaded, and C++ gets the
-  ;; dispatcher with the TypeID of the interface, asks it for the entries while it registers the op,
-  ;; and puts them in the slots of the Concept of the op (lib/Crest/InferType.cpp). It does not keep
-  ;; the dispatcher. The clauses of refineReturnTypes and isCompatibleReturnTypes that the op does not
-  ;; give are MLIR's.
-  ;; A clause is the pair (procedure . position), the position of the clause in the Scheme source,
-  ;; (file line column) or #f. The defaults have the position of the clause of inferReturnTypes.
-  (define (%%c-dispatcher dispatcher)
-    (let* ([infer-clause (dispatcher 'inferReturnTypes)]
-           [location (cdr infer-clause)]
-           [infer (car infer-clause)]
-           [compatible-clause (dispatcher 'isCompatibleReturnTypes)]
-           [compatible (if compatible-clause (car compatible-clause) %%default-compatible)]
-           [refine-clause (dispatcher 'refineReturnTypes)]
-           [refine (if refine-clause (car refine-clause) (%%default-refine infer compatible))]
-           [entries (list (cons 'inferReturnTypes (%%entry-point infer 0 location))
-                          (cons 'refineReturnTypes
-                                (%%entry-point refine 1 (if refine-clause (cdr refine-clause) location)))
-                          (cons 'isCompatibleReturnTypes
-                                (%%compatible-entry-point
-                                 compatible (if compatible-clause (cdr compatible-clause) location))))])
-      (lambda (method)
-        (cond
-         [(assq method entries) => cdr]
-         [else 0]))))
 
   ;; An entry of the :interfaces clause of define-op:
   ;;   (mlir::InferTypeOpInterface
@@ -240,16 +212,29 @@
               ':interfaces
               "mlir::InferTypeOpInterface needs a clause for inferReturnTypes: MLIR has no default, the op gives it"
               stx))
-           (with-syntax ([(position ...)
-                          (map (lambda (clause)
-                                 (datum->syntax #'stx (syntax->first-file+line+col clause)))
-                               (syntax->list #'((method (formal ...) body ...) ...)))])
-             #'(cons (mlir::InferTypeOpInterface::getInterfaceID)
-                     (%%c-dispatcher
-                      (lambda (name)
-                        (case name
-                          [(method) (cons (lambda (formal ...) body ...) 'position)] ...
-                          [else #f]))))))]
+           ;; The callables are made here, once: the entry of :interfaces is evaluated when the library of
+           ;; the dialect is loaded, and C++ gets the dispatcher with the TypeID of the interface, asks it
+           ;; for the entries while it registers the op, and puts them in the slots of the Concept of the
+           ;; op (lib/Crest/InferType.cpp). It does not keep the dispatcher. The clauses of
+           ;; refineReturnTypes and isCompatibleReturnTypes that the op does not give are MLIR's.
+           (let* ([clause-lambda
+                   (lambda (name)
+                     (let loop ([clauses (syntax->list #'((method (formal ...) body ...) ...))])
+                       (and (pair? clauses)
+                            (syntax-case (car clauses) ()
+                              [(m (f ...) b ...)
+                               (if (eq? (syntax->datum #'m) name)
+                                   #'(lambda (f ...) b ...)
+                                   (loop (cdr clauses)))]))))]
+                  [infer (clause-lambda 'inferReturnTypes)]
+                  [compatible (or (clause-lambda 'isCompatibleReturnTypes) #'%%default-compatible)]
+                  [refine (or (clause-lambda 'refineReturnTypes)
+                              #`(%%default-refine #,infer #,compatible))])
+             #`(cons (mlir::InferTypeOpInterface::getInterfaceID)
+                     (crest-callback-entry-dispatcher
+                      (list (cons 'inferReturnTypes (%%infer-entry #,infer 0))
+                            (cons 'refineReturnTypes (%%infer-entry #,refine 1))
+                            (cons 'isCompatibleReturnTypes (%%compatible-entry #,compatible)))))))]
         [(_ clause ...)
          (syntax-violation ':interfaces
                            "mlir::InferTypeOpInterface clauses are written (method (formal ...) body ...)"
