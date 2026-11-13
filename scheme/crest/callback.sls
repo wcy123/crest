@@ -27,7 +27,7 @@
 ;;   crest-make-static-c-callable   locks it for good: only for a callback made once, at the library
 ;;                                  level, that uses no state of a run.
 ;;   with-c-callable                locks it for the body and unlocks it after, also on an error. The
-;;                                  value is a procedure, or the address of a locked callable that the
+;;                                  procedure is a procedure, or the address of a locked callable that the
 ;;                                  caller made (reused, never unlocked here).
 ;;
 ;; Several of them nest with with* ((mlir support with)). The conversion clauses (with-TypeConverter,
@@ -78,9 +78,9 @@
 
   ;; @brief with-c-callable — run a body with the address of a C function made from a procedure.
   ;; @param name           identifier bound to the address inside BODY
-  ;; @param argument-type  as for crest-make-static-c-callable; not used when VALUE is an address
-  ;; @param result-type    as for crest-make-static-c-callable; not used when VALUE is an address
-  ;; @param value          a procedure, or an address. A procedure: the macro makes the foreign-callable,
+  ;; @param argument-type  as for crest-make-static-c-callable; not used when PROCEDURE is an address
+  ;; @param result-type    as for crest-make-static-c-callable; not used when PROCEDURE is an address
+  ;; @param procedure      a procedure, or an address. A procedure: the macro makes the foreign-callable,
   ;;                       locks it, and unlocks it when BODY ends, also when it ends by an error; use it for
   ;;                       a callback that C++ calls while BODY runs. An address that
   ;;                       crest-make-static-c-callable answered, to reuse it (making one costs about 200
@@ -91,28 +91,28 @@
   ;; @return               the value of the last expression of BODY
   ;; @note                 A macro. The address is valid only inside BODY: if C++ keeps it after BODY ends,
   ;;                       use crest-make-static-c-callable. An error of the procedure is reported at the
-  ;;                       Scheme position of VALUE.
+  ;;                       Scheme position of PROCEDURE.
   ;; @example
   ;;   (with-c-callable (visit (uptr) walk-result (lambda (op) mlir::WalkResult::advance))
   ;;     (call-cpp visit))
   (define-syntax with-c-callable
     (lambda (stx)
       (syntax-case stx ()
-        [(_ (name (type ...) result-type value) body ...)
-         (with-syntax ([location #`(quote #,(datum->syntax #'stx (syntax->first-file+line+col #'value)))])
-           #'(let* ([given value]
-                    [made? (procedure? given)]
+        [(_ (name (type ...) result-type procedure) body ...)
+         (with-syntax ([location #`(quote #,(datum->syntax #'stx (syntax->first-file+line+col #'procedure)))])
+           #'(let* ([callback procedure]
+                    [made? (procedure? callback)]
                     [code (cond
-                           [made? (%%make-code (type ...) result-type given location)]
-                           [(and (integer? given) (exact? given)) (foreign-callable-code-object given)]
+                           [made? (%%make-code (type ...) result-type callback location)]
+                           [(and (integer? callback) (exact? callback)) (foreign-callable-code-object callback)]
                            [else (assertion-violation 'with-c-callable
-                                                      "the value must be a procedure or the address of a locked callable"
-                                                      given)])])
+                                                      "the procedure must be a procedure or the address of a locked callable"
+                                                      callback)])])
                (when made? (lock-object code))
                (unless (locked-object? code)
                  (assertion-violation 'with-c-callable
                                       "the callable of this address is not locked"
-                                      given))
+                                      callback))
                (with-raii locked (and made? code)
                           (lambda (locked) (when locked (unlock-object locked)))
                  (let ([name (foreign-callable-entry-point code)]) body ...))))])))

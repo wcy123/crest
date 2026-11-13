@@ -279,8 +279,8 @@ function has the prototype that C++ or MLIR declares, result type included**, an
   callback, the body of a `define-pass`, a pattern made by `define-conversion-pattern`): it is made once, when the
   library loads. A callback that uses the state of a run (a type converter, a target) is made by `with-c-callable`
   or by a clause, so that a scope releases it; never make one per run with this.
-- `(with-c-callable (name (type ...) result-type value) body ...)` makes it for `body` and unlocks it after, also on an
-  error. `value` is a procedure, or the address of a locked callable that the caller made (reused, never
+- `(with-c-callable (name (type ...) result-type procedure) body ...)` makes it for `body` and unlocks it after, also on an
+  error. `procedure` is a procedure, or the address of a locked callable that the caller made (reused, never
   unlocked by the macro; an error if it is not locked).
 - A function that only calls the callback while it runs (`mlir::Operation::walk`,
   `mlir::affine::buildAffineLoopNest`, `mlir::RewriterBase::modifyOpInPlace`) is a Scheme macro that takes a
