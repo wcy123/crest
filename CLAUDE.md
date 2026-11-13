@@ -277,14 +277,16 @@ function has the prototype that C++ or MLIR declares, result type included**, an
 - `(crest-make-static-c-callable (type ...) result-type procedure)` makes it, locks it for good and answers its address.
   Use it only at the library level, for a callback that uses no state of a run (an op's clause, a dialect's
   callback, the body of a `define-pass`, a pattern made by `define-conversion-pattern`): it is made once, when the
-  library loads. A callback that uses the state of a run (a type converter, a target) is made by `with-c-callable`
+  library loads. A callback that uses the state of a run (a type converter, a target) is made by `with-c-callable/lambda`
   or by a clause, so that a scope releases it; never make one per run with this.
-- `(with-c-callable (name (type ...) result-type procedure) body ...)` makes it for `body` and unlocks it after, also on an
-  error. `procedure` is a procedure, or the address of a locked callable that the caller made (reused, never
-  unlocked by the macro; an error if it is not locked).
+- `(with-c-callable/lambda (name (type ...) result-type procedure) body ...)` makes it from a procedure for `body` and
+  unlocks it after, also on an error. `(with-c-callable/code (name address) body ...)` uses the address of a locked
+  callable that the caller made (reused, never unlocked by the macro; an error if it is not locked).
+  `with-c-callable` chooses between the two when it runs; it is for the clause macros below, whose entries are
+  procedures or addresses.
 - A function that only calls the callback while it runs (`mlir::Operation::walk`,
   `mlir::affine::buildAffineLoopNest`, `mlir::RewriterBase::modifyOpInPlace`) is a Scheme macro that takes a
-  procedure and wraps it in `with-c-callable`.
+  procedure and wraps it in `with-c-callable/lambda`.
 - A function that C++ keeps the callback in (`type-converter-add-conversion`, `add-conversion-pattern`,
   `target-add-dynamically-legal-op`, ...) takes the **address** and raises an error for a procedure. The friendly
   form is a clause of the macro that makes the C++ object, which makes the callables around its body:
@@ -296,7 +298,7 @@ function has the prototype that C++ or MLIR declares, result type included**, an
 
 **No error leaves a callable.** C++ calls a callable through a C function pointer, so an error that escaped it
 would cross the C++ frames (Rule 20). MLIR's prototypes have no room for an error, so the guard of every callable
-(`crest-make-static-c-callable`, `with-c-callable`) catches it with
+(`crest-make-static-c-callable`, `with-c-callable/lambda`) catches it with
 `guard` and reports it through MLIR's own channel:
 
 - **result `void`**: nothing can say "failed", so the process ends with the text `<file>:<line>:<column>: <who>: <why>`

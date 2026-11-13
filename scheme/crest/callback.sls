@@ -26,9 +26,11 @@
 ;;
 ;;   crest-make-static-c-callable   locks it for good: only for a callback made once, at the library
 ;;                                  level, that uses no state of a run.
-;;   with-c-callable                locks it for the body and unlocks it after, also on an error. The
-;;                                  procedure is a procedure, or the address of a locked callable that the
-;;                                  caller made (reused, never unlocked here).
+;;   with-c-callable/lambda         makes it from a procedure, locks it for the body and unlocks it after,
+;;                                  also on an error.
+;;   with-c-callable/code           uses the address of a locked callable that the caller made (reused,
+;;                                  never unlocked here).
+;;   with-c-callable                one or the other, decided when it runs: for the clause macros.
 ;;
 ;; Several of them nest with with* ((mlir support with)). The conversion clauses (with-TypeConverter,
 ;; with-ConversionTarget, with-RewritePatternSet) do that around their body.
@@ -39,6 +41,8 @@
 ;;===----------------------------------------------------------------------===;;
 (library (crest callback)
   (export crest-make-static-c-callable
+          with-c-callable/lambda
+          with-c-callable/code
           with-c-callable
           crest-call-guarded
           crest-callback-pointer-list)
@@ -76,46 +80,63 @@
                (lock-object code)
                (foreign-callable-entry-point code)))])))
 
-  ;; @brief with-c-callable — run a body with the address of a C function made from a procedure.
+  ;; @brief with-c-callable/lambda — run a body with the address of a C function made from a procedure.
   ;; @param name           identifier bound to the address inside BODY
-  ;; @param argument-type  as for crest-make-static-c-callable; not used when PROCEDURE is an address
-  ;; @param result-type    as for crest-make-static-c-callable; not used when PROCEDURE is an address
-  ;; @param procedure      a procedure, or an address. A procedure: the macro makes the foreign-callable,
-  ;;                       locks it, and unlocks it when BODY ends, also when it ends by an error; use it for
-  ;;                       a callback that C++ calls while BODY runs. An address that
-  ;;                       crest-make-static-c-callable answered, to reuse it (making one costs about 200
-  ;;                       ns): used as it is and never unlocked, because it is the caller's; a callable that
-  ;;                       is not locked is an error, because the garbage collector could move it and C++
-  ;;                       would call a stale address
+  ;; @param argument-type  as for crest-make-static-c-callable
+  ;; @param result-type    as for crest-make-static-c-callable
+  ;; @param procedure      the procedure that the C function calls. The macro makes the foreign-callable,
+  ;;                       locks it, and unlocks it when BODY ends, also when it ends by an error
   ;; @param body           expressions evaluated with NAME bound
   ;; @return               the value of the last expression of BODY
-  ;; @note                 A macro. The address is valid only inside BODY: if C++ keeps it after BODY ends,
-  ;;                       use crest-make-static-c-callable. An error of the procedure is reported at the
-  ;;                       Scheme position of PROCEDURE.
+  ;; @note                 A macro. Use it for a callback that C++ calls while BODY runs. The address is
+  ;;                       valid only inside BODY: if C++ keeps it after BODY ends, use
+  ;;                       crest-make-static-c-callable. An error of the procedure is reported at the Scheme
+  ;;                       position of PROCEDURE.
   ;; @example
-  ;;   (with-c-callable (visit (uptr) walk-result (lambda (op) mlir::WalkResult::advance))
+  ;;   (with-c-callable/lambda (visit (uptr) walk-result (lambda (op) mlir::WalkResult::advance))
   ;;     (call-cpp visit))
-  (define-syntax with-c-callable
+  (define-syntax with-c-callable/lambda
     (lambda (stx)
       (syntax-case stx ()
         [(_ (name (type ...) result-type procedure) body ...)
          (with-syntax ([location #`(quote #,(datum->syntax #'stx (syntax->first-file+line+col #'procedure)))])
-           #'(let* ([callback procedure]
-                    [made? (procedure? callback)]
-                    [code (cond
-                           [made? (%%make-code (type ...) result-type callback location)]
-                           [(and (integer? callback) (exact? callback)) (foreign-callable-code-object callback)]
-                           [else (assertion-violation 'with-c-callable
-                                                      "the procedure must be a procedure or the address of a locked callable"
-                                                      callback)])])
-               (when made? (lock-object code))
-               (unless (locked-object? code)
-                 (assertion-violation 'with-c-callable
-                                      "the callable of this address is not locked"
-                                      callback))
-               (with-raii locked (and made? code)
-                          (lambda (locked) (when locked (unlock-object locked)))
+           #'(let ([code (%%make-code (type ...) result-type procedure location)])
+               (lock-object code)
+               (with-raii locked code
+                          (lambda (locked) (unlock-object locked))
                  (let ([name (foreign-callable-entry-point code)]) body ...))))])))
+
+  ;; @brief with-c-callable/code — run a body with the address of a callable that someone else made.
+  ;; @param name     identifier bound to the address inside BODY
+  ;; @param address  the address that crest-make-static-c-callable answered, to reuse it (making a callable
+  ;;                 costs about 200 ns). The macro never unlocks it, because it is the caller's. A callable
+  ;;                 that is not locked is an error: the garbage collector could move it, and C++ would
+  ;;                 call a stale address
+  ;; @param body     expressions evaluated with NAME bound
+  ;; @return         the value of the last expression of BODY
+  (define-syntax with-c-callable/code
+    (syntax-rules ()
+      [(_ (name address) body ...)
+       (let ([name address])
+         (unless (and (integer? name) (exact? name)
+                      (locked-object? (foreign-callable-code-object name)))
+           (assertion-violation 'with-c-callable/code "the address must be that of a locked callable" name))
+         body ...)]))
+
+  ;; @brief with-c-callable — with-c-callable/lambda or with-c-callable/code, decided when it runs.
+  ;; @note   For the macros that take a procedure or an address from their user (the clauses of
+  ;;         with-TypeConverter, with-ConversionTarget and with-RewritePatternSet). The quoted copy of
+  ;;         PROCEDURE only keeps its Scheme position for the report of an error.
+  (define-syntax with-c-callable
+    (syntax-rules ()
+      [(_ (name (type ...) result-type procedure) body ...)
+       (let ([callback procedure]
+             [run (lambda (name) body ...)])
+         (if (procedure? callback)
+             (with-c-callable/lambda (address (type ...) result-type (begin 'procedure callback))
+               (run address))
+             (with-c-callable/code (address callback)
+               (run address))))]))
 
   ;; @brief crest-call-guarded — call a Scheme procedure for C++ under the guard of a callable.
   ;; @param procedure  the procedure to call

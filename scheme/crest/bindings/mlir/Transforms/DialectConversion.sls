@@ -64,13 +64,13 @@
 
   ;; The callbacks of the procedures below are C functions that Scheme makes of the user's closures,
   ;; and C++ keeps their addresses for as long as the type converter, the target or the pattern set is
-  ;; used: the caller keeps each function alive for that long (with-c-callable, or
+  ;; used: the caller keeps each function alive for that long (with-c-callable/lambda, or
   ;; crest-make-static-c-callable for the whole program). The procedures that take one take its
   ;; address; the with-TypeConverter and with-ConversionTarget clauses below make the functions around
   ;; their body (the C result types are int for a verdict and uptr for a type or a value), and the
   ;; adapters make a procedure with the C types of a friendly one:
   ;;
-  ;;   (with-c-callable (legal (uptr) int (legality->c (lambda (op) ...)))
+  ;;   (with-c-callable/lambda (legal (uptr) int (legality->c (lambda (op) ...)))
   ;;     (target-add-dynamically-legal-op target ctx "func.func" legal)
   ;;     ...)
   ;;
@@ -110,7 +110,7 @@
     (unless (and (integer? callable) (exact? callable))
       (assertion-violation
        who
-       "the callback must be the address of a C function: make it with crest-make-static-c-callable, or with with-c-callable around the use; the clauses of with-TypeConverter, with-ConversionTarget and with-RewritePatternSet take procedures"
+       "the callback must be the address of a C function: make it with crest-make-static-c-callable, or with with-c-callable/lambda around the use; the clauses of with-TypeConverter, with-ConversionTarget and with-RewritePatternSet take procedures"
        callable))
     callable)
 
@@ -175,13 +175,13 @@
   (define mlir::applyPartialConversion  %mlir::applyPartialConversion)
   ;; @brief RewriterBase::modifyOpInPlace: THUNK changes the op, and the rewriter is told.
   ;; THUNK is an expression for a procedure of no arguments (or a code object that the caller made and
-  ;; locked, see with-c-callable). It is a C function for the length of the call and released when it
+  ;; locked, see with-c-callable/lambda). It is a C function for the length of the call and released when it
   ;; returns, also on an error. MLIR's callback is void, so an error of THUNK ends the process with the
   ;; text of the error. A macro.
   (define-syntax mlir::RewriterBase::modifyOpInPlace
     (syntax-rules ()
       [(_ rewriter op thunk)
-       (with-c-callable (c-thunk () void thunk)
+       (with-c-callable/lambda (c-thunk () void thunk)
          (%mlir::RewriterBase::modifyOpInPlace rewriter op c-thunk))]))
 
   ;; @brief Register a Scheme ConversionPattern. CALLABLE is the address of a C function

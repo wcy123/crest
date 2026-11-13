@@ -14,7 +14,7 @@
 
 ;; A procedure: the C function calls it, it is locked in the body and unlocked after.
 (let ([seen #f])
-  (with-c-callable (entry (int) int (lambda (x) (+ x 1)))
+  (with-c-callable/lambda (entry (int) int (lambda (x) (+ x 1)))
     (set! seen entry)
     (say "answers: " (call-c entry 41))
     (say "locked in the body: " (yes/no (locked? entry))))
@@ -23,14 +23,14 @@
 ;; An error in the body unlocks it too.
 (let ([seen #f])
   (guard (c [#t (say "error caught")])
-    (with-c-callable (entry (int) int (lambda (x) x))
+    (with-c-callable/lambda (entry (int) int (lambda (x) x))
       (set! seen entry)
       (error 'test "boom")))
   (say "locked after an error: " (yes/no (locked? seen))))
 
 ;; The address that crest-make-static-c-callable answered: used as it is, still locked after.
 (let ([address (crest-make-static-c-callable (int) int (lambda (x) (+ x 100)))])
-  (with-c-callable (entry (int) int address)
+  (with-c-callable/code (entry address)
     (say "address answers: " (call-c entry 1)
          " same address: " (yes/no (= entry address))))
   (say "address still locked: " (yes/no (locked? address))))
@@ -39,13 +39,13 @@
 (let* ([code (foreign-callable (lambda (x) x) (int) int)]
        [address (foreign-callable-entry-point code)])
   (guard (c [#t (say "unlocked address rejected")])
-    (with-c-callable (entry (int) int address)
+    (with-c-callable/code (entry address)
       (say "not reached")))
   (say "still not locked: " (yes/no (not (locked-object? code)))))
 
 ;; Not a procedure and not the address of a callable.
 (guard (c [#t (say "a number rejected")])
-  (with-c-callable (entry (int) int 42)
+  (with-c-callable/code (entry 42)
     (say "not reached")))
 
 ;; A static callable stays locked.
@@ -58,8 +58,8 @@
 (define (code-count)
   (collect 4 4)
   (apply + (map cadr (cdr (assq 'code (object-counts))))))
-(with-c-callable (entry (int) int (lambda (x) x)) (call-c entry 1))
+(with-c-callable/lambda (entry (int) int (lambda (x) x)) (call-c entry 1))
 (define before (code-count))
 (do ([i 0 (+ i 1)]) ((= i 300))
-  (with-c-callable (entry (int) int (lambda (x) x)) (call-c entry i)))
+  (with-c-callable/lambda (entry (int) int (lambda (x) x)) (call-c entry i)))
 (say "300 runs released: " (yes/no (< (- (code-count) before) 30)))

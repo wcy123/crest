@@ -15,7 +15,7 @@
               with-PassManager mlir::PassManager::nest mlir::PassManager::addPass
               mlir::OpPassManager::addPass mlir::PassManager::run!)
         (crest pass)
-        (only (crest callback) with-c-callable)
+        (only (crest callback) with-c-callable/lambda)
         (passes leaks))
 
 (define (code-count)
@@ -83,7 +83,7 @@
             (with-ConversionTarget target (ctx)
               (ignoring-errors
                (lambda ()
-                 (with-c-callable (c (uptr) uptr (lambda (type) type))
+                 (with-c-callable/lambda (c (uptr) uptr (lambda (type) type))
                    (type-converter-add-conversion target c)))))))
 
 (scenario "wrong-handle-materialization" (ctx module)
@@ -91,22 +91,22 @@
             (with-ConversionTarget target (ctx)
               (ignoring-errors
                (lambda ()
-                 (with-c-callable (c (uptr uptr uptr uptr uptr) uptr (lambda (b t i n l) 0))
+                 (with-c-callable/lambda (c (uptr uptr uptr uptr uptr) uptr (lambda (b t i n l) 0))
                    (mlir::TypeConverter::addSourceMaterialization target c))))
               (ignoring-errors
                (lambda ()
-                 (with-c-callable (c (uptr uptr uptr uptr uptr) uptr (lambda (b t i n l) 0))
+                 (with-c-callable/lambda (c (uptr uptr uptr uptr uptr) uptr (lambda (b t i n l) 0))
                    (mlir::TypeConverter::addTargetMaterialization target c)))))))
 
 (scenario "wrong-handle-legality" (ctx module)
           (with-TypeConverter tc
             (ignoring-errors
              (lambda ()
-               (with-c-callable (c (uptr) int (lambda (op) 0))
+               (with-c-callable/lambda (c (uptr) int (lambda (op) 0))
                  (target-add-dynamically-legal-op tc ctx "test.a" c))))
             (ignoring-errors
              (lambda ()
-               (with-c-callable (c (uptr) int (lambda (op) 1))
+               (with-c-callable/lambda (c (uptr) int (lambda (op) 1))
                  (target-mark-unknown-ops-dynamically-legal tc c))))))
 
 (scenario "wrong-handle-patterns" (ctx module)
@@ -115,15 +115,15 @@
                   (with-RewritePatternSet patterns (ctx)))
             (ignoring-errors
              (lambda ()
-               (with-c-callable (c (uptr uptr) int (lambda (op rewriter) 0))
+               (with-c-callable/lambda (c (uptr uptr) int (lambda (op rewriter) 0))
                  (add-rewrite-pattern tc "test.a" c 1))))
             (ignoring-errors
              (lambda ()
-               (with-c-callable (c (uptr uptr uptr uptr) int (lambda (op o r t) 0))
+               (with-c-callable/lambda (c (uptr uptr uptr uptr) int (lambda (op o r t) 0))
                  (add-conversion-pattern patterns "test.a" c target 1))))
             (ignoring-errors
              (lambda ()
-               (with-c-callable (c (uptr uptr uptr uptr) int (lambda (op o r t) 0))
+               (with-c-callable/lambda (c (uptr uptr uptr uptr) int (lambda (op o r t) 0))
                  (add-conversion-pattern/ctx tc "test.a" c 1))))))
 
 (scenario "wrong-handle-modify" (ctx module)

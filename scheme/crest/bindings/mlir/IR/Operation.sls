@@ -54,7 +54,7 @@
     mlir::Operation::getParentOfType<ModuleOp>
     operation-get-operands)
   (import (rnrs)
-          (only (crest callback) with-c-callable)
+          (only (crest callback) with-c-callable/lambda)
           (mlir IR Operation ffi)
           (rename (rime loop) (:with :rime-with))
           (only (mlir IR BuiltinAttributes)
@@ -153,7 +153,7 @@
   (define-syntax mlir::Operation::walk
     (syntax-rules ()
       [(_ op callback)
-       (with-c-callable (visit (uptr) walk-result callback)
+       (with-c-callable/lambda (visit (uptr) walk-result callback)
          (%walk op visit))]))
 
   ;; @brief mlir::Operation::setOperand — replace the i-th operand with a new value.
