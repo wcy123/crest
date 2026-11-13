@@ -1,0 +1,2 @@
+# Reports that valgrind makes inside the tools that CREST links, and that are not CREST's: add an entry with
+# `valgrind --gen-suppressions=all` and a comment that says why. Empty until a run shows one.

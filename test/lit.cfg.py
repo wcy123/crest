@@ -44,9 +44,35 @@ def find_tool(name):
             return path
     return lit.util.which(name)  # fallback to PATH
 
-config.substitutions.append(("%crest-opt",
-    os.path.join(config.crest_tools_dir, "crest-opt")))
-config.substitutions.append(("%scheme-mlir",
-    os.path.join(os.path.dirname(config.crest_tools_dir), "scheme-mlir", "scheme-mlir")))
+crest_opt = os.path.join(config.crest_tools_dir, "crest-opt")
+scheme_mlir = os.path.join(os.path.dirname(config.crest_tools_dir), "scheme-mlir", "scheme-mlir")
+
+# lit --param valgrind_logs=DIR runs crest-opt and scheme-mlir under valgrind, one log file for each run in DIR.
+# tools/check-valgrind-logs.py reads them (docs/tech-note.md, "Checking for memory leaks"). A test that measures
+# the heap itself says "UNSUPPORTED: valgrind".
+valgrind_logs = lit_config.params.get("valgrind_logs")
+if valgrind_logs:
+    config.available_features.add("valgrind")
+    valgrind_logs = os.path.abspath(valgrind_logs)
+    wrappers = os.path.join(valgrind_logs, "bin")
+    os.makedirs(wrappers, exist_ok=True)
+
+    def under_valgrind(real_tool):
+        name = os.path.basename(real_tool)
+        wrapper = os.path.join(wrappers, name)
+        suppressions = os.path.join(os.path.dirname(__file__), "valgrind.supp")
+        with open(wrapper, "w") as out:
+            out.write("#!/bin/sh\n"
+                      "exec valgrind --leak-check=full --show-leak-kinds=definite --num-callers=14 "
+                      f"--suppressions={suppressions} --log-file={valgrind_logs}/{name}.%p.log "
+                      f'{real_tool} "$@"\n')
+        os.chmod(wrapper, 0o755)
+        return wrapper
+
+    crest_opt = under_valgrind(crest_opt)
+    scheme_mlir = under_valgrind(scheme_mlir)
+
+config.substitutions.append(("%crest-opt", crest_opt))
+config.substitutions.append(("%scheme-mlir", scheme_mlir))
 config.substitutions.append(("%FileCheck", find_tool("FileCheck")))
 config.substitutions.append(("%samples", config.crest_samples_dir))
