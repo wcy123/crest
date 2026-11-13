@@ -80,6 +80,10 @@ void registerIROpBuilderBindings() {
   register_builder_binding(
       "mlir::OpBuilder::setInsertionPoint",
       [](mlir::OpBuilder& builder, uint64_t op_ptr) -> ptr {
+        if (!op_ptr) {
+          return scheme_error("mlir::OpBuilder::setInsertionPoint",
+                              "operation pointer is null");
+        }
         builder.setInsertionPoint(reinterpret_cast<mlir::Operation*>(op_ptr));
         return Svoid;
       });

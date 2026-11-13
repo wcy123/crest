@@ -153,10 +153,14 @@ void registerIRSymbolInterfacesBindings() {
           return scheme_error("mlir::SymbolOpInterface::setName",
                               "op does not implement SymbolOpInterface");
         }
-        c->setName(
-            c, operation(op),
-            mlir::cast<mlir::StringAttr>(mlir::Attribute::getFromOpaquePointer(
-                reinterpret_cast<const void*>(name_ptr))));
+        auto name = mlir::dyn_cast_or_null<mlir::StringAttr>(
+            mlir::Attribute::getFromOpaquePointer(
+                reinterpret_cast<const void*>(name_ptr)));
+        if (!name) {
+          return scheme_error("mlir::SymbolOpInterface::setName",
+                              "the name is null or not a StringAttr");
+        }
+        c->setName(c, operation(op), name);
         return Svoid;
       });
   Sregister_symbol(
@@ -257,12 +261,15 @@ void registerIRSymbolInterfacesBindings() {
           return scheme_error("mlir::SymbolOpInterface::replaceAllSymbolUses",
                               "op does not implement SymbolOpInterface");
         }
+        auto name = mlir::dyn_cast_or_null<mlir::StringAttr>(
+            mlir::Attribute::getFromOpaquePointer(
+                reinterpret_cast<const void*>(new_name)));
+        if (!name) {
+          return scheme_error("mlir::SymbolOpInterface::replaceAllSymbolUses",
+                              "the new name is null or not a StringAttr");
+        }
         return Sinteger64(mlir::succeeded(c->replaceAllSymbolUses(
-                              c, operation(op),
-                              mlir::cast<mlir::StringAttr>(
-                                  mlir::Attribute::getFromOpaquePointer(
-                                      reinterpret_cast<const void*>(new_name))),
-                              operation(from)))
+                              c, operation(op), name, operation(from)))
                               ? 1
                               : 0);
       });

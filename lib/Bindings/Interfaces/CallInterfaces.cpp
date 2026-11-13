@@ -161,6 +161,10 @@ void registerInterfacesCallInterfacesBindings() {
   Sregister_symbol(
       "crest::CallableOpInterface::keepTypes",
       (void*)+[](uint64_t op_ptr, ptr types) -> ptr {
+        if (!op_ptr) {
+          return scheme_error("crest::CallableOpInterface::keepTypes",
+                              "operation pointer is null");
+        }
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         llvm::SmallVector<mlir::Type> list;
         for (ptr cur = types; cur != Snil; cur = Scdr(cur)) {
@@ -266,9 +270,14 @@ void registerInterfacesCallInterfacesBindings() {
   Sregister_symbol(
       "mlir::CallInterfaceCallable::get<SymbolRefAttr>",
       (void*)+[](uint64_t attr) -> ptr {
-        mlir::CallInterfaceCallable callable(mlir::cast<mlir::SymbolRefAttr>(
+        auto symbol = mlir::dyn_cast_or_null<mlir::SymbolRefAttr>(
             mlir::Attribute::getFromOpaquePointer(
-                reinterpret_cast<const void*>(attr))));
+                reinterpret_cast<const void*>(attr)));
+        if (!symbol) {
+          return scheme_error("mlir::CallInterfaceCallable::get<SymbolRefAttr>",
+                              "the pointer is null or not a SymbolRefAttr");
+        }
+        mlir::CallInterfaceCallable callable(symbol);
         return Sunsigned64(
             reinterpret_cast<uint64_t>(callable.getOpaqueValue()));
       });
@@ -307,6 +316,10 @@ void registerInterfacesCallInterfacesBindings() {
   Sregister_symbol(
       "crest::OperandRange::get",
       (void*)+[](uint64_t op_ptr, unsigned start, unsigned count) -> ptr {
+        if (!op_ptr) {
+          return scheme_error("crest::OperandRange::get",
+                              "operation pointer is null");
+        }
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         mlir::OperandRange range = op->getOperands().slice(start, count);
         return Scons(Sunsigned64(reinterpret_cast<uint64_t>(range.getBase())),

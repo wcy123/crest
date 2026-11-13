@@ -254,6 +254,11 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
   Sregister_symbol(
       "mlir::InferTypeOpInterface::inferReturnTypes<OperationState*>",
       (void*)+[](uint64_t state_ptr) -> ptr {
+        if (!state_ptr) {
+          return scheme_error(
+              "mlir::InferTypeOpInterface::inferReturnTypes<OperationState*>",
+              "state pointer is null");
+        }
         return infer(*reinterpret_cast<mlir::OperationState*>(state_ptr));
       });
 }

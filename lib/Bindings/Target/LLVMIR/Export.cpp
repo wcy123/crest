@@ -37,7 +37,11 @@ void registerTargetLLVMIRExportBindings() {
   Sregister_symbol(
       "mlir::translateModuleToLLVMIR", (void*)+[](uint64_t module_ptr) -> ptr {
         auto* op = reinterpret_cast<mlir::Operation*>(module_ptr);
-        auto module = mlir::cast<mlir::ModuleOp>(op);
+        auto module = mlir::dyn_cast_or_null<mlir::ModuleOp>(op);
+        if (!module) {
+          return scheme_error("mlir::translateModuleToLLVMIR",
+                              "the pointer is null or not a ModuleOp");
+        }
         auto* ctx = module->getContext();
 
         mlir::registerBuiltinDialectTranslation(*ctx);
@@ -64,7 +68,11 @@ void registerTargetLLVMIRExportBindings() {
       "mlir::translateModuleToLLVMIR<int>",
       (void*)+[](uint64_t module_ptr, int opt_level) -> ptr {
         auto* op = reinterpret_cast<mlir::Operation*>(module_ptr);
-        auto module = mlir::cast<mlir::ModuleOp>(op);
+        auto module = mlir::dyn_cast_or_null<mlir::ModuleOp>(op);
+        if (!module) {
+          return scheme_error("mlir::translateModuleToLLVMIR<int>",
+                              "the pointer is null or not a ModuleOp");
+        }
         auto* ctx = module->getContext();
 
         llvm::InitializeNativeTarget();
