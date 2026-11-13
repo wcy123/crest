@@ -337,7 +337,7 @@ void registerCrestDynamicOpBindings() {
   //   1 verify-regions  (uptr op) → int
   //   2 parse           (uptr parser, uptr state) → int   [0 = generic format]
   //   3 print           (uptr op, uptr printer) → void    [0 = generic format]
-  //   4 fold            (uptr op, uptr attrs, uptr n, uptr folded) → int
+  //   4 fold            (uptr op, uptr operand-attrs, uptr folded) → int
   //   5 get-canonicalization-patterns (uptr pattern-set-shell) → void
   //   6 populate-default-attrs        (uptr op-name, uptr attrs) → void
   //   7 traits                        list of (name arg ...) lists of strings

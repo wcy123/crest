@@ -73,36 +73,52 @@ private:
 };
 
 using Args = llvm::ArrayRef<std::string>;
-// Attaches the trait to `def`; returns an error message or an empty string.
-using Factory = std::function<std::string(mlir::DynamicOpDefinition&,
+
+// What attaching a trait answers: an error message, or that the op has the
+// trait already. A second attempt is a status of its own: the caller words it,
+// and does not look for it in the text of an error.
+struct TraitResult {
+  std::string error;
+  bool repeated = false;
+
+  static TraitResult added() { return {}; }
+  static TraitResult failed(std::string message) {
+    return {std::move(message), false};
+  }
+  static TraitResult alreadyThere() { return {"", true}; }
+};
+
+// Attaches the trait to `def`.
+using Factory = std::function<TraitResult(mlir::DynamicOpDefinition&,
                                           llvm::StringRef, Args)>;
 
 template <typename T> Factory simple() {
   return [](mlir::DynamicOpDefinition& def, llvm::StringRef,
-            Args args) -> std::string {
+            Args args) -> TraitResult {
     if (!args.empty()) {
-      return "takes no arguments";
+      return TraitResult::failed("takes no arguments");
     }
-    return def.addTrait(std::make_unique<T>()) ? "" : "repeated";
+    return def.addTrait(std::make_unique<T>()) ? TraitResult::added()
+                                               : TraitResult::alreadyThere();
   };
 }
 
 // `pure` is AlwaysSpeculatable plus NoMemoryEffect. MLIR answers both through
 // interfaces (isSpeculatable, isMemoryEffectFree), so they are attached to the
 // op next to the trait.
-std::string addPure(mlir::DynamicOpDefinition& def, llvm::StringRef,
+TraitResult addPure(mlir::DynamicOpDefinition& def, llvm::StringRef,
                     Args args) {
   if (!args.empty()) {
-    return "takes no arguments";
+    return TraitResult::failed("takes no arguments");
   }
   if (!def.addTrait(
           std::make_unique<
               CrestTrait<mlir::OpTrait::AlwaysSpeculatableImplTrait>>())) {
-    return "repeated";
+    return TraitResult::alreadyThere();
   }
   addNoMemoryEffects(def.getInterfaceMap());
   addAlwaysSpeculatable(def.getInterfaceMap());
-  return "";
+  return TraitResult::added();
 }
 
 // CREST trait name -> how to attach it. One place that pairs a name with the
@@ -135,13 +151,13 @@ const llvm::StringMap<Factory>& registry() {
                          mlir::OpTrait::impl::verifyIsIsolatedFromAbove>>()},
       {"has-parent",
        [](mlir::DynamicOpDefinition& def, llvm::StringRef,
-          Args args) -> std::string {
+          Args args) -> TraitResult {
          if (args.empty()) {
-           return "needs at least one parent op name";
+           return TraitResult::failed("needs at least one parent op name");
          }
          return def.addTrait(std::make_unique<HasParentTrait>(args))
-                    ? ""
-                    : "repeated";
+                    ? TraitResult::added()
+                    : TraitResult::alreadyThere();
        }},
       {"pure", addPure},
   };
@@ -158,13 +174,13 @@ std::string addOpTraits(mlir::DynamicOpDefinition& def, llvm::StringRef opName,
     if (it == registry().end()) {
       return "unknown trait: " + name;
     }
-    std::string error =
+    TraitResult result =
         it->second(def, opName, llvm::ArrayRef<std::string>(spec).drop_front());
-    if (!error.empty()) {
-      if (error == "repeated") {
-        return "repeated trait: " + name;
-      }
-      return name + " " + error;
+    if (result.repeated) {
+      return "repeated trait: " + name;
+    }
+    if (!result.error.empty()) {
+      return name + " " + result.error;
     }
   }
   return "";

@@ -398,6 +398,10 @@ The Scheme side, in `(crest support CrestObject)`:
   the callback returns, and MLIR owns the object behind it. Do not store either one.
 - **A raw `OpBuilder*` is not a builder handle.** Builder bindings take a shell. Passing a raw
   pointer is an error, and an address that is not a shell at all is undefined behaviour.
+- **The check reads the first word at the address.** `CrestBox<T>::inner` refuses `0` and an object
+  with another tag. An address that is freed, or was never a CrestObject (a number, a raw
+  `Operation*`), is read as if it were one, and the result is undefined behaviour: no check in
+  C++ can tell it from a live object.
 - **The type tag is a function address.** It is unique only if every shared library sees the
   same `type_deletor`. `CREST_VISIBLE` forces default ELF visibility, so the dynamic linker
   merges the copies. On Windows each DLL keeps its own copy, so `isa<T>` is not safe for an

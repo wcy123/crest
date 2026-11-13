@@ -19,13 +19,23 @@
 #include "../Interpreter/ChezSchemeInterpreter.h"
 #include "mlir/IR/MLIRContext.h"
 #include <cstdint>
-#include <string>
 
 namespace crest {
 
+// The library that has the parameter is imported once: the import stays in the
+// interpreter, and an eval of the form costs about 6 microseconds, which the
+// scope below paid for every function that a Scheme pass visits.
+inline void importCurrentContextLibrary(ChezSchemeInterpreter& interpreter) {
+  static bool imported = false;
+  if (!imported) {
+    interpreter.eval("(import (mlir IR MLIRContext))");
+    imported = true;
+  }
+}
+
 inline void setCurrentContext(ChezSchemeInterpreter& interpreter,
                               mlir::MLIRContext* context) {
-  interpreter.eval("(import (mlir IR MLIRContext))");
+  importCurrentContextLibrary(interpreter);
   scheme_call("current-MLIRContext", reinterpret_cast<uint64_t>(context));
 }
 
@@ -33,11 +43,12 @@ inline void setCurrentContext(ChezSchemeInterpreter& interpreter,
 // destroyed.
 inline void clearCurrentContext(ChezSchemeInterpreter& interpreter,
                                 mlir::MLIRContext* context) {
-  interpreter.eval("(import (mlir IR MLIRContext))");
-  interpreter.eval(("(when (eqv? (current-MLIRContext) " +
-                    std::to_string(reinterpret_cast<uint64_t>(context)) +
-                    ") (current-MLIRContext #f))")
-                       .c_str());
+  importCurrentContextLibrary(interpreter);
+  ptr current = scheme_call("current-MLIRContext");
+  if (current != Sfalse &&
+      Sunsigned64_value(current) == reinterpret_cast<uint64_t>(context)) {
+    scheme_call("current-MLIRContext", Sfalse);
+  }
 }
 
 // Sets the parameter for the length of a call, and puts the old value back.
@@ -45,7 +56,7 @@ class CurrentContextScope {
 public:
   CurrentContextScope(ChezSchemeInterpreter& interpreter,
                       mlir::MLIRContext* context) {
-    interpreter.eval("(import (mlir IR MLIRContext))");
+    importCurrentContextLibrary(interpreter);
     ptr old = scheme_call("current-MLIRContext");
     hadOld_ = old != Sfalse;
     if (hadOld_) {

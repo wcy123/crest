@@ -109,8 +109,6 @@ public:
   /// Hides the allocator implementation detail from callers.
   static mlir::TypeID allocateTypeId();
 
-  static bool classof(const mlir::Dialect* d);
-
   // --- mlir::Dialect virtual interface ---
   /// `interfaces`: the list of (TypeID . dispatcher) pairs of the :interfaces
   /// clause of the dialect, locked by the caller.
