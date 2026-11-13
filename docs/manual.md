@@ -205,6 +205,10 @@ consecutively in one operand list:
 Requires an `operandSegmentSizes` attribute on the op. If absent, the pattern
 silently fails to match.
 
+At the root of a conversion pattern the groups are cut by the sizes of the op, and the values are the
+type-converted operands of `operands-ref` (`test/dsl/conversion-flex-operands`). This assumes that the type
+converter turns each operand into exactly one operand.
+
 ### DAG diamonds (shared values)
 
 When the same `%var` appears as an operand of multiple ops, CREST

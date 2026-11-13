@@ -52,7 +52,8 @@
     mlir::Operation::moveBefore
     mlir::Operation::setOperands
     mlir::Operation::getParentOfType<ModuleOp>
-    operation-get-operands)
+    operation-get-operands
+    operation-get-converted-operands)
   (import (rnrs)
           (only (crest callback) with-c-callable/lambda)
           (mlir IR Operation ffi)
@@ -301,8 +302,9 @@
   ;;              specs no attribute read is needed.
   (define %%absent (if #f #f))  ; sentinel: absent optional/variadic slot
 
-  (define (operation-get-operands op . spec)
-    (define (read-op i) (mlir::OpOperand::get op i))
+  ;; The body of operation-get-operands and operation-get-converted-operands: the operand count and
+  ;; the reader of operand i say where the values come from; the segment sizes are always the op's.
+  (define (%%get-operands op count read-op spec)
     (define (%%flex-path attr n-spec)
       (let* ([sizes (mlir::DenseI32ArrayAttr::asArrayRef attr)]
              [n     (length sizes)])
@@ -335,12 +337,27 @@
       (if (not has-flex)
           ;; All required: prefix-match — op must have at least n-spec operands.
           ;; Patterns deliberately list only the operands they care about.
-          (and (<= n-spec (mlir::Operation::getNumOperands op))
+          (and (<= n-spec count)
                (loop :for i :from 0 :below n-spec :collect (read-op i)))
           ;; Has optional/variadic: operandSegmentSizes is mandatory.
           ;; Without it we cannot determine group boundaries — return #f.
           (let ([attr (mlir::Operation::getAttr op "operandSegmentSizes")])
             (and attr (%%flex-path attr n-spec))))))
+
+  (define (operation-get-operands op . spec)
+    (%%get-operands op (mlir::Operation::getNumOperands op)
+                    (lambda (i) (mlir::OpOperand::get op i))
+                    spec))
+
+  ;; @brief operation-get-converted-operands — operation-get-operands for the root of a conversion pattern.
+  ;; @param op            Operation* uptr (root operation): its operandSegmentSizes say where the groups are
+  ;; @param operands-ref  the converted operands that C++ gives a conversion pattern (a CArrayRef of Values)
+  ;; @param spec          as operation-get-operands
+  ;; @return              as operation-get-operands, with the values of operands-ref
+  (define (operation-get-converted-operands op operands-ref . spec)
+    (%%get-operands op (crest::CArrayRef::size operands-ref)
+                    (lambda (i) (crest::CArrayRef::at operands-ref i))
+                    spec))
 
   (define mlir::Operation::getAttrDictionary %mlir::Operation::getAttrDictionary)
   (define mlir::Operation::setAttrs          %mlir::Operation::setAttrs)
