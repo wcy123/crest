@@ -53,14 +53,26 @@
 
   ;; ---- what a callback is made with --------------------------------------------------------------------
 
-  ;; (crest-make-static-c-callable (argument-type ...) result-type procedure [:source expression | :location expression]): the
-  ;; address of a C function with the prototype of C++: those argument types and that result type. It locks
-  ;; the callable for good: use it only at the library level, for a callback that uses no state of a run.
-  ;; The argument and result kinds are those of %%make-code (below): the C++ types, class types by value
-  ;; included. An error of the procedure is reported by its guard (see below), at the Scheme position of PROCEDURE, or of the expression after :source when a macro wraps the procedure of
-  ;; its user in a lambda of its own and the position of the user is the useful one. :location gives the
-  ;; position as an expression that is evaluated when the callable is made, (file line column) or #f: for a
-  ;; procedure that reaches the macro as a value and whose position was read where it was written.
+  ;; @brief crest-make-static-c-callable — make a C function with the prototype of C++ from a procedure,
+  ;;        locked for good.
+  ;; @param argument-type  the C++ argument kinds, in order: uptr, int, ... (any type of foreign-callable)
+  ;;                       or type-range (see %%make-code)
+  ;; @param result-type    the C++ result kind: void, uptr, int, unsigned-8, object, logical-result,
+  ;;                       walk-result or range (see %%make-code)
+  ;; @param procedure      the procedure that the C function calls, with the arguments as Scheme values
+  ;; @param :source        optional: an expression whose Scheme position names the callback in an error
+  ;;                       report. For a macro that wraps the procedure of its user in a lambda of its own,
+  ;;                       when the position of the user is the useful one
+  ;; @param :location      optional: an expression, evaluated when the callable is made, for the position
+  ;;                       as data, (file line column) or #f. For a procedure that reaches the macro as a
+  ;;                       value, whose position was read where it was written
+  ;; @return               the address of the C function, an exact integer
+  ;; @note                 A macro. It locks the callable for good: use it only at the library level, for a
+  ;;                       callback that uses no state of a run. An error of the procedure is reported by
+  ;;                       the guard (see %%guard-for-result), at the Scheme position of PROCEDURE or of
+  ;;                       :source.
+  ;; @example
+  ;;   (define legal (crest-make-static-c-callable (uptr) int (lambda (op) 1)))
   (define-syntax crest-make-static-c-callable
     (lambda (stx)
       (define (location-of options default)
@@ -83,22 +95,26 @@
                (lock-object code)
                (foreign-callable-entry-point code)))])))
 
-  ;; (with-c-callable (name (argument-type ...) result-type value [:source expression]) body ...)
-  ;;
-  ;; Runs BODY with NAME bound to the address of a C function with the prototype of C++ (those argument types
-  ;; and that result type, as for crest-make-static-c-callable) that calls what VALUE is:
-  ;;
-  ;;   a procedure: the macro makes the foreign-callable, locks it, and unlocks it when BODY ends, also
-  ;;   when it ends by an error. Use it for a callback that C++ calls while BODY runs.
-  ;;
-  ;;   an address that crest-make-static-c-callable answered, to reuse it (making one costs about 200 ns).
-  ;;   The macro uses it as it is and never unlocks it, because it is the caller's. A callable that is
-  ;;   not locked is an error: the garbage collector could move it, and C++ would call a stale address.
-  ;;   The types are not used for it.
-  ;;
-  ;; The address is only valid inside BODY: if C++ keeps it after BODY ends, use
-  ;; crest-make-static-c-callable. The diagnostic of an error is at the Scheme position of VALUE, or of the
-  ;; expression after :source (see crest-make-static-c-callable).
+  ;; @brief with-c-callable — run a body with the address of a C function made from a procedure.
+  ;; @param name           identifier bound to the address inside BODY
+  ;; @param argument-type  as for crest-make-static-c-callable; not used when VALUE is an address
+  ;; @param result-type    as for crest-make-static-c-callable; not used when VALUE is an address
+  ;; @param value          a procedure, or an address. A procedure: the macro makes the foreign-callable,
+  ;;                       locks it, and unlocks it when BODY ends, also when it ends by an error; use it for
+  ;;                       a callback that C++ calls while BODY runs. An address that
+  ;;                       crest-make-static-c-callable answered, to reuse it (making one costs about 200
+  ;;                       ns): used as it is and never unlocked, because it is the caller's; a callable that
+  ;;                       is not locked is an error, because the garbage collector could move it and C++
+  ;;                       would call a stale address
+  ;; @param :source        optional, as for crest-make-static-c-callable
+  ;; @param body           expressions evaluated with NAME bound
+  ;; @return               the value of the last expression of BODY
+  ;; @note                 A macro. The address is valid only inside BODY: if C++ keeps it after BODY ends,
+  ;;                       use crest-make-static-c-callable. An error of the procedure is reported at the
+  ;;                       Scheme position of VALUE or of :source.
+  ;; @example
+  ;;   (with-c-callable (visit (uptr) walk-result (lambda (op) mlir::WalkResult::advance))
+  ;;     (call-cpp visit))
   (define-syntax with-c-callable
     (lambda (stx)
       (define (location-of options default)
@@ -132,14 +148,19 @@
                           (lambda (locked) (when locked (unlock-object locked)))
                  (let ([name (foreign-callable-entry-point code)]) body ...))))])))
 
-  ;; (crest-call-guarded procedure argument ...): C++ calls a Scheme procedure itself (the pass of
-  ;; --crest-pass), which has no C prototype to match: the same guard reports an error (without a position,
-  ;; here), and the answer is 1 when the procedure returned and 0 after its error was reported.
+  ;; @brief crest-call-guarded — call a Scheme procedure for C++ under the guard of a callable.
+  ;; @param procedure  the procedure to call
+  ;; @param argument   its arguments
+  ;; @return           1 when the procedure returned, 0 after its error was reported
+  ;; @note             C++ calls it by name for the pass of --crest-pass, which has no C prototype to
+  ;;                   match. The error is reported without a Scheme position.
   (define (crest-call-guarded procedure . arguments)
     (apply (%%report-guard (lambda arguments (apply procedure arguments) 1) #f 0) arguments))
 
-  ;; C++ gives a range as a pointer to an array and a count: the count elements of 8 bytes at pointer, as a
-  ;; list of integers.
+  ;; @brief crest-callback-pointer-list — read a range that C++ gave as a pointer and a count.
+  ;; @param pointer  the address of an array of 8-byte elements (a pointer or an integer each)
+  ;; @param count    the number of elements
+  ;; @return         the elements, a list of integers
   (define (crest-callback-pointer-list pointer count)
     (map (lambda (i) (foreign-ref 'uptr pointer (* i 8))) (iota count)))
 
