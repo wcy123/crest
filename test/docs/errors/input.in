@@ -1,0 +1,4 @@
+func.func @example(%a: i32, %b: i32) -> i32 {
+  %0 = "source.add"(%a, %b) : (i32, i32) -> i32
+  return %0 : i32
+}

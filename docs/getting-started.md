@@ -64,7 +64,9 @@ cmake --build build -j$(nproc)
 CREST builds with LLVM 22 and LLVM 23 (use `22` or `23` in the commands above). Features that need
 `DynamicOpDefinition::addTrait`, namely `define-op :traits` and everything built on it, need
 LLVM 23: the Toy tutorial from Ch2 on declares `toy.return` as a terminator, so its samples and
-tests run only on LLVM 23 and are skipped on LLVM 22.
+tests run only on LLVM 23 and are skipped on LLVM 22. On LLVM 22 a dialect that asks for traits fails with
+`define-op :traits requires LLVM 23+ (DynamicOpDefinition::addTrait); requested trait: <name>`. Run the tests
+on both before you push: `check-crest` on LLVM 22 skips about 70 of them.
 
 ---
 
@@ -141,7 +143,11 @@ During development, edit a `.sls` file and re-run — no rebuild needed.
 
 ### Filesystem (default)
 
-Deploy the binary alongside the `.sls` source tree. Set `CREST_PATH` at runtime:
+Deploy the binary alongside the `.sls` source tree. Set `CREST_PATH` at runtime. Every directory in
+`CREST_PATH` becomes a library directory, and a `.sls` file found there is compiled and run with the
+rights of the process. Only point `CREST_PATH` at directories you trust, and do not take it from an
+environment you do not control. The compiled files go to `CREST_SCHEME_BINARY_DIR` (the build directory by
+default), which must not be writable by others either.
 
 ```bash
 export CREST_PATH=/my-project/scheme
