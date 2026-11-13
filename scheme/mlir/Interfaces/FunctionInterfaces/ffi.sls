@@ -10,7 +10,7 @@
           %mlir::FunctionOpInterface::verifyBody
           %mlir::FunctionOpInterface::verifyType)
   (import (chezscheme)
-          (mlir support foreign))
+          (crest support foreign))
 
   ;; () -> uptr: the TypeID of the interface, as the address that the TypeID wraps.
   (define %mlir::FunctionOpInterface::getInterfaceID

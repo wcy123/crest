@@ -3,6 +3,6 @@
 (library (mlir Dialect ControlFlow IR ControlFlow ffi)
   (export %mlir::DialectRegistry::insert<mlir::cf::ControlFlowDialect>)
   (import (chezscheme)
-          (mlir support foreign))
+          (crest support foreign))
   (define %mlir::DialectRegistry::insert<mlir::cf::ControlFlowDialect>
     (crest-foreign-procedure "mlir::DialectRegistry::insert<mlir::cf::ControlFlowDialect>" (uptr) void)))

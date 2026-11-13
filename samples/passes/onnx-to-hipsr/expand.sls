@@ -27,12 +27,12 @@
           (mlir Dialect Tensor IR)
           (only (mlir IR BuiltinTypes)
                 mlir::RankedTensorType::cloneWithEncoding)
-          (mlir support logging)
+          (crest support logging)
           (crest)
           (only (mlir IR Operation)
                 mlir::OpOperand::get mlir::Operation::getContext mlir::Operation::getName)
 
-          (only (mlir support logging)
+          (only (crest support logging)
                 crest::logging::info)
           )
 

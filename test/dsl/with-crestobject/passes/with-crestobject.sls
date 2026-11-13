@@ -5,7 +5,7 @@
   (export pass-entry-point)
   (import (only (crest pass) define-pass-entry-point)
           (rnrs)
-          (only (mlir support CrestObject) with-CrestObject)
+          (only (crest support CrestObject) with-CrestObject)
           (only (mlir IR DialectRegistry ffi) %mlir::DialectRegistry::new))
 
   (define-pass-entry-point (module-op)

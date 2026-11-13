@@ -2,7 +2,7 @@
 (library (crest pass ffi)
   (export %crest::createSchemePass)
   (import (chezscheme)
-          (mlir support foreign))
+          (crest support foreign))
 
   ;; (string name) (uptr entry) → mlir::Pass* (the pass manager that it is added to owns it)
   ;; entry: the entry point of the foreign-callable of the body of the pass (see (crest pass))

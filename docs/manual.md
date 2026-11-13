@@ -29,7 +29,7 @@ Patterns are Scheme macros — edit a `.sls` file and re-run: no rebuild, no rel
 | `define-rewrite-pattern` | `mlir::OpRewritePattern` | Greedy rewrites: fusion, folding, simplification |
 | `define-conversion-pattern` | `mlir::ConversionPattern` | Dialect conversion with `TypeConverter` and `applyFullConversion` |
 
-DRR and PDLL only generate `RewritePattern` subclasses. CREST is the only DSL that covers dialect conversion.
+DRR generates only `RewritePattern` subclasses. PDLL patterns can run in a dialect conversion through `PDLConversionConfig` (MLIR built with `MLIR_ENABLE_PDL_IN_PATTERNMATCH`), but their constraints and non-trivial rewrites are native C++. CREST writes the whole conversion pattern in Scheme.
 
 ### Edit–reload cycle
 
@@ -112,7 +112,7 @@ The three parameters map to [`matchAndRewrite(Operation* op, PatternRewriter& re
 
 The four parameters after the name map to [`matchAndRewrite(Operation* op, ArrayRef<Value> operands, ConversionPatternRewriter& rewriter)`](https://mlir.llvm.org/doxygen/classmlir_1_1ConversionPattern.html#a4e9e0cb68cd4d6f30b1b02b1f3d1e5a3).
 `operands-ref` carries the type-converted operands; read them with `crest::CArrayRef::size` and
-`crest::CArrayRef::at` from `(mlir support array-ref)`: `(crest::CArrayRef::at operands-ref 0)` is the first
+`crest::CArrayRef::at` from `(crest support array-ref)`: `(crest::CArrayRef::at operands-ref 0)` is the first
 operand.
 
 ---
@@ -1187,7 +1187,7 @@ unless the program erases it with `mlir::Operation::erase`. A program that parse
 need to care. A program that parses many files, or runs in a loop, loses about one kilobyte per small
 module. Use `with-mlir::OwningOpRef` of `(mlir IR OwningOpRef)`. It runs its body and
 erases the module when the body ends, by returning, by an error or by an escape (it is built on the
-generic `with-raii` of `(mlir support RAII)`, which you can use for any resource that a function frees).
+generic `with-raii` of `(crest support RAII)`, which you can use for any resource that a function frees).
 The name is the C++ class that owns the module, and the second part is the call that makes it:
 
 ```scheme
@@ -1473,7 +1473,7 @@ the C++ call has returned (CLAUDE.md Rule 20). Then declare and use it in Scheme
 
 ```scheme
 ;; In your ffi.sls:
-(import (mlir support foreign))
+(import (crest support foreign))
 (define %myDialect::MyOp::getCount
   (crest-foreign-procedure "myDialect::MyOp::getCount" (uptr) uptr))
 
@@ -1484,7 +1484,7 @@ the C++ call has returned (CLAUDE.md Rule 20). Then declare and use it in Scheme
 A binding that takes a builder is different: a builder is one of three kinds of shell, and each C++
 symbol takes exactly one. Register it with `register_builder_binding`
 (`lib/Bindings/Support/BuilderBinding.h`), which registers the three symbols, and declare it in
-`ffi.sls` with `define-builder-binding` from `(mlir support BuilderBinding)`. See CLAUDE.md
+`ffi.sls` with `define-builder-binding` from `(crest support BuilderBinding)`. See CLAUDE.md
 Rule 4.
 
 A binding that calls back into Scheme never makes or releases the callback: it takes a plain C function pointer

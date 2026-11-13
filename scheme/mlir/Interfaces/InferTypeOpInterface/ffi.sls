@@ -8,7 +8,7 @@
           %mlir::InferTypeOpInterface::inferReturnTypes<OperationState>
           %mlir::InferTypeOpInterface::inferReturnTypes<OperationState*>)
   (import (chezscheme)
-          (mlir support foreign))
+          (crest support foreign))
 
   ;; () → uptr — the TypeID of mlir::InferTypeOpInterface, as the address that TypeID wraps.
   (define %mlir::InferTypeOpInterface::getInterfaceID

@@ -3,6 +3,6 @@
 (library (mlir Dialect SCF IR SCFDialect ffi)
   (export %mlir::DialectRegistry::insert<mlir::scf::SCFDialect>)
   (import (chezscheme)
-          (mlir support foreign))
+          (crest support foreign))
   (define %mlir::DialectRegistry::insert<mlir::scf::SCFDialect>
     (crest-foreign-procedure "mlir::DialectRegistry::insert<mlir::scf::SCFDialect>" (uptr) void)))

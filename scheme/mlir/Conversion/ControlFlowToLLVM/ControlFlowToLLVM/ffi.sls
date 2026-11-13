@@ -4,7 +4,7 @@
   (export %mlir::cf::populateControlFlowToLLVMConversionPatterns
           %mlir::cf::populateAssertToLLVMConversionPattern)
   (import (chezscheme)
-          (mlir support foreign))
+          (crest support foreign))
   (define %mlir::cf::populateControlFlowToLLVMConversionPatterns
     (crest-foreign-procedure "mlir::cf::populateControlFlowToLLVMConversionPatterns" (uptr uptr) void))
   (define %mlir::cf::populateAssertToLLVMConversionPattern

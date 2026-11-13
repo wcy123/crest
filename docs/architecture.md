@@ -3,9 +3,9 @@ Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
 Licensed under the MIT License.
 -->
 
-**Date:** 2026-10-04
+**Date:** 2026-11-13
 **Document Type:** Architecture
-**Status:** Draft
+**Status:** Current
 **Related:** [MLIR Dialect Conversion](https://mlir.llvm.org/docs/DialectConversion/), [MLIR PDLL](https://mlir.llvm.org/docs/PDLL/)
 
 ---
@@ -46,14 +46,14 @@ hatch; (2) the `:optional`/`:variadic` operand syntax matches both the
 4-operand and 5-operand forms of an op in a single pattern, using
 `unbound-value?` to distinguish absent from present in the rewrite body.
 
-A third capability not available in any other MLIR pattern DSL: CREST
-generates [`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns)
-subclasses. [PDLL](https://mlir.llvm.org/docs/PDLL/) and
-[DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/) generate only
-`RewritePattern` subclasses and have no support for the
-`ConversionPatternRewriter`, type-converted operand adaptors, or
-`applyFullConversion` / `applyPartialConversion` that dialect conversion
-requires.
+A third capability: CREST generates
+[`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns)
+subclasses, with their guards and rewrites in the same Scheme file.
+[DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/) generates only
+`RewritePattern` subclasses. [PDLL](https://mlir.llvm.org/docs/PDLL/) patterns can run
+inside a dialect conversion with a `TypeConverter` (`PDLConversionConfig`), only when
+MLIR is built with `MLIR_ENABLE_PDL_IN_PATTERNMATCH`, and their constraints and
+non-trivial rewrites are native C++.
 
 ---
 
@@ -62,7 +62,7 @@ requires.
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Layer 4 — Pass entry points                                │
-│  pass-entry-point → register patterns → apply-full-conversion        │
+│  pass-entry-point → register patterns → apply patterns      │
 └────────────────────────┬────────────────────────────────────┘
                          │ imports
 ┌────────────────────────▼────────────────────────────────────┐
@@ -81,14 +81,16 @@ requires.
                          │ imports
 ┌────────────────────────▼────────────────────────────────────┐
 │  Layer 1 — MLIR FFI bindings                                │
-│  foreign-procedure wrappers around MLIR C API               │
+│  C++ bindings of MLIR methods, called from Scheme           │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ### Layer 1 — MLIR FFI bindings
 
-Thin `foreign-procedure` wrappers around the
-[MLIR C API](https://mlir.llvm.org/docs/CAPI/), organized to mirror MLIR's
+One Scheme binding for each MLIR C++ method that a pass needs, named after the C++
+method (`mlir::Value::getType`, `mlir::RankedTensorType::getRank`). Each is a C++
+function registered with `Sregister_symbol` and called from Scheme with
+`crest-foreign-procedure`; none goes through the MLIR C API. The libraries mirror MLIR's
 namespace structure:
 
 | Library | Wraps |
@@ -101,13 +103,15 @@ namespace structure:
 | `(mlir IR Location)` | `mlir::UnknownLoc::get`, `mlir::FileLineColLoc::get` |
 | `(mlir Transforms DialectConversion)` | [`TypeConverter`](https://mlir.llvm.org/docs/DialectConversion/#type-converter), `ConversionTarget`, `applyFullConversion` |
 | `(mlir Transforms GreedyPatternRewriteDriver)` | `mlir::applyPatternsGreedily` |
-| `(mlir Dialect/*)` | Per-dialect op constructors and type predicates |
-| `(mlir support RAII)` | Generic `with-raii` helper |
+| `(mlir Dialect ...)` | Per-dialect op constructors and type predicates |
+| `(crest support RAII)` | Generic `with-raii` helper |
 
 Library names mirror MLIR header paths (e.g. `mlir/IR/PatternMatch.h` →
 `(mlir IR PatternMatch)`). Each library has a companion `ffi` sub-library with
-`%`-prefixed raw `foreign-procedure` bindings; the public library re-exports
-clean names and provides `case-lambda` ctx-optional wrappers where applicable.
+`%`-prefixed raw `crest-foreign-procedure` bindings; the public library re-exports
+clean names and provides `case-lambda` ctx-optional wrappers where applicable. A binding
+answers its value, or an error that Scheme raises after the C++ call has returned
+(CLAUDE.md, Rule 20).
 
 Dynamic parameters (`current-MLIRContext`, `current-OpBuilder`, `current-Block`)
 follow the same pattern as
@@ -134,16 +138,14 @@ points:
 
 #### Why CREST rather than PDLL or DRR
 
-[PDL](https://mlir.llvm.org/docs/PDLL/) and
-[DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/) generate
-`RewritePattern` subclasses only. They cannot generate
+[DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/) generates
+`RewritePattern` subclasses only, so it cannot write a dialect conversion.
+[PDL](https://mlir.llvm.org/docs/PDLL/) patterns can take part in one through `PDLConversionConfig` and
+`registerConversionPDLFunctions` (`mlir/Transforms/DialectConversion.h`), when MLIR is
+built with `MLIR_ENABLE_PDL_IN_PATTERNMATCH`. The match constraints and any
+non-trivial rewrite are still native C++, and CREST's difference is that a
 [`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns)
-subclasses, which require `ConversionPatternRewriter`, type-converted operand
-adaptors via `OpAdaptor`, and `applyFullConversion` /
-`applyPartialConversion`. Neither appears in the
-[PDLL](https://mlir.llvm.org/docs/PDLL/) or
-[DRR](https://mlir.llvm.org/docs/DeclarativeRewrites/) documentation.
-CREST is the only DSL-based option that supports `ConversionPattern` today.
+and everything it needs is Scheme in one file.
 
 #### Match-side constraints
 
@@ -160,14 +162,15 @@ plain Scheme function defined in the same `.sls` file:
 
 ```scheme
 (define (last-axis? v axis)
-  (let* ([rank (mlir-type-get-rank (mlir-value-get-type v))]
+  (let* ([rank (mlir::RankedTensorType::getRank (mlir::Value::getType v))]
          [axis (if (< axis 0) (+ axis rank) axis)])  ; normalize negative
     (= axis (- rank 1))))
 
 (define-conversion-pattern (lower-gather op operands-ref rw tc)
   :if-match
       %gather = onnx.Gather (%data %indices)
-                  :where (last-axis? %data (mlir-attr-as (:attr "axis") :integer))
+                  :where (last-axis? %data
+                           (mlir::Operation::getAttrOfType<IntegerAttr> :current-op "axis" 0))
   :rewrite %gather :with ...)
 ```
 
@@ -188,13 +191,13 @@ Inside a `:where` guard, two special forms are available:
 
 ```scheme
 %scale = hip.constant ()
-           :where (mlir-attr-isa (:attr "value") :dense-elements-splat)
+           :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
 ```
 
 #### Optional and variadic operands
 
-Operands tagged `(:optional %var)` or `(:variadic %var)` are matched via
-`mlir-operation-get-operands`, which reads `operandSegmentSizes` internally
+Operands tagged `(:optional %var)` or `(:variadic %var)` are matched by the DSL's
+operand reader (`operation-get-operands`), which reads `operandSegmentSizes` internally
 and returns a list — one element per spec entry.
 
 ```scheme
@@ -206,12 +209,12 @@ Use `unbound-value?` in `:then-let` to distinguish present from absent:
 
 ```scheme
 :then-let
-    ([zp-attr (mlir-make-attr :i64
-                (if (unbound-value? %zp) 0
-                    (mlir-attr-into
-                      (mlir-operation-get-attribute
-                        (mlir-value-get-defining-op %zp) "value")
-                      :splat-integer)))])
+    ([zp-attr (mlir::IntegerAttr::get<i64>
+                (if (unbound-value? %zp)
+                    0
+                    (mlir::DenseElementsAttr::getSplatValue<APInt>
+                      (mlir::Operation::getAttr
+                        (mlir::Value::getDefiningOp %zp) "value"))))])
 ```
 
 This eliminates separate patterns for 4-operand and 5-operand op forms.
@@ -253,7 +256,7 @@ either the PDLL source or the input-fused location to emitted ops.
 
 | Dimension | DRR | PDLL | CREST |
 |---|---|---|---|
-| [`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns) support | [No](https://mlir.llvm.org/docs/DeclarativeRewrites/) | [No](https://mlir.llvm.org/docs/PDLL/) | **Yes** |
+| Dialect conversion with a [`TypeConverter`](https://mlir.llvm.org/docs/DialectConversion/#type-converter) | [No](https://mlir.llvm.org/docs/DeclarativeRewrites/) | Partial (`PDLConversionConfig`; constraints are native C++) | **Yes** |
 | Edit → test cycle | Rebuild required | Rebuild required | **Reload `.sls`** |
 | Extra toolchain | `mlir-tblgen` | `mlir-pdll` + `mlir-tblgen` | **None** |
 | Constraints without C++ (`:where`) | No | No | **Yes** |
@@ -283,7 +286,7 @@ either the PDLL source or the input-fused location to emitted ops.
 3. **Analyze** — topological DAG traversal from the root, producing a flat
    action sequence: `:set-current-op`, `:check-op`, `:bind-operand` (all-required
    ops), `:bind-operands` (ops with `:optional`/`:variadic` — delegates to
-   `mlir-operation-get-operands` which reads `operandSegmentSizes`),
+   `operation-get-operands` which reads `operandSegmentSizes`),
    `:check-eq` (DAG diamonds where a value is used by multiple ops),
    `:bind-result`, `:check-where`.
 
@@ -310,7 +313,7 @@ definition of this layer.
 Each pass is a single `.sls` file:
 1. Imports CREST patterns and domain helpers
 2. Creates a `RewritePatternSet` or `ConversionTarget`
-3. Calls `mlir-apply-patterns-greedy` or `mlir-apply-full-conversion`
+3. Calls `mlir::applyPatternsGreedily` or `mlir::applyFullConversion`
 
 A downstream project adds `.sls` pass files and sets `CREST_PATH` to their
 directory — no C++ required for a new pass.
@@ -354,10 +357,10 @@ add_subdirectory(crest)
 
 ## Operational costs
 
-**FFI maintenance.** Each MLIR C API function used from Scheme requires a C++
-`register_binding` registration and a Scheme `crest-foreign-procedure` declaration.
-The `foreign-entry?` dynamic dispatch eliminates this for attribute types;
-everything else requires a manual pairing per function.
+**FFI maintenance.** Each MLIR method used from Scheme needs a C++ `Sregister_symbol`
+registration, a `crest-foreign-procedure` declaration in `ffi.sls`, and a public re-export.
+`test/bindings/ffi-symbols.mlir` checks that every declared symbol is registered, but the
+three pieces are written by hand for each method, and they follow MLIR as it changes.
 
 **Version coupling.** Boot mode eliminates filesystem coupling at the cost of
 a build step. See the Deployment section above.

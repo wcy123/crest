@@ -55,7 +55,7 @@
           %mlir::isa<FunctionType>
           %mlir::OperationState::addType)
   (import (chezscheme)
-          (mlir support foreign))
+          (crest support foreign))
 
   ;; (uptr printer) -> uptr: the llvm::raw_ostream that the printer writes to.
   (define %mlir::AsmPrinter::getStream

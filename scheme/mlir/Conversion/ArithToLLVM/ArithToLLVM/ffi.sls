@@ -3,6 +3,6 @@
 (library (mlir Conversion ArithToLLVM ArithToLLVM ffi)
   (export %mlir::arith::populateArithToLLVMConversionPatterns)
   (import (chezscheme)
-          (mlir support foreign))
+          (crest support foreign))
   (define %mlir::arith::populateArithToLLVMConversionPatterns
     (crest-foreign-procedure "mlir::arith::populateArithToLLVMConversionPatterns" (uptr uptr) void)))

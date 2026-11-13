@@ -20,7 +20,7 @@
           (mlir IR Block)
           (mlir IR Region)
           (mlir IR OpImplementation)
-          (only (mlir support RAII) with-raii)
+          (only (crest support RAII) with-raii)
           (only (mlir Interfaces InferTypeOpInterface) mlir::InferTypeOpInterface)
           (only (mlir Interfaces CallInterfaces) mlir::CallableOpInterface mlir::ArgAndResultAttrsOpInterface)
           (only (mlir IR SymbolInterfaces) mlir::SymbolOpInterface)

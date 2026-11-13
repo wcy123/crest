@@ -1,0 +1,65 @@
+#!r6rs
+;;===----------------------------------------------------------------------===;;
+;;
+;; Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
+;; Licensed under the MIT License.
+;;
+;;
+;; Mirrors mlir/IR/Block.h.
+;;===----------------------------------------------------------------------===;;
+;;
+;; (mlir IR Block ffi) — raw C bindings for mlir/IR/Block.h.
+;;
+;;===----------------------------------------------------------------------===;;
+
+(library (mlir IR Block ffi)
+  (export %mlir::Block::getArgument
+          %mlir::Block::getNumArguments
+          %mlir::Block::new
+          %mlir::Block::addArgument
+          %mlir::Block::empty
+          %mlir::Block::back
+          %mlir::Block::front)
+  (import (rnrs) (crest support foreign))
+
+  ;; @brief mlir::Block::getArgument — return the idx-th block argument.
+  ;; @param block  Block* uptr
+  ;; @param idx    0-based argument index (int)
+  ;; @return       mlir::BlockArgument opaque pointer uptr (subclass of mlir::Value);
+  ;;               raises Scheme error if null or index out of range
+  ;; @see          mlir/IR/Block.h
+  ;; @note         Defined in lib/Bindings/IR/Block.cpp
+  (define %mlir::Block::getArgument
+    (crest-foreign-procedure "mlir::Block::getArgument" (uptr int) uptr))
+
+  ;; @brief mlir::Block::getNumArguments — return the number of block arguments.
+  ;; @param block  Block* uptr (must be non-null)
+  ;; @return       Argument count (uptr)
+  ;; @see          mlir/IR/Block.h
+  ;; @note         Defined in lib/Bindings/IR/Block.cpp
+  (define %mlir::Block::getNumArguments
+    (crest-foreign-procedure "mlir::Block::getNumArguments" (uptr) uptr))
+
+  ;; @brief mlir::Block::new — heap-allocate an empty Block.
+  ;; @return  Block* uptr — ownership transferred to region on push_back
+  ;; @see     mlir/IR/Block.h
+  (define %mlir::Block::new
+    (crest-foreign-procedure "mlir::Block::new" () uptr))
+
+  ;; @brief mlir::Block::addArgument — append one typed argument to a block.
+  ;; @param block  Block* uptr
+  ;; @param type   mlir::Type opaque pointer uptr
+  ;; @param loc    mlir::Location opaque pointer uptr
+  ;; @return       mlir::BlockArgument opaque pointer uptr (subclass of mlir::Value)
+  ;; @see          mlir/IR/Block.h
+  (define %mlir::Block::addArgument
+    (crest-foreign-procedure "mlir::Block::addArgument" (uptr uptr uptr) uptr))
+
+  (define %mlir::Block::empty
+    (crest-foreign-procedure "mlir::Block::empty" (uptr) int))
+  (define %mlir::Block::back
+    (crest-foreign-procedure "mlir::Block::back" (uptr) uptr))
+  (define %mlir::Block::front
+    (crest-foreign-procedure "mlir::Block::front" (uptr) uptr))
+
+  ) ;; end library (mlir IR Block ffi)

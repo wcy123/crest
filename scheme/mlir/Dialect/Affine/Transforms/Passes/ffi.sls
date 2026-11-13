@@ -10,7 +10,7 @@
   (export %mlir::affine::createLoopFusionPass
           %mlir::affine::createAffineScalarReplacementPass)
   (import (chezscheme)
-          (mlir support foreign))
+          (crest support foreign))
 
   (define %mlir::affine::createLoopFusionPass
     (crest-foreign-procedure "mlir::affine::createLoopFusionPass" () uptr))

@@ -23,7 +23,7 @@
           %mlir::CallInterfaceCallable::dyn_cast<Value>
           %crest::OperandRange::get)
   (import (chezscheme)
-          (mlir support foreign))
+          (crest support foreign))
 
   ;; () -> uptr: the TypeID of the interface, as the address that the TypeID wraps.
   (define %mlir::CallableOpInterface::getInterfaceID

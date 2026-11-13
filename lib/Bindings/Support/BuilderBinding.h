@@ -16,7 +16,7 @@
 // A NAME that already ends in '>' takes the kind as its last template argument:
 // "mlir::OpBuilder::create<OperationState>" gives
 // "...<OperationState,OpBuilder>". The Scheme side (define-builder-binding in
-// (mlir support BuilderBinding)) picks the symbol by the shell's type, so the
+// (crest support BuilderBinding)) picks the symbol by the shell's type, so the
 // body below only ever sees an mlir::OpBuilder&.
 //
 // The body is a non-capturing lambda whose first parameter is

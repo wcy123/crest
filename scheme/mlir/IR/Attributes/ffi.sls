@@ -5,7 +5,7 @@
           %mlir::NamedAttribute::getValue
           %mlir::Attribute::print)
   (import (chezscheme)
-          (mlir support foreign))
+          (crest support foreign))
 
   ;; (uptr named) -> uptr: the StringAttr that names the attribute.
   (define %mlir::NamedAttribute::getName

@@ -20,7 +20,7 @@
           mlir::DialectRegistry::insert<mlir::affine::AffineDialect>)
   (import (rnrs)
           (crest callback)
-          (only (mlir support array-ref) crest::CArrayRef->list)
+          (only (crest support array-ref) crest::CArrayRef->list)
           (mlir Dialect Affine IR AffineOps ffi))
 
   ;; @brief buildAffineLoopNest: build a nest of loops with constant bounds and steps, and call

@@ -37,7 +37,7 @@
                 mlir::BlockArgument?
                 mlir::Value::getUses
                 mlir::OpResult::getResultNumber)
-          (mlir support array-ref)
+          (crest support array-ref)
           (only (mlir IR PatternMatch)
                 mlir-create-operation
                 mlir::RewriterBase::setInsertionPoint
@@ -54,7 +54,7 @@
           (only (mlir IR PatternMatch) with-RewritePatternSet)
           (mlir dialects hipsr)
           (mlir Dialect Func IR FuncOps)
-          (mlir support logging)
+          (crest support logging)
           (passes onnx-to-hipsr cast)
           (passes onnx-to-hipsr scatter-nd)
           (passes onnx-to-hipsr equal)
@@ -66,7 +66,7 @@
           (passes onnx-to-hipsr constant)
           (passes onnx-to-hipsr shape)
           (for (rime loop) expand)
-          (only (mlir support logging)
+          (only (crest support logging)
                 crest::logging::debug crest::logging::info)
           )
 

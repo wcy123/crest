@@ -3,6 +3,6 @@
 (library (mlir Conversion LLVMCommon TypeConverter ffi)
   (export %mlir::LLVMTypeConverter::LLVMTypeConverter)
   (import (chezscheme)
-          (mlir support foreign))
+          (crest support foreign))
   (define %mlir::LLVMTypeConverter::LLVMTypeConverter
     (crest-foreign-procedure "mlir::LLVMTypeConverter::LLVMTypeConverter" (uptr) uptr)))

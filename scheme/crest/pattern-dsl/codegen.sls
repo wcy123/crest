@@ -12,7 +12,7 @@
           ;; match-logging: unified warning helper for generated debug code.
           (only (crest pattern-dsl match-logging) warn-match)
           ;; srcloc: shared source-location utilities; cache is module-level in srcloc.sls.
-          (only (mlir support srcloc) syntax->file+line+col)
+          (only (crest support srcloc) syntax->file+line+col)
           (rename (rime loop) (:with :rime-with))
           (only (mlir IR PatternMatch) conversion-pattern->c rewrite-pattern->c)
           (for (only (chezscheme) syntax->list syntax->datum record-rtd record-type-field-names record-accessor identifier?
@@ -23,7 +23,7 @@
           (for (crest pattern-dsl parse) expand)
           (for (crest pattern-dsl validate) expand)
           (for (crest pattern-dsl analyze) expand)
-          (for (only (mlir support logging) crest::logging::warning) expand)
+          (for (only (crest support logging) crest::logging::warning) expand)
           (for (only (mlir IR PatternMatch)
                      mlir::RewriterBase::setInsertionPoint
                      mlir::RewriterBase::replaceOp
@@ -41,8 +41,8 @@
                      mlir::Operation::emitError
                      operation-get-operands) expand)
           (for (only (mlir IR Value) mlir::Value::getDefiningOp) expand)
-          (for (only (mlir support array-ref) crest::CArrayRef::size crest::CArrayRef::at) expand)
-          (for (only (mlir support CrestObject) with-CrestObject) expand)
+          (for (only (crest support array-ref) crest::CArrayRef::size crest::CArrayRef::at) expand)
+          (for (only (crest support CrestObject) with-CrestObject) expand)
           (for (only (mlir IR MLIRContext) current-MLIRContext) expand)
           (for (only (chezscheme) parameterize) expand)
           (for (only (crest pattern-dsl rewrite) begin-mlir-code) expand)

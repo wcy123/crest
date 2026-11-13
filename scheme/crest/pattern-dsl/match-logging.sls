@@ -17,7 +17,7 @@
 (library (crest pattern-dsl match-logging)
   (export warn-match)
   (import (rnrs)
-          (only (mlir support logging) crest::logging::warning)
+          (only (crest support logging) crest::logging::warning)
           (only (mlir IR Operation) mlir::Operation::print))
 
   (define (warn-match msg op)

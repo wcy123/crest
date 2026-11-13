@@ -99,13 +99,13 @@
 
             ;; Process operands.
             ;; If any operand is optional/variadic, delegate the entire op's operand
-            ;; binding to mlir-operation-get-operands (reads operandSegmentSizes internally).
+            ;; binding to operation-get-operands (reads operandSegmentSizes internally).
             ;; For all-required ops, bind each operand individually.
             (let ([has-flex? (loop :initially := #f
                                    :for op :in operands
                                    :break #t :if (memq (ast-operand-kind op) '(:optional :variadic)))])
               (if has-flex?
-                  ;; Flex path: one action binds all operands via mlir-operation-get-operands.
+                  ;; Flex path: one action binds all operands via operation-get-operands.
                   (begin
                     (set! acc (cons (action:bind-operands
                                      op-idx

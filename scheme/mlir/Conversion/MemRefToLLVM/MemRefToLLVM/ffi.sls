@@ -3,6 +3,6 @@
 (library (mlir Conversion MemRefToLLVM MemRefToLLVM ffi)
   (export %mlir::populateFinalizeMemRefToLLVMConversionPatterns)
   (import (chezscheme)
-          (mlir support foreign))
+          (crest support foreign))
   (define %mlir::populateFinalizeMemRefToLLVMConversionPatterns
     (crest-foreign-procedure "mlir::populateFinalizeMemRefToLLVMConversionPatterns" (uptr uptr) void)))

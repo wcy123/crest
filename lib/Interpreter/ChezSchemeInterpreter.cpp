@@ -120,16 +120,17 @@ ChezSchemeInterpreter::ChezSchemeInterpreter(PrivateTag,
 
   Sbuild_heap(nullptr, custom_init);
 
-#ifndef CREST_BOOT_EMBEDDED
-  // Development mode: load .sls files from the source tree at runtime.
   // CREST_SCHEME_BINARY_DIR overrides the compiled .so cache directory at
   // runtime — useful for tests that need an isolated cache (e.g. to force
   // recompilation with CREST_DEBUG_MATCH=1 without polluting the shared dir).
+  // Boot mode needs it too, for the libraries of CREST_PATH.
   const std::string schemeBinaryDir =
       llvm::sys::Process::GetEnv("CREST_SCHEME_BINARY_DIR")
           .value_or(std::string(SCHEME_BINARY_DIR));
+
+#ifndef CREST_BOOT_EMBEDDED
+  // Development mode: load .sls files from the source tree at runtime.
   addLibraryPath(SCHEME_LIBRARIES_DIR, schemeBinaryDir.c_str());
-  addLibraryPath(SCHEME_BINDINGS_DIR, schemeBinaryDir.c_str());
   addLibraryPath(RIME_DIR, schemeBinaryDir.c_str());
 #endif
 

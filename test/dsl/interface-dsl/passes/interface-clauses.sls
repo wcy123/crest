@@ -1,6 +1,6 @@
 ;; Calls the interface methods of ops whose :interfaces entries have method clauses.
 (import (chezscheme)
-        (mlir support foreign)
+        (crest support foreign)
         (crest dialect)
         (mlir IR Operation)
         (mlir IR Region)

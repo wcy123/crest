@@ -5,7 +5,7 @@
           %mlir::ConditionallySpeculatable::getInterfaceID
           %crest::MemoryEffectOpInterface::noEffects)
   (import (chezscheme)
-          (mlir support foreign))
+          (crest support foreign))
 
   ;; () -> uptr: the TypeID of the interface, as the address that the TypeID wraps.
   (define %mlir::MemoryEffectOpInterface::getInterfaceID

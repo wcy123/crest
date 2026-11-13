@@ -3,6 +3,6 @@
 (library (mlir Conversion FuncToLLVM ConvertFuncToLLVM ffi)
   (export %mlir::populateFuncToLLVMConversionPatterns)
   (import (chezscheme)
-          (mlir support foreign))
+          (crest support foreign))
   (define %mlir::populateFuncToLLVMConversionPatterns
     (crest-foreign-procedure "mlir::populateFuncToLLVMConversionPatterns" (uptr uptr) void)))

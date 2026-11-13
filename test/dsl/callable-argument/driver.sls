@@ -5,7 +5,7 @@
         (only (crest callback) define-c-callable)
         (mlir IR MLIRContext)
         (mlir IR DialectRegistry)
-        (mlir support with)
+        (crest support with)
         (mlir Transforms DialectConversion)
         (only (mlir IR PatternMatch) with-RewritePatternSet))
 

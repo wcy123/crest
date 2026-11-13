@@ -4,7 +4,7 @@
   (export %mlir::DialectRegistry::insert<mlir::LLVM::LLVMDialect>
           %mlir::LLVM::registerInlinerInterface)
   (import (chezscheme)
-          (mlir support foreign))
+          (crest support foreign))
   (define %mlir::DialectRegistry::insert<mlir::LLVM::LLVMDialect>
     (crest-foreign-procedure "mlir::DialectRegistry::insert<mlir::LLVM::LLVMDialect>" (uptr) void))
   (define %mlir::LLVM::registerInlinerInterface

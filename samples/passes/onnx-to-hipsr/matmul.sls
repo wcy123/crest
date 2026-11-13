@@ -30,9 +30,9 @@
                 mlir::shape::ShapeType::get
                 mlir::shape::SizeType::get
                 mlir::shape::WitnessType::get)
-          (mlir support logging)
+          (crest support logging)
           (crest)
-          (only (mlir support logging)
+          (only (crest support logging)
                 crest::logging::info)
 
           (only (mlir IR BuiltinTypes)

@@ -1,8 +1,8 @@
 ;; with* nests with- forms: each clause is in scope of the earlier ones, cleanups run in reverse order, also on
 ;; an error, and the body may start with internal definitions.
 (import (rnrs)
-        (mlir support RAII)
-        (mlir support with)
+        (crest support RAII)
+        (crest support with)
         (mlir IR DialectRegistry)
         (mlir IR MLIRContext))
 

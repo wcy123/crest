@@ -1,7 +1,7 @@
 ;; Calls the interface methods of every op of the multiops dialect and prints what each answers.
 (import (only (mlir Support WalkResult) mlir::WalkResult::advance)
         (chezscheme)
-        (mlir support foreign)
+        (crest support foreign)
         (crest dialect)
         (mlir IR Operation)
         (mlir IR MLIRContext)

@@ -12,7 +12,7 @@
           %mlir::scf::ForOp::getInductionVar
           %mlir::scf::YieldOp::create)
   (import (chezscheme)
-          (mlir support foreign) (mlir support BuilderBinding))
+          (crest support foreign) (crest support BuilderBinding))
 
   (define-builder-binding %mlir::scf::ForOp::create
     "mlir::scf::ForOp::create" (uptr uptr uptr uptr uptr) uptr)

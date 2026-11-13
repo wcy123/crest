@@ -2,7 +2,7 @@
 ;; when it escapes through a continuation, and in reverse order when the macros are nested. It does
 ;; not free a resource whose constructor raised an error.
 (import (rnrs)
-        (mlir support RAII))
+        (crest support RAII))
 
 (define log '())
 (define (note x) (set! log (cons x log)))

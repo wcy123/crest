@@ -21,7 +21,7 @@
           (only (mlir IR Value)
                 mlir::Value::getDefiningOp
                 mlir::Value::getType)
-          (mlir support array-ref)
+          (crest support array-ref)
           (only (mlir IR PatternMatch) mlir::RewriterBase::replaceOp mlir::RewriterBase::setInsertionPoint
                 conversion-pattern->c)
           (only (crest callback) define-c-callable)
