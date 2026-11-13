@@ -235,7 +235,7 @@ method has no clause, the dispatcher answers what the macro of the interface dec
 is a table of methods (the C++ types of the slot, an adapter, a default, the keywords), and the expander checks the
 clauses and builds the dispatcher.
 
-**The prototype of a slot as a C function** depends on the platform for some C++ types, and `crest-make-static-c-callable`
+**The prototype of a slot as a C function** depends on the platform for some C++ types, and `define-c-callable`
 (`scheme/crest/callback.sls`) writes it from the C++ types of the slot. `unittests/Crest/InterfaceTest.cpp`
 (`SlotAbiTest`) calls a callable of each kind through a function pointer of the exact type of the slot, on every
 platform that CI runs. What Linux x86-64 and Windows x64 do:

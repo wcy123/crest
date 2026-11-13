@@ -18,7 +18,6 @@
   (export populate-expand-patterns)
   (import (except (rnrs (6)) =)
           (only (crest callback) define-c-callable)
-          (only (mlir IR PatternMatch) conversion-pattern->c)
 
           (only (mlir IR Value)
                 mlir::Value::getDefiningOp
@@ -71,7 +70,8 @@
       result = hipsr.expand (%ctx %input %shape-host placeholder)
       -> !out-device) ;
 
-  (define-c-callable onnx-expand->hipsr-callable (uptr uptr uptr uptr) int (conversion-pattern->c onnx-expand->hipsr))
+  (define-c-callable onnx-expand->hipsr-callable ((op uptr) (operands uptr) (rewriter uptr) (type-converter uptr)) int
+    (if (eq? (onnx-expand->hipsr op operands rewriter type-converter) #t) 1 0))
 
   (define (populate-expand-patterns type-converter patterns ctx)
     (crest::logging::info "Registering onnx.Expand pattern")

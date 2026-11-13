@@ -22,7 +22,8 @@
     (with-c-callable/lambda (entry (int) int (lambda (x) (+ x 1))) (say "int: " (call-int entry 41)))
     (with-c-callable/lambda (entry (int) unsigned-8 (lambda (x) 1)) (say "unsigned-8: " (call-unsigned-8 entry 0)))
     (with-c-callable/lambda (entry (int) uptr (lambda (x) 4096)) (say "uptr: " (call-uptr entry 0)))
-    (let ([entry (crest-make-static-c-callable (int) int (lambda (x) (* x 2)))])
+    (let ()
+      (define-c-callable entry ((x int)) int (* x 2))
       (say "static int: " (call-int entry 21)))]
    [(string=? mode "failure-values")
     ;; each error is a diagnostic, and the callable answers the failure value of its type

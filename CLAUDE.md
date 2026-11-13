@@ -274,7 +274,8 @@ function has the prototype that C++ or MLIR declares, result type included**, an
 `walk-result` (`mlir::WalkResult`, constants in `(mlir Support WalkResult)`) and
 `logical-result` (`llvm::LogicalResult`). A callback never answers a Scheme object, and C++ decodes nothing:
 
-- `(crest-make-static-c-callable (type ...) result-type procedure)` makes it, locks it for good and answers its address.
+- `(define-c-callable name ((variable type) ...) result-type body ...)` defines `name` as the address of the C function,
+  made once and locked for good.
   Use it only at the library level, for a callback that uses no state of a run (an op's clause, a dialect's
   callback, the body of a `define-pass`): it is made once, when the library loads. `(define-c-callable name (type ...)
   result-type procedure)` is the same as a definition, like `define`: it links a C function into the library for
@@ -301,7 +302,7 @@ function has the prototype that C++ or MLIR declares, result type included**, an
 
 **No error leaves a callable.** C++ calls a callable through a C function pointer, so an error that escaped it
 would cross the C++ frames (Rule 20). MLIR's prototypes have no room for an error, so the guard of every callable
-(`crest-make-static-c-callable`, `with-c-callable/lambda`) catches it with
+(`define-c-callable`, `with-c-callable/lambda`) catches it with
 `guard` and reports it through MLIR's own channel:
 
 - **result `void`**: nothing can say "failed", so the process ends with the text `<file>:<line>:<column>: <who>: <why>`
@@ -361,7 +362,7 @@ callable that Scheme made for a clause (`installInterfaceEntry`), so MLIR calls 
   or a use range) gets a C function that CREST ships, named by a keyword of the clause (`:all-operands`) or as MLIR's
   default.
 - The prototype of a slot as a C function depends on the platform (a class of one pointer is answered through a pointer
-  on Windows x64). `crest-make-static-c-callable` (`(crest callback)`) writes it from the C++ types of the slot (the
+  on Windows x64). `define-c-callable` (`(crest callback)`) writes it from the C++ types of the slot (the
   types `object`, `logical-result`, `walk-result`, `range` and `type-range`, and the `Concept*` that MLIR passes first
   is a leading `uptr`, as `interface.sls` writes it), and
   `SlotAbiTest` (`unittests/Crest/InterfaceTest.cpp`) calls a callable of each type through a function pointer of the
@@ -420,7 +421,7 @@ dialects, every printed `!name.type`) must live as long as the context: intern i
 - [ ] Every `crest-foreign-procedure` string matches a `Sregister_symbol` key in C++ (Rule 14)
 - [ ] `%%` on internal Scheme helpers; `%` only on raw FFI bindings
 - [ ] A binding that takes a builder: `register_builder_binding` in C++, `define-builder-binding` in `ffi.sls`
-- [ ] A binding that calls back into Scheme: a callable from `crest-make-static-c-callable`, owned per Rule 17
+- [ ] A binding that calls back into Scheme: a callable from `define-c-callable`, owned per Rule 17
 - [ ] A new op interface: its macro is a table for `op-interface-expand`, the C++ attach function only calls
       `installInterfaceEntry` (Rule 19), and a slot with a new kind of C++ type gets a case in `SlotAbiTest`
 - [ ] A binding that answers an object nothing else owns: a `LEAK WARNING:` comment and a `with-` macro that frees it

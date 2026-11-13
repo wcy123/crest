@@ -56,7 +56,11 @@
       (syntax-case stx ()
         [(_ (type ...) result clause adapter)
          (if (syntax->datum #'clause)
-             #'(crest-make-static-c-callable (type ...) result (adapter clause))
+             (with-syntax ([(variable ...) (generate-temporaries #'(type ...))])
+               #'(let ()
+                   (define-c-callable address ((variable type) ...) result
+                     ((adapter clause) variable ...))
+                   address))
              #'0)])))
 
   ;; The folder of an op as C wants it. Its operands come as a pointer and a count (0 for no

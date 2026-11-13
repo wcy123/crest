@@ -5,7 +5,7 @@
   (import (except (rnrs) =)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
-          (only (crest callback) crest-make-static-c-callable)
+          (only (crest callback) define-c-callable)
           (only (mlir IR PatternMatch) with-RewritePatternSet)
           (mlir Transforms DialectConversion)
           (crest))
@@ -13,8 +13,7 @@
   (define converter-configured? #f)
 
   ;; The conversion is made once, when the library is loaded, and kept for the whole program.
-  (define identity-conversion
-    (crest-make-static-c-callable (uptr) uptr (lambda (type) type)))
+  (define-c-callable identity-conversion ((type uptr)) uptr type)
 
   (define (%%configure-type-converter! tc)
     (set! converter-configured? #t)

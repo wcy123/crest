@@ -1,5 +1,5 @@
 ;; with-c-callable: a procedure becomes a C function for the body and is released after; the address of a
-;; locked callable is used as it is and never unlocked; crest-make-static-c-callable
+;; locked callable is used as it is and never unlocked; define-c-callable
 ;; keeps its callable locked.
 (import (chezscheme)
         (crest callback))
@@ -28,8 +28,9 @@
       (error 'test "boom")))
   (say "locked after an error: " (yes/no (locked? seen))))
 
-;; The address that crest-make-static-c-callable answered: used as it is, still locked after.
-(let ([address (crest-make-static-c-callable (int) int (lambda (x) (+ x 100)))])
+;; The address that define-c-callable answered: used as it is, still locked after.
+(let ()
+  (define-c-callable address ((x int)) int (+ x 100))
   (with-c-callable/code (entry address)
     (say "address answers: " (call-c entry 1)
          " same address: " (yes/no (= entry address))))
@@ -49,7 +50,8 @@
     (say "not reached")))
 
 ;; A static callable stays locked.
-(let ([entry (crest-make-static-c-callable (int) int (lambda (x) (- x 1)))])
+(let ()
+  (define-c-callable entry ((x int)) int (- x 1))
   (say "static answers: " (call-c entry 43))
   (say "static locked: " (yes/no (locked? entry))))
 

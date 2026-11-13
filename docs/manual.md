@@ -753,9 +753,10 @@ functions around its body and releases them after it, so running a conversion ma
 ```
 
 A callback that uses the type converter or the target is written inside these scopes, as the second entry
-above uses `type-converter`, so the scope releases it. `crest-make-static-c-callable` from `(crest callback)`
-is for a callback that uses no state of a run, made once at the library level: a pattern, or a type
-conversion that does not look at the converter.
+above uses `type-converter`, so the scope releases it. A pattern from `define-rewrite-pattern` or
+`define-conversion-pattern` is a plain procedure, so it goes in a clause. `define-c-callable` from `(crest callback)`
+is for a function that registers patterns and returns before they are applied (`add-rewrite-pattern`,
+`add-conversion-pattern`): it needs the address of a C function that outlives the call, made once at the library level.
 
 ---
 
@@ -1066,7 +1067,7 @@ a dialect, of its ops and types, passes, and conversions (see
 context (`dialects-in-scheme=` or `--crest-scheme-dialect=` with an op in the input, or `load-scheme-dialect!`) for
 MLIR to see the interfaces (`test/dsl/op-builders`, `unittests/Crest/InterfaceTest.cpp`). Platforms: Linux x86-64
 and Windows x64 are tested; the prototype of each slot as a C function depends on the platform
-(the kinds of `crest-make-static-c-callable`), and arm64 is not tested.
+(the types of `define-c-callable`), and arm64 is not tested.
 
 ### Dialect-level `:interfaces`
 
@@ -1488,10 +1489,10 @@ Rule 4.
 A binding that calls back into Scheme never makes or releases the callback: it takes a plain C function pointer
 (a `uptr` on the Scheme side) and calls it. The function pointer has the type that C++ or MLIR declares for the
 callback, result type included (`mlir::WalkResult (*)(uint64_t)`, `int (*)(uint64_t)`, `void (*)()`), and the
-Scheme site writes the same: `(crest-make-static-c-callable (uptr) int proc)`. The Scheme side makes the C function,
-because the garbage collector moves Scheme procedures. `crest-make-static-c-callable` from `(crest callback)` makes
-one that lives for the whole program (the clause of an op, a callback of a dialect, a pattern) and answers its
-address; `with-c-callable/lambda` makes one for the length of a body and releases it after, also on an error. An error of
+Scheme site writes the same: `(define-c-callable name ((x uptr)) int body)`. The Scheme side makes the C function,
+because the garbage collector moves Scheme procedures. `define-c-callable` from `(crest callback)` defines
+one that lives for the whole program (the clause of an op, a callback of a dialect, a pattern that C++ keeps)
+and answers its address; `with-c-callable/lambda` makes one for the length of a body and releases it after, also on an error. An error of
 the procedure is reported with its Scheme position in the text (`<file>:<line>:<column>: <who>: <why>`): by
 `mlir::emitError` in `(current-MLIRContext)`, and the callable answers the failure value of its type; a callback
 whose result is `void` ends the process with the text. A function that only calls it while

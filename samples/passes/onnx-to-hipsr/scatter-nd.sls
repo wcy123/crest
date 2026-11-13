@@ -17,7 +17,6 @@
           onnx-scatter-nd->hipsr)
   (import (except (rnrs (6)) =)
           (only (crest callback) define-c-callable)
-          (only (mlir IR PatternMatch) conversion-pattern->c)
 
 
           (mlir Transforms DialectConversion)
@@ -51,7 +50,8 @@
       result = hipsr.scatter_nd (%ctx %data %indices %updates placeholder)
       -> !output-device) ;
 
-  (define-c-callable onnx-scatter-nd->hipsr-callable (uptr uptr uptr uptr) int (conversion-pattern->c onnx-scatter-nd->hipsr))
+  (define-c-callable onnx-scatter-nd->hipsr-callable ((op uptr) (operands uptr) (rewriter uptr) (type-converter uptr)) int
+    (if (eq? (onnx-scatter-nd->hipsr op operands rewriter type-converter) #t) 1 0))
 
   (define (populate-scatter-nd-patterns type-converter patterns ctx)
     (add-conversion-pattern patterns "onnx.ScatterND"

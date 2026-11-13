@@ -4,7 +4,6 @@
   (export run-pass)
   (import (except (rnrs) =)
           (only (crest callback) define-c-callable)
-          (only (mlir IR PatternMatch) rewrite-pattern->c)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
           (only (mlir Transforms DialectConversion) add-rewrite-pattern)
@@ -40,7 +39,8 @@
     :rewrite op :with
       test.x_high ())
 
-  (define-c-callable %%c-callable (uptr uptr) int (rewrite-pattern->c %%c))
+  (define-c-callable %%c-callable ((op uptr) (rewriter uptr)) int
+    (if (eq? (%%c op rewriter) #t) 1 0))
 
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])

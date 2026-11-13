@@ -14,7 +14,6 @@
           ;; srcloc: shared source-location utilities; cache is module-level in srcloc.sls.
           (only (mlir support srcloc) syntax->file+line+col)
           (rename (rime loop) (:with :rime-with))
-          (only (crest callback) crest-make-static-c-callable)
           (only (mlir IR PatternMatch) conversion-pattern->c rewrite-pattern->c)
           (for (only (chezscheme) syntax->list syntax->datum record-rtd record-type-field-names record-accessor identifier?
                      call-with-string-output-port write) expand)
@@ -157,7 +156,7 @@
                     ;; The pattern is defined as a procedure: what the clauses of
                     ;; with-RewritePatternSet take, which make a callable for the scope of the run.
                     ;; add-rewrite-pattern and add-conversion-pattern take the address of a C function:
-                    ;; made once at the library level with crest-make-static-c-callable.
+                    ;; made once at the library level with define-c-callable.
                     #'(define fname procedure))))))))))
 
   ;;=======================================================================

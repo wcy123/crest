@@ -36,7 +36,6 @@
                 mlir::Operation::getParentOp)
           (only (mlir IR Region) mlir::Region::front)
           (mlir Transforms DialectConversion)
-          (only (crest callback) crest-make-static-c-callable)
           (mlir Dialect Tensor IR)
           (only (mlir IR Operation) mlir::Operation::getRegion)
           (only (mlir IR Block) mlir::Block::getArgument)

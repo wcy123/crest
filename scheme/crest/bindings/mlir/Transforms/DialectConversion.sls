@@ -65,7 +65,7 @@
   ;; The callbacks of the procedures below are C functions that Scheme makes of the user's closures,
   ;; and C++ keeps their addresses for as long as the type converter, the target or the pattern set is
   ;; used: the caller keeps each function alive for that long (with-c-callable/lambda, or
-  ;; crest-make-static-c-callable for the whole program). The procedures that take one take its
+  ;; define-c-callable for the whole program). The procedures that take one take its
   ;; address; the with-TypeConverter and with-ConversionTarget clauses below make the functions around
   ;; their body (the C result types are int for a verdict and uptr for a type or a value), and the
   ;; adapters make a procedure with the C types of a friendly one:
@@ -103,7 +103,7 @@
     (unless (and (integer? callable) (exact? callable))
       (assertion-violation
        who
-       "the callback must be the address of a C function: make it with crest-make-static-c-callable, or with with-c-callable/lambda around the use; the clauses of with-TypeConverter, with-ConversionTarget and with-RewritePatternSet take procedures"
+       "the callback must be the address of a C function: make it with define-c-callable, or with with-c-callable/lambda around the use; the clauses of with-TypeConverter, with-ConversionTarget and with-RewritePatternSet take procedures"
        callable))
     callable)
 

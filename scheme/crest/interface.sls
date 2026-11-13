@@ -21,7 +21,7 @@
 ;;
 ;;   method    the name of the method of the Concept
 ;;   type...   the C++ types of its arguments after the op, and result the C++ type of its answer,
-;;             as crest-make-static-c-callable (scheme/crest/callback.sls) takes them
+;;             as define-c-callable (scheme/crest/callback.sls) takes them
 ;;   adapter   #f, or a procedure from the procedure of the clause to the procedure that the slot
 ;;             calls with the numbers and lists of the types (it turns a list of types into a range,
 ;;             a verdict into 1 or 0 with a diagnostic, ...)
@@ -174,9 +174,15 @@
                                  (cdr from)
                                  #`(#,(method-adapter m) #,(cdr from)))])
               ;; MLIR passes the Concept first; the procedure does not see it.
-              #`(crest-make-static-c-callable
-                 (uptr #,@(syntax->list (method-types m))) #,(method-result m)
-                 (let ([p #,procedure]) (lambda (concept . arguments) (apply p arguments))))))))
+              (let ([types (syntax->list (method-types m))])
+                (with-syntax ([(type ...) types]
+                              [(argument ...) (generate-temporaries types)]
+                              [result (method-result m)]
+                              [procedure procedure])
+                  #'(let ()
+                      (define-c-callable address ((concept uptr) (argument type) ...) result
+                        (procedure argument ...))
+                      address)))))))
 
     (duplicates!)
     (for-each (lambda (m)

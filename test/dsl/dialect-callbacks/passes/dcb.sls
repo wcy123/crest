@@ -6,7 +6,6 @@
   (export dcb)
   (import (except (rnrs) =)
           (only (crest callback) define-c-callable)
-          (only (mlir IR PatternMatch) rewrite-pattern->c)
           (mlir IR Value)
           (mlir IR Operation)
           (mlir IR BuiltinTypes)
@@ -38,7 +37,8 @@
     :rewrite %out :with
       %x)
 
-  (define-c-callable %%neg-neg-callable (uptr uptr) int (rewrite-pattern->c %%neg-neg))
+  (define-c-callable %%neg-neg-callable ((op uptr) (rewriter uptr)) int
+    (if (eq? (%%neg-neg op rewriter) #t) 1 0))
 
   (define-dialect dcb
     (:initialize (dialect) (say "dcb initialize"))

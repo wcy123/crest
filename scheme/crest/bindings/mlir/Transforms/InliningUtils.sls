@@ -50,19 +50,23 @@
            (case (syntax->datum #'method)
              [(isLegalToInline/call isLegalToInline/region isLegalToInline/op)
               #'(cons 'method
-                      (crest-make-static-c-callable
-                       (uptr uptr int) int
-                       (lambda (first second would-be-cloned)
-                         (if ((lambda (formal ...) body ...) first second (eqv? would-be-cloned 1)) 1 0))))]
+                      (let ()
+                        (define-c-callable address ((first uptr) (second uptr) (would-be-cloned int)) int
+                          (if ((lambda (formal ...) body ...) first second (eqv? would-be-cloned 1)) 1 0))
+                        address))]
              [(handleTerminator/value handleTerminator/block)
               #'(cons 'method
-                      (crest-make-static-c-callable (uptr uptr) void (lambda (formal ...) body ...)))]
+                      (let ()
+                        (define-c-callable address ((first uptr) (second uptr)) void
+                          ((lambda (formal ...) body ...) first second))
+                        address))]
              [(materializeCallConversion)
               #'(cons 'method
-                      (crest-make-static-c-callable
-                       (uptr uptr uptr uptr) uptr
-                       (lambda (builder input result-type loc)
-                         (or ((lambda (formal ...) body ...) builder input result-type loc) 0))))]
+                      (let ()
+                        (define-c-callable address
+                          ((builder uptr) (input uptr) (result-type uptr) (loc uptr)) uptr
+                          (or ((lambda (formal ...) body ...) builder input result-type loc) 0))
+                        address))]
              [else
               (syntax-violation 'mlir::DialectInlinerInterface "has no method of this name" stx clause)])]
           [_ (syntax-violation 'mlir::DialectInlinerInterface

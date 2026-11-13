@@ -22,7 +22,6 @@
   (export populate-constant-patterns)
   (import (except (rnrs (6)) =)
           (only (crest callback) define-c-callable)
-          (only (mlir IR PatternMatch) conversion-pattern->c)
 
           (only (mlir IR Value)
                 mlir::Value::getDefiningOp
@@ -99,9 +98,11 @@
     :rewrite %output :with
       result = hipsr.constant () (value : $value-attr) -> !out-dev) ;
 
-  (define-c-callable onnx-constant-scalar->arith-callable (uptr uptr uptr uptr) int (conversion-pattern->c onnx-constant-scalar->arith))
+  (define-c-callable onnx-constant-scalar->arith-callable ((op uptr) (operands uptr) (rewriter uptr) (type-converter uptr)) int
+    (if (eq? (onnx-constant-scalar->arith op operands rewriter type-converter) #t) 1 0))
 
-  (define-c-callable onnx-constant-tensor->hipsr-callable (uptr uptr uptr uptr) int (conversion-pattern->c onnx-constant-tensor->hipsr))
+  (define-c-callable onnx-constant-tensor->hipsr-callable ((op uptr) (operands uptr) (rewriter uptr) (type-converter uptr)) int
+    (if (eq? (onnx-constant-tensor->hipsr op operands rewriter type-converter) #t) 1 0))
 
   (define (populate-constant-patterns type-converter patterns ctx)
     (add-conversion-pattern patterns "onnx.Constant"

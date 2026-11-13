@@ -12,7 +12,7 @@
           mlir::InferTypeOpInterface::inferReturnTypes<OperationState>
           mlir::InferTypeOpInterface::inferReturnTypes<OperationState*>)
   (import (chezscheme)
-          (only (crest callback) crest-make-static-c-callable)
+          (only (crest callback) define-c-callable)
           (only (crest interface) crest-callback-entry-dispatcher)
           (mlir IR MLIRContext)
           (only (mlir IR Diagnostics) mlir::emitError)
@@ -41,7 +41,7 @@
   ;; location operands attributes). The Linux function always takes 11 numbers; with LLVM 22 the last
   ;; one is leftover memory and is ignored.
   ;;
-  ;; MLIR calls these functions with its own prototype, so the callable made by crest-make-static-c-callable
+  ;; MLIR calls these functions with its own prototype, so the callable made by define-c-callable
   ;; (logical-result) guards the clause: an error is reported there. `decode` turns the words into Scheme data,
   ;; the clause is called here, in Scheme, and `push` gives its answer to MLIR. The context is set for the
   ;; clause (it builds types in it) and stays set, so that the guard can report in it.
@@ -80,7 +80,7 @@
   ;;
   ;; Windows uses a box because LogicalResult is a class with a private field. It hands plain
   ;; values such as a bool back directly, but not a class like this one.
-  ;; (crest-make-static-c-callable adds the box as the first argument and answers it, for logical-result.)
+  ;; (define-c-callable adds the box as the first argument and answers it, for logical-result.)
   ;; (%%infer-entry clause refine): the entry point of the callable of a clause of inferReturnTypes (refine 0)
   ;; or refineReturnTypes (refine 1), made from CLAUSE as it is written, so that an error is reported at its
   ;; position. The words of the call are 11 on Linux and 7 on Windows.
@@ -89,17 +89,18 @@
       [(_ clause refine)
        (case (machine-type)
          [(a6le ta6le a6osx ta6osx)
-          (crest-make-static-c-callable
-           (uptr uptr uptr uptr uptr uptr uptr uptr uptr uptr uptr) logical-result
-           (let ([proc clause])
-             (lambda (w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10)
-               (%%infer proc refine w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10))))]
+          (let ()
+            (define-c-callable address
+              ((w0 uptr) (w1 uptr) (w2 uptr) (w3 uptr) (w4 uptr) (w5 uptr) (w6 uptr) (w7 uptr) (w8 uptr)
+               (w9 uptr) (w10 uptr)) logical-result
+               (%%infer clause refine w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10))
+            address)]
          [(a6nt ta6nt)
-          (crest-make-static-c-callable
-           (uptr uptr uptr uptr uptr uptr uptr) logical-result
-           (let ([proc clause])
-             (lambda (w0 w1 w2 w3 w4 w5 w6)
-               (%%infer proc refine w0 w1 w2 w3 w4 w5 w6 0 0 0 0))))]
+          (let ()
+            (define-c-callable address
+              ((w0 uptr) (w1 uptr) (w2 uptr) (w3 uptr) (w4 uptr) (w5 uptr) (w6 uptr)) logical-result
+              (%%infer clause refine w0 w1 w2 w3 w4 w5 w6 0 0 0 0))
+            address)]
          [else (error 'mlir::InferTypeOpInterface
                       "the calling convention of this machine type is not supported"
                       (machine-type))])]))
@@ -118,15 +119,15 @@
       [(_ clause)
        (case (machine-type)
          [(a6le ta6le a6osx ta6osx)
-          (crest-make-static-c-callable
-           (uptr uptr uptr uptr) unsigned-8
-           (let ([compatible clause])
-             (lambda (w0 w1 w2 w3) (%%compatible compatible w0 w1 w2 w3))))]
+          (let ()
+            (define-c-callable address ((w0 uptr) (w1 uptr) (w2 uptr) (w3 uptr)) unsigned-8
+              (%%compatible clause w0 w1 w2 w3))
+            address)]
          [(a6nt ta6nt)
-          (crest-make-static-c-callable
-           (uptr uptr) unsigned-8
-           (let ([compatible clause])
-             (lambda (w0 w1) (%%compatible compatible w0 w1 0 0))))]
+          (let ()
+            (define-c-callable address ((w0 uptr) (w1 uptr)) unsigned-8
+              (%%compatible clause w0 w1 0 0))
+            address)]
          [else (error 'mlir::InferTypeOpInterface
                       "the calling convention of this machine type is not supported"
                       (machine-type))])]))

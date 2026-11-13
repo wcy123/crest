@@ -48,7 +48,7 @@ static ptr evalScheme(const char* code) {
   return scheme_call("eval", expr);
 }
 
-// What crest-make-static-c-callable (scheme/crest/callback.sls) does for a
+// What define-c-callable (scheme/crest/callback.sls) does for a
 // callable with a C result: make a foreign-callable, lock its code object
 // once, answer its address.
 static uint64_t makeCallableEntry() {

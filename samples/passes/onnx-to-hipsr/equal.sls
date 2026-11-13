@@ -16,7 +16,6 @@
   (export populate-equal-patterns)
   (import (except (rnrs (6)) =)
           (only (crest callback) define-c-callable)
-          (only (mlir IR PatternMatch) conversion-pattern->c)
 
 
           (mlir Transforms DialectConversion)
@@ -55,7 +54,8 @@
       result = hipsr.equal (%ctx %lhs %rhs placeholder)
       -> !output-device) ;
 
-  (define-c-callable onnx-equal->hipsr-callable (uptr uptr uptr uptr) int (conversion-pattern->c onnx-equal->hipsr))
+  (define-c-callable onnx-equal->hipsr-callable ((op uptr) (operands uptr) (rewriter uptr) (type-converter uptr)) int
+    (if (eq? (onnx-equal->hipsr op operands rewriter type-converter) #t) 1 0))
 
   (define (populate-equal-patterns type-converter patterns ctx)
     (add-conversion-pattern patterns "onnx.Equal"

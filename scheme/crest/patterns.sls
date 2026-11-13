@@ -34,7 +34,7 @@
           (for (only (chezscheme) syntax->list) expand)
           (for (crest patterns expand) expand)
           (only (crest callback) define-c-callable)
-          (only (mlir IR PatternMatch) with-RewritePatternSet rewrite-pattern->c)
+          (only (mlir IR PatternMatch) with-RewritePatternSet)
           (only (mlir Transforms GreedyPatternRewriteDriver) mlir::applyPatternsGreedily)
           (only (mlir Transforms DialectConversion) add-rewrite-pattern))
 
@@ -105,9 +105,10 @@
                                (syntax->list #'(entry ...)))])
              (with-syntax ([(callable ...) (generate-temporaries #'(pattern ...))])
                #'(begin
-                   (define-c-callable callable (uptr uptr) int (rewrite-pattern->c pattern)) ...
-                   (define (name set)
-                     (add-rewrite-pattern set op-name callable benefit) ...
-                     (if #f #f))))))])))
+                   (define-c-callable callable ((op uptr) (rewriter uptr)) int
+                     (if (eq? (pattern op rewriter) #t) 1 0)) ...
+                     (define (name set)
+                       (add-rewrite-pattern set op-name callable benefit) ...
+                       (if #f #f))))))])))
 
   ) ;; end library (crest patterns)

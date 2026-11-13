@@ -258,7 +258,7 @@ TEST_F(InterfaceTest, TheDialectHasItsInlinerInterface) {
 // The prototype of a slot
 //
 // A slot of a Concept is a C function pointer that MLIR calls, and Scheme fills
-// it with a foreign-callable (crest-make-static-c-callable in
+// it with a foreign-callable (define-c-callable in
 // scheme/crest/callback.sls, as scheme/crest/interface.sls does). C++ passes
 // and returns some types by value in a way that depends on the platform: a
 // class of one pointer (Type, TypeAttr, StringAttr, ...) goes through a pointer
@@ -280,10 +280,11 @@ protected:
     // What interface.sls does for a slot: MLIR passes the Concept first, and
     // the procedure does not see it.
     EXPECT_TRUE(g_interp->eval(
-        "(define-syntax slot-callable (syntax-rules () [(_ (kind ...) result "
-        "procedure) (crest-make-static-c-callable (uptr kind ...) result (let "
-        "([p procedure]) (lambda (concept . arguments) (apply p "
-        "arguments))))]))"));
+        "(define-syntax slot-callable (lambda (stx) (syntax-case stx () [(_ "
+        "(type ...) result procedure) (with-syntax ([(argument ...) "
+        "(generate-temporaries #'(type ...))]) #'(let () (define-c-callable "
+        "address ((concept uptr) (argument type) ...) result (procedure "
+        "argument ...)) address))])))"));
   }
 
   static ptr evalScheme(const std::string& code) {

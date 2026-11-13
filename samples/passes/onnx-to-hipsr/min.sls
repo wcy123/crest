@@ -101,9 +101,11 @@
        [else #f])))
 
   ;; Made once, when the library is loaded, and kept for the whole program.
-  (define-c-callable onnx-min-general->hipsr (uptr uptr uptr uptr) int (conversion-pattern->c %%min-general))
+  (define-c-callable onnx-min-general->hipsr ((op uptr) (operands uptr) (rewriter uptr) (type-converter uptr)) int
+    (if (eq? (%%min-general op operands rewriter type-converter) #t) 1 0))
 
-  (define-c-callable onnx-min-2->hipsr-callable (uptr uptr uptr uptr) int (conversion-pattern->c onnx-min-2->hipsr))
+  (define-c-callable onnx-min-2->hipsr-callable ((op uptr) (operands uptr) (rewriter uptr) (type-converter uptr)) int
+    (if (eq? (onnx-min-2->hipsr op operands rewriter type-converter) #t) 1 0))
 
   (define (populate-min-patterns type-converter patterns ctx)
     ;; DSL pattern for the common binary case (N=2) — inline shape region

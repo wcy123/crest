@@ -8,7 +8,7 @@
 ;;
 ;; (crest callback) — C function pointers made from Scheme procedures.
 ;;
-;;   (crest-make-static-c-callable (argument-type ...) result-type proc)   an address
+;;   (define-c-callable name ((variable type) ...) result-type body ...)   defines an address
 ;;   (crest-callback-pointer-list pointer count)                           a list of integers
 ;;
 ;; C++ never makes, owns, locks or releases a callback. A binding that needs one takes a plain C
@@ -24,10 +24,8 @@
 ;; with the text). Scheme code that calls C++ sets the context with with-current-MLIRContext; a tool that
 ;; C++ drives (crest-opt) gets it from the C++ code that runs Scheme for a context (lib/Crest/CurrentContext.h).
 ;;
-;;   crest-make-static-c-callable   locks it for good: only for a callback made once, at the library
-;;                                  level, that uses no state of a run.
-;;   define-c-callable              the same, as a definition: (define-c-callable name (type ...) result-type
-;;                                  procedure).
+;;   define-c-callable              locks it for good: only for a callback made once, at the library level,
+;;                                  that uses no state of a run.
 ;;   with-c-callable/lambda         makes it from a procedure, locks it for the body and unlocks it after,
 ;;                                  also on an error.
 ;;   with-c-callable/code           uses the address of a locked callable that the caller made (reused,
@@ -41,8 +39,7 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 (library (crest callback)
-  (export crest-make-static-c-callable
-          define-c-callable
+  (export define-c-callable
           with-c-callable/lambda
           with-c-callable/code
           crest-call-guarded
@@ -58,56 +55,43 @@
 
   ;; ---- what a callback is made with --------------------------------------------------------------------
 
-  ;; @brief crest-make-static-c-callable — make a C function with the prototype of C++ from a procedure,
-  ;;        locked for good.
-  ;; @param argument-type  the C++ argument types, in order: uptr, int, ... (any type of foreign-callable)
-  ;;                       or type-range (see %%make-code)
-  ;; @param result-type    the C++ result type: void, uptr, int, unsigned-8, object, logical-result,
-  ;;                       walk-result or range (see %%make-code)
-  ;; @param procedure      the procedure that the C function calls, with the arguments as Scheme values
-  ;; @return               the address of the C function, an exact integer
-  ;; @note                 A macro. It locks the callable for good: use it only at the library level, for a
-  ;;                       callback that uses no state of a run. An error of the procedure is reported by
-  ;;                       the guard (see %%guard-for-result), at the Scheme position of PROCEDURE: the
-  ;;                       part of the form that is the user's, when a macro built the form.
+  ;; @brief define-c-callable — define NAME as the address of a C function with the prototype of C++, made
+  ;;        once for the whole program.
+  ;; @param name      identifier defined as the address, an exact integer
+  ;; @param variable  an argument of the C function, bound in BODY to the Scheme value of the argument
+  ;; @param type      its C++ type: uptr, int, ... (any type of foreign-callable) or type-range
+  ;;                  (see %%make-code)
+  ;; @param result-type  the C++ result type: void, uptr, int, unsigned-8, object, logical-result,
+  ;;                  walk-result or range (see %%make-code)
+  ;; @param body      the expressions of the C function; the value of the last one is the result
+  ;; @note            A macro, like define for a function: it links a C function into the library for good,
+  ;;                  as a static library does, by locking the callable. Use it at the library level, for a
+  ;;                  callback that uses no state of a run and that C++ keeps after the call that registers
+  ;;                  it returns (the address that add-rewrite-pattern and add-conversion-pattern take).
+  ;;                  It works in any body too: (let () (define-c-callable address ...) address) is an
+  ;;                  expression for the address. An error in BODY is reported by the guard (see
+  ;;                  %%guard-for-result), at the Scheme position of the lambda that the macro builds: the part
+  ;;                  of it that is the user's, when a macro built the form.
   ;; @example
-  ;;   (define legal (crest-make-static-c-callable (uptr) int (lambda (op) 1)))
-  (define-syntax crest-make-static-c-callable
-    (lambda (stx)
-      (syntax-case stx ()
-        [(_ (type ...) result-type procedure)
-         (with-syntax ([location #`(quote #,(datum->syntax #'stx (syntax->first-file+line+col #'procedure)))])
-           #'(let ([code (%%make-code (type ...) result-type procedure location)])
-               (lock-object code)
-               (foreign-callable-entry-point code)))])))
-
-  ;; @brief define-c-callable — define NAME as the address of a C function made once, for the whole program.
-  ;; @param name           identifier defined as the address
-  ;; @param argument-type  as for crest-make-static-c-callable
-  ;; @param result-type    as for crest-make-static-c-callable
-  ;; @param procedure      the procedure that the C function calls
-  ;; @note                 A macro, like define: it links a C function into the library for good, as a
-  ;;                       static library does. Use it at the library level, for a callback that uses no
-  ;;                       state of a run, that C++ keeps after the call that registers it returns (the
-  ;;                       address that add-rewrite-pattern and add-conversion-pattern take).
-  ;; @example
-  ;;   (define-c-callable cast-callable (uptr uptr uptr uptr) int (conversion-pattern->c onnx-cast->hipsr))
+  ;;   (define-c-callable legal ((op uptr)) int
+  ;;     (if (known-op? op) 1 0))
   (define-syntax define-c-callable
     (syntax-rules ()
-      [(_ name (type ...) result-type procedure)
-       (define name (crest-make-static-c-callable (type ...) result-type procedure))]))
+      [(_ name ((variable type) ...) result-type body ...)
+       (define name
+         (%%crest-make-static-c-callable (type ...) result-type (lambda (variable ...) body ...)))]))
 
   ;; @brief with-c-callable/lambda — run a body with the address of a C function made from a procedure.
   ;; @param name           identifier bound to the address inside BODY
-  ;; @param argument-type  as for crest-make-static-c-callable
-  ;; @param result-type    as for crest-make-static-c-callable
+  ;; @param argument-type  the C++ types, as for define-c-callable
+  ;; @param result-type    as for define-c-callable
   ;; @param procedure      the procedure that the C function calls. The macro makes the foreign-callable,
   ;;                       locks it, and unlocks it when BODY ends, also when it ends by an error
   ;; @param body           expressions evaluated with NAME bound
   ;; @return               the value of the last expression of BODY
   ;; @note                 A macro. Use it for a callback that C++ calls while BODY runs. The address is
   ;;                       valid only inside BODY: if C++ keeps it after BODY ends, use
-  ;;                       crest-make-static-c-callable. An error of the procedure is reported at the Scheme
+  ;;                       define-c-callable. An error of the procedure is reported at the Scheme
   ;;                       position of PROCEDURE.
   ;; @example
   ;;   (with-c-callable/lambda (visit (uptr) walk-result (lambda (op) mlir::WalkResult::advance))
@@ -125,7 +109,7 @@
 
   ;; @brief with-c-callable/code — run a body with the address of a callable that someone else made.
   ;; @param name     identifier bound to the address inside BODY
-  ;; @param address  the address that crest-make-static-c-callable answered, to reuse it (making a callable
+  ;; @param address  the address that define-c-callable defined, to reuse it (making a callable
   ;;                 costs about 200 ns). The macro never unlocks it, because it is the caller's. A callable
   ;;                 that is not locked is an error: the garbage collector could move it, and C++ would
   ;;                 call a stale address
@@ -157,6 +141,18 @@
     (map (lambda (i) (foreign-ref 'uptr pointer (* i 8))) (iota count)))
 
   ;; ---- the C function of one callable: its prototype is the one of C++ ---------------------------------
+
+  ;; %%crest-make-static-c-callable (private; define-c-callable is its public form): make a C function with the
+  ;; prototype of C++ from a procedure, lock it for good and answer its address. The arguments are those of
+  ;; define-c-callable, as the type list and a procedure.
+  (define-syntax %%crest-make-static-c-callable
+    (lambda (stx)
+      (syntax-case stx ()
+        [(_ (type ...) result-type procedure)
+         (with-syntax ([location #`(quote #,(datum->syntax #'stx (syntax->first-file+line+col #'procedure)))])
+           #'(let ([code (%%make-code (type ...) result-type procedure location)])
+               (lock-object code)
+               (foreign-callable-entry-point code)))])))
 
   ;; (%%make-code (type ...) result-type procedure location): the code object of the foreign-callable whose
   ;; C prototype is the one of C++. LOCATION is an expression for the position of the callback, (file line
@@ -213,7 +209,7 @@
                            (ftype-set! %%SlotRange (size) answer (cdr pair))))
                        (#,@c-types) (& %%SlotRange))]
                    [else
-                    (syntax-violation 'crest-make-static-c-callable
+                    (syntax-violation 'define-c-callable
                                       "unknown result type of a callable" stx #'result-type)])))])))
 
   ;; ---- the guard of a callable (plan 05) ----------------------------------------------------------

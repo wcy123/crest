@@ -4,7 +4,6 @@
   (export oc)
   (import (except (rnrs) =)
           (only (crest callback) define-c-callable)
-          (only (mlir IR PatternMatch) rewrite-pattern->c)
           (only (chezscheme) command-line-arguments)
           (mlir IR Value)
           (only (mlir Transforms DialectConversion) add-rewrite-pattern)
@@ -18,7 +17,8 @@
     :rewrite %out :with
       %x)
 
-  (define-c-callable %%neg-neg-callable (uptr uptr) int (rewrite-pattern->c %%neg-neg))
+  (define-c-callable %%neg-neg-callable ((op uptr) (rewriter uptr)) int
+    (if (eq? (%%neg-neg op rewriter) #t) 1 0))
 
   (define-dialect oc
     (define-op neg

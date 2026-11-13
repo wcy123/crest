@@ -14,7 +14,6 @@
   (export populate-cast-patterns)
   (import (except (rnrs (6)) =)
           (only (crest callback) define-c-callable)
-          (only (mlir IR PatternMatch) conversion-pattern->c)
 
 
           (mlir Transforms DialectConversion)
@@ -51,7 +50,8 @@
       cast = hipsr.cast (%ctx %input placeholder)
       -> !output-device) ;
 
-  (define-c-callable onnx-cast->hipsr-callable (uptr uptr uptr uptr) int (conversion-pattern->c onnx-cast->hipsr))
+  (define-c-callable onnx-cast->hipsr-callable ((op uptr) (operands uptr) (rewriter uptr) (type-converter uptr)) int
+    (if (eq? (onnx-cast->hipsr op operands rewriter type-converter) #t) 1 0))
 
   (define (populate-cast-patterns type-converter patterns ctx)
     (add-conversion-pattern patterns "onnx.Cast" onnx-cast->hipsr-callable type-converter 1))
