@@ -185,14 +185,24 @@
       ;; A plain let never erased it, and neither did exit, which skips the cleanup (see %%quit).
       (with-mlir::OwningOpRef module-op (%%build-module filename ctx)
         (%%run-pipeline! module-op ctx opt? #t #t)
-        (with-ExecutionEngine engine (module-op (if opt? 3 0))
-          (when (zero? engine)
-            (display "Failed to create the execution engine\n" (current-error-port))
-            (%%quit 1))
-          (let ([rc (mlir::ExecutionEngine::invoke engine "main")])
-            (when (not (zero? rc))
-              (display "JIT invocation failed\n" (current-error-port))
-              (%%quit 1))))))))
+        (guard (e [(%%engine-error? e "mlir::ExecutionEngine::create")
+                   (%%quit-with "Failed to create the execution engine" e)]
+                  [(%%engine-error? e "mlir::ExecutionEngine::invoke")
+                   (%%quit-with "JIT invocation failed" e)])
+          (with-ExecutionEngine engine (module-op (if opt? 3 0))
+            (mlir::ExecutionEngine::invoke engine "main")))))))
+
+;; The execution engine answers an error that has the text of MLIR; say it and end with status 1.
+;; The who of an error that a binding answers is a string (crest-foreign-procedure).
+(define (%%engine-error? e who)
+  (and (who-condition? e) (equal? (condition-who e) who)))
+
+(define (%%quit-with message e)
+  (display message (current-error-port))
+  (display ": " (current-error-port))
+  (display (condition-message e) (current-error-port))
+  (newline (current-error-port))
+  (%%quit 1))
 
 ;; ---------------------------------------------------------------------------
 ;; Optimization pipeline

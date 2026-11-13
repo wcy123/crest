@@ -8,4 +8,4 @@
   (define %mlir::ExecutionEngine::create
     (crest-foreign-procedure "mlir::ExecutionEngine::create" (uptr int) uptr))
   (define %mlir::ExecutionEngine::invoke
-    (crest-foreign-procedure "mlir::ExecutionEngine::invoke" (uptr string) int)))
+    (crest-foreign-procedure "mlir::ExecutionEngine::invoke" (uptr string) void)))
