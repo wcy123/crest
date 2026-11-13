@@ -1,4 +1,4 @@
-// A clause of an interface of a Scheme op that raises an error (plan 05): MLIR calls the slot with its own
+// A clause of an interface of a Scheme op that raises an error (Rule 17): MLIR calls the slot with its own
 // prototype, so the callable of the slot reports the error as a diagnostic at the Scheme source of the clause and
 // answers the zero of its result kind: an empty range for getArgumentTypes, a null region for getCallableRegion.
 //

@@ -1,5 +1,5 @@
 NOT APPLIED BY THE BUILD. Kept for the record (decision of 2026-11-12: CREST does not patch Chez; it
-avoids the leak by never letting an error cross a C function, plans/04-errors-are-values.md).
+avoids the leak by never letting an error cross a C function, CLAUDE.md Rule 20).
 
 Chez Scheme: free the records of the C calls that a Scheme error escapes
 (c/schlib.c, S_call_help, "case 1: normal return")

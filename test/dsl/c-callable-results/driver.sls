@@ -1,4 +1,4 @@
-;; A callable has the C prototype that C++ declares, result type included (plan 05). The result type is written at the
+;; A callable has the C prototype that C++ declares, result type included (Rule 17). The result type is written at the
 ;; site: int, unsigned-8 and uptr answer what the procedure answered; an error of the procedure is a diagnostic
 ;; at the Scheme source of the callback, in (current-MLIRContext), and the callable answers the failure value of the
 ;; type (0); void ends the process with the text; with no current context the process ends with the text.

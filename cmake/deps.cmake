@@ -54,7 +54,7 @@ endif()
 # patch Chez: cmake/patches/chez-release-escaped-frames.patch is kept for the record (it explains the
 # leak, has a standalone repro in cmake/patches/chez-error-escape-leak/, and says what is known about
 # upstream and how sure we are), and it is not applied by this build. CREST avoids the leak instead by
-# never letting an error cross a C function: plans/04-errors-are-values.md.
+# never letting an error cross a C function: CLAUDE.md Rule 20.
 FetchContent_Declare(ChezScheme
   GIT_REPOSITORY         https://github.com/cisco/ChezScheme.git
   GIT_TAG                d533f2e156d4eddeafe24bd7cc4de87fdc88caeb

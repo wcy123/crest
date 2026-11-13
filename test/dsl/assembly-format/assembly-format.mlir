@@ -1,4 +1,4 @@
-// :assembly-format (plans/16): the text form of an op is one ODS string. Each op of passes/af.sls
+// :assembly-format: the text form of an op is one ODS string. Each op of passes/af.sls
 // parses its format and prints the same text back; the generic form parses back to the same custom
 // text (the printer and the parser agree). The spacing is that of OpFormatGen.cpp.
 //

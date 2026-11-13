@@ -1,4 +1,4 @@
-// CallOpInterface for ops of a Scheme dialect (plans/13, part 2). MLIR's inliner finds the callee of
+// CallOpInterface for ops of a Scheme dialect. MLIR's inliner finds the callee of
 // a call through the interface: calltest.call must answer getCallableForCallee (its callee
 // attribute), getArgOperands (its operands) and resolve the symbol, calltest.func must be callable.
 // With them, --inline replaces the call with the body of the callee, and drops the private callee

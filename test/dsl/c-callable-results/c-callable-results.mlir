@@ -1,4 +1,4 @@
-// A callable has the C prototype that C++ declares, result type included (plan 05). An error of the procedure is a
+// A callable has the C prototype that C++ declares, result type included (Rule 17). An error of the procedure is a
 // diagnostic at the Scheme source of the callback, and the callable answers the failure value of its type; a void
 // callable has no place for an error: the process ends with the text, also when there is no current context to make
 // the location in.

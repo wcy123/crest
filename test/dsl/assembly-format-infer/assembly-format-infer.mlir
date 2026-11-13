@@ -1,5 +1,5 @@
-// An op that implements InferTypeOpInterface may leave every result type out of its :assembly-format
-// (plans/27): the parser asks the interface for them once the operands and attributes are in, and the
+// An op that implements InferTypeOpInterface may leave every result type out of its :assembly-format.
+// The parser asks the interface for them once the operands and attributes are in, and the
 // printer prints no result type. inf.add takes the type of its left operand, inf.zero has i64 with
 // nothing in the text, inf.pair has two results. The generic form shows the inferred types, and it
 // parses back to the same custom text.

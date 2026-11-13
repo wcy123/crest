@@ -1,5 +1,5 @@
 // An attribute field with a :buildable-type prints without its type and parses without it, as the
-// I64Attr of C++ Toy's StructAccessOp does (plans/27): `[1]`, not `[1 : i64]`. The generic form shows
+// I64Attr of C++ Toy's StructAccessOp does: `[1]`, not `[1 : i64]`. The generic form shows
 // the type that the parser built the attribute with. As in C++, a text that still writes the type is not
 // accepted: the generic form is how a typed attribute is written.
 //

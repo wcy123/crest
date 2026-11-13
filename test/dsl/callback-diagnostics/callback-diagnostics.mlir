@@ -1,5 +1,5 @@
 // An error in a callback is a diagnostic, reported where it happens, and the callable answers the failure value of
-// the C++ result type; the C++ prototype of the callable is the one MLIR declares (plan 05).
+// the C++ result type; the C++ prototype of the callable is the one MLIR declares (Rule 17).
 //   - the diagnostic is at the Scheme source of the callback (driver.sls), made in (current-MLIRContext);
 //   - a walk visitor answers a WalkResult; on an error the answer is `interrupt`, which stops the walk; the walk
 //     answers it to Scheme as a number and raises nothing;

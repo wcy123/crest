@@ -1,5 +1,5 @@
 // An inferReturnTypes clause that raises an error: MLIR calls it through a plain function pointer, and C++
-// calls the procedure itself, so the error must not cross either (plan 05). It is a diagnostic at the Scheme
+// calls the procedure itself, so the error must not cross either (Rule 17). It is a diagnostic at the Scheme
 // source of the clause, the inference fails ("cannot infer the result types of badr.op"), and the program goes on.
 //
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/scheme-raises \

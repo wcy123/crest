@@ -219,7 +219,7 @@
                     (syntax-violation 'define-c-callable
                                       "unknown result type of a callable" stx #'result-type)])))])))
 
-  ;; ---- the guard of a callable (plan 05) ----------------------------------------------------------
+  ;; ---- the guard of a callable (Rule 17) ----------------------------------------------------------
   ;;
   ;; MLIR declares the prototype, and it has no room for an error, so when the procedure raises the guard
   ;; reports "<file>:<line>:<column>: <who>: <why>" (the Scheme position of the callback, then the error):

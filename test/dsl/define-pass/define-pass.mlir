@@ -1,4 +1,4 @@
-// define-pass (plans/23, part A): a pass written in Scheme, added to a PassManager like any other.
+// define-pass: a pass written in Scheme, added to a PassManager like any other.
 // A pass nested on func.func runs on each function, a pass on the module runs once, and a pass whose
 // body returns #f fails the pipeline (the diagnostic it emitted is reported).
 //

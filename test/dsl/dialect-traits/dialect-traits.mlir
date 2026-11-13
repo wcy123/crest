@@ -1,4 +1,4 @@
-// :traits in define-op (plans/13). A dialect written in Scheme could not say that an op is a
+// :traits in define-op. A dialect written in Scheme could not say that an op is a
 // terminator: MLIR only treats a dynamic op as one when DynamicOpDefinition::addTrait attached
 // IsTerminator. The verifier shows the difference: a block whose last op is not a terminator is
 // rejected, a block ending in a traittest.ret passes.
