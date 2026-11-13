@@ -4,7 +4,7 @@
 // RUN: rm -rf %t/materialization-target-scheme && mkdir -p %t/materialization-target-scheme
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/materialization-target-scheme \
 // RUN:   %crest-opt -allow-unregistered-dialect \
-// RUN:   --crest-pass="passes=passes/target-materialization dialects=func,tensor" %s \
+// RUN:   --crest-pass="passes=passes/target-materialization" %s \
 // RUN:   | %FileCheck %s
 
 // CHECK-LABEL: func.func @f

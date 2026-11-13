@@ -90,7 +90,7 @@ registerDialectsForPipeline(pm, dialects)                  Pass.cpp:468
     pm.getDependentDialects(dialects)  [for each nested]   Pass.cpp:751  ← recurses into nested PMs
 
   // For a leaf pass (e.g. CrestPass):
-  CrestPass::getDependentDialects(registry)                CrestPass.cpp  ← our override
+  (CrestPass does not override it; see below)
 ```
 
 Permalinks (commit `ca7933e`):
@@ -103,6 +103,8 @@ Permalinks (commit `ca7933e`):
 - [`registerDialectsForPipeline` — Pass.cpp:468](https://github.com/llvm/llvm-project/blob/ca7933e47d3a/mlir/lib/Pass/Pass.cpp#L468)
 - [`pass.getDependentDialects` — Pass.cpp:471](https://github.com/llvm/llvm-project/blob/ca7933e47d3a/mlir/lib/Pass/Pass.cpp#L471)
 - [`OpToOpPassAdaptor::getDependentDialects` — Pass.cpp:749](https://github.com/llvm/llvm-project/blob/ca7933e47d3a/mlir/lib/Pass/Pass.cpp#L749)
+
+`CrestPass` does not know what its Scheme code creates, so it does not declare dependent dialects. It loads every dialect that the context has registered in `initialize`, which `PassManager::run()` calls before `enterMultiThreadedExecution()` too (`--crest-pass=dialects-in-scheme=name=module` registers a Scheme dialect in the context first).
 
 ### Critical: `getDependentDialects` runs AFTER parsing
 
