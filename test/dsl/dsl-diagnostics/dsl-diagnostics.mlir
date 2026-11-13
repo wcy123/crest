@@ -5,7 +5,6 @@
 // RUN: %{run} --crest-pass="passes=passes/unreachable" 2>&1 | %FileCheck %s --check-prefix=UNREACHABLE
 // RUN: %{run} --crest-pass="passes=passes/no-dot" 2>&1 | %FileCheck %s --check-prefix=NO-DOT
 // RUN: %{run} --crest-pass="passes=passes/then-let-clash" 2>&1 | %FileCheck %s --check-prefix=CLASH
-// RUN: %{run} --crest-pass="passes=passes/llvm-configure" 2>&1 | %FileCheck %s --check-prefix=LLVM
 // RUN: %{run} --crest-scheme-dialect=repdialect=passes/repeated-operands 2>&1 | %FileCheck %s --check-prefix=OPERANDS
 // RUN: %{run} --crest-scheme-dialect=verdialect=passes/repeated-verify 2>&1 | %FileCheck %s --check-prefix=VERIFY
 
@@ -24,10 +23,6 @@
 // CLASH: error: Failed to import Scheme library: passes/then-let-clash:
 // CLASH-SAME: :then-let binds %x
 // CLASH-SAME: :if-match
-
-// The LLVM type converter is made for you: :configure-type-converter would be dropped, so it is an error.
-// LLVM: error: Failed to import Scheme library: passes/llvm-configure:
-// LLVM-SAME: :configure-type-converter has no effect with :type-converter llvm
 
 // A clause of define-op is given once.
 // OPERANDS: error: Failed to import Scheme library: passes/repeated-operands:

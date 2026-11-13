@@ -68,7 +68,7 @@ lowering reads as the IR it produces.
 |---|---|---|
 | The dialect, `mlir-gen.sls`, the canonicalization patterns | `define-dialect`, `begin-mlir-code`, `define-rewrite-pattern` | as in Ch4 |
 | The affine lowering of `toy.constant`, `toy.add`, `toy.mul`, `toy.transpose`, `toy.func`, `toy.return`, `toy.print` | `define-conversion-pattern`, with every op a `begin-mlir-code` form | see the section above |
-| Registering the conversion | `apply-conversion` (`:mode partial`, `:type-converter`, `:legal-dialects`, `:illegal-dialects`, `:dynamically-legal`, `:patterns`) | one declaration instead of a type converter, a target and a pattern set created and freed by hand |
+| Registering the conversion | `apply-conversion` (`:partial-mode`, `:converter`, `:legal-dialects`, `:illegal-dialects`, `:dynamically-legal`, `:patterns`) | one declaration instead of a type converter, a target and a pattern set created and freed by hand |
 | Moving the body of `toy.func` into `func.func` | `(:move-region op)` | the region moves, it is not rebuilt |
 | Shape inference | `define-rewrite-pattern`, as in Ch4 | |
 | Inlining | MLIR's inliner pass, as in Ch4 | the dialect declares what the pass needs, see the Ch4 README |

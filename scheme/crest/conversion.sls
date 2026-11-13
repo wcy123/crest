@@ -15,21 +15,28 @@
 ;; applies the conversion and frees them, in that order, so a pass states what it converts and
 ;; not how the objects are created and freed. Every key is optional:
 ;;
-;;   :mode               partial | full                      default full
-;;   :type-converter     a procedure (type) -> type or #f    added as a conversion callback, or
-;;                       llvm                                an LLVMTypeConverter
+;;   :partial-mode       a flag without a value: a partial conversion
+;;   :full-mode          a flag without a value: a full conversion (the default)
+;;   :converter          (with-TypeConverter converter :conversions (...))
+;;                       (with-LLVMTypeConverter converter (ctx))
+;;                                                           the macro that makes the converter, without
+;;                                                           its body: the pass writes the variable and
+;;                                                           the arguments, apply-conversion adds the body
 ;;   :legal-dialects     ("func" "builtin")                  names
 ;;   :illegal-dialects   ("toy")                             names
 ;;   :legal-ops          ("builtin.module")                  names
 ;;   :dynamically-legal  (("toy.print" (lambda (op) ...)))   (name predicate) entries
 ;;   :patterns           (("toy.add" %%add-lower!)           (name fn [benefit] [:no-type-converter])
 ;;                        ("toy.print" %%print-lower! :no-type-converter))
-;;   :populate           (lambda (tc patterns) ...)          called with the converter and the
+;;   :populate           (lambda (converter patterns) ...)   called with the converter and the
 ;;                                                           pattern set, after :patterns
-;;   :configure-type-converter  a procedure (tc)             called with the converter, after
-;;                                                           :type-converter
-;;   :configure-target  a procedure (target tc)              called with the target and the converter,
+;;   :configure-type-converter  a procedure (converter)      called with the converter, first thing in
+;;                                                           the body of :converter
+;;   :configure-target  a procedure (target converter)       called with the target and the converter,
 ;;                                                           after the legal/illegal keys
+;;
+;; Without :converter the converter is a plain TypeConverter with no conversions. The variable of
+;; :converter is bound in the whole conversion, so a pass can use it in :patterns, :populate and so on.
 ;;
 ;; A pattern is registered with the type converter and benefit 1 unless the entry says
 ;; otherwise; :no-type-converter registers it so that it sees the original operand types.
@@ -38,12 +45,15 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (crest conversion)
-  (export apply-conversion)
+  (export apply-conversion
+          :partial-mode :full-mode
+          :converter :legal-dialects :illegal-dialects :legal-ops
+          :dynamically-legal :patterns :populate
+          :configure-type-converter :configure-target :no-type-converter)
   (import (rnrs)
           (for (rnrs) expand)
           (for (only (chezscheme) syntax->list) expand)
           (only (mlir IR PatternMatch) with-RewritePatternSet)
-          (only (mlir Conversion LLVMCommon TypeConverter) with-LLVMTypeConverter)
           (only (mlir Transforms DialectConversion)
                 with-TypeConverter
                 with-ConversionTarget
@@ -53,138 +63,169 @@
                 apply-full-conversion
                 mlir::applyPartialConversion))
 
+  ;; The words of apply-conversion are bound, so that a use matches them as literals by binding, not by name.
+  (define-syntax define-keywords
+    (lambda (stx)
+      (syntax-case stx ()
+        [(_ name ...)
+         #'(begin
+             (define-syntax name
+               (lambda (use) (syntax-violation 'apply-conversion "misplaced keyword of apply-conversion" use)))
+             ...)])))
+
+  (define-keywords :partial-mode :full-mode
+    :converter :legal-dialects :illegal-dialects :legal-ops
+    :dynamically-legal :patterns :populate
+    :configure-type-converter :configure-target :no-type-converter)
+
   (define-syntax apply-conversion
     (lambda (stx)
-      (define known
-        '(:mode :type-converter :legal-dialects :illegal-dialects :legal-ops
-                :dynamically-legal :patterns :populate
-                :configure-type-converter :configure-target))
-
       (define (fail at message)
         (syntax-violation 'apply-conversion message at))
 
-      ;; The elements of a proper list form, #f for anything else.
-      (define (list-of x)
-        (syntax-case x ()
-          [(e ...) (syntax->list x)]
-          [_ #f]))
-
-      ;; (key value ...) -> alist of (key-symbol . value-syntax)
-      (define (parse-options options)
-        (let loop ([o options] [acc '()])
-          (cond
-           [(null? o) acc]
-           [(null? (cdr o)) (fail (car o) "key without a value")]
-           [else
-            (let ([key (syntax->datum (car o))])
-              (unless (memq key known) (fail (car o) "unknown key"))
-              (when (assq key acc) (fail (car o) "repeated key"))
-              (loop (cddr o) (cons (cons key (cadr o)) acc)))])))
-
-      (define (lookup options key)
-        (let ([entry (assq key options)])
-          (and entry (cdr entry))))
-
-      ;; The elements of a list value; an absent key is the empty list.
-      (define (elements options key)
-        (let ([value (lookup options key)])
-          (cond
-           [(not value) '()]
-           [(list-of value) => (lambda (l) l)]
-           [else (fail value (string-append (symbol->string key) " expects a list"))])))
-
-      ;; (name fn [benefit] [:no-type-converter]) -> (flag? . the pattern entry of with-RewritePatternSet)
-      (define (pattern-entry entry tc)
-        (let ([usage "a pattern is (name fn [benefit] [:no-type-converter])"]
-              [parts (or (list-of entry) '())])
-          (when (< (length parts) 2) (fail entry usage))
-          (let* ([name   (car parts)]
-                 [fn     (cadr parts)]
-                 [tail   (cddr parts)]
-                 [flag?  (and (pair? tail)
-                              (eq? (syntax->datum (car (reverse tail))) ':no-type-converter))]
-                 [tail   (if flag? (reverse (cdr (reverse tail))) tail)])
-            (when (> (length tail) 1) (fail entry usage))
-            (let ([benefit (if (null? tail) #'1 (car tail))])
-              (cons flag?
-                    (if flag?
-                        #`(#,name #,fn #,benefit)
-                        #`(#,name #,fn #,tc #,benefit)))))))
-
       (syntax-case stx ()
         [(_ module-op ctx option ...)
-         (let* ([options (parse-options (syntax->list #'(option ...)))]
-                [mode    (let ([m (lookup options ':mode)])
-                           (cond
-                            [(not m) 'full]
-                            [(memq (syntax->datum m) '(partial full)) (syntax->datum m)]
-                            [else (fail m ":mode is partial or full")]))]
-                [tc-opt  (lookup options ':type-converter)]
-                [llvm?   (and tc-opt (eq? (syntax->datum tc-opt) 'llvm))]
-                [populate (lookup options ':populate)]
-                [configure-tc (lookup options ':configure-type-converter)]
-                [configure-target (lookup options ':configure-target)]
-                [_       (when (and llvm? configure-tc)
-                           (fail configure-tc
-                                 ":configure-type-converter has no effect with :type-converter llvm (the LLVM type converter is made for you)"))]
-                [dynamic (let ([entries (elements options ':dynamically-legal)])
-                           (for-each
-                            (lambda (entry)
-                              (syntax-case entry ()
-                                [(name predicate) #t]
-                                [_ (fail entry "a dynamically legal entry is (name predicate)")]))
-                            entries)
-                           entries)])
-           (with-syntax ([(op* ctx* tc target patterns)
-                          (generate-temporaries '(module-op ctx tc target patterns))])
-             (let* ([pattern-entries (map (lambda (e) (pattern-entry e #'tc))
-                                          (elements options ':patterns))]
-                    [with-tc (map cdr (filter (lambda (e) (not (car e))) pattern-entries))]
-                    [without-tc (map cdr (filter car pattern-entries))])
+         (with-syntax ([(op* ctx* converter target patterns)
+                        (generate-temporaries '(module-op ctx converter target patterns))])
+           (let ([seen '()]               ; the keys given so far
+                 [mode 'full]
+                 [converter-maker #'(with-TypeConverter converter)]   ; (maker variable argument ...), :converter replaces it
+                 [slots '()])             ; (slot . forms), newest first: the forms that each key adds
+             (define (emit! slot forms)
+               (set! slots (cons (cons slot forms) slots)))
+             (define (forms-of slot)
+               (apply append (map cdr (filter (lambda (entry) (eq? (car entry) slot)) (reverse slots)))))
+
+             ;; (name predicate)
+             (define (check-dynamically-legal entry)
+               (syntax-case entry ()
+                 [(name predicate) entry]
+                 [_ (fail entry "a dynamically legal entry is (name predicate)")]))
+
+             ;; (name fn [benefit] [:no-type-converter]): registered with the converter unless the entry says otherwise
+             (define (emit-pattern! entry)
+               (syntax-case entry (:no-type-converter)
+                 [(name fn :no-type-converter)         (emit! 'pattern/ctx (list #'(name fn 1)))]
+                 [(name fn benefit :no-type-converter) (emit! 'pattern/ctx (list #'(name fn benefit)))]
+                 [(name fn benefit)                    (emit! 'pattern (list #'(name fn converter benefit)))]
+                 [(name fn)                            (emit! 'pattern (list #'(name fn converter 1)))]
+                 [_ (fail entry "a pattern is (name fn [benefit] [:no-type-converter])")]))
+
+             (define (assemble)
                (with-syntax ([apply-fn (if (eq? mode 'partial)
                                            #'mlir::applyPartialConversion
                                            #'apply-full-conversion)]
-                             [(tc-option ...)
-                              (if (and tc-opt (not llvm?)) (list #':conversions #`(#,tc-opt)) '())]
-                             [(configure-tc-form ...)
-                              (if configure-tc (list #`(#,configure-tc tc)) '())]
-                             [(legal-dialect-form ...)
-                              (map (lambda (d) #`(target-add-legal-dialect target #,d))
-                                   (elements options ':legal-dialects))]
-                             [(illegal-dialect-form ...)
-                              (map (lambda (d) #`(target-add-illegal-dialect target #,d))
-                                   (elements options ':illegal-dialects))]
-                             [(legal-op-form ...)
-                              (map (lambda (n) #`(target-add-legal-op target ctx* #,n))
-                                   (elements options ':legal-ops))]
-                             [(target-option ...)
-                              (if (null? dynamic)
-                                  (list #'ctx*)
-                                  (list #'ctx* #':dynamically-legal #`(#,@dynamic)))]
-                             [(configure-target-form ...)
-                              (if configure-target (list #`(#,configure-target target tc)) '())]
-                             [(pattern-option ...)
-                              (append
-                               (if (null? with-tc) '() (list #':conversion-patterns #`(#,@with-tc)))
-                               (if (null? without-tc)
-                                   '()
-                                   (list #':conversion-patterns/ctx #`(#,@without-tc))))]
-                             [(populate-form ...)
-                              (if populate (list #`(#,populate tc patterns)) '())])
-                 (let ([body #`(with-ConversionTarget target (target-option ...)
+                             [(target-clause ...) (cons #'ctx* (forms-of 'target-clause))]
+                             [(legal-dialect-form ...) (forms-of 'legal-dialect)]
+                             [(illegal-dialect-form ...) (forms-of 'illegal-dialect)]
+                             [(legal-op-form ...) (forms-of 'legal-op)]
+                             [(configure-target-form ...) (forms-of 'configure-target)]
+                             [(pattern-clause ...)
+                              (append (if (null? (forms-of 'pattern))
+                                          '()
+                                          (list #':conversion-patterns #`(#,@(forms-of 'pattern))))
+                                      (if (null? (forms-of 'pattern/ctx))
+                                          '()
+                                          (list #':conversion-patterns/ctx #`(#,@(forms-of 'pattern/ctx)))))]
+                             [(populate-form ...) (forms-of 'populate)]
+                             [(configure-converter-form ...) (forms-of 'configure-converter)])
+                 (let ([body #'(with-ConversionTarget target (target-clause ...)
                                  legal-dialect-form ...
                                  illegal-dialect-form ...
                                  legal-op-form ...
                                  configure-target-form ...
-                                 (with-RewritePatternSet patterns (ctx* pattern-option ...)
+                                 (with-RewritePatternSet patterns (ctx* pattern-clause ...)
                                    populate-form ...
                                    (eqv? 1 (apply-fn op* target patterns))))])
-                   (if llvm?
-                       #`(let ([op* module-op] [ctx* ctx])
-                           (with-LLVMTypeConverter tc (ctx*) #,body))
-                       #`(let ([op* module-op] [ctx* ctx])
-                           (with-TypeConverter tc tc-option ...
-                                               configure-tc-form ...
-                                               #,body))))))))])))
+                   (syntax-case converter-maker ()
+                     [(maker variable argument ...)
+                      #`(let ([op* module-op] [ctx* ctx])
+                          (maker variable argument ...
+                                 (let ([converter variable])
+                                   configure-converter-form ...
+                                   #,body)))]))))
+
+             (let loop ([rest #'(option ...)])
+               (define (once! key . message)
+                 (when (memq key seen)
+                   (fail (car (syntax->list rest)) (if (null? message) "repeated key" (car message))))
+                 (set! seen (cons key seen)))
+               (syntax-case rest (:partial-mode :full-mode
+                                                :converter :legal-dialects :illegal-dialects :legal-ops
+                                                :dynamically-legal :patterns :populate
+                                                :configure-type-converter :configure-target)
+                 [() (assemble)]
+
+                 [(:partial-mode . more)
+                  (begin (once! 'mode "the mode is given once: :partial-mode or :full-mode")
+                         (set! mode 'partial)
+                         (loop #'more))]
+                 [(:full-mode . more)
+                  (begin (once! 'mode "the mode is given once: :partial-mode or :full-mode")
+                         (set! mode 'full)
+                         (loop #'more))]
+
+                 [(key) (fail #'key "key without a value")]
+
+                 [(:converter (maker variable argument ...) . more)
+                  (and (identifier? #'maker) (identifier? #'variable))
+                  (begin (once! ':converter)
+                         (set! converter-maker #'(maker variable argument ...))
+                         (loop #'more))]
+                 [(:converter value . _)
+                  (fail #'value ":converter is (with-<Class> variable argument ...), such as (with-TypeConverter converter :conversions (...))")]
+
+                 [(:legal-dialects (name ...) . more)
+                  (begin (once! ':legal-dialects)
+                         (emit! 'legal-dialect
+                                (map (lambda (name) #`(target-add-legal-dialect target #,name))
+                                     (syntax->list #'(name ...))))
+                         (loop #'more))]
+                 [(:legal-dialects value . _) (fail #'value ":legal-dialects expects a list")]
+
+                 [(:illegal-dialects (name ...) . more)
+                  (begin (once! ':illegal-dialects)
+                         (emit! 'illegal-dialect
+                                (map (lambda (name) #`(target-add-illegal-dialect target #,name))
+                                     (syntax->list #'(name ...))))
+                         (loop #'more))]
+                 [(:illegal-dialects value . _) (fail #'value ":illegal-dialects expects a list")]
+
+                 [(:legal-ops (name ...) . more)
+                  (begin (once! ':legal-ops)
+                         (emit! 'legal-op
+                                (map (lambda (name) #`(target-add-legal-op target ctx* #,name))
+                                     (syntax->list #'(name ...))))
+                         (loop #'more))]
+                 [(:legal-ops value . _) (fail #'value ":legal-ops expects a list")]
+
+                 [(:dynamically-legal (entry ...) . more)
+                  (begin (once! ':dynamically-legal)
+                         (emit! 'target-clause
+                                (list #':dynamically-legal
+                                      #`(#,@(map check-dynamically-legal (syntax->list #'(entry ...))))))
+                         (loop #'more))]
+                 [(:dynamically-legal value . _) (fail #'value ":dynamically-legal expects a list")]
+
+                 [(:patterns (entry ...) . more)
+                  (begin (once! ':patterns)
+                         (for-each emit-pattern! (syntax->list #'(entry ...)))
+                         (loop #'more))]
+                 [(:patterns value . _) (fail #'value ":patterns expects a list")]
+
+                 [(:populate procedure . more)
+                  (begin (once! ':populate)
+                         (emit! 'populate (list #'(procedure converter patterns)))
+                         (loop #'more))]
+                 [(:configure-type-converter procedure . more)
+                  (begin (once! ':configure-type-converter)
+                         (emit! 'configure-converter (list #'(procedure converter)))
+                         (loop #'more))]
+                 [(:configure-target procedure . more)
+                  (begin (once! ':configure-target)
+                         (emit! 'configure-target (list #'(procedure target converter)))
+                         (loop #'more))]
+
+                 [(key . _) (fail #'key "unknown key")]))))])))
 
   ) ;; end library (crest conversion)

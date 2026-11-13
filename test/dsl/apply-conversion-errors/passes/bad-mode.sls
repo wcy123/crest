@@ -7,6 +7,6 @@
 
   (define-pass-entry-point (module-op)
     (apply-conversion module-op (mlir::Operation::getContext module-op)
-                      :mode sometimes))
+                      :partial-mode :full-mode))
 
   ) ;; end library

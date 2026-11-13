@@ -1,6 +1,6 @@
 // apply-conversion with configure hooks. Some passes set up their TypeConverter and
 // ConversionTarget with helpers that take the object (onnx-to-hipsr does), which the keys
-// :type-converter (a (type) -> type procedure) and the fixed legal/illegal lists cannot say.
+// :converter (the macro that makes the converter) and the fixed legal/illegal lists cannot say.
 // :configure-type-converter takes a procedure of the converter and :configure-target a procedure
 // of the target and the converter; both run after the declarative keys.
 //

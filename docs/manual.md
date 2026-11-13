@@ -701,8 +701,9 @@ them, and returns `#t` on success or `#f` on failure:
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (apply-conversion module-op ctx
-          :mode              partial
-          :type-converter    (lambda (type) (if (tensor? type) (tensor->memref type) type))
+          :partial-mode
+          :converter         (with-TypeConverter type-converter
+                               :conversions ((lambda (type) (if (tensor? type) (tensor->memref type) type))))
           :legal-dialects    ("affine" "arith" "func" "memref" "builtin")
           :illegal-dialects  ("toy")
           :dynamically-legal (("toy.print" (lambda (op) (operand-is-memref? op))))
@@ -717,13 +718,13 @@ Every key is optional.
 
 | Key | Value | Meaning |
 |---|---|---|
-| `:mode` | `partial` or `full` | `applyPartialConversion` or `applyFullConversion`; default `full` |
-| `:type-converter` | a procedure `(type) -> type or #f`, or `llvm` | added as a conversion callback of a new `TypeConverter`; `llvm` makes an `LLVMTypeConverter` instead |
+| `:partial-mode`, `:full-mode` | no value; at most one | `applyPartialConversion` or `applyFullConversion`; default `:full-mode` |
+| `:converter` | `(with-<Class> variable argument ...)`, such as `(with-TypeConverter converter :conversions (...))` or `(with-LLVMTypeConverter converter (ctx))` | the macro that makes the converter, without its body: `apply-conversion` adds the body, so any `with-` macro of a converter works. The variable is bound in the whole conversion. Without `:converter` the converter is a plain `TypeConverter` with no conversions |
 | `:legal-dialects`, `:illegal-dialects`, `:legal-ops` | lists of names | `addLegalDialect`, `addIllegalDialect`, `addLegalOp` |
 | `:dynamically-legal` | `((name predicate) ...)` | `addDynamicallyLegalOp`; the predicate gets the op |
 | `:patterns` | `((name pattern [benefit] [:no-type-converter]) ...)` | one registration each; benefit defaults to 1; `:no-type-converter` registers the pattern so that it sees the original operand types |
 | `:populate` | `(lambda (tc patterns) ...)` | called after `:patterns` with the type converter and the pattern set, for `populate…Patterns` calls |
-| `:configure-type-converter` | a procedure `(lambda (tc) ...)` | called with the type converter after `:type-converter`, for setup helpers that take the converter |
+| `:configure-type-converter` | a procedure `(lambda (converter) ...)` | called with the type converter first thing in the body of `:converter`, for setup helpers that take the converter |
 | `:configure-target` | a procedure `(lambda (target tc) ...)` | called with the conversion target and the converter after the legal/illegal keys, for setup helpers that take the target |
 
 A mistake in the form is reported when the library compiles, at the key. Names, benefits and
