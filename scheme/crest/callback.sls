@@ -51,165 +51,13 @@
           (only (mlir IR Diagnostics ffi) %mlir::emitError)
           (only (llvm Support ErrorHandling ffi) %llvm::report_fatal_error))
 
-  ;; The who of the condition, as a string ("" when it has none).
-  (define (%%condition-who c)
-    (if (and (condition? c) (who-condition? c) (condition-who c))
-        (let ([who (condition-who c)])
-          (cond [(string? who) who]
-                [(symbol? who) (symbol->string who)]
-                [else (call-with-string-output-port (lambda (port) (write who port)))]))
-        ""))
-
-  ;; The text of the condition: the message and the irritants, as `error` was given them.
-  (define (%%condition-message c)
-    (call-with-string-output-port
-     (lambda (port)
-       (cond
-        [(and (condition? c) (message-condition? c))
-         (display (condition-message c) port)
-         (when (irritants-condition? c)
-           (for-each (lambda (irritant) (display " " port) (write irritant port))
-                     (condition-irritants c)))]
-        [(condition? c) (display-condition c port)]
-        [else (write c port)]))))
-
-  ;; ---- the guard of a callable (plan 05) ----------------------------------------------------------
-  ;;
-  ;; MLIR declares the prototype, and it has no room for an error, so when the procedure raises the guard
-  ;; reports "<file>:<line>:<column>: <who>: <why>" (the Scheme position of the callback, then the error):
-  ;;   result void       nothing can say "failed": the process ends with the text (llvm::report_fatal_error)
-  ;;   any other result  mlir::emitError with the text, in (current-MLIRContext), and the zero of the C
-  ;;                     result type is answered so that the function can return; with no current context
-  ;;                     nothing can be emitted, and the process ends with the text
-  ;; LOCATION is (file line column), read when the macro expands, or #f.
-
-  ;; "who: message", or the message when the condition has no who.
-  (define (%%error-text c)
-    (let ([who (%%condition-who c)]
-          [message (%%condition-message c)])
-      (if (string=? who "") message (string-append who ": " message))))
-
-  ;; "<file>:<line>:<column>: <who>: <why>"
-  (define (%%diagnostic-text c location)
-    (if location
-        (format "~a:~a:~a: ~a" (car location) (cadr location) (caddr location) (%%error-text c))
-        (%%error-text c)))
-
-  (define (%%report c location)
-    (let ([context (current-MLIRContext)]
-          [text (%%diagnostic-text c location)])
-      (if context
-          (guard (reporting-error [#t (%llvm::report_fatal_error text)])
-            (%mlir::emitError (%mlir::UnknownLoc::get context) text))
-          (%llvm::report_fatal_error text))))
-
-  ;; The procedure, with its error reported and ZERO answered (the zero of the C result type).
-  (define (%%report-guard procedure location zero)
-    (lambda arguments
-      (guard (c [#t (%%report c location) zero])
-        (apply procedure arguments))))
-
-  ;; The procedure, with its error ending the process (the C result is void).
-  (define (%%fatal-guard procedure location)
-    (lambda arguments
-      (guard (c [#t (%llvm::report_fatal_error (%%diagnostic-text c location))])
-        (apply procedure arguments))))
-
-  ;; The guard of a callable by the kind of its result: void has no place for an error, a range answers
-  ;; (data . size), the others are numbers.
-  (define (%%guard-for-result result procedure location)
-    (case result
-      [(void) (%%fatal-guard procedure location)]
-      [(range) (%%report-guard procedure location (cons 0 0))]
-      [else (%%report-guard procedure location 0)]))
-
-  ;; A pair of words that C++ passes or returns by value: an llvm::ArrayRef, a TypeRange, an
-  ;; OperandRange (a pointer and a count). Chez makes a foreign-callable that takes or answers such a
-  ;; struct follow the rules of the platform: two registers on Linux, a pointer to a copy on Windows.
-  (define-ftype %%SlotRange (struct [data uptr] [size uptr]))
-
-  ;; The elements of a range C++ gave as two words (crest::TypeRange::toList): a TypeRange is not an
-  ;; array, its first word has a tag.
-  (define %%type-range->list
-    (crest-foreign-procedure "crest::TypeRange::toList" (uptr uptr) scheme-object))
-
-  ;; Windows x64 (a6nt, ta6nt): a class with a constructor is returned through a pointer even when
-  ;; it is one word (Type, StringAttr, a PointerUnion, LogicalResult, WalkResult), where it is passed in a
-  ;; register.
-  (define (%%windows?)
-    (let* ([name (symbol->string (machine-type))]
-           [n (string-length name)])
-      (and (>= n 2) (string=? (substring name (- n 2) n) "nt"))))
-
-  ;; (%%make-code (kind ...) result-kind procedure location): the code object of the foreign-callable whose
-  ;; C prototype is the one of C++. LOCATION is an expression for the position of the callback, (file line
-  ;; column) or #f. The kinds are the C++ types:
-  ;;   arguments  uptr, int, ... (any type of foreign-callable), and
-  ;;     type-range     a TypeRange by value (16 bytes): the procedure gets the list of the types
-  ;;   results    void, uptr, int, unsigned-8 (a bool), and the types that C++ answers by value:
-  ;;     object         a class of one pointer (Type, TypeAttr, StringAttr, ...): the procedure answers the pointer
-  ;;     logical-result an llvm::LogicalResult (one byte, 1 for success)
-  ;;     walk-result    an mlir::WalkResult (4 bytes, constants in (mlir Support WalkResult))
-  ;;     range          an ArrayRef or an OperandRange: the procedure answers (data . size)
-  ;; Windows x64 answers a class with a constructor (object, logical-result, walk-result) through the place that
-  ;; the caller gives, a pointer before the other arguments: the function writes its answer there, and answers
-  ;; the pointer. SlotAbiTest (unittests/Crest/InterfaceTest.cpp) calls a callable of each kind through a
-  ;; function pointer of the exact type, on Linux and Windows.
-  (define-syntax %%make-code
-    (lambda (stx)
-      (syntax-case stx ()
-        [(_ (kind ...) result procedure location)
-         (let* ([kinds (syntax->list #'(kind ...))]
-                [formals (generate-temporaries kinds)]
-                [types (map (lambda (k)
-                              (if (eq? (syntax->datum k) 'type-range) #'(& %%SlotRange) k))
-                            kinds)]
-                [values (map (lambda (k formal)
-                               (if (eq? (syntax->datum k) 'type-range)
-                                   #`(%%type-range->list (ftype-ref %%SlotRange (data) #,formal)
-                                                         (ftype-ref %%SlotRange (size) #,formal))
-                                   formal))
-                             kinds formals)]
-                ;; a class answered by value: the size of its answer, and its C type where it is a register
-                [class-answer
-                 (lambda (size linux-type)
-                   #`(if (%%windows?)
-                         (foreign-callable
-                          (lambda (answer #,@formals)
-                            (foreign-set! '#,size answer 0 (p #,@values))
-                            answer)
-                          (uptr #,@types) uptr)
-                         (foreign-callable (lambda (#,@formals) (p #,@values))
-                                           (#,@types) #,linux-type)))])
-           #`(let ([p (%%guard-for-result 'result procedure location)])
-               #,(case (syntax->datum #'result)
-                   [(void uptr int unsigned-8)
-                    #`(foreign-callable (lambda (#,@formals) (p #,@values)) (#,@types) result)]
-                   [(object) (class-answer #'uptr #'uptr)]
-                   [(logical-result) (class-answer #'unsigned-8 #'unsigned-8)]
-                   [(walk-result) (class-answer #'unsigned-32 #'int)]
-                   [(range)
-                    #`(foreign-callable
-                       (lambda (answer #,@formals)
-                         (let ([pair (p #,@values)])
-                           (ftype-set! %%SlotRange (data) answer (car pair))
-                           (ftype-set! %%SlotRange (size) answer (cdr pair))))
-                       (#,@types) (& %%SlotRange))]
-                   [else
-                    (syntax-violation 'crest-make-static-c-callable
-                                      "unknown result kind of a callable" stx #'result)])))])))
-
-  ;; (crest-call-guarded procedure argument ...): C++ calls a Scheme procedure itself (the pass of
-  ;; --crest-pass), which has no C prototype to match: the same guard reports an error (without a position,
-  ;; here), and the answer is 1 when the procedure returned and 0 after its error was reported.
-  (define (crest-call-guarded procedure . arguments)
-    (apply (%%report-guard (lambda arguments (apply procedure arguments) 1) #f 0) arguments))
+  ;; ---- what a callback is made with --------------------------------------------------------------------
 
   ;; (crest-make-static-c-callable (argument-type ...) result-type procedure [:source expression | :location expression]): the
   ;; address of a C function with the prototype of C++: those argument types and that result type. It locks
   ;; the callable for good: use it only at the library level, for a callback that uses no state of a run.
-  ;; The argument and result kinds are those of %%make-code (above): the C++ types, class types by value
-  ;; included. An error of the procedure is reported by its guard (see above), at the Scheme position of PROCEDURE, or of the expression after :source when a macro wraps the procedure of
+  ;; The argument and result kinds are those of %%make-code (below): the C++ types, class types by value
+  ;; included. An error of the procedure is reported by its guard (see below), at the Scheme position of PROCEDURE, or of the expression after :source when a macro wraps the procedure of
   ;; its user in a lambda of its own and the position of the user is the useful one. :location gives the
   ;; position as an expression that is evaluated when the callable is made, (file line column) or #f: for a
   ;; procedure that reaches the macro as a value and whose position was read where it was written.
@@ -284,7 +132,167 @@
                           (lambda (locked) (when locked (unlock-object locked)))
                  (let ([name (foreign-callable-entry-point code)]) body ...))))])))
 
+  ;; (crest-call-guarded procedure argument ...): C++ calls a Scheme procedure itself (the pass of
+  ;; --crest-pass), which has no C prototype to match: the same guard reports an error (without a position,
+  ;; here), and the answer is 1 when the procedure returned and 0 after its error was reported.
+  (define (crest-call-guarded procedure . arguments)
+    (apply (%%report-guard (lambda arguments (apply procedure arguments) 1) #f 0) arguments))
+
+  ;; C++ gives a range as a pointer to an array and a count: the count elements of 8 bytes at pointer, as a
+  ;; list of integers.
   (define (crest-callback-pointer-list pointer count)
     (map (lambda (i) (foreign-ref 'uptr pointer (* i 8))) (iota count)))
+
+  ;; ---- the C function of one callable: its prototype is the one of C++ ---------------------------------
+
+  ;; (%%make-code (kind ...) result-kind procedure location): the code object of the foreign-callable whose
+  ;; C prototype is the one of C++. LOCATION is an expression for the position of the callback, (file line
+  ;; column) or #f. The kinds are the C++ types:
+  ;;   arguments  uptr, int, ... (any type of foreign-callable), and
+  ;;     type-range     a TypeRange by value (16 bytes): the procedure gets the list of the types
+  ;;   results    void, uptr, int, unsigned-8 (a bool), and the types that C++ answers by value:
+  ;;     object         a class of one pointer (Type, TypeAttr, StringAttr, ...): the procedure answers the pointer
+  ;;     logical-result an llvm::LogicalResult (one byte, 1 for success)
+  ;;     walk-result    an mlir::WalkResult (4 bytes, constants in (mlir Support WalkResult))
+  ;;     range          an ArrayRef or an OperandRange: the procedure answers (data . size)
+  ;; Windows x64 answers a class with a constructor (object, logical-result, walk-result) through the place that
+  ;; the caller gives, a pointer before the other arguments: the function writes its answer there, and answers
+  ;; the pointer. SlotAbiTest (unittests/Crest/InterfaceTest.cpp) calls a callable of each kind through a
+  ;; function pointer of the exact type, on Linux and Windows.
+  (define-syntax %%make-code
+    (lambda (stx)
+      (syntax-case stx ()
+        [(_ (kind ...) result procedure location)
+         (let* ([kinds (syntax->list #'(kind ...))]
+                [formals (generate-temporaries kinds)]
+                [types (map (lambda (k)
+                              (if (eq? (syntax->datum k) 'type-range) #'(& %%SlotRange) k))
+                            kinds)]
+                [values (map (lambda (k formal)
+                               (if (eq? (syntax->datum k) 'type-range)
+                                   #`(%%type-range->list (ftype-ref %%SlotRange (data) #,formal)
+                                                         (ftype-ref %%SlotRange (size) #,formal))
+                                   formal))
+                             kinds formals)]
+                ;; a class answered by value: the size of its answer, and its C type where it is a register
+                [class-answer
+                 (lambda (size linux-type)
+                   #`(if (%%windows?)
+                         (foreign-callable
+                          (lambda (answer #,@formals)
+                            (foreign-set! '#,size answer 0 (p #,@values))
+                            answer)
+                          (uptr #,@types) uptr)
+                         (foreign-callable (lambda (#,@formals) (p #,@values))
+                                           (#,@types) #,linux-type)))])
+           #`(let ([p (%%guard-for-result 'result procedure location)])
+               #,(case (syntax->datum #'result)
+                   [(void uptr int unsigned-8)
+                    #`(foreign-callable (lambda (#,@formals) (p #,@values)) (#,@types) result)]
+                   [(object) (class-answer #'uptr #'uptr)]
+                   [(logical-result) (class-answer #'unsigned-8 #'unsigned-8)]
+                   [(walk-result) (class-answer #'unsigned-32 #'int)]
+                   [(range)
+                    #`(foreign-callable
+                       (lambda (answer #,@formals)
+                         (let ([pair (p #,@values)])
+                           (ftype-set! %%SlotRange (data) answer (car pair))
+                           (ftype-set! %%SlotRange (size) answer (cdr pair))))
+                       (#,@types) (& %%SlotRange))]
+                   [else
+                    (syntax-violation 'crest-make-static-c-callable
+                                      "unknown result kind of a callable" stx #'result)])))])))
+
+  ;; ---- the guard of a callable (plan 05) ----------------------------------------------------------
+  ;;
+  ;; MLIR declares the prototype, and it has no room for an error, so when the procedure raises the guard
+  ;; reports "<file>:<line>:<column>: <who>: <why>" (the Scheme position of the callback, then the error):
+  ;;   result void       nothing can say "failed": the process ends with the text (llvm::report_fatal_error)
+  ;;   any other result  mlir::emitError with the text, in (current-MLIRContext), and the zero of the C
+  ;;                     result type is answered so that the function can return; with no current context
+  ;;                     nothing can be emitted, and the process ends with the text
+  ;; LOCATION is (file line column), read when the macro expands, or #f.
+
+  ;; The guard of a callable by the kind of its result: void has no place for an error, a range answers
+  ;; (data . size), the others are numbers.
+  (define (%%guard-for-result result procedure location)
+    (case result
+      [(void) (%%fatal-guard procedure location)]
+      [(range) (%%report-guard procedure location (cons 0 0))]
+      [else (%%report-guard procedure location 0)]))
+
+  ;; The procedure, with its error reported and ZERO answered (the zero of the C result type).
+  (define (%%report-guard procedure location zero)
+    (lambda arguments
+      (guard (c [#t (%%report c location) zero])
+        (apply procedure arguments))))
+
+  ;; The procedure, with its error ending the process (the C result is void).
+  (define (%%fatal-guard procedure location)
+    (lambda arguments
+      (guard (c [#t (%llvm::report_fatal_error (%%diagnostic-text c location))])
+        (apply procedure arguments))))
+
+  (define (%%report c location)
+    (let ([context (current-MLIRContext)]
+          [text (%%diagnostic-text c location)])
+      (if context
+          (guard (reporting-error [#t (%llvm::report_fatal_error text)])
+            (%mlir::emitError (%mlir::UnknownLoc::get context) text))
+          (%llvm::report_fatal_error text))))
+
+  ;; "<file>:<line>:<column>: <who>: <why>"
+  (define (%%diagnostic-text c location)
+    (if location
+        (format "~a:~a:~a: ~a" (car location) (cadr location) (caddr location) (%%error-text c))
+        (%%error-text c)))
+
+  ;; "who: message", or the message when the condition has no who.
+  (define (%%error-text c)
+    (let ([who (%%condition-who c)]
+          [message (%%condition-message c)])
+      (if (string=? who "") message (string-append who ": " message))))
+
+  ;; The text of the condition: the message and the irritants, as `error` was given them.
+  (define (%%condition-message c)
+    (call-with-string-output-port
+     (lambda (port)
+       (cond
+        [(and (condition? c) (message-condition? c))
+         (display (condition-message c) port)
+         (when (irritants-condition? c)
+           (for-each (lambda (irritant) (display " " port) (write irritant port))
+                     (condition-irritants c)))]
+        [(condition? c) (display-condition c port)]
+        [else (write c port)]))))
+
+  ;; The who of the condition, as a string ("" when it has none).
+  (define (%%condition-who c)
+    (if (and (condition? c) (who-condition? c) (condition-who c))
+        (let ([who (condition-who c)])
+          (cond [(string? who) who]
+                [(symbol? who) (symbol->string who)]
+                [else (call-with-string-output-port (lambda (port) (write who port)))]))
+        ""))
+
+  ;; ---- the C++ classes that are passed or answered by value --------------------------------------------
+
+  ;; A pair of words that C++ passes or returns by value: an llvm::ArrayRef, a TypeRange, an
+  ;; OperandRange (a pointer and a count). Chez makes a foreign-callable that takes or answers such a
+  ;; struct follow the rules of the platform: two registers on Linux, a pointer to a copy on Windows.
+  (define-ftype %%SlotRange (struct [data uptr] [size uptr]))
+
+  ;; The elements of a range C++ gave as two words (crest::TypeRange::toList): a TypeRange is not an
+  ;; array, its first word has a tag.
+  (define %%type-range->list
+    (crest-foreign-procedure "crest::TypeRange::toList" (uptr uptr) scheme-object))
+
+  ;; Windows x64 (a6nt, ta6nt): a class with a constructor is returned through a pointer even when
+  ;; it is one word (Type, StringAttr, a PointerUnion, LogicalResult, WalkResult), where it is passed in a
+  ;; register.
+  (define (%%windows?)
+    (let* ([name (symbol->string (machine-type))]
+           [n (string-length name)])
+      (and (>= n 2) (string=? (substring name (- n 2) n) "nt"))))
 
   ) ;; end library (crest callback)
