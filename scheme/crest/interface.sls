@@ -17,13 +17,13 @@
 ;;   (define-syntax mlir::XInterface
 ;;     (lambda (stx)
 ;;       (op-interface-expand stx 'mlir::XInterface #'(mlir::XInterface::getInterfaceID)
-;;         #'((method (kind ...) result adapter default keywords) ...))))
+;;         #'((method (type ...) result adapter default keywords) ...))))
 ;;
 ;;   method    the name of the method of the Concept
-;;   kind...   the C++ types of its arguments after the op, and result the C++ type of its answer,
+;;   type...   the C++ types of its arguments after the op, and result the C++ type of its answer,
 ;;             as crest-make-static-c-callable (scheme/crest/callback.sls) takes them
 ;;   adapter   #f, or a procedure from the procedure of the clause to the procedure that the slot
-;;             calls with the numbers and lists of the kinds (it turns a list of types into a range,
+;;             calls with the numbers and lists of the types (it turns a list of types into a range,
 ;;             a verdict into 1 or 0 with a diagnostic, ...)
 ;;   default   #f when the op has to give the method; else what stands for the method of an op that
 ;;             does not give it, which is what MLIR does when it has a default for it: a procedure,
@@ -65,15 +65,15 @@
            (let ([name (symbol->string datum)])
              (and (> (string-length name) 1) (char=? (string-ref name 0) #\:)))))
 
-    ;; A method of the table: (name kinds result adapter default keywords).
+    ;; A method of the table: (name types result adapter default keywords).
     (define-record-type method
-      (fields name kinds result adapter default keywords))
+      (fields name types result adapter default keywords))
 
     (define methods
       (map (lambda (entry)
              (syntax-case entry ()
-               [(name (kind ...) result adapter default keywords)
-                (make-method (syntax->datum #'name) #'(kind ...) #'result #'adapter #'default
+               [(name (type ...) result adapter default keywords)
+                (make-method (syntax->datum #'name) #'(type ...) #'result #'adapter #'default
                              (map (lambda (pair)
                                     (syntax-case pair ()
                                       [(keyword . value) (cons (syntax->datum #'keyword) #'value)]))
@@ -113,9 +113,9 @@
                     (violation (string-append "has no method " (symbol->string (syntax->datum #'name))
                                               ": its methods are " (method-names))
                                clause))
-                  (unless (= (length (syntax->list #'(formal ...))) (length (syntax->list (method-kinds m))))
+                  (unless (= (length (syntax->list #'(formal ...))) (length (syntax->list (method-types m))))
                     (violation (string-append "takes (op ...) with "
-                                              (number->string (length (syntax->list (method-kinds m))))
+                                              (number->string (length (syntax->list (method-types m))))
                                               " argument(s) in the clause of "
                                               (symbol->string (method-name m)))
                                clause))
@@ -175,7 +175,7 @@
                                  #`(#,(method-adapter m) #,(cdr from)))])
               ;; MLIR passes the Concept first; the procedure does not see it.
               #`(crest-make-static-c-callable
-                 (uptr #,@(syntax->list (method-kinds m))) #,(method-result m)
+                 (uptr #,@(syntax->list (method-types m))) #,(method-result m)
                  (let ([p #,procedure]) (lambda (concept . arguments) (apply p arguments))))))))
 
     (duplicates!)

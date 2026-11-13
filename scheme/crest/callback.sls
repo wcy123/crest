@@ -8,14 +8,14 @@
 ;;
 ;; (crest callback) — C function pointers made from Scheme procedures.
 ;;
-;;   (crest-make-static-c-callable (argument-kind ...) result-kind proc)   an address
+;;   (crest-make-static-c-callable (argument-type ...) result-type proc)   an address
 ;;   (crest-callback-pointer-list pointer count)                           a list of integers
 ;;
 ;; C++ never makes, owns, locks or releases a callback. A binding that needs one takes a plain C
 ;; function pointer; Scheme makes the foreign-callable (locked, because the garbage collector moves
 ;; code objects) and whoever calls the low-level function decides how long it lives. The C function
-;; has the prototype that C++ or MLIR declares: its argument kinds and its RESULT KIND are written at
-;; every site (uptr, int, unsigned-8, void, walk-result, ...; the kinds are listed at %%make-code), and a mismatch crashes, as C++ does not check it.
+;; has the prototype that C++ or MLIR declares: its argument types and its RESULT TYPE are written at
+;; every site (uptr, int, unsigned-8, void, walk-result, ...; the types are listed at %%make-code), and a mismatch crashes, as C++ does not check it.
 ;;
 ;; The procedure never raises into C++. MLIR's prototypes have no room for an error, so the guard of the
 ;; callable catches it and reports "<file>:<line>:<column>: <who>: <why>": result void ends the process with
@@ -55,9 +55,9 @@
 
   ;; @brief crest-make-static-c-callable — make a C function with the prototype of C++ from a procedure,
   ;;        locked for good.
-  ;; @param argument-kind  the C++ argument kinds, in order: uptr, int, ... (any type of foreign-callable)
+  ;; @param argument-type  the C++ argument types, in order: uptr, int, ... (any type of foreign-callable)
   ;;                       or type-range (see %%make-code)
-  ;; @param result-kind    the C++ result kind: void, uptr, int, unsigned-8, object, logical-result,
+  ;; @param result-type    the C++ result type: void, uptr, int, unsigned-8, object, logical-result,
   ;;                       walk-result or range (see %%make-code)
   ;; @param procedure      the procedure that the C function calls, with the arguments as Scheme values
   ;; @return               the address of the C function, an exact integer
@@ -70,16 +70,16 @@
   (define-syntax crest-make-static-c-callable
     (lambda (stx)
       (syntax-case stx ()
-        [(_ (kind ...) result-kind procedure)
+        [(_ (type ...) result-type procedure)
          (with-syntax ([location #`(quote #,(datum->syntax #'stx (syntax->first-file+line+col #'procedure)))])
-           #'(let ([code (%%make-code (kind ...) result-kind procedure location)])
+           #'(let ([code (%%make-code (type ...) result-type procedure location)])
                (lock-object code)
                (foreign-callable-entry-point code)))])))
 
   ;; @brief with-c-callable — run a body with the address of a C function made from a procedure.
   ;; @param name           identifier bound to the address inside BODY
-  ;; @param argument-kind  as for crest-make-static-c-callable; not used when VALUE is an address
-  ;; @param result-kind    as for crest-make-static-c-callable; not used when VALUE is an address
+  ;; @param argument-type  as for crest-make-static-c-callable; not used when VALUE is an address
+  ;; @param result-type    as for crest-make-static-c-callable; not used when VALUE is an address
   ;; @param value          a procedure, or an address. A procedure: the macro makes the foreign-callable,
   ;;                       locks it, and unlocks it when BODY ends, also when it ends by an error; use it for
   ;;                       a callback that C++ calls while BODY runs. An address that
@@ -98,12 +98,12 @@
   (define-syntax with-c-callable
     (lambda (stx)
       (syntax-case stx ()
-        [(_ (name (kind ...) result-kind value) body ...)
+        [(_ (name (type ...) result-type value) body ...)
          (with-syntax ([location #`(quote #,(datum->syntax #'stx (syntax->first-file+line+col #'value)))])
            #'(let* ([given value]
                     [made? (procedure? given)]
                     [code (cond
-                           [made? (%%make-code (kind ...) result-kind given location)]
+                           [made? (%%make-code (type ...) result-type given location)]
                            [(and (integer? given) (exact? given)) (foreign-callable-code-object given)]
                            [else (assertion-violation 'with-c-callable
                                                       "the value must be a procedure or the address of a locked callable"
@@ -135,9 +135,9 @@
 
   ;; ---- the C function of one callable: its prototype is the one of C++ ---------------------------------
 
-  ;; (%%make-code (kind ...) result-kind procedure location): the code object of the foreign-callable whose
+  ;; (%%make-code (type ...) result-type procedure location): the code object of the foreign-callable whose
   ;; C prototype is the one of C++. LOCATION is an expression for the position of the callback, (file line
-  ;; column) or #f. The kinds are the C++ types:
+  ;; column) or #f. The types are the C++ types:
   ;;   arguments  uptr, int, ... (any type of foreign-callable), and
   ;;     type-range     a TypeRange by value (16 bytes): the procedure gets the list of the types
   ;;   results    void, uptr, int, unsigned-8 (a bool), and the types that C++ answers by value:
@@ -147,23 +147,23 @@
   ;;     range          an ArrayRef or an OperandRange: the procedure answers (data . size)
   ;; Windows x64 answers a class with a constructor (object, logical-result, walk-result) through the place that
   ;; the caller gives, a pointer before the other arguments: the function writes its answer there, and answers
-  ;; the pointer. SlotAbiTest (unittests/Crest/InterfaceTest.cpp) calls a callable of each kind through a
+  ;; the pointer. SlotAbiTest (unittests/Crest/InterfaceTest.cpp) calls a callable of each type through a
   ;; function pointer of the exact type, on Linux and Windows.
   (define-syntax %%make-code
     (lambda (stx)
       (syntax-case stx ()
-        [(_ (kind ...) result-kind procedure location)
-         (let* ([kinds (syntax->list #'(kind ...))]
-                [formals (generate-temporaries kinds)]
+        [(_ (type ...) result-type procedure location)
+         (let* ([types (syntax->list #'(type ...))]
+                [formals (generate-temporaries types)]
                 [c-types (map (lambda (k)
                                 (if (eq? (syntax->datum k) 'type-range) #'(& %%SlotRange) k))
-                              kinds)]
+                              types)]
                 [arguments (map (lambda (k formal)
                                   (if (eq? (syntax->datum k) 'type-range)
                                       #`(%%type-range->list (ftype-ref %%SlotRange (data) #,formal)
                                                             (ftype-ref %%SlotRange (size) #,formal))
                                       formal))
-                                kinds formals)]
+                                types formals)]
                 ;; a class answered by value: the size of its answer, and its C type where it is a register
                 [class-answer
                  (lambda (size linux-c-type)
@@ -175,10 +175,10 @@
                           (uptr #,@c-types) uptr)
                          (foreign-callable (lambda (#,@formals) (p #,@arguments))
                                            (#,@c-types) #,linux-c-type)))])
-           #`(let ([p (%%guard-for-result 'result-kind procedure location)])
-               #,(case (syntax->datum #'result-kind)
+           #`(let ([p (%%guard-for-result 'result-type procedure location)])
+               #,(case (syntax->datum #'result-type)
                    [(void uptr int unsigned-8)
-                    #`(foreign-callable (lambda (#,@formals) (p #,@arguments)) (#,@c-types) result-kind)]
+                    #`(foreign-callable (lambda (#,@formals) (p #,@arguments)) (#,@c-types) result-type)]
                    [(object) (class-answer #'uptr #'uptr)]
                    [(logical-result) (class-answer #'unsigned-8 #'unsigned-8)]
                    [(walk-result) (class-answer #'unsigned-32 #'int)]
@@ -191,7 +191,7 @@
                        (#,@c-types) (& %%SlotRange))]
                    [else
                     (syntax-violation 'crest-make-static-c-callable
-                                      "unknown result kind of a callable" stx #'result-kind)])))])))
+                                      "unknown result type of a callable" stx #'result-type)])))])))
 
   ;; ---- the guard of a callable (plan 05) ----------------------------------------------------------
   ;;
@@ -203,10 +203,10 @@
   ;;                     nothing can be emitted, and the process ends with the text
   ;; LOCATION is (file line column), read when the macro expands, or #f.
 
-  ;; The guard of a callable by the kind of its result: void has no place for an error, a range answers
+  ;; The guard of a callable by the type of its result: void has no place for an error, a range answers
   ;; (data . size), the others are numbers.
-  (define (%%guard-for-result result-kind procedure location)
-    (case result-kind
+  (define (%%guard-for-result result-type procedure location)
+    (case result-type
       [(void) (%%fatal-guard procedure location)]
       [(range) (%%report-guard procedure location (cons 0 0))]
       [else (%%report-guard procedure location 0)]))
