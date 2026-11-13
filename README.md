@@ -76,7 +76,7 @@ struct QAddFusion : OpRewritePattern<QuantizeLinearOp> {
 CREST_PATH=$(pwd)/samples \
   build/tools/crest-opt/crest-opt \
   -allow-unregistered-dialect \
-  --crest-pass="module=passes/hip-fusion" \
+  --crest-pass="passes=passes/hip-fusion" \
   --split-input-file test/hip-fusion/qadd.mlir
 ```
 
@@ -117,25 +117,36 @@ CREST_PATH=$(pwd)/samples \
 ```lisp
 (define-rewrite-pattern (hip-qadd-fusion op rewriter)
   :if-match
-    %lhs_scale = hip.constant          ()  :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
+    %lhs_scale = hip.constant          ()
+      :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
     %dq_lhs    = hip.dequantize_linear (%ctx %lhs %lhs_scale (:optional %lhs_zp) %dq_lhs_init)
-    %rhs_scale = hip.constant          ()  :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
+    %rhs_scale = hip.constant          ()
+      :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
     %dq_rhs    = hip.dequantize_linear (%ctx %rhs %rhs_scale (:optional %rhs_zp) %dq_rhs_init)
-    %out_scale = hip.constant          ()  :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
-    %sum       = hip.add               (%ctx %dq_lhs %dq_rhs %sum_init)  :where (single-consumer? %sum)
+    %out_scale = hip.constant          ()
+      :where (mlir::DenseElementsAttr::isSplat (:attr "value"))
+    %sum       = hip.add               (%ctx %dq_lhs %dq_rhs %sum_init)
+      :where (and (single-consumer? %sum)
+                  (same-rank? %q %sum_init))
     %q         = hip.quantize_linear   (%ctx %sum %out_scale (:optional %out_zp) %q_init)
   :then-let
-    ([!out-type (mlir::Value::getType %q)]
-     [lhs-scale (scale-attr %lhs_scale)]  [lhs-zp (zp-attr %lhs_zp)]
-     [rhs-scale (scale-attr %rhs_scale)]  [rhs-zp (zp-attr %rhs_zp)]
-     [out-scale (scale-attr %out_scale)]  [out-zp (zp-attr %out_zp)])
+    ([!out-type  (mlir::Value::getType %q)]
+     [lhs-scale  (scale-attr %lhs_scale)]
+     [rhs-scale  (scale-attr %rhs_scale)]
+     [out-scale  (scale-attr %out_scale)]
+     [lhs-zp     (zp-attr %lhs_zp)]
+     [rhs-zp     (zp-attr %rhs_zp)]
+     [out-zp     (zp-attr %out_zp)])
   :rewrite %q :with
-    (%init   = tensor.empty () -> !out-type)
-    (%result = hip.qadd (%ctx %lhs %rhs %init)
-              ("lhs_scale" = lhs-scale) ("lhs_zp" = lhs-zp)
-              ("rhs_scale" = rhs-scale) ("rhs_zp" = rhs-zp)
-              ("output_scale" = out-scale) ("output_zp" = out-zp)
-              -> !out-type))
+    init   = tensor.empty () -> !out-type ;
+    result = hip.qadd (%ctx %lhs %rhs init)
+    (lhs_scale    : lhs-scale)
+    (lhs_zp       : lhs-zp)
+    (rhs_scale    : rhs-scale)
+    (rhs_zp       : rhs-zp)
+    (output_scale : out-scale)
+    (output_zp    : out-zp)
+    -> !out-type) ;
 ```
 
 `:if-match` traverses the def-use graph structurally. `:where` guards are plain Scheme predicates.
@@ -169,7 +180,7 @@ ops remain in the output — a subsequent DCE pass removes them. The fused resul
 CREST_PATH=$(pwd)/samples \
   build/tools/crest-opt/crest-opt \
   -allow-unregistered-dialect \
-  --crest-pass="module=passes/onnx-to-hipsr" \
+  --crest-pass="passes=passes/onnx-to-hipsr" \
   --split-input-file test/onnx-to-hipsr/matmul.mlir
 ```
 
@@ -192,37 +203,26 @@ The full pattern is in the linked file. Key structure:
   :if-match
     %output = onnx.MatMul (%a %b)
   :then-let
-    ([%ctx          (mlir-get-hipsr-context-arg op)]
-     [!output-device (mlir::RankedTensorType::cloneWithEncoding
-                       (mlir::Value::getType %output) (make-hipsr-device-space-attr))]
-     [!shape-type   (mlir::shape::ShapeType::get)]
-     [!witness-type (mlir::shape::WitnessType::get)]
-     [a-rank        (mlir::RankedTensorType::getRank (mlir::Value::getType %a))]
-     [k-a-idx       (- a-rank 1)]          ; K index — pure Scheme arithmetic
-     [a-batch-rank  (max 0 (- a-rank 2))])
+    ([%ctx           (mlir-get-hipsr-context-arg op)]
+     [!output-device (mlir::RankedTensorType::cloneWithEncoding !output-type (make-hipsr-device-space-attr))]
+     ;; ...
+     [a-rank         (mlir::RankedTensorType::getRank (mlir::Value::getType %a))]
+     ;; ...
+     [k-a-idx        (- a-rank 1)]
+     ;; ...
+     [n-idx          (- b-rank 1)])
   :rewrite %output :with
-    (%placeholder = hipsr.placeholder (%ctx %a %b)
-      (^bb0 ((%a-shape : !shape-type) (%b-shape : !shape-type))
-            ;; K equality: A's last dim must equal B's second-to-last
-            (%eka  = shape.get_extent (%a-shape %cka) -> !size-type)
-            (%ekb  = shape.get_extent (%b-shape %ckb) -> !size-type)
-            (%wk   = shape.cstr_eq (%eka %ekb)        -> !witness-type)
-            ;; Batch dims must be broadcastable
-            (%ab   = shape.split_at (%a-shape %cab)   -> !shape-type)
-            (%bb   = shape.split_at (%b-shape %cbb)   -> !shape-type)
-            (%wbc  = shape.cstr_broadcastable (%ab %bb) -> !witness-type)
-            (%wall = shape.assuming_all (%wk %wbc)    -> !witness-type)
-            ;; Result shape: broadcast(batch_a, batch_b) ++ [M, N]
-            (%res  = shape.assuming (%wall)
-                   (^bb0 ()
-                         (%batch = shape.broadcast    (%ab %bb)    -> !shape-type)
-                         (%mn    = shape.from_extents (%em %en)   -> !shape-type)
-                         (%out   = shape.concat       (%batch %mn) -> !shape-type)
-                         (shape.assuming_yield (%out)))
-                   -> !shape-type)
-            (hipsr.shape_yield (%res)))
-      -> !output-device)
-    (%result = hipsr.matmul (%ctx %a %b %placeholder) -> !output-device))
+    placeholder = hipsr.placeholder (%ctx %a %b)
+    (^bb0 ((%a-shape : !shape-type) (%b-shape : !shape-type))
+          ;; ...
+          cka   = shape.const_size () (value : k-a-idx :index) -> !size-type ;
+          wk    = shape.cstr_eq (aksh bksh)                    -> !witness-type ;
+          wbc   = shape.cstr_broadcastable (ab bb)             -> !witness-type ;
+          ;; ...
+          hipsr.shape_yield (res)) ;
+    -> !output-device ;
+    result = hipsr.matmul (%ctx %a %b placeholder)
+    -> !output-device) ;
 ```
 
 `:then-let` runs after the match and before any IR mutation — safe to read the IR freely.
@@ -254,7 +254,7 @@ Scheme source — no `UnknownLoc`, no manual `getLoc` threading:
 CREST_PATH=$(pwd)/samples \
   build/tools/crest-opt/crest-opt \
   -allow-unregistered-dialect \
-  --crest-pass="module=passes/onnx-to-hipsr" \
+  --crest-pass="passes=passes/onnx-to-hipsr" \
   --split-input-file --mlir-print-debuginfo \
   test/onnx-to-hipsr/min.mlir
 ```
@@ -286,7 +286,7 @@ CREST_DEBUG_MATCH=1 \
 CREST_PATH=$(pwd)/samples \
   build/tools/crest-opt/crest-opt \
   -allow-unregistered-dialect \
-  --crest-pass="module=passes/hip-fusion" \
+  --crest-pass="passes=passes/hip-fusion" \
   test/hip-fusion/qadd.mlir
 ```
 

@@ -9,7 +9,7 @@ See [Getting started](getting-started.md) for build instructions.
 **Contents**
 
 1. [Step 1 — A minimal pattern](#1-a-minimal-pattern)
-2. [Step 2 — Add a guard and pre-rewrite computation](#2-add-a-guard-and-pre-rewrite-computation)
+2. [Step 2 — Add a guard](#2-add-a-guard)
 3. [Step 3 — Handle optional operands](#3-handle-optional-operands)
 
 ---
@@ -59,8 +59,10 @@ Create `passes/tutorial-step1.sls`:
   (define-rewrite-pattern (step1 op rewriter)
     :if-match
       %out = source.add (%x %y)
+    :then-let
+      ([!result-type (mlir::Value::getType %out)])
     :rewrite %out :with
-      (%result = target.fused (%x %y) -> (mlir::Value::getType %out)))
+      result = target.fused (%x %y) -> !result-type)
 
   (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
@@ -86,11 +88,19 @@ Match any op named `source.add` with two operands. Bind its result to `%out`,
 its operands to `%x` and `%y`. This is the **root op** — the op that will be replaced.
 
 ```
-  :rewrite %out :with
-    (%result = target.fused (%x %y) -> (mlir::Value::getType %out))
+  :then-let
+    ([!result-type (mlir::Value::getType %out)])
 ```
-Emit `target.fused` with the same operands. `%out` is replaced by `%result` in all uses.
-`-> (mlir::Value::getType %out)` gives the result the same type as the original op.
+Runs after the match succeeded and before any IR is changed, so it is safe to read the IR here. It binds
+`!result-type` to the type of `%out`. (The `!` is only a naming habit for a name that holds a type.)
+
+```
+  :rewrite %out :with
+    result = target.fused (%x %y) -> !result-type
+```
+Emit `target.fused` with the same operands. `%out` is replaced by `result`, the last value the body makes,
+in all uses. `-> !result-type` gives the result the same type as the original op. The names on the left
+of `=` have no `%`; the `%` names are the ones the match bound.
 
 ### Try it
 
@@ -108,7 +118,7 @@ Run:
 ```bash
 CREST_PATH=/path/to/passes \
   crest-opt -allow-unregistered-dialect \
-  --crest-pass="module=passes/tutorial-step1" \
+  --crest-pass="passes=passes/tutorial-step1" \
   test.mlir
 ```
 
@@ -123,14 +133,11 @@ func.func @example(%arg0: i32, %arg1: i32) -> i32 {
 
 ---
 
-## 2. Add a guard and pre-rewrite computation
+## 2. Add a guard
 
-**Goal:** only fuse when both operands have the same type; extract the type
-before the rewrite.
+**Goal:** only fuse when both operands have the same type.
 
-Two new concepts:
-- **`:where`** — a Scheme predicate that must return truthy for the match to continue.
-- **`:then-let`** — bindings computed after the match succeeds and before any IR mutation.
+New concept: **`:where`** — a Scheme predicate that must return truthy for the match to continue.
 
 ### The pattern
 
@@ -143,7 +150,7 @@ Two new concepts:
   :then-let
     ([!result-type (mlir::Value::getType %out)])
   :rewrite %out :with
-    (%result = target.fused (%x %y) -> !result-type))
+    result = target.fused (%x %y) -> !result-type)
 ```
 
 ### What changed
@@ -151,13 +158,6 @@ Two new concepts:
 **`:where`** — runs after the operands are bound. If `%x` and `%y` have different
 types the predicate returns `#f` and the pattern silently skips this op.
 Any Scheme expression is valid here.
-
-**`:then-let`** — runs after the match succeeds, before any IR is modified.
-Safe to read the IR (call `getType`, `getAttr`, etc.). Use it to extract
-values you need in the rewrite.
-
-`!result-type` is a naming convention (the `!` prefix) signalling a type binding.
-It has no special meaning to CREST — it is just part of the Scheme identifier.
 
 ---
 
@@ -178,26 +178,13 @@ attribute so CREST knows the group boundaries.
     %out = source.add (%x %y (:optional %bias))
   :then-let
     ([!result-type (mlir::Value::getType %out)]
-     [operands     (if (unbound-value? %bias)
-                       (list %x %y)
-                       (list %x %y %bias))])
+     [extra        (if (unbound-value? %bias) '() (list %bias))])
   :rewrite %out :with
-    (%result = (apply-rewrite rewriter "target.fused" operands !result-type)))
+    result = target.fused (%x %y ,@extra) -> !result-type)
 ```
 
-In practice the rewrite body is more direct — use `unbound-value?` in
-`:then-let` to compute what you need, then use those values in the op-form:
-
-```scheme
-(define-rewrite-pattern (step3 op rewriter)
-  :if-match
-    %out = source.add (%x %y (:optional %bias))
-  :then-let
-    ([!result-type (mlir::Value::getType %out)]
-     [has-bias?    (not (unbound-value? %bias))])
-  :rewrite %out :with
-    (%result = target.fused (%x %y) -> !result-type))
-```
+`extra` is the list of the operands that come after `%y`: empty when the bias is absent, `(%bias)` when it
+is there. `,@extra` puts them in the operand list of `target.fused`, so the bias is kept.
 
 ### What changed
 
@@ -208,15 +195,16 @@ to the absent sentinel; test it with `(unbound-value? %bias)`.
 ### Try it
 
 ```mlir
-;; 2-operand form (bias absent)
-%0 = "source.add"(%a, %b) {operandSegmentSizes = array<i32: 1, 1, 0>}
-       : (i32, i32) -> i32
-
-;; 3-operand form (bias present)
-%1 = "source.add"(%a, %b, %c) {operandSegmentSizes = array<i32: 1, 1, 1>}
-       : (i32, i32, i32) -> i32
+func.func @both(%a: i32, %b: i32, %c: i32) -> (i32, i32) {
+  // 2-operand form (bias absent)
+  %0 = "source.add"(%a, %b) {operandSegmentSizes = array<i32: 1, 1, 0>} : (i32, i32) -> i32
+  // 3-operand form (bias present)
+  %1 = "source.add"(%a, %b, %c) {operandSegmentSizes = array<i32: 1, 1, 1>} : (i32, i32, i32) -> i32
+  return %0, %1 : i32, i32
+}
 ```
 
+The output has `target.fused(%arg0, %arg1)` and `target.fused(%arg0, %arg1, %arg2)`.
 Both match the same pattern. Without `:optional` you would need two separate
 patterns — one for each arity.
 
