@@ -111,6 +111,12 @@ public:
 
   static bool classof(const mlir::Dialect* d);
 
+  /// Why the interfaces of the dialect could not be installed (the text that
+  /// was also given as a diagnostic), or "" when they were. The dialect has no
+  /// ops then. MLIR gives the constructor no way to fail, so whoever loads the
+  /// dialect asks.
+  const std::string& interfaceError() const { return interfaceError_; }
+
   // --- mlir::Dialect virtual interface ---
   /// `interfaces`: the list of (TypeID . dispatcher) pairs of the :interfaces
   /// clause of the dialect, locked by the caller.
@@ -150,6 +156,7 @@ private:
   // strong singleton so this is mainly for clarity / correctness under future
   // refactoring.
   std::shared_ptr<ChezSchemeInterpreter> interp_;
+  std::string interfaceError_;
 };
 
 void registerIRExtensibleDialectBindings();
@@ -161,6 +168,10 @@ void registerIRExtensibleDialectBindings();
 ///                      e.g. "toy/ch4/toy" (equivalent to the R6RS library
 ///                      name (toy ch4 toy), the same format accepted by
 ///                      ChezSchemeInterpreter::importLibrary).
+///
+/// The same dialect_name and module_name give the same TypeID every time, so a
+/// context that loads the dialect twice finds it, and a registry that has it
+/// twice accepts it. MLIR ends the process when a name gets two TypeIDs.
 ///
 /// Insert the result into a DialectRegistry before creating any MLIRContext
 /// to avoid the UnregisteredOpModel use-after-free described in

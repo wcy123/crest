@@ -20,7 +20,9 @@
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Support/TypeID.h"
 #include "mlir/Transforms/InliningUtils.h"
+#include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 
@@ -110,6 +112,7 @@ void CrestDialect::initialize(const LockedSchemeObject& interfaces) {
     // to return the error to MLIR: it is a diagnostic. A mistake in the
     // define-dialect form.
     mlir::emitError(here) << "crest::CrestDialect: " << attachError;
+    interfaceError_ = attachError;
     return;
   }
   if (cbs_.initialize) {
@@ -293,8 +296,9 @@ void registerIRExtensibleDialectBindings() {
       (void*)+[](uint64_t dialect_ptr, const char* name) -> ptr {
         auto* dialect = reinterpret_cast<CrestDialect*>(dialect_ptr);
         if (!dialect->getContext()->getOrLoadDialect(llvm::StringRef(name))) {
-          llvm::report_fatal_error(
-              llvm::Twine("crest: dependent dialect not in registry: ") + name);
+          return scheme_error("crest::CrestDialect::loadDependentDialect",
+                              llvm::Twine("dialect '") + name +
+                                  "' is not in the registry");
         }
         return Svoid;
       });
@@ -317,13 +321,33 @@ void registerIRExtensibleDialectBindings() {
         // code that validateSchemeDialect runs may move.
         std::string dialect(dialect_name);
         std::string module(module_name);
-        if (auto error = validateSchemeDialect(dialect, module)) {
-          return scheme_error("crest::load-scheme-dialect!",
-                              llvm::Twine("Failed to import Scheme library: ") +
-                                  module + ": " + *error);
-        }
         auto [type_id, factory] = dialectFactory(dialect, module);
-        factory(ctx);
+        // A dialect of that name is loaded already: the same library gives the
+        // dialect that is there, another one cannot take its place.
+        mlir::Dialect* loaded = ctx->getLoadedDialect(dialect);
+        if (loaded && loaded->getTypeID() != type_id) {
+          return scheme_error("crest::load-scheme-dialect!",
+                              llvm::Twine("dialect '") + dialect +
+                                  "' is already loaded, from another library "
+                                  "than " +
+                                  module);
+        }
+        if (!loaded) {
+          if (auto error = validateSchemeDialect(dialect, module)) {
+            return scheme_error(
+                "crest::load-scheme-dialect!",
+                llvm::Twine("Failed to import Scheme library: ") + module +
+                    ": " + *error);
+          }
+        }
+        mlir::Dialect* made = factory(ctx);
+        const std::string& interfaceError =
+            static_cast<CrestDialect*>(made)->interfaceError();
+        if (!interfaceError.empty()) {
+          return scheme_error("crest::load-scheme-dialect!",
+                              llvm::Twine("dialect '") + dialect +
+                                  "': " + interfaceError);
+        }
         return Svoid;
       });
 }
@@ -379,7 +403,20 @@ validateSchemeDialect(const std::string& dialect_name,
 
 std::pair<mlir::TypeID, mlir::DialectAllocatorFunction>
 dialectFactory(std::string dialect_name, std::string module_name) {
-  auto type_id = CrestDialect::allocateTypeId();
+  // One TypeID for each dialect name and library, so that asking again gives
+  // the same one. MLIR ends the process when a name gets a second TypeID, and
+  // the allocator never gives one back.
+  static std::mutex mutex;
+  static std::map<std::pair<std::string, std::string>, mlir::TypeID> ids;
+  mlir::TypeID type_id = [&] {
+    std::lock_guard<std::mutex> lock(mutex);
+    auto key = std::make_pair(dialect_name, module_name);
+    auto found = ids.find(key);
+    if (found == ids.end()) {
+      found = ids.emplace(key, CrestDialect::allocateTypeId()).first;
+    }
+    return found->second;
+  }();
   return {type_id,
           [type_id, dialect_name,
            module_name](mlir::MLIRContext* ctx) -> mlir::Dialect* {
