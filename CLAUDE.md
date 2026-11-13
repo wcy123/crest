@@ -312,9 +312,10 @@ would cross the C++ frames (Rule 20). MLIR's prototypes have no room for an erro
   by calling the parameter, a Chez parameter applied to one argument (`crest::setCurrentContext`,
   `lib/Crest/CurrentContext.h`): `CrestDialect::initialize` does for every context that loads a Scheme dialect, and
   the pass runners (`--crest-pass`, `define-pass`) for the context of the op.
-- A Scheme procedure that C++ calls itself while a callable runs (the clauses of `InferTypeOpInterface`) is guarded
-  with `crest-guard-procedure`. The pass of `--crest-pass` is called by name through `crest-call-guarded`, the one
-  place that still answers an error as a value, the pair `(who . why)`, which the pass runner reports.
+- C++ never calls a Scheme procedure itself: `InferTypeOpInterface` gives the words of MLIR's call to Scheme
+  (`crest::InferTypeOpInterface::decode`), the clause runs in Scheme inside the callable, and its answer goes back
+  through `push`. The one exception is the pass of `--crest-pass`, which has no C prototype to match: it is called
+  by name through `crest-call-guarded`, which uses the same guard and answers 1, or 0 after the error was reported.
 
 Nesting (C++ -> Scheme -> C++ -> Scheme) needs no bookkeeping: each failure is reported where it happens. An error
 in a callable with a `void` result ends the process, so a program that has to go on makes its callbacks

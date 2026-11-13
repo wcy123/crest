@@ -41,7 +41,6 @@
   (export crest-make-static-c-callable
           with-c-callable
           crest-call-guarded
-          crest-guard-procedure
           crest-callback-pointer-list)
   (import (chezscheme)
           (for (mlir support srcloc) expand)
@@ -51,14 +50,6 @@
           (only (mlir IR Location ffi) %mlir::UnknownLoc::get)
           (only (mlir IR Diagnostics ffi) %mlir::emitError)
           (only (llvm Support ErrorHandling ffi) %llvm::report_fatal_error))
-
-  ;; ---- no error leaves a callable ------------------------------------------------------------------
-  ;;
-  ;; C++ calls a callable through a C function pointer. An error that escaped it would cross the C++
-  ;; frames (skipping their destructors, and leaving a record in Chez for each), so every callable
-  ;; catches the error itself and reports it, as the header says. Only crest-call-guarded, which C++ calls
-  ;; by name for the pass of --crest-pass, still answers an error as a value: the pair (who . why), who a
-  ;; symbol and why a string (lib/Bindings/Support/Result.h: isSchemeError, emitSchemeError).
 
   ;; The who of the condition, as a string ("" when it has none).
   (define (%%condition-who c)
@@ -81,12 +72,6 @@
                      (condition-irritants c)))]
         [(condition? c) (display-condition c port)]
         [else (write c port)]))))
-
-  ;; The procedure, with its error answered as (who . why).
-  (define (%%guard procedure)
-    (lambda arguments
-      (guard (c [#t (cons (string->symbol (%%condition-who c)) (%%condition-message c))])
-        (apply procedure arguments))))
 
   ;; ---- the guard of a callable (plan 05) ----------------------------------------------------------
   ;;
@@ -129,12 +114,6 @@
     (lambda arguments
       (guard (c [#t (%llvm::report_fatal_error (%%diagnostic-text c location))])
         (apply procedure arguments))))
-
-  ;; (crest-guard-procedure procedure location zero): the procedure with its error reported, as the guard
-  ;; of a callable does it, and ZERO answered. For a Scheme procedure that C++ calls itself while a
-  ;; callable runs (the clauses of InferTypeOpInterface): an error must not cross the C++ frames either.
-  (define (crest-guard-procedure procedure location zero)
-    (%%report-guard procedure location zero))
 
   ;; The guard of a callable by the kind of its result: void has no place for an error, a range answers
   ;; (data . size), the others are numbers.
@@ -221,9 +200,10 @@
                                       "unknown result kind of a callable" stx #'result)])))])))
 
   ;; (crest-call-guarded procedure argument ...): C++ calls a Scheme procedure itself (the pass of
-  ;; --crest-pass): the answer of the procedure, or the pair (who . why) when it raised an error.
+  ;; --crest-pass), which has no C prototype to match: the same guard reports an error (without a position,
+  ;; here), and the answer is 1 when the procedure returned and 0 after its error was reported.
   (define (crest-call-guarded procedure . arguments)
-    (apply (%%guard procedure) arguments))
+    (apply (%%report-guard (lambda arguments (apply procedure arguments) 1) #f 0) arguments))
 
   ;; (crest-make-static-c-callable (argument-type ...) result-type procedure [:source expression | :location expression]): the
   ;; address of a C function with the prototype of C++: those argument types and that result type. It locks

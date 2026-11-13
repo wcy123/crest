@@ -12,7 +12,7 @@
           mlir::InferTypeOpInterface::inferReturnTypes<OperationState>
           mlir::InferTypeOpInterface::inferReturnTypes<OperationState*>)
   (import (chezscheme)
-          (only (crest callback) crest-make-static-c-callable crest-guard-procedure)
+          (only (crest callback) crest-make-static-c-callable)
           (for (mlir support srcloc) expand)
           (mlir IR MLIRContext)
           (only (mlir IR Diagnostics) mlir::emitError)
@@ -36,18 +36,25 @@
   ;;     w0 context | w1 address of location | w2 address of operands | w3 attributes
   ;;     | w4 properties | w5 address of regions | w6 where to put the result types
   ;;
-  ;; The C++ function `adapt` (lib/Bindings/Interfaces/InferTypeOpInterface.cpp) knows which number
-  ;; is which. It rebuilds the C++ objects and calls `proc` with (context location operands
-  ;; attributes). The Linux function always takes 11 numbers; with LLVM 22 the last one is
-  ;; leftover memory and is ignored.
+  ;; The C++ function `decode` (lib/Bindings/Interfaces/InferTypeOpInterface.cpp) knows which number
+  ;; is which. It rebuilds the C++ objects as Scheme data for `proc`, which is called with (context
+  ;; location operands attributes). The Linux function always takes 11 numbers; with LLVM 22 the last
+  ;; one is leftover memory and is ignored.
   ;;
-  ;; MLIR calls these functions with its own prototype, and C++ (`adapt`) calls `proc` itself, so an
-  ;; error of `proc` must not cross either: the clause is guarded (crest-guard-procedure): an error is a
-  ;; diagnostic at the position of the clause, in the context of the call, and the answer is #f, which is a
-  ;; failure. The callable has the guard of its result, logical-result, for the rest.
+  ;; MLIR calls these functions with its own prototype, so the callable made by crest-make-static-c-callable
+  ;; (logical-result) guards the clause: an error is reported there. `decode` turns the words into Scheme data,
+  ;; the clause is called here, in Scheme, and `push` gives its answer to MLIR. The context is set for the
+  ;; clause (it builds types in it) and stays set, so that the guard can report in it.
   (define (%%infer proc refine w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10)
-    (with-current-MLIRContext w0
-      (%crest::InferTypeOpInterface::adapt proc w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 refine)))
+    (current-MLIRContext w0)
+    (let* ([refine? (eqv? refine 1)]
+           [arguments (%crest::InferTypeOpInterface::decode w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10)]
+           [types (apply proc (list-head arguments (if refine? 5 4)))])
+      (cond
+       [types
+        (%crest::InferTypeOpInterface::push (list-ref arguments 5) types refine)
+        1]
+       [else 0])))
 
   (define (%%system-v-entry-point proc refine location)
     (crest-make-static-c-callable
@@ -99,21 +106,25 @@
   ;; The callable of an isCompatibleReturnTypes clause: MLIR calls it as
   ;; bool isCompatibleReturnTypes(TypeRange lhs, TypeRange rhs), and a TypeRange is 16 bytes, so it
   ;; comes as two numbers on Linux (w0 w1 | w2 w3) and as the address of a copy on Windows (w0 | w1),
-  ;; like the ranges of inferReturnTypes above. `adaptCompatible` rebuilds the two ranges and calls
+  ;; like the ranges of inferReturnTypes above. `decodeCompatible` rebuilds the two ranges and `compatible` is called with
   ;; `compatible` with the lists of their Types.
+  (define (%%compatible compatible w0 w1 w2 w3)
+    (let ([types (%crest::InferTypeOpInterface::decodeCompatible w0 w1 w2 w3)])
+      (if (compatible (car types) (cadr types)) 1 0)))
+
   (define (%%compatible-entry-point compatible location)
     (case (machine-type)
       [(a6le ta6le a6osx ta6osx)
        (crest-make-static-c-callable
         (uptr uptr uptr uptr) unsigned-8
         (lambda (w0 w1 w2 w3)
-          (%crest::InferTypeOpInterface::adaptCompatible compatible w0 w1 w2 w3))
+          (%%compatible compatible w0 w1 w2 w3))
         :location location)]
       [(a6nt ta6nt)
        (crest-make-static-c-callable
         (uptr uptr) unsigned-8
         (lambda (w0 w1)
-          (%crest::InferTypeOpInterface::adaptCompatible compatible w0 w1 0 0))
+          (%%compatible compatible w0 w1 0 0))
         :location location)]
       [else (error 'mlir::InferTypeOpInterface
                    "the calling convention of this machine type is not supported"
@@ -164,12 +175,11 @@
   (define (%%c-dispatcher dispatcher)
     (let* ([infer-clause (dispatcher 'inferReturnTypes)]
            [location (cdr infer-clause)]
-           [guarded (lambda (clause) (crest-guard-procedure (car clause) (cdr clause) #f))]
-           [infer (guarded infer-clause)]
+           [infer (car infer-clause)]
            [compatible-clause (dispatcher 'isCompatibleReturnTypes)]
-           [compatible (if compatible-clause (guarded compatible-clause) %%default-compatible)]
+           [compatible (if compatible-clause (car compatible-clause) %%default-compatible)]
            [refine-clause (dispatcher 'refineReturnTypes)]
-           [refine (if refine-clause (guarded refine-clause) (%%default-refine infer compatible))]
+           [refine (if refine-clause (car refine-clause) (%%default-refine infer compatible))]
            [entries (list (cons 'inferReturnTypes (%%entry-point infer 0 location))
                           (cons 'refineReturnTypes
                                 (%%entry-point refine 1 (if refine-clause (cdr refine-clause) location)))

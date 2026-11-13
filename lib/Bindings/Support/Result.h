@@ -16,12 +16,9 @@
 //
 // C++ calls Scheme through a callable that scheme/crest/callback.sls made: the
 // callable has the C prototype that C++ or MLIR declares, result type included,
-// and its guard reports an error of the procedure as a diagnostic at the Scheme
-// source of the callback (or ends the process for a void result), so no error
-// reaches C++ and C++ decodes nothing. Only the control plane still answers an
-// error as a value: crest-call-guarded, which the pass runner of --crest-pass
-// calls by name, answers the value or the pair (who . why), and the runner
-// reads it with isSchemeError and reports it with emitSchemeError.
+// and its guard reports an error of the procedure itself (mlir::emitError, or
+// llvm::report_fatal_error for a void result), so no error reaches C++ and C++
+// decodes nothing.
 
 #ifndef CREST_BINDINGS_SUPPORT_RESULT_H
 #define CREST_BINDINGS_SUPPORT_RESULT_H
@@ -52,37 +49,6 @@ inline ptr scheme_string(const char* text) {
 }
 inline ptr scheme_string(const std::string& text) {
   return Sstring_utf8(text.data(), static_cast<iptr>(text.size()));
-}
-
-// ---- C++ reads the answer of a callable that Scheme made ----
-
-// Whether the answer is the error (who . why). No value that a callable
-// answers is a pair of a symbol and a string.
-inline bool isSchemeError(ptr answer) {
-  return Spairp(answer) && Ssymbolp(Scar(answer)) && Sstringp(Scdr(answer));
-}
-
-namespace detail {
-inline std::string schemeText(ptr string) {
-  std::string text;
-  for (iptr i = 0; i < Sstring_length(string); ++i) {
-    text.push_back(static_cast<char>(Sstring_ref(string, i)));
-  }
-  return text;
-}
-} // namespace detail
-
-// The text of an error answer: "who: why", or "why" when who is empty.
-inline std::string schemeErrorText(ptr answer) {
-  std::string who = detail::schemeText(Ssymbol_to_string(Scar(answer)));
-  std::string why = detail::schemeText(Scdr(answer));
-  return who.empty() ? why : who + ": " + why;
-}
-
-// Report the error answer as a diagnostic at `loc`. The caller then answers
-// failure to MLIR.
-inline void emitSchemeError(mlir::Location loc, ptr answer) {
-  mlir::emitError(loc) << schemeErrorText(answer);
 }
 
 } // namespace crest
