@@ -6,7 +6,7 @@
 ;; Fires for both the 2-operand form (optional absent) and
 ;; the 3-operand form (optional present, value irrelevant).
 (library (passes wildcard-optional)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Value) mlir::Value::getType)
           (passes wildcard-common)
@@ -20,6 +20,6 @@
     :rewrite %out :with
       result = test.fused (%x %y) -> !out-type) ;
 
-  (define run-pass (make-run-pass "test.op" %%wildcard-optional))
+  (define-pass-entry-point (module-op) ((make-pass-body "test.op" %%wildcard-optional) module-op))
 
   ) ;; end library

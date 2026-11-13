@@ -1,8 +1,9 @@
 ;; expand-macro tool — pretty-prints macro expansions found in a Scheme source file.
 ;; Invoked via crest-opt by the tools/expand-macro shell script.
 (library (tools expand-macro)
-  (export run-pass)
-  (import (chezscheme)
+  (export pass-entry-point)
+  (import (only (crest pass) define-pass-entry-point)
+          (chezscheme)
           (crest dialect))
 
   ;; Read all top-level s-expressions from a file.
@@ -94,7 +95,7 @@
 
     (%%walk form))
 
-  (define (run-pass _op)
+  (define-pass-entry-point (_op)
     (let* ([name    (string->symbol
                      (or (getenv "EXPAND_MACRO_NAME") "define-dialect"))]
            [file    (or (getenv "EXPAND_MACRO_FILE")

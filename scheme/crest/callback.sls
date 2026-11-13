@@ -42,7 +42,7 @@
   (export define-c-callable
           with-c-callable/lambda
           with-c-callable/code
-          crest-call-guarded
+          define-pass-entry-point
           crest-callback-pointer-list)
   (import (chezscheme)
           (for (mlir support srcloc) expand)
@@ -124,14 +124,29 @@
            (assertion-violation 'with-c-callable/code "the address must be that of a locked callable" name))
          body ...)]))
 
-  ;; @brief crest-call-guarded — call a Scheme procedure for C++ under the guard of a callable.
-  ;; @param procedure  the procedure to call
-  ;; @param argument   its arguments
-  ;; @return           1 when the procedure returned, 0 after its error was reported
-  ;; @note             C++ calls it by name for the pass of --crest-pass, which has no C prototype to
-  ;;                   match. The error is reported without a Scheme position.
-  (define (crest-call-guarded procedure . arguments)
-    (apply (%%report-guard (lambda arguments (apply procedure arguments) 1) #f 0) arguments))
+  ;; @brief define-pass-entry-point — define the procedure that --crest-pass calls to run a pass.
+  ;; @param op    identifier bound in BODY to the Operation* that the pass runs on (the module)
+  ;; @param body  the expressions of the pass; their value is ignored
+  ;; @note        A macro, like define for a function. It defines pass-entry-point, the name that
+  ;;              CrestPass looks up in the libraries of --crest-pass, so the library exports it. The
+  ;;              procedure answers 1 when BODY returned, and 0 after an error of BODY was reported by the
+  ;;              guard of a callable (see %%guard-for-result), which the runner turns into a failure of the
+  ;;              pass. Scheme code may call it too, as an ordinary procedure.
+  ;; @example
+  ;;   (library (passes my-pass)
+  ;;     (export pass-entry-point)
+  ;;     (import (rnrs) (crest))
+  ;;     (define-pass-entry-point (module-op)
+  ;;       (display "running")))
+  (define-syntax define-pass-entry-point
+    (lambda (stx)
+      (syntax-case stx ()
+        [(keyword (op) body ...)
+         (with-syntax ([pass-entry-point (datum->syntax #'keyword 'pass-entry-point)]
+                       [location #`(quote #,(datum->syntax
+                                             #'keyword (syntax->first-file+line+col #'(body ...))))])
+           #'(define (pass-entry-point op)
+               ((%%report-guard (lambda (op) (let () body ...) 1) location 0) op)))])))
 
   ;; @brief crest-callback-pointer-list — read a range that C++ gave as a pointer and a count.
   ;; @param pointer  the address of an array of 8-byte elements (a pointer or an integer each)

@@ -3,7 +3,7 @@
 ;; The :where guard (eqv? 1 2) always returns #f cleanly — no exception —
 ;; so CREST_DEBUG_MATCH prints FAILED: with the source location.
 (library (passes debug-match-check-where)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Value) mlir::Value::getType)
           (passes debug-match-common)
@@ -18,6 +18,6 @@
     :rewrite %out :with
       result = test.add (%a %b) -> !out-type) ;
 
-  (define run-pass (make-run-pass "test.add" %%where-always-false))
+  (define-pass-entry-point (module-op) ((make-pass-body "test.add" %%where-always-false) module-op))
 
   ) ;; end library

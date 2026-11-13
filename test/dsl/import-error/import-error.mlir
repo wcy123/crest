@@ -9,7 +9,7 @@
 // RUN:   %crest-opt %s --crest-pass="passes=passes/does-not-exist" 2>&1 \
 // RUN:   | %FileCheck %s --check-prefix=MISSING
 
-// BROKEN: error: Failed to import Scheme library: passes/broken: Exception: attempt to reference unbound identifier this-name-is-not-bound at line 8, char 6 of {{.*}}broken.sls
+// BROKEN: error: Failed to import Scheme library: passes/broken: Exception: attempt to reference unbound identifier this-name-is-not-bound at line 9, char 6 of {{.*}}broken.sls
 // MISSING: error: Failed to import Scheme library: passes/does-not-exist: Exception: library (passes does-not-exist) not found
 
 module {}

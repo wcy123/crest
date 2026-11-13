@@ -1,7 +1,7 @@
 #!r6rs
 ;; Test: begin-mlir-code has no builder argument; it uses the ambient current-OpBuilder.
 (library (passes ambient-builder)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Value) mlir::Value::getType)
           (only (mlir IR Operation)
@@ -65,7 +65,7 @@
                (mlir::RewriterBase::replaceOp rw op r)
                #t)))))
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (with-RewritePatternSet ps (ctx

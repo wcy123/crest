@@ -1,7 +1,7 @@
 #!r6rs
 ;; Rewrites test.src(%a, %b) into ops created without a result type, plus one with an explicit type.
 (library (passes use-builder)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
@@ -21,7 +21,7 @@
       same = bld.add (%a %b) -> ty
       test.use (sum zero same))
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (with-RewritePatternSet patterns (ctx

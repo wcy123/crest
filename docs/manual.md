@@ -633,23 +633,24 @@ when the count and types are fixed.
 
 ## 6. Pass entry points
 
-A pass is an ordinary R6RS `library` that exports a function named `run-pass`.
-`run-pass` is a convention — it is the name that `--crest-pass="passes=passes/my-pass"`
-calls at runtime. Everything else in the library is plain Scheme: helper
-functions, type predicates, constants — no CREST macros required.
+A pass is an ordinary R6RS `library` that exports `pass-entry-point`, which
+`(define-pass-entry-point (op) body ...)` defines: `pass-entry-point` is the name that
+`--crest-pass="passes=passes/my-pass"` calls at runtime, and the macro gives the body the guard of a callable (an
+error is reported with its Scheme position and the pass fails). Everything else in the library is plain Scheme: helper
+functions, type predicates, constants.
 
 ### Greedy rewrite pass
 
 ```scheme
 (library (passes my-pass)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
           (crest)
           (passes my-pass patterns))
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (apply-patterns module-op ctx
@@ -689,14 +690,14 @@ them, and returns `#t` on success or `#f` on failure:
 
 ```scheme
 (library (passes my-conversion)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (crest)
           (passes my-conversion patterns))
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (apply-conversion module-op ctx

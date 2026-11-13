@@ -2,8 +2,9 @@
 ;; Test: a source/target materialization callback gets a raw mlir::OpBuilder*.
 ;; tensor<4xf32> is converted to tensor<?xf32>; the callback materializes tensor.cast.
 (library (passes materialization-builder)
-  (export run-pass)
-  (import (rnrs)
+  (export pass-entry-point)
+  (import (only (crest pass) define-pass-entry-point)
+          (rnrs)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
           (only (mlir IR PatternMatch) with-RewritePatternSet)
@@ -30,7 +31,7 @@
          (null? (cdr inputs))
          (mlir::tensor::CastOp::create builder loc result-type (car inputs))))
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (with-TypeConverter tc :conversions ((lambda (type) type)

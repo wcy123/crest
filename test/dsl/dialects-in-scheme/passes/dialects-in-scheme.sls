@@ -3,12 +3,13 @@
 ;; Verifies that dialects-in-scheme= registered the testd dialect in the
 ;; MLIRContext before runOnOperation() by querying getOrLoadDialect.
 (library (passes dialects-in-scheme)
-  (export run-pass)
-  (import (chezscheme)
+  (export pass-entry-point)
+  (import (only (crest pass) define-pass-entry-point)
+          (chezscheme)
           (mlir IR Operation)
           (mlir IR MLIRContext))
 
-  (define (run-pass module)
+  (define-pass-entry-point (module)
     (let* ([ctx    (mlir::Operation::getContext module)]
            [loaded (mlir::MLIRContext::getOrLoadDialect ctx "testd")])
       (if (not (zero? loaded))

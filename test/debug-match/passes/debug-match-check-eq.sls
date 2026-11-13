@@ -2,7 +2,7 @@
 ;; Test pass: exercises DAG-diamond eqv? check in :bind-operands.
 ;; Pattern expects both operands of test.mul to be the same SSA value.
 (library (passes debug-match-check-eq)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Value) mlir::Value::getType)
           (passes debug-match-common)
@@ -16,6 +16,6 @@
     :rewrite %out :with
       result = test.mul (%shared %shared) -> !out-type) ;
 
-  (define run-pass (make-run-pass "test.mul" %%check-eq-same-value))
+  (define-pass-entry-point (module-op) ((make-pass-body "test.mul" %%check-eq-same-value) module-op))
 
   ) ;; end library

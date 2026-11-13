@@ -11,7 +11,8 @@
 //                                      Each name is a slash-separated R6RS
 //                                      library name, e.g.
 //                                      'passes/lower,passes/verify'.
-//                                      The last library must export `run-pass`.
+//                                      The last library must export
+//                                      `pass-entry-point`.
 //   dialects=<ns>[,<ns>...]            MLIR C++ dialect namespaces to declare
 //                                      as dependencies (via
 //                                      getDependentDialects) so they are loaded
@@ -74,7 +75,7 @@ struct CrestPassOptions : public mlir::PassPipelineOptions<CrestPassOptions> {
       llvm::cl::desc(
           "Comma-separated Scheme libraries to load in order "
           "(slash-separated R6RS names). The last library must export "
-          "`run-pass`. Example: passes=passes/lower,passes/verify"),
+          "`pass-entry-point`. Example: passes=passes/lower,passes/verify"),
       llvm::cl::init("")};
   Option<std::string> dialects{
       *this, "dialects",
@@ -223,33 +224,32 @@ struct CrestPass : public mlir::OperationPass<mlir::ModuleOp> {
       }
     }
 
-    // The pass is run by calling run-pass. Some library of the list exports it
-    // (the others may be helpers, as in test/dsl/multi-pass); if none does, the
-    // call would go to whatever the name is bound to, or to nothing.
-    bool exportsRunPass = false;
+    // The pass is run by calling pass-entry-point. Some library of the list
+    // exports it (the others may be helpers, as in test/dsl/multi-pass); if
+    // none does, the call would go to whatever the name is bound to, or to
+    // nothing.
+    bool exportsPassEntryPoint = false;
     for (const auto& pass : passes_) {
-      exportsRunPass =
-          exportsRunPass || interp->libraryExports(pass, "run-pass");
+      exportsPassEntryPoint = exportsPassEntryPoint ||
+                              interp->libraryExports(pass, "pass-entry-point");
     }
-    if (!exportsRunPass) {
+    if (!exportsPassEntryPoint) {
       std::string libraries;
       for (const auto& pass : passes_) {
         libraries += (libraries.empty() ? "" : ", ") + pass;
       }
-      getOperation().emitError(
-          "Scheme library " + libraries +
-          " does not export run-pass, which --crest-pass=passes= calls to run "
-          "the pass");
+      getOperation().emitError("Scheme library " + libraries +
+                               " does not export pass-entry-point, which "
+                               "--crest-pass=passes= calls to run "
+                               "the pass");
       return signalPassFailure();
     }
 
-    // The pass raises no error into this frame: crest-call-guarded answers 1
-    // when run-pass returned, and 0 when it raised an error, which it reported.
-    interp->eval("(import (crest callback))");
+    // The pass raises no error into this frame: pass-entry-point
+    // (define-pass-entry-point) answers 1 when its body returned, and 0 when
+    // the body raised an error, which its guard reported.
     CurrentContextScope scope(*interp, getOperation()->getContext());
-    ptr answer =
-        scheme_call("crest-call-guarded", convert_to_scheme_func("run-pass"),
-                    getOperation().getOperation());
+    ptr answer = scheme_call("pass-entry-point", getOperation().getOperation());
     if (Sinteger64_value(answer) == 0) {
       return signalPassFailure();
     }

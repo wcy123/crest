@@ -2,7 +2,7 @@
 ;; A call after -> : a parenthesised form is a list of types, so (mlir::IndexType::get) is a
 ;; one-element list holding the procedure, not a call. Creating the op must say so.
 (library (passes call-as-type)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
@@ -18,7 +18,7 @@
     :rewrite op :with
       r = test.dst () -> (mlir::IndexType::get))
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (with-RewritePatternSet patterns (ctx

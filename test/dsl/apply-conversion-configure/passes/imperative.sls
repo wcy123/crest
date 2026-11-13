@@ -1,7 +1,7 @@
 #!r6rs
 ;; The control: the low-level API, with the two setup helpers called by hand.
 (library (passes imperative)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
@@ -31,7 +31,7 @@
     :rewrite op :with
       test.a_done ())
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (with-TypeConverter tc
@@ -41,7 +41,7 @@
             (with-RewritePatternSet patterns (ctx
                                               :conversion-patterns (("test.a" %%a tc 1)))
               (unless (eqv? 1 (mlir::applyPartialConversion module-op target patterns))
-                (error 'run-pass "conversion failed"))))))
-      (unless converter-configured? (error 'run-pass "converter hook did not run"))))
+                (error 'pass-entry-point "conversion failed"))))))
+      (unless converter-configured? (error 'pass-entry-point "converter hook did not run"))))
 
   ) ;; end library

@@ -6,7 +6,7 @@
 ;;   (_ %b) = test.split_b(%y)   — discard result 0 of split_b (different value)
 ;;   %out    = test.combine(%a %b)
 (library (passes wildcard-no-diamond-result)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Value) mlir::Value::getType)
           (passes wildcard-common)
@@ -22,6 +22,6 @@
     :rewrite %out :with
       result = test.fused (%x %y) -> !out-type) ;
 
-  (define run-pass (make-run-pass "test.combine" %%no-diamond-result))
+  (define-pass-entry-point (module-op) ((make-pass-body "test.combine" %%no-diamond-result) module-op))
 
   ) ;; end library

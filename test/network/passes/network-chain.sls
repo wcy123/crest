@@ -5,7 +5,7 @@
 ;;
 ;; Each :set-current-op walks one step up the def-use chain.
 (library (passes network-chain)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Value) mlir::Value::getType)
           (passes network-common)
@@ -21,6 +21,6 @@
     :rewrite %d :with
       result = test.fused (%a %x %y) -> !out-type) ;
 
-  (define run-pass (make-run-pass "test.sub" %%chain))
+  (define-pass-entry-point (module-op) ((make-pass-body "test.sub" %%chain) module-op))
 
   ) ;; end library

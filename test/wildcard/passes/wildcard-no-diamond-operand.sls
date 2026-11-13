@@ -6,7 +6,7 @@
 ;;   test.add(%x, %ignored_a)   →  test.fused(%x, %y)
 ;;   test.sub(%y, %ignored_b)   (different values for the two wildcards)
 (library (passes wildcard-no-diamond-operand)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Value) mlir::Value::getType)
           (passes wildcard-common)
@@ -22,6 +22,6 @@
     :rewrite %out :with
       result = test.fused (%x %y) -> !out-type) ;
 
-  (define run-pass (make-run-pass "test.combine" %%no-diamond-operand))
+  (define-pass-entry-point (module-op) ((make-pass-body "test.combine" %%no-diamond-operand) module-op))
 
   ) ;; end library

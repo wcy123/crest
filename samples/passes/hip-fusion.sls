@@ -21,12 +21,12 @@
 ;;   qlpnorm.sls       — Pattern 12: QLpNormalization
 ;;   qdq-roundtrip.sls — Patterns 13–15: QdqRoundTrip (DPS, tensor, pair)
 ;;
-;; Entry point: (run-pass module-op)
+;; Entry point: (pass-entry-point module-op)
 ;;
 ;;===----------------------------------------------------------------------===;;
 
 (library (passes hip-fusion)
-  (export run-pass)
+  (export pass-entry-point)
 
   (import (except (rnrs) =)
           (rename (only (rnrs) =) (= num=))
@@ -47,7 +47,7 @@
                 with-current-MLIRContext)
           )
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (apply-patterns module-op ctx

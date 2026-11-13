@@ -5,7 +5,7 @@
 ;;
 ;; :check-eq verifies both operands of test.add are the same SSA value.
 (library (passes network-fan-out)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Value) mlir::Value::getType)
           (passes network-common)
@@ -20,6 +20,6 @@
     :rewrite %out :with
       result = test.square (%shared) -> !out-type) ;
 
-  (define run-pass (make-run-pass "test.add" %%fan-out))
+  (define-pass-entry-point (module-op) ((make-pass-body "test.add" %%fan-out) module-op))
 
   ) ;; end library

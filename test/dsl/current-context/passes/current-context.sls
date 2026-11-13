@@ -1,9 +1,9 @@
 #!r6rs
 ;; Test: the attribute shorthands in a :rewrite :with body (here `:index`) need
-;; (current-MLIRContext). run-pass does not install it (there is no
+;; (current-MLIRContext). pass-entry-point does not install it (there is no
 ;; with-current-MLIRContext around the pattern driver); the generated pattern does.
 (library (passes current-context)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Value) mlir::Value::getType)
           (only (mlir IR Operation) mlir::Operation::getContext)
@@ -21,7 +21,7 @@
     :rewrite %out :with
       result = test.out (%v) (idx : 0 :index) -> !ty)
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-RewritePatternSet patterns (ctx
                                         :rewrite-patterns (("test.in" %%rewrite 1)))

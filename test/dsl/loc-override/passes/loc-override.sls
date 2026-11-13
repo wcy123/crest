@@ -5,7 +5,7 @@
 ;; FileLineColLoc("fake-source.toy", 42, 1).  The MLIR output must carry that
 ;; synthetic location, NOT the location of this .sls file.
 (library (passes loc-override)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Value) mlir::Value::getType)
           (only (mlir IR Location) mlir::FileLineColLoc::get)
@@ -22,6 +22,6 @@
       result = test.sub (%a %b) -> !out-type
     :loc my-loc)
 
-  (define run-pass (make-run-pass "test.add" %%rewrite))
+  (define-pass-entry-point (module-op) ((make-pass-body "test.add" %%rewrite) module-op))
 
   ) ;; end library

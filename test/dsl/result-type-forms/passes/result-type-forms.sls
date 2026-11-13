@@ -2,7 +2,7 @@
 ;; Result types after -> : a variable holding a type, and a parenthesised list of types for several
 ;; results. A call as the type is bound first (var = (expr)), as the manual says.
 (library (passes result-type-forms)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
@@ -22,7 +22,7 @@
       (b c) = test.two () -> (i64 idx)
       test.use (a b c))
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (with-RewritePatternSet patterns (ctx

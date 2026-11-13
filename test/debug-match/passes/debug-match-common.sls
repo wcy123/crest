@@ -1,7 +1,7 @@
 #!r6rs
 ;; Shared helper for debug-match test passes.
 (library (passes debug-match-common)
-  (export make-run-pass)
+  (export make-pass-body)
   (import (except (rnrs) =)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
@@ -9,9 +9,9 @@
           (only (mlir Transforms GreedyPatternRewriteDriver) mlir::applyPatternsGreedily)
           (only (mlir Transforms DialectConversion) add-rewrite-pattern))
 
-  ;; (make-run-pass root-op-name pattern) → run-pass function
+  ;; (make-pass-body root-op-name pattern) → pass-entry-point function
   ;; Registers pattern for root-op-name and runs the greedy rewriter.
-  (define (make-run-pass root-op-name pattern)
+  (define (make-pass-body root-op-name pattern)
     (lambda (module-op)
       (let ([ctx (mlir::Operation::getContext module-op)])
         (with-current-MLIRContext ctx

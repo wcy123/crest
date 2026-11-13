@@ -8,7 +8,7 @@
 ;;
 ;; The block arg type is determined at runtime from %v's type.
 (library (passes dynamic-block-args)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Value) mlir::Value::getType)
           (only (mlir IR Operation) mlir::Operation::getContext)
@@ -32,7 +32,7 @@
             test.yield ((:arg 0)))
       -> !vtype) ;
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (with-RewritePatternSet patterns (ctx

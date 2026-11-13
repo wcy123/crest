@@ -1,7 +1,7 @@
 #!r6rs
 ;; The same rewrite written with apply-patterns.
 (library (passes declarative)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (crest callback) define-c-callable)
           (only (mlir IR Operation) mlir::Operation::getContext)
@@ -42,7 +42,7 @@
   (define-c-callable %%c-callable ((op uptr) (rewriter uptr)) int
     (if (eq? (%%c op rewriter) #t) 1 0))
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (apply-patterns module-op ctx

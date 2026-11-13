@@ -1,7 +1,7 @@
 #!r6rs
 ;; Positive: pattern expects 2 required operands, op has exactly 2.
 (library (passes required-exact)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Value) mlir::Value::getType)
           (passes operands-common)
@@ -15,6 +15,6 @@
     :rewrite %out :with
       result = test.fused (%a %b) -> !out-type) ;
 
-  (define run-pass (make-run-pass "test.add" %%match))
+  (define-pass-entry-point (module-op) ((make-pass-body "test.add" %%match) module-op))
 
   ) ;; end library

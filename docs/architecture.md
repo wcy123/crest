@@ -62,7 +62,7 @@ requires.
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Layer 4 — Pass entry points                                │
-│  run-pass → register patterns → apply-full-conversion        │
+│  pass-entry-point → register patterns → apply-full-conversion        │
 └────────────────────────┬────────────────────────────────────┘
                          │ imports
 ┌────────────────────────▼────────────────────────────────────┐

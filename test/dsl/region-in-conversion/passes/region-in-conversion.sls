@@ -5,7 +5,7 @@
 ;;   test.src   -->  test.wrapper { ^bb0: test.inner }
 ;;   test.inner -->  test.done
 (library (passes region-in-conversion)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
@@ -27,7 +27,7 @@
     :rewrite op :with
       test.done ())
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (with-ConversionTarget target (ctx

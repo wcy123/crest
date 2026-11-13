@@ -8,7 +8,7 @@
 ;;
 ;; :check-eq verifies the same %shared SSA value appears in both paths.
 (library (passes network-diamond)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Value) mlir::Value::getType)
           (passes network-common)
@@ -24,6 +24,6 @@
     :rewrite %out :with
       result = test.fused (%shared %x %y) -> !out-type) ;
 
-  (define run-pass (make-run-pass "test.combine" %%diamond))
+  (define-pass-entry-point (module-op) ((make-pass-body "test.combine" %%diamond) module-op))
 
   ) ;; end library

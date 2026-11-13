@@ -2,7 +2,7 @@
 ;; Pattern: test.copy(%v) → test.with_block(%v) where the block uses (:arg 0)
 ;; to access the block arg and passes :builder to a Scheme helper.
 (library (passes builder-keyword)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs (6)) =)
           (only (mlir IR Value) mlir::Value::getType)
           (only (mlir IR Operation) mlir::Operation::getContext)
@@ -30,7 +30,7 @@
             test.yield ((:arg 0)))
       -> !t) ;
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (with-RewritePatternSet ps (ctx

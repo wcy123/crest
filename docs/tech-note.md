@@ -58,7 +58,7 @@ auto name_str = op->getName().getStringRef().str();
 
 #### Why the old `exit/enter` hack "worked"
 
-With `ifacetest:register!` called from inside `run-pass`, the same use-after-free existed. The old `UnregisteredOpModel` was freed and replaced by the newly registered `Impl`. The `Operation` still held the dangling pointer. But `delete` on a small object does not zero or immediately reuse the memory — the freed bytes still contain the old string data. The old approach "worked" by luck: the freed memory happened not to be reused before the next read. With a different allocation sequence (our new code), the freed memory was reused with different content, exposing the crash.
+With `ifacetest:register!` called from inside `pass-entry-point`, the same use-after-free existed. The old `UnregisteredOpModel` was freed and replaced by the newly registered `Impl`. The `Operation` still held the dangling pointer. But `delete` on a small object does not zero or immediately reuse the memory — the freed bytes still contain the old string data. The old approach "worked" by luck: the freed memory happened not to be reused before the next read. With a different allocation sequence (our new code), the freed memory was reused with different content, exposing the crash.
 
 From the [MLIRContext.cpp source](https://mlir.llvm.org/doxygen/MLIRContext_8cpp_source.html):
 

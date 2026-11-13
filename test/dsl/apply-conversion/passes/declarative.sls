@@ -1,7 +1,7 @@
 #!r6rs
 ;; The same conversion written with apply-conversion.
 (library (passes declarative)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (crest callback) define-c-callable)
           (only (mlir IR Operation) mlir::Operation::getContext)
@@ -30,7 +30,7 @@
   (define-c-callable %%c-callable ((op uptr) (operands uptr) (rewriter uptr) (type-converter uptr)) int
     (if (eq? (%%c op operands rewriter type-converter) #t) 1 0))
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (apply-conversion module-op ctx

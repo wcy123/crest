@@ -3,7 +3,7 @@
 ;; (_ %second) = test.split(%x)  — discard result 0, bind result 1.
 ;; test.use(%second) → test.fused(%x)
 (library (passes wildcard-result)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Value) mlir::Value::getType)
           (passes wildcard-common)
@@ -18,6 +18,6 @@
     :rewrite %out :with
       result = test.fused (%x) -> !out-type) ;
 
-  (define run-pass (make-run-pass "test.use" %%wildcard-result))
+  (define-pass-entry-point (module-op) ((make-pass-body "test.use" %%wildcard-result) module-op))
 
   ) ;; end library

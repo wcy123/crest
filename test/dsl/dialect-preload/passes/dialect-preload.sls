@@ -3,13 +3,14 @@
 ;; The pass prints the name of the first func.func operation it finds,
 ;; proving the func dialect was properly loaded and recognized.
 (library (passes dialect-preload)
-  (export run-pass)
-  (import (chezscheme)
+  (export pass-entry-point)
+  (import (only (crest pass) define-pass-entry-point)
+          (chezscheme)
           (mlir IR Operation)
           (mlir IR Region)
           (mlir IR Block))
 
-  (define (run-pass module)
+  (define-pass-entry-point (module)
     (let* ([region (mlir::Operation::getRegion module 0)]
            [block  (mlir::Region::front region)]
            [op     (mlir::Block::front block)])

@@ -8,7 +8,7 @@
 ;;   test.x   two patterns, benefit 1 and 5: the higher benefit wins --> test.x_high
 ;;   other.y  no pattern: kept
 (library (passes imperative)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
@@ -47,7 +47,7 @@
     :rewrite op :with
       test.x_high ())
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (with-RewritePatternSet patterns (ctx

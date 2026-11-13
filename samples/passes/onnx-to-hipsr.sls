@@ -15,8 +15,9 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (passes onnx-to-hipsr)
-  (export run-pass)
-  (import (only (mlir Support WalkResult) mlir::WalkResult::advance)
+  (export pass-entry-point)
+  (import (only (crest pass) define-pass-entry-point)
+          (only (mlir Support WalkResult) mlir::WalkResult::advance)
           (rnrs (6))
           (only (mlir IR MLIRContext) with-current-MLIRContext)
           (only (mlir IR Operation)
@@ -124,7 +125,7 @@
   ;;===--------------------------------------------------------------------===;;
   ;; The pass: one conversion, then post-processing
   ;;===--------------------------------------------------------------------===;;
-  (define (run-pass module-op . args)
+  (define-pass-entry-point (module-op)
     (crest::logging::info "Starting ONNX to HipSR Conversion (Scheme)")
     (let ((ctx (mlir::Operation::getContext module-op)))
       (with-current-MLIRContext ctx

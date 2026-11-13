@@ -32,7 +32,8 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (crest pass)
-  (export define-pass)
+  (export define-pass
+          define-pass-entry-point)
   (import (rnrs)
           (for (only (chezscheme) syntax->list) expand)
           (crest callback)
