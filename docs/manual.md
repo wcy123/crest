@@ -836,8 +836,8 @@ procedures called at verification time. For example:
 `op` is the operation the pass runs on (the `PassManager` decides: nested on `func.func` it runs on each
 function); the body returns `#f` to fail the pass, after saying why with `mlir::Operation::emitError`. The
 pass is an `mlir::Pass` (`lib/Crest/SchemePass.cpp`), so it mixes with C++ passes in one pipeline. Scheme
-is single-threaded: contexts made from Scheme have multithreading disabled; with `crest-opt` use
-`--mlir-disable-threading`. A body that raises a Scheme error does not end the process: the pass fails and
+is single-threaded: contexts made from Scheme have multithreading disabled (see "Threads" below). A pass on a
+context that allows threads fails with `pass <name>: needs a context with multithreading disabled`. A body that raises a Scheme error does not end the process: the pass fails and
 the diagnostic has the text of the error. The body is made into a C function once, where the pass is defined,
 and every pass that `(tag-functions)` makes shares it. Toy's shape inference and its lowerings to affine and
 LLVM are passes.
@@ -1179,6 +1179,19 @@ only when no ops of this dialect appear in input IR yet):
 ```scheme
 (load-scheme-dialect! ctx "toy" "toy/ch4/toy")
 ```
+
+### Threads
+
+Scheme code runs on one thread. MLIR verifies the functions of a module, and runs passes nested on
+`func.func`, on several threads when the context allows it, and it would call a verifier or a folder that
+you wrote in Scheme from those threads. That crashes the process. So:
+
+- A context turns multithreading off when it loads a Scheme dialect.
+- `crest-opt` adds `--mlir-disable-threading` when you give it `--crest-scheme-dialect`, because `mlir-opt`
+  turns threads back on after it parses the input. Without that dialect the flag is yours to give.
+- A Scheme pass (`define-pass`) on a context that allows threads fails with a message and does not run.
+
+The price is that a module with many functions is verified on one thread.
 
 ### Parsing a file: who frees the module
 

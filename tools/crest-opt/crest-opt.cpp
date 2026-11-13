@@ -31,7 +31,11 @@
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 #include "mlir/Transforms/Passes.h"
 
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/StringRef.h"
 #include "llvm/Support/CommandLine.h"
+
+#include <vector>
 
 static llvm::cl::list<std::string> SchemeDialects(
     "crest-scheme-dialect",
@@ -53,6 +57,7 @@ int main(int argc, char** argv) {
   crest::registerCrestPass();
   mlir::registerTransformsPasses(); // --canonicalize, --cse, --inliner, etc.
 
+  bool usesSchemeDialect = false;
   // Pre-scan argv for --crest-scheme-dialect= entries and populate the global
   // registry before MlirOptMain creates any MLIRContext. The cl::list above
   // ensures the option is accepted and visible in --help; we process it
@@ -80,8 +85,22 @@ int main(int argc, char** argv) {
     auto [type_id, factory] =
         crest::dialectFactory(dialect_name.str(), module_name.str());
     registry.insert(type_id, dialect_name.str(), factory);
+    usesSchemeDialect = true;
   }
 
+  // MlirOptMain turns threads off while it parses and back on afterwards, which
+  // undoes what the dialect did when it loaded. Scheme runs on one thread, so
+  // the flag goes on the command line when the user did not give one.
+  std::vector<char*> args(argv, argv + argc);
+  static char disableThreading[] = "--mlir-disable-threading";
+  if (usesSchemeDialect && llvm::none_of(args, [](const char* arg) {
+        return llvm::StringRef(arg).starts_with("--mlir-disable-threading");
+      })) {
+    args.insert(args.begin() + 1, disableThreading);
+  }
+  args.push_back(nullptr);
+
   return mlir::asMainReturnCode(
-      mlir::MlirOptMain(argc, argv, "CREST optimizer driver\n", registry));
+      mlir::MlirOptMain(static_cast<int>(args.size()) - 1, args.data(),
+                        "CREST optimizer driver\n", registry));
 }
