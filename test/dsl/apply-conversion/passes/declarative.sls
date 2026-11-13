@@ -1,8 +1,9 @@
 #!r6rs
 ;; The same conversion written with apply-conversion.
 (library (passes declarative)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
+          (only (crest callback) define-c-callable)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
           (only (mlir Transforms DialectConversion) add-conversion-pattern)
@@ -26,7 +27,10 @@
     :rewrite op :with
       test.c_done ())
 
-  (define (run-pass module-op)
+  (define-c-callable %%c-callable ((op uptr) (operands uptr) (rewriter uptr) (type-converter uptr)) int
+    (if (eq? (%%c op operands rewriter type-converter) #t) 1 0))
+
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (apply-conversion module-op ctx
@@ -39,6 +43,6 @@
                           :patterns          (("test.a" %%a)
                                               ("test.b" %%b :no-type-converter))
                           :populate          (lambda (tc patterns)
-                                               (add-conversion-pattern patterns "test.c" %%c tc 1))))))
+                                               (add-conversion-pattern patterns "test.c" %%c-callable tc 1))))))
 
   ) ;; end library

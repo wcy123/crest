@@ -15,8 +15,10 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (passes onnx-to-hipsr)
-  (export run-pass)
-  (import (rnrs (6))
+  (export pass-entry-point)
+  (import (only (crest pass) define-pass-entry-point)
+          (only (mlir Support WalkResult) mlir::WalkResult::advance)
+          (rnrs (6))
           (only (mlir IR MLIRContext) with-current-MLIRContext)
           (only (mlir IR Operation)
                 mlir::OpOperand::get
@@ -87,7 +89,7 @@
                              (lambda (op)
                                (when (and (string=? (mlir::Operation::getName op) "onnx.NoValue")
                                           (mlir::Operation::use_empty? op))
-                                 (set! dead (cons op dead)))))
+                                 (set! dead (cons op dead))) mlir::WalkResult::advance))
       (for-each mlir::Operation::erase dead)))
 
   ;;===--------------------------------------------------------------------===;;
@@ -118,12 +120,12 @@
                                           (new-val (shape-graph-counterpart old-val)))
                                      (unless (eqv? old-val new-val)
                                        (mlir::Operation::setOperand op i new-val)))
-                                   (loop (+ i 1))))))))
+                                   (loop (+ i 1))))) mlir::WalkResult::advance)))
 
   ;;===--------------------------------------------------------------------===;;
   ;; The pass: one conversion, then post-processing
   ;;===--------------------------------------------------------------------===;;
-  (define (run-pass module-op . args)
+  (define-pass-entry-point (module-op)
     (crest::logging::info "Starting ONNX to HipSR Conversion (Scheme)")
     (let ((ctx (mlir::Operation::getContext module-op)))
       (with-current-MLIRContext ctx

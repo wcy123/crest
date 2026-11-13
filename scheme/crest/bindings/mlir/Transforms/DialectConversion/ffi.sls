@@ -50,8 +50,8 @@
     (crest-foreign-procedure "mlir::TypeConverter::TypeConverter"
                              () uptr))
 
-  ;; The callbacks below are the addresses of C functions that Scheme made (with-c-callable or
-  ;; crest-make-static-c-callable in (crest callback)). C++ keeps the address and calls it for as long
+  ;; The callbacks below are the addresses of C functions that Scheme made (with-c-callable/lambda or
+  ;; define-c-callable in (crest callback)). C++ keeps the address and calls it for as long
   ;; as the pattern set, the target or the type converter is used, and releases nothing: the caller
   ;; keeps the function alive for that long.
 

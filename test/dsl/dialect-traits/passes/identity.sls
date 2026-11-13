@@ -1,6 +1,7 @@
 #!r6rs
 (library (passes identity)
-  (export run-pass)
-  (import (rnrs))
+  (export pass-entry-point)
+  (import (only (crest pass) define-pass-entry-point)
+          (rnrs))
 
-  (define (run-pass module-op) module-op))
+  (define-pass-entry-point (module-op) module-op))

@@ -1,7 +1,7 @@
 #!r6rs
 ;; Rewrites test.src(%a, %b) into bld.plain, which does not implement InferTypeOpInterface, and names no result type.
 (library (passes use-plain)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
@@ -17,7 +17,7 @@
       r = bld.plain (%a)
       test.use (r))
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (with-RewritePatternSet patterns (ctx

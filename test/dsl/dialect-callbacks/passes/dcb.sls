@@ -5,6 +5,7 @@
 (library (passes dcb)
   (export dcb)
   (import (except (rnrs) =)
+          (only (crest callback) define-c-callable)
           (mlir IR Value)
           (mlir IR Operation)
           (mlir IR BuiltinTypes)
@@ -36,6 +37,9 @@
     :rewrite %out :with
       %x)
 
+  (define-c-callable %%neg-neg-callable ((op uptr) (rewriter uptr)) int
+    (if (eq? (%%neg-neg op rewriter) #t) 1 0))
+
   (define-dialect dcb
     (:initialize (dialect) (say "dcb initialize"))
     (:get-dependent-dialects () (list "dcbdep"))
@@ -47,7 +51,7 @@
       (mlir::StringAttr::get (mlir::AsmParser::getContext parser) "hello"))
     (:get-canonicalization-patterns (patterns)
       (say "get-canonicalization-patterns")
-      (add-rewrite-pattern patterns "dcb.neg" %%neg-neg 1))
+      (add-rewrite-pattern patterns "dcb.neg" %%neg-neg-callable 1))
     (:verify-op-attr (op attr)
       (say "verify-op-attr " (mlir::Operation::getName op))
       (cond

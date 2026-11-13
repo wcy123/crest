@@ -2,7 +2,7 @@
 ;; (:move-region op) inside a ^bb body: the rewriter is still reachable there, and the insertion
 ;; point is restored afterwards, so test.after lands after test.wrapper.
 (library (passes move-nested)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
@@ -21,7 +21,7 @@
             (:move-region op))
       test.after ())
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (with-RewritePatternSet patterns (ctx

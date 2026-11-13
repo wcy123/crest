@@ -1,8 +1,9 @@
 #!r6rs
 ;; The same rewrite written with apply-patterns.
 (library (passes declarative)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
+          (only (crest callback) define-c-callable)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
           (only (mlir Transforms DialectConversion) add-rewrite-pattern)
@@ -38,7 +39,10 @@
     :rewrite op :with
       test.x_high ())
 
-  (define (run-pass module-op)
+  (define-c-callable %%c-callable ((op uptr) (rewriter uptr)) int
+    (if (eq? (%%c op rewriter) #t) 1 0))
+
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (apply-patterns module-op ctx
@@ -47,6 +51,6 @@
                                    ("test.x" %%x-low 1)
                                    ("test.x" %%x-high 5))
                         :populate (lambda (patterns)
-                                    (add-rewrite-pattern patterns "test.c" %%c 1))))))
+                                    (add-rewrite-pattern patterns "test.c" %%c-callable 1))))))
 
   ) ;; end library

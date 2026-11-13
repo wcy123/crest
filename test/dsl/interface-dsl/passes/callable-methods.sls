@@ -1,5 +1,6 @@
 ;; Calls the three methods of CallableOpInterface on the ops of the callablemethods dialect.
-(import (chezscheme)
+(import (only (mlir Support WalkResult) mlir::WalkResult::advance)
+        (chezscheme)
         (crest dialect)
         (mlir IR Operation)
         (mlir IR MLIRContext)
@@ -38,7 +39,7 @@
                                (when (equal? (mlir::Operation::getName op)
                                              (string-append "callablemethods." name))
                                  (set! found op))
-                               #t))
+                               #t mlir::WalkResult::advance))
                             found))])
               (for-each
                (lambda (name)

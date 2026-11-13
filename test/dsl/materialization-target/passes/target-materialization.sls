@@ -3,7 +3,7 @@
 ;; type converter turns into tensor<?xf32>: the conversion pattern gets the operand in the converted
 ;; type, so the converter materializes a tensor.cast from the original value.
 (library (passes target-materialization)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
@@ -37,7 +37,7 @@
     :rewrite op :with
       test.conv_done (%x))
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (with-TypeConverter tc :conversions ((lambda (type) type)

@@ -258,15 +258,15 @@ TEST_F(InterfaceTest, TheDialectHasItsInlinerInterface) {
 // The prototype of a slot
 //
 // A slot of a Concept is a C function pointer that MLIR calls, and Scheme fills
-// it with a foreign-callable (crest-slot-callable in
-// scheme/crest/callback.sls). C++ passes and returns some types by value in a
-// way that depends on the platform: a class of one pointer (Type, TypeAttr,
-// StringAttr, ...) goes through a pointer on Windows x64, and a TypeRange or an
-// OperandRange is two words in registers or a pointer to a copy. Each test
-// makes the callable with the kinds that the macro takes, calls it through a
-// function pointer of the exact type of the slot, and checks what arrived: it
-// is the test that tells, on every platform, that a kind of slot can be
-// implemented in Scheme.
+// it with a foreign-callable (define-c-callable in
+// scheme/crest/callback.sls, as scheme/crest/interface.sls does). C++ passes
+// and returns some types by value in a way that depends on the platform: a
+// class of one pointer (Type, TypeAttr, StringAttr, ...) goes through a pointer
+// on Windows x64, and a TypeRange or an OperandRange is two words in registers
+// or a pointer to a copy. Each test makes the callable with the kinds that the
+// maker takes, calls it through a function pointer of the exact type of the
+// slot, and checks what arrived: it is the test that tells, on every platform,
+// that a kind of slot can be implemented in Scheme.
 //===----------------------------------------------------------------------===//
 
 namespace {
@@ -277,6 +277,14 @@ protected:
     InterfaceTest::SetUpTestSuite();
     EXPECT_TRUE(g_interp->eval("(import (crest callback))"));
     EXPECT_TRUE(g_interp->eval("(define slot-seen 0)"));
+    // What interface.sls does for a slot: MLIR passes the Concept first, and
+    // the procedure does not see it.
+    EXPECT_TRUE(g_interp->eval(
+        "(define-syntax slot-callable (lambda (stx) (syntax-case stx () [(_ "
+        "(type ...) result procedure) (with-syntax ([(argument ...) "
+        "(generate-temporaries #'(type ...))]) #'(let () (define-c-callable "
+        "address ((concept uptr) (argument type) ...) result (procedure "
+        "argument ...)) address))])))"));
   }
 
   static ptr evalScheme(const std::string& code) {
@@ -285,7 +293,7 @@ protected:
     return scheme_call("eval", expr);
   }
 
-  // The entry point of the callable that crest-slot-callable makes.
+  // The entry point of the callable that slot-callable makes.
   template <typename Fn> static Fn slot(const std::string& call) {
     return reinterpret_cast<Fn>(Sunsigned64_value(evalScheme(call)));
   }
@@ -312,8 +320,7 @@ protected:
 // A class of one pointer answered by value: Type, as getFunctionType does.
 TEST_F(SlotAbiTest, ObjectResult) {
   using Slot = mlir::Type (*)(const void*, mlir::Operation*);
-  auto f =
-      slot<Slot>("(crest-slot-callable (uptr) object (lambda (op) (+ op 8)))");
+  auto f = slot<Slot>("(slot-callable (uptr) object (lambda (op) (+ op 8)))");
   mlir::Type type = f(nullptr, op(0x1000));
   EXPECT_EQ(address(type.getAsOpaquePointer()), 0x1008u);
 }
@@ -321,8 +328,7 @@ TEST_F(SlotAbiTest, ObjectResult) {
 // The same for a PointerUnion, as getCallableForCallee does.
 TEST_F(SlotAbiTest, UnionResult) {
   using Slot = mlir::CallInterfaceCallable (*)(const void*, mlir::Operation*);
-  auto f =
-      slot<Slot>("(crest-slot-callable (uptr) object (lambda (op) (+ op 16)))");
+  auto f = slot<Slot>("(slot-callable (uptr) object (lambda (op) (+ op 16)))");
   mlir::CallInterfaceCallable callable = f(nullptr, op(0x2000));
   EXPECT_EQ(address(callable.getOpaqueValue()), 0x2010u);
 }
@@ -330,7 +336,7 @@ TEST_F(SlotAbiTest, UnionResult) {
 // A class of one pointer taken by value: TypeAttr, as setFunctionTypeAttr does.
 TEST_F(SlotAbiTest, ObjectArgument) {
   using Slot = void (*)(const void*, mlir::Operation*, mlir::TypeAttr);
-  auto f = slot<Slot>("(crest-slot-callable (uptr object) void (lambda (op "
+  auto f = slot<Slot>("(slot-callable (uptr uptr) void (lambda (op "
                       "attr) (set! slot-seen (list op attr))))");
   mlir::MLIRContext ctx;
   mlir::TypeAttr attr = mlir::TypeAttr::get(mlir::IntegerType::get(&ctx, 32));
@@ -345,7 +351,7 @@ TEST_F(SlotAbiTest, ObjectArgument) {
 TEST_F(SlotAbiTest, UnionArgument) {
   using Slot =
       void (*)(const void*, mlir::Operation*, mlir::CallInterfaceCallable);
-  auto f = slot<Slot>("(crest-slot-callable (uptr object) void (lambda (op "
+  auto f = slot<Slot>("(slot-callable (uptr uptr) void (lambda (op "
                       "callee) (set! slot-seen (list op callee))))");
   mlir::MLIRContext ctx;
   mlir::SymbolRefAttr ref = mlir::SymbolRefAttr::get(&ctx, "callee");
@@ -362,7 +368,7 @@ TEST_F(SlotAbiTest, UnionArgument) {
 TEST_F(SlotAbiTest, TypeRangeArguments) {
   using Slot = mlir::Type (*)(const void*, mlir::Operation*, mlir::TypeRange,
                               mlir::TypeRange);
-  auto f = slot<Slot>("(crest-slot-callable (uptr type-range type-range) object"
+  auto f = slot<Slot>("(slot-callable (uptr type-range type-range) object"
                       "  (lambda (op inputs results) (set! slot-seen (list "
                       "inputs results)) 0))");
   mlir::MLIRContext ctx;
@@ -388,7 +394,7 @@ TEST_F(SlotAbiTest, ArrayRefResult) {
   static mlir::Type types[2];
   types[0] = mlir::IntegerType::get(&ctx, 8);
   types[1] = mlir::Float64Type::get(&ctx);
-  auto f = slot<Slot>("(crest-slot-callable (uptr) range (lambda (op) (cons " +
+  auto f = slot<Slot>("(slot-callable (uptr) range (lambda (op) (cons " +
                       std::to_string(address(types)) + " 2)))");
   llvm::ArrayRef<mlir::Type> answer = f(nullptr, op(0x5000));
   ASSERT_EQ(answer.size(), 2u);
@@ -398,8 +404,8 @@ TEST_F(SlotAbiTest, ArrayRefResult) {
 // An OperandRange answered by value, as getArgOperands does.
 TEST_F(SlotAbiTest, OperandRangeResult) {
   using Slot = mlir::OperandRange (*)(const void*, mlir::Operation*);
-  auto f = slot<Slot>(
-      "(crest-slot-callable (uptr) range (lambda (op) (cons #x6000 3)))");
+  auto f =
+      slot<Slot>("(slot-callable (uptr) range (lambda (op) (cons #x6000 3)))");
   mlir::OperandRange range = f(nullptr, op(0x5000));
   EXPECT_EQ(range.size(), 3u);
   EXPECT_EQ(address(range.getBase()), 0x6000u);
@@ -409,16 +415,15 @@ TEST_F(SlotAbiTest, OperandRangeResult) {
 TEST_F(SlotAbiTest, BoolAndEnumResults) {
   using BoolSlot = bool (*)(const void*, mlir::Operation*);
   auto yes =
-      slot<BoolSlot>("(crest-slot-callable (uptr) unsigned-8 (lambda (op) 1))");
-  auto no =
-      slot<BoolSlot>("(crest-slot-callable (uptr) unsigned-8 (lambda (op) 0))");
+      slot<BoolSlot>("(slot-callable (uptr) unsigned-8 (lambda (op) 1))");
+  auto no = slot<BoolSlot>("(slot-callable (uptr) unsigned-8 (lambda (op) 0))");
   EXPECT_TRUE(yes(nullptr, op(0x1000)));
   EXPECT_FALSE(no(nullptr, op(0x1000)));
 
   using VisibilitySlot =
       mlir::SymbolTable::Visibility (*)(const void*, mlir::Operation*);
   auto visibility =
-      slot<VisibilitySlot>("(crest-slot-callable (uptr) int (lambda (op) 2))");
+      slot<VisibilitySlot>("(slot-callable (uptr) int (lambda (op) 2))");
   EXPECT_EQ(visibility(nullptr, op(0x1000)),
             mlir::SymbolTable::Visibility::Nested);
 }
@@ -426,10 +431,9 @@ TEST_F(SlotAbiTest, BoolAndEnumResults) {
 // A LogicalResult answered by value, as verifyBody and verifyType do: one byte.
 TEST_F(SlotAbiTest, LogicalResultResult) {
   using Slot = llvm::LogicalResult (*)(const void*, mlir::Operation*);
-  auto ok =
-      slot<Slot>("(crest-slot-callable (uptr) logical-result (lambda (op) 1))");
+  auto ok = slot<Slot>("(slot-callable (uptr) logical-result (lambda (op) 1))");
   auto bad =
-      slot<Slot>("(crest-slot-callable (uptr) logical-result (lambda (op) 0))");
+      slot<Slot>("(slot-callable (uptr) logical-result (lambda (op) 0))");
   EXPECT_TRUE(mlir::succeeded(ok(nullptr, op(0x1000))));
   EXPECT_TRUE(mlir::failed(bad(nullptr, op(0x1000))));
 }
@@ -440,7 +444,7 @@ TEST_F(SlotAbiTest, EnumAndReferenceArguments) {
   using Slot =
       void (*)(const void*, mlir::Operation*, mlir::SymbolTable::Visibility,
                llvm::SmallVectorImpl<int>&);
-  auto f = slot<Slot>("(crest-slot-callable (uptr int uptr) void"
+  auto f = slot<Slot>("(slot-callable (uptr int uptr) void"
                       "  (lambda (op visibility sink) (set! slot-seen (list op "
                       "visibility sink))))");
   llvm::SmallVector<int> sink;

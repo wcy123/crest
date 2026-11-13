@@ -26,24 +26,22 @@
 // be used, and a function called after Scheme released it crashes. Objects
 // cross as integers.
 //
-// Each function answers a Scheme object (scheme/crest/callback.sls): a number,
-// or the pair (who . why) when the Scheme procedure raised an error. The C++
-// that calls it reads the answer; an error is reported as a diagnostic
-// (emitSchemeError) and the call answers failure to MLIR.
+// Each function has the C result type that is written here, and the Scheme
+// callable has the same one (scheme/crest/callback.sls). An error of the Scheme
+// procedure is reported there, as a diagnostic at the Scheme source, and the
+// callable answers the failure value of its type: 0.
 
-// A conversion pattern calls (op operands-ref rewriter type-converter) → 1/0
-// (or the error).
+// A conversion pattern calls (op operands-ref rewriter type-converter) → 1/0.
 // operands-ref and rewriter are shells that C++ owns for the call; Scheme uses
 // them without freeing them. type-converter is the
 // CrestBox<mlir::TypeConverter>* — Scheme uses it opaquely.
-using ConversionPatternFn = ptr(uint64_t op, uint64_t operands,
+using ConversionPatternFn = int(uint64_t op, uint64_t operands,
                                 uint64_t rewriter, uint64_t type_converter);
-using RewritePatternFn = ptr(uint64_t op, uint64_t rewriter);
-using LegalityFn = ptr(uint64_t op);
-using TypeConversionFn = ptr(uint64_t type);
-using MaterializationFn = ptr(uint64_t builder, uint64_t result_type,
-                              const uint64_t* inputs, uint64_t input_count,
-                              uint64_t loc);
+using RewritePatternFn = int(uint64_t op, uint64_t rewriter);
+using LegalityFn = int(uint64_t op);
+using TypeConversionFn = uint64_t(uint64_t type);
+using MaterializationFn = uint64_t(uint64_t builder, uint64_t result_type,
+                                   uint64_t inputs, uint64_t loc);
 
 class SchemeConversionPattern : public mlir::ConversionPattern {
 public:
@@ -74,15 +72,11 @@ public:
     CArrayRef<uintptr_t> operandsWrapped(
         reinterpret_cast<const uintptr_t*>(operands.data()), operands.size());
     crest::CrestBox<mlir::RewriterBase*> rwShell(&rewriter);
-    ptr answer = callback_(reinterpret_cast<uint64_t>(op),
+    int answer = callback_(reinterpret_cast<uint64_t>(op),
                            reinterpret_cast<uint64_t>(&operandsWrapped),
                            reinterpret_cast<uint64_t>(&rwShell),
                            schemeTypeConverterPtr_);
-    if (crest::isSchemeError(answer)) {
-      crest::emitSchemeError(op->getLoc(), answer);
-      return mlir::failure();
-    }
-    return Sinteger64_value(answer) != 0 ? mlir::success() : mlir::failure();
+    return answer != 0 ? mlir::success() : mlir::failure();
   }
 
 private:
@@ -107,13 +101,9 @@ public:
       return mlir::failure();
     }
     crest::CrestBox<mlir::RewriterBase*> rwShell(&rewriter);
-    ptr answer = callback_(reinterpret_cast<uint64_t>(op),
+    int answer = callback_(reinterpret_cast<uint64_t>(op),
                            reinterpret_cast<uint64_t>(&rwShell));
-    if (crest::isSchemeError(answer)) {
-      crest::emitSchemeError(op->getLoc(), answer);
-      return mlir::failure();
-    }
-    return Sinteger64_value(answer) != 0 ? mlir::success() : mlir::failure();
+    return answer != 0 ? mlir::success() : mlir::failure();
   }
 
 private:
@@ -124,38 +114,30 @@ private:
 namespace {
 
 // A dynamic legality check: whether the op is legal. An error of the Scheme
-// procedure is reported as a diagnostic, and the op is taken as illegal.
+// procedure is reported by its callable, which answers 0: the op is taken as
+// illegal.
 bool isLegal(LegalityFn* callback, mlir::Operation* op) {
-  ptr answer = callback(reinterpret_cast<uint64_t>(op));
-  if (crest::isSchemeError(answer)) {
-    crest::emitSchemeError(op->getLoc(), answer);
-    return false;
-  }
-  return Sinteger64_value(answer) != 0;
+  return callback(reinterpret_cast<uint64_t>(op)) != 0;
 }
 
 // The materialization of a type converter: Scheme gets the builder as a
 // borrowed shell that lives for the call (insertion point changes are made on
-// the builder itself, so nothing is copied), and the inputs as pointers.
+// the builder itself, so nothing is copied), and the inputs as a CArrayRef.
 mlir::Value materialize(MaterializationFn* callback, mlir::OpBuilder& builder,
                         mlir::Type resultType, mlir::ValueRange inputs,
                         mlir::Location loc) {
   crest::CrestBox<mlir::OpBuilder*> builder_shell(&builder);
-  llvm::SmallVector<uint64_t, 4> input_pointers;
+  llvm::SmallVector<uintptr_t, 4> input_pointers;
   for (mlir::Value input : inputs) {
     input_pointers.push_back(
-        reinterpret_cast<uint64_t>(input.getAsOpaquePointer()));
+        reinterpret_cast<uintptr_t>(input.getAsOpaquePointer()));
   }
-  ptr answer =
+  CArrayRef<uintptr_t> inputs_ref(input_pointers.data(), input_pointers.size());
+  uint64_t result =
       callback(reinterpret_cast<uint64_t>(&builder_shell),
                reinterpret_cast<uint64_t>(resultType.getAsOpaquePointer()),
-               input_pointers.data(), input_pointers.size(),
+               reinterpret_cast<uint64_t>(&inputs_ref),
                reinterpret_cast<uint64_t>(loc.getAsOpaquePointer()));
-  if (crest::isSchemeError(answer)) {
-    crest::emitSchemeError(loc, answer);
-    return nullptr;
-  }
-  uint64_t result = Sunsigned64_value(answer);
   if (!result) {
     return nullptr;
   }
@@ -382,14 +364,8 @@ void registerTransformsDialectConversionBindings() {
         auto& converter = *converter_box;
         converter.addConversion(
             [callback](mlir::Type type) -> std::optional<mlir::Type> {
-              ptr answer = callback(
+              uint64_t result = callback(
                   reinterpret_cast<uint64_t>(type.getAsOpaquePointer()));
-              if (crest::isSchemeError(answer)) {
-                crest::emitSchemeError(mlir::UnknownLoc::get(type.getContext()),
-                                       answer);
-                return std::nullopt;
-              }
-              uint64_t result = Sunsigned64_value(answer);
               if (result == 0) {
                 return std::nullopt;
               }
@@ -613,12 +589,12 @@ void registerTransformsDialectConversionBindings() {
       });
 
   // modifyOpInPlace: mutate an op inside a rewriter notification.
-  // (rw-ptr op-ptr thunk) → void  where thunk is a C function () that Scheme
-  // made and keeps alive until the call returns. An error of the thunk is
-  // the answer of the binding.
+  // (rw-ptr op-ptr thunk) → void  where thunk is a C function void() that
+  // Scheme made and keeps alive until the call returns. MLIR's callback is
+  // void, so an error of the thunk ends the process (Rule 20).
   Sregister_symbol(
       "mlir::RewriterBase::modifyOpInPlace",
-      (void*)+[](uint64_t rw_ptr, uint64_t op_ptr, ptr (*thunk)()) -> ptr {
+      (void*)+[](uint64_t rw_ptr, uint64_t op_ptr, void (*thunk)()) -> ptr {
         auto* rw_box = crest::CrestBox<mlir::RewriterBase*>::inner(rw_ptr);
         if (!rw_box) {
           return scheme_error(
@@ -627,17 +603,7 @@ void registerTransformsDialectConversionBindings() {
         }
         auto& rw = *rw_box;
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-        // modifyOpInPlace, written out: a thunk that failed abandons the
-        // modification, or the driver would see the op modified again and
-        // again.
-        crest::FirstSchemeError error;
-        rw.startOpModification(op);
-        error.record(thunk());
-        if (error) {
-          rw.cancelOpModification(op);
-          return error.answer();
-        }
-        rw.finalizeOpModification(op);
+        rw.modifyOpInPlace(op, [&]() { thunk(); });
         return Svoid;
       });
 }

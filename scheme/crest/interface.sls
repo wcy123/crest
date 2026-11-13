@@ -17,13 +17,13 @@
 ;;   (define-syntax mlir::XInterface
 ;;     (lambda (stx)
 ;;       (op-interface-expand stx 'mlir::XInterface #'(mlir::XInterface::getInterfaceID)
-;;         #'((method (kind ...) result adapter default keywords) ...))))
+;;         #'((method (type ...) result adapter default keywords) ...))))
 ;;
 ;;   method    the name of the method of the Concept
-;;   kind...   the C++ types of its arguments after the op, and result the C++ type of its answer,
-;;             as crest-slot-callable (scheme/crest/callback.sls) takes them
+;;   type...   the C++ types of its arguments after the op, and result the C++ type of its answer,
+;;             as define-c-callable (scheme/crest/callback.sls) takes them
 ;;   adapter   #f, or a procedure from the procedure of the clause to the procedure that the slot
-;;             calls with the numbers and lists of the kinds (it turns a list of types into a range,
+;;             calls with the numbers and lists of the types (it turns a list of types into a range,
 ;;             a verdict into 1 or 0 with a diagnostic, ...)
 ;;   default   #f when the op has to give the method; else what stands for the method of an op that
 ;;             does not give it, which is what MLIR does when it has a default for it: a procedure,
@@ -39,9 +39,19 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 (library (crest interface)
-  (export op-interface-expand)
+  (export op-interface-expand
+          crest-callback-entry-dispatcher)
   (import (chezscheme)
           (crest callback))
+
+  ;; What the macro of an interface hands to C++: from a method name to the entry point of its callable, 0 for a
+  ;; method that the op has no clause for. C++ asks for each method of the interface while it registers the op
+  ;; (lib/Crest/Interface.h). `entries` is an alist of (method . entry point).
+  (define (crest-callback-entry-dispatcher entries)
+    (lambda (method)
+      (cond
+       [(assq method entries) => cdr]
+       [else 0])))
 
   (define (op-interface-expand stx interface-name id table)
     (define (violation message . subform)
@@ -55,15 +65,15 @@
            (let ([name (symbol->string datum)])
              (and (> (string-length name) 1) (char=? (string-ref name 0) #\:)))))
 
-    ;; A method of the table: (name kinds result adapter default keywords).
+    ;; A method of the table: (name types result adapter default keywords).
     (define-record-type method
-      (fields name kinds result adapter default keywords))
+      (fields name types result adapter default keywords))
 
     (define methods
       (map (lambda (entry)
              (syntax-case entry ()
-               [(name (kind ...) result adapter default keywords)
-                (make-method (syntax->datum #'name) #'(kind ...) #'result #'adapter #'default
+               [(name (type ...) result adapter default keywords)
+                (make-method (syntax->datum #'name) #'(type ...) #'result #'adapter #'default
                              (map (lambda (pair)
                                     (syntax-case pair ()
                                       [(keyword . value) (cons (syntax->datum #'keyword) #'value)]))
@@ -103,9 +113,9 @@
                     (violation (string-append "has no method " (symbol->string (syntax->datum #'name))
                                               ": its methods are " (method-names))
                                clause))
-                  (unless (= (length (syntax->list #'(formal ...))) (length (syntax->list (method-kinds m))))
+                  (unless (= (length (syntax->list #'(formal ...))) (length (syntax->list (method-types m))))
                     (violation (string-append "takes (op ...) with "
-                                              (number->string (length (syntax->list (method-kinds m))))
+                                              (number->string (length (syntax->list (method-types m))))
                                               " argument(s) in the clause of "
                                               (symbol->string (method-name m)))
                                clause))
@@ -163,7 +173,16 @@
             (let ([procedure (if (eq? (syntax->datum (method-adapter m)) #f)
                                  (cdr from)
                                  #`(#,(method-adapter m) #,(cdr from)))])
-              #`(crest-slot-callable #,(method-kinds m) #,(method-result m) #,procedure)))))
+              ;; MLIR passes the Concept first; the procedure does not see it.
+              (let ([types (syntax->list (method-types m))])
+                (with-syntax ([(type ...) types]
+                              [(argument ...) (generate-temporaries types)]
+                              [result (method-result m)]
+                              [procedure procedure])
+                  #'(let ()
+                      (define-c-callable address ((concept uptr) (argument type) ...) result
+                        (procedure argument ...))
+                      address)))))))
 
     (duplicates!)
     (for-each (lambda (m)

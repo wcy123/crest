@@ -1,5 +1,6 @@
 ;; Unit test for the :interfaces DSL — top-level program for scheme-mlir.
-(import (chezscheme)
+(import (only (crest pass) define-pass-entry-point)
+        (chezscheme)
         (mlir support foreign)
         (crest dialect)
         (mlir IR Operation)
@@ -41,11 +42,11 @@
               (display (string-append "Failed to parse: " (car args) "\n")
                        (current-error-port))
               (%%quit 1))
-            (run-pass op)
+            (pass-entry-point op)
             (display (mlir::Operation::print op))
             (newline)))))))
 
-(define (run-pass module)
+(define-pass-entry-point (module)
   (let ([ctx (mlir::Operation::getContext module)])
     (with-current-MLIRContext ctx
       (let* ([body-region (mlir::Operation::getRegion module 0)]

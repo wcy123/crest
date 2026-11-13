@@ -1,5 +1,6 @@
 ;; Calls the methods of SymbolOpInterface on ops that give no clause, and on one that overrides two.
-(import (chezscheme)
+(import (only (mlir Support WalkResult) mlir::WalkResult::advance)
+        (chezscheme)
         (crest dialect)
         (mlir IR Operation)
         (mlir IR MLIRContext)
@@ -49,7 +50,7 @@
                  (let ([name (mlir::Operation::getName op)])
                    (when (member name '("symdefaults.sym" "symdefaults.overriding"))
                      (set! found (cons op found))))
-                 #t))
+                 #t mlir::WalkResult::advance))
               (let* ([ops (reverse found)]
                      [plain (car ops)] [private (cadr ops)] [nested (caddr ops)] [over (cadddr ops)])
                 (for-each

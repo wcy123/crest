@@ -6,8 +6,8 @@
 ;;
 ;;===----------------------------------------------------------------------===;;
 ;;
-;; (crest pattern-dsl srcloc) — Source location utilities shared by rewrite.sls
-;; and codegen.sls.
+;; (mlir support srcloc) — Source locations of Scheme code, read from syntax objects when a macro
+;; expands: the DSL macros (pattern-dsl, dialect) and (crest callback) use them.
 ;;
 ;; %%bfp->line+col : filename bfp → (values line col)  (both 1-indexed)
 ;;   Resolves a byte-file-position to (line, col) via binary search over a
@@ -20,12 +20,20 @@
 ;;   bfp → (line, col).  Returns #f when unavailable.
 ;;   Use with apply: (apply (lambda (f l c) ...) loc)
 ;;
+;; syntax->first-file+line+col : stx → (list file line col) | #f
+;;   The same for a form that a macro built from a template, such as (lambda formals body ...) made by
+;;   the DSL: the form and its keyword are at the template, in a library of CREST, and only the formals
+;;   and the body are the user's. The result is the position of the first part of the form that is not
+;;   in a file of CREST's own libraries (the directory scheme/), searched depth first, or the first
+;;   position when there is none.
+;;
 ;;===----------------------------------------------------------------------===;;
 
-(library (crest pattern-dsl srcloc)
-  (export syntax->file+line+col)
+(library (mlir support srcloc)
+  (export syntax->file+line+col
+          syntax->first-file+line+col)
   (import (rnrs)
-          (only (chezscheme) make-hashtable string-hash guard quotient
+          (only (chezscheme) make-hashtable string-hash guard quotient syntax->list find
                 syntax->annotation annotation? annotation-source
                 source-object? source-object-sfd source-object-bfp
                 source-file-descriptor-path)
@@ -86,4 +94,38 @@
               (and line (list file line col))))
           #f)))
 
-  ) ;; end library (crest pattern-dsl srcloc)
+  ;; Windows gives a path with both "/" and "\" in it, so paths are compared with "/" only.
+  (define (%%slashes path)
+    (list->string (map (lambda (c) (if (char=? c #\\) #\/ c)) (string->list path))))
+
+  ;; The directory of CREST's own libraries, "<...>/scheme/": this file is
+  ;; <...>/scheme/crest/bindings/mlir/support/srcloc.sls. A position in a file below it is the code
+  ;; of a macro of CREST (the template of a DSL), not the code of the user.
+  (define %%crest-library-root
+    (let* ([here (syntax->file+line+col #'here)]
+           [path (and here (%%slashes (car here)))]
+           [tail "crest/bindings/mlir/support/srcloc.sls"])
+      (and path
+           (> (string-length path) (string-length tail))
+           (string=? (substring path (- (string-length path) (string-length tail)) (string-length path))
+                     tail)
+           (substring path 0 (- (string-length path) (string-length tail))))))
+
+  (define (%%crest-library? path)
+    (let ([path (%%slashes path)])
+      (and %%crest-library-root
+           (>= (string-length path) (string-length %%crest-library-root))
+           (string=? (substring path 0 (string-length %%crest-library-root)) %%crest-library-root))))
+
+  (define (syntax->first-file+line+col stx)
+    ;; All the positions of the form and of its parts, depth first.
+    (define (positions form)
+      (let ([own (syntax->file+line+col form)]
+            [items (guard (e [#t #f]) (syntax->list form))])
+        (append (if own (list own) '())
+                (if items (apply append (map positions items)) '()))))
+    (let ([all (positions stx)])
+      (and (pair? all)
+           (find (lambda (position) (not (%%crest-library? (car position)))) all))))
+
+  ) ;; end library (mlir support srcloc)

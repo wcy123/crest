@@ -2,7 +2,7 @@
 ;; The same rewrite written with the DSL: (:move-region SRC-OP [IDX]) is a region modifier that
 ;; moves region IDX (default 0) of SRC-OP into the new op instead of creating new blocks.
 (library (passes move-region)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
@@ -18,7 +18,7 @@
       test.dst ()
       (:move-region op))
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (with-RewritePatternSet patterns (ctx

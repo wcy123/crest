@@ -11,7 +11,8 @@
 //                                      Each name is a slash-separated R6RS
 //                                      library name, e.g.
 //                                      'passes/lower,passes/verify'.
-//                                      The last library must export `run-pass`.
+//                                      The last library must export
+//                                      `pass-entry-point`.
 //   dialects=<ns>[,<ns>...]            MLIR C++ dialect namespaces to declare
 //                                      as dependencies (via
 //                                      getDependentDialects) so they are loaded
@@ -44,6 +45,7 @@
 
 #include "../Bindings/Support/Result.h"
 #include "../Bindings/Support/SchemeWrapper.h"
+#include "../Crest/CurrentContext.h"
 #include "../Crest/Dialect.h"
 #include "../Interpreter/ChezSchemeInterpreter.h"
 #include "crest/Passes/Passes.h"
@@ -73,7 +75,7 @@ struct CrestPassOptions : public mlir::PassPipelineOptions<CrestPassOptions> {
       llvm::cl::desc(
           "Comma-separated Scheme libraries to load in order "
           "(slash-separated R6RS names). The last library must export "
-          "`run-pass`. Example: passes=passes/lower,passes/verify"),
+          "`pass-entry-point`. Example: passes=passes/lower,passes/verify"),
       llvm::cl::init("")};
   Option<std::string> dialects{
       *this, "dialects",
@@ -222,34 +224,37 @@ struct CrestPass : public mlir::OperationPass<mlir::ModuleOp> {
       }
     }
 
-    // The pass is run by calling run-pass. Some library of the list exports it
-    // (the others may be helpers, as in test/dsl/multi-pass); if none does, the
-    // call would go to whatever the name is bound to, or to nothing.
-    bool exportsRunPass = false;
+    // The pass is run by calling pass-entry-point. Some library of the list
+    // exports it (the others may be helpers, as in test/dsl/multi-pass); if
+    // none does, the call would go to whatever the name is bound to, or to
+    // nothing.
+    bool exportsPassEntryPoint = false;
     for (const auto& pass : passes_) {
-      exportsRunPass =
-          exportsRunPass || interp->libraryExports(pass, "run-pass");
+      exportsPassEntryPoint = exportsPassEntryPoint ||
+                              interp->libraryExports(pass, "pass-entry-point");
     }
-    if (!exportsRunPass) {
+    if (!exportsPassEntryPoint) {
       std::string libraries;
       for (const auto& pass : passes_) {
         libraries += (libraries.empty() ? "" : ", ") + pass;
       }
-      getOperation().emitError(
-          "Scheme library " + libraries +
-          " does not export run-pass, which --crest-pass=passes= calls to run "
-          "the pass");
+      getOperation().emitError("Scheme library " + libraries +
+                               " does not export pass-entry-point, which "
+                               "--crest-pass=passes= calls to run "
+                               "the pass");
       return signalPassFailure();
     }
 
-    // The pass raises no error into this frame: crest-call-guarded answers
-    // the value of run-pass, or the pair (who . why) when it raised one.
-    interp->eval("(import (crest callback))");
-    ptr answer =
-        scheme_call("crest-call-guarded", convert_to_scheme_func("run-pass"),
-                    getOperation().getOperation());
-    if (isSchemeError(answer)) {
-      emitSchemeError(getOperation().getLoc(), answer);
+    // The pass raises no error into this frame: pass-entry-point
+    // (define-pass-entry-point) answers #f when its body returned, and
+    // (who . why), a symbol and a string, when the body raised an error.
+    CurrentContextScope scope(*interp, getOperation()->getContext());
+    ptr answer = scheme_call("pass-entry-point", getOperation().getOperation());
+    if (Spairp(answer)) {
+      std::string who =
+          convert_to_cpp<std::string>(Ssymbol_to_string(Scar(answer)));
+      std::string why = convert_to_cpp<std::string>(Scdr(answer));
+      getOperation().emitError(who.empty() ? why : who + ": " + why);
       return signalPassFailure();
     }
   }

@@ -6,7 +6,7 @@
 ;;   test.inner -->  test.done
 ;;   test.nested -->  test.wrapper { test.dst, body moved } then test.after (move inside a ^bb body)
 (library (passes move-conversion)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
@@ -37,7 +37,7 @@
     :rewrite op :with
       test.done ())
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (with-ConversionTarget target (ctx

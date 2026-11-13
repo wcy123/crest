@@ -5,6 +5,7 @@
 // Dialect types defined in Scheme — lib/Crest/Type.cpp
 
 #include "Type.h"
+#include "../Bindings/Support/ArrayRef.h"
 #include "../Bindings/Support/Result.h"
 #include "../Bindings/Support/SchemeWrapper.h"
 #include "mlir/IR/BuiltinAttributes.h"
@@ -52,11 +53,11 @@ struct TypeSink {
 };
 
 // The attribute parameters as the array of opaque pointers that Scheme reads.
-llvm::SmallVector<const void*, 4>
+llvm::SmallVector<uintptr_t, 4>
 opaquePointers(llvm::ArrayRef<mlir::Attribute> attrs) {
-  llvm::SmallVector<const void*, 4> pointers;
+  llvm::SmallVector<uintptr_t, 4> pointers;
   for (mlir::Attribute attr : attrs) {
-    pointers.push_back(attr.getAsOpaquePointer());
+    pointers.push_back(reinterpret_cast<uintptr_t>(attr.getAsOpaquePointer()));
   }
   return pointers;
 }
@@ -88,17 +89,17 @@ void registerCrestDynamicTypeBindings() {
   //
   // Must be called from the dialect's :initialize. The vector is made once by
   // define-dialect ((crest dialect callbacks)). Slots (0 = default; the others
-  // are the entry point of a foreign-callable, which answers a Scheme object:
-  // what is written below as int or void, or the pair (who . why) when its
-  // Scheme procedure raised an error, which is reported as a diagnostic):
-  //   0 verify  (uptr params, uptr n, uptr sink) → int
+  // are the entry point of a foreign-callable with the C result type written
+  // below, int or void; an error of its Scheme procedure is a diagnostic at its
+  // Scheme source and the callable answers 0, or ends the process for void):
+  //   0 verify  (uptr params, uptr sink) → int   (params: a CArrayRef<uptr>*)
   //             1 ok, 0 invalid (MLIR's message), 2 invalid, message in the
   //             sink
   //   1 parse   (uptr parser, uptr sink) → int      (the text after the type
   //             name) 1 ok with the parameters in the sink, 0 failed, 2 failed
   //             with the message in the sink
-  //   2 print   (uptr printer, uptr params, uptr n) → void   (the text after
-  //             the type name)
+  //   2 print   (uptr printer, uptr params) → void   (the text after the type
+  //             name; params: a CArrayRef<uptr>*)
   Sregister_symbol(
       "crest::register-dynamic-type!",
       (void*)+[](uint64_t dialect_ptr, const char* name, ptr cbs) -> ptr {
@@ -116,11 +117,9 @@ void registerCrestDynamicTypeBindings() {
           return static_cast<uint64_t>(
               Sinteger64_value(Svector_ref(cbs, slot)));
         };
-        // Each callable answers a Scheme object: the number above, or the pair
-        // (who . why) when its Scheme procedure raised an error.
-        using VerifyFn = ptr (*)(const void* const*, uint64_t, uint64_t);
-        using ParseFn = ptr (*)(uint64_t, uint64_t);
-        using PrintFn = ptr (*)(uint64_t, const void* const*, uint64_t);
+        using VerifyFn = int (*)(uint64_t, uint64_t);
+        using ParseFn = int (*)(uint64_t, uint64_t);
+        using PrintFn = void (*)(uint64_t, uint64_t);
         auto verify = reinterpret_cast<VerifyFn>(entry(0));
         auto parse = reinterpret_cast<ParseFn>(entry(1));
         auto print = reinterpret_cast<PrintFn>(entry(2));
@@ -139,14 +138,9 @@ void registerCrestDynamicTypeBindings() {
           }
           auto pointers = opaquePointers(params);
           TypeSink sink;
-          ptr scheme_answer =
-              verify(pointers.data(), static_cast<uint64_t>(pointers.size()),
-                     reinterpret_cast<uint64_t>(&sink));
-          if (isSchemeError(scheme_answer)) {
-            emitError() << schemeErrorText(scheme_answer);
-            return mlir::failure();
-          }
-          int answer = static_cast<int>(Sinteger64_value(scheme_answer));
+          CArrayRef<uintptr_t> parameters(pointers.data(), pointers.size());
+          int answer = verify(reinterpret_cast<uint64_t>(&parameters),
+                              reinterpret_cast<uint64_t>(&sink));
           if (answer == 1) {
             return mlir::success();
           }
@@ -166,15 +160,8 @@ void registerCrestDynamicTypeBindings() {
               -> mlir::ParseResult {
             TypeSink sink;
             sink.parsed = &parsed;
-            ptr scheme_answer = parse(reinterpret_cast<uint64_t>(&p),
-                                      reinterpret_cast<uint64_t>(&sink));
-            if (isSchemeError(scheme_answer)) {
-              mlir::InFlightDiagnostic diagnostic =
-                  p.emitError(p.getCurrentLocation());
-              diagnostic << schemeErrorText(scheme_answer);
-              return mlir::failure();
-            }
-            int answer = static_cast<int>(Sinteger64_value(scheme_answer));
+            int answer = parse(reinterpret_cast<uint64_t>(&p),
+                               reinterpret_cast<uint64_t>(&sink));
             if (answer == 1) {
               return mlir::success();
             }
@@ -186,16 +173,13 @@ void registerCrestDynamicTypeBindings() {
             return mlir::failure();
           };
           mlir::DynamicTypeDefinition::PrinterFn printer =
-              [print, dialect](mlir::AsmPrinter& p,
-                               llvm::ArrayRef<mlir::Attribute> params) {
+              [print](mlir::AsmPrinter& p,
+                      llvm::ArrayRef<mlir::Attribute> params) {
                 auto pointers = opaquePointers(params);
-                ptr answer =
-                    print(reinterpret_cast<uint64_t>(&p), pointers.data(),
-                          static_cast<uint64_t>(pointers.size()));
-                if (isSchemeError(answer)) {
-                  emitSchemeError(mlir::UnknownLoc::get(dialect->getContext()),
-                                  answer);
-                }
+                CArrayRef<uintptr_t> parameters(pointers.data(),
+                                                pointers.size());
+                print(reinterpret_cast<uint64_t>(&p),
+                      reinterpret_cast<uint64_t>(&parameters));
               };
           def = mlir::DynamicTypeDefinition::get(
               name, dialect, std::move(verifier), std::move(parser),

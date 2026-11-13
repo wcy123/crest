@@ -19,7 +19,9 @@
 
   ;; a walk whose visitor raises
   (define (walk-raises module-op)
-    (mlir::Operation::walk module-op boom))
+    (let ([ctx (mlir::Operation::getContext module-op)])
+      (with-current-MLIRContext ctx
+        (mlir::Operation::walk module-op boom))))
 
   (define-conversion-pattern (%%convert op operands-ref rw tc)
     :if-match

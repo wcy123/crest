@@ -1,5 +1,6 @@
-;; scheme-mlir driver: five kinds of callback raise an error. Prints the message that Scheme gets for each, then
-;; "callback-errors: ok" when the C++ heap did not grow over 1500 rounds of all five. Linux only.
+;; scheme-mlir driver: four kinds of callback raise an error. Prints the message that Scheme gets for each, then
+;; "callback-errors: ok" when the C++ heap did not grow over 1500 rounds of all four. Linux only. (A void callback, the
+;; thunk of modifyOpInPlace, ends the process: test/dsl/callback-diagnostics.)
 (import (chezscheme)
         (mlir IR DialectRegistry) (mlir IR MLIRContext) (mlir IR OwningOpRef)
         (mlir Dialect Func IR FuncOps)
@@ -43,7 +44,7 @@
 
 (define scenarios
   (list (cons "walk" walk-raises) (cons "legality" legality-raises) (cons "pattern" pattern-raises)
-        (cons "conversion" conversion-raises) (cons "modify" modify-raises)))
+        (cons "conversion" conversion-raises)))
 
 (define (message-of thunk)
   (guard (c [#t (call-with-string-output-port (lambda (port) (display-condition c port)))])
@@ -71,5 +72,5 @@
   (do ([i 0 (+ i 1)]) ((= i 1500)) (round-of #f))
   (let ([grown (- (bytes-in-use) before)])
     (display "callback-errors: ")
-    (display (if (< grown (* 1500 5 24)) "ok" (list "grew" grown "bytes")))
+    (display (if (< grown (* 1500 4 24)) "ok" (list "grew" grown "bytes")))
     (newline)))

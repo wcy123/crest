@@ -12,9 +12,8 @@
           ;; match-logging: unified warning helper for generated debug code.
           (only (crest pattern-dsl match-logging) warn-match)
           ;; srcloc: shared source-location utilities; cache is module-level in srcloc.sls.
-          (only (crest pattern-dsl srcloc) syntax->file+line+col)
+          (only (mlir support srcloc) syntax->file+line+col)
           (rename (rime loop) (:with :rime-with))
-          (only (crest callback) crest-make-static-c-callable)
           (only (mlir IR PatternMatch) conversion-pattern->c rewrite-pattern->c)
           (for (only (chezscheme) syntax->list syntax->datum record-rtd record-type-field-names record-accessor identifier?
                      call-with-string-output-port write) expand)
@@ -154,17 +153,11 @@
                                              (let* (then-let-binding ...)
                                                rewrite)
                                              #f))))])
-                    ;; The pattern is defined as a C callable (the address of a C function), made
-                    ;; once when the library is loaded and kept for the whole program: what
-                    ;; add-conversion-pattern, add-rewrite-pattern and the clauses of
-                    ;; with-RewritePatternSet take.
-                    (if operands-ref
-                        #'(define fname
-                            (crest-make-static-c-callable (uptr uptr uptr uptr)
-                                                          (conversion-pattern->c procedure)))
-                        #'(define fname
-                            (crest-make-static-c-callable (uptr uptr)
-                                                          (rewrite-pattern->c procedure)))))))))))))
+                    ;; The pattern is defined as a procedure: what the clauses of
+                    ;; with-RewritePatternSet take, which make a callable for the scope of the run.
+                    ;; add-rewrite-pattern and add-conversion-pattern take the address of a C function:
+                    ;; made once at the library level with define-c-callable.
+                    #'(define fname procedure))))))))))
 
   ;;=======================================================================
   ;; Rewrite code — thin wrapper delegating to begin-mlir-code

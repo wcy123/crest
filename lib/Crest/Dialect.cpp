@@ -8,6 +8,7 @@
 #include "../Bindings/Support/CrestObject.h"
 #include "../Bindings/Support/Result.h"
 #include "../Bindings/Support/SchemeWrapper.h"
+#include "CurrentContext.h"
 #include "InlinerInterface.h"
 #include "Interface.h"
 #include "llvm/ADT/DenseMap.h"
@@ -62,14 +63,10 @@ bool CrestDialect::classof(const mlir::Dialect* d) {
 // ---------------------------------------------------------------------------
 
 namespace {
-// The verdict of a verifier of Scheme: its callable answers 1 (valid), 0
-// (invalid, no message), or the pair (who . why) when its procedure raised an
-// error, which becomes the diagnostic of the failure.
-mlir::LogicalResult verifyResult(mlir::Operation* op, ptr answer) {
-  if (isSchemeError(answer)) {
-    return op->emitError() << schemeErrorText(answer);
-  }
-  return Sinteger64_value(answer) != 0 ? mlir::success() : mlir::failure();
+// The verdict of a verifier of Scheme: its callable answers 1 (valid) or 0
+// (invalid, or its procedure raised an error, which the callable reported).
+mlir::LogicalResult verifyResult(int answer) {
+  return answer != 0 ? mlir::success() : mlir::failure();
 }
 } // namespace
 
@@ -90,6 +87,8 @@ getAttachDialectInterfaceFns() {
 }
 } // namespace
 
+CrestDialect::~CrestDialect() { clearCurrentContext(*interp_, getContext()); }
+
 void CrestDialect::initialize(const LockedSchemeObject& interfaces) {
   // Load dependent dialects first. The callback gives each name of a dialect
   // namespace (e.g. "arith") to crest::CrestDialect::loadDependentDialect,
@@ -99,12 +98,10 @@ void CrestDialect::initialize(const LockedSchemeObject& interfaces) {
   // registerAllDialects()) and for other Scheme dialects registered by name
   // (--crest-scheme-dialect).
   mlir::Location here = mlir::UnknownLoc::get(getContext());
+  // The callables of this dialect report their errors in this context.
+  setCurrentContext(*interp_, getContext());
   if (cbs_.get_dependent_dialects) {
-    ptr answer = cbs_.get_dependent_dialects(reinterpret_cast<uint64_t>(this));
-    if (isSchemeError(answer)) {
-      emitSchemeError(here, answer);
-      return;
-    }
+    cbs_.get_dependent_dialects(reinterpret_cast<uint64_t>(this));
   }
   std::string attachError =
       attachInterfaces(*this, interfaces, getAttachDialectInterfaceFns());
@@ -116,25 +113,18 @@ void CrestDialect::initialize(const LockedSchemeObject& interfaces) {
     return;
   }
   if (cbs_.initialize) {
-    ptr answer = cbs_.initialize(reinterpret_cast<uint64_t>(this));
-    if (isSchemeError(answer)) {
-      emitSchemeError(here, answer);
-    }
+    cbs_.initialize(reinterpret_cast<uint64_t>(this));
   }
 }
 
 mlir::Attribute CrestDialect::parseAttribute(mlir::DialectAsmParser& parser,
                                              mlir::Type type) const {
   if (cbs_.parse_attribute) {
-    ptr answer = cbs_.parse_attribute(
+    uint64_t answer = cbs_.parse_attribute(
         reinterpret_cast<uint64_t>(&parser),
         reinterpret_cast<uint64_t>(type.getAsOpaquePointer()));
-    if (isSchemeError(answer)) {
-      emitSchemeError(parser.getEncodedSourceLoc(parser.getNameLoc()), answer);
-      return mlir::Attribute();
-    }
     return mlir::Attribute::getFromOpaquePointer(
-        reinterpret_cast<const void*>(Sunsigned64_value(answer)));
+        reinterpret_cast<const void*>(answer));
   }
   return mlir::ExtensibleDialect::parseAttribute(parser, type);
 }
@@ -142,12 +132,8 @@ mlir::Attribute CrestDialect::parseAttribute(mlir::DialectAsmParser& parser,
 void CrestDialect::printAttribute(mlir::Attribute attr,
                                   mlir::DialectAsmPrinter& os) const {
   if (cbs_.print_attribute) {
-    ptr answer = cbs_.print_attribute(
-        reinterpret_cast<uint64_t>(attr.getAsOpaquePointer()),
-        reinterpret_cast<uint64_t>(&os));
-    if (isSchemeError(answer)) {
-      emitSchemeError(mlir::UnknownLoc::get(getContext()), answer);
-    }
+    cbs_.print_attribute(reinterpret_cast<uint64_t>(attr.getAsOpaquePointer()),
+                         reinterpret_cast<uint64_t>(&os));
   } else {
     mlir::ExtensibleDialect::printAttribute(attr, os);
   }
@@ -155,13 +141,9 @@ void CrestDialect::printAttribute(mlir::Attribute attr,
 
 mlir::Type CrestDialect::parseType(mlir::DialectAsmParser& parser) const {
   if (cbs_.parse_type) {
-    ptr answer = cbs_.parse_type(reinterpret_cast<uint64_t>(&parser));
-    if (isSchemeError(answer)) {
-      emitSchemeError(parser.getEncodedSourceLoc(parser.getNameLoc()), answer);
-      return mlir::Type();
-    }
+    uint64_t answer = cbs_.parse_type(reinterpret_cast<uint64_t>(&parser));
     return mlir::Type::getFromOpaquePointer(
-        reinterpret_cast<const void*>(Sunsigned64_value(answer)));
+        reinterpret_cast<const void*>(answer));
   }
   // The dialect's own types (define-type): the keyword names one of them.
   llvm::StringRef keyword;
@@ -185,12 +167,8 @@ mlir::Type CrestDialect::parseType(mlir::DialectAsmParser& parser) const {
 void CrestDialect::printType(mlir::Type type,
                              mlir::DialectAsmPrinter& os) const {
   if (cbs_.print_type) {
-    ptr answer =
-        cbs_.print_type(reinterpret_cast<uint64_t>(type.getAsOpaquePointer()),
-                        reinterpret_cast<uint64_t>(&os));
-    if (isSchemeError(answer)) {
-      emitSchemeError(mlir::UnknownLoc::get(getContext()), answer);
-    }
+    cbs_.print_type(reinterpret_cast<uint64_t>(type.getAsOpaquePointer()),
+                    reinterpret_cast<uint64_t>(&os));
   } else if (mlir::failed(printIfDynamicType(type, os))) {
     mlir::ExtensibleDialect::printType(type, os);
   }
@@ -203,16 +181,12 @@ mlir::Operation* CrestDialect::materializeConstant(mlir::OpBuilder& builder,
   if (cbs_.materialize_constant) {
     // Scheme sees the builder as a borrowed shell that lives for this call.
     crest::CrestBox<mlir::OpBuilder*> builder_shell(&builder);
-    ptr answer = cbs_.materialize_constant(
+    uint64_t answer = cbs_.materialize_constant(
         reinterpret_cast<uint64_t>(&builder_shell),
         reinterpret_cast<uint64_t>(value.getAsOpaquePointer()),
         reinterpret_cast<uint64_t>(type.getAsOpaquePointer()),
         reinterpret_cast<uint64_t>(loc.getAsOpaquePointer()));
-    if (isSchemeError(answer)) {
-      emitSchemeError(loc, answer);
-      return nullptr;
-    }
-    return reinterpret_cast<mlir::Operation*>(Sunsigned64_value(answer));
+    return reinterpret_cast<mlir::Operation*>(answer);
   }
   return mlir::ExtensibleDialect::materializeConstant(builder, value, type,
                                                       loc);
@@ -224,11 +198,7 @@ void CrestDialect::getCanonicalizationPatterns(
     // Scheme sees the set as a borrowed shell that lives for this call, as for
     // the patterns of an op.
     crest::CrestBox<mlir::RewritePatternSet*> shell(&results);
-    ptr answer =
-        cbs_.get_canonicalization_patterns(reinterpret_cast<uint64_t>(&shell));
-    if (isSchemeError(answer)) {
-      emitSchemeError(mlir::UnknownLoc::get(getContext()), answer);
-    }
+    cbs_.get_canonicalization_patterns(reinterpret_cast<uint64_t>(&shell));
   } else {
     mlir::ExtensibleDialect::getCanonicalizationPatterns(results);
   }
@@ -238,8 +208,7 @@ mlir::LogicalResult
 CrestDialect::verifyOperationAttribute(mlir::Operation* op,
                                        mlir::NamedAttribute attr) {
   if (cbs_.verify_op_attr) {
-    return verifyResult(op,
-                        cbs_.verify_op_attr(reinterpret_cast<uint64_t>(op),
+    return verifyResult(cbs_.verify_op_attr(reinterpret_cast<uint64_t>(op),
                                             reinterpret_cast<uint64_t>(&attr)));
   }
   return mlir::ExtensibleDialect::verifyOperationAttribute(op, attr);
@@ -250,9 +219,9 @@ CrestDialect::verifyRegionArgAttribute(mlir::Operation* op,
                                        unsigned regionIndex, unsigned argIndex,
                                        mlir::NamedAttribute attr) {
   if (cbs_.verify_region_arg_attr) {
-    return verifyResult(op, cbs_.verify_region_arg_attr(
-                                reinterpret_cast<uint64_t>(op), regionIndex,
-                                argIndex, reinterpret_cast<uint64_t>(&attr)));
+    return verifyResult(cbs_.verify_region_arg_attr(
+        reinterpret_cast<uint64_t>(op), regionIndex, argIndex,
+        reinterpret_cast<uint64_t>(&attr)));
   }
   return mlir::ExtensibleDialect::verifyRegionArgAttribute(op, regionIndex,
                                                            argIndex, attr);
@@ -262,10 +231,9 @@ mlir::LogicalResult CrestDialect::verifyRegionResultAttribute(
     mlir::Operation* op, unsigned regionIndex, unsigned resultIndex,
     mlir::NamedAttribute attr) {
   if (cbs_.verify_region_result_attr) {
-    return verifyResult(
-        op, cbs_.verify_region_result_attr(reinterpret_cast<uint64_t>(op),
-                                           regionIndex, resultIndex,
-                                           reinterpret_cast<uint64_t>(&attr)));
+    return verifyResult(cbs_.verify_region_result_attr(
+        reinterpret_cast<uint64_t>(op), regionIndex, resultIndex,
+        reinterpret_cast<uint64_t>(&attr)));
   }
   return mlir::ExtensibleDialect::verifyRegionResultAttribute(
       op, regionIndex, resultIndex, attr);

@@ -2,7 +2,7 @@
 ;; The same rewrite with define-pattern-set: the registration table is a procedure defined next to
 ;; the patterns, and the pass says :populate with one set or a list of sets.
 (library (passes pattern-set)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
@@ -47,7 +47,7 @@
     ("test.x" %%x-high 5)
     ("test.c" %%c))
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (apply-patterns module-op ctx

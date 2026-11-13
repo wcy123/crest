@@ -1,7 +1,8 @@
 ;; scheme-mlir driver: walks a module and builds a loop nest many times, each on a context of its
 ;; own, and checks that the C functions made for the callbacks are released when the call returns.
 ;; They are code objects that Chez keeps locked until C++ unlocks them: a leak shows as one per call.
-(import (except (rnrs) =)
+(import (only (mlir Support WalkResult) mlir::WalkResult::advance)
+        (except (rnrs) =)
         (only (chezscheme) collect object-counts enable-object-counts command-line-arguments)
         (mlir IR DialectRegistry) (mlir IR MLIRContext) (mlir IR Operation) (mlir IR OwningOpRef)
         (only (mlir IR Region) mlir::Region::front)
@@ -23,7 +24,7 @@
     (with-MLIRContext ctx (reg)
       (mlir::MLIRContext::getOrLoadDialect ctx "affine")
       (with-mlir::OwningOpRef module (mlir::parseSourceFile ctx path)
-        (mlir::Operation::walk module (lambda (op) #t))
+        (mlir::Operation::walk module (lambda (op) mlir::WalkResult::advance))
         (with-current-MLIRContext ctx
           (let ([block (mlir::Region::front (mlir::Operation::getRegion module 0))])
             (with-OpBuilder builder (mlir::OpBuilder::atBlockEnd block)

@@ -4,7 +4,7 @@
 ;; Same rewrite as loc-override.sls but uses the inline triple form
 ;; instead of pre-constructing a FileLineColLoc in :then-let.
 (library (passes loc-override-inline)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Value) mlir::Value::getType)
           (passes loc-override-common)
@@ -19,6 +19,6 @@
       result = test.sub (%a %b) -> !out-type
     :loc ("inline-source.toy" 7 3))
 
-  (define run-pass (make-run-pass "test.add" %%rewrite))
+  (define-pass-entry-point (module-op) ((make-pass-body "test.add" %%rewrite) module-op))
 
   ) ;; end library

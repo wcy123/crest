@@ -7,6 +7,7 @@
 #include "SchemePass.h"
 #include "../Bindings/Support/Result.h"
 #include "../Bindings/Support/SchemeWrapper.h"
+#include "CurrentContext.h"
 #include "mlir/Pass/Pass.h"
 #include <memory>
 #include <string>
@@ -16,18 +17,18 @@ namespace crest {
 namespace {
 
 // An operation pass that runs on any op (a nested PassManager chooses where)
-// and calls the entry point of a Scheme foreign-callable (uptr op), which
-// answers a Scheme object: 0 fails the pass, any other number is success, and
-// the pair (who . why) is an error of the body, which becomes the diagnostic of
-// the failure. The callable is made once for the define-pass, so every pass
-// made from it shares it and nothing is released.
+// and calls the entry point of a Scheme foreign-callable int(uptr op): 0 fails
+// the pass, any other number is success. An error of the body is a diagnostic
+// at its Scheme source, in the context of the op (set below), and the callable
+// answers 0. The callable is made once for the define-pass, so every pass made
+// from it shares it and nothing is released.
 // Scheme is single-threaded: run it on a context with multithreading disabled
 // (contexts made from Scheme are).
 class SchemePass : public mlir::OperationPass<> {
 public:
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SchemePass)
 
-  SchemePass(std::string name, ptr (*callback)(uint64_t op))
+  SchemePass(std::string name, int (*callback)(uint64_t op))
       : mlir::OperationPass<>(mlir::TypeID::get<SchemePass>()),
         name_(std::move(name)), callback_(callback) {}
 
@@ -42,18 +43,16 @@ public:
   }
 
   void runOnOperation() override {
-    ptr answer = callback_(reinterpret_cast<uint64_t>(getOperation()));
-    if (isSchemeError(answer)) {
-      emitSchemeError(getOperation()->getLoc(), answer);
-      signalPassFailure();
-    } else if (Sinteger64_value(answer) == 0) {
+    auto interpreter = ChezSchemeInterpreter::instance();
+    CurrentContextScope scope(*interpreter, getOperation()->getContext());
+    if (callback_(reinterpret_cast<uint64_t>(getOperation())) == 0) {
       signalPassFailure();
     }
   }
 
 private:
   std::string name_;
-  ptr (*callback_)(uint64_t op);
+  int (*callback_)(uint64_t op);
 };
 
 } // namespace
@@ -70,7 +69,7 @@ void registerCrestSchemePassBindings() {
       "crest::createSchemePass",
       (void*)+[](const char* name, uint64_t entry) -> ptr {
         return Sunsigned64(reinterpret_cast<uint64_t>(static_cast<mlir::Pass*>(
-            new SchemePass(name, reinterpret_cast<ptr (*)(uint64_t)>(entry)))));
+            new SchemePass(name, reinterpret_cast<int (*)(uint64_t)>(entry)))));
       });
 }
 

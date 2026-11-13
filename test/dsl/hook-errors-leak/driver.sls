@@ -1,6 +1,6 @@
-;; scheme-mlir driver: the hooks of a Scheme dialect raise an error (a verifier, :initialize). Each error is
-;; a diagnostic, and the C++ heap must not grow over 1500 rounds of both. Prints "hook-errors-leak: ok".
-;; Linux only.
+;; scheme-mlir driver: the verifier of a Scheme dialect raises an error. Each error is a diagnostic at the Scheme
+;; source of the verifier, and the C++ heap must not grow over 1500 rounds. Prints "hook-errors-leak: ok".
+;; Linux only. (An error of :initialize ends the process: test/dsl/dialect-initialize-error.)
 (import (chezscheme)
         (mlir IR DialectRegistry) (mlir IR MLIRContext) (mlir IR OwningOpRef)
         (mlir IR Operation)
@@ -42,24 +42,19 @@
 
 (define path (car (command-line-arguments)))
 
-;; One round: a context with the dialect whose verifier raises, the module verified; and a context that
-;; loads the dialect whose :initialize raises.
+;; One round: a context with the dialect whose verifier raises, the module verified.
 (define (round-of)
   (with-DialectRegistry reg ()
     (with-MLIRContext ctx (reg)
       (mlir::MLIRContext::allowUnregisteredDialects ctx #t)
       (load-scheme-dialect! ctx "hkv" "passes/hk-verify")
       (with-mlir::OwningOpRef module (mlir::parseSourceFile ctx path)
-        (mlir::Operation::verify? module))))
-  (with-DialectRegistry reg ()
-    (with-MLIRContext ctx (reg)
-      (load-scheme-dialect! ctx "hki" "passes/hk-init")
-      (mlir::MLIRContext::getOrLoadDialect ctx "hki"))))
+        (mlir::Operation::verify? module)))))
 
 (do ([i 0 (+ i 1)]) ((= i 30)) (round-of))
 (let ([before (bytes-in-use)])
   (do ([i 0 (+ i 1)]) ((= i 1500)) (round-of))
   (let ([grown (- (bytes-in-use) before)])
     (display "hook-errors-leak: ")
-    (display (if (< grown (* 1500 2 24)) "ok" (list "grew" grown "bytes")))
+    (display (if (< grown (* 1500 24)) "ok" (list "grew" grown "bytes")))
     (newline)))

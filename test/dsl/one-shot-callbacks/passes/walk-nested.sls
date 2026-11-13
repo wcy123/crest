@@ -2,8 +2,10 @@
 ;; A walk inside the callback of a walk: the callback of the outer walk runs again, from inside
 ;; C++, while the inner one runs.
 (library (passes walk-nested)
-  (export run-pass)
-  (import (rnrs)
+  (export pass-entry-point)
+  (import (only (crest pass) define-pass-entry-point)
+          (only (mlir Support WalkResult) mlir::WalkResult::advance)
+          (rnrs)
           (only (mlir IR Operation)
                 mlir::Operation::walk
                 mlir::Operation::setAttr!
@@ -11,14 +13,14 @@
           (only (mlir IR MLIRContext) with-current-MLIRContext)
           (only (mlir IR BuiltinAttributes) mlir::IntegerAttr::get<i64>))
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (with-current-MLIRContext (mlir::Operation::getContext module-op)
       (let ([outer 0] [inner 0])
         (mlir::Operation::walk
          module-op
          (lambda (op)
            (set! outer (+ outer 1))
-           (mlir::Operation::walk op (lambda (nested) (set! inner (+ inner 1))))))
+           (mlir::Operation::walk op (lambda (nested) (set! inner (+ inner 1)) mlir::WalkResult::advance)) mlir::WalkResult::advance))
         (mlir::Operation::setAttr! module-op "test.outer" (mlir::IntegerAttr::get<i64> outer))
         (mlir::Operation::setAttr! module-op "test.inner" (mlir::IntegerAttr::get<i64> inner)))))
 

@@ -2,7 +2,7 @@
 ;; Every attribute shorthand of begin-mlir-code from the manual's table, with only (crest)
 ;; imported for the DSL keywords.
 (library (passes attr-shorthands)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
@@ -30,7 +30,7 @@
       (a64 : '(7 8)     :i64-array)
       (u   : #f         :unit))
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (with-RewritePatternSet patterns (ctx

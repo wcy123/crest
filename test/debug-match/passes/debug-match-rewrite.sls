@@ -2,7 +2,7 @@
 ;; Test pass: successful rewrite — test.add → test.add (identity).
 ;; Used to verify emitted ops carry loc(...) from the pattern source file.
 (library (passes debug-match-rewrite)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Value) mlir::Value::getType)
           (passes debug-match-common)
@@ -16,6 +16,6 @@
     :rewrite %out :with
       result = test.sub (%a %b) -> !out-type) ;
 
-  (define run-pass (make-run-pass "test.add" %%rewrite))
+  (define-pass-entry-point (module-op) ((make-pass-body "test.add" %%rewrite) module-op))
 
   ) ;; end library

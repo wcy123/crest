@@ -266,24 +266,27 @@ Named `let` is still fine for irregular recursion (mutual, non-linear stepping).
 ## Rule 17 — Scheme makes every callback; the caller owns its lifetime
 
 C++ never makes, owns, locks or releases a callback. A binding that needs one takes a plain C function pointer
-as its parameter (`ptr (*visit)(uint64_t)`) and calls it. Scheme makes the C function, a `foreign-callable`
-whose code object is locked (the garbage collector moves Scheme objects, so a procedure is never stored as a
-`ptr`), and whoever calls the low-level function decides how long it lives (`(crest callback)`). The C function
-answers a Scheme object: what the procedure answered (a number, `#t`, `#f`, void), or the pair `(who . why)` when it
-raised an error, which the C++ that called it reports as a diagnostic (`isSchemeError`, `emitSchemeError` in
-`lib/Bindings/Support/Result.h`):
+as its parameter (`mlir::WalkResult (*visit)(uint64_t)`) and calls it. Scheme makes the C function, a
+`foreign-callable` whose code object is locked (the garbage collector moves Scheme objects, so a procedure is never
+stored as a `ptr`), and whoever calls the low-level function decides how long it lives (`(crest callback)`). **The C
+function has the prototype that C++ or MLIR declares, result type included**, and the Scheme site writes it:
+`(uptr) int`, `(uptr uptr) void`, `(uptr) walk-result`. The result types are `void`, `int`, `uptr`, `unsigned-8`,
+`walk-result` (`mlir::WalkResult`, constants in `(mlir Support WalkResult)`) and
+`logical-result` (`llvm::LogicalResult`). A callback never answers a Scheme object, and C++ decodes nothing:
 
-- `(crest-make-static-c-callable (type ...) proc)` makes it, locks it for good and answers its address.
+- `(define-c-callable name ((variable type) ...) result-type body ...)` defines `name` as the address of the C function,
+  made once and locked for good.
   Use it only at the library level, for a callback that uses no state of a run (an op's clause, a dialect's
-  callback, the body of a `define-pass`, a pattern made by `define-conversion-pattern`): it is made once, when the
-  library loads. A callback that uses the state of a run (a type converter, a target) is made by `with-c-callable`
-  or by a clause, so that a scope releases it; never make one per run with this.
-- `(with-c-callable (name (type ...) value) body ...)` makes it for `body` and unlocks it after, also on an
-  error. `value` is a procedure, or a code object that the caller made and locked, or the address of a locked
-  callable (reused, never unlocked by the macro; an error if it is not locked).
+  callback, the body of a `define-pass`): it is made once, when the library loads. `(define-c-callable name (type ...)
+  result-type procedure)` is the same as a definition, like `define`: it links a C function into the library for
+  good, as a static library does. A callback that uses the state of a run (a type converter, a target) is made by
+  `with-c-callable/lambda` or by a clause, so that a scope releases it; never make one per run with this.
+- `(with-c-callable/lambda (name (type ...) result-type procedure) body ...)` makes it from a procedure for `body` and
+  unlocks it after, also on an error. `(with-c-callable/code (name address) body ...)` uses the address of a locked
+  callable that the caller made (reused, never unlocked by the macro; an error if it is not locked).
 - A function that only calls the callback while it runs (`mlir::Operation::walk`,
   `mlir::affine::buildAffineLoopNest`, `mlir::RewriterBase::modifyOpInPlace`) is a Scheme macro that takes a
-  procedure and wraps it in `with-c-callable`.
+  procedure and wraps it in `with-c-callable/lambda`.
 - A function that C++ keeps the callback in (`type-converter-add-conversion`, `add-conversion-pattern`,
   `target-add-dynamically-legal-op`, ...) takes the **address** and raises an error for a procedure. The friendly
   form is a clause of the macro that makes the C++ object, which makes the callables around its body:
@@ -291,24 +294,39 @@ raised an error, which the C++ that called it reports as a diagnostic (`isScheme
   `with-ConversionTarget` (`:dynamically-legal`, `:unknown-legal`), `with-RewritePatternSet` (`:rewrite-patterns`,
   `:conversion-patterns`, `:conversion-patterns/ctx`). The adapters (`rewrite-pattern->c`,
   `conversion-pattern->c`, `type-conversion->c`, `materialization->c`, `legality->c`) turn a friendly procedure
-  into one with C types; they pass an address through.
+  into one with C types. A pattern made by `define-rewrite-pattern` or `define-conversion-pattern` is a plain
+  procedure, so it goes in a clause. A function that registers patterns and returns before they are applied (the
+  `populate` functions, `define-pattern-set`) needs the address of a C function that outlives the call: the pattern
+  goes through `define-c-callable` once, at the library level, and `add-rewrite-pattern` or
+  `add-conversion-pattern` gets that address.
 
 **No error leaves a callable.** C++ calls a callable through a C function pointer, so an error that escaped it
-would cross the C++ frames (Rule 20). Every callable made by `crest-make-static-c-callable`, `with-c-callable` and
-`with-c-callables` catches it with `guard` and answers a Scheme object: what the procedure answered (an integer,
-`#t`/`#f`, void), or the pair `(who . why)` when it raised. These macros take no result type. The C++ code that
-made the call reads the answer (`isSchemeError`, `lib/Bindings/Support/Result.h`):
+would cross the C++ frames (Rule 20). MLIR's prototypes have no room for an error, so the guard of every callable
+(`define-c-callable`, `with-c-callable/lambda`) catches it with
+`guard` and reports it through MLIR's own channel:
 
-- MLIR code that calls the callable (a pattern, the legality check, a type conversion, a dialect, op or type hook,
-  a pass) reports the error as a diagnostic (`emitSchemeError`) and answers failure to MLIR.
-- A binding that calls the callable itself (`mlir::Operation::walk`, `mlir::RewriterBase::modifyOpInPlace`,
-  `mlir::affine::buildAffineLoopNest`) stops at the first error and answers it (`FirstSchemeError`), and Scheme
-  raises it there.
-- The pass of `--crest-pass` is called through `crest-call-guarded`, which answers the value or the pair.
+- **result `void`**: nothing can say "failed", so the process ends with the text `<file>:<line>:<column>: <who>: <why>`
+  (`llvm::report_fatal_error`): the Scheme position of the callback, then the error.
+- **any other result**: `mlir::emitError` with the same text, then the failure value of the type (0, `#f`,
+  `interrupt` for a `WalkResult`). MLIR carries on from there as it does for its own failures. The diagnostic has
+  no location of its own: the Scheme position is in the text. The position is read when the macro expands (`(mlir support srcloc)`); a macro that wraps the procedure
+  of its user in a template lambda passes `:source expression` (the user's form) or, when the procedure is a value
+  that reached the macro later, `:location expression` (the position as data). A DSL such as `define-dialect` builds
+  `(lambda ...)` forms: `syntax->first-file+line+col` finds the part that is the user's.
+- **the context**: a diagnostic belongs to a context. The guard uses `(current-MLIRContext)`; with none the process
+  ends with the text. Scheme code that calls C++ sets it (`with-current-MLIRContext`). A tool that C++ drives sets it
+  by calling the parameter, a Chez parameter applied to one argument (`crest::setCurrentContext`,
+  `lib/Crest/CurrentContext.h`): `CrestDialect::initialize` does for every context that loads a Scheme dialect, and
+  the pass runners (`--crest-pass`, `define-pass`) for the context of the op.
+- C++ never calls a Scheme procedure itself: `InferTypeOpInterface` gives the words of MLIR's call to Scheme
+  (`crest::InferTypeOpInterface::decode`), the clause runs in Scheme inside the callable, and its answer goes back
+  through `push`. The one exception is the pass of `--crest-pass`, which has no C prototype to match: it is called
+  by name, `pass-entry-point`, which `(define-pass-entry-point (op) body ...)` defines: it answers #f, or
+  `(cons who why)` when its body raised an error, which the runner emits on the op with `emitError`.
 
-The callables of an interface slot (`crest-slot-callable`, `crest-make-raw-c-callable`) are not guarded: MLIR
-calls them with its own prototype, so they cannot answer a pair, and their procedures must not raise.
-`test/dsl/callback-errors` checks each kind.
+Nesting (C++ -> Scheme -> C++ -> Scheme) needs no bookkeeping: each failure is reported where it happens. An error
+in a callable with a `void` result ends the process, so a program that has to go on makes its callbacks
+total. `test/dsl/callback-diagnostics`, `test/dsl/c-callable-results` and `test/dsl/callback-errors` check each kind.
 
 C++ does not check the prototype: a mismatch between the Scheme types and the C++ function pointer type crashes.
 A callback used after its scope ends crashes too. `test/dsl/callback-leaks` checks that scoped callables are
@@ -321,8 +339,9 @@ upstream repair (cisco/ChezScheme#1064), so no guard is needed, not even for the
 calls by itself (the methods of `InferTypeOpInterface`); `docs/tech-note.md` ("Chez Scheme pin") has the story
 and the steps to move the pin.
 
-Only scalars cross the boundary (`uptr`, `int`, `unsigned-32`, strings); a range is a pointer and a count, read
-back with `crest-callback-pointer-list`, and a list that Scheme answers is pushed through a `foreign-procedure`
+Only scalars cross the boundary (`uptr`, `int`, `unsigned-32`, strings); a range is the address of a stack
+`CArrayRef<uintptr_t>` (`lib/Bindings/Support/ArrayRef.h`), read back with `crest::CArrayRef->list`
+(`(mlir support array-ref)`), and a list that Scheme answers is pushed through a `foreign-procedure`
 into a sink that C++ passes. A callback that has a verdict (a verifier, a parser, a pass) answers its verdict, and its error is a
 diagnostic, as above. `scheme_call` stays for the control plane (a top-level name, or the procedure that Scheme
 gave as an argument of the foreign call that is running), and for one more case: a procedure that C++ needs only
@@ -345,8 +364,10 @@ callable that Scheme made for a clause (`installInterfaceEntry`), so MLIR calls 
   or a use range) gets a C function that CREST ships, named by a keyword of the clause (`:all-operands`) or as MLIR's
   default.
 - The prototype of a slot as a C function depends on the platform (a class of one pointer is answered through a pointer
-  on Windows x64). `crest-slot-callable` (`(crest callback)`) writes it from the C++ types of the slot, and
-  `SlotAbiTest` (`unittests/Crest/InterfaceTest.cpp`) calls a callable of each kind through a function pointer of the
+  on Windows x64). `define-c-callable` (`(crest callback)`) writes it from the C++ types of the slot (the
+  types `object`, `logical-result`, `walk-result`, `range` and `type-range`, and the `Concept*` that MLIR passes first
+  is a leading `uptr`, as `interface.sls` writes it), and
+  `SlotAbiTest` (`unittests/Crest/InterfaceTest.cpp`) calls a callable of each type through a function pointer of the
   exact type of the slot, on Linux and Windows.
 - An interface that extends others needs them in the map first, and the op declares them: `require*Clauses` raises an
   error at registration when a base has a null slot.
@@ -367,9 +388,9 @@ So failure is an ordinary return value, and Scheme raises it after the C++ call 
   answers is a pair of a symbol and a string.
 - **The lookups of a handle that Scheme gives** answer a pointer, or `nullptr`: `CrestBox<T>::inner(address)`,
   `as_ref<T>(address)` and `as_context(address)`. The binding checks it and answers `scheme_error`.
-- **C++ calls Scheme** (Rule 17): the callable answers a Scheme object, the value or `(who . why)`; C++ reads it
-  and reports the error as a diagnostic, or (a binding that calls the callable itself) answers it to Scheme. There
-  is no side channel: no slot, no flag, no counter.
+- **C++ calls Scheme** (Rule 17): the callable has the C prototype that MLIR declares and reports an error of its
+  procedure itself, as a diagnostic or, for a `void` result, by ending the process. C++ reads no error from it:
+  there is no slot, no flag, no counter, and no pair.
 - **No raising from C++ at all**: not `llvm::report_fatal_error` for an error in the program's input (it is for an
   internal invariant that generated code broke).
 - **Destructors run**: because nothing is skipped, a binding may hold `std::string`, `SmallVector`,
@@ -402,7 +423,7 @@ dialects, every printed `!name.type`) must live as long as the context: intern i
 - [ ] Every `crest-foreign-procedure` string matches a `Sregister_symbol` key in C++ (Rule 14)
 - [ ] `%%` on internal Scheme helpers; `%` only on raw FFI bindings
 - [ ] A binding that takes a builder: `register_builder_binding` in C++, `define-builder-binding` in `ffi.sls`
-- [ ] A binding that calls back into Scheme: a callable from `crest-make-static-c-callable`, owned per Rule 17
+- [ ] A binding that calls back into Scheme: a callable from `define-c-callable`, owned per Rule 17
 - [ ] A new op interface: its macro is a table for `op-interface-expand`, the C++ attach function only calls
       `installInterfaceEntry` (Rule 19), and a slot with a new kind of C++ type gets a case in `SlotAbiTest`
 - [ ] A binding that answers an object nothing else owns: a `LEAK WARNING:` comment and a `with-` macro that frees it

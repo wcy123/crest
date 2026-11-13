@@ -1,6 +1,6 @@
-// A Scheme dialect whose hooks raise errors must leave nothing behind: a verifier that raises, and an
-// :initialize that raises, are diagnostics (the callable answers (who . why), C++ reports it), and the C++
-// heap does not grow however many errors there are.
+// A Scheme dialect whose hooks raise errors must leave nothing behind: a verifier that raises is a diagnostic
+// at its Scheme source (the callable reports it and answers 0), and the C++ heap does not grow however many
+// errors there are.
 //
 // REQUIRES: system-linux
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/hook-errors-leak-scheme \

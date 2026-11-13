@@ -21,7 +21,7 @@ A typical pass lives in two files under a `passes/` directory:
 ```
 my-project/
   passes/
-    my-pass.sls          ← pass entry point (exports run-pass)
+    my-pass.sls          ← pass entry point (exports pass-entry-point)
     my-pass/
       patterns.sls       ← pattern definitions
       helpers.sls        ← domain helpers (optional)
@@ -49,7 +49,7 @@ Create `passes/tutorial-step1.sls`:
 ```scheme
 #!r6rs
 (library (passes tutorial-step1)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Value) mlir::Value::getType)
           (only (mlir IR Operation) mlir::Operation::getContext)
@@ -62,7 +62,7 @@ Create `passes/tutorial-step1.sls`:
     :rewrite %out :with
       (%result = target.fused (%x %y) -> (mlir::Value::getType %out)))
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (apply-patterns module-op ctx :patterns (("source.add" step1))))))

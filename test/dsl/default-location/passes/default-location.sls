@@ -5,7 +5,7 @@
 ;; diagnostic resolves to the pass line that created it. With an explicit :loc, it carries
 ;; that location (here the location of the op being replaced).
 (library (passes default-location)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Value) mlir::Value::getType)
           (only (mlir IR Operation) mlir::Operation::getContext mlir::Operation::getLoc)
@@ -35,7 +35,7 @@
       result = test.out2 (%v) -> !ty
     :loc user-loc)
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (with-RewritePatternSet patterns (ctx

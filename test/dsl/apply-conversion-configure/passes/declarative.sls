@@ -1,11 +1,11 @@
 #!r6rs
 ;; The same conversion with the configure hooks of apply-conversion.
 (library (passes declarative)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
-          (only (crest callback) crest-make-static-c-callable)
+          (only (crest callback) define-c-callable)
           (only (mlir Transforms DialectConversion)
                 type-converter-add-conversion
                 target-add-legal-dialect
@@ -16,8 +16,7 @@
   (define converter-configured? #f)
 
   ;; The conversion is made once, when the library is loaded, and kept for the whole program.
-  (define identity-conversion
-    (crest-make-static-c-callable (uptr) (lambda (type) type)))
+  (define-c-callable identity-conversion ((type uptr)) uptr type)
 
   (define (%%configure-type-converter! tc)
     (set! converter-configured? #t)
@@ -35,7 +34,7 @@
     :rewrite op :with
       test.a_done ())
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (unless (apply-conversion module-op ctx
@@ -43,7 +42,7 @@
                                   :configure-type-converter %%configure-type-converter!
                                   :configure-target         (lambda (target tc) (%%configure-target! target tc ctx))
                                   :patterns                (("test.a" %%a)))
-          (error 'run-pass "conversion failed")))
-      (unless converter-configured? (error 'run-pass "converter hook did not run"))))
+          (error 'pass-entry-point "conversion failed")))
+      (unless converter-configured? (error 'pass-entry-point "converter hook did not run"))))
 
   ) ;; end library

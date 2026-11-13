@@ -30,8 +30,9 @@ namespace crest {
 // function: the `const Concept*` that MLIR passes first (ignored), then the
 // arguments. A class that C++ passes or returns by value is a number, a
 // pointer or a struct for the C function, as the ABI of the platform says:
-// crest-slot-callable (scheme/crest/callback.sls) writes the prototype from
-// the C++ types, and SlotAbiTest checks each kind on every platform.
+// define-c-callable (scheme/crest/callback.sls) writes the
+// prototype from the C++ types, and SlotAbiTest checks each kind on every
+// platform.
 
 /// The model of `InterfaceT` for an op that Scheme defines: its Concept, with
 /// the alias `InterfaceMap::insertModels` asks for. Every slot is null until

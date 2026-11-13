@@ -3,8 +3,9 @@
 ;; test.dst, and the body of test.src is moved into it (the same block, with its argument and
 ;; its ops), as a function-like lowering does with inlineRegionBefore.
 (library (passes adopt-by-hand)
-  (export run-pass)
-  (import (rnrs)
+  (export pass-entry-point)
+  (import (only (crest pass) define-pass-entry-point)
+          (rnrs)
           (only (mlir IR Operation) mlir::Operation::getContext mlir::Operation::getLoc
                 mlir::Operation::getRegion)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
@@ -27,7 +28,7 @@
       (mlir::RewriterBase::eraseOp rw op)
       #t))
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (with-RewritePatternSet patterns (ctx

@@ -10,6 +10,7 @@
 #include "../Support/Logging.h"
 #include "../Support/Result.h"
 #include "../Support/SchemeWrapper.h"
+#include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
 #include "mlir/CAPI/IR.h"
 #include "mlir/CAPI/Wrap.h"
@@ -19,11 +20,38 @@
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/IR/Verifier.h"
+#include <cstring>
 #include <limits>
+#include <type_traits>
 
 namespace crest {
 
+namespace {
+
+// mlir::WalkResult is a class of one private enum, { Interrupt, Advance, Skip
+// }. The Scheme side has its numbers as constants ((mlir Support WalkResult)),
+// and a Scheme visitor is a C function that answers one.
+int walkResultNumber(mlir::WalkResult result) {
+  static_assert(sizeof(mlir::WalkResult) == sizeof(int) &&
+                    std::is_trivially_copyable_v<mlir::WalkResult>,
+                "mlir::WalkResult is no longer one int: update "
+                "(mlir Support WalkResult) and the callables of walk");
+  int number;
+  std::memcpy(&number, &result, sizeof number);
+  return number;
+}
+
+} // namespace
+
 void registerIROperationBindings() {
+  if (walkResultNumber(mlir::WalkResult::interrupt()) != 0 ||
+      walkResultNumber(mlir::WalkResult::advance()) != 1 ||
+      walkResultNumber(mlir::WalkResult::skip()) != 2) {
+    llvm::report_fatal_error(
+        "mlir::WalkResult changed: update the constants of "
+        "(mlir Support WalkResult)",
+        false);
+  }
   Sregister_symbol(
       "mlir::Operation::getName", (void*)+[](uint64_t op) -> ptr {
         if (!op) {
@@ -177,24 +205,25 @@ void registerIROperationBindings() {
                                   ->getLoc()
                                   .getAsOpaquePointer())));
       });
+  // mlir::Operation::walk (uptr op) (callable visit) -> the WalkResult of the
+  // walk, as a number
+  //
+  // `visit` is a C function with the prototype of MLIR's visitor,
+  // WalkResult(Operation*), that Scheme made and keeps alive until the walk
+  // returns. It answers one of the constants of (mlir Support WalkResult); an
+  // error of the Scheme procedure is a diagnostic, and the callable answers
+  // interrupt, which stops the walk.
   Sregister_symbol(
       "mlir::Operation::walk",
-      (void*)+[](uint64_t op, ptr (*visit)(uint64_t)) -> ptr {
-        // `visit` is a C function that Scheme made, and Scheme
-        // keeps it alive until the walk returns. It answers an error as
-        // (who . why): the walk stops and the binding answers that error.
+      (void*)+[](uint64_t op, mlir::WalkResult (*visit)(uint64_t)) -> ptr {
         if (!op) {
-          return Svoid;
+          return Sinteger64(walkResultNumber(mlir::WalkResult::advance()));
         }
-        mlir::Operation* cppOp = reinterpret_cast<mlir::Operation*>(op);
-        crest::FirstSchemeError error;
-        cppOp->walk([&](mlir::Operation* walkOp) {
-          if (error.record(visit(reinterpret_cast<uint64_t>(walkOp)))) {
-            return mlir::WalkResult::interrupt();
-          }
-          return mlir::WalkResult::advance();
-        });
-        return error ? error.answer() : Svoid;
+        mlir::WalkResult result = reinterpret_cast<mlir::Operation*>(op)->walk(
+            [&](mlir::Operation* walkOp) -> mlir::WalkResult {
+              return visit(reinterpret_cast<uint64_t>(walkOp));
+            });
+        return Sinteger64(walkResultNumber(result));
       });
   Sregister_symbol(
       "mlir::Operation::setOperand",

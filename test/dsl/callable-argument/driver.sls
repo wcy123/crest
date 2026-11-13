@@ -1,8 +1,8 @@
 ;; The raw functions that C++ keeps a callback in reject a procedure and accept the address of a C
-;; function made by crest-make-static-c-callable.
+;; function made by define-c-callable.
 (import (rnrs)
         (only (chezscheme) printf)
-        (only (crest callback) crest-make-static-c-callable)
+        (only (crest callback) define-c-callable)
         (mlir IR MLIRContext)
         (mlir IR DialectRegistry)
         (mlir support with)
@@ -27,6 +27,7 @@
           (lambda () (target-mark-unknown-ops-dynamically-legal target (lambda (op) #t))))
   (report "pattern"
           (lambda () (add-rewrite-pattern patterns "test.a" (lambda (op rw) #t) 1)))
-  (let ([address (crest-make-static-c-callable (uptr) (lambda (t) t))])
+  (let ()
+    (define-c-callable address ((type uptr)) uptr type)
     (type-converter-add-conversion tc address)
     (printf "static address accepted: yes\n")))

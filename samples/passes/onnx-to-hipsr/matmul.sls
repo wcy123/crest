@@ -18,6 +18,7 @@
   (export populate-matmul-patterns
           onnx-matmul->hipsr)
   (import (except (rnrs (6)) =)
+          (only (crest callback) define-c-callable)
 
           (only (mlir IR Value)
                 mlir::Value::getDefiningOp
@@ -96,9 +97,12 @@
       result = hipsr.matmul (%ctx %a %b placeholder)
       -> !output-device) ;
 
+  (define-c-callable onnx-matmul->hipsr-callable ((op uptr) (operands uptr) (rewriter uptr) (type-converter uptr)) int
+    (if (eq? (onnx-matmul->hipsr op operands rewriter type-converter) #t) 1 0))
+
   (define (populate-matmul-patterns type-converter patterns ctx)
     (crest::logging::info "Registering onnx.MatMul pattern (inline shape region)")
     (add-conversion-pattern patterns "onnx.MatMul"
-                            onnx-matmul->hipsr type-converter 1))
+                            onnx-matmul->hipsr-callable type-converter 1))
 
   ) ;; end library (onnx-to-hipsr matmul)

@@ -1,6 +1,6 @@
 #!r6rs
 (library (passes wildcard-common)
-  (export make-run-pass)
+  (export make-pass-body)
   (import (except (rnrs) =)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
@@ -8,7 +8,7 @@
           (only (mlir Transforms GreedyPatternRewriteDriver) mlir::applyPatternsGreedily)
           (only (mlir Transforms DialectConversion) add-rewrite-pattern))
 
-  (define (make-run-pass root-op-name pattern)
+  (define (make-pass-body root-op-name pattern)
     (lambda (module-op)
       (let ([ctx (mlir::Operation::getContext module-op)])
         (with-current-MLIRContext ctx

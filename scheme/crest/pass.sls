@@ -32,7 +32,8 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (crest pass)
-  (export define-pass)
+  (export define-pass
+          define-pass-entry-point)
   (import (rnrs)
           (for (only (chezscheme) syntax->list) expand)
           (crest callback)
@@ -45,11 +46,9 @@
          (and (identifier? #'name) (identifier? #'op))
          (with-syntax ([name-string (symbol->string (syntax->datum #'name))])
            #'(begin
-               (define entry
-                 (let ([run (lambda (op) body ...)])
-                   ;; 1 or 0 for C; an error of the body is answered as (who . why).
-                   (crest-make-static-c-callable (uptr)
-                                                 (lambda (x) (if (run x) 1 0)))))
+               ;; 1 or 0 for C; an error of the body is reported at the body, and answers 0.
+               (define-c-callable entry ((op uptr)) int
+                 (if (let () body ...) 1 0))
                (define (name)
                  (%crest::createSchemePass name-string entry))))]
         [(_ . _)

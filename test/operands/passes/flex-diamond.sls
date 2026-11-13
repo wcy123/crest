@@ -2,7 +2,7 @@
 ;; Diamond pattern with optional operands.
 ;; Both test.add and test.sub must share the SAME %shared operand.
 (library (passes flex-diamond)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Value) mlir::Value::getType)
           (passes operands-common)
@@ -18,6 +18,6 @@
     :rewrite %out :with
       result = test.fused (%shared) -> !out-type) ;
 
-  (define run-pass (make-run-pass "test.combine" %%match))
+  (define-pass-entry-point (module-op) ((make-pass-body "test.combine" %%match) module-op))
 
   ) ;; end library

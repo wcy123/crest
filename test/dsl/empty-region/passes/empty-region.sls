@@ -2,7 +2,7 @@
 ;; Test: a (:region) modifier with no blocks reserves an empty region, in order among the
 ;; op's other regions. test.src becomes test.dst with three regions: empty, one block, empty.
 (library (passes empty-region)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
@@ -20,7 +20,7 @@
       (^bb0 () test.one ())
       (:region))
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (with-RewritePatternSet patterns (ctx

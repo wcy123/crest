@@ -2,7 +2,7 @@
 ;; modifyOpInPlace: a rewrite pattern changes the op it matched through the rewriter, which tells
 ;; the pattern driver, instead of rewriting it.
 (library (passes modify-in-place)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Operation)
                 mlir::Operation::getContext
@@ -22,7 +22,7 @@
               (lambda () (mlir::Operation::setAttr! op "marked" (mlir::UnitAttr::get))))
              #t))))
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (apply-patterns module-op ctx :patterns (("test.mark" %%mark 1))))))

@@ -52,6 +52,8 @@
           (for (only (chezscheme) syntax->list) expand)
           (for (mlir Transforms DialectConversion options) expand)
           (crest callback)
+          (only (mlir support array-ref) crest::CArrayRef->list)
+          (mlir support with)
           (mlir Transforms DialectConversion ffi)
           (only (mlir support CrestObject) with-CrestObject)
           (only (mlir IR MLIRContext) current-MLIRContext))
@@ -63,44 +65,38 @@
 
   ;; The callbacks of the procedures below are C functions that Scheme makes of the user's closures,
   ;; and C++ keeps their addresses for as long as the type converter, the target or the pattern set is
-  ;; used: the caller keeps each function alive for that long (with-c-callable, or
-  ;; crest-make-static-c-callable for the whole program). The procedures that take one take its
+  ;; used: the caller keeps each function alive for that long (with-c-callable/lambda, or
+  ;; define-c-callable for the whole program). The procedures that take one take its
   ;; address; the with-TypeConverter and with-ConversionTarget clauses below make the functions around
-  ;; their body, and the adapters make a procedure with the C types of a friendly one:
+  ;; their body (the C result types are int for a verdict and uptr for a type or a value), and the
+  ;; adapters make a procedure with the C types of a friendly one:
   ;;
-  ;;   (with-c-callable (legal (uptr) (legality->c (lambda (op) ...)))
+  ;;   (with-c-callable/lambda (legal (uptr) int (legality->c (lambda (op) ...)))
   ;;     (target-add-dynamically-legal-op target ctx "func.func" legal)
   ;;     ...)
   ;;
-  ;; An adapter returns what is not a procedure as it is: a callable that was made already.
   ;;
   ;; The C prototypes: a type conversion (type) → type or 0, a materialization (builder result-type
-  ;; inputs count loc) → value or 0 with the inputs as a pointer and a count, a legality check (op) → 1
+  ;; inputs loc) → value or 0 with the inputs as a CArrayRef, a legality check (op) → 1
   ;; or 0, a conversion pattern (op operands rewriter type-converter) → 1 or 0, a rewrite pattern
   ;; (op rewriter) → 1 or 0 (their adapters are in (mlir IR PatternMatch)); every argument is an
-  ;; address or an integer (uptr). The C function answers a Scheme object: the answer of the procedure,
-  ;; or (who . why) when it raised an error, which C++ reports as a diagnostic.
+  ;; address or an integer (uptr). An error of the procedure is a diagnostic at its Scheme source, and the
+  ;; C function answers 0.
 
   ;; A type conversion: (type) → the converted type, or #f when this conversion does not apply.
   (define (type-conversion->c proc)
-    (if (procedure? proc)
-        (lambda (type) (or (proc type) 0))
-        proc))
+    (lambda (type) (or (proc type) 0)))
 
   ;; A materialization: (builder result-type inputs loc) → the Value, or #f; inputs is a list.
   (define (materialization->c proc)
-    (if (procedure? proc)
-        (lambda (builder result-type inputs input-count loc)
-          (or (proc builder result-type (crest-callback-pointer-list inputs input-count) loc) 0))
-        proc))
+    (lambda (builder result-type inputs loc)
+      (or (proc builder result-type (crest::CArrayRef->list inputs) loc) 0)))
 
   ;; A legality check (op) → boolean: legal when it answers neither #f nor 0.
   (define (legality->c proc)
-    (if (procedure? proc)
-        (lambda (op)
-          (let ([legal (proc op)])
-            (if (and legal (not (eqv? legal 0))) 1 0)))
-        proc))
+    (lambda (op)
+      (let ([legal (proc op)])
+        (if (and legal (not (eqv? legal 0))) 1 0))))
 
   ;; The callable that the functions below take is an address, not a procedure: C++ keeps it. The
   ;; error for a procedure says how to make one.
@@ -108,7 +104,7 @@
     (unless (and (integer? callable) (exact? callable))
       (assertion-violation
        who
-       "the callback must be the address of a C function: make it with crest-make-static-c-callable, or with with-c-callable around the use; the clauses of with-TypeConverter, with-ConversionTarget and with-RewritePatternSet take procedures"
+       "the callback must be the address of a C function: make it with define-c-callable, or with with-c-callable/lambda around the use; the clauses of with-TypeConverter, with-ConversionTarget and with-RewritePatternSet take procedures"
        callable))
     callable)
 
@@ -173,12 +169,13 @@
   (define mlir::applyPartialConversion  %mlir::applyPartialConversion)
   ;; @brief RewriterBase::modifyOpInPlace: THUNK changes the op, and the rewriter is told.
   ;; THUNK is an expression for a procedure of no arguments (or a code object that the caller made and
-  ;; locked, see with-c-callable). It is a C function for the length of the call and released when it
-  ;; returns, also on an error. A macro.
+  ;; locked, see with-c-callable/lambda). It is a C function for the length of the call and released when it
+  ;; returns, also on an error. MLIR's callback is void, so an error of THUNK ends the process with the
+  ;; text of the error. A macro.
   (define-syntax mlir::RewriterBase::modifyOpInPlace
     (syntax-rules ()
       [(_ rewriter op thunk)
-       (with-c-callable (c-thunk () thunk)
+       (with-c-callable/lambda (c-thunk () void thunk)
          (%mlir::RewriterBase::modifyOpInPlace rewriter op c-thunk))]))
 
   ;; @brief Register a Scheme ConversionPattern. CALLABLE is the address of a C function
@@ -237,10 +234,12 @@
                            [(source-callable ...) (generate-temporaries #'(source ...))]
                            [(target-callable ...) (generate-temporaries #'(target ...))])
                #'(with-CrestObject var (type-converter-create)
-                   (with-c-callables
-                       ((conversion-callable (uptr) (type-conversion->c conversion)) ...
-                        (source-callable (uptr uptr uptr uptr uptr) (materialization->c source)) ...
-                        (target-callable (uptr uptr uptr uptr uptr) (materialization->c target)) ...)
+                   (with*
+                       ((with-c-callable/lambda (conversion-callable (uptr) uptr (type-conversion->c conversion))) ...
+                        (with-c-callable/lambda (source-callable (uptr uptr uptr uptr) uptr
+                                                                 (materialization->c source))) ...
+                                                                 (with-c-callable/lambda (target-callable (uptr uptr uptr uptr) uptr
+                                                                                                          (materialization->c target))) ...)
                      (type-converter-add-conversion var conversion-callable) ...
                      (mlir::TypeConverter::addSourceMaterialization var source-callable) ...
                      (mlir::TypeConverter::addTargetMaterialization var target-callable) ...
@@ -283,9 +282,9 @@
                            [(unknown-callable ...) (generate-temporaries #'(unknown-proc ...))])
                #'(let ([context context-expression])
                    (with-CrestObject var (target-create context)
-                     (with-c-callables
-                         ((legal-callable (uptr) (legality->c legal-proc)) ...
-                          (unknown-callable (uptr) (legality->c unknown-proc)) ...)
+                     (with*
+                         ((with-c-callable/lambda (legal-callable (uptr) int (legality->c legal-proc))) ...
+                          (with-c-callable/lambda (unknown-callable (uptr) int (legality->c unknown-proc))) ...)
                        (target-add-dynamically-legal-op var context legal-name legal-callable) ...
                        (target-mark-unknown-ops-dynamically-legal var unknown-callable) ...
                        body ...))))))])))

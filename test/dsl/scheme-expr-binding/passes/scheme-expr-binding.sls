@@ -2,7 +2,7 @@
 ;; Test: a Scheme expression's value can be named inside begin-mlir-code and used by a
 ;; later op-form: `stepped = (%%step elem ty)`.
 (library (passes scheme-expr-binding)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Value) mlir::Value::getType)
           (only (mlir IR Operation)
@@ -41,7 +41,7 @@
         (mlir::RewriterBase::replaceOp rw op r)
         #t)))
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (with-RewritePatternSet ps (ctx

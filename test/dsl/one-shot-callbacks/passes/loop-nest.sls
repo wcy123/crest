@@ -2,8 +2,9 @@
 ;; buildAffineLoopNest: the callback of the C++ function builds the body of the nest. It says how many
 ;; induction variables it got, and the loops are in the module.
 (library (passes loop-nest)
-  (export run-pass)
-  (import (rnrs)
+  (export pass-entry-point)
+  (import (only (crest pass) define-pass-entry-point)
+          (rnrs)
           (only (mlir IR Operation)
                 mlir::Operation::getContext
                 mlir::Operation::getLoc
@@ -13,7 +14,7 @@
           (only (mlir IR Builders) with-OpBuilder mlir::OpBuilder::atBlockEnd)
           (only (mlir Dialect Affine IR AffineOps) mlir::affine::buildAffineLoopNest))
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (mlir::MLIRContext::getOrLoadDialect ctx "affine")

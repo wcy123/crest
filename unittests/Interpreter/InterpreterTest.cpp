@@ -48,8 +48,8 @@ static ptr evalScheme(const char* code) {
   return scheme_call("eval", expr);
 }
 
-// What crest-make-raw-c-callable (scheme/crest/callback.sls, the callable of a
-// slot) does: make a foreign-callable with a C result, lock its code object
+// What define-c-callable (scheme/crest/callback.sls) does for a
+// callable with a C result: make a foreign-callable, lock its code object
 // once, answer its address.
 static uint64_t makeCallableEntry() {
   return Sunsigned64_value(evalScheme(

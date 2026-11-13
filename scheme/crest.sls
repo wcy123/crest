@@ -139,6 +139,7 @@
           apply-conversion
           apply-patterns define-pattern-set
           define-pass
+          define-pass-entry-point
           :if-match :then-let :rewrite :with :where
           :debug-parse :debug-validate :debug-analyze :debug-codegen
           = : -> :region :regions

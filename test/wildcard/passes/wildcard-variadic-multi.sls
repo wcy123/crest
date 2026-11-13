@@ -3,7 +3,7 @@
 ;; operandSegmentSizes=[2, 3] → %inputs is a list of 2, %weights a list of 3.
 ;; Rewrite: test.multi_variadic → test.fused using first of each group.
 (library (passes wildcard-variadic-multi)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Value) mlir::Value::getType)
           (passes wildcard-common)
@@ -19,6 +19,6 @@
     :rewrite %out :with
       result = test.fused (%a %b) -> !out-type) ;
 
-  (define run-pass (make-run-pass "test.multi_variadic" %%multi-variadic))
+  (define-pass-entry-point (module-op) ((make-pass-body "test.multi_variadic" %%multi-variadic) module-op))
 
   ) ;; end library

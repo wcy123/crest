@@ -149,13 +149,13 @@
 
   ;; @brief mlir::Operation::walk — walk all nested ops, calling callback for each.
   ;; @param op        Operation* uptr (root of walk)
-  ;; @param callback  the address of a C function (uptr op) → void, which Scheme keeps alive until
+  ;; @param callback  the address of a C function (uptr op) → walk-result, which Scheme keeps alive until
   ;;                  the walk is over (see the macro mlir::Operation::walk)
-  ;; @return          void
+  ;; @return          the WalkResult of the walk as a number (see (mlir Support WalkResult))
   ;; @see             mlir/IR/Operation.h
   ;; @note            Defined in lib/Bindings/IR/Operation.cpp
   (define %walk
-    (crest-foreign-procedure "mlir::Operation::walk" (uptr uptr) void))
+    (crest-foreign-procedure "mlir::Operation::walk" (uptr uptr) int))
 
   ;; @brief mlir::Operation::setOperand — replace the i-th operand with a new value.
   ;; @param op     Operation* uptr

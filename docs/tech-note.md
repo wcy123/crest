@@ -58,7 +58,7 @@ auto name_str = op->getName().getStringRef().str();
 
 #### Why the old `exit/enter` hack "worked"
 
-With `ifacetest:register!` called from inside `run-pass`, the same use-after-free existed. The old `UnregisteredOpModel` was freed and replaced by the newly registered `Impl`. The `Operation` still held the dangling pointer. But `delete` on a small object does not zero or immediately reuse the memory — the freed bytes still contain the old string data. The old approach "worked" by luck: the freed memory happened not to be reused before the next read. With a different allocation sequence (our new code), the freed memory was reused with different content, exposing the crash.
+With `ifacetest:register!` called from inside `pass-entry-point`, the same use-after-free existed. The old `UnregisteredOpModel` was freed and replaced by the newly registered `Impl`. The `Operation` still held the dangling pointer. But `delete` on a small object does not zero or immediately reuse the memory — the freed bytes still contain the old string data. The old approach "worked" by luck: the freed memory happened not to be reused before the next read. With a different allocation sequence (our new code), the freed memory was reused with different content, exposing the crash.
 
 From the [MLIRContext.cpp source](https://mlir.llvm.org/doxygen/MLIRContext_8cpp_source.html):
 
@@ -235,7 +235,7 @@ method has no clause, the dispatcher answers what the macro of the interface dec
 is a table of methods (the C++ types of the slot, an adapter, a default, the keywords), and the expander checks the
 clauses and builds the dispatcher.
 
-**The prototype of a slot as a C function** depends on the platform for some C++ types, and `crest-slot-callable`
+**The prototype of a slot as a C function** depends on the platform for some C++ types, and `define-c-callable`
 (`scheme/crest/callback.sls`) writes it from the C++ types of the slot. `unittests/Crest/InterfaceTest.cpp`
 (`SlotAbiTest`) calls a callable of each kind through a function pointer of the exact type of the slot, on every
 platform that CI runs. What Linux x86-64 and Windows x64 do:
@@ -341,7 +341,9 @@ before the loop that is meant to free the escaped frames). We do not patch Chez.
 is kept for the record, with a standalone repro in `cmake/patches/chez-error-escape-leak/`, the list of our tests that
 reach it, what is known about upstream and how sure we are; the build does not apply it. CREST avoids the leak by
 never letting an error cross a C function: a C++ binding returns an error `(who . why)` and Scheme raises it
-(`plans/04-errors-are-values.md`).
+(`plans/04-errors-are-values.md`). A callback (C++ calls Scheme) has the prototype that MLIR declares and reports an error of its
+procedure as a diagnostic that names its Scheme position, or ends the process when its result is `void` (CLAUDE.md Rule 17,
+`plans/05-callables-match-mlir-prototypes.md`).
 
 ## Checking for memory leaks
 

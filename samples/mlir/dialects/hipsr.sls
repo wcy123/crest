@@ -36,7 +36,6 @@
                 mlir::Operation::getParentOp)
           (only (mlir IR Region) mlir::Region::front)
           (mlir Transforms DialectConversion)
-          (only (crest callback) crest-make-static-c-callable)
           (mlir Dialect Tensor IR)
           (only (mlir IR Operation) mlir::Operation::getRegion)
           (only (mlir IR Block) mlir::Block::getArgument)
@@ -116,52 +115,41 @@
   ;; Type converter configuration
   ;;===--------------------------------------------------------------------===;;
 
-  ;; These callbacks use no state of a run: they are made once, when the library is loaded.
+  ;; Plain procedures: the clauses of with-TypeConverter and with-ConversionTarget make a callable of each
+  ;; for the scope of the run.
 
   ;; Bridge a #hipsr.mem<device> tensor to a plain tensor (or vice versa)
   ;; at conversion boundaries using tensor.cast.
-  (define tensor-cast-materialization
-    (crest-make-static-c-callable
-     (uptr uptr uptr uptr uptr)
-     (materialization->c
-      (lambda (builder result-type inputs loc)
-        (if (not (and (pair? inputs) (null? (cdr inputs))))
-            #f
-            (let* ([input      (car inputs)]
-                   [input-type (mlir::Value::getType input)])
-              (if (not (and (mlir::isa<RankedTensorType>? input-type)
-                            (mlir::isa<RankedTensorType>? result-type)
-                            (= 1 (mlir::tensor::CastOp::areCastCompatible
-                                  input-type result-type))))
-                  #f
-                  (mlir::tensor::CastOp::create builder loc result-type input))))))))
+  (define (tensor-cast-materialization builder result-type inputs loc)
+    (if (not (and (pair? inputs) (null? (cdr inputs))))
+        #f
+        (let* ([input      (car inputs)]
+               [input-type (mlir::Value::getType input)])
+          (if (not (and (mlir::isa<RankedTensorType>? input-type)
+                        (mlir::isa<RankedTensorType>? result-type)
+                        (= 1 (mlir::tensor::CastOp::areCastCompatible
+                              input-type result-type))))
+              #f
+              (mlir::tensor::CastOp::create builder loc result-type input)))))
 
-  (define identity-conversion
-    (crest-make-static-c-callable (uptr) (type-conversion->c (lambda (t) t))))
+  (define (identity-conversion type) type)
 
-  (define device-memory-conversion
-    (crest-make-static-c-callable
-     (uptr)
-     (type-conversion->c
-      (lambda (type)
-        (if (and (mlir::isa<RankedTensorType>? type)
-                 (> (mlir::RankedTensorType::getRank type) 0)
-                 (= 0 (mlir::RankedTensorType::getEncoding type)))
-            (mlir::RankedTensorType::cloneWithEncoding type
-                                                       (mlir::parseAttribute (mlir::Type::getContext type)
-                                                                             "#hipsr.mem<device>"))
-            #f)))))
+  (define (device-memory-conversion type)
+    (if (and (mlir::isa<RankedTensorType>? type)
+             (> (mlir::RankedTensorType::getRank type) 0)
+             (= 0 (mlir::RankedTensorType::getEncoding type)))
+        (mlir::RankedTensorType::cloneWithEncoding type
+                                                   (mlir::parseAttribute (mlir::Type::getContext type)
+                                                                         "#hipsr.mem<device>"))
+        #f))
 
   ;;===--------------------------------------------------------------------===;;
   ;; Conversion target configuration
   ;;===--------------------------------------------------------------------===;;
 
-  (define unknown-ops-legal
-    (crest-make-static-c-callable
-     (uptr)
-     (legality->c (lambda (op)
-                    (or (hipsr-has-compute-ancestor? op)
-                        (hipsr-has-placeholder-ancestor? op))))))
+  (define (unknown-ops-legal op)
+    (or (hipsr-has-compute-ancestor? op)
+        (hipsr-has-placeholder-ancestor? op)))
 
   (define (hipsr-configure-conversion-target! target ctx)
     (target-add-illegal-dialect target "onnx")

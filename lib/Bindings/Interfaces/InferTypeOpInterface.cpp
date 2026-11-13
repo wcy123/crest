@@ -10,8 +10,9 @@
 // of its own (a foreign-callable, see (mlir Interfaces InferTypeOpInterface)),
 // which lib/Crest/InferType.cpp installs in the op. That function receives the
 // arguments of the C++ call as machine words, in the layout the platform ABI
-// gives them, and hands them to `adapt`, which rebuilds the C++ values and
-// calls the op's Scheme procedure with plain Scheme data.
+// gives them, and asks `decode` to rebuild the C++ values as plain Scheme data;
+// it calls the op's Scheme procedure itself, inside the callable, and hands the
+// answer to `push`. C++ never calls the procedure.
 
 #include "InferTypeOpInterface.h"
 #include "../../Crest/InferType.h"
@@ -51,8 +52,8 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
     }
   }
 
-  // crest::InferTypeOpInterface::adapt (scheme-object proc) (uptr w0 ... w10)
-  //   (int refine) -> unsigned-8 (1 = success, 0 = failure)
+  // crest::InferTypeOpInterface::decode (uptr w0 ... w10)
+  //   -> (context location operands attributes return-types sink)
   //
   // w0 ... w10 are the numbers of MLIR's call to inferReturnTypes(context,
   // location, operands, attributes, properties, regions, result types), as
@@ -63,20 +64,16 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
   // in LLVM 23); on Windows it is one number, the address of a copy, so the
   // result types are w6. Numbers a layout does not use are ignored.
   //
-  // `proc` is called with (context location operands attributes): the context
-  // pointer, the location pointer or #f, the list of operand Values, and the
-  // alist of (name . Attribute). It returns the list of result Types, or #f
-  // when the types cannot be inferred.
-  //
-  // With `refine` the call is to refineReturnTypes, whose last argument is not
-  // only the place for the answer: it holds the result types that the op has.
-  // `proc` then gets them as a fifth argument, the list of Types, and what it
-  // answers replaces them.
+  // The answer is the list of what the procedure of the op is called with:
+  // the context pointer, the location pointer or #f, the list of operand
+  // Values, the alist of (name . Attribute), the list of the result Types that
+  // the call already holds (refineReturnTypes gets them; the others have none),
+  // and, last, the place for the answer, which `push` takes.
   Sregister_symbol(
-      "crest::InferTypeOpInterface::adapt",
-      (void*)+[](ptr proc, uint64_t w0, uint64_t w1, uint64_t w2, uint64_t w3,
+      "crest::InferTypeOpInterface::decode",
+      (void*)+[](uint64_t w0, uint64_t w1, uint64_t w2, uint64_t w3,
                  uint64_t w4, uint64_t w5, uint64_t w6, uint64_t w7,
-                 uint64_t w8, uint64_t w9, uint64_t w10, int refine) -> ptr {
+                 uint64_t w8, uint64_t w9, uint64_t w10) -> ptr {
         static_assert(sizeof(std::optional<mlir::Location>) == 16 &&
                       sizeof(mlir::ValueRange) == 16 &&
                       sizeof(mlir::RegionRange) == 16 &&
@@ -129,18 +126,28 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
         }
         ptr contextArg = Sunsigned64(reinterpret_cast<uint64_t>(ctx));
         ptr operandsArg = Conversion<mlir::ValueRange, ptr>{}(operands);
-        ptr types;
-        if (refine) {
-          types = scheme_call(
-              proc, contextArg, locationArg, operandsArg, attributesArg,
-              Conversion<mlir::TypeRange, ptr>{}(mlir::TypeRange(*result)));
-        } else {
-          types = scheme_call(proc, contextArg, locationArg, operandsArg,
-                              attributesArg);
-        }
-        if (types == Sfalse) {
-          return Sunsigned64(0);
-        }
+        ptr returnTypesArg =
+            Conversion<mlir::TypeRange, ptr>{}(mlir::TypeRange(*result));
+        ptr sinkArg = Sunsigned64(reinterpret_cast<uint64_t>(result));
+        return Scons(
+            contextArg,
+            Scons(locationArg,
+                  Scons(operandsArg,
+                        Scons(attributesArg,
+                              Scons(returnTypesArg, Scons(sinkArg, Snil))))));
+      });
+
+  // crest::InferTypeOpInterface::push (uptr sink) (scheme-object types)
+  //   (int refine) -> void
+  //
+  // The procedure of the op answered the list of result Types: they go to
+  // `sink`, the place for the answer that `decode` gave. For refineReturnTypes
+  // (`refine`) they replace the types that the call held.
+  Sregister_symbol(
+      "crest::InferTypeOpInterface::push",
+      (void*)+[](uint64_t sink, ptr types, int refine) -> ptr {
+        auto* result =
+            reinterpret_cast<llvm::SmallVectorImpl<mlir::Type>*>(sink);
         if (refine) {
           result->clear();
         }
@@ -148,7 +155,7 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
           result->push_back(mlir::Type::getFromOpaquePointer(
               reinterpret_cast<const void*>(Sunsigned64_value(Scar(types)))));
         }
-        return Sunsigned64(1);
+        return Svoid;
       });
 
   // mlir::InferTypeOpInterface::getInterfaceID () -> uptr
@@ -161,18 +168,17 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
             mlir::InferTypeOpInterface::getInterfaceID().getAsOpaquePointer()));
       });
 
-  // crest::InferTypeOpInterface::adaptCompatible (scheme-object proc)
-  //   (uptr w0 w1 w2 w3) -> unsigned-8 (1 = compatible, 0 = not)
+  // crest::InferTypeOpInterface::decodeCompatible (uptr w0 w1 w2 w3)
+  //   -> (lhs rhs)
   //
   // w0 ... w3 are the numbers of MLIR's call to isCompatibleReturnTypes(
   // TypeRange lhs, TypeRange rhs), as (mlir Interfaces InferTypeOpInterface)
   // receives them: on Linux each 16-byte TypeRange is two numbers (w0 w1, w2
-  // w3), on Windows one, the address of a copy (w0, w1). `proc` is called with
-  // the two lists of Types.
+  // w3), on Windows one, the address of a copy (w0, w1). The answer is the two
+  // lists of Types.
   Sregister_symbol(
-      "crest::InferTypeOpInterface::adaptCompatible",
-      (void*)+[](ptr proc, uint64_t w0, uint64_t w1, uint64_t w2,
-                 uint64_t w3) -> ptr {
+      "crest::InferTypeOpInterface::decodeCompatible",
+      (void*)+[](uint64_t w0, uint64_t w1, uint64_t w2, uint64_t w3) -> ptr {
         static_assert(sizeof(mlir::TypeRange) == 16 &&
                       std::is_trivially_copyable_v<mlir::TypeRange>);
         mlir::TypeRange lhs;
@@ -187,11 +193,9 @@ void registerInterfacesInferTypeOpInterfaceBindings() {
         std::memcpy(&lhs, lhsWords, sizeof(lhs));
         std::memcpy(&rhs, rhsWords, sizeof(rhs));
 #endif
-        return Sunsigned64(
-            scheme_call(proc, Conversion<mlir::TypeRange, ptr>{}(lhs),
-                        Conversion<mlir::TypeRange, ptr>{}(rhs)) != Sfalse
-                ? 1
-                : 0);
+        ptr lhsList = Conversion<mlir::TypeRange, ptr>{}(lhs);
+        ptr rhsList = Conversion<mlir::TypeRange, ptr>{}(rhs);
+        return Scons(lhsList, Scons(rhsList, Snil));
       });
 
   // The result types of the op named by `state`, from the operands, attributes

@@ -21,7 +21,7 @@
       (mlir::MLIRContext::allowUnregisteredDialects ctx #t)
       (mlir::MLIRContext::getOrLoadDialect ctx "func")
       (with-mlir::OwningOpRef module (mlir::parseSourceFile ctx path)
-        (run-pass module)))))
+        (pass-entry-point module)))))
 
 (enable-object-counts #t)
 (once)

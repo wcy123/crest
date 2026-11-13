@@ -3,7 +3,7 @@
 ;; A :where clause that throws (division by zero) triggers the per-check guard,
 ;; which logs the exception regardless of CREST_DEBUG_MATCH.
 (library (passes debug-match-exception)
-  (export run-pass)
+  (export pass-entry-point)
   (import (except (rnrs) =)
           (only (mlir IR Value) mlir::Value::getType)
           (passes debug-match-common)
@@ -18,6 +18,6 @@
     :rewrite %out :with
       result = test.add (%a %b) -> !out-type) ;
 
-  (define run-pass (make-run-pass "test.add" %%always-throws))
+  (define-pass-entry-point (module-op) ((make-pass-body "test.add" %%always-throws) module-op))
 
   ) ;; end library

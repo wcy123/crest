@@ -1,8 +1,9 @@
 ;; test.in(%v) -> test.out(%v), built with the pattern's rewriter shell passed straight to the
 ;; OpBuilder bindings.
 (library (passes builder-handle)
-  (export run-pass)
-  (import (except (rnrs (6)) =)
+  (export pass-entry-point)
+  (import (only (crest pass) define-pass-entry-point)
+          (except (rnrs (6)) =)
           (only (mlir IR Value) mlir::Value::getType)
           (only (mlir IR Operation)
                 mlir::Operation::getContext
@@ -41,7 +42,7 @@
                (mlir::RewriterBase::replaceOp rw op (mlir::Operation::getResult new-op 0))
                #t)))))
 
-  (define (run-pass module-op)
+  (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
         (with-RewritePatternSet ps (ctx
