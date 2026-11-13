@@ -94,12 +94,16 @@
               (and line (list file line col))))
           #f)))
 
+  ;; Windows gives a path with both "/" and "\" in it, so paths are compared with "/" only.
+  (define (%%slashes path)
+    (list->string (map (lambda (c) (if (char=? c #\\) #\/ c)) (string->list path))))
+
   ;; The directory of CREST's own libraries, "<...>/scheme/": this file is
   ;; <...>/scheme/crest/bindings/mlir/support/srcloc.sls. A position in a file below it is the code
   ;; of a macro of CREST (the template of a DSL), not the code of the user.
   (define %%crest-library-root
     (let* ([here (syntax->file+line+col #'here)]
-           [path (and here (car here))]
+           [path (and here (%%slashes (car here)))]
            [tail "crest/bindings/mlir/support/srcloc.sls"])
       (and path
            (> (string-length path) (string-length tail))
@@ -108,9 +112,10 @@
            (substring path 0 (- (string-length path) (string-length tail))))))
 
   (define (%%crest-library? path)
-    (and %%crest-library-root
-         (>= (string-length path) (string-length %%crest-library-root))
-         (string=? (substring path 0 (string-length %%crest-library-root)) %%crest-library-root)))
+    (let ([path (%%slashes path)])
+      (and %%crest-library-root
+           (>= (string-length path) (string-length %%crest-library-root))
+           (string=? (substring path 0 (string-length %%crest-library-root)) %%crest-library-root))))
 
   (define (syntax->first-file+line+col stx)
     ;; All the positions of the form and of its parts, depth first.
