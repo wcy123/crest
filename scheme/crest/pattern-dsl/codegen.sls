@@ -234,7 +234,7 @@
   ;;
   ;; Compose (:attr "name") with explicit builtin-attributes extractors, e.g.:
   ;;   (mlir::IntegerAttr::getValue  (:attr "axis"))
-  ;;   (mlir::FloatAttr::getValueAsDouble.f32  (:attr "epsilon"))
+  ;;   (mlir::FloatAttr::getValueAsDouble  (:attr "epsilon"))
   ;;   (mlir::DenseElementsAttr::isSplat (:attr "value"))
   ;;
   ;; Uses free-identifier=? via (syntax-case s (:current-op :attr) ...) so

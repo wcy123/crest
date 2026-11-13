@@ -132,7 +132,7 @@
 
   ;; @brief Register a Scheme ConversionPattern with no TypeConverter (original operands).
   (define %add-conversion-pattern/ctx
-    (crest-foreign-procedure "crest::DialectConversion::addConversionPattern/ctx"
+    (crest-foreign-procedure "crest::DialectConversion::addConversionPatternWithoutTypeConverter"
                              (uptr string uptr int) void))
 
   ;; @brief Register a Scheme RewritePattern (no TypeConverter) for a named op.
