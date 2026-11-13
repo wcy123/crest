@@ -428,16 +428,20 @@
 
         [(:bind-result)
          ;; Set a non-root result variable to the actual mlir::Value so that
-         ;; :where guards and :then-let can reference it by name.
+         ;; :where guards and :then-let can reference it by name. A consumer
+         ;; that uses the result has set the variable from its operand already:
+         ;; then the result must be that value (a pattern about result 1 of an
+         ;; op does not match a use of its result 0).
          (let* ([fields     (cdr action)]
                 [op-idx     (cdr (assq 'op-idx     fields))]
                 [result-idx (cdr (assq 'result-idx fields))]
                 [var        (cdr (assq 'var        fields))])
-           #`(begin
-               (set! #,var (mlir::Operation::getResult
+           #`(let ([result (mlir::Operation::getResult
                             (vector-ref all-operations #,op-idx)
-                            #,result-idx))
-               #t))]
+                            #,result-idx)])
+               (if (unbound-value? #,var)
+                   (begin (set! #,var result) #t)
+                   (eqv? #,var result))))]
 
         [(:check-where)
          ;; Transform the where expression to substitute :current-op and (:attr ...)
