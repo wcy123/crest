@@ -70,9 +70,9 @@
   (define-syntax crest-make-static-c-callable
     (lambda (stx)
       (syntax-case stx ()
-        [(_ (kind ...) result proc)
-         (with-syntax ([location #`(quote #,(datum->syntax #'stx (syntax->first-file+line+col #'proc)))])
-           #'(let ([code (%%make-code (kind ...) result proc location)])
+        [(_ (kind ...) result-kind procedure)
+         (with-syntax ([location #`(quote #,(datum->syntax #'stx (syntax->first-file+line+col #'procedure)))])
+           #'(let ([code (%%make-code (kind ...) result-kind procedure location)])
                (lock-object code)
                (foreign-callable-entry-point code)))])))
 
@@ -98,12 +98,12 @@
   (define-syntax with-c-callable
     (lambda (stx)
       (syntax-case stx ()
-        [(_ (name (kind ...) result value) body ...)
+        [(_ (name (kind ...) result-kind value) body ...)
          (with-syntax ([location #`(quote #,(datum->syntax #'stx (syntax->first-file+line+col #'value)))])
            #'(let* ([given value]
                     [made? (procedure? given)]
                     [code (cond
-                           [made? (%%make-code (kind ...) result given location)]
+                           [made? (%%make-code (kind ...) result-kind given location)]
                            [(and (integer? given) (exact? given)) (foreign-callable-code-object given)]
                            [else (assertion-violation 'with-c-callable
                                                       "the value must be a procedure or the address of a locked callable"
@@ -152,46 +152,46 @@
   (define-syntax %%make-code
     (lambda (stx)
       (syntax-case stx ()
-        [(_ (kind ...) result procedure location)
+        [(_ (kind ...) result-kind procedure location)
          (let* ([kinds (syntax->list #'(kind ...))]
                 [formals (generate-temporaries kinds)]
-                [types (map (lambda (k)
-                              (if (eq? (syntax->datum k) 'type-range) #'(& %%SlotRange) k))
-                            kinds)]
-                [values (map (lambda (k formal)
-                               (if (eq? (syntax->datum k) 'type-range)
-                                   #`(%%type-range->list (ftype-ref %%SlotRange (data) #,formal)
-                                                         (ftype-ref %%SlotRange (size) #,formal))
-                                   formal))
-                             kinds formals)]
+                [c-types (map (lambda (k)
+                                (if (eq? (syntax->datum k) 'type-range) #'(& %%SlotRange) k))
+                              kinds)]
+                [arguments (map (lambda (k formal)
+                                  (if (eq? (syntax->datum k) 'type-range)
+                                      #`(%%type-range->list (ftype-ref %%SlotRange (data) #,formal)
+                                                            (ftype-ref %%SlotRange (size) #,formal))
+                                      formal))
+                                kinds formals)]
                 ;; a class answered by value: the size of its answer, and its C type where it is a register
                 [class-answer
-                 (lambda (size linux-type)
+                 (lambda (size linux-c-type)
                    #`(if (%%windows?)
                          (foreign-callable
                           (lambda (answer #,@formals)
-                            (foreign-set! '#,size answer 0 (p #,@values))
+                            (foreign-set! '#,size answer 0 (p #,@arguments))
                             answer)
-                          (uptr #,@types) uptr)
-                         (foreign-callable (lambda (#,@formals) (p #,@values))
-                                           (#,@types) #,linux-type)))])
-           #`(let ([p (%%guard-for-result 'result procedure location)])
-               #,(case (syntax->datum #'result)
+                          (uptr #,@c-types) uptr)
+                         (foreign-callable (lambda (#,@formals) (p #,@arguments))
+                                           (#,@c-types) #,linux-c-type)))])
+           #`(let ([p (%%guard-for-result 'result-kind procedure location)])
+               #,(case (syntax->datum #'result-kind)
                    [(void uptr int unsigned-8)
-                    #`(foreign-callable (lambda (#,@formals) (p #,@values)) (#,@types) result)]
+                    #`(foreign-callable (lambda (#,@formals) (p #,@arguments)) (#,@c-types) result-kind)]
                    [(object) (class-answer #'uptr #'uptr)]
                    [(logical-result) (class-answer #'unsigned-8 #'unsigned-8)]
                    [(walk-result) (class-answer #'unsigned-32 #'int)]
                    [(range)
                     #`(foreign-callable
                        (lambda (answer #,@formals)
-                         (let ([pair (p #,@values)])
+                         (let ([pair (p #,@arguments)])
                            (ftype-set! %%SlotRange (data) answer (car pair))
                            (ftype-set! %%SlotRange (size) answer (cdr pair))))
-                       (#,@types) (& %%SlotRange))]
+                       (#,@c-types) (& %%SlotRange))]
                    [else
                     (syntax-violation 'crest-make-static-c-callable
-                                      "unknown result kind of a callable" stx #'result)])))])))
+                                      "unknown result kind of a callable" stx #'result-kind)])))])))
 
   ;; ---- the guard of a callable (plan 05) ----------------------------------------------------------
   ;;
@@ -205,8 +205,8 @@
 
   ;; The guard of a callable by the kind of its result: void has no place for an error, a range answers
   ;; (data . size), the others are numbers.
-  (define (%%guard-for-result result procedure location)
-    (case result
+  (define (%%guard-for-result result-kind procedure location)
+    (case result-kind
       [(void) (%%fatal-guard procedure location)]
       [(range) (%%report-guard procedure location (cons 0 0))]
       [else (%%report-guard procedure location 0)]))
