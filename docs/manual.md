@@ -635,8 +635,8 @@ when the count and types are fixed.
 
 A pass is an ordinary R6RS `library` that exports `pass-entry-point`, which
 `(define-pass-entry-point (op) body ...)` defines: `pass-entry-point` is the name that
-`--crest-pass="passes=passes/my-pass"` calls at runtime, and the macro gives the body the guard of a callable (an
-error is reported with its Scheme position and the pass fails). Everything else in the library is plain Scheme: helper
+`--crest-pass="passes=passes/my-pass"` calls at runtime. An error of the body becomes an error on the module, with
+its Scheme position in the text, and the pass fails. Everything else in the library is plain Scheme: helper
 functions, type predicates, constants.
 
 ### Greedy rewrite pass

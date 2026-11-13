@@ -321,8 +321,8 @@ would cross the C++ frames (Rule 20). MLIR's prototypes have no room for an erro
 - C++ never calls a Scheme procedure itself: `InferTypeOpInterface` gives the words of MLIR's call to Scheme
   (`crest::InferTypeOpInterface::decode`), the clause runs in Scheme inside the callable, and its answer goes back
   through `push`. The one exception is the pass of `--crest-pass`, which has no C prototype to match: it is called
-  by name, `pass-entry-point`, which `(define-pass-entry-point (op) body ...)` defines under the same guard: it
-  answers 1, or 0 after the error was reported.
+  by name, `pass-entry-point`, which `(define-pass-entry-point (op) body ...)` defines: it answers #f, or
+  `(cons who why)` when its body raised an error, which the runner emits on the op with `emitError`.
 
 Nesting (C++ -> Scheme -> C++ -> Scheme) needs no bookkeeping: each failure is reported where it happens. An error
 in a callable with a `void` result ends the process, so a program that has to go on makes its callbacks

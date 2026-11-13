@@ -129,24 +129,24 @@
   ;; @param body  the expressions of the pass; their value is ignored
   ;; @note        A macro, like define for a function. It defines pass-entry-point, the name that
   ;;              CrestPass looks up in the libraries of --crest-pass, so the library exports it. The
-  ;;              procedure answers 1 when BODY returned, and 0 after an error of BODY was reported by the
-  ;;              guard of a callable (see %%guard-for-result), which the runner turns into a failure of the
-  ;;              pass. Scheme code may call it too, as an ordinary procedure.
+  ;;              procedure answers #f when BODY returned, and (cons who why), a symbol and a string, when BODY
+  ;;              raised an error: CrestPass emits "who: why" as an error on the op, and the pass fails.
+  ;;              Scheme code may call it too, as an ordinary procedure.
   ;; @example
   ;;   (library (passes my-pass)
   ;;     (export pass-entry-point)
-  ;;     (import (rnrs) (crest))
+  ;;     (import (except (rnrs) =) (crest))
   ;;     (define-pass-entry-point (module-op)
   ;;       (display "running")))
   (define-syntax define-pass-entry-point
     (lambda (stx)
       (syntax-case stx ()
         [(keyword (op) body ...)
-         (with-syntax ([pass-entry-point (datum->syntax #'keyword 'pass-entry-point)]
-                       [location #`(quote #,(datum->syntax
-                                             #'keyword (syntax->first-file+line+col #'(body ...))))])
+         (with-syntax ([pass-entry-point (datum->syntax #'keyword 'pass-entry-point)])
            #'(define (pass-entry-point op)
-               ((%%report-guard (lambda (op) (let () body ...) 1) location 0) op)))])))
+               (guard (c [#t (cons (string->symbol (%%condition-who c)) (%%condition-message c))])
+                 (let () body ...)
+                 #f)))])))
 
   ;; @brief crest-callback-pointer-list — read a range that C++ gave as a pointer and a count.
   ;; @param pointer  the address of an array of 8-byte elements (a pointer or an integer each)

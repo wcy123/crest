@@ -246,11 +246,15 @@ struct CrestPass : public mlir::OperationPass<mlir::ModuleOp> {
     }
 
     // The pass raises no error into this frame: pass-entry-point
-    // (define-pass-entry-point) answers 1 when its body returned, and 0 when
-    // the body raised an error, which its guard reported.
+    // (define-pass-entry-point) answers #f when its body returned, and
+    // (who . why), a symbol and a string, when the body raised an error.
     CurrentContextScope scope(*interp, getOperation()->getContext());
     ptr answer = scheme_call("pass-entry-point", getOperation().getOperation());
-    if (Sinteger64_value(answer) == 0) {
+    if (Spairp(answer)) {
+      std::string who =
+          convert_to_cpp<std::string>(Ssymbol_to_string(Scar(answer)));
+      std::string why = convert_to_cpp<std::string>(Scdr(answer));
+      getOperation().emitError(who.empty() ? why : who + ": " + why);
       return signalPassFailure();
     }
   }
