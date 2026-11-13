@@ -4,7 +4,7 @@
 ;; type (0); void ends the process with the text; with no current context the process ends with the text.
 (import (chezscheme)
         (mlir IR DialectRegistry) (mlir IR MLIRContext)
-        (mlir support with)
+        (crest support with)
         (crest callback))
 
 (define mode (car (command-line-arguments)))

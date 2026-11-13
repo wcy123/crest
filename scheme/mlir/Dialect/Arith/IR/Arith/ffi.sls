@@ -13,7 +13,7 @@
           %mlir::arith::ConstantOp::create<f64>
           %mlir::DialectRegistry::insert<mlir::arith::ArithDialect>)
   (import (chezscheme)
-          (mlir support foreign) (mlir support BuilderBinding))
+          (crest support foreign) (crest support BuilderBinding))
 
   (define-builder-binding %mlir::arith::AddFOp::create
     "mlir::arith::AddFOp::create" (uptr uptr uptr uptr) uptr)

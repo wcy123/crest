@@ -65,7 +65,7 @@
           (only (chezscheme) syntax->list syntax->datum getenv pretty-print print-gensym parameterize)
           (rename (rime loop) (:with :rime-with))
           (for (rename (rime loop) (:with :rime-with)) expand)
-          (for (only (mlir support srcloc) syntax->file+line+col) expand)
+          (for (only (crest support srcloc) syntax->file+line+col) expand)
           (for (only (crest pattern-dsl keywords)
                      = : -> :region :loc :move-region
                      :string :index

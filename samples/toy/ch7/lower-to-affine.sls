@@ -52,7 +52,7 @@
                 mlir::MemRefType::get)
           (only (mlir IR AffineMap) mlir::AffineMap::getMultiDimIdentityMap)
           (only (mlir IR Builders) with-InsertionGuard)
-          (only (mlir support array-ref) crest::CArrayRef::at crest::CArrayRef::size)
+          (only (crest support array-ref) crest::CArrayRef::at crest::CArrayRef::size)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
           (crest))
 

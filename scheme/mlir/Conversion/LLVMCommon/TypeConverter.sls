@@ -4,7 +4,7 @@
   (export with-LLVMTypeConverter)
   (import (rnrs)
           (mlir Conversion LLVMCommon TypeConverter ffi)
-          (only (mlir support CrestObject) with-CrestObject)
+          (only (crest support CrestObject) with-CrestObject)
           (only (mlir IR MLIRContext) current-MLIRContext))
 
   ;; Not exported: it answers a heap box that only with-LLVMTypeConverter frees (a raw call leaks it).

@@ -13,7 +13,7 @@
           %mlir::DialectRegistry::insert<mlir::memref::MemRefDialect>
           %mlir::memref::LoadOp::create)
   (import (chezscheme)
-          (mlir support foreign) (mlir support BuilderBinding))
+          (crest support foreign) (crest support BuilderBinding))
 
   (define %mlir::MemRefType::get
     (crest-foreign-procedure "mlir::MemRefType::get" (uptr) uptr))

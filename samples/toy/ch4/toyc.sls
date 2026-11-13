@@ -8,7 +8,7 @@
 ;;   2. Shape inference (rewrite patterns that resolve tensor<*xf64> to ranked types)
 ;;   3. Canonicalization (fold transpose/reshape pairs)
 (import (chezscheme)
-        (only (mlir support CrestObject) with-CrestObject)
+        (only (crest support CrestObject) with-CrestObject)
         (mlir IR DialectRegistry)
         (mlir IR MLIRContext)
         (mlir IR Operation)

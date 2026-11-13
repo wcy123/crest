@@ -21,7 +21,7 @@
           (mlir IR Block)
           (mlir IR Region)
           (mlir IR OpImplementation)
-          (only (mlir support RAII) with-raii)
+          (only (crest support RAII) with-raii)
           (mlir IR Builders)
           (mlir IR OperationSupport)
           (only (mlir Interfaces CallInterfaces) mlir::CallOpInterface mlir::CallableOpInterface mlir::ArgAndResultAttrsOpInterface mlir::CallInterfaceCallable::get<SymbolRefAttr> mlir::CallInterfaceCallable::dyn_cast<SymbolRefAttr> crest::OperandRange::get)
@@ -32,7 +32,7 @@
                 mlir::FunctionOpInterface
                 mlir::function_interface_impl::printFunctionOp
                 mlir::function_interface_impl::parseFunctionOp)
-          (only (mlir support array-ref) crest::CArrayRef::size crest::CArrayRef::at)
+          (only (crest support array-ref) crest::CArrayRef::size crest::CArrayRef::at)
           (for (except (rime loop) :name) expand)
           (for (only (crest pattern-dsl rewrite) begin-mlir-code) expand)
           (for (only (crest pattern-dsl keywords) = :string :loc :arg) expand)

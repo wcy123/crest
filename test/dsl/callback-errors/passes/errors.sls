@@ -8,7 +8,7 @@
                 mlir::Operation::getContext mlir::Operation::walk
                 mlir::Operation::getAttr mlir::Operation::setAttr!)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
-          (mlir support with)
+          (crest support with)
           (only (mlir IR PatternMatch) with-RewritePatternSet)
           (only (mlir IR BuiltinAttributes) mlir::UnitAttr::get)
           (only (mlir IR BuiltinTypes) mlir::IndexType::get)

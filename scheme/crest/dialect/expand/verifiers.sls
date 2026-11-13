@@ -6,7 +6,7 @@
           (rime loop)
           (crest dialect ast)
           (crest dialect expand utils)
-          (mlir support srcloc)
+          (crest support srcloc)
           (mlir IR Operation)
           (only (mlir IR Value) mlir::Value::getType)
           (mlir IR BuiltinAttributes))

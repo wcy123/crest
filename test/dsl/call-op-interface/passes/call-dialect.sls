@@ -14,7 +14,7 @@
           (only (mlir Interfaces CallInterfaces) mlir::CallOpInterface mlir::CallableOpInterface mlir::ArgAndResultAttrsOpInterface mlir::CallInterfaceCallable::get<SymbolRefAttr> mlir::CallInterfaceCallable::dyn_cast<SymbolRefAttr> crest::OperandRange::get)
           (only (mlir IR BuiltinTypes) mlir::FunctionType::getInputs mlir::FunctionType::getResults)
           (only (mlir Transforms InliningUtils) mlir::DialectInlinerInterface)
-          (only (mlir support array-ref) crest::CArrayRef::size crest::CArrayRef::at))
+          (only (crest support array-ref) crest::CArrayRef::size crest::CArrayRef::at))
 
   (define-dialect calltest
     (:interfaces ((mlir::DialectInlinerInterface

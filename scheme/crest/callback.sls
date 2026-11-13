@@ -30,11 +30,11 @@
 ;;   with-c-callable/code           uses the address of a locked callable that the caller made (reused,
 ;;                                  never unlocked here).
 ;;
-;; Several of them nest with with* ((mlir support with)). The conversion clauses (with-TypeConverter,
+;; Several of them nest with with* ((crest support with)). The conversion clauses (with-TypeConverter,
 ;; with-ConversionTarget, with-RewritePatternSet) do that around their body.
 ;;
 ;; C++ gives a range (the inputs of a materialization, the parameters of a type) as the address of a
-;; CArrayRef<uptr> on its stack, not as a Scheme list; crest::CArrayRef->list ((mlir support array-ref))
+;; CArrayRef<uptr> on its stack, not as a Scheme list; crest::CArrayRef->list ((crest support array-ref))
 ;; reads it.
 ;;
 ;;===----------------------------------------------------------------------===;;
@@ -44,9 +44,9 @@
           with-c-callable/code
           define-pass-entry-point)
   (import (chezscheme)
-          (for (mlir support srcloc) expand)
-          (mlir support foreign)
-          (mlir support RAII)
+          (for (crest support srcloc) expand)
+          (crest support foreign)
+          (crest support RAII)
           (only (mlir IR MLIRContext) current-MLIRContext)
           (only (mlir IR Location ffi) %mlir::UnknownLoc::get)
           (only (mlir IR Diagnostics ffi) %mlir::emitError)

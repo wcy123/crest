@@ -45,7 +45,7 @@
           crest-type-callback-entries)
   (import (chezscheme)
           (crest callback)
-          (only (mlir support array-ref) crest::CArrayRef->list)
+          (only (crest support array-ref) crest::CArrayRef->list)
           (crest dialect ffi))
 
   ;; (%%entry (argument-type ...) result-type clause adapter): the entry point of the callable for one

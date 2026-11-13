@@ -13,7 +13,7 @@
           %crest::DynamicType::setMessage
           %mlir::OperationName::getStringRef)
   (import (chezscheme)
-          (mlir support foreign))
+          (crest support foreign))
 
   ;; (uptr ctx) (string dialect-name) (string module-name) → void
   ;; Loads a Scheme-defined dialect into an existing MLIRContext.

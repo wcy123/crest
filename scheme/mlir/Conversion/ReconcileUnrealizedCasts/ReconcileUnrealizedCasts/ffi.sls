@@ -9,7 +9,7 @@
 (library (mlir Conversion ReconcileUnrealizedCasts ReconcileUnrealizedCasts ffi)
   (export %mlir::createReconcileUnrealizedCastsPass)
   (import (chezscheme)
-          (mlir support foreign))
+          (crest support foreign))
 
   (define %mlir::createReconcileUnrealizedCastsPass
     (crest-foreign-procedure "mlir::createReconcileUnrealizedCastsPass" () uptr))

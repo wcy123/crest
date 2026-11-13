@@ -3,7 +3,7 @@
 (library (llvm Support ErrorHandling ffi)
   (export %llvm::report_fatal_error)
   (import (chezscheme)
-          (mlir support foreign))
+          (crest support foreign))
 
   ;; (string text) -> void; it does not return
   (define %llvm::report_fatal_error

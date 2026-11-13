@@ -104,7 +104,7 @@ namespace structure:
 | `(mlir Transforms DialectConversion)` | [`TypeConverter`](https://mlir.llvm.org/docs/DialectConversion/#type-converter), `ConversionTarget`, `applyFullConversion` |
 | `(mlir Transforms GreedyPatternRewriteDriver)` | `mlir::applyPatternsGreedily` |
 | `(mlir Dialect ...)` | Per-dialect op constructors and type predicates |
-| `(mlir support RAII)` | Generic `with-raii` helper |
+| `(crest support RAII)` | Generic `with-raii` helper |
 
 Library names mirror MLIR header paths (e.g. `mlir/IR/PatternMatch.h` →
 `(mlir IR PatternMatch)`). Each library has a companion `ffi` sub-library with

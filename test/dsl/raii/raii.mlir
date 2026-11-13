@@ -1,4 +1,4 @@
-// with-raii of (mlir support RAII) frees its resource when the body ends, however it ends: by
+// with-raii of (crest support RAII) frees its resource when the body ends, however it ends: by
 // returning, by an error and by an escape. Nested uses free the inner resource first. A resource
 // whose constructor raised an error is not freed (there is none).
 //

@@ -20,7 +20,7 @@
           %mlir::ModuleOp::lookupSymbol
           %mlir::FlatSymbolRefAttr::get)
   (import (chezscheme)
-          (mlir support foreign) (mlir support BuilderBinding))
+          (crest support foreign) (crest support BuilderBinding))
 
   (define %mlir::LLVM::LLVMFunctionType::get
     (crest-foreign-procedure "mlir::LLVM::LLVMFunctionType::get" (uptr uptr uptr int) uptr))

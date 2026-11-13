@@ -14,7 +14,7 @@
           (only (mlir Interfaces InferTypeOpInterface)
                 mlir::InferTypeOpInterface::inferReturnTypes<OperationState*>)
           (mlir IR OpImplementation)
-          (mlir support RAII))
+          (crest support RAII))
 
   (define (%%fail fmt-stx message . parts)
     (syntax-violation 'define-op (apply string-append "assembly-format: " message

@@ -11,7 +11,7 @@
 // Scheme calls C++ (a binding): the binding answers a Scheme object, the value
 // itself (Sunsigned64, scheme_bool, Svoid, a string, a list) or, on failure,
 // scheme_error(who, why): the pair (who . why), who a symbol and why a string.
-// crest-foreign-procedure ((mlir support foreign)) raises the pair in Scheme,
+// crest-foreign-procedure ((crest support foreign)) raises the pair in Scheme,
 // after the C function has returned.
 //
 // C++ calls Scheme through a callable that scheme/crest/callback.sls made: the

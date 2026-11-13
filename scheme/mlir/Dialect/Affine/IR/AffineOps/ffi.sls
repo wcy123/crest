@@ -14,7 +14,7 @@
           %mlir::affine::AffineStoreOp::create<AffineMap>
           %mlir::DialectRegistry::insert<mlir::affine::AffineDialect>)
   (import (chezscheme)
-          (mlir support foreign) (mlir support BuilderBinding))
+          (crest support foreign) (crest support BuilderBinding))
 
   (define-builder-binding %mlir::affine::buildAffineLoopNest
     "mlir::affine::buildAffineLoopNest"

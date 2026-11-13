@@ -7,7 +7,7 @@
 (import (except (rnrs) =)
         (only (crest dialect) load-scheme-dialect!)
         (only (chezscheme) collect object-counts enable-object-counts command-line-arguments)
-        (mlir IR DialectRegistry) (mlir IR MLIRContext) (mlir support with) (mlir IR Operation) (mlir IR OwningOpRef)
+        (mlir IR DialectRegistry) (mlir IR MLIRContext) (crest support with) (mlir IR Operation) (mlir IR OwningOpRef)
         (mlir Dialect Func IR FuncOps)
         (mlir Transforms DialectConversion)
         (only (mlir IR PatternMatch) with-RewritePatternSet)

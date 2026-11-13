@@ -370,7 +370,7 @@ Two types have a special lookup, because their objects arrive in more than one f
   `CrestBox<OpBuilder*>` (a builder MLIR passes to a callback). Each C++ symbol takes exactly one,
   so `register_builder_binding` (`lib/Bindings/Support/BuilderBinding.h`) registers one body three
   times as `NAME<OpBuilder>`, `NAME<RewriterBase*>` and `NAME<OpBuilder*>`. On the Scheme side
-  `define-builder-binding` (`(mlir support BuilderBinding)`) makes one procedure that checks the
+  `define-builder-binding` (`(crest support BuilderBinding)`) makes one procedure that checks the
   shell with the `isa` predicates and calls the matching symbol. A raw pointer or any other
   shell is a Scheme error.
 
@@ -382,7 +382,7 @@ name.
 `RewriterBase` has a protected destructor, so Scheme can hold it only through
 `CrestBox<RewriterBase*>`.
 
-The Scheme side, in `(mlir support CrestObject)`:
+The Scheme side, in `(crest support CrestObject)`:
 
 | Binding | What it does |
 |---|---|

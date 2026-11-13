@@ -93,7 +93,8 @@ void registerIROpBuilderBindings() {
         return Sunsigned64(reinterpret_cast<uint64_t>(builder.getContext()));
       });
   // Type predicates for the builder shells: Scheme picks the binding variant by
-  // the shell's type (define-builder-binding in (mlir support BuilderBinding)).
+  // the shell's type (define-builder-binding in (crest support
+  // BuilderBinding)).
   Sregister_symbol(
       "crest::isa<CrestBox<mlir::OpBuilder>>",
       (void*)+[](uint64_t address) -> ptr {

@@ -4,7 +4,7 @@
   (export %mlir::translateModuleToLLVMIR
           %mlir::translateModuleToLLVMIR<int>)
   (import (chezscheme)
-          (mlir support foreign))
+          (crest support foreign))
   (define %mlir::translateModuleToLLVMIR
     (crest-foreign-procedure "mlir::translateModuleToLLVMIR" (uptr) string))
   (define %mlir::translateModuleToLLVMIR<int>

@@ -4,7 +4,7 @@
   (export %mlir::ExecutionEngine::create
           %mlir::ExecutionEngine::invoke)
   (import (chezscheme)
-          (mlir support foreign))
+          (crest support foreign))
   (define %mlir::ExecutionEngine::create
     (crest-foreign-procedure "mlir::ExecutionEngine::create" (uptr int) uptr))
   (define %mlir::ExecutionEngine::invoke

@@ -10,7 +10,7 @@
   (export %mlir::createCanonicalizerPass
           %mlir::createCSEPass)
   (import (chezscheme)
-          (mlir support foreign))
+          (crest support foreign))
 
   (define %mlir::createCanonicalizerPass
     (crest-foreign-procedure "mlir::createCanonicalizerPass" () uptr))

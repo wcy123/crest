@@ -1,6 +1,6 @@
 ;; Calls the verifiers of an op whose clauses raise a Scheme error.
 (import (chezscheme)
-        (mlir support foreign)
+        (crest support foreign)
         (crest dialect)
         (mlir IR Operation)
         (mlir IR Region)

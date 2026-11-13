@@ -2,7 +2,7 @@
 ;; dialect, and prints what each answers or leaves behind.
 (import (only (mlir Support WalkResult) mlir::WalkResult::advance)
         (chezscheme)
-        (mlir support foreign)
+        (crest support foreign)
         (crest dialect)
         (mlir IR Operation)
         (mlir IR MLIRContext)

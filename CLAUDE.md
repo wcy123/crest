@@ -20,6 +20,10 @@ mlir/Dialect/Shape/IR/Shape.h           →  (mlir Dialect Shape IR Shape)
 (mlir IR BuiltinTypes ffi)  →  scheme/mlir/IR/BuiltinTypes/ffi.sls
 ```
 
+`scheme/` is the one root of library paths. A helper that mirrors no MLIR header is a `(crest ...)` library
+(`(crest support foreign)` is `scheme/crest/support/foreign.sls`). `test/bindings/library-layout.mlir` checks that
+every library is at the path of its name, and that no two names differ only by case.
+
 ### Rule 3 — C++ binding file mirrors the same header
 
 ```
@@ -59,7 +63,7 @@ AffineMap, ValueRange)`; with a builder, the symbol is `...create<AffineMap,OpBu
 ;; Mirrors mlir/IR/BuiltinTypes.h
 (library (mlir IR BuiltinTypes ffi)
   (export %mlir::RankedTensorType::cloneWithEncoding ...)
-  (import (rnrs) (mlir support foreign))
+  (import (rnrs) (crest support foreign))
   (define %mlir::RankedTensorType::cloneWithEncoding
     (crest-foreign-procedure "mlir::RankedTensorType::cloneWithEncoding" (uptr uptr) uptr)))
 ```
@@ -181,12 +185,12 @@ then the creation arguments in a list (empty when there are none):
 the arguments. `with-TypeConverter` has no creation arguments, so its keyword clauses (Rule 17) follow the
 variable directly: `(with-TypeConverter type-converter :conversions (...) body ...)`.
 
-The generic helper `with-raii` (`(mlir support RAII)`) has no C++ class. It takes the variable, an
+The generic helper `with-raii` (`(crest support RAII)`) has no C++ class. It takes the variable, an
 expression that makes the resource and a procedure that frees it:
 `(with-raii variable constructor destructor body ...)`. Write a `with-<C++ClassName>` macro on top
 of it when the cleanup is a function call (Rule 18).
 
-Several `with-` forms in a row are written with `with*` (`(mlir support with)`), which nests them like `let*`:
+Several `with-` forms in a row are written with `with*` (`(crest support with)`), which nests them like `let*`:
 `(with* ((with-DialectRegistry registry ()) (with-MLIRContext ctx (registry))) body ...)`. A clause is a
 `with-` form without its body, so a `with-` macro must take its body last.
 
@@ -215,9 +219,9 @@ methods the conversion rewriter overrides. A raw `OpBuilder*` is never a valid h
 | `with-TypeConverter` | `(mlir Transforms DialectConversion)` | `mlir/Transforms/DialectConversion.h` |
 | `with-ConversionTarget` | `(mlir Transforms DialectConversion)` | `mlir/Transforms/DialectConversion.h` |
 | `with-mlir::OwningOpRef` | `(mlir IR OwningOpRef)` | `mlir/IR/OwningOpRef.h` |
-| `with-CrestObject` | `(mlir support CrestObject)` | `lib/Bindings/Support/CrestObject.h` (CREST-specific) |
-| `with-raii` | `(mlir support RAII)` | none: generic, CREST-specific |
-| `with*` | `(mlir support with)` | none: generic, CREST-specific |
+| `with-CrestObject` | `(crest support CrestObject)` | `lib/Bindings/Support/CrestObject.h` (CREST-specific) |
+| `with-raii` | `(crest support RAII)` | none: generic, CREST-specific |
+| `with*` | `(crest support with)` | none: generic, CREST-specific |
 
 ### Rule 18 — Naming a macro that is not one constructor
 
@@ -233,7 +237,7 @@ wrap a *function* that returns an owning object, or have no class at all. Name t
    Write the template arguments in `<>`, as in Rule 4, only when the macro behaves differently for
    different arguments. `mlir::Operation::erase` works for every operation, so `with-mlir::OwningOpRef`
    has none.
-2. A helper with no C++ counterpart is generic. It lives under `(mlir support ...)` and is named
+2. A helper with no C++ counterpart is generic. It lives under `(crest support ...)` and is named
    for what it does (`with-raii`, `with-CrestObject`). Use it to build the macros of point 1.
 3. Do not invent a name that no C++ API has, such as `with-MLIRModule` (MLIR has `ModuleOp` and
    `OwningOpRef`, not `MLIRModule`). Someone who knows MLIR should be able to guess the macro.
@@ -309,7 +313,7 @@ would cross the C++ frames (Rule 20). MLIR's prototypes have no room for an erro
   (`llvm::report_fatal_error`): the Scheme position of the callback, then the error.
 - **any other result**: `mlir::emitError` with the same text, then the failure value of the type (0, `#f`,
   `interrupt` for a `WalkResult`). MLIR carries on from there as it does for its own failures. The diagnostic has
-  no location of its own: the Scheme position is in the text. The position is read when the macro expands (`(mlir support srcloc)`); a macro that wraps the procedure
+  no location of its own: the Scheme position is in the text. The position is read when the macro expands (`(crest support srcloc)`); a macro that wraps the procedure
   of its user in a template lambda passes `:source expression` (the user's form) or, when the procedure is a value
   that reached the macro later, `:location expression` (the position as data). A DSL such as `define-dialect` builds
   `(lambda ...)` forms: `syntax->first-file+line+col` finds the part that is the user's.
@@ -341,7 +345,7 @@ and the steps to move the pin.
 
 Only scalars cross the boundary (`uptr`, `int`, `unsigned-32`, strings); a range is the address of a stack
 `CArrayRef<uintptr_t>` (`lib/Bindings/Support/ArrayRef.h`), read back with `crest::CArrayRef->list`
-(`(mlir support array-ref)`), and a list that Scheme answers is pushed through a `foreign-procedure`
+(`(crest support array-ref)`), and a list that Scheme answers is pushed through a `foreign-procedure`
 into a sink that C++ passes. A callback that has a verdict (a verifier, a parser, a pass) answers its verdict, and its error is a
 diagnostic, as above. `scheme_call` stays for the control plane (a top-level name, or the procedure that Scheme
 gave as an argument of the foreign call that is running), and for one more case: a procedure that C++ needs only
@@ -384,7 +388,7 @@ So failure is an ordinary return value, and Scheme raises it after the C++ call 
 - **A binding answers a Scheme object**: the value, or on failure `scheme_error("mlir::Block::getArgument",
   "block pointer is null")` (`lib/Bindings/Support/Result.h`), the pair `(who . why)`, `who` a symbol and `why` a
   string (the text is a Twine: `"index " + llvm::Twine(i)`). Scheme calls it through `crest-foreign-procedure`
-  (`(mlir support foreign)`), which raises the pair with `(error who why)` in Scheme. No value that a binding
+  (`(crest support foreign)`), which raises the pair with `(error who why)` in Scheme. No value that a binding
   answers is a pair of a symbol and a string.
 - **The lookups of a handle that Scheme gives** answer a pointer, or `nullptr`: `CrestBox<T>::inner(address)`,
   `as_ref<T>(address)` and `as_context(address)`. The binding checks it and answers `scheme_error`.

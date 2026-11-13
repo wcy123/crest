@@ -4,7 +4,7 @@
 ;; into the body of with-raii and out again, and a destructor that is not protected runs twice.
 (import (rnrs)
         (only (chezscheme) printf)
-        (mlir support RAII))
+        (crest support RAII))
 
 (define frees 0)
 
