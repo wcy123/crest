@@ -1,4 +1,4 @@
-// Declarative conversion registration, apply-conversion (plans/08, G8). Every conversion pass repeats the same
+// Declarative conversion registration, apply-conversion. Every conversion pass repeats the same
 // imperative shape: a TypeConverter, a ConversionTarget with legal/illegal dialects and ops,
 // a RewritePatternSet, one add-conversion-pattern per pattern, and applyPartialConversion
 // with its (eqv? 1 ...) idiom. The planned form, apply-conversion, states the same thing as

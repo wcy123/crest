@@ -1,4 +1,4 @@
-// Op traits and effects of Scheme ops (plans/18). `pure` makes the op free of memory effects and
+// Op traits and effects of Scheme ops. `pure` makes the op free of memory effects and
 // speculatable, which is what the canonicalizer (dead code) and CSE ask through the effect
 // interfaces; an op without the trait is assumed to have effects and is kept.
 //

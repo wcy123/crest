@@ -1,4 +1,4 @@
-// :fold that returns results (plans/19). The folder returns #f (no fold) or one entry per result,
+// :fold that returns results. The folder returns #f (no fold) or one entry per result,
 // (fold-value v) for an operand or (fold-attribute a) for a constant; the dialect's
 // :materialize-constant turns an attribute into an op. The canonicalizer applies them:
 //

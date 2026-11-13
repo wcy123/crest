@@ -66,7 +66,7 @@ TEST_F(InterpreterTest, CallableCallsTheSchemeProcedure) {
 }
 
 // REGRESSION: a failing binding must leave nothing behind
-// (plans/04-errors-are-values.md). It used to raise the error from C++
+// (CLAUDE.md Rule 20). It used to raise the error from C++
 // (a Scheme error raised in C++): the error crossed the C++ frame, which
 // skipped its destructors (about 550 bytes of C++ memory per error) and left
 // about 200 bytes in Chez itself (S_call_help). Now a binding answers an error

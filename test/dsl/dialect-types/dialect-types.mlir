@@ -1,4 +1,4 @@
-// A dialect type defined in Scheme (plans/21): define-type with :parse, :print and :verify, backed by
+// A dialect type defined in Scheme: define-type with :parse, :print and :verify, backed by
 // DynamicTypeDefinition. It prints as `!dt.pair<i32, f32>`, parses back, is verified, and an op can
 // ask for it in :results.
 //

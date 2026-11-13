@@ -1,4 +1,4 @@
-// A binding that fails must leave no C++ memory behind (plans/04-errors-are-values.md). It answers an error
+// A binding that fails must leave no C++ memory behind (CLAUDE.md Rule 20). It answers an error
 // object and Scheme raises it after the C++ call has returned, so no C++ destructor is skipped (a name of
 // 15 characters or less needs no heap, a longer one does: both must be free) and nothing is kept for an
 // escaped call. The same holds for a block that Region::push_back<Block> could make before it fails: it

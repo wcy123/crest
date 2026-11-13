@@ -1,6 +1,6 @@
 // Declarative registration of greedy rewrite patterns. Every rewrite pass repeats the same shape: a
 // RewritePatternSet, one add-rewrite-pattern per pattern, and applyPatternsGreedily. The planned
-// form, apply-patterns (plans/14-apply-patterns.md), states the same thing as keyword arguments and returns #t on
+// form, apply-patterns, states the same thing as keyword arguments and returns #t on
 // success.
 //
 //   test.a    pattern with an explicit benefit                      --> test.a_done

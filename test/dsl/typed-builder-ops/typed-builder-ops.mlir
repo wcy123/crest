@@ -1,8 +1,7 @@
 // begin-mlir-code creates every op generically, through OperationState, so an op that
 // needs a dialect-defined attribute needs that attribute supplied. A raw mlir::Attribute
 // can be written `(name : value)`. Attributes are built with typed bindings that mirror the
-// MLIR C++ API; for an affine map, the affine-map-attr macro. See plans/06-g6 and
-// docs/affine-map-dsl.md.
+// MLIR C++ API; for an affine map, the affine-map-attr macro. See docs/affine-map-dsl.md.
 //
 // Facts from running each op through emit-op.sls with the dialects registered:
 //   memref.load, memref.alloc, memref.dealloc   work

@@ -1,4 +1,4 @@
-// What the guard of a callable needs to report an error (plan 05): mlir::FileLineColLoc::get makes a location from a
+// What the guard of a callable needs to report an error (Rule 17): mlir::FileLineColLoc::get makes a location from a
 // Scheme source position, and mlir::emitError reports at it; llvm::report_fatal_error ends the process with a text
 // (exit 1, no abort).
 //
