@@ -30,41 +30,41 @@
   ;; @return     void
   ;; @note       Log level controlled by ChezSchemeInterpreter::setLogLevel
   ;; @note       Defined in lib/Bindings/Support/Logging.cpp
-  (define crest::logging::trace   %logging-trace)
+  (define crest::logging::trace   %crest::logging::trace)
 
   ;; @brief Emit a DEBUG-level log message via CREST's logging system.
   ;; @param msg  Message string
   ;; @return     void
   ;; @note       Log level controlled by ChezSchemeInterpreter::setLogLevel
   ;; @note       Defined in lib/Bindings/Support/Logging.cpp
-  (define crest::logging::debug   %logging-debug)
+  (define crest::logging::debug   %crest::logging::debug)
 
   ;; @brief Emit an INFO-level log message (normal operational events).
   ;; @param msg  Message string
   ;; @return     void
   ;; @note       Log level controlled by ChezSchemeInterpreter::setLogLevel
   ;; @note       Defined in lib/Bindings/Support/Logging.cpp
-  (define crest::logging::info    %logging-info)
+  (define crest::logging::info    %crest::logging::info)
 
   ;; @brief Emit a WARNING-level log message (unexpected but recoverable condition).
   ;; @param msg  Message string
   ;; @return     void
   ;; @note       Log level controlled by ChezSchemeInterpreter::setLogLevel
   ;; @note       Defined in lib/Bindings/Support/Logging.cpp
-  (define crest::logging::warning %logging-warning)
+  (define crest::logging::warning %crest::logging::warning)
 
   ;; @brief Emit an ERROR-level log message (non-fatal error).
   ;; @param msg  Message string
   ;; @return     void
   ;; @note       Log level controlled by ChezSchemeInterpreter::setLogLevel
   ;; @note       Defined in lib/Bindings/Support/Logging.cpp
-  (define crest::logging::error   %logging-error)
+  (define crest::logging::error   %crest::logging::error)
 
   ;; @brief Emit a FATAL-level log message (unrecoverable; may abort the process).
   ;; @param msg  Message string
   ;; @return     void
   ;; @note       Log level controlled by ChezSchemeInterpreter::setLogLevel
   ;; @note       Defined in lib/Bindings/Support/Logging.cpp
-  (define crest::logging::fatal   %logging-fatal)
+  (define crest::logging::fatal   %crest::logging::fatal)
 
   ) ;; end library (crest support logging)

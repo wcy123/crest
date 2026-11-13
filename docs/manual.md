@@ -1210,7 +1210,7 @@ exits with status 1, and `--crest-pass="dialects-in-scheme=..."` reports it as a
 ### Inspecting the expansion
 
 ```bash
-DEBUG_DEFINE_DIALECT=1 \
+CREST_DEBUG_DEFINE_DIALECT=1 \
 CREST_PATH=samples \
   crest-opt /dev/null --crest-pass="passes=toy/ch4/toy" 2>/dev/null
 ```
