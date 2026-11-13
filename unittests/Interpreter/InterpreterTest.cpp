@@ -41,6 +41,33 @@ TEST_F(InterpreterTest, EvalSimpleExpression) {
   EXPECT_TRUE(g_interp->eval("(+ 1 2)"));
 }
 
+// An integer that does not fit a fixnum (about 2^60) crosses to Scheme
+// unchanged: Sfixnum would drop its top bits.
+TEST_F(InterpreterTest, UnsignedLongBeyondFixnumKeepsItsValue) {
+  const unsigned long big = 1UL << 62;
+  const ptr fromLong = Conversion<unsigned long, ptr>{}(big);
+  EXPECT_EQ(Sunsigned64_value(fromLong), big);
+  const unsigned long long bigger = ~0ULL;
+  const ptr fromLongLong = Conversion<unsigned long long, ptr>{}(bigger);
+  EXPECT_EQ(Sunsigned64_value(fromLongLong), bigger);
+}
+
+TEST_F(InterpreterTest, SignedLongBeyondFixnumKeepsItsValue) {
+  const long big = -(1L << 61);
+  const ptr fromLong = Conversion<long, ptr>{}(big);
+  EXPECT_EQ(Sinteger64_value(fromLong), big);
+  const long long bigger = (1LL << 62) + 5;
+  const ptr fromLongLong = Conversion<long long, ptr>{}(bigger);
+  EXPECT_EQ(Sinteger64_value(fromLongLong), bigger);
+}
+
+// A string crosses in both directions as UTF-8: scheme_string writes it,
+// convert_to_cpp reads it.
+TEST_F(InterpreterTest, StringKeepsNonAsciiText) {
+  const std::string text = "\xCF\x80 \xE2\x86\x92 \xCE\xBB";
+  EXPECT_EQ(convert_to_cpp<std::string>(scheme_string(text)), text);
+}
+
 // A Scheme value from its text.
 static ptr evalScheme(const char* code) {
   ptr port = scheme_call("open-string-input-port", Sstring(code));
