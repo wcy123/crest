@@ -276,14 +276,13 @@ function has the prototype that C++ or MLIR declares, result type included**, an
 
 - `(crest-make-static-c-callable (type ...) result-type procedure)` makes it, locks it for good and answers its address.
   Use it only at the library level, for a callback that uses no state of a run (an op's clause, a dialect's
-  callback, the body of a `define-pass`, a pattern made by `define-conversion-pattern`): it is made once, when the
-  library loads. A callback that uses the state of a run (a type converter, a target) is made by `with-c-callable/lambda`
-  or by a clause, so that a scope releases it; never make one per run with this.
+  callback, the body of a `define-pass`): it is made once, when the library loads. `(define-c-callable name (type ...)
+  result-type procedure)` is the same as a definition, like `define`: it links a C function into the library for
+  good, as a static library does. A callback that uses the state of a run (a type converter, a target) is made by
+  `with-c-callable/lambda` or by a clause, so that a scope releases it; never make one per run with this.
 - `(with-c-callable/lambda (name (type ...) result-type procedure) body ...)` makes it from a procedure for `body` and
   unlocks it after, also on an error. `(with-c-callable/code (name address) body ...)` uses the address of a locked
   callable that the caller made (reused, never unlocked by the macro; an error if it is not locked).
-  `with-c-callable` chooses between the two when it runs; it is for the clause macros below, whose entries are
-  procedures or addresses.
 - A function that only calls the callback while it runs (`mlir::Operation::walk`,
   `mlir::affine::buildAffineLoopNest`, `mlir::RewriterBase::modifyOpInPlace`) is a Scheme macro that takes a
   procedure and wraps it in `with-c-callable/lambda`.
@@ -294,7 +293,11 @@ function has the prototype that C++ or MLIR declares, result type included**, an
   `with-ConversionTarget` (`:dynamically-legal`, `:unknown-legal`), `with-RewritePatternSet` (`:rewrite-patterns`,
   `:conversion-patterns`, `:conversion-patterns/ctx`). The adapters (`rewrite-pattern->c`,
   `conversion-pattern->c`, `type-conversion->c`, `materialization->c`, `legality->c`) turn a friendly procedure
-  into one with C types; they pass an address through.
+  into one with C types. A pattern made by `define-rewrite-pattern` or `define-conversion-pattern` is a plain
+  procedure, so it goes in a clause. A function that registers patterns and returns before they are applied (the
+  `populate` functions, `define-pattern-set`) needs the address of a C function that outlives the call: the pattern
+  goes through `define-c-callable` once, at the library level, and `add-rewrite-pattern` or
+  `add-conversion-pattern` gets that address.
 
 **No error leaves a callable.** C++ calls a callable through a C function pointer, so an error that escaped it
 would cross the C++ frames (Rule 20). MLIR's prototypes have no room for an error, so the guard of every callable

@@ -74,7 +74,6 @@
   ;;     (target-add-dynamically-legal-op target ctx "func.func" legal)
   ;;     ...)
   ;;
-  ;; An adapter returns what is not a procedure as it is: a callable that was made already.
   ;;
   ;; The C prototypes: a type conversion (type) → type or 0, a materialization (builder result-type
   ;; inputs count loc) → value or 0 with the inputs as a pointer and a count, a legality check (op) → 1
@@ -85,24 +84,18 @@
 
   ;; A type conversion: (type) → the converted type, or #f when this conversion does not apply.
   (define (type-conversion->c proc)
-    (if (procedure? proc)
-        (lambda (type) (or (proc type) 0))
-        proc))
+    (lambda (type) (or (proc type) 0)))
 
   ;; A materialization: (builder result-type inputs loc) → the Value, or #f; inputs is a list.
   (define (materialization->c proc)
-    (if (procedure? proc)
-        (lambda (builder result-type inputs input-count loc)
-          (or (proc builder result-type (crest-callback-pointer-list inputs input-count) loc) 0))
-        proc))
+    (lambda (builder result-type inputs input-count loc)
+      (or (proc builder result-type (crest-callback-pointer-list inputs input-count) loc) 0)))
 
   ;; A legality check (op) → boolean: legal when it answers neither #f nor 0.
   (define (legality->c proc)
-    (if (procedure? proc)
-        (lambda (op)
-          (let ([legal (proc op)])
-            (if (and legal (not (eqv? legal 0))) 1 0)))
-        proc))
+    (lambda (op)
+      (let ([legal (proc op)])
+        (if (and legal (not (eqv? legal 0))) 1 0))))
 
   ;; The callable that the functions below take is an address, not a procedure: C++ keeps it. The
   ;; error for a procedure says how to make one.
@@ -241,11 +234,11 @@
                            [(target-callable ...) (generate-temporaries #'(target ...))])
                #'(with-CrestObject var (type-converter-create)
                    (with*
-                       ((with-c-callable (conversion-callable (uptr) uptr (type-conversion->c conversion))) ...
-                        (with-c-callable (source-callable (uptr uptr uptr uptr uptr) uptr
-                                                          (materialization->c source))) ...
-                                                          (with-c-callable (target-callable (uptr uptr uptr uptr uptr) uptr
-                                                                                            (materialization->c target))) ...)
+                       ((with-c-callable/lambda (conversion-callable (uptr) uptr (type-conversion->c conversion))) ...
+                        (with-c-callable/lambda (source-callable (uptr uptr uptr uptr uptr) uptr
+                                                                 (materialization->c source))) ...
+                                                                 (with-c-callable/lambda (target-callable (uptr uptr uptr uptr uptr) uptr
+                                                                                                          (materialization->c target))) ...)
                      (type-converter-add-conversion var conversion-callable) ...
                      (mlir::TypeConverter::addSourceMaterialization var source-callable) ...
                      (mlir::TypeConverter::addTargetMaterialization var target-callable) ...
@@ -289,8 +282,8 @@
                #'(let ([context context-expression])
                    (with-CrestObject var (target-create context)
                      (with*
-                         ((with-c-callable (legal-callable (uptr) int (legality->c legal-proc))) ...
-                          (with-c-callable (unknown-callable (uptr) int (legality->c unknown-proc))) ...)
+                         ((with-c-callable/lambda (legal-callable (uptr) int (legality->c legal-proc))) ...
+                          (with-c-callable/lambda (unknown-callable (uptr) int (legality->c unknown-proc))) ...)
                        (target-add-dynamically-legal-op var context legal-name legal-callable) ...
                        (target-mark-unknown-ops-dynamically-legal var unknown-callable) ...
                        body ...))))))])))

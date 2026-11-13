@@ -17,6 +17,8 @@
 (library (passes onnx-to-hipsr gather)
   (export populate-gather-patterns)
   (import (except (rnrs (6)) =)
+          (only (crest callback) define-c-callable)
+          (only (mlir IR PatternMatch) conversion-pattern->c)
 
           (only (mlir IR Value)
                 mlir::Value::getDefiningOp
@@ -100,8 +102,10 @@
       (axis : axis :i64)
       -> !out-device) ;
 
+  (define-c-callable onnx-gather->hipsr-callable (uptr uptr uptr uptr) int (conversion-pattern->c onnx-gather->hipsr))
+
   (define (populate-gather-patterns type-converter patterns ctx)
     (add-conversion-pattern patterns "onnx.Gather"
-                            onnx-gather->hipsr type-converter 1))
+                            onnx-gather->hipsr-callable type-converter 1))
 
   ) ;; end library (onnx-to-hipsr gather)

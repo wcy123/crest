@@ -154,17 +154,11 @@
                                              (let* (then-let-binding ...)
                                                rewrite)
                                              #f))))])
-                    ;; The pattern is defined as a C callable (the address of a C function), made
-                    ;; once when the library is loaded and kept for the whole program: what
-                    ;; add-conversion-pattern, add-rewrite-pattern and the clauses of
-                    ;; with-RewritePatternSet take.
-                    (if operands-ref
-                        #'(define fname
-                            (crest-make-static-c-callable (uptr uptr uptr uptr) int
-                                                          (conversion-pattern->c procedure)))
-                        #'(define fname
-                            (crest-make-static-c-callable (uptr uptr) int
-                                                          (rewrite-pattern->c procedure)))))))))))))
+                    ;; The pattern is defined as a procedure: what the clauses of
+                    ;; with-RewritePatternSet take, which make a callable for the scope of the run.
+                    ;; add-rewrite-pattern and add-conversion-pattern take the address of a C function:
+                    ;; made once at the library level with crest-make-static-c-callable.
+                    #'(define fname procedure))))))))))
 
   ;;=======================================================================
   ;; Rewrite code — thin wrapper delegating to begin-mlir-code

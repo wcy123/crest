@@ -3,6 +3,8 @@
 (library (passes declarative)
   (export run-pass)
   (import (except (rnrs) =)
+          (only (crest callback) define-c-callable)
+          (only (mlir IR PatternMatch) conversion-pattern->c)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
           (only (mlir Transforms DialectConversion) add-conversion-pattern)
@@ -26,6 +28,8 @@
     :rewrite op :with
       test.c_done ())
 
+  (define-c-callable %%c-callable (uptr uptr uptr uptr) int (conversion-pattern->c %%c))
+
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
@@ -39,6 +43,6 @@
                           :patterns          (("test.a" %%a)
                                               ("test.b" %%b :no-type-converter))
                           :populate          (lambda (tc patterns)
-                                               (add-conversion-pattern patterns "test.c" %%c tc 1))))))
+                                               (add-conversion-pattern patterns "test.c" %%c-callable tc 1))))))
 
   ) ;; end library

@@ -18,6 +18,8 @@
   (export populate-shape-patterns
           onnx-shape->hipsr)
   (import (except (rnrs (6)) =)
+          (only (crest callback) define-c-callable)
+          (only (mlir IR PatternMatch) conversion-pattern->c)
 
           (only (mlir IR Value)
                 mlir::Value::getDefiningOp
@@ -120,8 +122,10 @@
                   hipsr.compute_yield (final))))
       -> !out-host) ;
 
+  (define-c-callable onnx-shape->hipsr-callable (uptr uptr uptr uptr) int (conversion-pattern->c onnx-shape->hipsr))
+
   (define (populate-shape-patterns type-converter patterns ctx)
     (add-conversion-pattern patterns "onnx.Shape"
-                            onnx-shape->hipsr type-converter 1))
+                            onnx-shape->hipsr-callable type-converter 1))
 
   ) ;; end library (onnx-to-hipsr shape)

@@ -19,6 +19,8 @@
 (library (passes onnx-to-hipsr transpose)
   (export populate-transpose-patterns)
   (import (except (rnrs (6)) =)
+          (only (crest callback) define-c-callable)
+          (only (mlir IR PatternMatch) conversion-pattern->c)
 
           (only (mlir IR Value)
                 mlir::Value::getDefiningOp
@@ -81,8 +83,10 @@
       (perm : perm :i64-array)
       -> !out-device) ;
 
+  (define-c-callable onnx-transpose->hipsr-callable (uptr uptr uptr uptr) int (conversion-pattern->c onnx-transpose->hipsr))
+
   (define (populate-transpose-patterns type-converter patterns ctx)
     (add-conversion-pattern patterns "onnx.Transpose"
-                            onnx-transpose->hipsr type-converter 1))
+                            onnx-transpose->hipsr-callable type-converter 1))
 
   ) ;; end library (onnx-to-hipsr transpose)

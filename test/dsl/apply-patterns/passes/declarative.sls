@@ -3,6 +3,8 @@
 (library (passes declarative)
   (export run-pass)
   (import (except (rnrs) =)
+          (only (crest callback) define-c-callable)
+          (only (mlir IR PatternMatch) rewrite-pattern->c)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)
           (only (mlir Transforms DialectConversion) add-rewrite-pattern)
@@ -38,6 +40,8 @@
     :rewrite op :with
       test.x_high ())
 
+  (define-c-callable %%c-callable (uptr uptr) int (rewrite-pattern->c %%c))
+
   (define (run-pass module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
@@ -47,6 +51,6 @@
                                    ("test.x" %%x-low 1)
                                    ("test.x" %%x-high 5))
                         :populate (lambda (patterns)
-                                    (add-rewrite-pattern patterns "test.c" %%c 1))))))
+                                    (add-rewrite-pattern patterns "test.c" %%c-callable 1))))))
 
   ) ;; end library

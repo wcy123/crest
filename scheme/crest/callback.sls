@@ -26,11 +26,12 @@
 ;;
 ;;   crest-make-static-c-callable   locks it for good: only for a callback made once, at the library
 ;;                                  level, that uses no state of a run.
+;;   define-c-callable              the same, as a definition: (define-c-callable name (type ...) result-type
+;;                                  procedure).
 ;;   with-c-callable/lambda         makes it from a procedure, locks it for the body and unlocks it after,
 ;;                                  also on an error.
 ;;   with-c-callable/code           uses the address of a locked callable that the caller made (reused,
 ;;                                  never unlocked here).
-;;   with-c-callable                one or the other, decided when it runs: for the clause macros.
 ;;
 ;; Several of them nest with with* ((mlir support with)). The conversion clauses (with-TypeConverter,
 ;; with-ConversionTarget, with-RewritePatternSet) do that around their body.
@@ -41,9 +42,9 @@
 ;;===----------------------------------------------------------------------===;;
 (library (crest callback)
   (export crest-make-static-c-callable
+          define-c-callable
           with-c-callable/lambda
           with-c-callable/code
-          with-c-callable
           crest-call-guarded
           crest-callback-pointer-list)
   (import (chezscheme)
@@ -79,6 +80,22 @@
            #'(let ([code (%%make-code (type ...) result-type procedure location)])
                (lock-object code)
                (foreign-callable-entry-point code)))])))
+
+  ;; @brief define-c-callable — define NAME as the address of a C function made once, for the whole program.
+  ;; @param name           identifier defined as the address
+  ;; @param argument-type  as for crest-make-static-c-callable
+  ;; @param result-type    as for crest-make-static-c-callable
+  ;; @param procedure      the procedure that the C function calls
+  ;; @note                 A macro, like define: it links a C function into the library for good, as a
+  ;;                       static library does. Use it at the library level, for a callback that uses no
+  ;;                       state of a run, that C++ keeps after the call that registers it returns (the
+  ;;                       address that add-rewrite-pattern and add-conversion-pattern take).
+  ;; @example
+  ;;   (define-c-callable cast-callable (uptr uptr uptr uptr) int (conversion-pattern->c onnx-cast->hipsr))
+  (define-syntax define-c-callable
+    (syntax-rules ()
+      [(_ name (type ...) result-type procedure)
+       (define name (crest-make-static-c-callable (type ...) result-type procedure))]))
 
   ;; @brief with-c-callable/lambda — run a body with the address of a C function made from a procedure.
   ;; @param name           identifier bound to the address inside BODY
@@ -122,21 +139,6 @@
                       (locked-object? (foreign-callable-code-object name)))
            (assertion-violation 'with-c-callable/code "the address must be that of a locked callable" name))
          body ...)]))
-
-  ;; @brief with-c-callable — with-c-callable/lambda or with-c-callable/code, decided when it runs.
-  ;; @note   For the macros that take a procedure or an address from their user (the clauses of
-  ;;         with-TypeConverter, with-ConversionTarget and with-RewritePatternSet). The quoted copy of
-  ;;         PROCEDURE only keeps its Scheme position for the report of an error.
-  (define-syntax with-c-callable
-    (syntax-rules ()
-      [(_ (name (type ...) result-type procedure) body ...)
-       (let ([callback procedure]
-             [run (lambda (name) body ...)])
-         (if (procedure? callback)
-             (with-c-callable/lambda (address (type ...) result-type (begin 'procedure callback))
-               (run address))
-             (with-c-callable/code (address callback)
-               (run address))))]))
 
   ;; @brief crest-call-guarded — call a Scheme procedure for C++ under the guard of a callable.
   ;; @param procedure  the procedure to call

@@ -33,7 +33,8 @@
           (for (rnrs) expand)
           (for (only (chezscheme) syntax->list) expand)
           (for (crest patterns expand) expand)
-          (only (mlir IR PatternMatch) with-RewritePatternSet)
+          (only (crest callback) define-c-callable)
+          (only (mlir IR PatternMatch) with-RewritePatternSet rewrite-pattern->c)
           (only (mlir Transforms GreedyPatternRewriteDriver) mlir::applyPatternsGreedily)
           (only (mlir Transforms DialectConversion) add-rewrite-pattern))
 
@@ -97,11 +98,16 @@
         [(_ name entry ...)
          (identifier? #'name)
          (with-syntax ([(set) (generate-temporaries '(patterns))])
-           (with-syntax ([(pattern-form ...)
-                          (map (lambda (e) (pattern-entry-form 'define-pattern-set e #'set))
+           ;; Each pattern is a callable made once, at the library level: C++ keeps its address in the
+           ;; set that (name set) fills, after (name set) returns.
+           (with-syntax ([((op-name pattern benefit) ...)
+                          (map (lambda (e) (pattern-entry 'define-pattern-set e))
                                (syntax->list #'(entry ...)))])
-             #'(define (name set)
-                 pattern-form ...
-                 (if #f #f))))])))
+             (with-syntax ([(callable ...) (generate-temporaries #'(pattern ...))])
+               #'(begin
+                   (define-c-callable callable (uptr uptr) int (rewrite-pattern->c pattern)) ...
+                   (define (name set)
+                     (add-rewrite-pattern set op-name callable benefit) ...
+                     (if #f #f))))))])))
 
   ) ;; end library (crest patterns)

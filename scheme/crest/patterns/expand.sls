@@ -11,10 +11,9 @@
 ;;===----------------------------------------------------------------------===;;
 
 (library (crest patterns expand)
-  (export list-of pattern-entry pattern-entry-form)
+  (export list-of pattern-entry)
   (import (rnrs)
-          (only (chezscheme) syntax->list)
-          (only (mlir Transforms DialectConversion) add-rewrite-pattern))
+          (only (chezscheme) syntax->list))
 
   ;; The elements of a proper list form, #f for anything else.
   (define (list-of x)
@@ -29,11 +28,5 @@
       (unless (and (>= (length parts) 2) (<= (length parts) 3))
         (syntax-violation who "a pattern is (name pattern [benefit])" entry))
       #`(#,(car parts) #,(cadr parts) #,(if (null? (cddr parts)) #'1 (caddr parts)))))
-
-  ;; (name pattern [benefit]) → the form that registers it in the set named by patterns, where the
-  ;; pattern is a callable (what define-rewrite-pattern defines).
-  (define (pattern-entry-form who entry patterns)
-    (syntax-case (pattern-entry who entry) ()
-      [(name pattern benefit) #`(add-rewrite-pattern #,patterns name pattern benefit)]))
 
   ) ;; end library (crest patterns expand)

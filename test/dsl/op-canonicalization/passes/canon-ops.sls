@@ -3,6 +3,8 @@
 (library (passes canon-ops)
   (export oc)
   (import (except (rnrs) =)
+          (only (crest callback) define-c-callable)
+          (only (mlir IR PatternMatch) rewrite-pattern->c)
           (only (chezscheme) command-line-arguments)
           (mlir IR Value)
           (only (mlir Transforms DialectConversion) add-rewrite-pattern)
@@ -16,10 +18,12 @@
     :rewrite %out :with
       %x)
 
+  (define-c-callable %%neg-neg-callable (uptr uptr) int (rewrite-pattern->c %%neg-neg))
+
   (define-dialect oc
     (define-op neg
       :operands ((x mlir::Value?))
       :results  ((out mlir::Value?))
       :traits   (pure)
       (:get-canonicalization-patterns (patterns)
-        (add-rewrite-pattern patterns "oc.neg" %%neg-neg 1)))))
+        (add-rewrite-pattern patterns "oc.neg" %%neg-neg-callable 1)))))
