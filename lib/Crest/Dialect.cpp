@@ -104,6 +104,7 @@ void CrestDialect::initialize(const LockedSchemeObject& interfaces) {
     // to return the error to MLIR: it is a diagnostic. A mistake in the
     // define-dialect form.
     mlir::emitError(here) << "crest::CrestDialect: " << attachError;
+    interfaceError_ = attachError;
     return;
   }
   if (cbs_.initialize) {
@@ -330,7 +331,14 @@ void registerIRExtensibleDialectBindings() {
                     ": " + *error);
           }
         }
-        factory(ctx);
+        mlir::Dialect* made = factory(ctx);
+        const std::string& interfaceError =
+            static_cast<CrestDialect*>(made)->interfaceError();
+        if (!interfaceError.empty()) {
+          return scheme_error("crest::load-scheme-dialect!",
+                              llvm::Twine("dialect '") + dialect +
+                                  "': " + interfaceError);
+        }
         return Svoid;
       });
 }
