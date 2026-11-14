@@ -39,11 +39,11 @@ docs = [root / "README.md"] + sorted((root / "docs").glob("*.md")) + sorted((roo
 
 # 1. The options of --crest-pass.
 declared = set(re.findall(r'(?:List)?Option<[^>]*>\s+\w+\{\s*\*this,\s*"([^"]+)"',
-                          (root / "lib/Passes/CrestPass.cpp").read_text()))
+                          (root / "lib/Passes/CrestPass.cpp").read_text(encoding="utf-8")))
 if not declared:
     problems.append("lib/Passes/CrestPass.cpp: found no options (the check needs updating)")
 for doc in docs:
-    for match in re.finditer(r'--crest-pass="?([^"\s\\]+(?:[ ][^"\\\n]*)?)"?', doc.read_text()):
+    for match in re.finditer(r'--crest-pass="?([^"\s\\]+(?:[ ][^"\\\n]*)?)"?', doc.read_text(encoding="utf-8")):
         for token in match.group(1).split():
             key = token.split("=")[0]
             if "=" in token and key not in declared:
@@ -51,7 +51,7 @@ for doc in docs:
                                 f"(options: {', '.join(sorted(declared))})")
 
 # 2. The commands of the README.
-text = (root / "README.md").read_text()
+text = (root / "README.md").read_text(encoding="utf-8")
 for language, body, _ in blocks(text):
     if language != "bash" or "crest-opt" not in body:
         continue
@@ -61,7 +61,7 @@ for language, body, _ in blocks(text):
         continue
     command = command.replace("build/tools/crest-opt/crest-opt", crest_opt)
     with tempfile.TemporaryDirectory() as binary_dir:
-        result = subprocess.run(command, shell=True, cwd=root, capture_output=True, text=True,
+        result = subprocess.run(command, shell=True, cwd=root, capture_output=True, text=True, encoding="utf-8",
                                 env=dict(os.environ, CREST_SCHEME_BINARY_DIR=binary_dir))
     if result.returncode != 0 or not result.stdout.strip():
         problems.append(f"README.md: this command fails: {' '.join(command.split())}\n    {(result.stdout + result.stderr).strip()[:300]}")
