@@ -44,7 +44,7 @@
 ;;               more op-forms in begin-mlir-code DSL syntax. The last
 ;;               result replaces `%v`.
 ;;
-;; Example:
+;; Example (the rewrite body has no parentheses around its op-forms: samples/passes/hip-fusion/qadd.sls):
 ;;   (define-rewrite-pattern (qadd-fusion op rewriter)
 ;;     :if-match
 ;;       %q = hip.quantize_linear (%ctx %sum %scale)
@@ -52,9 +52,9 @@
 ;;       %sum = hip.add (%ctx %dq_a %dq_b %init)
 ;;     :then-let ([!out-type (mlir::Value::getType %q)])
 ;;     :rewrite %q :with
-;;       (%result = hip.qadd (%ctx %dq_a %dq_b %init)
-;;         ("output_scale" = (hip-extract-splat-scale %scale) :f32)
-;;         -> !out-type))
+;;       result = hip.qadd (%ctx %dq_a %dq_b %init)
+;;         (output_scale : (hip-extract-splat-scale %scale))
+;;         -> !out-type)
 ;;
 ;;===----------------------------------------------------------------------===;;
 ;;
@@ -63,14 +63,15 @@
 ;; Like define-rewrite-pattern but for dialect conversion
 ;; (mlir::ConversionPattern / mlir::TypeConverter).
 ;;
-;;   (define-conversion-pattern (fn-name matched-op rewriter)
+;;   (define-conversion-pattern (fn-name matched-op operands-ref rewriter type-converter)
 ;;     :if-match   ...
 ;;     :then-let   ...
 ;;     :rewrite %v :with body ...)
 ;;
-;; The matched operands are already type-converted. The generated callback
-;; signature is `(fn-name op operands rewriter type-converter)`. Suitable
-;; for registration with `add-conversion-pattern`.
+;; operands-ref holds the type-converted operands of the root op (read it with
+;; crest::CArrayRef::size and crest::CArrayRef::at, or let :if-match bind them).
+;; The generated procedure takes the four arguments after its name, so it goes through
+;; `define-c-callable` for registration with `add-conversion-pattern`.
 ;;
 ;;===----------------------------------------------------------------------===;;
 ;;
@@ -85,28 +86,28 @@
 ;;   (with-current-OpBuilder b (begin-mlir-code op-form ...))
 ;; where b is a builder shell (from with-OpBuilder, or a pattern's rw).
 ;;
-;; op-form syntax:
+;; op-form syntax (op-forms are not wrapped in parentheses; docs/manual.md, "Op-form syntax"):
 ;;
 ;;   Single-result:
-;;     (%var = dialect.op (operands...) modifiers... -> result-type)
+;;     var = dialect.op (operands...) modifiers... -> result-type
 ;;
 ;;   Multi-result:
-;;     ((%a %b) = dialect.op (operands...) modifiers... -> (type-a type-b))
+;;     (a b) = dialect.op (operands...) modifiers... -> (type-a type-b)
 ;;
 ;;   Statement (no result):
-;;     (dialect.op (operands...) modifiers...)
+;;     dialect.op (operands...) modifiers...
 ;;
 ;;   Scheme escape (arbitrary Scheme expression):
-;;     (%var = scheme-expr)
+;;     var = (scheme-expr)
 ;;
 ;; modifiers (between operands and ->):
-;;   ("name" = val :f32)       — FloatAttr (f32)
-;;   ("name" = val :i64)       — IntegerAttr (i64)
-;;   ("name" = val :index)     — IntegerAttr (IndexType)
-;;   ("name" = val :i32-array) — DenseI32ArrayAttr
-;;   ("name" = val :i64-array) — DenseI64ArrayAttr
-;;   ("name" = _   :unit)      — UnitAttr (presence-only flag; val is ignored)
-;;   ("name" = val)            — val is a pre-built Attribute uptr
+;;   (name : val :f32)       — FloatAttr (f32)
+;;   (name : val :i64)       — IntegerAttr (i64)
+;;   (name : val :index)     — IntegerAttr (IndexType)
+;;   (name : val :i32-array) — DenseI32ArrayAttr
+;;   (name : val :i64-array) — DenseI64ArrayAttr
+;;   (name : _   :unit)      — UnitAttr (presence-only flag; val is ignored)
+;;   (name : val)            — val is a pre-built Attribute uptr
 ;;   (^bb0 ((arg : !type) ...) body ...)  — inline region block
 ;;
 ;; Operand conventions:
@@ -120,11 +121,11 @@
 ;;
 ;; Example:
 ;;   (begin-mlir-code
-;;     (%init   = tensor.empty () -> !out-type)
-;;     (%result = hip.qadd (%ctx %a %b %init)
-;;       ("output_scale" = scale :f32)
-;;       ("output_zp"    = zp    :i64)
-;;       -> !out-type))
+;;     init   = tensor.empty () -> !out-type ;
+;;     result = hip.qadd (%ctx %a %b init)
+;;       (output_scale : scale :f32)
+;;       (output_zp    : zp    :i64)
+;;       -> !out-type)
 ;;
 ;; Inside :rewrite :with the codegen installs the pattern's builder
 ;; automatically.
