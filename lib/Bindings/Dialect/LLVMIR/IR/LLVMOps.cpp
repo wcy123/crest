@@ -196,21 +196,6 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
         auto* sym = module.lookupSymbol(name);
         return Sunsigned64(reinterpret_cast<uint64_t>(sym));
       });
-
-  // mlir::FlatSymbolRefAttr::get: create a flat symbol reference.
-  // (ctx-ptr name-str) → Attribute uptr
-  Sregister_symbol(
-      "mlir::FlatSymbolRefAttr::get",
-      (void*)+[](uint64_t ctx_ptr, const char* name) -> ptr {
-        auto* ctx = crest::as_context(ctx_ptr);
-        if (!ctx) {
-          return scheme_error("mlir::FlatSymbolRefAttr::get",
-                              "null MLIRContext pointer");
-        }
-        auto attr = mlir::FlatSymbolRefAttr::get(ctx, name);
-        return Sunsigned64(
-            reinterpret_cast<uint64_t>(attr.getAsOpaquePointer()));
-      });
 }
 
 } // namespace crest

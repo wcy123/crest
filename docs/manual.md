@@ -1211,7 +1211,7 @@ exits with status 1, and `--crest-pass="dialects-in-scheme=..."` reports it as a
 ### Inspecting the expansion
 
 ```bash
-DEBUG_DEFINE_DIALECT=1 \
+CREST_DEBUG_DEFINE_DIALECT=1 \
 CREST_PATH=samples \
   crest-opt /dev/null --crest-pass="passes=toy/ch4/toy" 2>/dev/null
 ```
@@ -1349,9 +1349,8 @@ frees what it made when its body ends, so use the handle inside the body only:
 - `mlir::PassManager::nest` answers a pass manager that belongs to its parent. Use it inside the
   `with-PassManager` body.
 - A pass belongs to the pass manager that it is added to (`addPass`), as in C++. Make a new pass for each add:
-  `(mlir::createCanonicalizerPass)` again, not the same handle twice. The same pass added twice to one manager is an
-  error (`test/bindings/pass-twice`); added to two managers it is freed twice, and nothing sees it. A pass that is
-  made and never added leaks.
+  `(mlir::createCanonicalizerPass)` again, not the same handle twice. The same pass added twice, to one manager or to
+  two, is freed twice and crashes, and nothing sees it. A pass that is made and never added leaks.
 - A type converter and a conversion target must still exist while the patterns that use them are applied. Make them with
   `with-TypeConverter` and `with-ConversionTarget` around `apply-conversion` or `apply-full-conversion`.
 

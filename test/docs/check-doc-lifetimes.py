@@ -19,7 +19,7 @@ if not section:
 body = section.group(1)
 problems = [f"docs/manual.md: the Lifetimes section does not mention {name}"
             for name in ("with-PassManager", "mlir::PassManager::nest", "addPass", "with-TypeConverter",
-                         "with-ConversionTarget", "test/bindings/pass-twice")
+                         "with-ConversionTarget")
             if name not in body]
 if problems:
     print("\n".join(problems))

@@ -4,6 +4,8 @@
 // among them a pass made by define-pass, and the C++ heap must not grow.
 //
 // REQUIRES: system-linux
+// It measures the heap of its own process, which valgrind's allocator changes:
+// UNSUPPORTED: valgrind
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/pass-leak-scheme \
 // RUN:   %scheme-mlir %S/driver.sls | %FileCheck %s
 
