@@ -196,7 +196,9 @@ if(CREST_EMBED_SCHEME_BOOT)
   set(CREST_BOOT_HEADER "${ChezBootHeaders_BINARY_DIR}/CrestBoot.h")
   set(CREST_SCHEME_OBJ_DIR "${CMAKE_CURRENT_BINARY_DIR}/scheme-objs")
 
-  file(GLOB_RECURSE CREST_SLS_FILES
+  # CONFIGURE_DEPENDS: a plain glob is made once, when cmake configures, so a .sls file that is added later is not
+  # in the list, and the boot is not rebuilt when that file is edited. With it the build checks the glob again.
+  file(GLOB_RECURSE CREST_SLS_FILES CONFIGURE_DEPENDS
        "${CMAKE_CURRENT_SOURCE_DIR}/scheme/*.sls"
        "${CMAKE_CURRENT_SOURCE_DIR}/samples/*.sls")
 
