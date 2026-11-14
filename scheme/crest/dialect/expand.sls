@@ -143,7 +143,7 @@
   ;; binds the dialect name itself to the vector of the entry points of the callbacks.  Uses ctx
   ;; (the call-site identifier) so the binding has the same scope as the user's (export testd),
   ;; making it accessible from C++ via Stop_level_value(Sstring_to_symbol("testd")) after import.
-  (define (%%generate-dialect-callbacks ctx dialect-cbs ops stash-stx)
+  (define (%%generate-dialect-callbacks ctx dialect-cbs ops)
     (with-syntax ([dialect-value ctx]
                   [(cb ...) (dialect-cbs-with-interfaces ctx dialect-cbs ops)])
       (list #'(define dialect-value (crest-dialect-callback-entries cb ...)))))
@@ -163,13 +163,8 @@
                   [(entry ...) dialect-ifaces])
       #'(define interfaces (list entry ...))))
 
-  (define (generate-register-dialect ctx dialect-cbs ops reg-op-stx stash-stx
-                                     . rest)
-    ;; dialect-ifaces is an optional 6th argument (default empty list) so that
-    ;; callers compiled before this change continue to work.
-    (let ([dialect-ifaces (if (null? rest) '() (car rest))]
-          [types          (if (or (null? rest) (null? (cdr rest))) '() (cadr rest))]
-          [reg-type-stx   (if (or (null? rest) (null? (cdr rest))) #f (caddr rest))])
+  (define (generate-register-dialect ctx dialect-cbs ops reg-op-stx dialect-ifaces types reg-type-stx)
+    (let ()
       (let ([op-prefix (string-append (%%id->str ctx) ".")])
         (let ()
           (let ([base-defs
@@ -186,8 +181,7 @@
                    (list
                     #'(define (%%toy.initialize dialect-ptr)
                         type-reg ... op-reg ... user-init ...)))]
-                ;; stash-stx kept in signature for forward compat but unused now
-                [dialect-cbs-defs (%%generate-dialect-callbacks ctx dialect-cbs ops stash-stx)])
+                [dialect-cbs-defs (%%generate-dialect-callbacks ctx dialect-cbs ops)])
             (append (list (%%generate-dialect-interfaces-def ctx dialect-ifaces))
                     (map (lambda (op) (%%generate-interfaces-def ctx op)) ops)
                     (map (lambda (op) (%%generate-op-callbacks-def ctx op-prefix op)) ops)
