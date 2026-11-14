@@ -142,7 +142,11 @@ During development, edit a `.sls` file and re-run — no rebuild needed.
 
 ### Filesystem (default)
 
-Deploy the binary alongside the `.sls` source tree. Set `CREST_PATH` at runtime:
+Deploy the binary alongside the `.sls` source tree. Set `CREST_PATH` at runtime. Every directory in
+`CREST_PATH` becomes a library directory, and a `.sls` file found there is compiled and run with the
+rights of the process. Only point `CREST_PATH` at directories you trust, and do not take it from an
+environment you do not control. The compiled files go to `CREST_SCHEME_BINARY_DIR` (the build directory by
+default), which must not be writable by others either.
 
 ```bash
 export CREST_PATH=/my-project/scheme
