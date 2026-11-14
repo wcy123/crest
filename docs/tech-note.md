@@ -348,17 +348,16 @@ procedure as a diagnostic that names its Scheme position, or ends the process wh
 
 ## Checking for memory leaks
 
-The suite can run under valgrind, one test at a time, so that each record names its test. Copy the generated
-`lit.site.cfg.py` of the build to another directory and add, after its `load_config` line:
+The whole suite runs under valgrind with one lit parameter, and a script reads the logs:
 
-    config.substitutions.insert(0, ("%scheme-mlir", "/tmp/vgbin/scheme-mlir"))
-    config.substitutions.insert(0, ("%crest-opt", "/tmp/vgbin/crest-opt"))
-    import os
-    config.environment["VG_TAG"] = os.environ.get("VG_TAG", "none")
+    lit -sv build/test --param valgrind_logs=/tmp/vglogs -j $(nproc)
+    python3 tools/check-valgrind-logs.py /tmp/vglogs
 
-where each wrapper is `exec valgrind -q --leak-check=full --show-leak-kinds=definite,possible --num-callers=14
---log-file=/tmp/vglogs/${VG_TAG}.<tool>.%p.log <real binary> "$@"`. Run
-`VG_TAG=<name> lit -q <dir> --filter "CREST :: <test>$"` for each test, then read the logs: "definitely lost" is a
-leak, "Invalid read" is a use-after-free. `pass-leak`, `assembly-format-leak` and `llvm-ir-leak` fail under valgrind
-(they measure the heap themselves) and report warnings that come from inside LLVM's printer and optimizer. The
-first two found the leaks of Rule 20 in 2026-11.
+`lit.cfg.py` replaces `%crest-opt` and `%scheme-mlir` with wrappers that run the tool under
+`valgrind --leak-check=full`, one log file for each run (about 4 minutes on 64 cores). The script fails when a run has
+"definitely lost" bytes (a leak) or an invalid read or write (a use after free), and names the command, so the test.
+The GitHub workflow `leaks.yml` runs this every Monday (and on demand).
+
+- `test/valgrind.supp` is for a report that is inside a tool that CREST links and is not CREST's. It is empty.
+
+`pass-leak`, `assembly-format-leak` and the checks of Rule 20 found their leaks with this method in 2026-11.
