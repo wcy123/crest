@@ -90,6 +90,9 @@ void CrestDialect::initialize(const LockedSchemeObject& interfaces) {
   // registerAllDialects()) and for other Scheme dialects registered by name
   // (--crest-scheme-dialect).
   mlir::Location here = mlir::UnknownLoc::get(getContext());
+  // Chez Scheme runs on one thread, and MLIR calls the verifiers and folders
+  // of this dialect from its worker threads. Without this the process aborts.
+  getContext()->disableMultithreading();
   // The callables of this dialect report their errors in this context.
   setCurrentContext(*interp_, getContext());
   if (cbs_.get_dependent_dialects) {

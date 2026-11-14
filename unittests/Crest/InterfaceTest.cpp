@@ -77,6 +77,15 @@ protected:
 
 } // namespace
 
+// Scheme runs on one thread, and MLIR calls the verifiers and folders of an op
+// from its worker threads, so loading a Scheme dialect turns threads off.
+TEST_F(InterfaceTest, LoadingASchemeDialectDisablesMultithreading) {
+  mlir::MLIRContext ctx(makeRegistry(), mlir::MLIRContext::Threading::ENABLED);
+  ASSERT_TRUE(ctx.isMultithreadingEnabled());
+  ctx.getOrLoadDialect("ifacemap");
+  EXPECT_FALSE(ctx.isMultithreadingEnabled());
+}
+
 // Each interface is in the map of the op that has it in its :interfaces entry,
 // and not in the map of one that has not.
 TEST_F(InterfaceTest, TheMapHasTheInterfacesOfTheEntries) {
