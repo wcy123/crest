@@ -41,6 +41,26 @@ TEST_F(InterpreterTest, EvalSimpleExpression) {
   EXPECT_TRUE(g_interp->eval("(+ 1 2)"));
 }
 
+// An integer that does not fit a fixnum (about 2^60) crosses to Scheme
+// unchanged: Sfixnum would drop its top bits.
+TEST_F(InterpreterTest, UnsignedLongBeyondFixnumKeepsItsValue) {
+  const uint64_t big = uint64_t{1} << 62;
+  const ptr fromLong = Conversion<uint64_t, ptr>{}(big);
+  EXPECT_EQ(Sunsigned64_value(fromLong), big);
+  const unsigned long long bigger = ~0ULL;
+  const ptr fromLongLong = Conversion<unsigned long long, ptr>{}(bigger);
+  EXPECT_EQ(Sunsigned64_value(fromLongLong), bigger);
+}
+
+TEST_F(InterpreterTest, SignedLongBeyondFixnumKeepsItsValue) {
+  const int64_t big = -(int64_t{1} << 61);
+  const ptr fromLong = Conversion<int64_t, ptr>{}(big);
+  EXPECT_EQ(Sinteger64_value(fromLong), big);
+  const long long bigger = (1LL << 62) + 5;
+  const ptr fromLongLong = Conversion<long long, ptr>{}(bigger);
+  EXPECT_EQ(Sinteger64_value(fromLongLong), bigger);
+}
+
 // A Scheme value from its text.
 static ptr evalScheme(const char* code) {
   ptr port = scheme_call("open-string-input-port", Sstring(code));
