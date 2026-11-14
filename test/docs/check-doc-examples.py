@@ -40,11 +40,11 @@ docs = [root / "README.md"] + sorted((root / "docs").glob("*.md")) + sorted((roo
 
 # 1. The options of --crest-pass.
 declared = set(re.findall(r'(?:List)?Option<[^>]*>\s+\w+\{\s*\*this,\s*"([^"]+)"',
-                          (root / "lib/Passes/CrestPass.cpp").read_text()))
+                          (root / "lib/Passes/CrestPass.cpp").read_text(encoding="utf-8")))
 if not declared:
     problems.append("lib/Passes/CrestPass.cpp: found no options (the check needs updating)")
 for doc in docs:
-    for match in re.finditer(r'--crest-pass="?([^"\s\\]+(?:[ ][^"\\\n]*)?)"?', doc.read_text()):
+    for match in re.finditer(r'--crest-pass="?([^"\s\\]+(?:[ ][^"\\\n]*)?)"?', doc.read_text(encoding="utf-8")):
         for token in match.group(1).split():
             key = token.split("=")[0]
             if "=" in token and key not in declared:
@@ -56,10 +56,10 @@ for doc in docs:
 def run(directory, library, input_file):
     env = dict(os.environ, CREST_PATH=str(directory), CREST_SCHEME_BINARY_DIR=str(directory / "bin"))
     return subprocess.run([crest_opt, "-allow-unregistered-dialect", f"--crest-pass=passes={library}", str(input_file)],
-                          env=env, capture_output=True, text=True)
+                          env=env, capture_output=True, text=True, encoding="utf-8")
 
 
-tutorial = (root / "docs/tutorial.md").read_text()
+tutorial = (root / "docs/tutorial.md").read_text(encoding="utf-8")
 found = blocks(tutorial)
 libraries = [b for l, b, _ in found if l == "scheme" and b.startswith("#!r6rs")]
 patterns = {}
@@ -82,11 +82,11 @@ else:
         for step in ("step1", "step2", "step3"):
             text = library[:start] + patterns[step] + "\n\n  " + library[end:]
             text = text.replace("tutorial-step1", f"tutorial-{step}").replace("step1", step)
-            (directory / "passes" / f"tutorial-{step}.sls").write_text(text)
+            (directory / "passes" / f"tutorial-{step}.sls").write_text(text, encoding="utf-8")
         inputs = {"step1": mlir_inputs[0], "step2": mlir_inputs[0], "step3": mlir_inputs[-1]}
         for step in ("step1", "step2", "step3"):
             input_file = directory / f"{step}.mlir"
-            input_file.write_text(inputs[step])
+            input_file.write_text(inputs[step], encoding="utf-8")
             result = run(directory, f"passes/tutorial-{step}", input_file)
             if result.returncode != 0:
                 problems.append(f"docs/tutorial.md: {step} fails: {(result.stdout + result.stderr).strip()[:300]}")
@@ -102,7 +102,7 @@ else:
                 problems.append("docs/tutorial.md: step 3 leaves a source.add (the 2- and the 3-operand form both match)")
 
 # 3. The commands of the README.
-text = (root / "README.md").read_text()
+text = (root / "README.md").read_text(encoding="utf-8")
 for language, body, _ in blocks(text):
     if language != "bash" or "crest-opt" not in body:
         continue
@@ -112,7 +112,7 @@ for language, body, _ in blocks(text):
         continue
     command = command.replace("build/tools/crest-opt/crest-opt", crest_opt)
     with tempfile.TemporaryDirectory() as binary_dir:
-        result = subprocess.run(command, shell=True, cwd=root, capture_output=True, text=True,
+        result = subprocess.run(command, shell=True, cwd=root, capture_output=True, text=True, encoding="utf-8",
                                 env=dict(os.environ, CREST_SCHEME_BINARY_DIR=binary_dir))
     if result.returncode != 0 or not result.stdout.strip():
         problems.append(f"README.md: this command fails: {' '.join(command.split())}\n    {(result.stdout + result.stderr).strip()[:300]}")
