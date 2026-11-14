@@ -22,6 +22,7 @@
                 mlir::MemRefType::getElementType
                 mlir::ShapedType::getShape)
           (only (mlir IR BuiltinAttributes)
+                mlir::FlatSymbolRefAttr::get
                 mlir::StringAttr::get/len
                 mlir::TypeAttr::get
                 mlir::parseAttribute)

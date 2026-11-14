@@ -198,14 +198,6 @@ void registerIROpImplementationBindings() {
       });
 
   Sregister_symbol(
-      "mlir::TypeAttr::getValue", (void*)+[](uint64_t attr_ptr) -> ptr {
-        auto attr = mlir::Attribute::getFromOpaquePointer(
-            reinterpret_cast<void*>(attr_ptr));
-        return Sunsigned64(reinterpret_cast<uint64_t>(
-            mlir::cast<mlir::TypeAttr>(attr).getValue().getAsOpaquePointer()));
-      });
-
-  Sregister_symbol(
       "mlir::FunctionType::getNumInputs", (void*)+[](uint64_t type_ptr) -> ptr {
         auto t =
             mlir::Type::getFromOpaquePointer(reinterpret_cast<void*>(type_ptr));
