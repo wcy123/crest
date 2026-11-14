@@ -15,7 +15,7 @@ import tempfile
 root = pathlib.Path(sys.argv[1]).resolve()
 crest_opt = sys.argv[2]
 problems = []
-manual = (root / "docs/manual.md").read_text()
+manual = (root / "docs/manual.md").read_text(encoding="utf-8")
 
 section = re.search(r"^### Errors you will see$(.*?)^#{2,3} ", manual, re.M | re.S)
 if not section:
@@ -33,7 +33,7 @@ else:
                 env["CREST_DEBUG_MATCH"] = "1"
             result = subprocess.run([crest_opt, "-allow-unregistered-dialect",
                                      f"--crest-pass=passes=passes/{library}", str(probe_dir / "input.in")],
-                                    env=env, capture_output=True, text=True)
+                                    env=env, capture_output=True, text=True, encoding="utf-8")
             real += result.stdout + result.stderr
     real = real.replace(str(probe_dir) + "/", "")
     if not shown:
