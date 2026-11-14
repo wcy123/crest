@@ -1181,6 +1181,19 @@ only when no ops of this dialect appear in input IR yet):
 (load-scheme-dialect! ctx "toy" "toy/ch4/toy")
 ```
 
+### Threads
+
+Scheme code runs on one thread. MLIR verifies the functions of a module, and runs passes nested on
+`func.func`, on several threads when the context allows it, and it would call a verifier or a folder that
+you wrote in Scheme from those threads. That crashes the process. So:
+
+- A context turns multithreading off when it loads a Scheme dialect.
+- `crest-opt` adds `--mlir-disable-threading` when you give it `--crest-scheme-dialect`, because `mlir-opt`
+  turns threads back on after it parses the input. Without that dialect the flag is yours to give.
+- A Scheme pass (`define-pass`) on a context that allows threads fails with a message and does not run.
+
+The price is that a module with many functions is verified on one thread.
+
 ### Parsing a file: who frees the module
 
 `mlir::parseSourceFile` answers the module as a plain address. Nothing owns it, so it is never freed
