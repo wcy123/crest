@@ -4,6 +4,8 @@
 // the heap grew with every context that loaded a dialect.
 //
 // REQUIRES: system-linux
+// It measures the heap of its own process, which valgrind's allocator changes:
+// UNSUPPORTED: valgrind
 // RUN: env CREST_PATH=%S/../callback-leaks CREST_SCHEME_BINARY_DIR=%t/dialect-heap-scheme \
 // RUN:   %scheme-mlir %S/driver.sls | %FileCheck %s
 
