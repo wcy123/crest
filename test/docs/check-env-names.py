@@ -17,7 +17,7 @@ for pattern in ("scheme/**/*.sls", "lib/**/*.cpp", "lib/**/*.h", "tools/**/*"):
     for path in root.glob(pattern):
         if path.is_file():
             try:
-                text = path.read_text()
+                text = path.read_text(encoding="utf-8")
             except UnicodeDecodeError:
                 continue
             read |= set(re.findall(r'(?:getenv\s*"|GetEnv\("|getenv\(")([A-Z][A-Z0-9_]*)"', text))
@@ -28,7 +28,7 @@ if len(read) < 4:
 problems = []
 docs = [root / "README.md"] + sorted((root / "docs").glob("*.md")) + sorted((root / "samples").glob("**/README.md"))
 for doc in docs:
-    text = doc.read_text()
+    text = doc.read_text(encoding="utf-8")
     for name in sorted(read):
         if not name.startswith("CREST_") and re.search(r"(?<![A-Z0-9_])" + name + r"(?![A-Z0-9_])", text):
             problems.append(f"{doc.relative_to(root)}: {name} is read by CREST and should start with CREST_")
