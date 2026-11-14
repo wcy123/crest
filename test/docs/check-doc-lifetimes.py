@@ -3,7 +3,7 @@
 
 Usage: check-doc-lifetimes.py <manual>
 
-A handle is an address. A pass manager that `nest` answers, a pass that `addPass` took, and a type converter that a
+A handle is an address. A pass manager that `nest` returns, a pass that `addPass` took, and a type converter that a
 conversion pattern points at all stop being valid when their owner ends, and a use after that is not an error that
 CREST can report. The manual has a "Lifetimes" section that names each of them.
 """

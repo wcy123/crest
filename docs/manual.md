@@ -1346,7 +1346,7 @@ A handle is a raw address. When the object that it points at is freed, the handl
 CREST cannot tell: `CrestBox` checks the type of a handle, not whether the object is still alive. A `with-` macro frees
 what it made when its body ends, so use the handle only inside that body:
 
-- `mlir::PassManager::nest` answers a nested pass manager that belongs to the pass manager it was called on. It is
+- `mlir::PassManager::nest` returns a nested pass manager that belongs to the pass manager it was called on. It is
   freed when the `with-PassManager` that made that parent ends. Do not use it after that.
 - A pass belongs to the pass manager that it is added to (`addPass`), as in C++. Make a new pass for each add:
   `(mlir::createCanonicalizerPass)` again, not the same handle twice. The same pass added twice, to one manager or to
