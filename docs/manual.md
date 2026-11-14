@@ -154,7 +154,7 @@ registered on (via `add-rewrite-pattern`) and what the rewriter replaces.
 - Any Scheme expression; must return a truthy value for the match to continue.
 - Two special forms available inside `:where`:
   - **`:current-op`** — the `mlir::Operation*` of the op just matched.
-  - **`(:attr "name")`** — fetches the named attribute from `:current-op`; raises a condition (→ silent match failure) if absent.
+  - **`(:attr "name")`** — fetches the named attribute from `:current-op`; answers `#f` if the op has none (use `(:has-attr? "name")` or `(:attr-or "name" default)` when the attribute is optional).
 
 ```scheme
 %scale = hip.constant ()

@@ -60,10 +60,10 @@
   (define-syntax :attr-or    (lambda (x) (syntax-violation 'pattern-keyword "misplaced :attr-or (only valid inside DDR :where)" x)))
   ;; :optional — (:optional %var ...) in an operand list marks optional operands.
   ;; Each %var is bound to the operand value if present, left unbound if absent.
-  ;; Presence is detected via mlir-operation-num-operands at match time.
+  ;; Presence is read from the operandSegmentSizes attribute of the op at match time.
   (define-syntax :optional   (lambda (x) (syntax-violation 'pattern-keyword "misplaced :optional (only valid inside DDR operand list)" x)))
   ;; :variadic — (:variadic %rest) in an operand list marks a variadic tail.
-  ;; Parsed but not yet implemented in analyze/codegen.
+  ;; Each %var is bound to the list of operands of its group (#<void> when the group is empty).
   (define-syntax :variadic   (lambda (x) (syntax-violation 'pattern-keyword "misplaced :variadic (only valid inside DDR operand list)" x)))
   ;; Attr type keywords — used as literals in (name = val :type) modifier forms.
   (define-syntax :string    (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :string (only valid as attr type in begin-mlir-code)" x)))
