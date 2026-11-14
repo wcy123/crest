@@ -11,7 +11,7 @@ root = pathlib.Path(sys.argv[1]).resolve()
 warning = "point `CREST_PATH` at directories you trust"
 problems = []
 for name in ("docs/getting-started.md", "docs/manual.md"):
-    text = " ".join((root / name).read_text().split())
+    text = " ".join((root / name).read_text(encoding="utf-8").split())
     if warning not in text:
         problems.append(f'{name}: no warning that CREST_PATH runs code ("{warning}")')
     if "CREST_SCHEME_BINARY_DIR" not in text:
