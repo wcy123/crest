@@ -108,7 +108,7 @@ Run:
 ```bash
 CREST_PATH=/path/to/passes \
   crest-opt -allow-unregistered-dialect \
-  --crest-pass="module=passes/tutorial-step1" \
+  --crest-pass="passes=passes/tutorial-step1" \
   test.mlir
 ```
 
