@@ -341,8 +341,17 @@ void registerIROperationBindings() {
         }
         std::string str;
         llvm::raw_string_ostream os(str);
-        reinterpret_cast<mlir::Operation*>(op_ptr)->print(
-            os, mlir::OpPrintingFlags().assumeVerified());
+        auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
+        mlir::OpPrintingFlags flags = mlir::OpPrintingFlags().assumeVerified();
+        // An op inside another one is printed in local scope: the default
+        // numbers every value of the whole module first, which makes printing
+        // one op cost as much as printing the module. The text is the same
+        // (each function is numbered on its own either way, and the aliases
+        // are only defined for a top-level op, which keeps the default).
+        if (op->getParentOp()) {
+          flags.useLocalScope();
+        }
+        op->print(os, flags);
         return Sstring(str.c_str());
       });
   Sregister_symbol(
