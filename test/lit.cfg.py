@@ -34,19 +34,18 @@ llvm_config.with_environment("PATH", config.crest_tools_dir, append_path=True)
 
 # Tool substitutions
 def find_tool(name):
-    # Search llvm_tools_dir, then well-known system paths
-    for search_dir in [config.llvm_tools_dir,
-                       "/usr/lib/llvm-22/bin",
-                       "/usr/lib/llvm-15/bin",
-                       "/usr/lib/llvm-14/bin"]:
-        path = lit.util.which(name, search_dir)
-        if path:
-            return path
-    return lit.util.which(name)  # fallback to PATH
+    # The tools of the LLVM that this build uses, and then the PATH. A path with another version of LLVM is not a
+    # fallback: FileCheck of LLVM 22 would be found for a build with LLVM 23 and the tests would run with it.
+    path = lit.util.which(name, config.llvm_tools_dir)
+    return path or lit.util.which(name)
 
 config.substitutions.append(("%crest-opt",
     os.path.join(config.crest_tools_dir, "crest-opt")))
 config.substitutions.append(("%scheme-mlir",
     os.path.join(os.path.dirname(config.crest_tools_dir), "scheme-mlir", "scheme-mlir")))
+cmake = lit.util.which("cmake")
+if cmake:
+    config.available_features.add("cmake")
+    config.substitutions.append(("%cmake", '"' + cmake + '"'))
 config.substitutions.append(("%FileCheck", find_tool("FileCheck")))
 config.substitutions.append(("%samples", config.crest_samples_dir))
