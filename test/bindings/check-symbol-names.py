@@ -19,7 +19,7 @@ import sys
 root = pathlib.Path(sys.argv[1]).resolve()
 where = collections.defaultdict(list)
 for path in sorted((root / "lib").glob("**/*.cpp")):
-    text = path.read_text()
+    text = path.read_text(encoding="utf-8")
     for match in re.finditer(r'(?:Sregister_symbol|register_builder_binding)\(\s*"([^"]+)"', text):
         where[match.group(1)].append(str(path.relative_to(root)))
 
