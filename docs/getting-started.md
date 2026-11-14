@@ -11,7 +11,7 @@ CREST_PATH=$(pwd)/samples cmake --build build --target check-crest
 # Run the sample hip-fusion pass on your own MLIR module
 CREST_PATH=/path/to/crest/samples \
   build/tools/crest-opt/crest-opt \
-  --crest-pass="module=passes/hip-fusion" \
+  --crest-pass="passes=passes/hip-fusion" \
   my-module.mlir
 ```
 
@@ -146,7 +146,7 @@ Deploy the binary alongside the `.sls` source tree. Set `CREST_PATH` at runtime:
 
 ```bash
 export CREST_PATH=/my-project/scheme
-build/tools/crest-opt/crest-opt --crest-pass="module=passes/my-pass" input.mlir
+build/tools/crest-opt/crest-opt --crest-pass="passes=passes/my-pass" input.mlir
 ```
 
 ### Embedded boot (production)

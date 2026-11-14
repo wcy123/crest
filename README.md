@@ -76,7 +76,7 @@ struct QAddFusion : OpRewritePattern<QuantizeLinearOp> {
 CREST_PATH=$(pwd)/samples \
   build/tools/crest-opt/crest-opt \
   -allow-unregistered-dialect \
-  --crest-pass="module=passes/hip-fusion" \
+  --crest-pass="passes=passes/hip-fusion" \
   --split-input-file test/hip-fusion/qadd.mlir
 ```
 
@@ -169,7 +169,7 @@ ops remain in the output — a subsequent DCE pass removes them. The fused resul
 CREST_PATH=$(pwd)/samples \
   build/tools/crest-opt/crest-opt \
   -allow-unregistered-dialect \
-  --crest-pass="module=passes/onnx-to-hipsr" \
+  --crest-pass="passes=passes/onnx-to-hipsr" \
   --split-input-file test/onnx-to-hipsr/matmul.mlir
 ```
 
@@ -254,7 +254,7 @@ Scheme source — no `UnknownLoc`, no manual `getLoc` threading:
 CREST_PATH=$(pwd)/samples \
   build/tools/crest-opt/crest-opt \
   -allow-unregistered-dialect \
-  --crest-pass="module=passes/onnx-to-hipsr" \
+  --crest-pass="passes=passes/onnx-to-hipsr" \
   --split-input-file --mlir-print-debuginfo \
   test/onnx-to-hipsr/min.mlir
 ```
@@ -286,7 +286,7 @@ CREST_DEBUG_MATCH=1 \
 CREST_PATH=$(pwd)/samples \
   build/tools/crest-opt/crest-opt \
   -allow-unregistered-dialect \
-  --crest-pass="module=passes/hip-fusion" \
+  --crest-pass="passes=passes/hip-fusion" \
   test/hip-fusion/qadd.mlir
 ```
 
