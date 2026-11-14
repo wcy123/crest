@@ -43,6 +43,10 @@ using TypeConversionFn = uint64_t(uint64_t type);
 using MaterializationFn = uint64_t(uint64_t builder, uint64_t result_type,
                                    uint64_t inputs, uint64_t loc);
 
+// LIFETIME WARNING: the pattern keeps the TypeConverter that it is given (a
+// reference in the base class and the address of its Scheme handle below),
+// and does not own it. The converter must still exist while the patterns are
+// applied: make it with with-TypeConverter around the conversion.
 class SchemeConversionPattern : public mlir::ConversionPattern {
 public:
   // With TypeConverter: operands are remapped before matchAndRewrite.
