@@ -93,8 +93,9 @@ void registerPassPassManagerBindings() {
   // Nest a PassManager on the given op name; returns raw OpPassManager* (not
   // owned). pm_ptr: CrestBox<mlir::PassManager>*, op_name: string →
   // OpPassManager* uptr
-  // LIFETIME WARNING: the answer belongs to the pass manager and is freed with
-  // it. Use it only while the with-PassManager body is running.
+  // LIFETIME WARNING: the OpPassManager that this answers belongs to `pm`. It
+  // is freed when `pm` is freed, which is when the with-PassManager that made
+  // `pm` ends. Do not use it after that.
   Sregister_symbol(
       "mlir::PassManager::nest",
       (void*)+[](uint64_t pm_ptr, const char* op_name) -> ptr {
