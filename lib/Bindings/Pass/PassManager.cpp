@@ -69,6 +69,10 @@ void registerPassPassManagerBindings() {
               "null pointer or not a CrestBox<mlir::PassManager>");
         }
         auto& pm = *pm_box;
+        if (!module_ptr) {
+          return scheme_error("mlir::PassManager::run!",
+                              "module pointer is null");
+        }
         auto* op = reinterpret_cast<mlir::Operation*>(module_ptr);
         return Sinteger64(mlir::succeeded(pm.run(op)) ? 1 : 0);
       });
@@ -113,6 +117,10 @@ void registerPassPassManagerBindings() {
       "mlir::OpPassManager::addPass",
       (void*)+[](uint64_t nested_pm_ptr, uint64_t pass_ptr) -> ptr {
         auto* nested = reinterpret_cast<mlir::OpPassManager*>(nested_pm_ptr);
+        if (!nested) {
+          return scheme_error("mlir::OpPassManager::addPass",
+                              "pass manager pointer is null");
+        }
         if (!pass_ptr) {
           return scheme_error("mlir::OpPassManager::addPass",
                               "null pass pointer");

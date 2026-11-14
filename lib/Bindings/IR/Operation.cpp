@@ -311,6 +311,10 @@ void registerIROperationBindings() {
   Sregister_symbol(
       "mlir::Operation::emitOpError",
       (void*)+[](uint64_t op_ptr, const char* msg) -> ptr {
+        if (!op_ptr) {
+          return scheme_error("mlir::Operation::emitOpError",
+                              "operation pointer is null");
+        }
         reinterpret_cast<mlir::Operation*>(op_ptr)->emitOpError(msg);
         return Svoid;
       });
@@ -503,12 +507,20 @@ void registerIROperationBindings() {
   Sregister_symbol(
       "mlir::OperationName::getStringRef",
       (void*)+[](uint64_t op_name_ptr) -> ptr {
+        if (!op_name_ptr) {
+          return scheme_error("mlir::OperationName::getStringRef",
+                              "operation name pointer is null");
+        }
         auto* name = reinterpret_cast<mlir::OperationName*>(op_name_ptr);
         return scheme_string(name->getStringRef().data());
       });
 
   Sregister_symbol(
       "mlir::Operation::getBlock", (void*)+[](uint64_t op_ptr) -> ptr {
+        if (!op_ptr) {
+          return scheme_error("mlir::Operation::getBlock",
+                              "operation pointer is null");
+        }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             reinterpret_cast<mlir::Operation*>(op_ptr)->getBlock()));
       });
@@ -516,6 +528,10 @@ void registerIROperationBindings() {
   Sregister_symbol(
       "mlir::Operation::moveBefore",
       (void*)+[](uint64_t op_ptr, uint64_t other_ptr) -> ptr {
+        if (!op_ptr) {
+          return scheme_error("mlir::Operation::moveBefore",
+                              "operation pointer is null");
+        }
         reinterpret_cast<mlir::Operation*>(op_ptr)->moveBefore(
             reinterpret_cast<mlir::Operation*>(other_ptr));
         return Svoid;
@@ -524,6 +540,10 @@ void registerIROperationBindings() {
   Sregister_symbol(
       "mlir::Operation::setOperands",
       (void*)+[](uint64_t op_ptr, uint64_t arr_ptr) -> ptr {
+        if (!op_ptr) {
+          return scheme_error("mlir::Operation::setOperands",
+                              "operation pointer is null");
+        }
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto* arr = reinterpret_cast<CArrayRef<uintptr_t>*>(arr_ptr);
         llvm::SmallVector<mlir::Value> values;
