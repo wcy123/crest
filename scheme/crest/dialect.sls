@@ -477,7 +477,6 @@
                                                   #'%crest::DynamicType::getParams)]
                 [reg-defs     (generate-register-dialect #'dialect-id (dialect-parse-cbs dialect) ops
                                                          #'%crest::register-dynamic-op!
-                                                         #f
                                                          (dialect-parse-dialect-ifaces dialect)
                                                          types
                                                          #'%crest::register-dynamic-type!)])
@@ -486,7 +485,7 @@
                               [(type-def ...) type-defs]
                               [(reg-def ...) reg-defs])
                            #'(begin reg-def ... type-def ... op-def ...))])
-             (when (getenv "DEBUG_DEFINE_DIALECT")
+             (when (getenv "CREST_DEBUG_DEFINE_DIALECT")
                (pretty-print (syntax->datum result)))
              result))])
       ))

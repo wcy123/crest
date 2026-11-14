@@ -9,6 +9,8 @@
 //   - with no current context there is no place for a location: the process ends with the text;
 //   - the current context that a dialect load sets goes with the context of the dialect.
 //
+// Some of its runs end the process on purpose, so a with- scope never closes (Rule 20: exit does not unwind) and valgrind sees a leak:
+// UNSUPPORTED: valgrind
 // RUN: %scheme-mlir %S/driver.sls %s walk 2>/dev/null | %FileCheck %s --check-prefix=WALK
 // RUN: %scheme-mlir %S/driver.sls %s walk 2>&1 >/dev/null | %FileCheck %s --check-prefix=WALK-DIAG
 // RUN: %scheme-mlir %S/driver.sls %s nested 2>/dev/null | %FileCheck %s --check-prefix=NESTED

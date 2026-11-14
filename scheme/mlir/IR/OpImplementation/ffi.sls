@@ -19,7 +19,6 @@
           %mlir::OpAsmPrinter::printResultTypes
           %mlir::OpAsmPrinter::printSymbolName
           %mlir::StringAttr::getValue
-          %mlir::TypeAttr::getValue
           %mlir::FunctionType::getNumInputs
           %mlir::FunctionType::getInput
           %mlir::FunctionType::getNumResults
@@ -115,9 +114,6 @@
 
   (define %mlir::StringAttr::getValue
     (crest-foreign-procedure "mlir::StringAttr::getValue" (uptr) string))
-
-  (define %mlir::TypeAttr::getValue
-    (crest-foreign-procedure "mlir::TypeAttr::getValue" (uptr) uptr))
 
   (define %mlir::FunctionType::getNumInputs
     (crest-foreign-procedure "mlir::FunctionType::getNumInputs" (uptr) uptr))
