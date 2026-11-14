@@ -489,9 +489,13 @@ void registerIRBuiltinTypesBindings() {
   // mlir::FunctionType::getResults (uptr type) -> list of Type
   Sregister_symbol(
       "mlir::FunctionType::getInputs", (void*)+[](uint64_t type_ptr) -> ptr {
-        auto type =
-            mlir::cast<mlir::FunctionType>(mlir::Type::getFromOpaquePointer(
+        auto type = mlir::dyn_cast_or_null<mlir::FunctionType>(
+            mlir::Type::getFromOpaquePointer(
                 reinterpret_cast<const void*>(type_ptr)));
+        if (!type) {
+          return scheme_error("mlir::FunctionType::getInputs",
+                              "the pointer is null or not a FunctionType");
+        }
         ptr list = Snil;
         for (auto it = type.getInputs().rbegin(); it != type.getInputs().rend();
              ++it) {
@@ -503,9 +507,13 @@ void registerIRBuiltinTypesBindings() {
       });
   Sregister_symbol(
       "mlir::FunctionType::getResults", (void*)+[](uint64_t type_ptr) -> ptr {
-        auto type =
-            mlir::cast<mlir::FunctionType>(mlir::Type::getFromOpaquePointer(
+        auto type = mlir::dyn_cast_or_null<mlir::FunctionType>(
+            mlir::Type::getFromOpaquePointer(
                 reinterpret_cast<const void*>(type_ptr)));
+        if (!type) {
+          return scheme_error("mlir::FunctionType::getResults",
+                              "the pointer is null or not a FunctionType");
+        }
         ptr list = Snil;
         for (auto it = type.getResults().rbegin();
              it != type.getResults().rend(); ++it) {

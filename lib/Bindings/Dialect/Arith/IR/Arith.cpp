@@ -72,11 +72,23 @@ void registerDialectArithIRArithBindings() {
   register_builder_binding(
       "mlir::arith::ConstantOp::create<f64>",
       [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t attr_ptr) -> ptr {
+        if (!loc_ptr) {
+          return scheme_error("mlir::arith::ConstantOp::create<f64>",
+                              "location pointer is null");
+        }
+        if (!attr_ptr) {
+          return scheme_error("mlir::arith::ConstantOp::create<f64>",
+                              "attribute pointer is null");
+        }
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
-        auto typed_attr =
-            mlir::cast<mlir::TypedAttr>(mlir::Attribute::getFromOpaquePointer(
+        auto typed_attr = mlir::dyn_cast<mlir::TypedAttr>(
+            mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<const void*>(attr_ptr)));
+        if (!typed_attr) {
+          return scheme_error("mlir::arith::ConstantOp::create<f64>",
+                              "the attribute is not a typed attribute");
+        }
         auto op = mlir::arith::ConstantOp::create(builder, loc, typed_attr);
         return Sunsigned64(
             reinterpret_cast<uint64_t>(op.getResult().getAsOpaquePointer()));

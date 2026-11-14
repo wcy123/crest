@@ -34,9 +34,13 @@ void registerIRBuiltinOpsBindings() {
         if (!op_ptr) {
           return Sunsigned64(0);
         }
-        auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-        return Sunsigned64(reinterpret_cast<uint64_t>(
-            mlir::cast<mlir::ModuleOp>(op).getBody()));
+        auto module = mlir::dyn_cast<mlir::ModuleOp>(
+            reinterpret_cast<mlir::Operation*>(op_ptr));
+        if (!module) {
+          return scheme_error("mlir::ModuleOp::getBody",
+                              "the operation is not a module");
+        }
+        return Sunsigned64(reinterpret_cast<uint64_t>(module.getBody()));
       });
 }
 

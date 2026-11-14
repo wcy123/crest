@@ -24,9 +24,13 @@ void registerDialectMemRefIRMemRefBindings() {
   // (ranked-tensor-type-ptr) → Type uptr
   Sregister_symbol(
       "mlir::MemRefType::get", (void*)+[](uint64_t tensor_type_ptr) -> ptr {
-        auto t =
-            mlir::cast<mlir::RankedTensorType>(mlir::Type::getFromOpaquePointer(
+        auto t = mlir::dyn_cast_or_null<mlir::RankedTensorType>(
+            mlir::Type::getFromOpaquePointer(
                 reinterpret_cast<const void*>(tensor_type_ptr)));
+        if (!t) {
+          return scheme_error("mlir::MemRefType::get",
+                              "the pointer is null or not a RankedTensorType");
+        }
         auto memref_type =
             mlir::MemRefType::get(t.getShape(), t.getElementType());
         return Sunsigned64(
@@ -41,9 +45,13 @@ void registerDialectMemRefIRMemRefBindings() {
          uint64_t memref_type_ptr) -> ptr {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
-        auto memref_type =
-            mlir::cast<mlir::MemRefType>(mlir::Type::getFromOpaquePointer(
+        auto memref_type = mlir::dyn_cast_or_null<mlir::MemRefType>(
+            mlir::Type::getFromOpaquePointer(
                 reinterpret_cast<const void*>(memref_type_ptr)));
+        if (!memref_type) {
+          return scheme_error("mlir::memref::AllocOp::create",
+                              "the pointer is null or not a MemRefType");
+        }
         auto alloc = mlir::memref::AllocOp::create(builder, loc, memref_type);
         return Sunsigned64(
             reinterpret_cast<uint64_t>(alloc.getResult().getAsOpaquePointer()));
