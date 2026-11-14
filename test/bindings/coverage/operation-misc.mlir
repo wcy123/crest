@@ -3,6 +3,7 @@
 // and the log function error. emitWarning and trace are called too; MLIR drops a warning when the context has no handler for
 // it, and the log level hides a trace, so there is nothing to see of them.
 //
+// RUN: mkdir -p %t
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/coverage-scheme \
 // RUN:   %scheme-mlir %S/operation-misc.sls %s > %t/operation-misc.out 2> %t/operation-misc.err
 // RUN: %FileCheck %s --input-file=%t/operation-misc.out
