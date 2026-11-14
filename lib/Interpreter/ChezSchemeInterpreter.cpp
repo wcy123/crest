@@ -249,13 +249,16 @@ ChezSchemeInterpreter::importLibrary(const std::string& slashSeparatedName) {
   // library before it reaches the top-level abort handler. It returns the
   // condition as a string (#f on success), so the caller can show why the
   // import failed. A raised object that is not a condition is written as is.
-  std::string importCode = R"(
+  // The name is read inside the guard, from a string: a name that is not
+  // Scheme text ("a/." is "(a .)") is an error of the import, like any other.
+  std::string importCode = R"scm(
 (guard (c (#t (call-with-string-output-port
                 (lambda (p) (if (condition? c) (display-condition c p) (write c p))))))
-  (eval '(import ()" + lib +
-                           R"()))
+  (eval (read (open-string-input-port "(import ()scm" +
+                           lib +
+                           R"scm())")))
   #f)
-)";
+)scm";
   ptr port = scheme_call("open-string-input-port", Sstring(importCode.c_str()));
   ptr expr = scheme_call("read", port);
   ptr result = scheme_call("eval", expr);
@@ -278,8 +281,14 @@ bool ChezSchemeInterpreter::libraryExports(
   }
   std::string lib = slashSeparatedName;
   std::replace(lib.begin(), lib.end(), '/', ' ');
-  std::string code = R"((and (memq ')" + name + R"( (library-exports '()" +
-                     lib + R"()))) #t))";
+  // Read inside the guard, from strings, as importLibrary does: no error.
+  std::string code = R"scm((guard (c (#t #f))
+  (and (memq (read (open-string-input-port ")scm" +
+                     name + R"scm("))
+             (library-exports (read (open-string-input-port "()scm" +
+                     lib +
+                     R"scm())"))))
+       #t)))scm";
   ptr port = scheme_call("open-string-input-port", Sstring(code.c_str()));
   ptr expr = scheme_call("read", port);
   return scheme_call("eval", expr) != Sfalse;
@@ -299,18 +308,19 @@ std::optional<std::string> ChezSchemeInterpreter::importDialectLibrary(
   }
   // Referencing the dialect's name runs the library body; a body error, an
   // export that is missing and a value of the wrong kind all come back as text.
-  std::string checkCode = R"(
+  std::string checkCode = R"scm(
 (guard (c (#t (call-with-string-output-port
                 (lambda (p) (if (condition? c) (display-condition c p) (write c p))))))
-  (let ([v (eval ')" + dialectName +
-                          R"()])
+  (let ([v (eval (read (open-string-input-port ")scm" +
+                          dialectName +
+                          R"scm(")))])
     (if (vector? v)
         #f
         (call-with-string-output-port
           (lambda (p)
             (display "expected the callbacks vector that define-dialect binds to the dialect name, got " p)
             (write v p))))))
-)";
+)scm";
   ptr port = scheme_call("open-string-input-port", Sstring(checkCode.c_str()));
   ptr expr = scheme_call("read", port);
   ptr result = scheme_call("eval", expr);
