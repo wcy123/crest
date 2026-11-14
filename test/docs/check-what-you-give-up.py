@@ -10,7 +10,7 @@ import re
 import sys
 
 root = pathlib.Path(sys.argv[1]).resolve()
-readme = " ".join((root / "README.md").read_text().split())
+readme = " ".join((root / "README.md").read_text(encoding="utf-8").split())
 problems = []
 
 section = re.search(r"## What you give up (.*?) ## ", readme)
