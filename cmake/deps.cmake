@@ -111,7 +111,7 @@ else()
       ${ChezScheme_SOURCE_DIR}/configure
         --threads --disable-x11 --machine=${CHEZ_MACHINE} CC=${CHEZ_CC})
   set(_chez_build
-    ${CMAKE_COMMAND} -E chdir <BINARY_DIR> make -j8)
+    ${CMAKE_COMMAND} -E chdir <BINARY_DIR> make -j${CREST_CHEZ_JOBS})
 endif()
 
 ExternalProject_Add(ChezScheme
