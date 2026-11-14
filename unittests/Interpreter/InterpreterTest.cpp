@@ -62,9 +62,10 @@ TEST_F(InterpreterTest, SignedLongBeyondFixnumKeepsItsValue) {
 }
 
 // A string crosses in both directions as UTF-8: scheme_string writes it,
-// convert_to_cpp reads it.
+// convert_to_cpp reads it. The text has a character of one, two, three and
+// four bytes (a space, pi, an arrow, and U+1F600).
 TEST_F(InterpreterTest, StringKeepsNonAsciiText) {
-  const std::string text = "\xCF\x80 \xE2\x86\x92 \xCE\xBB";
+  const std::string text = "\xCF\x80 \xE2\x86\x92 \xCE\xBB \xF0\x9F\x98\x80";
   EXPECT_EQ(convert_to_cpp<std::string>(scheme_string(text)), text);
 }
 
