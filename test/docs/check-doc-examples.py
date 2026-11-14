@@ -4,8 +4,9 @@
 Usage: check-doc-examples.py <repo root> <crest-opt>
 
 1. Every --crest-pass="..." in a doc uses only the options that CrestPass declares.
-2. The tutorial: each step is built into a library, run on its input, and gives the output the doc shows.
-3. The commands of the README that name files of the repository are run, and must succeed.
+2. A pattern that a doc shows for a sample file is made of lines of that file (`...` may leave lines out).
+3. The tutorial: each step is built into a library, run on its input, and gives the output the doc shows.
+4. The commands of the README that name files of the repository are run, and must succeed.
 """
 import os
 import pathlib
@@ -52,7 +53,32 @@ for doc in docs:
                                 f"(options: {', '.join(sorted(declared))})")
 
 
-# 2. The tutorial.
+# 2. Patterns shown for a sample file.
+def normalize(line):
+    line = re.sub(r";;.*$", "", line)
+    line = re.sub(r";\s+\S.*$", ";", line)
+    return " ".join(line.split())
+
+
+for doc in docs:
+    for language, body, before in blocks(doc.read_text()):
+        if not re.search(r"\(define-(rewrite|conversion)-pattern", body):
+            continue
+        cited = re.findall(r"samples/[\w/.\-]+\.sls", before)
+        if not cited:
+            continue
+        sample = root / cited[-1]
+        if not sample.exists():
+            problems.append(f"{doc.relative_to(root)}: {cited[-1]} does not exist")
+            continue
+        sample_lines = {normalize(l) for l in sample.read_text().split("\n")}
+        for line in body.split("\n"):
+            n = normalize(line)
+            if n and n not in ("...", ";") and n not in sample_lines:
+                problems.append(f"{doc.relative_to(root)}: this line is not in {cited[-1]}: {n}")
+
+
+# 3. The tutorial.
 def run(directory, library, input_file):
     env = dict(os.environ, CREST_PATH=str(directory), CREST_SCHEME_BINARY_DIR=str(directory / "bin"))
     return subprocess.run([crest_opt, "-allow-unregistered-dialect", f"--crest-pass=passes={library}", str(input_file)],
@@ -101,7 +127,7 @@ else:
             if step == "step3" and "source.add" in result.stdout:
                 problems.append("docs/tutorial.md: step 3 leaves a source.add (the 2- and the 3-operand form both match)")
 
-# 3. The commands of the README.
+# 4. The commands of the README.
 text = (root / "README.md").read_text()
 for language, body, _ in blocks(text):
     if language != "bash" or "crest-opt" not in body:
