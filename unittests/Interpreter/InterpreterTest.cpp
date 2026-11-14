@@ -41,6 +41,13 @@ TEST_F(InterpreterTest, EvalSimpleExpression) {
   EXPECT_TRUE(g_interp->eval("(+ 1 2)"));
 }
 
+// A string crosses in both directions as UTF-8: scheme_string writes it,
+// convert_to_cpp reads it.
+TEST_F(InterpreterTest, StringKeepsNonAsciiText) {
+  const std::string text = "\xCF\x80 \xE2\x86\x92 \xCE\xBB";
+  EXPECT_EQ(convert_to_cpp<std::string>(scheme_string(text)), text);
+}
+
 // A Scheme value from its text.
 static ptr evalScheme(const char* code) {
   ptr port = scheme_call("open-string-input-port", Sstring(code));

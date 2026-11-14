@@ -322,15 +322,31 @@ template <> struct Conversion<ptr, llvm::SmallVector<mlir::Value>> {
 // Conversion<ptr, const char*>: omitted -- Chez Scheme strings use 32-bit
 // chars internally; no stable char* can be returned.  Use std::string instead.
 
-// Conversion<ptr, std::string>: extract via Sstring_length + Sstring_ref.
-// Chez Scheme string_char is unsigned int; take the low byte for ASCII.
+// Conversion<ptr, std::string>: extract via Sstring_length + Sstring_ref, and
+// write each character (a code point; Chez Scheme chars are 32 bits) as UTF-8,
+// the encoding that scheme_string reads.
 template <>
 inline std::string Conversion<ptr, std::string>::operator()(const ptr& v) {
   iptr len = Sstring_length(v);
   std::string result;
   result.reserve(static_cast<std::size_t>(len));
   for (iptr i = 0; i < len; ++i) {
-    result += static_cast<char>(Sstring_ref(v, i) & 0xFF);
+    const unsigned long code = static_cast<unsigned long>(Sstring_ref(v, i));
+    if (code < 0x80) {
+      result += static_cast<char>(code);
+    } else if (code < 0x800) {
+      result += static_cast<char>(0xC0 | (code >> 6));
+      result += static_cast<char>(0x80 | (code & 0x3F));
+    } else if (code < 0x10000) {
+      result += static_cast<char>(0xE0 | (code >> 12));
+      result += static_cast<char>(0x80 | ((code >> 6) & 0x3F));
+      result += static_cast<char>(0x80 | (code & 0x3F));
+    } else {
+      result += static_cast<char>(0xF0 | (code >> 18));
+      result += static_cast<char>(0x80 | ((code >> 12) & 0x3F));
+      result += static_cast<char>(0x80 | ((code >> 6) & 0x3F));
+      result += static_cast<char>(0x80 | (code & 0x3F));
+    }
   }
   return result;
 }
