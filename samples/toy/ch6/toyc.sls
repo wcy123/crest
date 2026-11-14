@@ -186,13 +186,7 @@
       (with-mlir::OwningOpRef module-op (%%build-module filename ctx)
         (%%run-pipeline! module-op ctx opt? #t #t)
         (with-ExecutionEngine engine (module-op (if opt? 3 0))
-          (when (zero? engine)
-            (display "Failed to create the execution engine\n" (current-error-port))
-            (%%quit 1))
-          (let ([rc (mlir::ExecutionEngine::invoke engine "main")])
-            (when (not (zero? rc))
-              (display "JIT invocation failed\n" (current-error-port))
-              (%%quit 1))))))))
+          (mlir::ExecutionEngine::invoke engine "main"))))))
 
 ;; ---------------------------------------------------------------------------
 ;; Optimization pipeline
