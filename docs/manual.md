@@ -1340,6 +1340,20 @@ for that. `with-InsertionGuard` saves a builder's insertion point and restores i
 `(current-OpBuilder)` or raises `no active builder` if that is `#f`. `:builder` returns
 `(current-OpBuilder)` as is.
 
+### Lifetimes
+
+A handle is a raw address. When the object that it points at is freed, the handle still holds the old address, and
+CREST cannot tell: `CrestBox` checks the type of a handle, not whether the object is still alive. A `with-` macro frees
+what it made when its body ends, so use the handle only inside that body:
+
+- `mlir::PassManager::nest` returns a nested pass manager that belongs to the pass manager it was called on. It is
+  freed when the `with-PassManager` that made that parent ends. Do not use it after that.
+- A pass belongs to the pass manager that it is added to (`addPass`), as in C++. Make a new pass for each add:
+  `(mlir::createCanonicalizerPass)` again, not the same handle twice. The same pass added twice, to one manager or to
+  two, is freed twice and crashes, and nothing sees it. A pass that is made and never added leaks.
+- A type converter and a conversion target must still exist while the patterns that use them are applied. Make them with
+  `with-TypeConverter` and `with-ConversionTarget` around `apply-conversion` or `apply-full-conversion`.
+
 The context hierarchy during a pattern rewrite:
 
 ```
