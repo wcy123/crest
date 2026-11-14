@@ -34,19 +34,43 @@ llvm_config.with_environment("PATH", config.crest_tools_dir, append_path=True)
 
 # Tool substitutions
 def find_tool(name):
-    # Search llvm_tools_dir, then well-known system paths
-    for search_dir in [config.llvm_tools_dir,
-                       "/usr/lib/llvm-22/bin",
-                       "/usr/lib/llvm-15/bin",
-                       "/usr/lib/llvm-14/bin"]:
-        path = lit.util.which(name, search_dir)
-        if path:
-            return path
-    return lit.util.which(name)  # fallback to PATH
+    # The tools of the LLVM that this build uses, and then the PATH. A path with another version of LLVM is not a
+    # fallback: FileCheck of LLVM 22 would be found for a build with LLVM 23 and the tests would run with it.
+    path = lit.util.which(name, config.llvm_tools_dir)
+    return path or lit.util.which(name)
 
-config.substitutions.append(("%crest-opt",
-    os.path.join(config.crest_tools_dir, "crest-opt")))
-config.substitutions.append(("%scheme-mlir",
-    os.path.join(os.path.dirname(config.crest_tools_dir), "scheme-mlir", "scheme-mlir")))
+crest_opt = os.path.join(config.crest_tools_dir, "crest-opt")
+scheme_mlir = os.path.join(os.path.dirname(config.crest_tools_dir), "scheme-mlir", "scheme-mlir")
+
+# lit --param valgrind_logs=DIR runs crest-opt and scheme-mlir under valgrind, one log file for each run in DIR.
+# A log with "definitely lost" bytes is a leak (docs/tech-note.md, "Checking for memory leaks"). A test that
+# valgrind cannot judge says "UNSUPPORTED: valgrind".
+valgrind_logs = lit_config.params.get("valgrind_logs")
+if valgrind_logs:
+    config.available_features.add("valgrind")
+    valgrind_logs = os.path.abspath(valgrind_logs)
+    wrappers = os.path.join(valgrind_logs, "bin")
+    os.makedirs(wrappers, exist_ok=True)
+
+    def under_valgrind(real_tool):
+        name = os.path.basename(real_tool)
+        wrapper = os.path.join(wrappers, name)
+        with open(wrapper, "w") as out:
+            out.write("#!/bin/sh\n"
+                      "exec valgrind --leak-check=full --show-leak-kinds=definite --num-callers=14 "
+                      f"--log-file={valgrind_logs}/{name}.%p.log "
+                      f'{real_tool} "$@"\n')
+        os.chmod(wrapper, 0o755)
+        return wrapper
+
+    crest_opt = under_valgrind(crest_opt)
+    scheme_mlir = under_valgrind(scheme_mlir)
+
+config.substitutions.append(("%crest-opt", crest_opt))
+config.substitutions.append(("%scheme-mlir", scheme_mlir))
+cmake = lit.util.which("cmake")
+if cmake:
+    config.available_features.add("cmake")
+    config.substitutions.append(("%cmake", '"' + cmake + '"'))
 config.substitutions.append(("%FileCheck", find_tool("FileCheck")))
 config.substitutions.append(("%samples", config.crest_samples_dir))
