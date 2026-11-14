@@ -428,27 +428,58 @@ void registerIROpImplementationBindings() {
       "mlir::OpAsmParser::resolveOperands",
       (void*)+[](uint64_t parser_ptr, uint64_t ops_handle, uint64_t type_ptr,
                  uint64_t state_ptr) -> ptr {
+        if (!parser_ptr) {
+          return nullPointer("mlir::OpAsmParser::resolveOperands", "parser");
+        }
+        if (!type_ptr) {
+          return nullPointer("mlir::OpAsmParser::resolveOperands", "type");
+        }
+        if (!state_ptr) {
+          return nullPointer("mlir::OpAsmParser::resolveOperands", "state");
+        }
+        auto* ops = UnresolvedOperands::inner(ops_handle);
+        if (!ops) {
+          return scheme_error(
+              "mlir::OpAsmParser::resolveOperands",
+              "the operand list is null or not a list of operands");
+        }
         auto* p = reinterpret_cast<mlir::OpAsmParser*>(parser_ptr);
-        auto* ops = reinterpret_cast<UnresolvedOperands*>(ops_handle);
         auto type = mlir::Type::getFromOpaquePointer(
             reinterpret_cast<const void*>(type_ptr));
         auto& state = *reinterpret_cast<mlir::OperationState*>(state_ptr);
-        return scheme_bool(
-            !p->resolveOperands(ops->inner(), type, state.operands));
+        return scheme_bool(!p->resolveOperands(*ops, type, state.operands));
       });
 
   Sregister_symbol(
       "mlir::OpAsmParser::resolveOperandsFunctional",
       (void*)+[](uint64_t parser_ptr, uint64_t ops_handle,
                  uint64_t func_type_ptr, uint64_t state_ptr) -> ptr {
-        auto* p = reinterpret_cast<mlir::OpAsmParser*>(parser_ptr);
-        auto* ops = reinterpret_cast<UnresolvedOperands*>(ops_handle);
-        auto ft =
-            mlir::cast<mlir::FunctionType>(mlir::Type::getFromOpaquePointer(
+        if (!parser_ptr) {
+          return nullPointer("mlir::OpAsmParser::resolveOperandsFunctional",
+                             "parser");
+        }
+        auto ft = mlir::dyn_cast_or_null<mlir::FunctionType>(
+            mlir::Type::getFromOpaquePointer(
                 reinterpret_cast<const void*>(func_type_ptr)));
+        if (!ft) {
+          return scheme_error(
+              "mlir::OpAsmParser::resolveOperandsFunctional",
+              "the type pointer is null or not a function type");
+        }
+        if (!state_ptr) {
+          return nullPointer("mlir::OpAsmParser::resolveOperandsFunctional",
+                             "state");
+        }
+        auto* ops = UnresolvedOperands::inner(ops_handle);
+        if (!ops) {
+          return scheme_error(
+              "mlir::OpAsmParser::resolveOperandsFunctional",
+              "the operand list is null or not a list of operands");
+        }
+        auto* p = reinterpret_cast<mlir::OpAsmParser*>(parser_ptr);
         auto& state = *reinterpret_cast<mlir::OperationState*>(state_ptr);
         return scheme_bool(!p->resolveOperands(
-            ops->inner(), ft.getInputs(), p->getNameLoc(), state.operands));
+            *ops, ft.getInputs(), p->getNameLoc(), state.operands));
       });
 
   // crest::OpAsmParser::freeOperands (uptr operands) → void
@@ -459,7 +490,15 @@ void registerIROpImplementationBindings() {
   Sregister_symbol(
       "crest::OpAsmParser::freeOperands",
       (void*)+[](uint64_t ops_handle) -> ptr {
-        delete reinterpret_cast<UnresolvedOperands*>(ops_handle);
+        if (!ops_handle) {
+          return Svoid;
+        }
+        auto* ops = UnresolvedOperands::checked(ops_handle);
+        if (!ops) {
+          return scheme_error("crest::OpAsmParser::freeOperands",
+                              "not a list of operands");
+        }
+        delete ops;
         return Svoid;
       });
 
