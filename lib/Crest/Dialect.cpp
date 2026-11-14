@@ -285,8 +285,9 @@ void registerIRExtensibleDialectBindings() {
       (void*)+[](uint64_t dialect_ptr, const char* name) -> ptr {
         auto* dialect = reinterpret_cast<CrestDialect*>(dialect_ptr);
         if (!dialect->getContext()->getOrLoadDialect(llvm::StringRef(name))) {
-          llvm::report_fatal_error(
-              llvm::Twine("crest: dependent dialect not in registry: ") + name);
+          return scheme_error("crest::CrestDialect::loadDependentDialect",
+                              llvm::Twine("dialect '") + name +
+                                  "' is not in the registry");
         }
         return Svoid;
       });
