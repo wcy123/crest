@@ -53,6 +53,7 @@ int main(int argc, char** argv) {
   crest::registerCrestPass();
   mlir::registerTransformsPasses(); // --canonicalize, --cse, --inliner, etc.
 
+  llvm::StringMap<std::string> givenDialects;
   // Pre-scan argv for --crest-scheme-dialect= entries and populate the global
   // registry before MlirOptMain creates any MLIRContext. The cl::list above
   // ensures the option is accepted and visible in --help; we process it
@@ -68,6 +69,19 @@ int main(int argc, char** argv) {
                       "name=module/path, got '"
                    << arg << "'\n";
       continue;
+    }
+    // A dialect name has one library: the same one twice is given once, and
+    // another one is an error here (MLIR would end the process).
+    auto [given, isNew] =
+        givenDialects.try_emplace(dialect_name.str(), module_name.str());
+    if (!isNew) {
+      if (given->second == module_name) {
+        continue;
+      }
+      llvm::errs() << "crest-opt: --crest-scheme-dialect: dialect '"
+                   << dialect_name << "' is given for " << given->second
+                   << " and for " << module_name << "\n";
+      return 1;
     }
     // The dialect is created lazily, when the first of its ops is parsed, and
     // cannot fail then, so a library that does not load is reported here.

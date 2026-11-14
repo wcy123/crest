@@ -160,6 +160,10 @@ void registerIRExtensibleDialectBindings();
 ///                      name (toy ch4 toy), the same format accepted by
 ///                      ChezSchemeInterpreter::importLibrary).
 ///
+/// The same dialect_name and module_name give the same TypeID every time, so a
+/// context that loads the dialect twice finds it, and a registry that has it
+/// twice accepts it. MLIR ends the process when a name gets two TypeIDs.
+///
 /// Insert the result into a DialectRegistry before creating any MLIRContext
 /// to avoid the UnregisteredOpModel use-after-free described in
 /// tech-note.md ("Dialect Registration Must Happen Before Parsing").
