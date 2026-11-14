@@ -477,7 +477,6 @@
                                                   #'%crest::DynamicType::getParams)]
                 [reg-defs     (generate-register-dialect #'dialect-id (dialect-parse-cbs dialect) ops
                                                          #'%crest::register-dynamic-op!
-                                                         #f
                                                          (dialect-parse-dialect-ifaces dialect)
                                                          types
                                                          #'%crest::register-dynamic-type!)])
