@@ -43,5 +43,9 @@ config.substitutions.append(("%crest-opt",
     os.path.join(config.crest_tools_dir, "crest-opt")))
 config.substitutions.append(("%scheme-mlir",
     os.path.join(os.path.dirname(config.crest_tools_dir), "scheme-mlir", "scheme-mlir")))
+cmake = lit.util.which("cmake")
+if cmake:
+    config.available_features.add("cmake")
+    config.substitutions.append(("%cmake", '"' + cmake + '"'))
 config.substitutions.append(("%FileCheck", find_tool("FileCheck")))
 config.substitutions.append(("%samples", config.crest_samples_dir))
