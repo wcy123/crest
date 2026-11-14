@@ -26,7 +26,7 @@
                 mlir::Operation::setAttr!)
           (only (mlir IR BuiltinAttributes)
                 mlir::FloatAttr::get<f32>
-                mlir::FloatAttr::getValueAsDouble.f32
+                mlir::FloatAttr::getValueAsDouble
                 mlir::IntegerAttr::get<i64>
                 mlir::DenseI32ArrayAttr::get
                 mlir::DenseI64ArrayAttr::get
@@ -63,6 +63,6 @@
 
   (define (op-get-f32-attr op name)
     (let ([attr (mlir::Operation::getAttr op name)])
-      (if (zero? attr) +nan.0 (mlir::FloatAttr::getValueAsDouble.f32 attr))))
+      (if (zero? attr) +nan.0 (mlir::FloatAttr::getValueAsDouble attr))))
 
   ) ;; end library (passes hip-fusion helpers)

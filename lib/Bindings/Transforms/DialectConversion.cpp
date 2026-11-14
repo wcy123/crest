@@ -183,7 +183,7 @@ void registerTransformsDialectConversionBindings() {
   // Variant with no TypeConverter: operands are passed as original values.
   // Use for patterns that consume original (unconverted) operand types.
   Sregister_symbol(
-      "crest::DialectConversion::addConversionPattern/ctx",
+      "crest::DialectConversion::addConversionPatternWithoutTypeConverter",
       (void*)+[](uint64_t patterns_ptr, const char* op_name_arg,
                  ConversionPatternFn* callback, int benefit) -> ptr {
         const std::string op_name(op_name_arg);
@@ -191,7 +191,8 @@ void registerTransformsDialectConversionBindings() {
             crest::as_ref<mlir::RewritePatternSet>(patterns_ptr);
         if (!patterns_box) {
           return scheme_error(
-              "crest::DialectConversion::addConversionPattern/ctx",
+              "crest::DialectConversion::"
+              "addConversionPatternWithoutTypeConverter",
               "null pointer or not a CrestBox<mlir::RewritePatternSet> or "
               "CrestBox<mlir::RewritePatternSet*>");
         }

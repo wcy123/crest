@@ -23,7 +23,7 @@
                 mlir::ShapedType::getShape)
           (only (mlir IR BuiltinAttributes)
                 mlir::FlatSymbolRefAttr::get
-                mlir::StringAttr::get/len
+                mlir::StringAttr::get<StringRef>
                 mlir::TypeAttr::get
                 mlir::parseAttribute)
           (mlir Pass PassManager)
@@ -80,8 +80,8 @@
           existing
           (let* ([len   (string-length value)]  ; includes embedded NUL
                  [arrty (mlir::LLVM::LLVMArrayType::get (mlir::IntegerType::get<i8> ctx) len)]
-                 ;; Use get/len so embedded NUL bytes are preserved in the StringAttr.
-                 [attr  (mlir::StringAttr::get/len ctx value len)]
+                 ;; Use get<StringRef> so embedded NUL bytes are preserved in the StringAttr.
+                 [attr  (mlir::StringAttr::get<StringRef> ctx value len)]
                  [body  (mlir::ModuleOp::getBody module-op)])
             (with-InsertionGuard guard (rw)
                                  (mlir::RewriterBase::setInsertionPointToStart rw body)

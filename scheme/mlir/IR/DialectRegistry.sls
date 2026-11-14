@@ -44,7 +44,7 @@
   (define-syntax with-MLIRContext
     (syntax-rules ()
       [(_ ctx (reg) body ...)
-       (with-CrestObject ctx (%mlir::MLIRContext::new/registry reg)
+       (with-CrestObject ctx (%mlir::MLIRContext::new<DialectRegistry> reg)
          body ...)]))
 
   ) ;; end library (mlir IR DialectRegistry)
