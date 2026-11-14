@@ -24,7 +24,7 @@ cmake_host_system_information(RESULT _crest_logical_cores QUERY NUMBER_OF_LOGICA
 set(CREST_CHEZ_JOBS "${_crest_logical_cores}" CACHE STRING
   "Parallel jobs (make -j) of the ChezScheme build")
 
-# ─── Scheme boot embedding────────────────────────────────────────────────────
+# ─── Scheme boot embedding ────────────────────────────────────────────────────
 # When ON, all .sls libraries are compiled into a single crest.boot and
 # embedded as a C byte-array. The interpreter loads it at startup so no
 # .sls files are needed at deployment time.
