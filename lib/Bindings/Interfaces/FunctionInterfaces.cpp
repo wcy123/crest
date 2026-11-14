@@ -62,6 +62,14 @@ void registerInterfacesFunctionInterfacesBindings() {
   Sregister_symbol(
       "mlir::function_interface_impl::parseFunctionOp",
       (void*)+[](uint64_t parser_ptr, uint64_t state_ptr) -> ptr {
+        if (!parser_ptr) {
+          return scheme_error("mlir::function_interface_impl::parseFunctionOp",
+                              "parser pointer is null");
+        }
+        if (!state_ptr) {
+          return scheme_error("mlir::function_interface_impl::parseFunctionOp",
+                              "state pointer is null");
+        }
         auto* p = reinterpret_cast<mlir::OpAsmParser*>(parser_ptr);
         auto& state = *reinterpret_cast<mlir::OperationState*>(state_ptr);
         auto typeBuilder = [](mlir::Builder& builder,
