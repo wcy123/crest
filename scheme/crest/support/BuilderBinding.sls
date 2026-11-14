@@ -30,15 +30,15 @@
           (for (rnrs) expand)
           (only (chezscheme) foreign-procedure))
 
-  (define %isa-builder?
+  (define %%isa-builder?
     (let ([f (crest-foreign-procedure "crest::isa<CrestBox<mlir::OpBuilder>>" (uptr) int)])
       (lambda (p) (not (zero? (f p))))))
 
-  (define %isa-rewriter?
+  (define %%isa-rewriter?
     (let ([f (crest-foreign-procedure "crest::isa<CrestBox<mlir::RewriterBase*>>" (uptr) int)])
       (lambda (p) (not (zero? (f p))))))
 
-  (define %isa-borrowed?
+  (define %%isa-borrowed?
     (let ([f (crest-foreign-procedure "crest::isa<CrestBox<mlir::OpBuilder*>>" (uptr) int)])
       (lambda (p) (not (zero? (f p))))))
 
@@ -70,9 +70,9 @@
                      [call-borrowed (crest-foreign-procedure sym-borrowed (builder-type arg-type ...) ret)])
                  (lambda (builder arg ...)
                    (cond
-                    [(%isa-rewriter? builder) (call-rewriter builder arg ...)]
-                    [(%isa-builder? builder)  (call-builder builder arg ...)]
-                    [(%isa-borrowed? builder) (call-borrowed builder arg ...)]
+                    [(%%isa-rewriter? builder) (call-rewriter builder arg ...)]
+                    [(%%isa-builder? builder)  (call-builder builder arg ...)]
+                    [(%%isa-borrowed? builder) (call-borrowed builder arg ...)]
                     [else (error 'name
                                  "expected a builder: CrestBox<RewriterBase*>, CrestBox<OpBuilder> or CrestBox<OpBuilder*>"
                                  builder)])))))])))
