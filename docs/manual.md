@@ -1253,6 +1253,35 @@ warning: samples/passes/hip-fusion/qadd.sls:83:20: [hip-qadd-fusion]
 
 No C++ changes, no rebuild — just set the variable, re-run, debug, unset, re-run.
 
+### Errors you will see
+
+A mistake in a pattern is found when its library is first imported, at the first run, and the message
+quotes the form and the position. A mistyped keyword (`:if-mach` for `:if-match`):
+
+```text
+error: Failed to import Scheme library: passes/typo: Exception in %%parse-rest: Expected function name and :if-match clause (:if-mach %out = source.add (%x %y) :then-let ...) near line 11, char 5 of
+```
+
+A `:where` guard that answers `#f` is a normal "does not match": nothing is printed, and with
+`CREST_DEBUG_MATCH=1` you get the check and the op:
+
+```text
+[warning] passes/falsy.sls:13:16: [falsy] :check-where FAILED: #f
+[warning]   actual: %0 = "source.add"(%arg0, %arg1) : (i32, i32) -> i32
+```
+
+A guard that raises an error does not match either, and it always prints a warning with the position of
+the guard and the text of the error, with or without `CREST_DEBUG_MATCH`:
+
+```text
+[warning] passes/raises.sls:13:16: [raises] :check-where exception: Exception in car: () is not a pair
+[warning]   actual: %0 = "source.add"(%arg0, %arg1) : (i32, i32) -> i32
+```
+
+What to expect: an op list that names only some of the operands of an op matches the first ones (the
+rest are ignored); `(:optional ...)` and `(:variadic ...)` need `operandSegmentSizes` on the op, and without
+it the pattern does not match.
+
 ### `CREST_DEBUG_BEGIN_MLIR_CODE=<file>`
 
 Set it to a file path to see what each `begin-mlir-code` form expands to. Every expansion is
