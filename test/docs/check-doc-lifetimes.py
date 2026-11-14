@@ -11,7 +11,7 @@ import pathlib
 import re
 import sys
 
-text = pathlib.Path(sys.argv[1]).read_text()
+text = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
 section = re.search(r"^### Lifetimes$(.*?)^#{2,3} ", text, re.M | re.S)
 if not section:
     print('docs/manual.md: no "### Lifetimes" section')
