@@ -51,6 +51,6 @@ config.substitutions.append(("%scheme-mlir",
 cmake = lit.util.which("cmake")
 if cmake:
     config.available_features.add("cmake")
-    config.substitutions.append(("%cmake", cmake))
+    config.substitutions.append(("%cmake", '"' + cmake + '"'))
 config.substitutions.append(("%FileCheck", find_tool("FileCheck")))
 config.substitutions.append(("%samples", config.crest_samples_dir))
