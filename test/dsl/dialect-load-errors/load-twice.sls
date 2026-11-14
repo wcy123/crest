@@ -1,0 +1,20 @@
+;; scheme-mlir driver: load Scheme dialects into one context, several times, and say what each call did.
+(import (rnrs)
+        (only (chezscheme) command-line-arguments)
+        (mlir IR MLIRContext) (mlir IR DialectRegistry)
+        (crest dialect))
+
+(define (try who thunk)
+  (guard (e [#t (display who) (display ": error: ")
+                (display (if (message-condition? e) (condition-message e) e))
+                (display " ")
+                (when (irritants-condition? e) (display (condition-irritants e)))
+                (newline)])
+    (thunk)
+    (display who) (display ": ok") (newline)))
+
+(with-DialectRegistry reg ()
+  (with-MLIRContext ctx (reg)
+    (try "first" (lambda () (load-scheme-dialect! ctx "simple" "passes/simple")))
+    (try "same library again" (lambda () (load-scheme-dialect! ctx "simple" "passes/simple")))
+    (try "other library" (lambda () (load-scheme-dialect! ctx "simple" "passes/simple2")))))
