@@ -358,6 +358,14 @@ The whole suite runs under valgrind with one lit parameter, and a script reads t
 "definitely lost" bytes (a leak) or an invalid read or write (a use after free), and names the command, so the test.
 The GitHub workflow `leaks.yml` runs this every Monday (and on demand).
 
+- A test that measures the heap of its own process (`pass-leak`, `assembly-format-leak`, `hook-errors-leak`,
+  `dialect-load-heap`, `callback-errors`) says `UNSUPPORTED: valgrind`: valgrind's allocator changes the numbers. They run
+  in the normal suite.
+- A run that ends the process on purpose (a `void` callback fails and `llvm::report_fatal_error` ends it; a driver does
+  not catch an error) never closes its `with-` scopes (CLAUDE.md Rule 20), so what they hold is lost. Those runs are in
+  `test/valgrind-ends-the-process.txt`, with the reason; only their leaks are excused.
+- Reports of "uninitialised value" whose stack is all Chez-generated code are not looked for (no frame of CREST or of LLVM
+  is in them).
 - `test/valgrind.supp` is for a report that is inside a tool that CREST links and is not CREST's. It is empty.
 
 `pass-leak`, `assembly-format-leak` and the checks of Rule 20 found their leaks with this method in 2026-11.

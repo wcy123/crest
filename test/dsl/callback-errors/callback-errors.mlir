@@ -10,6 +10,8 @@
 // Nothing is left behind, so the C++ heap does not grow however many errors there are.
 //
 // REQUIRES: system-linux
+// It measures the heap of the process, which valgrind's allocator changes:
+// UNSUPPORTED: valgrind
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/callback-errors-scheme \
 // RUN:   %scheme-mlir %S/driver.sls %s 2>/dev/null | %FileCheck %s
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/callback-errors-scheme \

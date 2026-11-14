@@ -3,6 +3,8 @@
 // 3000 times must not grow the C++ heap.
 //
 // REQUIRES: system-linux
+// It measures the heap of the process, which valgrind's allocator changes:
+// UNSUPPORTED: valgrind
 // RUN: env CREST_PATH=%S/../assembly-format CREST_SCHEME_BINARY_DIR=%t/af-leak \
 // RUN:   %scheme-mlir %S/driver.sls %s | %FileCheck %s
 

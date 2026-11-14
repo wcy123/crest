@@ -27,6 +27,21 @@ USE_AFTER_FREE = """==3== Command: /build/tools/crest-opt/crest-opt /test/freed.
 ==3== LEAK SUMMARY:
 ==3==    definitely lost: 0 bytes in 0 blocks
 """
+ENDS_THE_PROCESS_AND_LEAKS = """==4== Command: /build/tools/scheme-mlir/scheme-mlir /w/test/dsl/c-callable-results/driver.sls void
+==4== LEAK SUMMARY:
+==4==    definitely lost: 96 bytes in 1 blocks
+"""
+ENDS_THE_PROCESS_AND_FREED = """==5== Command: /build/tools/scheme-mlir/scheme-mlir /w/test/dsl/c-callable-results/driver.sls void
+==5== Invalid read of size 8
+==5== LEAK SUMMARY:
+==5==    definitely lost: 96 bytes in 1 blocks
+"""
+CHEZ_ONLY = """==6== Command: /build/tools/crest-opt/crest-opt /test/chez.mlir
+==6== Conditional jump or move depends on uninitialised value(s)
+==6==    at 0x76387E1: ???
+==6== LEAK SUMMARY:
+==6==    definitely lost: 0 bytes in 0 blocks
+"""
 
 
 def run(*logs):
@@ -41,6 +56,9 @@ for name, logs, should_fail in (
     ("a clean run", [CLEAN], False),
     ("a leak", [CLEAN, LEAK], True),
     ("a use after free", [USE_AFTER_FREE], True),
+    ("a run that ends the process on purpose and loses memory", [ENDS_THE_PROCESS_AND_LEAKS], False),
+    ("a run that ends the process and reads freed memory", [ENDS_THE_PROCESS_AND_FREED], True),
+    ("a report that is all Chez-generated code", [CHEZ_ONLY], False),
 ):
     result = run(*logs)
     if (result.returncode != 0) != should_fail:

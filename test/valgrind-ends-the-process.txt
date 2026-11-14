@@ -1,0 +1,16 @@
+# Runs that end the process before their with- scopes close (CLAUDE.md Rule 20: exit does not unwind), so the object
+# that a scope holds is "definitely lost" when valgrind looks. Each line is a regular expression that is searched in the
+# command line of the run (tools/check-valgrind-logs.py); only "definitely lost" is excused, an invalid read or write
+# is not. A run that is not here and loses memory is a leak.
+
+# A callback that has no result fails: llvm::report_fatal_error ends the process with the text.
+dsl/c-callable-results/driver\.sls void
+dsl/c-callable-results/driver\.sls no-context
+dsl/callback-diagnostics/driver\.sls .* no-context
+dsl/callback-diagnostics/fatal-driver\.sls
+bindings/diagnostic-locations/driver\.sls fatal
+
+# A library that does not import raises an error that the driver does not catch: Chez ends the process.
+dsl/interface-dsl/passes/function-without-callable-driver\.sls
+dsl/interface-dsl/passes/function-without-symbol-driver\.sls
+dsl/interface-dsl/passes/callable-without-attrs-driver\.sls
