@@ -35,7 +35,7 @@ else:
                                      f"--crest-pass=passes=passes/{library}", str(probe_dir / "input.in")],
                                     env=env, capture_output=True, text=True, encoding="utf-8")
             real += result.stdout + result.stderr
-    real = real.replace(str(probe_dir) + "/", "")
+    real = real.replace("\\", "/").replace(probe_dir.as_posix() + "/", "")
     if not shown:
         problems.append("docs/manual.md: the section of errors has no ```text blocks")
     for line in shown:
