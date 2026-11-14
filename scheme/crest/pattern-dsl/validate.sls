@@ -33,8 +33,7 @@
     (%%validate-then-let-names ast-rec)
 
     ;; Rule: Root variable must appear in results (after normalization)
-    ;; Cache: root-op-index, root-result-idx, root-op-name for codegen
-    (%%validate-and-cache-root-var ast-rec)
+    (%%validate-root-var ast-rec)
 
     ;; :rewrite :with and :then-let bodies are kept as raw syntax;
     ;; structural validation happens at macro-expansion time in begin-mlir-code.
@@ -122,10 +121,10 @@
                                var))))
        (ast-pattern-expand-then-let ast-rec))))
 
-  (define (%%validate-and-cache-root-var ast-rec)
+  (define (%%validate-root-var ast-rec)
     ;; Rule: Root variable must appear as a result in at least one match operation
-    ;; Cache: Store root-op-index, root-result-idx, root-op-name for codegen phase
     ;; Must be called AFTER normalization (needs match vector and normalized result-vars)
+    ;; Only checks: codegen finds the root op again (%%find-root-op in codegen.sls).
     (let ([match-vec (ast-pattern-expand-match ast-rec)]
           [root-var (ast-pattern-expand-root-var ast-rec)])
       (let ([found (loop :initially := #f
@@ -144,53 +143,8 @@
                     ;; (not a result variable of any match-op).  This is valid
                     ;; when all matched ops have 0 results.
                     (bound-identifier=? root-var (ast-pattern-expand-param-op ast-rec)))
-          (syntax-violation '%%validate-and-cache-root-var
+          (syntax-violation '%%validate-root-var
                             "Root variable not found in any match operation result" root-var)))))
-
-  ;;-----------------------------------------------------------------------
-  ;; Rewrite operation validation
-  ;;-----------------------------------------------------------------------
-
-  (define (%%validate-operation op)
-    (%%validate-operation-result-var op)
-    (%%validate-and-normalize-operation-name op)
-    (%%validate-operation-regions op))
-
-  (define (%%validate-operation-result-var op)
-    (let ([result (ast-operation-expand-result-var op)])
-      (unless (or (identifier? result)
-                  (null? (syntax->datum result))
-                  ;; Multi-result: a proper list of %var identifiers
-                  (and (pair? (syntax->datum result))
-                       (for-all identifier? (syntax->list result))))
-        (syntax-violation '%%validate-operation
-                          "Operation result must be identifier, (), or list of identifiers"
-                          result))))
-
-  (define (%%validate-and-normalize-operation-name op)
-    (let* ([op-name-stx (ast-operation-expand-op-name op)]
-           [op-name-datum (syntax->datum op-name-stx)])
-      (unless (or (string? op-name-datum) (symbol? op-name-datum))
-        (syntax-violation '%%validate-operation "Operation name must be string or symbol"
-                          op-name-stx))
-      ;; Normalize: convert symbol to string in-place
-      (unless (string? op-name-datum)
-        (ast-operation-expand-op-name-set! op
-                                           (datum->syntax op-name-stx (symbol->string op-name-datum))))))
-
-  (define (%%validate-operation-regions op)
-    (let ([regions (ast-operation-expand-regions op)])
-      (when (pair? regions)
-        (for-each %%validate-region regions))))
-
-  (define (%%validate-region region)
-    (for-each %%validate-block (ast-region-expand-blocks region)))
-
-  (define (%%validate-block block)
-    (for-each (lambda (item)
-                (when (ast-operation-expand? item)
-                  (%%validate-operation item)))
-              (ast-block-expand-operations block)))
 
   ;;-----------------------------------------------------------------------
   ;; Utilities
