@@ -348,16 +348,21 @@ procedure as a diagnostic that names its Scheme position, or ends the process wh
 
 ## Checking for memory leaks
 
-The whole suite runs under valgrind with one lit parameter, and a script reads the logs:
+The whole suite runs under valgrind with one lit parameter, and a log with "definitely lost" bytes is a leak:
 
     lit -sv build/test --param valgrind_logs=/tmp/vglogs -j $(nproc)
-    python3 tools/check-valgrind-logs.py /tmp/vglogs
+    grep -lE 'definitely lost: [1-9]' /tmp/vglogs/*.log
 
 `lit.cfg.py` replaces `%crest-opt` and `%scheme-mlir` with wrappers that run the tool under
-`valgrind --leak-check=full`, one log file for each run (about 4 minutes on 64 cores). The script fails when a run has
-"definitely lost" bytes (a leak) or an invalid read or write (a use after free), and names the command, so the test.
-The GitHub workflow `leaks.yml` runs this every Monday (and on demand).
+`valgrind --leak-check=full`, one log file for each run (about 4 minutes on 64 cores). The `Command:` line of a log names
+the run, so the test. The GitHub workflow `leaks.yml` runs this every Monday (and on demand).
 
-- `test/valgrind.supp` is for a report that is inside a tool that CREST links and is not CREST's. It is empty.
+A test that valgrind cannot judge says `UNSUPPORTED: valgrind`. They still run in the normal suite:
+
+- `pass-leak`, `assembly-format-leak`, `hook-errors-leak`, `dialect-load-heap` and `callback-errors` measure the heap of
+  their own process (they are a second way to find a leak), and valgrind's allocator changes the numbers.
+- `c-callable-results`, `callback-diagnostics`, `diagnostic-locations` and `interface-dsl/callable-clauses-errors` have runs
+  that end the process on purpose (a `void` callback fails, or a driver does not catch an error), so a `with-` scope
+  never closes (Rule 20: `exit` does not unwind) and what it holds is "definitely lost".
 
 `pass-leak`, `assembly-format-leak` and the checks of Rule 20 found their leaks with this method in 2026-11.

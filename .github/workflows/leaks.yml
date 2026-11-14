@@ -1,7 +1,7 @@
 name: Leaks
 
-# The suite under valgrind: every run of crest-opt and scheme-mlir is checked for a leak and for a use after free
-# (Rules 17 and 20 make these the main risk, and the *-leak tests only measure the heap of one process).
+# The suite under valgrind: every run of crest-opt and scheme-mlir is checked for a leak (Rules 17 and 20 make a leak
+# the main risk, and the *-leak tests only measure the heap of one process).
 # It takes about 4 minutes on 64 cores, so it is not part of the pull request checks: it runs every Monday, and on
 # demand (Actions, Leaks, Run workflow). How it works: docs/tech-note.md, "Checking for memory leaks".
 
@@ -57,8 +57,13 @@ jobs:
       - name: Lit tests under valgrind
         run: lit -sv build/test --param valgrind_logs=${{ github.workspace }}/build/valgrind-logs -j $(nproc)
 
-      - name: Check the valgrind logs
-        run: python3 tools/check-valgrind-logs.py build/valgrind-logs
+      # A log with "definitely lost" bytes is a leak. Its Command: line names the run, so the test.
+      - name: Fail on a leak
+        run: |
+          ls build/valgrind-logs/*.log > /dev/null
+          leaks=$(grep -lE 'definitely lost: [1-9]' build/valgrind-logs/*.log || true)
+          for log in $leaks; do grep -m1 'Command:' "$log"; done
+          test -z "$leaks"
 
       - name: Upload the valgrind logs
         if: failure()

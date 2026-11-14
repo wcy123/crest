@@ -48,8 +48,8 @@ crest_opt = os.path.join(config.crest_tools_dir, "crest-opt")
 scheme_mlir = os.path.join(os.path.dirname(config.crest_tools_dir), "scheme-mlir", "scheme-mlir")
 
 # lit --param valgrind_logs=DIR runs crest-opt and scheme-mlir under valgrind, one log file for each run in DIR.
-# tools/check-valgrind-logs.py reads them (docs/tech-note.md, "Checking for memory leaks"). A test that measures
-# the heap itself says "UNSUPPORTED: valgrind".
+# A log with "definitely lost" bytes is a leak (docs/tech-note.md, "Checking for memory leaks"). A test that
+# valgrind cannot judge says "UNSUPPORTED: valgrind".
 valgrind_logs = lit_config.params.get("valgrind_logs")
 if valgrind_logs:
     config.available_features.add("valgrind")
@@ -60,11 +60,10 @@ if valgrind_logs:
     def under_valgrind(real_tool):
         name = os.path.basename(real_tool)
         wrapper = os.path.join(wrappers, name)
-        suppressions = os.path.join(os.path.dirname(__file__), "valgrind.supp")
         with open(wrapper, "w") as out:
             out.write("#!/bin/sh\n"
                       "exec valgrind --leak-check=full --show-leak-kinds=definite --num-callers=14 "
-                      f"--suppressions={suppressions} --log-file={valgrind_logs}/{name}.%p.log "
+                      f"--log-file={valgrind_logs}/{name}.%p.log "
                       f'{real_tool} "$@"\n')
         os.chmod(wrapper, 0o755)
         return wrapper
