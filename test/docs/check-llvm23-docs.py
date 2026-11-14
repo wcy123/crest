@@ -9,11 +9,11 @@ import re
 import sys
 
 root = pathlib.Path(sys.argv[1]).resolve()
-readme = " ".join((root / "README.md").read_text().split())
-getting_started = " ".join((root / "docs/getting-started.md").read_text().split())
+readme = " ".join((root / "README.md").read_text(encoding="utf-8").split())
+getting_started = " ".join((root / "docs/getting-started.md").read_text(encoding="utf-8").split())
 problems = []
 
-stub = (root / "lib/Crest/TraitStub.cpp").read_text()
+stub = (root / "lib/Crest/TraitStub.cpp").read_text(encoding="utf-8")
 message = re.search(r'"(define-op :traits requires LLVM 23\+)', stub)
 if not message:
     problems.append("lib/Crest/TraitStub.cpp: the :traits message changed (the check needs updating)")
