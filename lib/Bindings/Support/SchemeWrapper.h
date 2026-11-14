@@ -180,12 +180,15 @@ template <> inline ptr Conversion<short, ptr>::operator()(const short& v) {
 template <> inline ptr Conversion<int, ptr>::operator()(const int& v) {
   return Sfixnum(static_cast<long>(v));
 }
+// A fixnum has about 60 bits: a long, a long long and an unsigned long can be
+// bigger, so they cross as integers of 64 bits (Sinteger64, Sunsigned64), which
+// are fixnums when they fit and bignums when not.
 template <> inline ptr Conversion<long, ptr>::operator()(const long& v) {
-  return Sfixnum(v);
+  return Sinteger64(v);
 }
 template <>
 inline ptr Conversion<long long, ptr>::operator()(const long long& v) {
-  return Sfixnum(static_cast<long>(v));
+  return Sinteger64(v);
 }
 template <>
 inline ptr
@@ -198,7 +201,7 @@ inline ptr Conversion<unsigned int, ptr>::operator()(const unsigned int& v) {
 }
 template <>
 inline ptr Conversion<unsigned long, ptr>::operator()(const unsigned long& v) {
-  return Sfixnum(static_cast<long>(v));
+  return Sunsigned64(v);
 }
 template <>
 inline ptr
