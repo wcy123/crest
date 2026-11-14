@@ -2,6 +2,8 @@
 // Scheme source position, and mlir::emitError reports at it; llvm::report_fatal_error ends the process with a text
 // (exit 1, no abort).
 //
+// Some of its runs end the process on purpose, so a with- scope never closes (Rule 20: exit does not unwind) and valgrind sees a leak:
+// UNSUPPORTED: valgrind
 // RUN: %scheme-mlir %S/driver.sls locations 2>&1 | %FileCheck %s --check-prefix=ERR
 // RUN: not %scheme-mlir %S/driver.sls fatal 2>&1 | %FileCheck %s --check-prefix=FATAL
 

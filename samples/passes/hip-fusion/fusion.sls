@@ -86,7 +86,7 @@
                 mlir::Value::getUses)
           (only (mlir IR BuiltinAttributes)
                 mlir::DenseElementsAttr::isSplat
-                mlir::FloatAttr::getValueAsDouble.f32
+                mlir::FloatAttr::getValueAsDouble
                 mlir::DenseElementsAttr::getSplatValue<APFloat>
                 mlir::DenseElementsAttr::getSplatValue<APInt>
                 mlir::DenseI64ArrayAttr::toVector)
@@ -227,7 +227,7 @@
   ;; Mirrors hip_is_l2_equiv_rms_norm in Hip.cpp.
   (define (hip-l2-equiv-rms-norm? op)
     (let ([eps  (let ([a (mlir::Operation::getAttr op "epsilon")])
-                  (if (zero? a) +nan.0 (mlir::FloatAttr::getValueAsDouble.f32 a)))]
+                  (if (zero? a) +nan.0 (mlir::FloatAttr::getValueAsDouble a)))]
           [axis (mlir::Operation::getAttrOfType<IntegerAttr> op "axis" -999)])
       (and
        ;; epsilon must be 0.0

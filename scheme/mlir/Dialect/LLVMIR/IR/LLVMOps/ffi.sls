@@ -17,8 +17,7 @@
           %mlir::LLVM::GEPOp::create
           %mlir::LLVM::ConstantOp::create<i64>
           %mlir::LLVM::CallOp::create
-          %mlir::ModuleOp::lookupSymbol
-          %mlir::FlatSymbolRefAttr::get)
+          %mlir::ModuleOp::lookupSymbol)
   (import (chezscheme)
           (crest support foreign) (crest support BuilderBinding))
 
@@ -54,8 +53,5 @@
 
   (define %mlir::ModuleOp::lookupSymbol
     (crest-foreign-procedure "mlir::ModuleOp::lookupSymbol" (uptr string) uptr))
-
-  (define %mlir::FlatSymbolRefAttr::get
-    (crest-foreign-procedure "mlir::FlatSymbolRefAttr::get" (uptr string) uptr))
 
   ) ;; end library (mlir Dialect LLVMIR IR LLVMOps ffi)
