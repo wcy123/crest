@@ -1,6 +1,7 @@
 #!r6rs
 ;; A :where guard that has the text (:attr "k") inside a quote. It is data, not a use of :attr: the guard asks
 ;; whether the first element of that list is the symbol :attr, which it is only if the list was left alone.
+;; The second pattern asks the same about the symbol :other, which is false: its op must not be fused.
 (library (passes where-quote)
   (export pass-entry-point)
   (import (except (rnrs) =)
@@ -20,10 +21,19 @@
     :rewrite %out :with
       result = test.fused (%x %y) -> !out-type)
 
+  (define-rewrite-pattern (%%where-quote-false op rewriter)
+    :if-match
+      %out = test.mul (%x %y)
+        :where (eq? (car '(:attr "k")) ':other)
+    :then-let
+      ([!out-type (mlir::Value::getType %out)])
+    :rewrite %out :with
+      result = test.fused (%x %y) -> !out-type)
+
   (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
-        (with-RewritePatternSet patterns (ctx :rewrite-patterns (("test.add" %%where-quote 1)))
+        (with-RewritePatternSet patterns (ctx :rewrite-patterns (("test.add" %%where-quote 1) ("test.mul" %%where-quote-false 1)))
           (mlir::applyPatternsGreedily module-op patterns)))))
 
   ) ;; end library
