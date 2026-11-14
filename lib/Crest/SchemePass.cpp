@@ -43,6 +43,12 @@ public:
   }
 
   void runOnOperation() override {
+    if (getOperation()->getContext()->isMultithreadingEnabled()) {
+      getOperation()->emitError()
+          << "pass " << name_
+          << ": needs a context with multithreading disabled";
+      return signalPassFailure();
+    }
     auto interpreter = ChezSchemeInterpreter::instance();
     CurrentContextScope scope(*interpreter, getOperation()->getContext());
     if (callback_(reinterpret_cast<uint64_t>(getOperation())) == 0) {

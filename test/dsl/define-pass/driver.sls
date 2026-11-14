@@ -1,6 +1,7 @@
 ;; scheme-mlir driver: parse the module in argv[1], run a pipeline of Scheme passes, print the module.
 ;; argv[2] is "ok" (a renaming pass nested on func.func, then a pass on the module), "fail", "reuse" (the
-;; same define-pass in two pipelines, twice in one of them) or "raise" (a body that raises an error).
+;; same define-pass in two pipelines, twice in one of them), "raise" (a body that raises an error) or
+;; "threads" (the nested pass of "ok" on a context that has multithreading enabled).
 (import (except (rnrs) =)
         (only (chezscheme) command-line-arguments)
         (mlir IR DialectRegistry) (mlir IR MLIRContext)
@@ -52,6 +53,9 @@
             (mlir::PassManager::addPass pm (count-ops))]
            [(string=? (cadr args) "raise")
             (mlir::PassManager::addPass pm (always-raise))]
+           [(string=? (cadr args) "threads")
+            (mlir::MLIRContext::enableMultithreading ctx)
+            (mlir::OpPassManager::addPass (mlir::PassManager::nest pm "func.func") (tag-functions))]
            [else (mlir::PassManager::addPass pm (always-fail))])
           (cond
            [(and (string=? (cadr args) "reuse")
