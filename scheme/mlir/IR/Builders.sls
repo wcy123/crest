@@ -32,7 +32,7 @@
     with-OpBuilder
     with-InsertionGuard)
   (import (rnrs)
-          (only (chezscheme) make-parameter parameterize)
+          (only (chezscheme) make-thread-parameter parameterize)
           (mlir IR Builders ffi)
           (only (crest support CrestObject) with-CrestObject)
           (only (mlir IR MLIRContext) current-MLIRContext))
@@ -74,7 +74,7 @@
   ;; ops with: a builder shell (CrestBox<OpBuilder>, or the pattern's CrestBox<RewriterBase*>),
   ;; or #f when none is active. It keeps the real object, so rewriter-only operations work on it.
   ;; Mirrors current-MLIRContext; see mlir/IR/Builders.h.
-  (define current-OpBuilder (make-parameter #f))
+  (define current-OpBuilder (make-thread-parameter #f))
 
   ;; @brief with-current-OpBuilder — install a builder shell (or #f) as current-OpBuilder.
   (define-syntax with-current-OpBuilder

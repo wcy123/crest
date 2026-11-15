@@ -117,6 +117,8 @@ add_library(CrestBindings STATIC
   Support/Logging.cpp
   Support/Logging.h
   Support/SchemeWrapper.cpp
+  Support/SchemeThreads.cpp
+  Support/SchemeThreads.h
   Support/SchemeWrapper.h
   Transforms/DialectConversion.cpp
   Transforms/DialectConversion.h

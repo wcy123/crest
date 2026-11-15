@@ -25,8 +25,9 @@ void registerIRMLIRContextBindings() {
   // this directly and never freed leaks.
   Sregister_symbol(
       "mlir::MLIRContext::new", (void*)+[]() -> ptr {
-        // Scheme callbacks (verifiers, folders, patterns) cannot run on MLIR's
-        // worker threads, so a context made from Scheme is single-threaded.
+        // A context made from Scheme starts single-threaded: the thread that
+        // runs Scheme waits inside MLIR for its worker threads while it is
+        // active, which blocks every garbage collection (SchemeThreads.h).
         auto* box = new CrestBox<mlir::MLIRContext>();
         box->inner().disableMultithreading();
         return Sunsigned64(reinterpret_cast<uint64_t>(box));

@@ -7,6 +7,7 @@
 #include "Dialect.h"
 #include "../Bindings/Support/CrestObject.h"
 #include "../Bindings/Support/Result.h"
+#include "../Bindings/Support/SchemeThreads.h"
 #include "../Bindings/Support/SchemeWrapper.h"
 #include "CurrentContext.h"
 #include "InlinerInterface.h"
@@ -337,6 +338,9 @@ CrestDialect::CrestDialect(mlir::TypeID id, const std::string& module_name,
           mlir::StringAttr::get(ctx, dialect_name).getValue(), ctx, id),
       interp_(ChezSchemeInterpreter::instance(
           SchemeLogLevel::Warning, crest::registerMlirForeignFunctions)) {
+  // Everything below reads and makes Scheme objects, and the thread that loads
+  // the dialect is inactive (SchemeThreads.h).
+  SchemeThreadScope scheme;
   if (auto importError = interp_->importLibrary(module_name)) {
     llvm::report_fatal_error(
         llvm::Twine("CrestDialect: failed to import Scheme library '") +

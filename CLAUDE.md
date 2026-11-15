@@ -346,6 +346,17 @@ upstream repair (cisco/ChezScheme#1064), so no guard is needed, not even for the
 calls by itself (the methods of `InferTypeOpInterface`); `docs/tech-note.md` ("Chez Scheme pin") has the story
 and the steps to move the pin.
 
+MLIR runs the callbacks of Scheme ops on its worker threads, which Chez Scheme does not know, while the thread that
+started Scheme waits for them inside C++. So a thread is active (Chez Scheme waits for it at a collection) only while it
+runs Scheme (`lib/Bindings/Support/SchemeThreads.h`): the interpreter makes the thread that started Scheme inactive;
+every callable is `__collect_safe`, so the thread is active for the call; and C++ that calls Scheme or reads a Scheme
+object, outside a binding that Scheme called, uses `SchemeThreadScope` (`scheme_call` and the methods of
+`ChezSchemeInterpreter` do). C++ must not touch Scheme from a thread that is inactive. The `current-*` parameters
+(Rule 11): `current-MLIRContext` has one value for all threads, `current-OpBuilder` and `current-Block` are thread
+parameters (each callback has its own; a pattern runs with the rewriter of its own call).
+`test/dsl/op-callbacks/op-threading` and `unittests/Crest/SchemePassTest` check it. Callbacks can run at the same
+time: Scheme state that they share needs a mutex.
+
 Only scalars cross the boundary (`uptr`, `int`, `unsigned-32`, strings); a range is the address of a stack
 `CArrayRef<uintptr_t>` (`lib/Bindings/Support/ArrayRef.h`), read back with `crest::CArrayRef->list`
 (`(crest support array-ref)`), and a list that Scheme answers is pushed through a `foreign-procedure`

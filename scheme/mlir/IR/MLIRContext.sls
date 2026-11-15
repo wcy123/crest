@@ -34,6 +34,8 @@
           (only (chezscheme) make-parameter parameterize)
           (mlir IR MLIRContext ffi))
 
+  ;; One value for all threads: the context that C++ sets for a dialect or a pass is the context of every callback
+  ;; that runs on a worker thread of MLIR (current-OpBuilder and current-Block are per thread).
   (define current-MLIRContext (make-parameter #f))
 
   (define-syntax with-current-MLIRContext

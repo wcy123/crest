@@ -12,6 +12,7 @@
 #ifndef CREST_BINDINGS_SCHEME_WRAPPER_H
 #define CREST_BINDINGS_SCHEME_WRAPPER_H
 #include "CrestObject.h"
+#include "SchemeThreads.h"
 #include "llvm/ADT/SmallVector.h"
 #include "mlir/IR/TypeRange.h"
 #include "mlir/IR/Value.h"
@@ -103,22 +104,31 @@ template <typename... Ts> inline ptr make_scheme_list(Ts&&... args) {
 // function is made for it with foreign-callable, by Scheme
 // (scheme/crest/callback.sls), and C++ keeps its address: Scheme decides how
 // long the function lives, and C++ never makes, owns or releases one.
+//
+// The thread is active for the call (SchemeThreadScope), also while the
+// arguments and the procedure are made. The answer is a Scheme object, and the
+// thread is inactive again when it is returned: a caller that is not a binding
+// that Scheme called reads it inside its own SchemeThreadScope.
 ptr convert_to_scheme_func(const char* fname); // defined in SchemeWrapper.cpp
 inline ptr convert_to_scheme_func(ptr f) { return f; }
 
 template <typename F> inline ptr scheme_call(F f) {
+  crest::SchemeThreadScope scheme;
   return Scall0(convert_to_scheme_func(f));
 }
 template <typename F, typename T1> inline ptr scheme_call(F f, const T1& a1) {
+  crest::SchemeThreadScope scheme;
   return Scall1(convert_to_scheme_func(f), Conversion<T1, ptr>{}(a1));
 }
 template <typename F, typename T1, typename T2>
 inline ptr scheme_call(F f, const T1& a1, const T2& a2) {
+  crest::SchemeThreadScope scheme;
   return Scall2(convert_to_scheme_func(f), Conversion<T1, ptr>{}(a1),
                 Conversion<T2, ptr>{}(a2));
 }
 template <typename F, typename T1, typename T2, typename T3>
 inline ptr scheme_call(F f, const T1& a1, const T2& a2, const T3& a3) {
+  crest::SchemeThreadScope scheme;
   return Scall3(convert_to_scheme_func(f), Conversion<T1, ptr>{}(a1),
                 Conversion<T2, ptr>{}(a2), Conversion<T3, ptr>{}(a3));
 }

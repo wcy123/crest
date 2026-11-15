@@ -28,6 +28,10 @@ int main(int argc, char** argv) {
   auto interp = crest::ChezSchemeInterpreter::instance(
       crest::SchemeLogLevel::Warning, crest::registerMlirForeignFunctions);
 
+  // The Scheme program is this thread's whole job: it is active until the
+  // program ends.
+  crest::SchemeThreadScope scheme;
+
   // Set (command-line-arguments) to argv[2..] — mirrors chezscheme --script.
   ptr args_list = Snil;
   for (int i = argc - 1; i >= 2; --i) {

@@ -149,6 +149,13 @@ ChezSchemeInterpreter::ChezSchemeInterpreter(PrivateTag,
   if (logLevel_ <= SchemeLogLevel::Info) {
     llvm::errs() << "[info] ChezSchemeInterpreter: Initialization complete\n";
   }
+
+  // The thread that started Scheme is active, and nothing makes it inactive
+  // when it leaves Scheme for C++ that waits for other threads: a garbage
+  // collection would wait for it for ever (SchemeThreads.h). It is active only
+  // while it runs Scheme, which every method below, and every other C++ entry
+  // into Scheme, makes it with a SchemeThreadScope.
+  Sdeactivate_thread();
 }
 
 ChezSchemeInterpreter::~ChezSchemeInterpreter() {
@@ -197,6 +204,7 @@ SchemeLogLevel ChezSchemeInterpreter::getLogLevel() const { return logLevel_; }
 
 void ChezSchemeInterpreter::addLibraryPath(const char* src_path,
                                            const char* bin_path) {
+  SchemeThreadScope scheme;
   // Re-fetch lib_dirs_param before each Scall: Scall0 can trigger GC which
   // would move the parameter object, leaving the raw ptr stale.
   ptr current_dirs =
@@ -228,11 +236,13 @@ std::string ChezSchemeInterpreter::getLibraryDirectories() const {
 // ────────────────────────────────────────────────────────────
 
 void ChezSchemeInterpreter::loadFile(const std::string& path) {
+  SchemeThreadScope scheme;
   scheme_call("load", Sstring(path.c_str()));
 }
 
 std::optional<std::string>
 ChezSchemeInterpreter::importLibrary(const std::string& slashSeparatedName) {
+  SchemeThreadScope scheme;
   // Validate before string-building Scheme code — reject names with characters
   // outside [a-zA-Z0-9/_-] to prevent injection of arbitrary Scheme
   // expressions.
@@ -267,6 +277,7 @@ ChezSchemeInterpreter::importLibrary(const std::string& slashSeparatedName) {
 
 bool ChezSchemeInterpreter::libraryExports(
     const std::string& slashSeparatedName, const std::string& name) {
+  SchemeThreadScope scheme;
   // The names go into Scheme code: the same characters as importLibrary.
   for (const std::string* text : {&slashSeparatedName, &name}) {
     for (char c : *text) {
@@ -287,6 +298,7 @@ bool ChezSchemeInterpreter::libraryExports(
 
 std::optional<std::string> ChezSchemeInterpreter::importDialectLibrary(
     const std::string& slashSeparatedName, const std::string& dialectName) {
+  SchemeThreadScope scheme;
   for (char c : dialectName) {
     if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_' && c != '-' &&
         c != '.') {
@@ -321,6 +333,7 @@ std::optional<std::string> ChezSchemeInterpreter::importDialectLibrary(
 }
 
 bool ChezSchemeInterpreter::eval(const char* code) {
+  SchemeThreadScope scheme;
   ptr port = scheme_call("open-string-input-port", Sstring(code));
   ptr expr = scheme_call("read", port);
   scheme_call("eval", expr);
