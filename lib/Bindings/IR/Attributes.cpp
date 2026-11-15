@@ -22,8 +22,8 @@ void registerIRAttributeBindings() {
   Sregister_symbol(
       "mlir::NamedAttribute::getName", (void*)+[](uint64_t named_ptr) -> ptr {
         if (!named_ptr) {
-          return scheme_error("mlir::NamedAttribute::getName",
-                              "named attribute pointer is null");
+          return nullPointer("mlir::NamedAttribute::getName",
+                             "named attribute");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             reinterpret_cast<const mlir::NamedAttribute*>(named_ptr)
@@ -33,8 +33,8 @@ void registerIRAttributeBindings() {
   Sregister_symbol(
       "mlir::NamedAttribute::getValue", (void*)+[](uint64_t named_ptr) -> ptr {
         if (!named_ptr) {
-          return scheme_error("mlir::NamedAttribute::getValue",
-                              "named attribute pointer is null");
+          return nullPointer("mlir::NamedAttribute::getValue",
+                             "named attribute");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             reinterpret_cast<const mlir::NamedAttribute*>(named_ptr)

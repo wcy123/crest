@@ -56,8 +56,8 @@ void registerIRMLIRContextBindings() {
       (void*)+[](uint64_t ctx_ptr, int allow) -> ptr {
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
         if (!crest_lookup1) {
-          return scheme_error("mlir::MLIRContext::allowUnregisteredDialects",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::MLIRContext::allowUnregisteredDialects",
+                             "context");
         }
 
         crest_lookup1->allowUnregisteredDialects(allow != 0);
@@ -68,8 +68,8 @@ void registerIRMLIRContextBindings() {
       (void*)+[](uint64_t ctx_ptr) -> ptr {
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
         if (!crest_lookup1) {
-          return scheme_error("mlir::MLIRContext::allowsUnregisteredDialects",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::MLIRContext::allowsUnregisteredDialects",
+                             "context");
         }
 
         return Sinteger64(crest_lookup1->allowsUnregisteredDialects() ? 1 : 0);
@@ -79,8 +79,8 @@ void registerIRMLIRContextBindings() {
       (void*)+[](uint64_t ctx_ptr, int enable) -> ptr {
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
         if (!crest_lookup1) {
-          return scheme_error("mlir::MLIRContext::enableMultithreading",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::MLIRContext::enableMultithreading",
+                             "context");
         }
 
         crest_lookup1->enableMultithreading(enable != 0);
@@ -91,8 +91,8 @@ void registerIRMLIRContextBindings() {
       (void*)+[](uint64_t ctx_ptr, int disable) -> ptr {
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
         if (!crest_lookup1) {
-          return scheme_error("mlir::MLIRContext::disableMultithreading",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::MLIRContext::disableMultithreading",
+                             "context");
         }
 
         crest_lookup1->disableMultithreading(disable != 0);
@@ -103,8 +103,8 @@ void registerIRMLIRContextBindings() {
       (void*)+[](uint64_t ctx_ptr) -> ptr {
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
         if (!crest_lookup1) {
-          return scheme_error("mlir::MLIRContext::isMultithreadingEnabled",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::MLIRContext::isMultithreadingEnabled",
+                             "context");
         }
 
         return Sinteger64(crest_lookup1->isMultithreadingEnabled() ? 1 : 0);
@@ -114,8 +114,7 @@ void registerIRMLIRContextBindings() {
       (void*)+[](uint64_t ctx_ptr, const char* ns) -> ptr {
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
         if (!crest_lookup1) {
-          return scheme_error("mlir::MLIRContext::getOrLoadDialect",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::MLIRContext::getOrLoadDialect", "context");
         }
 
         return Sunsigned64(
@@ -126,8 +125,8 @@ void registerIRMLIRContextBindings() {
       (void*)+[](uint64_t ctx_ptr) -> ptr {
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
         if (!crest_lookup1) {
-          return scheme_error("mlir::MLIRContext::loadAllAvailableDialects",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::MLIRContext::loadAllAvailableDialects",
+                             "context");
         }
 
         crest_lookup1->loadAllAvailableDialects();
@@ -138,8 +137,8 @@ void registerIRMLIRContextBindings() {
       (void*)+[](uint64_t ctx_ptr, int enable) -> ptr {
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
         if (!crest_lookup1) {
-          return scheme_error("mlir::MLIRContext::printOpOnDiagnostic",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::MLIRContext::printOpOnDiagnostic",
+                             "context");
         }
 
         crest_lookup1->printOpOnDiagnostic(enable != 0);
@@ -150,8 +149,8 @@ void registerIRMLIRContextBindings() {
       (void*)+[](uint64_t ctx_ptr) -> ptr {
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
         if (!crest_lookup1) {
-          return scheme_error("mlir::MLIRContext::shouldPrintOpOnDiagnostic",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::MLIRContext::shouldPrintOpOnDiagnostic",
+                             "context");
         }
 
         return Sinteger64(crest_lookup1->shouldPrintOpOnDiagnostic() ? 1 : 0);
@@ -161,8 +160,8 @@ void registerIRMLIRContextBindings() {
       (void*)+[](uint64_t ctx_ptr, int enable) -> ptr {
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
         if (!crest_lookup1) {
-          return scheme_error("mlir::MLIRContext::printStackTraceOnDiagnostic",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::MLIRContext::printStackTraceOnDiagnostic",
+                             "context");
         }
 
         crest_lookup1->printStackTraceOnDiagnostic(enable != 0);
@@ -177,8 +176,7 @@ void registerIRMLIRContextBindings() {
       (void*)+[](uint64_t ctx_ptr, const char* filename) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::parseSourceFile",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::parseSourceFile", "context");
         }
         // verifyAfterParse=false: skip structural verification so that
         // dynamic ops without Terminator/HasParent traits can be parsed.

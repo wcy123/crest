@@ -22,8 +22,7 @@ void registerIRRewriterBaseBindings() {
       "mlir::RewriterBase::setInsertionPoint",
       (void*)+[](uint64_t rewriter_ptr, uint64_t op_ptr) -> ptr {
         if (!op_ptr) {
-          return scheme_error("mlir::RewriterBase::setInsertionPoint",
-                              "null op pointer");
+          return nullPointer("mlir::RewriterBase::setInsertionPoint", "op");
         }
         auto* crest_lookup1_box =
             crest::CrestBox<mlir::RewriterBase*>::inner(rewriter_ptr);
@@ -42,8 +41,8 @@ void registerIRRewriterBaseBindings() {
       "mlir::RewriterBase::setInsertionPointToEnd",
       (void*)+[](uint64_t rewriter_ptr, uint64_t block_ptr) -> ptr {
         if (!block_ptr) {
-          return scheme_error("mlir::RewriterBase::setInsertionPointToEnd",
-                              "null block pointer");
+          return nullPointer("mlir::RewriterBase::setInsertionPointToEnd",
+                             "block");
         }
         auto* crest_lookup1_box =
             crest::CrestBox<mlir::RewriterBase*>::inner(rewriter_ptr);
@@ -63,8 +62,7 @@ void registerIRRewriterBaseBindings() {
       (void*)+[](uint64_t rewriter_ptr, uint64_t region_ptr,
                  ptr arg_types_list) -> ptr {
         if (!region_ptr) {
-          return scheme_error("mlir::RewriterBase::createBlock",
-                              "null region pointer");
+          return nullPointer("mlir::RewriterBase::createBlock", "region");
         }
         auto* rewriter_box =
             crest::CrestBox<mlir::RewriterBase*>::inner(rewriter_ptr);
@@ -99,8 +97,7 @@ void registerIRRewriterBaseBindings() {
       (void*)+[](uint64_t rewriter_ptr, uint64_t old_op_ptr,
                  uint64_t new_value_ptr) -> ptr {
         if (!old_op_ptr) {
-          return scheme_error("mlir::RewriterBase::replaceOp",
-                              "null op pointer");
+          return nullPointer("mlir::RewriterBase::replaceOp", "op");
         }
         auto* crest_lookup1_box =
             crest::CrestBox<mlir::RewriterBase*>::inner(rewriter_ptr);
@@ -192,8 +189,8 @@ void registerIRRewriterBaseBindings() {
       "mlir::RewritePatternSet::RewritePatternSet",
       (void*)+[](uint64_t ctx_ptr) -> ptr {
         if (!ctx_ptr) {
-          return scheme_error("mlir::RewritePatternSet::RewritePatternSet",
-                              "ctx must not be null");
+          return nullPointer("mlir::RewritePatternSet::RewritePatternSet",
+                             "context");
         }
         auto* ctx = crest::as_context(ctx_ptr);
         return Sunsigned64(reinterpret_cast<uint64_t>(

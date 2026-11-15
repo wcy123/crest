@@ -116,8 +116,7 @@ void registerIROperationStateBindings() {
       "mlir::NamedAttrList::get",
       (void*)+[](uint64_t list_ptr, const char* name) -> ptr {
         if (!list_ptr) {
-          return scheme_error("mlir::NamedAttrList::get",
-                              "attribute list pointer is null");
+          return nullPointer("mlir::NamedAttrList::get", "attribute list");
         }
         mlir::Attribute attr =
             reinterpret_cast<mlir::NamedAttrList*>(list_ptr)->get(name);
@@ -129,8 +128,8 @@ void registerIROperationStateBindings() {
       (void*)+[](uint64_t list_ptr, const char* name,
                  uint64_t attr_ptr) -> ptr {
         if (!list_ptr || !attr_ptr) {
-          return scheme_error("mlir::NamedAttrList::append",
-                              "attribute list or attribute pointer is null");
+          return nullPointer("mlir::NamedAttrList::append",
+                             "attribute list or attribute");
         }
         reinterpret_cast<mlir::NamedAttrList*>(list_ptr)->append(
             name, mlir::Attribute::getFromOpaquePointer(
@@ -142,8 +141,8 @@ void registerIROperationStateBindings() {
       (void*)+[](uint64_t list_ptr, const char* name,
                  uint64_t attr_ptr) -> ptr {
         if (!list_ptr || !attr_ptr) {
-          return scheme_error("mlir::NamedAttrList::set",
-                              "attribute list or attribute pointer is null");
+          return nullPointer("mlir::NamedAttrList::set",
+                             "attribute list or attribute");
         }
         reinterpret_cast<mlir::NamedAttrList*>(list_ptr)->set(
             name, mlir::Attribute::getFromOpaquePointer(
@@ -155,8 +154,8 @@ void registerIROperationStateBindings() {
   Sregister_symbol(
       "mlir::OperationName::getContext", (void*)+[](uint64_t name_ptr) -> ptr {
         if (!name_ptr) {
-          return scheme_error("mlir::OperationName::getContext",
-                              "operation name pointer is null");
+          return nullPointer("mlir::OperationName::getContext",
+                             "operation name");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             reinterpret_cast<mlir::OperationName*>(name_ptr)->getContext()));

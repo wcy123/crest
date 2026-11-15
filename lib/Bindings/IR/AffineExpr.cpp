@@ -25,8 +25,7 @@ void registerIRAffineExprBindings() {
       (void*)+[](uint64_t ctx_ptr, uint64_t position) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::getAffineDimExpr",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::getAffineDimExpr", "context");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             mlir::getAffineDimExpr(static_cast<unsigned>(position), ctx)
@@ -38,8 +37,7 @@ void registerIRAffineExprBindings() {
       (void*)+[](uint64_t ctx_ptr, uint64_t position) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::getAffineSymbolExpr",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::getAffineSymbolExpr", "context");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             mlir::getAffineSymbolExpr(static_cast<unsigned>(position), ctx)
@@ -52,8 +50,7 @@ void registerIRAffineExprBindings() {
       (void*)+[](uint64_t ctx_ptr, int64_t constant) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::getAffineConstantExpr",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::getAffineConstantExpr", "context");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             mlir::getAffineConstantExpr(constant, ctx).getAsOpaquePointer()));

@@ -23,8 +23,7 @@ void registerLLVMRawOstreamBindings() {
       "llvm::raw_ostream::write",
       (void*)+[](uint64_t stream_ptr, const char* text) -> ptr {
         if (!stream_ptr) {
-          return scheme_error("llvm::raw_ostream::write",
-                              "stream pointer is null");
+          return nullPointer("llvm::raw_ostream::write", "stream");
         }
         *reinterpret_cast<llvm::raw_ostream*>(stream_ptr) << text;
         return Svoid;

@@ -18,9 +18,8 @@ void registerInterfacesDpsBindings() {
       "mlir::DestinationStyleOpInterface::getNumDpsInits",
       (void*)+[](uint64_t op_ptr) -> ptr {
         if (!op_ptr) {
-          return scheme_error(
-              "mlir::DestinationStyleOpInterface::getNumDpsInits",
-              "op must not be null");
+          return nullPointer(
+              "mlir::DestinationStyleOpInterface::getNumDpsInits", "op");
         }
         mlir::Operation* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto dpsOp = mlir::dyn_cast<mlir::DestinationStyleOpInterface>(op);
@@ -33,9 +32,8 @@ void registerInterfacesDpsBindings() {
       "mlir::DestinationStyleOpInterface::getDpsInitOperand",
       (void*)+[](uint64_t op_ptr, int index) -> ptr {
         if (!op_ptr) {
-          return scheme_error(
-              "mlir::DestinationStyleOpInterface::getDpsInitOperand",
-              "op must not be null");
+          return nullPointer(
+              "mlir::DestinationStyleOpInterface::getDpsInitOperand", "op");
         }
         mlir::Operation* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto dpsOp = mlir::dyn_cast<mlir::DestinationStyleOpInterface>(op);

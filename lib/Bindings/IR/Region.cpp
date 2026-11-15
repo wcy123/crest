@@ -19,8 +19,7 @@ void registerIRRegionBindings() {
       "mlir::Region::push_back",
       (void*)+[](uint64_t region_ptr, uint64_t block_ptr) -> ptr {
         if (!region_ptr) {
-          return scheme_error("mlir::Region::push_back",
-                              "region pointer is null");
+          return nullPointer("mlir::Region::push_back", "region");
         }
         reinterpret_cast<mlir::Region*>(region_ptr)
             ->push_back(reinterpret_cast<mlir::Block*>(block_ptr));
@@ -29,8 +28,7 @@ void registerIRRegionBindings() {
   Sregister_symbol(
       "mlir::Region::getParentOp", (void*)+[](uint64_t region_ptr) -> ptr {
         if (!region_ptr) {
-          return scheme_error("mlir::Region::getParentOp",
-                              "region pointer is null");
+          return nullPointer("mlir::Region::getParentOp", "region");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             reinterpret_cast<mlir::Region*>(region_ptr)->getParentOp()));
@@ -38,7 +36,7 @@ void registerIRRegionBindings() {
   Sregister_symbol(
       "mlir::Region::front", (void*)+[](uint64_t region_ptr) -> ptr {
         if (!region_ptr) {
-          return scheme_error("mlir::Region::front", "region pointer is null");
+          return nullPointer("mlir::Region::front", "region");
         }
         auto* region = reinterpret_cast<mlir::Region*>(region_ptr);
         if (region->empty()) {

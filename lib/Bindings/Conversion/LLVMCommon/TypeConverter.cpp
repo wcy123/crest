@@ -25,8 +25,8 @@ void registerConversionLLVMCommonTypeConverterBindings() {
       (void*)+[](uint64_t ctx_ptr) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::LLVMTypeConverter::LLVMTypeConverter",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::LLVMTypeConverter::LLVMTypeConverter",
+                             "context");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             new crest::CrestBox<mlir::LLVMTypeConverter>(ctx)));

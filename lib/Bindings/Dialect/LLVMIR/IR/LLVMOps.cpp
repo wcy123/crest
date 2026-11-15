@@ -40,8 +40,7 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
       "mlir::LLVM::LLVMPointerType::get", (void*)+[](uint64_t ctx_ptr) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::LLVM::LLVMPointerType::get",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::LLVM::LLVMPointerType::get", "context");
         }
         auto t = mlir::LLVM::LLVMPointerType::get(ctx);
         return Sunsigned64(reinterpret_cast<uint64_t>(t.getAsOpaquePointer()));
