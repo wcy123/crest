@@ -27,16 +27,13 @@ void registerDialectArithIRArithBindings() {
       [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t lhs_ptr,
          uint64_t rhs_ptr) -> ptr {
         if (!loc_ptr) {
-          return scheme_error("mlir::arith::AddFOp::create",
-                              "location pointer is null");
+          return nullPointer("mlir::arith::AddFOp::create", "location");
         }
         if (!lhs_ptr) {
-          return scheme_error("mlir::arith::AddFOp::create",
-                              "lhs pointer is null");
+          return nullPointer("mlir::arith::AddFOp::create", "lhs");
         }
         if (!rhs_ptr) {
-          return scheme_error("mlir::arith::AddFOp::create",
-                              "rhs pointer is null");
+          return nullPointer("mlir::arith::AddFOp::create", "rhs");
         }
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
@@ -56,16 +53,13 @@ void registerDialectArithIRArithBindings() {
       [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t lhs_ptr,
          uint64_t rhs_ptr) -> ptr {
         if (!loc_ptr) {
-          return scheme_error("mlir::arith::MulFOp::create",
-                              "location pointer is null");
+          return nullPointer("mlir::arith::MulFOp::create", "location");
         }
         if (!lhs_ptr) {
-          return scheme_error("mlir::arith::MulFOp::create",
-                              "lhs pointer is null");
+          return nullPointer("mlir::arith::MulFOp::create", "lhs");
         }
         if (!rhs_ptr) {
-          return scheme_error("mlir::arith::MulFOp::create",
-                              "rhs pointer is null");
+          return nullPointer("mlir::arith::MulFOp::create", "rhs");
         }
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
@@ -84,8 +78,8 @@ void registerDialectArithIRArithBindings() {
       "mlir::arith::ConstantIndexOp::create",
       [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t int_val) -> ptr {
         if (!loc_ptr) {
-          return scheme_error("mlir::arith::ConstantIndexOp::create",
-                              "location pointer is null");
+          return nullPointer("mlir::arith::ConstantIndexOp::create",
+                             "location");
         }
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));

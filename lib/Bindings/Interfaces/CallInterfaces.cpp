@@ -162,8 +162,8 @@ void registerInterfacesCallInterfacesBindings() {
       "crest::CallableOpInterface::keepTypes",
       (void*)+[](uint64_t op_ptr, ptr types) -> ptr {
         if (!op_ptr) {
-          return scheme_error("crest::CallableOpInterface::keepTypes",
-                              "operation pointer is null");
+          return nullPointer("crest::CallableOpInterface::keepTypes",
+                             "operation");
         }
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         llvm::SmallVector<mlir::Type> list;
@@ -312,8 +312,7 @@ void registerInterfacesCallInterfacesBindings() {
       "crest::OperandRange::get",
       (void*)+[](uint64_t op_ptr, unsigned start, unsigned count) -> ptr {
         if (!op_ptr) {
-          return scheme_error("crest::OperandRange::get",
-                              "operation pointer is null");
+          return nullPointer("crest::OperandRange::get", "operation");
         }
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         mlir::OperandRange range = op->getOperands().slice(start, count);
