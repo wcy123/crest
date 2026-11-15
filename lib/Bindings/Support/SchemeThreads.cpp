@@ -34,17 +34,6 @@ private:
   SchemeThreadScope scope_;
 };
 
-// A worker is made known to Scheme, inactive, before it runs its first task,
-// and forgotten when it ends.
-class KnownToScheme {
-public:
-  KnownToScheme() {
-    Sactivate_thread();
-    Sdeactivate_thread();
-  }
-  ~KnownToScheme() { Sdestroy_thread(); }
-};
-
 class SchemeThreadPool final : public llvm::ThreadPoolInterface {
 public:
   void wait() override {
@@ -62,8 +51,12 @@ public:
 private:
   void asyncEnqueue(llvm::unique_function<void()> task,
                     llvm::ThreadPoolTaskGroup* group) override {
+    // Scheme copies the thread parameters of the thread that started it when
+    // it makes a thread known. A task makes its worker known when it starts,
+    // so the copy is of the values that thread has now, not of the values it
+    // had when the worker first ran a task.
     auto wrapped = [task = std::move(task)]() mutable {
-      thread_local KnownToScheme known;
+      StopBeingActive inactive;
       task();
     };
     if (group) {

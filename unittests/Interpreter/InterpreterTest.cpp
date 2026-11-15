@@ -124,6 +124,32 @@ TEST_F(InterpreterTest, PoolThreadsCallTheSchemeProcedure) {
   EXPECT_EQ(wrong, 0);
 }
 
+// A thread parameter that the thread that started Scheme changes (current-
+// MLIRContext does, for each context) must reach the pool's workers: a worker
+// that ran a task for the first context must see the second context in its next
+// task, not the first.
+TEST_F(InterpreterTest, PoolThreadsSeeTheThreadParameterAsItIsNow) {
+  evalScheme("(define pool-test-parameter (make-thread-parameter 0))");
+  auto entry = Sunsigned64_value(
+      evalScheme("(let ([code (foreign-callable __collect_safe"
+                 "             (lambda (x) (pool-test-parameter)) (int) int)])"
+                 "  (lock-object code)"
+                 "  (foreign-callable-entry-point code))"));
+  auto callable = reinterpret_cast<int (*)(int)>(entry);
+  // One task at a time, so that the same worker runs each of them.
+  auto readInTask = [&] {
+    int seen = -1;
+    llvm::ThreadPoolTaskGroup group(schemeThreadPool());
+    group.async([&] { seen = callable(0); });
+    group.wait();
+    return seen;
+  };
+  evalScheme("(pool-test-parameter 1)");
+  EXPECT_EQ(readInTask(), 1);
+  evalScheme("(pool-test-parameter 2)");
+  EXPECT_EQ(readInTask(), 2);
+}
+
 // C++ that runs Scheme on a thread that Scheme does not know uses the scope.
 TEST_F(InterpreterTest, SchemeThreadScopeLetsAnotherThreadRunScheme) {
   bool ok = false;

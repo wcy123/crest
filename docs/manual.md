@@ -850,15 +850,15 @@ functions that have a Scheme op on as many threads as the machine has, and a Sch
 second on each function does not make the run 64 seconds long.
 
 - A context that loads a Scheme dialect uses `schemeThreadPool` (`lib/Bindings/Support/SchemeThreads.h`):
-  MLIR's own pool, whose threads are known to Chez Scheme. A context made from Scheme starts with
-  multithreading off, and `(mlir::MLIRContext::enableMultithreading ctx)` turns it on with the same pool.
+  MLIR's own pool, whose workers are known to Chez Scheme while they run a task. A context made from Scheme starts
+  with multithreading off, and `(mlir::MLIRContext::enableMultithreading ctx)` turns it on with the same pool.
 - Every callable that Scheme makes (`crest callback`) is `__collect_safe`: a thread that Scheme does not know
   becomes active for the call and stops being active when it returns. C++ that calls Scheme from a thread
   of MLIR uses `SchemeThreadScope`.
 - The thread that waits for the pool is not active while it waits, so a garbage collection that a worker
   starts does not wait for it.
 - `current-MLIRContext`, `current-OpBuilder` and `current-Block` are thread parameters: each thread has its own
-  value, and a new thread starts with the value of the thread that started Scheme.
+  value. A pool task starts with the values that the thread that started Scheme has when the task starts.
 - Callbacks of different ops can run at the same time, so a callback that changes a variable or a table that
   other callbacks use needs a mutex (`make-mutex`, `with-mutex`), as a C++ pass would. A callback that only reads
   its arguments needs nothing.

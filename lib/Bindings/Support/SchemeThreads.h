@@ -42,10 +42,10 @@ private:
   int mode_;
 };
 
-/// The thread pool for a context whose ops run Scheme: MLIR's own pool, whose
-/// workers Scheme knows (inactive until a callable or a SchemeThreadScope
-/// activates them: that costs much less than making a thread for each call),
-/// and whose waits leave the waiting thread inactive. One pool serves all
+/// The thread pool for a context whose ops run Scheme: MLIR's own pool, with
+/// two changes. A task runs on a worker that Scheme knows, inactive, until the
+/// task ends (a callable or a SchemeThreadScope makes it active when it runs
+/// Scheme). A wait leaves the waiting thread inactive. One pool serves all
 /// contexts; it lives until the process ends.
 llvm::ThreadPoolInterface& schemeThreadPool();
 
