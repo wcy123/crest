@@ -844,24 +844,37 @@ LLVM are passes.
 
 ### Threads
 
-MLIR runs the verifiers and the folders of the ops, and a pass nested on `func.func`, on its own worker threads,
-one function per thread. The Scheme code of a dialect or a pass runs there too, so `crest-opt` verifies 64
-functions that have a Scheme op on as many threads as the machine has, and a Scheme verifier that takes a
-second on each function does not make the run 64 seconds long.
+MLIR verifies the functions of a module, and runs a pass nested on `func.func`, on its own worker threads. The Scheme
+code of a dialect (a verifier, a folder, a pass body) runs there, so `crest-opt` verifies functions that have a Scheme
+op on as many threads as the machine has. A verifier that loops for a long time on each of 300 functions is
+faster on many threads than with `--mlir-disable-threading`.
 
-- A context that loads a Scheme dialect uses `schemeThreadPool` (`lib/Bindings/Support/SchemeThreads.h`):
-  MLIR's own pool, whose workers are known to Chez Scheme while they run a task. A context made from Scheme starts
-  with multithreading off, and `(mlir::MLIRContext::enableMultithreading ctx)` turns it on with the same pool.
-- Every callable that Scheme makes (`crest callback`) is `__collect_safe`: a thread that Scheme does not know
-  becomes active for the call and stops being active when it returns. C++ that calls Scheme from a thread
-  of MLIR uses `SchemeThreadScope`.
-- The thread that waits for the pool is not active while it waits, so a garbage collection that a worker
-  starts does not wait for it.
+Chez Scheme keeps a record for each thread that runs Scheme, and a thread is *active* while it may run Scheme. A
+garbage collection waits until every active thread has stopped at a safe point in Scheme code. So a thread must be
+active only while it runs Scheme. The rules (`lib/Bindings/Support/SchemeThreads.h`):
+
+- The thread that starts Scheme (`ChezSchemeInterpreter`) is made inactive when Scheme has started. Left active, it
+  would be active while MLIR waits for its worker threads inside C++, and a collection that a worker starts would
+  wait for it for ever.
+- Every callable that Scheme makes (`crest callback`) is `__collect_safe`: a thread that Scheme does not know, such
+  as a worker of MLIR, gets a record and is active for the call, and afterwards it is as it was.
+- C++ that calls Scheme or reads a Scheme object, outside a binding that Scheme called, uses `SchemeThreadScope`.
+  `scheme_call` does, and so does each method of `ChezSchemeInterpreter`.
 - `current-MLIRContext`, `current-OpBuilder` and `current-Block` are thread parameters: each thread has its own
-  value. A pool task starts with the values that the thread that started Scheme has when the task starts.
-- Callbacks of different ops can run at the same time, so a callback that changes a variable or a table that
-  other callbacks use needs a mutex (`make-mutex`, `with-mutex`), as a C++ pass would. A callback that only reads
-  its arguments needs nothing.
+  value. A thread that Scheme learns of starts with the values that the thread that started Scheme has then.
+
+Limits:
+
+- Callbacks of different ops can run at the same time, so a callback that changes a variable or a table that other
+  callbacks use needs a mutex (`make-mutex`, `with-mutex`), as a C++ pass would. A callback that only reads its
+  arguments needs nothing.
+- A Scheme program runs on the thread that started Scheme, which is active the whole time. A context that a Scheme
+  program makes has multithreading off, and the program must not turn it on: the program would wait inside MLIR
+  while active, and a collection would hang.
+- Scheme code that allocates a lot does not run faster on many threads: every collection stops all of them.
+- A thread that Scheme does not know gets a record for each call into Scheme and drops it afterwards. A callback that
+  does almost nothing is therefore slower on many threads than with `--mlir-disable-threading` (5000 verifications of
+  an op whose verifier does nothing: 0.8 s against 0.45 s).
 
 ### `define-type` — dialect types
 

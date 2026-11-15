@@ -1,7 +1,6 @@
 ;; scheme-mlir driver: parse the module in argv[1], run a pipeline of Scheme passes, print the module.
 ;; argv[2] is "ok" (a renaming pass nested on func.func, then a pass on the module), "fail", "reuse" (the
-;; same define-pass in two pipelines, twice in one of them), "raise" (a body that raises an error) or
-;; "threads" (a pass nested on func.func, on a context that has multithreading enabled).
+;; same define-pass in two pipelines, twice in one of them) or "raise" (a body that raises an error).
 (import (except (rnrs) =)
         (only (chezscheme) command-line-arguments)
         (mlir IR DialectRegistry) (mlir IR MLIRContext)
@@ -19,14 +18,6 @@
 (define count 0)
 (define-pass (count-ops op)
   (set! count (+ count 1))
-  #t)
-
-;; Allocates, so that collections happen while other threads run the same pass.
-(define-pass (tag-busy op)
-  (let loop ([i 0] [garbage '()])
-    (when (< i 20000)
-      (loop (+ i 1) (if (> (length garbage) 50) '() (cons (make-vector 20 i) garbage)))))
-  (mlir::Operation::setAttr! op "tagged" (mlir::StringAttr::get (mlir::Operation::getContext op) "yes"))
   #t)
 
 (define-pass (always-fail op)
@@ -56,9 +47,6 @@
            [(string=? (cadr args) "ok")
             (mlir::OpPassManager::addPass (mlir::PassManager::nest pm "func.func") (tag-functions))
             (mlir::PassManager::addPass pm (count-ops))]
-           [(string=? (cadr args) "threads")
-            (mlir::MLIRContext::enableMultithreading ctx)
-            (mlir::OpPassManager::addPass (mlir::PassManager::nest pm "func.func") (tag-busy))]
            [(string=? (cadr args) "reuse")
             (mlir::PassManager::addPass pm (count-ops))
             (mlir::PassManager::addPass pm (count-ops))]

@@ -5,32 +5,27 @@
 #ifndef CREST_INTERPRETER_SCHEMETHREADS_H
 #define CREST_INTERPRETER_SCHEMETHREADS_H
 
-// Scheme and the worker threads of MLIR (docs/manual.md, "Threads").
+// Scheme and threads (docs/manual.md, "Threads").
 //
-// Chez Scheme runs on several threads, but it needs to know about each one:
-// a thread that runs Scheme is "active", and a garbage collection waits until
-// every active thread but the collecting one has stopped. So
-//   - a thread of MLIR must be active while it runs Scheme and not otherwise
-//     (the callables that Scheme makes see to it themselves,
-//     scheme/crest/callback.sls; C++ that calls Scheme uses SchemeThreadScope);
-//   - a thread that waits for the others must not be active while it waits, or
-//     a collection that one of them starts waits for it for ever
-//     (schemeThreadPool does that for MLIR's waits).
-
-namespace llvm {
-class ThreadPoolInterface;
-} // namespace llvm
-
-namespace mlir {
-class MLIRContext;
-} // namespace mlir
+// Chez Scheme keeps a record for each thread that runs Scheme, and the record
+// says whether the thread is active. A garbage collection waits until every
+// active thread has stopped at a safe point in Scheme code, so a thread that is
+// active but busy in C++ (MLIR waiting for its worker threads, say) blocks
+// every collection for ever. The rule that follows: a thread is active only
+// while it runs Scheme.
+//   - The interpreter makes the thread that started Scheme inactive when it has
+//     started it.
+//   - A callable that Scheme makes is __collect_safe: the thread is active for
+//     the call and is put back afterwards (scheme/crest/callback.sls).
+//   - C++ that calls Scheme or builds Scheme objects (Sstring, Scar, ...) from
+//     any other code than a binding that Scheme called uses SchemeThreadScope.
 
 namespace crest {
 
 /// For the length of the scope, the calling thread can run Scheme (it is
 /// active), and afterwards it is as it was: a thread that Scheme did not know
-/// is forgotten again, an inactive one is inactive again, an active one (the
-/// thread that started Scheme, or a worker inside a callable) stays active.
+/// is forgotten again, an inactive one is inactive again, an active one (inside
+/// a callable, or in a binding that Scheme called) stays active.
 class SchemeThreadScope {
 public:
   SchemeThreadScope();
@@ -41,17 +36,6 @@ public:
 private:
   int mode_;
 };
-
-/// The thread pool for a context whose ops run Scheme: MLIR's own pool, with
-/// two changes. A task runs on a worker that Scheme knows, inactive, until the
-/// task ends (a callable or a SchemeThreadScope makes it active when it runs
-/// Scheme). A wait leaves the waiting thread inactive. One pool serves all
-/// contexts; it lives until the process ends.
-llvm::ThreadPoolInterface& schemeThreadPool();
-
-/// Make `context` use schemeThreadPool(). Whether the context runs on several
-/// threads stays as it is; a later enableMultithreading keeps the pool.
-void useSchemeThreadPool(mlir::MLIRContext& context);
 
 } // namespace crest
 

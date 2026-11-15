@@ -91,9 +91,6 @@ void CrestDialect::initialize(const LockedSchemeObject& interfaces) {
   // registerAllDialects()) and for other Scheme dialects registered by name
   // (--crest-scheme-dialect).
   mlir::Location here = mlir::UnknownLoc::get(getContext());
-  // MLIR runs the verifiers, folders and passes of the ops on its worker
-  // threads. This pool makes that safe for Scheme (SchemeThreads.h).
-  useSchemeThreadPool(*getContext());
   // The callables of this dialect report their errors in this context.
   setCurrentContext(*interp_, getContext());
   if (cbs_.get_dependent_dialects) {
@@ -341,6 +338,9 @@ CrestDialect::CrestDialect(mlir::TypeID id, const std::string& module_name,
           mlir::StringAttr::get(ctx, dialect_name).getValue(), ctx, id),
       interp_(ChezSchemeInterpreter::instance(
           SchemeLogLevel::Warning, crest::registerMlirForeignFunctions)) {
+  // Everything below reads and makes Scheme objects, and the thread that loads
+  // the dialect is inactive (SchemeThreads.h).
+  SchemeThreadScope scheme;
   if (auto importError = interp_->importLibrary(module_name)) {
     llvm::report_fatal_error(
         llvm::Twine("CrestDialect: failed to import Scheme library '") +

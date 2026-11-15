@@ -346,12 +346,14 @@ upstream repair (cisco/ChezScheme#1064), so no guard is needed, not even for the
 calls by itself (the methods of `InferTypeOpInterface`); `docs/tech-note.md` ("Chez Scheme pin") has the story
 and the steps to move the pin.
 
-MLIR runs the callbacks of Scheme ops on its worker threads, which Chez Scheme does not know. So every callable is
-`__collect_safe` (the thread is active for the call only), a context that loads a Scheme dialect uses `schemeThreadPool`
-(`lib/Bindings/Support/SchemeThreads.h`), whose waits leave the waiting thread inactive (else a collection that a worker
-starts waits for it for ever), and C++ that calls Scheme from such a thread uses `SchemeThreadScope`. The `current-*`
-parameters (Rule 11) are thread parameters. `test/dsl/op-callbacks/op-threading` and `test/dsl/define-pass/define-pass-threads`
-check it. Callbacks can run at the same time: Scheme state that they share needs a mutex.
+MLIR runs the callbacks of Scheme ops on its worker threads, which Chez Scheme does not know, while the thread that
+started Scheme waits for them inside C++. So a thread is active (Chez Scheme waits for it at a collection) only while it
+runs Scheme (`lib/Bindings/Support/SchemeThreads.h`): the interpreter makes the thread that started Scheme inactive;
+every callable is `__collect_safe`, so the thread is active for the call; and C++ that calls Scheme or reads a Scheme
+object, outside a binding that Scheme called, uses `SchemeThreadScope` (`scheme_call` and the methods of
+`ChezSchemeInterpreter` do). C++ must not touch Scheme from a thread that is inactive. The `current-*` parameters
+(Rule 11) are thread parameters. `test/dsl/op-callbacks/op-threading` and `unittests/Crest/SchemePassTest` check it.
+Callbacks can run at the same time: Scheme state that they share needs a mutex.
 
 Only scalars cross the boundary (`uptr`, `int`, `unsigned-32`, strings); a range is the address of a stack
 `CArrayRef<uintptr_t>` (`lib/Bindings/Support/ArrayRef.h`), read back with `crest::CArrayRef->list`

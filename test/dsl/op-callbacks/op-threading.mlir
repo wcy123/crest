@@ -1,7 +1,7 @@
-// MLIR verifies the functions of a module on several threads. The verifier of an op that Scheme
-// defines runs in Scheme, which does not run on several threads, so a context that loads a Scheme
-// dialect must not use threads. Without --mlir-disable-threading the process must still verify
-// every function, again and again, and print the module.
+// MLIR verifies the functions of a module on several worker threads, which Scheme does not know. The
+// verifier of an op that Scheme defines runs there. The thread that waits for them must not be active
+// while it waits, or a collection that a worker starts waits for it for ever. Without
+// --mlir-disable-threading the process must verify every function, again and again, and print the module.
 
 // RUN: rm -rf %t/op-threading-scheme && mkdir -p %t/op-threading-scheme
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/op-threading-scheme \

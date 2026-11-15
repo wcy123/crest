@@ -6,7 +6,6 @@
 
 #include "MLIRContext.h"
 #include "../Support/Result.h"
-#include "../Support/SchemeThreads.h"
 #include "../Support/SchemeWrapper.h"
 #include "llvm/Support/SourceMgr.h"
 #include "mlir/IR/AsmState.h"
@@ -26,10 +25,10 @@ void registerIRMLIRContextBindings() {
   // this directly and never freed leaks.
   Sregister_symbol(
       "mlir::MLIRContext::new", (void*)+[]() -> ptr {
-        // A context made from Scheme starts single-threaded; its pool is the
-        // one that is safe for Scheme (SchemeThreads.h) when it is enabled.
+        // A context made from Scheme starts single-threaded: the thread that
+        // runs Scheme waits inside MLIR for its worker threads while it is
+        // active, which blocks every garbage collection (SchemeThreads.h).
         auto* box = new CrestBox<mlir::MLIRContext>();
-        useSchemeThreadPool(box->inner());
         box->inner().disableMultithreading();
         return Sunsigned64(reinterpret_cast<uint64_t>(box));
       });
@@ -49,7 +48,6 @@ void registerIRMLIRContextBindings() {
         }
         auto& registry = *registry_box;
         auto* box = new CrestBox<mlir::MLIRContext>(registry);
-        useSchemeThreadPool(box->inner());
         box->inner().disableMultithreading();
         return Sunsigned64(reinterpret_cast<uint64_t>(box));
       });

@@ -100,16 +100,20 @@ TEST_F(InterpreterTest, CallableCallsTheSchemeProcedure) {
 }
 
 // MLIR calls the callables of Scheme ops from its worker threads, which Scheme
-// does not know, while the thread that started Scheme waits for them. A
-// collection that one of them starts must not wait for the waiting thread, and
-// each call must see its own argument (SchemeThreads.h).
-TEST_F(InterpreterTest, PoolThreadsCallTheSchemeProcedure) {
+// does not know, while the thread that started Scheme waits for them inside
+// MLIR. The callable allocates, so collections happen. The waiting thread must
+// not be active (the interpreter makes it inactive when it starts, and each
+// call that it makes runs in a SchemeThreadScope), or a collection that a
+// worker starts waits for it for ever (SchemeThreads.h). With the main thread
+// left active, this test hangs.
+TEST_F(InterpreterTest, WorkersCallTheSchemeProcedureWhileMainWaits) {
   auto callable = reinterpret_cast<int (*)(int)>(makeCallableEntry());
   constexpr int kTasks = 16;
   constexpr int kCalls = 2000;
   std::atomic<int> wrong{0};
   {
-    llvm::ThreadPoolTaskGroup group(schemeThreadPool());
+    llvm::DefaultThreadPool pool;
+    llvm::ThreadPoolTaskGroup group(pool);
     for (int task = 0; task < kTasks; ++task) {
       group.async([&, task] {
         for (int i = 0; i < kCalls; ++i) {
@@ -125,10 +129,10 @@ TEST_F(InterpreterTest, PoolThreadsCallTheSchemeProcedure) {
 }
 
 // A thread parameter that the thread that started Scheme changes (current-
-// MLIRContext does, for each context) must reach the pool's workers: a worker
+// MLIRContext does, for each context) must reach the worker threads: a worker
 // that ran a task for the first context must see the second context in its next
 // task, not the first.
-TEST_F(InterpreterTest, PoolThreadsSeeTheThreadParameterAsItIsNow) {
+TEST_F(InterpreterTest, WorkersSeeTheThreadParameterAsItIsNow) {
   evalScheme("(define pool-test-parameter (make-thread-parameter 0))");
   auto entry = Sunsigned64_value(
       evalScheme("(let ([code (foreign-callable __collect_safe"
@@ -136,10 +140,11 @@ TEST_F(InterpreterTest, PoolThreadsSeeTheThreadParameterAsItIsNow) {
                  "  (lock-object code)"
                  "  (foreign-callable-entry-point code))"));
   auto callable = reinterpret_cast<int (*)(int)>(entry);
-  // One task at a time, so that the same worker runs each of them.
+  // One task at a time.
   auto readInTask = [&] {
     int seen = -1;
-    llvm::ThreadPoolTaskGroup group(schemeThreadPool());
+    llvm::DefaultThreadPool pool;
+    llvm::ThreadPoolTaskGroup group(pool);
     group.async([&] { seen = callable(0); });
     group.wait();
     return seen;
@@ -157,10 +162,8 @@ TEST_F(InterpreterTest, SchemeThreadScopeLetsAnotherThreadRunScheme) {
     SchemeThreadScope scope;
     ok = Sfixnum_value(evalScheme("(+ 1 2)")) == 3;
   });
-  // The thread that started Scheme is not active while it waits.
-  Sdeactivate_thread();
+  // The thread that started Scheme is inactive while it waits.
   other.join();
-  Sactivate_thread();
   EXPECT_TRUE(ok);
 }
 

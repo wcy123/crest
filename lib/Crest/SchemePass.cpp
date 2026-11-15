@@ -22,8 +22,9 @@ namespace {
 // at its Scheme source, in the context of the op (set below), and the callable
 // answers 0. The callable is made once for the define-pass, so every pass made
 // from it shares it and nothing is released.
-// A nested pass manager can run it on a worker thread of MLIR: the thread is
-// known to Scheme for the length of the call (SchemeThreadScope).
+// A nested pass manager can run it on a worker thread of MLIR, which Scheme
+// does not know. The scope below makes the thread known for the whole run,
+// once, instead of once for each of the Scheme calls in it.
 class SchemePass : public mlir::OperationPass<> {
 public:
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SchemePass)
