@@ -128,10 +128,9 @@ TEST_F(InterpreterTest, WorkersCallTheSchemeProcedureWhileMainWaits) {
   EXPECT_EQ(wrong, 0);
 }
 
-// A thread parameter that the thread that started Scheme changes (current-
-// MLIRContext does, for each context) must reach the worker threads: a worker
-// that ran a task for the first context must see the second context in its next
-// task, not the first.
+// A thread parameter (current-OpBuilder and current-Block are such) that the
+// thread that started Scheme changes must reach the worker threads: a worker
+// that ran a task must see the new value in its next task, not the old one.
 TEST_F(InterpreterTest, WorkersSeeTheThreadParameterAsItIsNow) {
   evalScheme("(define pool-test-parameter (make-thread-parameter 0))");
   auto entry = Sunsigned64_value(

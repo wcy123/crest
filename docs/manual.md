@@ -860,11 +860,18 @@ active only while it runs Scheme. The rules (`lib/Bindings/Support/SchemeThreads
   as a worker of MLIR, gets a record and is active for the call, and afterwards it is as it was.
 - C++ that calls Scheme or reads a Scheme object, outside a binding that Scheme called, uses `SchemeThreadScope`.
   `scheme_call` does, and so does each method of `ChezSchemeInterpreter`.
-- `current-MLIRContext`, `current-OpBuilder` and `current-Block` are thread parameters: each thread has its own
-  value. A thread that Scheme learns of starts with the values that the thread that started Scheme has then.
+- `current-MLIRContext` has one value for all threads: the context that C++ sets for a dialect or a pass is the
+  context of every callback, on whatever thread MLIR runs it. `current-OpBuilder` and `current-Block` are thread
+  parameters, because each callback has its own (a rewrite pattern runs with the rewriter of its own call): each thread
+  has its own value, and a thread that Scheme learns of starts with the values that the thread that started Scheme
+  has then.
 
 Limits:
 
+- `with-current-MLIRContext` in callbacks that run at the same time sets the one shared value, and when its body ends
+  it puts the old value back. If the value was not set before (no dialect of the context is loaded and no pass sets it),
+  the callback that leaves first takes the context from the others. Set it once outside, with
+  `with-current-MLIRContext` around the run.
 - Callbacks of different ops can run at the same time, so a callback that changes a variable or a table that other
   callbacks use needs a mutex (`make-mutex`, `with-mutex`), as a C++ pass would. A callback that only reads its
   arguments needs nothing.
