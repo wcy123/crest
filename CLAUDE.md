@@ -392,6 +392,11 @@ So failure is an ordinary return value, and Scheme raises it after the C++ call 
   answers is a pair of a symbol and a string.
 - **The lookups of a handle that Scheme gives** answer a pointer, or `nullptr`: `CrestBox<T>::inner(address)`,
   `as_ref<T>(address)` and `as_context(address)`. The binding checks it and answers `scheme_error`.
+- **Every pointer argument that Scheme gives is checked.** A null pointer returns `scheme_error`; a `CrestBox` handle is
+  checked by its type tag (the lookups above); an MLIR object whose kind can be tested is cast with
+  `mlir::dyn_cast_or_null`, never `mlir::cast`. A parse binding returns `0` when the parse fails (MLIR has reported it),
+  so a binding that is given the result of a parse returns `scheme_error` for `0`, and the guard of the callback
+  (Rule 17) reports it as a diagnostic. A freed or invented address cannot be detected (`docs/crest-object.md`).
 - **C++ calls Scheme** (Rule 17): the callable has the C prototype that MLIR declares and reports an error of its
   procedure itself, as a diagnostic or, for a `void` result, by ending the process. C++ reads no error from it:
   there is no slot, no flag, no counter, and no pair.
