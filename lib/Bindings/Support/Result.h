@@ -39,6 +39,12 @@ inline ptr scheme_error(const char* who, const llvm::Twine& why) {
                Sstring_utf8(text.data(), static_cast<iptr>(text.size())));
 }
 
+// The failure of a binding that was given 0 where it needs a pointer: the error
+// names the argument, as in "parser pointer is null".
+inline ptr nullPointer(const char* who, const char* what) {
+  return scheme_error(who, llvm::Twine(what) + " pointer is null");
+}
+
 // A boolean answer.
 inline ptr scheme_bool(bool value) { return value ? Strue : Sfalse; }
 

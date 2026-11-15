@@ -36,8 +36,7 @@ void registerIRBlockBindings() {
   Sregister_symbol(
       "mlir::Block::getNumArguments", (void*)+[](uint64_t block_ptr) -> ptr {
         if (!block_ptr) {
-          return scheme_error("mlir::Block::getNumArguments",
-                              "block pointer is null");
+          return nullPointer("mlir::Block::getNumArguments", "block");
         }
         return Sunsigned64(
             reinterpret_cast<mlir::Block*>(block_ptr)->getNumArguments());

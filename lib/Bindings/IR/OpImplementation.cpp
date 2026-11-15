@@ -22,17 +22,6 @@
 
 namespace crest {
 
-namespace {
-
-// The answer of a binding that was given a pointer that is 0. A parse or a
-// print that fails answers 0, and Scheme that does not look at the answer
-// passes the 0 on to the next call.
-ptr nullPointer(const char* who, const char* what) {
-  return scheme_error(who, llvm::Twine(what) + " pointer is null");
-}
-
-} // namespace
-
 void registerIROpImplementationBindings() {
   // The methods of mlir::AsmPrinter, the base of OpAsmPrinter and of the
   // DialectAsmPrinter that a dialect's :print-type and :print-attribute get.
