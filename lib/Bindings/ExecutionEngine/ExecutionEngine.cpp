@@ -29,8 +29,15 @@ void registerExecutionEngineBindings() {
   Sregister_symbol(
       "mlir::ExecutionEngine::create",
       (void*)+[](uint64_t module_ptr, int opt_level) -> ptr {
-        auto* op = reinterpret_cast<mlir::Operation*>(module_ptr);
-        auto module = mlir::cast<mlir::ModuleOp>(op);
+        if (!module_ptr) {
+          return nullPointer("mlir::ExecutionEngine::create", "module");
+        }
+        auto module = mlir::dyn_cast<mlir::ModuleOp>(
+            reinterpret_cast<mlir::Operation*>(module_ptr));
+        if (!module) {
+          return scheme_error("mlir::ExecutionEngine::create",
+                              "the operation is not a module");
+        }
         auto* ctx = module->getContext();
 
         llvm::InitializeNativeTarget();

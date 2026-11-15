@@ -161,9 +161,17 @@ void registerInterfacesFunctionInterfacesBindings() {
               llvm::Twine("op does not implement FunctionOpInterface:") + " " +
                   llvm::Twine(op->getName().getStringRef()));
         }
-        mlir::TypeAttr t =
-            mlir::cast<mlir::TypeAttr>(mlir::Attribute::getFromOpaquePointer(
+        if (!attr_ptr) {
+          return nullPointer("mlir::FunctionOpInterface::setFunctionTypeAttr",
+                             "attr");
+        }
+        auto t = mlir::dyn_cast_or_null<mlir::TypeAttr>(
+            mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<const void*>(attr_ptr)));
+        if (!t) {
+          return scheme_error("mlir::FunctionOpInterface::setFunctionTypeAttr",
+                              "the pointer is not a TypeAttr");
+        }
         c->setFunctionTypeAttr(c, op, t);
         return Svoid;
       });

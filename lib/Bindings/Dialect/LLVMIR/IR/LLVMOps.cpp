@@ -67,9 +67,16 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
          uint64_t ftype_ptr) -> ptr {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
-        auto ftype = mlir::cast<mlir::LLVM::LLVMFunctionType>(
+        if (!ftype_ptr) {
+          return nullPointer("mlir::LLVM::LLVMFuncOp::create", "ftype");
+        }
+        auto ftype = mlir::dyn_cast_or_null<mlir::LLVM::LLVMFunctionType>(
             mlir::Type::getFromOpaquePointer(
                 reinterpret_cast<const void*>(ftype_ptr)));
+        if (!ftype) {
+          return scheme_error("mlir::LLVM::LLVMFuncOp::create",
+                              "the pointer is not a LLVMFunctionType");
+        }
         auto op = mlir::LLVM::LLVMFuncOp::create(builder, loc, name, ftype);
         return Sunsigned64(reinterpret_cast<uint64_t>(op.getOperation()));
       });
@@ -104,7 +111,11 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
           return nullPointer("mlir::LLVM::GlobalOp::getType", "global op");
         }
         auto* op = reinterpret_cast<mlir::Operation*>(global_op_ptr);
-        auto global = mlir::cast<mlir::LLVM::GlobalOp>(op);
+        auto global = mlir::dyn_cast_or_null<mlir::LLVM::GlobalOp>(op);
+        if (!global) {
+          return scheme_error("mlir::LLVM::GlobalOp::getType",
+                              "the pointer is not a GlobalOp");
+        }
         return Sunsigned64(
             reinterpret_cast<uint64_t>(global.getType().getAsOpaquePointer()));
       });
@@ -121,7 +132,11 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto* op = reinterpret_cast<mlir::Operation*>(global_op_ptr);
-        auto global = mlir::cast<mlir::LLVM::GlobalOp>(op);
+        auto global = mlir::dyn_cast_or_null<mlir::LLVM::GlobalOp>(op);
+        if (!global) {
+          return scheme_error("mlir::LLVM::AddressOfOp::create",
+                              "the pointer is not a GlobalOp");
+        }
         auto addrOp = mlir::LLVM::AddressOfOp::create(builder, loc, global);
         return Sunsigned64(reinterpret_cast<uint64_t>(
             addrOp.getResult().getAsOpaquePointer()));
@@ -179,12 +194,26 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
          uint64_t callee_ptr, ptr operands_list) -> ptr {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
-        auto ftype = mlir::cast<mlir::LLVM::LLVMFunctionType>(
+        if (!ftype_ptr) {
+          return nullPointer("mlir::LLVM::CallOp::create", "ftype");
+        }
+        auto ftype = mlir::dyn_cast_or_null<mlir::LLVM::LLVMFunctionType>(
             mlir::Type::getFromOpaquePointer(
                 reinterpret_cast<const void*>(ftype_ptr)));
-        auto callee = mlir::cast<mlir::FlatSymbolRefAttr>(
+        if (!ftype) {
+          return scheme_error("mlir::LLVM::CallOp::create",
+                              "the pointer is not a LLVMFunctionType");
+        }
+        if (!callee_ptr) {
+          return nullPointer("mlir::LLVM::CallOp::create", "callee");
+        }
+        auto callee = mlir::dyn_cast_or_null<mlir::FlatSymbolRefAttr>(
             mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<const void*>(callee_ptr)));
+        if (!callee) {
+          return scheme_error("mlir::LLVM::CallOp::create",
+                              "the pointer is not a FlatSymbolRefAttr");
+        }
         auto operands =
             convert_to_cpp<llvm::SmallVector<mlir::Value>>(operands_list);
         auto op =
@@ -201,7 +230,11 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
           return nullPointer("mlir::ModuleOp::lookupSymbol", "operation");
         }
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-        auto module = mlir::cast<mlir::ModuleOp>(op);
+        auto module = mlir::dyn_cast_or_null<mlir::ModuleOp>(op);
+        if (!module) {
+          return scheme_error("mlir::ModuleOp::lookupSymbol",
+                              "the pointer is not a ModuleOp");
+        }
         auto* sym = module.lookupSymbol(name);
         return Sunsigned64(reinterpret_cast<uint64_t>(sym));
       });

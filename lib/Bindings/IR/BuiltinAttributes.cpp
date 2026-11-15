@@ -299,9 +299,16 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::DenseElementsAttr::get<f64>",
       (void*)+[](uint64_t type_ptr, ptr values) -> ptr {
+        if (!type_ptr) {
+          return nullPointer("mlir::DenseElementsAttr::get<f64>", "type");
+        }
         auto type = mlir::Type::getFromOpaquePointer(
             reinterpret_cast<const void*>(type_ptr));
-        auto tensorType = mlir::cast<mlir::ShapedType>(type);
+        auto tensorType = mlir::dyn_cast_or_null<mlir::ShapedType>(type);
+        if (!tensorType) {
+          return scheme_error("mlir::DenseElementsAttr::get<f64>",
+                              "the pointer is not a ShapedType");
+        }
         llvm::SmallVector<double> vals;
         for (ptr cur = values; cur != Snil; cur = Scdr(cur)) {
           ptr v = Scar(cur);
@@ -327,9 +334,16 @@ void registerIRBuiltinAttributesBindings() {
 
   Sregister_symbol(
       "mlir::TypeAttr::getValue", (void*)+[](uint64_t attr_ptr) -> ptr {
-        auto ta =
-            mlir::cast<mlir::TypeAttr>(mlir::Attribute::getFromOpaquePointer(
+        if (!attr_ptr) {
+          return nullPointer("mlir::TypeAttr::getValue", "attr");
+        }
+        auto ta = mlir::dyn_cast_or_null<mlir::TypeAttr>(
+            mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<const void*>(attr_ptr)));
+        if (!ta) {
+          return scheme_error("mlir::TypeAttr::getValue",
+                              "the pointer is not a TypeAttr");
+        }
         return Sunsigned64(
             reinterpret_cast<uint64_t>(ta.getValue().getAsOpaquePointer()));
       });
@@ -345,9 +359,16 @@ void registerIRBuiltinAttributesBindings() {
 
   Sregister_symbol(
       "mlir::AffineMapAttr::getValue", (void*)+[](uint64_t attr_ptr) -> ptr {
-        auto ama = mlir::cast<mlir::AffineMapAttr>(
+        if (!attr_ptr) {
+          return nullPointer("mlir::AffineMapAttr::getValue", "attr");
+        }
+        auto ama = mlir::dyn_cast_or_null<mlir::AffineMapAttr>(
             mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<const void*>(attr_ptr)));
+        if (!ama) {
+          return scheme_error("mlir::AffineMapAttr::getValue",
+                              "the pointer is not a AffineMapAttr");
+        }
         return Sunsigned64(
             reinterpret_cast<uint64_t>(ama.getValue().getAsOpaquePointer()));
       });
@@ -556,9 +577,16 @@ void registerIRBuiltinAttributesBindings() {
 
   Sregister_symbol(
       "mlir::DenseElementsAttr::getType", (void*)+[](uint64_t attr_ptr) -> ptr {
-        auto attr = mlir::cast<mlir::DenseElementsAttr>(
+        if (!attr_ptr) {
+          return nullPointer("mlir::DenseElementsAttr::getType", "attr");
+        }
+        auto attr = mlir::dyn_cast_or_null<mlir::DenseElementsAttr>(
             mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<void*>(attr_ptr)));
+        if (!attr) {
+          return scheme_error("mlir::DenseElementsAttr::getType",
+                              "the pointer is not a DenseElementsAttr");
+        }
         return Sunsigned64(
             reinterpret_cast<uint64_t>(attr.getType().getAsOpaquePointer()));
       });
@@ -566,12 +594,26 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::DenseElementsAttr::reshape",
       (void*)+[](uint64_t attr_ptr, uint64_t type_ptr) -> ptr {
-        auto attr = mlir::cast<mlir::DenseElementsAttr>(
+        if (!attr_ptr) {
+          return nullPointer("mlir::DenseElementsAttr::reshape", "attr");
+        }
+        auto attr = mlir::dyn_cast_or_null<mlir::DenseElementsAttr>(
             mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<void*>(attr_ptr)));
-        auto shaped =
-            mlir::cast<mlir::ShapedType>(mlir::Type::getFromOpaquePointer(
+        if (!attr) {
+          return scheme_error("mlir::DenseElementsAttr::reshape",
+                              "the pointer is not a DenseElementsAttr");
+        }
+        if (!type_ptr) {
+          return nullPointer("mlir::DenseElementsAttr::reshape", "type");
+        }
+        auto shaped = mlir::dyn_cast_or_null<mlir::ShapedType>(
+            mlir::Type::getFromOpaquePointer(
                 reinterpret_cast<void*>(type_ptr)));
+        if (!shaped) {
+          return scheme_error("mlir::DenseElementsAttr::reshape",
+                              "the pointer is not a ShapedType");
+        }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             attr.reshape(shaped).getAsOpaquePointer()));
       });
@@ -592,9 +634,16 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::DenseElementsAttr::getNumElements",
       (void*)+[](uint64_t attr_ptr) -> ptr {
-        auto attr = mlir::cast<mlir::DenseElementsAttr>(
+        if (!attr_ptr) {
+          return nullPointer("mlir::DenseElementsAttr::getNumElements", "attr");
+        }
+        auto attr = mlir::dyn_cast_or_null<mlir::DenseElementsAttr>(
             mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<void*>(attr_ptr)));
+        if (!attr) {
+          return scheme_error("mlir::DenseElementsAttr::getNumElements",
+                              "the pointer is not a DenseElementsAttr");
+        }
         return Sunsigned64(static_cast<uint64_t>(attr.getNumElements()));
       });
 
@@ -602,9 +651,17 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::DenseElementsAttr::getValueAt<f64>",
       (void*)+[](uint64_t attr_ptr, uint64_t idx) -> ptr {
-        auto attr = mlir::cast<mlir::DenseElementsAttr>(
+        if (!attr_ptr) {
+          return nullPointer("mlir::DenseElementsAttr::getValueAt<f64>",
+                             "attr");
+        }
+        auto attr = mlir::dyn_cast_or_null<mlir::DenseElementsAttr>(
             mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<void*>(attr_ptr)));
+        if (!attr) {
+          return scheme_error("mlir::DenseElementsAttr::getValueAt<f64>",
+                              "the pointer is not a DenseElementsAttr");
+        }
         auto it = attr.value_begin<mlir::FloatAttr>();
         std::advance(it, static_cast<ptrdiff_t>(idx));
         mlir::FloatAttr fa = *it;
@@ -635,9 +692,16 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::ArrayAttr::getElement",
       (void*)+[](uint64_t attr_ptr, uint64_t idx) -> ptr {
+        if (!attr_ptr) {
+          return nullPointer("mlir::ArrayAttr::getElement", "attr");
+        }
         auto attr = mlir::Attribute::getFromOpaquePointer(
             reinterpret_cast<const void*>(attr_ptr));
-        auto arr = mlir::cast<mlir::ArrayAttr>(attr);
+        auto arr = mlir::dyn_cast_or_null<mlir::ArrayAttr>(attr);
+        if (!arr) {
+          return scheme_error("mlir::ArrayAttr::getElement",
+                              "the pointer is not a ArrayAttr");
+        }
         if (idx >= arr.size()) {
           return Sunsigned64(0);
         }
