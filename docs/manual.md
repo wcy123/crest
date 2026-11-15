@@ -868,13 +868,16 @@ Limits:
 - Callbacks of different ops can run at the same time, so a callback that changes a variable or a table that other
   callbacks use needs a mutex (`make-mutex`, `with-mutex`), as a C++ pass would. A callback that only reads its
   arguments needs nothing.
+- `crest-opt` (`MlirOptMain`) turns threads off while it parses and verifies the module it has just read, so that
+  verification is single-threaded whatever the Scheme code does; the verification that the pass manager runs later is
+  parallel.
 - A Scheme program runs on the thread that started Scheme, which is active the whole time. A context that a Scheme
   program makes has multithreading off, and the program must not turn it on: the program would wait inside MLIR
   while active, and a collection would hang.
 - Scheme code that allocates a lot does not run faster on many threads: every collection stops all of them.
 - A thread that Scheme does not know gets a record for each call into Scheme and drops it afterwards. A callback that
   does almost nothing is therefore slower on many threads than with `--mlir-disable-threading` (5000 verifications of
-  an op whose verifier does nothing: 0.8 s against 0.45 s).
+  an op whose verifier does nothing: 0.56 to 0.68 s against 0.43 s).
 
 ### `define-type` — dialect types
 
