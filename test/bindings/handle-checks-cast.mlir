@@ -1,4 +1,4 @@
-// A binding that is given a pointer of the wrong kind answers an error (Rule 20): `mlir::cast` of
+// A binding that is given a pointer of the wrong kind returns an error (Rule 20): `mlir::cast` of
 // a pointer that is not a T is undefined behaviour in a release build, so the bindings check it. Each
 // case is a run of its own (a fault ends the process); see handle-checks-cast.sls.
 //
@@ -15,9 +15,9 @@
 // ENGINE-NOT-MODULE: mlir::ExecutionEngine::create: {{.*}} not a module
 // ARITH-CONSTANT-NULL: mlir::arith::ConstantOp::create<f64>: attribute pointer is null
 // ARITH-CONSTANT-UNTYPED: mlir::arith::ConstantOp::create<f64>: {{.*}} not a typed attribute
-// STRING-ATTR: mlir::StringAttr::getValue: the pointer is null or not a StringAttr
-// FUNCTION-TYPE: mlir::FunctionType::getNumInputs: the pointer is null or not a FunctionType
-// FUNC-BODY: mlir::func::FuncOp::getBody: the pointer is null or not a FuncOp
+// STRING-ATTR: mlir::StringAttr::getValue: attr pointer is null
+// FUNCTION-TYPE: mlir::FunctionType::getNumInputs: the pointer is not a FunctionType
+// FUNC-BODY: mlir::func::FuncOp::getBody: the pointer is not a FuncOp
 // MODULE-BODY: mlir::ModuleOp::getBody: the operation is not a module
 
 module {}

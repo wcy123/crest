@@ -33,12 +33,15 @@ void registerDialectFuncIRFuncOpsBindings() {
         auto& rw = *rw_box;
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
+        if (!functype_ptr) {
+          return nullPointer("mlir::func::FuncOp::create", "functype");
+        }
         auto functype = mlir::dyn_cast_or_null<mlir::FunctionType>(
             mlir::Type::getFromOpaquePointer(
                 reinterpret_cast<const void*>(functype_ptr)));
         if (!functype) {
           return scheme_error("mlir::func::FuncOp::create",
-                              "the pointer is null or not a FunctionType");
+                              "the pointer is not a FunctionType");
         }
         auto func = mlir::func::FuncOp::create(rw, loc, name, functype);
         return Sunsigned64(reinterpret_cast<uint64_t>(func.getOperation()));
@@ -73,7 +76,7 @@ void registerDialectFuncIRFuncOpsBindings() {
         auto func = mlir::dyn_cast_or_null<mlir::func::FuncOp>(op);
         if (!func) {
           return scheme_error("mlir::func::FuncOp::getBody",
-                              "the pointer is null or not a FuncOp");
+                              "the pointer is not a FuncOp");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(&func.getBody()));
       });

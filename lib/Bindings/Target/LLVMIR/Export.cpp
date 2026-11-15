@@ -36,11 +36,14 @@ void registerTargetLLVMIRExportBindings() {
   // (module-ptr) → the LLVM IR text, as a Scheme string (no buffer to free).
   Sregister_symbol(
       "mlir::translateModuleToLLVMIR", (void*)+[](uint64_t module_ptr) -> ptr {
+        if (!module_ptr) {
+          return nullPointer("mlir::translateModuleToLLVMIR", "module");
+        }
         auto* op = reinterpret_cast<mlir::Operation*>(module_ptr);
         auto module = mlir::dyn_cast_or_null<mlir::ModuleOp>(op);
         if (!module) {
           return scheme_error("mlir::translateModuleToLLVMIR",
-                              "the pointer is null or not a ModuleOp");
+                              "the pointer is not a ModuleOp");
         }
         auto* ctx = module->getContext();
 
@@ -67,11 +70,14 @@ void registerTargetLLVMIRExportBindings() {
   Sregister_symbol(
       "mlir::translateModuleToLLVMIR<int>",
       (void*)+[](uint64_t module_ptr, int opt_level) -> ptr {
+        if (!module_ptr) {
+          return nullPointer("mlir::translateModuleToLLVMIR<int>", "module");
+        }
         auto* op = reinterpret_cast<mlir::Operation*>(module_ptr);
         auto module = mlir::dyn_cast_or_null<mlir::ModuleOp>(op);
         if (!module) {
           return scheme_error("mlir::translateModuleToLLVMIR<int>",
-                              "the pointer is null or not a ModuleOp");
+                              "the pointer is not a ModuleOp");
         }
         auto* ctx = module->getContext();
 

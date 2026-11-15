@@ -1,5 +1,5 @@
 ;; scheme-mlir driver: calls bindings with a pointer that is the wrong kind of object, or 0, and says what
-;; each answered. argv[1] names the case. A binding that is given a pointer it cannot use answers an error
+;; each returned. argv[1] names the case. A binding that is given a pointer it cannot use returns an error
 ;; (Rule 20); it does not crash. Each case is a run of its own, because a crash ends the process.
 (import (except (chezscheme) =)
         (mlir IR DialectRegistry) (mlir IR MLIRContext) (mlir IR Operation) (mlir IR Value)

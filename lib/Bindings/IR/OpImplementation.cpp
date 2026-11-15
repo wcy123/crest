@@ -276,24 +276,30 @@ void registerIROpImplementationBindings() {
 
   Sregister_symbol(
       "mlir::StringAttr::getValue", (void*)+[](uint64_t attr_ptr) -> ptr {
+        if (!attr_ptr) {
+          return nullPointer("mlir::StringAttr::getValue", "attr");
+        }
         auto attr = mlir::dyn_cast_or_null<mlir::StringAttr>(
             mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<void*>(attr_ptr)));
         if (!attr) {
           return scheme_error("mlir::StringAttr::getValue",
-                              "the pointer is null or not a StringAttr");
+                              "the pointer is not a StringAttr");
         }
         return scheme_string(attr.getValue().data());
       });
 
   Sregister_symbol(
       "mlir::FunctionType::getNumInputs", (void*)+[](uint64_t type_ptr) -> ptr {
+        if (!type_ptr) {
+          return nullPointer("mlir::FunctionType::getNumInputs", "type");
+        }
         auto t = mlir::dyn_cast_or_null<mlir::FunctionType>(
             mlir::Type::getFromOpaquePointer(
                 reinterpret_cast<void*>(type_ptr)));
         if (!t) {
           return scheme_error("mlir::FunctionType::getNumInputs",
-                              "the pointer is null or not a FunctionType");
+                              "the pointer is not a FunctionType");
         }
         return Sunsigned64(t.getNumInputs());
       });
@@ -301,12 +307,15 @@ void registerIROpImplementationBindings() {
   Sregister_symbol(
       "mlir::FunctionType::getInput",
       (void*)+[](uint64_t type_ptr, uint64_t i) -> ptr {
+        if (!type_ptr) {
+          return nullPointer("mlir::FunctionType::getInput", "type");
+        }
         auto t = mlir::dyn_cast_or_null<mlir::FunctionType>(
             mlir::Type::getFromOpaquePointer(
                 reinterpret_cast<void*>(type_ptr)));
         if (!t) {
           return scheme_error("mlir::FunctionType::getInput",
-                              "the pointer is null or not a FunctionType");
+                              "the pointer is not a FunctionType");
         }
         if (i >= t.getNumInputs()) {
           return scheme_error("mlir::FunctionType::getInput",
@@ -320,12 +329,15 @@ void registerIROpImplementationBindings() {
   Sregister_symbol(
       "mlir::FunctionType::getNumResults",
       (void*)+[](uint64_t type_ptr) -> ptr {
+        if (!type_ptr) {
+          return nullPointer("mlir::FunctionType::getNumResults", "type");
+        }
         auto t = mlir::dyn_cast_or_null<mlir::FunctionType>(
             mlir::Type::getFromOpaquePointer(
                 reinterpret_cast<void*>(type_ptr)));
         if (!t) {
           return scheme_error("mlir::FunctionType::getNumResults",
-                              "the pointer is null or not a FunctionType");
+                              "the pointer is not a FunctionType");
         }
         return Sunsigned64(t.getNumResults());
       });
@@ -333,12 +345,15 @@ void registerIROpImplementationBindings() {
   Sregister_symbol(
       "mlir::FunctionType::getResult",
       (void*)+[](uint64_t type_ptr, uint64_t i) -> ptr {
+        if (!type_ptr) {
+          return nullPointer("mlir::FunctionType::getResult", "type");
+        }
         auto t = mlir::dyn_cast_or_null<mlir::FunctionType>(
             mlir::Type::getFromOpaquePointer(
                 reinterpret_cast<void*>(type_ptr)));
         if (!t) {
           return scheme_error("mlir::FunctionType::getResult",
-                              "the pointer is null or not a FunctionType");
+                              "the pointer is not a FunctionType");
         }
         if (i >= t.getNumResults()) {
           return scheme_error("mlir::FunctionType::getResult",

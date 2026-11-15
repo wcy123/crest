@@ -45,7 +45,7 @@ void registerDialectSCFIRSCFOpsBindings() {
         auto forOp = mlir::dyn_cast_or_null<mlir::scf::ForOp>(op);
         if (!forOp) {
           return scheme_error("mlir::scf::ForOp::getBody",
-                              "the pointer is null or not a ForOp");
+                              "the pointer is not a ForOp");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(forOp.getBody()));
       });
@@ -61,7 +61,7 @@ void registerDialectSCFIRSCFOpsBindings() {
         auto forOp = mlir::dyn_cast_or_null<mlir::scf::ForOp>(op);
         if (!forOp) {
           return scheme_error("mlir::scf::ForOp::getInductionVar",
-                              "the pointer is null or not a ForOp");
+                              "the pointer is not a ForOp");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             forOp.getInductionVar().getAsOpaquePointer()));

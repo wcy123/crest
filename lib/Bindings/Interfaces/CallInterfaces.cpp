@@ -270,12 +270,16 @@ void registerInterfacesCallInterfacesBindings() {
   Sregister_symbol(
       "mlir::CallInterfaceCallable::get<SymbolRefAttr>",
       (void*)+[](uint64_t attr) -> ptr {
+        if (!attr) {
+          return nullPointer("mlir::CallInterfaceCallable::get<SymbolRefAttr>",
+                             "attr");
+        }
         auto symbol = mlir::dyn_cast_or_null<mlir::SymbolRefAttr>(
             mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<const void*>(attr)));
         if (!symbol) {
           return scheme_error("mlir::CallInterfaceCallable::get<SymbolRefAttr>",
-                              "the pointer is null or not a SymbolRefAttr");
+                              "the pointer is not a SymbolRefAttr");
         }
         mlir::CallInterfaceCallable callable(symbol);
         return Sunsigned64(
