@@ -3,7 +3,7 @@
 // pass allocates, so collections happen while other threads run it. Every function must be tagged, again
 // and again, with no abort and no hang.
 //
-// RUN: rm -rf %t && mkdir -p %t
+// RUN: mkdir -p %t
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/threads \
 // RUN:   %scheme-mlir %S/driver.sls %s threads > %t/threads-1.txt
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/threads \
