@@ -836,12 +836,32 @@ procedures called at verification time. For example:
 
 `op` is the operation the pass runs on (the `PassManager` decides: nested on `func.func` it runs on each
 function); the body returns `#f` to fail the pass, after saying why with `mlir::Operation::emitError`. The
-pass is an `mlir::Pass` (`lib/Crest/SchemePass.cpp`), so it mixes with C++ passes in one pipeline. Scheme
-is single-threaded: contexts made from Scheme have multithreading disabled; with `crest-opt` use
-`--mlir-disable-threading`. A body that raises a Scheme error does not end the process: the pass fails and
-the diagnostic has the text of the error. The body is made into a C function once, where the pass is defined,
+pass is an `mlir::Pass` (`lib/Crest/SchemePass.cpp`), so it mixes with C++ passes in one pipeline. A pass
+nested on `func.func` can run on several functions at the same time (see Threads). A body that raises a
+Scheme error does not end the process: the pass fails and the diagnostic has the text of the error. The body is made into a C function once, where the pass is defined,
 and every pass that `(tag-functions)` makes shares it. Toy's shape inference and its lowerings to affine and
 LLVM are passes.
+
+### Threads
+
+MLIR runs the verifiers and the folders of the ops, and a pass nested on `func.func`, on its own worker threads,
+one function per thread. The Scheme code of a dialect or a pass runs there too, so `crest-opt` verifies 64
+functions that have a Scheme op on as many threads as the machine has, and a Scheme verifier that takes a
+second on each function does not make the run 64 seconds long.
+
+- A context that loads a Scheme dialect uses `schemeThreadPool` (`lib/Bindings/Support/SchemeThreads.h`):
+  MLIR's own pool, whose threads are known to Chez Scheme. A context made from Scheme starts with
+  multithreading off, and `(mlir::MLIRContext::enableMultithreading ctx)` turns it on with the same pool.
+- Every callable that Scheme makes (`crest callback`) is `__collect_safe`: a thread that Scheme does not know
+  becomes active for the call and stops being active when it returns. C++ that calls Scheme from a thread
+  of MLIR uses `SchemeThreadScope`.
+- The thread that waits for the pool is not active while it waits, so a garbage collection that a worker
+  starts does not wait for it.
+- `current-MLIRContext`, `current-OpBuilder` and `current-Block` are thread parameters: each thread has its own
+  value, and a new thread starts with the value of the thread that started Scheme.
+- Callbacks of different ops can run at the same time, so a callback that changes a variable or a table that
+  other callbacks use needs a mutex (`make-mutex`, `with-mutex`), as a C++ pass would. A callback that only reads
+  its arguments needs nothing.
 
 ### `define-type` — dialect types
 
@@ -938,8 +958,7 @@ A non-list value is reported when the library compiles; an unknown or repeated n
 when the dialect loads. Before LLVM 23 `addTrait` does not exist, and a dialect that asks for a trait fails
 to load with a message saying so. The two interfaces behind `pure` can also be listed by hand in
 `:interfaces` (`mlir::MemoryEffectOpInterface`, `mlir::ConditionallySpeculatable`, from
-`(mlir Interfaces SideEffectInterfaces)`). Passes that run on a dialect with Scheme callbacks (verifiers,
-folders) must not run multithreaded: pass `--mlir-disable-threading` to `crest-opt`.
+`(mlir Interfaces SideEffectInterfaces)`).
 
 ### Op-level `:interfaces`
 

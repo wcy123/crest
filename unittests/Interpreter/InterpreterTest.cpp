@@ -6,10 +6,14 @@
 
 #include "../../lib/Bindings/Support/LockedSchemeObject.h"
 #include "../../lib/Bindings/Support/Result.h"
+#include "../../lib/Bindings/Support/SchemeThreads.h"
 #include "../../lib/Interpreter/ChezSchemeInterpreter.h"
+#include "llvm/Support/ThreadPool.h"
 #include "gtest/gtest.h"
+#include <atomic>
 #include <chrono>
 #include <iostream>
+#include <thread>
 #if defined(__GLIBC__)
 #  include <malloc.h>
 #endif
@@ -77,11 +81,13 @@ static ptr evalScheme(const char* code) {
 }
 
 // What define-c-callable (scheme/crest/callback.sls) does for a
-// callable with a C result: make a foreign-callable, lock its code object
-// once, answer its address.
+// callable with a C result: make a foreign-callable (__collect_safe, so that a
+// thread that Scheme does not know can call it), lock its code object once,
+// answer its address. The procedure allocates, so that collections happen.
 static uint64_t makeCallableEntry() {
   return Sunsigned64_value(evalScheme(
-      "(let ([code (foreign-callable (lambda (x) (+ x 1)) (int) int)])"
+      "(let ([code (foreign-callable __collect_safe"
+      "             (lambda (x) (+ x (- (length (iota 200)) 199))) (int) int)])"
       "  (lock-object code)"
       "  (foreign-callable-entry-point code))"));
 }
@@ -91,6 +97,45 @@ TEST_F(InterpreterTest, CallableCallsTheSchemeProcedure) {
   auto callable = reinterpret_cast<int (*)(int)>(makeCallableEntry());
   ASSERT_NE(callable, nullptr);
   EXPECT_EQ(callable(41), 42);
+}
+
+// MLIR calls the callables of Scheme ops from its worker threads, which Scheme
+// does not know, while the thread that started Scheme waits for them. A
+// collection that one of them starts must not wait for the waiting thread, and
+// each call must see its own argument (SchemeThreads.h).
+TEST_F(InterpreterTest, PoolThreadsCallTheSchemeProcedure) {
+  auto callable = reinterpret_cast<int (*)(int)>(makeCallableEntry());
+  constexpr int kTasks = 16;
+  constexpr int kCalls = 2000;
+  std::atomic<int> wrong{0};
+  {
+    llvm::ThreadPoolTaskGroup group(schemeThreadPool());
+    for (int task = 0; task < kTasks; ++task) {
+      group.async([&, task] {
+        for (int i = 0; i < kCalls; ++i) {
+          if (callable(task * kCalls + i) != task * kCalls + i + 1) {
+            ++wrong;
+          }
+        }
+      });
+    }
+    group.wait();
+  }
+  EXPECT_EQ(wrong, 0);
+}
+
+// C++ that runs Scheme on a thread that Scheme does not know uses the scope.
+TEST_F(InterpreterTest, SchemeThreadScopeLetsAnotherThreadRunScheme) {
+  bool ok = false;
+  std::thread other([&] {
+    SchemeThreadScope scope;
+    ok = Sfixnum_value(evalScheme("(+ 1 2)")) == 3;
+  });
+  // The thread that started Scheme is not active while it waits.
+  Sdeactivate_thread();
+  other.join();
+  Sactivate_thread();
+  EXPECT_TRUE(ok);
 }
 
 // REGRESSION: a failing binding must leave nothing behind

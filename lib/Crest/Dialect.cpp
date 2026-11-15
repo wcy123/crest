@@ -7,6 +7,7 @@
 #include "Dialect.h"
 #include "../Bindings/Support/CrestObject.h"
 #include "../Bindings/Support/Result.h"
+#include "../Bindings/Support/SchemeThreads.h"
 #include "../Bindings/Support/SchemeWrapper.h"
 #include "CurrentContext.h"
 #include "InlinerInterface.h"
@@ -90,6 +91,9 @@ void CrestDialect::initialize(const LockedSchemeObject& interfaces) {
   // registerAllDialects()) and for other Scheme dialects registered by name
   // (--crest-scheme-dialect).
   mlir::Location here = mlir::UnknownLoc::get(getContext());
+  // MLIR runs the verifiers, folders and passes of the ops on its worker
+  // threads. This pool makes that safe for Scheme (SchemeThreads.h).
+  useSchemeThreadPool(*getContext());
   // The callables of this dialect report their errors in this context.
   setCurrentContext(*interp_, getContext());
   if (cbs_.get_dependent_dialects) {

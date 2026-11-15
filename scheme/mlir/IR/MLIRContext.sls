@@ -31,10 +31,10 @@
     mlir::MLIRContext::printStackTraceOnDiagnostic
     mlir::parseSourceFile)
   (import (rnrs)
-          (only (chezscheme) make-parameter parameterize)
+          (only (chezscheme) make-thread-parameter parameterize)
           (mlir IR MLIRContext ffi))
 
-  (define current-MLIRContext (make-parameter #f))
+  (define current-MLIRContext (make-thread-parameter #f))
 
   (define-syntax with-current-MLIRContext
     (syntax-rules ()

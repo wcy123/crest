@@ -128,6 +128,9 @@ struct CrestPass : public mlir::OperationPass<mlir::ModuleOp> {
     auto level = parseLogLevel(logLevel);
     auto interp = ChezSchemeInterpreter::instance(
         level, crest::registerMlirForeignFunctions);
+    // A pass manager nested in another can run this pass on a worker thread of
+    // MLIR.
+    SchemeThreadScope schemeThread;
     interp->setLogLevel(level);
 
     for (const std::string& pass : passes) {
