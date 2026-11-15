@@ -30,8 +30,7 @@ void registerExecutionEngineBindings() {
       "mlir::ExecutionEngine::create",
       (void*)+[](uint64_t module_ptr, int opt_level) -> ptr {
         if (!module_ptr) {
-          return scheme_error("mlir::ExecutionEngine::create",
-                              "module pointer is null");
+          return nullPointer("mlir::ExecutionEngine::create", "module");
         }
         auto module = mlir::dyn_cast<mlir::ModuleOp>(
             reinterpret_cast<mlir::Operation*>(module_ptr));

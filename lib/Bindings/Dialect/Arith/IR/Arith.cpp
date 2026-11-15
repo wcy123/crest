@@ -95,12 +95,12 @@ void registerDialectArithIRArithBindings() {
       "mlir::arith::ConstantOp::create<f64>",
       [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t attr_ptr) -> ptr {
         if (!loc_ptr) {
-          return scheme_error("mlir::arith::ConstantOp::create<f64>",
-                              "location pointer is null");
+          return nullPointer("mlir::arith::ConstantOp::create<f64>",
+                             "location");
         }
         if (!attr_ptr) {
-          return scheme_error("mlir::arith::ConstantOp::create<f64>",
-                              "attribute pointer is null");
+          return nullPointer("mlir::arith::ConstantOp::create<f64>",
+                             "attribute");
         }
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
