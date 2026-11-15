@@ -22,8 +22,7 @@ void registerPassPassManagerBindings() {
   Sregister_symbol(
       "mlir::PassManager::new", (void*)+[](uint64_t ctx_ptr) -> ptr {
         if (!ctx_ptr) {
-          return scheme_error("mlir::PassManager::new",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::PassManager::new", "context");
         }
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
 
@@ -49,8 +48,7 @@ void registerPassPassManagerBindings() {
         }
         auto& pm = *pm_box;
         if (!pass_ptr) {
-          return scheme_error("mlir::PassManager::addPass",
-                              "null pass pointer");
+          return nullPointer("mlir::PassManager::addPass", "pass");
         }
         pm.addPass(std::unique_ptr<mlir::Pass>(
             reinterpret_cast<mlir::Pass*>(pass_ptr)));
@@ -123,8 +121,7 @@ void registerPassPassManagerBindings() {
           return nullPointer("mlir::OpPassManager::addPass", "pass manager");
         }
         if (!pass_ptr) {
-          return scheme_error("mlir::OpPassManager::addPass",
-                              "null pass pointer");
+          return nullPointer("mlir::OpPassManager::addPass", "pass");
         }
         nested->addPass(std::unique_ptr<mlir::Pass>(
             reinterpret_cast<mlir::Pass*>(pass_ptr)));

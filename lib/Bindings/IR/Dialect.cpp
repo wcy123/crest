@@ -23,8 +23,7 @@ void registerIRDialectBindings() {
       [](mlir::OpBuilder& builder, uint64_t dialect_ptr, uint64_t value_ptr,
          uint64_t type_ptr, uint64_t loc_ptr) -> ptr {
         if (!dialect_ptr) {
-          return scheme_error("mlir::Dialect::materializeConstant",
-                              "null dialect pointer");
+          return nullPointer("mlir::Dialect::materializeConstant", "dialect");
         }
         auto* dialect = reinterpret_cast<mlir::Dialect*>(dialect_ptr);
         auto value = mlir::Attribute::getFromOpaquePointer(

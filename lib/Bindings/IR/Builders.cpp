@@ -25,13 +25,11 @@ void registerIROpBuilderBindings() {
       (void*)+[](uint64_t ctx_ptr, uint64_t block_ptr,
                  uint64_t listener_ptr) -> ptr {
         if (!block_ptr) {
-          return scheme_error("mlir::OpBuilder::atBlockEnd",
-                              "null block pointer");
+          return nullPointer("mlir::OpBuilder::atBlockEnd", "block");
         }
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::OpBuilder::atBlockEnd",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::OpBuilder::atBlockEnd", "context");
         }
         auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
         // listener_ptr: raw OpBuilder::Listener*, 0 for none. A builder that
@@ -70,8 +68,7 @@ void registerIROpBuilderBindings() {
       "mlir::OpBuilder::createBlock",
       [](mlir::OpBuilder& builder, uint64_t region_ptr) -> ptr {
         if (!region_ptr) {
-          return scheme_error("mlir::OpBuilder::createBlock",
-                              "region pointer is null");
+          return nullPointer("mlir::OpBuilder::createBlock", "region");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             builder.createBlock(reinterpret_cast<mlir::Region*>(region_ptr))));
@@ -115,8 +112,8 @@ void registerIROpBuilderBindings() {
       "mlir::OpBuilder::setInsertionPointToEnd",
       [](mlir::OpBuilder& builder, uint64_t block_ptr) -> ptr {
         if (!block_ptr) {
-          return scheme_error("mlir::OpBuilder::setInsertionPointToEnd",
-                              "null block pointer");
+          return nullPointer("mlir::OpBuilder::setInsertionPointToEnd",
+                             "block");
         }
         builder.setInsertionPointToEnd(
             reinterpret_cast<mlir::Block*>(block_ptr));

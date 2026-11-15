@@ -19,8 +19,7 @@ void registerIRBlockBindings() {
       "mlir::Block::getArgument",
       (void*)+[](uint64_t block_ptr, int idx) -> ptr {
         if (!block_ptr) {
-          return scheme_error("mlir::Block::getArgument",
-                              "block pointer is null");
+          return nullPointer("mlir::Block::getArgument", "block");
         }
         auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
         if (idx < 0 || idx >= (int)block->getNumArguments()) {
@@ -52,8 +51,7 @@ void registerIRBlockBindings() {
       (void*)+[](uint64_t block_ptr, uint64_t type_ptr,
                  uint64_t loc_ptr) -> ptr {
         if (!block_ptr) {
-          return scheme_error("mlir::Block::addArgument",
-                              "block pointer is null");
+          return nullPointer("mlir::Block::addArgument", "block");
         }
         auto* block = reinterpret_cast<mlir::Block*>(block_ptr);
         auto type = mlir::Type::getFromOpaquePointer(

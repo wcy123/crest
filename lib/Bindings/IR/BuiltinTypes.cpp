@@ -18,8 +18,7 @@ void registerIRBuiltinTypesBindings() {
   Sregister_symbol(
       "mlir::IndexType::get", (void*)+[](uint64_t ctx_ptr) -> ptr {
         if (!ctx_ptr) {
-          return scheme_error("mlir::IndexType::get",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::IndexType::get", "context");
         }
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
 
@@ -29,8 +28,7 @@ void registerIRBuiltinTypesBindings() {
   Sregister_symbol(
       "mlir::IntegerType::get<i64>", (void*)+[](uint64_t ctx_ptr) -> ptr {
         if (!ctx_ptr) {
-          return scheme_error("mlir::IntegerType::get<i64>",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::IntegerType::get<i64>", "context");
         }
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
 
@@ -40,8 +38,7 @@ void registerIRBuiltinTypesBindings() {
   Sregister_symbol(
       "mlir::IntegerType::get<i1>", (void*)+[](uint64_t ctx_ptr) -> ptr {
         if (!ctx_ptr) {
-          return scheme_error("mlir::IntegerType::get<i1>",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::IntegerType::get<i1>", "context");
         }
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
 
@@ -59,8 +56,7 @@ void registerIRBuiltinTypesBindings() {
   Sregister_symbol(
       "mlir::RankedTensorType::getRank", (void*)+[](uint64_t type_ptr) -> ptr {
         if (!type_ptr) {
-          return scheme_error("mlir::RankedTensorType::getRank",
-                              "null type pointer");
+          return nullPointer("mlir::RankedTensorType::getRank", "type");
         }
         auto t = mlir::dyn_cast<mlir::RankedTensorType>(
             mlir::Type::getFromOpaquePointer(
@@ -75,8 +71,7 @@ void registerIRBuiltinTypesBindings() {
       "mlir::RankedTensorType::getElementType",
       (void*)+[](uint64_t type_ptr) -> ptr {
         if (!type_ptr) {
-          return scheme_error("mlir::RankedTensorType::getElementType",
-                              "null type pointer");
+          return nullPointer("mlir::RankedTensorType::getElementType", "type");
         }
         auto t = mlir::dyn_cast<mlir::RankedTensorType>(
             mlir::Type::getFromOpaquePointer(
@@ -91,8 +86,7 @@ void registerIRBuiltinTypesBindings() {
   Sregister_symbol(
       "mlir::RankedTensorType::getShape", (void*)+[](ptr p) -> ptr {
         if (!p) {
-          return scheme_error("mlir::RankedTensorType::getShape",
-                              "null type pointer");
+          return nullPointer("mlir::RankedTensorType::getShape", "type");
         }
         auto t = llvm::dyn_cast<mlir::RankedTensorType>(
             mlir::Type::getFromOpaquePointer(p));
@@ -109,8 +103,7 @@ void registerIRBuiltinTypesBindings() {
   Sregister_symbol(
       "mlir::ShapedType::getShape", (void*)+[](ptr p) -> ptr {
         if (!p) {
-          return scheme_error("mlir::ShapedType::getShape",
-                              "null type pointer");
+          return nullPointer("mlir::ShapedType::getShape", "type");
         }
         auto t = mlir::dyn_cast<mlir::ShapedType>(
             mlir::Type::getFromOpaquePointer(p));
@@ -128,8 +121,7 @@ void registerIRBuiltinTypesBindings() {
       "mlir::RankedTensorType::getEncoding",
       (void*)+[](uint64_t type_ptr) -> ptr {
         if (!type_ptr) {
-          return scheme_error("mlir::RankedTensorType::getEncoding",
-                              "null type pointer");
+          return nullPointer("mlir::RankedTensorType::getEncoding", "type");
         }
         auto t = mlir::dyn_cast<mlir::RankedTensorType>(
             mlir::Type::getFromOpaquePointer(
@@ -146,12 +138,12 @@ void registerIRBuiltinTypesBindings() {
       "mlir::RankedTensorType::cloneWithEncoding",
       (void*)+[](uint64_t type_ptr, uint64_t attr_ptr) -> ptr {
         if (!type_ptr) {
-          return scheme_error("mlir::RankedTensorType::cloneWithEncoding",
-                              "null type pointer");
+          return nullPointer("mlir::RankedTensorType::cloneWithEncoding",
+                             "type");
         }
         if (!attr_ptr) {
-          return scheme_error("mlir::RankedTensorType::cloneWithEncoding",
-                              "null attribute pointer");
+          return nullPointer("mlir::RankedTensorType::cloneWithEncoding",
+                             "attribute");
         }
         auto t = mlir::dyn_cast<mlir::RankedTensorType>(
             mlir::Type::getFromOpaquePointer(
@@ -168,8 +160,7 @@ void registerIRBuiltinTypesBindings() {
   Sregister_symbol(
       "mlir::ShapedType::getElementType", (void*)+[](uint64_t type_ptr) -> ptr {
         if (!type_ptr) {
-          return scheme_error("mlir::ShapedType::getElementType",
-                              "null type pointer");
+          return nullPointer("mlir::ShapedType::getElementType", "type");
         }
         auto type = mlir::Type::getFromOpaquePointer(
             reinterpret_cast<const void*>(type_ptr));
@@ -184,8 +175,7 @@ void registerIRBuiltinTypesBindings() {
   Sregister_symbol(
       "mlir::IntegerType::getWidth", (void*)+[](uint64_t type_ptr) -> ptr {
         if (!type_ptr) {
-          return scheme_error("mlir::IntegerType::getWidth",
-                              "null type pointer");
+          return nullPointer("mlir::IntegerType::getWidth", "type");
         }
         auto type = mlir::Type::getFromOpaquePointer(
             reinterpret_cast<const void*>(type_ptr));
@@ -199,8 +189,7 @@ void registerIRBuiltinTypesBindings() {
   Sregister_symbol(
       "mlir::IntegerType::isUnsigned", (void*)+[](uint64_t p) -> ptr {
         if (!p) {
-          return scheme_error("mlir::IntegerType::isUnsigned",
-                              "null type pointer");
+          return nullPointer("mlir::IntegerType::isUnsigned", "type");
         }
         auto it = mlir::dyn_cast<mlir::IntegerType>(
             mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(p)));
@@ -214,8 +203,7 @@ void registerIRBuiltinTypesBindings() {
   Sregister_symbol(
       "mlir::IntegerType::get<i8>", (void*)+[](uint64_t ctx_ptr) -> ptr {
         if (!ctx_ptr) {
-          return scheme_error("mlir::IntegerType::get<i8>",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::IntegerType::get<i8>", "context");
         }
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
 
@@ -225,8 +213,7 @@ void registerIRBuiltinTypesBindings() {
   Sregister_symbol(
       "mlir::IntegerType::get<i16>", (void*)+[](uint64_t ctx_ptr) -> ptr {
         if (!ctx_ptr) {
-          return scheme_error("mlir::IntegerType::get<i16>",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::IntegerType::get<i16>", "context");
         }
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
 
@@ -236,8 +223,7 @@ void registerIRBuiltinTypesBindings() {
   Sregister_symbol(
       "mlir::IntegerType::get<i32>", (void*)+[](uint64_t ctx_ptr) -> ptr {
         if (!ctx_ptr) {
-          return scheme_error("mlir::IntegerType::get<i32>",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::IntegerType::get<i32>", "context");
         }
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
 
@@ -248,8 +234,7 @@ void registerIRBuiltinTypesBindings() {
       "mlir::IntegerType::get",
       (void*)+[](uint64_t ctx_ptr, int64_t width) -> ptr {
         if (!ctx_ptr) {
-          return scheme_error("mlir::IntegerType::get",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::IntegerType::get", "context");
         }
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
 
@@ -261,8 +246,7 @@ void registerIRBuiltinTypesBindings() {
   Sregister_symbol(
       "mlir::Float16Type::get", (void*)+[](uint64_t ctx_ptr) -> ptr {
         if (!ctx_ptr) {
-          return scheme_error("mlir::Float16Type::get",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::Float16Type::get", "context");
         }
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
 
@@ -272,8 +256,7 @@ void registerIRBuiltinTypesBindings() {
   Sregister_symbol(
       "mlir::BFloat16Type::get", (void*)+[](uint64_t ctx_ptr) -> ptr {
         if (!ctx_ptr) {
-          return scheme_error("mlir::BFloat16Type::get",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::BFloat16Type::get", "context");
         }
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
 
@@ -283,8 +266,7 @@ void registerIRBuiltinTypesBindings() {
   Sregister_symbol(
       "mlir::Float32Type::get", (void*)+[](uint64_t ctx_ptr) -> ptr {
         if (!ctx_ptr) {
-          return scheme_error("mlir::Float32Type::get",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::Float32Type::get", "context");
         }
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
 
@@ -294,8 +276,7 @@ void registerIRBuiltinTypesBindings() {
   Sregister_symbol(
       "mlir::Float64Type::get", (void*)+[](uint64_t ctx_ptr) -> ptr {
         if (!ctx_ptr) {
-          return scheme_error("mlir::Float64Type::get",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::Float64Type::get", "context");
         }
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
 
@@ -306,8 +287,7 @@ void registerIRBuiltinTypesBindings() {
   Sregister_symbol(
       "mlir::NoneType::get", (void*)+[](uint64_t ctx_ptr) -> ptr {
         if (!ctx_ptr) {
-          return scheme_error("mlir::NoneType::get",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::NoneType::get", "context");
         }
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
 
@@ -355,7 +335,7 @@ void registerIRBuiltinTypesBindings() {
   Sregister_symbol(
       "mlir::FloatType::getWidth", (void*)+[](uint64_t p) -> ptr {
         if (!p) {
-          return scheme_error("mlir::FloatType::getWidth", "null type pointer");
+          return nullPointer("mlir::FloatType::getWidth", "type");
         }
         auto ft = mlir::dyn_cast<mlir::FloatType>(
             mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(p)));
@@ -368,8 +348,7 @@ void registerIRBuiltinTypesBindings() {
   Sregister_symbol(
       "mlir::ComplexType::getElementType", (void*)+[](uint64_t p) -> ptr {
         if (!p) {
-          return scheme_error("mlir::ComplexType::getElementType",
-                              "null type pointer");
+          return nullPointer("mlir::ComplexType::getElementType", "type");
         }
         auto ct = mlir::dyn_cast<mlir::ComplexType>(
             mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(p)));
@@ -384,7 +363,7 @@ void registerIRBuiltinTypesBindings() {
   Sregister_symbol(
       "mlir::VectorType::getRank", (void*)+[](uint64_t p) -> ptr {
         if (!p) {
-          return scheme_error("mlir::VectorType::getRank", "null type pointer");
+          return nullPointer("mlir::VectorType::getRank", "type");
         }
         auto vt = mlir::dyn_cast<mlir::VectorType>(
             mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(p)));
@@ -396,8 +375,7 @@ void registerIRBuiltinTypesBindings() {
   Sregister_symbol(
       "mlir::VectorType::getElementType", (void*)+[](uint64_t p) -> ptr {
         if (!p) {
-          return scheme_error("mlir::VectorType::getElementType",
-                              "null type pointer");
+          return nullPointer("mlir::VectorType::getElementType", "type");
         }
         auto vt = mlir::dyn_cast<mlir::VectorType>(
             mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(p)));
@@ -412,8 +390,7 @@ void registerIRBuiltinTypesBindings() {
   Sregister_symbol(
       "mlir::MemRefType::getElementType", (void*)+[](uint64_t p) -> ptr {
         if (!p) {
-          return scheme_error("mlir::MemRefType::getElementType",
-                              "null type pointer");
+          return nullPointer("mlir::MemRefType::getElementType", "type");
         }
         auto mt = mlir::dyn_cast<mlir::MemRefType>(
             mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(p)));
@@ -427,8 +404,7 @@ void registerIRBuiltinTypesBindings() {
   Sregister_symbol(
       "mlir::MemRefType::getMemorySpace", (void*)+[](uint64_t p) -> ptr {
         if (!p) {
-          return scheme_error("mlir::MemRefType::getMemorySpace",
-                              "null type pointer");
+          return nullPointer("mlir::MemRefType::getMemorySpace", "type");
         }
         auto mt = mlir::dyn_cast<mlir::MemRefType>(
             mlir::Type::getFromOpaquePointer(reinterpret_cast<const void*>(p)));
@@ -468,8 +444,7 @@ void registerIRBuiltinTypesBindings() {
       (void*)+[](uint64_t ctx_ptr, ptr inputs, ptr results) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::FunctionType::get",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::FunctionType::get", "context");
         }
         llvm::SmallVector<mlir::Type> inputTypes, resultTypes;
         for (ptr cur = inputs; cur != Snil; cur = Scdr(cur)) {
