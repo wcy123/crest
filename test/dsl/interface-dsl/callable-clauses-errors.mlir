@@ -5,6 +5,8 @@
 // one it extends cannot be registered. Loading such a dialect from a Scheme program reports the mistake and the
 // process ends with the text (:initialize has no result in MLIR, so an error of it cannot be answered).
 
+// Some of its runs end the process on purpose, so a with- scope never closes (Rule 20: exit does not unwind) and valgrind sees a leak:
+// UNSUPPORTED: valgrind
 // RUN: not env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/callable-err-missing \
 // RUN:   %crest-opt %s --crest-pass="passes=passes/callable-missing" 2>&1 \
 // RUN:   | %FileCheck %s --check-prefix=MISSING

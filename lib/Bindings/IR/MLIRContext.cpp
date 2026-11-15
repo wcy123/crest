@@ -36,13 +36,13 @@ void registerIRMLIRContextBindings() {
   /// CrestBox<mlir::MLIRContext>*
   // LEAK WARNING: as for mlir::MLIRContext::new: use with-MLIRContext.
   Sregister_symbol(
-      "mlir::MLIRContext::new/registry",
+      "mlir::MLIRContext::new<DialectRegistry>",
       (void*)+[](uint64_t registry_ptr) -> ptr {
         auto* registry_box =
             crest::CrestBox<mlir::DialectRegistry>::inner(registry_ptr);
         if (!registry_box) {
           return scheme_error(
-              "mlir::MLIRContext::new/registry",
+              "mlir::MLIRContext::new<DialectRegistry>",
               "null pointer or not a CrestBox<mlir::DialectRegistry>");
         }
         auto& registry = *registry_box;

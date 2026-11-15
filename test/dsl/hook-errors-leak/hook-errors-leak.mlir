@@ -3,6 +3,8 @@
 // errors there are.
 //
 // REQUIRES: system-linux
+// It measures the heap of its own process, which valgrind's allocator changes:
+// UNSUPPORTED: valgrind
 // RUN: env CREST_PATH=%S CREST_SCHEME_BINARY_DIR=%t/hook-errors-leak-scheme \
 // RUN:   %scheme-mlir %S/driver.sls %s 2>/dev/null | %FileCheck %s
 

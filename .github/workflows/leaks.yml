@@ -1,0 +1,73 @@
+name: Leaks
+
+# The suite under valgrind: every run of crest-opt and scheme-mlir is checked for a leak (Rules 17 and 20 make a leak
+# the main risk, and the *-leak tests only measure the heap of one process).
+# It takes about 4 minutes on 64 cores, so it is not part of the pull request checks: it runs every Monday, and on
+# demand (Actions, Leaks, Run workflow). How it works: docs/tech-note.md, "Checking for memory leaks".
+
+on:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+env:
+  CREST_PATH: ${{ github.workspace }}/samples
+
+jobs:
+  valgrind:
+    name: Suite under valgrind (Linux, LLVM 22)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install LLVM/MLIR from apt.llvm.org
+        run: |
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
+            | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+          echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-22 main" \
+            | sudo tee /etc/apt/sources.list.d/llvm.list
+          sudo apt-get update
+          sudo apt-get install -y clang-22 llvm-22-dev libmlir-22-dev mlir-22-tools
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get install -y build-essential libncurses-dev uuid-dev libgtest-dev googletest emacs-nox valgrind
+
+      - name: Install Python build tools
+        run: pip install cmake ninja lit
+
+      - name: Configure
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_C_FLAGS=-gdwarf-4 \
+            -DCMAKE_CXX_FLAGS=-gdwarf-4 \
+            -DCMAKE_C_COMPILER=clang-22 \
+            -DCMAKE_CXX_COMPILER=clang++-22 \
+            -DMLIR_DIR=/usr/lib/llvm-22/lib/cmake/mlir \
+            -DLLVM_DIR=/usr/lib/llvm-22/lib/cmake/llvm \
+            -DLLVM_EXTERNAL_LIT="$(which lit)"
+
+      - name: Build
+        run: cmake --build build --parallel $(nproc)
+
+      # lit does not fail the step when a test is unsupported; a test that valgrind breaks says UNSUPPORTED: valgrind.
+      - name: Lit tests under valgrind
+        run: lit -sv build/test --param valgrind_logs=${{ github.workspace }}/build/valgrind-logs -j $(nproc)
+
+      # A log with "definitely lost" bytes is a leak. Its Command: line names the run, so the test.
+      - name: Fail on a leak
+        run: |
+          ls build/valgrind-logs/*.log > /dev/null
+          leaks=$(grep -lE 'definitely lost: [1-9]' build/valgrind-logs/*.log || true)
+          for log in $leaks; do grep -m1 'Command:' "$log"; done
+          test -z "$leaks"
+
+      - name: Upload the valgrind logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: valgrind-logs
+          path: build/valgrind-logs/*.log

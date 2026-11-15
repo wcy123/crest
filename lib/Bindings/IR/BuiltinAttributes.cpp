@@ -284,11 +284,11 @@ void registerIRBuiltinAttributesBindings() {
       });
   // Variant with explicit length — required when the string contains NUL bytes.
   Sregister_symbol(
-      "mlir::StringAttr::get/len",
+      "mlir::StringAttr::get<StringRef>",
       (void*)+[](uint64_t ctx_ptr, const char* str, uint64_t len) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::StringAttr::get/len",
+          return scheme_error("mlir::StringAttr::get<StringRef>",
                               "null MLIRContext pointer");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
@@ -390,16 +390,6 @@ void registerIRBuiltinAttributesBindings() {
         return Sinteger64((dense && dense.isSplat()) ? 1 : 0);
       });
 
-  // mlir::isa<FloatAttr>.f32 is the same check as mlir::isa<FloatAttr>.
-  Sregister_symbol(
-      "mlir::isa<FloatAttr>.f32", (void*)+[](uint64_t p) -> ptr {
-        return Sinteger64((p && mlir::isa<mlir::FloatAttr>(
-                                    mlir::Attribute::getFromOpaquePointer(
-                                        reinterpret_cast<const void*>(p))))
-                              ? 1
-                              : 0);
-      });
-
   Sregister_symbol(
       "mlir::IntegerAttr::getValue", (void*)+[](uint64_t p) -> ptr {
         if (!p) {
@@ -427,23 +417,6 @@ void registerIRBuiltinAttributesBindings() {
                 reinterpret_cast<const void*>(p)));
         if (!fattr) {
           return scheme_error("mlir::FloatAttr::getValueAsDouble",
-                              "attribute is not a FloatAttr");
-        }
-        return Sflonum(fattr.getValueAsDouble());
-      });
-
-  // getValueAsDouble.f32 is identical to getValueAsDouble.
-  Sregister_symbol(
-      "mlir::FloatAttr::getValueAsDouble.f32", (void*)+[](uint64_t p) -> ptr {
-        if (!p) {
-          return scheme_error("mlir::FloatAttr::getValueAsDouble.f32",
-                              "null attribute pointer");
-        }
-        auto fattr = mlir::dyn_cast<mlir::FloatAttr>(
-            mlir::Attribute::getFromOpaquePointer(
-                reinterpret_cast<const void*>(p)));
-        if (!fattr) {
-          return scheme_error("mlir::FloatAttr::getValueAsDouble.f32",
                               "attribute is not a FloatAttr");
         }
         return Sflonum(fattr.getValueAsDouble());

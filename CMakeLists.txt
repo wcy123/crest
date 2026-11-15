@@ -15,6 +15,7 @@ find_package(LLVM REQUIRED CONFIG)
 
 message(STATUS "CREST: Using MLIR ${MLIR_VERSION} in: ${MLIR_DIR}")
 message(STATUS "CREST: Using LLVM ${LLVM_VERSION} in: ${LLVM_DIR}")
+include(cmake/check-llvm-version.cmake)
 
 list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
