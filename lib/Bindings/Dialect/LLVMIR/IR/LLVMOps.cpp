@@ -100,6 +100,9 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
   Sregister_symbol(
       "mlir::LLVM::GlobalOp::getType",
       (void*)+[](uint64_t global_op_ptr) -> ptr {
+        if (!global_op_ptr) {
+          return nullPointer("mlir::LLVM::GlobalOp::getType", "global op");
+        }
         auto* op = reinterpret_cast<mlir::Operation*>(global_op_ptr);
         auto global = mlir::cast<mlir::LLVM::GlobalOp>(op);
         return Sunsigned64(
@@ -112,6 +115,9 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
       "mlir::LLVM::AddressOfOp::create",
       [](mlir::OpBuilder& builder, uint64_t loc_ptr,
          uint64_t global_op_ptr) -> ptr {
+        if (!global_op_ptr) {
+          return nullPointer("mlir::LLVM::AddressOfOp::create", "global op");
+        }
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto* op = reinterpret_cast<mlir::Operation*>(global_op_ptr);
@@ -191,6 +197,9 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
   Sregister_symbol(
       "mlir::ModuleOp::lookupSymbol",
       (void*)+[](uint64_t op_ptr, const char* name) -> ptr {
+        if (!op_ptr) {
+          return nullPointer("mlir::ModuleOp::lookupSymbol", "operation");
+        }
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto module = mlir::cast<mlir::ModuleOp>(op);
         auto* sym = module.lookupSymbol(name);
