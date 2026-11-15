@@ -404,8 +404,9 @@ So failure is an ordinary return value, and Scheme raises it after the C++ call 
   per binding (some pointers may be `0`), so it is written for each binding in Scheme: there is no universal check. In
   `(mlir::Operation::getBlock (mlir::Value::getDefiningOp x))` with a block argument `x`, `getDefiningOp` returns `0`
   (expected) and `getBlock` is given it (the bug): the Scheme side of `getBlock` raises an error that names it. A binding
-  does not check its pointer arguments (Rule 4). Until a binding has this check in Scheme, such a `0` is not caught, and
-  the check is not added to the C++ binding.
+  does not check its pointer arguments (Rule 4). Until a binding has this check in Scheme, the C++ checks of a pointer
+  argument that exist now (search for `pointer is null`) stay as a stopgap, and are removed when the Scheme side has the
+  check. No new one is added.
 - **The lookups of a handle that Scheme gives** return a pointer, or `nullptr`: `CrestBox<T>::inner(address)`,
   `as_ref<T>(address)` and `as_context(address)`. The binding checks it and returns `scheme_error`.
 - **C++ calls Scheme** (Rule 17): the callable has the C prototype that MLIR declares and reports an error of its
