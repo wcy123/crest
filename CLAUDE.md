@@ -399,13 +399,13 @@ So failure is an ordinary return value, and Scheme raises it after the C++ call 
 - **A `0` is an expected return value, not an error.** A binding returns `0` for "nothing": `mlir::Value::getDefiningOp`
   of a block argument, or the operand list of a failed parse (MLIR has already reported the diagnostic). It never turns
   such a `0` into `scheme_error`.
-- **A `0` where a pointer is needed is a bug in the Scheme code, and the Scheme wrapper raises the error.** It is the
-  wrapper that `crest-foreign-procedure` (`scheme/crest/support/foreign.sls`) makes for each binding in `ffi.sls`, not the
-  binding, that refuses the `0`, before the C++ call. In
+- **A `0` where a pointer is needed is a bug in the Scheme code, and the Scheme side raises the error.** It is the
+  Scheme side, not the C++ binding, that refuses the `0`, before the C++ call. Which arguments must not be `0` is known
+  per binding (some pointers may be `0`), so it is written for each binding in Scheme: there is no universal check. In
   `(mlir::Operation::getBlock (mlir::Value::getDefiningOp x))` with a block argument `x`, `getDefiningOp` returns `0`
-  (expected) and `getBlock` is given it (the bug): the wrapper of `getBlock` raises an error that names it. A binding
-  does not check its pointer arguments (Rule 4). Until `crest-foreign-procedure` makes this check, such a `0` is not
-  caught, and the check is not added to a C++ binding.
+  (expected) and `getBlock` is given it (the bug): the Scheme side of `getBlock` raises an error that names it. A binding
+  does not check its pointer arguments (Rule 4). Until a binding has this check in Scheme, such a `0` is not caught, and
+  the check is not added to the C++ binding.
 - **The lookups of a handle that Scheme gives** return a pointer, or `nullptr`: `CrestBox<T>::inner(address)`,
   `as_ref<T>(address)` and `as_context(address)`. The binding checks it and returns `scheme_error`.
 - **C++ calls Scheme** (Rule 17): the callable has the C prototype that MLIR declares and reports an error of its
@@ -448,4 +448,4 @@ dialects, every printed `!name.type`) must live as long as the context: intern i
       `installInterfaceEntry` (Rule 19), and a slot with a new kind of C++ type gets a case in `SlotAbiTest`
 - [ ] A binding that answers an object nothing else owns: a `LEAK WARNING:` comment and a `with-` macro that frees it
       (Rule 20); a binding that fails answers an error (`fail(...)`), it never raises (Rule 20)
-- [ ] No check of a pointer argument and no policy in the binding: the Scheme wrapper raises for a `0` (Rules 4 and 20)
+- [ ] No check of a pointer argument and no policy in the binding: the Scheme side raises for a `0` (Rules 4 and 20)
