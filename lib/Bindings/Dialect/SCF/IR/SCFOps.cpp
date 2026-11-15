@@ -38,6 +38,9 @@ void registerDialectSCFIRSCFOpsBindings() {
   // (op-ptr) → Block* uptr
   Sregister_symbol(
       "mlir::scf::ForOp::getBody", (void*)+[](uint64_t op_ptr) -> ptr {
+        if (!op_ptr) {
+          return nullPointer("mlir::scf::ForOp::getBody", "operation");
+        }
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto forOp = mlir::dyn_cast_or_null<mlir::scf::ForOp>(op);
         if (!forOp) {
@@ -51,6 +54,9 @@ void registerDialectSCFIRSCFOpsBindings() {
   // (op-ptr) → Value uptr
   Sregister_symbol(
       "mlir::scf::ForOp::getInductionVar", (void*)+[](uint64_t op_ptr) -> ptr {
+        if (!op_ptr) {
+          return nullPointer("mlir::scf::ForOp::getInductionVar", "operation");
+        }
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto forOp = mlir::dyn_cast_or_null<mlir::scf::ForOp>(op);
         if (!forOp) {

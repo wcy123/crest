@@ -104,6 +104,9 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
   Sregister_symbol(
       "mlir::LLVM::GlobalOp::getType",
       (void*)+[](uint64_t global_op_ptr) -> ptr {
+        if (!global_op_ptr) {
+          return nullPointer("mlir::LLVM::GlobalOp::getType", "global op");
+        }
         auto* op = reinterpret_cast<mlir::Operation*>(global_op_ptr);
         auto global = mlir::dyn_cast_or_null<mlir::LLVM::GlobalOp>(op);
         if (!global) {
@@ -120,6 +123,9 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
       "mlir::LLVM::AddressOfOp::create",
       [](mlir::OpBuilder& builder, uint64_t loc_ptr,
          uint64_t global_op_ptr) -> ptr {
+        if (!global_op_ptr) {
+          return nullPointer("mlir::LLVM::AddressOfOp::create", "global op");
+        }
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto* op = reinterpret_cast<mlir::Operation*>(global_op_ptr);
@@ -211,6 +217,9 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
   Sregister_symbol(
       "mlir::ModuleOp::lookupSymbol",
       (void*)+[](uint64_t op_ptr, const char* name) -> ptr {
+        if (!op_ptr) {
+          return nullPointer("mlir::ModuleOp::lookupSymbol", "operation");
+        }
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto module = mlir::dyn_cast_or_null<mlir::ModuleOp>(op);
         if (!module) {
@@ -219,21 +228,6 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
         }
         auto* sym = module.lookupSymbol(name);
         return Sunsigned64(reinterpret_cast<uint64_t>(sym));
-      });
-
-  // mlir::FlatSymbolRefAttr::get: create a flat symbol reference.
-  // (ctx-ptr name-str) → Attribute uptr
-  Sregister_symbol(
-      "mlir::FlatSymbolRefAttr::get",
-      (void*)+[](uint64_t ctx_ptr, const char* name) -> ptr {
-        auto* ctx = crest::as_context(ctx_ptr);
-        if (!ctx) {
-          return scheme_error("mlir::FlatSymbolRefAttr::get",
-                              "null MLIRContext pointer");
-        }
-        auto attr = mlir::FlatSymbolRefAttr::get(ctx, name);
-        return Sunsigned64(
-            reinterpret_cast<uint64_t>(attr.getAsOpaquePointer()));
       });
 }
 

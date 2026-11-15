@@ -9,7 +9,7 @@
 (library (mlir IR MLIRContext ffi)
   (export
     %mlir::MLIRContext::new
-    %mlir::MLIRContext::new/registry
+    %mlir::MLIRContext::new<DialectRegistry>
     %mlir::MLIRContext::allowUnregisteredDialects
     %mlir::MLIRContext::allowsUnregisteredDialects
     %mlir::MLIRContext::enableMultithreading
@@ -29,8 +29,8 @@
     (crest-foreign-procedure "mlir::MLIRContext::new" () uptr))
 
   ;; (DialectRegistry*) → MLIRContext*
-  (define %mlir::MLIRContext::new/registry
-    (crest-foreign-procedure "mlir::MLIRContext::new/registry" (uptr) uptr))
+  (define %mlir::MLIRContext::new<DialectRegistry>
+    (crest-foreign-procedure "mlir::MLIRContext::new<DialectRegistry>" (uptr) uptr))
 
   ;; (MLIRContext*, bool) → void
   (define %mlir::MLIRContext::allowUnregisteredDialects

@@ -61,7 +61,7 @@ which restores the insertion point when they return. For a memref of shape
    own line.
 
 The format strings contain an embedded NUL, which is why the globals are built
-with `mlir::StringAttr::get/len` instead of a plain `StringAttr::get`.
+with `mlir::StringAttr::get<StringRef>` instead of a plain `StringAttr::get`.
 
 Because the print loops are `scf`, they are lowered to `cf` and then to `llvm`
 by the same conversion; nothing in this chapter needs a second pass.

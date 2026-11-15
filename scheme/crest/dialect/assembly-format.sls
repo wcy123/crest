@@ -180,7 +180,7 @@
 
   ;; ── Checks ──────────────────────────────────────────────────────────────────
 
-  (define punctuation-parsers
+  (define %%punctuation-parsers
     (list (cons ":"  #'mlir::OpAsmParser::parseColon)
           (cons ","  #'mlir::OpAsmParser::parseComma)
           (cons "("  #'mlir::OpAsmParser::parseLParen)
@@ -202,7 +202,7 @@
 
   (define (%%check-literal fmt-stx text column)
     (cond
-     [(assoc text punctuation-parsers) #t]
+     [(assoc text %%punctuation-parsers) #t]
      [(%%keyword? text) #t]
      [(member text '("=" "{" "}" "?" "+" "*"))
       (%%fail fmt-stx "the literal `" text "` (column " (number->string column) ") is not supported yet")]
@@ -394,7 +394,7 @@
              [result-index  (lambda (name)
                               (let loop ([rs result-names] [i 0])
                                 (if (string=? (car rs) name) i (loop (cdr rs) (+ i 1)))))]
-             [punct-parser (lambda (text) (cdr (assoc text punctuation-parsers)))])
+             [punct-parser (lambda (text) (cdr (assoc text %%punctuation-parsers)))])
         (define (parse-type-into id)
           (with-syntax ([id id] [P #'P])
             #'(let ([t (mlir::OpAsmParser::parseType P)])
@@ -404,7 +404,7 @@
             [(literal)
              (let ([text (cadr e)])
                (cond
-                [(assoc text punctuation-parsers)
+                [(assoc text %%punctuation-parsers)
                  (with-syntax ([f (punct-parser text)] [P #'P]) #'(f P))]
                 [else (with-syntax ([kw text] [P #'P]) #'(mlir::OpAsmParser::parseKeyword P kw))]))]
             [(variable)

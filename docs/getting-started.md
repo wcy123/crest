@@ -61,7 +61,9 @@ cmake -B build -G Ninja \
 cmake --build build -j$(nproc)
 ```
 
-CREST builds with LLVM 22 and LLVM 23 (use `22` or `23` in the commands above). Features that need
+CREST builds with LLVM 22 and LLVM 23 (use `22` or `23` in the commands above); configure stops with a message for an
+older LLVM, and warns for a newer one.
+The ChezScheme build uses all cores of the machine: `-DCREST_CHEZ_JOBS=N` limits it. Features that need
 `DynamicOpDefinition::addTrait`, namely `define-op :traits` and everything built on it, need
 LLVM 23: the Toy tutorial from Ch2 on declares `toy.return` as a terminator, so its samples and
 tests run only on LLVM 23 and are skipped on LLVM 22.

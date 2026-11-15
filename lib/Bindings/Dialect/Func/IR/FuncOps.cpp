@@ -66,6 +66,9 @@ void registerDialectFuncIRFuncOpsBindings() {
   // (op-ptr) → Region uptr
   Sregister_symbol(
       "mlir::func::FuncOp::getBody", (void*)+[](uint64_t op_ptr) -> ptr {
+        if (!op_ptr) {
+          return nullPointer("mlir::func::FuncOp::getBody", "operation");
+        }
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto func = mlir::dyn_cast_or_null<mlir::func::FuncOp>(op);
         if (!func) {
