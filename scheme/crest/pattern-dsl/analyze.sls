@@ -236,41 +236,6 @@
   (define (%%find-binding-entry mgr id)
     (hashtable-ref (binding-manager-bindings mgr) id #f))
 
-  (define (%%is-binding-bound? mgr id)
-    (let ([entry (%%find-binding-entry mgr id)])
-      (and entry (binding-entry-bound? entry))))
-
-  ;;-----------------------------------------------------------------------
-  ;; Binding actions
-  ;;-----------------------------------------------------------------------
-
-  (define (%%action-bind-result! mgr id)
-    ;; Mark a result variable as bound - returns :bind-result action
-    ;; Note: result-op-idx and result-idx are already set during %%collect-all-identifiers
-    ;; Phase 2 validation guarantees: identifier exists, starts with %, is a result variable
-    (let ([entry (%%find-binding-entry mgr id)])
-      (binding-entry-bound?-set! entry #t)
-      (list ':bind-result id
-            (binding-entry-result-op-idx entry)
-            (binding-entry-result-idx entry))))
-
-  (define (%%action-bind-operand! mgr id op-idx operand-idx)
-    ;; Bind an operand variable - updates entry in place, returns :bind-operand action
-    ;; Note: operand location is already recorded during %%collect-all-identifiers
-    ;; Phase 2 validation guarantees: identifier exists and starts with %
-    (let ([entry (%%find-binding-entry mgr id)])
-      (binding-entry-bound?-set! entry #t)
-      (list ':bind-operand id
-            (binding-entry-operand-op-idx entry)
-            (binding-entry-operand-idx entry))))
-
-  (define (%%action-check-operand-equal mgr id op-idx operand-idx)
-    ;; Check operand equality - returns :check-operand-equal action
-    ;; Phase 2 validation guarantees: identifier exists and starts with %
-    ;; DAG traversal guarantees: identifier is already bound
-    (list ':check-operand-equal id op-idx operand-idx))
-
-
   ;;-----------------------------------------------------------------------
   ;; Helper functions
   ;;-----------------------------------------------------------------------
@@ -305,17 +270,6 @@
                                                  " is not connected to the root: no value of it is used by an operation"
                                                  " that leads to the root, so it is never reached")
                                   where))))
-
-  (define (%%find-root-operation match-vec root-var)
-    ;; Find which operation index produces root-var as a result
-    (loop :initially := #f
-          :for idx :from 0 :below (vector-length match-vec)
-          :rime-with match-op := (vector-ref match-vec idx)
-          :rime-with result-vars := (ast-match-expand-result-var match-op)
-          :break idx :if (loop :initially := #f
-                               :for var :in result-vars
-                               :when (bound-identifier=? var root-var)
-                               :break #t)))
 
   (define (%%find-operation-by-result match-vec result-var)
     (loop :initially := #f

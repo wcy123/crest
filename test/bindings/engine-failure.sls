@@ -1,0 +1,27 @@
+;; scheme-mlir driver: JIT a module that cannot be lowered to LLVM IR (it has an arith op and no LLVM dialect).
+;; The engine cannot be made: the answer has to say why, as an error, and not 0 (Rule 20).
+(import (rnrs)
+        (mlir IR DialectRegistry) (mlir IR MLIRContext) (mlir IR Operation) (mlir IR Value)
+        (mlir IR OwningOpRef) (mlir IR Builders) (mlir IR BuiltinOps) (mlir IR Location)
+        (mlir IR BuiltinAttributes)
+        (mlir Dialect Arith IR Arith)
+        (mlir ExecutionEngine ExecutionEngine))
+
+(with-DialectRegistry reg ()
+  (mlir::DialectRegistry::insert<mlir::arith::ArithDialect> reg)
+  (with-MLIRContext ctx (reg)
+    (with-current-MLIRContext ctx
+      (mlir::MLIRContext::getOrLoadDialect ctx "arith")
+      (let ([loc (mlir::UnknownLoc::get ctx)])
+        (with-mlir::OwningOpRef module (mlir::ModuleOp::create loc)
+          (with-OpBuilder builder (mlir::OpBuilder::atBlockEnd (mlir::ModuleOp::getBody module))
+            (mlir::arith::ConstantOp::create<f64> builder loc (mlir::FloatAttr::get<f64> 1.5)))
+          (guard (e [#t (display "error: ")
+                        (display (if (who-condition? e) (condition-who e) "?"))
+                        (display ": ")
+                        (display (if (message-condition? e) (condition-message e) e))
+                        (newline)])
+            (with-ExecutionEngine engine (module)
+              (display "engine: ")
+              (display (if (zero? engine) "0" "made"))
+              (newline))))))))

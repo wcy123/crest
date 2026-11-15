@@ -43,6 +43,10 @@ using TypeConversionFn = uint64_t(uint64_t type);
 using MaterializationFn = uint64_t(uint64_t builder, uint64_t result_type,
                                    uint64_t inputs, uint64_t loc);
 
+// LIFETIME WARNING: the pattern keeps a reference to the TypeConverter that it
+// is given, and the address of its Scheme handle (below). It owns neither. Keep
+// the converter alive for as long as the patterns can run: make it with
+// with-TypeConverter around the whole conversion.
 class SchemeConversionPattern : public mlir::ConversionPattern {
 public:
   // With TypeConverter: operands are remapped before matchAndRewrite.
@@ -183,7 +187,7 @@ void registerTransformsDialectConversionBindings() {
   // Variant with no TypeConverter: operands are passed as original values.
   // Use for patterns that consume original (unconverted) operand types.
   Sregister_symbol(
-      "crest::DialectConversion::addConversionPattern/ctx",
+      "crest::DialectConversion::addConversionPatternWithoutTypeConverter",
       (void*)+[](uint64_t patterns_ptr, const char* op_name_arg,
                  ConversionPatternFn* callback, int benefit) -> ptr {
         const std::string op_name(op_name_arg);
@@ -191,7 +195,8 @@ void registerTransformsDialectConversionBindings() {
             crest::as_ref<mlir::RewritePatternSet>(patterns_ptr);
         if (!patterns_box) {
           return scheme_error(
-              "crest::DialectConversion::addConversionPattern/ctx",
+              "crest::DialectConversion::"
+              "addConversionPatternWithoutTypeConverter",
               "null pointer or not a CrestBox<mlir::RewritePatternSet> or "
               "CrestBox<mlir::RewritePatternSet*>");
         }

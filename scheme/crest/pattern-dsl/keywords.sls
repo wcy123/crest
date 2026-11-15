@@ -48,7 +48,7 @@
   ;; Fetches the named attribute from :current-op as a raw attr uptr.
   ;; Raises (error ...) if the attribute is absent; caught by the guard
   ;; in generate-check-code → silent match failure.
-  ;; Compose with builtin-attributes functions: mlir::IntegerAttr::getValue, mlir::FloatAttr::getValueAsDouble.f32,
+  ;; Compose with builtin-attributes functions: mlir::IntegerAttr::getValue, mlir::FloatAttr::getValueAsDouble,
   ;; mlir::DenseElementsAttr::isSplat, mlir::DenseElementsAttr::getSplatValue<APFloat>, etc.
   (define-syntax :attr       (lambda (x) (syntax-violation 'pattern-keyword "misplaced :attr (only valid inside DDR :where)" x)))
   ;; :has-attr? — (:has-attr? "name") in a :where clause.

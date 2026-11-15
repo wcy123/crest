@@ -3,6 +3,8 @@
 // callable has no place for an error: the process ends with the text, also when there is no current context to make
 // the location in.
 //
+// Some of its runs end the process on purpose, so a with- scope never closes (Rule 20: exit does not unwind) and valgrind sees a leak:
+// UNSUPPORTED: valgrind
 // RUN: %scheme-mlir %S/driver.sls values | %FileCheck %s --check-prefix=VALUES
 // RUN: %scheme-mlir %S/driver.sls failure-values 2>/dev/null | %FileCheck %s --check-prefix=FAILURE
 // RUN: %scheme-mlir %S/driver.sls failure-values 2>&1 >/dev/null | %FileCheck %s --check-prefix=DIAG
