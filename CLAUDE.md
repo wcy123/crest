@@ -42,6 +42,9 @@ Sregister_symbol("crest::logging::info", ...);              // crest:: for FFI p
 `crest::` is only for inherent FFI boundary problems (type adapters, memory lifecycle, I/O).
 Not for business logic expressible as Scheme compositions of existing MLIR bindings.
 
+A binding does what the C++ function does and nothing more. It holds no logic: no policy (a flag, a default or a retry
+that the C++ function does not have) and no check of its arguments (Rule 20). Scheme composes the bindings.
+
 A binding that takes a builder exists once per kind of builder shell (Rule 11), with the kind as
 the last template argument: `mlir::arith::AddFOp::create<OpBuilder>`,
 `mlir::arith::AddFOp::create<RewriterBase*>`, `mlir::arith::AddFOp::create<OpBuilder*>`, and
@@ -385,13 +388,26 @@ destructor in it and in the frames above it (leaks, locks never undone), and Che
 such escape (`S_call_help`; `cmake/patches/chez-release-escaped-frames.patch` explains it and is not applied).
 So failure is an ordinary return value, and Scheme raises it after the C++ call has returned.
 
-- **A binding answers a Scheme object**: the value, or on failure `scheme_error("mlir::Block::getArgument",
-  "block pointer is null")` (`lib/Bindings/Support/Result.h`), the pair `(who . why)`, `who` a symbol and `why` a
-  string (the text is a Twine: `"index " + llvm::Twine(i)`). Scheme calls it through `crest-foreign-procedure`
-  (`(crest support foreign)`), which raises the pair with `(error who why)` in Scheme. No value that a binding
-  answers is a pair of a symbol and a string.
-- **The lookups of a handle that Scheme gives** answer a pointer, or `nullptr`: `CrestBox<T>::inner(address)`,
-  `as_ref<T>(address)` and `as_context(address)`. The binding checks it and answers `scheme_error`.
+- **Words.** In Scheme an error is raised, and in C++ an exception is thrown. A Scheme error is an unexpected
+  condition, like a C++ exception: a bug in the program, or a failure that it cannot handle. An expected result is a
+  return value and never an error. Say "return" for what a function gives back.
+- **A binding returns a Scheme object**: the value, or, when the call itself fails (MLIR reports an error that the
+  binding cannot return as a value), `scheme_error("mlir::ExecutionEngine::create", why)`
+  (`lib/Bindings/Support/Result.h`): the pair `(who . why)`, `who` a symbol and `why` a string (a Twine, for example the
+  text of MLIR's own error). Scheme calls it through `crest-foreign-procedure` (`(crest support foreign)`), which raises
+  the pair with `(error who why)` in Scheme. No value that a binding returns is a pair of a symbol and a string.
+- **A `0` is an expected return value, not an error.** A binding returns `0` for "nothing": `mlir::Value::getDefiningOp`
+  of a block argument, or the operand list of a failed parse (MLIR has already reported the diagnostic). It never turns
+  such a `0` into `scheme_error`.
+- **A `0` where a pointer is needed is a bug in the Scheme code, and the Scheme wrapper raises the error.** It is the
+  wrapper that `crest-foreign-procedure` (`scheme/crest/support/foreign.sls`) makes for each binding in `ffi.sls`, not the
+  binding, that refuses the `0`, before the C++ call. In
+  `(mlir::Operation::getBlock (mlir::Value::getDefiningOp x))` with a block argument `x`, `getDefiningOp` returns `0`
+  (expected) and `getBlock` is given it (the bug): the wrapper of `getBlock` raises an error that names it. A binding
+  does not check its pointer arguments (Rule 4). Until `crest-foreign-procedure` makes this check, such a `0` is not
+  caught, and the check is not added to a C++ binding.
+- **The lookups of a handle that Scheme gives** return a pointer, or `nullptr`: `CrestBox<T>::inner(address)`,
+  `as_ref<T>(address)` and `as_context(address)`. The binding checks it and returns `scheme_error`.
 - **C++ calls Scheme** (Rule 17): the callable has the C prototype that MLIR declares and reports an error of its
   procedure itself, as a diagnostic or, for a `void` result, by ending the process. C++ reads no error from it:
   there is no slot, no flag, no counter, and no pair.
@@ -432,3 +448,4 @@ dialects, every printed `!name.type`) must live as long as the context: intern i
       `installInterfaceEntry` (Rule 19), and a slot with a new kind of C++ type gets a case in `SlotAbiTest`
 - [ ] A binding that answers an object nothing else owns: a `LEAK WARNING:` comment and a `with-` macro that frees it
       (Rule 20); a binding that fails answers an error (`fail(...)`), it never raises (Rule 20)
+- [ ] No check of a pointer argument and no policy in the binding: the Scheme wrapper raises for a `0` (Rules 4 and 20)
