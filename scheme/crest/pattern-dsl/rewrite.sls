@@ -277,6 +277,15 @@
             (lp (cdr items) (+ depth 1) (cons (car items) inside))]
            [else (lp (cdr items) depth (cons (car items) inside))])))
 
+      ;; True when x can follow a ^label as the arguments of its block:
+      ;;   ()  or  ((name : type) ...)  or  ,@types-expression
+      (define (block-arguments? x)
+        (syntax-case x (unquote-splicing :)
+          [() #t]
+          [(unquote-splicing expression) #t]
+          [((argument : type) ...) (for-all identifier? (syntax->list #'(argument ...)))]
+          [_ #f]))
+
       ;; Cut the items inside one { } into blocks.
       ;;   inside  a list of syntax objects: what is written between the { and its }
       ;; Returns a list with one syntax object for each block, in the order written. Each is
@@ -302,12 +311,12 @@
         (define (->form segment)
           (let ([label (car segment)])
             (if (block-label? label)
-                (let ([datum (and (pair? (cdr segment)) (syntax->datum (cadr segment)))])
-                  (unless (or (null? datum) (pair? datum))
+                (let ([arguments (and (pair? (cdr segment)) (cadr segment))])
+                  (unless (and arguments (block-arguments? arguments))
                     (syntax-violation 'begin-mlir-code
-                                      (string-append "a block label is followed by its arguments, "
-                                                     "((name : type) ...) or ,@types")
-                                      label))
+                                      (string-append "a block label is followed by its arguments: "
+                                                     "(), ((name : type) ...) or ,@types")
+                                      (or arguments label)))
                   (items->syntax segment))
                 (items->syntax (cons* #'^entry #'() segment)))))
         ;; depth   the number of { in the items read so far that have no } yet
@@ -443,6 +452,17 @@
             [((name : val) . rest)
              (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name) #'val)
                               attrs) regions loc types)]
+            ;; (^label ...) and (:region ...) were regions before braces: say what to write now
+            [((bb . _) . _)
+             (block-label? #'bb)
+             (syntax-violation 'begin-mlir-code
+                               "(^label ...) is not a region any more: write { ^label ... } instead"
+                               (car (syntax->list items)))]
+            [((region . _) . _)
+             (eq? (syntax->datum #'region) ':region)
+             (syntax-violation 'begin-mlir-code
+                               "(:region ...) is not a region any more: write { ^a ... ^b ... } instead"
+                               (car (syntax->list items)))]
             ;; anything else — stop
             [(otherwise ...)
              (values (reverse attrs) regions loc types #'(otherwise ...))])))
@@ -559,8 +579,8 @@
       ;; @param region-index    exact integer: the 0-based position of this region among the
       ;;                        op's region modifiers
       ;; @param block-fill-fns  list of procedures from make-block-fill, one per block of the
-      ;;                        region: { ^a ... ^b ... } gives two. Each takes the identifier of the region and
-      ;;                        returns syntax that appends and fills one block.
+      ;;                        region: { ^a ... ^b ... } gives two. Each takes the identifier of
+      ;;                        the region and returns syntax that appends and fills one block.
       ;; @return                a procedure (lambda (op-stx) → syntax). op-stx is the identifier
       ;;                        bound to the created Operation*. The syntax is
       ;;                          (let ([region (mlir::Operation::getRegion op-stx region-index)])

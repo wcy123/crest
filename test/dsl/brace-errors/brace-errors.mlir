@@ -5,6 +5,9 @@
 // RUN: %{run} --crest-pass="passes=passes/missing-close" 2>&1 | %FileCheck %s --check-prefix=MISSING
 // RUN: %{run} --crest-pass="passes=passes/label-without-arguments" 2>&1 | %FileCheck %s --check-prefix=LABEL
 // RUN: %{run} --crest-pass="passes=passes/stray-close" 2>&1 | %FileCheck %s --check-prefix=STRAY
+// RUN: %{run} --crest-pass="passes=passes/label-with-bad-arguments" 2>&1 | %FileCheck %s --check-prefix=BAD-ARGUMENTS
+// RUN: %{run} --crest-pass="passes=passes/old-label-form" 2>&1 | %FileCheck %s --check-prefix=OLD-LABEL
+// RUN: %{run} --crest-pass="passes=passes/old-region-form" 2>&1 | %FileCheck %s --check-prefix=OLD-REGION
 
 // MISSING: error: Failed to import Scheme library: passes/missing-close:
 // MISSING-SAME: this { has no matching }
@@ -14,6 +17,16 @@
 
 // STRAY: error: Failed to import Scheme library: passes/stray-close:
 // STRAY-SAME: misplaced }
+
+// The item after a label must have the shape of an argument list, not just be a list.
+// BAD-ARGUMENTS: error: Failed to import Scheme library: passes/label-with-bad-arguments:
+// BAD-ARGUMENTS-SAME: a block label is followed by its arguments
+
+// The regions of before braces are an error that says what to write.
+// OLD-LABEL: error: Failed to import Scheme library: passes/old-label-form:
+// OLD-LABEL-SAME: (^label ...) is not a region any more: write { ^label ... } instead
+// OLD-REGION: error: Failed to import Scheme library: passes/old-region-form:
+// OLD-REGION-SAME: (:region ...) is not a region any more: write { ^a ... ^b ... } instead
 
 module {
 }
