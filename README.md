@@ -5,7 +5,8 @@
 
 CREST is a homoiconic pattern DSL for MLIR built on [Chez Scheme](https://cisco.github.io/ChezScheme/).
 Patterns are Scheme macros — guards and analysis are plain Scheme functions, no C++ required.
-Edit a `.sls` pattern file and re-run: no rebuild, no relink, changes take effect immediately.
+Edit a `.sls` pattern file and re-run: no rebuild, no relink, changes take effect immediately (in development
+mode, which reads the `.sls` files from disk; see [what you give up](#what-you-give-up)).
 
 > **Status:** Used in production at AMD for quantization and dialect conversion passes targeting ROCm/HIP backends.
 
@@ -31,7 +32,7 @@ patterns can run inside one, with a `TypeConverter`, when MLIR is built with
 `MLIR_ENABLE_PDL_IN_PATTERNMATCH` (`PDLConversionConfig`), but their constraints and any
 non-trivial rewrite are native C++ and need a rebuild. **CREST writes
 [`ConversionPattern`](https://mlir.llvm.org/docs/DialectConversion/#conversion-patterns)s
-and their guards and rewrites in one Scheme file, with no rebuild.**
+and their guards and rewrites in one Scheme file, with no rebuild in development mode.**
 
 | | DRR | PDLL | CREST |
 |---|---|---|---|
@@ -67,6 +68,19 @@ struct QAddFusion : OpRewritePattern<QuantizeLinearOp> {
 ```
 
 ---
+
+## What you give up
+
+- **Checks when the project builds.** DRR and PDLL are compiled by `mlir-tblgen` and `mlir-pdll`, so a mistake
+  in them stops the build. A CREST pattern is checked when its library is first imported, which is the first
+  run: a mistyped keyword is an error then ([errors you will see](docs/manual.md#errors-you-will-see)).
+- **A shared matcher.** MLIR turns [PDL patterns](https://mlir.llvm.org/docs/PDLL/) into one matcher tree that
+  merges the checks of many patterns (`PDLToPDLInterp`, "predicate tree merging"). CREST runs the checks of
+  each pattern in Scheme, one pattern after another.
+- **Numbers.** There are no measurements in this repository. Every match attempt runs Scheme code, so
+  measure your own pass before you put it on a hot path.
+- **No rebuild only in development mode.** Edit and re-run works while the `.sls` files are read from disk.
+  Boot mode (`docs/getting-started.md`) embeds them in the binary, and a change needs a rebuild again.
 
 ## Example 1 — Fusion rewrite: `DQ + DQ + add + Q` → `qadd`
 
