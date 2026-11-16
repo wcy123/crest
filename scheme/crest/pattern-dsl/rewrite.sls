@@ -257,9 +257,17 @@
       (define (brace-close? x)
         (syntax-case x (|}|) [|}| #t] [_ #f]))
 
-      ;; items follows the { that open-stx is. Returns (values inside rest): the items before
-      ;; the matching }, as a list, and the items after it. The { of a nested op-form is
-      ;; matched with its own }, so it stays in inside.
+      ;; Find the } that closes a {.
+      ;;   open-stx  the { itself, only for the error message
+      ;;   items     a list of syntax objects: everything written after that {
+      ;; Returns two values, both lists: the items before the closing }, and the items after it.
+      ;; A { among the items is closed by its own }, so a nested brace stays in the first list.
+      ;; Raises an error when no } closes the {.
+      ;;
+      ;; Example: for  { a () { b () } c () } -> i32
+      ;;   items          = (a () { b () } c () } -> i32)
+      ;;   first value    = (a () { b () } c ())
+      ;;   second value   = (-> i32)
       (define (split-at-close open-stx items)
         (let lp ([items items] [depth 0] [inside '()])
           (cond
