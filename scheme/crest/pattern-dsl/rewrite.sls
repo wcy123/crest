@@ -257,6 +257,10 @@
       (define (brace-close? x)
         (syntax-case x (|}|) [|}| #t] [_ #f]))
 
+      ;; A list of syntax objects as one syntax object, the list (a b c) as #'(a b c).
+      (define (items->syntax items)
+        (with-syntax ([(item ...) items]) #'(item ...)))
+
       ;; Find the } that closes a {.
       ;;   open-stx  the { itself, only for the error message
       ;;   items     a list of syntax objects: everything written after that {
@@ -294,8 +298,8 @@
                                       (string-append "a block label is followed by its arguments, "
                                                      "((name : type) ...) or ,@types")
                                       label))
-                  (with-syntax ([(item ...) segment]) #'(item ...)))
-                (with-syntax ([(item ...) segment]) #'(^entry () item ...)))))
+                  (items->syntax segment))
+                (items->syntax (cons* #'^entry #'() segment)))))
         (let lp ([items inside] [depth 0] [current '()] [done '()])
           (define (finish) (if (null? current) done (cons (reverse current) done)))
           (cond
@@ -307,6 +311,17 @@
            [(and (zero? depth) (block-label? (car items)))
             (lp (cdr items) depth (list (car items)) (finish))]
            [else (lp (cdr items) depth (cons (car items) current) done)])))
+
+      ;; Read the { ... } at the front of items, a syntax object that starts with the {.
+      ;;   region-index  the position of this region among the regions of the op-form so far
+      ;; Returns two values: the procedure that fills the region once the op exists (see
+      ;; make-region-fill-fn), and the items after the closing }, as a syntax object.
+      (define (parse-brace-region items region-index)
+        (let ([items (syntax->list items)])
+          (let-values ([(inside after) (split-at-close (car items) (cdr items))])
+            (values (make-region-fill-fn region-index
+                                         (map make-block-fill (brace-blocks inside)))
+                    (items->syntax after)))))
 
       ;; Classify one modifier element for the new v2 attribute syntax.
       ;; Attribute form: (name : val) or (name : val :keyword)
@@ -346,17 +361,9 @@
             [(:loc loc-expr . rest)
              (lp #'rest attrs regions #'loc-expr types)]
             ;; { block ... } — one region, as in the generic form of MLIR
-            [(|{| . after)
-             (let-values ([(inside rest) (split-at-close (car (syntax->list items))
-                                                         (syntax->list #'after))])
-               (let ([region-idx (length regions)])
-                 (lp (with-syntax ([(item ...) rest]) #'(item ...))
-                     attrs
-                     (append regions
-                             (list (make-region-fill-fn region-idx
-                                                        (map make-block-fill
-                                                             (brace-blocks inside)))))
-                     loc types)))]
+            [(|{| . _)
+             (let-values ([(region-fill-fn remaining) (parse-brace-region items (length regions))])
+               (lp remaining attrs (append regions (list region-fill-fn)) loc types))]
             ;; (^label body ...) — single-block region shorthand
             [((bb body ...) . rest)
              (block-label? #'bb)
