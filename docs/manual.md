@@ -46,7 +46,9 @@ build/tools/crest-opt/crest-opt --crest-pass="passes=passes/my-pass" input.mlir
 
 `CREST_PATH` is a colon-separated list of directories (semicolon on Windows)
 where the Chez Scheme runtime searches for `.sls` files — analogous to `PATH`.
-It extends (not replaces) the built-in CREST scheme library directory.
+It extends (not replaces) the built-in CREST scheme library directory. A `.sls` file in one of these
+directories is compiled and run with the rights of the process: only point `CREST_PATH` at directories you trust.
+Compiled files are written to `CREST_SCHEME_BINARY_DIR` (the build directory by default).
 
 ---
 
