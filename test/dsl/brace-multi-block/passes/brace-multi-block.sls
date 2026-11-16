@@ -38,15 +38,6 @@
         ^r1b ()
         test.h () })
 
-  ;; The older (:region ...) form makes the same blocks.
-  (define-conversion-pattern (%%same_as_old_region_form op operands-ref rw tc)
-    :if-match
-      test.same_as_old_region_form ()
-    :rewrite op :with
-      test.dst_same_as_old_region_form ()
-      (:region (^first () test.a ())
-               (^second () test.b ())))
-
   (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
       (with-current-MLIRContext ctx
@@ -56,11 +47,10 @@
                                                :conversions ((lambda (type) type)))
                           :legal-dialects    ("func" "builtin")
                           :illegal-dialects  ("test")
-                          :legal-ops         ("test.dst_one_region_many_blocks" "test.dst_many_regions_many_blocks" "test.dst_same_as_old_region_form"
+                          :legal-ops         ("test.dst_one_region_many_blocks" "test.dst_many_regions_many_blocks"
                                               "test.a" "test.a2" "test.b" "test.c" "test.d"
                                               "test.e" "test.f" "test.g" "test.h" "test.inner")
                           :patterns          (("test.one_region_many_blocks" %%one_region_many_blocks)
-                                              ("test.many_regions_many_blocks" %%many_regions_many_blocks)
-                                              ("test.same_as_old_region_form" %%same_as_old_region_form))))))
+                                              ("test.many_regions_many_blocks" %%many_regions_many_blocks))))))
 
   ) ;; end library

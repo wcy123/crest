@@ -36,14 +36,3 @@ func.func @many_regions_many_blocks() {
   "test.many_regions_many_blocks"() : () -> ()
   return
 }
-
-// CHECK-LABEL: func.func @same_as_old_region_form
-// CHECK:         "test.dst_same_as_old_region_form"() ({
-// CHECK-NEXT:      "test.a"() : () -> ()
-// CHECK-NEXT:    ^bb1:{{.*}}
-// CHECK-NEXT:      "test.b"() : () -> ()
-// CHECK-NEXT:    }) : () -> ()
-func.func @same_as_old_region_form() {
-  "test.same_as_old_region_form"() : () -> ()
-  return
-}

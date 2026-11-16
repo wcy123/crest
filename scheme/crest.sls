@@ -83,7 +83,7 @@
 ;;
 ;;   (begin-mlir-code op-form ...)
 ;;
-;; :rewrite :with and ^bb bodies install it. Elsewhere wrap the call:
+;; :rewrite :with and block bodies install it. Elsewhere wrap the call:
 ;;   (with-current-OpBuilder b (begin-mlir-code op-form ...))
 ;; where b is a builder shell (from with-OpBuilder, or a pattern's rw).
 ;;
@@ -109,8 +109,7 @@
 ;;   (name : val :i64-array) — DenseI64ArrayAttr
 ;;   (name : _   :unit)      — UnitAttr (presence-only flag; val is ignored)
 ;;   (name : val)            — val is a pre-built Attribute uptr
-;;   (^bb0 ((arg : !type) ...) body ...)  — inline region block
-;;   { body ... }            — one region; a ^label ((arg : !type) ...) starts a block
+;;   { ^bb0 ((arg : !type) ...) body ... }  — one region; each ^label starts a block
 ;;                             (a file that writes { } starts with #!chezscheme, not #!r6rs)
 ;;
 ;; Operand conventions:
@@ -150,7 +149,7 @@
           define-pass-entry-point
           :if-match :then-let :rewrite :with :where
           :debug-parse :debug-validate :debug-analyze :debug-codegen
-          = : -> :region :regions
+          = : -> :regions
           :any
           :current-op :attr :has-attr? :attr-or
           :optional :variadic

@@ -1,4 +1,4 @@
-#!r6rs
+#!chezscheme
 ;; (:move-region op) inside a conversion pattern: the moved blocks are reported to the
 ;; conversion driver, so test.inner inside the moved body is still legalized.
 ;;
@@ -26,9 +26,9 @@
       test.nested ()
     :rewrite op :with
       test.wrapper ()
-      (^bb0 ()
-            test.dst ()
-            (:move-region op))
+      {
+       test.dst ()
+                (:move-region op) }
       test.after ())
 
   (define-conversion-pattern (%%inner->done op operands-ref rw tc)

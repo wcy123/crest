@@ -60,14 +60,13 @@ func.func @empty_region() {
   return
 }
 
-// CHECK-LABEL: func.func @mixed_with_old_forms
-// CHECK:         "test.dst_mixed_with_old_forms"() ({
-// CHECK-NEXT:      "test.old"() : () -> ()
+// CHECK-LABEL: func.func @braces_among_attributes
+// CHECK:         "test.dst_braces_among_attributes"() ({
+// CHECK-NEXT:      "test.one"() : () -> ()
 // CHECK-NEXT:    }, {
-// CHECK-NEXT:      "test.new"() : () -> ()
-// CHECK-NEXT:    }, {
-// CHECK-NEXT:    }) : () -> ()
-func.func @mixed_with_old_forms() {
-  "test.mixed_with_old_forms"() : () -> ()
+// CHECK-NEXT:      "test.two"() : () -> ()
+// CHECK-NEXT:    }) {first = "a", second = 7 : index} : () -> ()
+func.func @braces_among_attributes() {
+  "test.braces_among_attributes"() : () -> ()
   return
 }

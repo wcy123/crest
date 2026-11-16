@@ -16,7 +16,7 @@
 ;;   (begin-mlir-code op-form ...)
 ;;     Sequences MLIR op-forms, creating each op with the builder in current-OpBuilder:
 ;;     a builder shell, either a CrestBox<OpBuilder> or the pattern's CrestBox<RewriterBase*>.
-;;     :rewrite :with installs the pattern's rewriter, and ^bb bodies keep it, moving its
+;;     :rewrite :with installs the pattern's rewriter, and block bodies keep it, moving its
 ;;     insertion point to the end of the new block; anywhere else wrap the call in
 ;;     (with-current-OpBuilder b ...), where b is a shell (from with-OpBuilder, or the
 ;;     pattern's rw). There is no explicit builder argument.
@@ -42,23 +42,15 @@
 ;;   (name : val :unit)      — construct and set UnitAttr
 ;;   (name : val :string)    — construct and set StringAttr
 ;;
-;;   Region modifiers — each (^label ...) creates ONE region with ONE block:
-;;   (^label ((arg : !type) ...) body ...)   — static args; use :builder in body
-;;   (^label ,@type-list body ...)           — dynamic args; use (:arg N) in body
-;;
-;;   Consecutive shorthands = multiple regions (common case, no :region wrapper needed):
-;;   r = scf.if (c) (^then () then...) (^else () else...) -> i32
-;;
-;;   One region with multiple blocks — use :region explicitly:
-;;   (:region (^entry ((i : index)) body...) (^exit () exit...))
-;;
-;;   Braces, as in the generic form of MLIR — each { ... } is ONE region:
+;;   Region modifiers, as in the generic form of MLIR — each { ... } is ONE region:
 ;;   r = scf.if (c) { then... } { else... } -> i32          a block without a label has no arguments
 ;;   { ^entry ((i : index)) body... ^exit () body... }     a ^label starts a block, up to the next
-;;                                                         ^label or the }; ,@types works as above
+;;                                                         ^label or the }
+;;   { ^bb ,@type-list body... }                           dynamic arguments; use (:arg N) in body
 ;;   { }                                                   a region without blocks
 ;;   A { } in the body of a block belongs to the op written there. A file that writes { } starts
-;;   with #!chezscheme: the reader of #!r6rs rejects it.
+;;   with #!chezscheme: the reader of #!r6rs rejects it. (:move-region src-op [idx]) moves an
+;;   existing region into the new op.
 ;;
 ;;   Location override:
 ;;   (:loc expr)             — runtime mlir::Location for this op
@@ -78,7 +70,7 @@
           (for (rename (rime loop) (:with :rime-with)) expand)
           (for (only (crest support srcloc) syntax->file+line+col) expand)
           (for (only (crest pattern-dsl keywords)
-                     = : -> :region :loc :move-region
+                     = : -> :loc :move-region
                      :string :index
                      :i8 :i16 :i32 :i64
                      :f32 :f64
@@ -131,7 +123,7 @@
   (define (%%current-builder)
     (or (current-OpBuilder)
         (error '%%current-builder
-               "no active builder — use begin-mlir-code inside :rewrite :with or a ^bb block, or wrap it in (with-current-OpBuilder builder ...)")))
+               "no active builder — use begin-mlir-code inside :rewrite :with or a { } block, or wrap it in (with-current-OpBuilder builder ...)")))
 
   ;; Returns the active builder when it is the pattern's rewriter, for the rewriter-only
   ;; operations. Error if the active builder is a plain OpBuilder.
@@ -325,7 +317,7 @@
 
       ;; Classify one modifier element for the new v2 attribute syntax.
       ;; Attribute form: (name : val) or (name : val :keyword)
-      ;; Region form:    (^label ...), (:region ...) or (:move-region src-op [idx])
+      ;; Region form:    { block ... } or (:move-region src-op [idx])
       ;; Loc form:       (:loc expr)
       ;; Returns a tagged pair: (attr . setter-fn), (region . fill-fns), or (loc . stx).
       ;;
@@ -346,7 +338,7 @@
                  [regions '()]
                  [loc     #f]
                  [types   '()])
-          (syntax-case items (-> :region :move-region : :string :index
+          (syntax-case items (-> :move-region : :string :index
                                  :i8 :i16 :i32 :i64 :f32 :f64
                                  :i8-array :i16-array :i32-array :i64-array :unit :loc { })
             ;; -> type-list, continue accumulating types
@@ -364,25 +356,6 @@
             [(|{| . _)
              (let-values ([(region-fill-fn remaining) (parse-brace-region items (length regions))])
                (lp remaining attrs (append regions (list region-fill-fn)) loc types))]
-            ;; (^label body ...) — single-block region shorthand
-            [((bb body ...) . rest)
-             (block-label? #'bb)
-             (let ([region-idx (length regions)])
-               (lp #'rest attrs
-                   (append regions
-                           (list (make-region-fill-fn region-idx
-                                                      (list (make-block-fill #'(bb body ...))))))
-                   loc types))]
-            ;; (:region (^label body ...) ...) — one region, multiple blocks
-            [((:region (bb body ...) ...) . rest)
-             (for-all block-label? (syntax->list #'(bb ...)))
-             (let ([region-idx (length regions)])
-               (lp #'rest attrs
-                   (append regions
-                           (list (make-region-fill-fn region-idx
-                                                      (map make-block-fill
-                                                           (syntax->list #'((bb body ...) ...))))))
-                   loc types))]
             ;; (:move-region src-op [idx]) — one region, moved from region idx (default 0) of src-op
             [((:move-region src-op) . rest)
              (lp #'rest attrs
@@ -556,7 +529,7 @@
 
       ;; @brief Build the code that fills one region of the op being created.
       ;;
-      ;; Each region modifier of an op-form, (^label ...) or (:region ...), is one region. The
+      ;; Each region modifier of an op-form, a { ... }, is one region. The
       ;; slot is reserved with addRegion before the op is created. This function returns the
       ;; procedure that emits the code run after the op exists: look up the region, then append
       ;; and fill each of its blocks. The fill cannot run earlier, because ops cannot be put
@@ -565,8 +538,7 @@
       ;; @param region-index    exact integer: the 0-based position of this region among the
       ;;                        op's region modifiers
       ;; @param block-fill-fns  list of procedures from make-block-fill, one per block of the
-      ;;                        region. (^label ...) gives one; (:region (^a ...) (^b ...)) gives
-      ;;                        one per block. Each takes the identifier of the region and
+      ;;                        region: { ^a ... ^b ... } gives two. Each takes the identifier of the region and
       ;;                        returns syntax that appends and fills one block.
       ;; @return                a procedure (lambda (op-stx) → syntax). op-stx is the identifier
       ;;                        bound to the created Operation*. The syntax is
@@ -721,7 +693,7 @@
       ;; Build a runtime expression for the operand list from (operands ...).
       ;; ,@list splices a dynamic list: (v1 ,@%more v2) → (append (list v1) %more (list v2))
       ;; (:arg N) is a shorthand for (mlir::Block::getArgument block N) — only valid
-      ;; when 'block' is in scope, i.e. inside the body of a (^label ...) block form.
+      ;; when 'block' is in scope, i.e. inside a block of a { ... } region.
       ;; Each operand converts to a chunk; (append chunk ...) flattens them.
       (define (value-operands operands-stx)
         (define (convert x)

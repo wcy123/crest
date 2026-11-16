@@ -68,15 +68,16 @@
       { test.one () }
       { })
 
-  ;; Braces and the older forms mix, and each is one region in order.
-  (define-rewrite-pattern (%%mixed_with_old_forms op rewriter)
+  ;; Braces and attribute modifiers mix in any order; each brace is one region, in order.
+  (define-rewrite-pattern (%%braces_among_attributes op rewriter)
     :if-match
-      test.mixed_with_old_forms ()
+      test.braces_among_attributes ()
     :rewrite op :with
-      test.dst_mixed_with_old_forms ()
-      (^bb0 () test.old ())
-      { test.new () }
-      (:region))
+      test.dst_braces_among_attributes ()
+      (first : "a" :string)
+      { test.one () }
+      (second : 7 :index)
+      { test.two () })
 
   (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])
@@ -87,7 +88,7 @@
                                                              ("test.one_region_dynamic_arguments" %%one_region_dynamic_arguments 10)
                                                              ("test.nested_braces" %%nested_braces 10)
                                                              ("test.empty_region" %%empty_region 10)
-                                                             ("test.mixed_with_old_forms" %%mixed_with_old_forms 10)))
+                                                             ("test.braces_among_attributes" %%braces_among_attributes 10)))
           (mlir::applyPatternsGreedily module-op patterns)))))
 
   ) ;; end library

@@ -1,5 +1,5 @@
-#!r6rs
-;; Test: a (:region) modifier with no blocks reserves an empty region, in order among the
+#!chezscheme
+;; Test: a { } modifier with no blocks reserves an empty region, in order among the
 ;; op's other regions. test.src becomes test.dst with three regions: empty, one block, empty.
 (library (passes empty-region)
   (export pass-entry-point)
@@ -16,9 +16,9 @@
       test.src ()
     :rewrite op :with
       test.dst ()
-      (:region)
-      (^bb0 () test.one ())
-      (:region))
+      { }
+      { test.one () }
+      { })
 
   (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])

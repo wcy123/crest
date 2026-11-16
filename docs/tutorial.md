@@ -222,5 +222,5 @@ patterns — one for each arity.
   [Ch2](../samples/toy/ch2/README.md) shows `define-dialect` and `begin-mlir-code` generating IR,
   [Ch3](../samples/toy/ch3/README.md) and [Ch4](../samples/toy/ch4/README.md) show
   `define-rewrite-pattern`, [Ch5](../samples/toy/ch5/README.md) shows
-  `define-conversion-pattern`, `apply-conversion`, `:move-region` and regions with `^bb`, and
+  `define-conversion-pattern`, `apply-conversion`, `:move-region` and regions written as `{ ... }`, and
   [Ch6](../samples/toy/ch6/README.md) shows a full lowering to LLVM.

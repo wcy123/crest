@@ -5,7 +5,7 @@
 (library (crest pattern-dsl keywords)
   (export :if-match :then-let :rewrite :with :where
           :debug-parse :debug-validate :debug-analyze :debug-codegen
-          = : -> :region :regions
+          = : -> :regions
           :any
           :current-op :attr :has-attr? :attr-or
           :optional :variadic
@@ -42,7 +42,6 @@
   (define-syntax = (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
   (define-syntax : (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
   (define-syntax -> (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
-  (define-syntax :region (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
   (define-syntax :regions (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))
   ;; :index is a type keyword used in the rewrite DSL — 'index symbol.
   (define-syntax :any        (lambda (x) (syntax-violation 'pattern-keyword "misplaced aux keyword" x)))

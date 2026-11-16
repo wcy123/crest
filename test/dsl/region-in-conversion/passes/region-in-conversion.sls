@@ -1,4 +1,4 @@
-#!r6rs
+#!chezscheme
 ;; Test: ops created in a region body by begin-mlir-code inside a conversion pattern are
 ;; legalized by the conversion driver.
 ;;
@@ -18,8 +18,8 @@
       test.src ()
     :rewrite op :with
       test.wrapper ()
-      (^bb0 ()
-            test.inner ()))
+      {
+       test.inner () })
 
   (define-conversion-pattern (%%inner->done op operands-ref rw tc)
     :if-match

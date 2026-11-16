@@ -1,4 +1,4 @@
-#!r6rs
+#!chezscheme
 ;; Test: ops created in a region body by begin-mlir-code inside a greedy rewrite pattern are
 ;; reported to the driver.
 ;;
@@ -20,8 +20,8 @@
       test.src ()
     :rewrite op :with
       test.wrapper ()
-      (^bb0 ()
-            test.inner ()))
+      {
+       test.inner () })
 
   (define-rewrite-pattern (%%inner->done op rewriter)
     :if-match
