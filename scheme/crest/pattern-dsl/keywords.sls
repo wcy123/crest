@@ -1,4 +1,7 @@
-#!r6rs
+#!chezscheme
+;; Not #!r6rs: the reader of R6RS mode rejects the { and } of the keywords below. A brace that has
+;; no partner is written |{| or |}|, the same symbol, because the indenter of the commit hook
+;; counts a brace as a bracket.
 (library (crest pattern-dsl keywords)
   (export :if-match :then-let :rewrite :with :where
           :debug-parse :debug-validate :debug-analyze :debug-codegen
@@ -16,6 +19,8 @@
           :loc
           ;; (:move-region SRC-OP [IDX]) region modifier — move an existing region into the new op
           :move-region
+          ;; { ... } is one region of an op-form, as in the generic form of MLIR
+          { }
           ;; (:arg N) shorthand for (mlir::Block::getArgument block N) in block bodies
           :arg
           ;; (:builder) returns the currently active builder/rewriter
@@ -80,6 +85,8 @@
   (define-syntax :i64-array (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :i64-array (only valid as attr type in begin-mlir-code)" x)))
   (define-syntax :unit      (lambda (x) (syntax-violation 'attr-type-keyword "misplaced :unit (only valid as attr type in begin-mlir-code)" x)))
   (define-syntax :move-region (lambda (x) (syntax-violation 'begin-mlir-code "misplaced :move-region (only valid as op modifier in begin-mlir-code)" x)))
+  (define-syntax |{|  (lambda (x) (syntax-violation 'begin-mlir-code "misplaced { (only valid as an op modifier in begin-mlir-code)" x)))
+  (define-syntax |}|  (lambda (x) (syntax-violation 'begin-mlir-code "misplaced } (it closes a { of an op modifier in begin-mlir-code)" x)))
   (define-syntax :loc      (lambda (x) (syntax-violation 'begin-mlir-code "misplaced :loc (only valid as op modifier in begin-mlir-code)" x)))
   (define-syntax :arg
     (syntax-rules ()

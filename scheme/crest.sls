@@ -1,4 +1,5 @@
-#!r6rs
+#!chezscheme
+;; Not #!r6rs: the reader of R6RS mode rejects the { and } that this library exports.
 ;;===----------------------------------------------------------------------===;;
 ;;
 ;; Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
@@ -109,6 +110,8 @@
 ;;   (name : _   :unit)      — UnitAttr (presence-only flag; val is ignored)
 ;;   (name : val)            — val is a pre-built Attribute uptr
 ;;   (^bb0 ((arg : !type) ...) body ...)  — inline region block
+;;   { body ... }            — one region; a ^label ((arg : !type) ...) starts a block
+;;                             (a file that writes { } starts with #!chezscheme, not #!r6rs)
 ;;
 ;; Operand conventions:
 ;;   %var        — SSA Value uptr
@@ -154,6 +157,7 @@
           :string :index :i8 :i16 :i32 :i64 :f32 :f64
           :i8-array :i16-array :i32-array :i64-array :unit
           :loc :move-region
+          { }
           :arg :builder
           make-unbound-value unbound-value?
           ;; Context parameters re-exported for user convenience

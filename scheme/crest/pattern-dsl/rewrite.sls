@@ -1,4 +1,7 @@
-#!r6rs
+#!chezscheme
+;; Not #!r6rs: the reader of R6RS mode rejects the { and } that this library reads. A brace that
+;; has no partner is written |{| or |}|, the same symbol, because the indenter of the commit hook
+;; counts a brace as a bracket.
 ;;===----------------------------------------------------------------------===;;
 ;;
 ;; Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
@@ -49,6 +52,14 @@
 ;;   One region with multiple blocks — use :region explicitly:
 ;;   (:region (^entry ((i : index)) body...) (^exit () exit...))
 ;;
+;;   Braces, as in the generic form of MLIR — each { ... } is ONE region:
+;;   r = scf.if (c) { then... } { else... } -> i32          a block without a label has no arguments
+;;   { ^entry ((i : index)) body... ^exit () body... }     a ^label starts a block, up to the next
+;;                                                         ^label or the }; ,@types works as above
+;;   { }                                                   a region without blocks
+;;   A { } in the body of a block belongs to the op written there. A file that writes { } starts
+;;   with #!chezscheme: the reader of #!r6rs rejects it.
+;;
 ;;   Location override:
 ;;   (:loc expr)             — runtime mlir::Location for this op
 ;;
@@ -72,7 +83,7 @@
                      :i8 :i16 :i32 :i64
                      :f32 :f64
                      :i8-array :i16-array :i32-array :i64-array
-                     :unit) expand)
+                     :unit { }) expand)
           (for (mlir IR BuiltinAttributes) expand)
           (only (mlir IR Builders)
                 mlir::OpBuilder::create<OperationState>
@@ -241,6 +252,54 @@
           (and (symbol? datum)
                (char=? #\^ (string-ref (symbol->string datum) 0)))))
 
+      (define (brace-open? x)
+        (syntax-case x (|{|) [|{| #t] [_ #f]))
+      (define (brace-close? x)
+        (syntax-case x (|}|) [|}| #t] [_ #f]))
+
+      ;; items follows the { that open-stx is. Returns (values inside rest): the items before
+      ;; the matching }, as a list, and the items after it. The { of a nested op-form is
+      ;; matched with its own }, so it stays in inside.
+      (define (split-at-close open-stx items)
+        (let lp ([items items] [depth 0] [inside '()])
+          (cond
+           [(null? items)
+            (syntax-violation 'begin-mlir-code "this { has no matching }" open-stx)]
+           [(brace-close? (car items))
+            (if (zero? depth)
+                (values (reverse inside) (cdr items))
+                (lp (cdr items) (- depth 1) (cons (car items) inside)))]
+           [(brace-open? (car items))
+            (lp (cdr items) (+ depth 1) (cons (car items) inside))]
+           [else (lp (cdr items) depth (cons (car items) inside))])))
+
+      ;; The items inside one { }, as the list of (^label arguments body ...) forms that
+      ;; make-block-fill reads, one for each block. A ^label that is not inside a nested { }
+      ;; starts a block. Items before the first ^label are an entry block without arguments.
+      (define (brace-blocks inside)
+        (define (->form segment)
+          (let ([label (car segment)])
+            (if (block-label? label)
+                (let ([datum (and (pair? (cdr segment)) (syntax->datum (cadr segment)))])
+                  (unless (or (null? datum) (pair? datum))
+                    (syntax-violation 'begin-mlir-code
+                                      (string-append "a block label is followed by its arguments, "
+                                                     "((name : type) ...) or ,@types")
+                                      label))
+                  (with-syntax ([(item ...) segment]) #'(item ...)))
+                (with-syntax ([(item ...) segment]) #'(^entry () item ...)))))
+        (let lp ([items inside] [depth 0] [current '()] [done '()])
+          (define (finish) (if (null? current) done (cons (reverse current) done)))
+          (cond
+           [(null? items) (map ->form (reverse (finish)))]
+           [(brace-open? (car items))
+            (lp (cdr items) (+ depth 1) (cons (car items) current) done)]
+           [(brace-close? (car items))
+            (lp (cdr items) (- depth 1) (cons (car items) current) done)]
+           [(and (zero? depth) (block-label? (car items)))
+            (lp (cdr items) depth (list (car items)) (finish))]
+           [else (lp (cdr items) depth (cons (car items) current) done)])))
+
       ;; Classify one modifier element for the new v2 attribute syntax.
       ;; Attribute form: (name : val) or (name : val :keyword)
       ;; Region form:    (^label ...), (:region ...) or (:move-region src-op [idx])
@@ -266,7 +325,7 @@
                  [types   '()])
           (syntax-case items (-> :region :move-region : :string :index
                                  :i8 :i16 :i32 :i64 :f32 :f64
-                                 :i8-array :i16-array :i32-array :i64-array :unit :loc)
+                                 :i8-array :i16-array :i32-array :i64-array :unit :loc { })
             ;; -> type-list, continue accumulating types
             [(-> (result-type ...) . rest)
              (lp #'rest attrs regions loc (append types (syntax->list #'(result-type ...))))]
@@ -278,6 +337,18 @@
              (lp #'rest attrs regions #'(mlir::FileLineColLoc::get filename line column) types)]
             [(:loc loc-expr . rest)
              (lp #'rest attrs regions #'loc-expr types)]
+            ;; { block ... } — one region, as in the generic form of MLIR
+            [(|{| . after)
+             (let-values ([(inside rest) (split-at-close (car (syntax->list items))
+                                                         (syntax->list #'after))])
+               (let ([region-idx (length regions)])
+                 (lp (with-syntax ([(item ...) rest]) #'(item ...))
+                     attrs
+                     (append regions
+                             (list (make-region-fill-fn region-idx
+                                                        (map make-block-fill
+                                                             (brace-blocks inside)))))
+                     loc types)))]
             ;; (^label body ...) — single-block region shorthand
             [((bb body ...) . rest)
              (block-label? #'bb)

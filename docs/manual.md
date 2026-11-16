@@ -554,6 +554,43 @@ op = my.op ()
      -> !i32
 ```
 
+#### Braces
+
+`{ ... }` is one region, as in the generic form of MLIR. Several braces in a row are several
+regions. Inside a brace, a `^label` starts a block, which runs to the next `^label` or to the `}`.
+Items before the first `^label` are an entry block without arguments, so the label can be left
+out when the block has none:
+
+```scheme
+;; Two regions with one block each (scf.if)
+op = scf.if (%cond)
+     { a = compute_a (%x) -> !i32
+       scf.yield (%a) }
+     { b = compute_b (%y) -> !i32
+       scf.yield (%b) }
+     -> !i32
+
+;; One region with two blocks, and a second region with a block that has an argument
+my.op ()
+  { ^entry ()
+    my.first ()
+    ^exit ((v : !i32))
+    my.use (v) }
+  { ^bb ,@types
+    my.yield ((:arg 0)) }
+```
+
+A `{ }` in the body of a block belongs to the op written there, so braces nest. `{ }` is a
+region without blocks. Braces and the other region forms mix, and each is one region, in order.
+Two things to know:
+
+- A file that writes `{` and `}` starts with `#!chezscheme`. A `.sls` file is read in R6RS mode,
+  and its reader rejects the brace; `(crest)`, `(crest pattern-dsl keywords)` and
+  `(crest pattern-dsl rewrite)` start with `#!chezscheme` for that reason.
+- There is no syntax yet for a branch from one block to another, so a block that no op reaches
+  is dead. The greedy driver (`mlir::applyPatternsGreedily`) erases such a block; the conversion
+  driver keeps it. `test/dsl/brace-blocks` uses the conversion driver for this reason.
+
 To keep the body of an existing op instead of building one, use `:move-region`:
 
 ```scheme
@@ -589,6 +626,7 @@ In summary:
 | `(:region (^a ...) (^b ...))` | 1 | N | static |
 | `(:region ...) (:region ...)` | N | N each | static |
 | `(:move-region src-op [idx])` | 1 | those of the source region | the source's |
+| `{ ... } { ... }` | N | 1 or more: a `^label` starts a block | static or dynamic, per block |
 
 The body of every `^label` block is a recursive `begin-mlir-code` call — the
 same flat op-form syntax. Regions can be nested arbitrarily deep.
