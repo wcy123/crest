@@ -81,6 +81,9 @@ struct QAddFusion : OpRewritePattern<QuantizeLinearOp> {
   measure your own pass before you put it on a hot path.
 - **No rebuild only in development mode.** Edit and re-run works while the `.sls` files are read from disk.
   Boot mode (`docs/getting-started.md`) embeds them in the binary, and a change needs a rebuild again.
+- **LLVM 22 is not enough for everything.** CREST builds with LLVM 22 and 23. `define-op :traits` needs 23, and
+  so does the Toy tutorial from chapter 2. On 22 it fails with
+  `define-op :traits requires LLVM 23+ (DynamicOpDefinition::addTrait); requested trait: <name>`.
 
 ## Example 1 — Fusion rewrite: `DQ + DQ + add + Q` → `qadd`
 
