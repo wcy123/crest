@@ -72,5 +72,8 @@ cmake = lit.util.which("cmake")
 if cmake:
     config.available_features.add("cmake")
     config.substitutions.append(("%cmake", '"' + cmake + '"'))
+# benchmarks/run.py --instructions counts instructions with callgrind.
+if lit.util.which("valgrind"):
+    config.available_features.add("callgrind")
 config.substitutions.append(("%FileCheck", find_tool("FileCheck")))
 config.substitutions.append(("%samples", config.crest_samples_dir))

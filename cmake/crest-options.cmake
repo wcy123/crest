@@ -17,6 +17,13 @@ option(CREST_WARNINGS_AS_ERRORS
   "Treat compiler warnings as errors (-Werror / /WX)"
   ON)
 
+# ─── Benchmarks ───────────────────────────────────────────────────────────────
+# Builds crest-bench-cpp, the C++ version of the qadd fusion that benchmarks/run.py compares
+# CREST with. Nothing else needs it.
+option(CREST_BUILD_BENCHMARKS
+  "Build the C++ baseline of the benchmarks (benchmarks/cpp)"
+  OFF)
+
 # ─── ChezScheme build ─────────────────────────────────────────────────────────
 # The number of parallel jobs of the Chez Scheme build (make -j). The default is the number of
 # cores of the machine; set it lower when the machine is shared (CI runs other jobs next to it).
