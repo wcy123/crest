@@ -277,10 +277,27 @@
             (lp (cdr items) (+ depth 1) (cons (car items) inside))]
            [else (lp (cdr items) depth (cons (car items) inside))])))
 
-      ;; The items inside one { }, as the list of (^label arguments body ...) forms that
-      ;; make-block-fill reads, one for each block. A ^label that is not inside a nested { }
-      ;; starts a block. Items before the first ^label are an entry block without arguments.
+      ;; Cut the items inside one { } into blocks.
+      ;;   inside  a list of syntax objects: what is written between the { and its }
+      ;; Returns a list with one syntax object for each block, in the order written. Each is
+      ;; (^label arguments body ...), the form that make-block-fill reads.
+      ;;
+      ;; A ^label starts a block, and the block runs up to the next ^label. The item right after
+      ;; a ^label is its arguments: (), ((name : type) ...) or ,@types. A ^label inside a nested
+      ;; { } belongs to that brace, not to this one. Items before the first ^label are an entry
+      ;; block without arguments, which gets the label ^entry. No items give no blocks.
+      ;;
+      ;; Examples (the { and } around inside are not part of it):
+      ;;   (^a () p () ^b ((v : i32)) q (v))
+      ;;     => ((^a () p ()) (^b ((v : i32)) q (v)))                     two blocks
+      ;;   (p () q ())
+      ;;     => ((^entry () p () q ()))                                   an entry block
+      ;;   (^a () p () { ^x () r () } ^b () s ())
+      ;;     => ((^a () p () { ^x () r () }) (^b () s ()))                ^x is in the nested brace
+      ;;   ()
+      ;;     => ()                                                        a region without blocks
       (define (brace-blocks inside)
+        ;; segment: the items of one block, its ^label first when it has one.
         (define (->form segment)
           (let ([label (car segment)])
             (if (block-label? label)
@@ -292,6 +309,9 @@
                                       label))
                   (items->syntax segment))
                 (items->syntax (cons* #'^entry #'() segment)))))
+        ;; depth   the number of { in the items read so far that have no } yet
+        ;; current the items of the block being read, in reverse
+        ;; done    the blocks that are finished, in reverse, each a list of items
         (let lp ([items inside] [depth 0] [current '()] [done '()])
           (define (finish) (if (null? current) done (cons (reverse current) done)))
           (cond
