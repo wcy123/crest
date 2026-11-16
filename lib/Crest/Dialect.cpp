@@ -310,6 +310,12 @@ void registerIRExtensibleDialectBindings() {
         // code that validateSchemeDialect runs may move.
         std::string dialect(dialect_name);
         std::string module(module_name);
+        // A dialect of that name is loaded already: it stays, and loading it
+        // again is not an error. (Loading it again would give the name a
+        // second TypeID, and MLIR ends the process for that.)
+        if (ctx->getLoadedDialect(dialect)) {
+          return Svoid;
+        }
         if (auto error = validateSchemeDialect(dialect, module)) {
           return scheme_error("crest::load-scheme-dialect!",
                               llvm::Twine("Failed to import Scheme library: ") +
