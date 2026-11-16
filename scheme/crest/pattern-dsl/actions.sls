@@ -35,17 +35,14 @@
   ;; spec: list of syntax keyword objects (:required / :optional / :variadic)
   ;; vars: list of syntax identifiers (positionally matched to spec)
   ;; Fresh vars are set!; already-bound vars are checked via eqv? (DAG diamond).
-  ;; converted? (default #f): the op is the root of a conversion pattern, so the values are the converted
-  ;; operands (operands-ref) and not the operands of the op.
-  (define action:bind-operands
-    (case-lambda
-     [(op-idx spec vars) (action:bind-operands op-idx spec vars #f)]
-     [(op-idx spec vars converted?)
-      (list ':bind-operands
-            (cons 'op-idx op-idx)
-            (cons 'spec   spec)
-            (cons 'vars   vars)
-            (cons 'converted? converted?))]))
+  ;; is-root-op?: #t when the op is the root of the pattern. The root of a conversion pattern reads the
+  ;; converted operands (operands-ref); every other op reads its own operands.
+  (define (action:bind-operands op-idx spec vars is-root-op?)
+    (list ':bind-operands
+          (cons 'op-idx op-idx)
+          (cons 'spec   spec)
+          (cons 'vars   vars)
+          (cons 'is-root-op? is-root-op?)))
 
   (define (action:bind-argument-operand operand-idx var)
     (list ':bind-argument-operand

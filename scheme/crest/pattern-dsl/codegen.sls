@@ -455,7 +455,7 @@
                 [op-idx  (cdr (assq 'op-idx fields))]
                 [spec    (cdr (assq 'spec   fields))]
                 [vars    (cdr (assq 'vars   fields))]
-                [converted? (cdr (assq 'converted? fields))])
+                [is-root-op? (cdr (assq 'is-root-op? fields))])
            (with-syntax ([%operands  (datum->syntax #'begin '%operands)]
                          [(quoted-spec ...)
                           (map (lambda (s)
@@ -470,8 +470,9 @@
                                                  (begin (set! v (list-ref %operands idx)) #t)
                                                  (eqv? v (list-ref %operands idx)))))]
                          [op-idx* (datum->syntax #'begin op-idx)])
-             (if converted?
-                 ;; The root of a conversion pattern: the values are the converted operands.
+             (if (and is-root-op? operands-ref)
+                 ;; The root of a conversion pattern (operands-ref is #f for a rewrite pattern): the values are
+                 ;; the converted operands.
                  (with-syntax ([operands-ref* operands-ref])
                    #'(let ([%operands (operation-get-converted-operands
                                        (vector-ref all-operations op-idx*)
