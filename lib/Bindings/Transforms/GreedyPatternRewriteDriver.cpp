@@ -19,8 +19,8 @@ void registerTransformsGreedyPatternRewriteDriverBindings() {
       "mlir_transforms_greedy_pattern_rewrite_driver_apply",
       (void*)+[](uint64_t op_ptr, uint64_t patterns_ptr) -> ptr {
         if (!op_ptr) {
-          return scheme_error(
-              "mlir_transforms_greedy_pattern_rewrite_driver_apply", "null op");
+          return nullPointer(
+              "mlir_transforms_greedy_pattern_rewrite_driver_apply", "op");
         }
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto* patterns_box =

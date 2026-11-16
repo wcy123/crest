@@ -26,8 +26,7 @@
 ;;       (mlir::OpPassManager::addPass func-pm (shape-inference)))
 ;;     (mlir::PassManager::run! pm module-op))
 ;;
-;; Scheme is single-threaded: a context made from Scheme already has multithreading disabled; for
-;; crest-opt pass --mlir-disable-threading.
+;; A pass nested on func.func can run on several threads of MLIR at once: see "Threads" in docs/manual.md.
 ;;
 ;;===----------------------------------------------------------------------===;;
 

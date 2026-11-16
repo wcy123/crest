@@ -22,7 +22,7 @@
           current-Block
           with-current-Block)
   (import (rnrs)
-          (only (chezscheme) make-parameter parameterize)
+          (only (chezscheme) make-thread-parameter parameterize)
           (mlir IR Block ffi))
 
   ;; @brief mlir::Block::getArgument — return the idx-th block argument.
@@ -59,7 +59,7 @@
 
   ;; @brief current-Block — dynamic parameter holding the ambient mlir::Block* uptr.
   ;; Installed by with-current-Block; used by (:arg N) in begin-mlir-code.
-  (define current-Block (make-parameter #f))
+  (define current-Block (make-thread-parameter #f))
 
   ;; @brief with-current-Block — install block as current-Block for body forms.
   (define-syntax with-current-Block

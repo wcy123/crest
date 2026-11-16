@@ -25,8 +25,8 @@ void registerIRAffineMapBindings() {
       (void*)+[](uint64_t ctx_ptr, uint64_t num_dims) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::AffineMap::getMultiDimIdentityMap",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::AffineMap::getMultiDimIdentityMap",
+                             "context");
         }
         return Sunsigned64(
             reinterpret_cast<uint64_t>(mlir::AffineMap::getMultiDimIdentityMap(
@@ -40,8 +40,7 @@ void registerIRAffineMapBindings() {
       (void*)+[](uint64_t ctx_ptr, int64_t val) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::AffineMap::getConstantMap",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::AffineMap::getConstantMap", "context");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             mlir::AffineMap::getConstantMap(val, ctx).getAsOpaquePointer()));
@@ -56,8 +55,7 @@ void registerIRAffineMapBindings() {
                  ptr results) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::AffineMap::get",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::AffineMap::get", "context");
         }
         llvm::SmallVector<mlir::AffineExpr> exprs;
         for (ptr cur = results; cur != Snil; cur = Scdr(cur)) {

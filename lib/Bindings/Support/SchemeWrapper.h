@@ -12,6 +12,7 @@
 #ifndef CREST_BINDINGS_SCHEME_WRAPPER_H
 #define CREST_BINDINGS_SCHEME_WRAPPER_H
 #include "CrestObject.h"
+#include "SchemeThreads.h"
 #include "llvm/ADT/SmallVector.h"
 #include "mlir/IR/TypeRange.h"
 #include "mlir/IR/Value.h"
@@ -103,50 +104,33 @@ template <typename... Ts> inline ptr make_scheme_list(Ts&&... args) {
 // function is made for it with foreign-callable, by Scheme
 // (scheme/crest/callback.sls), and C++ keeps its address: Scheme decides how
 // long the function lives, and C++ never makes, owns or releases one.
+//
+// The thread is active for the call (SchemeThreadScope), also while the
+// arguments and the procedure are made. The answer is a Scheme object, and the
+// thread is inactive again when it is returned: a caller that is not a binding
+// that Scheme called reads it inside its own SchemeThreadScope.
 ptr convert_to_scheme_func(const char* fname); // defined in SchemeWrapper.cpp
 inline ptr convert_to_scheme_func(ptr f) { return f; }
 
 template <typename F> inline ptr scheme_call(F f) {
+  crest::SchemeThreadScope scheme;
   return Scall0(convert_to_scheme_func(f));
 }
 template <typename F, typename T1> inline ptr scheme_call(F f, const T1& a1) {
+  crest::SchemeThreadScope scheme;
   return Scall1(convert_to_scheme_func(f), Conversion<T1, ptr>{}(a1));
 }
 template <typename F, typename T1, typename T2>
 inline ptr scheme_call(F f, const T1& a1, const T2& a2) {
+  crest::SchemeThreadScope scheme;
   return Scall2(convert_to_scheme_func(f), Conversion<T1, ptr>{}(a1),
                 Conversion<T2, ptr>{}(a2));
 }
 template <typename F, typename T1, typename T2, typename T3>
 inline ptr scheme_call(F f, const T1& a1, const T2& a2, const T3& a3) {
+  crest::SchemeThreadScope scheme;
   return Scall3(convert_to_scheme_func(f), Conversion<T1, ptr>{}(a1),
                 Conversion<T2, ptr>{}(a2), Conversion<T3, ptr>{}(a3));
-}
-// N=4: fall back to (apply f args)
-template <typename F, typename T1, typename T2, typename T3, typename T4>
-inline ptr scheme_call(F f, const T1& a1, const T2& a2, const T3& a3,
-                       const T4& a4) {
-  ptr apply = Stop_level_value(Sstring_to_symbol("apply"));
-  return Scall2(apply, convert_to_scheme_func(f),
-                Scons(Conversion<T1, ptr>{}(a1),
-                      Scons(Conversion<T2, ptr>{}(a2),
-                            Scons(Conversion<T3, ptr>{}(a3),
-                                  Scons(Conversion<T4, ptr>{}(a4), Snil)))));
-}
-
-// N=5: the same
-template <typename F, typename T1, typename T2, typename T3, typename T4,
-          typename T5>
-inline ptr scheme_call(F f, const T1& a1, const T2& a2, const T3& a3,
-                       const T4& a4, const T5& a5) {
-  ptr apply = Stop_level_value(Sstring_to_symbol("apply"));
-  return Scall2(
-      apply, convert_to_scheme_func(f),
-      Scons(Conversion<T1, ptr>{}(a1),
-            Scons(Conversion<T2, ptr>{}(a2),
-                  Scons(Conversion<T3, ptr>{}(a3),
-                        Scons(Conversion<T4, ptr>{}(a4),
-                              Scons(Conversion<T5, ptr>{}(a5), Snil))))));
 }
 
 // ---------------------------------------------------------------------------
@@ -180,12 +164,15 @@ template <> inline ptr Conversion<short, ptr>::operator()(const short& v) {
 template <> inline ptr Conversion<int, ptr>::operator()(const int& v) {
   return Sfixnum(static_cast<long>(v));
 }
+// A fixnum has about 60 bits: a long, a long long and an unsigned long can be
+// bigger, so they cross as integers of 64 bits (Sinteger64, Sunsigned64), which
+// are fixnums when they fit and bignums when not.
 template <> inline ptr Conversion<long, ptr>::operator()(const long& v) {
-  return Sfixnum(v);
+  return Sinteger64(v);
 }
 template <>
 inline ptr Conversion<long long, ptr>::operator()(const long long& v) {
-  return Sfixnum(static_cast<long>(v));
+  return Sinteger64(v);
 }
 template <>
 inline ptr
@@ -198,7 +185,7 @@ inline ptr Conversion<unsigned int, ptr>::operator()(const unsigned int& v) {
 }
 template <>
 inline ptr Conversion<unsigned long, ptr>::operator()(const unsigned long& v) {
-  return Sfixnum(static_cast<long>(v));
+  return Sunsigned64(v);
 }
 template <>
 inline ptr
@@ -322,15 +309,31 @@ template <> struct Conversion<ptr, llvm::SmallVector<mlir::Value>> {
 // Conversion<ptr, const char*>: omitted -- Chez Scheme strings use 32-bit
 // chars internally; no stable char* can be returned.  Use std::string instead.
 
-// Conversion<ptr, std::string>: extract via Sstring_length + Sstring_ref.
-// Chez Scheme string_char is unsigned int; take the low byte for ASCII.
+// Conversion<ptr, std::string>: extract via Sstring_length + Sstring_ref, and
+// write each character (a code point; Chez Scheme chars are 32 bits) as UTF-8,
+// the encoding that scheme_string reads.
 template <>
 inline std::string Conversion<ptr, std::string>::operator()(const ptr& v) {
   iptr len = Sstring_length(v);
   std::string result;
   result.reserve(static_cast<std::size_t>(len));
   for (iptr i = 0; i < len; ++i) {
-    result += static_cast<char>(Sstring_ref(v, i) & 0xFF);
+    const unsigned long code = static_cast<unsigned long>(Sstring_ref(v, i));
+    if (code < 0x80) {
+      result += static_cast<char>(code);
+    } else if (code < 0x800) {
+      result += static_cast<char>(0xC0 | (code >> 6));
+      result += static_cast<char>(0x80 | (code & 0x3F));
+    } else if (code < 0x10000) {
+      result += static_cast<char>(0xE0 | (code >> 12));
+      result += static_cast<char>(0x80 | ((code >> 6) & 0x3F));
+      result += static_cast<char>(0x80 | (code & 0x3F));
+    } else {
+      result += static_cast<char>(0xF0 | (code >> 18));
+      result += static_cast<char>(0x80 | ((code >> 12) & 0x3F));
+      result += static_cast<char>(0x80 | ((code >> 6) & 0x3F));
+      result += static_cast<char>(0x80 | (code & 0x3F));
+    }
   }
   return result;
 }

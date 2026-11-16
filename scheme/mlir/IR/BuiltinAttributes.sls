@@ -39,7 +39,7 @@
     mlir::parseAttribute
     mlir::DenseResourceElementsAttr::get
     mlir::StringAttr::get
-    mlir::StringAttr::get/len
+    mlir::StringAttr::get<StringRef>
     mlir::TypeAttr::get
     mlir::TypeAttr::getValue
     mlir::AffineMapAttr::get
@@ -53,10 +53,8 @@
     mlir::isa<DenseElementsAttr>
     mlir::DenseElementsAttr
     mlir::DenseElementsAttr::isSplat
-    mlir::isa<FloatAttr.f32>
     mlir::IntegerAttr::getValue
     mlir::FloatAttr::getValueAsDouble
-    mlir::FloatAttr::getValueAsDouble.f32
     mlir::DenseI32ArrayAttr::asArrayRef
     mlir::DenseElementsAttr::getSplatValue<APFloat>
     mlir::DenseElementsAttr::getSplatValue<APInt>
@@ -83,10 +81,10 @@
   ;; ctx is optional; defaults to (current-MLIRContext).
   (define-ctx-optional mlir::StringAttr::get %mlir::StringAttr::get str)
 
-  ;; @brief mlir::StringAttr::get/len — construct a StringAttr with explicit byte count.
+  ;; @brief mlir::StringAttr::get<StringRef> — construct a StringAttr with explicit byte count.
   ;; Use when the string contains embedded NUL bytes (e.g. C format strings like "%f \0").
-  (define (mlir::StringAttr::get/len ctx str len)
-    (%mlir::StringAttr::get/len ctx str len))
+  (define (mlir::StringAttr::get<StringRef> ctx str len)
+    (%mlir::StringAttr::get<StringRef> ctx str len))
 
   ;; @brief mlir::TypeAttr::get — wrap a Type as a TypeAttr.
   (define (mlir::TypeAttr::get type)
@@ -245,13 +243,6 @@
   ;; @note         Wraps %mlir::DenseElementsAttr::isSplat
   (define (mlir::DenseElementsAttr::isSplat a) (not (zero? (%mlir::DenseElementsAttr::isSplat a))))
 
-  ;; @brief mlir::isa<FloatAttr> (f32 alias) — alias for mlir::isa<FloatAttr>, tests mlir::FloatAttr.
-  ;; @param a      mlir::Attribute opaque pointer uptr (0 treated as false)
-  ;; @return       boolean: #t if a is mlir::FloatAttr, #f otherwise
-  ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Wraps %mlir::isa<FloatAttr.f32> (which delegates to float_attr_isa in C++)
-  (define (mlir::isa<FloatAttr.f32> a)        (not (zero? (%mlir::isa<FloatAttr.f32> a))))
-
   ;; @brief mlir::IntegerAttr::getValue — extract the integer value of an IntegerAttr.
   ;; @param attr   mlir::IntegerAttr opaque pointer uptr; raises error if null or wrong type
   ;; @return       Scheme exact integer (sign-extended from APInt via getSExtValue)
@@ -265,13 +256,6 @@
   ;; @see          mlir/IR/BuiltinAttributes.h
   ;; @note         Direct alias for %mlir::FloatAttr::getValueAsDouble
   (define mlir::FloatAttr::getValueAsDouble          %mlir::FloatAttr::getValueAsDouble)
-
-  ;; @brief mlir::FloatAttr::getValueAsDouble (f32 alias) — alias for mlir::FloatAttr::getValueAsDouble.
-  ;; @param attr   mlir::FloatAttr opaque pointer uptr; raises error if null or wrong type
-  ;; @return       Scheme flonum (double precision via getValueAsDouble)
-  ;; @see          mlir/IR/BuiltinAttributes.h
-  ;; @note         Direct alias for %mlir::FloatAttr::getValueAsDouble.f32 (which delegates to float_attr_get_value)
-  (define mlir::FloatAttr::getValueAsDouble.f32      %mlir::FloatAttr::getValueAsDouble.f32)
 
   ;; @brief mlir::DenseI64ArrayAttr::asArrayRef — the elements of a DenseI64ArrayAttr, as a list.
   ;; @param attr   mlir::DenseI64ArrayAttr opaque pointer uptr; raises error if null or wrong type

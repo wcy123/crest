@@ -17,7 +17,7 @@ void registerIRTypeBindings() {
   Sregister_symbol(
       "mlir::Type::getContext", (void*)+[](uint64_t type_ptr) -> ptr {
         if (!type_ptr) {
-          return scheme_error("mlir::Type::getContext", "type pointer is null");
+          return nullPointer("mlir::Type::getContext", "type");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             mlir::Type::getFromOpaquePointer(

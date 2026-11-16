@@ -11,7 +11,7 @@
 ;;
 ;; Key responsibilities:
 ;; - Pattern match syntax structure and extract components
-;; - Create ast-pattern-expand, ast-match-expand, ast-operation-expand records (NOT datums)
+;; - Create ast-pattern-expand and ast-match-expand records (NOT datums)
 ;; - Handle optional clauses (attributes, types, regions, where)
 ;; - Parse debug flags (:debug-parse, :debug-analyze, etc.)
 ;; - Validate basic syntax structure (guards in syntax-case)

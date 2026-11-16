@@ -40,8 +40,7 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
       "mlir::LLVM::LLVMPointerType::get", (void*)+[](uint64_t ctx_ptr) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::LLVM::LLVMPointerType::get",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::LLVM::LLVMPointerType::get", "context");
         }
         auto t = mlir::LLVM::LLVMPointerType::get(ctx);
         return Sunsigned64(reinterpret_cast<uint64_t>(t.getAsOpaquePointer()));
@@ -67,9 +66,16 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
          uint64_t ftype_ptr) -> ptr {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
-        auto ftype = mlir::cast<mlir::LLVM::LLVMFunctionType>(
+        if (!ftype_ptr) {
+          return nullPointer("mlir::LLVM::LLVMFuncOp::create", "ftype");
+        }
+        auto ftype = mlir::dyn_cast_or_null<mlir::LLVM::LLVMFunctionType>(
             mlir::Type::getFromOpaquePointer(
                 reinterpret_cast<const void*>(ftype_ptr)));
+        if (!ftype) {
+          return scheme_error("mlir::LLVM::LLVMFuncOp::create",
+                              "the pointer is not a LLVMFunctionType");
+        }
         auto op = mlir::LLVM::LLVMFuncOp::create(builder, loc, name, ftype);
         return Sunsigned64(reinterpret_cast<uint64_t>(op.getOperation()));
       });
@@ -100,8 +106,15 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
   Sregister_symbol(
       "mlir::LLVM::GlobalOp::getType",
       (void*)+[](uint64_t global_op_ptr) -> ptr {
+        if (!global_op_ptr) {
+          return nullPointer("mlir::LLVM::GlobalOp::getType", "global op");
+        }
         auto* op = reinterpret_cast<mlir::Operation*>(global_op_ptr);
-        auto global = mlir::cast<mlir::LLVM::GlobalOp>(op);
+        auto global = mlir::dyn_cast_or_null<mlir::LLVM::GlobalOp>(op);
+        if (!global) {
+          return scheme_error("mlir::LLVM::GlobalOp::getType",
+                              "the pointer is not a GlobalOp");
+        }
         return Sunsigned64(
             reinterpret_cast<uint64_t>(global.getType().getAsOpaquePointer()));
       });
@@ -112,10 +125,17 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
       "mlir::LLVM::AddressOfOp::create",
       [](mlir::OpBuilder& builder, uint64_t loc_ptr,
          uint64_t global_op_ptr) -> ptr {
+        if (!global_op_ptr) {
+          return nullPointer("mlir::LLVM::AddressOfOp::create", "global op");
+        }
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto* op = reinterpret_cast<mlir::Operation*>(global_op_ptr);
-        auto global = mlir::cast<mlir::LLVM::GlobalOp>(op);
+        auto global = mlir::dyn_cast_or_null<mlir::LLVM::GlobalOp>(op);
+        if (!global) {
+          return scheme_error("mlir::LLVM::AddressOfOp::create",
+                              "the pointer is not a GlobalOp");
+        }
         auto addrOp = mlir::LLVM::AddressOfOp::create(builder, loc, global);
         return Sunsigned64(reinterpret_cast<uint64_t>(
             addrOp.getResult().getAsOpaquePointer()));
@@ -173,12 +193,26 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
          uint64_t callee_ptr, ptr operands_list) -> ptr {
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
-        auto ftype = mlir::cast<mlir::LLVM::LLVMFunctionType>(
+        if (!ftype_ptr) {
+          return nullPointer("mlir::LLVM::CallOp::create", "ftype");
+        }
+        auto ftype = mlir::dyn_cast_or_null<mlir::LLVM::LLVMFunctionType>(
             mlir::Type::getFromOpaquePointer(
                 reinterpret_cast<const void*>(ftype_ptr)));
-        auto callee = mlir::cast<mlir::FlatSymbolRefAttr>(
+        if (!ftype) {
+          return scheme_error("mlir::LLVM::CallOp::create",
+                              "the pointer is not a LLVMFunctionType");
+        }
+        if (!callee_ptr) {
+          return nullPointer("mlir::LLVM::CallOp::create", "callee");
+        }
+        auto callee = mlir::dyn_cast_or_null<mlir::FlatSymbolRefAttr>(
             mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<const void*>(callee_ptr)));
+        if (!callee) {
+          return scheme_error("mlir::LLVM::CallOp::create",
+                              "the pointer is not a FlatSymbolRefAttr");
+        }
         auto operands =
             convert_to_cpp<llvm::SmallVector<mlir::Value>>(operands_list);
         auto op =
@@ -191,25 +225,17 @@ void registerDialectLLVMIRIRLLVMOpsBindings() {
   Sregister_symbol(
       "mlir::ModuleOp::lookupSymbol",
       (void*)+[](uint64_t op_ptr, const char* name) -> ptr {
+        if (!op_ptr) {
+          return nullPointer("mlir::ModuleOp::lookupSymbol", "operation");
+        }
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
-        auto module = mlir::cast<mlir::ModuleOp>(op);
+        auto module = mlir::dyn_cast_or_null<mlir::ModuleOp>(op);
+        if (!module) {
+          return scheme_error("mlir::ModuleOp::lookupSymbol",
+                              "the pointer is not a ModuleOp");
+        }
         auto* sym = module.lookupSymbol(name);
         return Sunsigned64(reinterpret_cast<uint64_t>(sym));
-      });
-
-  // mlir::FlatSymbolRefAttr::get: create a flat symbol reference.
-  // (ctx-ptr name-str) → Attribute uptr
-  Sregister_symbol(
-      "mlir::FlatSymbolRefAttr::get",
-      (void*)+[](uint64_t ctx_ptr, const char* name) -> ptr {
-        auto* ctx = crest::as_context(ctx_ptr);
-        if (!ctx) {
-          return scheme_error("mlir::FlatSymbolRefAttr::get",
-                              "null MLIRContext pointer");
-        }
-        auto attr = mlir::FlatSymbolRefAttr::get(ctx, name);
-        return Sunsigned64(
-            reinterpret_cast<uint64_t>(attr.getAsOpaquePointer()));
       });
 }
 

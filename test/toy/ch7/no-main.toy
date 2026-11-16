@@ -1,0 +1,5 @@
+# A program without main: --emit=jit has nothing to call.
+def foo() {
+  var a = [1, 2, 3];
+  print(a);
+}

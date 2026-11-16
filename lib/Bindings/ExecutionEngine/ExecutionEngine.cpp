@@ -21,16 +21,23 @@ namespace crest {
 
 void registerExecutionEngineBindings() {
   // mlir::ExecutionEngine::create: JIT-compile an MLIR module.
-  // (module-ptr opt-level) → CrestBox<unique_ptr<ExecutionEngine>>* uptr, 0 on
-  // failure
+  // (module-ptr opt-level) → CrestBox<unique_ptr<ExecutionEngine>>* uptr, or
+  // the error of MLIR when the engine cannot be made
   // LEAK WARNING: the box is on the C++ heap and only the caller frees it. Use
   // with-ExecutionEngine, which frees it after its body; a box that is never
   // freed leaks.
   Sregister_symbol(
       "mlir::ExecutionEngine::create",
       (void*)+[](uint64_t module_ptr, int opt_level) -> ptr {
-        auto* op = reinterpret_cast<mlir::Operation*>(module_ptr);
-        auto module = mlir::cast<mlir::ModuleOp>(op);
+        if (!module_ptr) {
+          return nullPointer("mlir::ExecutionEngine::create", "module");
+        }
+        auto module = mlir::dyn_cast<mlir::ModuleOp>(
+            reinterpret_cast<mlir::Operation*>(module_ptr));
+        if (!module) {
+          return scheme_error("mlir::ExecutionEngine::create",
+                              "the operation is not a module");
+        }
         auto* ctx = module->getContext();
 
         llvm::InitializeNativeTarget();
@@ -46,8 +53,8 @@ void registerExecutionEngineBindings() {
         opts.transformer = transformer;
         auto maybeEngine = mlir::ExecutionEngine::create(module, opts);
         if (!maybeEngine) {
-          llvm::consumeError(maybeEngine.takeError());
-          return Sunsigned64(0);
+          return scheme_error("mlir::ExecutionEngine::create",
+                              llvm::toString(maybeEngine.takeError()));
         }
         // Store the unique_ptr inside
         // CrestBox<unique_ptr<ExecutionEngine>>.
@@ -57,7 +64,7 @@ void registerExecutionEngineBindings() {
       });
 
   // mlir::ExecutionEngine::invoke: call a named function in the JIT.
-  // (engine-ptr name-str) → int (0=success, nonzero=error)
+  // (engine-ptr name-str) → void, or the error of MLIR when the call fails
   Sregister_symbol(
       "mlir::ExecutionEngine::invoke",
       (void*)+[](uint64_t engine_ptr, const char* name) -> ptr {
@@ -71,12 +78,11 @@ void registerExecutionEngineBindings() {
               "CrestBox<std::unique_ptr<mlir::ExecutionEngine>>");
         }
         auto& engine_uptr = *engine_uptr_box;
-        auto result = engine_uptr->invokePacked(name);
-        if (result) {
-          llvm::consumeError(std::move(result));
-          return Sinteger64(-1);
+        if (auto result = engine_uptr->invokePacked(name)) {
+          return scheme_error("mlir::ExecutionEngine::invoke",
+                              llvm::toString(std::move(result)));
         }
-        return Sinteger64(0);
+        return Svoid;
       });
 }
 

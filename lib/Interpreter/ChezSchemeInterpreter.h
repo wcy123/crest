@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include "../Bindings/Support/SchemeThreads.h"
 #include "../Bindings/Support/SchemeWrapper.h"
 
 namespace mlir {

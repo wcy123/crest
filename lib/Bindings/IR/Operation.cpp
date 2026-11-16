@@ -65,8 +65,7 @@ void registerIROperationBindings() {
   Sregister_symbol(
       "mlir::Operation::getContext", (void*)+[](uint64_t op) -> ptr {
         if (!op) {
-          return scheme_error("mlir::Operation::getContext",
-                              "operation must not be null");
+          return nullPointer("mlir::Operation::getContext", "operation");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             reinterpret_cast<mlir::Operation*>(op)->getContext()));
@@ -74,8 +73,7 @@ void registerIROperationBindings() {
   Sregister_symbol(
       "mlir::Operation::getNumOperands", (void*)+[](uint64_t op) -> ptr {
         if (!op) {
-          return scheme_error("mlir::Operation::getNumOperands",
-                              "operation must not be null");
+          return nullPointer("mlir::Operation::getNumOperands", "operation");
         }
         return Sinteger64(
             reinterpret_cast<mlir::Operation*>(op)->getNumOperands());
@@ -83,8 +81,7 @@ void registerIROperationBindings() {
   Sregister_symbol(
       "mlir::Operation::getNumResults", (void*)+[](uint64_t op) -> ptr {
         if (!op) {
-          return scheme_error("mlir::Operation::getNumResults",
-                              "operation must not be null");
+          return nullPointer("mlir::Operation::getNumResults", "operation");
         }
         return Sinteger64(
             reinterpret_cast<mlir::Operation*>(op)->getNumResults());
@@ -93,8 +90,7 @@ void registerIROperationBindings() {
       "mlir::Operation::getOperand",
       (void*)+[](uint64_t op, int64_t index) -> ptr {
         if (!op) {
-          return scheme_error("mlir::Operation::getOperand",
-                              "operation must not be null");
+          return nullPointer("mlir::Operation::getOperand", "operation");
         }
         auto* cppOp = reinterpret_cast<mlir::Operation*>(op);
         if (index < 0 || index >= (int64_t)cppOp->getNumOperands()) {
@@ -112,8 +108,7 @@ void registerIROperationBindings() {
       "mlir::Operation::getOpOperand",
       (void*)+[](uint64_t op, int64_t index) -> ptr {
         if (!op) {
-          return scheme_error("mlir::Operation::getOpOperand",
-                              "operation must not be null");
+          return nullPointer("mlir::Operation::getOpOperand", "operation");
         }
         mlir::Operation* cppOp = reinterpret_cast<mlir::Operation*>(op);
         if (index < 0 || index >= (int64_t)cppOp->getNumOperands()) {
@@ -132,8 +127,7 @@ void registerIROperationBindings() {
       "mlir::Operation::getResult",
       (void*)+[](uint64_t op, int64_t index) -> ptr {
         if (!op) {
-          return scheme_error("mlir::Operation::getResult",
-                              "operation must not be null");
+          return nullPointer("mlir::Operation::getResult", "operation");
         }
         mlir::Operation* cppOp = reinterpret_cast<mlir::Operation*>(op);
         if (index < 0 || index >= (int64_t)cppOp->getNumResults()) {
@@ -151,8 +145,7 @@ void registerIROperationBindings() {
   Sregister_symbol(
       "mlir::Operation::getParentOp", (void*)+[](uint64_t op_ptr) -> ptr {
         if (!op_ptr) {
-          return scheme_error("mlir::Operation::getParentOp",
-                              "operation must not be null");
+          return nullPointer("mlir::Operation::getParentOp", "operation");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             reinterpret_cast<mlir::Operation*>(op_ptr)->getParentOp()));
@@ -161,8 +154,7 @@ void registerIROperationBindings() {
       "mlir::OpOperand::get",
       (void*)+[](uint64_t op_ptr, int64_t index) -> ptr {
         if (!op_ptr) {
-          return scheme_error("mlir::OpOperand::get",
-                              "operation must not be null");
+          return nullPointer("mlir::OpOperand::get", "operation");
         }
         mlir::Operation* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         if (index < 0 || index >= (int64_t)op->getNumOperands()) {
@@ -180,8 +172,7 @@ void registerIROperationBindings() {
       "mlir::OpResult::getOwner",
       (void*)+[](uint64_t op_ptr, int64_t index) -> ptr {
         if (!op_ptr) {
-          return scheme_error("mlir::OpResult::getOwner",
-                              "operation must not be null");
+          return nullPointer("mlir::OpResult::getOwner", "operation");
         }
         mlir::Operation* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         if (index < 0 || index >= (int64_t)op->getNumResults()) {
@@ -197,8 +188,7 @@ void registerIROperationBindings() {
   Sregister_symbol(
       "mlir::Operation::getLoc", (void*)+[](uint64_t op_ptr) -> ptr {
         if (!op_ptr) {
-          return scheme_error("mlir::Operation::getLoc",
-                              "operation must not be null");
+          return nullPointer("mlir::Operation::getLoc", "operation");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             const_cast<void*>(reinterpret_cast<mlir::Operation*>(op_ptr)
@@ -275,8 +265,7 @@ void registerIROperationBindings() {
       "mlir::Operation::hasAttr",
       (void*)+[](uint64_t op_ptr, const char* attr_name) -> ptr {
         if (!op_ptr) {
-          return scheme_error("mlir::Operation::hasAttr",
-                              "operation must not be null");
+          return nullPointer("mlir::Operation::hasAttr", "operation");
         }
         return Sinteger64(
             reinterpret_cast<mlir::Operation*>(op_ptr)->hasAttr(attr_name) ? 1
@@ -287,8 +276,7 @@ void registerIROperationBindings() {
   Sregister_symbol(
       "mlir::Operation::verify", (void*)+[](uint64_t op_ptr) -> ptr {
         if (!op_ptr) {
-          return scheme_error("mlir::Operation::verify",
-                              "operation must not be null");
+          return nullPointer("mlir::Operation::verify", "operation");
         }
         return Sinteger64(mlir::succeeded(mlir::verify(
                               reinterpret_cast<mlir::Operation*>(op_ptr)))
@@ -311,6 +299,9 @@ void registerIROperationBindings() {
   Sregister_symbol(
       "mlir::Operation::emitOpError",
       (void*)+[](uint64_t op_ptr, const char* msg) -> ptr {
+        if (!op_ptr) {
+          return nullPointer("mlir::Operation::emitOpError", "operation");
+        }
         reinterpret_cast<mlir::Operation*>(op_ptr)->emitOpError(msg);
         return Svoid;
       });
@@ -356,8 +347,7 @@ void registerIROperationBindings() {
   Sregister_symbol(
       "mlir::Operation::getAttrDictionary", (void*)+[](uint64_t op_ptr) -> ptr {
         if (!op_ptr) {
-          return scheme_error("mlir::Operation::getAttrDictionary",
-                              "null op pointer");
+          return nullPointer("mlir::Operation::getAttrDictionary", "op");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             reinterpret_cast<mlir::Operation*>(op_ptr)
@@ -368,10 +358,10 @@ void registerIROperationBindings() {
       "mlir::Operation::setAttrs",
       (void*)+[](uint64_t op_ptr, uint64_t dict_ptr) -> ptr {
         if (!op_ptr) {
-          return scheme_error("mlir::Operation::setAttrs", "null op pointer");
+          return nullPointer("mlir::Operation::setAttrs", "op");
         }
         if (!dict_ptr) {
-          return scheme_error("mlir::Operation::setAttrs", "null dict pointer");
+          return nullPointer("mlir::Operation::setAttrs", "dict");
         }
         reinterpret_cast<mlir::Operation*>(op_ptr)->setAttrs(
             mlir::DictionaryAttr::getFromOpaquePointer(
@@ -382,8 +372,7 @@ void registerIROperationBindings() {
       "mlir::Operation::getRegion",
       (void*)+[](uint64_t op_ptr, int region_idx) -> ptr {
         if (!op_ptr) {
-          return scheme_error("mlir::Operation::getRegion",
-                              "operation must not be null");
+          return nullPointer("mlir::Operation::getRegion", "operation");
         }
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         if (region_idx < 0 || region_idx >= (int)op->getNumRegions()) {
@@ -400,12 +389,10 @@ void registerIROperationBindings() {
       "mlir::Operation::getAttr",
       (void*)+[](uint64_t op_ptr, const char* name) -> ptr {
         if (!op_ptr) {
-          return scheme_error("mlir::Operation::getAttr",
-                              "operation must not be null");
+          return nullPointer("mlir::Operation::getAttr", "operation");
         }
         if (!name) {
-          return scheme_error("mlir::Operation::getAttr",
-                              "attribute name must not be null");
+          return nullPointer("mlir::Operation::getAttr", "attribute name");
         }
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto attr = op->getAttr(name);
@@ -436,8 +423,7 @@ void registerIROperationBindings() {
       "mlir::Operation::hasAttr?",
       (void*)+[](uint64_t op_ptr, const char* attr_name) -> ptr {
         if (!op_ptr) {
-          return scheme_error("mlir::Operation::hasAttr?",
-                              "operation must not be null");
+          return nullPointer("mlir::Operation::hasAttr?", "operation");
         }
         return Sinteger64(
             reinterpret_cast<mlir::Operation*>(op_ptr)->hasAttr(attr_name) ? 1
@@ -503,12 +489,19 @@ void registerIROperationBindings() {
   Sregister_symbol(
       "mlir::OperationName::getStringRef",
       (void*)+[](uint64_t op_name_ptr) -> ptr {
+        if (!op_name_ptr) {
+          return nullPointer("mlir::OperationName::getStringRef",
+                             "operation name");
+        }
         auto* name = reinterpret_cast<mlir::OperationName*>(op_name_ptr);
         return scheme_string(name->getStringRef().data());
       });
 
   Sregister_symbol(
       "mlir::Operation::getBlock", (void*)+[](uint64_t op_ptr) -> ptr {
+        if (!op_ptr) {
+          return nullPointer("mlir::Operation::getBlock", "operation");
+        }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             reinterpret_cast<mlir::Operation*>(op_ptr)->getBlock()));
       });
@@ -516,6 +509,9 @@ void registerIROperationBindings() {
   Sregister_symbol(
       "mlir::Operation::moveBefore",
       (void*)+[](uint64_t op_ptr, uint64_t other_ptr) -> ptr {
+        if (!op_ptr) {
+          return nullPointer("mlir::Operation::moveBefore", "operation");
+        }
         reinterpret_cast<mlir::Operation*>(op_ptr)->moveBefore(
             reinterpret_cast<mlir::Operation*>(other_ptr));
         return Svoid;
@@ -524,6 +520,9 @@ void registerIROperationBindings() {
   Sregister_symbol(
       "mlir::Operation::setOperands",
       (void*)+[](uint64_t op_ptr, uint64_t arr_ptr) -> ptr {
+        if (!op_ptr) {
+          return nullPointer("mlir::Operation::setOperands", "operation");
+        }
         auto* op = reinterpret_cast<mlir::Operation*>(op_ptr);
         auto* arr = reinterpret_cast<CArrayRef<uintptr_t>*>(arr_ptr);
         llvm::SmallVector<mlir::Value> values;

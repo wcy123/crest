@@ -22,8 +22,7 @@ void registerPassPassManagerBindings() {
   Sregister_symbol(
       "mlir::PassManager::new", (void*)+[](uint64_t ctx_ptr) -> ptr {
         if (!ctx_ptr) {
-          return scheme_error("mlir::PassManager::new",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::PassManager::new", "context");
         }
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
 
@@ -49,8 +48,7 @@ void registerPassPassManagerBindings() {
         }
         auto& pm = *pm_box;
         if (!pass_ptr) {
-          return scheme_error("mlir::PassManager::addPass",
-                              "null pass pointer");
+          return nullPointer("mlir::PassManager::addPass", "pass");
         }
         pm.addPass(std::unique_ptr<mlir::Pass>(
             reinterpret_cast<mlir::Pass*>(pass_ptr)));
@@ -69,6 +67,9 @@ void registerPassPassManagerBindings() {
               "null pointer or not a CrestBox<mlir::PassManager>");
         }
         auto& pm = *pm_box;
+        if (!module_ptr) {
+          return nullPointer("mlir::PassManager::run!", "module");
+        }
         auto* op = reinterpret_cast<mlir::Operation*>(module_ptr);
         return Sinteger64(mlir::succeeded(pm.run(op)) ? 1 : 0);
       });
@@ -93,6 +94,9 @@ void registerPassPassManagerBindings() {
   // Nest a PassManager on the given op name; returns raw OpPassManager* (not
   // owned). pm_ptr: CrestBox<mlir::PassManager>*, op_name: string →
   // OpPassManager* uptr
+  // LIFETIME WARNING: the OpPassManager that this returns belongs to `pm`. It
+  // is freed when `pm` is freed, which is when the with-PassManager that made
+  // `pm` ends. Do not use it after that.
   Sregister_symbol(
       "mlir::PassManager::nest",
       (void*)+[](uint64_t pm_ptr, const char* op_name) -> ptr {
@@ -113,9 +117,11 @@ void registerPassPassManagerBindings() {
       "mlir::OpPassManager::addPass",
       (void*)+[](uint64_t nested_pm_ptr, uint64_t pass_ptr) -> ptr {
         auto* nested = reinterpret_cast<mlir::OpPassManager*>(nested_pm_ptr);
+        if (!nested) {
+          return nullPointer("mlir::OpPassManager::addPass", "pass manager");
+        }
         if (!pass_ptr) {
-          return scheme_error("mlir::OpPassManager::addPass",
-                              "null pass pointer");
+          return nullPointer("mlir::OpPassManager::addPass", "pass");
         }
         nested->addPass(std::unique_ptr<mlir::Pass>(
             reinterpret_cast<mlir::Pass*>(pass_ptr)));

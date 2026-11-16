@@ -17,8 +17,7 @@
           mlir::LLVM::GEPOp::create
           mlir::LLVM::ConstantOp::create<i64>
           mlir::LLVM::CallOp::create
-          mlir::ModuleOp::lookupSymbol
-          mlir::FlatSymbolRefAttr::get)
+          mlir::ModuleOp::lookupSymbol)
   (import (rnrs)
           (mlir Dialect LLVMIR IR LLVMOps ffi))
 
@@ -33,6 +32,5 @@
   (define mlir::LLVM::ConstantOp::create<i64> %mlir::LLVM::ConstantOp::create<i64>)
   (define mlir::LLVM::CallOp::create          %mlir::LLVM::CallOp::create)
   (define mlir::ModuleOp::lookupSymbol        %mlir::ModuleOp::lookupSymbol)
-  (define mlir::FlatSymbolRefAttr::get        %mlir::FlatSymbolRefAttr::get)
 
   ) ;; end library (mlir Dialect LLVMIR IR LLVMOps)

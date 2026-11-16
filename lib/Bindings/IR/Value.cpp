@@ -16,8 +16,7 @@ void registerIRValueBindings() {
   Sregister_symbol(
       "mlir::Value::getDefiningOp", (void*)+[](uint64_t value) -> ptr {
         if (!value) {
-          return scheme_error("mlir::Value::getDefiningOp",
-                              "value pointer is null");
+          return nullPointer("mlir::Value::getDefiningOp", "value");
         }
         auto val = mlir::Value::getFromOpaquePointer(
             reinterpret_cast<const void*>(value));
@@ -26,7 +25,7 @@ void registerIRValueBindings() {
   Sregister_symbol(
       "mlir::Value::getUses", (void*)+[](uint64_t val_ptr) -> ptr {
         if (!val_ptr) {
-          return scheme_error("mlir::Value::getUses", "value pointer is null");
+          return nullPointer("mlir::Value::getUses", "value");
         }
         auto val = mlir::Value::getFromOpaquePointer(
             reinterpret_cast<const void*>(val_ptr));
@@ -36,7 +35,7 @@ void registerIRValueBindings() {
   Sregister_symbol(
       "mlir::Value::getType", (void*)+[](uint64_t value_ptr) -> ptr {
         if (!value_ptr) {
-          return scheme_error("mlir::Value::getType", "value pointer is null");
+          return nullPointer("mlir::Value::getType", "value");
         }
         auto val = mlir::Value::getFromOpaquePointer(
             reinterpret_cast<const void*>(value_ptr));
@@ -53,7 +52,7 @@ void registerIRValueBindings() {
       "mlir::Value::setType",
       (void*)+[](uint64_t value_ptr, uint64_t type_ptr) -> ptr {
         if (!value_ptr) {
-          return scheme_error("mlir::Value::setType", "value pointer is null");
+          return nullPointer("mlir::Value::setType", "value");
         }
         auto val = mlir::Value::getFromOpaquePointer(
             reinterpret_cast<const void*>(value_ptr));
@@ -67,8 +66,7 @@ void registerIRValueBindings() {
       "mlir::Value::replaceAllUsesWith",
       (void*)+[](uint64_t value_ptr, uint64_t replacement_ptr) -> ptr {
         if (!value_ptr) {
-          return scheme_error("mlir::Value::replaceAllUsesWith",
-                              "value pointer is null");
+          return nullPointer("mlir::Value::replaceAllUsesWith", "value");
         }
         auto val = mlir::Value::getFromOpaquePointer(
             reinterpret_cast<const void*>(value_ptr));
@@ -98,8 +96,7 @@ void registerIROpResultBindings() {
   Sregister_symbol(
       "mlir::OpResult::getResultNumber", (void*)+[](uint64_t value) -> ptr {
         if (!value) {
-          return scheme_error("mlir::OpResult::getResultNumber",
-                              "value must not be null");
+          return nullPointer("mlir::OpResult::getResultNumber", "value");
         }
         auto val = mlir::Value::getFromOpaquePointer(
             reinterpret_cast<const void*>(value));

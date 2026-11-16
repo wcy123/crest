@@ -19,8 +19,7 @@ void registerDialectShapeBindings() {
   Sregister_symbol(
       "mlir::shape::ShapeType::get", (void*)+[](uint64_t ctx_ptr) -> ptr {
         if (!ctx_ptr) {
-          return scheme_error("mlir::shape::ShapeType::get",
-                              "ctx must not be null");
+          return nullPointer("mlir::shape::ShapeType::get", "context");
         }
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
 
@@ -32,8 +31,7 @@ void registerDialectShapeBindings() {
   Sregister_symbol(
       "mlir::shape::SizeType::get", (void*)+[](uint64_t ctx_ptr) -> ptr {
         if (!ctx_ptr) {
-          return scheme_error("mlir::shape::SizeType::get",
-                              "ctx must not be null");
+          return nullPointer("mlir::shape::SizeType::get", "context");
         }
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
 
@@ -45,8 +43,7 @@ void registerDialectShapeBindings() {
   Sregister_symbol(
       "mlir::shape::WitnessType::get", (void*)+[](uint64_t ctx_ptr) -> ptr {
         if (!ctx_ptr) {
-          return scheme_error("mlir::shape::WitnessType::get",
-                              "ctx must not be null");
+          return nullPointer("mlir::shape::WitnessType::get", "context");
         }
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
 

@@ -44,6 +44,7 @@ inline void setCurrentContext(ChezSchemeInterpreter& interpreter,
 inline void clearCurrentContext(ChezSchemeInterpreter& interpreter,
                                 mlir::MLIRContext* context) {
   importCurrentContextLibrary(interpreter);
+  SchemeThreadScope scheme; // reads the answer
   ptr current = scheme_call("current-MLIRContext");
   if (current != Sfalse &&
       Sunsigned64_value(current) == reinterpret_cast<uint64_t>(context)) {
@@ -57,6 +58,7 @@ public:
   CurrentContextScope(ChezSchemeInterpreter& interpreter,
                       mlir::MLIRContext* context) {
     importCurrentContextLibrary(interpreter);
+    SchemeThreadScope scheme; // reads the answer
     ptr old = scheme_call("current-MLIRContext");
     hadOld_ = old != Sfalse;
     if (hadOld_) {

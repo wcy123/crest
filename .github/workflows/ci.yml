@@ -44,6 +44,11 @@ jobs:
             clang-${{ matrix.llvm }} llvm-${{ matrix.llvm }}-dev \
             libmlir-${{ matrix.llvm }}-dev mlir-${{ matrix.llvm }}-tools
 
+      # The packages of apt.llvm.org are a branch that moves (llvm-toolchain-jammy-N): a point release can change under
+      # a build, so the log says which one this run used.
+      - name: Report the LLVM version
+        run: llvm-config-${{ matrix.llvm }} --version
+
       # ── System packages (ChezScheme build deps) ─────────────────────────────
       - name: Install system dependencies
         run: |

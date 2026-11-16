@@ -27,8 +27,7 @@ void registerIRBuiltinAttributesBindings() {
       (void*)+[](uint64_t ctx_ptr, ptr value) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::IntegerAttr::get<i64>",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::IntegerAttr::get<i64>", "context");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             mlir::IntegerAttr::get(mlir::IntegerType::get(ctx, 64),
@@ -41,8 +40,7 @@ void registerIRBuiltinAttributesBindings() {
       (void*)+[](uint64_t ctx_ptr, ptr value) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::IntegerAttr::get<i8>",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::IntegerAttr::get<i8>", "context");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             mlir::IntegerAttr::get(mlir::IntegerType::get(ctx, 8),
@@ -55,8 +53,7 @@ void registerIRBuiltinAttributesBindings() {
       (void*)+[](uint64_t ctx_ptr, ptr value) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::IntegerAttr::get<i16>",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::IntegerAttr::get<i16>", "context");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             mlir::IntegerAttr::get(mlir::IntegerType::get(ctx, 16),
@@ -69,8 +66,7 @@ void registerIRBuiltinAttributesBindings() {
       (void*)+[](uint64_t ctx_ptr, ptr value) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::IntegerAttr::get<i32>",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::IntegerAttr::get<i32>", "context");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             mlir::IntegerAttr::get(mlir::IntegerType::get(ctx, 32),
@@ -83,8 +79,7 @@ void registerIRBuiltinAttributesBindings() {
       (void*)+[](uint64_t ctx_ptr, ptr value) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::IntegerAttr::get<index>",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::IntegerAttr::get<index>", "context");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             mlir::IntegerAttr::get(mlir::IndexType::get(ctx),
@@ -97,8 +92,7 @@ void registerIRBuiltinAttributesBindings() {
       (void*)+[](uint64_t ctx_ptr, ptr value) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::FloatAttr::get<f32>",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::FloatAttr::get<f32>", "context");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             mlir::FloatAttr::get(mlir::Float32Type::get(ctx),
@@ -111,8 +105,7 @@ void registerIRBuiltinAttributesBindings() {
       (void*)+[](uint64_t ctx_ptr, ptr value) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::DenseI32ArrayAttr::get",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::DenseI32ArrayAttr::get", "context");
         }
         llvm::SmallVector<int32_t> vec;
         if (Svectorp(value)) {
@@ -138,8 +131,7 @@ void registerIRBuiltinAttributesBindings() {
       (void*)+[](uint64_t ctx_ptr, ptr value) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::DenseI64ArrayAttr::get",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::DenseI64ArrayAttr::get", "context");
         }
         llvm::SmallVector<int64_t> vec;
         if (Svectorp(value)) {
@@ -166,8 +158,7 @@ void registerIRBuiltinAttributesBindings() {
       (void*)+[](uint64_t ctx_ptr, ptr value) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::DenseI8ArrayAttr::get",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::DenseI8ArrayAttr::get", "context");
         }
         llvm::SmallVector<int8_t> vec;
         for (int64_t v : convert_to_cpp<llvm::SmallVector<int64_t>>(value)) {
@@ -182,8 +173,7 @@ void registerIRBuiltinAttributesBindings() {
       (void*)+[](uint64_t ctx_ptr, ptr value) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::DenseI16ArrayAttr::get",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::DenseI16ArrayAttr::get", "context");
         }
         llvm::SmallVector<int16_t> vec;
         for (int64_t v : convert_to_cpp<llvm::SmallVector<int64_t>>(value)) {
@@ -198,8 +188,7 @@ void registerIRBuiltinAttributesBindings() {
       (void*)+[](uint64_t ctx_ptr, const char* spec) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::parseAttribute",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::parseAttribute", "context");
         }
         mlir::Attribute attr = mlir::parseAttribute(spec, ctx);
         if (!attr) {
@@ -245,8 +234,7 @@ void registerIRBuiltinAttributesBindings() {
       "mlir::UnitAttr::get", (void*)+[](uint64_t ctx_ptr) -> ptr {
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
         if (!crest_lookup1) {
-          return scheme_error("mlir::UnitAttr::get",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::UnitAttr::get", "context");
         }
 
         return Sunsigned64(reinterpret_cast<uint64_t>(
@@ -276,20 +264,18 @@ void registerIRBuiltinAttributesBindings() {
       (void*)+[](uint64_t ctx_ptr, const char* str) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::StringAttr::get",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::StringAttr::get", "context");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             mlir::StringAttr::get(ctx, str).getAsOpaquePointer()));
       });
   // Variant with explicit length — required when the string contains NUL bytes.
   Sregister_symbol(
-      "mlir::StringAttr::get/len",
+      "mlir::StringAttr::get<StringRef>",
       (void*)+[](uint64_t ctx_ptr, const char* str, uint64_t len) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::StringAttr::get/len",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::StringAttr::get<StringRef>", "context");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             mlir::StringAttr::get(ctx, llvm::StringRef(str, len))
@@ -299,9 +285,16 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::DenseElementsAttr::get<f64>",
       (void*)+[](uint64_t type_ptr, ptr values) -> ptr {
+        if (!type_ptr) {
+          return nullPointer("mlir::DenseElementsAttr::get<f64>", "type");
+        }
         auto type = mlir::Type::getFromOpaquePointer(
             reinterpret_cast<const void*>(type_ptr));
-        auto tensorType = mlir::cast<mlir::ShapedType>(type);
+        auto tensorType = mlir::dyn_cast_or_null<mlir::ShapedType>(type);
+        if (!tensorType) {
+          return scheme_error("mlir::DenseElementsAttr::get<f64>",
+                              "the pointer is not a ShapedType");
+        }
         llvm::SmallVector<double> vals;
         for (ptr cur = values; cur != Snil; cur = Scdr(cur)) {
           ptr v = Scar(cur);
@@ -327,9 +320,16 @@ void registerIRBuiltinAttributesBindings() {
 
   Sregister_symbol(
       "mlir::TypeAttr::getValue", (void*)+[](uint64_t attr_ptr) -> ptr {
-        auto ta =
-            mlir::cast<mlir::TypeAttr>(mlir::Attribute::getFromOpaquePointer(
+        if (!attr_ptr) {
+          return nullPointer("mlir::TypeAttr::getValue", "attr");
+        }
+        auto ta = mlir::dyn_cast_or_null<mlir::TypeAttr>(
+            mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<const void*>(attr_ptr)));
+        if (!ta) {
+          return scheme_error("mlir::TypeAttr::getValue",
+                              "the pointer is not a TypeAttr");
+        }
         return Sunsigned64(
             reinterpret_cast<uint64_t>(ta.getValue().getAsOpaquePointer()));
       });
@@ -345,9 +345,16 @@ void registerIRBuiltinAttributesBindings() {
 
   Sregister_symbol(
       "mlir::AffineMapAttr::getValue", (void*)+[](uint64_t attr_ptr) -> ptr {
-        auto ama = mlir::cast<mlir::AffineMapAttr>(
+        if (!attr_ptr) {
+          return nullPointer("mlir::AffineMapAttr::getValue", "attr");
+        }
+        auto ama = mlir::dyn_cast_or_null<mlir::AffineMapAttr>(
             mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<const void*>(attr_ptr)));
+        if (!ama) {
+          return scheme_error("mlir::AffineMapAttr::getValue",
+                              "the pointer is not a AffineMapAttr");
+        }
         return Sunsigned64(
             reinterpret_cast<uint64_t>(ama.getValue().getAsOpaquePointer()));
       });
@@ -390,21 +397,10 @@ void registerIRBuiltinAttributesBindings() {
         return Sinteger64((dense && dense.isSplat()) ? 1 : 0);
       });
 
-  // mlir::isa<FloatAttr>.f32 is the same check as mlir::isa<FloatAttr>.
-  Sregister_symbol(
-      "mlir::isa<FloatAttr>.f32", (void*)+[](uint64_t p) -> ptr {
-        return Sinteger64((p && mlir::isa<mlir::FloatAttr>(
-                                    mlir::Attribute::getFromOpaquePointer(
-                                        reinterpret_cast<const void*>(p))))
-                              ? 1
-                              : 0);
-      });
-
   Sregister_symbol(
       "mlir::IntegerAttr::getValue", (void*)+[](uint64_t p) -> ptr {
         if (!p) {
-          return scheme_error("mlir::IntegerAttr::getValue",
-                              "null attribute pointer");
+          return nullPointer("mlir::IntegerAttr::getValue", "attribute");
         }
         auto iattr = mlir::dyn_cast<mlir::IntegerAttr>(
             mlir::Attribute::getFromOpaquePointer(
@@ -419,31 +415,13 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::FloatAttr::getValueAsDouble", (void*)+[](uint64_t p) -> ptr {
         if (!p) {
-          return scheme_error("mlir::FloatAttr::getValueAsDouble",
-                              "null attribute pointer");
+          return nullPointer("mlir::FloatAttr::getValueAsDouble", "attribute");
         }
         auto fattr = mlir::dyn_cast<mlir::FloatAttr>(
             mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<const void*>(p)));
         if (!fattr) {
           return scheme_error("mlir::FloatAttr::getValueAsDouble",
-                              "attribute is not a FloatAttr");
-        }
-        return Sflonum(fattr.getValueAsDouble());
-      });
-
-  // getValueAsDouble.f32 is identical to getValueAsDouble.
-  Sregister_symbol(
-      "mlir::FloatAttr::getValueAsDouble.f32", (void*)+[](uint64_t p) -> ptr {
-        if (!p) {
-          return scheme_error("mlir::FloatAttr::getValueAsDouble.f32",
-                              "null attribute pointer");
-        }
-        auto fattr = mlir::dyn_cast<mlir::FloatAttr>(
-            mlir::Attribute::getFromOpaquePointer(
-                reinterpret_cast<const void*>(p)));
-        if (!fattr) {
-          return scheme_error("mlir::FloatAttr::getValueAsDouble.f32",
                               "attribute is not a FloatAttr");
         }
         return Sflonum(fattr.getValueAsDouble());
@@ -456,8 +434,8 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::DenseI64ArrayAttr::asArrayRef", (void*)+[](uint64_t p) -> ptr {
         if (!p) {
-          return scheme_error("mlir::DenseI64ArrayAttr::asArrayRef",
-                              "null attribute pointer");
+          return nullPointer("mlir::DenseI64ArrayAttr::asArrayRef",
+                             "attribute");
         }
         auto arr = mlir::dyn_cast<mlir::DenseI64ArrayAttr>(
             mlir::Attribute::getFromOpaquePointer(
@@ -479,8 +457,8 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::DenseI32ArrayAttr::asArrayRef", (void*)+[](uint64_t p) -> ptr {
         if (!p) {
-          return scheme_error("mlir::DenseI32ArrayAttr::asArrayRef",
-                              "null attribute pointer");
+          return nullPointer("mlir::DenseI32ArrayAttr::asArrayRef",
+                             "attribute");
         }
         auto arr = mlir::dyn_cast<mlir::DenseI32ArrayAttr>(
             mlir::Attribute::getFromOpaquePointer(
@@ -501,8 +479,8 @@ void registerIRBuiltinAttributesBindings() {
       "mlir::DenseElementsAttr::getSplatValue<APFloat>",
       (void*)+[](uint64_t p) -> ptr {
         if (!p) {
-          return scheme_error("mlir::DenseElementsAttr::getSplatValue<APFloat>",
-                              "null pointer");
+          return nullPointer("mlir::DenseElementsAttr::getSplatValue<APFloat>",
+                             "attribute");
         }
         auto d = mlir::dyn_cast<mlir::DenseFPElementsAttr>(
             mlir::Attribute::getFromOpaquePointer(
@@ -522,8 +500,8 @@ void registerIRBuiltinAttributesBindings() {
       "mlir::DenseElementsAttr::getSplatValue<APInt>",
       (void*)+[](uint64_t p) -> ptr {
         if (!p) {
-          return scheme_error("mlir::DenseElementsAttr::getSplatValue<APInt>",
-                              "null pointer");
+          return nullPointer("mlir::DenseElementsAttr::getSplatValue<APInt>",
+                             "attribute");
         }
         auto d = mlir::dyn_cast<mlir::DenseIntElementsAttr>(
             mlir::Attribute::getFromOpaquePointer(
@@ -542,8 +520,7 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::DenseI32ArrayAttr::toVector", (void*)+[](uint64_t p) -> ptr {
         if (!p) {
-          return scheme_error("mlir::DenseI32ArrayAttr::toVector",
-                              "null attribute pointer");
+          return nullPointer("mlir::DenseI32ArrayAttr::toVector", "attribute");
         }
         auto arr = mlir::dyn_cast<mlir::DenseI32ArrayAttr>(
             mlir::Attribute::getFromOpaquePointer(
@@ -563,8 +540,7 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::DenseI64ArrayAttr::toVector", (void*)+[](uint64_t p) -> ptr {
         if (!p) {
-          return scheme_error("mlir::DenseI64ArrayAttr::toVector",
-                              "null attribute pointer");
+          return nullPointer("mlir::DenseI64ArrayAttr::toVector", "attribute");
         }
         auto arr = mlir::dyn_cast<mlir::DenseI64ArrayAttr>(
             mlir::Attribute::getFromOpaquePointer(
@@ -583,9 +559,16 @@ void registerIRBuiltinAttributesBindings() {
 
   Sregister_symbol(
       "mlir::DenseElementsAttr::getType", (void*)+[](uint64_t attr_ptr) -> ptr {
-        auto attr = mlir::cast<mlir::DenseElementsAttr>(
+        if (!attr_ptr) {
+          return nullPointer("mlir::DenseElementsAttr::getType", "attr");
+        }
+        auto attr = mlir::dyn_cast_or_null<mlir::DenseElementsAttr>(
             mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<void*>(attr_ptr)));
+        if (!attr) {
+          return scheme_error("mlir::DenseElementsAttr::getType",
+                              "the pointer is not a DenseElementsAttr");
+        }
         return Sunsigned64(
             reinterpret_cast<uint64_t>(attr.getType().getAsOpaquePointer()));
       });
@@ -593,12 +576,26 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::DenseElementsAttr::reshape",
       (void*)+[](uint64_t attr_ptr, uint64_t type_ptr) -> ptr {
-        auto attr = mlir::cast<mlir::DenseElementsAttr>(
+        if (!attr_ptr) {
+          return nullPointer("mlir::DenseElementsAttr::reshape", "attr");
+        }
+        auto attr = mlir::dyn_cast_or_null<mlir::DenseElementsAttr>(
             mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<void*>(attr_ptr)));
-        auto shaped =
-            mlir::cast<mlir::ShapedType>(mlir::Type::getFromOpaquePointer(
+        if (!attr) {
+          return scheme_error("mlir::DenseElementsAttr::reshape",
+                              "the pointer is not a DenseElementsAttr");
+        }
+        if (!type_ptr) {
+          return nullPointer("mlir::DenseElementsAttr::reshape", "type");
+        }
+        auto shaped = mlir::dyn_cast_or_null<mlir::ShapedType>(
+            mlir::Type::getFromOpaquePointer(
                 reinterpret_cast<void*>(type_ptr)));
+        if (!shaped) {
+          return scheme_error("mlir::DenseElementsAttr::reshape",
+                              "the pointer is not a ShapedType");
+        }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             attr.reshape(shaped).getAsOpaquePointer()));
       });
@@ -608,8 +605,7 @@ void registerIRBuiltinAttributesBindings() {
       (void*)+[](uint64_t ctx_ptr, double val) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::FloatAttr::get<f64>",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::FloatAttr::get<f64>", "context");
         }
         auto attr = mlir::FloatAttr::get(mlir::Float64Type::get(ctx), val);
         return Sunsigned64(
@@ -619,9 +615,16 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::DenseElementsAttr::getNumElements",
       (void*)+[](uint64_t attr_ptr) -> ptr {
-        auto attr = mlir::cast<mlir::DenseElementsAttr>(
+        if (!attr_ptr) {
+          return nullPointer("mlir::DenseElementsAttr::getNumElements", "attr");
+        }
+        auto attr = mlir::dyn_cast_or_null<mlir::DenseElementsAttr>(
             mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<void*>(attr_ptr)));
+        if (!attr) {
+          return scheme_error("mlir::DenseElementsAttr::getNumElements",
+                              "the pointer is not a DenseElementsAttr");
+        }
         return Sunsigned64(static_cast<uint64_t>(attr.getNumElements()));
       });
 
@@ -629,9 +632,17 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::DenseElementsAttr::getValueAt<f64>",
       (void*)+[](uint64_t attr_ptr, uint64_t idx) -> ptr {
-        auto attr = mlir::cast<mlir::DenseElementsAttr>(
+        if (!attr_ptr) {
+          return nullPointer("mlir::DenseElementsAttr::getValueAt<f64>",
+                             "attr");
+        }
+        auto attr = mlir::dyn_cast_or_null<mlir::DenseElementsAttr>(
             mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<void*>(attr_ptr)));
+        if (!attr) {
+          return scheme_error("mlir::DenseElementsAttr::getValueAt<f64>",
+                              "the pointer is not a DenseElementsAttr");
+        }
         auto it = attr.value_begin<mlir::FloatAttr>();
         std::advance(it, static_cast<ptrdiff_t>(idx));
         mlir::FloatAttr fa = *it;
@@ -645,8 +656,7 @@ void registerIRBuiltinAttributesBindings() {
       (void*)+[](uint64_t ctx_ptr, ptr attr_list) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::ArrayAttr::get",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::ArrayAttr::get", "context");
         }
         llvm::SmallVector<mlir::Attribute> attrs;
         for (ptr p = attr_list; p != Snil; p = Scdr(p)) {
@@ -662,9 +672,16 @@ void registerIRBuiltinAttributesBindings() {
   Sregister_symbol(
       "mlir::ArrayAttr::getElement",
       (void*)+[](uint64_t attr_ptr, uint64_t idx) -> ptr {
+        if (!attr_ptr) {
+          return nullPointer("mlir::ArrayAttr::getElement", "attr");
+        }
         auto attr = mlir::Attribute::getFromOpaquePointer(
             reinterpret_cast<const void*>(attr_ptr));
-        auto arr = mlir::cast<mlir::ArrayAttr>(attr);
+        auto arr = mlir::dyn_cast_or_null<mlir::ArrayAttr>(attr);
+        if (!arr) {
+          return scheme_error("mlir::ArrayAttr::getElement",
+                              "the pointer is not a ArrayAttr");
+        }
         if (idx >= arr.size()) {
           return Sunsigned64(0);
         }
@@ -678,8 +695,7 @@ void registerIRBuiltinAttributesBindings() {
       (void*)+[](uint64_t ctx_ptr, const char* name) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::FlatSymbolRefAttr::get",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::FlatSymbolRefAttr::get", "context");
         }
         return Sunsigned64(reinterpret_cast<uint64_t>(
             mlir::FlatSymbolRefAttr::get(ctx, name).getAsOpaquePointer()));

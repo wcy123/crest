@@ -25,8 +25,9 @@ void registerIRMLIRContextBindings() {
   // this directly and never freed leaks.
   Sregister_symbol(
       "mlir::MLIRContext::new", (void*)+[]() -> ptr {
-        // Scheme callbacks (verifiers, folders, patterns) cannot run on MLIR's
-        // worker threads, so a context made from Scheme is single-threaded.
+        // A context made from Scheme starts single-threaded: the thread that
+        // runs Scheme waits inside MLIR for its worker threads while it is
+        // active, which blocks every garbage collection (SchemeThreads.h).
         auto* box = new CrestBox<mlir::MLIRContext>();
         box->inner().disableMultithreading();
         return Sunsigned64(reinterpret_cast<uint64_t>(box));
@@ -36,13 +37,13 @@ void registerIRMLIRContextBindings() {
   /// CrestBox<mlir::MLIRContext>*
   // LEAK WARNING: as for mlir::MLIRContext::new: use with-MLIRContext.
   Sregister_symbol(
-      "mlir::MLIRContext::new/registry",
+      "mlir::MLIRContext::new<DialectRegistry>",
       (void*)+[](uint64_t registry_ptr) -> ptr {
         auto* registry_box =
             crest::CrestBox<mlir::DialectRegistry>::inner(registry_ptr);
         if (!registry_box) {
           return scheme_error(
-              "mlir::MLIRContext::new/registry",
+              "mlir::MLIRContext::new<DialectRegistry>",
               "null pointer or not a CrestBox<mlir::DialectRegistry>");
         }
         auto& registry = *registry_box;
@@ -56,8 +57,8 @@ void registerIRMLIRContextBindings() {
       (void*)+[](uint64_t ctx_ptr, int allow) -> ptr {
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
         if (!crest_lookup1) {
-          return scheme_error("mlir::MLIRContext::allowUnregisteredDialects",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::MLIRContext::allowUnregisteredDialects",
+                             "context");
         }
 
         crest_lookup1->allowUnregisteredDialects(allow != 0);
@@ -68,8 +69,8 @@ void registerIRMLIRContextBindings() {
       (void*)+[](uint64_t ctx_ptr) -> ptr {
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
         if (!crest_lookup1) {
-          return scheme_error("mlir::MLIRContext::allowsUnregisteredDialects",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::MLIRContext::allowsUnregisteredDialects",
+                             "context");
         }
 
         return Sinteger64(crest_lookup1->allowsUnregisteredDialects() ? 1 : 0);
@@ -79,8 +80,8 @@ void registerIRMLIRContextBindings() {
       (void*)+[](uint64_t ctx_ptr, int enable) -> ptr {
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
         if (!crest_lookup1) {
-          return scheme_error("mlir::MLIRContext::enableMultithreading",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::MLIRContext::enableMultithreading",
+                             "context");
         }
 
         crest_lookup1->enableMultithreading(enable != 0);
@@ -91,8 +92,8 @@ void registerIRMLIRContextBindings() {
       (void*)+[](uint64_t ctx_ptr, int disable) -> ptr {
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
         if (!crest_lookup1) {
-          return scheme_error("mlir::MLIRContext::disableMultithreading",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::MLIRContext::disableMultithreading",
+                             "context");
         }
 
         crest_lookup1->disableMultithreading(disable != 0);
@@ -103,8 +104,8 @@ void registerIRMLIRContextBindings() {
       (void*)+[](uint64_t ctx_ptr) -> ptr {
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
         if (!crest_lookup1) {
-          return scheme_error("mlir::MLIRContext::isMultithreadingEnabled",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::MLIRContext::isMultithreadingEnabled",
+                             "context");
         }
 
         return Sinteger64(crest_lookup1->isMultithreadingEnabled() ? 1 : 0);
@@ -114,8 +115,7 @@ void registerIRMLIRContextBindings() {
       (void*)+[](uint64_t ctx_ptr, const char* ns) -> ptr {
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
         if (!crest_lookup1) {
-          return scheme_error("mlir::MLIRContext::getOrLoadDialect",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::MLIRContext::getOrLoadDialect", "context");
         }
 
         return Sunsigned64(
@@ -126,8 +126,8 @@ void registerIRMLIRContextBindings() {
       (void*)+[](uint64_t ctx_ptr) -> ptr {
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
         if (!crest_lookup1) {
-          return scheme_error("mlir::MLIRContext::loadAllAvailableDialects",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::MLIRContext::loadAllAvailableDialects",
+                             "context");
         }
 
         crest_lookup1->loadAllAvailableDialects();
@@ -138,8 +138,8 @@ void registerIRMLIRContextBindings() {
       (void*)+[](uint64_t ctx_ptr, int enable) -> ptr {
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
         if (!crest_lookup1) {
-          return scheme_error("mlir::MLIRContext::printOpOnDiagnostic",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::MLIRContext::printOpOnDiagnostic",
+                             "context");
         }
 
         crest_lookup1->printOpOnDiagnostic(enable != 0);
@@ -150,8 +150,8 @@ void registerIRMLIRContextBindings() {
       (void*)+[](uint64_t ctx_ptr) -> ptr {
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
         if (!crest_lookup1) {
-          return scheme_error("mlir::MLIRContext::shouldPrintOpOnDiagnostic",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::MLIRContext::shouldPrintOpOnDiagnostic",
+                             "context");
         }
 
         return Sinteger64(crest_lookup1->shouldPrintOpOnDiagnostic() ? 1 : 0);
@@ -161,8 +161,8 @@ void registerIRMLIRContextBindings() {
       (void*)+[](uint64_t ctx_ptr, int enable) -> ptr {
         auto* crest_lookup1 = crest::as_context(ctx_ptr);
         if (!crest_lookup1) {
-          return scheme_error("mlir::MLIRContext::printStackTraceOnDiagnostic",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::MLIRContext::printStackTraceOnDiagnostic",
+                             "context");
         }
 
         crest_lookup1->printStackTraceOnDiagnostic(enable != 0);
@@ -177,8 +177,7 @@ void registerIRMLIRContextBindings() {
       (void*)+[](uint64_t ctx_ptr, const char* filename) -> ptr {
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::parseSourceFile",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::parseSourceFile", "context");
         }
         // verifyAfterParse=false: skip structural verification so that
         // dynamic ops without Terminator/HasParent traits can be parsed.

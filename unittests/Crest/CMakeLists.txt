@@ -29,3 +29,12 @@ target_compile_definitions(CrestInterfaceTests
     CREST_TEST_DIALECT_DIR="${CMAKE_SOURCE_DIR}/test/dsl/interface-dsl"
     CREST_TEST_SCHEME_BINARY_DIR="${CMAKE_CURRENT_BINARY_DIR}/scheme-interface"
 )
+
+add_crest_unittest(CrestSchemePassTests
+  SchemePassTest.cpp
+)
+
+target_link_libraries(CrestSchemePassTests
+  PRIVATE
+    CrestPasses
+)

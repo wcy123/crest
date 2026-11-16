@@ -22,43 +22,65 @@ namespace crest {
 void registerDialectArithIRArithBindings() {
   // arith::AddFOp::create: floating-point addition.
   // (builder-ptr loc-ptr lhs-ptr rhs-ptr) → Value uptr
-  register_builder_binding("mlir::arith::AddFOp::create",
-                           [](mlir::OpBuilder& builder, uint64_t loc_ptr,
-                              uint64_t lhs_ptr, uint64_t rhs_ptr) -> ptr {
-                             auto loc = mlir::Location::getFromOpaquePointer(
-                                 reinterpret_cast<const void*>(loc_ptr));
-                             auto lhs = mlir::Value::getFromOpaquePointer(
-                                 reinterpret_cast<const void*>(lhs_ptr));
-                             auto rhs = mlir::Value::getFromOpaquePointer(
-                                 reinterpret_cast<const void*>(rhs_ptr));
-                             auto result = mlir::arith::AddFOp::create(
-                                 builder, loc, lhs, rhs);
-                             return Sunsigned64(reinterpret_cast<uint64_t>(
-                                 result.getResult().getAsOpaquePointer()));
-                           });
+  register_builder_binding(
+      "mlir::arith::AddFOp::create",
+      [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t lhs_ptr,
+         uint64_t rhs_ptr) -> ptr {
+        if (!loc_ptr) {
+          return nullPointer("mlir::arith::AddFOp::create", "location");
+        }
+        if (!lhs_ptr) {
+          return nullPointer("mlir::arith::AddFOp::create", "lhs");
+        }
+        if (!rhs_ptr) {
+          return nullPointer("mlir::arith::AddFOp::create", "rhs");
+        }
+        auto loc = mlir::Location::getFromOpaquePointer(
+            reinterpret_cast<const void*>(loc_ptr));
+        auto lhs = mlir::Value::getFromOpaquePointer(
+            reinterpret_cast<const void*>(lhs_ptr));
+        auto rhs = mlir::Value::getFromOpaquePointer(
+            reinterpret_cast<const void*>(rhs_ptr));
+        auto result = mlir::arith::AddFOp::create(builder, loc, lhs, rhs);
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            result.getResult().getAsOpaquePointer()));
+      });
 
   // arith::MulFOp::create: floating-point multiplication.
   // (builder-ptr loc-ptr lhs-ptr rhs-ptr) → Value uptr
-  register_builder_binding("mlir::arith::MulFOp::create",
-                           [](mlir::OpBuilder& builder, uint64_t loc_ptr,
-                              uint64_t lhs_ptr, uint64_t rhs_ptr) -> ptr {
-                             auto loc = mlir::Location::getFromOpaquePointer(
-                                 reinterpret_cast<const void*>(loc_ptr));
-                             auto lhs = mlir::Value::getFromOpaquePointer(
-                                 reinterpret_cast<const void*>(lhs_ptr));
-                             auto rhs = mlir::Value::getFromOpaquePointer(
-                                 reinterpret_cast<const void*>(rhs_ptr));
-                             auto result = mlir::arith::MulFOp::create(
-                                 builder, loc, lhs, rhs);
-                             return Sunsigned64(reinterpret_cast<uint64_t>(
-                                 result.getResult().getAsOpaquePointer()));
-                           });
+  register_builder_binding(
+      "mlir::arith::MulFOp::create",
+      [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t lhs_ptr,
+         uint64_t rhs_ptr) -> ptr {
+        if (!loc_ptr) {
+          return nullPointer("mlir::arith::MulFOp::create", "location");
+        }
+        if (!lhs_ptr) {
+          return nullPointer("mlir::arith::MulFOp::create", "lhs");
+        }
+        if (!rhs_ptr) {
+          return nullPointer("mlir::arith::MulFOp::create", "rhs");
+        }
+        auto loc = mlir::Location::getFromOpaquePointer(
+            reinterpret_cast<const void*>(loc_ptr));
+        auto lhs = mlir::Value::getFromOpaquePointer(
+            reinterpret_cast<const void*>(lhs_ptr));
+        auto rhs = mlir::Value::getFromOpaquePointer(
+            reinterpret_cast<const void*>(rhs_ptr));
+        auto result = mlir::arith::MulFOp::create(builder, loc, lhs, rhs);
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            result.getResult().getAsOpaquePointer()));
+      });
 
   // arith::ConstantIndexOp::create: index-type integer constant.
   // (builder-ptr loc-ptr int-val) → Value uptr
   register_builder_binding(
       "mlir::arith::ConstantIndexOp::create",
       [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t int_val) -> ptr {
+        if (!loc_ptr) {
+          return nullPointer("mlir::arith::ConstantIndexOp::create",
+                             "location");
+        }
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
         auto op = mlir::arith::ConstantIndexOp::create(
@@ -72,11 +94,23 @@ void registerDialectArithIRArithBindings() {
   register_builder_binding(
       "mlir::arith::ConstantOp::create<f64>",
       [](mlir::OpBuilder& builder, uint64_t loc_ptr, uint64_t attr_ptr) -> ptr {
+        if (!loc_ptr) {
+          return nullPointer("mlir::arith::ConstantOp::create<f64>",
+                             "location");
+        }
+        if (!attr_ptr) {
+          return nullPointer("mlir::arith::ConstantOp::create<f64>",
+                             "attribute");
+        }
         auto loc = mlir::Location::getFromOpaquePointer(
             reinterpret_cast<const void*>(loc_ptr));
-        auto typed_attr =
-            mlir::cast<mlir::TypedAttr>(mlir::Attribute::getFromOpaquePointer(
+        auto typed_attr = mlir::dyn_cast<mlir::TypedAttr>(
+            mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<const void*>(attr_ptr)));
+        if (!typed_attr) {
+          return scheme_error("mlir::arith::ConstantOp::create<f64>",
+                              "the attribute is not a typed attribute");
+        }
         auto op = mlir::arith::ConstantOp::create(builder, loc, typed_attr);
         return Sunsigned64(
             reinterpret_cast<uint64_t>(op.getResult().getAsOpaquePointer()));

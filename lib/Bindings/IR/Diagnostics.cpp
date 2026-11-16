@@ -20,11 +20,15 @@ void registerIRDiagnosticsBindings() {
       "mlir::emitError",
       (void*)+[](uint64_t loc_ptr, const char* message) -> ptr {
         if (!loc_ptr) {
-          return scheme_error("mlir::emitError", "location must not be null");
+          return nullPointer("mlir::emitError", "location");
         }
-        mlir::Location loc = mlir::cast<mlir::LocationAttr>(
+        auto loc_attr = mlir::dyn_cast_or_null<mlir::LocationAttr>(
             mlir::Attribute::getFromOpaquePointer(
                 reinterpret_cast<const void*>(loc_ptr)));
+        if (!loc_attr) {
+          return scheme_error("mlir::emitError", "not a location");
+        }
+        mlir::Location loc = loc_attr;
         mlir::emitError(loc, message);
         return Svoid;
       });

@@ -194,27 +194,27 @@
                 [class-answer
                  (lambda (size linux-c-type)
                    #`(if (%%windows?)
-                         (foreign-callable
-                          (lambda (answer #,@formals)
-                            (foreign-set! '#,size answer 0 (p #,@arguments))
-                            answer)
-                          (uptr #,@c-types) uptr)
-                         (foreign-callable (lambda (#,@formals) (p #,@arguments))
+                         (foreign-callable __collect_safe
+                                           (lambda (answer #,@formals)
+                                             (foreign-set! '#,size answer 0 (p #,@arguments))
+                                             answer)
+                                           (uptr #,@c-types) uptr)
+                         (foreign-callable __collect_safe (lambda (#,@formals) (p #,@arguments))
                                            (#,@c-types) #,linux-c-type)))])
            #`(let ([p (%%guard-for-result 'result-type procedure location)])
                #,(case (syntax->datum #'result-type)
                    [(void uptr int unsigned-8)
-                    #`(foreign-callable (lambda (#,@formals) (p #,@arguments)) (#,@c-types) result-type)]
+                    #`(foreign-callable __collect_safe (lambda (#,@formals) (p #,@arguments)) (#,@c-types) result-type)]
                    [(object) (class-answer #'uptr #'uptr)]
                    [(logical-result) (class-answer #'unsigned-8 #'unsigned-8)]
                    [(walk-result) (class-answer #'unsigned-32 #'int)]
                    [(range)
-                    #`(foreign-callable
-                       (lambda (answer #,@formals)
-                         (let ([pair (p #,@arguments)])
-                           (ftype-set! %%SlotRange (data) answer (car pair))
-                           (ftype-set! %%SlotRange (size) answer (cdr pair))))
-                       (#,@c-types) (& %%SlotRange))]
+                    #`(foreign-callable __collect_safe
+                                        (lambda (answer #,@formals)
+                                          (let ([pair (p #,@arguments)])
+                                            (ftype-set! %%SlotRange (data) answer (car pair))
+                                            (ftype-set! %%SlotRange (size) answer (cdr pair))))
+                                        (#,@c-types) (& %%SlotRange))]
                    [else
                     (syntax-violation 'define-c-callable
                                       "unknown result type of a callable" stx #'result-type)])))])))

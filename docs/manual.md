@@ -836,12 +836,55 @@ procedures called at verification time. For example:
 
 `op` is the operation the pass runs on (the `PassManager` decides: nested on `func.func` it runs on each
 function); the body returns `#f` to fail the pass, after saying why with `mlir::Operation::emitError`. The
-pass is an `mlir::Pass` (`lib/Crest/SchemePass.cpp`), so it mixes with C++ passes in one pipeline. Scheme
-is single-threaded: contexts made from Scheme have multithreading disabled; with `crest-opt` use
-`--mlir-disable-threading`. A body that raises a Scheme error does not end the process: the pass fails and
-the diagnostic has the text of the error. The body is made into a C function once, where the pass is defined,
+pass is an `mlir::Pass` (`lib/Crest/SchemePass.cpp`), so it mixes with C++ passes in one pipeline. A pass
+nested on `func.func` can run on several functions at the same time (see Threads). A body that raises a
+Scheme error does not end the process: the pass fails and the diagnostic has the text of the error. The body is made into a C function once, where the pass is defined,
 and every pass that `(tag-functions)` makes shares it. Toy's shape inference and its lowerings to affine and
 LLVM are passes.
+
+### Threads
+
+MLIR verifies the functions of a module, and runs a pass nested on `func.func`, on its own worker threads. The Scheme
+code of a dialect (a verifier, a folder, a pass body) runs there, so `crest-opt` verifies functions that have a Scheme
+op on as many threads as the machine has. A verifier that loops for a long time on each of 300 functions is
+faster on many threads than with `--mlir-disable-threading`.
+
+Chez Scheme keeps a record for each thread that runs Scheme, and a thread is *active* while it may run Scheme. A
+garbage collection waits until every active thread has stopped at a safe point in Scheme code. So a thread must be
+active only while it runs Scheme. The rules (`lib/Bindings/Support/SchemeThreads.h`):
+
+- The thread that starts Scheme (`ChezSchemeInterpreter`) is made inactive when Scheme has started. Left active, it
+  would be active while MLIR waits for its worker threads inside C++, and a collection that a worker starts would
+  wait for it for ever.
+- Every callable that Scheme makes (`crest callback`) is `__collect_safe`: a thread that Scheme does not know, such
+  as a worker of MLIR, gets a record and is active for the call, and afterwards it is as it was.
+- C++ that calls Scheme or reads a Scheme object, outside a binding that Scheme called, uses `SchemeThreadScope`.
+  `scheme_call` does, and so does each method of `ChezSchemeInterpreter`.
+- `current-MLIRContext` has one value for all threads: the context that C++ sets for a dialect or a pass is the
+  context of every callback, on whatever thread MLIR runs it. `current-OpBuilder` and `current-Block` are thread
+  parameters, because each callback has its own (a rewrite pattern runs with the rewriter of its own call): each thread
+  has its own value, and a thread that Scheme learns of starts with the values that the thread that started Scheme
+  has then.
+
+Limits:
+
+- `with-current-MLIRContext` in callbacks that run at the same time sets the one shared value, and when its body ends
+  it puts the old value back. If the value was not set before (no dialect of the context is loaded and no pass sets it),
+  the callback that leaves first takes the context from the others. Set it once outside, with
+  `with-current-MLIRContext` around the run.
+- Callbacks of different ops can run at the same time, so a callback that changes a variable or a table that other
+  callbacks use needs a mutex (`make-mutex`, `with-mutex`), as a C++ pass would. A callback that only reads its
+  arguments needs nothing.
+- `crest-opt` (`MlirOptMain`) turns threads off while it parses and verifies the module it has just read, so that
+  verification is single-threaded whatever the Scheme code does; the verification that the pass manager runs later is
+  parallel.
+- A Scheme program runs on the thread that started Scheme, which is active the whole time. A context that a Scheme
+  program makes has multithreading off, and the program must not turn it on: the program would wait inside MLIR
+  while active, and a collection would hang.
+- Scheme code that allocates a lot does not run faster on many threads: every collection stops all of them.
+- A thread that Scheme does not know gets a record for each call into Scheme and drops it afterwards. A callback that
+  does almost nothing is therefore slower on many threads than with `--mlir-disable-threading` (5000 verifications of
+  an op whose verifier does nothing: 0.56 to 0.68 s against 0.43 s).
 
 ### `define-type` — dialect types
 
@@ -938,8 +981,7 @@ A non-list value is reported when the library compiles; an unknown or repeated n
 when the dialect loads. Before LLVM 23 `addTrait` does not exist, and a dialect that asks for a trait fails
 to load with a message saying so. The two interfaces behind `pure` can also be listed by hand in
 `:interfaces` (`mlir::MemoryEffectOpInterface`, `mlir::ConditionallySpeculatable`, from
-`(mlir Interfaces SideEffectInterfaces)`). Passes that run on a dialect with Scheme callbacks (verifiers,
-folders) must not run multithreaded: pass `--mlir-disable-threading` to `crest-opt`.
+`(mlir Interfaces SideEffectInterfaces)`).
 
 ### Op-level `:interfaces`
 
@@ -1211,7 +1253,7 @@ exits with status 1, and `--crest-pass="dialects-in-scheme=..."` reports it as a
 ### Inspecting the expansion
 
 ```bash
-DEBUG_DEFINE_DIALECT=1 \
+CREST_DEBUG_DEFINE_DIALECT=1 \
 CREST_PATH=samples \
   crest-opt /dev/null --crest-pass="passes=toy/ch4/toy" 2>/dev/null
 ```
@@ -1339,6 +1381,20 @@ for that. `with-InsertionGuard` saves a builder's insertion point and restores i
 `%%current-builder` (internal) is what `begin-mlir-code` uses to create each op: it returns
 `(current-OpBuilder)` or raises `no active builder` if that is `#f`. `:builder` returns
 `(current-OpBuilder)` as is.
+
+### Lifetimes
+
+A handle is a raw address. When the object that it points at is freed, the handle still holds the old address, and
+CREST cannot tell: `CrestBox` checks the type of a handle, not whether the object is still alive. A `with-` macro frees
+what it made when its body ends, so use the handle only inside that body:
+
+- `mlir::PassManager::nest` returns a nested pass manager that belongs to the pass manager it was called on. It is
+  freed when the `with-PassManager` that made that parent ends. Do not use it after that.
+- A pass belongs to the pass manager that it is added to (`addPass`), as in C++. Make a new pass for each add:
+  `(mlir::createCanonicalizerPass)` again, not the same handle twice. The same pass added twice, to one manager or to
+  two, is freed twice and crashes, and nothing sees it. A pass that is made and never added leaks.
+- A type converter and a conversion target must still exist while the patterns that use them are applied. Make them with
+  `with-TypeConverter` and `with-ConversionTarget` around `apply-conversion` or `apply-full-conversion`.
 
 The context hierarchy during a pattern rewrite:
 

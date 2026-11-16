@@ -234,7 +234,7 @@
   ;;
   ;; Compose (:attr "name") with explicit builtin-attributes extractors, e.g.:
   ;;   (mlir::IntegerAttr::getValue  (:attr "axis"))
-  ;;   (mlir::FloatAttr::getValueAsDouble.f32  (:attr "epsilon"))
+  ;;   (mlir::FloatAttr::getValueAsDouble  (:attr "epsilon"))
   ;;   (mlir::DenseElementsAttr::isSplat (:attr "value"))
   ;;
   ;; Uses free-identifier=? via (syntax-case s (:current-op :attr) ...) so
@@ -247,7 +247,9 @@
   (define (%%transform-where-expr where-stx op-idx)
     (let ([cur-op #`(vector-ref all-operations #,op-idx)])
       (let walk ([s where-stx])
-        (syntax-case s (:current-op :attr :has-attr? :attr-or)
+        (syntax-case s (:current-op :attr :has-attr? :attr-or quote)
+          ;; Quoted data is not code: '(:attr "k") is a list, and stays one.
+          [(quote datum) s]
           ;; Bare :current-op identifier → the matched sub-op
           [:current-op cur-op]
           ;; (:has-attr? "name") → #t/#f. hasAttr? wraps int with (= 1 ...) → boolean.

@@ -17,7 +17,7 @@ void registerIRLocationBindings() {
   Sregister_symbol(
       "mlir::UnknownLoc::get", (void*)+[](uint64_t ctx_ptr) -> ptr {
         if (!ctx_ptr) {
-          return scheme_error("mlir::UnknownLoc::get", "ctx must not be null");
+          return nullPointer("mlir::UnknownLoc::get", "context");
         }
         auto* ctx = crest::as_context(ctx_ptr);
         return Sunsigned64(reinterpret_cast<uint64_t>(
@@ -28,8 +28,7 @@ void registerIRLocationBindings() {
       (void*)+[](uint64_t ctx_ptr, const char* filename, unsigned line,
                  unsigned col) -> ptr {
         if (!ctx_ptr) {
-          return scheme_error("mlir::FileLineColLoc::get",
-                              "ctx must not be null");
+          return nullPointer("mlir::FileLineColLoc::get", "context");
         }
         auto* ctx = crest::as_context(ctx_ptr);
         return Sunsigned64(reinterpret_cast<uint64_t>(

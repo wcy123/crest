@@ -43,6 +43,10 @@ using TypeConversionFn = uint64_t(uint64_t type);
 using MaterializationFn = uint64_t(uint64_t builder, uint64_t result_type,
                                    uint64_t inputs, uint64_t loc);
 
+// LIFETIME WARNING: the pattern keeps a reference to the TypeConverter that it
+// is given, and the address of its Scheme handle (below). It owns neither. Keep
+// the converter alive for as long as the patterns can run: make it with
+// with-TypeConverter around the whole conversion.
 class SchemeConversionPattern : public mlir::ConversionPattern {
 public:
   // With TypeConverter: operands are remapped before matchAndRewrite.
@@ -183,7 +187,7 @@ void registerTransformsDialectConversionBindings() {
   // Variant with no TypeConverter: operands are passed as original values.
   // Use for patterns that consume original (unconverted) operand types.
   Sregister_symbol(
-      "crest::DialectConversion::addConversionPattern/ctx",
+      "crest::DialectConversion::addConversionPatternWithoutTypeConverter",
       (void*)+[](uint64_t patterns_ptr, const char* op_name_arg,
                  ConversionPatternFn* callback, int benefit) -> ptr {
         const std::string op_name(op_name_arg);
@@ -191,7 +195,8 @@ void registerTransformsDialectConversionBindings() {
             crest::as_ref<mlir::RewritePatternSet>(patterns_ptr);
         if (!patterns_box) {
           return scheme_error(
-              "crest::DialectConversion::addConversionPattern/ctx",
+              "crest::DialectConversion::"
+              "addConversionPatternWithoutTypeConverter",
               "null pointer or not a CrestBox<mlir::RewritePatternSet> or "
               "CrestBox<mlir::RewritePatternSet*>");
         }
@@ -239,8 +244,8 @@ void registerTransformsDialectConversionBindings() {
       "mlir::ConversionTarget::ConversionTarget",
       (void*)+[](uint64_t ctx_ptr) -> ptr {
         if (!ctx_ptr) {
-          return scheme_error("mlir::ConversionTarget::ConversionTarget",
-                              "ctx must not be null");
+          return nullPointer("mlir::ConversionTarget::ConversionTarget",
+                             "context");
         }
         auto* ctx = crest::as_context(ctx_ptr);
         return Sunsigned64(reinterpret_cast<uint64_t>(
@@ -291,8 +296,7 @@ void registerTransformsDialectConversionBindings() {
         }
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::ConversionTarget::addLegalOp",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::ConversionTarget::addLegalOp", "context");
         }
         auto* crest_lookup1_box =
             crest::CrestBox<mlir::ConversionTarget>::inner(target_ptr);
@@ -325,8 +329,8 @@ void registerTransformsDialectConversionBindings() {
         auto& target = *target_box;
         auto* ctx = crest::as_context(ctx_ptr);
         if (!ctx) {
-          return scheme_error("mlir::ConversionTarget::addDynamicallyLegalOp",
-                              "null MLIRContext pointer");
+          return nullPointer("mlir::ConversionTarget::addDynamicallyLegalOp",
+                             "context");
         }
         target.addDynamicallyLegalOp(mlir::OperationName(op_name, ctx),
                                      [callback](mlir::Operation* op) -> bool {
@@ -378,8 +382,7 @@ void registerTransformsDialectConversionBindings() {
       "mlir::TypeConverter::isLegal<Type>",
       (void*)+[](uint64_t converter_ptr, uint64_t type_ptr) -> ptr {
         if (!type_ptr) {
-          return scheme_error("mlir::TypeConverter::isLegal<Type>",
-                              "null type");
+          return nullPointer("mlir::TypeConverter::isLegal<Type>", "type");
         }
         auto* converter_box =
             crest::CrestBox<mlir::TypeConverter>::inner(converter_ptr);
@@ -397,8 +400,7 @@ void registerTransformsDialectConversionBindings() {
       "mlir::TypeConverter::isLegal<Operation>",
       (void*)+[](uint64_t converter_ptr, uint64_t op_ptr) -> ptr {
         if (!op_ptr) {
-          return scheme_error("mlir::TypeConverter::isLegal<Operation>",
-                              "null op");
+          return nullPointer("mlir::TypeConverter::isLegal<Operation>", "op");
         }
         auto* converter_box =
             crest::CrestBox<mlir::TypeConverter>::inner(converter_ptr);
@@ -415,8 +417,8 @@ void registerTransformsDialectConversionBindings() {
       "mlir::TypeConverter::isSignatureLegal",
       (void*)+[](uint64_t converter_ptr, uint64_t func_op_ptr) -> ptr {
         if (!func_op_ptr) {
-          return scheme_error("mlir::TypeConverter::isSignatureLegal",
-                              "null func-op");
+          return nullPointer("mlir::TypeConverter::isSignatureLegal",
+                             "func op");
         }
         auto* converter_box =
             crest::CrestBox<mlir::TypeConverter>::inner(converter_ptr);
@@ -439,10 +441,20 @@ void registerTransformsDialectConversionBindings() {
       "mlir_transforms_dialect_conversion_apply_full_conversion",
       (void*)+[](uint64_t module_ptr, uint64_t target_ptr,
                  uint64_t patterns_ptr) -> ptr {
-        if (!module_ptr || !target_ptr || !patterns_ptr) {
-          return scheme_error(
+        if (!module_ptr) {
+          return nullPointer(
               "mlir_transforms_dialect_conversion_apply_full_conversion",
-              "module, target, and patterns must not be null");
+              "module");
+        }
+        if (!target_ptr) {
+          return nullPointer(
+              "mlir_transforms_dialect_conversion_apply_full_conversion",
+              "target");
+        }
+        if (!patterns_ptr) {
+          return nullPointer(
+              "mlir_transforms_dialect_conversion_apply_full_conversion",
+              "patterns");
         }
         auto module = mlir::dyn_cast<mlir::ModuleOp>(
             reinterpret_cast<mlir::Operation*>(module_ptr));

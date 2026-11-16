@@ -6,10 +6,14 @@
 
 #include "../../lib/Bindings/Support/LockedSchemeObject.h"
 #include "../../lib/Bindings/Support/Result.h"
+#include "../../lib/Bindings/Support/SchemeThreads.h"
 #include "../../lib/Interpreter/ChezSchemeInterpreter.h"
+#include "llvm/Support/ThreadPool.h"
 #include "gtest/gtest.h"
+#include <atomic>
 #include <chrono>
 #include <iostream>
+#include <thread>
 #if defined(__GLIBC__)
 #  include <malloc.h>
 #endif
@@ -41,6 +45,34 @@ TEST_F(InterpreterTest, EvalSimpleExpression) {
   EXPECT_TRUE(g_interp->eval("(+ 1 2)"));
 }
 
+// An integer that does not fit a fixnum (about 2^60) crosses to Scheme
+// unchanged: Sfixnum would drop its top bits.
+TEST_F(InterpreterTest, UnsignedLongBeyondFixnumKeepsItsValue) {
+  const uint64_t big = uint64_t{1} << 62;
+  const ptr fromLong = Conversion<uint64_t, ptr>{}(big);
+  EXPECT_EQ(Sunsigned64_value(fromLong), big);
+  const unsigned long long bigger = ~0ULL;
+  const ptr fromLongLong = Conversion<unsigned long long, ptr>{}(bigger);
+  EXPECT_EQ(Sunsigned64_value(fromLongLong), bigger);
+}
+
+TEST_F(InterpreterTest, SignedLongBeyondFixnumKeepsItsValue) {
+  const int64_t big = -(int64_t{1} << 61);
+  const ptr fromLong = Conversion<int64_t, ptr>{}(big);
+  EXPECT_EQ(Sinteger64_value(fromLong), big);
+  const long long bigger = (1LL << 62) + 5;
+  const ptr fromLongLong = Conversion<long long, ptr>{}(bigger);
+  EXPECT_EQ(Sinteger64_value(fromLongLong), bigger);
+}
+
+// A string crosses in both directions as UTF-8: scheme_string writes it,
+// convert_to_cpp reads it. The text has a character of one, two, three and
+// four bytes (a space, pi, an arrow, and U+1F600).
+TEST_F(InterpreterTest, StringKeepsNonAsciiText) {
+  const std::string text = "\xCF\x80 \xE2\x86\x92 \xCE\xBB \xF0\x9F\x98\x80";
+  EXPECT_EQ(convert_to_cpp<std::string>(scheme_string(text)), text);
+}
+
 // A Scheme value from its text.
 static ptr evalScheme(const char* code) {
   ptr port = scheme_call("open-string-input-port", Sstring(code));
@@ -49,11 +81,13 @@ static ptr evalScheme(const char* code) {
 }
 
 // What define-c-callable (scheme/crest/callback.sls) does for a
-// callable with a C result: make a foreign-callable, lock its code object
-// once, answer its address.
+// callable with a C result: make a foreign-callable (__collect_safe, so that a
+// thread that Scheme does not know can call it), lock its code object once,
+// answer its address. The procedure allocates, so that collections happen.
 static uint64_t makeCallableEntry() {
   return Sunsigned64_value(evalScheme(
-      "(let ([code (foreign-callable (lambda (x) (+ x 1)) (int) int)])"
+      "(let ([code (foreign-callable __collect_safe"
+      "             (lambda (x) (+ x (- (length (iota 200)) 199))) (int) int)])"
       "  (lock-object code)"
       "  (foreign-callable-entry-point code))"));
 }
@@ -63,6 +97,73 @@ TEST_F(InterpreterTest, CallableCallsTheSchemeProcedure) {
   auto callable = reinterpret_cast<int (*)(int)>(makeCallableEntry());
   ASSERT_NE(callable, nullptr);
   EXPECT_EQ(callable(41), 42);
+}
+
+// MLIR calls the callables of Scheme ops from its worker threads, which Scheme
+// does not know, while the thread that started Scheme waits for them inside
+// MLIR. The callable allocates, so collections happen. The waiting thread must
+// not be active (the interpreter makes it inactive when it starts, and each
+// call that it makes runs in a SchemeThreadScope), or a collection that a
+// worker starts waits for it for ever (SchemeThreads.h). With the main thread
+// left active, this test hangs.
+TEST_F(InterpreterTest, WorkersCallTheSchemeProcedureWhileMainWaits) {
+  auto callable = reinterpret_cast<int (*)(int)>(makeCallableEntry());
+  constexpr int kTasks = 16;
+  constexpr int kCalls = 2000;
+  std::atomic<int> wrong{0};
+  {
+    llvm::DefaultThreadPool pool;
+    llvm::ThreadPoolTaskGroup group(pool);
+    for (int task = 0; task < kTasks; ++task) {
+      group.async([&, task] {
+        for (int i = 0; i < kCalls; ++i) {
+          if (callable(task * kCalls + i) != task * kCalls + i + 1) {
+            ++wrong;
+          }
+        }
+      });
+    }
+    group.wait();
+  }
+  EXPECT_EQ(wrong, 0);
+}
+
+// A thread parameter (current-OpBuilder and current-Block are such) that the
+// thread that started Scheme changes must reach the worker threads: a worker
+// that ran a task must see the new value in its next task, not the old one.
+TEST_F(InterpreterTest, WorkersSeeTheThreadParameterAsItIsNow) {
+  evalScheme("(define pool-test-parameter (make-thread-parameter 0))");
+  auto entry = Sunsigned64_value(
+      evalScheme("(let ([code (foreign-callable __collect_safe"
+                 "             (lambda (x) (pool-test-parameter)) (int) int)])"
+                 "  (lock-object code)"
+                 "  (foreign-callable-entry-point code))"));
+  auto callable = reinterpret_cast<int (*)(int)>(entry);
+  // One task at a time.
+  auto readInTask = [&] {
+    int seen = -1;
+    llvm::DefaultThreadPool pool;
+    llvm::ThreadPoolTaskGroup group(pool);
+    group.async([&] { seen = callable(0); });
+    group.wait();
+    return seen;
+  };
+  evalScheme("(pool-test-parameter 1)");
+  EXPECT_EQ(readInTask(), 1);
+  evalScheme("(pool-test-parameter 2)");
+  EXPECT_EQ(readInTask(), 2);
+}
+
+// C++ that runs Scheme on a thread that Scheme does not know uses the scope.
+TEST_F(InterpreterTest, SchemeThreadScopeLetsAnotherThreadRunScheme) {
+  bool ok = false;
+  std::thread other([&] {
+    SchemeThreadScope scope;
+    ok = Sfixnum_value(evalScheme("(+ 1 2)")) == 3;
+  });
+  // The thread that started Scheme is inactive while it waits.
+  other.join();
+  EXPECT_TRUE(ok);
 }
 
 // REGRESSION: a failing binding must leave nothing behind
