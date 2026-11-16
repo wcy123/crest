@@ -286,6 +286,7 @@
       ;; a ^label is its arguments: (), ((name : type) ...) or ,@types. A ^label inside a nested
       ;; { } belongs to that brace, not to this one. Items before the first ^label are an entry
       ;; block without arguments, which gets the label ^entry. No items give no blocks.
+      ;; Raises an error when a ^label is not followed by its arguments, as in  (^a p ())  or  (^a).
       ;;
       ;; Examples (the { and } around inside are not part of it):
       ;;   (^a () p () ^b ((v : i32)) q (v))
