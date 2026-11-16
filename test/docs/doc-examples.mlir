@@ -1,5 +1,4 @@
-// The examples in the docs work when a reader copies them: the options of --crest-pass exist, the
-// tutorial's steps build and give the output they show, and the commands of the README run (see
+// The commands of the README that name files of the repository run when a reader copies them (see
 // check-doc-examples.py).
 //
 // REQUIRES: system-linux
