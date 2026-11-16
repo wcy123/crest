@@ -8,12 +8,16 @@
 // RUN:   --crest-pass="passes=passes/conversion-flex" %s \
 // RUN:   | %FileCheck %s
 
-// CHECK-LABEL: func.func @f
-// CHECK:         %[[A:.*]] = "test.make"() : () -> tensor<4xf32>
-// CHECK:         %[[CA:.*]] = tensor.cast %[[A]] : tensor<4xf32> to tensor<?xf32>
-// CHECK:         %[[B:.*]] = "test.make"() : () -> tensor<4xf32>
-// CHECK:         %[[CB:.*]] = tensor.cast %[[B]] : tensor<4xf32> to tensor<?xf32>
-// CHECK:         "test.conv_done"(%[[CA]], %[[CB]]) : (tensor<?xf32>, tensor<?xf32>) -> ()
+// CHECK:      module {
+// CHECK-NEXT:   func.func @f() {
+// CHECK-NEXT:     %[[A:.*]] = "test.make"() : () -> tensor<4xf32>
+// CHECK-NEXT:     %[[CA:.*]] = tensor.cast %[[A]] : tensor<4xf32> to tensor<?xf32>
+// CHECK-NEXT:     %[[B:.*]] = "test.make"() : () -> tensor<4xf32>
+// CHECK-NEXT:     %[[CB:.*]] = tensor.cast %[[B]] : tensor<4xf32> to tensor<?xf32>
+// CHECK-NEXT:     "test.conv_done"(%[[CA]], %[[CB]]) : (tensor<?xf32>, tensor<?xf32>) -> ()
+// CHECK-NEXT:     return
+// CHECK-NEXT:   }
+// CHECK-NEXT: }
 
 func.func @f() {
   %0 = "test.make"() : () -> tensor<4xf32>
