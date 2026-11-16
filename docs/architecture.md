@@ -186,7 +186,7 @@ Inside a `:where` guard, two special forms are available:
   rather than the root.
 
 - **`(:attr "name")`** — fetches the named attribute from `:current-op` as a
-  raw attribute pointer. Raises an error (→ silent match failure) if absent.
+  raw attribute pointer. Answers `#f` if absent (use `:has-attr?` or `:attr-or` when the attribute is optional).
   Compose with the generic attr API:
 
 ```scheme
@@ -236,7 +236,7 @@ Every op emitted by `begin-mlir-code` carries the Scheme source file, line, and
 column where it was written in the pattern:
 
 ```
-#loc6 = loc("/workspace/crest-1/samples/passes/onnx-to-hipsr/matmul.sls":67:37)
+#loc6 = loc("samples/passes/onnx-to-hipsr/matmul.sls":67:37)
 %c1 = shape.const_size 1 loc(#loc6)
 ```
 
