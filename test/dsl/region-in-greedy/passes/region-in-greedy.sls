@@ -20,8 +20,7 @@
       test.src ()
     :rewrite op :with
       test.wrapper ()
-      {
-       test.inner () })
+      { test.inner () })
 
   (define-rewrite-pattern (%%inner->done op rewriter)
     :if-match

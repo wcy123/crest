@@ -1431,7 +1431,7 @@ The context hierarchy during a pattern rewrite:
 
 ```
 :rewrite :with                → current-OpBuilder = rw (the pattern's rewriter shell)
-  ^bb0 block body             → current-Block = block
+  { ^bb0 ... } block body     → current-Block = block
                                 current-OpBuilder = rw, insertion point at the end of block,
                                 restored when the body ends
 ```

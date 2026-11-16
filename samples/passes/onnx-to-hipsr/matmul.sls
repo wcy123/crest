@@ -86,11 +86,10 @@
         en    = shape.get_extent (%b-shape cn)               -> !size-type ;
         ;; Result shape inside shape.assuming (non-isolated, sees ab bb em en)
         res   = shape.assuming (wall)
-        {
-         batch  = shape.broadcast    (ab bb)        -> !shape-type ;
-                matrix = shape.from_extents (em en)        -> !shape-type ;
-                cat    = shape.concat        (batch matrix) -> !shape-type ;
-                shape.assuming_yield (cat) } ;
+        { batch  = shape.broadcast    (ab bb)         -> !shape-type ;
+          matrix = shape.from_extents (em en)         -> !shape-type ;
+          cat    = shape.concat       (batch matrix)  -> !shape-type ;
+          shape.assuming_yield (cat) } ;
         -> !shape-type ;
         hipsr.shape_yield (res) } ;
       -> !output-device ;

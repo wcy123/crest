@@ -18,8 +18,7 @@
       test.src ()
     :rewrite op :with
       test.wrapper ()
-      {
-       test.inner () })
+      { test.inner () })
 
   (define-conversion-pattern (%%inner->done op operands-ref rw tc)
     :if-match

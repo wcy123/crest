@@ -6,6 +6,7 @@
 // RUN: %{run} --crest-pass="passes=passes/label-without-arguments" 2>&1 | %FileCheck %s --check-prefix=LABEL
 // RUN: %{run} --crest-pass="passes=passes/stray-close" 2>&1 | %FileCheck %s --check-prefix=STRAY
 // RUN: %{run} --crest-pass="passes=passes/label-with-bad-arguments" 2>&1 | %FileCheck %s --check-prefix=BAD-ARGUMENTS
+// RUN: %{run} --crest-pass="passes=passes/missing-brace-import" 2>&1 | %FileCheck %s --check-prefix=NO-IMPORT
 // RUN: %{run} --crest-pass="passes=passes/old-label-form" 2>&1 | %FileCheck %s --check-prefix=OLD-LABEL
 // RUN: %{run} --crest-pass="passes=passes/old-region-form" 2>&1 | %FileCheck %s --check-prefix=OLD-REGION
 
@@ -21,6 +22,10 @@
 // The item after a label must have the shape of an argument list, not just be a list.
 // BAD-ARGUMENTS: error: Failed to import Scheme library: passes/label-with-bad-arguments:
 // BAD-ARGUMENTS-SAME: a block label is followed by its arguments
+
+// A { that is not the keyword says to import it.
+// NO-IMPORT: error: Failed to import Scheme library: passes/missing-brace-import:
+// NO-IMPORT-SAME: this { is not the brace keyword: import { } from (crest)
 
 // The regions of before braces are an error that says what to write.
 // OLD-LABEL: error: Failed to import Scheme library: passes/old-label-form:

@@ -463,6 +463,12 @@
              (syntax-violation 'begin-mlir-code
                                "(:region ...) is not a region any more: write { ^a ... ^b ... } instead"
                                (car (syntax->list items)))]
+            ;; a { that is not the keyword: the file did not import { } from (crest)
+            [(brace . _)
+             (eq? (syntax->datum #'brace) '|{|)
+             (syntax-violation 'begin-mlir-code
+                               "this { is not the brace keyword: import { } from (crest) or (crest pattern-dsl keywords)"
+                               #'brace)]
             ;; anything else — stop
             [(otherwise ...)
              (values (reverse attrs) regions loc types #'(otherwise ...))])))
