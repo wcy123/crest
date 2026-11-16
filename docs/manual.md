@@ -524,13 +524,14 @@ op = scf.if (%cond)
        scf.yield (%b) }
      -> !i32
 
-;; One region with two blocks, and a second region whose block has dynamic arguments
+;; One region with two blocks, and a second region whose block has dynamic arguments.
+;; arg-types is a Scheme list of mlir::Type, computed before, as in "Dynamic block arguments".
 my.op ()
   { ^entry ()
     my.first ()
     ^exit ((v : !i32))
     my.use (v) }
-  { ^bb ,@types
+  { ^bb ,@arg-types
     my.yield ((:arg 0)) }
 ```
 
