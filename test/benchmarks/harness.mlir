@@ -5,6 +5,7 @@
 // checks that the table has its parts, and that the harness itself checks the fusions: it stops when the output does not
 // hold the expected number of hip.qadd.
 //
+// REQUIRES: system-linux
 // UNSUPPORTED: valgrind
 // RUN: python3 %S/../../benchmarks/run.py --crest-opt tool=%crest-opt --sizes 4 8 12 --repeat 1 | %FileCheck %s
 // RUN: python3 %S/../../benchmarks/generate-module.py 2 | %FileCheck %s --check-prefix=MATCH

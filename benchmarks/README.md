@@ -6,7 +6,8 @@ What the hip-fusion pass costs, measured on generated modules. It answers three 
 2. What does one more function cost, when its fusion matches and when it does not?
 3. Does that cost stay the same when the module grows? A cost that grows faster than the module (quadratic) is what `--check` looks for.
 
-This directory is not part of `check-crest`. Nothing here is built; it is two Python scripts and a built `crest-opt`.
+The scripts need Linux (they read CPU time with Python's `resource` module) and a built `crest-opt`. Nothing here is built, and the only
+part that `check-crest` runs is a smoke test, `test/benchmarks/harness.mlir`, on tiny modules.
 
 ## Run it
 
