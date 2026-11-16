@@ -149,7 +149,7 @@
           define-pass-entry-point
           :if-match :then-let :rewrite :with :where
           :debug-parse :debug-validate :debug-analyze :debug-codegen
-          = : -> :regions
+          = : ->
           :any
           :current-op :attr :has-attr? :attr-or
           :optional :variadic

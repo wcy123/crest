@@ -268,7 +268,14 @@
         (let lp ([items items] [depth 0] [inside '()])
           (cond
            [(null? items)
-            (syntax-violation 'begin-mlir-code "this { has no matching }" open-stx)]
+            (let ([close (find (lambda (x) (and (identifier? x) (eq? (syntax->datum x) '|}|)
+                                                (not (brace-close? x))))
+                               (reverse inside))])
+              (if close
+                  (syntax-violation 'begin-mlir-code
+                                    "this } is not the brace keyword: import { } from (crest) or (crest pattern-dsl keywords)"
+                                    close)
+                  (syntax-violation 'begin-mlir-code "this { has no matching }" open-stx)))]
            [(brace-close? (car items))
             (if (zero? depth)
                 (values (reverse inside) (cdr items))
@@ -318,7 +325,14 @@
                                                      "(), ((name : type) ...) or ,@types")
                                       (or arguments label)))
                   (items->syntax segment))
-                (items->syntax (cons* #'^entry #'() segment)))))
+                (begin
+                  (syntax-case label (unquote-splicing)
+                    [(unquote-splicing _)
+                     (syntax-violation 'begin-mlir-code
+                                       "a block with dynamic arguments needs a label: { ^bb ,@types ... }"
+                                       label)]
+                    [_ #f])
+                  (items->syntax (cons* #'^entry #'() segment))))))
         ;; depth   the number of { in the items read so far that have no } yet
         ;; current the items of the block being read, in reverse
         ;; done    the blocks that are finished, in reverse, each a list of items

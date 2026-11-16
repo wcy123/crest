@@ -178,7 +178,7 @@
   ;;       (mlir::RewriterBase::replaceOp rw op result)
   ;;       #t))
   ;;
-  ;; begin-mlir-code handles op-forms, :attrs, :regions, and :scheme escapes, creating ops
+  ;; begin-mlir-code handles op-forms and Scheme escapes, creating ops
   ;; with the ambient builder installed above.
   ;; zero-result? — #t when the root op has no results; eraseOp replaces replaceOp.
   (define (%%generate-rewrite-code raw-body pattern-type rw op . zero-result?-opt)

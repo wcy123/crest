@@ -540,9 +540,11 @@ one region, in the order written. Two things to know:
 
 - A file that writes `{` and `}` starts with `#!chezscheme`, and imports `{` and `}` from
   `(crest)` or `(crest pattern-dsl keywords)`. A `.sls` file is read in R6RS mode, and its
-  reader rejects the brace.
-- There is no syntax yet for a branch from one block to another, so a block that no op reaches
-  is dead. The greedy driver (`mlir::applyPatternsGreedily`) erases such a block; the conversion
+  reader rejects the brace. The commit hook's indenter counts a brace as a bracket, so a brace
+  that has no partner, such as one in an import list, is written `|{|` or `|}|`: the same symbol.
+- A `^name` item at the top level of a brace always starts a block. There is no syntax yet for a
+  branch from one block to another, so `cf.br () ^exit` cannot be written, and a block that no op
+  reaches is dead. The greedy driver (`mlir::applyPatternsGreedily`) erases such a block; the conversion
   driver keeps it. `test/dsl/brace-multi-block` uses the conversion driver for this reason.
 
 To keep the body of an existing op instead of building one, use `:move-region`:
@@ -1490,7 +1492,7 @@ Exports: `define-rewrite-pattern`, `define-conversion-pattern`, `begin-mlir-code
 `apply-conversion`, `affine-map`, `affine-map-attr` (see [affine-map-dsl.md](affine-map-dsl.md)),
 `make-unbound-value`, `unbound-value?`, `current-Block`, `with-current-Block`, `current-OpBuilder`,
 `with-current-OpBuilder`, and the DSL keywords: `:if-match :then-let :rewrite :with :where`,
-`:debug-parse :debug-validate :debug-analyze :debug-codegen`, `= : -> :regions`, `{ }`, `:any`,
+`:debug-parse :debug-validate :debug-analyze :debug-codegen`, `= : ->`, `{ }`, `:any`,
 `:current-op :attr :has-attr? :attr-or`, `:optional :variadic`, the attribute keywords
 `:string :index :i8 :i16 :i32 :i64 :f32 :f64 :i8-array :i16-array :i32-array :i64-array :unit`,
 `:loc :move-region` and `:arg :builder`.
