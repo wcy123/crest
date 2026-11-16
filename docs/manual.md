@@ -589,7 +589,7 @@ Two things to know:
   `(crest pattern-dsl rewrite)` start with `#!chezscheme` for that reason.
 - There is no syntax yet for a branch from one block to another, so a block that no op reaches
   is dead. The greedy driver (`mlir::applyPatternsGreedily`) erases such a block; the conversion
-  driver keeps it. `test/dsl/brace-blocks` uses the conversion driver for this reason.
+  driver keeps it. `test/dsl/brace-multi-block` uses the conversion driver for this reason.
 
 To keep the body of an existing op instead of building one, use `:move-region`:
 
