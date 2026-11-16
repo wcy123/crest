@@ -52,7 +52,8 @@
     mlir::Operation::moveBefore
     mlir::Operation::setOperands
     mlir::Operation::getParentOfType<ModuleOp>
-    operation-get-operands)
+    operation-get-operands
+    operation-get-converted-operands)
   (import (rnrs)
           (only (crest callback) with-c-callable/lambda)
           (mlir IR Operation ffi)
@@ -288,21 +289,22 @@
   ;; @note             Defined in lib/Bindings/IR/Operation.cpp
   (define mlir::Operation::getAttrOfType<FloatAttr>    %get-float-attr)
 
-  ;; @brief operation-get-operands — bind operands by kind spec into a list of values.
-  ;; @param op    Operation* uptr (root operation)
-  ;; @param spec  Zero or more kind symbols: :required, :optional, or :variadic
-  ;; @return      List with one element per spec entry:
-  ;;              :required → Value uptr;
-  ;;              :optional → Value uptr if present, #<void> if absent;
-  ;;              :variadic → list of Value uptrs if non-empty, #<void> if empty
-  ;; @see         mlir/IR/Operation.h, mlir::OpOperand
-  ;; @note        When spec contains :optional or :variadic, op must carry
-  ;;              an operandSegmentSizes DenseI32ArrayAttr.  For all-:required
-  ;;              specs no attribute read is needed.
-  (define %%absent (if #f #f))  ; sentinel: absent optional/variadic slot
+  ;; The marker for an absent :optional operand or an empty :variadic group: the value of (if #f #f).
+  ;; unbound-value? of (crest pattern-dsl codegen) tests for it.
+  (define %%absent (if #f #f))
 
-  (define (operation-get-operands op . spec)
-    (define (read-op i) (mlir::OpOperand::get op i))
+  ;; @brief %%get-operands — the body of operation-get-operands and operation-get-converted-operands.
+  ;; @param op       Operation* uptr. Its attribute operandSegmentSizes gives the number of operands in each
+  ;;                 segment, where a segment is a run of consecutive operands.
+  ;; @param count    The number of operands in the list that the values are read from.
+  ;; @param read-op  A procedure of one argument, i: the operand (a Value uptr) at position i of that list.
+  ;; @param spec     A list of symbols, one for each place in the op line of the pattern where operands are
+  ;;                 written. A symbol says how many operands the pattern accepts there: :required means
+  ;;                 exactly one, :optional zero or one, :variadic zero or more.
+  ;; @return         A list with one element for each symbol of spec, or #f when the operands do not fit spec.
+  ;; @note           The two callers differ only in the list that count and read-op refer to: the operands
+  ;;                 of the op, or the converted operands of a conversion pattern.
+  (define (%%get-operands op count read-op spec)
     (define (%%flex-path attr n-spec)
       (let* ([sizes (mlir::DenseI32ArrayAttr::asArrayRef attr)]
              [n     (length sizes)])
@@ -314,10 +316,10 @@
                                                      (+ (cdr acc) size)))
                                              (cons '() 0)
                                              sizes)))])
-               (loop :for kind  :in spec
+               (loop :for symbol :in spec
                      :for start :in starts
                      :for size  :in sizes
-                     :collect (case kind
+                     :collect (case symbol
                                 [(:required) (read-op start)]
                                 [(:optional) (if (zero? size) %%absent (read-op start))]
                                 [(:variadic) (if (zero? size)
@@ -326,8 +328,8 @@
                                                        :below (+ start size)
                                                        :collect (read-op i)))]
                                 [else (error 'operation-get-operands
-                                             "unknown kind: expected :required/:optional/:variadic"
-                                             kind)]))))))
+                                             "unknown symbol in spec: expected :required, :optional or :variadic"
+                                             symbol)]))))))
     (let ([n-spec (length spec)]
           [has-flex (loop :initially := #f
                           :for s :in spec
@@ -335,12 +337,56 @@
       (if (not has-flex)
           ;; All required: prefix-match — op must have at least n-spec operands.
           ;; Patterns deliberately list only the operands they care about.
-          (and (<= n-spec (mlir::Operation::getNumOperands op))
+          (and (<= n-spec count)
                (loop :for i :from 0 :below n-spec :collect (read-op i)))
           ;; Has optional/variadic: operandSegmentSizes is mandatory.
           ;; Without it we cannot determine group boundaries — return #f.
           (let ([attr (mlir::Operation::getAttr op "operandSegmentSizes")])
             (and attr (%%flex-path attr n-spec))))))
+
+  ;; @brief operation-get-operands — read the operands of an op as its pattern describes them.
+  ;; @param op    Operation* uptr: the op whose operands are read.
+  ;; @param spec  A list of symbols, one for each place in the op line of the pattern where operands are
+  ;;              written, in order. A symbol says how many operands the pattern accepts there:
+  ;;              :required  exactly one operand;
+  ;;              :optional  zero or one operand;
+  ;;              :variadic  zero or more operands.
+  ;;              For the op line `test.conv (%x (:optional %y))` the spec is (:required :optional).
+  ;; @return      A list with one element for each symbol of spec, in order:
+  ;;              :required → the operand (a Value uptr);
+  ;;              :optional → the operand, or the marker %%absent (#<void>) when the pattern's place has none;
+  ;;              :variadic → a list of the operands, or %%absent when there are none.
+  ;;              #f when the operands do not fit spec: see @note.
+  ;; @par Example With operandSegmentSizes = array<i32: 1, 1> and the spec (:required :optional), the first
+  ;;              segment has one operand and the second has one operand: the result is (operand0 operand1).
+  ;;              With array<i32: 1, 0> the second segment has no operand: the result is (operand0 #<void>).
+  ;; @see         mlir/IR/Operation.h, mlir::OpOperand
+  ;; @note        A segment is a run of consecutive operands, and the attribute operandSegmentSizes of the
+  ;;              op gives the number of operands in each segment, in order. If spec has :optional or
+  ;;              :variadic, the op must have that attribute with one size for each symbol of spec, and the
+  ;;              i-th symbol describes the i-th segment; otherwise the result is #f. If spec has only
+  ;;              :required, the attribute is not read, the i-th symbol describes the i-th operand, and the op
+  ;;              must have at least that many operands (a pattern lists only the operands it needs).
+  (define (operation-get-operands op . spec)
+    (%%get-operands op (mlir::Operation::getNumOperands op)
+                    (lambda (i) (mlir::OpOperand::get op i))
+                    spec))
+
+  ;; @brief operation-get-converted-operands — operation-get-operands, with the values taken from the
+  ;;        converted operands.
+  ;; @param op            Operation* uptr: the root op of a conversion pattern. Its operandSegmentSizes give
+  ;;                      the segments, as in operation-get-operands.
+  ;; @param operands-ref  The converted operands: the operands of op after type conversion, which MLIR gives
+  ;;                      to a conversion pattern (a CArrayRef of Value uptrs). op itself still has its original
+  ;;                      operands until the rewrite replaces it.
+  ;; @param spec          A list of symbols, :required, :optional or :variadic, as for operation-get-operands.
+  ;; @return              The same list as operation-get-operands, with the operands taken from operands-ref.
+  ;; @note                The segment sizes are those of the original op, so this assumes that the type
+  ;;                      converter turns each operand into exactly one operand (docs/manual.md).
+  (define (operation-get-converted-operands op operands-ref . spec)
+    (%%get-operands op (crest::CArrayRef::size operands-ref)
+                    (lambda (i) (crest::CArrayRef::at operands-ref i))
+                    spec))
 
   (define mlir::Operation::getAttrDictionary %mlir::Operation::getAttrDictionary)
   (define mlir::Operation::setAttrs          %mlir::Operation::setAttrs)
