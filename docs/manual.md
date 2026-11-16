@@ -115,6 +115,12 @@ The four parameters after the name map to [`matchAndRewrite(Operation* op, Array
 `crest::CArrayRef::at` from `(crest support array-ref)`: `(crest::CArrayRef::at operands-ref 0)` is the first
 operand.
 
+The variables of the root's operands in `:if-match` are those converted operands, in a `:where` guard and in
+the rewrite alike: a variable has one value. So a pattern cannot name the op that produces such an operand when
+the type converter changes the operand's type: the converted value is defined by the cast that the converter
+makes, not by the original op, and `:check-op` for the original op fails. When the type does not change, the
+converted value is the original one, and the producer can be named.
+
 ---
 
 ## 3. Match DSL reference
