@@ -17,4 +17,5 @@
   (with-MLIRContext ctx (reg)
     (try "first" (lambda () (load-scheme-dialect! ctx "simple" "passes/simple")))
     (try "same library again" (lambda () (load-scheme-dialect! ctx "simple" "passes/simple")))
-    (try "other library" (lambda () (load-scheme-dialect! ctx "simple" "passes/simple2")))))
+    (try "other library" (lambda () (load-scheme-dialect! ctx "simple" "passes/simple2")))
+    (try "bad interface" (lambda () (load-scheme-dialect! ctx "badiface" "passes/badiface")))))
