@@ -1256,7 +1256,8 @@ No C++ changes, no rebuild — just set the variable, re-run, debug, unset, re-r
 ### Errors you will see
 
 A mistake in a pattern is found when its library is first imported, at the first run, and the message
-quotes the form and the position. A mistyped keyword (`:if-mach` for `:if-match`):
+quotes the form and the position. The messages below are examples of what you get; the exact wording can
+change. A mistyped keyword (`:if-mach` for `:if-match`):
 
 ```text
 error: Failed to import Scheme library: passes/typo: Exception in %%parse-rest: Expected function name and :if-match clause (:if-mach %out = source.add (%x %y) :then-let ...) near line 11, char 5 of
