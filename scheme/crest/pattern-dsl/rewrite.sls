@@ -227,11 +227,12 @@
       ;;-------------------------------------------------------------------
 
       ;; Turn the flat items of a begin-mlir-code form into binding descriptors.
-      ;;   items  a syntax object: the list of items written in the form
-      ;; Returns a list of binding descriptors, in the order the items are written. Each is a
-      ;; pair (variable-syntax . expression-syntax), one binding of the final let* (see the
-      ;; binding-descriptor protocol in "Code emitters"). The variable of the last descriptor
-      ;; is the value of the whole form.
+      ;;   items  one syntax object whose content is a list, as syntax-case gives it: #'(item ...).
+      ;;          It is not a Scheme list of syntax objects.
+      ;; Returns a Scheme list of binding descriptors, in the order the items are written. Each
+      ;; is a Scheme pair of two syntax objects, (variable-syntax . expression-syntax): one
+      ;; binding of the final let* (see the binding-descriptor protocol in "Code emitters").
+      ;; The variable of the last descriptor is the value of the whole form.
       ;;
       ;; Examples (op-1 and op-2 stand for the names that are made for the Operation* of an op):
       ;;   r = test.a () -> i32  test.b (r)
@@ -303,9 +304,10 @@
       ;;
       ;; Uses datum comparison (eq?) instead of free-identifier=? for keywords
       ;; to avoid cross-phase issues when call sites import keywords at different phases.
-      ;; Consume modifiers from items (a syntax object) until -> or a new op-start.
+      ;; Consume modifiers from items until -> or a new op-start.
+      ;;   items  one syntax object whose content is a list: #'(item ...)
       ;; Returns (values attr-fns region-fns loc-override result-types remaining)
-      ;; where remaining is a syntax object.
+      ;; where remaining is the items that are not modifiers, again one syntax object of a list.
       (define (parse-modifiers-flat items)
         ;; Build a runtime (addAttribute state name val) setter closure.
         (define (%%make-attr-setter name val-stx)
@@ -423,10 +425,11 @@
             [(otherwise ...)
              (values (reverse attrs) regions loc types #'(otherwise ...))])))
 
-      ;; Read the { ... } at the front of items, a syntax object that starts with the {.
+      ;; Read the { ... } at the front of items.
+      ;;   items         one syntax object whose content is a list that starts with the {
       ;;   region-index  the position of this region among the regions of the op-form so far
       ;; Returns two values: the procedure that fills the region once the op exists (see
-      ;; make-region-fill-fn), and the items after the closing }, as a syntax object.
+      ;; make-region-fill-fn), and the items after the closing }, as one syntax object of a list.
       (define (parse-brace-region items region-index)
         (let ([items (syntax->list items)])
           (let-values ([(block-fill-fns after) (read-blocks (car items) (cdr items))])
