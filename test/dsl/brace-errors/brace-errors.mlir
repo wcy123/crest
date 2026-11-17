@@ -5,6 +5,8 @@
 // RUN: %{run} --crest-pass="passes=passes/missing-close" 2>&1 | %FileCheck %s --check-prefix=MISSING
 // RUN: %{run} --crest-pass="passes=passes/label-without-arguments" 2>&1 | %FileCheck %s --check-prefix=LABEL
 // RUN: %{run} --crest-pass="passes=passes/stray-close" 2>&1 | %FileCheck %s --check-prefix=STRAY
+// RUN: %{run} --crest-pass="passes=passes/label-at-end" 2>&1 | %FileCheck %s --check-prefix=AT-END
+// RUN: %{run} --crest-pass="passes=passes/nested-missing-close" 2>&1 | %FileCheck %s --check-prefix=NESTED
 // RUN: %{run} --crest-pass="passes=passes/label-with-bad-arguments" 2>&1 | %FileCheck %s --check-prefix=BAD-ARGUMENTS
 // RUN: %{run} --crest-pass="passes=passes/missing-brace-import" 2>&1 | %FileCheck %s --check-prefix=NO-IMPORT
 // RUN: %{run} --crest-pass="passes=passes/dynamic-arguments-without-label" 2>&1 | %FileCheck %s --check-prefix=NO-LABEL
@@ -20,6 +22,14 @@
 
 // STRAY: error: Failed to import Scheme library: passes/stray-close:
 // STRAY-SAME: misplaced }
+
+// A label that is the last item of its brace has no arguments after it.
+// AT-END: error: Failed to import Scheme library: passes/label-at-end:
+// AT-END-SAME: a block label is followed by its arguments
+
+// Two { with no } at all: an error, whichever { it names.
+// NESTED: error: Failed to import Scheme library: passes/nested-missing-close:
+// NESTED-SAME: this { has no matching }
 
 // The item after a label must have the shape of an argument list, not just be a list.
 // BAD-ARGUMENTS: error: Failed to import Scheme library: passes/label-with-bad-arguments:

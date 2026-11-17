@@ -253,117 +253,110 @@
       (define (items->syntax items)
         (with-syntax ([(item ...) items]) #'(item ...)))
 
-      ;; Find the } that closes a {.
-      ;;   open-stx  the { itself, only for the error message
-      ;;   items     a list of syntax objects: everything written after that {
-      ;; Returns two values, both lists: the items before the closing }, and the items after it.
-      ;; A { among the items is closed by its own }, so a nested brace stays in the first list.
-      ;; Raises an error when no } closes the {.
-      ;;
-      ;; Example: for  { test.a () { test.b () } test.c () } -> i32
-      ;;   items          = (test.a () { test.b () } test.c () } -> i32)
-      ;;   first value    = (test.a () { test.b () } test.c ())
-      ;;   second value   = (-> i32)
-      (define (split-at-close open-stx items)
-        (let lp ([items items] [depth 0] [inside '()])
-          (cond
-           [(null? items)
-            (let ([close (find (lambda (x) (and (identifier? x) (eq? (syntax->datum x) '|}|)
-                                                (not (brace-close? x))))
-                               (reverse inside))])
-              (if close
-                  (syntax-violation 'begin-mlir-code
-                                    "this } is not the brace keyword: import { } from (crest) or (crest pattern-dsl keywords)"
-                                    close)
-                  (syntax-violation 'begin-mlir-code "this { has no matching }" open-stx)))]
-           [(brace-close? (car items))
-            (if (zero? depth)
-                (values (reverse inside) (cdr items))
-                (lp (cdr items) (- depth 1) (cons (car items) inside)))]
-           [(brace-open? (car items))
-            (lp (cdr items) (+ depth 1) (cons (car items) inside))]
-           [else (lp (cdr items) depth (cons (car items) inside))])))
+      ;; True when x ends the body of a block: the ^label of the next block, or the } of the region.
+      (define (block-end? x)
+        (or (block-label? x) (brace-close? x)))
 
-      ;; True when x can follow a ^label as the arguments of its block:
-      ;;   ()  or  ((name : type) ...)  or  ,@types-expression
-      (define (block-arguments? x)
-        (syntax-case x (unquote-splicing :)
-          [() #t]
-          [(unquote-splicing expression) #t]
-          [((argument : type) ...) (for-all identifier? (syntax->list #'(argument ...)))]
+      ;; True when x is named } but is not the brace keyword: the file did not import { }.
+      (define (close-not-keyword? x)
+        (and (identifier? x) (eq? (syntax->datum x) '|}|) (not (brace-close? x))))
+
+      (define (no-matching-close open-stx)
+        (syntax-violation 'begin-mlir-code "this { has no matching }" open-stx))
+
+      (define (bad-block-arguments stx)
+        (syntax-violation 'begin-mlir-code
+                          (string-append "a block label is followed by its arguments: "
+                                         "(), ((name : type) ...) or ,@types")
+                          stx))
+
+      ;; Take the items up to the first one that satisfies stop?.
+      ;;   stop?  a procedure from one syntax object to a boolean
+      ;;   items  a list of syntax objects
+      ;; Returns two values, both lists: the items before the stopping item, and the items from
+      ;; the stopping item on. The second list is empty when no item stops.
+      ;; A { among the items is taken together with everything up to its own }, so stop? is never
+      ;; asked about an item inside a nested brace.
+      ;; Raises an error when a { has no matching }, or when a } is not the brace keyword.
+      ;;
+      ;; Examples (stop? is block-label?):
+      ;;   (test.p () ^b test.q ())
+      ;;     => (test.p ())  and  (^b test.q ())
+      ;;   (test.p () { ^x test.r () } ^b ())
+      ;;     => (test.p () { ^x test.r () })  and  (^b ())        the ^x is in the nested brace
+      ;;   (test.p ())
+      ;;     => (test.p ())  and  ()                              no item stops
+      (define (read-until stop? items)
+        (cond
+         [(or (null? items) (stop? (car items)))
+          (values '() items)]
+         [(close-not-keyword? (car items))
+          (syntax-violation 'begin-mlir-code
+                            "this } is not the brace keyword: import { } from (crest) or (crest pattern-dsl keywords)"
+                            (car items))]
+         [(brace-open? (car items))
+          (let-values ([(nested after) (read-until brace-close? (cdr items))])
+            (when (null? after)
+              (no-matching-close (car items)))
+            (let-values ([(more rest) (read-until stop? (cdr after))])
+              (values (append (list (car items)) nested (list (car after)) more)
+                      rest)))]
+         [else
+          (let-values ([(more rest) (read-until stop? (cdr items))])
+            (values (cons (car items) more) rest))]))
+
+      ;; A block with arguments needs a label: its first item must not be ,@types.
+      (define (reject-arguments-without-label x)
+        (syntax-case x (unquote-splicing)
+          [(unquote-splicing _)
+           (syntax-violation 'begin-mlir-code
+                             "a block with dynamic arguments needs a label: { ^bb ,@types ... }"
+                             x)]
           [_ #f]))
 
-      ;; Cut the items inside one { } into blocks.
-      ;;   inside  a list of syntax objects: what is written between the { and its }
-      ;; Returns a list with one syntax object for each block, in the order written. Each is
-      ;; (^label arguments body ...), the form that make-block-fill reads.
+      ;; Read the blocks of one { } region, one after another, up to its closing }.
+      ;;   open-stx  the { itself, only for the error message
+      ;;   items     a list of syntax objects: everything written after that {
+      ;; Returns two values: a list with the fill procedure of each block (see make-block-fill),
+      ;; in the order written, and the list of the items after the closing }.
       ;;
-      ;; A ^label starts a block, and the block runs up to the next ^label. The item right after
-      ;; a ^label is its arguments: (), ((name : type) ...) or ,@types. A ^label inside a nested
-      ;; { } belongs to that brace, not to this one. Items before the first ^label are an entry
-      ;; block without arguments, which gets the label ^entry. No items give no blocks.
-      ;; Raises an error when a ^label is not followed by its arguments, as in  (^a test.p ())  or  (^a).
+      ;; A ^label starts a block, and the block runs up to the next ^label or the }. The item
+      ;; right after a ^label is its arguments: (), ((name : type) ...) or ,@types. Items before
+      ;; the first ^label are an entry block without arguments. A ^label inside a nested { }
+      ;; belongs to that brace, not to this one. A region { } has no blocks.
+      ;; Raises an error when no } closes the {, or when a ^label is not followed by its
+      ;; arguments, or when the entry block starts with ,@types.
       ;;
-      ;; Examples (the { and } around inside are not part of it):
+      ;; Examples (items follow the {, so the } that closes it is among them):
       ;;   two blocks:
-      ;;     (^a () test.p () ^b ((v : i32)) test.q (v))
-      ;;       => ((^a () test.p ()) (^b ((v : i32)) test.q (v)))
+      ;;     (^a () test.p () ^b ((v : i32)) test.q (v) } -> i32)
+      ;;       => blocks  ^a: no arguments, body (test.p ())
+      ;;                  ^b: the argument v of type i32, body (test.q (v))
+      ;;          and the items after the }:  (-> i32)
       ;;   an entry block:
-      ;;     (test.p () test.q ())
-      ;;       => ((^entry () test.p () test.q ()))
-      ;;   the ^x is in the nested brace, not a block of this one:
-      ;;     (^a () test.p () { ^x () test.r () } ^b () test.s ())
-      ;;       => ((^a () test.p () { ^x () test.r () }) (^b () test.s ()))
+      ;;     (test.p () test.q () })
+      ;;       => one block: no arguments, body (test.p () test.q ()),  and the items after: ()
       ;;   a region without blocks:
-      ;;     ()
-      ;;       => ()
-      (define (brace-blocks inside)
-        ;; Give one block the form (^label arguments body ...), the form that make-block-fill reads.
-        ;;   block-items  a list of syntax objects: the items of one block, its ^label first
-        ;;                when it has one
-        ;; Returns that form as one syntax object.
-        ;;   A block with a ^label already has the form, so it is returned as it is.
-        ;;   A block without a ^label is the entry block. It gets  ^entry ()  in front of its
-        ;;   items: the label ^entry and no arguments.
-        ;; It also checks the arguments, and raises an error when a ^label is not followed by
-        ;; them, or when a block without a ^label starts with ,@types.
-        ;;
-        ;; Examples:
-        ;;   (^b ((v : i32)) test.q (v))  =>  (^b ((v : i32)) test.q (v))
-        ;;   (test.p () test.q ())        =>  (^entry () test.p () test.q ())
-        ;;   (^b test.q ())               =>  error: test.q is not the arguments of ^b
-        (define (block-form block-items)
-          (let ([label (car block-items)])
-            (if (block-label? label)
-                (let ([arguments (and (pair? (cdr block-items)) (cadr block-items))])
-                  (unless (and arguments (block-arguments? arguments))
-                    (syntax-violation 'begin-mlir-code
-                                      (string-append "a block label is followed by its arguments: "
-                                                     "(), ((name : type) ...) or ,@types")
-                                      (or arguments label)))
-                  (items->syntax block-items))
-                (begin
-                  (syntax-case label (unquote-splicing)
-                    [(unquote-splicing _)
-                     (syntax-violation 'begin-mlir-code
-                                       "a block with dynamic arguments needs a label: { ^bb ,@types ... }"
-                                       label)]
-                    [_ #f])
-                  (items->syntax (cons* #'^entry #'() block-items))))))
-        ;; depth   the number of { in the items read so far that have no } yet
-        ;; current the items of the block being read, in reverse
-        ;; done    the blocks that are finished, in reverse, each a list of items
-        (let lp ([items inside] [depth 0] [current '()] [done '()])
-          (define (finish) (if (null? current) done (cons (reverse current) done)))
-          (cond
-           [(null? items) (map block-form (reverse (finish)))]
-           [(brace-open? (car items))
-            (lp (cdr items) (+ depth 1) (cons (car items) current) done)]
-           [(brace-close? (car items))
-            (lp (cdr items) (- depth 1) (cons (car items) current) done)]
-           [(and (zero? depth) (block-label? (car items)))
-            (lp (cdr items) depth (list (car items)) (finish))]
-           [else (lp (cdr items) depth (cons (car items) current) done)])))
+      ;;     (})
+      ;;       => no blocks,  and the items after: ()
+      (define (read-blocks open-stx items)
+        ;; The block whose arguments are given, then the blocks after it.
+        (define (read-block arguments body-and-after)
+          (let*-values ([(body rest)   (read-until block-end? body-and-after)]
+                        [(fills after) (read-blocks open-stx rest)])
+            (values (cons (make-block-fill arguments body) fills) after)))
+        (cond
+         [(null? items)
+          (no-matching-close open-stx)]
+         [(brace-close? (car items))
+          (values '() (cdr items))]
+         [(block-label? (car items))
+          (when (or (null? (cdr items)) (brace-close? (cadr items)))
+            (bad-block-arguments (car items)))
+          (read-block (cadr items) (cddr items))]
+         [else
+          (reject-arguments-without-label (car items))
+          (read-block #'() items)]))
 
       ;; Read the { ... } at the front of items, a syntax object that starts with the {.
       ;;   region-index  the position of this region among the regions of the op-form so far
@@ -371,9 +364,8 @@
       ;; make-region-fill-fn), and the items after the closing }, as a syntax object.
       (define (parse-brace-region items region-index)
         (let ([items (syntax->list items)])
-          (let-values ([(inside after) (split-at-close (car items) (cdr items))])
-            (values (make-region-fill-fn region-index
-                                         (map make-block-fill (brace-blocks inside)))
+          (let-values ([(block-fill-fns after) (read-blocks (car items) (cdr items))])
+            (values (make-region-fill-fn region-index block-fill-fns)
                     (items->syntax after)))))
 
       ;; Classify one modifier element for the new v2 attribute syntax.
@@ -586,16 +578,25 @@
                                          (mlir::OpBuilder::setInsertionPointToEnd (%%current-builder) #,block-id)
                                          (begin-mlir-code b ...))))))))
 
-      ;; Returns a fill-fn: (lambda (region-stx) → syntax).
-      ;; block-id extracted before syntax-case so both branches share it.
-      (define (make-block-fill blk)
+      ;; Make the procedure that creates and fills one block.
+      ;;   arguments  a syntax object: (), ((name : type) ...) or ,@types-expression
+      ;;   body       a list of syntax objects: the op-forms of the block
+      ;; Returns a fill-fn, (lambda (region-stx) → syntax): see make-region-fill-fn.
+      ;; Raises an error when arguments has none of these shapes.
+      ;;
+      ;; Examples:
+      ;;   arguments ((v : i32)),  body (test.q (v))   one argument v of type i32, bound to v
+      ;;   arguments ,@arg-types,  body (test.q ())    the argument types are the list arg-types,
+      ;;                                               known when the code runs
+      ;;   arguments (),           body (test.q ())    no arguments
+      (define (make-block-fill arguments body)
         (let ([block-id (car (generate-temporaries '(block)))])
-          (syntax-case blk (: unquote-splicing)
-            ;; Dynamic: (^label ,@types-expr body ...) — no arg bindings
-            [(label (unquote-splicing types-expr) . body)
-             (%%make-block-fill-lambda block-id #'types-expr '() (syntax->list #'body))]
-            ;; Static: (^label ((arg : type) ...) body ...) — bind arg names
-            [(label ((arg : type) ...) . body)
+          (syntax-case arguments (: unquote-splicing)
+            ;; Dynamic: ,@types-expr — no arg bindings
+            [(unquote-splicing types-expr)
+             (%%make-block-fill-lambda block-id #'types-expr '() body)]
+            ;; Static: ((arg : type) ...) — bind arg names
+            [((arg : type) ...)
              (for-all identifier? (syntax->list #'(arg ...)))
              (%%make-block-fill-lambda
               block-id
@@ -603,7 +604,8 @@
               (loop :for var :in (syntax->list #'(arg ...))
                     :for i   :from 0
                     :collect #`(#,var (mlir::Block::getArgument #,block-id #,i)))
-              (syntax->list #'body))])))
+              body)]
+            [_ (bad-block-arguments arguments)])))
 
       ;; @brief Build the code that fills one region of the op being created.
       ;;
