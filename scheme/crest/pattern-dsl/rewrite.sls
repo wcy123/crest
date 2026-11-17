@@ -290,7 +290,10 @@
           [((v ...) = dialect.op (operands ...) . rest)
            (and (for-all identifier? (syntax->list #'(v ...)))
                 (op-name? #'dialect.op))
-           (parse-op (syntax->list #'(v ...)) #'dialect.op #'(operands ...) #'rest)]
+           (parse-op (make-ast-emit-op (syntax->list #'(v ...)) (op-name->str #'dialect.op)
+                                       #'dialect.op (value-operands #'(operands ...))
+                                       '() '() #f '())
+                     #'rest)]
           ;; var = (scheme-expr ...) — name the value of a Scheme expression
           [(v = expression . rest)
            (identifier? #'v)
@@ -299,32 +302,29 @@
           [(expr . rest)
            (values (list (cons (car (generate-temporaries '(%unused))) #'expr)) #'rest)]))
 
-      ;; Read the rest of an op after its operands, and make its pairs.
-      ;;   result-vars  a Scheme list of identifiers: the variables written before the =, or ()
-      ;;   dialect.op   the name of the op, as written: arith.addi
-      ;;   operands     one syntax object of a list: what is written in the ( ) after the name
-      ;;   modifiers    one syntax object of a list: everything after the operands, that is the
-      ;;                modifiers of the op, and then the items of the next op or expression
+      ;; Read the modifiers of an op, and make its pairs.
+      ;;   ast        the ast-emit-op of the op, with its name, result variables and operands. The
+      ;;              modifiers are added to it in place (see parse-modifiers-flat).
+      ;;   modifiers  one syntax object of a list: everything after the operands, that is the
+      ;;              modifiers of the op, and then the items of the next op or expression
       ;; Returns two values, as parse-next does: the pairs of the op (see emit-multi in "Code
       ;; emitters"), and the items after its modifiers.
       ;; Raises an error when the op has result types, but not one for each result variable.
       ;; With no result types at all they are inferred when the op is created.
       ;;
       ;; Example: for  r = test.a (x y) (n : v :index) -> i32  test.b ()
-      ;;   result-vars (r),  dialect.op test.a,  operands (x y)
-      ;;   modifiers ((n : v :index) -> i32 test.b ())
+      ;;   ast        test.a, with the result variable r and the operands (x y)
+      ;;   modifiers  ((n : v :index) -> i32 test.b ())
       ;;     => the pairs of test.a with the result r,  and the items (test.b ())
-      (define (parse-op result-vars dialect.op operands modifiers)
-        (let* ([ast       (make-ast-emit-op result-vars (op-name->str dialect.op) dialect.op
-                                            (value-operands operands) '() '() #f '())]
-               [remaining (parse-modifiers-flat ast modifiers)]
-               [nvars     (length result-vars)]
+      (define (parse-op ast modifiers)
+        (let* ([remaining (parse-modifiers-flat ast modifiers)]
+               [nvars     (length (ast-emit-op-result-vars ast))]
                [ntypes    (length (ast-emit-op-result-types ast))])
           (unless (or (eqv? nvars ntypes) (eqv? ntypes 0))
             (syntax-violation 'begin-mlir-code
                               (string-append "result variable count (" (number->string nvars)
                                              ") does not match result type count (" (number->string ntypes) ")")
-                              dialect.op))
+                              (ast-emit-op-op-name-stx ast)))
           (values (emit-multi ast) remaining)))
 
       ;; Read the modifiers of an op from the front of items, and add them to the op.
