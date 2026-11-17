@@ -60,6 +60,26 @@ func.func @empty_region() {
   return
 }
 
+// CHECK-LABEL: func.func @one_region_empty_block
+// CHECK:         "test.dst_one_region_empty_block"() ({
+// CHECK-NEXT:    ^bb0:
+// CHECK-NEXT:    }) : () -> ()
+func.func @one_region_empty_block() {
+  "test.one_region_empty_block"() : () -> ()
+  return
+}
+
+// CHECK-LABEL: func.func @empty_block_with_arguments
+// CHECK:         "test.dst_empty_block_with_arguments"(%arg0) ({
+// CHECK-NEXT:    ^bb0(%{{.*}}: i32{{.*}}):
+// CHECK-NEXT:    }, {
+// CHECK-NEXT:    ^bb0(%{{.*}}: i32{{.*}}):
+// CHECK-NEXT:    }) : (i32) -> i32
+func.func @empty_block_with_arguments(%arg0: i32) -> i32 {
+  %0 = "test.empty_block_with_arguments"(%arg0) : (i32) -> i32
+  return %0 : i32
+}
+
 // CHECK-LABEL: func.func @braces_among_attributes
 // CHECK:         "test.dst_braces_among_attributes"() ({
 // CHECK-NEXT:      "test.one"() : () -> ()
