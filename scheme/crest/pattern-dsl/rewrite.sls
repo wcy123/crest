@@ -330,7 +330,7 @@
         ;;   (^b ((v : i32)) test.q (v))  =>  (^b ((v : i32)) test.q (v))
         ;;   (test.p () test.q ())        =>  (^entry () test.p () test.q ())
         ;;   (^b test.q ())               =>  error: test.q is not the arguments of ^b
-        (define (->form block-items)
+        (define (block-form block-items)
           (let ([label (car block-items)])
             (if (block-label? label)
                 (let ([arguments (and (pair? (cdr block-items)) (cadr block-items))])
@@ -354,7 +354,7 @@
         (let lp ([items inside] [depth 0] [current '()] [done '()])
           (define (finish) (if (null? current) done (cons (reverse current) done)))
           (cond
-           [(null? items) (map ->form (reverse (finish)))]
+           [(null? items) (map block-form (reverse (finish)))]
            [(brace-open? (car items))
             (lp (cdr items) (+ depth 1) (cons (car items) current) done)]
            [(brace-close? (car items))
