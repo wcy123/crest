@@ -234,8 +234,8 @@
       ;; gives it its value. main writes each pair as  (variable expression)  in one let*:
       ;; (let* ((variable expression) ...) last-variable). The variable of the last pair is the
       ;; value of the whole form. See "Code emitters" for the pairs of an op.
-      ;; main passes at least one item. The function takes one op or expression at a time, until
-      ;; no item is left.
+      ;; main passes at least one item. The function takes one op or expression at a time, and
+      ;; stops when no item is left, so it also gets the empty list, and returns the empty list.
       ;;
       ;; Examples (op-1, op-2 and unused stand for names that are made; <...> describes code):
       ;;   r = test.a () -> i32  test.b (r)
@@ -246,20 +246,15 @@
       ;;     => (x . (+ 1 2))
       ;;        (unused . (display x))
       (define (process-ops-flat items)
-        ;; ret  the pairs made so far, newest first
-        (let lp ([items items] [ret '()])
-          (let-values ([(head remaining) (parse-next items)])
-            (if (not head)
-                (reverse ret)
-                ;; the pairs of this op or expression, one after another, in front of ret
-                (let push ([pairs (cond
-                                   [(ast-emit-op? head) (emit-multi head)]
-                                   [(and (pair? head) (identifier? (car head))) (list head)]
-                                   [else (list (cons (car (generate-temporaries '(%unused))) head))])]
-                           [ret ret])
-                  (if (null? pairs)
-                      (lp remaining ret)
-                      (push (cdr pairs) (cons (car pairs) ret))))))))
+        (let-values ([(head remaining) (parse-next items)])
+          (if (not head)
+              '()
+              (append
+               (cond
+                [(ast-emit-op? head) (emit-multi head)]
+                [(and (pair? head) (identifier? (car head))) (list head)]
+                [else (list (cons (car (generate-temporaries '(%unused))) head))])
+               (process-ops-flat remaining)))))
 
       ;; Returns (values head remaining):
       ;;   (values #f #f)           — items is empty
