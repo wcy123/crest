@@ -168,16 +168,27 @@
     (lambda (stx)
 
       ;;-------------------------------------------------------------------
-      ;; Source location helpers — extract Scheme source loc at expand time
+      ;; Main entry
       ;;-------------------------------------------------------------------
 
-      ;; Derive mlir::Location expr from a syntax object's source annotation.
-      ;; Falls back to mlir::UnknownLoc::get when source info is unavailable.
-      (define (syntax->mlir-loc-expr op-stx)
-        (let ([loc (syntax->file+line+col op-stx)])
-          (if loc
-              #`(apply mlir::FileLineColLoc::get '#,loc)
-              #'(mlir::UnknownLoc::get))))
+      ;; (begin-mlir-code op ...)
+      ;;   Ops are created with the builder in current-OpBuilder, (%%current-builder), looked up
+      ;;   when each op is created.
+      ;;
+      ;; v2 flat syntax: items form a flat list that process-ops-flat scans sequentially.
+      ;; Op boundaries are detected by parse-next; parenthesized items that don't
+      ;; start an op are treated as Scheme expressions.
+      (define (main)
+        (syntax-case stx ()
+          [(_ op ...)
+           (let* ([pairs    (process-ops-flat #'(op ...))]
+                  [expanded (if (null? pairs)
+                                #'(if #f #f)
+                                (with-syntax ([(binding ...) (map make-binding pairs)]
+                                              [result        (car (car (reverse pairs)))])
+                                  #'(let* (binding ...) result)))])
+             (dump-expansion! stx (syntax->list #'(op ...)) expanded)
+             expanded)]))
 
       ;;-------------------------------------------------------------------
       ;; Debug dump
@@ -211,162 +222,63 @@
                   (newline port)))))))
 
       ;;-------------------------------------------------------------------
-      ;; Main entry
-      ;;-------------------------------------------------------------------
-
-      ;; (begin-mlir-code op ...)
-      ;;   Ops are created with the builder in current-OpBuilder, (%%current-builder), looked up
-      ;;   when each op is created.
-      ;;
-      ;; v2 flat syntax: items form a flat list that process-ops-flat scans sequentially.
-      ;; Op boundaries are detected by parse-next; parenthesized items that don't
-      ;; start an op are treated as Scheme expressions.
-      (define (main)
-        (syntax-case stx ()
-          [(_ op ...)
-           (let* ([pairs    (process-ops-flat #'(op ...))]
-                  [expanded (if (null? pairs)
-                                #'(if #f #f)
-                                (with-syntax ([(binding ...) (map make-binding pairs)]
-                                              [result        (car (car (reverse pairs)))])
-                                  #'(let* (binding ...) result)))])
-             (dump-expansion! stx (syntax->list #'(op ...)) expanded)
-             expanded)]))
-
-
-      ;;-------------------------------------------------------------------
       ;; Flat-list parser (v2 syntax)
       ;;-------------------------------------------------------------------
 
-      ;; True when x is a block label identifier starting with ^.
-      (define (block-label? x)
-        (let ([datum (syntax->datum x)])
-          (and (symbol? datum)
-               (char=? #\^ (string-ref (symbol->string datum) 0)))))
+      ;; Scan the flat item list and produce binding descriptors.
+      (define (process-ops-flat items)
+        (let-values ([(head remaining) (parse-next items)])
+          (if (not head)
+              '()
+              (append
+               (cond
+                [(ast-emit-op? head) (emit-multi head)]
+                [(and (pair? head) (identifier? (car head))) (list head)]
+                [else (list (cons (car (generate-temporaries '(%unused))) head))])
+               (process-ops-flat remaining)))))
 
-      (define (brace-open? x)
-        (syntax-case x (|{|) [|{| #t] [_ #f]))
-      (define (brace-close? x)
-        (syntax-case x (|}|) [|}| #t] [_ #f]))
-
-      ;; A list of syntax objects as one syntax object, the list (a b c) as #'(a b c).
-      (define (items->syntax items)
-        (with-syntax ([(item ...) items]) #'(item ...)))
-
-      ;; True when x ends the body of a block: the ^label of the next block, or the } of the region.
-      (define (block-end? x)
-        (or (block-label? x) (brace-close? x)))
-
-      ;; True when x is named } but is not the brace keyword: the file did not import { }.
-      (define (close-not-keyword? x)
-        (and (identifier? x) (eq? (syntax->datum x) '|}|) (not (brace-close? x))))
-
-      (define (no-matching-close open-stx)
-        (syntax-violation 'begin-mlir-code "this { has no matching }" open-stx))
-
-      (define (bad-block-arguments stx)
-        (syntax-violation 'begin-mlir-code
-                          (string-append "a block label is followed by its arguments: "
-                                         "(), ((name : type) ...) or ,@types")
-                          stx))
-
-      ;; Take the items up to the first one that satisfies stop?.
-      ;;   stop?  a procedure from one syntax object to a boolean
-      ;;   items  a list of syntax objects
-      ;; Returns two values, both lists: the items before the stopping item, and the items from
-      ;; the stopping item on. The second list is empty when no item stops.
-      ;; A { among the items is taken together with everything up to its own }, so stop? is never
-      ;; asked about an item inside a nested brace.
-      ;; Raises an error when a { has no matching }, or when a } is not the brace keyword.
-      ;;
-      ;; Examples (stop? is block-label?):
-      ;;   (test.p () ^b test.q ())
-      ;;     => (test.p ())  and  (^b test.q ())
-      ;;   (test.p () { ^x test.r () } ^b ())
-      ;;     => (test.p () { ^x test.r () })  and  (^b ())        the ^x is in the nested brace
-      ;;   (test.p ())
-      ;;     => (test.p ())  and  ()                              no item stops
-      (define (read-until stop? items)
-        (cond
-         [(or (null? items) (stop? (car items)))
-          (values '() items)]
-         [(close-not-keyword? (car items))
-          (syntax-violation 'begin-mlir-code
-                            "this } is not the brace keyword: import { } from (crest) or (crest pattern-dsl keywords)"
-                            (car items))]
-         [(brace-open? (car items))
-          (let-values ([(nested after) (read-until brace-close? (cdr items))])
-            (when (null? after)
-              (no-matching-close (car items)))
-            (let-values ([(more rest) (read-until stop? (cdr after))])
-              (values (append (list (car items)) nested (list (car after)) more)
-                      rest)))]
-         [else
-          (let-values ([(more rest) (read-until stop? (cdr items))])
-            (values (cons (car items) more) rest))]))
-
-      ;; A block with arguments needs a label: its first item must not be ,@types.
-      (define (reject-arguments-without-label x)
-        (syntax-case x (unquote-splicing)
-          [(unquote-splicing _)
-           (syntax-violation 'begin-mlir-code
-                             "a block with dynamic arguments needs a label: { ^bb ,@types ... }"
-                             x)]
-          [_ #f]))
-
-      ;; Read the blocks of one { } region, one after another, up to its closing }.
-      ;;   open-stx  the { itself, only for the error message
-      ;;   items     a list of syntax objects: everything written after that {
-      ;; Returns two values: a list with the fill procedure of each block (see make-block-fill),
-      ;; in the order written, and the list of the items after the closing }.
-      ;;
-      ;; A ^label starts a block, and the block runs up to the next ^label or the }. The item
-      ;; right after a ^label is its arguments: (), ((name : type) ...) or ,@types. Items before
-      ;; the first ^label are an entry block without arguments. A ^label inside a nested { }
-      ;; belongs to that brace, not to this one. A region { } has no blocks.
-      ;; Raises an error when no } closes the {, or when a ^label is not followed by its
-      ;; arguments, or when the entry block starts with ,@types.
-      ;;
-      ;; Examples (items follow the {, so the } that closes it is among them):
-      ;;   two blocks:
-      ;;     (^a () test.p () ^b ((v : i32)) test.q (v) } -> i32)
-      ;;       => blocks  ^a: no arguments, body (test.p ())
-      ;;                  ^b: the argument v of type i32, body (test.q (v))
-      ;;          and the items after the }:  (-> i32)
-      ;;   an entry block:
-      ;;     (test.p () test.q () })
-      ;;       => one block: no arguments, body (test.p () test.q ()),  and the items after: ()
-      ;;   a region without blocks:
-      ;;     (})
-      ;;       => no blocks,  and the items after: ()
-      (define (read-blocks open-stx items)
-        ;; The block whose arguments are given, then the blocks after it.
-        (define (read-block arguments body-and-after)
-          (let*-values ([(body rest)   (read-until block-end? body-and-after)]
-                        [(fills after) (read-blocks open-stx rest)])
-            (values (cons (make-block-fill arguments body) fills) after)))
-        (cond
-         [(null? items)
-          (no-matching-close open-stx)]
-         [(brace-close? (car items))
-          (values '() (cdr items))]
-         [(block-label? (car items))
-          (when (or (null? (cdr items)) (brace-close? (cadr items)))
-            (bad-block-arguments (car items)))
-          (read-block (cadr items) (cddr items))]
-         [else
-          (reject-arguments-without-label (car items))
-          (read-block #'() items)]))
-
-      ;; Read the { ... } at the front of items, a syntax object that starts with the {.
-      ;;   region-index  the position of this region among the regions of the op-form so far
-      ;; Returns two values: the procedure that fills the region once the op exists (see
-      ;; make-region-fill-fn), and the items after the closing }, as a syntax object.
-      (define (parse-brace-region items region-index)
-        (let ([items (syntax->list items)])
-          (let-values ([(block-fill-fns after) (read-blocks (car items) (cdr items))])
-            (values (make-region-fill-fn region-index block-fill-fns)
-                    (items->syntax after)))))
+      ;; Returns (values head remaining):
+      ;;   (values #f #f)           — items is empty
+      ;;   (values ast-emit-op stx) — next item(s) form an MLIR op
+      ;;   (values (var . expr) stx) — `var = (expr)`: bind the value of a Scheme expression
+      ;;   (values expr-stx stx)    — next item is a Scheme expression
+      (define (parse-next items)
+        (syntax-case items (=)
+          [() (values #f #f)]
+          ;; no-result: op.name (operands) ... — normalize to (() = op ...)
+          [(op (operands ...) . rest)
+           (op-name? #'op)
+           (parse-next #'(() = op (operands ...) . rest))]
+          ;; single-result: var = op ... — normalize to ((var) = op ...)
+          [(var = op (operands ...) . rest)
+           (and (identifier? #'var) (op-name? #'op))
+           (parse-next #'((var) = op (operands ...) . rest))]
+          ;; multi-result: (v ...) = op ... — canonical form, build ast-emit-op
+          [((v ...) = op (operands ...) . rest)
+           (and (for-all identifier? (syntax->list #'(v ...)))
+                (op-name? #'op))
+           (let-values ([(attr-fns region-fns loc types remaining)
+                         (parse-modifiers-flat #'rest)])
+             (let ([nvars  (length (syntax->list #'(v ...)))]
+                   [ntypes (length types)])
+               ;; No -> at all: the result types are inferred when the op is created.
+               (unless (or (eqv? nvars ntypes) (eqv? ntypes 0))
+                 (syntax-violation 'begin-mlir-code
+                                   (string-append "result variable count (" (number->string nvars)
+                                                  ") does not match result type count (" (number->string ntypes) ")")
+                                   #'op)))
+             (values (make-ast-emit-op
+                      (syntax->list #'(v ...)) (op-name->str #'op) #'op
+                      (value-operands #'(operands ...))
+                      attr-fns region-fns loc types)
+                     remaining))]
+          ;; var = (scheme-expr ...) — name the value of a Scheme expression
+          [(v = expression . rest)
+           (identifier? #'v)
+           (values (cons #'v #'expression) #'rest)]
+          ;; Scheme expression — consume one item
+          [(expr . rest)
+           (values #'expr #'rest)]))
 
       ;; Classify one modifier element for the new v2 attribute syntax.
       ;; Attribute form: (name : val) or (name : val :keyword)
@@ -496,87 +408,120 @@
             [(otherwise ...)
              (values (reverse attrs) regions loc types #'(otherwise ...))])))
 
-      ;; Returns (values head remaining):
-      ;;   (values #f #f)           — items is empty
-      ;;   (values ast-emit-op stx) — next item(s) form an MLIR op
-      ;;   (values (var . expr) stx) — `var = (expr)`: bind the value of a Scheme expression
-      ;;   (values expr-stx stx)    — next item is a Scheme expression
-      (define (parse-next items)
-        (syntax-case items (=)
-          [() (values #f #f)]
-          ;; no-result: op.name (operands) ... — normalize to (() = op ...)
-          [(op (operands ...) . rest)
-           (op-name? #'op)
-           (parse-next #'(() = op (operands ...) . rest))]
-          ;; single-result: var = op ... — normalize to ((var) = op ...)
-          [(var = op (operands ...) . rest)
-           (and (identifier? #'var) (op-name? #'op))
-           (parse-next #'((var) = op (operands ...) . rest))]
-          ;; multi-result: (v ...) = op ... — canonical form, build ast-emit-op
-          [((v ...) = op (operands ...) . rest)
-           (and (for-all identifier? (syntax->list #'(v ...)))
-                (op-name? #'op))
-           (let-values ([(attr-fns region-fns loc types remaining)
-                         (parse-modifiers-flat #'rest)])
-             (let ([nvars  (length (syntax->list #'(v ...)))]
-                   [ntypes (length types)])
-               ;; No -> at all: the result types are inferred when the op is created.
-               (unless (or (eqv? nvars ntypes) (eqv? ntypes 0))
-                 (syntax-violation 'begin-mlir-code
-                                   (string-append "result variable count (" (number->string nvars)
-                                                  ") does not match result type count (" (number->string ntypes) ")")
-                                   #'op)))
-             (values (make-ast-emit-op
-                      (syntax->list #'(v ...)) (op-name->str #'op) #'op
-                      (value-operands #'(operands ...))
-                      attr-fns region-fns loc types)
-                     remaining))]
-          ;; var = (scheme-expr ...) — name the value of a Scheme expression
-          [(v = expression . rest)
-           (identifier? #'v)
-           (values (cons #'v #'expression) #'rest)]
-          ;; Scheme expression — consume one item
-          [(expr . rest)
-           (values #'expr #'rest)]))
+      ;; Read the { ... } at the front of items, a syntax object that starts with the {.
+      ;;   region-index  the position of this region among the regions of the op-form so far
+      ;; Returns two values: the procedure that fills the region once the op exists (see
+      ;; make-region-fill-fn), and the items after the closing }, as a syntax object.
+      (define (parse-brace-region items region-index)
+        (let ([items (syntax->list items)])
+          (let-values ([(block-fill-fns after) (read-blocks (car items) (cdr items))])
+            (values (make-region-fill-fn region-index block-fill-fns)
+                    (items->syntax after)))))
 
-      ;; Scan the flat item list and produce binding descriptors.
-      (define (process-ops-flat items)
-        (let-values ([(head remaining) (parse-next items)])
-          (if (not head)
-              '()
-              (append
-               (cond
-                [(ast-emit-op? head) (emit-multi head)]
-                [(and (pair? head) (identifier? (car head))) (list head)]
-                [else (list (cons (car (generate-temporaries '(%unused))) head))])
-               (process-ops-flat remaining)))))
+      ;; Read the blocks of one { } region, one after another, up to its closing }.
+      ;;   open-stx  the { itself, only for the error message
+      ;;   items     a list of syntax objects: everything written after that {
+      ;; Returns two values: a list with the fill procedure of each block (see make-block-fill),
+      ;; in the order written, and the list of the items after the closing }.
+      ;;
+      ;; A ^label starts a block, and the block runs up to the next ^label or the }. The item
+      ;; right after a ^label is its arguments: (), ((name : type) ...) or ,@types. Items before
+      ;; the first ^label are an entry block without arguments. A ^label inside a nested { }
+      ;; belongs to that brace, not to this one. A region { } has no blocks.
+      ;; Raises an error when no } closes the {, or when a ^label is not followed by its
+      ;; arguments, or when the entry block starts with ,@types.
+      ;;
+      ;; Examples (items follow the {, so the } that closes it is among them):
+      ;;   two blocks:
+      ;;     (^a () test.p () ^b ((v : i32)) test.q (v) } -> i32)
+      ;;       => blocks  ^a: no arguments, body (test.p ())
+      ;;                  ^b: the argument v of type i32, body (test.q (v))
+      ;;          and the items after the }:  (-> i32)
+      ;;   an entry block:
+      ;;     (test.p () test.q () })
+      ;;       => one block: no arguments, body (test.p () test.q ()),  and the items after: ()
+      ;;   a region without blocks:
+      ;;     (})
+      ;;       => no blocks,  and the items after: ()
+      (define (read-blocks open-stx items)
+        ;; The block whose arguments are given, then the blocks after it.
+        (define (read-block arguments body-and-after)
+          (let*-values ([(body rest)   (read-until block-end? body-and-after)]
+                        [(fills after) (read-blocks open-stx rest)])
+            (values (cons (make-block-fill arguments body) fills) after)))
+        (cond
+         [(null? items)
+          (no-matching-close open-stx)]
+         [(brace-close? (car items))
+          (values '() (cdr items))]
+         [(block-label? (car items))
+          (when (or (null? (cdr items)) (brace-close? (cadr items)))
+            (bad-block-arguments (car items)))
+          (read-block (cadr items) (cddr items))]
+         [else
+          (reject-arguments-without-label (car items))
+          (read-block #'() items)]))
 
-      ;; Shared block-fill factory.
-      ;; block-id     — syntax identifier for the block (same object used in arg-bindings)
-      ;; types-stx    — expr evaluating to the list of block arg types
-      ;; arg-bindings — syntax list of let* bindings (empty for dynamic)
-      ;; body-stxs    — list of body op-form syntax objects
-      ;; Uses #,block-id directly in quasi-syntax to avoid with-syntax mark skew.
-      (define (%%make-block-fill-lambda block-id types-stx arg-bindings body-stxs)
-        (with-syntax ([guard   (car (generate-temporaries '(insertion-guard)))]
-                      [types   types-stx]
-                      [(arg-binding ...) arg-bindings]
-                      [(b ...) body-stxs])
-          (lambda (region-stx)
-            (with-syntax ([region region-stx])
-              ;; The block is made through the builder, so that a rewriter's listener sees it: a
-              ;; dialect conversion that fails rolls back only the blocks it knows. createBlock moves
-              ;; the insertion point into the new block, so the guard that restores it starts first.
-              #`(with-InsertionGuard guard ((%%current-builder))
-                                     (let* ([#,block-id
-                                             (let* ([loc   (mlir::Operation::getLoc (mlir::Region::getParentOp region))]
-                                                    [block (mlir::OpBuilder::createBlock (%%current-builder) region)])
-                                               (for-each (lambda (t) (mlir::Block::addArgument block t loc)) types)
-                                               block)]
-                                            arg-binding ...)
-                                       (with-current-Block #,block-id
-                                         (mlir::OpBuilder::setInsertionPointToEnd (%%current-builder) #,block-id)
-                                         (begin-mlir-code b ...))))))))
+      ;; Take the items up to the first one that satisfies stop?.
+      ;;   stop?  a procedure from one syntax object to a boolean
+      ;;   items  a list of syntax objects
+      ;; Returns two values, both lists: the items before the stopping item, and the items from
+      ;; the stopping item on. The second list is empty when no item stops.
+      ;; A { among the items is taken together with everything up to its own }, so stop? is never
+      ;; asked about an item inside a nested brace.
+      ;; Raises an error when a { has no matching }, or when a } is not the brace keyword.
+      ;;
+      ;; Examples (stop? is block-label?):
+      ;;   (test.p () ^b test.q ())
+      ;;     => (test.p ())  and  (^b test.q ())
+      ;;   (test.p () { ^x test.r () } ^b ())
+      ;;     => (test.p () { ^x test.r () })  and  (^b ())        the ^x is in the nested brace
+      ;;   (test.p ())
+      ;;     => (test.p ())  and  ()                              no item stops
+      (define (read-until stop? items)
+        (cond
+         [(or (null? items) (stop? (car items)))
+          (values '() items)]
+         [(close-not-keyword? (car items))
+          (syntax-violation 'begin-mlir-code
+                            "this } is not the brace keyword: import { } from (crest) or (crest pattern-dsl keywords)"
+                            (car items))]
+         [(brace-open? (car items))
+          (let-values ([(nested after) (read-until brace-close? (cdr items))])
+            (when (null? after)
+              (no-matching-close (car items)))
+            (let-values ([(more rest) (read-until stop? (cdr after))])
+              (values (append (list (car items)) nested (list (car after)) more)
+                      rest)))]
+         [else
+          (let-values ([(more rest) (read-until stop? (cdr items))])
+            (values (cons (car items) more) rest))]))
+
+      ;; True when x is named } but is not the brace keyword: the file did not import { }.
+      (define (close-not-keyword? x)
+        (and (identifier? x) (eq? (syntax->datum x) '|}|) (not (brace-close? x))))
+
+      (define (no-matching-close open-stx)
+        (syntax-violation 'begin-mlir-code "this { has no matching }" open-stx))
+
+      ;; True when x ends the body of a block: the ^label of the next block, or the } of the region.
+      (define (block-end? x)
+        (or (block-label? x) (brace-close? x)))
+
+      ;; A block with arguments needs a label: its first item must not be ,@types.
+      (define (reject-arguments-without-label x)
+        (syntax-case x (unquote-splicing)
+          [(unquote-splicing _)
+           (syntax-violation 'begin-mlir-code
+                             "a block with dynamic arguments needs a label: { ^bb ,@types ... }"
+                             x)]
+          [_ #f]))
+
+      (define (bad-block-arguments stx)
+        (syntax-violation 'begin-mlir-code
+                          (string-append "a block label is followed by its arguments: "
+                                         "(), ((name : type) ...) or ,@types")
+                          stx))
 
       ;; Make the procedure that creates and fills one block.
       ;;   arguments  a syntax object: (), ((name : type) ...) or ,@types-expression
@@ -606,6 +551,33 @@
                     :collect #`(#,var (mlir::Block::getArgument #,block-id #,i)))
               body)]
             [_ (bad-block-arguments arguments)])))
+
+      ;; Shared block-fill factory.
+      ;; block-id     — syntax identifier for the block (same object used in arg-bindings)
+      ;; types-stx    — expr evaluating to the list of block arg types
+      ;; arg-bindings — syntax list of let* bindings (empty for dynamic)
+      ;; body-stxs    — list of body op-form syntax objects
+      ;; Uses #,block-id directly in quasi-syntax to avoid with-syntax mark skew.
+      (define (%%make-block-fill-lambda block-id types-stx arg-bindings body-stxs)
+        (with-syntax ([guard   (car (generate-temporaries '(insertion-guard)))]
+                      [types   types-stx]
+                      [(arg-binding ...) arg-bindings]
+                      [(b ...) body-stxs])
+          (lambda (region-stx)
+            (with-syntax ([region region-stx])
+              ;; The block is made through the builder, so that a rewriter's listener sees it: a
+              ;; dialect conversion that fails rolls back only the blocks it knows. createBlock moves
+              ;; the insertion point into the new block, so the guard that restores it starts first.
+              #`(with-InsertionGuard guard ((%%current-builder))
+                                     (let* ([#,block-id
+                                             (let* ([loc   (mlir::Operation::getLoc (mlir::Region::getParentOp region))]
+                                                    [block (mlir::OpBuilder::createBlock (%%current-builder) region)])
+                                               (for-each (lambda (t) (mlir::Block::addArgument block t loc)) types)
+                                               block)]
+                                            arg-binding ...)
+                                       (with-current-Block #,block-id
+                                         (mlir::OpBuilder::setInsertionPointToEnd (%%current-builder) #,block-id)
+                                         (begin-mlir-code b ...))))))))
 
       ;; @brief Build the code that fills one region of the op being created.
       ;;
@@ -677,8 +649,6 @@
       ;; Plus one descriptor per result variable (empty for zero-result ops):
       ;;   (%var . (mlir::Operation::getResult op-tmp i))
       ;;
-      ;; Generate a unique gensym for the Operation* temp binding.
-      (define (op-tmp-id) (car (generate-temporaries '(%op-tmp))))
 
       (define (emit-multi ast)
         (let* ([result-vars     (ast-emit-op-result-vars  ast)]
@@ -745,7 +715,20 @@
                    :for i   :from 0
                    :collect (cons var #`(mlir::Operation::getResult op-tmp #,i)))))))
 
+      ;; Generate a unique gensym for the Operation* temp binding.
+      (define (op-tmp-id) (car (generate-temporaries '(%op-tmp))))
 
+      ;;-------------------------------------------------------------------
+      ;; Source location helpers — extract Scheme source loc at expand time
+      ;;-------------------------------------------------------------------
+
+      ;; Derive mlir::Location expr from a syntax object's source annotation.
+      ;; Falls back to mlir::UnknownLoc::get when source info is unavailable.
+      (define (syntax->mlir-loc-expr op-stx)
+        (let ([loc (syntax->file+line+col op-stx)])
+          (if loc
+              #`(apply mlir::FileLineColLoc::get '#,loc)
+              #'(mlir::UnknownLoc::get))))
 
       ;;-------------------------------------------------------------------
       ;; Leaf helpers
@@ -755,17 +738,18 @@
       (define (make-binding pair)
         (with-syntax ([var (car pair)] [expr (cdr pair)]) #'(var expr)))
 
-      (define (%%string-contains string character)
-        (loop :initially := #f
-              :for x :in-string string
-              :break #t :if (char=? x character)))
-
       (define (op-name? x)
         (let ([datum (syntax->datum x)])
           (cond
            [(string? datum) (%%string-contains datum #\.)]
            [(symbol? datum) (%%string-contains (symbol->string datum) #\.)]
            [#t #f])))
+
+      (define (%%string-contains string character)
+        (loop :initially := #f
+              :for x :in-string string
+              :break #t :if (char=? x character)))
+
       (define (op-name->str x)
         (let ([datum (syntax->datum x)])
           (if (string? datum) datum (symbol->string datum))))
@@ -782,6 +766,22 @@
             [val          #'(list val)]))
         (with-syntax ([(chunk ...) (map convert (syntax->list operands-stx))])
           #'(append chunk ...)))
+
+      ;; True when x is a block label identifier starting with ^.
+      (define (block-label? x)
+        (let ([datum (syntax->datum x)])
+          (and (symbol? datum)
+               (char=? #\^ (string-ref (symbol->string datum) 0)))))
+
+      (define (brace-open? x)
+        (syntax-case x (|{|) [|{| #t] [_ #f]))
+
+      (define (brace-close? x)
+        (syntax-case x (|}|) [|}| #t] [_ #f]))
+
+      ;; A list of syntax objects as one syntax object, the list (a b c) as #'(a b c).
+      (define (items->syntax items)
+        (with-syntax ([(item ...) items]) #'(item ...)))
 
       (main)))
 
