@@ -20,7 +20,7 @@
 ;;     insertion point to the end of the new block; anywhere else wrap the call in
 ;;     (with-current-OpBuilder b ...), where b is a shell (from with-OpBuilder, or the
 ;;     pattern's rw). There is no explicit builder argument.
-;;     Returns the last result (like Scheme's begin).
+;;     Returns the last result (like Scheme's begin). It needs at least one op-form or expression.
 ;;
 ;; v2 flat-list syntax — items are scanned sequentially without outer parens per op:
 ;;
@@ -180,13 +180,14 @@
       ;; start an op are treated as Scheme expressions.
       (define (main)
         (syntax-case stx ()
+          [(_)
+           (syntax-violation 'begin-mlir-code
+                             "expected at least one op-form or Scheme expression" stx)]
           [(_ op ...)
            (let* ([pairs    (process-ops-flat #'(op ...))]
-                  [expanded (if (null? pairs)
-                                #'(if #f #f)
-                                (with-syntax ([(binding ...) (map make-binding pairs)]
-                                              [result        (car (car (reverse pairs)))])
-                                  #'(let* (binding ...) result)))])
+                  [expanded (with-syntax ([(binding ...) (map make-binding pairs)]
+                                          [result        (car (car (reverse pairs)))])
+                              #'(let* (binding ...) result))])
              (dump-expansion! stx (syntax->list #'(op ...)) expanded)
              expanded)]))
 
@@ -562,7 +563,11 @@
         (with-syntax ([guard   (car (generate-temporaries '(insertion-guard)))]
                       [types   types-stx]
                       [(arg-binding ...) arg-bindings]
-                      [(b ...) body-stxs])
+                      ;; A block may have no op-form, and begin-mlir-code needs at least one.
+                      [body-code (if (null? body-stxs)
+                                     #'(if #f #f)
+                                     (with-syntax ([(b ...) body-stxs])
+                                       #'(begin-mlir-code b ...)))])
           (lambda (region-stx)
             (with-syntax ([region region-stx])
               ;; The block is made through the builder, so that a rewriter's listener sees it: a
@@ -577,7 +582,7 @@
                                             arg-binding ...)
                                        (with-current-Block #,block-id
                                          (mlir::OpBuilder::setInsertionPointToEnd (%%current-builder) #,block-id)
-                                         (begin-mlir-code b ...))))))))
+                                         body-code)))))))
 
       ;; @brief Build the code that fills one region of the op being created.
       ;;

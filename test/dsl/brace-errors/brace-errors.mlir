@@ -11,6 +11,7 @@
 // RUN: %{run} --crest-pass="passes=passes/missing-brace-import" 2>&1 | %FileCheck %s --check-prefix=NO-IMPORT
 // RUN: %{run} --crest-pass="passes=passes/dynamic-arguments-without-label" 2>&1 | %FileCheck %s --check-prefix=NO-LABEL
 // RUN: %{run} --crest-pass="passes=passes/close-not-imported" 2>&1 | %FileCheck %s --check-prefix=CLOSE
+// RUN: %{run} --crest-pass="passes=passes/empty-begin-mlir-code" 2>&1 | %FileCheck %s --check-prefix=EMPTY
 // RUN: %{run} --crest-pass="passes=passes/old-label-form" 2>&1 | %FileCheck %s --check-prefix=OLD-LABEL
 // RUN: %{run} --crest-pass="passes=passes/old-region-form" 2>&1 | %FileCheck %s --check-prefix=OLD-REGION
 
@@ -46,6 +47,10 @@
 // A } that is not the keyword says to import it.
 // CLOSE: error: Failed to import Scheme library: passes/close-not-imported:
 // CLOSE-SAME: this } is not the brace keyword: import { } from (crest)
+
+// begin-mlir-code needs at least one op-form or expression.
+// EMPTY: error: Failed to import Scheme library: passes/empty-begin-mlir-code:
+// EMPTY-SAME: expected at least one op-form or Scheme expression
 
 // The regions of before braces are an error that says what to write.
 // OLD-LABEL: error: Failed to import Scheme library: passes/old-label-form:
