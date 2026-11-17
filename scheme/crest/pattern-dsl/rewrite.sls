@@ -226,13 +226,13 @@
       ;; Flat-list parser (v2 syntax)
       ;;-------------------------------------------------------------------
 
-      ;; Turn the flat items of a begin-mlir-code form into binding descriptors.
+      ;; Turn the flat items of a begin-mlir-code form into the bindings of one let*.
       ;;   items  one syntax object whose content is a list, as syntax-case gives it: #'(item ...).
       ;;          It is not a Scheme list of syntax objects.
-      ;; Returns a Scheme list of binding descriptors, in the order the items are written. Each
-      ;; is a Scheme pair of two syntax objects, (variable-syntax . expression-syntax): one
-      ;; binding of the final let* (see the binding-descriptor protocol in "Code emitters").
-      ;; The variable of the last descriptor is the value of the whole form.
+      ;; Returns a Scheme list of bindings, in the order the items are written. Each is a Scheme
+      ;; pair of two syntax objects, (variable-syntax . expression-syntax), which main puts into
+      ;; one let*: (let* ((variable expression) ...) last-variable). The variable of the last
+      ;; binding is the value of the whole form. See "Code emitters" for the bindings of an op.
       ;;
       ;; Examples (op-1 and op-2 stand for the names that are made for the Operation* of an op):
       ;;   r = test.a () -> i32  test.b (r)
@@ -656,19 +656,19 @@
       ;; Code emitters
       ;;-------------------------------------------------------------------
 
-      ;; Binding-descriptor protocol
+      ;; The bindings that emit-multi makes
       ;; ─────────────────────────────────────────────────────────────────────
       ;; emit-multi returns a flat list
-      ;; of binding-descriptors, each a SCHEME CONS CELL:
+      ;; of bindings, each a SCHEME CONS CELL:
       ;;   (cons var-syntax expr-syntax)   — a pair of two syntax objects
-      ;; make-binding deconstructs each with plain (car d) / (cdr d).
-      ;; main collects all descriptors across the op sequence and assembles them
+      ;; make-binding deconstructs each with plain (car b) / (cdr b).
+      ;; main collects all bindings across the op sequence and assembles them
       ;; into a single (let* ((var expr) ...) result) expansion.
       ;;
-      ;; emit-multi always produces at least one descriptor for the Operation*:
+      ;; emit-multi always produces at least one binding, for the Operation*:
       ;;   (op-tmp . (let ([op (with-OperationState ...)]) setter... fills... op))
       ;;
-      ;; Plus one descriptor per result variable (empty for zero-result ops):
+      ;; Plus one binding per result variable (empty for zero-result ops):
       ;;   (%var . (mlir::Operation::getResult op-tmp i))
       ;;
 
@@ -713,7 +713,7 @@
                [(addregion-call ...) addregion-calls]
                [source-loc (if loc-override loc-override (syntax->mlir-loc-expr op-name-stx))])
             (cons
-             ;; Binding descriptor: op-tmp bound to the created Operation*.
+             ;; Binding: op-tmp bound to the created Operation*.
              ;; Attributes set in OperationState (before create);
              ;; region slots pre-allocated in OperationState, filled post-create.
              (cons #'op-tmp
