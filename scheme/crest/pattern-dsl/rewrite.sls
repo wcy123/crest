@@ -314,7 +314,18 @@
       ;;   ()
       ;;     => ()                                                        a region without blocks
       (define (brace-blocks inside)
-        ;; block-items: the items of one block, its ^label first when it has one.
+        ;; Make the form (^label arguments body ...) for one block.
+        ;;   block-items  a list of syntax objects: the items of one block, its ^label first
+        ;;                when it has one
+        ;; Returns one syntax object, the list that make-block-fill reads. A block with a ^label
+        ;; is returned as it is. A block without one is the entry block, and gets  ^entry ()
+        ;; in front. Raises an error when the ^label is not followed by its arguments, or when
+        ;; the block has no label and starts with ,@types.
+        ;;
+        ;; Examples:
+        ;;   (^b ((v : i32)) q (v))  =>  (^b ((v : i32)) q (v))
+        ;;   (p () q ())             =>  (^entry () p () q ())
+        ;;   (^b q ())               =>  error: q is not the arguments of ^b
         (define (->form block-items)
           (let ([label (car block-items)])
             (if (block-label? label)
