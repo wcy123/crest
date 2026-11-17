@@ -108,7 +108,7 @@
           (for (only (mlir IR Operation) mlir::Operation::getRegion mlir::Operation::getLoc) expand)
           (for (only (mlir IR Operation) mlir::Operation::getResult) expand)
           (for (only (crest pattern-dsl ast)
-                     make-ast-emit-op ast-emit-op?
+                     make-ast-emit-op
                      ast-emit-op-result-vars ast-emit-op-op-name ast-emit-op-op-name-stx
                      ast-emit-op-operands ast-emit-op-attr-setters ast-emit-op-region-fills
                      ast-emit-op-loc-override ast-emit-op-result-types) expand))
@@ -246,34 +246,31 @@
       ;;     => (x . (+ 1 2))
       ;;        (unused . (display x))
       (define (process-ops-flat items)
-        (let-values ([(head remaining) (parse-next items)])
-          (if (not head)
+        (let-values ([(pairs remaining) (parse-next items)])
+          (if (not pairs)
               '()
-              (append
-               (if (ast-emit-op? head)
-                   (emit-multi head)
-                   (list head))
-               (process-ops-flat remaining)))))
+              (append pairs (process-ops-flat remaining)))))
 
-      ;; Read the next op or Scheme expression from the front of items.
+      ;; Read the next op or Scheme expression from the front of items, and make its pairs.
       ;;   items  one syntax object whose content is a list: #'(item ...)
-      ;; Returns two values, head and remaining. remaining is the items after what was read, as
-      ;; one syntax object of a list. head is one of:
-      ;;   an ast-emit-op             for an op: dialect.op (operands) modifiers ...
-      ;;   a pair (variable . code)   for a Scheme expression: the variable is the name written
-      ;;                              in  var = (expression) , or a name that is made when the
-      ;;                              expression has none
-      ;;   #f                         when items is empty (remaining is #f too)
+      ;; Returns two values: the pairs of what was read, and the items after it. Both are #f when
+      ;; items is empty.
+      ;;   pairs      a Scheme list of (variable-syntax . expression-syntax), in the order they
+      ;;              are evaluated. An op gives the pairs of emit-multi (see "Code emitters"). A
+      ;;              Scheme expression gives one pair: its variable is the name written in
+      ;;              var = (expression), or a name that is made when it has none.
+      ;;   remaining  the items after what was read, as one syntax object of a list
       ;;
-      ;; Examples:
+      ;; Examples (op-1 and unused stand for names that are made; <...> describes code):
       ;;   r = test.a () -> i32  test.b ()
-      ;;     => head: the ast-emit-op of test.a, with the result variable r
+      ;;     => pairs: (op-1 . <the code that creates test.a>)
+      ;;               (r . <the code that gets result 0 of op-1>)
       ;;        remaining: (test.b ())
       ;;   x = (+ 1 2)  (display x)
-      ;;     => head: (x . (+ 1 2))
+      ;;     => pairs: (x . (+ 1 2))
       ;;        remaining: ((display x))
       ;;   (display x)
-      ;;     => head: (unused . (display x)),  unused being a name that is made
+      ;;     => pairs: (unused . (display x))
       ;;        remaining: ()
       (define (parse-next items)
         (syntax-case items (=)
@@ -286,7 +283,7 @@
           [(var = dialect.op (operands ...) . rest)
            (and (identifier? #'var) (op-name? #'dialect.op))
            (parse-next #'((var) = dialect.op (operands ...) . rest))]
-          ;; multi-result: (v ...) = dialect.op ... — canonical form, build ast-emit-op
+          ;; multi-result: (v ...) = dialect.op ... — canonical form: build the ast-emit-op, make its pairs
           [((v ...) = dialect.op (operands ...) . rest)
            (and (for-all identifier? (syntax->list #'(v ...)))
                 (op-name? #'dialect.op))
@@ -300,18 +297,19 @@
                                    (string-append "result variable count (" (number->string nvars)
                                                   ") does not match result type count (" (number->string ntypes) ")")
                                    #'dialect.op)))
-             (values (make-ast-emit-op
-                      (syntax->list #'(v ...)) (op-name->str #'dialect.op) #'dialect.op
-                      (value-operands #'(operands ...))
-                      attr-fns region-fns loc types)
+             (values (emit-multi
+                      (make-ast-emit-op
+                       (syntax->list #'(v ...)) (op-name->str #'dialect.op) #'dialect.op
+                       (value-operands #'(operands ...))
+                       attr-fns region-fns loc types))
                      remaining))]
           ;; var = (scheme-expr ...) — name the value of a Scheme expression
           [(v = expression . rest)
            (identifier? #'v)
-           (values (cons #'v #'expression) #'rest)]
+           (values (list (cons #'v #'expression)) #'rest)]
           ;; Scheme expression — consume one item, and give it a name that nothing uses
           [(expr . rest)
-           (values (cons (car (generate-temporaries '(%unused))) #'expr) #'rest)]))
+           (values (list (cons (car (generate-temporaries '(%unused))) #'expr)) #'rest)]))
 
       ;; Classify one modifier element for the new v2 attribute syntax.
       ;; Attribute form: (name : val) or (name : val :keyword)
