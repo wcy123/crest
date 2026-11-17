@@ -251,13 +251,15 @@
           (let-values ([(head remaining) (parse-next items)])
             (if (not head)
                 (reverse ret)
-                (lp remaining
-                    (append (reverse
-                             (cond
-                              [(ast-emit-op? head) (emit-multi head)]
-                              [(and (pair? head) (identifier? (car head))) (list head)]
-                              [else (list (cons (car (generate-temporaries '(%unused))) head))]))
-                            ret))))))
+                ;; the pairs of this op or expression, one after another, in front of ret
+                (let push ([pairs (cond
+                                   [(ast-emit-op? head) (emit-multi head)]
+                                   [(and (pair? head) (identifier? (car head))) (list head)]
+                                   [else (list (cons (car (generate-temporaries '(%unused))) head))])]
+                           [ret ret])
+                  (if (null? pairs)
+                      (lp remaining ret)
+                      (push (cdr pairs) (cons (car pairs) ret))))))))
 
       ;; Returns (values head remaining):
       ;;   (values #f #f)           — items is empty
