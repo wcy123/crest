@@ -237,10 +237,12 @@
       ;;
       ;; Examples (op-1 and op-2 stand for the names that are made for the Operation* of an op):
       ;;   r = test.a () -> i32  test.b (r)
-      ;;     => (op-1 . the code that creates test.a)  (r . getResult 0 of op-1)
+      ;;     => (op-1 . the code that creates test.a)
+      ;;        (r . getResult 0 of op-1)
       ;;        (op-2 . the code that creates test.b)
       ;;   x = (+ 1 2)  (display x)
-      ;;     => (x . (+ 1 2))  (unused . (display x))
+      ;;     => (x . (+ 1 2))
+      ;;        (unused . (display x))
       ;;   no items
       ;;     => ()
       (define (process-ops-flat items)
