@@ -24,9 +24,9 @@
 ;;
 ;; v2 flat-list syntax — items are scanned sequentially without outer parens per op:
 ;;
-;;   var = op.name (operands...) modifiers... -> result-type      single-result
-;;   (v0 v1) = op.name (operands...) modifiers... -> (t0 t1)     multi-result
-;;   op.name (operands...) modifiers...                           statement (no result)
+;;   var = dialect.op (operands...) modifiers... -> result-type   single-result
+;;   (v0 v1) = dialect.op (operands...) modifiers... -> (t0 t1)  multi-result
+;;   dialect.op (operands...) modifiers...                        statement (no result)
 ;;   (scheme-expr ...)                                            Scheme expression (value dropped)
 ;;   var = (scheme-expr ...)                                      bind the expression's value to var
 ;;
@@ -183,12 +183,12 @@
           [(_)
            (syntax-violation 'begin-mlir-code
                              "expected at least one op-form or Scheme expression" stx)]
-          [(_ op ...)
-           (let* ([pairs    (process-ops-flat #'(op ...))]
+          [(_ item ...)
+           (let* ([pairs    (process-ops-flat #'(item ...))]
                   [expanded (with-syntax ([(binding ...) (map make-binding pairs)]
                                           [result        (car (car (reverse pairs)))])
                               #'(let* (binding ...) result))])
-             (dump-expansion! stx (syntax->list #'(op ...)) expanded)
+             (dump-expansion! stx (syntax->list #'(item ...)) expanded)
              expanded)]))
 
       ;;-------------------------------------------------------------------
@@ -264,18 +264,18 @@
       (define (parse-next items)
         (syntax-case items (=)
           [() (values #f #f)]
-          ;; no-result: op.name (operands) ... — normalize to (() = op ...)
-          [(op (operands ...) . rest)
-           (op-name? #'op)
-           (parse-next #'(() = op (operands ...) . rest))]
-          ;; single-result: var = op ... — normalize to ((var) = op ...)
-          [(var = op (operands ...) . rest)
-           (and (identifier? #'var) (op-name? #'op))
-           (parse-next #'((var) = op (operands ...) . rest))]
-          ;; multi-result: (v ...) = op ... — canonical form, build ast-emit-op
-          [((v ...) = op (operands ...) . rest)
+          ;; no-result: dialect.op (operands) ... — normalize to (() = dialect.op ...)
+          [(dialect.op (operands ...) . rest)
+           (op-name? #'dialect.op)
+           (parse-next #'(() = dialect.op (operands ...) . rest))]
+          ;; single-result: var = dialect.op ... — normalize to ((var) = dialect.op ...)
+          [(var = dialect.op (operands ...) . rest)
+           (and (identifier? #'var) (op-name? #'dialect.op))
+           (parse-next #'((var) = dialect.op (operands ...) . rest))]
+          ;; multi-result: (v ...) = dialect.op ... — canonical form, build ast-emit-op
+          [((v ...) = dialect.op (operands ...) . rest)
            (and (for-all identifier? (syntax->list #'(v ...)))
-                (op-name? #'op))
+                (op-name? #'dialect.op))
            (let-values ([(attr-fns region-fns loc types remaining)
                          (parse-modifiers-flat #'rest)])
              (let ([nvars  (length (syntax->list #'(v ...)))]
@@ -285,9 +285,9 @@
                  (syntax-violation 'begin-mlir-code
                                    (string-append "result variable count (" (number->string nvars)
                                                   ") does not match result type count (" (number->string ntypes) ")")
-                                   #'op)))
+                                   #'dialect.op)))
              (values (make-ast-emit-op
-                      (syntax->list #'(v ...)) (op-name->str #'op) #'op
+                      (syntax->list #'(v ...)) (op-name->str #'dialect.op) #'dialect.op
                       (value-operands #'(operands ...))
                       attr-fns region-fns loc types)
                      remaining))]
