@@ -314,17 +314,17 @@
       ;;   ()
       ;;     => ()                                                        a region without blocks
       (define (brace-blocks inside)
-        ;; segment: the items of one block, its ^label first when it has one.
-        (define (->form segment)
-          (let ([label (car segment)])
+        ;; block-items: the items of one block, its ^label first when it has one.
+        (define (->form block-items)
+          (let ([label (car block-items)])
             (if (block-label? label)
-                (let ([arguments (and (pair? (cdr segment)) (cadr segment))])
+                (let ([arguments (and (pair? (cdr block-items)) (cadr block-items))])
                   (unless (and arguments (block-arguments? arguments))
                     (syntax-violation 'begin-mlir-code
                                       (string-append "a block label is followed by its arguments: "
                                                      "(), ((name : type) ...) or ,@types")
                                       (or arguments label)))
-                  (items->syntax segment))
+                  (items->syntax block-items))
                 (begin
                   (syntax-case label (unquote-splicing)
                     [(unquote-splicing _)
@@ -332,7 +332,7 @@
                                        "a block with dynamic arguments needs a label: { ^bb ,@types ... }"
                                        label)]
                     [_ #f])
-                  (items->syntax (cons* #'^entry #'() segment))))))
+                  (items->syntax (cons* #'^entry #'() block-items))))))
         ;; depth   the number of { in the items read so far that have no } yet
         ;; current the items of the block being read, in reverse
         ;; done    the blocks that are finished, in reverse, each a list of items
