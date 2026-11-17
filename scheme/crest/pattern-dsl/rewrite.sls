@@ -226,13 +226,14 @@
       ;; Flat-list parser (v2 syntax)
       ;;-------------------------------------------------------------------
 
-      ;; Turn the flat items of a begin-mlir-code form into the bindings of one let*.
+      ;; Turn the flat items of a begin-mlir-code form into pairs of a name and its code.
       ;;   items  one syntax object whose content is a list, as syntax-case gives it: #'(item ...).
       ;;          It is not a Scheme list of syntax objects.
-      ;; Returns a Scheme list of bindings, in the order the items are written. Each is a Scheme
-      ;; pair of two syntax objects, (variable-syntax . expression-syntax), which main puts into
-      ;; one let*: (let* ((variable expression) ...) last-variable). The variable of the last
-      ;; binding is the value of the whole form. See "Code emitters" for the bindings of an op.
+      ;; Returns a Scheme list of pairs, in the order the items are written. Each is a Scheme pair
+      ;; of two syntax objects, (variable-syntax . expression-syntax): a name, and the code that
+      ;; gives it its value. main writes each pair as  (variable expression)  in one let*:
+      ;; (let* ((variable expression) ...) last-variable). The variable of the last pair is the
+      ;; value of the whole form. See "Code emitters" for the pairs of an op.
       ;;
       ;; Examples (op-1 and op-2 stand for the names that are made for the Operation* of an op):
       ;;   r = test.a () -> i32  test.b (r)
@@ -656,19 +657,19 @@
       ;; Code emitters
       ;;-------------------------------------------------------------------
 
-      ;; The bindings that emit-multi makes
+      ;; The pairs that emit-multi makes
       ;; ─────────────────────────────────────────────────────────────────────
       ;; emit-multi returns a flat list
-      ;; of bindings, each a SCHEME CONS CELL:
+      ;; of pairs, each a SCHEME CONS CELL:
       ;;   (cons var-syntax expr-syntax)   — a pair of two syntax objects
-      ;; make-binding deconstructs each with plain (car b) / (cdr b).
-      ;; main collects all bindings across the op sequence and assembles them
+      ;; make-binding deconstructs each with plain (car p) / (cdr p).
+      ;; main collects all pairs across the op sequence and assembles them
       ;; into a single (let* ((var expr) ...) result) expansion.
       ;;
-      ;; emit-multi always produces at least one binding, for the Operation*:
+      ;; emit-multi always produces at least one pair, for the Operation*:
       ;;   (op-tmp . (let ([op (with-OperationState ...)]) setter... fills... op))
       ;;
-      ;; Plus one binding per result variable (empty for zero-result ops):
+      ;; Plus one pair per result variable (empty for zero-result ops):
       ;;   (%var . (mlir::Operation::getResult op-tmp i))
       ;;
 
@@ -713,7 +714,7 @@
                [(addregion-call ...) addregion-calls]
                [source-loc (if loc-override loc-override (syntax->mlir-loc-expr op-name-stx))])
             (cons
-             ;; Binding: op-tmp bound to the created Operation*.
+             ;; Pair: the name op-tmp, and the code that creates the Operation* it holds.
              ;; Attributes set in OperationState (before create);
              ;; region slots pre-allocated in OperationState, filled post-create.
              (cons #'op-tmp
@@ -731,7 +732,7 @@
                               (%%crest:create-op! (%%current-builder) state))])
                        region-fill-stmt ...        ; fill regions — after create
                        op-tmp))
-             ;; Bindings for result variables — loop returns '() when result-vars is empty,
+             ;; Pairs for result variables — loop returns '() when result-vars is empty,
              ;; which happens for no-result ops (process-ops-flat passes '() for result-vars).
              (loop :for var :in result-vars
                    :for i   :from 0
@@ -756,7 +757,7 @@
       ;; Leaf helpers
       ;;-------------------------------------------------------------------
 
-      ;; Lift a (var-stx . expr-stx) cons cell into a syntax binding (var expr).
+      ;; Turn a (var-stx . expr-stx) pair into the syntax  (var expr),  one entry of the let*.
       (define (make-binding pair)
         (with-syntax ([var (car pair)] [expr (cdr pair)]) #'(var expr)))
 
