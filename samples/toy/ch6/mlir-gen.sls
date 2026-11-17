@@ -1,3 +1,4 @@
+#!chezscheme
 ;; MLIR code generation from the Toy AST.
 ;; Mirrors mlir/examples/toy/Ch4/mlir/MLIRGen.cpp
 ;;
@@ -19,7 +20,7 @@
           (toy ch6 ast)
           (for (only (crest pattern-dsl rewrite) begin-mlir-code) expand)
           (for (only (crest pattern-dsl keywords) = :string :loc :arg) expand)
-          (only (crest pattern-dsl keywords) = : -> :region :loc
+          (only (crest pattern-dsl keywords) = : -> { } :loc
                 :string :index :i8 :i16 :i32 :i64 :f32 :f64
                 :i8-array :i16-array :i32-array :i64-array :unit))
 
@@ -168,24 +169,24 @@
                      toy.func ()
                      (sym_name      : name :string)
                      (function_type : (mlir::TypeAttr::get func-type))
-                     (^bb0 ,@arg-types
-                           (for-each (lambda (arg-ast idx)
-                                       (%%declare! (%%loc (var-expr:loc arg-ast)) symtab (var-expr:name arg-ast) (:arg idx)))
-                                     args (iota (length args)))
-                           (%%mlir-gen-block symtab body)
-                           (when (or (mlir::Block::empty? (current-Block))
-                                     (not (toy.return? (mlir::Block::back (current-Block)))))
-                             (begin-mlir-code
-                                 toy.return () :loc (%%loc proto-loc)))
-                           ;; As C++ MLIRGen does: a function that returns a value has one
-                           ;; unranked tensor result (shape inference refines it later).
-                           (let ([ret (mlir::Block::back (current-Block))])
-                             (when (> (mlir::Operation::getNumOperands ret) 0)
-                               (mlir::Operation::setAttr!
-                                (mlir::Operation::getParentOp ret) "function_type"
-                                (mlir::TypeAttr::get
-                                 (mlir::FunctionType::get (current-MLIRContext) arg-types
-                                                          (list (%%f64-unranked-tensor))))))))
+                     { ^bb0 ,@arg-types
+                       (for-each (lambda (arg-ast idx)
+                                   (%%declare! (%%loc (var-expr:loc arg-ast)) symtab (var-expr:name arg-ast) (:arg idx)))
+                                 args (iota (length args)))
+                       (%%mlir-gen-block symtab body)
+                       (when (or (mlir::Block::empty? (current-Block))
+                                 (not (toy.return? (mlir::Block::back (current-Block)))))
+                         (begin-mlir-code
+                             toy.return () :loc (%%loc proto-loc)))
+                       ;; As C++ MLIRGen does: a function that returns a value has one
+                       ;; unranked tensor result (shape inference refines it later).
+                       (let ([ret (mlir::Block::back (current-Block))])
+                         (when (> (mlir::Operation::getNumOperands ret) 0)
+                           (mlir::Operation::setAttr!
+                            (mlir::Operation::getParentOp ret) "function_type"
+                            (mlir::TypeAttr::get
+                             (mlir::FunctionType::get (current-MLIRContext) arg-types
+                                                      (list (%%f64-unranked-tensor))))))) }
                      :loc ((location:file proto-loc)
                            (location:line proto-loc)
                            (location:col  proto-loc))))])

@@ -1,4 +1,4 @@
-#!r6rs
+#!chezscheme
 ;;===----------------------------------------------------------------------===;;
 ;;
 ;; Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
@@ -72,11 +72,11 @@
                           (list->vector (mlir::DenseI64ArrayAttr::asArrayRef attr))))])
     :rewrite %output :with
       placeholder = "hipsr.placeholder" (%ctx %input)
-      (^bb0 ((%is : !shape-type))
-            (let ([out-shape (build-permuted-shape!
-                              perm %is !shape-type !size-type)])
-              (begin-mlir-code
-                  ("hipsr.shape_yield" (out-shape)))))
+      { ^bb0 ((%is : !shape-type))
+        (let ([out-shape (build-permuted-shape!
+                          perm %is !shape-type !size-type)])
+          (begin-mlir-code
+              ("hipsr.shape_yield" (out-shape)))) }
       -> !out-device ;
       result = hipsr.transpose (%ctx %input placeholder)
       (perm : perm :i64-array)

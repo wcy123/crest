@@ -1,4 +1,4 @@
-#!r6rs
+#!chezscheme
 ;; Two patterns for test.a: one makes test.wrap with a region and a block, the other makes test.wrap
 ;; without a region. test.bad has no pattern and is illegal, so the conversion fails and rolls back.
 (library (passes blocks)
@@ -13,7 +13,7 @@
       test.a ()
     :rewrite op :with
       test.wrap ()
-      (^body () test.inner ()))
+      { test.inner () })
 
   (define-conversion-pattern (%%without-block op operands-ref rw tc)
     :if-match

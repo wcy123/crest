@@ -1,4 +1,4 @@
-#!r6rs
+#!chezscheme
 ;; (:move-region op 1) takes the second region of the source and keeps its position among the
 ;; other region modifiers: the new op gets a built region, then the moved one, then an empty one.
 (library (passes move-ordered)
@@ -16,9 +16,9 @@
       test.two ()
     :rewrite op :with
       test.dst ()
-      (^bb0 () test.built ())
+      { test.built () }
       (:move-region op 1)
-      (:region))
+      { })
 
   (define-pass-entry-point (module-op)
     (let ([ctx (mlir::Operation::getContext module-op)])

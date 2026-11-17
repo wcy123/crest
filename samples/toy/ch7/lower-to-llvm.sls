@@ -1,3 +1,4 @@
+#!chezscheme
 ;; Toy Ch7 — full lowering to LLVM dialect.
 ;;
 ;; Lowers the combination of Affine+SCF+Arith+Func+MemRef+Toy dialects to the
@@ -69,7 +70,7 @@
                                      (function_type : (mlir::TypeAttr::get fnty))
                                      (linkage : (mlir::parseAttribute "#llvm.linkage<external>"))
                                      (CConv : (mlir::parseAttribute "#llvm.cconv<ccc>"))
-                                     (:region)
+                                     { }
                                      :loc (mlir::Operation::getLoc module-op))))
           (mlir::FlatSymbolRefAttr::get ctx "printf"))))
 
@@ -93,7 +94,7 @@
                                        (sym_name : name :string)
                                        (linkage : (mlir::parseAttribute "#llvm.linkage<internal>"))
                                        (value : attr)
-                                       (:region)
+                                       { }
                                        :loc loc)))))))
 
   ;; Get-or-create a global string and return a GEP to its first char, emitted at the
@@ -127,7 +128,7 @@
 
   ;; Emit an scf.for nest over shape; the innermost body loads one element of in and calls
   ;; printf with fmt, and each loop except the innermost prints nl after its body. The ops go
-  ;; to the ambient builder; each loop body is a ^bb, so its ops land inside the loop.
+  ;; to the ambient builder; each loop body is a { } block, so its ops land inside the loop.
   (define (%%emit-print-nest! loc ctx printf-ref fmt nl in shape)
     (let ([idx  (mlir::IndexType::get ctx)]
           [elem-type (mlir::MemRefType::getElementType (mlir::Value::getType in))])
@@ -141,11 +142,11 @@
                 ub = arith.constant () (value : (car dims) :index) :loc loc -> idx
                 st = arith.constant () (value : 1 :index) :loc loc -> idx
                 scf.for (lb ub st)
-                (^body ((iv : idx))
-                       (nest (cdr dims) (cons iv ivs))
-                       (when (pair? (cdr dims))
-                         (%%call-printf! loc ctx printf-ref (list nl)))
-                       scf.yield () :loc loc)
+                { ^body ((iv : idx))
+                  (nest (cdr dims) (cons iv ivs))
+                  (when (pair? (cdr dims))
+                    (%%call-printf! loc ctx printf-ref (list nl)))
+                  scf.yield () :loc loc }
                 :loc loc)))))
 
   ;; Lower toy.print → scf.for loops calling @printf on each element. The original operand

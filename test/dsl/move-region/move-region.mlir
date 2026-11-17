@@ -1,5 +1,5 @@
 // Moving an existing region into the op a pattern creates. Every region modifier of
-// begin-mlir-code, (^bb ...), (^bb ,@types ...) and (:region ...), creates new blocks and fills
+// begin-mlir-code, { ^bb ... } and { ^bb ,@types ... }, creates new blocks and fills
 // them from op-forms, so a lowering that must keep the old body (a function-like op) cannot
 // write the move declaratively and falls back to hand-written Scheme.
 //

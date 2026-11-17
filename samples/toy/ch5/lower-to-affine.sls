@@ -1,3 +1,4 @@
+#!chezscheme
 ;; Toy Ch5 — partial lowering to Affine+Arith+MemRef+Func dialects.
 ;; Mirrors mlir/examples/toy/Ch5/mlir/LowerToAffineLoops.cpp
 ;;
@@ -88,7 +89,7 @@
 
   ;; Emit an affine.for nest over shape, with lower bounds 0 and steps 1. The innermost body
   ;; stores the value of (body-fn ivs) into alloc at the induction variables ivs, outermost
-  ;; first. The ops go to the ambient builder, and each loop body is a ^bb.
+  ;; first. The ops go to the ambient builder, and each loop body is a { } block.
   (define (%%emit-loop-nest! loc ctx shape alloc body-fn)
     (let ([idx (mlir::IndexType::get ctx)])
       (let nest ([dims shape] [ivs '()])
@@ -102,9 +103,9 @@
                 (lowerBoundMap : (affine-map-attr () () 0))
                 (upperBoundMap : (affine-map-attr () () (car dims)))
                 (step : 1 :index)
-                (^body ,@(list idx)
-                       (nest (cdr dims) (cons (:arg 0) ivs))
-                       affine.yield () :loc loc)
+                { ^body ,@(list idx)
+                  (nest (cdr dims) (cons (:arg 0) ivs))
+                  affine.yield () :loc loc }
                 :loc loc)))))
 
   ;; Allocate the result of an elementwise lowering and fill it with an affine.for nest over

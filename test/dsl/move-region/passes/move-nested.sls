@@ -1,5 +1,5 @@
-#!r6rs
-;; (:move-region op) inside a ^bb body: the rewriter is still reachable there, and the insertion
+#!chezscheme
+;; (:move-region op) inside a { } block body: the rewriter is still reachable there, and the insertion
 ;; point is restored afterwards, so test.after lands after test.wrapper.
 (library (passes move-nested)
   (export pass-entry-point)
@@ -16,9 +16,8 @@
       test.nested ()
     :rewrite op :with
       test.wrapper ()
-      (^bb0 ()
-            test.dst ()
-            (:move-region op))
+      { test.dst ()
+        (:move-region op) }
       test.after ())
 
   (define-pass-entry-point (module-op)

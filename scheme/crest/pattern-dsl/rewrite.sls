@@ -1,4 +1,7 @@
-#!r6rs
+#!chezscheme
+;; Not #!r6rs: the reader of R6RS mode rejects the { and } that this library reads. A brace that
+;; has no partner is written |{| or |}|, the same symbol, because the indenter of the commit hook
+;; counts a brace as a bracket.
 ;;===----------------------------------------------------------------------===;;
 ;;
 ;; Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
@@ -13,7 +16,7 @@
 ;;   (begin-mlir-code op-form ...)
 ;;     Sequences MLIR op-forms, creating each op with the builder in current-OpBuilder:
 ;;     a builder shell, either a CrestBox<OpBuilder> or the pattern's CrestBox<RewriterBase*>.
-;;     :rewrite :with installs the pattern's rewriter, and ^bb bodies keep it, moving its
+;;     :rewrite :with installs the pattern's rewriter, and block bodies keep it, moving its
 ;;     insertion point to the end of the new block; anywhere else wrap the call in
 ;;     (with-current-OpBuilder b ...), where b is a shell (from with-OpBuilder, or the
 ;;     pattern's rw). There is no explicit builder argument.
@@ -39,15 +42,15 @@
 ;;   (name : val :unit)      — construct and set UnitAttr
 ;;   (name : val :string)    — construct and set StringAttr
 ;;
-;;   Region modifiers — each (^label ...) creates ONE region with ONE block:
-;;   (^label ((arg : !type) ...) body ...)   — static args; use :builder in body
-;;   (^label ,@type-list body ...)           — dynamic args; use (:arg N) in body
-;;
-;;   Consecutive shorthands = multiple regions (common case, no :region wrapper needed):
-;;   r = scf.if (c) (^then () then...) (^else () else...) -> i32
-;;
-;;   One region with multiple blocks — use :region explicitly:
-;;   (:region (^entry ((i : index)) body...) (^exit () exit...))
+;;   Region modifiers, as in the generic form of MLIR — each { ... } is ONE region:
+;;   r = scf.if (c) { then... } { else... } -> i32          a block without a label has no arguments
+;;   { ^entry ((i : index)) body... ^exit () body... }     a ^label starts a block, up to the next
+;;                                                         ^label or the }
+;;   { ^bb ,@type-list body... }                           dynamic arguments; use (:arg N) in body
+;;   { }                                                   a region without blocks
+;;   A { } in the body of a block belongs to the op written there. A file that writes { } starts
+;;   with #!chezscheme: the reader of #!r6rs rejects it. (:move-region src-op [idx]) moves an
+;;   existing region into the new op.
 ;;
 ;;   Location override:
 ;;   (:loc expr)             — runtime mlir::Location for this op
@@ -67,12 +70,12 @@
           (for (rename (rime loop) (:with :rime-with)) expand)
           (for (only (crest support srcloc) syntax->file+line+col) expand)
           (for (only (crest pattern-dsl keywords)
-                     = : -> :region :loc :move-region
+                     = : -> :loc :move-region
                      :string :index
                      :i8 :i16 :i32 :i64
                      :f32 :f64
                      :i8-array :i16-array :i32-array :i64-array
-                     :unit) expand)
+                     :unit { }) expand)
           (for (mlir IR BuiltinAttributes) expand)
           (only (mlir IR Builders)
                 mlir::OpBuilder::create<OperationState>
@@ -120,7 +123,7 @@
   (define (%%current-builder)
     (or (current-OpBuilder)
         (error '%%current-builder
-               "no active builder — use begin-mlir-code inside :rewrite :with or a ^bb block, or wrap it in (with-current-OpBuilder builder ...)")))
+               "no active builder — use begin-mlir-code inside :rewrite :with or a { } block, or wrap it in (with-current-OpBuilder builder ...)")))
 
   ;; Returns the active builder when it is the pattern's rewriter, for the rewriter-only
   ;; operations. Error if the active builder is a plain OpBuilder.
@@ -241,9 +244,141 @@
           (and (symbol? datum)
                (char=? #\^ (string-ref (symbol->string datum) 0)))))
 
+      (define (brace-open? x)
+        (syntax-case x (|{|) [|{| #t] [_ #f]))
+      (define (brace-close? x)
+        (syntax-case x (|}|) [|}| #t] [_ #f]))
+
+      ;; A list of syntax objects as one syntax object, the list (a b c) as #'(a b c).
+      (define (items->syntax items)
+        (with-syntax ([(item ...) items]) #'(item ...)))
+
+      ;; Find the } that closes a {.
+      ;;   open-stx  the { itself, only for the error message
+      ;;   items     a list of syntax objects: everything written after that {
+      ;; Returns two values, both lists: the items before the closing }, and the items after it.
+      ;; A { among the items is closed by its own }, so a nested brace stays in the first list.
+      ;; Raises an error when no } closes the {.
+      ;;
+      ;; Example: for  { test.a () { test.b () } test.c () } -> i32
+      ;;   items          = (test.a () { test.b () } test.c () } -> i32)
+      ;;   first value    = (test.a () { test.b () } test.c ())
+      ;;   second value   = (-> i32)
+      (define (split-at-close open-stx items)
+        (let lp ([items items] [depth 0] [inside '()])
+          (cond
+           [(null? items)
+            (let ([close (find (lambda (x) (and (identifier? x) (eq? (syntax->datum x) '|}|)
+                                                (not (brace-close? x))))
+                               (reverse inside))])
+              (if close
+                  (syntax-violation 'begin-mlir-code
+                                    "this } is not the brace keyword: import { } from (crest) or (crest pattern-dsl keywords)"
+                                    close)
+                  (syntax-violation 'begin-mlir-code "this { has no matching }" open-stx)))]
+           [(brace-close? (car items))
+            (if (zero? depth)
+                (values (reverse inside) (cdr items))
+                (lp (cdr items) (- depth 1) (cons (car items) inside)))]
+           [(brace-open? (car items))
+            (lp (cdr items) (+ depth 1) (cons (car items) inside))]
+           [else (lp (cdr items) depth (cons (car items) inside))])))
+
+      ;; True when x can follow a ^label as the arguments of its block:
+      ;;   ()  or  ((name : type) ...)  or  ,@types-expression
+      (define (block-arguments? x)
+        (syntax-case x (unquote-splicing :)
+          [() #t]
+          [(unquote-splicing expression) #t]
+          [((argument : type) ...) (for-all identifier? (syntax->list #'(argument ...)))]
+          [_ #f]))
+
+      ;; Cut the items inside one { } into blocks.
+      ;;   inside  a list of syntax objects: what is written between the { and its }
+      ;; Returns a list with one syntax object for each block, in the order written. Each is
+      ;; (^label arguments body ...), the form that make-block-fill reads.
+      ;;
+      ;; A ^label starts a block, and the block runs up to the next ^label. The item right after
+      ;; a ^label is its arguments: (), ((name : type) ...) or ,@types. A ^label inside a nested
+      ;; { } belongs to that brace, not to this one. Items before the first ^label are an entry
+      ;; block without arguments, which gets the label ^entry. No items give no blocks.
+      ;; Raises an error when a ^label is not followed by its arguments, as in  (^a test.p ())  or  (^a).
+      ;;
+      ;; Examples (the { and } around inside are not part of it):
+      ;;   two blocks:
+      ;;     (^a () test.p () ^b ((v : i32)) test.q (v))
+      ;;       => ((^a () test.p ()) (^b ((v : i32)) test.q (v)))
+      ;;   an entry block:
+      ;;     (test.p () test.q ())
+      ;;       => ((^entry () test.p () test.q ()))
+      ;;   the ^x is in the nested brace, not a block of this one:
+      ;;     (^a () test.p () { ^x () test.r () } ^b () test.s ())
+      ;;       => ((^a () test.p () { ^x () test.r () }) (^b () test.s ()))
+      ;;   a region without blocks:
+      ;;     ()
+      ;;       => ()
+      (define (brace-blocks inside)
+        ;; Give one block the form (^label arguments body ...), the form that make-block-fill reads.
+        ;;   block-items  a list of syntax objects: the items of one block, its ^label first
+        ;;                when it has one
+        ;; Returns that form as one syntax object.
+        ;;   A block with a ^label already has the form, so it is returned as it is.
+        ;;   A block without a ^label is the entry block. It gets  ^entry ()  in front of its
+        ;;   items: the label ^entry and no arguments.
+        ;; It also checks the arguments, and raises an error when a ^label is not followed by
+        ;; them, or when a block without a ^label starts with ,@types.
+        ;;
+        ;; Examples:
+        ;;   (^b ((v : i32)) test.q (v))  =>  (^b ((v : i32)) test.q (v))
+        ;;   (test.p () test.q ())        =>  (^entry () test.p () test.q ())
+        ;;   (^b test.q ())               =>  error: test.q is not the arguments of ^b
+        (define (block-form block-items)
+          (let ([label (car block-items)])
+            (if (block-label? label)
+                (let ([arguments (and (pair? (cdr block-items)) (cadr block-items))])
+                  (unless (and arguments (block-arguments? arguments))
+                    (syntax-violation 'begin-mlir-code
+                                      (string-append "a block label is followed by its arguments: "
+                                                     "(), ((name : type) ...) or ,@types")
+                                      (or arguments label)))
+                  (items->syntax block-items))
+                (begin
+                  (syntax-case label (unquote-splicing)
+                    [(unquote-splicing _)
+                     (syntax-violation 'begin-mlir-code
+                                       "a block with dynamic arguments needs a label: { ^bb ,@types ... }"
+                                       label)]
+                    [_ #f])
+                  (items->syntax (cons* #'^entry #'() block-items))))))
+        ;; depth   the number of { in the items read so far that have no } yet
+        ;; current the items of the block being read, in reverse
+        ;; done    the blocks that are finished, in reverse, each a list of items
+        (let lp ([items inside] [depth 0] [current '()] [done '()])
+          (define (finish) (if (null? current) done (cons (reverse current) done)))
+          (cond
+           [(null? items) (map block-form (reverse (finish)))]
+           [(brace-open? (car items))
+            (lp (cdr items) (+ depth 1) (cons (car items) current) done)]
+           [(brace-close? (car items))
+            (lp (cdr items) (- depth 1) (cons (car items) current) done)]
+           [(and (zero? depth) (block-label? (car items)))
+            (lp (cdr items) depth (list (car items)) (finish))]
+           [else (lp (cdr items) depth (cons (car items) current) done)])))
+
+      ;; Read the { ... } at the front of items, a syntax object that starts with the {.
+      ;;   region-index  the position of this region among the regions of the op-form so far
+      ;; Returns two values: the procedure that fills the region once the op exists (see
+      ;; make-region-fill-fn), and the items after the closing }, as a syntax object.
+      (define (parse-brace-region items region-index)
+        (let ([items (syntax->list items)])
+          (let-values ([(inside after) (split-at-close (car items) (cdr items))])
+            (values (make-region-fill-fn region-index
+                                         (map make-block-fill (brace-blocks inside)))
+                    (items->syntax after)))))
+
       ;; Classify one modifier element for the new v2 attribute syntax.
       ;; Attribute form: (name : val) or (name : val :keyword)
-      ;; Region form:    (^label ...), (:region ...) or (:move-region src-op [idx])
+      ;; Region form:    { block ... } or (:move-region src-op [idx])
       ;; Loc form:       (:loc expr)
       ;; Returns a tagged pair: (attr . setter-fn), (region . fill-fns), or (loc . stx).
       ;;
@@ -264,9 +399,9 @@
                  [regions '()]
                  [loc     #f]
                  [types   '()])
-          (syntax-case items (-> :region :move-region : :string :index
+          (syntax-case items (-> :move-region : :string :index
                                  :i8 :i16 :i32 :i64 :f32 :f64
-                                 :i8-array :i16-array :i32-array :i64-array :unit :loc)
+                                 :i8-array :i16-array :i32-array :i64-array :unit :loc { })
             ;; -> type-list, continue accumulating types
             [(-> (result-type ...) . rest)
              (lp #'rest attrs regions loc (append types (syntax->list #'(result-type ...))))]
@@ -278,25 +413,10 @@
              (lp #'rest attrs regions #'(mlir::FileLineColLoc::get filename line column) types)]
             [(:loc loc-expr . rest)
              (lp #'rest attrs regions #'loc-expr types)]
-            ;; (^label body ...) — single-block region shorthand
-            [((bb body ...) . rest)
-             (block-label? #'bb)
-             (let ([region-idx (length regions)])
-               (lp #'rest attrs
-                   (append regions
-                           (list (make-region-fill-fn region-idx
-                                                      (list (make-block-fill #'(bb body ...))))))
-                   loc types))]
-            ;; (:region (^label body ...) ...) — one region, multiple blocks
-            [((:region (bb body ...) ...) . rest)
-             (for-all block-label? (syntax->list #'(bb ...)))
-             (let ([region-idx (length regions)])
-               (lp #'rest attrs
-                   (append regions
-                           (list (make-region-fill-fn region-idx
-                                                      (map make-block-fill
-                                                           (syntax->list #'((bb body ...) ...))))))
-                   loc types))]
+            ;; { block ... } — one region, as in the generic form of MLIR
+            [(|{| . _)
+             (let-values ([(region-fill-fn remaining) (parse-brace-region items (length regions))])
+               (lp remaining attrs (append regions (list region-fill-fn)) loc types))]
             ;; (:move-region src-op [idx]) — one region, moved from region idx (default 0) of src-op
             [((:move-region src-op) . rest)
              (lp #'rest attrs
@@ -363,6 +483,23 @@
             [((name : val) . rest)
              (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name) #'val)
                               attrs) regions loc types)]
+            ;; (^label ...) and (:region ...) were regions before braces: say what to write now
+            [((bb . _) . _)
+             (block-label? #'bb)
+             (syntax-violation 'begin-mlir-code
+                               "(^label ...) is not a region any more: write { ^label ... } instead"
+                               (car (syntax->list items)))]
+            [((region . _) . _)
+             (eq? (syntax->datum #'region) ':region)
+             (syntax-violation 'begin-mlir-code
+                               "(:region ...) is not a region any more: write { ^a ... ^b ... } instead"
+                               (car (syntax->list items)))]
+            ;; a { that is not the keyword: the file did not import { } from (crest)
+            [(brace . _)
+             (eq? (syntax->datum #'brace) '|{|)
+             (syntax-violation 'begin-mlir-code
+                               "this { is not the brace keyword: import { } from (crest) or (crest pattern-dsl keywords)"
+                               #'brace)]
             ;; anything else — stop
             [(otherwise ...)
              (values (reverse attrs) regions loc types #'(otherwise ...))])))
@@ -470,7 +607,7 @@
 
       ;; @brief Build the code that fills one region of the op being created.
       ;;
-      ;; Each region modifier of an op-form, (^label ...) or (:region ...), is one region. The
+      ;; Each region modifier of an op-form, a { ... }, is one region. The
       ;; slot is reserved with addRegion before the op is created. This function returns the
       ;; procedure that emits the code run after the op exists: look up the region, then append
       ;; and fill each of its blocks. The fill cannot run earlier, because ops cannot be put
@@ -479,9 +616,8 @@
       ;; @param region-index    exact integer: the 0-based position of this region among the
       ;;                        op's region modifiers
       ;; @param block-fill-fns  list of procedures from make-block-fill, one per block of the
-      ;;                        region. (^label ...) gives one; (:region (^a ...) (^b ...)) gives
-      ;;                        one per block. Each takes the identifier of the region and
-      ;;                        returns syntax that appends and fills one block.
+      ;;                        region: { ^a ... ^b ... } gives two. Each takes the identifier of
+      ;;                        the region and returns syntax that appends and fills one block.
       ;; @return                a procedure (lambda (op-stx) → syntax). op-stx is the identifier
       ;;                        bound to the created Operation*. The syntax is
       ;;                          (let ([region (mlir::Operation::getRegion op-stx region-index)])
@@ -635,7 +771,7 @@
       ;; Build a runtime expression for the operand list from (operands ...).
       ;; ,@list splices a dynamic list: (v1 ,@%more v2) → (append (list v1) %more (list v2))
       ;; (:arg N) is a shorthand for (mlir::Block::getArgument block N) — only valid
-      ;; when 'block' is in scope, i.e. inside the body of a (^label ...) block form.
+      ;; when 'block' is in scope, i.e. inside a block of a { ... } region.
       ;; Each operand converts to a chunk; (append chunk ...) flattens them.
       (define (value-operands operands-stx)
         (define (convert x)

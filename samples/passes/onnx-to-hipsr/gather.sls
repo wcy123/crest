@@ -1,4 +1,4 @@
-#!r6rs
+#!chezscheme
 ;;===----------------------------------------------------------------------===;;
 ;;
 ;; Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
@@ -90,11 +90,11 @@
                  #f)
           #t)
       placeholder = "hipsr.placeholder" (%ctx %data %indices)
-      (^bb0 ((%ds : !shape-type) (%is : !shape-type))
-            (let ([result-shape (build-gather-shape!
-                                 axis %ds %is !shape-type !size-type)])
-              (begin-mlir-code
-                  ("hipsr.shape_yield" (result-shape)))))
+      { ^bb0 ((%ds : !shape-type) (%is : !shape-type))
+        (let ([result-shape (build-gather-shape!
+                             axis %ds %is !shape-type !size-type)])
+          (begin-mlir-code
+              ("hipsr.shape_yield" (result-shape)))) }
       -> !out-device ;
       result = hipsr.gather (%ctx %data %indices placeholder)
       (operandSegmentSizes : (list 1 1 1 1) :i32-array)

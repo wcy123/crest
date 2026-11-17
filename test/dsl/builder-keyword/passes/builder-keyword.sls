@@ -1,3 +1,4 @@
+#!chezscheme
 ;; Test: :builder and (:arg N) work as proper macros outside begin-mlir-code DSL.
 ;; Pattern: test.copy(%v) → test.with_block(%v) where the block uses (:arg 0)
 ;; to access the block arg and passes :builder to a Scheme helper.
@@ -24,10 +25,10 @@
        [arg-types (list !t)])
     :rewrite %out :with
       result = test.with_block (%v)
-      (^bb0 ,@arg-types
-            ;; (:arg 0) and :builder used as real macros in Scheme context
-            (%%noop-with-builder! :builder)
-            test.yield ((:arg 0)))
+      { ^bb0 ,@arg-types
+        ;; (:arg 0) and :builder used as real macros in Scheme context
+        (%%noop-with-builder! :builder)
+        test.yield ((:arg 0)) }
       -> !t) ;
 
   (define-pass-entry-point (module-op)

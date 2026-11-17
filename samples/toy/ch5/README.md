@@ -28,7 +28,7 @@ combination of `affine`, `arith`, `memref`, and `func` dialects.
 Every pattern is a `define-conversion-pattern`, and every op it creates is a `begin-mlir-code`
 form: `memref.alloc` and `memref.dealloc` (at the start and before the terminator of the
 block, under an `InsertionGuard`), the `affine.for` nest with its bounds as `affine-map-attr`s and
-each loop body a `^body` block, `affine.load` and `affine.store` with an identity map, and
+each loop body a `{ ^body ... }` region, `affine.load` and `affine.store` with an identity map, and
 `arith.constant`, `arith.addf` and `arith.mulf`. No typed builder is called. A pattern that
 replaces its op with a value ends with that value, here the `memref.alloc`. The loop nest is
 written out, rather than built by MLIR's `buildAffineLoopNest` callback API, so the whole

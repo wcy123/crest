@@ -36,7 +36,7 @@
           (for (except (rime loop) :name) expand)
           (for (only (crest pattern-dsl rewrite) begin-mlir-code) expand)
           (for (only (crest pattern-dsl keywords) = :string :loc :arg) expand)
-          (only (crest pattern-dsl keywords) = : -> :region :loc
+          (only (crest pattern-dsl keywords) = : -> :loc
                 :string :index :i8 :i16 :i32 :i64 :f32 :f64
                 :i8-array :i16-array :i32-array :i64-array :unit))
 

@@ -1,4 +1,5 @@
-#!r6rs
+#!chezscheme
+;; Not #!r6rs: the reader of R6RS mode rejects the { and } that this library exports.
 ;;===----------------------------------------------------------------------===;;
 ;;
 ;; Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
@@ -82,7 +83,7 @@
 ;;
 ;;   (begin-mlir-code op-form ...)
 ;;
-;; :rewrite :with and ^bb bodies install it. Elsewhere wrap the call:
+;; :rewrite :with and block bodies install it. Elsewhere wrap the call:
 ;;   (with-current-OpBuilder b (begin-mlir-code op-form ...))
 ;; where b is a builder shell (from with-OpBuilder, or a pattern's rw).
 ;;
@@ -108,7 +109,8 @@
 ;;   (name : val :i64-array) — DenseI64ArrayAttr
 ;;   (name : _   :unit)      — UnitAttr (presence-only flag; val is ignored)
 ;;   (name : val)            — val is a pre-built Attribute uptr
-;;   (^bb0 ((arg : !type) ...) body ...)  — inline region block
+;;   { ^bb0 ((arg : !type) ...) body ... }  — one region; each ^label starts a block
+;;                             (a file that writes { } starts with #!chezscheme, not #!r6rs)
 ;;
 ;; Operand conventions:
 ;;   %var        — SSA Value uptr
@@ -147,13 +149,14 @@
           define-pass-entry-point
           :if-match :then-let :rewrite :with :where
           :debug-parse :debug-validate :debug-analyze :debug-codegen
-          = : -> :region :regions
+          = : ->
           :any
           :current-op :attr :has-attr? :attr-or
           :optional :variadic
           :string :index :i8 :i16 :i32 :i64 :f32 :f64
           :i8-array :i16-array :i32-array :i64-array :unit
           :loc :move-region
+          { }
           :arg :builder
           make-unbound-value unbound-value?
           ;; Context parameters re-exported for user convenience

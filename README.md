@@ -230,13 +230,13 @@ The full pattern is in the linked file. Key structure:
      [n-idx          (- b-rank 1)])
   :rewrite %output :with
     placeholder = hipsr.placeholder (%ctx %a %b)
-    (^bb0 ((%a-shape : !shape-type) (%b-shape : !shape-type))
-          ;; ...
-          cka   = shape.const_size () (value : k-a-idx :index) -> !size-type ;
-          wk    = shape.cstr_eq (aksh bksh)                    -> !witness-type ;
-          wbc   = shape.cstr_broadcastable (ab bb)             -> !witness-type ;
-          ;; ...
-          hipsr.shape_yield (res)) ;
+    { ^bb0 ((%a-shape : !shape-type) (%b-shape : !shape-type))
+      ;; ...
+      cka   = shape.const_size () (value : k-a-idx :index) -> !size-type ;
+      wk    = shape.cstr_eq (aksh bksh)                    -> !witness-type ;
+      wbc   = shape.cstr_broadcastable (ab bb)             -> !witness-type ;
+      ;; ...
+      hipsr.shape_yield (res) } ;
     -> !output-device ;
     result = hipsr.matmul (%ctx %a %b placeholder)
     -> !output-device) ;

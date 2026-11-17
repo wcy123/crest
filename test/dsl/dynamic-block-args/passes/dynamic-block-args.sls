@@ -1,4 +1,4 @@
-#!r6rs
+#!chezscheme
 ;; Test: ,@pairs-expr dynamic block arguments and (:arg N) shorthand in begin-mlir-code.
 ;;
 ;; Rewrites test.copy(%v) → test.with_block(%v) {
@@ -28,8 +28,8 @@
        [arg-types (list !vtype)])
     :rewrite %out :with
       result = test.with_block (%v)
-      (^bb0 ,@arg-types
-            test.yield ((:arg 0)))
+      { ^bb0 ,@arg-types
+        test.yield ((:arg 0)) }
       -> !vtype) ;
 
   (define-pass-entry-point (module-op)

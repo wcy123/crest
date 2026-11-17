@@ -1,4 +1,4 @@
-#!r6rs
+#!chezscheme
 ;;===----------------------------------------------------------------------===;;
 ;;
 ;; Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
@@ -55,9 +55,9 @@
        [!shape-type (mlir::shape::ShapeType::get)])
     :rewrite %output :with
       placeholder = hipsr.placeholder (%ctx %lhs %rhs)
-      (^bb0 ((%ls : !shape-type) (%rs : !shape-type))
-            broadcast = shape.broadcast (%ls %rs) -> !shape-type ;
-            hipsr.shape_yield (broadcast)) ;
+      { ^bb0 ((%ls : !shape-type) (%rs : !shape-type))
+        broadcast = shape.broadcast (%ls %rs) -> !shape-type ;
+        hipsr.shape_yield (broadcast) } ;
       -> !out-device ;
       result = hipsr.min (%ctx %lhs %rhs placeholder) -> !out-device) ;
 
@@ -71,9 +71,9 @@
       (with-current-OpBuilder rewriter
         (begin-mlir-code
             ph = hipsr.placeholder (ctx lhs rhs)
-            (^bb0 ((%ls : !shape-type) (%rs : !shape-type))
-                  bc = shape.broadcast (%ls %rs) -> !shape-type
-                  hipsr.shape_yield (bc))
+            { ^bb0 ((%ls : !shape-type) (%rs : !shape-type))
+              bc = shape.broadcast (%ls %rs) -> !shape-type
+              hipsr.shape_yield (bc) }
             -> out-type
             r = hipsr.min (ctx lhs rhs ph) -> out-type))))
 

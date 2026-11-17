@@ -1,4 +1,4 @@
-#!r6rs
+#!chezscheme
 ;;===----------------------------------------------------------------------===;;
 ;;
 ;; Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
@@ -47,9 +47,9 @@
        [!shape-type    (mlir::shape::ShapeType::get)])
     :rewrite %output :with
       placeholder = hipsr.placeholder (%ctx %lhs %rhs)
-      (^bb0 ((%lhs-shape : !shape-type) (%rhs-shape : !shape-type))
-            bcast = shape.broadcast (%lhs-shape %rhs-shape) -> !shape-type ;
-            hipsr.shape_yield (bcast)) ;
+      { ^bb0 ((%lhs-shape : !shape-type) (%rhs-shape : !shape-type))
+        bcast = shape.broadcast (%lhs-shape %rhs-shape) -> !shape-type ;
+        hipsr.shape_yield (bcast) } ;
       -> !output-device ;
       result = hipsr.equal (%ctx %lhs %rhs placeholder)
       -> !output-device) ;

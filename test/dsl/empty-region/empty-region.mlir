@@ -1,4 +1,4 @@
-// A (:region) modifier with no blocks reserves an empty region slot. Before the fix, a region
+// A { } modifier with no blocks reserves an empty region slot. Before the fix, a region
 // with no blocks expanded to a `let` with an empty body and the pass library did not compile.
 // The slots keep their order: test.dst gets three regions, empty, one block, empty.
 //

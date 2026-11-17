@@ -1,4 +1,4 @@
-#!r6rs
+#!chezscheme
 ;;===----------------------------------------------------------------------===;;
 ;;
 ;; Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
@@ -103,22 +103,22 @@
       ;; Uses arith.constant (index) → shape.from_extents, matching
       ;; ShapeConversion.cpp::populateShapeRegion.
       placeholder = hipsr.placeholder (%ctx %input)
-      (^bb0 ((%s : !shape-type))
-            cN = arith.constant () (value : num-dims :index) -> !index-type ;
-            r  = shape.from_extents (cN)                     -> !shape-type ;
-            hipsr.shape_yield (r)) ;
+      { ^bb0 ((%s : !shape-type))
+        cN = arith.constant () (value : num-dims :index) -> !index-type ;
+        r  = shape.from_extents (cN)                     -> !shape-type ;
+        hipsr.shape_yield (r) } ;
       -> !out-host ;
       ;; Compute body: inserts extents one by one via tensor.insert.
       ;; build-compute-body! uses mlir-create-operation directly to mix
       ;; Scheme control flow with MLIR op creation.
       result = hipsr.compute (%ctx %input placeholder)
       (operandSegmentSizes : (list 1 1 1) :i32-array)
-      (^bb0 ((%c : !ctx-type) (%in : !input-type) (%dest : !out-host))
-            (let ([final (build-compute-body!
-                          %in %dest input-shape start end
-                          !index-type !i64-type !out-host)])
-              (begin-mlir-code
-                  hipsr.compute_yield (final))))
+      { ^bb0 ((%c : !ctx-type) (%in : !input-type) (%dest : !out-host))
+        (let ([final (build-compute-body!
+                      %in %dest input-shape start end
+                      !index-type !i64-type !out-host)])
+          (begin-mlir-code
+              hipsr.compute_yield (final))) }
       -> !out-host) ;
 
   (define-c-callable onnx-shape->hipsr-callable ((op uptr) (operands uptr) (rewriter uptr) (type-converter uptr)) int

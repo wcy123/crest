@@ -320,8 +320,8 @@ This mirrors MLIR's textual format, which MLIR C++ developers will find familiar
 
 ### Supplying the builder
 
-Inside `:rewrite :with` bodies and `^bb` block bodies the builder is already installed:
-the pattern's rewriter at the `:rewrite :with` level. A `^bb` body keeps the same object and
+Inside `:rewrite :with` bodies and block bodies the builder is already installed:
+the pattern's rewriter at the `:rewrite :with` level. A block body keeps the same object and
 moves its insertion point to the end of the new block, restoring it afterwards. A Scheme helper called from those bodies can therefore call `begin-mlir-code`
 directly, with no builder parameter:
 
@@ -407,7 +407,7 @@ list is scanned left-to-right and op boundaries are detected syntactically.
 Two special forms are available anywhere inside `begin-mlir-code`:
 
 **`:builder`** — the ambient builder, i.e. `(current-OpBuilder)`: the builder shell (the
-pattern's rewriter, in `:rewrite :with` and in `^bb` bodies).
+pattern's rewriter, in `:rewrite :with` and in block bodies).
 Use it to pass the builder to a Scheme helper that calls a typed binding such as
 `mlir::LLVM::CallOp::create`; a helper that only calls `begin-mlir-code` needs no builder
 parameter. **Not** an MLIR operand (builders are not `mlir::Value`s):
@@ -418,7 +418,7 @@ parameter. **Not** an MLIR operand (builders are not `mlir::Value`s):
 ```
 
 **`(:arg N)`** — shorthand for `(mlir::Block::getArgument (current-Block) N)`.
-Only valid inside a `^bb0 ,@types` dynamic block body where `current-Block`
+Only valid inside a block body, for example `{ ^bb0 ,@types ... }`, where `current-Block`
 is installed.
 
 ### Location override
@@ -442,8 +442,8 @@ r = toy.constant () (value : attr) :loc ("example.toy" 7 3) -> !t
 (begin-mlir-code
   toy.func ()
     (sym_name : name :string)
-    (^bb0 ,@arg-types
-      ...)
+    { ^bb0 ,@arg-types
+      ... }
     :loc proto-loc)        ; ← mlir::FileLineColLoc from the Toy prototype
 ```
 
@@ -502,57 +502,51 @@ r = my.op (%x) -> !out-type
 
 ### Regions
 
-Region modifiers immediately follow the operand list (and any attribute modifiers).
-Each `(^label ...)` form creates one region with one block:
+Region modifiers immediately follow the operand list (and any attribute modifiers). As in the
+generic form of MLIR, `{ ... }` is one region. Several braces in a row are several regions.
+Inside a brace, a `^label` starts a block, which runs to the next `^label` or to the `}`. Items
+before the first `^label` are an entry block without arguments, so the label can be left out when
+the block has none:
 
 ```scheme
-;; Single region, single block with static arguments
+;; One region, one block with static arguments
 op = my.region_op (%x)
-     (^bb0 ((arg0 : !i32) (arg1 : !i32))
-           r = arith.addi (%arg0 %arg1) -> !i32
-           my.yield (%r))
+     { ^bb0 ((arg0 : !i32) (arg1 : !i32))
+       r = arith.addi (%arg0 %arg1) -> !i32
+       my.yield (%r) }
      -> !i32
-```
 
-Multiple single-block regions — list `^bb` shorthands consecutively
-(each shorthand creates exactly one region with one block):
-
-```scheme
-;; Two regions (e.g. scf.if: then-region and else-region)
+;; Two regions with one block each (e.g. scf.if: then-region and else-region)
 op = scf.if (%cond)
-     (^then ()
-            a = compute_a (%x) -> !i32
-            scf.yield (%a))
-     (^else ()
-            b = compute_b (%y) -> !i32
-            scf.yield (%b))
+     { a = my.compute_a (%x) -> !i32
+       scf.yield (%a) }
+     { b = my.compute_b (%y) -> !i32
+       scf.yield (%b) }
      -> !i32
+
+;; One region with two blocks, and a second region whose block has dynamic arguments.
+;; arg-types is a Scheme list of mlir::Type, computed before, as in "Dynamic block arguments".
+my.op ()
+  { ^entry ()
+    my.first ()
+    ^exit ((v : !i32))
+    my.use (v) }
+  { ^bb ,@arg-types
+    my.yield ((:arg 0)) }
 ```
 
-One region with multiple blocks — use the explicit `:region` wrapper:
+A `{ }` in the body of a block belongs to the op written there, so braces nest. `{ }` is a
+region without blocks. Braces and attribute modifiers can come in any order, and each brace is
+one region, in the order written. Two things to know:
 
-```scheme
-op = my.op ()
-     (:region
-       (^entry ()
-               cf.br () ^exit)
-       (^exit ((v : !i32))
-              cf.return (%v)))
-     -> !i32
-```
-
-Multiple regions each with multiple blocks — use multiple `:region` wrappers:
-
-```scheme
-op = my.op ()
-     (:region
-       (^r0-entry () cf.br () ^r0-exit)
-       (^r0-exit  () my.yield ()))
-     (:region
-       (^r1-entry () cf.br () ^r1-exit)
-       (^r1-exit  () my.yield ()))
-     -> !i32
-```
+- A file that writes `{` and `}` starts with `#!chezscheme`, and imports `{` and `}` from
+  `(crest)` or `(crest pattern-dsl keywords)`. A `.sls` file is read in R6RS mode, and its
+  reader rejects the brace. The commit hook's indenter counts a brace as a bracket, so a brace
+  that has no partner, such as one in an import list, is written `|{|` or `|}|`: the same symbol.
+- A `^name` item at the top level of a brace always starts a block. There is no syntax yet for a
+  branch from one block to another, so `cf.br () ^exit` cannot be written, and a block that no op
+  reaches is dead. The greedy driver (`mlir::applyPatternsGreedily`) erases such a block; the conversion
+  driver keeps it. `test/dsl/brace-multi-block` uses the conversion driver for this reason.
 
 To keep the body of an existing op instead of building one, use `:move-region`:
 
@@ -564,7 +558,7 @@ To keep the body of an existing op instead of building one, use `:move-region`:
 ```
 
 `(:move-region src-op [idx])` takes any expression that yields an operation, and `idx` defaults
-to 0. It reserves a region slot like `(^bb ...)`, so the order among region modifiers is kept.
+to 0. It reserves a region slot like a `{ ... }`, so the order among region modifiers is kept.
 After the new op is created, the blocks of region `idx` of `src-op` are moved into the slot with
 the pattern's `mlir::RewriterBase::inlineRegionBefore`; the block arguments and ops are the same
 ones, not copies. It needs the pattern's rewriter: if the ambient builder is a plain `OpBuilder`
@@ -583,14 +577,12 @@ In summary:
 
 | Form | Regions | Blocks per region | Block args |
 |---|---|---|---|
-| `(^bb ...)` | 1 | 1 | static |
-| `(^bb ...) (^bb ...)` | N | 1 each | static |
-| `(^bb ,@types ...)`  | 1 | 1 | dynamic |
-| `(:region (^a ...) (^b ...))` | 1 | N | static |
-| `(:region ...) (:region ...)` | N | N each | static |
+| `{ ... }` | 1 | 1 or more: a `^label` starts a block | static or dynamic, per block |
+| `{ ... } { ... }` | N | the same, per region | static or dynamic, per block |
+| `{ }` | 1 | 0 | none |
 | `(:move-region src-op [idx])` | 1 | those of the source region | the source's |
 
-The body of every `^label` block is a recursive `begin-mlir-code` call — the
+The body of every block is a recursive `begin-mlir-code` call — the
 same flat op-form syntax. Regions can be nested arbitrarily deep.
 See `samples/passes/onnx-to-hipsr/matmul.sls` for a real-world example.
 
@@ -602,10 +594,10 @@ use `,@types-expr` to splice a runtime list of `mlir::Type` values:
 ```scheme
 ;; arg-types is a Scheme list of mlir::Type values computed at match time
 fn = my.func ()
-     (^bb0 ,@arg-types
+     { ^bb0 ,@arg-types
        ;; (:arg N) is shorthand for the Nth block argument
        r = arith.addi ((:arg 0) (:arg 1)) -> !i32
-       my.return (%r))
+       my.return (%r) }
      -> !i32
 ```
 
@@ -619,7 +611,7 @@ new block.
 
 Inside the block body, **`(:arg N)`** is a shorthand for
 `(mlir::Block::getArgument (current-Block) N)` where `current-Block` is a
-dynamic parameter installed by the `^label ,@...` form.
+dynamic parameter installed by a block, including a `^label ,@...` block.
 
 ```scheme
 ;; Concrete example: rewrite test.copy(%v) → test.with_block(%v) where
@@ -632,8 +624,8 @@ dynamic parameter installed by the `^label ,@...` form.
      [arg-types (list !vtype)])
   :rewrite %out :with
     result = test.with_block (%v)
-             (^bb0 ,@arg-types
-               my.yield ((:arg 0)))     ; (:arg 0) → first block argument
+             { ^bb0 ,@arg-types
+               my.yield ((:arg 0)) }    ; (:arg 0) → first block argument
              -> !vtype
 ```
 
@@ -1408,8 +1400,8 @@ convention from CLAUDE.md Rules 10–11:
 | Parameter | Macro | Defined in | Set by |
 |---|---|---|---|
 | `current-MLIRContext` | `with-current-MLIRContext` | `(mlir IR MLIRContext)` | user / `with-current-MLIRContext` |
-| `current-Block` | `with-current-Block` | `(mlir IR Block)` | `^bb0` block bodies |
-| `current-OpBuilder` | `with-current-OpBuilder` | `(mlir IR Builders)` | `:rewrite :with` and `^bb` bodies; user code via `with-current-OpBuilder` |
+| `current-Block` | `with-current-Block` | `(mlir IR Block)` | block bodies |
+| `current-OpBuilder` | `with-current-OpBuilder` | `(mlir IR Builders)` | `:rewrite :with` and block bodies; user code via `with-current-OpBuilder` |
 
 `current-OpBuilder` holds a builder shell: a `CrestBox<OpBuilder>` or the pattern's
 `CrestBox<RewriterBase*>`. Every binding that takes a builder accepts either kind (and a
@@ -1442,7 +1434,7 @@ The context hierarchy during a pattern rewrite:
 
 ```
 :rewrite :with                → current-OpBuilder = rw (the pattern's rewriter shell)
-  ^bb0 block body             → current-Block = block
+  { ^bb0 ... } block body     → current-Block = block
                                 current-OpBuilder = rw, insertion point at the end of block,
                                 restored when the body ends
 ```
@@ -1501,7 +1493,7 @@ Exports: `define-rewrite-pattern`, `define-conversion-pattern`, `begin-mlir-code
 `apply-conversion`, `affine-map`, `affine-map-attr` (see [affine-map-dsl.md](affine-map-dsl.md)),
 `make-unbound-value`, `unbound-value?`, `current-Block`, `with-current-Block`, `current-OpBuilder`,
 `with-current-OpBuilder`, and the DSL keywords: `:if-match :then-let :rewrite :with :where`,
-`:debug-parse :debug-validate :debug-analyze :debug-codegen`, `= : -> :region :regions`, `:any`,
+`:debug-parse :debug-validate :debug-analyze :debug-codegen`, `= : ->`, `{ }`, `:any`,
 `:current-op :attr :has-attr? :attr-or`, `:optional :variadic`, the attribute keywords
 `:string :index :i8 :i16 :i32 :i64 :f32 :f64 :i8-array :i16-array :i32-array :i64-array :unit`,
 `:loc :move-region` and `:arg :builder`.
