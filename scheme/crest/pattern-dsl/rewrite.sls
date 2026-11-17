@@ -226,7 +226,21 @@
       ;; Flat-list parser (v2 syntax)
       ;;-------------------------------------------------------------------
 
-      ;; Scan the flat item list and produce binding descriptors.
+      ;; Turn the flat items of a begin-mlir-code form into binding descriptors.
+      ;;   items  a syntax object: the list of items written in the form
+      ;; Returns a list of binding descriptors, in the order the items are written. Each is a
+      ;; pair (variable-syntax . expression-syntax), one binding of the final let* (see the
+      ;; binding-descriptor protocol in "Code emitters"). The variable of the last descriptor
+      ;; is the value of the whole form.
+      ;;
+      ;; Examples (op-1 and op-2 stand for the names that are made for the Operation* of an op):
+      ;;   r = test.a () -> i32  test.b (r)
+      ;;     => (op-1 . the code that creates test.a)  (r . getResult 0 of op-1)
+      ;;        (op-2 . the code that creates test.b)
+      ;;   x = (+ 1 2)  (display x)
+      ;;     => (x . (+ 1 2))  (unused . (display x))
+      ;;   no items
+      ;;     => ()
       (define (process-ops-flat items)
         (let-values ([(head remaining) (parse-next items)])
           (if (not head)
