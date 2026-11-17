@@ -318,13 +318,16 @@
       ;;     ()
       ;;       => ()
       (define (brace-blocks inside)
-        ;; Make the form (^label arguments body ...) for one block.
+        ;; Give one block the form (^label arguments body ...).
         ;;   block-items  a list of syntax objects: the items of one block, its ^label first
         ;;                when it has one
-        ;; Returns one syntax object, the list that make-block-fill reads. A block with a ^label
-        ;; is returned as it is. A block without one is the entry block, and gets  ^entry ()
-        ;; in front. Raises an error when the ^label is not followed by its arguments, or when
-        ;; the block has no label and starts with ,@types.
+        ;; Returns one syntax object, the list that make-block-fill reads.
+        ;;   A block with a ^label is returned as it is, after a check that the ^label is
+        ;;   followed by its arguments.
+        ;;   A block without a ^label is the entry block. It gets the label ^entry and the
+        ;;   arguments (), so  ^entry ()  is put in front of its items.
+        ;; Raises an error when a ^label is not followed by its arguments, or when a block
+        ;; without a ^label starts with ,@types (a block with arguments needs a label).
         ;;
         ;; Examples:
         ;;   (^b ((v : i32)) test.q (v))  =>  (^b ((v : i32)) test.q (v))
