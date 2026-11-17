@@ -76,6 +76,20 @@
       test.dst_one_region_empty_block ()
       { ^only () })
 
+  ;; A block with arguments and no ops, with static and with dynamic arguments: the arguments
+  ;; are still created.
+  (define-rewrite-pattern (%%empty_block_with_arguments op rewriter)
+    :if-match
+      %out = test.empty_block_with_arguments (%v)
+    :then-let
+      ([!vtype (mlir::Value::getType %v)]
+       [arg-types (list !vtype)])
+    :rewrite %out :with
+      result = test.dst_empty_block_with_arguments (%v)
+      { ^static ((x : !vtype)) }
+      { ^dynamic ,@arg-types }
+      -> !vtype)
+
   ;; Braces and attribute modifiers mix in any order; each brace is one region, in order.
   (define-rewrite-pattern (%%braces_among_attributes op rewriter)
     :if-match
@@ -97,6 +111,7 @@
                                                              ("test.nested_braces" %%nested_braces 10)
                                                              ("test.empty_region" %%empty_region 10)
                                                              ("test.one_region_empty_block" %%one_region_empty_block 10)
+                                                             ("test.empty_block_with_arguments" %%empty_block_with_arguments 10)
                                                              ("test.braces_among_attributes" %%braces_among_attributes 10)))
           (mlir::applyPatternsGreedily module-op patterns)))))
 
