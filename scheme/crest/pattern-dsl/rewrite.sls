@@ -305,14 +305,18 @@
       ;; Raises an error when a ^label is not followed by its arguments, as in  (^a test.p ())  or  (^a).
       ;;
       ;; Examples (the { and } around inside are not part of it):
-      ;;   (^a () test.p () ^b ((v : i32)) test.q (v))
-      ;;     => ((^a () test.p ()) (^b ((v : i32)) test.q (v)))           two blocks
-      ;;   (test.p () test.q ())
-      ;;     => ((^entry () test.p () test.q ()))                         an entry block
-      ;;   (^a () test.p () { ^x () test.r () } ^b () test.s ())
-      ;;     => ((^a () test.p () { ^x () test.r () }) (^b () test.s ())) ^x is in the nested brace
-      ;;   ()
-      ;;     => ()                                                        a region without blocks
+      ;;   two blocks:
+      ;;     (^a () test.p () ^b ((v : i32)) test.q (v))
+      ;;       => ((^a () test.p ()) (^b ((v : i32)) test.q (v)))
+      ;;   an entry block:
+      ;;     (test.p () test.q ())
+      ;;       => ((^entry () test.p () test.q ()))
+      ;;   the ^x is in the nested brace, not a block of this one:
+      ;;     (^a () test.p () { ^x () test.r () } ^b () test.s ())
+      ;;       => ((^a () test.p () { ^x () test.r () }) (^b () test.s ()))
+      ;;   a region without blocks:
+      ;;     ()
+      ;;       => ()
       (define (brace-blocks inside)
         ;; Make the form (^label arguments body ...) for one block.
         ;;   block-items  a list of syntax objects: the items of one block, its ^label first
@@ -324,8 +328,8 @@
         ;;
         ;; Examples:
         ;;   (^b ((v : i32)) test.q (v))  =>  (^b ((v : i32)) test.q (v))
-        ;;   (test.p () test.q ())       =>  (^entry () test.p () test.q ())
-        ;;   (^b test.q ())              =>  error: test.q is not the arguments of ^b
+        ;;   (test.p () test.q ())        =>  (^entry () test.p () test.q ())
+        ;;   (^b test.q ())               =>  error: test.q is not the arguments of ^b
         (define (->form block-items)
           (let ([label (car block-items)])
             (if (block-label? label)
