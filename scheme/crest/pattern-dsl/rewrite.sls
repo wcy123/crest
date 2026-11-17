@@ -235,11 +235,11 @@
       ;; (let* ((variable expression) ...) last-variable). The variable of the last pair is the
       ;; value of the whole form. See "Code emitters" for the pairs of an op.
       ;;
-      ;; Examples (op-1 and op-2 stand for the names that are made for the Operation* of an op):
+      ;; Examples (op-1, op-2 and unused stand for names that are made; <...> describes code):
       ;;   r = test.a () -> i32  test.b (r)
-      ;;     => (op-1 . the code that creates test.a)
-      ;;        (r . getResult 0 of op-1)
-      ;;        (op-2 . the code that creates test.b)
+      ;;     => (op-1 . <the code that creates test.a>)
+      ;;        (r . <the code that gets result 0 of op-1>)
+      ;;        (op-2 . <the code that creates test.b>)
       ;;   x = (+ 1 2)  (display x)
       ;;     => (x . (+ 1 2))
       ;;        (unused . (display x))
