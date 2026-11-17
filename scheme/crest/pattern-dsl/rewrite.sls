@@ -109,6 +109,9 @@
           (for (only (mlir IR Operation) mlir::Operation::getResult) expand)
           (for (only (crest pattern-dsl ast)
                      make-ast-emit-op
+                     ast-emit-op-loc-override-set! ast-emit-op-add-attr-setter!
+                     ast-emit-op-add-region-fill! ast-emit-op-add-result-types!
+                     ast-emit-op-region-count
                      ast-emit-op-result-vars ast-emit-op-op-name ast-emit-op-op-name-stx
                      ast-emit-op-operands ast-emit-op-attr-setters ast-emit-op-region-fills
                      ast-emit-op-loc-override ast-emit-op-result-types) expand))
@@ -312,148 +315,171 @@
       ;;   modifiers ((n : v :index) -> i32 test.b ())
       ;;     => the pairs of test.a with the result r,  and the items (test.b ())
       (define (parse-op result-vars dialect.op operands modifiers)
-        (let-values ([(attr-fns region-fns loc types remaining) (parse-modifiers-flat modifiers)])
-          (let ([nvars  (length result-vars)]
-                [ntypes (length types)])
-            (unless (or (eqv? nvars ntypes) (eqv? ntypes 0))
-              (syntax-violation 'begin-mlir-code
-                                (string-append "result variable count (" (number->string nvars)
-                                               ") does not match result type count (" (number->string ntypes) ")")
-                                dialect.op)))
-          (values (emit-multi
-                   (make-ast-emit-op result-vars (op-name->str dialect.op) dialect.op
-                                     (value-operands operands)
-                                     attr-fns region-fns loc types))
-                  remaining)))
+        (let* ([ast       (make-ast-emit-op result-vars (op-name->str dialect.op) dialect.op
+                                            (value-operands operands) '() '() #f '())]
+               [remaining (parse-modifiers-flat ast modifiers)]
+               [nvars     (length result-vars)]
+               [ntypes    (length (ast-emit-op-result-types ast))])
+          (unless (or (eqv? nvars ntypes) (eqv? ntypes 0))
+            (syntax-violation 'begin-mlir-code
+                              (string-append "result variable count (" (number->string nvars)
+                                             ") does not match result type count (" (number->string ntypes) ")")
+                              dialect.op))
+          (values (emit-multi ast) remaining)))
 
-      ;; Classify one modifier element for the new v2 attribute syntax.
-      ;; Attribute form: (name : val) or (name : val :keyword)
-      ;; Region form:    { block ... } or (:move-region src-op [idx])
-      ;; Loc form:       (:loc expr)
-      ;; Returns a tagged pair: (attr . setter-fn), (region . fill-fns), or (loc . stx).
+      ;; Read the modifiers of an op from the front of items, and add them to the op.
+      ;;   ast    the ast-emit-op of the op. Its attribute setters, region fills, location override
+      ;;          and result types are added to in place, in the order written.
+      ;;   items  one syntax object whose content is a list: the modifiers of the op, and then
+      ;;          the items of the next op or expression
+      ;; Returns the items that are not modifiers, as one syntax object of a list. The first item
+      ;; that is not a modifier ends them.
+      ;; Raises an error for  (^label ...)  and  (:region ...), which are not regions any more,
+      ;; and for a { that is not the brace keyword.
       ;;
-      ;; Uses datum comparison (eq?) instead of free-identifier=? for keywords
-      ;; to avoid cross-phase issues when call sites import keywords at different phases.
-      ;; Consume modifiers from items until -> or a new op-start.
-      ;;   items  one syntax object whose content is a list: #'(item ...)
-      ;; Returns (values attr-fns region-fns loc-override result-types remaining)
-      ;; where remaining is the items that are not modifiers, again one syntax object of a list.
-      (define (parse-modifiers-flat items)
-        ;; Build a runtime (addAttribute state name val) setter closure.
-        (define (%%make-attr-setter name val-stx)
-          (let ([name-str (if (symbol? name) (symbol->string name) name)])
-            (lambda (state-stx)
-              (with-syntax ([state state-stx] [n name-str] [v val-stx])
-                #'(mlir::OperationState::addAttribute state n v)))))
-        (let lp ([items   items]
-                 [attrs   '()]
-                 [regions '()]
-                 [loc     #f]
-                 [types   '()])
-          (syntax-case items (-> :move-region : :string :index
-                                 :i8 :i16 :i32 :i64 :f32 :f64
-                                 :i8-array :i16-array :i32-array :i64-array :unit :loc { })
-            ;; -> type-list, continue accumulating types
-            [(-> (result-type ...) . rest)
-             (lp #'rest attrs regions loc (append types (syntax->list #'(result-type ...))))]
-            ;; -> single-type, continue accumulating types
-            [(-> type . rest)
-             (lp #'rest attrs regions loc (append types (list #'type)))]
-            ;; :loc loc-expr — runtime mlir::Location override
-            [(:loc (filename line column) . rest)
-             (lp #'rest attrs regions #'(mlir::FileLineColLoc::get filename line column) types)]
-            [(:loc loc-expr . rest)
-             (lp #'rest attrs regions #'loc-expr types)]
-            ;; { block ... } — one region, as in the generic form of MLIR
-            [(|{| . _)
-             (let-values ([(region-fill-fn remaining) (parse-brace-region items (length regions))])
-               (lp remaining attrs (append regions (list region-fill-fn)) loc types))]
-            ;; (:move-region src-op [idx]) — one region, moved from region idx (default 0) of src-op
-            [((:move-region src-op) . rest)
-             (lp #'rest attrs
-                 (append regions (list (make-region-move-fn (length regions) #'src-op #'0)))
-                 loc types)]
-            [((:move-region src-op idx) . rest)
-             (lp #'rest attrs
-                 (append regions (list (make-region-move-fn (length regions) #'src-op #'idx)))
-                 loc types)]
-            ;; (name : val :kw) — attribute with type-constructor keyword
-            [((name : val :string) . rest)
-             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
-                                                  #'(mlir::StringAttr::get val))
-                              attrs) regions loc types)]
-            [((name : val :index) . rest)
-             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
-                                                  #'(mlir::IntegerAttr::get<index> val))
-                              attrs) regions loc types)]
-            [((name : val :i8) . rest)
-             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
-                                                  #'(mlir::IntegerAttr::get<i8> val))
-                              attrs) regions loc types)]
-            [((name : val :i16) . rest)
-             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
-                                                  #'(mlir::IntegerAttr::get<i16> val))
-                              attrs) regions loc types)]
-            [((name : val :i32) . rest)
-             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
-                                                  #'(mlir::IntegerAttr::get<i32> val))
-                              attrs) regions loc types)]
-            [((name : val :i64) . rest)
-             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
-                                                  #'(mlir::IntegerAttr::get<i64> val))
-                              attrs) regions loc types)]
-            [((name : val :f32) . rest)
-             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
-                                                  #'(mlir::FloatAttr::get<f32> val))
-                              attrs) regions loc types)]
-            [((name : val :f64) . rest)
-             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
-                                                  #'(mlir::FloatAttr::get<f64> val))
-                              attrs) regions loc types)]
-            [((name : val :i8-array) . rest)
-             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
-                                                  #'(mlir::DenseI8ArrayAttr::get val))
-                              attrs) regions loc types)]
-            [((name : val :i16-array) . rest)
-             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
-                                                  #'(mlir::DenseI16ArrayAttr::get val))
-                              attrs) regions loc types)]
-            [((name : val :i32-array) . rest)
-             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
-                                                  #'(mlir::DenseI32ArrayAttr::get val))
-                              attrs) regions loc types)]
-            [((name : val :i64-array) . rest)
-             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
-                                                  #'(mlir::DenseI64ArrayAttr::get val))
-                              attrs) regions loc types)]
-            [((name : val :unit) . rest)
-             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name)
-                                                  #'(mlir::UnitAttr::get))
-                              attrs) regions loc types)]
-            ;; (name : val) — raw mlir::Attribute
-            [((name : val) . rest)
-             (lp #'rest (cons (%%make-attr-setter (syntax->datum #'name) #'val)
-                              attrs) regions loc types)]
-            ;; (^label ...) and (:region ...) were regions before braces: say what to write now
-            [((bb . _) . _)
-             (block-label? #'bb)
-             (syntax-violation 'begin-mlir-code
-                               "(^label ...) is not a region any more: write { ^label ... } instead"
-                               (car (syntax->list items)))]
-            [((region . _) . _)
-             (eq? (syntax->datum #'region) ':region)
-             (syntax-violation 'begin-mlir-code
-                               "(:region ...) is not a region any more: write { ^a ... ^b ... } instead"
-                               (car (syntax->list items)))]
-            ;; a { that is not the keyword: the file did not import { } from (crest)
-            [(brace . _)
-             (eq? (syntax->datum #'brace) '|{|)
-             (syntax-violation 'begin-mlir-code
-                               "this { is not the brace keyword: import { } from (crest) or (crest pattern-dsl keywords)"
-                               #'brace)]
-            ;; anything else — stop
-            [(otherwise ...)
-             (values (reverse attrs) regions loc types #'(otherwise ...))])))
+      ;; A modifier is one of:
+      ;;   -> type            or  -> (type ...)       result types
+      ;;   { block ... }                              a region
+      ;;   (:move-region src-op [idx])                a region moved from another op
+      ;;   :loc location                              the location of the op
+      ;;   (name : value)     or  (name : value :kind)   an attribute
+      ;;
+      ;; Examples (the ast is test.a):
+      ;;   ((n : v :index) -> i32 test.b ())
+      ;;     => adds the attribute n and the result type i32, and returns (test.b ())
+      ;;   ({ test.c () } -> i32)
+      ;;     => adds one region and the result type i32, and returns ()
+      (define (parse-modifiers-flat ast items)
+        (syntax-case items (-> :move-region : :string :index
+                               :i8 :i16 :i32 :i64 :f32 :f64
+                               :i8-array :i16-array :i32-array :i64-array :unit :loc { })
+          ;; -> type-list
+          [(-> (result-type ...) . rest)
+           (begin
+             (ast-emit-op-add-result-types! ast (syntax->list #'(result-type ...)))
+             (parse-modifiers-flat ast #'rest))]
+          ;; -> single-type
+          [(-> type . rest)
+           (begin
+             (ast-emit-op-add-result-types! ast (list #'type))
+             (parse-modifiers-flat ast #'rest))]
+          ;; :loc loc-expr — runtime mlir::Location override
+          [(:loc (filename line column) . rest)
+           (begin
+             (ast-emit-op-loc-override-set! ast #'(mlir::FileLineColLoc::get filename line column))
+             (parse-modifiers-flat ast #'rest))]
+          [(:loc loc-expr . rest)
+           (begin
+             (ast-emit-op-loc-override-set! ast #'loc-expr)
+             (parse-modifiers-flat ast #'rest))]
+          ;; { block ... } — one region, as in the generic form of MLIR
+          [(|{| . _)
+           (let-values ([(region-fill-fn remaining)
+                         (parse-brace-region items (ast-emit-op-region-count ast))])
+             (ast-emit-op-add-region-fill! ast region-fill-fn)
+             (parse-modifiers-flat ast remaining))]
+          ;; (:move-region src-op [idx]) — one region, moved from region idx (default 0) of src-op
+          [((:move-region src-op) . rest)
+           (begin
+             (ast-emit-op-add-region-fill!
+              ast (make-region-move-fn (ast-emit-op-region-count ast) #'src-op #'0))
+             (parse-modifiers-flat ast #'rest))]
+          [((:move-region src-op idx) . rest)
+           (begin
+             (ast-emit-op-add-region-fill!
+              ast (make-region-move-fn (ast-emit-op-region-count ast) #'src-op #'idx))
+             (parse-modifiers-flat ast #'rest))]
+          ;; (name : val :kind) — attribute with type-constructor keyword
+          [((name : val :string) . rest)
+           (begin
+             (ast-emit-op-add-attr-setter! ast (%%make-attr-setter (syntax->datum #'name)
+                                                                   #'(mlir::StringAttr::get val)))
+             (parse-modifiers-flat ast #'rest))]
+          [((name : val :index) . rest)
+           (begin
+             (ast-emit-op-add-attr-setter! ast (%%make-attr-setter (syntax->datum #'name)
+                                                                   #'(mlir::IntegerAttr::get<index> val)))
+             (parse-modifiers-flat ast #'rest))]
+          [((name : val :i8) . rest)
+           (begin
+             (ast-emit-op-add-attr-setter! ast (%%make-attr-setter (syntax->datum #'name)
+                                                                   #'(mlir::IntegerAttr::get<i8> val)))
+             (parse-modifiers-flat ast #'rest))]
+          [((name : val :i16) . rest)
+           (begin
+             (ast-emit-op-add-attr-setter! ast (%%make-attr-setter (syntax->datum #'name)
+                                                                   #'(mlir::IntegerAttr::get<i16> val)))
+             (parse-modifiers-flat ast #'rest))]
+          [((name : val :i32) . rest)
+           (begin
+             (ast-emit-op-add-attr-setter! ast (%%make-attr-setter (syntax->datum #'name)
+                                                                   #'(mlir::IntegerAttr::get<i32> val)))
+             (parse-modifiers-flat ast #'rest))]
+          [((name : val :i64) . rest)
+           (begin
+             (ast-emit-op-add-attr-setter! ast (%%make-attr-setter (syntax->datum #'name)
+                                                                   #'(mlir::IntegerAttr::get<i64> val)))
+             (parse-modifiers-flat ast #'rest))]
+          [((name : val :f32) . rest)
+           (begin
+             (ast-emit-op-add-attr-setter! ast (%%make-attr-setter (syntax->datum #'name)
+                                                                   #'(mlir::FloatAttr::get<f32> val)))
+             (parse-modifiers-flat ast #'rest))]
+          [((name : val :f64) . rest)
+           (begin
+             (ast-emit-op-add-attr-setter! ast (%%make-attr-setter (syntax->datum #'name)
+                                                                   #'(mlir::FloatAttr::get<f64> val)))
+             (parse-modifiers-flat ast #'rest))]
+          [((name : val :i8-array) . rest)
+           (begin
+             (ast-emit-op-add-attr-setter! ast (%%make-attr-setter (syntax->datum #'name)
+                                                                   #'(mlir::DenseI8ArrayAttr::get val)))
+             (parse-modifiers-flat ast #'rest))]
+          [((name : val :i16-array) . rest)
+           (begin
+             (ast-emit-op-add-attr-setter! ast (%%make-attr-setter (syntax->datum #'name)
+                                                                   #'(mlir::DenseI16ArrayAttr::get val)))
+             (parse-modifiers-flat ast #'rest))]
+          [((name : val :i32-array) . rest)
+           (begin
+             (ast-emit-op-add-attr-setter! ast (%%make-attr-setter (syntax->datum #'name)
+                                                                   #'(mlir::DenseI32ArrayAttr::get val)))
+             (parse-modifiers-flat ast #'rest))]
+          [((name : val :i64-array) . rest)
+           (begin
+             (ast-emit-op-add-attr-setter! ast (%%make-attr-setter (syntax->datum #'name)
+                                                                   #'(mlir::DenseI64ArrayAttr::get val)))
+             (parse-modifiers-flat ast #'rest))]
+          [((name : val :unit) . rest)
+           (begin
+             (ast-emit-op-add-attr-setter! ast (%%make-attr-setter (syntax->datum #'name)
+                                                                   #'(mlir::UnitAttr::get)))
+             (parse-modifiers-flat ast #'rest))]
+          ;; (name : val) — raw mlir::Attribute
+          [((name : val) . rest)
+           (begin
+             (ast-emit-op-add-attr-setter! ast (%%make-attr-setter (syntax->datum #'name) #'val))
+             (parse-modifiers-flat ast #'rest))]
+          ;; (^label ...) and (:region ...) were regions before braces: say what to write now
+          [((bb . _) . _)
+           (block-label? #'bb)
+           (syntax-violation 'begin-mlir-code
+                             "(^label ...) is not a region any more: write { ^label ... } instead"
+                             (car (syntax->list items)))]
+          [((region . _) . _)
+           (eq? (syntax->datum #'region) ':region)
+           (syntax-violation 'begin-mlir-code
+                             "(:region ...) is not a region any more: write { ^a ... ^b ... } instead"
+                             (car (syntax->list items)))]
+          ;; a { that is not the keyword: the file did not import { } from (crest)
+          [(brace . _)
+           (eq? (syntax->datum #'brace) '|{|)
+           (syntax-violation 'begin-mlir-code
+                             "this { is not the brace keyword: import { } from (crest) or (crest pattern-dsl keywords)"
+                             #'brace)]
+          ;; anything else — stop
+          [(otherwise ...)
+           #'(otherwise ...)]))
 
       ;; Read the { ... } at the front of items.
       ;;   items         one syntax object whose content is a list that starts with the {
@@ -681,6 +707,17 @@
                (%%current-rewriter)
                (mlir::Operation::getRegion src-op src-idx)
                (mlir::Operation::getRegion new-op region-idx)))))
+
+      ;; Make the setter of an attribute.
+      ;;   name     the name of the attribute, a symbol or a string
+      ;;   val-stx  syntax: the expression of its value, an mlir::Attribute
+      ;; Returns a procedure from the identifier of the OperationState to the syntax that adds
+      ;; the attribute to it, (mlir::OperationState::addAttribute state "name" value).
+      (define (%%make-attr-setter name val-stx)
+        (let ([name-str (if (symbol? name) (symbol->string name) name)])
+          (lambda (state-stx)
+            (with-syntax ([state state-stx] [n name-str] [v val-stx])
+              #'(mlir::OperationState::addAttribute state n v)))))
 
       ;;-------------------------------------------------------------------
       ;; Code emitters

@@ -65,7 +65,12 @@
           ast-emit-op-attr-setters
           ast-emit-op-region-fills
           ast-emit-op-loc-override
-          ast-emit-op-result-types)
+          ast-emit-op-result-types
+          ast-emit-op-loc-override-set!
+          ast-emit-op-add-attr-setter!
+          ast-emit-op-add-region-fill!
+          ast-emit-op-add-result-types!
+          ast-emit-op-region-count)
   (import (rnrs)
           (only (chezscheme) getenv))
 
@@ -252,11 +257,10 @@
   ;; EMIT-OP RECORD: ast-emit-op (used by begin-mlir-code v2 flat parser)
   ;;-----------------------------------------------------------------------
   ;;
-  ;; Represents one parsed op-form returned by parse-next.
-  ;; parse-next scans the flat begin-mlir-code argument list and detects:
-  ;;   r = op.name (ops) ...      single-result
-  ;;   (r0 r1) = op.name (ops)    multi-result
-  ;;   op.name (ops) ...          no-result (statement)
+  ;; Represents one op-form of begin-mlir-code, for example  r = dialect.op (x) (n : v) { ... } -> t
+  ;; parse-op makes it with the result variables, the name of the op and its operands. Then
+  ;; parse-modifiers-flat adds the modifiers to it in place, in the order written: the attribute
+  ;; setters, the region fills, the location override and the result types.
   ;;
   (define-record-type (ast-emit-op make-ast-emit-op ast-emit-op?)
     (fields
@@ -264,8 +268,22 @@
      (immutable op-name)       ; string — e.g. "toy.constant"
      (immutable op-name-stx)   ; syntax object carrying source location annotation
      (immutable operands)      ; syntax expr — (list v1 v2 ...)
-     (immutable attr-setters)  ; list of (lambda (state-stx) → setter-stx)
-     (immutable region-fills)  ; list of (lambda (new-op-stx) → fill-stx)
-     (immutable loc-override)  ; syntax or #f
-     (immutable result-types))) ; syntax list — empty for no-result
+     (mutable attr-setters)    ; list of (lambda (state-stx) → setter-stx)
+     (mutable region-fills)    ; list of (lambda (new-op-stx) → fill-stx)
+     (mutable loc-override)    ; syntax or #f
+     (mutable result-types)))  ; syntax list — empty for no-result
+
+  ;; The three lists are in the order written, so these add at the end. They are short.
+  (define (ast-emit-op-add-attr-setter! ast setter)
+    (ast-emit-op-attr-setters-set! ast (append (ast-emit-op-attr-setters ast) (list setter))))
+
+  (define (ast-emit-op-add-region-fill! ast fill)
+    (ast-emit-op-region-fills-set! ast (append (ast-emit-op-region-fills ast) (list fill))))
+
+  (define (ast-emit-op-add-result-types! ast types)
+    (ast-emit-op-result-types-set! ast (append (ast-emit-op-result-types ast) types)))
+
+  ;; The number of regions added so far: the position the next region will have.
+  (define (ast-emit-op-region-count ast)
+    (length (ast-emit-op-region-fills ast)))
   )
