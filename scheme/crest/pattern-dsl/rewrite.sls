@@ -246,18 +246,18 @@
       ;;     => (x . (+ 1 2))
       ;;        (unused . (display x))
       (define (process-ops-flat items)
-        ;; done  the pairs made so far, newest first
-        (let lp ([items items] [done '()])
+        ;; ret  the pairs made so far, newest first
+        (let lp ([items items] [ret '()])
           (let-values ([(head remaining) (parse-next items)])
             (if (not head)
-                (reverse done)
+                (reverse ret)
                 (lp remaining
                     (append (reverse
                              (cond
                               [(ast-emit-op? head) (emit-multi head)]
                               [(and (pair? head) (identifier? (car head))) (list head)]
                               [else (list (cons (car (generate-temporaries '(%unused))) head))]))
-                            done))))))
+                            ret))))))
 
       ;; Returns (values head remaining):
       ;;   (values #f #f)           — items is empty
