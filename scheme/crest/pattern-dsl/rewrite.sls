@@ -283,26 +283,11 @@
           [(var = dialect.op (operands ...) . rest)
            (and (identifier? #'var) (op-name? #'dialect.op))
            (parse-next #'((var) = dialect.op (operands ...) . rest))]
-          ;; multi-result: (v ...) = dialect.op ... — canonical form: build the ast-emit-op, make its pairs
+          ;; multi-result: (v ...) = dialect.op ... — canonical form: read the op
           [((v ...) = dialect.op (operands ...) . rest)
            (and (for-all identifier? (syntax->list #'(v ...)))
                 (op-name? #'dialect.op))
-           (let-values ([(attr-fns region-fns loc types remaining)
-                         (parse-modifiers-flat #'rest)])
-             (let ([nvars  (length (syntax->list #'(v ...)))]
-                   [ntypes (length types)])
-               ;; No -> at all: the result types are inferred when the op is created.
-               (unless (or (eqv? nvars ntypes) (eqv? ntypes 0))
-                 (syntax-violation 'begin-mlir-code
-                                   (string-append "result variable count (" (number->string nvars)
-                                                  ") does not match result type count (" (number->string ntypes) ")")
-                                   #'dialect.op)))
-             (values (emit-multi
-                      (make-ast-emit-op
-                       (syntax->list #'(v ...)) (op-name->str #'dialect.op) #'dialect.op
-                       (value-operands #'(operands ...))
-                       attr-fns region-fns loc types))
-                     remaining))]
+           (parse-op (syntax->list #'(v ...)) #'dialect.op #'(operands ...) #'rest)]
           ;; var = (scheme-expr ...) — name the value of a Scheme expression
           [(v = expression . rest)
            (identifier? #'v)
@@ -310,6 +295,36 @@
           ;; Scheme expression — consume one item, and give it a name that nothing uses
           [(expr . rest)
            (values (list (cons (car (generate-temporaries '(%unused))) #'expr)) #'rest)]))
+
+      ;; Read the rest of an op after its operands, and make its pairs.
+      ;;   result-vars  a Scheme list of identifiers: the variables written before the =, or ()
+      ;;   dialect.op   the name of the op, as written: arith.addi
+      ;;   operands     one syntax object of a list: what is written in the ( ) after the name
+      ;;   modifiers    one syntax object of a list: everything after the operands, that is the
+      ;;                modifiers of the op, and then the items of the next op or expression
+      ;; Returns two values, as parse-next does: the pairs of the op (see emit-multi in "Code
+      ;; emitters"), and the items after its modifiers.
+      ;; Raises an error when the op has result types, but not one for each result variable.
+      ;; With no result types at all they are inferred when the op is created.
+      ;;
+      ;; Example: for  r = test.a (x y) (n : v :index) -> i32  test.b ()
+      ;;   result-vars (r),  dialect.op test.a,  operands (x y)
+      ;;   modifiers ((n : v :index) -> i32 test.b ())
+      ;;     => the pairs of test.a with the result r,  and the items (test.b ())
+      (define (parse-op result-vars dialect.op operands modifiers)
+        (let-values ([(attr-fns region-fns loc types remaining) (parse-modifiers-flat modifiers)])
+          (let ([nvars  (length result-vars)]
+                [ntypes (length types)])
+            (unless (or (eqv? nvars ntypes) (eqv? ntypes 0))
+              (syntax-violation 'begin-mlir-code
+                                (string-append "result variable count (" (number->string nvars)
+                                               ") does not match result type count (" (number->string ntypes) ")")
+                                dialect.op)))
+          (values (emit-multi
+                   (make-ast-emit-op result-vars (op-name->str dialect.op) dialect.op
+                                     (value-operands operands)
+                                     attr-fns region-fns loc types))
+                  remaining)))
 
       ;; Classify one modifier element for the new v2 attribute syntax.
       ;; Attribute form: (name : val) or (name : val :keyword)
