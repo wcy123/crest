@@ -250,17 +250,31 @@
           (if (not head)
               '()
               (append
-               (cond
-                [(ast-emit-op? head) (emit-multi head)]
-                [(and (pair? head) (identifier? (car head))) (list head)]
-                [else (list (cons (car (generate-temporaries '(%unused))) head))])
+               (if (ast-emit-op? head)
+                   (emit-multi head)
+                   (list head))
                (process-ops-flat remaining)))))
 
-      ;; Returns (values head remaining):
-      ;;   (values #f #f)           — items is empty
-      ;;   (values ast-emit-op stx) — next item(s) form an MLIR op
-      ;;   (values (var . expr) stx) — `var = (expr)`: bind the value of a Scheme expression
-      ;;   (values expr-stx stx)    — next item is a Scheme expression
+      ;; Read the next op or Scheme expression from the front of items.
+      ;;   items  one syntax object whose content is a list: #'(item ...)
+      ;; Returns two values, head and remaining. remaining is the items after what was read, as
+      ;; one syntax object of a list. head is one of:
+      ;;   an ast-emit-op             for an op: dialect.op (operands) modifiers ...
+      ;;   a pair (variable . code)   for a Scheme expression: the variable is the name written
+      ;;                              in  var = (expression) , or a name that is made when the
+      ;;                              expression has none
+      ;;   #f                         when items is empty (remaining is #f too)
+      ;;
+      ;; Examples:
+      ;;   r = test.a () -> i32  test.b ()
+      ;;     => head: the ast-emit-op of test.a, with the result variable r
+      ;;        remaining: (test.b ())
+      ;;   x = (+ 1 2)  (display x)
+      ;;     => head: (x . (+ 1 2))
+      ;;        remaining: ((display x))
+      ;;   (display x)
+      ;;     => head: (unused . (display x)),  unused being a name that is made
+      ;;        remaining: ()
       (define (parse-next items)
         (syntax-case items (=)
           [() (values #f #f)]
@@ -295,9 +309,9 @@
           [(v = expression . rest)
            (identifier? #'v)
            (values (cons #'v #'expression) #'rest)]
-          ;; Scheme expression — consume one item
+          ;; Scheme expression — consume one item, and give it a name that nothing uses
           [(expr . rest)
-           (values #'expr #'rest)]))
+           (values (cons (car (generate-temporaries '(%unused))) #'expr) #'rest)]))
 
       ;; Classify one modifier element for the new v2 attribute syntax.
       ;; Attribute form: (name : val) or (name : val :keyword)
