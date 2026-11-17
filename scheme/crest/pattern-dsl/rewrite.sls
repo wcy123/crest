@@ -260,9 +260,9 @@
       ;; A { among the items is closed by its own }, so a nested brace stays in the first list.
       ;; Raises an error when no } closes the {.
       ;;
-      ;; Example: for  { a () { b () } c () } -> i32
-      ;;   items          = (a () { b () } c () } -> i32)
-      ;;   first value    = (a () { b () } c ())
+      ;; Example: for  { test.a () { test.b () } test.c () } -> i32
+      ;;   items          = (test.a () { test.b () } test.c () } -> i32)
+      ;;   first value    = (test.a () { test.b () } test.c ())
       ;;   second value   = (-> i32)
       (define (split-at-close open-stx items)
         (let lp ([items items] [depth 0] [inside '()])
@@ -302,15 +302,15 @@
       ;; a ^label is its arguments: (), ((name : type) ...) or ,@types. A ^label inside a nested
       ;; { } belongs to that brace, not to this one. Items before the first ^label are an entry
       ;; block without arguments, which gets the label ^entry. No items give no blocks.
-      ;; Raises an error when a ^label is not followed by its arguments, as in  (^a p ())  or  (^a).
+      ;; Raises an error when a ^label is not followed by its arguments, as in  (^a test.p ())  or  (^a).
       ;;
       ;; Examples (the { and } around inside are not part of it):
-      ;;   (^a () p () ^b ((v : i32)) q (v))
-      ;;     => ((^a () p ()) (^b ((v : i32)) q (v)))                     two blocks
-      ;;   (p () q ())
-      ;;     => ((^entry () p () q ()))                                   an entry block
-      ;;   (^a () p () { ^x () r () } ^b () s ())
-      ;;     => ((^a () p () { ^x () r () }) (^b () s ()))                ^x is in the nested brace
+      ;;   (^a () test.p () ^b ((v : i32)) test.q (v))
+      ;;     => ((^a () test.p ()) (^b ((v : i32)) test.q (v)))           two blocks
+      ;;   (test.p () test.q ())
+      ;;     => ((^entry () test.p () test.q ()))                         an entry block
+      ;;   (^a () test.p () { ^x () test.r () } ^b () test.s ())
+      ;;     => ((^a () test.p () { ^x () test.r () }) (^b () test.s ())) ^x is in the nested brace
       ;;   ()
       ;;     => ()                                                        a region without blocks
       (define (brace-blocks inside)
@@ -323,9 +323,9 @@
         ;; the block has no label and starts with ,@types.
         ;;
         ;; Examples:
-        ;;   (^b ((v : i32)) q (v))  =>  (^b ((v : i32)) q (v))
-        ;;   (p () q ())             =>  (^entry () p () q ())
-        ;;   (^b q ())               =>  error: q is not the arguments of ^b
+        ;;   (^b ((v : i32)) test.q (v))  =>  (^b ((v : i32)) test.q (v))
+        ;;   (test.p () test.q ())       =>  (^entry () test.p () test.q ())
+        ;;   (^b test.q ())              =>  error: test.q is not the arguments of ^b
         (define (->form block-items)
           (let ([label (car block-items)])
             (if (block-label? label)

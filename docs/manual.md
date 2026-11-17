@@ -518,9 +518,9 @@ op = my.region_op (%x)
 
 ;; Two regions with one block each (e.g. scf.if: then-region and else-region)
 op = scf.if (%cond)
-     { a = compute_a (%x) -> !i32
+     { a = my.compute_a (%x) -> !i32
        scf.yield (%a) }
-     { b = compute_b (%y) -> !i32
+     { b = my.compute_b (%y) -> !i32
        scf.yield (%b) }
      -> !i32
 
