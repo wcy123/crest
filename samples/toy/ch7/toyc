@@ -7,4 +7,4 @@ BUILD="${CREST_BUILD_DIR:-/home/build/crest-1}"
 SCHEME_MLIR="$BUILD/tools/scheme-mlir/scheme-mlir"
 [[ -x "$SCHEME_MLIR" ]] || { echo "Error: scheme-mlir not found. Set CREST_BUILD_DIR." >&2; exit 1; }
 CREST_PATH="$(realpath "$SCRIPT_DIR/../..")" \
-"$SCHEME_MLIR" "$SCRIPT_DIR/toyc.sls" -- "$@"
+"$SCHEME_MLIR" "$SCRIPT_DIR/toyc.sls" "$@"

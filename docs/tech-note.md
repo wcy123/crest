@@ -329,7 +329,9 @@ bug in it.
    10.4.1 source and failed to find `csv1050.lib`). A new pin therefore needs new directories: in
    `.github/workflows/ci.yml` change `FETCHCONTENT_BASE_DIR`, `CHEZ_BUILD_DIR` and the `safe.directory` of the
    Windows configure step to a directory named after the short commit (`C:\Develop\crest-deps\d533f2e`).
-   The stamps are named after the build directory.
+   The stamps are named after the build directory. The same directory holds the source of `rime`
+   (`FETCHCONTENT_BASE_DIR`), so a new `rime` pin needs the same rename. The directory is named after both pins,
+   `C:\Develop\crest-deps\d533f2e-d7e5e0a` (Chez, then `rime`), and the next bump of either changes its name.
 5. The Linux CI caches the Chez build under a key of `hashFiles('cmake/deps.cmake')`, so editing `deps.cmake`
    rebuilds it.
 6. Run both LLVM suites (`check-crest` and `CrestInterpreterTests`, `CrestInferTypeTests`) on Linux and let the

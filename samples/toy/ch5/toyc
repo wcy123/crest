@@ -15,4 +15,4 @@ SCHEME_MLIR="$BUILD/tools/scheme-mlir/scheme-mlir"
 }
 
 CREST_PATH="$(realpath "$SCRIPT_DIR/../..")" \
-"$SCHEME_MLIR" "$SCRIPT_DIR/toyc.sls" -- "$@"
+"$SCHEME_MLIR" "$SCRIPT_DIR/toyc.sls" "$@"
