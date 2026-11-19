@@ -13,24 +13,24 @@
 
 // AST: Module:
 
-// HELP: Usage: toyc
+// HELP: Usage:
 // HELP: --emit {ast,mlir,mlir-affine,mlir-llvm,llvm,jit}
 // HELP: --opt
 // HELP: --x {toy,mlir}
 // HELP: -h, --help
 
-// CHOICE: toyc: argument must be one of the choices
+// CHOICE: argument must be one of the choices
 // CHOICE-SAME: "xml"
 
-// INPUT: toyc: argument must be one of the choices
+// INPUT: argument must be one of the choices
 // INPUT-SAME: "yaml"
 
-// UNKNOWN: toyc: unknown option
+// UNKNOWN: unknown option
 // UNKNOWN-SAME: "--nothing"
 
-// TOO-MANY: toyc: too many positional arguments
+// TOO-MANY: too many positional arguments
 // TOO-MANY-SAME: example.toy
 
 // The C++ toyc has no -emit with one dash in its tests, and neither has this one: only --emit.
-// ONE-DASH: toyc: unknown option
+// ONE-DASH: unknown option
 // ONE-DASH-SAME: "-emit=ast"

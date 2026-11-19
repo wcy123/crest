@@ -1,7 +1,7 @@
 ;; Toy compiler Ch4 — top-level program for scheme-mlir.
 ;; Mirrors mlir/examples/toy/Ch4/toyc.cpp
 ;;
-;; Usage: scheme-mlir samples/toy/ch4/toyc.sls <file> [--emit=ast|--emit=mlir] [--opt]
+;; Usage: scheme-mlir samples/toy/ch4/toyc.sls <file> --emit=ast|--emit=mlir [--opt]
 ;;
 ;; Ch4 --opt pipeline:
 ;;   1. Inline toy.generic_call ops (eliminates private functions)
@@ -35,47 +35,23 @@
 (define %%input-type 'toy)
 
 (define (main)
-  (let-values ([(filename action opt? input-type) (%%parse-args (command-line-arguments))])
-    (set! %%input-type input-type)
+  (let* ([option   (parse-command-line (command-line-arguments))]
+         [filename (let ([files (option "file")]) (if (null? files) "-" (car files)))]
+         [action   (option "emit")]
+         [opt?     (eq? (option "opt") 'present)])
+    (set! %%input-type (string->symbol (or (option "x") "toy")))
     (cond
      [(equal? action "ast")  (%%dump-ast  filename)]
-     [(equal? action "mlir") (%%dump-mlir filename opt?)]
-     [else
-      (display "No action specified (parsing only?), use --emit=<action>
-"
-               (current-error-port))
-      (%%quit 255)])))
+     [(equal? action "mlir") (%%dump-mlir filename opt?)])))
 
 ;; The command line, as the C++ toyc's cl::opts read it: the input file (default "-": standard input),
-;; --emit=<action> (also --emit <action>), -opt (also --opt) and -x <toy|mlir> (also -x=<...>,
-;; --x=<...>). The options and the input file can come in any order, and -h shows the usage.
+;; --emit=<action>, -opt and -x <toy|mlir>, in any order. -h shows the usage.
 ;; (rime command-line-options) reads it.
-(define-command-line-options %%read-command-line
-  [:long "--emit" :choices ("ast" "mlir") :description "the kind of output"]
+(define-command-line-options parse-command-line
+  [:long "--emit" :choices ("ast" "mlir") :required :description "the kind of output"]
   [:short "-opt"  :long "--opt"  :arity 0 :description "run the optimizer"]
   [:short "-x"    :long "--x"    :choices ("toy" "mlir") :description "the kind of input"]
   [:positional "file" :arity (0 1) :description "the input file, or - for standard input"])
-
-;; Returns (values filename action opt? input-type): the input file, the action as a string or #f,
-;; whether -opt is there, and the kind of input as a symbol.
-;; A mistake in the command line is a message and the exit status 1.
-(define (%%parse-args args)
-  (let ([option (guard (e [(error? e)
-                           (apply %%command-line-error (condition-message e) (condition-irritants e))])
-                  (parameterize ([command-line '("toyc")])
-                    (%%read-command-line args)))])
-    (values (let ([files (option "file")]) (if (null? files) "-" (car files)))
-            (option "emit")
-            (eq? (option "opt") 'present)
-            (string->symbol (or (option "x") "toy")))))
-
-(define (%%command-line-error message . irritants)
-  (display "toyc: " (current-error-port))
-  (display message (current-error-port))
-  (for-each (lambda (irritant) (display " " (current-error-port)) (write irritant (current-error-port)))
-            irritants)
-  (newline (current-error-port))
-  (%%quit 1))
 
 (define (%%dump-ast filename)
   (when (eq? %%input-type 'mlir)
