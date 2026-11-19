@@ -21,10 +21,10 @@
          (display "No action — use --emit=ast\n"
                   (current-error-port))]))))
 
-;; The command line: the input file and --emit=ast (also -emit=ast, --emit ast and -emit ast). They can come
-;; in any order, and -h shows the usage. (rime command-line-options) reads it.
+;; The command line: the input file and --emit=ast (also --emit ast). They can come in any order, and -h
+;; shows the usage. (rime command-line-options) reads it.
 (define-command-line-options %%read-command-line
-  [:short "-emit" :long "--emit" :choices ("ast") :description "the kind of output"])
+  [:long "--emit" :choices ("ast") :description "the kind of output"])
 
 ;; Returns (values filename action): the input file or #f, and the action as a symbol or #f.
 ;; A mistake in the command line is a message and the exit status 1.
@@ -36,7 +36,7 @@
     (when (> (option 'number-of-positional-argument) 1)
       (%%command-line-error "too many input files"))
     (values (and (= (option 'number-of-positional-argument) 1) (option 0))
-            (and (option "-emit") (string->symbol (option "-emit"))))))
+            (and (option "--emit") (string->symbol (option "--emit"))))))
 
 (define (%%command-line-error message . irritants)
   (display "toyc: " (current-error-port))

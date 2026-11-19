@@ -67,17 +67,17 @@
      [(equal? action "llvm")       (%%dump-llvm filename opt?)]
      [(equal? action "jit")        (%%run-jit  filename opt?)]
      [else
-      (display "No action specified (parsing only?), use -emit=<action>
+      (display "No action specified (parsing only?), use --emit=<action>
 "
                (current-error-port))
       (%%quit 255)])))
 
 ;; The command line, as the C++ toyc's cl::opts read it: the input file (default "-": standard input),
-;; -emit=<action> (also --emit=<action> and -emit <action>), -opt (also --opt) and -x <toy|mlir>
-;; (also -x=<...>, --x=<...>). The options and the input file can come in any order, and -h shows the
-;; usage. (rime command-line-options) reads it.
+;; --emit=<action> (also --emit <action>), -opt (also --opt) and -x <toy|mlir> (also -x=<...>,
+;; --x=<...>). The options and the input file can come in any order, and -h shows the usage.
+;; (rime command-line-options) reads it.
 (define-command-line-options %%read-command-line
-  [:short "-emit" :long "--emit" :choices ("ast" "mlir" "mlir-affine" "mlir-llvm" "llvm" "jit") :description "the kind of output"]
+  [:long "--emit" :choices ("ast" "mlir" "mlir-affine" "mlir-llvm" "llvm" "jit") :description "the kind of output"]
   [:short "-opt"  :long "--opt"  :arity 0 :description "run the optimizer"]
   [:short "-x"    :long "--x"    :choices ("toy" "mlir") :description "the kind of input"])
 
@@ -92,7 +92,7 @@
     (when (> (option 'number-of-positional-argument) 1)
       (%%command-line-error "too many input files"))
     (values (if (zero? (option 'number-of-positional-argument)) "-" (option 0))
-            (option "-emit")
+            (option "--emit")
             (eq? (option "-opt") 'present)
             (string->symbol (or (option "-x") "toy")))))
 
