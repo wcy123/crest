@@ -17,7 +17,7 @@ C++ tutorial (`toy.func @main() { ... }`). The dialect declares `toy.return` as 
 | `toy.sls` | the `toy` dialect: `define-dialect` with its ops (`constant`, `add`, `mul`, `transpose`, `reshape`, `generic_call`, `func`, `return`, `print`) |
 | `mlir-gen.sls` | walks the AST and creates the ops |
 | `lexer.sls`, `parser.sls`, `ast.sls` | as in Ch1 |
-| `toyc.sls` | the driver: `--emit=ast` or `--emit=mlir` |
+| `toyc.sls` | the driver: `--emit=ast` or `--emit=mlir`. `(rime command-line-options)` reads the command line, so the options and the file come in any order and `-h` shows the usage |
 
 ## What is written with the DSL
 

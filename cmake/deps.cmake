@@ -169,9 +169,14 @@ add_custom_target(ChezBootHeaders DEPENDS
 )
 
 # ─── rime: fetch source (pure Scheme, no build step) ─────────────────────────
+# Pin: bab755a853e4e47c15d8138e363b5c51abc6fa25, committed 2026-11-19. It has (rime command-line-options)
+# with :choices, :required and :positional, and reads options anywhere on the command line, which
+# samples/toy/ch*/toyc.sls use.
+# The Windows CI directory is named after both pins: rename it when this GIT_TAG changes
+# (.github/workflows/ci.yml).
 FetchContent_Declare(rime
   GIT_REPOSITORY https://github.com/wcy123/rime.git
-  GIT_TAG        7774c48817c0236dd5557a26a923788418833ece
+  GIT_TAG        bab755a853e4e47c15d8138e363b5c51abc6fa25
   GIT_PROGRESS   TRUE
 )
 FetchContent_GetProperties(rime)

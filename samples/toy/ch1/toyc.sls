@@ -1,32 +1,21 @@
 ;; Toy compiler Ch1 — top-level program for scheme-mlir.
 ;; Mirrors mlir/examples/toy/Ch1/toyc.cpp
 ;;
-;; Usage: scheme-mlir samples/toy/ch1/toyc.sls <file.toy> [--emit=ast]
+;; Usage: scheme-mlir samples/toy/ch1/toyc.sls <file.toy> --emit=ast
 (import (chezscheme)
+        (rime command-line-options)
         (toy ch1 parser)
         (toy ch1 ast))
 
-(define (main)
-  (let-values ([(filename action) (%%parse-args (command-line-arguments))])
-    (unless filename
-      (display "Usage: toyc <file.toy> [--emit=ast]\n"
-               (current-error-port))
-      (exit 1))
-    (let ([module-ast (parse-input-file filename)])
-      (unless module-ast (exit 1))
-      (case action
-        [(ast) (toy:dump module-ast)]
-        [else
-         (display "No action — use --emit=ast\n"
-                  (current-error-port))]))))
+;; The command line is one input file and the option --emit=ast, in any order. -h shows the usage.
+(define-command-line-options parse-command-line
+  [:long "--emit" :choices ("ast") :required :description "the kind of output"]
+  [:positional "file" :description "the Toy source file"])
 
-(define (%%parse-args args)
-  (let loop ([args args] [file #f] [action #f])
-    (cond
-     [(null? args) (values file action)]
-     [(equal? (car args) "--emit=ast")
-      (loop (cdr args) file 'ast)]
-     [else
-      (loop (cdr args) (car args) action)])))
+(define (main)
+  (let* ([option (parse-command-line (command-line-arguments))]
+         [module-ast (parse-input-file (option "file"))])
+    (unless module-ast (exit 1))
+    (toy:dump module-ast)))
 
 (main)

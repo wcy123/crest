@@ -1,8 +1,8 @@
-;; Toy compiler Ch6 — top-level program for scheme-mlir.
-;; Mirrors mlir/examples/toy/Ch6/toyc.cpp
+;; Toy compiler Ch7 — top-level program for scheme-mlir.
+;; Mirrors mlir/examples/toy/Ch7/toyc.cpp
 ;;
-;; Usage: scheme-mlir samples/toy/ch6/toyc.sls <file>
-;;          [--emit=ast|--emit=mlir|--emit=mlir-affine|--emit=mlir-llvm|--emit=llvm|--emit=jit] [--opt]
+;; Usage: scheme-mlir samples/toy/ch7/toyc.sls <file>
+;;          --emit=ast|--emit=mlir|--emit=mlir-affine|--emit=mlir-llvm|--emit=llvm|--emit=jit [--opt]
 ;;
 ;; Pipeline (superset of ch5):
 ;;   1. Inline + shape-inference + canonicalize+CSE (toy.func level)
@@ -12,6 +12,7 @@
 ;;   5. (llvm) lower-to-llvm (toy.print → printf, all → LLVM dialect)
 ;;   6. (llvm) DIScopeForLLVMFuncOp pass
 (import (chezscheme)
+        (rime command-line-options)
         (only (crest support CrestObject) with-CrestObject)
         (mlir IR DialectRegistry)
         (mlir IR MLIRContext)
@@ -56,48 +57,27 @@
 (define %%input-type 'toy)
 
 (define (main)
-  (let-values ([(filename action opt? input-type) (%%parse-args (command-line-arguments))])
-    (set! %%input-type input-type)
+  (let* ([option   (parse-command-line (command-line-arguments))]
+         [filename (let ([files (option "file")]) (if (null? files) "-" (car files)))]
+         [action   (option "emit")]
+         [opt?     (eq? (option "opt") 'present)])
+    (set! %%input-type (string->symbol (or (option "x") "toy")))
     (cond
-     [(equal? action "ast")        (%%dump-ast filename)]
-     [(equal? action "mlir")       (%%dump-mlir filename opt? #f #f)]
-     [(equal? action "mlir-affine")(%%dump-mlir filename opt? #t #f)]
-     [(equal? action "mlir-llvm")  (%%dump-mlir filename opt? #t #t)]
-     [(equal? action "llvm")       (%%dump-llvm filename opt?)]
-     [(equal? action "jit")        (%%run-jit  filename opt?)]
-     [else
-      (display "No action specified (parsing only?), use -emit=<action>
-"
-               (current-error-port))
-      (%%quit 255)])))
+     [(equal? action "ast")         (%%dump-ast filename)]
+     [(equal? action "mlir")        (%%dump-mlir filename opt? #f #f)]
+     [(equal? action "mlir-affine") (%%dump-mlir filename opt? #t #f)]
+     [(equal? action "mlir-llvm")   (%%dump-mlir filename opt? #t #t)]
+     [(equal? action "llvm")        (%%dump-llvm filename opt?)]
+     [(equal? action "jit")         (%%run-jit  filename opt?)])))
 
 ;; The command line, as the C++ toyc's cl::opts read it: the input file (default "-": standard input),
-;; -emit=<action> (also --emit=<action> and -emit <action>), -opt (also --opt) and -x <toy|mlir>
-;; (also -x=<...>, --x=<...>).
-(define (%%parse-args args)
-  (let loop ([args args] [file "-"] [action #f] [opt #f] [input-type 'toy])
-    (define (value-of arg prefixes)
-      (let find ([ps prefixes])
-        (cond
-         [(null? ps) #f]
-         [(and (> (string-length arg) (string-length (car ps)))
-               (string=? (substring arg 0 (string-length (car ps))) (car ps)))
-          (substring arg (string-length (car ps)) (string-length arg))]
-         [else (find (cdr ps))])))
-    (cond
-     [(null? args) (values file action opt input-type)]
-     [(value-of (car args) '("--emit=" "-emit="))
-      => (lambda (a) (loop (cdr args) file a opt input-type))]
-     [(and (member (car args) '("--emit" "-emit")) (pair? (cdr args)))
-      (loop (cddr args) file (cadr args) opt input-type)]
-     [(member (car args) '("--opt" "-opt"))
-      (loop (cdr args) file action #t input-type)]
-     [(value-of (car args) '("--x=" "-x="))
-      => (lambda (t) (loop (cdr args) file action opt (string->symbol t)))]
-     [(and (member (car args) '("--x" "-x")) (pair? (cdr args)))
-      (loop (cddr args) file action opt (string->symbol (cadr args)))]
-     [else
-      (loop (cdr args) (car args) action opt input-type)])))
+;; --emit=<action>, --opt and -x <toy|mlir>, in any order. -h shows the usage.
+;; (rime command-line-options) reads it.
+(define-command-line-options parse-command-line
+  [:long "--emit" :choices ("ast" "mlir" "mlir-affine" "mlir-llvm" "llvm" "jit") :required :description "the kind of output"]
+  [:long "--opt" :arity 0 :description "run the optimizer"]
+  [:short "-x" :choices ("toy" "mlir") :description "the kind of input"]
+  [:positional "file" :arity (0 1) :description "the input file, or - for standard input"])
 
 (define (%%dump-ast filename)
   (when (eq? %%input-type 'mlir)

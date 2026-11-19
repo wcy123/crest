@@ -15,7 +15,7 @@ parser and the AST types, all plain Scheme. Every later chapter builds on these 
 | `lexer.sls` | tokens: identifiers, numbers, punctuation, with line and column |
 | `parser.sls` | recursive-descent parser producing the AST, and the AST dump |
 | `ast.sls` | AST records: functions, prototypes, expressions, source locations |
-| `toyc.sls` | the driver: reads the file and runs the one action, `--emit=ast` |
+| `toyc.sls` | the driver: reads the file and runs the one action, `--emit=ast`. `(rime command-line-options)` reads the command line, so the options and the file come in any order and `-h` shows the usage |
 
 ## What is written with the DSL
 
