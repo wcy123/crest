@@ -71,12 +71,12 @@
      [(equal? action "jit")         (%%run-jit  filename opt?)])))
 
 ;; The command line, as the C++ toyc's cl::opts read it: the input file (default "-": standard input),
-;; --emit=<action>, -opt and -x <toy|mlir>, in any order. -h shows the usage.
+;; --emit=<action>, --opt and -x <toy|mlir>, in any order. -h shows the usage.
 ;; (rime command-line-options) reads it.
 (define-command-line-options parse-command-line
   [:long "--emit" :choices ("ast" "mlir" "mlir-affine" "mlir-llvm" "llvm" "jit") :required :description "the kind of output"]
-  [:short "-opt"  :long "--opt"  :arity 0 :description "run the optimizer"]
-  [:short "-x"    :long "--x"    :choices ("toy" "mlir") :description "the kind of input"]
+  [:long "--opt" :arity 0 :description "run the optimizer"]
+  [:short "-x" :choices ("toy" "mlir") :description "the kind of input"]
   [:positional "file" :arity (0 1) :description "the input file, or - for standard input"])
 
 (define (%%dump-ast filename)
