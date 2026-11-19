@@ -7,24 +7,34 @@
 // RUN: %scheme-mlir %samples/toy/ch1/toyc.sls -h | FileCheck %s --check-prefix=HELP
 // RUN: not %scheme-mlir %samples/toy/ch1/toyc.sls %S/example.toy --emit=mlir 2>&1 | FileCheck %s --check-prefix=CHOICE
 // RUN: not %scheme-mlir %samples/toy/ch1/toyc.sls %S/example.toy --nothing 2>&1 | FileCheck %s --check-prefix=UNKNOWN
-// RUN: not %scheme-mlir %samples/toy/ch1/toyc.sls %S/example.toy %S/example.toy 2>&1 | FileCheck %s --check-prefix=TOO-MANY
-
 // RUN: not %scheme-mlir %samples/toy/ch1/toyc.sls %S/example.toy -emit=ast 2>&1 | FileCheck %s --check-prefix=ONE-DASH
+// RUN: not %scheme-mlir %samples/toy/ch1/toyc.sls %S/example.toy %S/example.toy --emit=ast 2>&1 | FileCheck %s --check-prefix=TWO-FILES
+// RUN: not %scheme-mlir %samples/toy/ch1/toyc.sls --emit=ast 2>&1 | FileCheck %s --check-prefix=NO-FILE
+// RUN: not %scheme-mlir %samples/toy/ch1/toyc.sls %S/example.toy 2>&1 | FileCheck %s --check-prefix=NO-EMIT
 
 // AST: Module:
 
-// HELP: Usage: toyc
+// HELP: Usage:
+// HELP: <file>
 // HELP: --emit {ast}
 // HELP: -h, --help
 
-// CHOICE: toyc: argument must be one of the choices
+// CHOICE: argument must be one of the choices
 // CHOICE-SAME: "mlir"
 
-// UNKNOWN: toyc: unknown option
+// UNKNOWN: unknown option
 // UNKNOWN-SAME: "--nothing"
 
-// TOO-MANY: toyc: too many input files
-
 // The C++ toyc has no -emit with one dash in its tests, and neither has this one: only --emit.
-// ONE-DASH: toyc: unknown option
+// ONE-DASH: unknown option
 // ONE-DASH-SAME: "-emit=ast"
+
+// TWO-FILES: too many positional arguments
+// TWO-FILES-SAME: example.toy
+
+// NO-FILE: too few positional arguments
+// NO-FILE-SAME: "file"
+
+// --emit is required: there is no other action to default to.
+// NO-EMIT: missing required option
+// NO-EMIT-SAME: "--emit"

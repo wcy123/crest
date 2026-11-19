@@ -78,7 +78,8 @@
 (define-command-line-options %%read-command-line
   [:long "--emit" :choices ("ast" "mlir" "mlir-affine" "mlir-llvm" "llvm" "jit") :description "the kind of output"]
   [:short "-opt"  :long "--opt"  :arity 0 :description "run the optimizer"]
-  [:short "-x"    :long "--x"    :choices ("toy" "mlir") :description "the kind of input"])
+  [:short "-x"    :long "--x"    :choices ("toy" "mlir") :description "the kind of input"]
+  [:positional "file" :arity (0 1) :description "the input file, or - for standard input"])
 
 ;; Returns (values filename action opt? input-type): the input file, the action as a string or #f,
 ;; whether -opt is there, and the kind of input as a symbol.
@@ -88,12 +89,10 @@
                            (apply %%command-line-error (condition-message e) (condition-irritants e))])
                   (parameterize ([command-line '("toyc")])
                     (%%read-command-line args)))])
-    (when (> (option 'number-of-positional-argument) 1)
-      (%%command-line-error "too many input files"))
-    (values (if (zero? (option 'number-of-positional-argument)) "-" (option 0))
-            (option "--emit")
-            (eq? (option "-opt") 'present)
-            (string->symbol (or (option "-x") "toy")))))
+    (values (let ([files (option "file")]) (if (null? files) "-" (car files)))
+            (option "emit")
+            (eq? (option "opt") 'present)
+            (string->symbol (or (option "x") "toy")))))
 
 (define (%%command-line-error message . irritants)
   (display "toyc: " (current-error-port))

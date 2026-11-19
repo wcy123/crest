@@ -28,7 +28,8 @@
 // UNKNOWN: toyc: unknown option
 // UNKNOWN-SAME: "--nothing"
 
-// TOO-MANY: toyc: too many input files
+// TOO-MANY: toyc: too many positional arguments
+// TOO-MANY-SAME: example.toy
 
 // The C++ toyc has no -emit with one dash in its tests, and neither has this one: only --emit.
 // ONE-DASH: toyc: unknown option
