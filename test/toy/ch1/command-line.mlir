@@ -6,7 +6,7 @@
 // RUN: %scheme-mlir %samples/toy/ch1/toyc.sls --emit ast %S/example.toy | FileCheck %s --check-prefix=AST
 // RUN: %scheme-mlir %samples/toy/ch1/toyc.sls -h | FileCheck %s --check-prefix=HELP
 // RUN: not %scheme-mlir %samples/toy/ch1/toyc.sls %S/example.toy --emit=mlir 2>&1 | FileCheck %s --check-prefix=CHOICE
-// RUN: not %scheme-mlir %samples/toy/ch1/toyc.sls %S/example.toy --nothing 2>&1 | FileCheck %s --check-prefix=UNKNOWN
+// RUN: not %scheme-mlir %samples/toy/ch1/toyc.sls --emit=ast %S/example.toy --nothing 2>&1 | FileCheck %s --check-prefix=UNKNOWN
 // RUN: not %scheme-mlir %samples/toy/ch1/toyc.sls %S/example.toy -emit=ast 2>&1 | FileCheck %s --check-prefix=ONE-DASH
 // RUN: not %scheme-mlir %samples/toy/ch1/toyc.sls %S/example.toy %S/example.toy --emit=ast 2>&1 | FileCheck %s --check-prefix=TWO-FILES
 // RUN: not %scheme-mlir %samples/toy/ch1/toyc.sls --emit=ast 2>&1 | FileCheck %s --check-prefix=NO-FILE
@@ -22,12 +22,14 @@
 // CHOICE: argument must be one of the choices
 // CHOICE-SAME: "mlir"
 
-// UNKNOWN: unknown option
+// A word that is not a defined option is an ordinary word, here a second input file.
+// UNKNOWN: too many positional arguments
 // UNKNOWN-SAME: "--nothing"
 
 // The C++ toyc has no -emit with one dash in its tests, and neither has this one: only --emit.
-// ONE-DASH: unknown option
-// ONE-DASH-SAME: "-emit=ast"
+// -emit=ast is a word, not the option, so --emit is missing.
+// ONE-DASH: missing required option
+// ONE-DASH-SAME: "--emit"
 
 // TWO-FILES: too many positional arguments
 // TWO-FILES-SAME: example.toy

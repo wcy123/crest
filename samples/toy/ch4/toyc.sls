@@ -38,7 +38,7 @@
   (let* ([option   (parse-command-line (command-line-arguments))]
          [filename (let ([files (option "file")]) (if (null? files) "-" (car files)))]
          [action   (option "emit")]
-         [opt?     (eq? (option "opt") 'present)])
+         [opt?     (option "opt")])
     (set! %%input-type (string->symbol (or (option "x") "toy")))
     (cond
      [(equal? action "ast")  (%%dump-ast  filename)]
