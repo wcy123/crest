@@ -49,11 +49,11 @@
 (define %%input-type 'toy)
 
 (define (main)
-  (let* ([option   (parse-command-line (command-line-arguments))]
+  (let* ([option   (parse-or-exit parse-command-line (command-line-arguments))]
          [filename (let ([files (option "file")]) (if (null? files) "-" (car files)))]
          [action   (option "emit")]
-         [opt?     (eq? (option "opt") 'present)])
-    (set! %%input-type (string->symbol (or (option "x") "toy")))
+         [opt?     (option "opt")])
+    (set! %%input-type (string->symbol (option "x" "toy")))
     (cond
      [(equal? action "ast")         (%%dump-ast filename)]
      [(equal? action "mlir")        (%%dump-mlir filename opt? #f)]

@@ -6,7 +6,7 @@
 // RUN: %scheme-mlir %samples/toy/ch7/toyc.sls --help | FileCheck %s --check-prefix=HELP
 // RUN: not %scheme-mlir %samples/toy/ch7/toyc.sls %S/example.toy --emit=xml 2>&1 | FileCheck %s --check-prefix=CHOICE
 // RUN: not %scheme-mlir %samples/toy/ch7/toyc.sls %S/example.toy -x yaml 2>&1 | FileCheck %s --check-prefix=INPUT
-// RUN: not %scheme-mlir %samples/toy/ch7/toyc.sls %S/example.toy --nothing 2>&1 | FileCheck %s --check-prefix=UNKNOWN
+// RUN: not %scheme-mlir %samples/toy/ch7/toyc.sls --emit=ast %S/example.toy --nothing 2>&1 | FileCheck %s --check-prefix=UNKNOWN
 // RUN: not %scheme-mlir %samples/toy/ch7/toyc.sls %S/example.toy %S/example.toy --emit=ast 2>&1 | FileCheck %s --check-prefix=TOO-MANY
 
 // RUN: not %scheme-mlir %samples/toy/ch7/toyc.sls %S/example.toy -emit=ast 2>&1 | FileCheck %s --check-prefix=ONE-DASH
@@ -21,24 +21,20 @@
 // HELP: -x {toy,mlir}
 // HELP: -h, --help
 
-// CHOICE: argument must be one of the choices
-// CHOICE-SAME: "xml"
+// CHOICE: "xml" is not one of {{.*}} (for --emit)
 
-// INPUT: argument must be one of the choices
-// INPUT-SAME: "yaml"
+// INPUT: "yaml" is not one of toy, mlir (for -x)
 
-// UNKNOWN: unknown option
-// UNKNOWN-SAME: "--nothing"
+// A word that is not a defined option is an ordinary word, here a second input file.
+// UNKNOWN: too many positional arguments: --nothing
 
-// TOO-MANY: too many positional arguments
-// TOO-MANY-SAME: example.toy
+// TOO-MANY: too many positional arguments: {{.*}}example.toy
 
 // The C++ toyc has no -emit with one dash in its tests, and neither has this one: only --emit.
-// ONE-DASH: unknown option
-// ONE-DASH-SAME: "-emit=ast"
+// -emit=ast is a word, not the option, so --emit is missing.
+// ONE-DASH: missing required option --emit
 
 // A long name is a word and a short name is a letter: --opt and -x, not -opt and --x.
-// SHORT-WORD: unknown option
-// SHORT-WORD-SAME: "-opt"
-// LONG-LETTER: unknown option
-// LONG-LETTER-SAME: "--x"
+// The words -opt and --x are not options, so they are words that no positional takes.
+// SHORT-WORD: too many positional arguments: -opt
+// LONG-LETTER: too many positional arguments: --x toy

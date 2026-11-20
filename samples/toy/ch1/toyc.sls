@@ -13,7 +13,7 @@
   [:positional "file" :description "the Toy source file"])
 
 (define (main)
-  (let* ([option (parse-command-line (command-line-arguments))]
+  (let* ([option (parse-or-exit parse-command-line (command-line-arguments))]
          [module-ast (parse-input-file (option "file"))])
     (unless module-ast (exit 1))
     (toy:dump module-ast)))
