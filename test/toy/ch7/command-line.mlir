@@ -21,27 +21,20 @@
 // HELP: -x {toy,mlir}
 // HELP: -h, --help
 
-// CHOICE: argument must be one of the choices
-// CHOICE-SAME: "xml"
+// CHOICE: "xml" is not one of {{.*}} (for --emit)
 
-// INPUT: argument must be one of the choices
-// INPUT-SAME: "yaml"
+// INPUT: "yaml" is not one of toy, mlir (for -x)
 
 // A word that is not a defined option is an ordinary word, here a second input file.
-// UNKNOWN: too many positional arguments
-// UNKNOWN-SAME: "--nothing"
+// UNKNOWN: too many positional arguments: --nothing
 
-// TOO-MANY: too many positional arguments
-// TOO-MANY-SAME: example.toy
+// TOO-MANY: too many positional arguments: {{.*}}example.toy
 
 // The C++ toyc has no -emit with one dash in its tests, and neither has this one: only --emit.
 // -emit=ast is a word, not the option, so --emit is missing.
-// ONE-DASH: missing required option
-// ONE-DASH-SAME: "--emit"
+// ONE-DASH: missing required option --emit
 
 // A long name is a word and a short name is a letter: --opt and -x, not -opt and --x.
 // The words -opt and --x are not options, so they are words that no positional takes.
-// SHORT-WORD: too many positional arguments
-// SHORT-WORD-SAME: "-opt"
-// LONG-LETTER: too many positional arguments
-// LONG-LETTER-SAME: "--x"
+// SHORT-WORD: too many positional arguments: -opt
+// LONG-LETTER: too many positional arguments: --x toy

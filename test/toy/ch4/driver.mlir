@@ -16,7 +16,6 @@
 // MLIR: module {
 // MLIR-IN: toy.func @from_mlir
 // AST-OF-MLIR: Can't dump a Toy AST when the input is MLIR
-// NOACTION: missing required option
-// NOACTION-SAME: "--emit"
+// NOACTION: missing required option --emit
 // MISSING: Could not open input file
 // BADMLIR: Error can't load file

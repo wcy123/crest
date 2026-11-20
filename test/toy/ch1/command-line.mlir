@@ -19,24 +19,18 @@
 // HELP: --emit {ast}
 // HELP: -h, --help
 
-// CHOICE: argument must be one of the choices
-// CHOICE-SAME: "mlir"
+// CHOICE: "mlir" is not one of ast (for --emit)
 
 // A word that is not a defined option is an ordinary word, here a second input file.
-// UNKNOWN: too many positional arguments
-// UNKNOWN-SAME: "--nothing"
+// UNKNOWN: too many positional arguments: --nothing
 
 // The C++ toyc has no -emit with one dash in its tests, and neither has this one: only --emit.
 // -emit=ast is a word, not the option, so --emit is missing.
-// ONE-DASH: missing required option
-// ONE-DASH-SAME: "--emit"
+// ONE-DASH: missing required option --emit
 
-// TWO-FILES: too many positional arguments
-// TWO-FILES-SAME: example.toy
+// TWO-FILES: too many positional arguments: {{.*}}example.toy
 
-// NO-FILE: too few positional arguments
-// NO-FILE-SAME: "file"
+// NO-FILE: missing positional argument <file>
 
 // --emit is required: there is no other action to default to.
-// NO-EMIT: missing required option
-// NO-EMIT-SAME: "--emit"
+// NO-EMIT: missing required option --emit

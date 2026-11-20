@@ -35,7 +35,7 @@
 (define %%input-type 'toy)
 
 (define (main)
-  (let* ([option   (parse-command-line (command-line-arguments))]
+  (let* ([option   (parse-or-exit parse-command-line (command-line-arguments))]
          [filename (let ([files (option "file")]) (if (null? files) "-" (car files)))]
          [action   (option "emit")]
          [opt?     (option "opt")])
