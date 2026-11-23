@@ -8,8 +8,6 @@ Patterns are Scheme macros — guards and analysis are plain Scheme functions, n
 Edit a `.sls` pattern file and re-run: no rebuild, no relink, changes take effect immediately (in development
 mode, which reads the `.sls` files from disk; see [what you give up](#what-you-give-up)).
 
-> **Status:** Used in production at AMD for quantization and dialect conversion passes targeting ROCm/HIP backends.
-
 Three macros form the public surface:
 
 | Macro | Use case |
