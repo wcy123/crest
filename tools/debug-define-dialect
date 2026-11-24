@@ -22,8 +22,7 @@ fi
 
 FILE="$TARGET"
 
-BUILD="${CREST_BUILD_DIR:-/home/build/crest-1}"
-CREST_OPT="$BUILD/tools/crest-opt/crest-opt"
+CREST_OPT="${CREST_BUILD_DIR:+$CREST_BUILD_DIR/tools/crest-opt/crest-opt}"
 [[ -x "$CREST_OPT" ]] || {
     CREST_OPT="$(command -v crest-opt 2>/dev/null || true)"
 }
