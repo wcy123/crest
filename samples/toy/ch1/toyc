@@ -6,11 +6,14 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BUILD="${CREST_BUILD_DIR:-/home/build/crest-1}"
-SCHEME_MLIR="$BUILD/tools/scheme-mlir/scheme-mlir"
+if [[ -n "${CREST_BUILD_DIR:-}" ]]; then
+    SCHEME_MLIR="$CREST_BUILD_DIR/tools/scheme-mlir/scheme-mlir"
+else
+    SCHEME_MLIR="$(command -v scheme-mlir || true)"
+fi
 
 [[ -x "$SCHEME_MLIR" ]] || {
-    echo "Error: scheme-mlir not found. Set CREST_BUILD_DIR." >&2
+    echo "Error: scheme-mlir not found. Set CREST_BUILD_DIR or add scheme-mlir to PATH." >&2
     exit 1
 }
 

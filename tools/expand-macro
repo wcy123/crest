@@ -7,7 +7,7 @@
 #   --file FILE    Scheme source file to scan
 #
 # Environment:
-#   CREST_BUILD_DIR  Path to the cmake build directory (default: /home/build/crest-1)
+#   CREST_BUILD_DIR  Path to the cmake build directory (default: crest-opt on PATH)
 
 set -euo pipefail
 
@@ -30,9 +30,8 @@ done
 [[ -z "$FILE" ]]   && { echo "Error: --file is required" >&2; exit 1; }
 [[ -f "$FILE" ]]   || { echo "Error: file not found: $FILE" >&2; exit 1; }
 
-# Locate crest-opt: prefer CREST_BUILD_DIR, then common default, then PATH.
-BUILD="${CREST_BUILD_DIR:-/home/build/crest-1}"
-CREST_OPT="$BUILD/tools/crest-opt/crest-opt"
+# Locate crest-opt: CREST_BUILD_DIR when it is set and has one, then PATH.
+CREST_OPT="${CREST_BUILD_DIR:+$CREST_BUILD_DIR/tools/crest-opt/crest-opt}"
 if [[ ! -x "$CREST_OPT" ]]; then
     CREST_OPT="$(command -v crest-opt 2>/dev/null || true)"
 fi
