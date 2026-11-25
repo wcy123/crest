@@ -50,8 +50,8 @@ and the `scheme-mlir` on `PATH` otherwise.
 
 `example.toy` only shows `FoldConstantReshape`. The first two programs below are the ones of the C++ tutorial
 (`mlir/test/Examples/Toy/Ch3/`); `reshape_reshape.toy` is new. Each program has a copy in `test/toy/ch3/`, and
-three tests, as `example.toy` has: `action-ast-<name>.mlir`, `action-mlir-<name>.mlir` and
-`action-mlir-opt-<name>.mlir` (`<name>` is the file name with `-` for `_`). They check the whole output line by line.
+three tests: `action-ast-<name>.mlir`, `action-mlir-<name>.mlir` and
+`action-mlir-opt-<name>.mlir` (`<name>` is the file name with `-` for `_`, and `example` for `example.toy`). They check the whole output line by line.
 
 ### `transpose_transpose.toy`
 
@@ -127,7 +127,7 @@ reshape of the argument to `3x2`. The input is an argument and the shapes differ
 | `SimplifyRedundantTranspose` | `transpose_transpose.toy` | `action-mlir-opt-transpose-transpose.mlir` |
 | `ReshapeReshapeOpt` | `reshape_reshape.toy` | `action-mlir-opt-reshape-reshape.mlir` |
 | `RedundantReshape` | none, MLIR text only | `redundant-reshape.mlir` |
-| `FoldConstantReshape` | `trivial_reshape.toy`, `example.toy` | `action-mlir-opt-trivial-reshape.mlir`, `action-mlir-opt.mlir` |
+| `FoldConstantReshape` | `trivial_reshape.toy`, `example.toy` | `action-mlir-opt-trivial-reshape.mlir`, `action-mlir-opt-example.mlir` |
 
 Taking one pattern out of `combine.sls` makes the tests of its row fail and no other.
 
