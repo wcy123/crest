@@ -95,8 +95,12 @@ module {
 Without `--opt` there is a flat `tensor<2xf64>` constant and three `toy.reshape` ops, one for each `var`. The
 reshape rules leave one constant of type `tensor<2x1xf64>`.
 
-Neither program isolates `ReshapeReshapeOpt`, as in the C++ tests: a reshape of a reshape of a constant is also
-folded by the other rules.
+### Each rule on its own
+
+In the two programs above a reshape has a constant as input, so more than one rule can remove it, and the C++
+tests are the same. `test/toy/ch3/reshape-rules.mlir` has one function for each of the four rules, written as MLIR
+text with function arguments where no other rule applies, and checks the output without and with `--opt`. Taking one
+pattern out of `combine.sls` makes the check of its function fail and no other.
 
 > **Note:** Ch3 does not inline function calls — `main` emits `toy.generic_call`
 > ops and `multiply_transpose` remains a separate function. Inlining is added in
