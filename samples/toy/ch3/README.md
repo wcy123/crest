@@ -194,7 +194,7 @@ tools/debug-define-dialect samples/toy/ch3/toy.sls | grep -n canonicalization
 |---|---|---|
 | The dialect, with its text form | `define-dialect`, `:assembly-format` | as in Ch2 |
 | Every op `mlir-gen.sls` creates | `begin-mlir-code` | as in Ch2 |
-| The four canonicalization patterns | `define-rewrite-pattern` | each one is a match and a rewrite |
+| The four canonicalization patterns | `define-rewrite-pattern` | each one is a match and a rewrite; see [Why the patterns are written in the DSL](#why-the-patterns-are-written-in-the-dsl) |
 | Registering the patterns | `define-pattern-set` (`combine.sls`), `:get-canonicalization-patterns` (`toy.sls`) | a table of (op, pattern, benefit) per op, registered by the op as C++ `getCanonicalizationPatterns` does |
 | Applying them | `PassManager` nested on `toy.func` with `createCanonicalizerPass` (`toyc.sls`) | the canonicalizer also folds and erases dead `pure` ops, as in the C++ `toyc` |
 
