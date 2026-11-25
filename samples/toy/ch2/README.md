@@ -35,3 +35,88 @@ C++ tutorial (`toy.func @main() { ... }`). The dialect declares `toy.return` as 
 
 `test/toy/dsl-coverage.mlir` keeps this honest: it fails if a Toy tutorial creates an op with an
 `OperationState` or a typed builder without being listed as an exception.
+
+## Inspecting macro expansions
+
+`tools/debug-define-dialect` pretty-prints what `define-dialect` expands to.
+It is useful for understanding what the DSL generates and for debugging macro
+issues.
+
+```sh
+# From the repository root — expand define-dialect in toy.sls
+# (CREST_BUILD_DIR says where crest-opt is, or crest-opt is on PATH)
+tools/debug-define-dialect samples/toy/ch2/toy.sls
+
+# Save to a file
+tools/debug-define-dialect samples/toy/ch2/toy.sls > /tmp/toy2.sls
+```
+
+### Key structures in the expanded output
+
+`define-dialect toy` expands to a `begin` containing:
+
+**`%%toy.func:interfaces`** — the pairs of the `:interfaces` entries of `toy.func`, made once when the library is
+loaded. `mlir::SymbolOpInterface`, `mlir::ArgAndResultAttrsOpInterface`, `mlir::CallableOpInterface` and
+`mlir::FunctionOpInterface` are macros of `(mlir IR SymbolInterfaces)`, `(mlir Interfaces CallInterfaces)` and
+`(mlir Interfaces FunctionInterfaces)`: each makes a C function (a `foreign-callable`) for each method and answers the
+pair of the interface's `TypeID` and a dispatcher of them. MLIR has no default for the methods of
+`CallableOpInterface` and `FunctionOpInterface`, as in C++ the op class gives them, so `toy.func` gives them as
+clauses; for `SymbolOpInterface` MLIR has one for each method (the `sym_name` attribute and the others), and
+`(mlir::ArgAndResultAttrsOpInterface :standard)` keeps the `arg_attrs` and `res_attrs` attributes:
+
+```scheme
+(define %%toy.func:interfaces
+  (list (mlir::SymbolOpInterface)
+        (mlir::ArgAndResultAttrsOpInterface :standard)
+        (mlir::CallableOpInterface
+         (getCallableRegion (self) (mlir::Operation::getRegion self 0))
+         (getArgumentTypes (self)
+           (mlir::FunctionType::getInputs
+            (mlir::TypeAttr::getValue
+             (mlir::Operation::getAttr self "function_type"))))
+         (getResultTypes (self)
+           (mlir::FunctionType::getResults
+            (mlir::TypeAttr::getValue
+             (mlir::Operation::getAttr self "function_type")))))
+        (mlir::FunctionOpInterface
+         (getFunctionType (self)
+           (mlir::TypeAttr::getValue
+            (mlir::Operation::getAttr self "function_type")))
+         (setFunctionTypeAttr (self attr)
+           (mlir::Operation::setAttr! self "function_type" attr)))))
+```
+
+**`%%toy:initialize`** — called at dialect registration time; registers every
+op via `%crest::register-dynamic-op!`, which installs the interfaces of the op in its definition:
+
+```scheme
+(define (%%toy:initialize dialect-ptr)
+  (%crest::register-dynamic-op! dialect-ptr "toy.constant" ...)
+  ...
+  (%crest::register-dynamic-op! dialect-ptr "toy.func"
+                                %%toy.func:op-callbacks %%toy.func:interfaces)
+  ...)
+```
+
+**`toy`** — the dialect descriptor passed to CREST's dialect registry: `%%toy:initialize`, `#f` in the slots that
+Toy does not use, and the interfaces of the dialect (none here):
+
+```scheme
+(define toy
+  (crest-dialect-callback-entries %%toy:initialize #f #f #f #f
+    #f #f #f #f #f #f %%toy:interfaces))
+```
+
+**`%%toy.constant:op-callbacks`** — for each op, the callbacks that Scheme makes for MLIR
+(`crest-op-callback-entries`), the first being the verifier: it checks the number and the types of the results and
+reports a failure with the position of the definition of the op in `toy.sls`.
+
+**Accessor predicates and field getters** — one `?` predicate and one getter
+per operand/attribute/result for every op, e.g.:
+
+```scheme
+(define (toy.constant? op)
+  (string=? (mlir::Operation::getName op) "toy.constant"))
+(define (toy.constant:value op) (mlir::Operation::getAttr op "value"))
+(define (toy.constant:output op) (mlir::Operation::getResult op 0))
+```

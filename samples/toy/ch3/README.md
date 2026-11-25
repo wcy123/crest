@@ -53,72 +53,106 @@ and the `scheme-mlir` on `PATH` otherwise.
 three tests: `action-ast-<name>.mlir`, `action-mlir-<name>.mlir` and
 `action-mlir-opt-<name>.mlir` (`<name>` is the file name with `-` for `_`, and `example` for `example.toy`). They check the whole output line by line.
 
+To see what `--opt` does, diff the output without it and with it. The lines with `-` are removed and the lines with
+`+` are new. A value that comes after a removed op gets a lower number, so some lines differ only in their `%` numbers.
+
+```sh
+opt-diff() { diff -u --label 'without --opt' --label 'with --opt' \
+                   <(./toyc "$1" --emit=mlir) <(./toyc "$1" --emit=mlir --opt); }
+```
+
 ### `transpose_transpose.toy`
 
 ```sh
-./toyc transpose_transpose.toy --emit=mlir --opt
+opt-diff transpose_transpose.toy
 ```
 
-```mlir
-module {
-  toy.func @transpose_transpose(%arg0: tensor<*xf64>) -> tensor<*xf64> {
-    toy.return %arg0 : tensor<*xf64>
-  }
-  toy.func @main() {
-    %0 = toy.constant dense<[[1.000000e+00, 2.000000e+00, 3.000000e+00], [4.000000e+00, 5.000000e+00, 6.000000e+00]]> : tensor<2x3xf64>
-    %1 = toy.generic_call @transpose_transpose(%0) : (tensor<2x3xf64>) -> tensor<*xf64>
-    toy.print %1 : tensor<*xf64>
-    toy.return
-  }
-}
+```diff
+--- without --opt
++++ with --opt
+@@ -1,14 +1,11 @@
+ module {
+   toy.func @transpose_transpose(%arg0: tensor<*xf64>) -> tensor<*xf64> {
+-    %0 = toy.transpose(%arg0 : tensor<*xf64>) to tensor<*xf64>
+-    %1 = toy.transpose(%0 : tensor<*xf64>) to tensor<*xf64>
+-    toy.return %1 : tensor<*xf64>
++    toy.return %arg0 : tensor<*xf64>
+   }
+   toy.func @main() {
+     %0 = toy.constant dense<[[1.000000e+00, 2.000000e+00, 3.000000e+00], [4.000000e+00, 5.000000e+00, 6.000000e+00]]> : tensor<2x3xf64>
+-    %1 = toy.reshape(%0 : tensor<2x3xf64>) to tensor<2x3xf64>
+-    %2 = toy.generic_call @transpose_transpose(%1) : (tensor<2x3xf64>) -> tensor<*xf64>
+-    toy.print %2 : tensor<*xf64>
++    %1 = toy.generic_call @transpose_transpose(%0) : (tensor<2x3xf64>) -> tensor<*xf64>
++    toy.print %1 : tensor<*xf64>
+     toy.return
+   }
+ }
 ```
 
-Without `--opt` the function has two `toy.transpose` ops, and `main` has a `toy.reshape` of the constant to its
-own type, which `var a<2, 3>` makes. `SimplifyRedundantTranspose` removes both transposes, and the reshape is gone
-too.
+`SimplifyRedundantTranspose` removes the two `toy.transpose` ops, so the function returns its argument. In `main`, the
+`toy.reshape` of the constant to its own type, which `var a<2, 3>` makes, is removed too.
 
 ### `trivial_reshape.toy`
 
 ```sh
-./toyc trivial_reshape.toy --emit=mlir --opt
+opt-diff trivial_reshape.toy
 ```
 
-```mlir
-module {
-  toy.func @main() {
-    %0 = toy.constant dense<[[1.000000e+00], [2.000000e+00]]> : tensor<2x1xf64>
-    toy.print %0 : tensor<2x1xf64>
-    toy.return
-  }
-}
+```diff
+--- without --opt
++++ with --opt
+@@ -1,10 +1,7 @@
+ module {
+   toy.func @main() {
+-    %0 = toy.constant dense<[1.000000e+00, 2.000000e+00]> : tensor<2xf64>
+-    %1 = toy.reshape(%0 : tensor<2xf64>) to tensor<2x1xf64>
+-    %2 = toy.reshape(%1 : tensor<2x1xf64>) to tensor<2x1xf64>
+-    %3 = toy.reshape(%2 : tensor<2x1xf64>) to tensor<2x1xf64>
+-    toy.print %3 : tensor<2x1xf64>
++    %0 = toy.constant dense<[[1.000000e+00], [2.000000e+00]]> : tensor<2x1xf64>
++    toy.print %0 : tensor<2x1xf64>
+     toy.return
+   }
+ }
 ```
 
-Without `--opt` there is a flat `tensor<2xf64>` constant and three `toy.reshape` ops, one for each `var`. The
-reshape rules leave one constant of type `tensor<2x1xf64>`.
+The flat `tensor<2xf64>` constant and the three `toy.reshape` ops, one for each `var`, become one constant of type
+`tensor<2x1xf64>`.
 
 ### `reshape_reshape.toy`
 
 ```sh
-./toyc reshape_reshape.toy --emit=mlir --opt
+opt-diff reshape_reshape.toy
 ```
 
-```mlir
-module {
-  toy.func @reshape_reshape(%arg0: tensor<*xf64>) -> tensor<*xf64> {
-    %0 = toy.reshape(%arg0 : tensor<*xf64>) to tensor<3x2xf64>
-    toy.return %0 : tensor<3x2xf64>
-  }
-  toy.func @main() {
-    %0 = toy.constant dense<[[1.000000e+00, 2.000000e+00, 3.000000e+00], [4.000000e+00, 5.000000e+00, 6.000000e+00]]> : tensor<2x3xf64>
-    %1 = toy.generic_call @reshape_reshape(%0) : (tensor<2x3xf64>) -> tensor<*xf64>
-    toy.print %1 : tensor<*xf64>
-    toy.return
-  }
-}
+```diff
+--- without --opt
++++ with --opt
+@@ -1,14 +1,12 @@
+ module {
+   toy.func @reshape_reshape(%arg0: tensor<*xf64>) -> tensor<*xf64> {
+-    %0 = toy.reshape(%arg0 : tensor<*xf64>) to tensor<2x3xf64>
+-    %1 = toy.reshape(%0 : tensor<2x3xf64>) to tensor<3x2xf64>
+-    toy.return %1 : tensor<3x2xf64>
++    %0 = toy.reshape(%arg0 : tensor<*xf64>) to tensor<3x2xf64>
++    toy.return %0 : tensor<3x2xf64>
+   }
+   toy.func @main() {
+     %0 = toy.constant dense<[[1.000000e+00, 2.000000e+00, 3.000000e+00], [4.000000e+00, 5.000000e+00, 6.000000e+00]]> : tensor<2x3xf64>
+-    %1 = toy.reshape(%0 : tensor<2x3xf64>) to tensor<2x3xf64>
+-    %2 = toy.generic_call @reshape_reshape(%1) : (tensor<2x3xf64>) -> tensor<*xf64>
+-    toy.print %2 : tensor<*xf64>
++    %1 = toy.generic_call @reshape_reshape(%0) : (tensor<2x3xf64>) -> tensor<*xf64>
++    toy.print %1 : tensor<*xf64>
+     toy.return
+   }
+ }
 ```
 
-Without `--opt` the function has two reshapes, `tensor<*xf64>` to `2x3` to `3x2`. `ReshapeReshapeOpt` makes one
-reshape of the argument to `3x2`. The input is an argument and the shapes differ, so no other rule can do this.
+`ReshapeReshapeOpt` replaces the two reshapes of the argument, `tensor<*xf64>` to `2x3` to `3x2`, by one reshape to
+`3x2`. The input is an argument and the shapes differ, so no other rule can do this. In `main` the reshape of the
+constant to its own type is removed, as above.
 
 ### Each rule on its own
 
@@ -143,83 +177,15 @@ a reshape of it) or the result of a reshape (`ReshapeReshapeOpt` removes it), so
 > single `tensor<2x3xf64>` constant. `SimplifyRedundantTranspose` does not fire
 > because the transpositions inside `multiply_transpose` are not nested.
 
-## Inspecting macro expansions
+## The expansion of the dialect
 
-`tools/debug-define-dialect` pretty-prints what `define-dialect` expands to.
-It is useful for understanding what the DSL generates and for debugging macro
-issues.
+`define-dialect` expands as [Ch2](../ch2/README.md#inspecting-macro-expansions) shows. What Ch3 adds to it is the
+`:get-canonicalization-patterns` clause of `toy.transpose` and `toy.reshape` in `toy.sls`: in the expansion it is a
+function of `patterns` in the callbacks of the op, which calls `toy:add-transpose-canonicalization-patterns!` or
+`toy:add-reshape-canonicalization-patterns!` of `combine.sls`.
 
 ```sh
-# From the repository root — expand define-dialect in toy.sls
-# (CREST_BUILD_DIR says where crest-opt is, or crest-opt is on PATH)
-tools/debug-define-dialect samples/toy/ch3/toy.sls
-
-# Save to a file
-tools/debug-define-dialect samples/toy/ch3/toy.sls > /tmp/toy3.sls
-```
-
-### Key structures in the expanded output
-
-`define-dialect toy` expands to a `begin` containing:
-
-**`%%toy.func:interfaces`** — the pairs of the `:interfaces` entries of `toy.func`, made once when the library is
-loaded. `mlir::SymbolOpInterface`, `mlir::ArgAndResultAttrsOpInterface`, `mlir::CallableOpInterface` and
-`mlir::FunctionOpInterface` are macros of `(mlir IR SymbolInterfaces)`, `(mlir Interfaces CallInterfaces)` and
-`(mlir Interfaces FunctionInterfaces)`: each makes a C function (a `foreign-callable`) for each method and answers the
-pair of the interface's `TypeID` and a dispatcher of them. MLIR has no default for the methods of
-`CallableOpInterface` and `FunctionOpInterface`, as in C++ the op class gives them, so `toy.func` gives them as
-clauses; for `SymbolOpInterface` MLIR has one for each method (the `sym_name` attribute and the others), and
-`(mlir::ArgAndResultAttrsOpInterface :standard)` keeps the `arg_attrs` and `res_attrs` attributes:
-
-```scheme
-(define %%toy.func:interfaces
-  (list (mlir::SymbolOpInterface)
-        (mlir::ArgAndResultAttrsOpInterface :standard)
-        (mlir::CallableOpInterface
-         (getCallableRegion (self) (mlir::Operation::getRegion self 0))
-         (getArgumentTypes (self)
-           (mlir::FunctionType::getInputs
-            (mlir::TypeAttr::getValue
-             (mlir::Operation::getAttr self "function_type"))))
-         (getResultTypes (self)
-           (mlir::FunctionType::getResults
-            (mlir::TypeAttr::getValue
-             (mlir::Operation::getAttr self "function_type")))))
-        (mlir::FunctionOpInterface
-         (getFunctionType (self)
-           (mlir::TypeAttr::getValue
-            (mlir::Operation::getAttr self "function_type")))
-         (setFunctionTypeAttr (self attr)
-           (mlir::Operation::setAttr! self "function_type" attr)))))
-```
-
-**`%%toy:initialize`** — called at dialect registration time; registers every
-op via `%crest::register-dynamic-op!`, which installs the interfaces of the op in its definition:
-
-```scheme
-(define (%%toy:initialize dialect-ptr)
-  (%crest::register-dynamic-op! dialect-ptr "toy.constant" ...)
-  ...
-  (%crest::register-dynamic-op! dialect-ptr "toy.func"
-                                %%toy.func:op-callbacks %%toy.func:interfaces)
-  ...)
-```
-
-**`toy`** — the dialect descriptor vector passed to CREST's dialect registry:
-
-```scheme
-(define toy
-  (vector %%toy:initialize #f #f #f #f #f #f #f #f #f #f))
-```
-
-**Accessor predicates and field getters** — one `?` predicate and one getter
-per operand/attribute/result for every op, e.g.:
-
-```scheme
-(define (toy.constant? op)
-  (string=? (mlir::Operation::getName op) "toy.constant"))
-(define (toy.constant:value op) (mlir::Operation::getAttr op "value"))
-(define (toy.constant:output op) (mlir::Operation::getResult op 0))
+tools/debug-define-dialect samples/toy/ch3/toy.sls | grep -n canonicalization
 ```
 
 ## What is written with the DSL
@@ -228,6 +194,213 @@ per operand/attribute/result for every op, e.g.:
 |---|---|---|
 | The dialect, with its text form | `define-dialect`, `:assembly-format` | as in Ch2 |
 | Every op `mlir-gen.sls` creates | `begin-mlir-code` | as in Ch2 |
-| The four canonicalization patterns | `define-rewrite-pattern` | each one is a match and a rewrite |
+| The four canonicalization patterns | `define-rewrite-pattern` | each one is a match and a rewrite; see [Why the patterns are written in the DSL](#why-the-patterns-are-written-in-the-dsl) |
 | Registering the patterns | `define-pattern-set` (`combine.sls`), `:get-canonicalization-patterns` (`toy.sls`) | a table of (op, pattern, benefit) per op, registered by the op as C++ `getCanonicalizationPatterns` does |
 | Applying them | `PassManager` nested on `toy.func` with `createCanonicalizerPass` (`toyc.sls`) | the canonicalizer also folds and erases dead `pure` ops, as in the C++ `toyc` |
+
+## Why the patterns are written in the DSL
+
+The C++ Toy writes its four patterns in two languages: `ToyCombine.td` has three of them as DRR (TableGen's
+declarative rewrite rules), and `ToyCombine.cpp` has `SimplifyRedundantTranspose` as a hand-written class. The two
+styles do not mix: a pattern that needs both a structure to match and some logic has to choose one, or put C++ in
+strings inside DRR. `combine.sls` writes all four in one way, as a declaration with Scheme where it needs logic.
+Here they are, pattern to pattern. The titles of the tables are permalinks, with the lines of the code: the C++ files at the commit of LLVM they were
+taken from (`392dfff97d29`), and `combine.sls` at the commit of this repository where it last changed (`c75b07a8f592`).
+A later change to `combine.sls` does not move them.
+
+### `SimplifyRedundantTranspose`
+
+<table>
+<tr><th><a href="https://github.com/llvm/llvm-project/blob/392dfff97d29b59d77e5cac6d4b6ef2585fe7117/mlir/examples/toy/Ch3/mlir/ToyCombine.cpp#L28-L53">C++, comments left out (<code>ToyCombine.cpp</code>, L28-L53)</a></th><th><a href="https://github.com/wcy123/crest/blob/c75b07a8f592e99005e8c890b5e35704bcce38ad/samples/toy/ch3/combine.sls#L24-L29">CREST DSL (<code>combine.sls</code>, L24-L29)</a></th></tr>
+<tr><td>
+
+```cpp
+struct SimplifyRedundantTranspose : public mlir::OpRewritePattern<TransposeOp> {
+  SimplifyRedundantTranspose(mlir::MLIRContext *context)
+      : OpRewritePattern<TransposeOp>(context, /*benefit=*/1) {}
+
+  llvm::LogicalResult
+  matchAndRewrite(TransposeOp op,
+                  mlir::PatternRewriter &rewriter) const override {
+    mlir::Value transposeInput = op.getOperand();
+    TransposeOp transposeInputOp = transposeInput.getDefiningOp<TransposeOp>();
+    if (!transposeInputOp)
+      return failure();
+    rewriter.replaceOp(op, {transposeInputOp.getOperand()});
+    return success();
+  }
+};
+```
+
+</td><td>
+
+```scheme
+(define-rewrite-pattern (%%simplify-redundant-transpose op rewriter)
+  :if-match
+    %inner = toy.transpose (%in)
+    %out   = toy.transpose (%inner)
+  :rewrite %out :with
+    %in)
+```
+
+</td></tr>
+</table>
+
+The C++ class finds the match by walking: take the operand, ask for its defining op as a `TransposeOp`, give up when
+there is none, and say `success()` or `failure()`. The DSL says what is matched, a transpose of a transpose, and what
+replaces it. A match that does not hold is simply no match.
+
+### `ReshapeReshapeOpt`
+
+<table>
+<tr><th><a href="https://github.com/llvm/llvm-project/blob/392dfff97d29b59d77e5cac6d4b6ef2585fe7117/mlir/examples/toy/Ch3/mlir/ToyCombine.td#L34-L35">DRR (<code>ToyCombine.td</code>, L34-L35)</a></th><th><a href="https://github.com/wcy123/crest/blob/c75b07a8f592e99005e8c890b5e35704bcce38ad/samples/toy/ch3/combine.sls#L32-L39">CREST DSL (<code>combine.sls</code>, L32-L39)</a></th></tr>
+<tr><td>
+
+```tablegen
+def ReshapeReshapeOptPattern : Pat<(ReshapeOp(ReshapeOp $arg)),
+                                   (ReshapeOp $arg)>;
+```
+
+</td><td>
+
+```scheme
+(define-rewrite-pattern (%%reshape-reshape op rewriter)
+  :if-match
+    %inner = toy.reshape (%in)
+    %out   = toy.reshape (%inner)
+  :then-let
+    ([!out-type (mlir::Value::getType %out)])
+  :rewrite %out :with
+    result = toy.reshape (%in) -> !out-type)
+```
+
+</td></tr>
+</table>
+
+The two have the same shape. The DSL also writes the type of the new reshape (`!out-type`, the type of the reshape it
+replaces), which the DRR pattern does not write.
+
+### `RedundantReshape`
+
+<table>
+<tr><th><a href="https://github.com/llvm/llvm-project/blob/392dfff97d29b59d77e5cac6d4b6ef2585fe7117/mlir/examples/toy/Ch3/mlir/ToyCombine.td#L59-L62">DRR (<code>ToyCombine.td</code>, L59-L62)</a></th><th><a href="https://github.com/wcy123/crest/blob/c75b07a8f592e99005e8c890b5e35704bcce38ad/samples/toy/ch3/combine.sls#L42-L48">CREST DSL (<code>combine.sls</code>, L42-L48)</a></th></tr>
+<tr><td>
+
+```tablegen
+def TypesAreIdentical : Constraint<CPred<"$0.getType() == $1.getType()">>;
+def RedundantReshapeOptPattern : Pat<
+  (ReshapeOp:$res $arg), (replaceWithValue $arg),
+  [(TypesAreIdentical $res, $arg)]>;
+```
+
+</td><td>
+
+```scheme
+(define-rewrite-pattern (%%redundant-reshape op rewriter)
+  :if-match
+    %out = toy.reshape (%in)
+      :where
+    (equal? (mlir::Value::getType %out) (mlir::Value::getType %in))
+  :rewrite %out :with
+    %in)
+```
+
+</td></tr>
+</table>
+
+The condition is the difference. In DRR it is a `Constraint` with a `CPred` string, and `$0` and `$1` are the places of
+the arguments where the constraint is used, `(TypesAreIdentical $res, $arg)`; nothing in the string names them, and
+only the C++ compiler reads it, in the generated `ToyCombine.inc`. In the DSL the condition is a Scheme expression under
+the value it is about, and it uses the names of the match, `%out` and `%in`.
+
+### `FoldConstantReshape`
+
+<table>
+<tr><th><a href="https://github.com/llvm/llvm-project/blob/392dfff97d29b59d77e5cac6d4b6ef2585fe7117/mlir/examples/toy/Ch3/mlir/ToyCombine.td#L45-L49">DRR (<code>ToyCombine.td</code>, L45-L49)</a></th><th><a href="https://github.com/wcy123/crest/blob/c75b07a8f592e99005e8c890b5e35704bcce38ad/samples/toy/ch3/combine.sls#L51-L62">CREST DSL (<code>combine.sls</code>, L51-L62)</a></th></tr>
+<tr><td>
+
+```tablegen
+def ReshapeConstant :
+  NativeCodeCall<"$0.reshape(::llvm::cast<ShapedType>($1.getType()))">;
+def FoldConstantReshapeOptPattern : Pat<
+  (ReshapeOp:$res (ConstantOp $arg)),
+  (ConstantOp (ReshapeConstant $arg, $res))>;
+```
+
+</td><td>
+
+```scheme
+(define-rewrite-pattern (%%fold-constant-reshape op rewriter)
+  :if-match
+    %const = toy.constant ()
+    %out   = toy.reshape (%const)
+  :then-let
+    ([!out-type (mlir::Value::getType %out)]
+     [old-attr  (mlir::Operation::getAttr (mlir::Value::getDefiningOp %const) "value")]
+     [new-attr  (mlir::DenseElementsAttr::reshape old-attr !out-type)])
+  :rewrite %out :with
+    result = toy.constant ()
+    (value : new-attr)
+    -> !out-type)
+```
+
+</td></tr>
+</table>
+
+DRR cannot compute the new constant, so it calls out to C++ in a string (`NativeCodeCall`), with its own `$0` and
+`$1`. The DSL computes it in `:then-let` with ordinary Scheme: `old-attr` and `new-attr` are names for values, and
+`mlir::DenseElementsAttr::reshape` is called as any other binding is.
+
+### Registering the patterns
+
+<table>
+<tr><th><a href="https://github.com/llvm/llvm-project/blob/392dfff97d29b59d77e5cac6d4b6ef2585fe7117/mlir/examples/toy/Ch3/mlir/ToyCombine.cpp#L57-L68">C++ (<code>ToyCombine.cpp</code>, L57-L68)</a></th><th><a href="https://github.com/wcy123/crest/blob/c75b07a8f592e99005e8c890b5e35704bcce38ad/samples/toy/ch3/combine.sls#L66-L72">CREST DSL (<code>combine.sls</code>, L66-L72)</a></th></tr>
+<tr><td>
+
+```cpp
+void TransposeOp::getCanonicalizationPatterns(RewritePatternSet &results,
+                                              MLIRContext *context) {
+  results.add<SimplifyRedundantTranspose>(context);
+}
+
+void ReshapeOp::getCanonicalizationPatterns(RewritePatternSet &results,
+                                            MLIRContext *context) {
+  results.add<ReshapeReshapeOptPattern, RedundantReshapeOptPattern,
+              FoldConstantReshapeOptPattern>(context);
+}
+```
+
+</td><td>
+
+```scheme
+(define-pattern-set toy:add-transpose-canonicalization-patterns!
+  ("toy.transpose" %%simplify-redundant-transpose 1))
+
+(define-pattern-set toy:add-reshape-canonicalization-patterns!
+  ("toy.reshape" %%reshape-reshape 1)
+  ("toy.reshape" %%redundant-reshape 1)
+  ("toy.reshape" %%fold-constant-reshape 1))
+```
+
+</td></tr>
+</table>
+
+Each op brings its patterns, as `getCanonicalizationPatterns` does in C++. The benefit (`1`) is a column of the table.
+
+### What this adds up to
+
+- **The match looks like the IR.** `%out = toy.reshape (%in)` is the op as MLIR prints it, and a name that is used
+  twice is the same value. DRR writes a prefix tree with `$` names, which is neither MLIR nor C++.
+- **The host language is there.** The conditions and the computations are plain Scheme, and the names of the match
+  are Scheme variables. A condition can be any function, defined in another library and used by many patterns.
+- **A mistake is reported where it is written.** A misspelled name in a condition (`%inn` for `%in`) stops the
+  library when it loads, with the line and the column of the typo.
+- **It scales.** A larger pattern is more blocks of the same form, each with its conditions under it, and not a deeper
+  tree or more nesting. Real ones are in `samples/passes/hip-fusion`: `qlpnorm.sls` matches a chain of three ops with
+  conditions on each op, and `qgemm.sls` has four patterns that share their conditions. The four patterns of Toy are
+  small, so this chapter shows the difference least; those files show it best.
+- **No rebuild.** In development mode a change to a pattern takes effect when the program runs again.
+
+What it does not give: the checks happen when the library loads, and not when C++ is compiled.
+
+See also "Why not PDL / DRR / C++?" in the [main README](../../../README.md#why-not-pdl--drr--c).
