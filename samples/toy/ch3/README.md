@@ -53,72 +53,106 @@ and the `scheme-mlir` on `PATH` otherwise.
 three tests: `action-ast-<name>.mlir`, `action-mlir-<name>.mlir` and
 `action-mlir-opt-<name>.mlir` (`<name>` is the file name with `-` for `_`, and `example` for `example.toy`). They check the whole output line by line.
 
+To see what `--opt` does, diff the output without it and with it. The lines with `-` are removed and the lines with
+`+` are new. A value that comes after a removed op gets a lower number, so some lines differ only in their `%` numbers.
+
+```sh
+opt-diff() { diff -u --label 'without --opt' --label 'with --opt' \
+                   <(./toyc "$1" --emit=mlir) <(./toyc "$1" --emit=mlir --opt); }
+```
+
 ### `transpose_transpose.toy`
 
 ```sh
-./toyc transpose_transpose.toy --emit=mlir --opt
+opt-diff transpose_transpose.toy
 ```
 
-```mlir
-module {
-  toy.func @transpose_transpose(%arg0: tensor<*xf64>) -> tensor<*xf64> {
-    toy.return %arg0 : tensor<*xf64>
-  }
-  toy.func @main() {
-    %0 = toy.constant dense<[[1.000000e+00, 2.000000e+00, 3.000000e+00], [4.000000e+00, 5.000000e+00, 6.000000e+00]]> : tensor<2x3xf64>
-    %1 = toy.generic_call @transpose_transpose(%0) : (tensor<2x3xf64>) -> tensor<*xf64>
-    toy.print %1 : tensor<*xf64>
-    toy.return
-  }
-}
+```diff
+--- without --opt
++++ with --opt
+@@ -1,14 +1,11 @@
+ module {
+   toy.func @transpose_transpose(%arg0: tensor<*xf64>) -> tensor<*xf64> {
+-    %0 = toy.transpose(%arg0 : tensor<*xf64>) to tensor<*xf64>
+-    %1 = toy.transpose(%0 : tensor<*xf64>) to tensor<*xf64>
+-    toy.return %1 : tensor<*xf64>
++    toy.return %arg0 : tensor<*xf64>
+   }
+   toy.func @main() {
+     %0 = toy.constant dense<[[1.000000e+00, 2.000000e+00, 3.000000e+00], [4.000000e+00, 5.000000e+00, 6.000000e+00]]> : tensor<2x3xf64>
+-    %1 = toy.reshape(%0 : tensor<2x3xf64>) to tensor<2x3xf64>
+-    %2 = toy.generic_call @transpose_transpose(%1) : (tensor<2x3xf64>) -> tensor<*xf64>
+-    toy.print %2 : tensor<*xf64>
++    %1 = toy.generic_call @transpose_transpose(%0) : (tensor<2x3xf64>) -> tensor<*xf64>
++    toy.print %1 : tensor<*xf64>
+     toy.return
+   }
+ }
 ```
 
-Without `--opt` the function has two `toy.transpose` ops, and `main` has a `toy.reshape` of the constant to its
-own type, which `var a<2, 3>` makes. `SimplifyRedundantTranspose` removes both transposes, and the reshape is gone
-too.
+`SimplifyRedundantTranspose` removes the two `toy.transpose` ops, so the function returns its argument. In `main`, the
+`toy.reshape` of the constant to its own type, which `var a<2, 3>` makes, is removed too.
 
 ### `trivial_reshape.toy`
 
 ```sh
-./toyc trivial_reshape.toy --emit=mlir --opt
+opt-diff trivial_reshape.toy
 ```
 
-```mlir
-module {
-  toy.func @main() {
-    %0 = toy.constant dense<[[1.000000e+00], [2.000000e+00]]> : tensor<2x1xf64>
-    toy.print %0 : tensor<2x1xf64>
-    toy.return
-  }
-}
+```diff
+--- without --opt
++++ with --opt
+@@ -1,10 +1,7 @@
+ module {
+   toy.func @main() {
+-    %0 = toy.constant dense<[1.000000e+00, 2.000000e+00]> : tensor<2xf64>
+-    %1 = toy.reshape(%0 : tensor<2xf64>) to tensor<2x1xf64>
+-    %2 = toy.reshape(%1 : tensor<2x1xf64>) to tensor<2x1xf64>
+-    %3 = toy.reshape(%2 : tensor<2x1xf64>) to tensor<2x1xf64>
+-    toy.print %3 : tensor<2x1xf64>
++    %0 = toy.constant dense<[[1.000000e+00], [2.000000e+00]]> : tensor<2x1xf64>
++    toy.print %0 : tensor<2x1xf64>
+     toy.return
+   }
+ }
 ```
 
-Without `--opt` there is a flat `tensor<2xf64>` constant and three `toy.reshape` ops, one for each `var`. The
-reshape rules leave one constant of type `tensor<2x1xf64>`.
+The flat `tensor<2xf64>` constant and the three `toy.reshape` ops, one for each `var`, become one constant of type
+`tensor<2x1xf64>`.
 
 ### `reshape_reshape.toy`
 
 ```sh
-./toyc reshape_reshape.toy --emit=mlir --opt
+opt-diff reshape_reshape.toy
 ```
 
-```mlir
-module {
-  toy.func @reshape_reshape(%arg0: tensor<*xf64>) -> tensor<*xf64> {
-    %0 = toy.reshape(%arg0 : tensor<*xf64>) to tensor<3x2xf64>
-    toy.return %0 : tensor<3x2xf64>
-  }
-  toy.func @main() {
-    %0 = toy.constant dense<[[1.000000e+00, 2.000000e+00, 3.000000e+00], [4.000000e+00, 5.000000e+00, 6.000000e+00]]> : tensor<2x3xf64>
-    %1 = toy.generic_call @reshape_reshape(%0) : (tensor<2x3xf64>) -> tensor<*xf64>
-    toy.print %1 : tensor<*xf64>
-    toy.return
-  }
-}
+```diff
+--- without --opt
++++ with --opt
+@@ -1,14 +1,12 @@
+ module {
+   toy.func @reshape_reshape(%arg0: tensor<*xf64>) -> tensor<*xf64> {
+-    %0 = toy.reshape(%arg0 : tensor<*xf64>) to tensor<2x3xf64>
+-    %1 = toy.reshape(%0 : tensor<2x3xf64>) to tensor<3x2xf64>
+-    toy.return %1 : tensor<3x2xf64>
++    %0 = toy.reshape(%arg0 : tensor<*xf64>) to tensor<3x2xf64>
++    toy.return %0 : tensor<3x2xf64>
+   }
+   toy.func @main() {
+     %0 = toy.constant dense<[[1.000000e+00, 2.000000e+00, 3.000000e+00], [4.000000e+00, 5.000000e+00, 6.000000e+00]]> : tensor<2x3xf64>
+-    %1 = toy.reshape(%0 : tensor<2x3xf64>) to tensor<2x3xf64>
+-    %2 = toy.generic_call @reshape_reshape(%1) : (tensor<2x3xf64>) -> tensor<*xf64>
+-    toy.print %2 : tensor<*xf64>
++    %1 = toy.generic_call @reshape_reshape(%0) : (tensor<2x3xf64>) -> tensor<*xf64>
++    toy.print %1 : tensor<*xf64>
+     toy.return
+   }
+ }
 ```
 
-Without `--opt` the function has two reshapes, `tensor<*xf64>` to `2x3` to `3x2`. `ReshapeReshapeOpt` makes one
-reshape of the argument to `3x2`. The input is an argument and the shapes differ, so no other rule can do this.
+`ReshapeReshapeOpt` replaces the two reshapes of the argument, `tensor<*xf64>` to `2x3` to `3x2`, by one reshape to
+`3x2`. The input is an argument and the shapes differ, so no other rule can do this. In `main` the reshape of the
+constant to its own type is removed, as above.
 
 ### Each rule on its own
 
