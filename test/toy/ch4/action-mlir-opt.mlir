@@ -7,8 +7,8 @@
 // CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = toy.transpose(%{{[a-zA-Z0-9_]+}} : tensor<2x3xf64>) to tensor<3x2xf64>
 // CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = toy.mul %{{[a-zA-Z0-9_]+}}, %{{[a-zA-Z0-9_]+}} : tensor<3x2xf64>
 // CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = toy.transpose(%{{[a-zA-Z0-9_]+}} : tensor<3x2xf64>) to tensor<2x3xf64>
-// CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = toy.mul %{{[a-zA-Z0-9_]+}}, %{{[a-zA-Z0-9_]+}} : (tensor<3x2xf64>, tensor<2x3xf64>) -> tensor<3x2xf64>
-// CHECK-NEXT:     toy.print %{{[a-zA-Z0-9_]+}} : tensor<3x2xf64>
+// CHECK-NEXT:     %{{[a-zA-Z0-9_]+}} = toy.mul %{{[a-zA-Z0-9_]+}}, %{{[a-zA-Z0-9_]+}} : tensor<2x3xf64>
+// CHECK-NEXT:     toy.print %{{[a-zA-Z0-9_]+}} : tensor<2x3xf64>
 // CHECK-NEXT:     toy.return
 // CHECK-NEXT:   }
 // CHECK-NEXT: }

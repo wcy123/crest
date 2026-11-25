@@ -64,12 +64,12 @@ opt-diff example.toy
 -    %4 = toy.generic_call @multiply_transpose(%2, %0) : (tensor<2x3xf64>, tensor<2x3xf64>) -> tensor<*xf64>
 -    %5 = toy.generic_call @multiply_transpose(%3, %4) : (tensor<*xf64>, tensor<*xf64>) -> tensor<*xf64>
 -    %6 = toy.generic_call @multiply_transpose(%0, %3) : (tensor<2x3xf64>, tensor<*xf64>) -> tensor<*xf64>
--    toy.print %6 : tensor<*xf64>
+-    toy.print %5 : tensor<*xf64>
 +    %1 = toy.transpose(%0 : tensor<2x3xf64>) to tensor<3x2xf64>
 +    %2 = toy.mul %1, %1 : tensor<3x2xf64>
 +    %3 = toy.transpose(%2 : tensor<3x2xf64>) to tensor<2x3xf64>
-+    %4 = toy.mul %1, %3 : (tensor<3x2xf64>, tensor<2x3xf64>) -> tensor<3x2xf64>
-+    toy.print %4 : tensor<3x2xf64>
++    %4 = toy.mul %3, %3 : tensor<2x3xf64>
++    toy.print %4 : tensor<2x3xf64>
      toy.return
    }
  }
@@ -77,7 +77,7 @@ opt-diff example.toy
 
 - `multiply_transpose` and the four `toy.generic_call` ops are gone: the inliner found the calls through
   `CallOpInterface`, asked the dialect whether to inline, and copied the body into `main` (points 1 and 2).
-- Every type is ranked, `tensor<3x2xf64>` and not `tensor<*xf64>`: shape inference (point 4).
+- Every type is ranked, `tensor<3x2xf64>` or `tensor<2x3xf64>`, and none is `tensor<*xf64>`: shape inference (point 4).
 - No `toy.cast` is left (point 3). The next table shows it.
 - The flat constant and its reshape became a `tensor<2x3xf64>` constant equal to `a`, and CSE merged the two.
 
@@ -89,7 +89,7 @@ Delete one line of `%%run-opt-pipeline!` in `toyc.sls` and run `./toyc example.t
 |---|---|
 | `(mlir::createInlinerPass)` | `error: Shape inference failed, 3 operations couldn't be inferred`, then `Optimization pipeline failed`: the calls and the unranked function are still there, so there is nothing to infer from (point 5) |
 | `(toy:shape-inference-pass)` | the cast of the inliner stays, and so do the unranked types (points 3 and 4):<br>`%1 = toy.cast %0 : tensor<2x3xf64> to tensor<*xf64>` |
-| `(mlir::createCSEPass)` | two equal `tensor<2x3xf64>` constants, and a `toy.transpose` of each, stay |
+| `(mlir::createCSEPass)` | two equal `tensor<2x3xf64>` constants stay, and so do the repeated `toy.transpose` ops of them |
 | `(mlir::createCanonicalizerPass)` | the same output: this program does not need it |
 
 ## What's new over Ch3
