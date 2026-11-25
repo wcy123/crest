@@ -231,3 +231,208 @@ per operand/attribute/result for every op, e.g.:
 | The four canonicalization patterns | `define-rewrite-pattern` | each one is a match and a rewrite |
 | Registering the patterns | `define-pattern-set` (`combine.sls`), `:get-canonicalization-patterns` (`toy.sls`) | a table of (op, pattern, benefit) per op, registered by the op as C++ `getCanonicalizationPatterns` does |
 | Applying them | `PassManager` nested on `toy.func` with `createCanonicalizerPass` (`toyc.sls`) | the canonicalizer also folds and erases dead `pure` ops, as in the C++ `toyc` |
+
+## Why the patterns are written in the DSL
+
+The C++ Toy writes its four patterns in two languages: `ToyCombine.td` has three of them as DRR (TableGen's
+declarative rewrite rules), and `ToyCombine.cpp` has `SimplifyRedundantTranspose` as a hand-written class. The two
+styles do not mix: a pattern that needs both a structure to match and some logic has to choose one, or put C++ in
+strings inside DRR. `combine.sls` writes all four in one way, as a declaration with Scheme where it needs logic.
+Here they are, pattern to pattern.
+
+### `SimplifyRedundantTranspose`
+
+<table>
+<tr><th>C++ (<code>ToyCombine.cpp</code>, comments left out)</th><th>CREST DSL (<code>combine.sls</code>)</th></tr>
+<tr><td>
+
+```cpp
+struct SimplifyRedundantTranspose : public mlir::OpRewritePattern<TransposeOp> {
+  SimplifyRedundantTranspose(mlir::MLIRContext *context)
+      : OpRewritePattern<TransposeOp>(context, /*benefit=*/1) {}
+
+  llvm::LogicalResult
+  matchAndRewrite(TransposeOp op,
+                  mlir::PatternRewriter &rewriter) const override {
+    mlir::Value transposeInput = op.getOperand();
+    TransposeOp transposeInputOp = transposeInput.getDefiningOp<TransposeOp>();
+    if (!transposeInputOp)
+      return failure();
+    rewriter.replaceOp(op, {transposeInputOp.getOperand()});
+    return success();
+  }
+};
+```
+
+</td><td>
+
+```scheme
+(define-rewrite-pattern (%%simplify-redundant-transpose op rewriter)
+  :if-match
+    %inner = toy.transpose (%in)
+    %out   = toy.transpose (%inner)
+  :rewrite %out :with
+    %in)
+```
+
+</td></tr>
+</table>
+
+The C++ class finds the match by walking: take the operand, ask for its defining op as a `TransposeOp`, give up when
+there is none, and say `success()` or `failure()`. The DSL says what is matched, a transpose of a transpose, and what
+replaces it. A match that does not hold is simply no match.
+
+### `ReshapeReshapeOpt`
+
+<table>
+<tr><th>DRR (<code>ToyCombine.td</code>)</th><th>CREST DSL (<code>combine.sls</code>)</th></tr>
+<tr><td>
+
+```tablegen
+def ReshapeReshapeOptPattern : Pat<(ReshapeOp(ReshapeOp $arg)),
+                                   (ReshapeOp $arg)>;
+```
+
+</td><td>
+
+```scheme
+(define-rewrite-pattern (%%reshape-reshape op rewriter)
+  :if-match
+    %inner = toy.reshape (%in)
+    %out   = toy.reshape (%inner)
+  :then-let
+    ([!out-type (mlir::Value::getType %out)])
+  :rewrite %out :with
+    result = toy.reshape (%in) -> !out-type)
+```
+
+</td></tr>
+</table>
+
+The two have the same shape. The DSL also writes the type of the new reshape (`!out-type`, the type of the reshape it
+replaces), which the DRR pattern does not write.
+
+### `RedundantReshape`
+
+<table>
+<tr><th>DRR (<code>ToyCombine.td</code>)</th><th>CREST DSL (<code>combine.sls</code>)</th></tr>
+<tr><td>
+
+```tablegen
+def TypesAreIdentical : Constraint<CPred<"$0.getType() == $1.getType()">>;
+def RedundantReshapeOptPattern : Pat<
+  (ReshapeOp:$res $arg), (replaceWithValue $arg),
+  [(TypesAreIdentical $res, $arg)]>;
+```
+
+</td><td>
+
+```scheme
+(define-rewrite-pattern (%%redundant-reshape op rewriter)
+  :if-match
+    %out = toy.reshape (%in)
+      :where
+    (equal? (mlir::Value::getType %out) (mlir::Value::getType %in))
+  :rewrite %out :with
+    %in)
+```
+
+</td></tr>
+</table>
+
+The condition is the difference. In DRR it is a `Constraint` with a `CPred` string, and `$0` and `$1` are the places of
+the arguments where the constraint is used, `(TypesAreIdentical $res, $arg)`; nothing in the string names them, and
+only the C++ compiler reads it, in the generated `ToyCombine.inc`. In the DSL the condition is a Scheme expression under
+the value it is about, and it uses the names of the match, `%out` and `%in`.
+
+### `FoldConstantReshape`
+
+<table>
+<tr><th>DRR (<code>ToyCombine.td</code>)</th><th>CREST DSL (<code>combine.sls</code>)</th></tr>
+<tr><td>
+
+```tablegen
+def ReshapeConstant :
+  NativeCodeCall<"$0.reshape(::llvm::cast<ShapedType>($1.getType()))">;
+def FoldConstantReshapeOptPattern : Pat<
+  (ReshapeOp:$res (ConstantOp $arg)),
+  (ConstantOp (ReshapeConstant $arg, $res))>;
+```
+
+</td><td>
+
+```scheme
+(define-rewrite-pattern (%%fold-constant-reshape op rewriter)
+  :if-match
+    %const = toy.constant ()
+    %out   = toy.reshape (%const)
+  :then-let
+    ([!out-type (mlir::Value::getType %out)]
+     [old-attr  (mlir::Operation::getAttr (mlir::Value::getDefiningOp %const) "value")]
+     [new-attr  (mlir::DenseElementsAttr::reshape old-attr !out-type)])
+  :rewrite %out :with
+    result = toy.constant ()
+    (value : new-attr)
+    -> !out-type)
+```
+
+</td></tr>
+</table>
+
+DRR cannot compute the new constant, so it calls out to C++ in a string (`NativeCodeCall`), with its own `$0` and
+`$1`. The DSL computes it in `:then-let` with ordinary Scheme: `old-attr` and `new-attr` are names for values, and
+`mlir::DenseElementsAttr::reshape` is called as any other binding is.
+
+### Registering the patterns
+
+<table>
+<tr><th>C++ (<code>ToyCombine.cpp</code>)</th><th>CREST DSL (<code>combine.sls</code>)</th></tr>
+<tr><td>
+
+```cpp
+void TransposeOp::getCanonicalizationPatterns(RewritePatternSet &results,
+                                              MLIRContext *context) {
+  results.add<SimplifyRedundantTranspose>(context);
+}
+
+void ReshapeOp::getCanonicalizationPatterns(RewritePatternSet &results,
+                                            MLIRContext *context) {
+  results.add<ReshapeReshapeOptPattern, RedundantReshapeOptPattern,
+              FoldConstantReshapeOptPattern>(context);
+}
+```
+
+</td><td>
+
+```scheme
+(define-pattern-set toy:add-transpose-canonicalization-patterns!
+  ("toy.transpose" %%simplify-redundant-transpose 1))
+
+(define-pattern-set toy:add-reshape-canonicalization-patterns!
+  ("toy.reshape" %%reshape-reshape 1)
+  ("toy.reshape" %%redundant-reshape 1)
+  ("toy.reshape" %%fold-constant-reshape 1))
+```
+
+</td></tr>
+</table>
+
+Each op brings its patterns, as `getCanonicalizationPatterns` does in C++. The benefit (`1`) is a column of the table.
+
+### What this adds up to
+
+- **The match looks like the IR.** `%out = toy.reshape (%in)` is the op as MLIR prints it, and a name that is used
+  twice is the same value. DRR writes a prefix tree with `$` names, which is neither MLIR nor C++.
+- **The host language is there.** The conditions and the computations are plain Scheme, and the names of the match
+  are Scheme variables. A condition can be any function, defined in another library and used by many patterns.
+- **A mistake is reported where it is written.** A misspelled name in a condition (`%inn` for `%in`) stops the
+  library when it loads, with the line and the column of the typo.
+- **It scales.** A larger pattern is more blocks of the same form, each with its conditions under it, and not a deeper
+  tree or more nesting. Real ones are in `samples/passes/hip-fusion`: `qlpnorm.sls` matches a chain of three ops with
+  conditions on each op, and `qgemm.sls` has four patterns that share their conditions. The four patterns of Toy are
+  small, so this chapter shows the difference least; those files show it best.
+- **No rebuild.** In development mode a change to a pattern takes effect when the program runs again.
+
+What it does not give: the checks happen when the library loads, and not when C++ is compiled.
+
+See also "Why not PDL / DRR / C++?" in the [main README](../../../README.md#why-not-pdl--drr--c).
