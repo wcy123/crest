@@ -204,12 +204,14 @@ The C++ Toy writes its four patterns in two languages: `ToyCombine.td` has three
 declarative rewrite rules), and `ToyCombine.cpp` has `SimplifyRedundantTranspose` as a hand-written class. The two
 styles do not mix: a pattern that needs both a structure to match and some logic has to choose one, or put C++ in
 strings inside DRR. `combine.sls` writes all four in one way, as a declaration with Scheme where it needs logic.
-Here they are, pattern to pattern.
+Here they are, pattern to pattern. The titles of the tables are permalinks, with the lines of the code: the C++ files at the commit of LLVM they were
+taken from (`392dfff97d29`), and `combine.sls` at the commit of this repository where it last changed (`c75b07a8f592`).
+A later change to `combine.sls` does not move them.
 
 ### `SimplifyRedundantTranspose`
 
 <table>
-<tr><th>C++ (<code>ToyCombine.cpp</code>, comments left out)</th><th>CREST DSL (<code>combine.sls</code>)</th></tr>
+<tr><th><a href="https://github.com/llvm/llvm-project/blob/392dfff97d29b59d77e5cac6d4b6ef2585fe7117/mlir/examples/toy/Ch3/mlir/ToyCombine.cpp#L28-L53">C++, comments left out (<code>ToyCombine.cpp</code>, L28-L53)</a></th><th><a href="https://github.com/wcy123/crest/blob/c75b07a8f592e99005e8c890b5e35704bcce38ad/samples/toy/ch3/combine.sls#L24-L29">CREST DSL (<code>combine.sls</code>, L24-L29)</a></th></tr>
 <tr><td>
 
 ```cpp
@@ -251,7 +253,7 @@ replaces it. A match that does not hold is simply no match.
 ### `ReshapeReshapeOpt`
 
 <table>
-<tr><th>DRR (<code>ToyCombine.td</code>)</th><th>CREST DSL (<code>combine.sls</code>)</th></tr>
+<tr><th><a href="https://github.com/llvm/llvm-project/blob/392dfff97d29b59d77e5cac6d4b6ef2585fe7117/mlir/examples/toy/Ch3/mlir/ToyCombine.td#L34-L35">DRR (<code>ToyCombine.td</code>, L34-L35)</a></th><th><a href="https://github.com/wcy123/crest/blob/c75b07a8f592e99005e8c890b5e35704bcce38ad/samples/toy/ch3/combine.sls#L32-L39">CREST DSL (<code>combine.sls</code>, L32-L39)</a></th></tr>
 <tr><td>
 
 ```tablegen
@@ -281,7 +283,7 @@ replaces), which the DRR pattern does not write.
 ### `RedundantReshape`
 
 <table>
-<tr><th>DRR (<code>ToyCombine.td</code>)</th><th>CREST DSL (<code>combine.sls</code>)</th></tr>
+<tr><th><a href="https://github.com/llvm/llvm-project/blob/392dfff97d29b59d77e5cac6d4b6ef2585fe7117/mlir/examples/toy/Ch3/mlir/ToyCombine.td#L59-L62">DRR (<code>ToyCombine.td</code>, L59-L62)</a></th><th><a href="https://github.com/wcy123/crest/blob/c75b07a8f592e99005e8c890b5e35704bcce38ad/samples/toy/ch3/combine.sls#L42-L48">CREST DSL (<code>combine.sls</code>, L42-L48)</a></th></tr>
 <tr><td>
 
 ```tablegen
@@ -314,7 +316,7 @@ the value it is about, and it uses the names of the match, `%out` and `%in`.
 ### `FoldConstantReshape`
 
 <table>
-<tr><th>DRR (<code>ToyCombine.td</code>)</th><th>CREST DSL (<code>combine.sls</code>)</th></tr>
+<tr><th><a href="https://github.com/llvm/llvm-project/blob/392dfff97d29b59d77e5cac6d4b6ef2585fe7117/mlir/examples/toy/Ch3/mlir/ToyCombine.td#L45-L49">DRR (<code>ToyCombine.td</code>, L45-L49)</a></th><th><a href="https://github.com/wcy123/crest/blob/c75b07a8f592e99005e8c890b5e35704bcce38ad/samples/toy/ch3/combine.sls#L51-L62">CREST DSL (<code>combine.sls</code>, L51-L62)</a></th></tr>
 <tr><td>
 
 ```tablegen
@@ -352,7 +354,7 @@ DRR cannot compute the new constant, so it calls out to C++ in a string (`Native
 ### Registering the patterns
 
 <table>
-<tr><th>C++ (<code>ToyCombine.cpp</code>)</th><th>CREST DSL (<code>combine.sls</code>)</th></tr>
+<tr><th><a href="https://github.com/llvm/llvm-project/blob/392dfff97d29b59d77e5cac6d4b6ef2585fe7117/mlir/examples/toy/Ch3/mlir/ToyCombine.cpp#L57-L68">C++ (<code>ToyCombine.cpp</code>, L57-L68)</a></th><th><a href="https://github.com/wcy123/crest/blob/c75b07a8f592e99005e8c890b5e35704bcce38ad/samples/toy/ch3/combine.sls#L66-L72">CREST DSL (<code>combine.sls</code>, L66-L72)</a></th></tr>
 <tr><td>
 
 ```cpp
