@@ -34,63 +34,7 @@ def main() {
 Run the commands in this directory. `./toyc` finds `scheme-mlir` through `CREST_BUILD_DIR` or `PATH`, see the commands of
 the [Ch3 README](../ch3/README.md#commands).
 
-### `--emit=ast`
-
-```sh
-./toyc example.toy --emit=ast
-```
-
-```text
-  Module:
-    Function
-      Proto 'multiply_transpose' @example.toy:0:1
-      Params: [a, b]
-      Block {
-        Return
-          BinOp: * @example.toy:1:23
-            Call 'transpose' [ @example.toy:1:10
-              var: a @example.toy:1:20
-            ]
-            Call 'transpose' [ @example.toy:1:25
-              var: b @example.toy:1:35
-            ]
-      } // Block
-    Function
-      Proto 'main' @example.toy:4:1
-      Params: []
-      Block {
-        VarDecl a<> @example.toy:5:3
-          Literal: <2,3>[ <3>[ 1, 2, 3], <3>[ 4, 5, 6]] @example.toy:5:11
-        VarDecl b<2,3> @example.toy:6:3
-          Literal: <6>[ 1, 2, 3, 4, 5, 6] @example.toy:6:17
-        VarDecl c<> @example.toy:7:3
-          Call 'multiply_transpose' [ @example.toy:7:11
-            var: a @example.toy:7:30
-            var: b @example.toy:7:33
-          ]
-        VarDecl d<> @example.toy:8:3
-          Call 'multiply_transpose' [ @example.toy:8:11
-            var: b @example.toy:8:30
-            var: a @example.toy:8:33
-          ]
-        VarDecl e<> @example.toy:9:3
-          Call 'multiply_transpose' [ @example.toy:9:11
-            var: c @example.toy:9:30
-            var: d @example.toy:9:33
-          ]
-        VarDecl f<> @example.toy:10:3
-          Call 'multiply_transpose' [ @example.toy:10:11
-            var: a @example.toy:10:30
-            var: c @example.toy:10:33
-          ]
-        Print [ @example.toy:11:3
-          var: e @example.toy:11:9
-        ]
-      } // Block
-```
-
-The tree the parser makes, with nothing about MLIR yet. `--opt` changes nothing here. `var a<>` has no declared shape,
-and `var b<2,3>` has one.
+`--emit=ast` prints the AST as in [Ch1](../ch1/README.md#try-it), and `--opt` changes nothing there.
 
 ### `--emit=mlir`
 
