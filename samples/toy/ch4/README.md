@@ -10,6 +10,31 @@ operands and `(getArgOperandsMutable :all-operands)`, as the C++ op does with `g
 a call operand to the type of the parameter of the callee. The other two are there since Ch2: `toy.func` is callable
 (`CallableOpInterface`) and `toy.return` is a terminator (`:traits (terminator)`). Like Ch2 and Ch3, Ch4 needs LLVM 23.
 
+## What you learn about MLIR here
+
+Ch3 showed that an op can bring its own rewrite patterns. Ch4 is the other direction: MLIR passes that know nothing
+about Toy, and what the dialect has to tell them.
+
+1. **A generic pass asks through interfaces.** The inliner works on any dialect, so it does not look at `toy.*` ops.
+   An op interface says what an op is: `CallOpInterface` on `toy.generic_call` (the callee and the argument operands)
+   and `CallableOpInterface` on `toy.func` (the body and the types). A dialect interface says what the dialect
+   allows: `DialectInlinerInterface`. They are the `:interfaces` clauses in `toy.sls`; in C++ they are
+   `DeclareOpInterfaceMethods<CallOpInterface>` in `Ops.td` and `ToyInlinerInterface` in `Dialect.cpp`.
+2. **Inlining can make a type mismatch, and the dialect repairs it.** The callee takes `tensor<*xf64>` and the caller
+   passes a ranked tensor. The inliner calls `materializeCallConversion`, which creates a `toy.cast`, and
+   `handleTerminator`, which replaces the results of the call by the operands of the cloned `toy.return`.
+   [inlining.md](inlining.md) walks through it.
+3. **An op can exist only to bridge one step of a pipeline.** `toy.cast` has the traits `pure` and
+   `same-operands-and-result-shape`. When shape inference has given the types, the cast changes nothing, and its folder
+   (`:fold`) removes it.
+4. **Shape inference is a rewrite to a fixed point.** Each pattern gives an op with an unranked result a precise type
+   when its operands are ranked, and the greedy rewriter repeats until nothing changes (`shape-inference.sls`). The C++
+   tutorial writes the same with an op interface (`ShapeInferenceOpInterface`) and a pass with a worklist.
+5. **The order of the passes matters.** A `PassManager` runs the inliner on the module and the other passes nested on
+   `toy.func`: inline, then shape inference, then canonicalize and CSE (`toyc.sls`; `toyc.cpp` in C++). Each pass needs
+   what the one before made: after inlining the transpositions are in one function, so canonicalization can remove
+   them. CSE merges equal ops, which is safe for ops marked `pure`.
+
 ## What's new over Ch3
 
 | Feature | Ch3 | Ch4 |
