@@ -9,7 +9,7 @@ canonicalizer pass finds them, and adds support for reading `.mlir` files direct
 | Feature | Ch2 | Ch3 |
 |---|---|---|
 | Actions | `ast`, `mlir` | `ast`, `mlir` |
-| Optimization flag | — | `TOYC_OPT=1` (mirrors `--opt`) |
+| Optimization flag | — | `--opt` |
 | Input formats | `.toy` only | `.toy` or `.mlir` |
 | Canonicalization passes | — | 4 patterns (see below) |
 
@@ -25,6 +25,9 @@ These mirror `mlir/examples/toy/Ch3/mlir/ToyCombine.cpp` and `ToyCombine.td`:
 | `FoldConstantReshape` | `reshape(constant(x))` → `constant(x')` (folds into new constant) |
 
 ## Commands
+
+`./toyc` runs `$CREST_BUILD_DIR/tools/scheme-mlir/scheme-mlir` when `CREST_BUILD_DIR` is set,
+and the `scheme-mlir` on `PATH` otherwise.
 
 ```sh
 # Dump the AST
@@ -43,6 +46,95 @@ These mirror `mlir/examples/toy/Ch3/mlir/ToyCombine.cpp` and `ToyCombine.td`:
 ./toyc some.mlir --emit=mlir --opt
 ```
 
+## Examples of the rules
+
+`example.toy` only shows `FoldConstantReshape`. The first two programs below are the ones of the C++ tutorial
+(`mlir/test/Examples/Toy/Ch3/`); `reshape_reshape.toy` is new. Each program has a copy in `test/toy/ch3/`, and
+three tests: `action-ast-<name>.mlir`, `action-mlir-<name>.mlir` and
+`action-mlir-opt-<name>.mlir` (`<name>` is the file name with `-` for `_`, and `example` for `example.toy`). They check the whole output line by line.
+
+### `transpose_transpose.toy`
+
+```sh
+./toyc transpose_transpose.toy --emit=mlir --opt
+```
+
+```mlir
+module {
+  toy.func @transpose_transpose(%arg0: tensor<*xf64>) -> tensor<*xf64> {
+    toy.return %arg0 : tensor<*xf64>
+  }
+  toy.func @main() {
+    %0 = toy.constant dense<[[1.000000e+00, 2.000000e+00, 3.000000e+00], [4.000000e+00, 5.000000e+00, 6.000000e+00]]> : tensor<2x3xf64>
+    %1 = toy.generic_call @transpose_transpose(%0) : (tensor<2x3xf64>) -> tensor<*xf64>
+    toy.print %1 : tensor<*xf64>
+    toy.return
+  }
+}
+```
+
+Without `--opt` the function has two `toy.transpose` ops, and `main` has a `toy.reshape` of the constant to its
+own type, which `var a<2, 3>` makes. `SimplifyRedundantTranspose` removes both transposes, and the reshape is gone
+too.
+
+### `trivial_reshape.toy`
+
+```sh
+./toyc trivial_reshape.toy --emit=mlir --opt
+```
+
+```mlir
+module {
+  toy.func @main() {
+    %0 = toy.constant dense<[[1.000000e+00], [2.000000e+00]]> : tensor<2x1xf64>
+    toy.print %0 : tensor<2x1xf64>
+    toy.return
+  }
+}
+```
+
+Without `--opt` there is a flat `tensor<2xf64>` constant and three `toy.reshape` ops, one for each `var`. The
+reshape rules leave one constant of type `tensor<2x1xf64>`.
+
+### `reshape_reshape.toy`
+
+```sh
+./toyc reshape_reshape.toy --emit=mlir --opt
+```
+
+```mlir
+module {
+  toy.func @reshape_reshape(%arg0: tensor<*xf64>) -> tensor<*xf64> {
+    %0 = toy.reshape(%arg0 : tensor<*xf64>) to tensor<3x2xf64>
+    toy.return %0 : tensor<3x2xf64>
+  }
+  toy.func @main() {
+    %0 = toy.constant dense<[[1.000000e+00, 2.000000e+00, 3.000000e+00], [4.000000e+00, 5.000000e+00, 6.000000e+00]]> : tensor<2x3xf64>
+    %1 = toy.generic_call @reshape_reshape(%0) : (tensor<2x3xf64>) -> tensor<*xf64>
+    toy.print %1 : tensor<*xf64>
+    toy.return
+  }
+}
+```
+
+Without `--opt` the function has two reshapes, `tensor<*xf64>` to `2x3` to `3x2`. `ReshapeReshapeOpt` makes one
+reshape of the argument to `3x2`. The input is an argument and the shapes differ, so no other rule can do this.
+
+### Each rule on its own
+
+| Rule | Program | Test |
+|---|---|---|
+| `SimplifyRedundantTranspose` | `transpose_transpose.toy` | `action-mlir-opt-transpose-transpose.mlir` |
+| `ReshapeReshapeOpt` | `reshape_reshape.toy` | `action-mlir-opt-reshape-reshape.mlir` |
+| `RedundantReshape` | none, MLIR text only | `redundant-reshape.mlir` |
+| `FoldConstantReshape` | `trivial_reshape.toy`, `example.toy` | `action-mlir-opt-trivial-reshape.mlir`, `action-mlir-opt-example.mlir` |
+
+Taking one pattern out of `combine.sls` makes the tests of its row fail and no other.
+
+`RedundantReshape` has no Toy program. In Toy a value with a known shape is a constant (`FoldConstantReshape` removes
+a reshape of it) or the result of a reshape (`ReshapeReshapeOpt` removes it), so another rule always does the work.
+`redundant-reshape.mlir` is MLIR text, where the input of the reshape is an argument with the same type.
+
 > **Note:** Ch3 does not inline function calls — `main` emits `toy.generic_call`
 > ops and `multiply_transpose` remains a separate function. Inlining is added in
 > a later chapter. With `--opt`, `FoldConstantReshape` does fire on
@@ -59,6 +151,7 @@ issues.
 
 ```sh
 # From the repository root — expand define-dialect in toy.sls
+# (CREST_BUILD_DIR says where crest-opt is, or crest-opt is on PATH)
 tools/debug-define-dialect samples/toy/ch3/toy.sls
 
 # Save to a file
