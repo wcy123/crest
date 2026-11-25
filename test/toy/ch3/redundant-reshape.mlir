@@ -12,11 +12,17 @@ toy.func @redundant_reshape(%arg0: tensor<2x3xf64>) {
   toy.return
 }
 
-// RAW-LABEL: toy.func @redundant_reshape(
-// RAW-NEXT:    %[[R:[a-zA-Z0-9_]+]] = toy.reshape(%arg0 : tensor<2x3xf64>) to tensor<2x3xf64>
-// RAW-NEXT:    toy.print %[[R]] : tensor<2x3xf64>
+// RAW-LABEL: module {
+// RAW-NEXT:    toy.func @redundant_reshape(%arg0: tensor<2x3xf64>) {
+// RAW-NEXT:      %{{[a-zA-Z0-9_]+}} = toy.reshape(%arg0 : tensor<2x3xf64>) to tensor<2x3xf64>
+// RAW-NEXT:      toy.print %{{[a-zA-Z0-9_]+}} : tensor<2x3xf64>
+// RAW-NEXT:      toy.return
+// RAW-NEXT:    }
+// RAW-NEXT:  }
 
-// OPT-LABEL: toy.func @redundant_reshape(
-// OPT-NEXT:    toy.print %arg0 : tensor<2x3xf64>
-// OPT-NEXT:    toy.return
-// OPT-NOT:   toy.reshape
+// OPT-LABEL: module {
+// OPT-NEXT:    toy.func @redundant_reshape(%arg0: tensor<2x3xf64>) {
+// OPT-NEXT:      toy.print %arg0 : tensor<2x3xf64>
+// OPT-NEXT:      toy.return
+// OPT-NEXT:    }
+// OPT-NEXT:  }
