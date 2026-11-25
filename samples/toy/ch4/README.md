@@ -3,15 +3,12 @@
 Ch4 inlines `toy.generic_call` and adds `toy.cast` to handle ranked/unranked
 tensor mismatches that appear at call boundaries after inlining.
 
-The inlining is done by MLIR's inliner pass, as in the C++ tutorial. It needs
-`toy.generic_call` to implement `CallOpInterface` (its `:interfaces` give the callee, the argument operands and
-`(getArgOperandsMutable :all-operands)`, as the C++ op does with `getCallableForCallee` and `getArgOperands`),
-`toy.func` to be callable (it is: its `:interfaces` give `CallableOpInterface` its three clauses, as the C++ op does with
-`getCallableRegion`, `getArgumentTypes` and `getResultTypes`), `toy.return` to be a
-terminator (`:traits (terminator)`), and the dialect's `DialectInlinerInterface` to say
-that inlining is legal and how to convert a call operand to the callee's parameter type. This
-needs LLVM 23 (`:traits` uses `DynamicOpDefinition::addTrait`), so the Toy chapters from Ch2
-on are skipped by the tests on LLVM 22.
+The inlining is done by MLIR's inliner pass, as in the C++ tutorial. The pass needs four things from the dialect.
+Two are new in Ch4: `toy.generic_call` implements `CallOpInterface` (its `:interfaces` give the callee, the argument
+operands and `(getArgOperandsMutable :all-operands)`, as the C++ op does with `getCallableForCallee` and
+`getArgOperands`), and the dialect has a `DialectInlinerInterface`, which says that inlining is legal and how to convert
+a call operand to the type of the parameter of the callee. The other two are there since Ch2: `toy.func` is callable
+(`CallableOpInterface`) and `toy.return` is a terminator (`:traits (terminator)`). Like Ch2 and Ch3, Ch4 needs LLVM 23.
 
 ## What's new over Ch3
 
@@ -65,33 +62,26 @@ Three steps run in order when `--opt` is passed:
    with an unranked result whose operands are ranked and replaces it with the
    same op with the inferred result type; the greedy rewriter applies them to
    a fixed point.
-3. **Canonicalize + CSE** — nested on `toy.func`: MLIR's canonicalizer (the four patterns from Ch3, which the ops register themselves, and the erasure of dead `pure` ops) and CSE. The four patterns are
-   (`SimplifyRedundantTranspose`, `ReshapeReshapeOpt`, `RedundantReshape`,
-   `FoldConstantReshape`). After inlining and shape inference, transpositions
-   are now in the same function and the redundant-transpose pattern fires.
+3. **Canonicalize + CSE** — nested on `toy.func`: MLIR's canonicalizer, with the patterns of
+   [Ch3](../ch3/README.md) that the ops register themselves, and CSE, which is new. After inlining and shape
+   inference the transpositions are in the same function, so the redundant-transpose pattern fires.
 
 ## Commands
 
 ```sh
-# Dump the AST
-./toyc example.toy --emit=ast
-
-# Dump raw MLIR (no optimization)
-./toyc example.toy --emit=mlir
-
 # Dump MLIR after inline → shape inference → canonicalize
 ./toyc example.toy --emit=mlir --opt
 ```
+
+`--emit=ast`, `--emit=mlir` without `--opt`, and `.mlir` input work as in Ch3.
 
 ## What is written with the DSL
 
 | Part | Written with | Why |
 |---|---|---|
-| The dialect, including `toy.cast` | `define-dialect` | as in Ch3 |
+| The dialect, `mlir-gen.sls`, the canonicalization patterns | `define-dialect`, `begin-mlir-code`, `define-rewrite-pattern` | as in Ch2 and Ch3 |
 | The text form of `toy.cast` | `:assembly-format` | `` $input attr-dict `:` type($input) `to` type($output) ``, as in C++; it prints `toy.cast %0 : tensor<2xf64> to tensor<*xf64>` |
 | The cast the inliner interface creates | `begin-mlir-code` inside the `materializeCallConversion` callback | the callback gets a builder; `with-current-OpBuilder` installs it |
-| Every op `mlir-gen.sls` creates | `begin-mlir-code` | as in Ch2 |
-| The canonicalization patterns | `define-rewrite-pattern` | as in Ch3 |
 | Inlining | MLIR's inliner pass (added to the `PassManager` in `toyc.sls`) | the dialect declares what the pass needs (`CallOpInterface`, a terminator trait, `DialectInlinerInterface`); no inliner is written in Scheme |
 | Shape inference | `define-rewrite-pattern` (`shape-inference.sls`), applied by the greedy rewriter | one pattern per op; the C++ pass does it with an op interface |
 
