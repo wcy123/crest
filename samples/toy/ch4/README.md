@@ -35,6 +35,63 @@ about Toy, and what the dialect has to tell them.
    what the one before made: after inlining the transpositions are in one function, so canonicalization can remove
    them. CSE merges equal ops, which is safe for ops marked `pure`.
 
+## What `--opt` does to `example.toy`
+
+Diff the output without `--opt` and with it. The lines with `-` are removed and the lines with `+` are new.
+
+```sh
+opt-diff() { diff -u --label 'without --opt' --label 'with --opt' \
+                   <(./toyc "$1" --emit=mlir) <(./toyc "$1" --emit=mlir --opt); }
+opt-diff example.toy
+```
+
+```diff
+--- without --opt
++++ with --opt
+@@ -1,19 +1,11 @@
+ module {
+-  toy.func private @multiply_transpose(%arg0: tensor<*xf64>, %arg1: tensor<*xf64>) -> tensor<*xf64> {
+-    %0 = toy.transpose(%arg1 : tensor<*xf64>) to tensor<*xf64>
+-    %1 = toy.transpose(%arg0 : tensor<*xf64>) to tensor<*xf64>
+-    %2 = toy.mul %1, %0 : tensor<*xf64>
+-    toy.return %2 : tensor<*xf64>
+-  }
+   toy.func @main() {
+     %0 = toy.constant dense<[[1.000000e+00, 2.000000e+00, 3.000000e+00], [4.000000e+00, 5.000000e+00, 6.000000e+00]]> : tensor<2x3xf64>
+-    %1 = toy.constant dense<[1.000000e+00, 2.000000e+00, 3.000000e+00, 4.000000e+00, 5.000000e+00, 6.000000e+00]> : tensor<6xf64>
+-    %2 = toy.reshape(%1 : tensor<6xf64>) to tensor<2x3xf64>
+-    %3 = toy.generic_call @multiply_transpose(%0, %2) : (tensor<2x3xf64>, tensor<2x3xf64>) -> tensor<*xf64>
+-    %4 = toy.generic_call @multiply_transpose(%2, %0) : (tensor<2x3xf64>, tensor<2x3xf64>) -> tensor<*xf64>
+-    %5 = toy.generic_call @multiply_transpose(%3, %4) : (tensor<*xf64>, tensor<*xf64>) -> tensor<*xf64>
+-    %6 = toy.generic_call @multiply_transpose(%0, %3) : (tensor<2x3xf64>, tensor<*xf64>) -> tensor<*xf64>
+-    toy.print %6 : tensor<*xf64>
++    %1 = toy.transpose(%0 : tensor<2x3xf64>) to tensor<3x2xf64>
++    %2 = toy.mul %1, %1 : tensor<3x2xf64>
++    %3 = toy.transpose(%2 : tensor<3x2xf64>) to tensor<2x3xf64>
++    %4 = toy.mul %1, %3 : (tensor<3x2xf64>, tensor<2x3xf64>) -> tensor<3x2xf64>
++    toy.print %4 : tensor<3x2xf64>
+     toy.return
+   }
+ }
+```
+
+- `multiply_transpose` and the four `toy.generic_call` ops are gone: the inliner found the calls through
+  `CallOpInterface`, asked the dialect whether to inline, and copied the body into `main` (points 1 and 2).
+- Every type is ranked, `tensor<3x2xf64>` and not `tensor<*xf64>`: shape inference (point 4).
+- No `toy.cast` is left (point 3). The next table shows it.
+- The flat constant and its reshape became a `tensor<2x3xf64>` constant equal to `a`, and CSE merged the two.
+
+### Take one pass out
+
+Delete one line of `%%run-opt-pipeline!` in `toyc.sls` and run `./toyc example.toy --emit=mlir --opt` again:
+
+| Line removed | What you see |
+|---|---|
+| `(mlir::createInlinerPass)` | `error: Shape inference failed, 3 operations couldn't be inferred`, then `Optimization pipeline failed`: the calls and the unranked function are still there, so there is nothing to infer from (point 5) |
+| `(toy:shape-inference-pass)` | the cast of the inliner stays, and so do the unranked types (points 3 and 4):<br>`%1 = toy.cast %0 : tensor<2x3xf64> to tensor<*xf64>` |
+| `(mlir::createCSEPass)` | two equal `tensor<2x3xf64>` constants, and a `toy.transpose` of each, stay |
+| `(mlir::createCanonicalizerPass)` | the same output: this program does not need it |
+
 ## What's new over Ch3
 
 | Feature | Ch3 | Ch4 |
