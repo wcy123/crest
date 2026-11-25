@@ -177,83 +177,15 @@ a reshape of it) or the result of a reshape (`ReshapeReshapeOpt` removes it), so
 > single `tensor<2x3xf64>` constant. `SimplifyRedundantTranspose` does not fire
 > because the transpositions inside `multiply_transpose` are not nested.
 
-## Inspecting macro expansions
+## The expansion of the dialect
 
-`tools/debug-define-dialect` pretty-prints what `define-dialect` expands to.
-It is useful for understanding what the DSL generates and for debugging macro
-issues.
+`define-dialect` expands as [Ch2](../ch2/README.md#inspecting-macro-expansions) shows. What Ch3 adds to it is the
+`:get-canonicalization-patterns` clause of `toy.transpose` and `toy.reshape` in `toy.sls`: in the expansion it is a
+function of `patterns` in the callbacks of the op, which calls `toy:add-transpose-canonicalization-patterns!` or
+`toy:add-reshape-canonicalization-patterns!` of `combine.sls`.
 
 ```sh
-# From the repository root — expand define-dialect in toy.sls
-# (CREST_BUILD_DIR says where crest-opt is, or crest-opt is on PATH)
-tools/debug-define-dialect samples/toy/ch3/toy.sls
-
-# Save to a file
-tools/debug-define-dialect samples/toy/ch3/toy.sls > /tmp/toy3.sls
-```
-
-### Key structures in the expanded output
-
-`define-dialect toy` expands to a `begin` containing:
-
-**`%%toy.func:interfaces`** — the pairs of the `:interfaces` entries of `toy.func`, made once when the library is
-loaded. `mlir::SymbolOpInterface`, `mlir::ArgAndResultAttrsOpInterface`, `mlir::CallableOpInterface` and
-`mlir::FunctionOpInterface` are macros of `(mlir IR SymbolInterfaces)`, `(mlir Interfaces CallInterfaces)` and
-`(mlir Interfaces FunctionInterfaces)`: each makes a C function (a `foreign-callable`) for each method and answers the
-pair of the interface's `TypeID` and a dispatcher of them. MLIR has no default for the methods of
-`CallableOpInterface` and `FunctionOpInterface`, as in C++ the op class gives them, so `toy.func` gives them as
-clauses; for `SymbolOpInterface` MLIR has one for each method (the `sym_name` attribute and the others), and
-`(mlir::ArgAndResultAttrsOpInterface :standard)` keeps the `arg_attrs` and `res_attrs` attributes:
-
-```scheme
-(define %%toy.func:interfaces
-  (list (mlir::SymbolOpInterface)
-        (mlir::ArgAndResultAttrsOpInterface :standard)
-        (mlir::CallableOpInterface
-         (getCallableRegion (self) (mlir::Operation::getRegion self 0))
-         (getArgumentTypes (self)
-           (mlir::FunctionType::getInputs
-            (mlir::TypeAttr::getValue
-             (mlir::Operation::getAttr self "function_type"))))
-         (getResultTypes (self)
-           (mlir::FunctionType::getResults
-            (mlir::TypeAttr::getValue
-             (mlir::Operation::getAttr self "function_type")))))
-        (mlir::FunctionOpInterface
-         (getFunctionType (self)
-           (mlir::TypeAttr::getValue
-            (mlir::Operation::getAttr self "function_type")))
-         (setFunctionTypeAttr (self attr)
-           (mlir::Operation::setAttr! self "function_type" attr)))))
-```
-
-**`%%toy:initialize`** — called at dialect registration time; registers every
-op via `%crest::register-dynamic-op!`, which installs the interfaces of the op in its definition:
-
-```scheme
-(define (%%toy:initialize dialect-ptr)
-  (%crest::register-dynamic-op! dialect-ptr "toy.constant" ...)
-  ...
-  (%crest::register-dynamic-op! dialect-ptr "toy.func"
-                                %%toy.func:op-callbacks %%toy.func:interfaces)
-  ...)
-```
-
-**`toy`** — the dialect descriptor vector passed to CREST's dialect registry:
-
-```scheme
-(define toy
-  (vector %%toy:initialize #f #f #f #f #f #f #f #f #f #f))
-```
-
-**Accessor predicates and field getters** — one `?` predicate and one getter
-per operand/attribute/result for every op, e.g.:
-
-```scheme
-(define (toy.constant? op)
-  (string=? (mlir::Operation::getName op) "toy.constant"))
-(define (toy.constant:value op) (mlir::Operation::getAttr op "value"))
-(define (toy.constant:output op) (mlir::Operation::getResult op 0))
+tools/debug-define-dialect samples/toy/ch3/toy.sls | grep -n canonicalization
 ```
 
 ## What is written with the DSL
