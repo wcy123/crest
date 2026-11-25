@@ -48,9 +48,9 @@ and the `scheme-mlir` on `PATH` otherwise.
 
 ## Examples of the rules
 
-`example.toy` only shows `FoldConstantReshape`. The two programs below are the ones of the C++ tutorial
-(`mlir/test/Examples/Toy/Ch3/`), and `test/toy/ch3/redundant-transpose.mlir` and
-`test/toy/ch3/trivial-reshape.mlir` check them.
+`example.toy` only shows `FoldConstantReshape`. The first two programs below are the ones of the C++ tutorial
+(`mlir/test/Examples/Toy/Ch3/`); `reshape_reshape.toy` is new. Each program has a copy in `test/toy/ch3/`, and a
+test of the same area checks its output without and with `--opt`.
 
 ### `transpose_transpose.toy`
 
@@ -95,12 +95,44 @@ module {
 Without `--opt` there is a flat `tensor<2xf64>` constant and three `toy.reshape` ops, one for each `var`. The
 reshape rules leave one constant of type `tensor<2x1xf64>`.
 
+### `reshape_reshape.toy`
+
+```sh
+./toyc reshape_reshape.toy --emit=mlir --opt
+```
+
+```mlir
+module {
+  toy.func @reshape_reshape(%arg0: tensor<*xf64>) -> tensor<*xf64> {
+    %0 = toy.reshape(%arg0 : tensor<*xf64>) to tensor<3x2xf64>
+    toy.return %0 : tensor<3x2xf64>
+  }
+  toy.func @main() {
+    %0 = toy.constant dense<[[1.000000e+00, 2.000000e+00, 3.000000e+00], [4.000000e+00, 5.000000e+00, 6.000000e+00]]> : tensor<2x3xf64>
+    %1 = toy.generic_call @reshape_reshape(%0) : (tensor<2x3xf64>) -> tensor<*xf64>
+    toy.print %1 : tensor<*xf64>
+    toy.return
+  }
+}
+```
+
+Without `--opt` the function has two reshapes, `tensor<*xf64>` to `2x3` to `3x2`. `ReshapeReshapeOpt` makes one
+reshape of the argument to `3x2`. The input is an argument and the shapes differ, so no other rule can do this.
+
 ### Each rule on its own
 
-In the two programs above a reshape has a constant as input, so more than one rule can remove it, and the C++
-tests are the same. `test/toy/ch3/reshape-rules.mlir` has one function for each of the four rules, written as MLIR
-text with function arguments where no other rule applies, and checks the output without and with `--opt`. Taking one
-pattern out of `combine.sls` makes the check of its function fail and no other.
+| Rule | Program | Test |
+|---|---|---|
+| `SimplifyRedundantTranspose` | `transpose_transpose.toy` | `redundant-transpose.mlir` |
+| `ReshapeReshapeOpt` | `reshape_reshape.toy` | `reshape-reshape.mlir` |
+| `RedundantReshape` | none, MLIR text only | `redundant-reshape.mlir` |
+| `FoldConstantReshape` | `trivial_reshape.toy`, `example.toy` | `trivial-reshape.mlir`, `action-mlir-opt.mlir` |
+
+Taking one pattern out of `combine.sls` makes the tests of its row fail and no other.
+
+`RedundantReshape` has no Toy program. In Toy a value with a known shape is a constant (`FoldConstantReshape` removes
+a reshape of it) or the result of a reshape (`ReshapeReshapeOpt` removes it), so another rule always does the work.
+`redundant-reshape.mlir` is MLIR text, where the input of the reshape is an argument with the same type.
 
 > **Note:** Ch3 does not inline function calls — `main` emits `toy.generic_call`
 > ops and `multiply_transpose` remains a separate function. Inlining is added in

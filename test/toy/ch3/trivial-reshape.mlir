@@ -2,8 +2,8 @@
 // constant is folded into the constant (FoldConstantReshape), as in the C++ test
 // mlir/test/Examples/Toy/Ch3/trivial_reshape.toy: three reshapes and a flat constant become one constant.
 //
-// RUN: %scheme-mlir %samples/toy/ch3/toyc.sls %samples/toy/ch3/trivial_reshape.toy --emit=mlir | FileCheck %s --check-prefix=RAW
-// RUN: %scheme-mlir %samples/toy/ch3/toyc.sls %samples/toy/ch3/trivial_reshape.toy --emit=mlir --opt | FileCheck %s --check-prefix=OPT
+// RUN: %scheme-mlir %samples/toy/ch3/toyc.sls %S/trivial_reshape.toy --emit=mlir | FileCheck %s --check-prefix=RAW
+// RUN: %scheme-mlir %samples/toy/ch3/toyc.sls %S/trivial_reshape.toy --emit=mlir --opt | FileCheck %s --check-prefix=OPT
 
 // RAW-LABEL: toy.func @main() {
 // RAW-NEXT:    %[[C:[a-zA-Z0-9_]+]] = toy.constant dense<[1.000000e+00, 2.000000e+00]> : tensor<2xf64>

@@ -2,8 +2,8 @@
 // mlir/test/Examples/Toy/Ch3/transpose_transpose.toy. The reshape that MLIRGen writes for
 // `var a<2, 3>` has the type of its input and is removed too (RedundantReshape).
 //
-// RUN: %scheme-mlir %samples/toy/ch3/toyc.sls %samples/toy/ch3/transpose_transpose.toy --emit=mlir | FileCheck %s --check-prefix=RAW
-// RUN: %scheme-mlir %samples/toy/ch3/toyc.sls %samples/toy/ch3/transpose_transpose.toy --emit=mlir --opt | FileCheck %s --check-prefix=OPT
+// RUN: %scheme-mlir %samples/toy/ch3/toyc.sls %S/transpose_transpose.toy --emit=mlir | FileCheck %s --check-prefix=RAW
+// RUN: %scheme-mlir %samples/toy/ch3/toyc.sls %S/transpose_transpose.toy --emit=mlir --opt | FileCheck %s --check-prefix=OPT
 
 // RAW-LABEL: toy.func @transpose_transpose(%arg0: tensor<*xf64>) -> tensor<*xf64> {
 // RAW-NEXT:    %[[T0:[a-zA-Z0-9_]+]] = toy.transpose(%arg0 : tensor<*xf64>) to tensor<*xf64>
