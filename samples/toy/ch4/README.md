@@ -254,7 +254,292 @@ Three steps run in order when `--opt` is passed:
 | The text form of `toy.cast` | `:assembly-format` | `` $input attr-dict `:` type($input) `to` type($output) ``, as in C++; it prints `toy.cast %0 : tensor<2xf64> to tensor<*xf64>` |
 | The cast the inliner interface creates | `begin-mlir-code` inside the `materializeCallConversion` callback | the callback gets a builder; `with-current-OpBuilder` installs it |
 | Inlining | MLIR's inliner pass (added to the `PassManager` in `toyc.sls`) | the dialect declares what the pass needs (`CallOpInterface`, a terminator trait, `DialectInlinerInterface`); no inliner is written in Scheme |
-| Shape inference | `define-rewrite-pattern` (`shape-inference.sls`), applied by the greedy rewriter | one pattern per op; the C++ pass does it with an op interface |
+| Shape inference | `define-rewrite-pattern` (`shape-inference.sls`), applied by the greedy rewriter | one pattern per op; the C++ pass does it with an op interface; see [Why shape inference is written as patterns](#why-shape-inference-is-written-as-patterns) |
+
+## Why shape inference is written as patterns
+
+The C++ tutorial writes shape inference as a method of each op, `inferShapes`, behind an op interface, and a pass with
+its own worklist that calls the method (`ShapeInferenceInterface.td`, `Dialect.cpp`, `ShapeInferencePass.cpp`). Its
+reason is stated in the tutorial: express a transformation as generically as possible, so that other dialects can use it.
+`shape-inference.sls` writes the same as one rewrite pattern for each op, and MLIR's greedy rewriter is the worklist.
+Here they are, op to op. The titles of the tables are permalinks, with the lines of the code: the C++ files at the commit
+of LLVM they were taken from (`392dfff97d29`), and `shape-inference.sls` at the commit `2505012c4bec` of this repository. A later
+change to `shape-inference.sls` does not move them.
+
+### `toy.add`
+
+<table>
+<tr><th><a href="https://github.com/llvm/llvm-project/blob/392dfff97d29b59d77e5cac6d4b6ef2585fe7117/mlir/examples/toy/Ch4/mlir/Dialect.cpp#L254">C++ (<code>Dialect.cpp</code>, L254)</a></th><th><a href="https://github.com/wcy123/crest/blob/2505012c4bec4947a32e74c02d2873f1b7780e6a/samples/toy/ch4/shape-inference.sls#L37-L45">CREST DSL (<code>shape-inference.sls</code>, L37-L45)</a></th></tr>
+<tr><td>
+
+```cpp
+void AddOp::inferShapes() { getResult().setType(getLhs().getType()); }
+```
+
+</td><td>
+
+```scheme
+(define-rewrite-pattern (%%infer-add op rewriter)
+  :if-match
+    %sum = toy.add (%lhs %rhs)
+      :where (and (%%ranked? %lhs) (%%ranked? %rhs) (not (%%ranked? %sum)))
+  :then-let
+    ([!type (mlir::Value::getType %lhs)]
+     [loc   (mlir::Operation::getLoc op)])
+  :rewrite %sum :with
+    result = toy.add (%lhs %rhs) :loc loc -> !type)
+```
+
+</td></tr>
+</table>
+
+The C++ method sets the type of the result in place, and nothing in it says when it may run: the pass decides that. The
+DSL pattern says it. It applies to a `toy.add` whose operands are ranked and whose result is not (`:where`), and its
+rewrite is the same op with the type of the left operand.
+
+### `toy.mul`
+
+<table>
+<tr><th><a href="https://github.com/llvm/llvm-project/blob/392dfff97d29b59d77e5cac6d4b6ef2585fe7117/mlir/examples/toy/Ch4/mlir/Dialect.cpp#L369">C++ (<code>Dialect.cpp</code>, L369)</a></th><th><a href="https://github.com/wcy123/crest/blob/2505012c4bec4947a32e74c02d2873f1b7780e6a/samples/toy/ch4/shape-inference.sls#L47-L55">CREST DSL (<code>shape-inference.sls</code>, L47-L55)</a></th></tr>
+<tr><td>
+
+```cpp
+void MulOp::inferShapes() { getResult().setType(getLhs().getType()); }
+```
+
+</td><td>
+
+```scheme
+(define-rewrite-pattern (%%infer-mul op rewriter)
+  :if-match
+    %product = toy.mul (%lhs %rhs)
+      :where (and (%%ranked? %lhs) (%%ranked? %rhs) (not (%%ranked? %product)))
+  :then-let
+    ([!type (mlir::Value::getType %lhs)]
+     [loc   (mlir::Operation::getLoc op)])
+  :rewrite %product :with
+    result = toy.mul (%lhs %rhs) :loc loc -> !type)
+```
+
+</td></tr>
+</table>
+
+The same as `toy.add`.
+
+### `toy.cast`
+
+<table>
+<tr><th><a href="https://github.com/llvm/llvm-project/blob/392dfff97d29b59d77e5cac6d4b6ef2585fe7117/mlir/examples/toy/Ch4/mlir/Dialect.cpp#L262">C++ (<code>Dialect.cpp</code>, L262)</a></th><th><a href="https://github.com/wcy123/crest/blob/2505012c4bec4947a32e74c02d2873f1b7780e6a/samples/toy/ch4/shape-inference.sls#L57-L65">CREST DSL (<code>shape-inference.sls</code>, L57-L65)</a></th></tr>
+<tr><td>
+
+```cpp
+void CastOp::inferShapes() { getResult().setType(getInput().getType()); }
+```
+
+</td><td>
+
+```scheme
+(define-rewrite-pattern (%%infer-cast op rewriter)
+  :if-match
+    %out = toy.cast (%in)
+      :where (and (%%ranked? %in) (not (%%ranked? %out)))
+  :then-let
+    ([!type (mlir::Value::getType %in)]
+     [loc   (mlir::Operation::getLoc op)])
+  :rewrite %out :with
+    result = toy.cast (%in) :loc loc -> !type)
+```
+
+</td></tr>
+</table>
+
+The cast gets the type of its input. After that it maps a type to the same type, and its folder removes it. The C++
+tutorial gives the cast `CastOpInterface`, which folds identity casts. In this pipeline the removal already happens in
+the shape inference pass: the greedy rewriter that applies the patterns also folds. With the folder of the cast taken
+out, the casts stay after shape inference.
+
+### `toy.transpose`
+
+<table>
+<tr><th><a href="https://github.com/llvm/llvm-project/blob/392dfff97d29b59d77e5cac6d4b6ef2585fe7117/mlir/examples/toy/Ch4/mlir/Dialect.cpp#L419-L423">C++ (<code>Dialect.cpp</code>, L419-L423)</a></th><th><a href="https://github.com/wcy123/crest/blob/2505012c4bec4947a32e74c02d2873f1b7780e6a/samples/toy/ch4/shape-inference.sls#L67-L78">CREST DSL (<code>shape-inference.sls</code>, L67-L78)</a></th></tr>
+<tr><td>
+
+```cpp
+void TransposeOp::inferShapes() {
+  auto arrayTy = llvm::cast<RankedTensorType>(getOperand().getType());
+  SmallVector<int64_t, 2> dims(llvm::reverse(arrayTy.getShape()));
+  getResult().setType(RankedTensorType::get(dims, arrayTy.getElementType()));
+}
+```
+
+</td><td>
+
+```scheme
+(define-rewrite-pattern (%%infer-transpose op rewriter)
+  :if-match
+    %out = toy.transpose (%in)
+      :where (and (%%ranked? %in) (not (%%ranked? %out)))
+  :then-let
+    ([input-type (mlir::Value::getType %in)]
+     [!type      (mlir::RankedTensorType::get
+                  (reverse (mlir::RankedTensorType::getShape input-type))
+                  (mlir::RankedTensorType::getElementType input-type))]
+     [loc        (mlir::Operation::getLoc op)])
+  :rewrite %out :with
+    result = toy.transpose (%in) :loc loc -> !type)
+```
+
+</td></tr>
+</table>
+
+The computation is the same: the shape of the input, reversed. The C++ method casts the operand type to
+`RankedTensorType`, which is only safe because the pass runs it when all operands are ranked. In the DSL the pattern
+checks it itself (`:where`), and the computation is named steps in `:then-let`.
+
+### Registering the rules
+
+<table>
+<tr><th><a href="https://github.com/llvm/llvm-project/blob/392dfff97d29b59d77e5cac6d4b6ef2585fe7117/mlir/examples/toy/Ch4/include/toy/ShapeInferenceInterface.td#L18-L28">C++, description left out (<code>ShapeInferenceInterface.td</code>, L18-L28)</a></th><th><a href="https://github.com/wcy123/crest/blob/2505012c4bec4947a32e74c02d2873f1b7780e6a/samples/toy/ch4/shape-inference.sls#L81-L85">CREST DSL (<code>shape-inference.sls</code>, L81-L85)</a></th></tr>
+<tr><td>
+
+```tablegen
+def ShapeInferenceOpInterface : OpInterface<"ShapeInference"> {
+  let methods = [
+    InterfaceMethod<"Infer and set the output shape for the current operation.",
+                    "void", "inferShapes">
+  ];
+}
+```
+
+and, in `Ops.td`, on each of the four ops (here `AddOp`):
+
+```tablegen
+def AddOp : Toy_Op<"add",
+    [Pure, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>]> {
+```
+
+</td><td>
+
+```scheme
+(define-pattern-set toy:add-shape-inference-patterns!
+  ("toy.add" %%infer-add 1)
+  ("toy.mul" %%infer-mul 1)
+  ("toy.cast" %%infer-cast 1)
+  ("toy.transpose" %%infer-transpose 1))
+```
+
+</td></tr>
+</table>
+
+In C++ the rules are one interface, and every op that can be inferred declares it (`Ops.td` has it on `AddOp`,
+`CastOp`, `MulOp` and `TransposeOp`). The pass asks each op through the interface, and an op without it is an error,
+`unable to infer shape of operation without shape inference interface`. In the DSL the rules are a table of
+(op name, pattern, benefit), and an op without a pattern stays unranked, which the check at the end of the pass reports.
+The interface puts the knowledge in the op, where any pass can ask for it. The table puts it in one library, by op name.
+
+### The pass
+
+<table>
+<tr><th><a href="https://github.com/llvm/llvm-project/blob/392dfff97d29b59d77e5cac6d4b6ef2585fe7117/mlir/examples/toy/Ch4/mlir/ShapeInferencePass.cpp#L55-L117">C++ (<code>ShapeInferencePass.cpp</code>, L55-L117)</a></th><th><a href="https://github.com/wcy123/crest/blob/2505012c4bec4947a32e74c02d2873f1b7780e6a/samples/toy/ch4/shape-inference.sls#L89-L107">CREST DSL (<code>shape-inference.sls</code>, L89-L107)</a></th></tr>
+<tr><td>
+
+```cpp
+struct ShapeInferencePass
+    : public mlir::PassWrapper<ShapeInferencePass, OperationPass<toy::FuncOp>> {
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ShapeInferencePass)
+  StringRef getArgument() const override { return "toy-shape-inference"; }
+
+  void runOnOperation() override {
+    auto f = getOperation();
+
+    llvm::SmallPtrSet<mlir::Operation *, 16> opWorklist;
+    f.walk([&](mlir::Operation *op) {
+      if (returnsDynamicShape(op))
+        opWorklist.insert(op);
+    });
+
+    while (!opWorklist.empty()) {
+      auto nextop = llvm::find_if(opWorklist, allOperandsInferred);
+      if (nextop == opWorklist.end())
+        break;
+
+      Operation *op = *nextop;
+      opWorklist.erase(op);
+
+      LDBG() << "Inferring shape for: " << *op;
+      if (auto shapeOp = dyn_cast<ShapeInference>(op)) {
+        shapeOp.inferShapes();
+      } else {
+        op->emitError("unable to infer shape of operation without shape "
+                      "inference interface");
+        return signalPassFailure();
+      }
+    }
+
+    if (!opWorklist.empty()) {
+      f.emitError("Shape inference failed, ")
+          << opWorklist.size() << " operations couldn't be inferred\n";
+      signalPassFailure();
+    }
+  }
+
+  static bool allOperandsInferred(Operation *op) {
+    return llvm::all_of(op->getOperandTypes(), [](Type operandType) {
+      return llvm::isa<RankedTensorType>(operandType);
+    });
+  }
+
+  static bool returnsDynamicShape(Operation *op) {
+    return llvm::any_of(op->getResultTypes(), [](Type resultType) {
+      return !llvm::isa<RankedTensorType>(resultType);
+    });
+  }
+};
+```
+
+</td><td>
+
+```scheme
+(define-pass (toy:shape-inference-pass func)
+  (let ([ctx (mlir::Operation::getContext func)]
+        [remaining 0])
+    (with-current-MLIRContext ctx
+      (apply-patterns func ctx :populate toy:add-shape-inference-patterns!))
+    (mlir::Operation::walk
+     func
+     (lambda (op)
+       (when (let loop ([i 0])
+               (and (< i (mlir::Operation::getNumResults op))
+                    (or (not (%%ranked? (mlir::Operation::getResult op i)))
+                        (loop (+ i 1)))))
+         (set! remaining (+ remaining 1))) mlir::WalkResult::advance))
+    (or (zero? remaining)
+        (begin
+          (mlir::Operation::emitError
+           func (string-append "Shape inference failed, " (number->string remaining)
+                               " operations couldn't be inferred\n"))
+          #f))))
+```
+
+</td></tr>
+</table>
+
+The C++ pass is the algorithm: collect the ops that return a dynamic shape, pick one whose operands are all inferred,
+ask it through the interface, repeat, and report the ones left. In the DSL `apply-patterns` runs the patterns until
+nothing changes, which is that loop, and what is left in the pass is the last step: count the ops that are still
+unranked and report them. The message is the same.
+
+### What this adds up to
+
+- **A rule is a declaration.** It says when it applies and what the op becomes. The loop and the order are not
+  written: the greedy rewriter repeats until nothing changes.
+- **The condition is in the rule.** In C++ it is two functions of the pass, `allOperandsInferred` and
+  `returnsDynamicShape`, that every op shares. Here each pattern has its own `:where`, next to the rewrite.
+- **MLIR's own machinery is reused.** The pattern infrastructure runs the rules, and its folding removes the casts that
+  became identity casts.
+- **What the interface gives that this does not:** a pass that asks any op for its result shape, whatever the dialect,
+  and the knowledge sits in the op. This chapter's patterns are specific to the four Toy ops, and a second dialect would
+  write its own patterns.
 
 ## Related Documents
 
