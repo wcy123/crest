@@ -158,25 +158,37 @@ Delete one line of `%%run-opt-pipeline!` in `toyc.sls` and run `./toyc example.t
 Ch3 showed that an op can bring its own rewrite patterns. Ch4 is the other direction: MLIR passes that know nothing
 about Toy, and what the dialect has to tell them.
 
+The links are permalinks: the Scheme files of this chapter at the commit `2505012c4bec` of this repository, and the C++ files of the LLVM Toy tutorial at the commit `392dfff97d29` of LLVM.
+
 1. **A generic pass asks through interfaces.** The inliner works on any dialect, so it does not look at `toy.*` ops.
    An op interface says what an op is: `CallOpInterface` on `toy.generic_call` (the callee and the argument operands)
    and `CallableOpInterface` on `toy.func` (the body and the types). A dialect interface says what the dialect
    allows: `DialectInlinerInterface`. They are the `:interfaces` clauses in `toy.sls`; in C++ they are
    `DeclareOpInterfaceMethods<CallOpInterface>` in `Ops.td` and `ToyInlinerInterface` in `Dialect.cpp`.
+   - Scheme: [`toy.generic_call` (`toy.sls` L302-L319)](https://github.com/wcy123/crest/blob/2505012c4bec4947a32e74c02d2873f1b7780e6a/samples/toy/ch4/toy.sls#L302-L319), [`toy.func` interfaces (`toy.sls` L324-L341)](https://github.com/wcy123/crest/blob/2505012c4bec4947a32e74c02d2873f1b7780e6a/samples/toy/ch4/toy.sls#L324-L341), [`DialectInlinerInterface` (`toy.sls` L195-L210)](https://github.com/wcy123/crest/blob/2505012c4bec4947a32e74c02d2873f1b7780e6a/samples/toy/ch4/toy.sls#L195-L210)
+   - C++: [`GenericCallOp` (`Ops.td` L198-L237)](https://github.com/llvm/llvm-project/blob/392dfff97d29b59d77e5cac6d4b6ef2585fe7117/mlir/examples/toy/Ch4/include/toy/Ops.td#L198-L237), [`ToyInlinerInterface` (`Dialect.cpp` L47-L96)](https://github.com/llvm/llvm-project/blob/392dfff97d29b59d77e5cac6d4b6ef2585fe7117/mlir/examples/toy/Ch4/mlir/Dialect.cpp#L47-L96)
 2. **Inlining can make a type mismatch, and the dialect repairs it.** The callee takes `tensor<*xf64>` and the caller
    passes a ranked tensor. The inliner calls `materializeCallConversion`, which creates a `toy.cast`, and
    `handleTerminator`, which replaces the results of the call by the operands of the cloned `toy.return`.
    [inlining.md](inlining.md) walks through it.
+   - Scheme: [`handleTerminator` (`toy.sls` L199-L203)](https://github.com/wcy123/crest/blob/2505012c4bec4947a32e74c02d2873f1b7780e6a/samples/toy/ch4/toy.sls#L199-L203), [`materializeCallConversion` (`toy.sls` L205-L210)](https://github.com/wcy123/crest/blob/2505012c4bec4947a32e74c02d2873f1b7780e6a/samples/toy/ch4/toy.sls#L205-L210)
+   - C++: [`handleTerminator` (`Dialect.cpp` L76-L84)](https://github.com/llvm/llvm-project/blob/392dfff97d29b59d77e5cac6d4b6ef2585fe7117/mlir/examples/toy/Ch4/mlir/Dialect.cpp#L76-L84), [`materializeCallConversion` (`Dialect.cpp` L91-L95)](https://github.com/llvm/llvm-project/blob/392dfff97d29b59d77e5cac6d4b6ef2585fe7117/mlir/examples/toy/Ch4/mlir/Dialect.cpp#L91-L95)
 3. **An op can exist only to bridge one step of a pipeline.** `toy.cast` has the traits `pure` and
    `same-operands-and-result-shape`. When shape inference has given the types, the cast changes nothing, and its folder
    (`:fold`) removes it.
+   - Scheme: [`toy.cast` (`toy.sls` L289-L300)](https://github.com/wcy123/crest/blob/2505012c4bec4947a32e74c02d2873f1b7780e6a/samples/toy/ch4/toy.sls#L289-L300)
+   - C++: [`CastOp` (`Ops.td` L118-L137)](https://github.com/llvm/llvm-project/blob/392dfff97d29b59d77e5cac6d4b6ef2585fe7117/mlir/examples/toy/Ch4/include/toy/Ops.td#L118-L137)
 4. **Shape inference is a rewrite to a fixed point.** Each pattern gives an op with an unranked result a precise type
    when its operands are ranked, and the greedy rewriter repeats until nothing changes (`shape-inference.sls`). The C++
    tutorial writes the same with an op interface (`ShapeInferenceOpInterface`) and a pass with a worklist.
+   - Scheme: [the four patterns (`shape-inference.sls` L37-L78)](https://github.com/wcy123/crest/blob/2505012c4bec4947a32e74c02d2873f1b7780e6a/samples/toy/ch4/shape-inference.sls#L37-L78), [the pass (`shape-inference.sls` L89-L107)](https://github.com/wcy123/crest/blob/2505012c4bec4947a32e74c02d2873f1b7780e6a/samples/toy/ch4/shape-inference.sls#L89-L107)
+   - C++: [`ShapeInferenceOpInterface` (`ShapeInferenceInterface.td` L18-L28)](https://github.com/llvm/llvm-project/blob/392dfff97d29b59d77e5cac6d4b6ef2585fe7117/mlir/examples/toy/Ch4/include/toy/ShapeInferenceInterface.td#L18-L28), [the pass and its worklist (`ShapeInferencePass.cpp` L55-L117)](https://github.com/llvm/llvm-project/blob/392dfff97d29b59d77e5cac6d4b6ef2585fe7117/mlir/examples/toy/Ch4/mlir/ShapeInferencePass.cpp#L55-L117)
 5. **The order of the passes matters.** A `PassManager` runs the inliner on the module and the other passes nested on
    `toy.func`: inline, then shape inference, then canonicalize and CSE (`toyc.sls`; `toyc.cpp` in C++). Each pass needs
    what the one before made: after inlining the transpositions are in one function, so canonicalization can remove
    them. CSE merges equal ops, which is safe for ops marked `pure`.
+   - Scheme: [`%%run-opt-pipeline!` (`toyc.sls` L82-L90)](https://github.com/wcy123/crest/blob/2505012c4bec4947a32e74c02d2873f1b7780e6a/samples/toy/ch4/toyc.sls#L82-L90)
+   - C++: [the pipeline (`toyc.cpp` L129-L137)](https://github.com/llvm/llvm-project/blob/392dfff97d29b59d77e5cac6d4b6ef2585fe7117/mlir/examples/toy/Ch4/toyc.cpp#L129-L137)
 
 ## What's new over Ch3
 
