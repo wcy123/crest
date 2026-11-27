@@ -48,17 +48,6 @@
     (unless module-ast (%%quit 1))
     (toy:dump module-ast)))
 
-;; A pass manager nested on toy.func, as the C++ toyc builds it (pm.nest<toy::FuncOp>()); a failing pass
-;; fails toyc (exit code 4).
-(define (%%run-toy-func-passes! module-op ctx . make-passes)
-  (with-PassManager pm (ctx)
-    (let ([func-pm (mlir::PassManager::nest pm "toy.func")])
-      (for-each (lambda (make-pass) (mlir::OpPassManager::addPass func-pm (make-pass)))
-                make-passes))
-    (unless (mlir::PassManager::run! pm module-op)
-      (display "Optimization pipeline failed\n" (current-error-port))
-      (%%quit 4))))
-
 (define (%%dump-mlir filename opt?)
   (with-DialectRegistry reg ()
     (mlir::DialectRegistry::insert reg "toy" "toy/ch3/toy")
@@ -71,6 +60,17 @@
           (%%run-toy-func-passes! module-op ctx mlir::createCanonicalizerPass))
         (display (mlir::Operation::print module-op))
         (newline)))))
+
+;; A pass manager nested on toy.func, as the C++ toyc builds it (pm.nest<toy::FuncOp>()); a failing pass
+;; fails toyc (exit code 4).
+(define (%%run-toy-func-passes! module-op ctx . make-passes)
+  (with-PassManager pm (ctx)
+    (let ([func-pm (mlir::PassManager::nest pm "toy.func")])
+      (for-each (lambda (make-pass) (mlir::OpPassManager::addPass func-pm (make-pass)))
+                make-passes))
+    (unless (mlir::PassManager::run! pm module-op)
+      (display "Optimization pipeline failed\n" (current-error-port))
+      (%%quit 4))))
 
 (define (%%build-module filename ctx)
   (if (or (eq? %%input-type 'mlir)
