@@ -45,9 +45,11 @@
   ;; A PassManager runs crest::SchemePass objects. PassManager::addPass takes the address of a
   ;; crest::SchemePass object, and owns the crest::SchemePass object from then on, so each use needs a
   ;; new crest::SchemePass object. A body written in Scheme is not a crest::SchemePass object:
-  ;; crest::createSchemePass makes a crest::SchemePass object for the body. When MLIR runs the
-  ;; crest::SchemePass object, the object calls a C function with the address of the
-  ;; mlir::Operation object that the pass runs on, and the C function returns 1 (success) or 0
+  ;; crest::createSchemePass makes a crest::SchemePass object for the body. crest::SchemePass derives
+  ;; from mlir::OperationPass<>, and mlir::OperationPass<> derives from mlir::Pass
+  ;; (mlir/Pass/Pass.h), so the PassManager treats a crest::SchemePass object as an mlir::Pass object.
+  ;; When MLIR runs the crest::SchemePass object, the object calls a C function with the address of
+  ;; the mlir::Operation object that the pass runs on, and the C function returns 1 (success) or 0
   ;; (failure). That C function is the body. By hand that is three things: the C function with the
   ;; right prototype, made once and kept for good; a procedure that makes a new crest::SchemePass
   ;; object for that C function each time the procedure is called; and the name of the pass as a

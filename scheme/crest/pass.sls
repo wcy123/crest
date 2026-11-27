@@ -26,9 +26,11 @@
   ;;               mlir::Operation object that the pass runs on
   ;; @return       the address of a new crest::SchemePass object, as the address of an mlir::Pass
   ;;               object: this is what PassManager::addPass takes
-  ;; @note         crest::SchemePass (lib/Bindings/crest/SchemePass.cpp) is an mlir::OperationPass
-  ;;               that holds a copy of name and the pointer entry, and nothing else. getName returns
-  ;;               name, and cloning the crest::SchemePass object copies both.
+  ;; @note         crest::SchemePass (lib/Bindings/crest/SchemePass.cpp) derives from
+  ;;               mlir::OperationPass<>, and mlir::OperationPass<> derives from mlir::Pass
+  ;;               (mlir/Pass/Pass.h). A crest::SchemePass object holds a copy of name and the
+  ;;               pointer entry, and nothing else. getName returns name, and cloning the
+  ;;               crest::SchemePass object copies both.
   ;;               The crest::SchemePass object runs on any mlir::Operation object: the PassManager
   ;;               that the crest::SchemePass object is added to decides which (nest "toy.func" runs
   ;;               the pass on each toy.func). When the crest::SchemePass object runs on an
