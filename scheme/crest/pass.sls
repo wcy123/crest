@@ -32,7 +32,8 @@
 
 (library (crest pass)
   (export define-pass
-          define-pass-entry-point)
+          define-pass-entry-point
+          crest::createSchemePass)
   (import (rnrs)
           (for (only (chezscheme) syntax->list) expand)
           (crest callback)
@@ -60,8 +61,9 @@
   ;;   - the position of the body is read from its syntax, so an error of the body is reported where
   ;;     the body is written (define-c-callable in (crest callback) does it).
   ;;
-  ;; The pass itself is made by %crest::createSchemePass ((crest pass ffi), lib/Crest/SchemePass.cpp).
-  ;; It takes the name string and entry, the address of the C function of the body, and returns a new
+  ;; The pass itself is made by crest::createSchemePass. This library exports it under that name: it
+  ;; is %crest::createSchemePass of (crest pass ffi), which calls lib/Crest/SchemePass.cpp. It takes
+  ;; the name string and entry, the address of the C function of the body, and returns a new
   ;; mlir::Pass. That pass runs on any operation: the PassManager it is added to decides which. When
   ;; it runs, it calls entry with the address of the operation, and 0 fails the pass. Once the pass
   ;; is added, the PassManager owns it. A pass that is made and never added leaks.
@@ -82,7 +84,7 @@
   ;;             1
   ;;             0))
   ;;       (define (tag-functions)
-  ;;         (%crest::createSchemePass "tag-functions" entry)))
+  ;;         (crest::createSchemePass "tag-functions" entry)))
   ;;   Used (every call makes a new pass):
   ;;     (mlir::OpPassManager::addPass func-pm (tag-functions))
   (define-syntax define-pass
@@ -96,8 +98,10 @@
                (define-c-callable entry ((op uptr)) int
                  (if (let () body ...) 1 0))
                (define (name)
-                 (%crest::createSchemePass name-string entry))))]
+                 (crest::createSchemePass name-string entry))))]
         [(_ . _)
          (syntax-violation 'define-pass "expected (define-pass (name op) body ...)" stx)])))
+
+  (define crest::createSchemePass %crest::createSchemePass)
 
   ) ;; end library (crest pass)

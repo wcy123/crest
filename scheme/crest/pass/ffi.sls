@@ -5,6 +5,7 @@
           (crest support foreign))
 
   ;; %crest::createSchemePass: make a pass that runs a body written in Scheme (define-pass does it).
+  ;; (crest pass) re-exports it as crest::createSchemePass, and only that library uses this name.
   ;;
   ;; Input
   ;;   name   (string)  the name of the pass: what getName returns
