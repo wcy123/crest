@@ -45,6 +45,8 @@ and their guards and rewrites in one Scheme file, with no rebuild in development
 
 ² Through `PDLConversionConfig`, only in MLIR builds with PDL pattern-match support; see above.
 
+How PDLL and CREST each run a dialect conversion, side by side: [PDL and CREST compared](docs/pdl-vs-crest.md).
+
 For patterns DRR and PDLL cannot express, the only fallback is C++ boilerplate.
 A quantization fusion in C++:
 
