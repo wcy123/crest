@@ -41,11 +41,13 @@
 
   ;; define-pass: write a pass as its body, and let the macro do the plumbing.
   ;;
-  ;; MLIR runs a pass by calling a C function with the address of the operation, and wants 1 (success)
-  ;; or 0 (failure) back. PassManager::addPass also consumes the pass it is given, so each use needs a
-  ;; new one. By hand that is a C function with the right prototype, made once and kept for good, a
-  ;; procedure that makes a pass from it, and the name of the pass as a string. define-pass makes all
-  ;; three from the body.
+  ;; A PassManager runs mlir::Pass objects. PassManager::addPass takes the address of one, and owns it
+  ;; from then on, so each use needs a new object. A body written in Scheme is not such an object:
+  ;; crest::createSchemePass makes one. When MLIR runs that object, it calls a C function with the
+  ;; address of the operation, and wants 1 (success) or 0 (failure) back. That C function is the body.
+  ;; By hand that is three things: the C function with the right prototype, made once and kept for
+  ;; good; a procedure that makes a new mlir::Pass from it each time it is called; and the name of
+  ;; the pass as a string. define-pass makes all three from the body.
   ;;
   ;; Input
   ;;   name  the identifier to define, and the name of the pass: (name) makes a pass called "name"
@@ -61,12 +63,8 @@
   ;;   - the position of the body is read from its syntax, so an error of the body is reported where
   ;;     the body is written (define-c-callable in (crest callback) does it).
   ;;
-  ;; The pass itself is made by crest::createSchemePass. This library exports it under that name: it
-  ;; is %crest::createSchemePass of (crest pass ffi), which calls lib/Crest/SchemePass.cpp. It takes
-  ;; the name string and entry, the address of the C function of the body, and returns a new
-  ;; mlir::Pass. That pass runs on any operation: the PassManager it is added to decides which. When
-  ;; it runs, it calls entry with the address of the operation, and 0 fails the pass. Once the pass
-  ;; is added, the PassManager owns it. A pass that is made and never added leaks.
+  ;; crest::createSchemePass, the procedure that makes the mlir::Pass object, is described where this
+  ;; library defines it, below.
   ;;
   ;; Example
   ;;   Before:
