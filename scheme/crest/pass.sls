@@ -75,16 +75,11 @@
   ;;     a wrong C value.
   ;;   - the mlir::Pass object. PassManager::addPass consumes the mlir::Pass object, so (name) makes
   ;;     a new mlir::Pass object each time. All these mlir::Pass objects share the same C function.
-  ;;   - the thread that calls the C function. MLIR may run the pass on a worker thread that Scheme
-  ;;     does not know. Every C function that define-c-callable makes can be called from such a
-  ;;     thread, and the SchemePass object makes the thread known once for the whole run.
   ;; The macro also defines the hidden name entry for the C function, once for each use of define-pass,
   ;; and takes the name of the pass from the identifier name.
   ;;
-  ;; What stays with the end user: adding the mlir::Pass object to a PassManager (an mlir::Pass object
-  ;; that is never added leaks), and the threads of the body. A pass nested on func.func can run on
-  ;; several threads at the same time, so Scheme state that these runs share needs a mutex (see
-  ;; "Threads" in docs/manual.md).
+  ;; What stays with the end user: adding the mlir::Pass object to a PassManager. An mlir::Pass object
+  ;; that is never added leaks.
   ;;
   ;; crest::createSchemePass, the procedure that makes the mlir::Pass object, is described where this
   ;; library defines it, below.
