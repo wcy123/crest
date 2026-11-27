@@ -61,7 +61,7 @@
   ;;     the body is written (define-c-callable in (crest callback) does it).
   ;;
   ;; The pass itself is made by %crest::createSchemePass ((crest pass ffi), lib/Crest/SchemePass.cpp).
-  ;; It takes the name string and entry, the address of the C function of the body, and answers a new
+  ;; It takes the name string and entry, the address of the C function of the body, and returns a new
   ;; mlir::Pass. That pass runs on any operation: the PassManager it is added to decides which. When
   ;; it runs, it calls entry with the address of the operation, and 0 fails the pass. Once the pass
   ;; is added, the PassManager owns it. A pass that is made and never added leaks.
@@ -92,7 +92,7 @@
          (and (identifier? #'name) (identifier? #'op))
          (with-syntax ([name-string (symbol->string (syntax->datum #'name))])
            #'(begin
-               ;; 1 or 0 for C; an error of the body is reported at the body, and answers 0.
+               ;; 1 or 0 for C; an error of the body is reported at the body, and returns 0.
                (define-c-callable entry ((op uptr)) int
                  (if (let () body ...) 1 0))
                (define (name)
