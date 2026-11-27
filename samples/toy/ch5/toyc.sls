@@ -101,11 +101,6 @@
 ;; Optimization pipeline
 ;; ---------------------------------------------------------------------------
 
-(define (%%run-passes! pm module-op)
-  (unless (mlir::PassManager::run! pm module-op)
-    (display "Optimization pipeline failed\n" (current-error-port))
-    (%%quit 4)))
-
 ;; The pipeline of the C++ toyc, in one pass manager: the inliner, then shape inference, canonicalizer
 ;; and CSE nested on toy.func; for the lowerings the affine pass and canonicalizer + CSE (+ loop fusion
 ;; and scalar replacement with --opt) nested on func.func.
@@ -126,6 +121,11 @@
           (mlir::OpPassManager::addPass func-pm
                                         (mlir::affine::createAffineScalarReplacementPass)))))
     (%%run-passes! pm module-op)))
+
+(define (%%run-passes! pm module-op)
+  (unless (mlir::PassManager::run! pm module-op)
+    (display "Optimization pipeline failed\n" (current-error-port))
+    (%%quit 4)))
 
 ;; ---------------------------------------------------------------------------
 ;; Module loading
