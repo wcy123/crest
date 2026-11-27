@@ -2,7 +2,7 @@
 ;; Third pass — runs after an intervening MLIR canonicalize pass.
 (library (passes pass-c)
   (export pass-entry-point)
-  (import (only (crest pass) define-pass-entry-point)
+  (import (only (crest define-pass) define-pass-entry-point)
           (chezscheme)
           (mlir IR Operation))
 

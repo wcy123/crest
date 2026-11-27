@@ -9,7 +9,7 @@
         (mlir Dialect Arith IR Arith)
         (mlir Dialect SCF IR SCFOps)
         (mlir Pass PassManager)
-        (crest pass))
+        (crest define-pass))
 
 (define-pass (noop op) #t)
 

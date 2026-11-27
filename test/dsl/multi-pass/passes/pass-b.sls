@@ -3,7 +3,7 @@
 ;; Imports pass-a and calls its helper, then prints its own line.
 (library (passes pass-b)
   (export pass-entry-point)
-  (import (only (crest pass) define-pass-entry-point)
+  (import (only (crest define-pass) define-pass-entry-point)
           (chezscheme)
           (passes pass-a)
           (mlir IR Operation))

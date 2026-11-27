@@ -52,6 +52,8 @@ add_library(CrestBindings STATIC
   Dialect/Shape/IR/Shape.h
   Dialect/Tensor/IR/Tensor.cpp
   Dialect/Tensor/IR/Tensor.h
+  crest/SchemePass.cpp
+  crest/SchemePass.h
   Interfaces/CallInterfaces.cpp
   Interfaces/CallInterfaces.h
   Interfaces/InferTypeOpInterface.cpp

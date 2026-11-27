@@ -2,7 +2,7 @@
 ;; Invoked via crest-opt by the tools/expand-macro shell script.
 (library (tools expand-macro)
   (export pass-entry-point)
-  (import (only (crest pass) define-pass-entry-point)
+  (import (only (crest define-pass) define-pass-entry-point)
           (chezscheme)
           (crest dialect))
 

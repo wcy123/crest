@@ -16,7 +16,7 @@
 
 (library (passes onnx-to-hipsr)
   (export pass-entry-point)
-  (import (only (crest pass) define-pass-entry-point)
+  (import (only (crest define-pass) define-pass-entry-point)
           (only (mlir Support WalkResult) mlir::WalkResult::advance)
           (rnrs (6))
           (only (mlir IR MLIRContext) with-current-MLIRContext)

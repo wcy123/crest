@@ -11,7 +11,6 @@
 
 #include "../Crest/Dialect.h"
 #include "../Crest/Op.h"
-#include "../Crest/SchemePass.h"
 #include "../Crest/Type.h"
 
 #include "Dialect/Affine/IR/AffineOps.h"
@@ -72,6 +71,7 @@
 #include "Transforms/DialectConversion.h"
 #include "Transforms/GreedyPatternRewriteDriver.h"
 #include "Transforms/InliningUtils.h"
+#include "crest/SchemePass.h"
 
 namespace crest {
 

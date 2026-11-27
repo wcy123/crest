@@ -2,7 +2,7 @@
 ;; OpBuilder bindings.
 (library (passes builder-handle)
   (export pass-entry-point)
-  (import (only (crest pass) define-pass-entry-point)
+  (import (only (crest define-pass) define-pass-entry-point)
           (except (rnrs (6)) =)
           (only (mlir IR Value) mlir::Value::getType)
           (only (mlir IR Operation)

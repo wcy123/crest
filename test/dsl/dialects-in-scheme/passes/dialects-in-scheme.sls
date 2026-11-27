@@ -4,7 +4,7 @@
 ;; MLIRContext before runOnOperation() by querying getOrLoadDialect.
 (library (passes dialects-in-scheme)
   (export pass-entry-point)
-  (import (only (crest pass) define-pass-entry-point)
+  (import (only (crest define-pass) define-pass-entry-point)
           (chezscheme)
           (mlir IR Operation)
           (mlir IR MLIRContext))

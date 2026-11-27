@@ -1,5 +1,5 @@
 ;; Unit test for the :interfaces DSL — top-level program for scheme-mlir.
-(import (only (crest pass) define-pass-entry-point)
+(import (only (crest define-pass) define-pass-entry-point)
         (chezscheme)
         (crest support foreign)
         (crest dialect)

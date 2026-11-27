@@ -74,11 +74,6 @@
         (display (mlir::Operation::print module-op))
         (newline)))))
 
-(define (%%run-passes! pm module-op)
-  (unless (mlir::PassManager::run! pm module-op)
-    (display "Optimization pipeline failed\n" (current-error-port))
-    (%%quit 4)))
-
 (define (%%run-opt-pipeline! module-op ctx)
   ;; As the C++ toyc: the inliner, then shape inference, canonicalizer and CSE nested on toy.func.
   (with-PassManager pm (ctx)
@@ -88,6 +83,11 @@
       (mlir::OpPassManager::addPass func-pm (mlir::createCanonicalizerPass))
       (mlir::OpPassManager::addPass func-pm (mlir::createCSEPass)))
     (%%run-passes! pm module-op)))
+
+(define (%%run-passes! pm module-op)
+  (unless (mlir::PassManager::run! pm module-op)
+    (display "Optimization pipeline failed\n" (current-error-port))
+    (%%quit 4)))
 
 (define (%%build-module filename ctx)
   (if (or (eq? %%input-type 'mlir)

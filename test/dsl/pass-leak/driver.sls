@@ -4,7 +4,7 @@
         (mlir IR DialectRegistry) (mlir IR MLIRContext)
         (mlir Pass PassManager)
         (mlir Transforms Passes)
-        (crest pass))
+        (crest define-pass))
 
 (load-shared-object "libc.so.6")
 

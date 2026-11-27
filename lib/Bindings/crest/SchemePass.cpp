@@ -2,12 +2,15 @@
  * Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
  * Licensed under the MIT License.
  */
-// Passes written in Scheme — lib/Crest/SchemePass.cpp
+// Mirrors lib/Bindings/crest/SchemePass.h (CREST-specific).
+//
+// Passes written in Scheme: the class SchemePass, and the binding
+// crest::createSchemePass that makes one.
 
 #include "SchemePass.h"
-#include "../Bindings/Support/Result.h"
-#include "../Bindings/Support/SchemeWrapper.h"
-#include "CurrentContext.h"
+#include "../../Crest/CurrentContext.h"
+#include "../Support/Result.h"
+#include "../Support/SchemeWrapper.h"
 #include "mlir/Pass/Pass.h"
 #include <memory>
 #include <string>
@@ -20,7 +23,7 @@ namespace {
 // and calls the entry point of a Scheme foreign-callable int(uptr op): 0 fails
 // the pass, any other number is success. An error of the body is a diagnostic
 // at its Scheme source, in the context of the op (set below), and the callable
-// answers 0. The callable is made once for the define-pass, so every pass made
+// returns 0. The callable is made once for the define-pass, so every pass made
 // from it shares it and nothing is released.
 // A nested pass manager can run it on a worker thread of MLIR, which Scheme
 // does not know. The scope below makes the thread known for the whole run,
@@ -62,16 +65,19 @@ private:
 void registerCrestSchemePassBindings() {
   // crest::createSchemePass (string name) (uptr entry) → mlir::Pass* uptr
   //
-  // The pass manager that the pass is added to owns it
-  // (mlir::OpPassManager::addPass).
+  // LEAK WARNING: a raw mlir::Pass*. Nothing owns it until
+  // mlir::PassManager::addPass or mlir::OpPassManager::addPass takes it; the
+  // pass manager that with-PassManager makes then owns it. A pass that is made
+  // and never added leaks.
   //
-  // `entry` is the entry point of the foreign-callable that define-pass made,
-  // once, for the body of the pass.
+  // `entry` is the C function that define-pass made, once, for the body of the
+  // pass (Rule 17: Scheme makes the callback, this binding only keeps the
+  // pointer and the pass calls it).
   Sregister_symbol(
       "crest::createSchemePass",
-      (void*)+[](const char* name, uint64_t entry) -> ptr {
-        return Sunsigned64(reinterpret_cast<uint64_t>(static_cast<mlir::Pass*>(
-            new SchemePass(name, reinterpret_cast<int (*)(uint64_t)>(entry)))));
+      (void*)+[](const char* name, int (*entry)(uint64_t op)) -> ptr {
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            static_cast<mlir::Pass*>(new SchemePass(name, entry))));
       });
 }
 

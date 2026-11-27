@@ -3,7 +3,7 @@
 ;; C++, while the inner one runs.
 (library (passes walk-nested)
   (export pass-entry-point)
-  (import (only (crest pass) define-pass-entry-point)
+  (import (only (crest define-pass) define-pass-entry-point)
           (only (mlir Support WalkResult) mlir::WalkResult::advance)
           (rnrs)
           (only (mlir IR Operation)
