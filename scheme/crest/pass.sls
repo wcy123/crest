@@ -102,6 +102,22 @@
         [(_ . _)
          (syntax-violation 'define-pass "expected (define-pass (name op) body ...)" stx)])))
 
+  ;; @brief crest::createSchemePass — make a pass that runs the body of a define-pass.
+  ;; @param name   the name of the pass, a string: what getName returns
+  ;; @param entry  the address of the C function that define-pass made for the body, int (uptr op).
+  ;;               The pass calls it with the address of the operation that it runs on
+  ;; @return       the address of a new mlir::Pass
+  ;; @note         LEAK WARNING: nothing owns the pass until mlir::PassManager::addPass or
+  ;;               mlir::OpPassManager::addPass takes it. Then the PassManager, made by
+  ;;               with-PassManager, owns it. A pass that is made and never added leaks.
+  ;;               The pass runs on any operation: the PassManager it is added to decides which.
+  ;;               When entry returns 0 the pass fails, and any other number is success.
+  ;;               This is the raw binding %crest::createSchemePass of (crest pass ffi), exported
+  ;;               here without the %. define-pass calls it each time (name) is called; call it
+  ;;               directly only to make a pass from a C function that is not made by define-pass.
+  ;; @example
+  ;;   (define-c-callable entry ((op uptr)) int 1)
+  ;;   (mlir::PassManager::addPass pm (crest::createSchemePass "always-ok" entry))
   (define crest::createSchemePass %crest::createSchemePass)
 
   ) ;; end library (crest pass)
