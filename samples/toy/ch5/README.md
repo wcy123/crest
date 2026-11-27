@@ -4,6 +4,33 @@ Ch5 adds `--emit=mlir-affine`, which partially lowers the Toy dialect to a combi
 and `func` dialects. The lowering is MLIR's dialect conversion framework: a conversion target says what is legal, and
 conversion patterns rewrite the ops that are not. Like Ch2 to Ch4, Ch5 needs LLVM 23.
 
+## The pipeline
+
+`toyc` runs one pipeline of passes. Steps 1 to 3 are Ch4's. **Steps 4 to 7 are new in Ch5.**
+
+| Step | Pass | Runs on | What it leaves |
+|---|---|---|---|
+| 1 | MLIR's inliner | module | the calls inlined (Ch4) |
+| 2 | shape inference | `toy.func` | every type ranked (Ch4) |
+| 3 | canonicalize + CSE | `toy.func` | the Toy module that `--emit=mlir --opt` prints (Ch4) |
+| **4** | **partial lowering** (`toy:lower-to-affine-pass`) | module | `affine`, `arith`, `memref` and `func` ops, and a `toy.print` on a `memref` |
+| **5** | **canonicalize + CSE** | `func.func` | the index constants folded into the subscripts, the constants moved to the top |
+| **6** | **loop fusion** (`--opt` only) | `func.func` | one loop nest |
+| **7** | **affine scalar replacement** (`--opt` only) | `func.func` | the temporary buffers removed |
+
+Which steps run depends on the action:
+
+| Action | Steps that run |
+|---|---|
+| `--emit=mlir` | none |
+| `--emit=mlir --opt` | 1 to 3 |
+| `--emit=mlir-affine` | 1 to 5 |
+| `--emit=mlir-affine --opt` | 1 to 7 |
+
+The code is `%%run-pipeline!` in [`toyc.sls` (L112-L128)](https://github.com/wcy123/crest/blob/c75cc9c762d247a423aee0630b5e51518578121c/samples/toy/ch5/toyc.sls#L112-L128), and in C++
+[`toyc.cpp` (L137-L166)](https://github.com/llvm/llvm-project/blob/392dfff97d29b59d77e5cac6d4b6ef2585fe7117/mlir/examples/toy/Ch5/toyc.cpp#L137-L166). "Take one pass out" below shows what each step does by
+removing it.
+
 ## Try it
 
 `example.toy` is the program of Ch4: `multiply_transpose` is called four times by `main`, which prints `e`.
@@ -374,14 +401,6 @@ each loop body a `{ ^body ... }` region, `affine.load` and `affine.store` with a
 replaces its op with a value ends with that value, here the `memref.alloc`. The loop nest is
 written out, rather than built by MLIR's `buildAffineLoopNest` callback API, so the whole
 lowering reads as the IR it produces.
-
-### `--emit=mlir-affine` pipeline (`toyc.sls`)
-
-Steps 1 to 3 are Ch4's: the inliner, shape inference, and canonicalize + CSE on `toy.func`. Then:
-
-4. **Partial lowering** — `toy:lower-to-affine-pass` (a `define-pass` around one `apply-conversion`)
-5. **Canonicalize + CSE** — on `func.func` bodies
-6. **(--opt only)** Loop fusion + affine scalar replacement on `func.func`
 
 ## What is written with the DSL
 
