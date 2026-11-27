@@ -61,23 +61,13 @@
   ;;         in (let () ...), so the body can begin with definitions.
   ;;
   ;; Why define-pass exists: the body of a pass is called from C++, and C++ and Scheme do not check each
-  ;; other. A mistake at this boundary is not an error with a message: it crashes the process, or
-  ;; leaks. define-pass does the delicate parts, so the end user writes only the body:
+  ;; other. A mistake at this boundary is not an error with a message: it crashes the process.
+  ;; define-pass does the delicate parts, so the end user writes only the body:
   ;;   - the prototype of the C function. C++ calls int (*)(uint64_t op), and nothing checks that the
   ;;     Scheme side declares the same types. A mismatch crashes. define-pass declares (op uptr) int.
-  ;;   - the lifetime of the C function. The garbage collector moves Scheme objects, so the C function
-  ;;     is made once and locked for good (define-c-callable). A C function that is not locked leaves
-  ;;     C++ with a stale address.
-  ;;   - the errors of the body. An error must not leave the C function: it would cross the C++ frames
-  ;;     and skip their destructors. The C function catches the error, reports it as a diagnostic
-  ;;     with the text of the error, and returns 0 (define-c-callable does it). The diagnostic is at
-  ;;     the position of the variable op in (define-pass (name op) ...), not at the expression of the
-  ;;     body that failed: that position is not implemented yet.
   ;;   - the value of the body. #f becomes 0 and any other value becomes 1, so the body cannot return
   ;;     a wrong C value.
-  ;;   - the mlir::Pass object. PassManager::addPass consumes the mlir::Pass object, so adding the same
-  ;;     mlir::Pass object twice crashes the process: both additions own the same object. (name) makes
-  ;;     a new mlir::Pass object each time, so every use is safe.
+  ;;
   ;; The macro also defines the hidden name entry for the C function, once for each use of define-pass,
   ;; and takes the name of the pass from the identifier name.
   ;;
