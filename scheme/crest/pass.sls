@@ -73,8 +73,9 @@
   ;;     the position of the body, and returns 0 (define-c-callable does it).
   ;;   - the value of the body. #f becomes 0 and any other value becomes 1, so the body cannot return
   ;;     a wrong C value.
-  ;;   - the mlir::Pass object. PassManager::addPass consumes the mlir::Pass object, so (name) makes
-  ;;     a new mlir::Pass object each time. All these mlir::Pass objects share the same C function.
+  ;;   - the mlir::Pass object. PassManager::addPass consumes the mlir::Pass object, so adding the same
+  ;;     mlir::Pass object twice crashes the process: both additions own the same object. (name) makes
+  ;;     a new mlir::Pass object each time, so every use is safe.
   ;; The macro also defines the hidden name entry for the C function, once for each use of define-pass,
   ;; and takes the name of the pass from the identifier name.
   ;;
