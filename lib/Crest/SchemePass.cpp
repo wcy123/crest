@@ -62,16 +62,19 @@ private:
 void registerCrestSchemePassBindings() {
   // crest::createSchemePass (string name) (uptr entry) → mlir::Pass* uptr
   //
-  // The pass manager that the pass is added to owns it
-  // (mlir::OpPassManager::addPass).
+  // LEAK WARNING: a raw mlir::Pass*. Nothing owns it until
+  // mlir::PassManager::addPass or mlir::OpPassManager::addPass takes it; the
+  // pass manager that with-PassManager makes then owns it. A pass that is made
+  // and never added leaks.
   //
-  // `entry` is the entry point of the foreign-callable that define-pass made,
-  // once, for the body of the pass.
+  // `entry` is the C function that define-pass made, once, for the body of the
+  // pass (Rule 17: Scheme makes the callback, this binding only keeps the
+  // pointer and the pass calls it).
   Sregister_symbol(
       "crest::createSchemePass",
-      (void*)+[](const char* name, uint64_t entry) -> ptr {
-        return Sunsigned64(reinterpret_cast<uint64_t>(static_cast<mlir::Pass*>(
-            new SchemePass(name, reinterpret_cast<int (*)(uint64_t)>(entry)))));
+      (void*)+[](const char* name, int (*entry)(uint64_t op)) -> ptr {
+        return Sunsigned64(reinterpret_cast<uint64_t>(
+            static_cast<mlir::Pass*>(new SchemePass(name, entry))));
       });
 }
 

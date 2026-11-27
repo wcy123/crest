@@ -60,6 +60,12 @@
   ;;   - the position of the body is read from its syntax, so an error of the body is reported where
   ;;     the body is written (define-c-callable in (crest callback) does it).
   ;;
+  ;; The pass itself is made by %crest::createSchemePass ((crest pass ffi), lib/Crest/SchemePass.cpp).
+  ;; It takes the name string and entry, the address of the C function of the body, and answers a new
+  ;; mlir::Pass. That pass runs on any operation: the PassManager it is added to decides which. When
+  ;; it runs, it calls entry with the address of the operation, and 0 fails the pass. Once the pass
+  ;; is added, the PassManager owns it. A pass that is made and never added leaks.
+  ;;
   ;; Example
   ;;   Before:
   ;;     (define-pass (tag-functions op)
