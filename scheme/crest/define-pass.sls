@@ -11,10 +11,11 @@
 ;;   (define-pass (name op)
 ;;     body ...)
 ;;
-;; defines the procedure (name), which makes a new mlir::Pass object every time (name) is called
-;; (PassManager::addPass consumes an mlir::Pass object). When the pass runs, op is the address of the
-;; mlir::Operation object that the pass is anchored on (the PassManager that the mlir::Pass object is
-;; added to decides which: nest "toy.func" runs the pass on each toy.func) and body runs;
+;; defines the procedure (name), which makes a new crest::SchemePass object every time (name) is
+;; called (PassManager::addPass consumes a crest::SchemePass object). When the pass runs, op is the
+;; address of the mlir::Operation object that the pass is anchored on (the PassManager that the
+;; crest::SchemePass object is added to decides which: nest "toy.func" runs the pass on each
+;; toy.func) and body runs;
 ;; a body that returns #f fails the pass, anything else is success. A failing body should say why with
 ;; mlir::Operation::emitError first. An error that the body raises does not end the process: the pass
 ;; fails and the diagnostic has the text of the error.
@@ -41,19 +42,20 @@
 
   ;; define-pass: write a pass as its body, and let the macro do the plumbing.
   ;;
-  ;; A PassManager runs mlir::Pass objects. PassManager::addPass takes the address of an mlir::Pass
-  ;; object, and owns that mlir::Pass object from then on, so each use needs a new mlir::Pass object.
-  ;; A body written in Scheme is not an mlir::Pass object: crest::createSchemePass makes an mlir::Pass
-  ;; object for the body. When MLIR runs that mlir::Pass object, the object calls a C function with
-  ;; the address of the mlir::Operation object that the pass runs on, and the C function returns 1
-  ;; (success) or 0 (failure). That C function is the body. By hand that is three things: the C
-  ;; function with the right prototype, made once and kept for good; a procedure that makes a new
-  ;; mlir::Pass object for that C function each time the procedure is called; and the name of the
-  ;; pass as a string. define-pass makes all three from the body.
+  ;; A PassManager runs crest::SchemePass objects. PassManager::addPass takes the address of a
+  ;; crest::SchemePass object, and owns the crest::SchemePass object from then on, so each use needs a
+  ;; new crest::SchemePass object. A body written in Scheme is not a crest::SchemePass object:
+  ;; crest::createSchemePass makes a crest::SchemePass object for the body. When MLIR runs the
+  ;; crest::SchemePass object, the object calls a C function with the address of the
+  ;; mlir::Operation object that the pass runs on, and the C function returns 1 (success) or 0
+  ;; (failure). That C function is the body. By hand that is three things: the C function with the
+  ;; right prototype, made once and kept for good; a procedure that makes a new crest::SchemePass
+  ;; object for that C function each time the procedure is called; and the name of the pass as a
+  ;; string. define-pass makes all three from the body.
   ;;
   ;; Input
-  ;;   name  the identifier to define, and the name of the pass: (name) makes an mlir::Pass object
-  ;;         whose name is "name"
+  ;;   name  the identifier to define, and the name of the pass: (name) makes a crest::SchemePass
+  ;;         object whose name is "name"
   ;;   op    the variable that the body sees: the address of the mlir::Operation object that the
   ;;         pass runs on
   ;;   body  what the pass does. #f fails the pass, any other value is success. The body is wrapped
@@ -70,11 +72,11 @@
   ;; The macro also defines the hidden name entry for the C function, once for each use of define-pass,
   ;; and takes the name of the pass from the identifier name.
   ;;
-  ;; What stays with the end user: adding the mlir::Pass object to a PassManager. An mlir::Pass object
-  ;; that is never added leaks.
+  ;; What stays with the end user: adding the crest::SchemePass object to a PassManager. A
+  ;; crest::SchemePass object that is never added leaks.
   ;;
-  ;; crest::createSchemePass, the procedure that makes the mlir::Pass object, is described where
-  ;; (crest pass) defines it.
+  ;; crest::createSchemePass, the procedure that makes the crest::SchemePass object, is described
+  ;; where (crest pass) defines it.
   ;;
   ;; Example
   ;;   Before:
@@ -93,7 +95,7 @@
   ;;             0))
   ;;       (define (tag-functions)
   ;;         (crest::createSchemePass "tag-functions" entry)))
-  ;;   Used (every call of (tag-functions) makes a new mlir::Pass object):
+  ;;   Used (every call of (tag-functions) makes a new crest::SchemePass object):
   ;;     (mlir::OpPassManager::addPass func-pm (tag-functions))
   (define-syntax define-pass
     (lambda (stx)
