@@ -11,10 +11,10 @@
 ;;   (define-pass (name op)
 ;;     body ...)
 ;;
-;; defines the procedure (name), which makes a new mlir::Pass object every time it is called (a pass is
-;; consumed by PassManager::addPass). When the pass runs, op is the address of the mlir::Operation
-;; object it is anchored on (the PassManager it is added to decides which: nest "toy.func" runs it
-;; on each toy.func) and body runs;
+;; defines the procedure (name), which makes a new mlir::Pass object every time (name) is called
+;; (PassManager::addPass consumes an mlir::Pass object). When the pass runs, op is the address of the
+;; mlir::Operation object that the pass is anchored on (the PassManager that the mlir::Pass object is
+;; added to decides which: nest "toy.func" runs the pass on each toy.func) and body runs;
 ;; a body that returns #f fails the pass, anything else is success. A failing body should say why with
 ;; mlir::Operation::emitError first. An error that the body raises does not end the process: the pass
 ;; fails and the diagnostic has the text of the error.
@@ -43,28 +43,31 @@
   ;; define-pass: write a pass as its body, and let the macro do the plumbing.
   ;;
   ;; A PassManager runs mlir::Pass objects. PassManager::addPass takes the address of an mlir::Pass
-  ;; object, and owns the object from then on, so each use needs a new one. A body written in Scheme
-  ;; is not an mlir::Pass object: crest::createSchemePass makes one. When MLIR runs that object, it
-  ;; calls a C function with the address of the mlir::Operation object that the pass runs on, and
-  ;; wants 1 (success) or 0 (failure) back. That C function is the body. By hand that is three
-  ;; things: the C function with the right prototype, made once and kept for good; a procedure that
-  ;; makes a new mlir::Pass object from it each time it is called; and the name of the pass as a
-  ;; string. define-pass makes all three from the body.
+  ;; object, and owns that mlir::Pass object from then on, so each use needs a new mlir::Pass object.
+  ;; A body written in Scheme is not an mlir::Pass object: crest::createSchemePass makes an mlir::Pass
+  ;; object for the body. When MLIR runs that mlir::Pass object, the object calls a C function with
+  ;; the address of the mlir::Operation object that the pass runs on, and the C function returns 1
+  ;; (success) or 0 (failure). That C function is the body. By hand that is three things: the C
+  ;; function with the right prototype, made once and kept for good; a procedure that makes a new
+  ;; mlir::Pass object for that C function each time the procedure is called; and the name of the
+  ;; pass as a string. define-pass makes all three from the body.
   ;;
   ;; Input
-  ;;   name  the identifier to define, and the name of the pass: (name) makes a pass called "name"
+  ;;   name  the identifier to define, and the name of the pass: (name) makes an mlir::Pass object
+  ;;         whose name is "name"
   ;;   op    the variable that the body sees: the address of the mlir::Operation object that the
   ;;         pass runs on
-  ;;   body  what the pass does. #f fails the pass, any other value is success. It is wrapped in
-  ;;         (let () ...), so it can begin with definitions.
+  ;;   body  what the pass does. #f fails the pass, any other value is success. The body is wrapped
+  ;;         in (let () ...), so the body can begin with definitions.
   ;;
   ;; Why a macro, and not a procedure that takes the body:
-  ;;   - it defines names: name, and a hidden entry for the C function. Each use has its own entry,
-  ;;     so one library can hold many passes.
-  ;;   - the name of the pass is the identifier as it is written. A procedure does not know the name
-  ;;     that it is bound to.
-  ;;   - the position of the body is read from its syntax, so an error of the body is reported where
-  ;;     the body is written (define-c-callable in (crest callback) does it).
+  ;;   - the macro defines names: name, and a hidden entry for the C function. Each use of
+  ;;     define-pass has its own entry, so a library can hold many passes.
+  ;;   - the name of the pass is the identifier as it is written. A procedure does not know the
+  ;;     name that the procedure is bound to.
+  ;;   - the position of the body is read from the syntax of the body, so an error of the body is
+  ;;     reported where the body is written (define-c-callable in (crest callback) reads the
+  ;;     position).
   ;;
   ;; crest::createSchemePass, the procedure that makes the mlir::Pass object, is described where this
   ;; library defines it, below.
@@ -86,7 +89,7 @@
   ;;             0))
   ;;       (define (tag-functions)
   ;;         (crest::createSchemePass "tag-functions" entry)))
-  ;;   Used (every call makes a new pass):
+  ;;   Used (every call of (tag-functions) makes a new mlir::Pass object):
   ;;     (mlir::OpPassManager::addPass func-pm (tag-functions))
   (define-syntax define-pass
     (lambda (stx)
@@ -103,27 +106,34 @@
         [(_ . _)
          (syntax-violation 'define-pass "expected (define-pass (name op) body ...)" stx)])))
 
-  ;; @brief crest::createSchemePass — make a pass that runs the body of a define-pass.
+  ;; @brief crest::createSchemePass — make an mlir::Pass object that runs the body of a define-pass.
   ;; @param name   the name of the pass, a string: what getName returns
   ;; @param entry  the address of the C function that define-pass made for the body, int (uptr op).
-  ;;               The pass calls it with the address of the mlir::Operation object that it runs on
+  ;;               The mlir::Pass object calls that C function with the address of the
+  ;;               mlir::Operation object that the pass runs on
   ;; @return       the address of a new mlir::Pass object
-  ;; @note         It makes a new SchemePass object (lib/Crest/SchemePass.cpp), an mlir::OperationPass
-  ;;               that holds a copy of name and the pointer entry, and nothing else. getName returns
-  ;;               name, and cloning the pass copies both.
-  ;;               The pass runs on any operation: the PassManager it is added to decides which
-  ;;               (nest "toy.func" runs it on each toy.func). When it runs on an mlir::Operation
-  ;;               object, it makes the thread known to Scheme, sets the current MLIR context to the
-  ;;               context of that object, and calls entry with its address. When entry returns 0
-  ;;               the pass fails, and any other number is success.
-  ;;               It does not make entry: define-pass makes that C function once, for the body, and
-  ;;               every pass that (name) makes shares it.
-  ;;               LEAK WARNING: nothing owns the pass until mlir::PassManager::addPass or
-  ;;               mlir::OpPassManager::addPass takes it. Then the PassManager, made by
-  ;;               with-PassManager, owns it. A pass that is made and never added leaks.
-  ;;               This is the raw binding %crest::createSchemePass of (crest pass ffi), exported
-  ;;               here without the %. define-pass calls it each time (name) is called; call it
-  ;;               directly only to make a pass from a C function that is not made by define-pass.
+  ;; @note         crest::createSchemePass makes a new SchemePass object (lib/Crest/SchemePass.cpp),
+  ;;               an mlir::OperationPass that holds a copy of name and the pointer entry, and
+  ;;               nothing else. getName returns name, and cloning the SchemePass object copies
+  ;;               both.
+  ;;               The SchemePass object runs on any mlir::Operation object: the PassManager that
+  ;;               the SchemePass object is added to decides which (nest "toy.func" runs the pass on
+  ;;               each toy.func). When the SchemePass object runs on an mlir::Operation object, it
+  ;;               makes the thread known to Scheme, sets the current MLIR context to the context of
+  ;;               that mlir::Operation object, and calls entry with the address of that
+  ;;               mlir::Operation object. When entry returns 0 the pass fails, and any other number
+  ;;               is success.
+  ;;               crest::createSchemePass does not make entry: define-pass makes the C function once,
+  ;;               for the body, and every mlir::Pass object that (name) makes shares that C function.
+  ;;               LEAK WARNING: nothing owns the mlir::Pass object until
+  ;;               mlir::PassManager::addPass or mlir::OpPassManager::addPass takes the mlir::Pass
+  ;;               object. Then the PassManager, made by with-PassManager, owns the mlir::Pass
+  ;;               object. An mlir::Pass object that is made and never added leaks.
+  ;;               crest::createSchemePass is the raw binding %crest::createSchemePass of
+  ;;               (crest pass ffi), exported here without the %. define-pass calls
+  ;;               crest::createSchemePass each time (name) is called. Call crest::createSchemePass
+  ;;               directly only to make an mlir::Pass object for a C function that define-pass did
+  ;;               not make.
   ;; @example
   ;;   (define-c-callable entry ((op uptr)) int 1)
   ;;   (mlir::PassManager::addPass pm (crest::createSchemePass "always-ok" entry))
