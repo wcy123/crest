@@ -2,13 +2,11 @@
 // RUN:   | FileCheck %s
 
 // CHECK-LABEL:   Module:
-// CHECK-NEXT:     Struct: Struct @{{.*}}
+// CHECK-NEXT:     Struct: Struct @{{[^@ ]+}}example.toy:{{[0-9]+}}:{{[0-9]+}}
 // CHECK-NEXT:       Variables: [
-// CHECK-NEXT:         VarDecl a<> @{{.*}}
-// CHECK-NEXT:           <unknown expr>
-// CHECK-NEXT:         VarDecl b<> @{{.*}}
-// CHECK-NEXT:           <unknown expr>
-// CHECK-NEXT: ]
+// CHECK-NEXT:         VarDecl a<> @{{[^@ ]+}}example.toy:{{[0-9]+}}:{{[0-9]+}}
+// CHECK-NEXT:         VarDecl b<> @{{[^@ ]+}}example.toy:{{[0-9]+}}:{{[0-9]+}}
+// CHECK-NEXT:       ]
 // CHECK-NEXT:     Function
 // CHECK-NEXT:       Proto 'multiply_transpose' @{{.*}}
 // CHECK-NEXT:       Params: [value]

@@ -1,0 +1,13 @@
+def first(Pair p) {
+  return p.first;
+}
+
+struct Pair {
+  var first;
+  var second;
+}
+
+def main() {
+  Pair p = {[1, 2], [3, 4]};
+  print(first(p));
+}

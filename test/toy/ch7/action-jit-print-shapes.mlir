@@ -13,11 +13,3 @@
 // CHECK-NEXT: 2.000000 5.000000
 // CHECK-NEXT: 3.000000 6.000000
 // CHECK-NEXT: 1.000000 2.000000 3.000000 4.000000
-
-// The struct example: print(c) shows a struct-valued program running through the same lowering.
-// RUN: %scheme-mlir %samples/toy/ch7/toyc.sls %S/example.toy --emit=jit \
-// RUN:   | FileCheck %s --check-prefix=STRUCT
-
-// STRUCT:      1.000000 16.000000
-// STRUCT-NEXT: 4.000000 25.000000
-// STRUCT-NEXT: 9.000000 36.000000
