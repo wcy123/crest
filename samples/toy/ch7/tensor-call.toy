@@ -1,0 +1,8 @@
+def square(x) {
+  return x * x;
+}
+
+def main() {
+  var a = [1, 2];
+  print(square(a));
+}

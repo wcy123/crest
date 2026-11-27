@@ -1,8 +1,9 @@
 ;; Test driver for scheme-mlir: calls the two callbacks a Scheme dialect gives MLIR for creating
 ;; ops, the way MLIR's passes would, so a test can see what they create.
 ;;
-;; Usage: scheme-mlir materialize.sls <toy/chN/toy> <constant|cast> [input.mlir]
+;; Usage: scheme-mlir materialize.sls <toy/chN/toy> <constant|struct-constant|cast> [input.mlir]
 ;;   constant  Dialect::materializeConstant with a dense tensor attribute
+;;   struct-constant  Dialect::materializeConstant with an array attribute and a struct type (Ch7)
 ;;   cast      the inliner interface's materializeCallConversion on the first op's result of
 ;;             input.mlir, to the unranked tensor<*xf64>
 (import (chezscheme)
@@ -31,14 +32,22 @@
                                              (mlir::ModuleOp::create loc))
             (let* ([body    (mlir::ModuleOp::getBody module)])
               (with-OpBuilder builder (mlir::OpBuilder::atBlockEnd body)
-                (let ([op (if (string=? mode "constant")
-                              (mlir::Dialect::materializeConstant
-                               builder dialect
-                               (mlir::parseAttribute "dense<[1.0, 2.0]> : tensor<2xf64>")
-                               (%%type "tensor<2xf64>") loc)
-                              (mlir::DialectInlinerInterface::materializeCallConversion
-                               builder dialect
-                               (mlir::Operation::getResult (mlir::Block::front body) 0)
-                               (%%type "tensor<*xf64>") loc))])
+                (let ([op (cond
+                           [(string=? mode "constant")
+                            (mlir::Dialect::materializeConstant
+                             builder dialect
+                             (mlir::parseAttribute "dense<[1.0, 2.0]> : tensor<2xf64>")
+                             (%%type "tensor<2xf64>") loc)]
+                           [(string=? mode "struct-constant")
+                            (mlir::Dialect::materializeConstant
+                             builder dialect
+                             (mlir::parseAttribute
+                              "[dense<[1.0, 2.0]> : tensor<2xf64>, dense<[3.0, 4.0]> : tensor<2xf64>]")
+                             (%%type "!toy.struct<tensor<2xf64>, tensor<2xf64>>") loc)]
+                           [else
+                            (mlir::DialectInlinerInterface::materializeCallConversion
+                             builder dialect
+                             (mlir::Operation::getResult (mlir::Block::front body) 0)
+                             (%%type "tensor<*xf64>") loc)])])
                   (display (mlir::Operation::print op))
                   (newline))))))))))

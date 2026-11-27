@@ -1,0 +1,19 @@
+struct A {
+  var x;
+  var y;
+}
+
+struct B {
+  var p;
+  var q;
+}
+
+def second(B v) {
+  return v.q;
+}
+
+def main() {
+  B v = {[1, 2], [3, 4]};
+  var r = second(v);
+  print(r);
+}

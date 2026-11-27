@@ -44,6 +44,6 @@
 // CHECK-NEXT:              var: c @{{.*}}
 // CHECK-NEXT:            ]
 // CHECK-NEXT:          Print [ @{{.*}}
-// CHECK-NEXT:            var: f @{{.*}}
+// CHECK-NEXT:            var: e @{{.*}}
 // CHECK-NEXT:          ]
 // CHECK-NEXT:        } // Block
