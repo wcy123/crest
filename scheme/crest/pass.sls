@@ -69,8 +69,10 @@
   ;;     is made once and locked for good (define-c-callable). A C function that is not locked leaves
   ;;     C++ with a stale address.
   ;;   - the errors of the body. An error must not leave the C function: it would cross the C++ frames
-  ;;     and skip their destructors. The C function catches the error, reports it as a diagnostic at
-  ;;     the position of the body, and returns 0 (define-c-callable does it).
+  ;;     and skip their destructors. The C function catches the error, reports it as a diagnostic
+  ;;     with the text of the error, and returns 0 (define-c-callable does it). The diagnostic is at
+  ;;     the position of the variable op in (define-pass (name op) ...), not at the expression of the
+  ;;     body that failed: that position is not implemented yet.
   ;;   - the value of the body. #f becomes 0 and any other value becomes 1, so the body cannot return
   ;;     a wrong C value.
   ;;   - the mlir::Pass object. PassManager::addPass consumes the mlir::Pass object, so adding the same
@@ -111,7 +113,7 @@
          (and (identifier? #'name) (identifier? #'op))
          (with-syntax ([name-string (symbol->string (syntax->datum #'name))])
            #'(begin
-               ;; 1 or 0 for C; an error of the body is reported at the body, and returns 0.
+               ;; 1 or 0 for C; an error of the body is reported at the variable op, and returns 0.
                (define-c-callable entry ((op uptr)) int
                  (if (let () body ...) 1 0))
                (define (name)
