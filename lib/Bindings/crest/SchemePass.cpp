@@ -2,12 +2,15 @@
  * Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved.
  * Licensed under the MIT License.
  */
-// Passes written in Scheme — lib/Crest/SchemePass.cpp
+// Mirrors lib/Bindings/crest/SchemePass.h (CREST-specific).
+//
+// Passes written in Scheme: the class SchemePass, and the binding
+// crest::createSchemePass that makes one.
 
 #include "SchemePass.h"
-#include "../Bindings/Support/Result.h"
-#include "../Bindings/Support/SchemeWrapper.h"
-#include "CurrentContext.h"
+#include "../../Crest/CurrentContext.h"
+#include "../Support/Result.h"
+#include "../Support/SchemeWrapper.h"
 #include "mlir/Pass/Pass.h"
 #include <memory>
 #include <string>

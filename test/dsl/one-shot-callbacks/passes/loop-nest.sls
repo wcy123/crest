@@ -3,7 +3,7 @@
 ;; induction variables it got, and the loops are in the module.
 (library (passes loop-nest)
   (export pass-entry-point)
-  (import (only (crest pass) define-pass-entry-point)
+  (import (only (crest define-pass) define-pass-entry-point)
           (rnrs)
           (only (mlir IR Operation)
                 mlir::Operation::getContext

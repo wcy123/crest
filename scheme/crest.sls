@@ -168,7 +168,7 @@
           (crest affine-map)
           (crest conversion)
           (crest patterns)
-          (crest pass)
+          (crest define-pass)
           (for (crest pattern-dsl keywords) expand)
           (for (crest pattern-dsl ast) expand)
           (for (crest pattern-dsl codegen) expand)

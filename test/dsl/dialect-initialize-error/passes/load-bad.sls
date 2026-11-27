@@ -2,7 +2,7 @@
 ;; A pass that loads the dialect of bad-dialect.sls.
 (library (passes load-bad)
   (export pass-entry-point)
-  (import (only (crest pass) define-pass-entry-point)
+  (import (only (crest define-pass) define-pass-entry-point)
           (chezscheme)
           (mlir IR Operation)
           (mlir IR MLIRContext))

@@ -3,7 +3,7 @@
 ;; tensor<4xf32> is converted to tensor<?xf32>; the callback materializes tensor.cast.
 (library (passes materialization-builder)
   (export pass-entry-point)
-  (import (only (crest pass) define-pass-entry-point)
+  (import (only (crest define-pass) define-pass-entry-point)
           (rnrs)
           (only (mlir IR Operation) mlir::Operation::getContext)
           (only (mlir IR MLIRContext) with-current-MLIRContext)

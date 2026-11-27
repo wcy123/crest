@@ -3,7 +3,7 @@
 ;; error propagate to a guard outside the form.
 (library (passes with-crestobject)
   (export pass-entry-point)
-  (import (only (crest pass) define-pass-entry-point)
+  (import (only (crest define-pass) define-pass-entry-point)
           (rnrs)
           (only (crest support CrestObject) with-CrestObject)
           (only (mlir IR DialectRegistry ffi) %mlir::DialectRegistry::new))

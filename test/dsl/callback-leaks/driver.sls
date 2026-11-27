@@ -14,7 +14,7 @@
         (only (mlir Pass PassManager)
               with-PassManager mlir::PassManager::nest mlir::PassManager::addPass
               mlir::OpPassManager::addPass mlir::PassManager::run!)
-        (crest pass)
+        (crest define-pass)
         (only (crest callback) with-c-callable/lambda)
         (passes leaks))
 

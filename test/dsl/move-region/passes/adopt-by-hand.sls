@@ -4,7 +4,7 @@
 ;; its ops), as a function-like lowering does with inlineRegionBefore.
 (library (passes adopt-by-hand)
   (export pass-entry-point)
-  (import (only (crest pass) define-pass-entry-point)
+  (import (only (crest define-pass) define-pass-entry-point)
           (rnrs)
           (only (mlir IR Operation) mlir::Operation::getContext mlir::Operation::getLoc
                 mlir::Operation::getRegion)

@@ -7,7 +7,7 @@
         (mlir IR OwningOpRef) (mlir IR Operation) (mlir IR BuiltinAttributes)
         (mlir Dialect Func IR FuncOps)
         (mlir Pass PassManager)
-        (crest pass))
+        (crest define-pass))
 
 ;; Anchored where the PassManager puts it: tags each func.func with a pass number attribute.
 (define-pass (tag-functions op)
