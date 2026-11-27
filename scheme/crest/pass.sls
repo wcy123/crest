@@ -60,14 +60,26 @@
   ;;   body  what the pass does. #f fails the pass, any other value is success. The body is wrapped
   ;;         in (let () ...), so the body can begin with definitions.
   ;;
-  ;; Why a macro, and not a procedure that takes the body:
-  ;;   - the macro defines names: name, and a hidden entry for the C function. Each use of
-  ;;     define-pass has its own entry, so a library can hold many passes.
-  ;;   - the name of the pass is the identifier as it is written. A procedure does not know the
-  ;;     name that the procedure is bound to.
-  ;;   - the position of the body is read from the syntax of the body, so an error of the body is
-  ;;     reported where the body is written (define-c-callable in (crest callback) reads the
-  ;;     position).
+  ;; Why define-pass exists: the body of a pass is called from C++, and C++ and Scheme do not check each
+  ;; other. A mistake at this boundary is not an error with a message: it crashes the process, or
+  ;; leaks. define-pass does the delicate parts, so the end user writes only the body:
+  ;;   - the prototype of the C function. C++ calls int (*)(uint64_t op), and nothing checks that the
+  ;;     Scheme side declares the same types. A mismatch crashes. define-pass declares (op uptr) int.
+  ;;   - the lifetime of the C function. The garbage collector moves Scheme objects, so the C function
+  ;;     is made once and locked for good (define-c-callable). A C function that is not locked leaves
+  ;;     C++ with a stale address.
+  ;;   - the errors of the body. An error must not leave the C function: it would cross the C++ frames
+  ;;     and skip their destructors. The C function catches the error, reports it as a diagnostic at
+  ;;     the position of the body, and returns 0 (define-c-callable does it).
+  ;;   - the value of the body. #f becomes 0 and any other value becomes 1, so the body cannot return
+  ;;     a wrong C value.
+  ;;   - the mlir::Pass object. PassManager::addPass consumes the mlir::Pass object, so (name) makes
+  ;;     a new mlir::Pass object each time. All these mlir::Pass objects share the same C function.
+  ;;   - the thread. MLIR may run the pass on a worker thread that Scheme does not know. The
+  ;;     SchemePass object makes the thread known before it calls the C function, so the body can run
+  ;;     on any thread of MLIR.
+  ;; The macro also defines the hidden name entry for the C function, once for each use of define-pass,
+  ;; and takes the name of the pass from the identifier name.
   ;;
   ;; crest::createSchemePass, the procedure that makes the mlir::Pass object, is described where this
   ;; library defines it, below.
