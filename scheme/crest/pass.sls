@@ -107,11 +107,19 @@
   ;; @param entry  the address of the C function that define-pass made for the body, int (uptr op).
   ;;               The pass calls it with the address of the operation that it runs on
   ;; @return       the address of a new mlir::Pass
-  ;; @note         LEAK WARNING: nothing owns the pass until mlir::PassManager::addPass or
+  ;; @note         It makes a new SchemePass (lib/Crest/SchemePass.cpp), an mlir::OperationPass that
+  ;;               holds a copy of name and the pointer entry, and nothing else. getName returns
+  ;;               name, and cloning the pass copies both.
+  ;;               The pass runs on any operation: the PassManager it is added to decides which
+  ;;               (nest "toy.func" runs it on each toy.func). When it runs on an operation, it makes
+  ;;               the thread known to Scheme, sets the current MLIR context to the context of the
+  ;;               operation, and calls entry with the address of the operation. When entry returns 0
+  ;;               the pass fails, and any other number is success.
+  ;;               It does not make entry: define-pass makes that C function once, for the body, and
+  ;;               every pass that (name) makes shares it.
+  ;;               LEAK WARNING: nothing owns the pass until mlir::PassManager::addPass or
   ;;               mlir::OpPassManager::addPass takes it. Then the PassManager, made by
   ;;               with-PassManager, owns it. A pass that is made and never added leaks.
-  ;;               The pass runs on any operation: the PassManager it is added to decides which.
-  ;;               When entry returns 0 the pass fails, and any other number is success.
   ;;               This is the raw binding %crest::createSchemePass of (crest pass ffi), exported
   ;;               here without the %. define-pass calls it each time (name) is called; call it
   ;;               directly only to make a pass from a C function that is not made by define-pass.
