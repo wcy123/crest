@@ -282,6 +282,35 @@ and a region cannot be written. The attribute and the type are text in a string,
 for an attribute and a type, a second language inside PDLL (point 3). CREST follows the generic form in the order of the pieces
 and the braces of a region, and an attribute, a type and an operand are Scheme expressions, not text.
 
+#### What the PDL types check
+
+`!pdl.value` and `!pdl.type` in the PDL IR (`Value` and `Type` in PDLL) are kinds: a value, a type, an attribute, an operation,
+or a range of them. They are not MLIR types. Every operand of every `pdl.operation` prints as `!pdl.value`, whatever its type,
+so, unlike the generic form (`: (i32, i32) -> i1`), the PDL IR says nothing about the MLIR types. I tried four mistakes with
+`mlir-pdll`, on an op whose ODS says that its operands are signless integers of the same type and that its result is `i1`:
+
+**PDL: PDLL, with what `mlir-pdll` does**
+```pdll
+op<my.cmp>(a, type<"i32">) -> (type<"i1">)                      // error: unable to convert expression of type `Type` to the expected type of `Value`
+op<my.cmp>(a, b) -> (type<"f32">)                               // compiles, but the ODS result is I1
+op<my.cmp>(a: Value<type<"i32">>, b: Value<type<"i64">>) ...    // compiles, but the op is SameTypeOperands
+op<my.cmp>(a: Value<type<"f32">>, b: Value<type<"f32">>) ...    // compiles, but the ODS operands are AnySignlessInteger
+```
+
+So the kind is checked when `mlir-pdll` compiles the file, and the type constraints of ODS are not. A wrong MLIR type is found
+when the op is built and verified, which I did not run.
+
+CREST has no check of the kind before it runs, and checks nothing of the MLIR type either:
+
+**CREST: what `scheme-mlir` does**
+```scheme
+%c = arith.constant () (value : 42 :index) -> "not a type"                ; Scheme error when the op is built:
+                                                                           ;   invalid foreign-procedure argument ("not a type")
+%r = arith.cmpi (%a %b) (predicate : 2 :i64) -> i32                       ; built and printed, though the ODS result is i1
+```
+
+The error for a wrong kind is a Scheme error at run time, with a message about a foreign procedure, not about the op.
+
 ### 3. Regions and attributes in a created op
 
 In PDL there are no regions. `pdl.operation` has these fields and no region:
