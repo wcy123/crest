@@ -562,7 +562,7 @@ For a user:
 - A mistake in a CREST pattern is found at the first import, not at build time (README, "What you give up").
 - Edit and run needs development mode. In boot mode the `.sls` files are inside the binary and a change needs a rebuild.
 - **The merged matcher: when several patterns ask the same question about the same place in the IR, PDL asks it once. CREST asks
-  it once for each pattern.**
+  it once for each pattern. The name of the root op is the exception: MLIR settles it for both, before any pattern is tried.**
 
 A *check* is one yes-or-no question that the matcher asks about the IR while it looks for a match, for example "is the root op
 named `foo.root`?" or "does it have two operands?". A pattern matches when all its checks say yes.
@@ -572,8 +572,8 @@ named `foo.root`?" or "does it have two operands?". A pattern matches when all i
   attribute value, operand count, result count, equal-to, or a constraint written in C++. PDL merges two checks of different
   patterns when the position and the question are the same (`isSamePredicate`, `PredicateTree.cpp`). `get_operand` in the matcher
   below is not a check: it fetches the value that the next checks look at, and it is also done once for each position.
-- **In CREST** the checks of a pattern are the generated match actions (`codegen.sls`): `:check-op` (the op name and the result
-  count), `:bind-operands` and `:bind-argument-operand` (the operands are there, are not null and fit the `:optional` and
+- **In CREST** the checks of a pattern are the generated match actions (`codegen.sls`): `:check-op` (the result count, and the
+  op name once more, which MLIR's table of patterns by op name has already settled), `:bind-operands` and `:bind-argument-operand` (the operands are there, are not null and fit the `:optional` and
   `:variadic` groups, and a variable that is already bound is the same value), `:bind-result`, and `:check-where` (the Scheme
   guard that the user wrote after `:where`).
 
@@ -591,7 +591,7 @@ PDL turns them into one matcher. The checks are done once, and the tree splits o
 
 **PDL: the one matcher that MLIR builds from them (`pdl_interp`, shortened)**
 ```
-switch_operation_name of %root to ["foo.root", "foo.other"]      // the op name: once, for all four patterns
+switch_operation_name of %root to ["foo.root", "foo.other"]      // the op name: once, for all four (native patterns: the table)
   foo.root:
     switch_operand_count of %root to [2, 3]                      // the operand count: once, for P1, P2 and P3
       2: get_operand 0, is_not_null; get_operand 1, is_not_null  // the two operands: once, for P1 and P3
@@ -603,10 +603,15 @@ switch_operation_name of %root to ["foo.root", "foo.other"]      // the op name:
 
 This is the output of `mlir-pdll -x=mlir` followed by `mlir-opt -convert-pdl-to-pdl-interp`.
 
-**CREST does not share them.** MLIR still chooses the patterns of an op by the root op name they are registered with
-(`("demo.a" rename-a 1)`). After that, each pattern runs its own checks in Scheme. The generated code of a pattern compares the op
-name again, checks the result count and reads its operands from `operands-ref` (the expansion of the `toy.print` pattern shows it).
-P1 and P3 written in CREST would each do that work.
+**CREST does not share what comes after the op name.** MLIR keeps the native patterns in a table from the root op name to the
+patterns (`PatternApplicator::patterns`, a `DenseMap<OperationName, ...>`). For an op, `PatternApplicator::matchAndRewrite` looks the
+name up (`patterns.find(op->getName())`) and tries only those patterns, in the order of their benefit. The PDL matcher has no such
+table: it runs for every op, and the first switch in the matcher above plays that part. So the root op name costs nothing extra to
+a CREST pattern: it is settled before the pattern runs (the generated `:check-op` compares it once more).
+
+What a pattern then does is its own. Each CREST pattern's `matchAndRewrite` runs its checks in Scheme: the result count, reading
+its operands from `operands-ref`, the `:where` guards. P1 and P3 written in CREST would each fetch and check the two operands,
+where the PDL matcher does it once (the expansion of the `toy.print` pattern shows the generated code).
 
 ## Sharing the source of patterns
 
