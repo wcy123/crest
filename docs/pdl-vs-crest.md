@@ -269,7 +269,7 @@ scf.for (lb ub st)
 
 | | generic form | PDLL | CREST |
 |---|---|---|---|
-| operands | `(%a, %b)` | `(a, b)` | `(a b)` |
+| operands | `(%a, %b)` | `(a, b)` | `(%a %b)` |
 | attributes | `<{name = value}>` | `{name = attr<"text">}` for a constant, a bound `v`, or a native rewrite | `(name : expr)`, any expression |
 | result types | `: (operand types) -> type` | `-> (type<"i1">)`, a type written as text | `-> ty`, `ty` a Scheme variable holding any `mlir::Type` |
 | regions | `({ ^bb0(%iv: index): ... })` | none | `{ ^body ((iv : idx)) ... }` |
