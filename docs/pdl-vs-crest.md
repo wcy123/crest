@@ -12,8 +12,9 @@ What was read and run:
 - The CREST binding, `lib/Bindings/Transforms/DialectConversion.cpp`, and the CREST manual (§5 `begin-mlir-code`, the
   operand groups of `:if-match`).
 - Small PDLL files compiled with the `mlir-pdll` of the LLVM 23 install, to see what the front end accepts for operand
-  groups, attributes and regions (the section "What the match and the rewrite can say"). The patterns were compiled to PDL,
-  not run.
+  groups, attributes and regions (the section "What the match and the rewrite can say"). The PDLL patterns that the text
+  says are run (a region that is missing, three mistakes of type) were run in the Toy Ch5 build above, with the verifier
+  of MLIR deciding; the same mistakes were made in CREST and run with `scheme-mlir`.
 
 ## In short
 
@@ -130,8 +131,9 @@ and MLIR's own PDL code. **CREST** is the Scheme DSL. **MLIR** is MLIR's textual
 snippet whose lines look like `%c = arith.constant ...` is the body of a `begin-mlir-code` form, shown without the wrapper: those
 lines are op-forms of the DSL, not Scheme expressions by themselves.
 
-Four points about the language of the pattern, not about conversion. The PDL snippets were compiled with the `mlir-pdll` of
-the LLVM 23 install (compiled, not run); the CREST snippets are from `docs/manual.md` and the samples.
+Four points about the language of the pattern, not about conversion. Every PDL snippet was compiled with the `mlir-pdll` of the
+LLVM 23 install; where the text shows an error of `toyc-ch5` or of `scheme-mlir`, the pattern was also run. The CREST snippets
+are from `docs/manual.md` and the samples.
 
 ### 1. A rewrite outside a pattern
 
@@ -297,19 +299,48 @@ op<my.cmp>(a: Value<type<"i32">>, b: Value<type<"i64">>) ...    // compiles, but
 op<my.cmp>(a: Value<type<"f32">>, b: Value<type<"f32">>) ...    // compiles, but the ODS operands are AnySignlessInteger
 ```
 
-So the kind is checked when `mlir-pdll` compiles the file, and the type constraints of ODS are not. A wrong MLIR type is found
-when the op is built and verified, which I did not run.
+So the kind is checked when `mlir-pdll` compiles the file, and the type constraints of ODS are not. They are checked by the
+verifier of the op. The same three mistakes, written with `arith.cmpi` (its verifier checks the operands and the result), in a
+PDLL pattern that replaces the `toy.print` of `print.toy` in the Toy Ch5 build:
 
-CREST has no check of the kind before it runs, and checks nothing of the MLIR type either:
-
-**CREST: what `scheme-mlir` does**
-```scheme
-%c = arith.constant () (value : 42 :index) -> "not a type"                ; Scheme error when the op is built:
-                                                                           ;   invalid foreign-procedure argument ("not a type")
-%r = arith.cmpi (%a %b) (predicate : 2 :i64) -> i32                       ; built and printed, though the ODS result is i1
+**PDL: PDLL**
+```pdll
+op<arith.cmpi>(a, a) {predicate = attr<"2 : i64">} -> (type<"f32">)     // a is an i32 constant: the result must be i1
+op<arith.cmpi>(a, b) {predicate = attr<"2 : i64">} -> (type<"i1">)      // a is an i32 constant, b an i64 one
+op<arith.cmpi>(a, a) {predicate = attr<"2 : i64">} -> (type<"i1">)      // a is an f32 constant
 ```
 
-The error for a wrong kind is a Scheme error at run time, with a message about a foreign procedure, not about the op.
+**PDL: what `toyc-ch5` prints for each pattern (exit status 4)**
+```
+print.toy:3:3: error: 'arith.cmpi' op result #0 must be bool-like, but got 'f32'
+print.toy:3:3: error: 'arith.cmpi' op requires all operands to have the same type
+print.toy:3:3: error: 'arith.cmpi' op operand #0 must be signless-non-zero-bitwidth-integer-like, but got 'f32'
+```
+
+In CREST a wrong kind is a Scheme error when the op is built, and the three type mistakes are built and left to the verifier too:
+
+**CREST: a wrong kind**
+```scheme
+%c = arith.constant () (value : 42 :index) -> "not a type"     ; Scheme error: invalid foreign-procedure argument ("not a type")
+```
+
+**CREST: the same three type mistakes, then `(mlir::Operation::verify? module)`**
+```scheme
+%r = arith.cmpi (%a %a) (predicate : 2 :i64) -> f32            ; a is an i32 constant
+%r = arith.cmpi (%a %b) (predicate : 2 :i64) -> i1             ; a is an i32 constant, b an i64 one
+%r = arith.cmpi (%a %a) (predicate : 2 :i64) -> i1             ; a is an f32 constant
+```
+
+**CREST: what `scheme-mlir` prints for each (`verify?` returns `#f`)**
+```
+loc("c1.sls":29:26): error: 'arith.cmpi' op result #0 must be bool-like, but got 'f32'
+loc("c2.sls":30:26): error: 'arith.cmpi' op requires all operands to have the same type
+loc("c3.sls":29:26): error: 'arith.cmpi' op operand #0 must be signless-non-zero-bitwidth-integer-like, but got 'f32'
+```
+
+Both build the op and let the verifier judge, with the same three messages. The location differs: the PDL error is at the Toy op
+that was replaced (`print.toy:3:3`), and the CREST error is, by default, at the line of the op-form in the `.sls` file (`:loc`
+overrides it). The error for a wrong kind in CREST has a message about a foreign procedure, not about the op.
 
 ### 3. Regions and attributes in a created op
 
@@ -354,8 +385,26 @@ Pattern => replace op<my.loop>(x: Value) with BuildLoop(x);
 %3 = apply_native_rewrite "BuildLoop"(%0 : !pdl.value) : !pdl.operation
 ```
 
-I did not run a rewrite that creates an op with a missing region, so I do not know how the verifier reacts. I compiled both PDLL
-patterns with `mlir-pdll`.
+What a missing region does, run in the Toy Ch5 build: a PDLL pattern that replaces the `toy.print` of `print.toy` with an
+`affine.for` that has all its attributes and no region.
+
+**PDL: PDLL**
+```pdll
+Pattern MakeLoop with benefit(10) => replace op<toy.print>(input: Value)
+    with op<affine.for> {lowerBoundMap = attr<"affine_map<() -> (0)>">,
+                         upperBoundMap = attr<"affine_map<() -> (4)>">,
+                         step = attr<"1 : index">,
+                         operandSegmentSizes = attr<"array<i32: 0, 0, 0>">};
+```
+
+**PDL: what `toyc-ch5` prints (exit status 4)**
+```
+print.toy:3:3: error: 'affine.for' op requires one region
+print.toy:3:3: note: see current operation: "affine.for"() <{lowerBoundMap = affine_map<() -> (0)>, operandSegmentSizes = array<i32: 0, 0, 0>, step = 1 : index, upperBoundMap = affine_map<() -> (4)>}> : () -> ()
+```
+
+The pattern runs, the op is created with no region, and the verifier rejects it. The C++ function `BuildLoop` of the previous
+pattern is not part of this page.
 
 In CREST there is one brace for each region, `^label` for a block, block arguments written or computed, `:move-region` to
 keep a body:
@@ -420,8 +469,8 @@ Pattern => replace op<foo.a> {value = v: Attr} with op<foo.b> {value = ScaleAttr
 So the answer to "can PDL write an arbitrary attribute?" is yes for 2 and 3, and no for 1. An attribute that has to be built from
 values of the match, or that has no text in the dialects `mlir-pdll` loads, needs C++ (or the matched IR). A constant that is
 text has one more limit: the generated header keeps the PDL IR as text and parses it again at run time (`parseSourceString`), so
-the dialect of the attribute must be loaded in that context too. A `dense_resource<blob1>` is accepted as text, but the text
-carries only the name, not the data (I did not run what happens to it).
+the dialect of the attribute must be loaded in that context too. A `dense_resource<blob1>` is accepted: the PDL IR text parses again and prints back as
+`dense_resource<blob1> : tensor<2xf32>`, with no resource section, so no data travels with it.
 
 In CREST an attribute is any Scheme expression that returns an `mlir::Attribute`, or a shorthand. This is the Ch6 lowering:
 
@@ -456,8 +505,8 @@ op<my.dq>(x: Value, zp: Value,      rest: ValueRange)    // compiles: zp must ha
 op<my.dq>(x: Value, rest: ValueRange)                    // error: invalid number of operand groups for `my.dq`; expected 3, but got 2
 ```
 
-The bytecode finds a group in `operandSegmentSizes`, if the op has the trait; asked for a single `Value`, a group of another
-size is no match:
+The bytecode finds a group in `operandSegmentSizes`, if the op has the trait. Asked for a single `Value`, it returns a null
+pointer when the group does not have exactly one value:
 
 **PDL: MLIR's own code, `ByteCode.cpp`**
 ```cpp
@@ -513,10 +562,3 @@ For a user:
 - A mistake in a CREST pattern is found at the first import, not at build time (README, "What you give up").
 - Edit and run needs development mode. In boot mode the `.sls` files are inside the binary and a change needs a rebuild.
 - A CREST pattern is a separate native pattern for each op, so there is no shared matcher.
-
-## History
-
-PDL had no dialect conversion before LLVM 16. Commit `8c66344ee9` (2022-11-08, D133142), "Add support for DialectConversion
-with pattern configurations", added `PDLConversionConfig`, `registerConversionPDLFunctions`, the PDLL rewrites in
-`DialectConversion.pdll`, and the test `test-dialect-conversion-pdll.mlir`. The upstream docs (`DialectConversion.md`,
-`PDLL.md`) do not mention it, which is how it is easy to conclude that it is not supported.
