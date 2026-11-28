@@ -125,13 +125,17 @@ CREST uses no private MLIR API, and no change to MLIR was needed. The cost is a 
 
 ## What the match and the rewrite can say
 
+Each code block has a label above it. **PDL** is PDLL (the language of a pattern), the PDL IR that `mlir-pdll` writes from it,
+and MLIR's own PDL code. **CREST** is the Scheme DSL. **MLIR** is MLIR's textual generic form, shown as the reference.
+
 Four points about the language of the pattern, not about conversion. The PDL snippets were compiled with the `mlir-pdll` of
 the LLVM 23 install (compiled, not run); the CREST snippets are from `docs/manual.md` and the samples.
 
 ### 1. A rewrite outside a pattern
 
-**PDL**: a rewrite exists only inside a pattern.
+In PDL a rewrite exists only inside a pattern.
 
+**PDL: the definition in MLIR's `PDLOps.td`**
 ```tablegen
 // PDLOps.td
 def PDL_RewriteOp : PDL_Op<"rewrite", [
@@ -139,6 +143,7 @@ def PDL_RewriteOp : PDL_Op<"rewrite", [
      SingleBlock, AttrSizedOperandSegments, ...
 ```
 
+**PDL: PDLL, the language of a pattern**
 ```pdll
 // PDLL: a named rewrite is a function, but a pattern's rewrite section is the only caller
 Rewrite BuildFooOp(value: Value) -> Op {
@@ -152,8 +157,9 @@ Pattern {
 PDLL.md: "All PDLL rewrites must be defined within the `rewrite` section of the pattern". The code that runs a rewrite is
 `lib/Rewrite/ByteCode.h`, which is not an installed header.
 
-**CREST**: `begin-mlir-code` works wherever a builder is installed. This is the Toy front end, with no pattern anywhere:
+In CREST `begin-mlir-code` works wherever a builder is installed. This is the Toy front end, with no pattern anywhere:
 
+**CREST: the Toy front end**
 ```scheme
 (define (%%mlir-gen-literal expr)
   (let* ([loc   (%%loc (literal-expr:loc expr))]
@@ -167,6 +173,7 @@ PDLL.md: "All PDLL rewrites must be defined within the `rewrite` section of the 
 
 This is a dialect hook, called by MLIR when a fold returns an attribute (the struct case of Ch7 is left out here):
 
+**CREST: a dialect hook**
 ```scheme
 (:materialize-constant (builder value type loc)
   (with-current-OpBuilder builder
@@ -182,47 +189,63 @@ to make one. With none, `begin-mlir-code` raises `no active builder` at its firs
 
 The same op written four ways: MLIR's generic form, PDLL, the PDL IR that `mlir-pdll` writes from the PDLL, and CREST.
 
-**An op with no operand: `arith.constant`**
+#### An op with no operand: `arith.constant`
 
+**MLIR: generic form**
 ```mlir
 %c = "arith.constant"() <{value = 42 : index}> : () -> index
 ```
+
+**PDL: PDLL**
 ```pdll
 op<arith.constant> {value = attr<"42 : index">} -> (type<"index">)
 ```
+
+**CREST**
 ```scheme
 c = arith.constant () (value : 42 :index) -> idx
 ```
 
-**An op with operands and an attribute: `arith.cmpi`**
+#### An op with operands and an attribute: `arith.cmpi`
 
+**MLIR: generic form**
 ```mlir
 %r = "arith.cmpi"(%a, %b) <{predicate = 2 : i64}> : (i32, i32) -> i1
 ```
+
+**PDL: PDLL**
 ```pdll
 op<arith.cmpi>(a, b) {predicate = attr<"2 : i64">} -> (type<"i1">)
 ```
+
+**PDL: the PDL IR that `mlir-pdll` writes from the PDLL above**
 ```mlir
-// the PDL IR of the PDLL above, as mlir-pdll writes it
 %4 = attribute = 2 : i64
 %5 = type : i1
 %6 = operation "arith.cmpi"(%0, %1 : !pdl.value, !pdl.value) {"predicate" = %4} -> (%5 : !pdl.type)
 ```
+
+**CREST**
 ```scheme
 r = arith.cmpi (a b) (predicate : 2 :i64) -> bool-ty
 ```
 
-**An op with a region: `scf.for`**
+#### An op with a region: `scf.for`
 
+**MLIR: generic form**
 ```mlir
 "scf.for"(%lb, %ub, %st) ({
 ^bb0(%iv: index):
   "scf.yield"() : () -> ()
 }) : (index, index, index) -> ()
 ```
+
+**PDL: PDLL**
 ```pdll
 // no spelling: PDLL has no syntax for a region (point 3)
 ```
+
+**CREST: the Ch6 lowering of `toy.print`**
 ```scheme
 ;; from the Ch6 lowering of toy.print: Scheme code runs inside the body
 scf.for (lb ub st)
@@ -234,7 +257,7 @@ scf.for (lb ub st)
 :loc loc
 ```
 
-**What each one writes**
+#### What each one writes
 
 | | generic form | PDLL | CREST |
 |---|---|---|---|
@@ -252,8 +275,9 @@ attribute or an operand is a Scheme expression, not text.
 
 ### 3. Regions and attributes in a created op
 
-**PDL, regions**: none. `pdl.operation` has these fields and no region:
+In PDL there are no regions. `pdl.operation` has these fields and no region:
 
+**PDL: the definition in MLIR's `PDLOps.td`**
 ```tablegen
 let arguments = (ins OptionalAttr<StrAttr>:$opName,
                      Variadic<PDL_InstOrRangeOf<PDL_Value>>:$operandValues,
@@ -264,16 +288,20 @@ let arguments = (ins OptionalAttr<StrAttr>:$opName,
 
 An op that has a region in ODS compiles, and the PDL has no region for it:
 
+**PDL: PDLL**
 ```pdll
 Pattern => replace op<my.loop>(x: Value) with op<my.loop>(x);   // my.loop has `region SizedRegion<1>:$body`
 ```
+
+**PDL: the PDL IR that `mlir-pdll` writes from the PDLL above**
 ```mlir
 %3 = operation "my.loop"(%0 : !pdl.value)      // no region; the bytecode builds an OperationState without one
 ```
 
-**CREST, regions**: one brace for each region, `^label` for a block, block arguments written or computed, `:move-region` to
+In CREST there is one brace for each region, `^label` for a block, block arguments written or computed, `:move-region` to
 keep a body:
 
+**CREST**
 ```scheme
 op = scf.if (%cond)
      { a = my.compute_a (%x) -> !i32
@@ -289,13 +317,16 @@ func.func ()
 
 Limit: there is no syntax yet to branch from one block to another (`cf.br () ^exit`).
 
-**PDL, attributes**: a constant is text, parsed by `mlir-pdll` when it compiles the file.
+In PDL an attribute constant is text, parsed by `mlir-pdll` when it compiles the file.
 
+**PDL: PDLL**
 ```pdll
 op<foo.b> {value = attr<"dense<[1.0, 2.0]> : tensor<2xf64>">}        // accepted
 op<foo.b> {map   = attr<"affine_map<(d0) -> (d0)>">}                 // accepted
 op<foo.b> {linkage = attr<"#llvm.linkage<external>">}                // refused by the stock mlir-pdll:
 ```
+
+**PDL: the error of `mlir-pdll` for the last line**
 ```
 error: #"llvm"<"linkage<external>"> : 'none' attribute created with unregistered dialect. If this is intended, ...
 ```
@@ -303,8 +334,9 @@ error: #"llvm"<"linkage<external>"> : 'none' attribute created with unregistered
 An attribute of a matched op can be bound and reused (`{attr = attr: Attr}`). A value that is computed needs a native rewrite
 written in C++.
 
-**CREST, attributes**: any Scheme expression that returns an `mlir::Attribute`, and shorthands. This is the Ch6 lowering:
+In CREST an attribute is any Scheme expression that returns an `mlir::Attribute`, or a shorthand. This is the Ch6 lowering:
 
+**CREST: the Ch6 lowering**
 ```scheme
 llvm.func ()
   (sym_name : "printf" :string)
@@ -318,6 +350,7 @@ llvm.func ()
 
 The op, in ODS, with a required, an optional and a variadic operand (the shape of `hip.dequantize_linear`):
 
+**Both: the ODS definition of the op**
 ```tablegen
 def DQOp : My_Op<"dq", [AttrSizedOperandSegments]> {
   let arguments = (ins AnyType:$x, Optional<AnyType>:$zp, Variadic<AnyType>:$rest);
@@ -325,8 +358,9 @@ def DQOp : My_Op<"dq", [AttrSizedOperandSegments]> {
 }
 ```
 
-**PDL**: the groups come from the ODS definition, so the op must be known to `mlir-pdll`.
+In PDL the groups come from the ODS definition, so the op must be known to `mlir-pdll`.
 
+**PDL: PDLL**
 ```pdll
 op<my.dq>(x: Value, zp: ValueRange, rest: ValueRange)    // compiles: zp is a range of 0 or 1
 op<my.dq>(x: Value, zp: Value,      rest: ValueRange)    // compiles: zp must have exactly one value
@@ -336,6 +370,7 @@ op<my.dq>(x: Value, rest: ValueRange)                    // error: invalid numbe
 The bytecode finds a group in `operandSegmentSizes`, if the op has the trait; asked for a single `Value`, a group of another
 size is no match:
 
+**PDL: MLIR's own code, `ByteCode.cpp`**
 ```cpp
 // ByteCode.cpp, executeGetOperandsResults (attrSizedSegments is "operandSegmentSizes" for operands)
 } else if (op->hasTrait<AttrSizedSegmentsT>()) {            // needs the trait: a registered op
@@ -347,9 +382,10 @@ size is no match:
 return values.size() != 1 ? nullptr : values.front().getAsOpaquePointer();   // asked for one Value
 ```
 
-**CREST**: `(:optional ...)` and `(:variadic ...)` in the operand list. The op needs an `operandSegmentSizes` attribute, but not
+In CREST `(:optional ...)` and `(:variadic ...)` go in the operand list. The op needs an `operandSegmentSizes` attribute, but not
 a registration (the hip-fusion tests run with `-allow-unregistered-dialect`).
 
+**CREST**
 ```scheme
 %dq = hip.dequantize_linear (%ctx %x %scale (:optional %zp) %init)
 :then-let ([zp (if (unbound-value? %zp) 0 (extract-zp %zp))])      ; absent: %zp is the absent value
