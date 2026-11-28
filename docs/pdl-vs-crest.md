@@ -278,8 +278,9 @@ scf.for (lb ub st)
 
 PDLL is in the same family as the generic form: the operands in parentheses, the attributes in braces, the result types after an
 arrow. It wraps the pieces (`op<...>`, `attr<"...">`, `type<"...">`), a result is the value of a `let` and not named in the op,
-and a region cannot be written. CREST follows the generic form in the order of the pieces and the braces of a region, and an
-attribute or an operand is a Scheme expression, not text.
+and a region cannot be written. The attribute and the type are text in a string, `"42 : index"` and `"index"`: the MLIR syntax
+for an attribute and a type, a second language inside PDLL (point 3). CREST follows the generic form in the order of the pieces
+and the braces of a region, and an attribute, a type and an operand are Scheme expressions, not text.
 
 ### 3. Regions and attributes in a created op
 
@@ -334,10 +335,20 @@ op<foo.b> {map   = attr<"affine_map<(d0) -> (d0)>">}                 // accepted
 op<foo.b> {linkage = attr<"#llvm.linkage<external>">}                // refused by the stock mlir-pdll:
 ```
 
-**PDL: the error of `mlir-pdll` for the last line**
+The text in `attr<"...">` and `type<"...">` is another language inside a string: the MLIR attribute and type syntax. `mlir-pdll`
+parses it as a separate source, so a mistake in it is reported at a place inside the string (the string is the file name), not
+in the `.pdll` file:
+
+**PDL: the errors of `mlir-pdll` for a mistake inside the string**
 ```
-error: #"llvm"<"linkage<external>"> : 'none' attribute created with unregistered dialect. If this is intended, ...
+attr<"42 :: index">                 loc("42 :: index":1:5): error: expected non-function type
+attr<"#llvm.linkage<external>">     loc("#llvm.linkage<external>":1:7): error: #"llvm"<"linkage<external>"> : 'none' attribute created with unregistered dialect. If this is intended, ...
+type<"indx">                        loc("indx":1:1): error: expected non-function type
 ```
+
+After `mlir-pdll` the string is gone: the PDL IR has a real attribute (`%4 = attribute = 2 : i64`, point 2). CREST can write the same
+text, `(mlir::parseAttribute "#llvm.linkage<external>")` in the Ch6 lowering below, but that is for an attribute that has no
+shorthand: the usual form is a value, `(value : 42 :index)`.
 
 An attribute of a matched op can be bound and reused (`{attr = attr: Attr}`). A value that is computed needs a native rewrite
 written in C++.
