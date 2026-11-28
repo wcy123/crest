@@ -180,29 +180,75 @@ to make one. With none, `begin-mlir-code` raises `no active builder` at its firs
 
 ### 2. How an op is spelled
 
-The same op, `arith.constant` with an `index` value, in MLIR's generic form, in PDLL and in CREST:
+The same op written four ways: MLIR's generic form, PDLL, the PDL IR that `mlir-pdll` writes from the PDLL, and CREST.
+
+**An op with no operand: `arith.constant`**
 
 ```mlir
 %c = "arith.constant"() <{value = 42 : index}> : () -> index
 ```
-
 ```pdll
 op<arith.constant> {value = attr<"42 : index">} -> (type<"index">)
 ```
-
 ```scheme
 c = arith.constant () (value : 42 :index) -> idx
 ```
 
-PDLL is in the same family: the operands in parentheses, the attributes in braces, the result types after an arrow. It wraps the
-pieces (`op<...>`, `attr<"...">`, `type<"...">`), a result is the value of a `let` and not named in the op, and it has no region
-syntax (point 3). The IR that `mlir-pdll` writes is the `pdl` dialect, not this spelling:
+**An op with operands and an attribute: `arith.cmpi`**
 
 ```mlir
-%4 = operation "my.dq"(%0, %1, %2 : !pdl.value, !pdl.range<value>, !pdl.range<value>) -> (%3 : !pdl.range<type>)
+%r = "arith.cmpi"(%a, %b) <{predicate = 2 : i64}> : (i32, i32) -> i1
+```
+```pdll
+op<arith.cmpi>(a, b) {predicate = attr<"2 : i64">} -> (type<"i1">)
+```
+```mlir
+// the PDL IR of the PDLL above, as mlir-pdll writes it
+%4 = attribute = 2 : i64
+%5 = type : i1
+%6 = operation "arith.cmpi"(%0, %1 : !pdl.value, !pdl.value) {"predicate" = %4} -> (%5 : !pdl.type)
+```
+```scheme
+r = arith.cmpi (a b) (predicate : 2 :i64) -> bool-ty
 ```
 
-CREST writes the match with the same spelling (`:if-match`), as PDLL does.
+**An op with a region: `scf.for`**
+
+```mlir
+"scf.for"(%lb, %ub, %st) ({
+^bb0(%iv: index):
+  "scf.yield"() : () -> ()
+}) : (index, index, index) -> ()
+```
+```pdll
+// no spelling: PDLL has no syntax for a region (point 3)
+```
+```scheme
+;; from the Ch6 lowering of toy.print: Scheme code runs inside the body
+scf.for (lb ub st)
+{ ^body ((iv : idx))
+  (nest (cdr dims) (cons iv ivs))
+  (when (pair? (cdr dims))
+    (%%call-printf! loc ctx printf-ref (list nl)))
+  scf.yield () :loc loc }
+:loc loc
+```
+
+**What each one writes**
+
+| | generic form | PDLL | CREST |
+|---|---|---|---|
+| operands | `(%a, %b)` | `(a, b)` | `(a b)` |
+| attributes | `<{name = value}>` | `{name = attr<"text">}` | `(name : expr)` |
+| result types | `: (operand types) -> type` | `-> (type<"i1">)` | `-> ty` |
+| regions | `({ ^bb0(%iv: index): ... })` | none | `{ ^body ((iv : idx)) ... }` |
+| the result | `%r =` | a `let` variable | `r =` |
+| the match | not applicable | the same expression | the same spelling, in `:if-match` |
+
+PDLL is in the same family as the generic form: the operands in parentheses, the attributes in braces, the result types after an
+arrow. It wraps the pieces (`op<...>`, `attr<"...">`, `type<"...">`), a result is the value of a `let` and not named in the op,
+and a region cannot be written. CREST follows the generic form in the order of the pieces and the braces of a region, and an
+attribute or an operand is a Scheme expression, not text.
 
 ### 3. Regions and attributes in a created op
 
