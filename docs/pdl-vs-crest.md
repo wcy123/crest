@@ -203,7 +203,8 @@ op<arith.constant> {value = attr<"42 : index">} -> (type<"index">)
 
 **CREST**
 ```scheme
-c = arith.constant () (value : 42 :index) -> idx
+idx = (mlir::IndexType::get)               ; an ordinary Scheme variable, whose value is an mlir::Type
+%c  = arith.constant () (value : 42 :index) -> idx
 ```
 
 #### An op with operands and an attribute: `arith.cmpi`
@@ -227,8 +228,16 @@ op<arith.cmpi>(a, b) {predicate = attr<"2 : i64">} -> (type<"i1">)
 
 **CREST**
 ```scheme
-r = arith.cmpi (a b) (predicate : 2 :i64) -> bool-ty
+bool-ty = (mlir::IntegerType::get<i1>)     ; again a Scheme variable holding an mlir::Type
+%r      = arith.cmpi (%a %b) (predicate : 2 :i64) -> bool-ty
+
+ty = (mlir::Value::getType %a)             ; any expression that returns a type will do: here, the type of a value
+%s = arith.addi (%a %b) -> ty
 ```
+
+In `-> idx`, `idx` is not a keyword. It is a normal Scheme variable whose value is an `mlir::Type`, bound with `var = (expr)`, so
+any type can be written there: a type made by a call, the type of an existing value, a tensor type, a type that was computed
+(the manual, "Result types"). A result variable can be written with or without the `%`; the Toy samples write it without.
 
 #### An op with a region: `scf.for`
 
@@ -263,7 +272,7 @@ scf.for (lb ub st)
 |---|---|---|---|
 | operands | `(%a, %b)` | `(a, b)` | `(a b)` |
 | attributes | `<{name = value}>` | `{name = attr<"text">}` | `(name : expr)` |
-| result types | `: (operand types) -> type` | `-> (type<"i1">)` | `-> ty` |
+| result types | `: (operand types) -> type` | `-> (type<"i1">)`, a type written as text | `-> ty`, `ty` a Scheme variable holding any `mlir::Type` |
 | regions | `({ ^bb0(%iv: index): ... })` | none | `{ ^body ((iv : idx)) ... }` |
 | the result | `%r =` | a `let` variable | `r =` |
 | the match | not applicable | the same expression | the same spelling, in `:if-match` |
