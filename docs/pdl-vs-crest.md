@@ -126,7 +126,9 @@ CREST uses no private MLIR API, and no change to MLIR was needed. The cost is a 
 ## What the match and the rewrite can say
 
 Each code block has a label above it. **PDL** is PDLL (the language of a pattern), the PDL IR that `mlir-pdll` writes from it,
-and MLIR's own PDL code. **CREST** is the Scheme DSL. **MLIR** is MLIR's textual generic form, shown as the reference.
+and MLIR's own PDL code. **CREST** is the Scheme DSL. **MLIR** is MLIR's textual generic form, shown as the reference. A CREST
+snippet whose lines look like `%c = arith.constant ...` is the body of a `begin-mlir-code` form, shown without the wrapper: those
+lines are op-forms of the DSL, not Scheme expressions by themselves.
 
 Four points about the language of the pattern, not about conversion. The PDL snippets were compiled with the `mlir-pdll` of
 the LLVM 23 install (compiled, not run); the CREST snippets are from `docs/manual.md` and the samples.
@@ -203,8 +205,7 @@ op<arith.constant> {value = attr<"42 : index">} -> (type<"index">)
 
 **CREST**
 ```scheme
-idx = (mlir::IndexType::get)               ; an ordinary Scheme variable, whose value is an mlir::Type
-%c  = arith.constant () (value : 42 :index) -> idx
+%c = arith.constant () (value : 42 :index) -> idx    ; idx: a Scheme variable whose value is an mlir::Type
 ```
 
 #### An op with operands and an attribute: `arith.cmpi`
@@ -228,16 +229,14 @@ op<arith.cmpi>(a, b) {predicate = attr<"2 : i64">} -> (type<"i1">)
 
 **CREST**
 ```scheme
-bool-ty = (mlir::IntegerType::get<i1>)     ; again a Scheme variable holding an mlir::Type
-%r      = arith.cmpi (%a %b) (predicate : 2 :i64) -> bool-ty
-
-ty = (mlir::Value::getType %a)             ; any expression that returns a type will do: here, the type of a value
-%s = arith.addi (%a %b) -> ty
+%r = arith.cmpi (%a %b) (predicate : 2 :i64) -> bool-ty    ; bool-ty: a Scheme variable whose value is an mlir::Type
+%s = arith.addi (%a %b) -> ty                              ; ty: the same, e.g. the value of (mlir::Value::getType %a)
 ```
 
-In `-> idx`, `idx` is not a keyword. It is a normal Scheme variable whose value is an `mlir::Type`, bound with `var = (expr)`, so
-any type can be written there: a type made by a call, the type of an existing value, a tensor type, a type that was computed
-(the manual, "Result types"). A result variable can be written with or without the `%`; the Toy samples write it without.
+In `-> idx`, `idx` is not a keyword. It is a normal Scheme variable whose value is an `mlir::Type`, for example from
+`(define idx (mlir::IndexType::get))`, so any type can be written there: a type made by a call, the type of an existing
+value, a tensor type, a type that was computed (the manual, "Result types"). A result variable can be written with or
+without the `%`; the Toy samples write it without.
 
 #### An op with a region: `scf.for`
 
