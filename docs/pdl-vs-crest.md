@@ -9,7 +9,11 @@ What was read and run:
 - The LLVM sources of `llvmorg-22.1.0` and `llvmorg-23.1.5`, and the commit history of the PDL conversion support.
 - The Toy tutorial, Ch5, with `toy.print` and `toy.return` lowered by PDLL instead of C++, built against an LLVM 23
   install. Its output for 18 test programs, with and without `-opt`, is the same as the C++ version, byte for byte.
-- The CREST binding, `lib/Bindings/Transforms/DialectConversion.cpp`.
+- The CREST binding, `lib/Bindings/Transforms/DialectConversion.cpp`, and the CREST manual (§5 `begin-mlir-code`, the
+  operand groups of `:if-match`).
+- Small PDLL files compiled with the `mlir-pdll` of the LLVM 23 install, to see what the front end accepts for operand
+  groups, attributes and regions (the section "What the match and the rewrite can say"). The patterns were compiled to PDL,
+  not run.
 
 ## In short
 
@@ -25,6 +29,10 @@ What was read and run:
 | After an edit | rebuild | run again (development mode) |
 | When a mistake shows | many at build time; a missing helper at run time | at the first run, when the library is imported |
 | Shared matcher | yes: the checks of many patterns are merged into one tree | no: each pattern runs its own checks, one after another |
+| Build IR outside a pattern | no: a PDL rewrite exists only inside a `pdl.pattern` | yes: `begin-mlir-code` works in any Scheme code with a builder |
+| Spelling of a created op | `op<name>(operands) {attrs} -> (types)`, similar to the generic form, with no regions | `r = name (operands) (attr : value) { ^bb ... } -> type`, regions included |
+| Regions and arbitrary attributes in a created op | no regions; attributes written as `attr<"...">` text, from the dialects `mlir-pdll` knows, or computed in a native C++ rewrite | regions with blocks and arguments; an attribute is any Scheme expression |
+| Optional and variadic operands in a match | yes, through the ODS definition of a registered op and its `operandSegmentSizes` | yes, `(:optional %x)` and `(:variadic %xs)`, with `operandSegmentSizes` on the op, registered or not |
 
 ## The example: `toy.print` in Toy Ch5
 
@@ -114,6 +122,74 @@ Without a converter (`:no-type-converter`) the second constructor is used and `0
 CREST uses no private MLIR API, and no change to MLIR was needed. The cost is a dependence on the shape of the public
 `ConversionPattern`: the binding overrides the `ArrayRef<Value>` form, and MLIR also has a 1:N form,
 `ArrayRef<ValueRange>`.
+
+## What the match and the rewrite can say
+
+The four points below are about the language of the pattern, not about conversion. Each was checked in the LLVM sources and
+with `mlir-pdll`, and in the CREST manual and sources.
+
+### The rewrite is a part of a pattern in PDL, and a form of its own in CREST
+
+- **PDL.** `pdl.rewrite` has the trait `HasParent<"pdl::PatternOp">` (`PDLOps.td`): it ends a `pdl.pattern` and exists only
+  there. The PDLL manual says it too: "All PDLL rewrites must be defined within the `rewrite` section of the pattern"
+  (`PDLL.md`). PDLL has named rewrites, `Rewrite BuildFooOp(value: Value) -> Op { return op<my_dialect.foo>(value); }`, that a
+  pattern calls like a function, but only from a rewrite section. The code that runs a rewrite, `PDLByteCode`, is in
+  `lib/Rewrite/ByteCode.h`, which is not an installed header (`include/mlir/Rewrite/` has only `FrozenRewritePatternSet.h`,
+  `PassUtil.td` and `PatternApplicator.h`). There is no way to run a PDL rewrite without a match.
+- **CREST.** `begin-mlir-code` emits ops with the ambient builder, and works anywhere a builder is installed: `with-current-OpBuilder`
+  for a rewriter or a builder, `with-OpBuilder` to make one (`docs/manual.md` §5). The Toy samples use it where there is no
+  pattern: the front end `mlir-gen.sls` builds the whole module from the AST with it, and so do the `:materialize-constant`
+  hook of the dialect and the helpers of the lowerings (`%%get-or-insert-printf!` and others). With no builder it raises
+  `no active builder` when it makes its first op.
+
+### The spelling of an op
+
+- **PDLL** writes an op in a match and in a rewrite with the same expression: `op<dialect.name>(operands) {attr = ...} ->
+  (types)`. It is in the same family as the generic form, with the operands in parentheses, the attributes in braces and the
+  result types after an arrow, but the pieces are wrapped (`op<...>`, `attr<"...">`, `type<"...">`), there is no region or block
+  syntax, and a result is a value of a `let`, not named in the op. The IR that `mlir-pdll` writes is the `pdl` dialect:
+  `%4 = operation "my.dq"(%0, %1, %2 : !pdl.value, !pdl.range<value>, !pdl.range<value>) -> (%3 : !pdl.range<type>)`.
+- **CREST** writes `result = dialect.name (operands) (attr : value) { ^bb ... } -> type`, in the order of the generic form,
+  with the regions as braces. The manual says it mirrors MLIR's textual format. The match (`:if-match`) uses the same
+  spelling for the ops it looks for.
+
+### Regions and attributes in a created op
+
+- **PDL, regions.** `pdl.operation` has the fields `opName`, `operandValues`, `attributeValues` with `attributeValueNames`, and
+  `typeValues`, and no region. PDLL has no syntax for a region. The bytecode that makes an op builds an `OperationState` with
+  the operands, the attributes and the types, and adds no region (`ByteCode.cpp`, `executeCreateOperation`). I compiled
+  `replace op<my.loop>(x: Value) with op<my.loop>(x)` for an ODS op that has a region: it compiles to a `pdl.operation` that has
+  none, so an op that needs its region must be made by a native C++ rewrite. I did not run it.
+- **PDL, attributes.** A constant is written `attr<"...">`, a string that `mlir-pdll` parses when it compiles the file. The
+  stock `mlir-pdll` took `dense<[1.0, 2.0]> : tensor<2xf64>`, `affine_map<(d0) -> (d0)>` and `3 : i64`, and refused
+  `#llvm.linkage<external>` (an attribute of the `llvm` dialect, which that tool does not load): `attribute created with
+  unregistered dialect`. An attribute of a matched op can be bound and reused. A value that is computed needs a native
+  rewrite.
+- **CREST, regions.** `{ ... }` is one region, several braces are several regions, `^label` starts a block, a block can have
+  arguments (written, or a computed list of types), and `(:move-region op)` takes the body of an existing op. The manual says
+  what is missing: there is no syntax yet to branch from one block to another (`cf.br () ^exit`), so a block that no op reaches
+  is dead.
+- **CREST, attributes.** `(name : expr)` where `expr` is any Scheme expression that returns an `mlir::Attribute`, with
+  shorthands (`:string`, `:index`, `:i32`, `:f64`, `:i64-array`, ...). The Ch6 lowering writes
+  `(linkage : (mlir::parseAttribute "#llvm.linkage<external>"))`, parsed when it runs, with the dialects of its context.
+
+### Optional and variadic operands in a match
+
+- **PDL.** The groups come from the ODS definition of the op, so the op must be known to `mlir-pdll`. A `Variadic` operand is
+  bound as a `ValueRange`. An `Optional` operand is not "variadic" for PDLL (`isVariadic()` is false for it), but a
+  `ValueRange` is accepted for it: I compiled `op<my.dq>(x: Value, zp: ValueRange, rest: ValueRange)` for an op with `x`, an
+  `Optional` `zp` and a `Variadic` `rest`, and it gives a range for `zp`. Written as a `Value`, the group must have exactly
+  one value: the bytecode returns no match when a group asked for as one value has a different size (`ByteCode.cpp`,
+  `executeGetOperandsResults`). With the groups of the ODS, the bytecode finds them in `operandSegmentSizes`, but only when
+  the op has the trait `AttrSizedOperandSegments`; otherwise it assumes the range is the last group. The source says that
+  `SameVariadicOperandSize` is not supported (a `FIXME`). An op that is not registered has no trait.
+- **CREST.** `(:optional %zp)` binds the value when it is present and the absent value when it is not (test it with
+  `unbound-value?`), and `(:variadic %inputs)` binds a list. Several groups can be next to each other. The op must carry an
+  `operandSegmentSizes` attribute, and the pattern does not match without it, but the op does not have to be registered:
+  CREST reads the attribute, and the hip-fusion tests run on unregistered ops (`-allow-unregistered-dialect`).
+
+So the README's "Limited" for PDLL is fair: operand groups are there, through ODS and segment sizes, and a registered op is
+needed to use them fully.
 
 ## What the PDL path costs, and what it gives
 
