@@ -313,7 +313,7 @@ The error for a wrong kind is a Scheme error at run time, with a message about a
 
 ### 3. Regions and attributes in a created op
 
-In PDL there are no regions. `pdl.operation` has these fields and no region:
+PDL cannot add a region. There is nothing to write: `pdl.operation`, the op that creates an op, has these fields and no region:
 
 **PDL: the definition in MLIR's `PDLOps.td`**
 ```tablegen
@@ -324,17 +324,38 @@ let arguments = (ins OptionalAttr<StrAttr>:$opName,
                      Variadic<PDL_InstOrRangeOf<PDL_Type>>:$typeValues);
 ```
 
-An op that has a region in ODS compiles, and the PDL has no region for it:
+The other ops of the `pdl` dialect (`pattern`, `operand`, `operands`, `attribute`, `type`, `types`, `result`, `results`, `range`,
+`replace`, `erase`, `rewrite`, `apply_native_constraint`, `apply_native_rewrite`) have none that makes a region or moves one.
+
+The pattern below does not add a region. It is here to show what happens when an op that has one in ODS is created: PDLL
+accepts it, and the new op has no body. There is no place in the syntax to write one.
 
 **PDL: PDLL**
 ```pdll
-Pattern => replace op<my.loop>(x: Value) with op<my.loop>(x);   // my.loop has `region SizedRegion<1>:$body`
+// my.loop has `region SizedRegion<1>:$body` in ODS. The new my.loop gets no body:
+Pattern => replace op<my.loop>(x: Value) with op<my.loop>(x);
 ```
 
 **PDL: the PDL IR that `mlir-pdll` writes from the PDLL above**
 ```mlir
-%3 = operation "my.loop"(%0 : !pdl.value)      // no region; the bytecode builds an OperationState without one
+%3 = operation "my.loop"(%0 : !pdl.value)      // no region: the bytecode builds an OperationState without one
 ```
+
+The way to get an op with a region is C++. A native rewrite creates the op and its body, and the pattern only calls it:
+
+**PDL: PDLL**
+```pdll
+Rewrite BuildLoop(x: Value) -> Op;      // written in C++ and registered by name: it creates my.loop and fills in its body
+Pattern => replace op<my.loop>(x: Value) with BuildLoop(x);
+```
+
+**PDL: the PDL IR that `mlir-pdll` writes from the PDLL above**
+```mlir
+%3 = apply_native_rewrite "BuildLoop"(%0 : !pdl.value) : !pdl.operation
+```
+
+I did not run a rewrite that creates an op with a missing region, so I do not know how the verifier reacts. I compiled both PDLL
+patterns with `mlir-pdll`.
 
 In CREST there is one brace for each region, `^label` for a block, block arguments written or computed, `:move-region` to
 keep a body:
