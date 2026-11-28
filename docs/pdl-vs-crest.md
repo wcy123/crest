@@ -561,64 +561,6 @@ For a user:
 
 - A mistake in a CREST pattern is found at the first import, not at build time (README, "What you give up").
 - Edit and run needs development mode. In boot mode the `.sls` files are inside the binary and a change needs a rebuild.
-- **No matcher is shared between CREST patterns.** MLIR tries native patterns one at a time, and each CREST pattern tests the op
-  on its own. PDL compiles all its patterns into one matcher, which tests what the patterns have in common only once.
-
-For one op, `PatternApplicator::matchAndRewrite` (`lib/Rewrite/PatternApplicator.cpp`) treats the two kinds of pattern like this:
-
-**PDL: MLIR's own code (shortened)**
-```cpp
-// Before checking native patterns, first match against the bytecode. ...
-bytecode->match(op, rewriter, pdlMatches, *mutableByteCodeState);    // every op goes through the one matcher of all PDL patterns,
-                                                                       // which records every pattern that matches
-```
-
-**Native patterns, so CREST: MLIR's own code (shortened)**
-```cpp
-// Check to see if there are patterns matching this specific operation type.
-auto patternIt = patterns.find(op->getName());      // a table from the root op name to the patterns of that name
-
-// Try to match and rewrite this pattern. The patterns are sorted by
-// benefit, so if we match we can immediately rewrite. ...
-result = pattern->matchAndRewrite(op, rewriter);    // the pattern tests the op itself
-```
-
-What follows:
-
-- **The root op name is settled once, in both.** For PDL the first switch of the matcher does it. For native patterns the table does
-  it: only the patterns of that name are tried, and the others are not looked at.
-- **PDL runs the matcher once and gets every match.** MLIR then goes through the matches by benefit, and a PDL pattern only has to
-  rewrite.
-- **Native patterns are tried one at a time, by benefit.** The first pattern that matches rewrites at once, and the rest are not
-  tried. A pattern that does not match has done its own tests, and the next pattern does its own again.
-
-The difference is in what a pattern tests after the op name. Four PDLL patterns, and the one matcher that MLIR builds from them
-(`mlir-pdll -x=mlir`, then `mlir-opt -convert-pdl-to-pdl-interp`, shortened):
-
-**PDL: PDLL, four patterns**
-```pdll
-Pattern P1 => replace op<foo.root>(a: Value, b: Value) with a;              // P1 and P3: the same match
-Pattern P2 => replace op<foo.root>(a: Value, b: Value, c: Value) with b;
-Pattern P3 => replace op<foo.root>(a: Value, b: Value) with b;              // P1 and P3: the same match
-Pattern P4 => replace op<foo.other>(a: Value) with a;
-```
-
-**PDL: the one matcher (`pdl_interp`, shortened)**
-```
-switch_operation_name of %root to ["foo.root", "foo.other"]      // the op name: once (for native patterns, the table)
-  foo.root:
-    switch_operand_count of %root to [2, 3]                      // the operand count: once, for P1, P2 and P3
-      2: get_operand 0, is_not_null; get_operand 1, is_not_null  // the two operands: once, for P1 and P3
-         record_match P3 ; record_match P1                       // only here do P1 and P3 part
-      3: get_operand 0..2, is_not_null; record_match P2
-  foo.other:
-    check_operand_count is 1; get_operand 0; record_match P4
-```
-
-In PDL the operand count and the operands are tested once for P1, P2 and P3. In CREST, P1 and P3 are two patterns of `foo.root`.
-MLIR tries one, and the other only if the first does not match, and each reads and tests the two operands for itself: the generated
-code of a pattern has `:check-op` (the result count, and the op name once more), `:bind-operands` or `:bind-argument-operand` (the
-operands), and `:check-where` (the Scheme guard after `:where`), see `codegen.sls`.
 
 ## Sharing the source of patterns
 
@@ -645,5 +587,4 @@ template (run with `crest-opt`: `demo.a` becomes `demo.a2` and `demo.b` becomes 
                                          ("demo.b" rename-b 1)))
 ```
 
-The macro shares the text of the pattern. At run time there are still two patterns, each with its own checks, so this does not
-give back the merged matcher of the previous section.
+The macro shares the text of the pattern. At run time there are still two patterns.
