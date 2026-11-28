@@ -561,37 +561,38 @@ For a user:
 
 - A mistake in a CREST pattern is found at the first import, not at build time (README, "What you give up").
 - Edit and run needs development mode. In boot mode the `.sls` files are inside the binary and a change needs a rebuild.
-- The merged matcher. PDL merges the checks of all its patterns into one matcher, so the checks that several patterns have in
-  common are done once. A CREST pattern runs its own checks, so a check that several patterns have in common is done once for
-  each of them.
+- **The merged matcher: when several patterns share a check, PDL does it once, and CREST does it once for each pattern.**
+
+The example is four PDLL patterns. P1 and P3 both match a `foo.root` with two operands, so they share every check:
 
 **PDL: PDLL, four patterns**
 ```pdll
-Pattern P1 => replace op<foo.root>(a: Value, b: Value) with a;
+Pattern P1 => replace op<foo.root>(a: Value, b: Value) with a;              // P1 and P3: the same match
 Pattern P2 => replace op<foo.root>(a: Value, b: Value, c: Value) with b;
-Pattern P3 => replace op<foo.root>(a: Value, b: Value) with b;
+Pattern P3 => replace op<foo.root>(a: Value, b: Value) with b;              // P1 and P3: the same match
 Pattern P4 => replace op<foo.other>(a: Value) with a;
 ```
 
+PDL turns them into one matcher. The checks are done once, and the tree splits only where the patterns differ:
+
 **PDL: the one matcher that MLIR builds from them (`pdl_interp`, shortened)**
 ```
-switch_operation_name of %root to ["foo.root", "foo.other"]      // the op name is looked at once, for all four
+switch_operation_name of %root to ["foo.root", "foo.other"]      // the op name: once, for all four patterns
   foo.root:
-    switch_operand_count of %root to [2, 3]                      // the operand count is looked at once
-      2: get_operand 0, is_not_null; get_operand 1, is_not_null  // fetched and checked once...
-         record_match P3 ; record_match P1                       // ...then both patterns match
+    switch_operand_count of %root to [2, 3]                      // the operand count: once, for P1, P2 and P3
+      2: get_operand 0, is_not_null; get_operand 1, is_not_null  // the two operands: once, for P1 and P3
+         record_match P3 ; record_match P1                       // only here do P1 and P3 part
       3: get_operand 0..2, is_not_null; record_match P2
   foo.other:
     check_operand_count is 1; get_operand 0; record_match P4
 ```
 
-P1 and P3 have the same shape, so their operands are fetched and checked once. This is the output of `mlir-pdll -x=mlir`
-followed by `mlir-opt -convert-pdl-to-pdl-interp`.
+This is the output of `mlir-pdll -x=mlir` followed by `mlir-opt -convert-pdl-to-pdl-interp`.
 
-In CREST, MLIR first chooses the patterns of an op by the root op name they are registered with (`("demo.a" rename-a 1)`). Each
-of those patterns then runs its own checks in Scheme: the generated code of a pattern compares the op name again, checks the
-result count, and reads its operands from `operands-ref` (the expansion of the `toy.print` pattern shows it). Two CREST patterns on
-the same op with the same operands each do that work.
+**CREST does not share them.** MLIR still chooses the patterns of an op by the root op name they are registered with
+(`("demo.a" rename-a 1)`). After that, each pattern runs its own checks in Scheme. The generated code of a pattern compares the op
+name again, checks the result count and reads its operands from `operands-ref` (the expansion of the `toy.print` pattern shows it).
+P1 and P3 written in CREST would each do that work.
 
 ## Sharing the source of patterns
 
