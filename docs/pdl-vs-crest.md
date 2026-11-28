@@ -125,70 +125,194 @@ CREST uses no private MLIR API, and no change to MLIR was needed. The cost is a 
 
 ## What the match and the rewrite can say
 
-The four points below are about the language of the pattern, not about conversion. Each was checked in the LLVM sources and
-with `mlir-pdll`, and in the CREST manual and sources.
+Four points about the language of the pattern, not about conversion. The PDL snippets were compiled with the `mlir-pdll` of
+the LLVM 23 install (compiled, not run); the CREST snippets are from `docs/manual.md` and the samples.
 
-### The rewrite is a part of a pattern in PDL, and a form of its own in CREST
+### 1. A rewrite outside a pattern
 
-- **PDL.** `pdl.rewrite` has the trait `HasParent<"pdl::PatternOp">` (`PDLOps.td`): it ends a `pdl.pattern` and exists only
-  there. The PDLL manual says it too: "All PDLL rewrites must be defined within the `rewrite` section of the pattern"
-  (`PDLL.md`). PDLL has named rewrites, `Rewrite BuildFooOp(value: Value) -> Op { return op<my_dialect.foo>(value); }`, that a
-  pattern calls like a function, but only from a rewrite section. The code that runs a rewrite, `PDLByteCode`, is in
-  `lib/Rewrite/ByteCode.h`, which is not an installed header (`include/mlir/Rewrite/` has only `FrozenRewritePatternSet.h`,
-  `PassUtil.td` and `PatternApplicator.h`). There is no way to run a PDL rewrite without a match.
-- **CREST.** `begin-mlir-code` emits ops with the ambient builder, and works anywhere a builder is installed: `with-current-OpBuilder`
-  for a rewriter or a builder, `with-OpBuilder` to make one (`docs/manual.md` §5). The Toy samples use it where there is no
-  pattern: the front end `mlir-gen.sls` builds the whole module from the AST with it, and so do the `:materialize-constant`
-  hook of the dialect and the helpers of the lowerings (`%%get-or-insert-printf!` and others). With no builder it raises
-  `no active builder` when it makes its first op.
+**PDL**: a rewrite exists only inside a pattern.
 
-### The spelling of an op
+```tablegen
+// PDLOps.td
+def PDL_RewriteOp : PDL_Op<"rewrite", [
+     Terminator, HasParent<"pdl::PatternOp">, NoTerminator, NoRegionArguments,
+     SingleBlock, AttrSizedOperandSegments, ...
+```
 
-- **PDLL** writes an op in a match and in a rewrite with the same expression: `op<dialect.name>(operands) {attr = ...} ->
-  (types)`. It is in the same family as the generic form, with the operands in parentheses, the attributes in braces and the
-  result types after an arrow, but the pieces are wrapped (`op<...>`, `attr<"...">`, `type<"...">`), there is no region or block
-  syntax, and a result is a value of a `let`, not named in the op. The IR that `mlir-pdll` writes is the `pdl` dialect:
-  `%4 = operation "my.dq"(%0, %1, %2 : !pdl.value, !pdl.range<value>, !pdl.range<value>) -> (%3 : !pdl.range<type>)`.
-- **CREST** writes `result = dialect.name (operands) (attr : value) { ^bb ... } -> type`, in the order of the generic form,
-  with the regions as braces. The manual says it mirrors MLIR's textual format. The match (`:if-match`) uses the same
-  spelling for the ops it looks for.
+```pdll
+// PDLL: a named rewrite is a function, but a pattern's rewrite section is the only caller
+Rewrite BuildFooOp(value: Value) -> Op {
+  return op<my_dialect.foo>(value);
+}
+Pattern {
+  replace op<my_dialect.old_op>(input: Value) with BuildFooOp(input);
+}
+```
 
-### Regions and attributes in a created op
+PDLL.md: "All PDLL rewrites must be defined within the `rewrite` section of the pattern". The code that runs a rewrite is
+`lib/Rewrite/ByteCode.h`, which is not an installed header.
 
-- **PDL, regions.** `pdl.operation` has the fields `opName`, `operandValues`, `attributeValues` with `attributeValueNames`, and
-  `typeValues`, and no region. PDLL has no syntax for a region. The bytecode that makes an op builds an `OperationState` with
-  the operands, the attributes and the types, and adds no region (`ByteCode.cpp`, `executeCreateOperation`). I compiled
-  `replace op<my.loop>(x: Value) with op<my.loop>(x)` for an ODS op that has a region: it compiles to a `pdl.operation` that has
-  none, so an op that needs its region must be made by a native C++ rewrite. I did not run it.
-- **PDL, attributes.** A constant is written `attr<"...">`, a string that `mlir-pdll` parses when it compiles the file. The
-  stock `mlir-pdll` took `dense<[1.0, 2.0]> : tensor<2xf64>`, `affine_map<(d0) -> (d0)>` and `3 : i64`, and refused
-  `#llvm.linkage<external>` (an attribute of the `llvm` dialect, which that tool does not load): `attribute created with
-  unregistered dialect`. An attribute of a matched op can be bound and reused. A value that is computed needs a native
-  rewrite.
-- **CREST, regions.** `{ ... }` is one region, several braces are several regions, `^label` starts a block, a block can have
-  arguments (written, or a computed list of types), and `(:move-region op)` takes the body of an existing op. The manual says
-  what is missing: there is no syntax yet to branch from one block to another (`cf.br () ^exit`), so a block that no op reaches
-  is dead.
-- **CREST, attributes.** `(name : expr)` where `expr` is any Scheme expression that returns an `mlir::Attribute`, with
-  shorthands (`:string`, `:index`, `:i32`, `:f64`, `:i64-array`, ...). The Ch6 lowering writes
-  `(linkage : (mlir::parseAttribute "#llvm.linkage<external>"))`, parsed when it runs, with the dialects of its context.
+**CREST**: `begin-mlir-code` works wherever a builder is installed. This is the Toy front end, with no pattern anywhere:
 
-### Optional and variadic operands in a match
+```scheme
+(define (%%mlir-gen-literal expr)
+  (let* ([loc   (%%loc (literal-expr:loc expr))]
+         [dims  (literal-expr:dims expr)]
+         [data  (%%collect-data expr)]
+         [type  (mlir::RankedTensorType::get dims (mlir::Float64Type::get))]
+         [attr  (mlir::DenseElementsAttr::get<f64> type data)])
+    (begin-mlir-code
+        r = toy.constant () (value : attr) :loc loc)))
+```
 
-- **PDL.** The groups come from the ODS definition of the op, so the op must be known to `mlir-pdll`. A `Variadic` operand is
-  bound as a `ValueRange`. An `Optional` operand is not "variadic" for PDLL (`isVariadic()` is false for it), but a
-  `ValueRange` is accepted for it: I compiled `op<my.dq>(x: Value, zp: ValueRange, rest: ValueRange)` for an op with `x`, an
-  `Optional` `zp` and a `Variadic` `rest`, and it gives a range for `zp`. Written as a `Value`, the group must have exactly
-  one value: the bytecode returns no match when a group asked for as one value has a different size (`ByteCode.cpp`,
-  `executeGetOperandsResults`). With the groups of the ODS, the bytecode finds them in `operandSegmentSizes`, but only when
-  the op has the trait `AttrSizedOperandSegments`; otherwise it assumes the range is the last group. The source says that
-  `SameVariadicOperandSize` is not supported (a `FIXME`). An op that is not registered has no trait.
-- **CREST.** `(:optional %zp)` binds the value when it is present and the absent value when it is not (test it with
-  `unbound-value?`), and `(:variadic %inputs)` binds a list. Several groups can be next to each other. The op must carry an
-  `operandSegmentSizes` attribute, and the pattern does not match without it, but the op does not have to be registered:
-  CREST reads the attribute, and the hip-fusion tests run on unregistered ops (`-allow-unregistered-dialect`).
+This is a dialect hook, called by MLIR when a fold returns an attribute (the struct case of Ch7 is left out here):
 
-So the README's "Limited" for PDLL is fair: operand groups are there, through ODS and segment sizes, and a registered op is
+```scheme
+(:materialize-constant (builder value type loc)
+  (with-current-OpBuilder builder
+    (mlir::Value::getDefiningOp
+     (begin-mlir-code
+         r = toy.constant () (value : value) :loc loc -> type))))
+```
+
+Outside a pattern you install the builder yourself: `(with-current-OpBuilder b ...)`, or `(with-OpBuilder b (mlir::OpBuilder::atBlockEnd block) ...)`
+to make one. With none, `begin-mlir-code` raises `no active builder` at its first op.
+
+### 2. How an op is spelled
+
+The same op, `arith.constant` with an `index` value, in MLIR's generic form, in PDLL and in CREST:
+
+```mlir
+%c = "arith.constant"() <{value = 42 : index}> : () -> index
+```
+
+```pdll
+op<arith.constant> {value = attr<"42 : index">} -> (type<"index">)
+```
+
+```scheme
+c = arith.constant () (value : 42 :index) -> idx
+```
+
+PDLL is in the same family: the operands in parentheses, the attributes in braces, the result types after an arrow. It wraps the
+pieces (`op<...>`, `attr<"...">`, `type<"...">`), a result is the value of a `let` and not named in the op, and it has no region
+syntax (point 3). The IR that `mlir-pdll` writes is the `pdl` dialect, not this spelling:
+
+```mlir
+%4 = operation "my.dq"(%0, %1, %2 : !pdl.value, !pdl.range<value>, !pdl.range<value>) -> (%3 : !pdl.range<type>)
+```
+
+CREST writes the match with the same spelling (`:if-match`), as PDLL does.
+
+### 3. Regions and attributes in a created op
+
+**PDL, regions**: none. `pdl.operation` has these fields and no region:
+
+```tablegen
+let arguments = (ins OptionalAttr<StrAttr>:$opName,
+                     Variadic<PDL_InstOrRangeOf<PDL_Value>>:$operandValues,
+                     Variadic<PDL_Attribute>:$attributeValues,
+                     StrArrayAttr:$attributeValueNames,
+                     Variadic<PDL_InstOrRangeOf<PDL_Type>>:$typeValues);
+```
+
+An op that has a region in ODS compiles, and the PDL has no region for it:
+
+```pdll
+Pattern => replace op<my.loop>(x: Value) with op<my.loop>(x);   // my.loop has `region SizedRegion<1>:$body`
+```
+```mlir
+%3 = operation "my.loop"(%0 : !pdl.value)      // no region; the bytecode builds an OperationState without one
+```
+
+**CREST, regions**: one brace for each region, `^label` for a block, block arguments written or computed, `:move-region` to
+keep a body:
+
+```scheme
+op = scf.if (%cond)
+     { a = my.compute_a (%x) -> !i32
+       scf.yield (%a) }
+     { b = my.compute_b (%y) -> !i32
+       scf.yield (%b) }
+     -> !i32
+
+func.func ()
+  (sym_name : (mlir::Operation::getAttr op "sym_name"))
+  (:move-region op)
+```
+
+Limit: there is no syntax yet to branch from one block to another (`cf.br () ^exit`).
+
+**PDL, attributes**: a constant is text, parsed by `mlir-pdll` when it compiles the file.
+
+```pdll
+op<foo.b> {value = attr<"dense<[1.0, 2.0]> : tensor<2xf64>">}        // accepted
+op<foo.b> {map   = attr<"affine_map<(d0) -> (d0)>">}                 // accepted
+op<foo.b> {linkage = attr<"#llvm.linkage<external>">}                // refused by the stock mlir-pdll:
+```
+```
+error: #"llvm"<"linkage<external>"> : 'none' attribute created with unregistered dialect. If this is intended, ...
+```
+
+An attribute of a matched op can be bound and reused (`{attr = attr: Attr}`). A value that is computed needs a native rewrite
+written in C++.
+
+**CREST, attributes**: any Scheme expression that returns an `mlir::Attribute`, and shorthands. This is the Ch6 lowering:
+
+```scheme
+llvm.func ()
+  (sym_name : "printf" :string)
+  (function_type : (mlir::TypeAttr::get fnty))
+  (linkage : (mlir::parseAttribute "#llvm.linkage<external>"))
+  (CConv : (mlir::parseAttribute "#llvm.cconv<ccc>"))
+  { }
+```
+
+### 4. Optional and variadic operands in a match
+
+The op, in ODS, with a required, an optional and a variadic operand (the shape of `hip.dequantize_linear`):
+
+```tablegen
+def DQOp : My_Op<"dq", [AttrSizedOperandSegments]> {
+  let arguments = (ins AnyType:$x, Optional<AnyType>:$zp, Variadic<AnyType>:$rest);
+  let results = (outs AnyType:$out);
+}
+```
+
+**PDL**: the groups come from the ODS definition, so the op must be known to `mlir-pdll`.
+
+```pdll
+op<my.dq>(x: Value, zp: ValueRange, rest: ValueRange)    // compiles: zp is a range of 0 or 1
+op<my.dq>(x: Value, zp: Value,      rest: ValueRange)    // compiles: zp must have exactly one value
+op<my.dq>(x: Value, rest: ValueRange)                    // error: invalid number of operand groups for `my.dq`; expected 3, but got 2
+```
+
+The bytecode finds a group in `operandSegmentSizes`, if the op has the trait; asked for a single `Value`, a group of another
+size is no match:
+
+```cpp
+// ByteCode.cpp, executeGetOperandsResults (attrSizedSegments is "operandSegmentSizes" for operands)
+} else if (op->hasTrait<AttrSizedSegmentsT>()) {            // needs the trait: a registered op
+  auto segmentAttr = op->getAttrOfType<DenseI32ArrayAttr>(attrSizedSegments);
+  ...
+// FIXME: We currently don't support operations with
+// SameVariadicOperandSize/SameVariadicResultSize here ...
+...
+return values.size() != 1 ? nullptr : values.front().getAsOpaquePointer();   // asked for one Value
+```
+
+**CREST**: `(:optional ...)` and `(:variadic ...)` in the operand list. The op needs an `operandSegmentSizes` attribute, but not
+a registration (the hip-fusion tests run with `-allow-unregistered-dialect`).
+
+```scheme
+%dq = hip.dequantize_linear (%ctx %x %scale (:optional %zp) %init)
+:then-let ([zp (if (unbound-value? %zp) 0 (extract-zp %zp))])      ; absent: %zp is the absent value
+
+%op = my.op (%x (:optional %y) (:variadic %z))                     ; required, optional, variadic; %z is a Scheme list
+%op = my.op (%x (:optional %a %b) %y)                              ; two optional slots
+```
+
+The README's "Limited" for PDLL is fair: the groups are there, through ODS and the segment sizes, and a registered op is
 needed to use them fully.
 
 ## What the PDL path costs, and what it gives
