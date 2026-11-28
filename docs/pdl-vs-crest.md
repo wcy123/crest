@@ -270,7 +270,7 @@ scf.for (lb ub st)
 | | generic form | PDLL | CREST |
 |---|---|---|---|
 | operands | `(%a, %b)` | `(a, b)` | `(a b)` |
-| attributes | `<{name = value}>` | `{name = attr<"text">}` | `(name : expr)` |
+| attributes | `<{name = value}>` | `{name = attr<"text">}` for a constant, a bound `v`, or a native rewrite | `(name : expr)`, any expression |
 | result types | `: (operand types) -> type` | `-> (type<"i1">)`, a type written as text | `-> ty`, `ty` a Scheme variable holding any `mlir::Type` |
 | regions | `({ ^bb0(%iv: index): ... })` | none | `{ ^body ((iv : idx)) ... }` |
 | the result | `%r =` | a `let` variable | `r =` |
@@ -350,8 +350,28 @@ After `mlir-pdll` the string is gone: the PDL IR has a real attribute (`%4 = att
 text, `(mlir::parseAttribute "#llvm.linkage<external>")` in the Ch6 lowering below, but that is for an attribute that has no
 shorthand: the usual form is a value, `(value : 42 :index)`.
 
-An attribute of a matched op can be bound and reused (`{attr = attr: Attr}`). A value that is computed needs a native rewrite
-written in C++.
+So text covers only the attributes that can be spelled in a pattern. Any attribute can still reach a PDL rewrite, because a
+`pdl.attribute` holds an `mlir::Attribute` (`OptionalAttr<AnyAttr>:$value` in `PDLOps.td`). It does not come from the text, but
+from the matched IR or from C++:
+
+**PDL: PDLL, the three sources of an attribute**
+```pdll
+// 1. a constant, as text: only what the MLIR syntax can spell, from the dialects mlir-pdll knows
+Pattern => replace op<foo.a> with op<foo.b> {value = attr<"42 : index">};
+
+// 2. bound from the matched op: any attribute, with no text
+Pattern => replace op<foo.a> {value = v: Attr} with op<foo.b> {value = v};
+
+// 3. computed: a native rewrite, written in C++ and registered by name (registerRewriteFunction)
+Rewrite ScaleAttr(a: Attr) -> Attr;
+Pattern => replace op<foo.a> {value = v: Attr} with op<foo.b> {value = ScaleAttr(v)};
+```
+
+So the answer to "can PDL write an arbitrary attribute?" is yes for 2 and 3, and no for 1. An attribute that has to be built from
+values of the match, or that has no text in the dialects `mlir-pdll` loads, needs C++ (or the matched IR). A constant that is
+text has one more limit: the generated header keeps the PDL IR as text and parses it again at run time (`parseSourceString`), so
+the dialect of the attribute must be loaded in that context too. A `dense_resource<blob1>` is accepted as text, but the text
+carries only the name, not the data (I did not run what happens to it).
 
 In CREST an attribute is any Scheme expression that returns an `mlir::Attribute`, or a shorthand. This is the Ch6 lowering:
 
