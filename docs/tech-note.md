@@ -368,3 +368,8 @@ A test that valgrind cannot judge says `UNSUPPORTED: valgrind`. They still run i
   never closes (Rule 20: `exit` does not unwind) and what it holds is "definitely lost".
 
 `pass-leak`, `assembly-format-leak` and the checks of Rule 20 found their leaks with this method in 2026-11.
+
+## PDL patterns in a dialect conversion
+
+Moved to [pdl-vs-crest.md](pdl-vs-crest.md): how a PDL pattern runs in a dialect conversion, how CREST does it, and where
+they differ.
