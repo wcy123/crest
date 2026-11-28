@@ -29,7 +29,7 @@ What was read and run:
 | From the source to a running pattern | `.pdll` → PDL IR text → C++ string → PDL module → PDL interpreter IR → bytecode | the Scheme source is compiled when its library loads |
 | After an edit | rebuild | run again (development mode) |
 | When a mistake shows | many at build time; a missing helper at run time | at the first run, when the library is imported |
-| Shared matcher | yes: the checks of many patterns are merged into one tree | no: each pattern runs its own checks, one after another |
+| The checks of many patterns | merged into one matcher tree | not merged: each pattern runs its own checks, one after another; patterns can share source with a macro or a function |
 | Build IR outside a pattern | no: a PDL rewrite exists only inside a `pdl.pattern` | yes: `begin-mlir-code` works in any Scheme code with a builder |
 | Spelling of a created op | `op<name>(operands) {attrs} -> (types)`, similar to the generic form, with no regions | `r = name (operands) (attr : value) { ^bb ... } -> type`, regions included |
 | Regions and arbitrary attributes in a created op | no regions; attributes written as `attr<"...">` text, from the dialects `mlir-pdll` knows, or computed in a native C++ rewrite | regions with blocks and arguments; an attribute is any Scheme expression |
@@ -561,4 +561,29 @@ For a user:
 
 - A mistake in a CREST pattern is found at the first import, not at build time (README, "What you give up").
 - Edit and run needs development mode. In boot mode the `.sls` files are inside the binary and a change needs a rebuild.
-- A CREST pattern is a separate native pattern for each op, so there is no shared matcher.
+- The checks of different patterns are not merged into one tree, as PDL does. A CREST pattern is registered with a root op name and
+  a benefit (`("demo.a" rename-a 1)`), MLIR chooses the patterns of an op by that name, and each pattern then runs its own checks
+  in Scheme. Patterns can still share their source, with a Scheme function or a macro. This macro defines two patterns from one
+  template (run with `crest-opt`: `demo.a` becomes `demo.a2` and `demo.b` becomes `demo.b2`):
+
+**CREST: two patterns from one macro**
+```scheme
+(define-syntax define-rename
+  (syntax-rules ()
+    [(_ name from to)
+     (define-rewrite-pattern (name op rewriter)
+       :if-match
+         %out = from (%x)
+       :then-let
+         ([!t (mlir::Value::getType %out)])
+       :rewrite %out :with
+         r = to (%x) -> !t)]))
+
+(define-rename rename-a demo.a demo.a2)
+(define-rename rename-b demo.b demo.b2)
+
+(apply-patterns module-op ctx :patterns (("demo.a" rename-a 1)
+                                         ("demo.b" rename-b 1)))
+```
+
+The macro shares the text of the pattern. The two patterns are still two patterns at run time.
