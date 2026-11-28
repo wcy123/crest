@@ -561,7 +561,21 @@ For a user:
 
 - A mistake in a CREST pattern is found at the first import, not at build time (README, "What you give up").
 - Edit and run needs development mode. In boot mode the `.sls` files are inside the binary and a change needs a rebuild.
-- **The merged matcher: when several patterns share a check, PDL does it once, and CREST does it once for each pattern.**
+- **The merged matcher: when several patterns ask the same question about the same place in the IR, PDL asks it once. CREST asks
+  it once for each pattern.**
+
+A *check* is one yes-or-no question that the matcher asks about the IR while it looks for a match, for example "is the root op
+named `foo.root`?" or "does it have two operands?". A pattern matches when all its checks say yes.
+
+- **In PDL** a check is a position in the IR plus a question about it (`Predicate.h`): the position can be the root, an operand of
+  it, the op that defines that operand, an attribute, a result; the question is one of is-not-null, operation name, type,
+  attribute value, operand count, result count, equal-to, or a constraint written in C++. PDL merges two checks of different
+  patterns when the position and the question are the same (`isSamePredicate`, `PredicateTree.cpp`). `get_operand` in the matcher
+  below is not a check: it fetches the value that the next checks look at, and it is also done once for each position.
+- **In CREST** the checks of a pattern are the generated match actions (`codegen.sls`): `:check-op` (the op name and the result
+  count), `:bind-operands` and `:bind-argument-operand` (the operands are there, are not null and fit the `:optional` and
+  `:variadic` groups, and a variable that is already bound is the same value), `:bind-result`, and `:check-where` (the Scheme
+  guard that the user wrote after `:where`).
 
 The example is four PDLL patterns. P1 and P3 both match a `foo.root` with two operands, so they share every check:
 
